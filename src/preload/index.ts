@@ -21,6 +21,17 @@ import type {
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import {
+	MINI_VIEW_DISMISS,
+	MINI_VIEW_REGISTRATION,
+	MINI_VIEW_REGISTRATION_GET,
+	MINI_VIEW_SUMMONED,
+	type MiniViewDismissReason,
+	type MiniViewRegistrationState,
+	type MiniViewSummonedPayload,
+	isMiniViewRegistrationState,
+	isMiniViewSummonedPayload,
+} from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import {
 	type WebauthnRequestPayload,
@@ -1110,6 +1121,48 @@ const api = {
 		settled: (report: { renderer: string }): void => {
 			ipcRenderer.send("console-capture-settled", report);
 		},
+	},
+
+	/*
+	 * The mini view's bridge (design §D.3).
+	 *
+	 * A NAMESPACE OF ITS OWN rather than an extension of `desktop`: these calls
+	 * are about the app's own window and registration state, not about the
+	 * backend, and the mini renderer needs `onSummoned`/`dismiss` even when no
+	 * backend has ever answered. Every listener verifies the payload's shape
+	 * before handing it on, the same rule every other channel here keeps.
+	 */
+	miniView: {
+		/** Main -> this window: the composer is on screen and may take the keystroke. */
+		onSummoned: (
+			callback: (payload: MiniViewSummonedPayload) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, payload: unknown) => {
+				if (isMiniViewSummonedPayload(payload)) callback(payload);
+			};
+			ipcRenderer.on(MINI_VIEW_SUMMONED, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_SUMMONED, handler);
+			};
+		},
+		/** This window -> main: put the mini window away, naming the act. */
+		dismiss: (reason: MiniViewDismissReason): Promise<void> =>
+			ipcRenderer.invoke(MINI_VIEW_DISMISS, reason),
+		/** Main -> every renderer: the live global-shortcut state. */
+		onRegistration: (
+			callback: (state: MiniViewRegistrationState) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) => {
+				if (isMiniViewRegistrationState(state)) callback(state);
+			};
+			ipcRenderer.on(MINI_VIEW_REGISTRATION, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_REGISTRATION, handler);
+			};
+		},
+		/** The current state, for a freshly mounted settings row or the mini header. */
+		getRegistration: (): Promise<MiniViewRegistrationState> =>
+			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
 	},
 
 	/** Opens a native dialog to select a directory */

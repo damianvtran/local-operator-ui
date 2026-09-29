@@ -10,15 +10,23 @@
  * shapes `local-operator`'s `tests/unit/session/test_transcript_index.py`
  * pins against the S3 spike's measurements of the real store).
  *
- * ONE conversation carries every case the scene needs:
- *   - default 200 turns => 402 checkpoints, the rail's density case (v1 allows
- *     overlap at this size, and the frame is what "must not look broken" means);
- *   - turn 120 is STEERED — a mid-run user row after a tool row, which folds
- *     into that turn's open run, so the collapse hides it inside the bar: the
- *     jump-into-a-collapsed-run case, where expand-first has to fire;
- *   - turns 124 and 128 carry non-complete outcomes (error, interrupted);
- *   - ~1,400 rows puts the OLDEST tick beyond the near path's 12-page budget,
- *     which is the refusal case.
+ * FOUR conversations carry the scene's cases, each id-prefixed so a page can
+ * tell their rails apart:
+ *   - `be1a9fef0001` (default 200 turns => 402 checkpoints): the rail's density
+ *     case (v1 allows overlap at this size, and the frame is what "must not
+ *     look broken" means); turn 120 is STEERED — a mid-run user row after a
+ *     tool row, which folds into that turn's open run, so the collapse hides it
+ *     inside the bar (the jump-into-a-collapsed-run case); turns 124 and 128
+ *     carry non-complete outcomes (error, interrupted);
+ *   - `be1a9fef0002` (320 turns, ~2,240 rows): the refusal case — its OLDEST
+ *     tick is beyond the near path's budget from a fresh read;
+ *   - `be1a9fef0003` (6 turns => 12 discrete ticks): the SPARSE rail frame, with
+ *     turn 2's user row deliberately long (the bounded card) and turn 3 an
+ *     error outcome (the outcome-row card);
+ *   - `be1a9fef0004` (~200k rows): the BUILDING state's host — big enough that
+ *     a cold/stale read answers `building` while the index refresh runs (the
+ *     scene appends a row before each capture, so the leg stays deterministic
+ *     on a warm cache).
  *
  * Usage: node scripts/transcript-rail-fixture.mjs <config_dir> [turns]
  *
@@ -27,11 +35,22 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const RAIL_FIXTURE_SESSION = "be1a9fef0001";
 /* The refusal's own conversation: deep enough that its OLDEST tick is beyond
  * the near path's 12-page budget on a fresh read (320 turns, ~2,240 rows). */
 export const RAIL_FIXTURE_DEEP_SESSION = "be1a9fef0002";
+/* The rail's SPARSE state (6 turns => 12 discrete ticks), host for the bounded
+ * card (turn 2's user row is deliberately long) and the outcome-row card
+ * (turn 3 carries an error outcome). */
+export const RAIL_FIXTURE_SPARSE_SESSION = "be1a9fef0003";
+/* The BUILDING state's host: a journal big enough that the index build exceeds
+ * the backend's first-paint wait, so a cold/stale read answers `building`.
+ * The scene appends a row before each building capture, so the leg is
+ * deterministic even on a warm cache. */
+export const RAIL_FIXTURE_BULK_SESSION = "be1a9fef0004";
+const RAIL_FIXTURE_BULK_TURNS = 240;
 
 const BASE_TS = 1780000000; // epoch seconds; ~2026-05-28, increasing across the log
 const STEER_TURN = 120;
@@ -109,22 +128,128 @@ const marker = (session, id, ts, token, kind = "complete") => ({
 	},
 });
 
+/*
+ * THE BULK SESSION'S ROWS: the same message shapes at a scale that makes the
+ * backend's index build exceed its first-paint wait (`_FIRST_PAINT_WAIT_S`,
+ * 0.2 s), which is the only way a driven scene can photograph the rail's
+ * BUILDING state — the read answers `building` while the refresh task runs.
+ * ~84 rows per turn, 2400 turns default (~200k rows, ~40 MB): measured build
+ * time is seconds, and the state is never claimed from a stub.
+ */
+export function bulkRows(turns = RAIL_FIXTURE_BULK_TURNS) {
+	const rows = [];
+	let ts = BASE_TS;
+	for (let turn = 1; turn <= turns; turn += 1) {
+		const tag = String(turn).padStart(4, "0");
+		const token = `btok-${tag}`;
+		ts += 20;
+		rows.push(start(RAIL_FIXTURE_BULK_SESSION, `katt${tag}`, ts, token));
+		ts += 5;
+		rows.push(
+			user(`ku${tag}`, ts, `Bulk item ${turn}: keep the pipeline honest.`),
+		);
+		/*
+		 * Rows per turn are deliberately large and turns few: the BUILD cost is
+		 * the row count, the rail's tick count is the turn count, and this
+		 * session exists to make a build slow while its rail stays light enough
+		 * that the stale manifest shown DURING a rebuild is not a wall of ticks
+		 * (240 turns => 480 checkpoints, ~840 rows per turn => ~200k rows).
+		 */
+		for (let step = 0; step < 420; step += 1) {
+			ts += 2;
+			rows.push(
+				assistant(
+					`kp${tag}${String(step).padStart(2, "0")}`,
+					ts,
+					`Working through bulk step ${step + 1} of 40 for turn ${turn}; the ledger read returned twelve rows and the plan is unchanged.`,
+				),
+			);
+			ts += 2;
+			rows.push(
+				tool(
+					`kt${tag}${String(step).padStart(2, "0")}`,
+					ts,
+					`bulk command ${turn}.${step + 1}: exit 0, 0.4s, no output kept`,
+				),
+			);
+		}
+		ts += 30;
+		rows.push(
+			assistant(
+				`kn${tag}`,
+				ts,
+				`Bulk turn ${turn} settled; nothing needs a reader.`,
+			),
+		);
+		ts += 10;
+		rows.push(
+			marker(RAIL_FIXTURE_BULK_SESSION, `kcm${tag}`, ts, token, "complete"),
+		);
+		ts += 60;
+	}
+	return rows;
+}
+
+export function writeBulkFixture(root, turns = RAIL_FIXTURE_BULK_TURNS) {
+	const path = join(
+		root,
+		"sessions",
+		RAIL_FIXTURE_BULK_SESSION,
+		"transcript.jsonl",
+	);
+	mkdirSync(join(root, "sessions", RAIL_FIXTURE_BULK_SESSION), {
+		recursive: true,
+	});
+	const rows = bulkRows(turns);
+	writeFileSync(path, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
+	return { path, rows: rows.length };
+}
+
 export function fixtureRows(turns = 200, session = RAIL_FIXTURE_SESSION) {
 	const rows = [];
-	/* The deep session's ids carry a `d` prefix so a page can tell the two
-	 * rails apart: the scene navigates between them, and the checkpoints of
-	 * one must never answer for the other. */
-	const p = session === RAIL_FIXTURE_SESSION ? "" : "d";
+	/* Every session's ids carry a per-session prefix (`""`, `d`, `q`, `k`) so
+	 * a page can tell the rails apart: the scene navigates between them, and
+	 * the checkpoints of one must never answer for another. */
+	const p =
+		session === RAIL_FIXTURE_SESSION
+			? ""
+			: session === RAIL_FIXTURE_DEEP_SESSION
+				? "d"
+				: session === RAIL_FIXTURE_SPARSE_SESSION
+					? "q"
+					: "k";
 	let ts = BASE_TS;
 	for (let turn = 1; turn <= turns; turn += 1) {
 		const tag = String(turn).padStart(4, "0");
 		const token = `tok-${tag}`;
 		ts += 20;
-		rows.push(
-			user(`${p}u${tag}`, ts, `${USER_TEXTS[(turn - 1) % 10]} (turn ${turn})`),
-		);
-		ts += 5;
+		/*
+		 * The sparse session's turn 2 is the bounded-card case: a message far
+		 * longer than the card's ~8-line bound, so the internal scroll is a
+		 * measured fact rather than a claim.
+		 */
+		const longBody =
+			session === RAIL_FIXTURE_SPARSE_SESSION && turn === 2
+				? ` ${Array.from({ length: 12 }, (_, line) => `Paragraph ${line + 1} of the long message: the card must bound this at roughly eight lines of body-sm and scroll the rest internally rather than growing past the column.`).join(" ")}`
+				: "";
+		/*
+		 * `attention_started` lands BEFORE its user row - the real journal's
+		 * order (S3 note 1: "attention_started lands BEFORE its user row"), and
+		 * the attach rule needs the user ordinal at/after the start's: a marker
+		 * resolves "the LAST user checkpoint with ordinal in [S(token), M]", so
+		 * with the user row first the window [S, M] excludes it and every turn
+		 * settled with no outcome (measured on the first round-2 runs, which
+		 * photographed the outcome-row card with no row in it).
+		 */
 		rows.push(start(session, `${p}att${tag}`, ts, token));
+		ts += 5;
+		rows.push(
+			user(
+				`${p}u${tag}`,
+				ts,
+				`${USER_TEXTS[(turn - 1) % 10]} (turn ${turn})${longBody}`,
+			),
+		);
 		ts += 15;
 		rows.push(
 			assistant(
@@ -150,11 +275,15 @@ export function fixtureRows(turns = 200, session = RAIL_FIXTURE_SESSION) {
 		rows.push(assistant(`${p}n${tag}`, ts, ANSWER_TEXTS[(turn - 1) % 10]));
 		ts += 10;
 		const kind =
-			turn === ERROR_TURN
-				? "error"
-				: turn === INTERRUPTED_TURN
-					? "interrupted"
-					: "complete";
+			session === RAIL_FIXTURE_SPARSE_SESSION
+				? turn === 3
+					? "error"
+					: "complete"
+				: turn === ERROR_TURN
+					? "error"
+					: turn === INTERRUPTED_TURN
+						? "interrupted"
+						: "complete";
 		rows.push(marker(session, `${p}cm${tag}`, ts, token, kind));
 		ts += 120;
 	}
@@ -173,7 +302,13 @@ export function writeFixture(
 	return { path, rows: rows.length };
 }
 
-if (process.argv[1]?.endsWith("transcript-rail-fixture.mjs")) {
+/*
+ * The shared entry-point helper, not `process.argv[1]?.endsWith(...)` - the
+ * lexical comparison is the silent no-op `entry-point.test.mjs` scans for
+ * (through a symlinked directory the file loads, the CLI never runs and the
+ * process exits 0), and CI's release-contract step drives that suite.
+ */
+if (isEntryPoint(import.meta.url)) {
 	const root = process.argv[2];
 	if (!root) {
 		console.error(
@@ -184,10 +319,14 @@ if (process.argv[1]?.endsWith("transcript-rail-fixture.mjs")) {
 	const turns = process.argv[3] ? Number(process.argv[3]) : 200;
 	const written = writeFixture(root, turns);
 	const deep = writeFixture(root, 320, RAIL_FIXTURE_DEEP_SESSION);
-	console.log(
-		`wrote ${written.rows} rows for ${RAIL_FIXTURE_SESSION} -> ${written.path}`,
-	);
-	console.log(
-		`wrote ${deep.rows} rows for ${RAIL_FIXTURE_DEEP_SESSION} -> ${deep.path}`,
-	);
+	const sparse = writeFixture(root, 6, RAIL_FIXTURE_SPARSE_SESSION);
+	const bulk = writeBulkFixture(root);
+	for (const [label, out] of [
+		[RAIL_FIXTURE_SESSION, written],
+		[RAIL_FIXTURE_DEEP_SESSION, deep],
+		[RAIL_FIXTURE_SPARSE_SESSION, sparse],
+		[RAIL_FIXTURE_BULK_SESSION, bulk],
+	]) {
+		console.log(`wrote ${out.rows} rows for ${label} -> ${out.path}`);
+	}
 }

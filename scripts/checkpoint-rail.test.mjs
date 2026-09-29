@@ -29,7 +29,7 @@ import React, { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS } from "./src/renderer/src/features/chat/canonical/checkpoint-rail";',
+			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL } from "./src/renderer/src/features/chat/canonical/checkpoint-rail";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -72,6 +72,7 @@ globalThis.document = bootstrap.window.document;
 const {
 	CheckpointRail,
 	CHECKPOINT_CARD_OPEN_DELAY_MS,
+	CHECKPOINT_RAIL_LABEL,
 	CHECKPOINT_CARD_CLOSE_DELAY_MS,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -520,6 +521,104 @@ test("hover opens by intent after the delay and closes on the same discipline", 
 		await sleep(CHECKPOINT_CARD_CLOSE_DELAY_MS + 80);
 		await rail.flush();
 		assert.equal(rail.dialog(), null, "leaving the card closes it");
+	} finally {
+		await rail.close();
+	}
+});
+
+/** One keydown, the way the rail's own handler receives it. */
+const tickKey = (rail, element, key) => {
+	act(() => {
+		element.dispatchEvent(
+			new rail.window.KeyboardEvent("keydown", {
+				key,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+};
+
+test("the rail is ONE tab stop with roving memory (UX round 1, U1)", async () => {
+	const rail = await mountRail({
+		checkpoints: [
+			checkpoint({ id: "u1", seq: 0, text: "first" }),
+			checkpoint({ id: "c1", seq: 40, text: "second" }),
+			checkpoint({ id: "u2", seq: 60, text: "third" }),
+			checkpoint({ id: "c2", seq: 90, text: "fourth" }),
+		],
+	});
+	try {
+		const tabbable = () =>
+			rail.ticks().filter((element) => element.tabIndex === 0);
+		assert.equal(tabbable().length, 1, "exactly one tick in the tab order");
+		assert.equal(
+			tabbable()[0].getAttribute("data-checkpoint-id"),
+			"u1",
+			"and it is the FIRST tick until a reader moves",
+		);
+		/* Remembering the last-focused tick is what makes returning cheap. */
+		await rail.focusTick("u2");
+		assert.deepEqual(
+			tabbable().map((element) => element.getAttribute("data-checkpoint-id")),
+			["u2"],
+			"focus moves the group's tab stop with it",
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("the arrows walk the ticks, Home and End take the ends (U1)", async () => {
+	const rail = await mountRail({
+		checkpoints: [
+			checkpoint({ id: "u1", seq: 0, text: "first" }),
+			checkpoint({ id: "c1", seq: 40, text: "second" }),
+			checkpoint({ id: "u2", seq: 60, text: "third" }),
+			checkpoint({ id: "c2", seq: 90, text: "fourth" }),
+		],
+	});
+	try {
+		const active = () =>
+			rail.document.activeElement?.getAttribute("data-checkpoint-id") ?? null;
+		await rail.focusTick("u1");
+		tickKey(rail, rail.tick("u1"), "ArrowDown");
+		await rail.flush();
+		assert.equal(active(), "c1", "ArrowDown walks to the next tick");
+		tickKey(rail, rail.tick("c1"), "ArrowDown");
+		await rail.flush();
+		assert.equal(active(), "u2", "and onward in DOM order");
+		tickKey(rail, rail.tick("u2"), "ArrowUp");
+		await rail.flush();
+		assert.equal(active(), "c1", "ArrowUp returns");
+		tickKey(rail, rail.tick("c1"), "End");
+		await rail.flush();
+		assert.equal(active(), "c2", "End takes the newest tick");
+		tickKey(rail, rail.tick("c2"), "ArrowDown");
+		await rail.flush();
+		assert.equal(active(), "c2", "the walk clamps at the end");
+		tickKey(rail, rail.tick("c2"), "Home");
+		await rail.flush();
+		assert.equal(active(), "u1", "Home takes the oldest tick");
+		assert.equal(
+			rail.ticks().filter((element) => element.tabIndex === 0).length,
+			1,
+			"the walk kept the group at one tab stop",
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("the rail names itself, as a vertical toolbar (UX round 1, U3)", async () => {
+	const rail = await mountRail({
+		checkpoints: [checkpoint({ id: "u1", seq: 0, text: "only" })],
+	});
+	try {
+		const root = rail.rail();
+		assert.equal(root.getAttribute("role"), "toolbar");
+		assert.equal(root.getAttribute("aria-orientation"), "vertical");
+		assert.equal(root.getAttribute("aria-label"), CHECKPOINT_RAIL_LABEL);
 	} finally {
 		await rail.close();
 	}

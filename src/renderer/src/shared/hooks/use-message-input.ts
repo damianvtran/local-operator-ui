@@ -198,6 +198,45 @@ export const clearSubmittedText = (
 	submitted: string,
 ): string => (current === submitted ? "" : current);
 
+/**
+ * WHETHER A SEND'S SETTLE MAY RETIRE THE PERSISTED DRAFT (QA round 1, Q-2).
+ *
+ * The settle runs seconds after the echo, and every write since - keystrokes,
+ * a landing transcript - lives in the SAME persisted register (`handleChange`
+ * pushes each one). The unconditional clear wiped that newer copy while the
+ * box kept it on screen, and the next landing then appended against the
+ * emptied register and REPLACED the visible text ("send -> dictate -> dictate",
+ * measured in 3 of 4 QA runs). A settle that finds the register already empty,
+ * or still holding exactly the payload it sent, retires it; anything else is
+ * the user's and not this send's to clear.
+ *
+ * Pure and exported so the rule is asserted at node level (the shape
+ * `shouldReinitialiseComposer` takes in the same file).
+ */
+export const retireDraftApplies = (
+	persisted: string,
+	submitted: string,
+): boolean => persisted === "" || persisted === submitted;
+
+/**
+ * The boundary between a draft and a transcript that lands on it (design round
+ * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
+ * on the exact landing path this change re-publishes, and the joined word
+ * shipped as the sent message; the baseline records show it carried, which is
+ * why it is fixed HERE rather than deferred - this PR is the path's owner now.
+ *
+ * One space is added when the two sides would otherwise touch: the draft is
+ * non-empty and does not end in whitespace, and the transcript does not begin
+ * with it. Nothing changes when either side already had a boundary, so a draft
+ * ending in a space and a transcript starting with one both join exactly as
+ * before.
+ */
+export const joinTranscript = (draft: string, text: string): string => {
+	if (!draft) return text;
+	if (/\s$/.test(draft) || /^\s/.test(text)) return draft + text;
+	return `${draft} ${text}`;
+};
+
 /*
  * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
  *
@@ -229,6 +268,16 @@ export const COMPOSER_PLACEHOLDER = {
 	 */
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
+	/**
+	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
+	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
+	 * ladder, "Esc during a recording cancels the recording and never the turn" -
+	 * so the mid-turn sentence below ("Esc stops") would be a promise about the
+	 * wrong thing. Read before every other reading, because none of them can be
+	 * true at once with a live take the user started: the recording owns the
+	 * press until it ends.
+	 */
+	recording: "Recording. Enter confirms · Esc cancels",
 	waiting: "Steer the agent. Enter sends now · Esc stops",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
@@ -738,6 +787,65 @@ export const useMessageInput = ({
 
 	const submittingRef = useRef(false);
 	/*
+	 * THE TRANSCRIPT'S OWN WRITE, AND THE WINDOW IT MUST RESPECT.
+	 *
+	 * A dictation lands in the box from OUTSIDE the keystroke channel, asynchronously,
+	 * and it can land in the one window where the box and the row are both mid-send:
+	 * between the press and the clear that retires the sent text. Two defects live in
+	 * that window, and they are the reason this pair exists rather than a plain write:
+	 *
+	 *   - the clear runs AFTER the transcript's write but computes from a value
+	 *     captured before it, so it either discards the fresh text or resurrects the
+	 *     sent message beside it (`setNewMessage(newMessage + newText)` reads the
+	 *     pre-press closure - both outcomes were reachable);
+	 *   - the transcript is simply lost when the clear lands second.
+	 *
+	 * So a transcript that arrives while `sendClearPendingRef` is set waits in
+	 * `pendingTranscriptRef`, and `clearOnce` - the ONE function that retires a sent
+	 * payload from this box - composes the clear and the transcript into a single
+	 * write. The waiting text is attached to the SEND's clear and to nothing else, so
+	 * it cannot outlive it.
+	 */
+	const pendingTranscriptRef = useRef("");
+	const sendClearPendingRef = useRef(false);
+
+	/**
+	 * Append `text` to the draft through the same writer a keystroke uses, so the
+	 * row and the box move together. Kept separate from `appendTranscriptText`
+	 * because `clearOnce` needs the raw append without the waiting rule.
+	 */
+	const appendToDraft = useCallback(
+		(text: string) => {
+			if (!conversationId || !text) return;
+			if (draftHeld) {
+				// The masked capture owns the box: append to it without touching the row,
+				// exactly as a keystroke inside the capture does (§6). The capture's own
+				// write at its end is what reconciles the merged value.
+				setInputValue((current) => joinTranscript(current, text));
+				return;
+			}
+			handleChange(joinTranscript(getCurrentInput(conversationId), text));
+		},
+		[conversationId, draftHeld, getCurrentInput, handleChange],
+	);
+
+	/**
+	 * The transcription path's writer: a transcript either joins the box now or
+	 * waits for the send's own clear - never both, and never against a stale copy
+	 * of the box (see the refs above for the window and its two defects).
+	 */
+	const appendTranscriptText = useCallback(
+		(text: string) => {
+			if (!text) return;
+			if (sendClearPendingRef.current) {
+				pendingTranscriptRef.current += text;
+				return;
+			}
+			appendToDraft(text);
+		},
+		[appendToDraft],
+	);
+	/*
 	 * A SEND THIS COMPOSER MADE IS STILL UNACKNOWLEDGED, which is a state the
 	 * composer owes the user a sentence about (the placeholder in
 	 * `message-input.tsx`): the box is emptied at the echo, so between the press
@@ -781,7 +889,14 @@ export const useMessageInput = ({
 		 */
 		const alreadySubmitting = submittingRef.current;
 		submittingRef.current = true;
-		if (!alreadySubmitting) setSendInFlight(true);
+		if (!alreadySubmitting) {
+			setSendInFlight(true);
+			// The press opens the window a transcript must respect, and the clear
+			// below (or the refusal arm) closes it. A DELEGATED second press opens
+			// nothing: it owns no clear, and a flag it raised would strand the next
+			// transcript with no writer left to collect it.
+			sendClearPendingRef.current = true;
+		}
 		/*
 		 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
 		 *
@@ -878,7 +993,24 @@ export const useMessageInput = ({
 		const clearOnce = (record = false) => {
 			if (cleared && !record) return;
 			cleared = true;
-			if (initializedRef.current !== conversationId) return;
+			/*
+			 * THE TRANSCRIPT'S WAIT ENDS HERE, composed into this one clear.
+			 * The two writes must land as one: the clear decides what of the sent
+			 * text survives (usually nothing), and the transcript was captured
+			 * WHILE that was still undecided. Written separately they can take
+			 * each other's work back; written together, the box ends up holding
+			 * exactly the transcript beside whatever the clear kept.
+			 */
+			const pendingTranscript = pendingTranscriptRef.current;
+			if (pendingTranscript) pendingTranscriptRef.current = "";
+			sendClearPendingRef.current = false;
+			if (initializedRef.current !== conversationId) {
+				// This composer never took charge of the row, so it has nothing to
+				// clear - but the row is still the transcript's home and the next
+				// mount paints from it.
+				if (pendingTranscript) appendToDraft(pendingTranscript);
+				return;
+			}
 			setInputValue((current) => clearSubmittedText(current, submitted));
 			if (conversationId)
 				beginInFlight(
@@ -897,6 +1029,7 @@ export const useMessageInput = ({
 					},
 					record,
 				);
+			if (pendingTranscript) appendToDraft(pendingTranscript);
 		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
@@ -904,6 +1037,18 @@ export const useMessageInput = ({
 		 * it, or a refusal is about to put it back.
 		 */
 		const retireDraft = () => {
+			/*
+			 * ONLY THE COPY THE SEND ACTUALLY RETIRED (QA round 1, Q-2; the rule and
+			 * its reasoning live on `retireDraftApplies`). A register holding
+			 * something newer than this send - typed or dictated since the press -
+			 * is the user's, and clearing it both lost the persisted copy and made
+			 * the next landing REPLACE the box's visible text.
+			 */
+			if (
+				conversationId &&
+				!retireDraftApplies(getCurrentInput(conversationId), submitted)
+			)
+				return;
 			lastPushedRef.current = "";
 			setCurrentInput(conversationId, "");
 			resetCurrentHistoryIndex(conversationId);
@@ -934,7 +1079,17 @@ export const useMessageInput = ({
 				 * this component stays mounted, and on the New-chat path the identity
 				 * flip unmounts it mid-send (UX round 3, U14) - which is also why a
 				 * second home was the wrong shape for this fact to begin with.
+				 *
+				 * AND THE TRANSCRIPT'S WINDOW ENDS HERE TOO: this refusal keeps the
+				 * text in the box and runs no clear, so a transcript that arrived
+				 * meanwhile would otherwise wait for a writer that never comes.
 				 */
+				sendClearPendingRef.current = false;
+				const strandedTranscript = pendingTranscriptRef.current;
+				if (strandedTranscript) {
+					pendingTranscriptRef.current = "";
+					appendToDraft(strandedTranscript);
+				}
 				return;
 			}
 		} finally {
@@ -1000,6 +1155,14 @@ export const useMessageInput = ({
 		scrollToBottom,
 		beginInFlight,
 		draftHeld,
+		/*
+		 * The transcript's flush rides this submit's clear (see `clearOnce`),
+		 * and `retireDraft` reads this register to decide what its settle may
+		 * retire (QA round 1, Q-2) - so both are dependencies of this callback
+		 * in the literal sense the lint gate enforces.
+		 */
+		appendToDraft,
+		getCurrentInput,
 	]);
 
 	// Cursor position helpers
@@ -1095,6 +1258,13 @@ export const useMessageInput = ({
 		handleKeyDown,
 		handleSubmit,
 		textareaRef,
+		/*
+		 * The transcription path's writer, and the ONLY way a transcript reaches
+		 * this box: it either joins the draft now or waits for the send's own
+		 * clear, so it can never race the clear that is retiring the sent text
+		 * (see the refs at the top of this hook).
+		 */
+		appendTranscriptText,
 		/*
 		 * A send this composer made has not settled yet. Exposed because it is
 		 * the composer's own press, and the placeholder that states it is the

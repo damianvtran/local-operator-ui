@@ -17,6 +17,29 @@ import { trustedDesktopFrame } from "./desktop-transport";
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
 /**
+ * Whether this request is a keymap write the backend ACCEPTED.
+ *
+ * The op and its key are read from the REQUEST, the acceptance from the
+ * RESPONSE: the fast path exists to re-read the file after a write that
+ * landed, and a refused `settings.edit` (a reserved chord, a validation
+ * refusal) changed nothing on disk. Named beside the handler rather than
+ * inlined so the two halves of that reading sit together.
+ */
+function isAcceptedKeymapEdit(
+	input: unknown,
+	response: DesktopResponse,
+): boolean {
+	if (response.status < 200 || response.status >= 300) return false;
+	if (input === null || typeof input !== "object") return false;
+	const request = input as { op?: unknown; key?: unknown };
+	return (
+		request.op === "settings.edit" &&
+		typeof request.key === "string" &&
+		request.key.startsWith("keymap.")
+	);
+}
+
+/**
  * The ops that owe a VISIBLE, FOCUSED window before they may be sent.
  *
  * A set rather than two chained comparisons, because the match is by op NAME
@@ -129,17 +152,57 @@ export function registerDesktopIPC(
 	) => Promise<DesktopMediaResponse>,
 	notifier?: DesktopNotifier,
 	noteLeftSession?: (sessionId: string) => void,
+	/**
+	 * The global hotkey's fast path (design §G.2): called after a SUCCESSFUL
+	 * `settings.edit` naming a `keymap.*` key, so the registrar re-reads the
+	 * config file and applies the new chord immediately instead of waiting for
+	 * the stats-poll watcher. The watcher stays the mechanism of record for
+	 * every other writer (the TUI, `lop config edit`, hand edits); this exists
+	 * only because the in-app write is the one where a knee-jerk re-press is
+	 * seconds away. One callback, no payload — the callback re-reads the file
+	 * rather than trusting this request, so the two writers share one source.
+	 */
+	onKeymapSettingEdited?: () => void,
+	/**
+	 * The windows OTHER than the main one that may use the desktop plane, each
+	 * with its own trusted document URL.
+	 *
+	 * WHY THIS EXISTS. The Quick send mini view (design §D.1/§E.1) is a second
+	 * renderer document whose composer resolves the seat and sends through this
+	 * same plane — `capabilities`, `aida.status`, `aida.control`, the send via
+	 * `admitChatDraft` — so it must pass the gate below, and the gate admits by
+	 * FRAME: sender, main frame, and the URL trust check. A mini view that is not
+	 * admitted fails closed at its first request, which is what the evidence run
+	 * measured (`Error: This window cannot use desktop controls.` in the app log
+	 * while the composer's Send refused).
+	 *
+	 * EACH WINDOW CARRIES ITS OWN URL, and neither is admitted on the other's:
+	 * `mini.html` is not `index.html`, and a single shared `expectedUrl` would
+	 * either refuse the mini view or, widened to a directory match, admit any
+	 * document in the renderer tree. The callback shape keeps main's window
+	 * lifecycle (which window exists when) in `index.ts`, where the mini view is
+	 * created and destroyed, rather than in this module.
+	 */
+	additionalWindows?: () => readonly {
+		window: BrowserWindow | null;
+		url: string;
+	}[],
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
-		const owner = window();
-		if (
-			!owner ||
-			owner.isDestroyed() ||
-			event.sender !== owner.webContents ||
-			event.senderFrame !== owner.webContents.mainFrame ||
-			!trustedDesktopFrame(event.senderFrame.url, expectedUrl)
-		) {
+		const admitted = [
+			{ window: window(), url: expectedUrl },
+			...(additionalWindows?.() ?? []),
+		];
+		const owner = admitted.some(
+			(candidate) =>
+				candidate.window !== null &&
+				!candidate.window.isDestroyed() &&
+				event.sender === candidate.window.webContents &&
+				event.senderFrame === candidate.window.webContents.mainFrame &&
+				trustedDesktopFrame(event.senderFrame.url, candidate.url),
+		);
+		if (!owner) {
 			throw new Error("This window cannot use desktop controls.");
 		}
 	}
@@ -150,7 +213,24 @@ export function registerDesktopIPC(
 	const guarded = guardForegroundReceipts(window, request);
 	ipcMain.handle("desktop-request", (event, input: unknown) => {
 		authorize(event);
-		return guarded(input);
+		const outcome = guarded(input);
+		/*
+		 * The hotkey's fast path, and the ONE if §J.6 asks for: a keymap write
+		 * that the backend accepted re-applies the registration without waiting
+		 * for the poll. Attached rather than awaited — the renderer's reply must
+		 * not wait on our bookkeeping — and deliberately silent on failure: a
+		 * refused write changed nothing to re-read, and the refusal itself is
+		 * the renderer's to show.
+		 */
+		if (onKeymapSettingEdited) {
+			outcome.then(
+				(response) => {
+					if (isAcceptedKeymapEdit(input, response)) onKeymapSettingEdited();
+				},
+				() => {},
+			);
+		}
+		return outcome;
 	});
 	// `/exit`: the window closes through the ordinary close path, so macOS
 	// keep-alive behaviour applies unchanged in the shipped app. Nothing here

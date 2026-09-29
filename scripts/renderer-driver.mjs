@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -115,6 +115,14 @@
  *                          asserts an older session messaged today lands under
  *                          `Today` within ~2 s of its completion; `stale`
  *                          records the old bin it sits in instead
+ *   --slash-expect <open|refused>  (with --scene sessionless-slash) which claim
+ *                          this run is in: `open` (the default) asserts that
+ *                          `/help`, `/theme`, `/login`, `/logout` and
+ *                          `/resume` typed on a new chat each mount their
+ *                          picker with no refusal sentence; `refused` asserts
+ *                          the dispatcher's own sentence for each and no
+ *                          picker - the base tree's half of the pair (issue
+ *                          #625)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -150,6 +158,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
+	appendFileSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
@@ -374,6 +383,7 @@ const THEME = argValue("--theme", null);
  * fails the run rather than moving the goalposts with it.
  */
 const LAZY_CASE = argValue("--scoped-case", "paged");
+const RAIL_CASE = argValue("--scoped-case", "full");
 /*
  * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
  * scoped answer while this file is absent, so the arm photographs a wait that is
@@ -437,6 +447,22 @@ const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
  * half and read as the answer to a question it did not ask.
  */
 const BIN_EXPECT = argValue("--bin-expect", "prompt");
+/**
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ *
+ * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
+ * `/logout` and `/resume` typed on a pane with no conversation each mount
+ * their picker, and the transcript carries no refusal sentence. `refused` is
+ * the base tree: the same five gestures each get the dispatcher's own sentence
+ * ("<word> needs an open conversation. Start one first.") and no picker
+ * mounts. One scene, both halves, the same bytes - the pair is only readable
+ * if the same code produced both, which is why the flag names a claim rather
+ * than a tree.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` and `--bin-expect` are.
+ */
+const SLASH_EXPECT = argValue("--slash-expect", "open");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -9709,7 +9735,7 @@ async function sceneFloors(cdp) {
  * cases, and the 320-turn one carries the refusal, whose oldest tick is beyond
  * the near path's 12-page budget from a fresh read.
  *
- * THE CASES, all on the one conversation:
+ * THE CASES, on four fixture conversations (the writer names them):
  *   - density: 402 ticks over the scroller (v1 allows overlap at this size,
  *     and "must not look broken" is what the frame is for);
  *   - both hover cards: a user card (the message text) and a completion card
@@ -9718,13 +9744,28 @@ async function sceneFloors(cdp) {
  *     and the card says so by construction;
  *   - the near-path jump into a COLLAPSED run: turn 120 is steered, its run is
  *     one the collapse folds into a bar, and the jump walks ensure-loaded ->
- *     expand-first reveal -> centre -> wash, landing on the hidden `s0120` row;
+ *     expand-first reveal -> centre -> wash, landing on the hidden `s0120` row.
+ *     Every jump check asserts the VISUAL landing too - the highlight row's
+ *     rect inside the scroller's, and a `scrollTop` that moved - because
+ *     design round 1's D1 measured the attribute passing while the view never
+ *     moved (the centre step's clamp assumed a normal scroller; this one is
+ *     `flex-col-reverse`, and the fix names the axis at the call site);
+ *   - the PHYSICAL POINTER PRESS at density: a scanned mid-rail point, the
+ *     real pointer, asserting the same landing - the gesture a reader makes,
+ *     where the README once recorded one that fired nothing;
  *   - the refusal: the deep conversation's oldest tick is beyond the 12-page
  *     budget from a fresh read (the first clean pass proved the 200-turn
  *     conversation's own oldest row is reachable by then - the jump simply
  *     lands there), and the sentence it raises is photographed;
  *   - reduced motion: the media preference emulated through CDP, and the wash
  *     read back as the STATIC ground it must be (`animationName: none`);
+ *   - the SPARSE rail (12 discrete ticks, asserted spaced), the bounded card
+ *     (a ~2,000-character message; the internal scroll asserted), and the
+ *     outcome row (the error turn's card, its label read off the shipped
+ *     constants) - design round 1's D5 states;
+ *   - the BUILDING mark: the ~200k-row conversation's index refresh exceeds
+ *     the backend's first-paint wait, and the leg makes the index stale itself
+ *     (append one row) before each capture, so the state is not a race;
  *   - REAL timings, taken driver-side around the press: press -> the
  *     `data-jump-highlight` attribute appearing (cold through the loader, warm
  *     on a loaded row). The numbers ride in the check details, which is what
@@ -9733,7 +9774,202 @@ async function sceneFloors(cdp) {
  * The full command line (daemon, token, flags) is in
  * `docs/evidence/transcript-rail/README.md`.
  */
+async function railPressProbe(cdp) {
+	const SESSION = "be1a9fef0001";
+	const rail = "[data-lo-checkpoint-rail]";
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const sample = () =>
+		evaluate(`(() => {
+			const toast = document.querySelector("[data-sonner-toast]");
+			const active = document.activeElement;
+			const hl = document.querySelector("[data-jump-highlight]");
+			return {
+				highlight: hl ? hl.getAttribute("data-record-id") : null,
+				toast: toast ? toast.textContent : null,
+				active: active && active.getAttribute ? active.getAttribute("data-checkpoint-id") : null,
+				card: document.querySelector("[role=dialog]") ? "open" : null,
+			};
+		})()`);
+	const poll = async (label, seconds) => {
+		const series = [];
+		let last = "";
+		for (let i = 0; i < seconds * 5; i += 1) {
+			const text = JSON.stringify(await sample());
+			if (text !== last) {
+				series.push(text);
+				last = text;
+			}
+			await wait(200);
+		}
+		note(label, series.join(" -> "));
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	if (RAIL_CASE !== "press-probe") {
+		/*
+		 * THE SCENE'S OWN PRELUDE, reproduced: a cold keyboard jump to the steer
+		 * row, then the warm jump to the tail - the state the scene's press leg
+		 * fires from, where the press stopped arriving. The difference between
+		 * this and the plain probe is the whole question.
+		 */
+		const jump = async (id) => {
+			await evaluate(
+				`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (el) el.focus(); return Boolean(el); })()`,
+			);
+			await pressChord(cdp, {
+				key: "Enter",
+				code: "Enter",
+				virtualKeyCode: 13,
+			});
+			const hit = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				20_000,
+				25,
+			);
+			note(`prelude jump ${id}`, `hit=${hit.ok}`);
+			await waitForCondition(
+				cdp,
+				`!document.querySelector("[data-jump-highlight]")`,
+				6_000,
+				25,
+			);
+		};
+		await jump("s0120");
+		await wait(400);
+		await jump("n0200");
+		await wait(400);
+		if (RAIL_CASE === "press-probe-hovers") {
+			/*
+			 * THE HOVER LEGS, the last difference between this probe and the
+			 * scene's press: a real pointer over a user tick, its card, the park,
+			 * and the same for a completion tick - each with its capture.
+			 */
+			const hoverLeg = async (id) => {
+				const box = await verb(cdp, "measure", `[data-checkpoint-id="${id}"]`);
+				await movePointer(cdp, box.centre.x, box.centre.y);
+				const card = await waitForCondition(
+					cdp,
+					`Boolean(document.querySelector("[role=dialog]"))`,
+					4_000,
+					25,
+				);
+				note(`hover ${id}`, `card=${card.ok}`);
+				await capture(cdp, `probe-hover-${id}-dark`, { assertPalette: false });
+				await movePointer(cdp, 2, 2);
+				await wait(360);
+			};
+			await hoverLeg("u0200");
+			await hoverLeg("n0200");
+		}
+		if (
+			RAIL_CASE === "press-probe-captures" ||
+			RAIL_CASE === "press-probe-hovers"
+		) {
+			/*
+			 * AND THE SCENE'S CAPTURES, the remaining difference between this
+			 * probe and the scene's press: five frames are taken before the press
+			 * there (density, both hovers, jump-before, jump-after).
+			 */
+			for (const label of [
+				"probe-capture-1-dark",
+				"probe-capture-2-dark",
+				"probe-capture-3-dark",
+				"probe-capture-4-dark",
+				"probe-capture-5-dark",
+			]) {
+				await capture(cdp, label, { assertPalette: false });
+			}
+		}
+	}
+	const spot = await evaluate(`(() => {
+		const rail = document.querySelector('${rail}');
+		if (!rail) return null;
+		const rect = rail.getBoundingClientRect();
+		const cx = rect.left + rect.width / 2;
+		const start = Math.ceil(rect.top + 2 + (rect.height - 4) * 0.45);
+		for (let y = start; y < rect.bottom - 2; y += 2) {
+			const el = document.elementFromPoint(cx, y);
+			if (!el || !el.closest) continue;
+			const tick = el.closest("[data-checkpoint-id]");
+			if (!tick) continue;
+			const id = tick.getAttribute("data-checkpoint-id") || "";
+			if (id.startsWith("n")) return { x: cx, y, id };
+		}
+		return null;
+	})()`);
+	note("scanned spot", JSON.stringify(spot));
+	if (spot === null) return;
+	note("before the press", JSON.stringify(await sample()));
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: spot.x,
+		y: spot.y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await poll("after the REAL POINTER press", 6);
+	await evaluate(
+		`(() => { const el = document.querySelector('[data-checkpoint-id="${spot.id}"]'); if (el) el.click(); return Boolean(el); })()`,
+	);
+	await poll("after the DOM click on the same tick", 6);
+	await verb(cdp, "press", { selector: `[data-checkpoint-id="${spot.id}"]` });
+	await poll("after the SYNTHETIC press on the same tick", 6);
+}
+
 async function sceneTranscriptRail(cdp) {
+	/*
+	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
+	 * the full scene takes ~15 minutes per iteration and this question does not
+	 * need the rest of the checks to answer: it opens the 200-turn
+	 * conversation, scans a mid-rail tick, presses it with the real pointer,
+	 * and samples what the page did after each of three activation routes (the
+	 * real pointer, the DOM's own click, the driver's synthetic press). Run
+	 * with `--scoped-case press-probe`.
+	 */
+	if (
+		RAIL_CASE === "press-probe" ||
+		RAIL_CASE === "press-probe-prelude" ||
+		RAIL_CASE === "press-probe-captures" ||
+		RAIL_CASE === "press-probe-hovers"
+	) {
+		await railPressProbe(cdp);
+		return;
+	}
 	const facts = await factsOf(cdp);
 	check(
 		"window mode is headless and the window is never shown or focused",
@@ -9747,6 +9983,20 @@ async function sceneTranscriptRail(cdp) {
 	 * the near path's 12-page budget from a fresh read. Its ids carry a `d`
 	 * prefix (scripts/transcript-rail-fixture.mjs). */
 	const SESSION_DEEP = "be1a9fef0002";
+	/* The sparse rail + the bounded/outcome cards live on the 6-turn fixture;
+	 * the building state on the ~200k-row one (ids `q*` and `k*`). */
+	const SESSION_SPARSE = "be1a9fef0003";
+	const SESSION_BULK = "be1a9fef0004";
+	/* The bulk session's journal, so the building leg can make its index STALE
+	 * (append one row) before each capture - deterministic on a warm cache. */
+	const BULK_JOURNAL = resolve(
+		BACKEND_RECORDS,
+		"..",
+		"..",
+		"sessions",
+		SESSION_BULK,
+		"transcript.jsonl",
+	);
 	let currentFixture = SESSION;
 	const rail = "[data-lo-checkpoint-rail]";
 	const steerTick = "s0120";
@@ -9771,13 +10021,14 @@ async function sceneTranscriptRail(cdp) {
 	 * press would land somewhere else. Scanning POINTS finds the place a press
 	 * actually reaches that tick, which is what the hover below needs.
 	 */
-	const tickSpot = (prefix) =>
+	const tickSpot = (prefix, fromFraction = 0) =>
 		evaluate(`(() => {
 			const rail = document.querySelector('${rail}');
 			if (!rail) return null;
 			const rect = rail.getBoundingClientRect();
 			const cx = rect.left + rect.width / 2;
-			for (let y = Math.ceil(rect.top + 2); y < rect.bottom - 2; y += 2) {
+			const start = Math.ceil(rect.top + 2 + (rect.height - 4) * ${fromFraction});
+			for (let y = start; y < rect.bottom - 2; y += 2) {
 				const el = document.elementFromPoint(cx, y);
 				if (!el || !el.closest) continue;
 				const tick = el.closest("[data-checkpoint-id]");
@@ -9815,40 +10066,73 @@ async function sceneTranscriptRail(cdp) {
 		await wait(400);
 		return ready.ok;
 	};
+	/**
+	 * The landing's VISUAL reading (design round 1, D1): the highlight attribute
+	 * alone proved nothing - the frames showed the wash painted off-screen over
+	 * pixel-identical bubble positions - so every jump check below also asserts
+	 * where the landed row is relative to the scroller and what its `scrollTop`
+	 * did. `[role="log"]` is the transcript's own `flex-col-reverse` scroller.
+	 */
+	const landedView = () =>
+		evaluate(`(() => {
+			const sc = document.querySelector('[role="log"]');
+			const row = document.querySelector("[data-jump-highlight]");
+			if (!sc || !row) return null;
+			const sr = sc.getBoundingClientRect();
+			const rr = row.getBoundingClientRect();
+			const overlap = Math.min(rr.bottom, sr.bottom) - Math.max(rr.top, sr.top);
+			return {
+				landed: row.getAttribute("data-record-id"),
+				scrollTop: Math.round(sc.scrollTop),
+				rowH: Math.round(rr.height),
+				overlap: Math.round(overlap),
+			};
+		})()`);
+	/**
+	 * Open the bulk conversation and wait for the rail's BUILDING mark. The leg
+	 * appends a row to its journal first (making the cached index stale), so
+	 * each capture gets a fresh refresh and the state is not a race.
+	 */
+	const openFixtureBuilding = async (id) => {
+		appendFileSync(
+			BULK_JOURNAL,
+			`${JSON.stringify({
+				id: `kz${Date.now()}`,
+				ts: Math.floor(Date.now() / 1000),
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "user",
+					content: [{ text: "stale-maker" }],
+				},
+			})}\n`,
+		);
+		if (currentFixture !== id) {
+			await verb(cdp, "press", {
+				selector: `[data-session-row="${id}"] [data-chat-row]`,
+			});
+			currentFixture = id;
+		}
+		const ready = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${rail} [data-rail-building]'))`,
+			20_000,
+			25,
+		);
+		return ready.ok;
+	};
 	const focusTick = (id) =>
 		evaluate(
 			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
 		);
-	/**
-	 * A press at exact coordinates, in `clickAt`'s sequence (move, press,
-	 * release) but for a point rather than a selector - the overlapping ticks
-	 * are only honestly pressable at the point that hit-tested to them.
+	/*
+	 * The press helper is the module-level `clickPoint(cdp, x, y)` - a scene-local
+	 * copy shadowed it in the first round-2 run, and its call sites passed the
+	 * module's `(cdp, x, y)` shape into the copy's `(x, y)`, so the dispatched
+	 * point was the client object put into `x` and the scan's x put into `y`:
+	 * the press landed nowhere while the hit test said the tick was topmost.
+	 * One helper, one signature.
 	 */
-	const clickPoint = async (x, y) => {
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x,
-			y,
-			button: "none",
-			buttons: 0,
-		});
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mousePressed",
-			x,
-			y,
-			button: "left",
-			buttons: 1,
-			clickCount: 1,
-		});
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseReleased",
-			x,
-			y,
-			button: "left",
-			buttons: 0,
-			clickCount: 1,
-		});
-	};
 	/**
 	 * One keyboard jump: focus the exact tick, Enter, then the wall clock from
 	 * the press to the highlight's attribute appearing, and where it landed.
@@ -9869,7 +10153,8 @@ async function sceneTranscriptRail(cdp) {
 		const landed = await evaluate(
 			`(() => { const el = document.querySelector("[data-jump-highlight]"); return el ? el.getAttribute("data-record-id") : null; })()`,
 		);
-		return { focused, ms, hit: hit.ok, landed };
+		const view = await landedView();
+		return { focused, ms, hit: hit.ok, landed, view };
 	};
 	const washGone = () =>
 		waitForCondition(
@@ -10046,9 +10331,13 @@ async function sceneTranscriptRail(cdp) {
 		const rowsAfter = await rowsMounted();
 		await capture(cdp, `transcript-rail-jump-after-${suffix}`);
 		check(
-			`the cold jump lands the wash on the hidden steer row (${theme})`,
-			cold.hit && cold.landed === steerTick,
-			`${coldDetail}, focus=${cold.focused}, landed=${cold.landed}, rows ${rowsBefore}->${rowsAfter}`,
+			`the cold jump lands the wash on the hidden steer row, in view (${theme})`,
+			cold.hit &&
+				cold.landed === steerTick &&
+				cold.view !== null &&
+				cold.view.overlap >= cold.view.rowH - 2 &&
+				Math.abs(cold.view.scrollTop) >= 100,
+			`${coldDetail}, focus=${cold.focused}, landed=${cold.landed}, view=${JSON.stringify(cold.view)}, rows ${rowsBefore}->${rowsAfter}`,
 		);
 		await washGone();
 
@@ -10056,11 +10345,95 @@ async function sceneTranscriptRail(cdp) {
 		await wait(400);
 		const warm = await jumpVia(nearTick);
 		check(
-			`the warm jump lands the wash on a loaded row (${theme})`,
-			warm.hit && warm.landed === nearTick,
-			`press->highlight ${warm.ms}ms, landed=${warm.landed}`,
+			`the warm jump lands the wash on a loaded row, in view (${theme})`,
+			warm.hit &&
+				warm.landed === nearTick &&
+				warm.view !== null &&
+				warm.view.overlap >= warm.view.rowH - 2,
+			`press->highlight ${warm.ms}ms, landed=${warm.landed}, view=${JSON.stringify(warm.view)}`,
 		);
 		await washGone();
+		/*
+		 * THE PHYSICAL POINTER PRESS AT DENSITY (design round 1, D3): the README
+		 * recorded a real pointer press that "fired nothing" - a reading taken
+		 * before the D1 fix, when the jump ran but the view never moved. This leg
+		 * now has to LAND the gesture a reader at density actually makes, through
+		 * the full reveal -> centre -> wash path, from a point scanned because
+		 * only a point whose topmost element is the tick is pressable at 402
+		 * ticks. It doubles as the second cold target: the scanned tick is an
+		 * early completion whose row the store has not loaded.
+		 */
+		const pressSpot = await tickSpot("n", 0.45);
+		if (pressSpot) {
+			const activeBefore = await evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+			await clickPoint(cdp, pressSpot.x, pressSpot.y);
+			const pressed = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				12_000,
+				25,
+			);
+			const pressedView = await landedView();
+			/*
+			 * THE PRESS'S OWN RECORD, on failure: what focus did (did the press
+			 * arrive at all), and a short series of what the page showed. The
+			 * probe (`--scoped-case press-probe*`) lands this same press on this
+			 * same tick reproducibly; when the scene's copy of it fails, the
+			 * difference has to be read off the state rather than guessed.
+			 */
+			let pressSeries = null;
+			if (!pressed.ok) {
+				/*
+				 * WHAT IS AT THE POINT, asked of the hit test itself: the scan said
+				 * the tick was topmost moments earlier, and the mousedown still did
+				 * not reach it - so the fresh stack (every element at the point,
+				 * topmost first) is the reading that names what changed.
+				 */
+				const atPoint = await evaluate(`(() => {
+					const els = document.elementsFromPoint(${pressSpot.x}, ${pressSpot.y});
+					return els.slice(0, 6).map((el) => {
+						const id = el.getAttribute("data-checkpoint-id") || "";
+						const role = el.getAttribute("role") || "";
+						const cls = (el.className || "").toString().slice(0, 70);
+						return el.tagName + "|" + id + "|" + role + "|" + cls;
+					});
+				})()`);
+				pressSeries = ["AT-POINT", ...atPoint].join(" || ");
+				const seen = [];
+				let last = "";
+				for (let i = 0; i < 20; i += 1) {
+					const now = await evaluate(`(() => {
+						const t = document.querySelector("[data-sonner-toast]");
+						const hl = document.querySelector("[data-jump-highlight]");
+						const el = document.activeElement;
+						return JSON.stringify({
+							hl: hl ? hl.getAttribute("data-record-id") : null,
+							toast: t ? t.textContent : null,
+							active: el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null,
+						});
+					})()`);
+					if (now !== last) {
+						seen.push(now);
+						last = now;
+					}
+					await wait(200);
+				}
+				pressSeries = `${pressSeries} || SERIES ${seen.join(" -> ")}`;
+			}
+			check(
+				`the physical pointer press at density lands its jump (${theme})`,
+				pressed.ok &&
+					pressedView !== null &&
+					pressedView.landed === pressSpot.id &&
+					pressedView.overlap >= pressedView.rowH - 2 &&
+					Math.abs(pressedView.scrollTop) >= 100,
+				`id=${pressSpot.id} activeBefore=${activeBefore} view=${JSON.stringify(pressedView)} series=${JSON.stringify(pressSeries)}`,
+			);
+			await capture(cdp, `transcript-rail-press-density-${suffix}`);
+			await washGone();
+		}
 
 		/* Reduced motion: the wash as the static ground, emulated through CDP. */
 		await cdp.send("Emulation.setEmulatedMedia", {
@@ -10073,13 +10446,137 @@ async function sceneTranscriptRail(cdp) {
 			`(() => { const el = document.querySelector("[data-jump-highlight]"); if (!el) return null; const cs = getComputedStyle(el); return { bg: cs.backgroundColor, anim: cs.animationName }; })()`,
 		);
 		check(
-			`under prefers-reduced-motion the wash lands static, never animated (${theme})`,
-			reduced.hit && wash !== null && wash.anim === "none",
-			`press->highlight ${reduced.ms}ms, animationName=${wash?.anim}, background=${wash?.bg}`,
+			`under prefers-reduced-motion the wash lands static, never animated, in view (${theme})`,
+			reduced.hit &&
+				wash !== null &&
+				wash.anim === "none" &&
+				reduced.view !== null &&
+				reduced.view.overlap >= reduced.view.rowH - 2,
+			`press->highlight ${reduced.ms}ms, animationName=${wash?.anim}, background=${wash?.bg}, view=${JSON.stringify(reduced.view)}`,
 		);
 		await cdp.send("Emulation.setEmulatedMedia", { features: [] });
 		await washGone();
 		await parkPointer(cdp);
+
+		/*
+		 * THE ROVING RAIL (UX round 1, U1 + U3). The reviewer's walk measured
+		 * the block as 402 consecutive tab stops with no in-rail movement
+		 * (ArrowDown was a no-op) and `railAria: null`; these legs assert the
+		 * fix on the real bundle - one tabbable tick, the arrows/Home/End walk
+		 * with the card following focus, Escape keeping focus on the tick, the
+		 * group's name, and crossing the block costing ONE press either way.
+		 * The ids are read from the page, so the legs hold for any manifest.
+		 */
+		const activeTick = () =>
+			evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+		/*
+		 * The roving stop is the reader's MEMORY of their last tick, so the leg
+		 * reads where focus already is before touching anything: the reduced-motion
+		 * jump above focused its tick, and the group must still be parked there.
+		 */
+		const lastFocused = await activeTick();
+		await evaluate(
+			"(() => { const el = document.activeElement; if (el && el.blur) el.blur(); return true; })()",
+		);
+		const railIds = await evaluate(
+			`[...document.querySelectorAll('${rail} [data-checkpoint-id]')].map((el) => el.getAttribute("data-checkpoint-id"))`,
+		);
+		const railA11y = await evaluate(`(() => {
+			const root = document.querySelector('${rail}');
+			if (!root) return null;
+			const tabbable = [...root.querySelectorAll("[data-checkpoint-id]")].filter((el) => el.tabIndex === 0);
+			return {
+				role: root.getAttribute("role"),
+				orientation: root.getAttribute("aria-orientation"),
+				label: root.getAttribute("aria-label"),
+				tabs: tabbable.length,
+				tabbable: tabbable.map((el) => el.getAttribute("data-checkpoint-id")),
+			};
+		})()`);
+		check(
+			`the rail is one named tab stop, vertical (${theme})`,
+			railA11y !== null &&
+				railA11y.role === "toolbar" &&
+				railA11y.orientation === "vertical" &&
+				railA11y.label === "Turn checkpoints" &&
+				railA11y.tabs === 1 &&
+				railA11y.tabbable[0] === lastFocused,
+			`${JSON.stringify(railA11y)} lastFocused=${lastFocused}`,
+		);
+		await focusTick(railIds[0]);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown1 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown2 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowUp",
+			code: "ArrowUp",
+			virtualKeyCode: 38,
+		});
+		const walkUp = await activeTick();
+		await pressChord(cdp, { key: "End", code: "End", virtualKeyCode: 35 });
+		const walkEnd = await activeTick();
+		await pressChord(cdp, { key: "Home", code: "Home", virtualKeyCode: 36 });
+		const walkHome = await activeTick();
+		check(
+			`the arrows and Home/End walk the ticks (${theme})`,
+			walkDown1 === railIds[1] &&
+				walkDown2 === railIds[2] &&
+				walkUp === railIds[1] &&
+				walkEnd === railIds.at(-1) &&
+				walkHome === railIds[0],
+			JSON.stringify({
+				walkDown1,
+				walkDown2,
+				walkUp,
+				walkEnd,
+				walkHome,
+				first: railIds[0],
+				second: railIds[1],
+				last: railIds.at(-1),
+			}),
+		);
+		const cardBeforeEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		const cardAfterEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		const focusAfterEscape = await activeTick();
+		check(
+			`Escape closes the card and keeps the tick focused (${theme})`,
+			cardBeforeEscape && !cardAfterEscape && focusAfterEscape === railIds[0],
+			`before=${cardBeforeEscape} after=${cardAfterEscape} focus=${focusAfterEscape}`,
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		const afterTab = await activeTick();
+		await pressChord(cdp, {
+			key: "Tab",
+			code: "Tab",
+			virtualKeyCode: 9,
+			modifiers: 8,
+		});
+		const afterShiftTab = await activeTick();
+		check(
+			`crossing the rail costs one Tab from either side (${theme})`,
+			afterTab === null && afterShiftTab === railIds[0],
+			`afterTab=${afterTab} afterShiftTab=${afterShiftTab}`,
+		);
 
 		note(
 			`jump timings (${theme})`,
@@ -10189,6 +10686,110 @@ async function sceneTranscriptRail(cdp) {
 				100,
 			);
 		}
+		await parkPointer(cdp);
+	}
+
+	/*
+	 * THE SPARSE RAIL AND THE CARDS (design round 1, D5), in their own loop:
+	 * the 6-turn conversation is where ticks are DISCRETE marks rather than a
+	 * line, and it hosts the two card states the density conversation cannot
+	 * frame deterministically - the bounded long-message card (the scene
+	 * asserts the internal scroll really exists) and the outcome row on the
+	 * error turn (the card's word for it, read off the shipped label).
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the sparse fixture conversation is open (${theme})`,
+			await openFixture(SESSION_SPARSE, "qu0001", 12),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		await parkPointer(cdp);
+		const sparse = await evaluate(`(() => {
+			const tops = [...document.querySelectorAll("${rail} [data-checkpoint-id]")]
+				.map((el) => el.getBoundingClientRect().top)
+				.sort((a, b) => a - b);
+			let minGap = Number.POSITIVE_INFINITY;
+			for (let i = 1; i < tops.length; i += 1) minGap = Math.min(minGap, tops[i] - tops[i - 1]);
+			return { count: tops.length, minGap: Math.round(minGap * 10) / 10 };
+		})()`);
+		check(
+			`the sparse rail is twelve discrete ticks, not a line (${theme})`,
+			sparse.count === 12 && sparse.minGap > 6,
+			JSON.stringify(sparse),
+		);
+		await capture(cdp, `transcript-rail-sparse-${suffix}`);
+
+		/* The bounded card: turn 2's user row is ~2,000 characters. */
+		const longBox = await verb(cdp, "measure", '[data-checkpoint-id="qu0002"]');
+		await movePointer(cdp, longBox.centre.x, longBox.centre.y);
+		const longCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog] [data-checkpoint-card-text]"))`,
+			4_000,
+			25,
+		);
+		const bound = await evaluate(`(() => {
+			const el = document.querySelector("[data-checkpoint-card-text]");
+			return el ? { scrollH: el.scrollHeight, clientH: el.clientHeight } : null;
+		})()`);
+		check(
+			`the long user card is bounded and scrolls internally (${theme})`,
+			longCard.ok && bound !== null && bound.scrollH > bound.clientH,
+			JSON.stringify(bound),
+		);
+		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+
+		/* The outcome row: turn 3 carries an error outcome in the manifest, and
+		 * the completion checkpoint's id is the ANSWER row's (`qn0003`), not the
+		 * marker's - the manifest's own shape, read off the density session's
+		 * first/last (`u0001`/`n0200`). */
+		const outcomeBox = await verb(
+			cdp,
+			"measure",
+			'[data-checkpoint-id="qn0003"]',
+		);
+		await movePointer(cdp, outcomeBox.centre.x, outcomeBox.centre.y);
+		const outcomeCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog]"))`,
+			4_000,
+			25,
+		);
+		const outcomeText = await evaluate(
+			`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+		);
+		check(
+			`the outcome card names the error outcome (${theme})`,
+			outcomeCard.ok && /Error/.test(outcomeText || ""),
+			`card=${JSON.stringify((outcomeText || "").slice(0, 120))}`,
+		);
+		await capture(cdp, `transcript-rail-card-outcome-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+	}
+
+	/*
+	 * THE BUILDING MARK (design round 1, D5): the ~200k-row conversation's
+	 * index build exceeds the backend's first-paint wait, so a stale read
+	 * answers `building` while the refresh runs - and the leg makes the index
+	 * stale itself (append one row) before each capture, so it holds on a warm
+	 * cache too. The rail keeps painting the stale manifest's ticks and adds
+	 * the one top mark; the frame is the state a reader sees on a conversation
+	 * whose index has just gone stale.
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the bulk conversation answers building with its mark up (${theme})`,
+			await openFixtureBuilding(SESSION_BULK),
+			`building-mark=${await evaluate(`Boolean(document.querySelector("${rail} [data-rail-building]"))`)}`,
+		);
+		await capture(cdp, `transcript-rail-building-${suffix}`);
 		await parkPointer(cdp);
 	}
 }
@@ -15869,6 +16470,61 @@ async function daemonPost(path, body) {
 }
 
 /**
+ * One GET of the daemon's desktop routes, from THIS script's Node process.
+ *
+ * The read half's own helper, beside `daemonList` and `daemonPost`, for the
+ * scenes that watch the daemon's own truth rather than the app's copy of it —
+ * `--scene mini-view` reads the chief-of-staff conversation back through this
+ * to prove the composer's send was admitted, not merely painted.
+ */
+async function daemonGet(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See daemonPost: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * The pids of the daemon `--backend` names, read from the serve records the run
+ * linked — the same read `--scene connection-drop` does, with the same three
+ * guards (the run's port, a loopback host, and never 1111), because this scene
+ * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
+ * kills it. Signalling the operator's own daemon is the thing both guards
+ * exist to make impossible.
+ */
+function runDaemonPids() {
+	if (BACKEND === null) return [];
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
+		);
+	}
+	const pids = [];
+	for (const { record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		pids.push(pid);
+	}
+	return pids;
+}
+
+/**
  * The bin promptness, measured live - the operator's report, on the wire and on
  * screen.
  *
@@ -19543,6 +20199,350 @@ async function sceneNewChat(cdp) {
 		frames
 			.map(
 				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
+ * `/resume` typed on a pane with no conversation.
+ *
+ * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
+ * `--slash-expect open` is the head tree: every one of the five mounts its
+ * picker over the new chat with `sessionId: ""` and no `sessions.command`
+ * POST. `--slash-expect refused` is the base tree: the same five gestures each
+ * get the dispatcher's own sentence in the transcript and no picker. One
+ * scene, both halves, the same bytes.
+ *
+ * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
+ * tree. The live half runs under `open` only: after the five gestures a message
+ * is sent and answered, and `/theme` on THAT conversation must still present
+ * the picker - the session-ful path the change must not move. On the base tree
+ * the same steps would prove nothing this pair is about.
+ *
+ * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
+ * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
+ * (`sceneNewChat` is the scene that proves that press, and this one reuses
+ * its chord rather than a selector), and the composer the five commands are
+ * typed into is the one that press mounts.
+ *
+ * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
+ * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
+ * writes the completed value into the box and leaves the popup open (measured
+ * in this pass's first take: the frame showed `/theme localOperatorDark` in the
+ * box with the Themes list open and no dialog). The scene closes the popup with
+ * Escape - the box keeps the completed value - and submits it with the next
+ * Enter, which is the path the registry's own note describes ("an unambiguous
+ * Enter completes the id and the next Enter runs the command the user already
+ * had"). It attempts up to three presses and the checks record which produced
+ * the state, so a destination that needs a different dance fails by name rather
+ * than by timeout.
+ */
+async function sceneSessionlessSlash(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	const suffix = theme === "localOperatorLight" ? "light" : "dark";
+	await verb(cdp, "setTheme", theme);
+	const themed = await verb(cdp, "state");
+	check(
+		"the app is in the palette this run photographs",
+		themed.theme === theme,
+		`theme is ${themed.theme}`,
+	);
+
+	/*
+	 * The new chat: from a route that is not chat, through the same chord the
+	 * New chat row's shortcut takes, so the pane these gestures are typed into
+	 * is staged the way a user stages one.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const draft = await stagedDraft(cdp);
+	check(
+		"Cmd-N staged a fresh draft on the chat route - the new chat these gestures are about",
+		landed.route === "/chat" &&
+			typeof draft === "string" &&
+			draft.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(draft)}`,
+	);
+	const COMPOSER = '[data-tour-tag="chat-input-textarea"]';
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${COMPOSER}'))`,
+		30_000,
+	);
+	check(
+		"the draft pane mounts a composer",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms: ${JSON.stringify(mounted.last)}`,
+	);
+
+	const open = SLASH_EXPECT === "open";
+	const COMMANDS = [
+		{ word: "/help", label: "help", title: "Commands" },
+		{ word: "/theme", label: "theme", title: "Theme" },
+		{ word: "/login", label: "login", title: "Sign in to a provider" },
+		{ word: "/logout", label: "logout", title: "Sign out" },
+		{ word: "/resume", label: "resume", title: "Resume a conversation" },
+	];
+
+	/*
+	 * The slash popup's own listbox, by its own labels (`slash-commands.tsx`):
+	 * "Slash commands" in the command phase, "Command arguments" once a row with
+	 * an inline list has been completed. Asked before the Escape step so a
+	 * destination that needed no completing is never sent a stray key.
+	 */
+	const SLASH_POPUP =
+		'[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]';
+	const pressEnter = () =>
+		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	const frames = [];
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		/*
+		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
+		 * completed value behind until the command actually runs, and the next
+		 * gesture typed onto that tail would be a different gesture than the one
+		 * this frame claims. Meta+A through Chromium's own editing command (a bare
+		 * chord performs no edit), then Backspace.
+		 */
+		let box = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		if (box !== "") {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+			box = await cdp.evaluate(
+				`document.querySelector('${COMPOSER} textarea').value`,
+			);
+		}
+		check(
+			`the composer is empty before ${command.word} is typed`,
+			box === "",
+			`the box held ${JSON.stringify(box)} after the clear`,
+		);
+		await cdp.send("Input.insertText", { text: command.word });
+		await wait(400);
+		await pressEnter();
+		let produced = await waitForCondition(cdp, arrives, 5_000);
+		let presses = 1;
+		if (!produced.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			presses = 2;
+			produced = await waitForCondition(cdp, arrives, 5_000);
+		}
+		if (!produced.ok) {
+			await pressEnter();
+			presses = 3;
+			produced = await waitForCondition(cdp, arrives, 8_000);
+		}
+		const read = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return {
+				picker: title ? title.textContent.trim() : null,
+				refusal: document.body.innerText.includes(${JSON.stringify(refusal)})
+					? ${JSON.stringify(refusal)}
+					: null,
+			};
+		})()`);
+		const frame = await captureSettled(
+			cdp,
+			`sessionless-${command.label}-${suffix}`,
+		);
+		frames.push(frame);
+		if (open) {
+			check(
+				`${command.word} opens its picker on a pane with no conversation`,
+				read.picker === command.title,
+				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+			check(
+				`${command.word} prints no refusal sentence`,
+				read.refusal === null,
+				JSON.stringify(read.refusal),
+			);
+		} else {
+			check(
+				`${command.word} is refused with the dispatcher's own sentence`,
+				read.refusal === refusal && read.picker === null,
+				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+		}
+		if (read.picker !== null) {
+			/*
+			 * The picker is a modal: it owns the keyboard, and the next gesture
+			 * needs the composer. Escape is the app's own close, so the scene
+			 * closes it the way a user does rather than by reaching into stores.
+			 */
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			const closed = await waitForCondition(
+				cdp,
+				`!document.querySelector('[role="dialog"]')`,
+				5_000,
+			);
+			check(
+				`${command.word}'s picker closes on Escape`,
+				closed.ok,
+				`after ${closed.waitedMs}ms`,
+			);
+		}
+	}
+
+	/*
+	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
+	 * the conversation it creates must still present the picker - the
+	 * session-ful path this change must not move.
+	 */
+	if (open) {
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Sessionless slash commands: live-conversation sanity check.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const sent = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("live-conversation sanity check")) && !document.querySelector('[data-lo-empty-mark]');
+			})()`,
+			60_000,
+		);
+		check(
+			"the sanity message reached the transcript and the empty state is gone",
+			sent.ok,
+			`after ${sent.waitedMs}ms: ${JSON.stringify(sent.last)}`,
+		);
+		const answered = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("from the mock provider"));
+			})()`,
+			60_000,
+		);
+		check(
+			"the mock provider answered, so the pane is on a live conversation",
+			answered.ok,
+			`after ${answered.waitedMs}ms`,
+		);
+		const liveState = await verb(cdp, "state");
+		check(
+			"the pane now addresses a real session",
+			typeof liveState.activeSessionId === "string" &&
+				liveState.activeSessionId.length > 0,
+			`activeSessionId ${JSON.stringify(liveState.activeSessionId)}`,
+		);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", { text: "/theme" });
+		await wait(400);
+		await pressEnter();
+		let livePicker = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"]'))`,
+			8_000,
+		);
+		if (!livePicker.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				8_000,
+			);
+		}
+		if (!livePicker.ok) {
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				10_000,
+			);
+		}
+		await wait(500);
+		const liveRead = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return { picker: title ? title.textContent.trim() : null };
+		})()`);
+		const liveFrame = await captureSettled(
+			cdp,
+			`sessionless-theme-live-${suffix}`,
+		);
+		frames.push(liveFrame);
+		check(
+			"/theme on a live conversation still presents the same picker",
+			livePicker.ok && liveRead.picker === "Theme",
+			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
+		);
+	} else {
+		note(
+			"live half skipped",
+			"--slash-expect refused: the base tree's half of this pair is the five refusals, and the session-ful steps would spend a send and an answer on a claim this run is not making",
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
 			)
 			.join(" | "),
 	);
@@ -29142,6 +30142,881 @@ async function sceneProjectDetail(cdp) {
 	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
 }
 
+/**
+ * The fake recorder the mini view's dictating frame is driven with.
+ *
+ * WHAT IT IS FOR. `getUserMedia` cannot be exercised in a headless run — a
+ * permission prompt nobody can answer is the whole reason it is a human QA
+ * item — but the SURFACE's recording state is layout, and a still of it is
+ * worth a review. So the two primitives the mini dictation controller reads
+ * are replaced inside the page before it boots (installed with
+ * `Page.addScriptToEvaluateOnNewDocument`, then a reload): a stream whose
+ * tracks stop harmlessly, and a recorder that changes state. Nothing here is a
+ * claim about a real microphone; the PR says so beside the frame.
+ *
+ * `isTypeSupported` is included because the real class has it and a controller
+ * that asked for it would otherwise fail into the error arm — the fake must be
+ * a superset of every member the seam may touch, or it silently changes which
+ * state is being captured.
+ */
+const MINI_FAKE_RECORDER_SOURCE = [
+	"(() => {",
+	"\tconst stream = { getTracks: () => [{ stop() {} }] };",
+	"\tif (navigator.mediaDevices) {",
+	"\t\tnavigator.mediaDevices.getUserMedia = async () => stream;",
+	"\t}",
+	"\tclass FakeMediaRecorder {",
+	"\t\tstatic isTypeSupported() {",
+	"\t\t\treturn true;",
+	"\t\t}",
+	"\t\tconstructor(captured) {",
+	"\t\t\tthis.stream = captured;",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tthis.ondataavailable = null;",
+	"\t\t\tthis.onstop = null;",
+	"\t\t\tthis.onerror = null;",
+	"\t\t}",
+	"\t\tstart() {",
+	"\t\t\tthis.state = 'recording';",
+	"\t\t}",
+	"\t\tstop() {",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tif (typeof this.onstop === 'function') this.onstop();",
+	"\t\t}",
+	"\t}",
+	"\twindow.MediaRecorder = FakeMediaRecorder;",
+	"})();",
+].join("\n");
+
+/**
+ * THE QUICK-SEND MINI VIEW (design §I.3): its states, at actual size, captured
+ * from MAIN, out of a window that is never shown.
+ *
+ * WHAT A STILL CAN AND CANNOT PROVE. The mini view is user-visible and has no
+ * surface of its own inside the app: it is a second renderer document that
+ * appears only as the answer to a global hotkey. The one thing a frame proves
+ * is what the operator would see — and since the dev-driver exerciser (M-B1),
+ * the window is the APP'S OWN: the armed headless launch creates it
+ * (`headlessExerciserAllowed`), this scene finds it, sends the real summon
+ * channel into it, drives the composer through its DOM, and captures each
+ * state from the MAIN process with `capturePage`. The scene deliberately does
+ * NOT use the dev driver's `capture` verb the other scenes share: the mini
+ * document does not mount the dev driver at all (design §D.1), which is the
+ * point of the second document. A run without the exerciser window refuses by
+ * name rather than photographing a substitute the desktop plane would refuse.
+ *
+ * THE WINDOW IS NEVER SHOWN. It is created `show: false` by the app and
+ * nothing here calls show or focus — the recursive scan in
+ * `window-mode.test.mjs` covers this file too, and a scene that presented its
+ * window would be the leak it exists to disprove. `capturePage` works on a
+ * hidden window, with the console rig's lesson applied: the FIRST capture of a
+ * hidden window can come back blank, so every capture retries and the
+ * assertion is on the PNG's dimensions, not on the promise having resolved.
+ * Every capture also SETTLES first (design round 1, D6): the stills used to be
+ * photographed mid-transition, so their colours were a phase of a 120 ms fade
+ * rather than the surface's paint.
+ *
+ * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
+ * Because the window is the app's own, its requests pass the desktop plane's
+ * frame gate, and with `--backend` the whole send path is real: the daemon is
+ * the run's own, the message it admits is read back from its history route,
+ * and the two transient states are photographed with disclosed harness aids —
+ * the daemon's process is PAUSED by exact pid for the `sending` frame and
+ * resumed in a `finally` (the same request then completes), and the composer's
+ * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
+ * aids are page/process-level, neither changes shipped code, and the README
+ * names them beside the frames. Without `--backend` the send ends in the
+ * transport refusal — the error state with the draft kept — and the `sending`
+ * / `sent` frames are simply not taken.
+ *
+ * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
+ * a real ⌘⌥Space reaches the registrar (no synthetic OS chord crosses a
+ * headless run honestly — the registration half is unit-tested and the one
+ * live press is a human step), focus returning to the operator's previous app,
+ * anything about the microphone permission prompt (the dictating frame is
+ * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`), and the real
+ * OS-level conflicts macOS does not report (QA round 1, Q2).
+ */
+async function sceneMiniView(app, cdp) {
+	/*
+	 * Declarations are read as TEXT, for the same reason every sentence below is:
+	 * a still is only evidence about the shipped surface if it is a still OF that
+	 * surface, and a driver that restated a size, a channel or a duration could
+	 * quietly keep going after the app changed one. A moved declaration THROWS
+	 * here rather than being skipped or defaulted.
+	 */
+	const declaredNumberIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = `;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name}; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const value = Number.parseInt(line.slice(prefix.length), 10);
+		if (!Number.isInteger(value) || value <= 0) {
+			throw new Error(`${name} is not a literal integer: ${line}`);
+		}
+		return value;
+	};
+	const declaredStringIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = "`;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name} as a string literal; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const end = line.indexOf('"', prefix.length);
+		if (end === -1) throw new Error(`${name} has no closing quote: ${line}`);
+		return line.slice(prefix.length, end);
+	};
+	const width = declaredNumberIn("src/shared/mini-view.ts", "MINI_VIEW_WIDTH");
+	const height = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_HEIGHT",
+	);
+
+	/*
+	 * The sentences the assertions read are read from the copy module for the
+	 * same reason the size is read from its declaration: a report that hardcoded
+	 * "Sent" would go on passing after the sentence changed, and the still would
+	 * be of a state the assertion no longer describes.
+	 */
+	const copySource = readFileSync(
+		"src/renderer/src/mini-view/mini-copy.ts",
+		"utf8",
+	);
+	const copySentence = (key) => {
+		const marker = `${key}: "`;
+		const start = copySource.indexOf(marker);
+		if (start === -1) throw new Error(`mini-copy.ts no longer declares ${key}`);
+		const from = start + marker.length;
+		const end = copySource.indexOf('"', from);
+		if (end === -1)
+			throw new Error(`mini-copy.ts's ${key} has no closing quote`);
+		return copySource.slice(from, end);
+	};
+	const hintSentence = copySentence("hint");
+	const recordingSentence = copySentence("recording");
+	const dictationStopSentence = copySentence("dictationStop");
+	const dictationStartSentence = copySentence("dictationStart");
+	const sentSentence = copySentence("sent");
+	/*
+	 * The invalid-state sentence is the registrationCopy arm the toast probe
+	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
+	 * its own read of the same source.
+	 */
+	const copyCaseSentence = (status) => {
+		const match = copySource.match(
+			new RegExp(`case "${status}":\\s*return "([^"]+)"`),
+		);
+		if (!match) {
+			throw new Error(
+				`mini-copy.ts's registrationCopy has no ${status} sentence; update this reader with the declaration`,
+			);
+		}
+		return match[1];
+	};
+	const invalidSentence = copyCaseSentence("invalid");
+
+	/*
+	 * THE SUMMON CHANNEL AND THE FLASH LENGTH, read from their declarations for
+	 * the same reason every sentence above is: the scene sends the message the
+	 * app's own presentation sends (there is no OS key to press in a headless
+	 * run), and the flash it holds open long enough to photograph is the
+	 * constant the composer ships — a scene that restated either would keep
+	 * passing after a rename or a retune.
+	 */
+	const summonChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_SUMMONED",
+	);
+	const registrationChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_REGISTRATION",
+	);
+	const quickSendDefault = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"DEFAULT_QUICK_SEND_VALUE",
+	);
+	const sentFlashMs = declaredNumberIn(
+		"src/renderer/src/mini-view/mini-composer.tsx",
+		"SENT_FLASH_MS",
+	);
+
+	/*
+	 * THE APP'S OWN MINI WINDOW, FOUND RATHER THAN BUILT (M-B1). The dev-driver
+	 * exerciser creates it in a headless armed launch — one gate, in
+	 * `src/main/index.ts` via `headlessExerciserAllowed` — so this scene drives
+	 * a window the app owns, which is what the desktop plane admits
+	 * (`desktop-ipc.ts` admits by FRAME) and what makes the live send path
+	 * reachable at all. A run where the window is absent refuses by name rather
+	 * than photographing a hand-built substitute: that substitute cannot pass
+	 * the gate, so its frames would be stills of a window the app does not
+	 * ship.
+	 *
+	 * Read from MAIN, not from the page: a never-shown window's
+	 * `document.visibilityState` is not an honest instrument for it (the first
+	 * run of this scene read it and was refused by its own check while the
+	 * window was in fact hidden), and main can answer the real question
+	 * directly.
+	 */
+	const main = await CdpClient.attachNode(app.inspectPort);
+	const owned = await main.evaluate(
+		[
+			"(() => {",
+			'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+			"\tif (!electron) return { problem: 'main cannot require its own modules' };",
+			"\tconst windows = electron.BrowserWindow.getAllWindows();",
+			"\tconst miniWindow = windows.find((candidate) => (candidate.webContents.getURL() || '').endsWith('mini.html'));",
+			"\tif (!miniWindow) return { problem: 'the app created no mini window', windows: windows.map((window) => ({ title: window.getTitle(), url: window.webContents.getURL() })) };",
+			"\tglobalThis.__lopMiniSceneWindow = miniWindow;",
+			"\treturn {",
+			"\t\twindows: windows.map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })),",
+			"\t\tmini: { title: miniWindow.getTitle(), visible: miniWindow.isVisible(), focused: miniWindow.isFocused(), bounds: miniWindow.getContentBounds(), url: miniWindow.webContents.getURL() },",
+			"\t};",
+			"})()",
+		].join("\n"),
+	);
+	if (owned?.mini === undefined) {
+		throw new Error(
+			`the app created no mini window, so there is nothing for this scene to drive (${JSON.stringify(owned)}). This scene requires a headless launch with the dev driver armed — the exerciser headlessExerciserAllowed() creates — because the desktop plane admits by frame and a window this scene builds by hand is refused: see docs/agent-driver.md's mini-view section`,
+		);
+	}
+	check(
+		"the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)",
+		owned?.mini?.visible === false && owned?.mini?.focused === false,
+		JSON.stringify(owned?.mini),
+	);
+	check(
+		"the app's own creation used the design's fixed content size",
+		owned?.mini?.bounds?.width === width &&
+			owned?.mini?.bounds?.height === height,
+		JSON.stringify(owned?.mini?.bounds),
+	);
+	check(
+		"every window of this run is off screen, and the mini view is the only extra one",
+		Array.isArray(owned?.windows) &&
+			owned.windows.length === 2 &&
+			owned.windows.every((window) => window.visible === false),
+		JSON.stringify(owned?.windows),
+	);
+	/*
+	 * THE EXERCISER'S CONTRACT, read from the app's own log: it says it created
+	 * the window, and the registration line still says this mode registers
+	 * NOTHING — the half that must never ride the exerciser.
+	 */
+	const bootLog = await readAppLog(app);
+	check(
+		"the exerciser announced itself and registration stayed normal-only",
+		bootLog.includes("mini-view: exerciser window created") &&
+			bootLog.includes("mini-view: not registered (window mode headless)"),
+		bootLog
+			.split("\n")
+			.filter((line) => line.includes("mini-view:"))
+			.join(" / "),
+	);
+	let mini = null;
+
+	try {
+		mini = await CdpClient.attach(app.port, "out/renderer/mini.html");
+
+		const select = (tag) =>
+			`document.querySelector('[data-tour-tag="${tag}"]')`;
+		const pageState = await mini.evaluate(
+			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${select("mini-composer-input")}?.placeholder ?? null, sendDisabled: ${select("mini-composer-send")}?.disabled ?? null })`,
+		);
+		check(
+			"the mini document rendered at the app's fixed viewport",
+			pageState?.width === width && pageState?.height === height,
+			JSON.stringify(pageState),
+		);
+		check(
+			"the mini document mounted the app's palette",
+			typeof pageState?.theme === "string" && pageState.theme.length > 0,
+			`data-theme = ${JSON.stringify(pageState?.theme)}`,
+		);
+		check(
+			"the mini document has the preload's bridge",
+			pageState?.dismissBridge === true,
+			`window.api.miniView.dismiss is ${pageState?.dismissBridge === true ? "present" : "missing"}`,
+		);
+		check(
+			"the resting state invites a message and offers nothing to press",
+			typeof pageState?.placeholder === "string" &&
+				pageState.placeholder.length > 0 &&
+				pageState.sendDisabled === true,
+			`placeholder=${JSON.stringify(pageState?.placeholder)} sendDisabled=${pageState?.sendDisabled}`,
+		);
+
+		const captureMini = async (label) => {
+			await settleMini();
+			const record = await main.evaluate(
+				[
+					"(async () => {",
+					'\tconst fs = process.mainModule?.require("node:fs") ?? globalThis.require?.("node:fs");',
+					'\tconst path = process.mainModule?.require("node:path") ?? globalThis.require?.("node:path");',
+					"\tconst window = globalThis.__lopMiniSceneWindow;",
+					"\tif (!fs || !path || !window || window.isDestroyed()) return { ok: false, detail: 'the mini window is gone' };",
+					/*
+					 * A HIDDEN WINDOW'S FIRST CAPTURE IS NOT RELIABLE, in two ways this
+					 * loop covers: it can come back BLANK, and under load it can THROW
+					 * (`UnknownVizError` from a compositor that is not ready yet — measured
+					 * on this scene's second run under a load average above 70). The blank
+					 * test is the repo's own definition rather than a byte floor (the
+					 * byte floor was withdrawn in the console rig: it measured how much
+					 * text a program printed, not whether the capture worked): a frame
+					 * with fewer than 8 distinct colours or fewer than 32 pixels off its
+					 * first pixel's ground is not a screenshot of anything, and the first
+					 * version of this loop accepted exactly such a white frame once
+					 * (`mini-view-empty.png` came back 2,348 bytes of uniform white).
+					 * Three attempts with a growing wait; the failure record names which
+					 * way it failed rather than reading as a torn-down window.
+					 */
+					"\tconst looksBlank = (candidate) => {",
+					"\t\tconst bitmap = candidate.toBitmap();",
+					"\t\tconst ground = [bitmap[0], bitmap[1], bitmap[2]];",
+					"\t\tconst colours = new Set();",
+					"\t\tlet offGround = 0;",
+					"\t\tfor (let i = 0; i + 3 < bitmap.length; i += 4) {",
+					"\t\t\tcolours.add(bitmap[i] + ',' + bitmap[i + 1] + ',' + bitmap[i + 2]);",
+					"\t\t\tif (bitmap[i] !== ground[0] || bitmap[i + 1] !== ground[1] || bitmap[i + 2] !== ground[2]) offGround += 1;",
+					"\t\t}",
+					"\t\treturn colours.size < 8 || offGround < 32;",
+					"\t};",
+					"\tlet image = null;",
+					"\tlet problem = null;",
+					/*
+					 * INVALIDATE BEFORE EVERY ATTEMPT. A hidden window's compositor can
+					 * serve a frame older than the DOM (measured: the error state's frame
+					 * came back as the post-reload EMPTY surface, byte-identical with the
+					 * empty capture, while the DOM checks for the error state had all
+					 * passed). `invalidate()` schedules the repaint the capture then reads,
+					 * and it is a paint hint only — nothing about presentation.
+					 */
+					"\tconst captureOnce = async () => {",
+					"\t\twindow.webContents.invalidate();",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 200));",
+					"\t\treturn window.webContents.capturePage();",
+					"\t};",
+					"\tfor (let attempt = 1; attempt <= 3; attempt += 1) {",
+					"\t\ttry {",
+					"\t\t\timage = await captureOnce();",
+					"\t\t\tif (!image.isEmpty() && !looksBlank(image)) break;",
+					"\t\t\tproblem = 'the capture came back blank (the hidden window had not painted yet)';",
+					"\t\t} catch (error) {",
+					"\t\t\timage = null;",
+					"\t\t\tproblem = String(error);",
+					"\t\t}",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 250 * attempt));",
+					"\t}",
+					"\tif (!image || image.isEmpty() || looksBlank(image)) return { ok: false, detail: 'capture failed after three attempts: ' + problem };",
+					"\tconst png = image.toPNG();",
+					`\tfs.writeFileSync(path.join(${JSON.stringify(FRAMES)}, ${JSON.stringify(label)} + ".png"), png);`,
+					"\tconst size = image.getSize();",
+					'\tconst viewport = await window.webContents.executeJavaScript("({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio })", true);',
+					"\treturn { ok: png.length > 0, bytes: png.length, pixels: { width: size.width, height: size.height }, viewport, visible: window.isVisible(), focused: window.isFocused(), bounds: window.getContentBounds() };",
+					"})()",
+				].join("\n"),
+			);
+			const dpr = record?.viewport?.dpr ?? 1;
+			check(
+				`the ${label} frame was captured at actual size`,
+				record?.ok === true &&
+					record?.pixels?.width === width * dpr &&
+					record?.pixels?.height === height * dpr,
+				JSON.stringify(record),
+			);
+			/*
+			 * The headless property, asserted PER FRAME rather than once at the end:
+			 * a presentation that slipped into any one state would be caught on the
+			 * state that slipped, not only if the window happened to still be up.
+			 */
+			check(
+				`the ${label} frame was captured with the window never visible`,
+				record?.visible === false && record?.focused === false,
+				`visible=${record?.visible} focused=${record?.focused} bounds=${JSON.stringify(record?.bounds)}`,
+			);
+			note(
+				`frame ${label}`,
+				`${record?.pixels?.width}x${record?.pixels?.height}px, ${record?.bytes} bytes`,
+			);
+			return record;
+		};
+
+		const pollMini = async (
+			expression,
+			ready,
+			description,
+			timeoutMs = 20_000,
+		) => {
+			const started = Date.now();
+			let value = null;
+			for (;;) {
+				value = await mini.evaluate(expression).catch(() => null);
+				if (value !== null && ready(value)) return { ok: true, value };
+				if (Date.now() - started > timeoutMs) return { ok: false, value };
+				await wait(120);
+			}
+		};
+
+		/*
+		 * SETTLE BEFORE EVERY CAPTURE (design round 1, D6). The textarea's
+		 * `transition-colors` (120 ms `duration-fast`) and the Send button's own
+		 * fade meant the posted `typing` and `error` stills were photographed
+		 * MID-ANIMATION, so their ring and fill measured a phase of a transition
+		 * (#addcb3, #3a6641) rather than the surface's settled paint. This polls
+		 * the computed outline/fill pairs until two consecutive reads agree (or
+		 * 1.5 s passes, under load) and every capture runs it first, so the
+		 * frames are colour evidence instead of animation evidence. The pairs
+		 * read are the ones the design round measured: the field's ring and the
+		 * Send button's fill and label, which are the two animated surfaces.
+		 */
+		const settleMini = async () => {
+			const record = await mini.evaluate(`(async () => {
+				const box = ${select("mini-composer-input")};
+				const send = ${select("mini-composer-send")};
+				const read = () =>
+					box && send
+						? [
+								getComputedStyle(box).outlineColor,
+								getComputedStyle(box).backgroundColor,
+								getComputedStyle(send).backgroundColor,
+								getComputedStyle(send).color,
+							].join("|")
+						: "";
+				let last = null;
+				let stable = 0;
+				let waited = 0;
+				let current = read();
+				while (waited < 1500) {
+					if (current === last) stable += 1;
+					else {
+						stable = 0;
+						last = current;
+					}
+					if (stable >= 2) return { settledAfterMs: waited };
+					await new Promise((resolve) => setTimeout(resolve, 60));
+					waited += 60;
+					current = read();
+				}
+				return { settledAfterMs: waited, settled: false };
+			})()`);
+			return record;
+		};
+
+		const type = async (text) => {
+			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
+			await mini.send("Input.insertText", { text });
+			return mini.evaluate(`${select("mini-composer-input")}.value`);
+		};
+
+		/* ---- the resting state ------------------------------------------------- */
+		await captureMini("mini-view-empty");
+
+		/* ---- a draft ----------------------------------------------------------- */
+		const draft = "Lunch at one tomorrow? Book the room if it is free.";
+		const typed = await type(draft);
+		check("the draft reached the box", typed === draft, JSON.stringify(typed));
+		const sendDisabled = await mini.evaluate(
+			`${select("mini-composer-send")}.disabled`,
+		);
+		check(
+			"Send became available once there was a draft",
+			sendDisabled === false,
+			`disabled=${sendDisabled}`,
+		);
+		await captureMini("mini-view-typing");
+
+		/* ---- a long draft ------------------------------------------------------ */
+		const longDraft = [
+			"Three things before the standup tomorrow:",
+			"1. The Pergamon enrichment backlog — two batches are still queued; ask for an ETA.",
+			"2. The support digest needs the churn numbers, which I have not pulled yet.",
+			"3. The quick-send review — I would like your read on the copy.",
+			"If the order should be different, say so and I will re-plan the morning.",
+		].join("\n");
+		await type(longDraft);
+		const growth = await mini.evaluate(
+			`(() => { const box = ${select("mini-composer-input")}; const frame = document.body.getBoundingClientRect(); return { scrolls: box.scrollHeight > box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height) }; })()`,
+		);
+		check(
+			"a long draft scrolls inside the fixed box rather than growing the window",
+			growth?.scrolls === true &&
+				growth?.bodyWidth === width &&
+				growth?.bodyHeight === height,
+			JSON.stringify(growth),
+		);
+		await captureMini("mini-view-long");
+
+		/* ---- dictating (a fake recorder; see the constant) --------------------- */
+		await mini.send("Page.addScriptToEvaluateOnNewDocument", {
+			source: MINI_FAKE_RECORDER_SOURCE,
+		});
+		await mini.send("Page.reload");
+		const remounted = await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		check(
+			"the composer remounted after the reload",
+			remounted.ok,
+			JSON.stringify(remounted.value),
+		);
+		/*
+		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+		 * box, an Enter that wrongly sent would file a message missing the spoken
+		 * words — so the walk below presses exactly that key and asserts the draft
+		 * stayed.
+		 */
+		const recordingDraft = "Draft kept while dictating";
+		const draftBeforeMic = await type(recordingDraft);
+		check(
+			"the box holds a draft while the recording starts",
+			draftBeforeMic === recordingDraft,
+			JSON.stringify(draftBeforeMic),
+		);
+		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
+		const recordingState = await pollMini(
+			`${select("mini-composer-status")}.textContent`,
+			(text) => text === recordingSentence,
+			"the recording state",
+		);
+		check(
+			"the mic press put the surface into recording",
+			recordingState.ok,
+			JSON.stringify(recordingState.value),
+		);
+		const stopLabel = await mini.evaluate(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+		);
+		check(
+			"the mic control now offers to stop",
+			stopLabel === dictationStopSentence,
+			`aria-label=${JSON.stringify(stopLabel)}`,
+		);
+		await captureMini("mini-view-dictating");
+		/*
+		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+		 * Enter must not send: it stops the recording (stop → transcribe →
+		 * append), and no send path may hide the window while a recording is
+		 * live. The pre-press reading is the new guard — Send disabled while
+		 * recording — and the post-press reading is that no in-flight state
+		 * ever appeared: the textarea is never disabled by a send and the
+		 * draft is byte-identical.
+		 */
+		const beforeEnter = await mini.evaluate(
+			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
+		);
+		check(
+			"Send is disabled while a recording is live",
+			beforeEnter?.sendDisabled === true &&
+				beforeEnter?.mic === dictationStopSentence,
+			JSON.stringify(beforeEnter),
+		);
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		const recordingEnded = await pollMini(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+			(value) => value === dictationStartSentence,
+			"the recording to end via Enter",
+			8_000,
+		);
+		const afterEnter = await mini.evaluate(
+			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+		);
+		check(
+			"Enter confirmed the recording instead of sending",
+			recordingEnded.ok &&
+				afterEnter?.text === recordingDraft &&
+				afterEnter?.status !== sentSentence,
+			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+		);
+
+		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
+		await mini.send("Page.reload");
+		await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		const message = "Lunch at one tomorrow? Book the room if it is free.";
+		const held = await type(message);
+		check(
+			"the box holds the message being sent",
+			held === message,
+			JSON.stringify(held),
+		);
+
+		/*
+		 * THE SEND, walked on the app's OWN window — which is what makes both
+		 * arms honest now that the exerciser exists (M-B1). The window this
+		 * scene drives was created by the app, so the desktop plane's gate
+		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
+		 * request then goes is the run's own backend or, without one, the dead
+		 * port — and the surface shows the outcome the machine can produce.
+		 *
+		 * WITH `--backend`, the live pair. The `sending` frame needs the
+		 * in-flight state to outlive a loopback round trip, so the harness
+		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
+		 * record the run linked, resumed in a `finally`) for the frame's
+		 * duration and resumes it before the same request completes: the request
+		 * is a real one, the `sent` frame is its admission, and the history
+		 * read-back below is the daemon's own receipt. The 600 ms flash is held
+		 * open long enough to photograph by stretching the composer's OWN timer
+		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
+		 * harness aid, disclosed here and in the README, not a shipped change.
+		 *
+		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
+		 * the frame the PR's error state has always been.
+		 */
+		if (BACKEND) {
+			await mini.evaluate(
+				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
+			);
+			const daemonPids = runDaemonPids();
+			let paused = 0;
+			try {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGSTOP");
+						paused += 1;
+					} catch {
+						/* Already gone: nothing to hold, and the send will show it. */
+					}
+				}
+				check(
+					"the run's own daemon was paused for the sending frame",
+					paused > 0,
+					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
+				);
+				await wait(150);
+				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+				const inFlight = await pollMini(
+					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
+					(value) => value?.editable === false,
+					"the in-flight state",
+					6_000,
+				);
+				check(
+					"the send is in flight while the daemon holds the answer",
+					inFlight.ok,
+					JSON.stringify(inFlight.value),
+				);
+				await captureMini("mini-view-sending");
+			} finally {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGCONT");
+					} catch {
+						/* A pid that died while paused has nothing to resume. */
+					}
+				}
+			}
+			const admitted = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === sentSentence,
+				"the Sent flash",
+				20_000,
+			);
+			check(
+				"admission painted the Sent flash",
+				admitted.ok,
+				JSON.stringify(admitted.value),
+			);
+			await captureMini("mini-view-sent");
+
+			/* THE DAEMON'S OWN TRUTH, read back over its own routes: the message is
+			   in the chief-of-staff conversation, not only on the surface. */
+			const aidaState = await daemonPost("/v1/desktop/aida", { op: "status" });
+			const seatSession = aidaState?.json?.result?.session_id ?? null;
+			check(
+				"the daemon reports a chief-of-staff conversation",
+				typeof seatSession === "string" && seatSession.length > 0,
+				JSON.stringify({
+					status: aidaState?.status,
+					body: aidaState?.body,
+				}).slice(0, 300),
+			);
+			const history = seatSession
+				? await daemonGet(
+						`/v1/desktop/sessions/${seatSession}/history?limit=20`,
+					)
+				: null;
+			const entries = history?.json?.result?.entries ?? [];
+			check(
+				"the daemon's own history carries the message the composer sent",
+				Array.isArray(entries) &&
+					entries.some((entry) => JSON.stringify(entry).includes(message)),
+				JSON.stringify({ status: history?.status, body: history?.body }).slice(
+					0,
+					300,
+				),
+			);
+		} else {
+			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			const refused = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) =>
+					typeof text === "string" && text !== "" && text !== hintSentence,
+				"the refusal sentence",
+			);
+			check(
+				"the send was refused with a sentence rather than silence",
+				refused.ok,
+				JSON.stringify(refused.value),
+			);
+			const after = await mini.evaluate(
+				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+			);
+			check(
+				"the refusal kept the draft: nothing was lost to the failure",
+				after?.text === message,
+				JSON.stringify(after),
+			);
+			note("the refusal state", JSON.stringify(after));
+			await captureMini("mini-view-error");
+		}
+
+		/*
+		 * THE SUMMON WALK, over the real channel — LAST, deliberately. A headless
+		 * run has no OS chord to press, so the scene delivers the message the
+		 * app's own presentation sends (the channel read from its declaration
+		 * above) from MAIN to the app's OWN mini window: the window, the preload
+		 * and the renderer handler are the shipped ones, so what runs is the
+		 * renderer half of a real summon (focus, theme, flash reset, seat
+		 * re-resolution). It runs AFTER the state walk because a summon also
+		 * RESOLVES the seat, and on a machine with no backend that resolution
+		 * fails by design and disables Send — a state the earlier frames must not
+		 * inherit. The blur first makes the focus assertion about the summon rather
+		 * than about whatever the send walk left focused.
+		 */
+		await mini.evaluate("document.activeElement?.blur?.(); true");
+		await main.evaluate(
+			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
+		);
+		const summonedFocus = await pollMini(
+			"document.activeElement?.dataset?.tourTag ?? null",
+			(value) => value === "mini-composer-input",
+			"the summon focused the composer",
+		);
+		check(
+			"the summon moved focus into the composer",
+			summonedFocus.ok,
+			JSON.stringify(summonedFocus.value),
+		);
+
+		/*
+		 * THE GATE'S OWN ANSWER, ASSERTED rather than apologised for: the window
+		 * is the app's own now, so a "cannot use desktop controls" line in the
+		 * app log would be a real defect — the exerciser's whole purpose is that
+		 * this window passes the frame gate.
+		 */
+		const appLog = await readAppLog(app);
+		check(
+			"the desktop plane admitted the app's own mini window",
+			!appLog.includes("This window cannot use desktop controls."),
+			appLog
+				.split("\n")
+				.filter((line) => line.includes("desktop controls"))
+				.join(" / ") || "no refusal line",
+		);
+
+		/*
+		 * THE REGISTRATION TOAST (UX round 1, U1), walked on the app's own main
+		 * window: a transition into a FAILED status must raise one toast through
+		 * the app's sonner path. The pushes below go over the real channel to
+		 * every window exactly as `index.ts`'s onState does; the contract skips
+		 * the launch-time state (whichever source delivers it first), so TWO
+		 * pushes are sent and the second — a different failure — is the one
+		 * asserted: deterministic whichever source set the baseline.
+		 */
+		const toastBefore = await cdp
+			.evaluate('document.querySelectorAll("[data-sonner-toast]").length')
+			.catch(() => null);
+		const pushRegistration = async (status) => {
+			await main.evaluate(
+				[
+					"(() => {",
+					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+					"\tif (!electron) return false;",
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Space", status: ${JSON.stringify(status)} };`,
+					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
+					"\t\tif (window.isDestroyed()) continue;",
+					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
+					"\t}",
+					"\treturn true;",
+					"})()",
+				].join("\n"),
+			);
+		};
+		await pushRegistration("taken");
+		await pushRegistration("invalid");
+		const toasted = await (async () => {
+			const started = Date.now();
+			for (;;) {
+				const text = await cdp
+					.evaluate('document.body.textContent ?? ""')
+					.catch(() => "");
+				if (typeof text === "string" && text.includes(invalidSentence)) {
+					return { ok: true, text };
+				}
+				if (Date.now() - started > 8_000) return { ok: false, text };
+				await wait(150);
+			}
+		})();
+		check(
+			"a failed-transition toast reached the app's own container (U1)",
+			toasted.ok,
+			`toasts before the transition=${toastBefore}; the container never carried ${JSON.stringify(invalidSentence)}`,
+		);
+
+		/*
+		 * The run's closing survey: every window this app has, and none of them on
+		 * screen. It is the scene's own claim about itself, in the same shape the
+		 * driver's leftover-process probe is a claim about the processes.
+		 */
+		const windows = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); if (!electron) return null; return electron.BrowserWindow.getAllWindows().map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })); })()',
+		);
+		check(
+			"no window of this run is visible, and the only extra one is the mini view",
+			Array.isArray(windows) &&
+				windows.length === 2 &&
+				windows.every((window) => window.visible === false),
+			JSON.stringify(windows),
+		);
+		const memory = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = globalThis.__lopMiniSceneWindow; if (!electron || !window || window.isDestroyed()) return null; const pid = window.webContents.getOSProcessId(); const metric = electron.app.getAppMetrics().find((entry) => entry.pid === pid); return metric ? { pid, type: metric.type, workingSetKb: metric.memory?.workingSetSize, peakWorkingSetKb: metric.memory?.peakWorkingSetSize, privateKb: metric.memory?.privateBytes } : null; })()',
+		);
+		note(
+			"the hidden mini window's renderer memory (risk K6)",
+			JSON.stringify(memory),
+		);
+	} finally {
+		if (mini !== null) mini.close();
+		main.close();
+	}
+}
+
 async function main() {
 	await assertBuildIsCurrent();
 	/*
@@ -29351,6 +31226,20 @@ async function main() {
 			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
 		);
 	}
+	if (SCENE === "sessionless-slash" && BACKEND === null) {
+		throw new Error(
+			"--scene sessionless-slash needs --backend: the composer only exists behind the session catalogue a live backend advertises, and four of the five pickers read routes on it (`/resume` its session list, `/login` and `/logout` the accounts, `/help` the catalogue itself)",
+		);
+	}
+	if (
+		SCENE === "sessionless-slash" &&
+		SLASH_EXPECT !== "open" &&
+		SLASH_EXPECT !== "refused"
+	) {
+		throw new Error(
+			`--slash-expect takes open or refused (got ${JSON.stringify(SLASH_EXPECT)}): the two are different claims about the same gestures, and a defaulted typo would silently answer the other one`,
+		);
+	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
@@ -29359,6 +31248,11 @@ async function main() {
 	if (SCENE === "project-detail" && BACKEND === null) {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
+		);
+	}
+	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
@@ -29521,6 +31415,7 @@ async function main() {
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
+			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
@@ -29547,6 +31442,7 @@ async function main() {
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
+			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

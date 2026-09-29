@@ -218,3 +218,36 @@ test("a target above the middle clamps at zero rather than going negative", () =
 	scrollRegionToCenter(region, targetCentreStub(20, 100));
 	assert.equal(region.scrollTop, 0);
 });
+
+test("the reversed axis takes the same offset and lets it go negative", () => {
+	// D1's own geometry on the transcript's axis: identical numbers to the
+	// normal-axis clamp case above (40 + 20 - 100 - 0 - 250 = -290), but on a
+	// `flex-col-reverse` box -290 is a value the box CAN hold (0 at the newest
+	// row, a negative bound at the oldest), so the assignment must land it
+	// rather than clamping to zero. That clamp was the defect design round 1
+	// measured: the landing frames showed the wash painted off-screen over
+	// pixel-identical bubble positions while the scene's attribute check
+	// passed honestly.
+	const region = regionCentreStub({
+		scroll: 40,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(20, 100), "reversed");
+	assert.equal(region.scrollTop, -290);
+});
+
+test("the reversed axis clamps up at zero for a target toward the newest row", () => {
+	// -100 + 500 - 100 - 0 - 250 = 50; on this axis the legal value nearest it
+	// is 0 (the newest-row origin), exactly as the browser's own bound would
+	// hold it - not a value the caller invents.
+	const region = regionCentreStub({
+		scroll: -100,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(500, 100), "reversed");
+	assert.equal(region.scrollTop, 0);
+});

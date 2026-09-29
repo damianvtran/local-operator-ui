@@ -20,9 +20,11 @@
  * `shared/lib/scroll.ts`'s header): `scrollIntoView` walks the ancestor chain
  * and can scroll the app frame at narrow widths — measured, twice, in the
  * built app. The rail targets a row inside the transcript's own scroller, so
- * the jump moves that region and nothing else. The failure jump keeps its
- * platform scroll; that is its shipped behaviour and this module does not own
- * it.
+ * the jump moves that region and nothing else - with the region's OWN axis
+ * named at the call site (`"reversed"`: the transcript scrolls on
+ * `flex-col-reverse`), which design round 1's D1 measured as the difference
+ * between landing and a silent no-op. The failure jump keeps its platform
+ * scroll; that is its shipped behaviour and this module does not own it.
  *
  * This module honours the rail's contract that a failed jump is a SENTENCE,
  * never an error: every path resolves, and the caller (the transcript) is the
@@ -146,7 +148,15 @@ export function jumpToEntry(
 	return new Promise((resolve) => {
 		revealRecord(root, id, {
 			onRevealed: (target) => {
-				scrollRegionToCenter(region, target);
+				/*
+				 * `"reversed"`: the region here is the canonical transcript's own
+				 * scroller, whose `flex-col-reverse` axis runs 0 at the newest row to
+				 * a negative bound at the oldest (the measured contract in
+				 * `use-scroll-paging.ts`). Design round 1's D1 measured the cost of
+				 * leaving this to the default: with the normal-axis clamp the
+				 * landing was a no-op and the wash painted off-screen.
+				 */
+				scrollRegionToCenter(region, target, "reversed");
 				paintJumpHighlight(target);
 				resolve("landed");
 			},
