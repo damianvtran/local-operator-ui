@@ -442,7 +442,9 @@ test("a reader's gesture during the settle stops the re-apply", async () => {
 	// The anchor's first assignment and the gesture listeners arm in one task,
 	// so waiting for the assignment guarantees the listener can see the wheel.
 	for (let i = 0; i < 60 && assigned === 0; i += 1) {
-		await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
 	}
 	region.dispatchEvent(new window.Event("wheel"));
 	const outcome = await pending;
