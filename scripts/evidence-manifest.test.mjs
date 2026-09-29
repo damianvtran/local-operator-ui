@@ -1985,6 +1985,13 @@ const STAMP_BINDING_NOTES = [
 	 * held to the pair this file ships.
 	 */
 	"readmeVisualsFoldNote",
+	/*
+	 * AND THE ROUND-2 FIX'S OWN (2026-09-29): `readmeVisualsRoundTwoRestampNote`
+	 * states the pair its fix binds - the helper's required field and the scene's
+	 * store reset under `src/`, and its own registration here - and quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3067,6 +3074,13 @@ const BRANCH_RECORDS = [
 	 * copy would drop it first.
 	 */
 	"readmeVisualsFoldNote",
+	/*
+	 * Grown by the round-2 fix, this branch's newest top-level record: its
+	 * `notRunKind` and width-reset edits moved the src tree, and the note is
+	 * listed for the reason the list exists - a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
