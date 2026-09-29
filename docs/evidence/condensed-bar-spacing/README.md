@@ -23,7 +23,7 @@ own figures stay untouched (the convention `docs/evidence/read-ack-notice/README
 | --- | --- | --- |
 | `before-incident/localOperatorDark.png`, `before-incident/localOperatorLight.png` | `0f3f13892d` (the head the report was filed against) with ONLY the new story cell and its sweep row added | the bar's text 5px of ink above the rule, and the incident 2px under the memory statement — the two hugs the report names; the chevron's leading ink at x1036, well inside the rule's end |
 | `before-incident/*-crop.png` | the same frame, cropped to `(220,196)-(1060,332)` | the report's state, tight crop |
-| `after-incident/localOperatorDark.png`, `after-incident/localOperatorLight.png` | this branch's second-round fix | 21px of ink on EACH side of the rule, the incident at the item step, and the chevron's leading ink on the rule's last pixel |
+| `after-incident/localOperatorDark.png`, `after-incident/localOperatorLight.png` | this branch's second-round fix | 17px of ink above the rule against 15px below (the stated convention; icon register 16, boxes 12 either side), the incident at the item step, and the chevron's leading ink on the rule's last pixel |
 | `after-incident/*-crop.png` | the same frame, the same crop | the report's state, tight crop |
 
 **The round-1 pair rides re-based rather than stale.** `before/` is the original report's base
@@ -35,10 +35,17 @@ geometry and lives in the PR thread's first remediation comment.
 The numbers behind the stills, read from the rendered DOM and the rastered frames at both
 trees (1280x900, `localOperator` palettes — identical across palettes):
 
+**The convention these numbers use: INK-EDGE TO RULE-EDGE, text register.** Above = the
+bar text's ink bottom to the rule's first pixel row; below = the rule's last pixel row to the
+next row's cap/ascender ink top (the `Context compacted` `C`). The same geometry reads
+differently in other registers, which is why the rounds argued: the ICON register (`ⓘ`) below
+is 16px, and a looser ink threshold reads 19 — all three sit inside the ~3px spread this
+geometry produced, and none of them is the number above the table unless it says so.
+
 | reading | before | after |
 | --- | --- | --- |
-| bar text ink → rule | 5px | **21px** (`pb-4`: the bar block's own 16px, chosen to balance the pair as PIXELS — the ink gap above against the 21px below) |
-| rule → first row ink | 21px | 21px (unchanged: the item step's 12px box plus the row's own leading) |
+| bar text ink → rule | 5px | **17px** (`pb-3`: the bar block's own 12px — the same step the row below sits at, so the rule divides 12px of box either side) |
+| rule → first row ink | 15px | **15px** text (16px to the `ⓘ` icon; the item step's 12px box plus that row's own leading — the below side never moved) |
 | chevron ink leading edge (abs x) | 1036 | **1044** — the rule's last pixel; its terminus edge is 1045, so the glyph starts on the datum |
 | chevron slot box (abs x) | 1031–1045 | 1039–1053 (`-mr-6`: 24px of pull measured from the trigger's 16px right shortfall) |
 | stamp box right (abs x) | 1025 | 1033 — rides with the slot, so stamp→chevron stays the row's own 6px (`gap-1.5`) |
@@ -67,6 +74,9 @@ It is a story render, not the live app: it photographs the bar's resting geometr
 `localOperator` palettes (the other ten themes share the ink and spacing roles it judges). It
 does not photograph the hover ground — the sweep's own `collapsed-hover` cell carries that
 state (re-shot for design round 1 D1's extension of the wash to the rule's end, and again for
-this round: with the datum moved, the wash's right edge and the glyph's leading ink now meet at
-the rule's end — the edge no longer crosses the glyph). The report is about the rule's two
+this round: the ground's width/padding pair was extended a second time (to `pr-6`), so the
+wash now covers the chevron's WHOLE layout box — its right edge at 1052/1053 against the glyph's ink
+ending at 1047 (dark-theme frame diff; the light palette's row-hover tint is subtler than the diff
+threshold, its geometry identical), with the rule's end 8px inside it. No part of the glyph overhangs
+unwashed ground, which was design r2's D2 and reviewer r3's MINOR-1). The report is about the rule's two
 sides, the chevron's leading edge and the rows beneath the rule.

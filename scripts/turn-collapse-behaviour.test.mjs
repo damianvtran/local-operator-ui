@@ -1006,18 +1006,19 @@ test("the row under the bar takes the block step, and the chevron reaches the ru
 		"the chevron slot's 24px pull lands the glyph's leading edge on the rule's endpoint (the alignment datum)",
 	);
 	/*
-	 * The rule's own two sides (second round): the bar block carries 16px of air
-	 * above the rule (`pb-4`), so the space is the layout's rather than the
-	 * label's line-box leading; the row below keeps the item step the walk
-	 * re-tiers it to. jsdom has no layout engine - the pair the frames show is
-	 * 21px of ink above against 21px below (the ink-balancing number the
-	 * rendered scans picked over the boxes' 16 against 12).
+	 * The rule's own two sides (second round): the bar block carries 12px of air
+	 * above the rule (`pb-3`) - the SAME step the row below sits at, so the rule
+	 * divides 12px of box either side - and the row below keeps the item step the
+	 * walk re-tiers it to. jsdom has no layout engine; the pair the frames show
+	 * is 17px of ink above against 15px below (ink-edge to rule-edge, text
+	 * register, both palettes - the settled reading after the first 16px pass
+	 * measured 21 against 15 and the design round flagged it).
 	 */
 	const summary = bar(mounted);
 	assert.ok(
 		summary.classList.contains("border-b") &&
-			summary.className.includes("pb-4"),
-		"the bar block carries its own 16px of air above the rule",
+			summary.className.includes("pb-3"),
+		"the bar block carries its own 12px of air above the rule",
 	);
 });
 
