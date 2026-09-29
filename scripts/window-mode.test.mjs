@@ -75,6 +75,7 @@ const {
 	OPERATOR_SHOW,
 	applySecondLaunch,
 	canCreateWindowFor,
+	canRetargetWindow,
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
@@ -83,6 +84,7 @@ const {
 	reportParkedEvicted,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
+	reportSkippedWhileQuitting,
 } = raise;
 
 /*
@@ -1208,6 +1210,10 @@ test("the raise policy is the only thing that decides how a window comes forward
 const RAISE_TRIGGERS = [
 	"initial-present",
 	"second-instance",
+	// The Dock click, named by #636's gate: a person asking for a windowless app is
+	// not this process's own launch, and the request carries ONE name — on the
+	// window it presents and on the refusal a quitting process answers it with.
+	"activate",
 	"banner-click",
 	"viewer-focus",
 	"viewer-resume",
@@ -1724,6 +1730,158 @@ test("a second launch with no conversation raises by its own mode, and a parked 
 				throw new Error("a request with a window must not open another");
 			},
 		},
+	);
+});
+
+test("a second launch arriving while the process is quitting is refused, and says so", () => {
+	/*
+	 * THE OPERATOR'S REPORT (#636). Cmd+Q closes the window while the process
+	 * keeps tearing down — the session-cookie hold, then the owned-backend stop,
+	 * seconds of it — with the single-instance lock still held. A relaunch inside
+	 * that window used to be answered by the dying process with a window that
+	 * died with the shutdown: "the relaunched app opens onto the app still
+	 * shutting down". The refusal is whole (nothing created, nothing raised,
+	 * nothing parked) and it is a LINE, because the losing launch was told the
+	 * app would raise its window — silence is the one answer a reader cannot
+	 * check.
+	 */
+	const handle = (extra = {}) => {
+		const calls = [];
+		const lines = [];
+		return {
+			calls,
+			lines,
+			target: {
+				window: null,
+				openConversation: (sessionId) =>
+					calls.push(["openConversation", sessionId]),
+				queue: (sessionId) => calls.push(["queue", sessionId]),
+				openWindow: (request) => calls.push(["openWindow", request.show]),
+				quitting: true,
+				report: (line) => lines.push(line),
+				...extra,
+			},
+		};
+	};
+
+	// A windowless app and a person's undeclared launch: the request that used to
+	// create a window gets the line and nothing else.
+	const plain = handle();
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		plain.target,
+	);
+	assert.deepEqual(plain.calls, []);
+	assert.deepEqual(plain.lines, [
+		"trigger=second-instance mode=normal requested=focus applied=skipped+quitting",
+	]);
+
+	// A named conversation is neither delivered nor parked: the delivery would
+	// land in a dying window, and a park's own line would promise a next window
+	// this process will never create.
+	const named = handle();
+	applySecondLaunch(
+		readSecondLaunchRequest({
+			commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
+			additionalData: windowIntentPayload("headless", {
+				pid: 55,
+				cwd: "/tmp/l",
+			}),
+		}),
+		named.target,
+	);
+	assert.deepEqual(named.calls, []);
+	assert.deepEqual(named.lines, [
+		"trigger=second-instance mode=headless requested=never pid=55 cwd=/tmp/l applied=skipped+quitting",
+	]);
+
+	// ...and the same refusal while a window is still up — the session-cookie
+	// hold's window, where the request would otherwise raise it one last time:
+	// nothing raised, nothing delivered, one line.
+	const open = handle({ window: fakeWindow() });
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		open.target,
+	);
+	assert.deepEqual(open.target.window.calls, []);
+	assert.deepEqual(open.lines, [
+		"trigger=second-instance mode=normal requested=focus applied=skipped+quitting",
+	]);
+
+	/*
+	 * THE CONTROL: the same request against the same target shape without
+	 * `quitting` behaves exactly as it did before — the gate, not the shape, is
+	 * what changed. Without this, the refusals above would also pass if the
+	 * requests had simply stopped being answered at all.
+	 */
+	const control = handle({ quitting: undefined });
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		control.target,
+	);
+	assert.deepEqual(control.calls, [["openWindow", "focus"]]);
+	assert.deepEqual(control.lines, []);
+});
+
+test("the Dock click's refusal carries the name its window would present under", () => {
+	/*
+	 * The trigger is the log's vocabulary of REQUESTS, so the Dock click has one
+	 * name: `activate` on the window its handler creates (`index.ts` passes it)
+	 * and on the refusal a quitting process answers the same click with. The
+	 * refusal must not be parkable either — there is no delivery in a Dock click
+	 * to refuse — which is the row this asserts against the gate directly.
+	 */
+	const lines = [];
+	reportSkippedWhileQuitting(
+		{ trigger: "activate", report: (line) => lines.push(line) },
+		OPERATOR_SHOW,
+	);
+	assert.deepEqual(lines, [
+		"trigger=activate mode=normal requested=focus applied=skipped+quitting",
+	]);
+	assert.equal(
+		canRetargetWindow({ trigger: "activate", show: "never" }, true),
+		true,
+		"a Dock click is the operator's own act whatever plan this process runs under",
+	);
+});
+
+test("the quit gate reads the state the quit sets, which has exactly one setter", () => {
+	/*
+	 * The flag lives in `src/main/index.ts`, which no test here can boot, so the
+	 * wiring is pinned at the source — the way this repository pins the call
+	 * shapes it cannot execute. Three facts: `before-quit` sets it, once, BEFORE
+	 * the hold that can wait on the session-cookie budget; the second-instance
+	 * target carries it per request; and the Dock click consults it before
+	 * creating a window.
+	 */
+	const index = readFileSync(join("src", "main", "index.ts"), "utf8");
+	assert.equal(
+		index.split("quitInProgress = true;").length - 1,
+		1,
+		"exactly one site sets the quit state (the first before-quit entry)",
+	);
+	const setAt = index.indexOf("quitInProgress = true;");
+	const holdAt = index.indexOf("holdQuitForSessionCookieSnapshot(event)");
+	assert.ok(
+		setAt !== -1 && holdAt !== -1 && setAt < holdAt,
+		"the quit state must be set before the session-cookie hold can wait",
+	);
+	assert.match(index, /quitting: quitInProgress,/);
+	const activateAt = index.indexOf('app.on("activate"');
+	const activate = index.slice(
+		activateAt,
+		index.indexOf("\n\t\t});", activateAt),
+	);
+	assert.match(
+		activate,
+		/if \(quitInProgress\) \{/,
+		"the Dock click must consult the quit state before it creates a window",
+	);
+	assert.match(
+		activate,
+		/trigger: "activate",/,
+		"and the window it does create now presents under its own name",
 	);
 });
 
