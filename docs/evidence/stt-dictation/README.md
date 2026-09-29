@@ -1,6 +1,6 @@
 # The speech-to-text overhaul, proven in the shipped app
 
-Fifteen frames and two wire records from `scripts/stt-dictation-proof.mjs`,
+Sixteen frames and two wire records from `scripts/stt-dictation-proof.mjs`,
 which drives the BUILT app headless against an **isolated** `local-operator`
 backend (its own config root, its own bearer), a **fake Radient upstream** bound
 by the rig, and a **recording proxy** in front of the backend. The microphone is
@@ -11,7 +11,10 @@ pre-change tree).
 
 Every number below is quoted from the two records in THIS directory
 (`stt-proof.json` = the shipping run; `stt-proof-injected.json` = the proxy-
-injected capability run). PROVENANCE: both records are from the FINAL build of this branch's tip - the tree they ship beside; the interim pair (captured from the build before the last two copy-only edits) is superseded. Budgets in the
+injected capability run). PROVENANCE: both records are from the QA-round-1
+remediation build of this branch's tip - the tree they ship beside, containing
+the PTT/Esc claim and the settle-retire fix - and every earlier pair is
+superseded. Budgets in the
 rig are the run's PATIENCE (cold `getUserMedia` on this fleet has measured
 595 ms to >3000 ms under load), not ceilings on the gesture: the measured
 latency is recorded whatever it is.
@@ -86,9 +89,9 @@ instrumentation, not a shell clock). Quoted from `stt-proof.json`:
 | --- | --- | --- |
 | baseline | hold Right-Option | key delivered (`deliveredToPage:true`), NOTHING engages - no handler exists |
 | baseline | hold Space | engages after **1810 ms**: the 1000 ms hold-timer plus the first `getUserMedia` |
-| this tree | hold Right-Option, first use | **1379 ms** (`sessionA.comboEngages`, `cold:true`) - `getUserMedia` + AudioContext init on a synthetic device under fleet load; there is no timer left to wait for |
-| this tree | hold Space, warm | **42 ms** (`sessionA.spaceEngages`) |
-| this tree | hold Right-Option, warm, mid-turn | **160 ms** (`sessionB.midTurnComboEngages`) |
+| this tree | hold Right-Option, first use | **574 ms** (`sessionA.comboEngages`, `cold:true`) - `getUserMedia` + AudioContext init on a synthetic device under fleet load; there is no timer left to wait for |
+| this tree | hold Space, warm | **158 ms** (`sessionA.spaceEngages`) |
+| this tree | hold Right-Option, warm, mid-turn | **47 ms** (`sessionB.midTurnComboEngages`) |
 
 The cold figure is reported rather than averaged away, and macOS TCC is
 explicitly NOT part of it: the fake capture device bypasses the OS grant, so the
@@ -112,10 +115,15 @@ mic's own DOM state across the first ~6 s after the press:
 the dictated message is in the transcript, and the composer's own line says
 "Steer the agent. Enter sends now · Esc stops" (while a take is live that line
 is the recording's own - see §8). The record's claims, all against the same
-press: the recorded wire body says `mode:"steer"`, and
-`{"streamingBeforeSteer":true,"streamingAtSteer":false,"streamingAtDelivery":true,"messageLandedWhileStreaming":true,"landedAtMs":57}` (the run also carries the snapshot flag's whole series across the send: it reads true beside the delivery, dips at the tool-segment boundary ~400 ms later - recorded rather than raced)
-- the steer was taken mid-stream and the row was durable at the first poll
-(17 ms on this run; the poll's read, not a delivery SLA).
+press: the recorded wire body says `mode:"steer"` (`sessionB.midTurnSendIsSteer`,
+asserted), the turn was streaming before the press
+(`streamingBeforeSteer:true`, read from the backend) and observed streaming
+after the send again (`streamingObservedAfterSend:true`). The record's whole
+series across the send is
+`{"streamingBeforeSteer":true,"streamingAtSteer":false,"streamingAtDelivery":false,"messageLandedWhileStreaming":false,"landedAtMs":526,"streamingObservedAfterSend":true}`
+- the delivery-window read caught the tool-segment boundary dip (false at that
+read, recovered after), recorded rather than raced, and the row landed at
+526 ms on this run (the poll's read, not a delivery SLA).
 
 ## 5. `input_mode` on the wire, and the two shapes it has
 
@@ -129,7 +137,7 @@ prove the two halves of the capability gate:
   silently, and does.
 - this tree, capability injected by the proxy (`stt-proof-injected.json`):
   `input_mode:"mixed"` (typed draft + transcript), `input_mode:"typed"` (typed
-  probe), `input_mode:"dictated"` (the steered message), `input_mode:"typed"`
+  probe), `input_mode:"dictated"` (the mid-turn message), `input_mode:"typed"`
   (the echo-window send).
 
 The injected run is a proxy and is honest about what it drives: the backend in
@@ -157,8 +165,8 @@ released answer - and instruments the composer FIELD itself (a patched `value`
 setter on the node) so every write the app makes to its own box is timestamped
 from inside the frame.
 
-The measured ordering of this run: press at `33835.2`, the send's clear (an
-empty write) at `+8.2 ms`, the transcript's write at `+18.2 ms` - so in THIS rig
+The measured ordering of this run: press at `30448.8`, the send's clear (an
+empty write) at `+10.1 ms`, the transcript's write at `+16.6 ms` - so in THIS rig
 the transcript rides the fresh-append path: it is not lost, and it does not
 resurrect the sent text; both are asserted. The composed-clear path - the
 transcript arriving INSIDE the press-to-echo window, where
@@ -191,6 +199,18 @@ abort lands INSIDE the `getUserMedia` window, plus the control:
 `Start recording (Cmd+Shift+S or hold Right-Option)` - the binding named from
 the same resolver the dispatcher matches (design round 1, D1), so the tooltip
 can no longer teach the old hold-Space gesture.
+
+`16-esc-ptt-cancels-take-not-turn.png` and `sessionE.*` (QA round 1, Q-1): with
+a turn genuinely streaming (`streamingBeforeEsc:true`), the binding is held
+until the strip is up and Escape is pressed once. The take is cancelled
+(`recording:false` after the settle), the discarded take never reached the
+transcription upstream (`calls:0`), and the turn is STILL streaming ~1.2 s
+later with its outcome not `aborted` (`streamingAfterEsc:true,
+lastTurnOutcome:""`) - rung 4's promise, on the door where round 1's fix did
+not hold. In the injected run the same sequence is recorded as an observation
+(`observed:false`): that run's sends are refused by the legacy backend, so no
+turn exists for the press to spare - the shipping run, the shape that ships,
+asserts it.
 
 And the transcript's boundary (design round 1, D2; UX round 1, U2): the same
 records show the join - `review the stt overhaul dictated words from the fake

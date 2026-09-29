@@ -857,6 +857,32 @@ try {
 			30_000,
 		);
 		if (!ready) throw new Error(`the composer never appeared for ${sessionId}`);
+		/*
+		 * AND THE LOADER'S OWN END (design round 2, D5). The composer mounts while
+		 * the conversation is still hydrating, so a frame taken right after the
+		 * textarea appears can catch "Loading conversation..." with no greeting -
+		 * frame 01 did exactly that while its pair partner showed the settled
+		 * state. The hydration placeholder unmounts when the pane settles; wait
+		 * for that. The appear-wait is short and cheap, and on a warm pane the
+		 * element never mounts, so both waits pass in one poll.
+		 */
+		const LOADER = '[aria-label="Loading conversation"]';
+		const appeared =
+			(await cdp.evaluate(
+				`document.querySelector(${JSON.stringify(LOADER)}) !== null`,
+			)) ||
+			(await waitFor(
+				`document.querySelector(${JSON.stringify(LOADER)}) !== null`,
+				1500,
+			));
+		if (appeared) {
+			const settled = await waitFor(
+				`document.querySelector(${JSON.stringify(LOADER)}) === null`,
+				20_000,
+			);
+			if (!settled)
+				throw new Error(`the conversation never settled for ${sessionId}`);
+		}
 		await sleep(700);
 		return sessionId;
 	};
@@ -1691,6 +1717,80 @@ try {
 	);
 	record("sessionD.joinedDraft", { draft: landedD });
 	await cdp.shot("15-edge-takes-settled.png");
+
+	/* -------------- session E: Esc on the PTT door claims the take, not the turn */
+
+	/*
+	 * QA ROUND 1'S Q-1, LIVE, and this run's own read of the guard: with a turn
+	 * genuinely streaming, hold the binding until the strip is up and press
+	 * Escape once. Rung 4 promises the take cancels and the turn lives; the
+	 * pre-fix run had the capture-phase abort settle the take ahead of the
+	 * interrupt's guard and exactly one `POST .../interrupt` killed the turn
+	 * (QA's 3/3 on this door; the mic-button door passed). The assertions are
+	 * the matrix's own: the take is gone, the turn is STILL streaming ~1.2 s
+	 * later, its outcome is not `aborted`, and the discarded take never reached
+	 * the transcription upstream.
+	 */
+	const sessionE = await openSession();
+	report.sessionE = sessionE;
+	await typeIntoComposer("esc probe [bash:40]");
+	await pressKey(ENTER);
+	const streamingBeforeE = await (async () => {
+		const until = Date.now() + 30_000;
+		while (Date.now() < until) {
+			if ((await sessionState(sessionE))?.streaming === true) return true;
+			await sleep(400);
+		}
+		return false;
+	})();
+	record("sessionE.streamingBeforeEsc", { streaming: streamingBeforeE });
+	const callsBeforeE = radientCalls.length;
+	await key("keyDown", ALT_RIGHT);
+	const stripUp = await waitFor(
+		`!!document.querySelector("[data-recording-indicator]")`,
+		9000,
+	);
+	record("sessionE.stripUp", { stripUp });
+	const ESC = {
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 53,
+	};
+	await key("keyDown", ESC);
+	await key("keyUp", ESC);
+	await sleep(1200);
+	const afterE = await sessionState(sessionE);
+	const boxE = await composerBox();
+	/*
+	 * An observation under injection: that run's sends are refused by the
+	 * legacy backend (§4.5's skew), so no turn is streaming for the press to
+	 * spare. The shipping run - the shape that ships - asserts it.
+	 */
+	expectMaybe(
+		"sessionE.escCancelsTheTakeNotTheTurn",
+		boxE.recording === false &&
+			afterE?.streaming === true &&
+			(afterE?.last_turn_outcome ?? "") !== "aborted",
+		{
+			recording: boxE.recording,
+			streamingAfterEsc: afterE?.streaming ?? null,
+			lastTurnOutcome: afterE?.last_turn_outcome ?? null,
+		},
+	);
+	verify(
+		"sessionE.cancelledTakeNeverTranscribed",
+		radientCalls.length === callsBeforeE,
+		{ calls: radientCalls.length - callsBeforeE },
+	);
+	record("sessionE.escDelivery", {
+		transcribing: boxE.transcribing,
+		draft: boxE.draft,
+	});
+	await cdp.shot("16-esc-ptt-cancels-take-not-turn.png");
+	// The hold's key still has to come up cleanly even though the abort already
+	// ended the take; the release is a no-op then (the manager cleared `engaged`).
+	await key("keyUp", ALT_RIGHT);
 
 	// Whether this build carries the new inline treatment at all is read where it
 	// can be true - while a recording exists; see `composerBox().indicator`.
