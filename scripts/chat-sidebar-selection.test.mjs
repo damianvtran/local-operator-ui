@@ -1341,6 +1341,19 @@ const ROW_STATE_GROUNDS = [
 		groundFile: SIDEBAR,
 	},
 	{
+		/*
+		 * THE ROWS' PLANE IS THE LIST, not the rail (2026-09-27). The nav took
+		 * `elevated` so the rail separates from the `surface` app sidebar beside it
+		 * (the operator's report: two panels, one tone), and both row roles are
+		 * steps OF `surface` — so the ground is split rather than relaxed: the rail
+		 * keeps the rung the route painted it on, and each group's LIST carries the
+		 * `surface` its rows were authored against. It is the same shape the canvas
+		 * Files list has (`groundFile` below is still here for that reason), and it
+		 * is why this entry reads a `cn(...)` argument rather than a plain literal:
+		 * the list's class list is one string, but the element is inside the
+		 * groups' map and the read has to land on the list rather than on the nav
+		 * it sits in.
+		 */
 		what: "the settings rail",
 		rowFile: SETTINGS_RAIL,
 		expression: () =>
@@ -1350,7 +1363,11 @@ const ROW_STATE_GROUNDS = [
 			),
 		stubs: { labelled: true, isActive: true, rowCurrent },
 		ground: () =>
-			literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after"),
+			merged(
+				SETTINGS_RAIL,
+				expressionBefore(SETTINGS_RAIL, '"flex flex-col gap-0.5 bg-surface"'),
+				{},
+			),
 		groundFile: SETTINGS_RAIL,
 	},
 	{
