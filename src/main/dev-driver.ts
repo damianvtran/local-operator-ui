@@ -182,6 +182,32 @@ export function resolveDevDriverArming(input: {
 }
 
 /**
+ * Whether this launch creates the mini view as a HEADLESS EXERCISER for the
+ * rigs.
+ *
+ * WHY IT EXISTS (quick-send design §I.3; manager remediation, M-B1). The mini
+ * view otherwise exists only in a `normal` launch, so a headless rig has no
+ * window the app OWNS — and the desktop plane's gate admits by frame
+ * (`desktop-ipc.ts`), so the window a scene builds by hand is refused before
+ * any request leaves the app, which is why the live send path could not be
+ * exercised at all. Arming the dev driver is the opt-in that says "a rig owns
+ * this boot"; `headless` is the only mode where a window can exist and never
+ * be shown (`inactive` is *visible by design*).
+ *
+ * WHAT IT IS NOT: a right to REGISTER or to SHOW. Registration stays
+ * `hotkeysAllowed`'s alone — nothing here can answer the operator's keyboard —
+ * and every presentation path stays `presentMiniView`'s gate, which a headless
+ * plan refuses. The window this permits is created hidden and disposed on quit
+ * like the ordinary one.
+ */
+export function headlessExerciserAllowed(input: {
+	arming: DevDriverArming;
+	windowMode: WindowMode;
+}): boolean {
+	return input.arming.armed && input.windowMode === "headless";
+}
+
+/**
  * The `additionalArguments` entry that carries the frames directory to a preload.
  *
  * Pure so the preload's reader and this writer cannot drift: the same function

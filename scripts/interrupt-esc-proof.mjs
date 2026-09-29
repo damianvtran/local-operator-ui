@@ -66,6 +66,16 @@
  * Those claims are verified rather than described: a false one fails the run
  * (`slot.*` steps, `report.claims` in the record).
  *
+ * And the STOPPED ROW'S ALIGNMENT (operator report, 2026-09-27: the cancelled
+ * turn's "Stopped · Retry" line rendered at the chat column's far-left edge
+ * instead of inside the conversation's shared measure). §G3's line and the
+ * composer's own box must resolve the same container, so the rig measures the
+ * line's left edge against the composer box's wherever the line is on screen -
+ * after the Stop press and again after Escape - and asserts |Δ| ≤ 2px. Width
+ * is a knob (`LO_PROOF_WIDTH`): below the measure's binding threshold the same
+ * pair must instead part ways from the column's own inset, and that run is the
+ * half the standard 1380px frame cannot exercise.
+ *
  * Frames land in the output directory: `turn-running.png`, `after-stop.png`,
  * `after-stop-settled.png`, `after-stop-settled-recording.png`, `after-escape.png`,
  * `idle-escape.png`.
@@ -83,9 +93,15 @@ const OUT = process.argv[2] ?? "/tmp/lo-interrupt-proof";
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
 const PORT = Number(process.env.LO_PROOF_CDP_PORT ?? 0);
-/* The app's own default window: a live frame is only worth something at the
- * size the operator actually runs (src/main/index.ts). */
-const WIDTH = 1380;
+/*
+ * The app's own default window: a live frame is only worth something at the
+ * size the operator actually runs (src/main/index.ts). `LO_PROOF_WIDTH` re-runs
+ * the SAME rig below the chat column's measure threshold (see
+ * `CHAT_MEASURE_MIN_PX`, read from the module below): there the line and the
+ * composer must resolve to the column's shared inset instead of meeting at the
+ * measure's centre, which is the one regime the default width cannot see.
+ */
+const WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
 const HEIGHT = 900;
 /* Long enough that a sleep cannot expire under the assertions, short enough
  * that a broken stop still ends the run. */
@@ -577,10 +593,35 @@ const INTERRUPT_SLOT_GRACE_MS = (() => {
 		);
 	return Number(match[1]);
 })();
+
+/*
+ * THE CHAT COLUMN'S OWN NUMBERS, read from the module the app ships rather
+ * than restated here - the same rule as the grace window above. `CHAT_MEASURE`
+ * binds its cap behind a named container from 750px (`@min-[750px]/chatcol`),
+ * and the column's shared inset is `px-6`; the alignment claim below is about
+ * whatever those two numbers say the pair must resolve to.
+ */
+const { CHAT_MEASURE_MIN_PX, CHAT_COLUMN_INSET_PX } = (() => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/chat-measure.ts",
+		"utf8",
+	);
+	const min = /@min-\[(\d+)px\]\/chatcol/.exec(source);
+	const inset = /CHAT_COLUMN_INSET\s*=\s*"px-(\d+)"/.exec(source);
+	if (!min || !inset)
+		throw new Error(
+			"the chat column's threshold or inset is not declared in src/renderer/src/features/chat/chat-measure.ts",
+		);
+	return {
+		CHAT_MEASURE_MIN_PX: Number(min[1]),
+		/* Tailwind's spacing scale: `px-N` is N * 4px. */
+		CHAT_COLUMN_INSET_PX: Number(inset[1]) * 4,
+	};
+})();
 const composer = 'textarea[aria-label="Message"]';
 
 /*
- * The app's own toast lane, and the control that dismisses it
+ * The app's own toast container, and the control that dismisses it
  * (`themed-toast-container.tsx` renders `closeButton: true`).
  */
 const TOAST_SELECTOR = "[data-sonner-toast]";
@@ -949,6 +990,109 @@ const clusterBoxes = async () =>
 		)`),
 	);
 
+/**
+ * §G3'S STOPPED LINE, AND THE COMPOSER BOX IT HAS TO LINE UP WITH, in one read
+ * (operator report, 2026-09-27). `[data-stopped-turn]` is the line;
+ * `[data-lo-composer-measure]` is the composer's box (`CHAT_MEASURE`), whose
+ * attribute is the rigs' stable handle on it rather than the classes that
+ * produce it; `[data-lo-composer-band]` is the band, and a full-width child's
+ * border-box left edge IS the column's own left edge - which is what the
+ * below-threshold reading is taken against.
+ *
+ * The wait is bounded and REPORTED: a line that never arrives reads `line:
+ * null` and fails the claim by name, rather than letting a read of nothing
+ * look like agreement.
+ */
+const stoppedGeometry = async (budgetMs = 5000) => {
+	const until = Date.now() + budgetMs;
+	while (Date.now() < until) {
+		if (
+			await cdp.evaluate(
+				`Boolean(document.querySelector("[data-stopped-turn]"))`,
+			)
+		)
+			break;
+		await sleep(100);
+	}
+	return JSON.parse(
+		await cdp.evaluate(`(() => {
+			const rect = (element) => {
+				const r = element.getBoundingClientRect();
+				return {
+					left: +r.left.toFixed(2),
+					right: +r.right.toFixed(2),
+					width: +r.width.toFixed(2),
+				};
+			};
+			const line = document.querySelector("[data-stopped-turn]");
+			const composer = document.querySelector("[data-lo-composer-measure]");
+			const band = document.querySelector("[data-lo-composer-band]");
+			return JSON.stringify({
+				line: line ? rect(line) : null,
+				wrapper: line?.parentElement ? rect(line.parentElement) : null,
+				composer: composer ? rect(composer) : null,
+				band: band ? rect(band) : null,
+				viewport: { w: window.innerWidth, h: window.innerHeight },
+			});
+		})()`),
+	);
+};
+
+/** The reading the alignment claim is decided on, recorded beside it. */
+const alignmentOf = (geometry) => {
+	const containerWidth = geometry.band
+		? +(geometry.band.width - 2 * CHAT_COLUMN_INSET_PX).toFixed(2)
+		: null;
+	return {
+		/* line.left - composer.left: the claim's own number. */
+		delta:
+			geometry.line && geometry.composer
+				? +(geometry.line.left - geometry.composer.left).toFixed(2)
+				: null,
+		/* line.left - (column.left + inset): the below-threshold reading. */
+		insetDelta:
+			geometry.line && geometry.band
+				? +(
+						geometry.line.left -
+						(geometry.band.left + CHAT_COLUMN_INSET_PX)
+					).toFixed(2)
+				: null,
+		containerWidth,
+		measureBinds:
+			containerWidth !== null && containerWidth >= CHAT_MEASURE_MIN_PX,
+	};
+};
+
+/**
+ * THE ALIGNMENT CLAIM. When the container binds (its content width is at or
+ * above the measure's threshold), the line must sit exactly where the composer
+ * box does - the box is the reference edge both resolve. Below it, no cap can
+ * apply to either, so BOTH must hug the column's shared inset instead; a fix
+ * that centred the line unconditionally would pass the first reading and break
+ * this one, which is why the below-threshold run exists.
+ *
+ * 2px is the tolerance: two independent `mx-auto` centrings can disagree by a
+ * subpixel, and nothing else in this pair is a layout coincidence.
+ */
+const stoppedMeetsTheMeasure = (geometry) => {
+	const alignment = alignmentOf(geometry);
+	if (
+		geometry.line === null ||
+		geometry.composer === null ||
+		geometry.band === null ||
+		alignment.containerWidth === null
+	)
+		return false;
+	if (!alignment.measureBinds) {
+		const insetLeft = geometry.band.left + CHAT_COLUMN_INSET_PX;
+		return (
+			Math.abs(geometry.line.left - insetLeft) <= 2 &&
+			Math.abs(geometry.composer.left - insetLeft) <= 2
+		);
+	}
+	return Math.abs(geometry.line.left - geometry.composer.left) <= 2;
+};
+
 /*
  * EVERY TRANSITION OF THE ROW'S TWO INDICATORS, recorded from the page for the
  * whole run.
@@ -1247,6 +1391,24 @@ try {
 	const settledAt = await stamp();
 	record("slot.clusterSettled", { boxes: settledBoxes, at: settledAt });
 	await cdp.shot("after-stop-settled.png");
+	/*
+	 * §G3'S LINE AT ITS OWN EDGE, the first of the run's two readings (the
+	 * Escape path below takes the second): the line is on screen in this state
+	 * (the settled frame carries it), and its claim is that it resolves the
+	 * conversation's shared measure rather than the column's own inset.
+	 */
+	const stoppedAfterStop = await stoppedGeometry();
+	record("stopped.geometryAfterStop", stoppedAfterStop);
+	verify(
+		"stopped.afterStopMeetsTheMeasure",
+		stoppedMeetsTheMeasure(stoppedAfterStop),
+		{
+			what: "the stopped line does not share the composer's measure: its left edge sits off the composer box's own (operator report, 2026-09-27)",
+			width: WIDTH,
+			alignment: alignmentOf(stoppedAfterStop),
+			geometry: stoppedAfterStop,
+		},
+	);
 	const settledMic = boxOf(settledBoxes, "Start recording");
 	const settledSend = boxOf(settledBoxes, "Send message");
 	const rowGap =
@@ -1474,6 +1636,20 @@ try {
 		},
 	);
 	await cdp.shot("after-escape.png");
+
+	/* The second reading: the same pair, after the Esc-stopped turn. */
+	const stoppedAfterEscape = await stoppedGeometry();
+	record("stopped.geometryAfterEscape", stoppedAfterEscape);
+	verify(
+		"stopped.afterEscapeMeetsTheMeasure",
+		stoppedMeetsTheMeasure(stoppedAfterEscape),
+		{
+			what: "the stopped line does not share the composer's measure: its left edge sits off the composer box's own (operator report, 2026-09-27)",
+			width: WIDTH,
+			alignment: alignmentOf(stoppedAfterEscape),
+			geometry: stoppedAfterEscape,
+		},
+	);
 
 	/* ------------------------------- 3. the session survived both presses */
 	record("session.survived", await startTurn(sessionId));

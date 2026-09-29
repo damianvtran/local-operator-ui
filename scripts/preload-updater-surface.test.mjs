@@ -252,6 +252,42 @@ test("backend-update-error reaches the callback and the unsubscribe removes it",
 	);
 });
 
+test("backend-update-completed carries the fleet count through whole", () => {
+	/*
+	 * THE ONE FIELD THE NEW NOTICE READS (2026-09-29): `sessionsOnOldBuild` is
+	 * produced in the main process, bridged here and painted as the completion
+	 * toast's second line - so the bridge must forward the payload whole rather
+	 * than unwrap or rename the reading. `null` is a reading too (an unreadable
+	 * fleet), and the case drives both, so a bridge that dropped falsy values would
+	 * fail here rather than in a frame nobody re-drives.
+	 */
+	const seen = [];
+	const unsubscribe = api.updater.onBackendUpdateCompleted((completion) =>
+		seen.push(completion),
+	);
+	assert.ok(
+		registered.some(({ channel }) => channel === "backend-update-completed"),
+		`the subscription must be on \`backend-update-completed\`; got ${registered
+			.map(({ channel }) => channel)
+			.join(", ")}`,
+	);
+	const counted = {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.12",
+		restarted: true,
+		sessionsOnOldBuild: 3,
+	};
+	deliver("backend-update-completed", counted);
+	const unmeasured = { ...counted, sessionsOnOldBuild: null };
+	deliver("backend-update-completed", unmeasured);
+	assert.deepEqual(
+		seen,
+		[counted, unmeasured],
+		"the count (and its null) must arrive byte-for-byte, on this channel",
+	);
+	unsubscribe();
+});
+
 test("the main process sends the channel the preload subscribes to", () => {
 	/*
 	 * Both ends spelled out, because a rename on one side is silent in this suite

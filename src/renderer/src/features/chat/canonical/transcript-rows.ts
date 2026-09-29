@@ -88,22 +88,186 @@ export function closingAnswerIds(
 	records: TranscriptRecord[],
 ): ReadonlySet<string> {
 	const closing = new Set<string>();
-	/** The last record in the still-open turn that paints and is not a statement. */
-	let last: TranscriptRecord | null = null;
-	for (const record of records) {
-		if (record.kind === "user") {
-			if (last !== null && last.kind === "assistant" && !last.streaming) {
-				closing.add(last.id);
-			}
-			last = null;
-			continue;
-		}
-		if (paintsSomething(record) && !isStatementRow(record)) last = record;
-	}
-	if (last !== null && last.kind === "assistant" && !last.streaming) {
-		closing.add(last.id);
+	for (const span of walkTurns(records, (record) => record)) {
+		if (span.closingAnswerId !== null) closing.add(span.closingAnswerId);
 	}
 	return closing;
+}
+
+/**
+ * One turn's span over an item list, in THAT list's own indices.
+ *
+ * The unit `closingAnswerIds` has always used, expressed once so the caption
+ * rule, the foot line and the turn collapse cannot disagree about what a turn
+ * is. A turn opens at a user row and runs until the next user row, EXCEPT that
+ * a user row which arrives while the turn is still open is a STEER and belongs
+ * to the open turn (see `runsOf` for the rule and its reason).
+ */
+type TurnSpan = {
+	openingIndex: number;
+	endIndex: number;
+	/** The opening user item's index, or null for a run whose head is cut off. */
+	openingUserIndex: number | null;
+	/**
+	 * Why the run ended, for diagnostics and tests: `answer`/`marker` name the
+	 * closure the NEXT user row saw, `end` is the list running out.
+	 */
+	boundary: "answer" | "marker" | "end";
+	/** The settled assistant that closes this run, when its tail is one. */
+	closingAnswerId: string | null;
+};
+
+/**
+ * The partition itself, shared by `closingAnswerIds` and `runsOf`.
+ *
+ * A user item opens a new run iff the open run is CLOSED, and the closure test
+ * is `closingAnswerIds`' own: the last paint-non-statement record is a settled
+ * assistant, or a `complete === true` notice has been seen since the run opened.
+ * Otherwise the user item is a steer and stays inside the run — steering is NOT
+ * marked on the durable wire (the harness persists a steer as an ordinary user
+ * message and the live `SteeringDeliveredEvent` is consumed by the stream, not
+ * the transcript), so the partition can only be structural, and these two facts
+ * are the ones the record list actually states.
+ *
+ * `recordOf` lets the same walk serve records and `Row`s: `Row`s only wrap a
+ * subset of records, and each caller needs spans in its own index space.
+ */
+function walkTurns<T>(
+	items: T[],
+	recordOf: (item: T) => TranscriptRecord,
+): TurnSpan[] {
+	const spans: TurnSpan[] = [];
+	let open: TurnSpan | null = null;
+	/** The last record in the open run that paints and is not a statement. */
+	let last: TranscriptRecord | null = null;
+	let sawMarker = false;
+
+	const closed = (): boolean =>
+		sawMarker ||
+		(last !== null && last.kind === "assistant" && !last.streaming);
+	const closing = (): string | null =>
+		last !== null && last.kind === "assistant" && !last.streaming
+			? last.id
+			: null;
+	const flush = (boundary: TurnSpan["boundary"], endIndex: number) => {
+		if (open === null) return;
+		open.endIndex = endIndex;
+		open.boundary = boundary;
+		open.closingAnswerId = closing();
+		spans.push(open);
+		open = null;
+	};
+
+	items.forEach((item, index) => {
+		const record = recordOf(item);
+		if (record.kind === "user") {
+			if (open === null || closed()) {
+				/*
+				 * The closure the NEXT user item saw is this run's boundary: a settled
+				 * answer first, because that is the row the caption and the collapse
+				 * hand the reader; a completion marker only when there is no answer.
+				 */
+				if (open !== null) {
+					flush(closing() !== null ? "answer" : "marker", index - 1);
+				}
+				open = {
+					openingIndex: index,
+					endIndex: index,
+					openingUserIndex: index,
+					boundary: "end",
+					closingAnswerId: null,
+				};
+				last = null;
+				sawMarker = false;
+			}
+			/*
+			 * Either way the user item itself is never the run's "last content": a
+			 * message the reader typed is not work the turn did, which is also why
+			 * `closingAnswerIds` excluded user records before this partition existed.
+			 */
+			return;
+		}
+		if (open === null) {
+			/*
+			 * A run whose head is CUT OFF: the visible slice (or the first fetched
+			 * page, in `closingAnswerIds`' record-space) starts mid-turn, so there is
+			 * no opening user row to key or anchor it. `openingUserIndex: null` is
+			 * how `runsOf` reports it and how the collapse refuses to build a bar
+			 * over a turn it cannot show the whole of.
+			 */
+			open = {
+				openingIndex: index,
+				endIndex: index,
+				openingUserIndex: null,
+				boundary: "end",
+				closingAnswerId: null,
+			};
+		}
+		if (paintsSomething(record) && !isStatementRow(record)) last = record;
+		if (record.kind === "notice" && record.complete === true) sawMarker = true;
+		open.endIndex = index;
+	});
+	flush("end", items.length - 1);
+	return spans;
+}
+
+/**
+ * One run of the visible transcript: the unit the turn collapse plans over.
+ *
+ * Distinct from a fold run (`foldRuns`), which is a stretch of consecutive
+ * tool rows INSIDE a turn: this is the turn itself, and a bar over it is the
+ * collapsed view of the rows between its opening user message and the answer
+ * it worked towards.
+ */
+export type TurnRun = {
+	/**
+	 * Stable identity ACROSS THE HEAD ARRIVING LATER: the closing answer's
+	 * record id when the run has one (the row the bar and the caption already
+	 * speak through), else the run's LAST row's id.
+	 *
+	 * WHY NOT THE OPENING USER ROW (the pre-fix identity): a run whose head the
+	 * fetched rows cut off keys off whatever it does have — that used to be its
+	 * first row — so the day a page landed the head, the key changed and every
+	 * consumer keyed by it (the reader's expansion on the bar, the bar's own
+	 * React key) silently started over. Rows only ever arrive ABOVE a run's
+	 * head, so its tail is the stable half and the two candidates above are the
+	 * same row in both the head-cut and the head-loaded list.
+	 */
+	key: string;
+	/**
+	 * Whether the run's opening user row is in this list. False means the
+	 * window's leading edge or the fetched set has walked past it: the span is
+	 * PARTIAL. The collapse decides what that costs — a run with its closing
+	 * answer on hand still condenses from the loaded span (end-loaded
+	 * eligibility, `turn-collapse-model.ts`), stating no duration it cannot
+	 * honestly compute.
+	 */
+	opensWithUserRow: boolean;
+	/** Index of the run's first row in the list handed to `runsOf`. */
+	openingIndex: number;
+	/** Index of the run's last row in that list. */
+	endIndex: number;
+	boundary: TurnSpan["boundary"];
+	/** The settled assistant row that closes this run, when it has one. */
+	closingAnswerId: string | null;
+};
+
+/**
+ * The rows partitioned into turns, in order, in the ROW index space.
+ *
+ * This is `walkTurns` over the row list: the same partition `closingAnswerIds`
+ * uses, with the indices the render pipeline needs (the collapse model's spans,
+ * the foot line's reset points, the `key` a bar is remembered by).
+ */
+export function runsOf(rows: Row[]): TurnRun[] {
+	return walkTurns(rows, (row) => row.record).map((span) => ({
+		key: span.closingAnswerId ?? rows[span.endIndex]?.record.id ?? "",
+		opensWithUserRow: span.openingUserIndex !== null,
+		openingIndex: span.openingIndex,
+		endIndex: span.endIndex,
+		boundary: span.boundary,
+		closingAnswerId: span.closingAnswerId,
+	}));
 }
 
 /**

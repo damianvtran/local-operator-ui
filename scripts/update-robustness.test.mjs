@@ -28,7 +28,7 @@ import {
 	relative,
 	resolve,
 } from "node:path";
-import { after, before, test } from "node:test";
+import { after, afterEach, before, test } from "node:test";
 import { build } from "esbuild";
 
 /**
@@ -1934,6 +1934,73 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /if \[ "\$holding" -eq 1 \]; then/);
 	assert.match(plan.script, /notify\(\) \{/);
 	assert.match(plan.script, /osascript -e 'on run argv'/);
+	/*
+	 * THE NOTICE OBEYS THE LAUNCH'S KILL SWITCH (operator report, remediation round
+	 * 1), AND PRESENCE IS THE RULE (review minor, remediation round 2): the script
+	 * silences on any SET value - the `+x` set-test, not a non-empty test - because
+	 * `resolveNotificationLaunch` resolves a present-but-empty launch key to the
+	 * silencing value and an env block with an empty default spells "a test run".
+	 * A plan built WITHOUT the switch adds nothing, and one built with a value
+	 * writes it verbatim, empty included.
+	 */
+	assert.match(
+		plan.script,
+		/\[ -n "\$\{LOCAL_OPERATOR_NO_NOTIFICATIONS\+x\}" \] && return 0/,
+	);
+	assert.equal(
+		Object.hasOwn(plan.env, "LOCAL_OPERATOR_NO_NOTIFICATIONS"),
+		false,
+		"a launch without the switch adds nothing to the script's environment",
+	);
+	const silenced = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+		timeoutSeconds: 60,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 2,
+		noNotifications: "1",
+	});
+	assert.equal(silenced.env.LOCAL_OPERATOR_NO_NOTIFICATIONS, "1");
+	const emptied = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+		timeoutSeconds: 60,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 2,
+		noNotifications: "",
+	});
+	assert.equal(
+		emptied.env.LOCAL_OPERATOR_NO_NOTIFICATIONS,
+		"",
+		"an empty value is transported verbatim, and the script's presence guard is what silences it",
+	);
+	/*
+	 * THE HOLD'S GUARD READS THE SAME RULE (review round 3, the rule unified
+	 * rather than split): a set-but-empty launch silences the watchdog script and
+	 * the hold's banner alike - one present key, one meaning - so the two guards
+	 * cannot drift into "silent here, bannering there" for the same launch. The
+	 * guard is private to update-service, so this pins its source the way the
+	 * script's own guard is pinned: presence, and no length test to restore.
+	 */
+	const serviceSource = readFileSync("src/main/update-service.ts", "utf8");
+	const holdGuard = serviceSource.match(
+		/function notificationsSilenced\(\): boolean \{[\s\S]*?\n\}/,
+	);
+	assert.ok(holdGuard, "notificationsSilenced not found in update-service.ts");
+	assert.match(holdGuard[0], /typeof value === "string"/);
+	assert.doesNotMatch(
+		holdGuard[0],
+		/value\.length/,
+		"the hold guard must not fall back to a non-empty test: that is the split round 3 unified",
+	);
 	// Backgrounded with its status dropped, so a notifier that fails, hangs or
 	// does not exist cannot decide anything or hold the script open.
 	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
@@ -2029,21 +2096,106 @@ test("a target that is already installed is never handed to the watchdog", () =>
  * Run the script exactly as the app does - `spawn("/bin/sh", ["-c", script])`,
  * detached, with the plan's environment - against a real process tree.
  */
-function runWatchdog({ plan, binDir }) {
+function runWatchdog({ plan, binDir, env }) {
+	/*
+	 * A fixture plan carrying the production hard bound is a freeze waiting for a
+	 * trigger: any early exit that skips a case's cleanup leaves the script (and
+	 * this file) running for half an hour. Every plan in this file carries a
+	 * small bound; this assert is what makes an omission loud instead of silent.
+	 */
+	assert.ok(
+		plan.hardTimeoutSeconds <= 25,
+		`a watchdog fixture plan must carry a small hardTimeoutSeconds (got ${plan.hardTimeoutSeconds}): the production default holds the whole test file open (CI freeze, 2026-09-28)`,
+	);
+	const childEnv = {
+		...process.env,
+		...plan.env,
+		// A case's extra environment (the notification kill switch's two
+		// directions) wins per key, exactly as a caller's `env` would.
+		...(env ?? {}),
+		PATH: `${binDir}:${process.env.PATH ?? ""}`,
+	};
+	/*
+	 * UNDEFINED VALUES SCRUB A KEY. The desktop runner sets the notification kill
+	 * switch for every child (scripts/notifications-off.mjs - by design: a suite
+	 * run must not banner on the operator's screen), so a case whose SUBJECT is
+	 * the notice being RAISED has to remove the inherited value rather than leave
+	 * it: `{ LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined }` is how a case says
+	 * "the launch under test carried no switch". CI ran this family to completion
+	 * for the first time on 2026-09-28 (the freeze fix let it reach the tests) and
+	 * caught the inheritance as four failures; the same four reproduce locally
+	 * with the switch exported, and vanish with this scrub.
+	 */
+	for (const [key, value] of Object.entries(childEnv)) {
+		if (value === undefined) delete childEnv[key];
+	}
 	const child = spawn("/bin/sh", ["-c", plan.script], {
 		detached: true,
 		stdio: "ignore",
-		env: {
-			...process.env,
-			...plan.env,
-			PATH: `${binDir}:${process.env.PATH ?? ""}`,
-		},
+		env: childEnv,
 	});
+	/*
+	 * NO unref ON THIS CHILD, deliberately. Every case awaits `exit` - that is the
+	 * case's synchronization - and unref'ing the handle under an await lets the
+	 * event loop drain while the promise is still pending, which node's runner
+	 * reports as "Promise resolution is still pending but the event loop has
+	 * already resolved" and a cancelled case (measured while fixing the CI freeze,
+	 * 2026-09-28; the runner's own diagnosis, not a timeout). What keeps a leaked
+	 * script from holding THIS FILE is the reaper below, not handle tricks: it
+	 * SIGKILLs any group still standing when a case ended, and a group it kills
+	 * takes its handles with it. The small hardTimeoutSeconds on every plan is the
+	 * other half: it bounds how long a case can wait for an exit at all.
+	 */
+	liveFixtureWatchdogs.add(child.pid);
 	const exit = new Promise((resolve) =>
 		child.on("exit", (code, signal) => resolve({ code, signal })),
 	);
 	return { child, exit };
 }
+
+/**
+ * Fixture scripts still running, for the reaper's ledger.
+ */
+const liveFixtureWatchdogs = new Set();
+
+/**
+ * The regression the freeze taught: a case must leave no fixture behind.
+ *
+ * Runs after EVERY case. A group still standing when its case ended is a leak:
+ * it fails the case that left it (the assert names pids, not prose), and is then
+ * SIGKILLed so the file can always exit. The vacated check gets a short grace
+ * because the script's backgrounded notifier/relaunch shims can outlive the
+ * script's own exit by a fork - and a script that legitimately holds past its
+ * case is a bug in the case, not a reason to let it hold the runner.
+ */
+async function fixtureGroupVacated(pid, timeoutMs = 2000) {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		if (processGroupIsEmpty(pid)) return true;
+		if (Date.now() > deadline) return false;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+}
+
+afterEach(async () => {
+	const leaked = [];
+	for (const pid of liveFixtureWatchdogs) {
+		if (!(await fixtureGroupVacated(pid))) leaked.push(pid);
+	}
+	for (const pid of liveFixtureWatchdogs) {
+		try {
+			process.kill(-pid, "SIGKILL");
+		} catch (error) {
+			if (error.code !== "ESRCH") throw error;
+		}
+	}
+	liveFixtureWatchdogs.clear();
+	assert.deepEqual(
+		leaked,
+		[],
+		"a watchdog fixture was still running when its case ended - keep its plan's hardTimeoutSeconds small and make sure the case reaps it (a leaked script holds the test file, and the job, open)",
+	);
+});
 
 /**
  * Whether the watchdog's own process group has been vacated.
@@ -2217,6 +2369,16 @@ test("the watchdog relaunches a real process tree and never exits without trying
 	const fixture = makeWatchdogFixture(dir);
 	const fast = {
 		timeoutSeconds: 4,
+		/*
+		 * THE FIXTURE'S OWN HARD BOUND, SMALL ON PURPOSE (CI freeze, 2026-09-28): a
+		 * plan that leaves this at the production default (1800 s) turns any
+		 * early-return or stuck await in a case into a script that outlives its test
+		 * by half an hour - and a script outliving its test holds the whole test FILE
+		 * (and so the job) open, which is exactly how this file held CI's Desktop run
+		 * to its 35-minute bound with no failing test to show for it. Production's
+		 * own default is asserted in the plan itself, not here.
+		 */
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2336,6 +2498,11 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 			// A bound long enough that reaching it is distinguishable from leaving
 			// on the swap: a pass here cannot be a pass by timeout.
 			timeoutSeconds: 120,
+			// ...but never the production hard bound: the three elapsed-threshold cases
+			// raise THIS one past their own thresholds (so a bound-exit still fails
+			// them), and every other case takes the small fixture default - a holding
+			// script must never outlive its case (CI freeze, 2026-09-28).
+			hardTimeoutSeconds: 8,
 			intervalSeconds: 1,
 			settleSeconds: 1,
 			appearSeconds: 1,
@@ -2351,7 +2518,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, { hardTimeoutSeconds: 20 }),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2420,7 +2590,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, { hardTimeoutSeconds: 20 }),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2445,7 +2618,14 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid, { shipItJob: null, appearSeconds: 30 }),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, {
+				shipItJob: null,
+				appearSeconds: 30,
+				hardTimeoutSeconds: 20,
+			}),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2496,7 +2676,14 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 		announceSeconds: 1,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan: held, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan: held,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
 
 	/*
@@ -2687,17 +2874,37 @@ test("a failed notification does not change the watchdog's decision or its exit 
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
 		announceSeconds: 1,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
-	// Past the announcement, and past the poll that follows it: the failing
-	// notifier has been called by now, and nothing has been decided by it.
-	await new Promise((resolve) => setTimeout(resolve, 2500));
+	/*
+	 * WAIT ON THE DECISION, NOT A CLOCK (the rule the hold case above already
+	 * states): the first notice lands after the script's own settle/appear/
+	 * announce stretch, which a loaded host or a slow runner carries past any
+	 * constant a test could pick - measured 2026-09-28: a fixed 2.5 s probe read
+	 * empty on both a Mac host and ubuntu-latest while the notice was merely
+	 * later, and this case failed on CI for that reason once the freeze fix let
+	 * the family run to completion. The deadline is the script's own hard
+	 * bound's neighbourhood, because a notice that never becomes observable is a
+	 * hang, not a slow machine.
+	 */
+	const noticeDeadline = Date.now() + 8000;
+	while (fixture.notifications().length === 0 && Date.now() < noticeDeadline) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
 	assert.ok(
 		fixture.notifications().length > 0,
 		"the failing notifier was never called, so this proves nothing",
@@ -2711,6 +2918,170 @@ test("a failed notification does not change the watchdog's decision or its exit 
 	const result = await watchdog.exit;
 	assert.equal(result.code, 0);
 	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+/**
+ * THE SWITCH REACHES THE WATCHDOG'S OWN NOTICE (operator report, remediation
+ * round 1).
+ *
+ * Real banners landed on the operator's Notification Center from rehearsal
+ * activity of the update machinery, and the text matched this script's
+ * soft-bound notice - the one notice path that runs while the app is dead, so
+ * nothing inside the app can silence it. The launch's kill switch now travels
+ * in the script's environment and the script's `notify` obeys it. The
+ * assertions are about what the recording shim was asked to say; no real
+ * banner is ever fired to prove either direction.
+ */
+test("the switch silences the watchdog's own notice", async () => {
+	const dir = tempDir("lo-watchdog-silenced-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: "1" },
+	});
+	app.kill();
+	/*
+	 * Past the announcement with wall-clock margin, then asserted again at the
+	 * end: on a loaded host the notice can arrive seconds late, so silence has to
+	 * hold over the whole live stretch rather than at one instant.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 4000));
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"a switched-off launch must not reach the notifier at all",
+	);
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"and a silenced notice must not become a launch into the live install",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"still silent by the time the watchdog has decided and exited",
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+test("a set-but-empty switch is the silencing value too", async () => {
+	const dir = tempDir("lo-watchdog-emptied-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: "" },
+	});
+	app.kill();
+	/*
+	 * THE SET-TEST IS THE FIX (review minor, remediation round 2): an empty value
+	 * used to fall through the script's `-n` guard and reach osascript, while both
+	 * named spellings of this switch call the same launch silenced. The window is
+	 * the sibling case's, for the same reason - it must outlast the announcement.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 4000));
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"an empty-but-set switch must silence the notice",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"and it stays silent through the decision, not only the announcement",
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+test("without the switch the watchdog's notice is still raised", async () => {
+	const dir = tempDir("lo-watchdog-armed-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	// THE LAUNCH THIS CASE MEANS IS UNFLAGGED: its absence of the switch is the
+	// subject, and the runner exports the switch to every child by design, so
+	// the absence has to be made rather than assumed (see runWatchdog's
+	// undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
+	app.kill();
+	/*
+	 * A DEADLINE rather than one tick: the notice is best-effort and backgrounded,
+	 * and on a loaded host it can arrive seconds late - the sibling case's fixed
+	 * 2.5 s window is exactly what flakes here, so this one waits for it instead.
+	 */
+	const deadline = Date.now() + 12_000;
+	while (fixture.notifications().length === 0 && Date.now() < deadline) {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+	assert.ok(
+		fixture.notifications().length > 0,
+		"an unflagged launch must still raise the notice",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
 });
 
 /**
@@ -2742,13 +3113,21 @@ test("the stay-closed notice follows a job that launchd submits late", async () 
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 30,
+		hardTimeoutSeconds: 20,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 20,
 		announceSeconds: 2,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
 	// The ordinary late submission: nothing is loaded when the announcement is
 	// due, and the job appears a second or two into the appear window.
@@ -2846,6 +3225,7 @@ test("a dead installer pid with this app's ShipIt still at work is a live instal
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 20,
+		hardTimeoutSeconds: 20,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2913,6 +3293,9 @@ test("without launchd or plutil the bound decides, and nothing is left behind", 
 			settleSeconds: 1,
 			appearSeconds: 1,
 			platform: "linux",
+			// Same reason as the darwin group above: a fixture script may not be
+			// able to hold this file open (CI freeze, 2026-09-28).
+			hardTimeoutSeconds: 8,
 			...overrides,
 		});
 
@@ -6310,6 +6693,57 @@ test("a version read that never answers is killed, not left running", () => {
 });
 
 /**
+ * The `node:https` stand-in the registry-read case claims its bundle with.
+ *
+ * WHY IT IS NEEDED AT ALL: both version reads fetch hard-coded hosts (`pypi.org`,
+ * `registry.npmjs.org`), so no loopback seam exists for them and every other case
+ * hands their RESULTS in (the substituted list above). This fixture records what
+ * the shipped code asked for and lets the case stall the request on demand, which
+ * is the only way to drive the bound itself rather than its caller.
+ */
+const HTTPS_FIXTURE = `
+const state = () => (globalThis.__loTestHttps ??= { calls: [] });
+const get = (url, optionsOrCallback, maybeCallback) => {
+	const options =
+		typeof optionsOrCallback === "object" && optionsOrCallback !== null
+			? optionsOrCallback
+			: undefined;
+	const record = {
+		url,
+		options: options ?? null,
+		destroyed: false,
+		destroyError: null,
+		handlers: {},
+	};
+	state().calls.push(record);
+	const request = {
+		on(event, handler) {
+			record.handlers[event] = handler;
+			return request;
+		},
+		once(event, handler) {
+			record.handlers[event] = handler;
+			return request;
+		},
+		destroy(error) {
+			record.destroyed = true;
+			record.destroyError = error ?? null;
+			/*
+			 * The real client reports the destruction's error on the request; done on a
+			 * microtask so the shipped code has wired its error handler by then - both
+			 * reads do it synchronously, before the case can fire the timeout.
+			 */
+			queueMicrotask(() => record.handlers.error?.(error ?? new Error("destroyed")));
+			return request;
+		},
+	};
+	return request;
+};
+export { get };
+export default { get };
+`;
+
+/**
  * The shipped update service, bundled with Electron stubbed rather than launched.
  *
  * Extracted from the case that first needed it so a second one can drive the same
@@ -6331,8 +6765,14 @@ test("a version read that never answers is killed, not left running", () => {
  * scripted. The fixture re-exports the shipped module, so a case that overrides one
  * function still runs the rest of the real one, and the override is what makes the
  * ordering assertable without a real pip install.
+ *
+ * `httpsStub` replaces `node:https` for the one case that drives the two registry
+ * reads themselves (agent review minor-1); see `HTTPS_FIXTURE`.
  */
-const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
+const loadUpdateServiceModule = async ({
+	managedPython = null,
+	httpsStub = false,
+} = {}) => {
 	/*
 	 * `resolveDir` is set on every fixture module rather than only on the one that
 	 * needs it: a virtual module has no directory of its own, so esbuild refuses to
@@ -6381,9 +6821,22 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 							namespace: "fixture",
 						}));
 					}
+					if (httpsStub) {
+						/*
+						 * Claimed BEFORE esbuild's own external handling for node builtins, so the
+						 * fixture replaces the real client for this one case's module graph.
+						 */
+						builder.onResolve({ filter: /^node:https$/ }, (args) => ({
+							path: args.path,
+							namespace: "fixture",
+						}));
+					}
 					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
 						if (args.path === "managed-python-fixture") {
 							return fixture(managedPython);
+						}
+						if (args.path === "node:https") {
+							return fixture(HTTPS_FIXTURE);
 						}
 						if (args.path === "electron") {
 							return fixture(`
@@ -6509,18 +6962,59 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 									 * backticks in this comment: it lives inside a template
 									 * literal, and one would end it here.
 									 */
-									checkForUpdates: async () => {
-										const result = globalThis.__loTestAppCheck
-											? await globalThis.__loTestAppCheck()
-											: null;
-										if (result && !result.isUpdateAvailable) {
-											autoUpdater.emit("update-not-available", {
-												version: "0.0.0-test",
+									checkForUpdates: () => {
+										/*
+										 * THE UPDATER'S RE-ENTRANCY, AS A CASE CAN ASK FOR IT
+										 * (__loTestAppCheckSticky): electron-updater answers a second call
+										 * while one is pending with THE SAME promise (its own "already in
+										 * progress" path), and the abandoned-fetch set's dedupe branch
+										 * rides on that identity (agent review minor-4). With the flag set,
+										 * this fixture serves one cached wrapper for as long as the case's
+										 * promise is unresolved; without it, every call runs fresh, because
+										 * cases that hand back DIFFERENT results per attempt rely on that.
+										 */
+										if (globalThis.__loTestAppCheckSticky) {
+											const pending = globalThis.__loTestAppCheckStickyPending;
+											if (pending) return pending;
+											const run = (async () => {
+												const result = globalThis.__loTestAppCheck
+													? await globalThis.__loTestAppCheck()
+													: null;
+												if (result && !result.isUpdateAvailable) {
+													autoUpdater.emit("update-not-available", {
+														version: "0.0.0-test",
+													});
+												}
+												return result;
+											})().finally(() => {
+												globalThis.__loTestAppCheckStickyPending = null;
 											});
+											globalThis.__loTestAppCheckStickyPending = run;
+											return run;
 										}
-										return result;
+										return (async () => {
+											const result = globalThis.__loTestAppCheck
+												? await globalThis.__loTestAppCheck()
+												: null;
+											if (result && !result.isUpdateAvailable) {
+												autoUpdater.emit("update-not-available", {
+													version: "0.0.0-test",
+												});
+											}
+											return result;
+										})();
 									},
-									downloadUpdate: async () => [],
+									/*
+									 * The download is driven through a global like the check above, so a
+									 * case can hand it a promise that stalls; the token is what the
+									 * service now constructs and passes, and a case observes the
+									 * watchdog's cancel by registering on it.
+									 */
+									downloadUpdate: async (cancellationToken) => {
+										const download = globalThis.__loTestDownload;
+										if (!download) return [];
+										return await download(cancellationToken);
+									},
 									quitAndInstall: () => {},
 									setFeedURL: () => {},
 									autoDownload: false,
@@ -6538,6 +7032,33 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 								 * one would end it here.
 								 */
 								globalThis.__loAutoUpdater = autoUpdater;
+								/*
+								 * The class electron-updater re-exports from builder-util-runtime,
+								 * which the service constructs once per download and cancels
+								 * through. Mirrors the pieces the service and a case touch
+								 * (cancel/cancelled/onCancel/onCancelRequested), so the cancel path
+								 * under test is the service's own. No backticks in this comment:
+								 * it lives inside a template literal.
+								 */
+								export class CancellationToken {
+									constructor() {
+										this.cancelled = false;
+										this.handlers = [];
+									}
+									onCancel(handler) {
+										if (this.cancelled) handler();
+										else this.handlers.push(handler);
+									}
+									onCancelRequested(handler) {
+										this.onCancel(handler);
+										return { dispose: () => {} };
+									}
+									cancel() {
+										if (this.cancelled) return;
+										this.cancelled = true;
+										for (const handler of this.handlers.splice(0)) handler();
+									}
+								}
 							`);
 						}
 						return fixture(`
@@ -7079,6 +7600,24 @@ const loAggregateCheck = async ({
 	 */
 	retryDelaysMs = [5, 5],
 	/*
+	 * How long one feed fetch attempt may run before the deadline abandons it,
+	 * in ms. The shipped value is 30s; narrowed here for the same reason as the
+	 * backoff above, and asserted as a value in the deadline cases so the
+	 * shipped bound cannot go missing behind the narrowings.
+	 */
+	deadlineMs = null,
+	/*
+	 * How long a download may make no progress before the stall watchdog
+	 * cancels it, in ms. The shipped value is 90s; narrowed the same way.
+	 */
+	downloadStallTimeoutMs = null,
+	/*
+	 * What the updater's `downloadUpdate` does, when a case drives the download
+	 * handler itself. Absent, the stub resolves an empty list, which is every
+	 * case from before the watchdog existed.
+	 */
+	download = null,
+	/*
 	 * What the machine's own network reading says, for the pre-flight gate.
 	 * `null` leaves the stub answering `true`, which is every case from before
 	 * the gate existed.
@@ -7261,6 +7800,11 @@ const loAggregateCheck = async ({
 		}
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		updateService.appFeedRetryDelaysMs = retryDelaysMs;
+		if (deadlineMs !== null) updateService.appFeedDeadlineMs = deadlineMs;
+		if (downloadStallTimeoutMs !== null) {
+			updateService.downloadStallTimeoutMs = downloadStallTimeoutMs;
+		}
+		if (download) globalThis.__loTestDownload = download;
 		updateService.updateStage = stage;
 		/*
 		 * The install, stubbed on the same terms as the registry above, and for the
@@ -7351,6 +7895,10 @@ const loAggregateCheck = async ({
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestAppCheckSticky;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestAppCheckStickyPending;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loIpcHandlers;
 		if (interval) clearInterval(interval);
 		if (health) {
@@ -7361,6 +7909,8 @@ const loAggregateCheck = async ({
 		delete globalThis.__loTestNetIsOnline;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestLogs;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestDownload;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -9224,9 +9774,10 @@ const driveGlobalUpdate = async ({
 	/*
 	 * THE FLEET THE GATE SEES. `workState` is the app's existing busy reading
 	 * (`servingWorkState`), and a LIST is consumed one entry per read, which is how
-	 * "busy, then idle" - the drain that had to wait - is driven. `fleet` is the
+	 * "busy, then idle" - a drain that has to wait - would be driven. `fleet` is the
 	 * roster itself, read for the refusal's names and for the before/after pair the
-	 * re-engage compares.
+	 * re-engage compares, and the press that reads ANY of this is the rebuild route's
+	 * install leg: since the 2026-09-29 directive no restart waits on the fleet.
 	 */
 	workState = "idle",
 	fleet = [],
@@ -9253,18 +9804,30 @@ const driveGlobalUpdate = async ({
 	// which this fixture pins to its own temp directory.
 	const markerPath = join(userData, "pending-server-update.json");
 	const sent = [];
+	/*
+	 * THE UPDATE-IN-FLIGHT FLAG, modelled rather than dropped (review round 1,
+	 * n1): the rebuild leg's drain runs under the press's hold, so this records
+	 * both the hold's own transitions and what it stood at on every fleet read -
+	 * which is what the refusal case pins the window with.
+	 */
+	let autoUpdating = false;
 	const calls = {
 		installers: [],
 		/** The budget each reach for an installer was given, in the order taken. */
 		budgets: [],
 		restarts: 0,
 		starts: 0,
+		autoUpdating: [],
+		holdAtFleetRead: [],
 	};
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
 		isUsingExternalBackend: () => external,
-		setAutoUpdating: () => {},
+		setAutoUpdating: (value) => {
+			autoUpdating = value;
+			calls.autoUpdating.push(value);
+		},
 		restart: async () => {
 			calls.restarts += 1;
 			return restartOk;
@@ -9292,8 +9855,12 @@ const driveGlobalUpdate = async ({
 			managedByThisApp: false,
 			owned: { owned: !external, because: "this fixture's own answer" },
 		}),
-		servingWorkState: async () =>
-			Array.isArray(workState) ? (workState.shift() ?? "idle") : workState,
+		servingWorkState: async () => {
+			calls.holdAtFleetRead.push(autoUpdating);
+			return Array.isArray(workState)
+				? (workState.shift() ?? "idle")
+				: workState;
+		},
 		/*
 		 * The roster, in the WIRE's own field names, converted by the shipped parse -
 		 * the same read and the same shape the gate sees in the app.
@@ -9301,7 +9868,7 @@ const driveGlobalUpdate = async ({
 		servingSessionFleet: async () =>
 			service.fleetRosterFromSessions({ result: { sessions: fleet } }),
 		hasOpenSessionStreams: () => false,
-		checkIsAutoUpdating: () => false,
+		checkIsAutoUpdating: () => autoUpdating,
 	};
 	const updateService = new service.UpdateService(
 		{
@@ -9327,7 +9894,8 @@ const driveGlobalUpdate = async ({
 		updateService.backendUrl = "http://127.0.0.1:9";
 		/*
 		 * The drain's own bounds, on the arm whose press reaches the gate before it
-		 * installs and again before it restarts.
+		 * installs - the rebuild route's install leg, the one press the directive left
+		 * waiting.
 		 */
 		updateService.fleetDrainBudgetMs = drainBudgetMs;
 		updateService.fleetDrainPollMs = drainPollMs;
@@ -9521,10 +10089,17 @@ test("an update that lands installs first and restarts the app's own daemon afte
 		assert.deepEqual(backendErrors(run.sent), []);
 		const completed = backendCompletion(run.sent);
 		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		/*
+		 * …AND THE COMPLETION NOW CARRIES THE FLEET COUNT (2026-09-29): this fixture's
+		 * world has no live pre-swap runtimes, so the reading is a MEASURED zero - the
+		 * arm that draws no second line - rather than the null an unreadable fleet
+		 * would produce.
+		 */
 		assert.deepEqual(completed.payload, {
 			installVersion: "0.56.0",
 			runningVersion: "0.56.0",
 			restarted: true,
+			sessionsOnOldBuild: 0,
 		});
 	} finally {
 		run.dispose();
@@ -10079,6 +10654,21 @@ test("the skip-list the retries are measured against is the shipped one", async 
 			[1000, 3000],
 			"two retries, so three attempts at one feed fetch",
 		);
+		/*
+		 * The two NEW bounds, for the same reason: every case that drives them
+		 * narrows them to milliseconds, so this is the only place the shipped
+		 * numbers are pinned - 30s for one feed attempt, 90s of a stalled download.
+		 */
+		assert.equal(
+			updateService.appFeedDeadlineMs,
+			30_000,
+			"a feed attempt may run 30s before the deadline abandons it",
+		);
+		assert.equal(
+			updateService.downloadStallTimeoutMs,
+			90_000,
+			"a download may make no progress for 90s before its token is cancelled",
+		);
 	} finally {
 		if (interval) clearInterval(interval);
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
@@ -10086,6 +10676,95 @@ test("the skip-list the retries are measured against is the shipped one", async 
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * THE TWO REGISTRY READS END A DEAD PEER WITHIN THEIR OWN BOUND (agent review
+ * minor-1, remediation round 1).
+ *
+ * WHY THIS IS DRIVEN RATHER THAN READ. Both reads fetch hard-coded hosts
+ * (`pypi.org`, `registry.npmjs.org`), so no loopback seam exists for them and
+ * every other case hands their RESULTS in (see the substituted list above).
+ * This case claims `node:https` for its own bundle and drives the shipped
+ * methods themselves against a request that records what the code asked for
+ * and stalls on demand: the socket timeout has to be ON THE CALL (absent on
+ * the base, where both reads were bare `https.get(url, cb)`), the timeout has
+ * to destroy the request, and the destruction's error has to resolve the read
+ * to null rather than hang - which is the npm sibling's whole fix, mirrored
+ * from the PyPI read the reviewer named.
+ */
+test("the PyPI and npm registry reads are bounded by their own socket timeouts", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-registry-read-"));
+	const userData = join(home, "userData");
+	const fixtureDir = join(home, "service");
+	mkdirSync(userData, { recursive: true });
+	mkdirSync(fixtureDir, { recursive: true });
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule({
+		httpsStub: true,
+	});
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		const calls = [];
+		globalThis.__loTestHttps = { calls };
+
+		for (const [name, read] of [
+			["the PyPI read", "getLatestPypiVersion"],
+			["the npm read", "getLatestNpmVersion"],
+		]) {
+			const before = calls.length;
+			const pending = updateService[read]();
+			const call = calls[before];
+			assert.equal(
+				call.url.startsWith("https://"),
+				true,
+				`${name} asks a real host`,
+			);
+			assert.equal(
+				call.options?.timeout,
+				10_000,
+				`${name} carries the shipped socket timeout`,
+			);
+			assert.equal(
+				typeof call.handlers.timeout,
+				"function",
+				`${name} wires the timeout to a handler`,
+			);
+			call.handlers.timeout();
+			assert.equal(
+				call.destroyed,
+				true,
+				`${name} destroys the stalled request`,
+			);
+			assert.equal(
+				await pending,
+				null,
+				`${name} resolves null once its bound fires`,
+			);
+		}
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: same teardown rule as above.
+		delete globalThis.__loTestHttps;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(fixtureDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
 	}
 });
 
@@ -10402,6 +11081,26 @@ test("an update failure says what happened, and keeps the machine's words subord
 				.sentence,
 			/could not be downloaded/i,
 		);
+		/*
+		 * AND THE REMAINDER IS THE MACHINE LINE FOR A LABEL WHOSE TEXT CARRIES NO
+		 * MARK AT ALL (design D1, remediation round 1). The download watchdog's
+		 * cancel rejects with builder-util-runtime's `CancellationError`
+		 * ("cancelled") - five words of label-prefixed text with no machine mark,
+		 * which is exactly what the authored-sentence test used to accept, so the
+		 * raw string rendered at reading weight and the stage's sentence never
+		 * appeared. The label is the app's own; only the remainder goes to the
+		 * detail line, and the stage sentence is the sentence.
+		 */
+		const cancelled = copy.updateErrorCopy(
+			"Error downloading update: cancelled",
+		);
+		assert.match(cancelled.sentence, /could not be downloaded/i);
+		assert.equal(
+			cancelled.detail,
+			"cancelled",
+			"the watchdog's word stays subordinate, not at reading weight",
+		);
+		assert.equal(cancelled.action, null);
 		/*
 		 * ONE SENTENCE PER STAGE (design round 3, D-17; review R3-1). All three labels
 		 * are live producers, and one sentence for the family told a reader whose
@@ -10722,6 +11421,124 @@ test("a failure the user asked for is still reported during a check", async () =
 });
 
 /**
+ * The download's own stall, bounded the same way: the watchdog cancels through
+ * the token `downloadUpdate` was given, the handler's ordinary catch reports the
+ * cancel, and the legacy filter must not turn it into "no updates available" -
+ * the user asked for this download, so its failure is theirs to see.
+ *
+ * The download stub registers on the token it is handed, which is what makes
+ * the case discriminate: without the watchdog nothing ever cancels; with the
+ * watchdog the stub's promise rejects the way the real updater's does under a
+ * `CancellationError`.
+ */
+test(
+	"a stalled download is cancelled through the updater's token, and the cancel is reported",
+	{ timeout: 15_000 },
+	async () => {
+		let cancelled = false;
+		let seenToken = null;
+		const { sent, rejected, service } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "download-update" },
+			downloadStallTimeoutMs: 40,
+			download: (cancellationToken) => {
+				seenToken = cancellationToken;
+				return new Promise((_, reject) => {
+					cancellationToken.onCancelRequested(() => {
+						cancelled = true;
+						reject(new Error("cancelled"));
+					});
+				});
+			},
+		});
+
+		assert.equal(
+			typeof seenToken?.onCancelRequested,
+			"function",
+			"the updater must be handed a real CancellationToken",
+		);
+		assert.equal(
+			cancelled,
+			true,
+			"the stall watchdog cancelled through the token the updater was given",
+		);
+		assert.ok(
+			rejected instanceof Error,
+			"the cancel is the download's failure; it must not resolve as success",
+		);
+		assert.equal(rejected.message, "cancelled");
+		assert.equal(
+			service.shouldFilterUpdateError(rejected),
+			false,
+			"a cancel must not be filtered: that branch answers 'no updates available'",
+		);
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"the rejection is the report; no event may double it",
+		);
+		assert.equal(
+			service.downloadStallWatchdog,
+			null,
+			"the watchdog is disarmed when the attempt settles",
+		);
+	},
+);
+
+/**
+ * Progress is the reset: a download that keeps reporting chunks must not be
+ * cancelled however long it runs, and the same handler that forwards progress
+ * to the renderer is what keeps the watchdog alive. The stub observes its own
+ * token, so a watchdog that ignored progress would cancel it here.
+ */
+test(
+	"download progress resets the stall watchdog",
+	{ timeout: 15_000 },
+	async () => {
+		let cancelled = false;
+		const { verdict, rejected, sent, service } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "download-update" },
+			downloadStallTimeoutMs: 50,
+			download: async (cancellationToken) => {
+				cancellationToken.onCancelRequested(() => {
+					cancelled = true;
+				});
+				for (let step = 1; step <= 3; step += 1) {
+					await new Promise((resolve) => setTimeout(resolve, 30));
+					globalThis.__loAutoUpdater.emit("download-progress", {
+						percent: step * 25,
+					});
+				}
+				return ["/synthetic/update.zip"];
+			},
+		});
+
+		assert.equal(
+			cancelled,
+			false,
+			"a download that keeps reporting progress is not cancelled",
+		);
+		assert.equal(rejected, null);
+		assert.deepEqual(verdict, ["/synthetic/update.zip"]);
+		const progress = sent.filter(
+			({ channel }) => channel === "update-progress",
+		);
+		assert.equal(progress.length, 3, "each chunk's event reached the renderer");
+		assert.equal(service.downloadedArtifactPath, "/synthetic/update.zip");
+		assert.equal(
+			service.downloadStallWatchdog,
+			null,
+			"the watchdog is disarmed with the attempt",
+		);
+	},
+);
+
+/**
  * An `error` event with NO check in flight - a failure from the updater's own
  * internals - still reports, and it reports the machine's words stripped of the
  * nested `Error: ` prefix rather than as the log wrote them.
@@ -10946,6 +11763,371 @@ test("two overlapping checks share one attempt sequence", async () => {
 		"two concurrent checks made ONE fetch between them, not one each",
 	);
 });
+
+/**
+ * THE OPERATOR'S BUG, one case: a feed fetch that never settles must not hold
+ * the check. The deadline abandons the attempt, the ladder retries it as the
+ * transient it is classified as, and an app-initiated check then answers the
+ * way every other failed check does - silently, with a result that claims
+ * nothing.
+ *
+ * This drives the IPC boundary the renderer's mount check crosses, because
+ * that is the shape the operator watched: `null` is what "this check did not
+ * produce a result" means there (the same shape the updater itself uses).
+ *
+ * The `timeout` is load-bearing rather than decoration: with no deadline this
+ * case never resolves at all - nothing else in the ladder has a clock - so a
+ * regression is a red test rather than a hung suite.
+ */
+test(
+	"a feed that never answers is abandoned at the deadline, and a silent check stays silent",
+	{ timeout: 15_000 },
+	async () => {
+		let attempts = 0;
+		const { verdict, sent, probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				attempts += 1;
+				return new Promise(() => {});
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "check-for-updates" },
+			deadlineMs: 25,
+			probe: async (updateService) => ({
+				deadline: updateService.appFeedDeadlineMs,
+				inFlight: updateService.appFeedFetchInFlight,
+				abandoned: updateService.appFeedAbandonedFetches.size,
+			}),
+		});
+
+		assert.equal(
+			attempts,
+			3,
+			"the ladder retried the abandoned attempt, as a transient gets retried",
+		);
+		assert.equal(
+			verdict,
+			null,
+			"an app-initiated check resolves null - the shape the verdict reads as unavailable",
+		);
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"a silent check reports nothing at all, on any channel",
+		);
+		assert.equal(probeResult.deadline, 25);
+		assert.equal(
+			probeResult.inFlight,
+			null,
+			"the latch is free once the sequence has settled",
+		);
+		assert.equal(
+			probeResult.abandoned,
+			3,
+			"each abandoned fetch is still pending and counted until it settles",
+		);
+	},
+);
+
+/**
+ * THE DEDUPE BRANCH PRODUCTION ACTUALLY RIDES (agent review minor-4, remediation
+ * round 1).
+ *
+ * electron-updater re-serves its in-flight check to every re-entrant call, so
+ * successive attempts inside one ladder - and a successor sequence arriving
+ * mid-flight - hand `fetchFeed()` the same promise, and
+ * `rememberAbandonedAppFeedFetch`'s `has()` early return is the branch that sees
+ * it. Every other case hands a fresh promise per call, so that branch had never
+ * run. The fixture's sticky mode models the updater here (see its own comment);
+ * the assertions are the sibling case's, tightened to the identity: one fetch
+ * between three attempts, counted once.
+ */
+test(
+	"one updater-deduped fetch abandoned by every attempt is counted once",
+	{ timeout: 15_000 },
+	async () => {
+		let attempts = 0;
+		globalThis.__loTestAppCheckSticky = true;
+		const { verdict, sent, probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				attempts += 1;
+				return new Promise(() => {});
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "check-for-updates" },
+			deadlineMs: 25,
+			probe: async (updateService) => ({
+				inFlight: updateService.appFeedFetchInFlight,
+				abandoned: updateService.appFeedAbandonedFetches.size,
+			}),
+		});
+
+		assert.equal(
+			attempts,
+			1,
+			"one fetch serves all three attempts, as the updater dedupes re-entrant calls",
+		);
+		assert.equal(verdict, null, "a silent check still resolves null");
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"a silent check reports nothing at all, on any channel",
+		);
+		assert.equal(probeResult.inFlight, null, "the latch is free");
+		assert.equal(
+			probeResult.abandoned,
+			1,
+			"one fetch, abandoned by every attempt, is counted once - the has() early return",
+		);
+	},
+);
+
+/**
+ * The click's half of the same feed: the check the user asked for must be
+ * ANSWERED with the deadline's failure, not left hanging and not filtered into
+ * "no updates available". That filter is this repository's documented defect
+ * class - a check that could not find out is not a check that found nothing
+ * newer - and it is why the deadline's spelling has to thread both needles:
+ * transient to the retry ladder, invisible to the legacy filter.
+ */
+test(
+	"a check the user asked for gets the deadline's failure, not a filtered 'up to date'",
+	{ timeout: 15_000 },
+	async () => {
+		const copyReader = await loadPureModule(
+			"src/renderer/src/shared/utils/update-error-copy",
+			"deadline-copy-reader",
+		);
+		const transportReader = await loadPureModule(
+			"src/shared/transport-failure",
+			"deadline-transport-reader",
+		);
+		try {
+			let attempts = 0;
+			const { sent, rejected, service } = await loAggregateCheck({
+				appCheck: () => {
+					attempts += 1;
+					return new Promise(() => {});
+				},
+				serverVersion: "0.54.44",
+				publishedVersion: "0.54.44",
+				// The app channel alone: what the failure alert's own retry invokes.
+				ipc: { handler: "check-for-updates", options: { manual: true } },
+				deadlineMs: 25,
+			});
+
+			assert.equal(attempts, 3);
+			assert.ok(
+				rejected instanceof Error,
+				"the click is answered with a failure, not a hung invoke",
+			);
+			assert.match(
+				rejected.message,
+				/^net::ERR_TIMED_OUT\b/,
+				"the code the machine's own stack gives for this state",
+			);
+			assert.equal(
+				transportReader.module.transientTransportCode(rejected.message),
+				"net::ERR_TIMED_OUT",
+				"the retry ladder must read it as the transient it is",
+			);
+			assert.equal(
+				service.shouldFilterUpdateError(rejected),
+				false,
+				"and the legacy filter must NOT: that branch answers 'no updates available'",
+			);
+			assert.deepEqual(
+				sent.map(({ channel }) => channel),
+				[],
+				"one owner: the rejection IS the report, so no event doubles it",
+			);
+			// What the person reads, from the shipped copy rather than a copy of it.
+			const shown = copyReader.module.updateErrorCopy(rejected.message);
+			assert.match(shown.sentence, /could not reach the update server/i);
+			assert.equal(shown.detail, "net::ERR_TIMED_OUT");
+			assert.equal(
+				shown.action,
+				"check",
+				"and the retry it names has an owner",
+			);
+		} finally {
+			rmSync(copyReader.dir, { recursive: true, force: true });
+			rmSync(transportReader.dir, { recursive: true, force: true });
+		}
+	},
+);
+
+/**
+ * The latch edge the deadline introduces, in the shape that would corrupt it
+ * without a guard: an attempt that expires FREES the latch, so a check that
+ * arrives afterwards starts its own sequence instead of attending the stalled
+ * one - and that is only safe while the stalled sequence's own settle cannot
+ * unpin the successor.
+ *
+ * Concretely: the second check below takes the latch while the first is still
+ * running its last attempt. The first then settles - which without the epoch
+ * guard clears the latch the second is using, and a third check would start
+ * mid-flight, with each sequence's settle clearing the other's latch. The
+ * discriminating assertion is the latch's IDENTITY after the stale settle.
+ *
+ * The abandoned fetch from the first sequence also fails LATE here in both of
+ * its shapes: its rejection (absorbed - the race settled long ago, so nothing
+ * may resolve from it) and the `error` event the updater emits beside it
+ * (attributed to the abandoned fetch, so a check that already answered is not
+ * re-reported). The last emission, after every fetch has settled, is the
+ * control: the attribution lasts exactly as long as the abandoned fetch does.
+ */
+test(
+	"an expired sequence settling late cannot unpin or re-report a successor check",
+	{ timeout: 15_000 },
+	async () => {
+		const deferred = [];
+		let fetches = 0;
+		const stall = () => {
+			let rejectLate;
+			const promise = new Promise((_, reject) => {
+				rejectLate = reject;
+			});
+			deferred.push({ promise, rejectLate });
+			return promise;
+		};
+		const errorsIn = (sent) =>
+			sent.filter(({ channel }) => channel === "update-error").length;
+		const { probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				fetches += 1;
+				/*
+				 * Nine stalled fetches: the main drive's sequence, then the probe's
+				 * two, at three attempts each. The tenth answers normally - the next
+				 * check, which is the one that must still work afterwards.
+				 */
+				return fetches <= 9 ? stall() : loAppCurrent();
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			silentAppCheck: true,
+			deadlineMs: 100,
+			retryDelaysMs: [30, 30],
+			probe: async (updateService, sent) => {
+				const errorsBefore = errorsIn(sent);
+				const first = updateService.checkForUpdates(true);
+				/*
+				 * Into the first sequence's LAST attempt window: its settle lands ~20ms
+				 * after the second check below takes the latch, inside the second's
+				 * first attempt window - the only window in which a stale clear could
+				 * unpin it.
+				 */
+				await new Promise((resolve) => setTimeout(resolve, 340));
+				const second = updateService.checkForUpdates(true);
+				const secondLatch = updateService.appFeedFetchInFlight;
+				/*
+				 * The abandoned fetch's late failure: its own `error` event first,
+				 * exactly as the updater emits it, then the rejection. deferred[3] is
+				 * the first sequence's first attempt - abandoned 240ms ago.
+				 */
+				deferred[3].rejectLate(new Error("net::ERR_CONNECTION_RESET"));
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const latchAfterAbandon = updateService.appFeedFetchInFlight;
+
+				const firstStatus = await first;
+				const latchAfterStaleSettle = updateService.appFeedFetchInFlight;
+				const secondStatus = await second;
+				const latchAfterSecond = updateService.appFeedFetchInFlight;
+
+				/*
+				 * No check in flight now, and eight abandoned fetches still pending:
+				 * an error event in THIS window must stay attributed.
+				 */
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const errorsWhileAbandoned = errorsIn(sent);
+
+				const thirdStatus = await updateService.checkForUpdates(true);
+
+				/*
+				 * Every abandoned fetch settles; the attribution window is over with
+				 * them, so the next stray error is fresh news again - the pre-existing
+				 * contract for an error outside any check.
+				 */
+				for (const item of deferred) {
+					item.rejectLate(new Error("net::ERR_CONNECTION_RESET"));
+				}
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const errorsAfterSettle = errorsIn(sent);
+
+				return {
+					errorsBefore,
+					errorsWhileAbandoned,
+					errorsAfterSettle,
+					firstStatus,
+					secondStatus,
+					thirdStatus,
+					secondLatch,
+					latchAfterAbandon,
+					latchAfterStaleSettle,
+					latchAfterSecond,
+					abandonedAtEnd: updateService.appFeedAbandonedFetches.size,
+				};
+			},
+		});
+
+		assert.equal(
+			fetches,
+			10,
+			"three sequences at three attempts, then the check that works",
+		);
+		assert.equal(probeResult.firstStatus, "unavailable");
+		assert.equal(probeResult.secondStatus, "unavailable");
+		assert.equal(probeResult.thirdStatus, "current");
+		assert.ok(
+			probeResult.secondLatch,
+			"the successor took the latch while the first was still running",
+		);
+		assert.equal(
+			probeResult.latchAfterAbandon,
+			probeResult.secondLatch,
+			"a late failure from an abandoned fetch leaves the successor's latch alone",
+		);
+		assert.equal(
+			probeResult.latchAfterStaleSettle,
+			probeResult.secondLatch,
+			"the stale sequence's settle must not unpin the successor (the epoch guard)",
+		);
+		assert.equal(
+			probeResult.latchAfterSecond,
+			null,
+			"the successor's own settle frees the latch",
+		);
+		assert.equal(
+			probeResult.errorsWhileAbandoned,
+			probeResult.errorsBefore,
+			"a late error from an abandoned fetch is attributed, not reported as news",
+		);
+		assert.equal(
+			probeResult.errorsAfterSettle,
+			probeResult.errorsBefore + 1,
+			"once every abandoned fetch has settled, a stray error reports again",
+		);
+		assert.equal(
+			probeResult.abandonedAtEnd,
+			0,
+			"every abandoned fetch left the set when it settled",
+		);
+	},
+);
 
 /**
  * The wake half of the root cause: a resume arms ONE check a moment later, so
@@ -13307,24 +14489,16 @@ const driveAppOwnedUpdate = async ({
 	 */
 	externalBackend = false,
 	/*
-	 * THE FLEET THE GATE SEES, on the arm where the app is the only thing that can
-	 * wait for the move to be safe. `workState` is the app's own busy reading
-	 * (`servingWorkState`), and a LIST is consumed one entry per read - which is how
-	 * "busy, then idle" drives a drain that had to wait. `fleet` is the roster the
-	 * refusal names and the re-engage compares, taken before the move; `fleetAfter`
-	 * is the roster read AFTER it, and its default is `fleet` (nothing moved).
+	 * THE FLEET THE GATE SEES, historically the arm where the app was the only thing
+	 * that could wait for the move to be safe. `workState` is the app's own busy
+	 * reading (`servingWorkState`) - which since the 2026-09-29 directive this route's
+	 * press does NOT read at all; a case asserts exactly that - and `fleet` is the
+	 * roster the re-engage compares, taken before the move; `fleetAfter` is the roster
+	 * read AFTER it, and its default is `fleet` (nothing moved).
 	 */
 	workState = "idle",
 	fleet = [],
 	fleetAfter = null,
-	/*
-	 * The drain's own bounds, in milliseconds. The shipped ones are ten minutes and
-	 * five seconds (`fleet-drain.ts`), which no case should pay, so the fixture
-	 * drives them at the smallest values that still exercise a WAIT rather than a
-	 * single read.
-	 */
-	drainBudgetMs = 5,
-	drainPollMs = 1,
 	/*
 	 * HOW LONG THE PRE-SWAP FLEET MUST HOLD STILL before the re-engage puts back
 	 * what left (`fleetRetireSettleMs`). The shipped value is the harness's own
@@ -13344,9 +14518,10 @@ const driveAppOwnedUpdate = async ({
 	engageHoldMs = 2_000,
 	/*
 	 * The roster as it reads BETWEEN THE PUBLISH AND THE RESTART, when a case needs the
-	 * publish's own retirement wave to be visible before the drain (review round 2,
-	 * R2-M3). Null is the default: nothing retires while the app waits, so the pre-restart
-	 * read is the only before-side and the older cases are unchanged.
+	 * publish's own retirement wave to be visible before the restart (review round 2,
+	 * R2-M3; the drain this window used to span was removed on 2026-09-29). Null is the
+	 * default: nothing retires while the app waits, so the pre-restart read is the only
+	 * before-side and the older cases are unchanged.
 	 */
 	fleetAfterPublish = null,
 	/*
@@ -13355,16 +14530,6 @@ const driveAppOwnedUpdate = async ({
 	 * R2-M1).
 	 */
 	refuseStreams = false,
-	/*
-	 * A LEDGER THAT ALREADY CARRIES AN EARLIER LEG'S WAIT, and the press that owns it. A
-	 * rebuild press drains twice under ONE budget (round 1, m2), so the second leg starts
-	 * with `spentMs > 0` and its own `outcome.waitedMs` near zero - which is the shape the
-	 * refusal's number has to survive (review round 2, R2-m1 = design D9). Driving the
-	 * rebuild route itself needs a checkout on PATH; this is its ledger, which is the
-	 * only part of it the refusal reads.
-	 */
-	presetDrainSpentMs = 0,
-	holdTakenElsewhere = false,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -13414,10 +14579,12 @@ const driveAppOwnedUpdate = async ({
 		/*
 		 * THE PRESS'S HOLD, recorded rather than dropped (review round 1, m1).
 		 * `updateBackend` raises `isAutoUpdating` for the WHOLE press now - it is what
-		 * the periodic drift check reads as its `update-in-flight` hold - and it used
-		 * to be raised around `backend.restart()` alone, which left a ten-minute drain
-		 * with no hold at all. `holdAtFleetRead` is that flag as it stood at each read
-		 * the gate takes, which is the fact the case is about.
+		 * the periodic drift check reads as its `update-in-flight` hold - and the
+		 * cases assert it is raised once at the top and cleared once, at the end.
+		 * `holdAtFleetRead` is that flag as it stood at each read the busy signal
+		 * answers: with the restart-leg drains removed (2026-09-29) a press on this
+		 * route does not read it at all, and the busy-proceeds case asserts exactly
+		 * that.
 		 */
 		autoUpdating: [],
 		holdAtFleetRead: [],
@@ -13527,14 +14694,15 @@ const driveAppOwnedUpdate = async ({
 				autoUpdating = value;
 				calls.autoUpdating.push(value);
 			},
-			checkIsAutoUpdating: () =>
-				holdTakenElsewhere === true ? true : autoUpdating,
+			checkIsAutoUpdating: () => autoUpdating,
 			/*
 			 * The app's existing busy reading, and the ROSTER beside it - the two the fleet
-			 * gate waits on (`drainFleetForUpdate`). A `workState` list is the machine that
-			 * was busy when the press arrived and idle a poll later; absent defaults keep
-			 * every older case in this file exactly where it was, because an idle first read
-			 * is the drain that costs one round trip and changes nothing.
+			 * gate waits on (`drainFleetForUpdate`, which since the 2026-09-29 directive
+			 * guards the rebuild route's install leg only). `holdAtFleetRead` still records
+			 * every read of THIS one, so a case can pin that the restart legs do not
+			 * consult it at all; a case that supplies a `workState` list still drives a
+			 * wait on the route that reads it. Absent defaults keep every older case in
+			 * this file exactly where it was.
 			 */
 			servingWorkState: async () => {
 				calls.holdAtFleetRead.push(autoUpdating);
@@ -13669,8 +14837,6 @@ const driveAppOwnedUpdate = async ({
 	};
 	try {
 		updateService.backendUrl = "http://127.0.0.1:9";
-		updateService.fleetDrainBudgetMs = drainBudgetMs;
-		updateService.fleetDrainPollMs = drainPollMs;
 		/*
 		 * The retire wait's own window, on the cases that reach the re-engage: the
 		 * shipped 30 s stride is the harness's real convergence and no case should pay
@@ -13756,12 +14922,13 @@ const driveAppOwnedUpdate = async ({
 		daemon = await startFakeDesktopDaemon({ refuseStreams });
 		relay = new service.DesktopStreamRelay(daemon.url, "fixture-token");
 		/*
-		 * THE LEDGER, SET BEFORE THE PRESS TAKES IT. `updateBackend` zeroes
-		 * `fleetDrainSpentMs` only when IT takes the update-in-flight flag, so a press whose
-		 * flag is already held carries the earlier leg's spend into its own drain - which is
-		 * how the rebuild route reaches a restart leg with ~0 left of the budget.
+		 * THE LEDGER IS NOT STOOD UP HERE ANY MORE. This fixture used to preset
+		 * `fleetDrainSpentMs` so a case could carry an earlier leg's spend into the
+		 * restart-leg drain; the operator's directive removed those drains (2026-09-29),
+		 * so the only press that reaches the gate is the rebuild route's install leg -
+		 * which takes the ledger from its own zero, and is driven in the global fixture
+		 * below.
 		 */
-		updateService.fleetDrainSpentMs = presetDrainSpentMs;
 		const result = await updateService.updateBackend(target);
 		return { result, sent, calls, order, updateService, daemon, dispose };
 	} catch (error) {
@@ -13812,6 +14979,11 @@ test("an app-owned press publishes first and only then moves the daemon", async 
 		);
 		const completed = completions(driven.sent);
 		assert.equal(completed.length, 1);
+		/*
+		 * …WITH THE FLEET COUNT BESIDE THE READINGS (2026-09-29): this fixture's world
+		 * holds no live pre-swap runtime, so the count is a MEASURED zero - the arm
+		 * that draws no second line.
+		 */
 		assert.deepEqual(
 			{
 				...completed[0].payload,
@@ -13820,6 +14992,7 @@ test("an app-owned press publishes first and only then moves the daemon", async 
 				installVersion: "0.56.12",
 				runningVersion: "0.56.12",
 				restarted: true,
+				sessionsOnOldBuild: 0,
 			},
 			"a restart that came back on the new build is the success payload, unchanged",
 		);
@@ -14231,15 +15404,24 @@ test("the app-owned offer states the restart and its cost, not the filler twice"
 		);
 		assert.match(
 			plan.remedy,
-			/publishes the new build beside the one the server is using, waits for the turns already running on this machine to finish/,
+			/publishes the new build beside the one the server is using and then moves the server onto it/,
 			plan.remedy,
 		);
 		/*
-		 * AND IT MAY NOT PROMISE A DROPPED TURN any more: this arm's whole press now
-		 * drains the fleet first, so the sentence states that nothing in flight is
-		 * cut off rather than admitting what it destroys.
+		 * AND IT MAY NOT PROMISE A DROPPED TURN, and no longer prices a wait: the
+		 * operator's directive (2026-09-29) removed the fleet wait from the restart
+		 * legs, so the sentence names the sequence, the absence of dropped work, and
+		 * the idle-switch that replaces the wait. Both halves are asserted, because
+		 * the old sentence's shape could otherwise sneak back through a copy edit
+		 * that kept the first clause.
 		 */
+		assert.match(
+			plan.remedy,
+			/Sessions that are still working move onto the new build when they next stop or go idle/,
+			plan.remedy,
+		);
 		assert.doesNotMatch(plan.remedy, /turn that is in flight is dropped/);
+		assert.doesNotMatch(plan.remedy, /waits for the turns already running/);
 		assert.equal(plan.canManageUpdate, true);
 	} finally {
 		if (interval) clearInterval(interval);
@@ -15228,26 +16410,38 @@ test("a start-up that observes an install arrived retires the record, and a fail
  * ---------------------------------------------------------------- the fleet gate
  *
  * THE RULE THESE CASES EXIST FOR, in the operator's words: "nothing should kill
- * runtimes en masse, ever". A restart of the server serving this app is
- * `stop(true)` - SIGTERM, ten seconds, SIGKILL - and the daemon's own `retire.py`
- * declines that exit for exactly this reason. So an update press now drains the
- * fleet first (`drainFleetForUpdate` -> `backend/fleet-drain.ts`), refuses rather
- * than cutting off a turn on a timer, and puts back what a move displaced.
+ * runtimes en masse, ever". The one route that can still cut a turn is the
+ * checkout REBUILD's install leg, which rewrites a tree a live runtime is
+ * reading - and that leg still drains the fleet first (`drainFleetForUpdate` ->
+ * `backend/fleet-drain.ts`) and refuses rather than cutting off a turn on a
+ * timer. THE RESTART LEGS STOPPED WAITING (2026-09-29, the operator's directive):
+ * a daemon bounce cuts no turns - session runtimes are detached and converge onto
+ * the new build at their own next idle - so what the cases below pin is the new
+ * contract: a press on a BUSY fleet proceeds without ever consulting
+ * `servingWorkState`, the restart and the re-engage still happen, and the
+ * completion carries the count of sessions still on the old build.
  *
  * The busy signal is the app's EXISTING one - the roster's `live_state`, read by
- * `servingWorkState`, which the version-drift gate already asks for - so the
+ * `servingWorkState`, which the version-drift gate already asks for - and the
  * fixtures below answer the two readers the manager already has
  * (`servingWorkState`, `servingSessionFleet`) rather than a new notion of busy.
  */
 
-test("a press that cannot drain does not restart the server, and says why", async () => {
+test("a press on a busy fleet proceeds, and the turns are never consulted", async () => {
+	/*
+	 * THE OPERATOR'S OWN CASE (2026-09-29). The press used to wait for the fleet and
+	 * refuse on a busy machine - the operator's log: "Refusing to restart: the fleet
+	 * did not drain in 602562ms (busy, 21 mid-turn ...)" - and the directive removed
+	 * the restart-leg drains: a daemon bounce cuts no turns, so a busy fleet is not a
+	 * reason to hold an update back, and `servingWorkState` is not read AT ALL
+	 * between the press and its completion.
+	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
 		servingAfterRestart: "0.56.12",
 		/*
 		 * The machine the operator's own report describes: somebody else's turn is
-		 * running when the press arrives, and a listed name, so the refusal can name
-		 * it rather than saying "something is busy".
+		 * running when the press arrives, and it stays running for the whole press.
 		 */
 		workState: "busy",
 		fleet: [
@@ -15257,6 +16451,82 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 				kind: "daemon",
 				live_state: "busy",
 			},
+		],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			true,
+			"a busy fleet is no longer a reason to refuse the press",
+		);
+		assert.equal(
+			driven.calls.restarts,
+			1,
+			"the restart the reader asked for happens",
+		);
+		assert.deepEqual(
+			phases(driven.sent),
+			["installing", "restarting"],
+			JSON.stringify(phases(driven.sent)),
+		);
+		assert.deepEqual(
+			updateErrors(driven.sent),
+			[],
+			"no refusal path exists on this route any more",
+		);
+		assert.deepEqual(
+			driven.calls.holdAtFleetRead,
+			[],
+			"the press never consults the busy reading on this route",
+		);
+		/*
+		 * THE HOLD STILL COVERS THE WHOLE PRESS (review round 1, m1): the flag is what
+		 * the periodic drift check reads as its `update-in-flight` hold, so it is
+		 * raised once at the top and cleared once at the end even though no wait runs
+		 * under it on this route.
+		 */
+		assert.deepEqual(
+			driven.calls.autoUpdating,
+			[true, false],
+			"raised once at the top of the press and cleared once, at the end",
+		);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1, JSON.stringify(completed));
+		assert.equal(completed[0].payload.restarted, true);
+		/*
+		 * AND THE COUNT RIDES THE COMPLETION (2026-09-29): a1 was live through the
+		 * whole re-engage window and is still on the old build, so the notice's second
+		 * line has a session to name.
+		 */
+		assert.equal(completed[0].payload.sessionsOnOldBuild, 1);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the completion counts the sessions still on the old build", async () => {
+	/*
+	 * THE OPERATOR'S MESSAGE, AS A READING (design §2d, 2026-09-29): "we can just
+	 * communicate in the popup that N sessions are still running old versions but
+	 * will get the updates when they next stop or idle". N is `stillResident` at
+	 * the re-engage window's end, and this case leaves TWO pre-swap runtimes live
+	 * for the whole window, so the count is 2 - not the displaced set's zero, and
+	 * not an unmeasured null.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "bbbbbbbbbbb2",
+				name: "Idle chat",
+				kind: "tui",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
 			{
 				id: "bbbbbbbbbbb2",
 				name: "Idle chat",
@@ -15266,86 +16536,53 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 		],
 	});
 	try {
+		assert.equal(driven.result, true);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(completed[0].payload.restarted, true);
 		assert.equal(
-			driven.result,
-			false,
-			"an update that cannot drain is REFUSED, not forced",
-		);
-		assert.equal(
-			driven.calls.restarts,
-			0,
-			"nothing may restart the daemon while a turn is in flight",
-		);
-		/*
-		 * The phase is announced as a wait: a press that sits still for minutes
-		 * behind an "installing" that has not started is the silence this panel's
-		 * copy exists to remove.
-		 */
-		assert.ok(
-			phases(driven.sent).includes("draining"),
-			JSON.stringify(phases(driven.sent)),
-		);
-		const refused = updateErrors(driven.sent);
-		assert.equal(refused.length, 1, JSON.stringify(refused));
-		assert.match(refused[0].payload.message, /still running a turn/);
-		assert.match(refused[0].payload.message, /Nightly enrichment/);
-		/*
-		 * The published environment IS on disk by then, and the sentence says so:
-		 * telling the reader an update did not happen when one did is the mirror of
-		 * the promise this change removes.
-		 */
-		assert.match(refused[0].payload.message, /install itself has landed/);
-		/*
-		 * AND THE HEADING'S FACT TRAVELS WITH IT (design round 2, D6). The panel cannot
-		 * infer this from the sentence: two of the three refusal sites happen after the
-		 * install landed, and a heading of "The update didn't start" over the sentence
-		 * above is the frame contradicting itself in one paragraph. The field is also what
-		 * keeps the OTHER clause out of this arm's sentence - they are alternatives, not
-		 * additions.
-		 */
-		assert.equal(refused[0].payload.refusal.installLanded, true);
-		assert.doesNotMatch(refused[0].payload.message, /Nothing was installed/);
-		assert.deepEqual(
-			completions(driven.sent),
-			[],
-			"a refused press reports the refusal, not a completion",
+			completed[0].payload.sessionsOnOldBuild,
+			2,
+			JSON.stringify(completed[0].payload),
 		);
 	} finally {
 		driven.dispose();
 	}
 });
 
-test("a press that had to wait installs anyway once the fleet drains", async () => {
+test("an unreadable fleet is reported as unmeasured, never as a zero", async () => {
+	/*
+	 * THE DEGRADED ARM (design §2a/§2d). The roster cannot be read at all, so
+	 * there is no snapshot to diff and no re-engage to run - the press still
+	 * proceeds (the restart never needed the fleet), and the completion says
+	 * `null`, which the renderer paints as the numberless sentence rather than
+	 * inventing a count of zero.
+	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
 		servingAfterRestart: "0.56.12",
-		/*
-		 * Busy on the FIRST read and idle on the next: the drain is a wait rather
-		 * than a refusal here, which is the whole difference between this case and
-		 * the one above.
-		 */
-		workState: ["busy", "idle"],
-		fleet: [
-			{
-				id: "aaaaaaaaaaa1",
-				name: "Nightly enrichment",
-				kind: "daemon",
-				live_state: "busy",
-			},
-		],
+		fleet: null,
+		fleetAfter: null,
 	});
 	try {
-		assert.equal(driven.result, true);
-		assert.equal(driven.calls.restarts, 1);
-		assert.deepEqual(
-			phases(driven.sent),
-			["installing", "draining", "restarting"],
-			JSON.stringify(phases(driven.sent)),
+		assert.equal(
+			driven.result,
+			true,
+			`a fleet the app cannot read no longer refuses the press: ${JSON.stringify(updateErrors(driven.sent).map((e) => e.payload.message))}`,
 		);
-		assert.deepEqual(updateErrors(driven.sent), []);
 		const completed = completions(driven.sent);
 		assert.equal(completed.length, 1);
 		assert.equal(completed[0].payload.restarted, true);
+		assert.equal(
+			completed[0].payload.sessionsOnOldBuild,
+			null,
+			"an unreadable fleet is not measured, and null is how that travels",
+		);
+		assert.deepEqual(
+			driven.calls.desktop.filter((request) => request.op === "sessions.watch"),
+			[],
+			"with no snapshot there is nothing to re-engage, so no lease is sent",
+		);
 	} finally {
 		driven.dispose();
 	}
@@ -15396,6 +16633,14 @@ test("the move re-engages the sessions it displaced, and only those", async () =
 		assert.match(watch.subscriptionId, /^[a-f0-9]{32}$/);
 		assert.equal(watch.visible, true);
 		assert.equal(watch.canNotify, false);
+		/*
+		 * AND THE COUNT THE COMPLETION CARRIES IS THIS WINDOW'S READING: a1 stayed live
+		 * through the whole re-engage wait, so it is the one session still on the old
+		 * build; c3's runtime came back during the window, so it is not.
+		 */
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(completed[0].payload.sessionsOnOldBuild, 1);
 	} finally {
 		driven.dispose();
 	}
@@ -15503,26 +16748,29 @@ test("a session whose stream cannot be opened is reported, never leased on an in
 	}
 });
 
-test("a retirement during the drain, before the restart, is still re-engaged", async () => {
+test("a retirement between the publish and the restart is still re-engaged", async () => {
 	/*
 	 * THE HOLE THE ROUND-1 M2 FIX LEFT ON THIS ROUTE (review round 2, R2-M3). The
-	 * before-side was the pre-restart read alone, and the publish happens minutes earlier
-	 * in the same method: an idle runtime retires on the build skew while the app waits
-	 * out a ten-minute drain, so it is gone before the only read that could name it and
-	 * is never put back. The reading is now taken between the publish and the drain and
-	 * unioned with the pre-restart one - which is the reading the rebuild route already
-	 * kept for its own install leg.
+	 * before-side was the pre-restart read alone, and the publish happens earlier in
+	 * the same method: an idle runtime retires on the build skew the moment the
+	 * publish lands, so it is gone before the only read that could name it and is
+	 * never put back. The reading is now taken between the publish and the restart
+	 * and unioned with the pre-restart one - which is the reading the rebuild route
+	 * already kept for its own install leg. When the fix landed, the window between
+	 * the two reads was a drain of up to ten minutes; the 2026-09-29 directive
+	 * removed that drain, but the publish itself is still what starts the retirement
+	 * wave, so the publish-side read is still the one that can name it.
 	 *
 	 * THE FIXTURE IS A READ SCHEDULE, NOT A MONOTONE MACHINE, and what this case is
 	 * worth is WHICH READ NAMES b2 (review round 3, R3-M1). The publish-side snapshot is
-	 * the only one of the press's reads that carries b2: the drain's own read and the
-	 * pre-restart read both answer without it, so the before-side can hold b2 ONLY
-	 * through the union, and reverting the union leaves nothing displaced at all. It used
-	 * to hand b2 to the drain's read and to every read after the publish-side one, so the
-	 * pre-restart snapshot named b2 by itself and this case passed with the union
-	 * reverted - an evidence defect, not a behavioural one: the union is correct and was
-	 * unguarded. The shape is `fleet: []` with `fleetAfterPublish: [b2]` for exactly that
-	 * reason, and the union is what makes the difference.
+	 * the only one of the press's reads that carries b2: the pre-restart read answers
+	 * without it, so the before-side can hold b2 ONLY through the union, and reverting
+	 * the union leaves nothing displaced at all. An earlier shape handed b2 to every
+	 * read after the publish-side one, so the pre-restart snapshot named b2 by itself
+	 * and this case passed with the union reverted - an evidence defect, not a
+	 * behavioural one: the union is correct and was unguarded. The shape is `fleet: []`
+	 * with `fleetAfterPublish: [b2]` for exactly that reason, and the union is what
+	 * makes the difference.
 	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
@@ -15550,85 +16798,6 @@ test("a retirement during the drain, before the restart, is still re-engaged", a
 			driven.daemon.acceptedLeases.map((lease) => lease.sessionId),
 			["bbbbbbbbbbb2"],
 			"a session the publish retired is displaced by this press and must come back",
-		);
-	} finally {
-		driven.dispose();
-	}
-});
-
-test("the refusal reports the press's wait, not the leg's", async () => {
-	/*
-	 * D9 = R2-m1: ONE JOURNEY, ONE NUMBER. The reading the reader watches (`draining`'s
-	 * `waitedMs`) is the press's total - `spentMs + elapsedMs` - and the refusal used to
-	 * report the SECOND leg's own elapsed, which is ~0 once the first leg has spent the
-	 * budget. The ledger below carries a spent leg with the flag already held, which is
-	 * the state the rebuild route reaches; the refusal's number must be the press's,
-	 * which is at least everything the panel already showed.
-	 */
-	const driven = await driveAppOwnedUpdate({
-		servingBeforeRestart: "0.56.8",
-		servingAfterRestart: "0.56.12",
-		workState: "busy",
-		fleet: [
-			{
-				id: "aaaaaaaaaaa1",
-				name: "Nightly enrichment",
-				kind: "daemon",
-				live_state: "busy",
-			},
-		],
-		presetDrainSpentMs: 240_000,
-		holdTakenElsewhere: true,
-	});
-	try {
-		assert.equal(driven.result, false);
-		const refused = updateErrors(driven.sent);
-		assert.equal(refused.length, 1, JSON.stringify(refused));
-		assert.ok(
-			refused[0].payload.refusal.waitedMs >= 240_000,
-			`the refusal must carry the press's total, not this leg's share: ${refused[0].payload.refusal.waitedMs}`,
-		);
-	} finally {
-		driven.dispose();
-	}
-});
-
-test("the press holds the update-in-flight flag for the whole drain, not only the restart", async () => {
-	const driven = await driveAppOwnedUpdate({
-		servingBeforeRestart: "0.56.8",
-		servingAfterRestart: "0.56.12",
-		/*
-		 * A fleet that is busy when the press arrives and idle a poll later, so the
-		 * press really WAITS inside the gate - which is the window this case is about.
-		 */
-		workState: ["busy", "idle"],
-		fleet: [
-			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
-		],
-		fleetAfter: [],
-	});
-	try {
-		assert.equal(driven.result, true);
-		/*
-		 * THE HOLD COVERS EVERY FLEET READ OF THE PRESS (review round 1, m1). The flag
-		 * is what the periodic drift check reads as its `update-in-flight` hold, and it
-		 * used to be raised around `backend.restart()` alone - so a drain of up to ten
-		 * minutes ran with no hold, and the moment it cleared the drift check could find
-		 * the pair stale and the fleet idle and bounce the daemon ITSELF: under the
-		 * press, with no snapshot of its own and no re-engage.
-		 */
-		assert.ok(
-			driven.calls.holdAtFleetRead.length >= 2,
-			`the press reads the fleet more than once: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
-		);
-		assert.ok(
-			driven.calls.holdAtFleetRead.every((held) => held === true),
-			`every fleet read happens under the hold: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
-		);
-		assert.deepEqual(
-			driven.calls.autoUpdating,
-			[true, false],
-			"raised once at the top of the press and cleared once, at the end",
 		);
 	} finally {
 		driven.dispose();
@@ -15738,12 +16907,14 @@ test("a generation install announces and leaves the app-owned daemon on its buil
 	}
 });
 
-test("a press with nothing left to install still moves the daemon, through the drain", async () => {
+test("a press with nothing left to install still moves the daemon, and never waits", async () => {
 	/*
 	 * The skew panel's own control: the install is already current, so there is
 	 * nothing to install and the restart IS the work the reader asked for. It is the
-	 * one press on the generation layout that moves the server, and it goes through
-	 * the same drain as every other restart.
+	 * one press on the generation layout that moves the server, and since the
+	 * 2026-09-29 directive it does not wait on the fleet to do it - the fixture gives
+	 * a busy reading all the same (a shape the case should never consult), and the
+	 * phase list must not contain a wait.
 	 */
 	const install = syntheticGenerationInstall("g0002");
 	const run = await driveGlobalUpdate({
@@ -15752,19 +16923,172 @@ test("a press with nothing left to install still moves the daemon, through the d
 		target: "0.56.0",
 		daemonReports: "0.56.0",
 		servingPrefix: install.prefix,
-		workState: ["busy", "idle"],
+		workState: "busy",
 	});
 	try {
 		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
 		assert.equal(run.calls.restarts, 1);
 		assert.ok(
-			backendPhases(run.sent).includes("draining"),
+			!backendPhases(run.sent).includes("draining"),
 			JSON.stringify(backendPhases(run.sent)),
 		);
 		const completed = backendCompletion(run.sent);
 		assert.equal(completed.payload.restarted, true);
+		/*
+		 * AND A MEASURED ZERO IS A COUNT, NOT A NULL (design §2d): no session had a
+		 * live runtime before the move, so nothing is still on the old build and the
+		 * notice draws its plain success rather than the numberless sentence.
+		 */
+		assert.equal(completed.payload.sessionsOnOldBuild, 0);
 	} finally {
 		run.dispose();
+	}
+});
+
+/**
+ * THE REBUILD ROUTE'S DRAIN IS THE ONE THAT STAYS, AND THIS DRIVES IT FOR REAL
+ * (2026-09-29, the variant-B scope decision).
+ *
+ * The operator's directive removed the fleet drain from the two RESTART legs; the
+ * rebuild route's INSTALL leg keeps it, because that leg rewrites a tree a live
+ * runtime is reading. This case is the counter-example to the busy-proceeds
+ * journeys above: the same busy machine, on the one route that still waits - the
+ * press refuses, nothing is installed, and the refusal is the install-less arm.
+ *
+ * WHAT MAKES THE ROUTE REACHABLE. It needs a serving install that classifies as a
+ * uv-tool SOURCE BUILD (a real console script, a `uv-receipt.toml`, a hex-ref
+ * `.lop-source` and a dist-info) AND a `lop-update` this machine resolves - which
+ * CI does not have. The case therefore writes BOTH: the install under its own temp
+ * root, and a shim `lop-update` FIRST on `process.env.PATH` for the duration of
+ * the press (`resolveCommandPath` searches the PATH entries before its own install
+ * locations, so the shim wins everywhere deterministically). PATH is restored in
+ * `finally` so no sibling case sees the shim, and the runner is stubbed, so the
+ * shim is never executed.
+ */
+test("the rebuild route still waits for the fleet, and refuses on a busy one", async () => {
+	const servingRoot = mkdtempSync(join(tmpdir(), "lo-rebuild-serving-"));
+	mkdirSync(join(servingRoot, "bin"), { recursive: true });
+	const servingScript = join(servingRoot, "bin", "local-operator");
+	writeFileSync(
+		servingScript,
+		'#!/bin/sh\nexec python -m local_operator "$@"\n',
+		{ mode: 0o755 },
+	);
+	writeFileSync(
+		join(servingRoot, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+	);
+	/*
+	 * The marker's real shape: `<sha> <ref>`, and the ref has to be the hex token
+	 * `isSourceBuildRef` accepts (7-40 hex characters) - `pypi` or a bare version
+	 * would classify the install as a release and take the entry point instead.
+	 */
+	writeFileSync(
+		join(servingRoot, ".lop-source"),
+		"2a0b4730f1e2d3c4b5a69788796a5b4c3d2e1f00 main\n",
+	);
+	const distInfo = join(
+		servingRoot,
+		"lib",
+		"python3.12",
+		"site-packages",
+		"local_operator-0.55.10.dist-info",
+	);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		"Metadata-Version: 2.1\nName: local-operator\nVersion: 0.55.10\n",
+	);
+
+	const toolDir = mkdtempSync(join(tmpdir(), "lo-rebuild-tool-"));
+	writeFileSync(join(toolDir, "lop-update"), "#!/bin/sh\nexit 0\n", {
+		mode: 0o755,
+	});
+	const originalPath = process.env.PATH;
+	process.env.PATH = `${toolDir}:${originalPath ?? ""}`;
+	try {
+		const run = await driveGlobalUpdate({
+			servingPrefix: servingRoot,
+			/*
+			 * The machine the operator's log describes, on the one route that still
+			 * waits: a session mid-turn, so the drain can only refuse.
+			 */
+			workState: "busy",
+			fleet: [
+				{
+					id: "aaaaaaaaaaa1",
+					name: "Nightly enrichment",
+					kind: "daemon",
+					live_state: "busy",
+				},
+			],
+		});
+		try {
+			assert.equal(await run.updateService.updateBackend("0.56.0"), false);
+			/*
+			 * THE WAIT IS ANNOUNCED (the draining phase), and NOTHING RAN: the refusal
+			 * comes before the installer is reached, which is what "Nothing was
+			 * installed" means.
+			 */
+			assert.ok(
+				backendPhases(run.sent).includes("draining"),
+				JSON.stringify(backendPhases(run.sent)),
+			);
+			assert.deepEqual(
+				run.calls.installers,
+				[],
+				"a refused rebuild runs nothing",
+			);
+			const refused = backendErrors(run.sent);
+			assert.equal(refused.length, 1, JSON.stringify(refused));
+			assert.match(refused[0].payload.message, /Nothing was installed/);
+			assert.match(refused[0].payload.message, /still running a turn/);
+			assert.match(refused[0].payload.message, /Nightly enrichment/);
+			/*
+			 * AND THE INSTALL-LESS ARM IS THE ONLY ONE (design round 2, D6; simplified
+			 * 2026-09-29): the after-the-install clause went with the restart-leg drains,
+			 * so neither the sentence nor the payload may still carry it.
+			 */
+			assert.doesNotMatch(
+				refused[0].payload.message,
+				/install itself has landed/,
+			);
+			assert.equal(refused[0].payload.refusal.installLanded, undefined);
+			/* The by-hand route is the plan's own command for this route. */
+			assert.equal(refused[0].payload.refusal.command, "lop-update");
+			/*
+			 * AND THE PRESS'S HOLD SPANS THE DRAIN (review round 1, n1): the flag the
+			 * periodic drift check reads as `update-in-flight` is up for every fleet
+			 * read of the wait - this leg's wait can run to ten minutes, and the drift
+			 * check bouncing the daemon mid-wait is exactly what the hold exists to
+			 * prevent - and it is cleared once, at the end. The deleted app-owned case
+			 * covered this window on the route that no longer drains; this is the same
+			 * pin on the route that still does.
+			 */
+			assert.ok(
+				run.calls.holdAtFleetRead.length >= 2,
+				`the drain reads the fleet more than once: ${JSON.stringify(run.calls.holdAtFleetRead)}`,
+			);
+			assert.ok(
+				run.calls.holdAtFleetRead.every((held) => held === true),
+				`every fleet read happens under the hold: ${JSON.stringify(run.calls.holdAtFleetRead)}`,
+			);
+			assert.deepEqual(
+				run.calls.autoUpdating,
+				[true, false],
+				"raised once at the top of the press and cleared once, at the end",
+			);
+			assert.equal(backendCompletion(run.sent), undefined);
+		} finally {
+			run.dispose();
+		}
+	} finally {
+		if (originalPath === undefined) {
+			// biome-ignore lint/performance/noDelete: restoring the environment exactly - an ABSENT PATH is not an empty-string PATH, and `= undefined` would leave a synthesized one behind for every case after this one.
+			delete process.env.PATH;
+		} else process.env.PATH = originalPath;
+		rmSync(servingRoot, { recursive: true, force: true });
+		rmSync(toolDir, { recursive: true, force: true });
 	}
 });
 
