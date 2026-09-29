@@ -48,6 +48,19 @@ export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * A mesh device or network id (`d_`/`n_` + hex today), on its way into a URL path.
+ *
+ * MIRRORS `MESH_ID_PATTERN` in `local_operator/server/models/desktop_mesh.py`, and
+ * the property being mirrored is PATH-SAFETY rather than the exact shape: every
+ * one of these reaches a route path, so what must be impossible is `/`, `.` and
+ * `%` — which is also why the endpoint builder still `encodeURIComponent`s it. The
+ * pattern is deliberately wider than today's ids so the transport may evolve its
+ * ids without a renderer release, and narrow enough that a client bug (an empty
+ * string, a sentence, a path fragment) is refused HERE, by name, rather than by
+ * the daemon's generic 422.
+ */
+const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
@@ -99,6 +112,45 @@ export const SESSION_SEARCH_MAX_CHARS = 256;
  * one.
  */
 export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
+
+/**
+ * How many checkpoint ids one `sessions.checkpoints.warm` call may carry.
+ *
+ * The op is a user-gesture-driven spend (one model call per turn named), so
+ * the wire bound and the client's own slice read the same number: the hover
+ * arm sends one id, the rail-open arm sends none and lets the backend select
+ * its own default, and a caller that ever sends a set is clamped here rather
+ * than refused by the schema for a count it computed itself.
+ */
+export const CHECKPOINT_WARM_MAX_IDS = 16;
+
+/**
+ * Longest in-thread find query the `sessions.find` op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and it matches `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user
+ * typed": the overlay's input carries `maxLength` at this number, so a paste
+ * cannot exceed it either, and the schema refuses an over-long query BY NAME
+ * rather than projecting it into every doc comparison of the session's index.
+ */
+export const THREAD_FIND_MAX_CHARS = 256;
+
+/**
+ * How many in-thread hits one find may return.
+ *
+ * The backend's own route default (`limit: int = Query(default=100, ge=1,
+ * le=200)`), sent explicitly by the client so the request the app makes does
+ * not depend on a route default that could move: find is a navigation surface,
+ * not an export, and the panel renders a screenful at a time.
+ */
+export const THREAD_FIND_DEFAULT_LIMIT = 100;
+
+/**
+ * The route's ceiling, mirrored so a client cannot compute its own refusal:
+ * `sessions.find` refuses `limit > 200` here rather than letting the backend's
+ * generic "invalid fields" 422 answer a request this app built itself.
+ */
+export const THREAD_FIND_MAX_LIMIT = 200;
 
 /**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
@@ -726,7 +778,113 @@ const catalogueScopeName = z.string().min(1).max(64);
  */
 const catalogueCursor = z.string().min(1).max(256);
 
-export const desktopRequestSchema = z.discriminatedUnion("op", [
+/*
+ * The Projects contract's own vocabulary, mirroring the backend store's grammar
+ * rather than re-inventing one. The name rule is the store's exactly
+ * (`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`): a project name is both a `/project`
+ * argument and an `@project:<name>` token, so a space or a slash in one would
+ * break the surfaces that read it. It is checked HERE so a typo is a named
+ * refusal in the dialog rather than the backend's generic 422; every STATE
+ * question (a name already taken, the 64-link cap, a row written by a newer
+ * build) stays the backend's right to answer.
+ */
+const PROJECT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const projectName = z.string().regex(PROJECT_NAME_PATTERN, {
+	message: "Letters, digits, dot, underscore and dash; no spaces.",
+});
+/** The four statuses the store declares, in the board's fixed order. */
+/**
+ * The status vocabulary, in the store's lifecycle order.
+ *
+ * `planning` -> `active` -> `qa` -> `validation` -> `done` is the pipeline the
+ * operator named (RFC/research, implementation, review cycles, deployed and
+ * observed, fully validated); `paused` and `archived` are the two SIDE states
+ * that leave the pipeline without ending it. The order is the menu order —
+ * `STATUS_OPTIONS` and the board columns both read it — so it is written once
+ * here and mirrored there rather than spelled per list.
+ *
+ * A SERVER NEWER THAN THIS BUILD may send a word not in this list; every
+ * reader treats the vocabulary as open (`projectStatusMeta` keeps the raw
+ * word), and this enum only bounds what THIS UI may SEND.
+ */
+const PROJECT_STATUSES = [
+	"planning",
+	"active",
+	"qa",
+	"validation",
+	"done",
+	"paused",
+	"archived",
+] as const;
+const projectStatus = z.enum(PROJECT_STATUSES);
+/**
+ * A planning date: ISO `YYYY-MM-DD`, or `""` to CLEAR the field.
+ *
+ * The empty string is a member on purpose — it is the PATCH tri-state's third
+ * value (omit leaves the field alone, `""` clears it, a date sets it), and a
+ * schema that refused it would make "make this date TBD again" inexpressible
+ * from the edit dialog.
+ */
+const projectDate = z
+	.string()
+	.regex(/^$|^\d{4}-\d{2}-\d{2}$/, "Dates are YYYY-MM-DD, or empty to clear.");
+/** The tag grammar, bounded as the store bounds it (≤8 tags, ≤24 chars each). */
+const projectTags = z.array(z.string().min(1).max(24)).max(8);
+/** A route key: an exact id, or a name the route resolves case-insensitively. */
+const projectKey = z.string().min(1).max(64);
+
+/**
+ * Longest progress snippet the store accepts, in CHARACTERS.
+ *
+ * Deliberately NOT reachable from this app's own edit dialog — progress is
+ * tool-authored (the design's §2.3) — but the bound is declared beside the ops
+ * that carry it so a hand-built request cannot project a document where a
+ * snippet is expected.
+ */
+export const PROJECT_PROGRESS_MAX_CHARS = 1000;
+
+/**
+ * Longest description the store accepts, in CHARACTERS.
+ *
+ * The edit dialog's own counter reads this constant, so the refusal and the
+ * promise above the field cannot state two different limits.
+ */
+export const PROJECT_DESCRIPTION_MAX_CHARS = 240;
+
+/** Longest milestone name the store accepts, in CHARACTERS. */
+export const PROJECT_MILESTONE_NAME_MAX_CHARS = 80;
+
+/** The store's own tag grammar (`projects.py`'s `_TAG_RE`), hoisted so the rule
+ *  below and anything else that has to name it agree on one object. */
+export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
+
+/**
+ * The name check as a DIALOG needs it: a sentence for the user, or null.
+ *
+ * The same pattern the schema validates with, exposed so an inline refusal
+ * under the field and the 422 the wire would answer cannot say two different
+ * things about one name. The empty case gets its own sentence rather than the
+ * grammar's, because "give it a name" is a different mistake from "this name
+ * has a space in it".
+ */
+export function projectNameRule(name: string): string | null {
+	if (!name) return "Give the project a name.";
+	if (!PROJECT_NAME_PATTERN.test(name))
+		return "Names start with a letter or digit and may use letters, digits, dot, underscore or dash.";
+	return null;
+}
+
+/**
+ * The tag grammar, one tag at a time (`PROJECT_TAG_PATTERN` — the store's own
+ * `_TAG_RE`), as a dialog sentence or null.
+ */
+export function projectTagRule(tag: string): string | null {
+	if (!PROJECT_TAG_PATTERN.test(tag))
+		return "Tags are 1-24 characters of lowercase letters, digits, underscore or dash.";
+	return null;
+}
+
+const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
@@ -787,6 +945,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * archived state, and an unarchive control on a row found by search.
 			 */
 			include_archived: z.boolean().optional(),
+			/*
+			 * Whether conversations OTHER devices hold belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, the same compatibility promise `include_archived`
+			 * makes and for the same reason: the app's own sidebar fetch has always
+			 * meant "this device's catalogue", and a client that predates the mesh must
+			 * keep reading exactly that. The Mesh tab is the ONE surface that asks for
+			 * the federated list, because "which conversation is on which device" is its
+			 * question and it cannot answer it from `session_count` alone.
+			 *
+			 * THE COST IS NOT ZERO, which is why only that surface asks: the backend's
+			 * peer projection dials each peer's relay under a 12 s fan-out budget and is
+			 * TTL-cached at 20 s (`network/relay.py`, `session/peer_rows.py`), while a
+			 * machine in no network short-circuits to no call at all — so the flag costs
+			 * a paired device one cached fan-out per cadence, and an unpaired one
+			 * nothing. The sidebar's two-second poll must never carry it.
+			 */
+			include_peers: z.boolean().optional(),
 			/*
 			 * The four parameters that make the catalogue PAGEABLE, and the switch that
 			 * makes the daemon count it.
@@ -1004,6 +1180,70 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The transcript checkpoint rail's manifest (design D1/D9): every material
+	 * checkpoint of one LOCAL conversation — the reader's own messages and each
+	 * completed turn — with the seq-proportional ordinal the rail places a tick
+	 * by, and a completion's optional generated name.
+	 *
+	 * The answer is deliberately cheap and never blocks on a scan: a cold or
+	 * stale index answers `state: "building"` while a refresh runs in the
+	 * background (the backend measures 22 s for this machine's 272 MB journal),
+	 * so the rail's first paint is immediate and the hook polls while anything
+	 * it asked for is still pending. A remote/peer conversation answers
+	 * `state: "unsupported"` — a fact about where the bytes are, not a failure
+	 * — and the rail hides, the same degradation as an empty manifest.
+	 */
+	z
+		.object({ op: z.literal("sessions.checkpoints"), sessionId })
+		.strict(),
+	/*
+	 * Buy names for checkpoints (design D2/D9): idempotent, bounded, and never
+	 * blocking on the model call itself — the backend schedules one
+	 * `complete_once` per turn (15 s budget, single attempt, a 10-minute
+	 * cooldown after a failure) and answers accepted/pending immediately.
+	 *
+	 * `ids` is the hover gesture's arm (a bounded set of explicit checkpoint
+	 * ids); omitting it is the rail-open arm, where the backend selects the
+	 * most recent checkpoints missing names under its own default. Both fields
+	 * are optional, and an older backend that predates the op answers the same
+	 * 404/422 a missing route always does — the hook treats any failure as "no
+	 * rail here", never as a user-facing error.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.checkpoints.warm"),
+			sessionId,
+			ids: z.array(id).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+			limit: z.number().int().min(1).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+		})
+		.strict(),
+	/*
+	 * In-thread find (D9): messages of ONE conversation matching `q`, best
+	 * first, served from the per-session transcript index.
+	 *
+	 * A READ like `history` and `checkpoints` beside it. The answer's `state` is
+	 * the checkpoint manifest's own ladder: a cold or stale index answers
+	 * `building` inside the first-paint budget (with hits ranked from the
+	 * previous scan marked `partial`) while the background refresh runs, so the
+	 * overlay's first paint is immediate; `unsupported` is a peer conversation
+	 * whose journal is not on this device; `error` is a failed refresh inside
+	 * its cooldown. The overlay renders both tiers (`exact`/`soft`) and treats
+	 * `ranges` as snippet-relative — empty on a soft hit, which has no literal
+	 * occurrence of the query by construction.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.find"),
+			sessionId,
+			// `.min(1)`: an empty query is not a search. The overlay's client never
+			// sends one — it answers an empty query locally, without a request — so
+			// refusing it by name keeps the vocabulary closed rather than paying a
+			// round trip for an answer the box already knows.
+			q: z.string().min(1).max(THREAD_FIND_MAX_CHARS),
+			limit: z.number().int().min(1).max(THREAD_FIND_MAX_LIMIT).optional(),
+		})
+		.strict(),
+	/*
 	 * One child's durable transcript, for the run panel's reader
 	 * (`docs/run-sidebar.md` § 10.1, § 10.3).
 	 *
@@ -1034,6 +1274,18 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(8).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
+			/*
+			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
+			 * keeps this `optional`: `features.input_mode`. Absent means a legacy
+			 * body (and is what every older build sends), so an older harness's own
+			 * `.strict()` schema never sees the key at all.
+			 *
+			 * `inputPath` is RESERVED (§4.2a): the route cascade owns its
+			 * vocabulary and no caller sets it yet; it is accepted here - bounded -
+			 * so the first caller that does does not also need a contract change.
+			 */
+			inputMode: z.enum(["typed", "dictated", "mixed"]).optional(),
+			inputPath: z.string().max(1024).optional(),
 		})
 		.strict(),
 	z
@@ -1360,6 +1612,28 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.publish"),
 			agentId: id,
 			document: publicationDocument.optional(),
+			/*
+			 * The publication TARGET (§4.4/§4.7). Both travel together or neither does,
+			 * and the rule is a `superRefine` on the whole UNION (below) rather than a
+			 * `.refine` here — a refined member becomes a `ZodEffects`, which cannot be a
+			 * member of a discriminated union; measured, it does not compile.
+			 *
+			 * WHY THE COMMENT CHANGED (security review round 1, S-1). It used to say a
+			 * half-specified target was "refused there rather than silently published to
+			 * the public hub". The local server's route does refuse one, but
+			 * `desktopEndpoint` dropped an unpaired half before the request was composed,
+			 * so what reached the server was indistinguishable from a deliberate public
+			 * publication: the documented guarantee held at neither boundary, and it
+			 * failed OPEN on a privacy-relevant target. Measured at the previous head:
+			 * each half parsed on its own and `desktopEndpoint({visibility: "org"})`
+			 * composed a plain `/publish` with no query at all.
+			 *
+			 * Absent means the public hub, which is exactly what every caller did before
+			 * this field existed — so the rule is "one half is an error", not "absent is
+			 * an error".
+			 */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -1372,6 +1646,36 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// overwrite — and guessing here overwrites somebody's listing.
 			hubAgentId: id,
 			document: publicationDocument.optional(),
+			/** The publication target, on the same terms as `agent.publish` above. */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
+		})
+		.strict(),
+	/*
+	 * Pulling a published organization team into this machine's local registry
+	 * (§4.5/§8.4's "list + pull action").
+	 *
+	 * The id is the HUB document's id, not a local row's: the pull addresses what
+	 * was published, and the local copy gets its own fresh id (the local server's
+	 * `GET /v1/teams/pull/{team_id}` reconstructs it, renaming on a local id
+	 * clash through the registry's own convention). `tenantId` is OPTIONAL and is
+	 * the caller's statement of which organization owns the document, not part of
+	 * the address: §4.5's pull path is org-agnostic by id, the local server
+	 * verifies the claim and refuses a document owned by another tenant, and the
+	 * credential that reads it is the one the local server already holds.
+	 */
+	z
+		.object({
+			op: z.literal("team.pull"),
+			teamId: id,
+			/*
+			 * The caller's statement of which organization owns the document. The local
+			 * server verifies it and refuses a document owned by another tenant rather
+			 * than storing it under the wrong expectation, so sending it is a stronger
+			 * read where the caller knows the org — and omitting it is still legal
+			 * (§4.5's pull path is org-agnostic by id).
+			 */
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -1933,12 +2237,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"comments.update",
 						"comments.delete",
 						"account.agents",
+						/*
+						 * The organization operations (design §4.7). They are named here as well as
+						 * in `shared/api/radient/proxy.ts` because this schema is what validates the
+						 * request the renderer actually sends: an op in one list and not the other
+						 * is a request that never leaves the renderer. `team_id` is the published
+						 * team document an `org_team.get` pull names.
+						 */
+						"memberships.list",
+						"org_agents.list",
+						"org_team.get",
+						"org_teams.list",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
 					account_id: id.optional(),
 					agent_id: id.optional(),
 					comment_id: id.optional(),
+					team_id: id.optional(),
 					query: z
 						.record(z.union([z.string().max(1024), z.number().int()]))
 						.optional(),
@@ -1994,9 +2310,260 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			value: secret,
 		})
 		.strict(),
+	/*
+	 * THE MESH READS (`features.peers`).
+	 *
+	 * Both reach a peer only THROUGH this app's one backend: the renderer never dials
+	 * a peer, never learns an address to dial and holds no mesh credential, because a
+	 * UI that could would have to re-implement the relay's authorisation model in
+	 * JavaScript.
+	 *
+	 * THE MUTATING MESH OPS LANDED WITH THE SURFACES THAT USE THEM (slice 2: the drag
+	 * layer, the invite action, the member list), which is the rule this block stated
+	 * while they were still absent: a request schema entry with no caller is a
+	 * capability this app advertises but cannot exercise.
+	 *
+	 * `features.session_transfer` gates the TRANSFER and only it (`capabilities.py`):
+	 * a backend can host a network, mint invites and remove members without being able
+	 * to move a conversation, and the surfaces that gate on the wrong key draw a
+	 * control that 404s. The three ops below therefore sit behind different keys —
+	 * `networks.invite`/`networks.member.remove` behind `features.peers` (they are
+	 * routes the mesh itself introduced), `sessions.transfer` behind
+	 * `features.session_transfer`.
+	 *
+	 * WHAT TRAVELS, AND WHAT DOES NOT. `to` is the destination device id or the
+	 * literal `"local"` (a RECALL), because that is the route's own shape: one route,
+	 * two protocols, and the direction is decided by which of the two ends is asking
+	 * — see `guide://network`. `request_id` is minted by the CALLER and is what makes
+	 * a retry replay a recorded outcome instead of starting a second move for a
+	 * request that may still be running, so it is sent on every drop rather than kept
+	 * for a retry path this surface does not have.
+	 */
+	z
+		.object({ op: z.literal("peers.list") })
+		.strict(),
+	z.object({ op: z.literal("networks.list") }).strict(),
+	/*
+	 * Mint an invite. `role` is the joined device's own role in the network and
+	 * `device` BINDS the token to one device id, so a token intercepted on its way to
+	 * another machine cannot be redeemed by a third one. The token itself NEVER
+	 * crosses this API (the receipt carries a path, and it is written where the
+	 * renderer cannot read it) — which is why the answer is a receipt and not a
+	 * secret.
+	 */
+	z
+		.object({
+			op: z.literal("networks.invite"),
+			networkId: meshId,
+			role: z.enum(["read", "drive", "admin"]),
+			deviceId: meshId.optional(),
+		})
+		.strict(),
+	/*
+	 * Revoke a membership. `confirm` is the NETWORK'S NAME, typed by the user, and
+	 * the route compares it exactly: this is the one mesh act that changes other
+	 * devices' state (every peer is rekeyed and the removed device is locked out on
+	 * its next handshake), so the request must carry what the user was shown rather
+	 * than a bool a stray retry could also send.
+	 */
+	z
+		.object({
+			op: z.literal("networks.member.remove"),
+			networkId: meshId,
+			deviceId: meshId,
+			confirm: z.string().min(1).max(256),
+		})
+		.strict(),
+	/*
+	 * Ask a device to take a conversation, or ask THIS device to take one back.
+	 *
+	 * THE DIRECTION IS THE PROTOCOL'S, not a UI preference: there is no push verb, so
+	 * a drop on a peer is this device asking that peer to PULL (`to: <device_id>`),
+	 * and a drop on this device is a recall (`to: "local"`). `keep` is the reversible
+	 * half — it mints a new id at the destination and leaves the source running —
+	 * while a move deletes the source's copy once the handoff commits, which is why
+	 * `source_retired = (mode == "move")` on the receipt.
+	 *
+	 * `wait_s` is a CEILING ON WAITING INSIDE THE REQUEST, not a promise: the route
+	 * returns as soon as it has a definite outcome, and a `busy` source refuses
+	 * rather than being interrupted. The desktop's own deadline for this op is
+	 * derived from the route's published bound rather than from the 20 s control
+	 * budget (see `moveClientBoundMs`) — the defect this avoids is a client that gives
+	 * up first and reports its own timeout for a move the backend was about to answer.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.transfer"),
+			sessionId,
+			to: z.union([z.literal("local"), meshId]),
+			keep: z.boolean().optional(),
+			waitS: z.number().min(0).max(300).optional(),
+			requestId: requestId.optional(),
+		})
+		.strict(),
+	/*
+	 * The Projects surface (`/v1/desktop/projects*`), APPENDED to the union
+	 * rather than inserted beside the other catalogue ops: the backend serves
+	 * these routes from its own release, and an older daemon that has never
+	 * heard of the op is a backend this app must be able to gate against —
+	 * which it does through the `projects` capability key, not through this
+	 * schema (a request this client refuses to build is not a negotiation).
+	 *
+	 * One op per route; the wipe and the milestone routes are the two shapes
+	 * that do not fit the plain CRUD, and both exist because the backend
+	 * declared them separately (a milestone is add-or-update-by-name, and a
+	 * removal is a DELETE with the name in the path). `projects.update` carries
+	 * its editable fields as a NESTED `fields` object for the same reason the
+	 * profile ops do: the fields differ per surface, and a flat op would put
+	 * every future field at the top level of a union member.
+	 */
+	z
+		.object({ op: z.literal("projects.list") })
+		.strict(),
+	z.object({ op: z.literal("projects.get"), key: projectKey }).strict(),
+	z
+		.object({
+			op: z.literal("projects.create"),
+			name: projectName,
+			description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
+			status: projectStatus.optional(),
+			tags: projectTags.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.update"),
+			key: projectKey,
+			/*
+			 * Only the keys the caller includes travel; an omitted key leaves the
+			 * field alone, and `""` clears a date, the progress snippet or an
+			 * attribution (the route forwards `model_fields_set`, and this client
+			 * mirrors it). The three attribution/title steps are bounded at 80 —
+			 * the store's `ATTRIBUTION_MAX`/`TITLE_MAX` — so a client cannot build
+			 * a body the route would refuse for length alone.
+			 */
+			fields: z
+				.object({
+					name: projectName.optional(),
+					title: z.string().max(80).optional(),
+					owner: z.string().max(80).optional(),
+					team: z.string().max(80).optional(),
+					description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
+					status: projectStatus.optional(),
+					progress: z.string().max(PROJECT_PROGRESS_MAX_CHARS).optional(),
+					tags: projectTags.optional(),
+					start_date: projectDate.optional(),
+					target_date: projectDate.optional(),
+					completed_at: projectDate.optional(),
+					estimate: z.number().positive().max(1000).optional(),
+					estimate_unit: z.enum(["points", "days"]).optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.delete"),
+			key: projectKey,
+			confirmed_name: projectName,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.link"),
+			key: projectKey,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.unlink"),
+			key: projectKey,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.milestone"),
+			key: projectKey,
+			name: z.string().min(1).max(PROJECT_MILESTONE_NAME_MAX_CHARS),
+			/** `""` clears it; omitted leaves it alone. */
+			targetDate: projectDate.optional(),
+			/** `true` stamps today, `false` clears; omitted leaves it alone. */
+			completed: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.milestone.remove"),
+			key: projectKey,
+			name: z.string().min(1).max(PROJECT_MILESTONE_NAME_MAX_CHARS),
+		})
+		.strict(),
+	/*
+	 * AIDA'S CONTROL PLANE: one read and one control op on the same route
+	 * (`/v1/desktop/aida`), because the rail's row and the composer's `/aida`
+	 * need the SAME state and a second spelling of it would be a second answer
+	 * about her one long session (`design.md` § 4 freezes the route).
+	 *
+	 * The feature is gated by its OWN capability key (`features.aida`), never a
+	 * bump of `commands`: a renderer that does not read it keeps working against
+	 * this backend, and this renderer must not call the route while the key is
+	 * absent or 0 (§ 3.4's version skew).
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * an enum word and a receipt are not prose, so this costs the control budget.
+	 */
+	z
+		.object({ op: z.literal("aida.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("aida.control"),
+			/*
+			 * The route's own op vocabulary, held to it here: a word the backend does
+			 * not serve must fail at this boundary rather than travel as a 422 the
+			 * user reads as a defect of their press.
+			 */
+			action: z.enum(["open", "pause", "resume", "greet", "status"]),
+		})
+		.strict(),
 ]);
 
+/**
+ * The desktop request union, with the ONE rule that cannot live on a member.
+ *
+ * A publication target is two fields or none: `visibility: "org"` without a
+ * `tenantId` (or the reverse) is refused HERE, before any socket is opened
+ * (security review round 1, S-1). It is a `superRefine` on the union rather than
+ * a `.refine` on the two members because a refined member is a `ZodEffects` and
+ * `z.discriminatedUnion` accepts only `ZodObject` options — measured: the member
+ * form does not compile. `assertPairedPublicationTarget` enforces the same rule
+ * at the path composer, so a half pair cannot reach the wire by either route.
+ *
+ * The failure direction is the reason this is enforced twice: dropping the half
+ * silently published to the PUBLIC hub, which is the one outcome that must not
+ * be a default.
+ */
+export const desktopRequestSchema = desktopRequestUnion.superRefine(
+	(request, ctx) => {
+		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
+			return;
+		}
+		// The same presence test the composer's assert uses (S-2): one predicate for
+		// "is this half specified", so the two boundaries cannot disagree.
+		if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'A publication target needs both `visibility: "org"` and `tenantId`, or neither: one half would publish to the public hub.',
+			});
+		}
+	},
+);
+
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
+
 /**
  * The machine register for a desktop-control REFUSAL, and the one translator that
  * turns it into a sentence a user reads.
@@ -2375,6 +2942,165 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
+ * What a checkpoint MARKS: the reader's own message, or a finished turn.
+ */
+export type CheckpointKind = "user" | "completion";
+
+/**
+ * A settled turn's ending, when the journal can prove one.
+ *
+ * `open` is the live tail: no marker resolves it and no newer settled run
+ * followed it, so the rail draws an in-progress dot rather than staying
+ * silent about the turn the reader is sitting in.
+ */
+export type CheckpointOutcome = "complete" | "error" | "interrupted" | "open";
+
+/**
+ * How far a completion checkpoint's naming has got.
+ *
+ * `unavailable` is a FAILED call inside its cooldown (the marker is
+ * persisted), not a pending one: the card shows the fallback text with no
+ * "Generating…" line, because nothing is generating.
+ */
+export type CheckpointNamingState = "ready" | "pending" | "unavailable";
+
+export type CheckpointNaming = {
+	state: CheckpointNamingState;
+	/** The model's name, or `null` while pending/unavailable. */
+	name: string | null;
+	/** One sentence, or `null`; `""` is a ready name that carries no summary. */
+	summary: string | null;
+};
+
+/**
+ * One checkpoint of the `sessions.checkpoints` manifest (design D9).
+ *
+ * The manifest deliberately omits fields rather than nulling them, and this
+ * type keeps that: `outcome` is absent on checkpoints no attention marker
+ * resolved (markers only exist from partway through a session's life, so
+ * pre-mechanism turns have no outcome to show), and `naming` is present only
+ * on COMPLETION checkpoints, because a name is attached to a finished turn.
+ * A required field would force the renderer to invent a value the wire never
+ * claimed.
+ */
+export type Checkpoint = {
+	/** The journal entry id — the jump target and the warm's handle. */
+	id: string;
+	kind: CheckpointKind;
+	/** 1-based turn ordinal, assigned structurally by the backend. */
+	turn: number;
+	/**
+	 * Epoch SECONDS — the journal's own unit, not milliseconds. Converted once,
+	 * where a label is formatted (`checkpointClockLabel`), the same way the
+	 * transcript reducer converts a durable `entry.ts`.
+	 */
+	ts: number;
+	/** The journal ordinal the tick's position is proportional to. */
+	seq: number;
+	/** User text, or the turn's closing answer text (flattened, capped). */
+	text: string;
+	outcome?: CheckpointOutcome;
+	naming?: CheckpointNaming;
+};
+
+/**
+ * The index's own state, as the manifest reports it.
+ *
+ * `building` and `stale` both mean "a scan is in flight over a previous
+ * answer" — the rail renders whatever checkpoints arrived and pulses its top
+ * mark, rather than hiding. `unsupported` is a REMOTE conversation, whose
+ * journal is not on this machine; the backend answers it in place of an
+ * error because it is a fact about where the bytes are, and the rail hides —
+ * the same honest degradation as an empty manifest.
+ */
+export type CheckpointIndexState =
+	| "ready"
+	| "building"
+	| "stale"
+	| "error"
+	| "unsupported";
+
+/** The `sessions.checkpoints` 200 body (design D9). */
+export type CheckpointManifest = {
+	session_id: string;
+	index: {
+		state: CheckpointIndexState;
+		/** The cache file's mtime, epoch seconds; absent on a cold answer. */
+		built_at?: number;
+	};
+	checkpoints: Checkpoint[];
+};
+
+/**
+ * The `sessions.checkpoints.warm` 200 body (design D9): ids this call took
+ * ownership of, and the subset still waiting on a name. An id already named
+ * (same digest) or inside its failure cooldown is accepted but not pending —
+ * the rail's poll has nothing left to wait for on it.
+ */
+export type CheckpointWarmAnswer = {
+	accepted: string[];
+	pending: string[];
+};
+
+/**
+ * What one find hit matched (D3/D9): a casefolded literal substring of what was
+ * said (`exact`), or the bounded soft tier (`soft` — prefix, token-AND, or edit
+ * distance <= 2 on 4+ character tokens).
+ *
+ * The tiers are the backend's and are rendered differently rather than
+ * re-derived here: a client that guessed which hits were literal would differ
+ * from the index exactly where the index's ranking is subtlest.
+ */
+export type ThreadFindTier = "exact" | "soft";
+
+/**
+ * The find answer's lifecycle state (D9); see the op's own comment for what
+ * each one means and how the overlay degrades.
+ */
+export type ThreadFindState = "ready" | "building" | "error" | "unsupported";
+
+/**
+ * One message the query matched, with the snippet the results list renders.
+ *
+ * `ranges` are match offsets RELATIVE TO `snippet` (non-overlapping, oldest
+ * first, at most five), so the client marks `snippet[start:end]` without
+ * knowing the window offset into the message. They are always present — empty
+ * for a soft hit, which has no literal occurrence of the query. `role` is the
+ * wire vocabulary (`user`/`agent`); the backend translates the stored docs'
+ * `assistant` so both clients read the same word.
+ *
+ * `ts` is the journal's own epoch SECONDS, not milliseconds — the same unit
+ * every durable transcript entry carries; a caller that shows a clock converts
+ * once, where it formats (the rail's `checkpointClockLabel` is the precedent).
+ */
+export type ThreadFindHit = {
+	id: string;
+	role: "user" | "agent";
+	ts: number;
+	snippet: string;
+	ranges: [number, number][];
+	tier: ThreadFindTier;
+};
+
+/**
+ * The `sessions.find` 200 body (D9).
+ *
+ * `query` is echoed rather than assumed: the overlay debounces its input, so
+ * responses can arrive out of order and it must be able to tell which of its
+ * queries this answers. `partial` is true exactly when `hits` were ranked from
+ * an index that does not reflect the journal's current tail (`building`),
+ * never as a substitute for `truncated`, which reports the hit list itself
+ * being cut at `limit`.
+ */
+export type ThreadFindAnswer = {
+	query: string;
+	state: ThreadFindState;
+	partial: boolean;
+	hits: ThreadFindHit[];
+	truncated: boolean;
+};
+
+/**
  * How many bytes of serialized JSON body one desktop operation may carry.
  *
  * These live here, beside the schemas they bound, because the two were allowed
@@ -2541,14 +3267,114 @@ const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
  */
 const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
 
+/**
+ * Ops whose answer requires this device's RELAY to fan out to every peer.
+ *
+ * A THIRD LONG-BUDGET SHAPE, and it is not either of the two above: nothing here
+ * crosses the public network on this app's behalf, and nothing is a provider's
+ * quota read. What makes it long is a loopback listing that dials each member and
+ * waits for its answer, under budgets the BACKEND publishes rather than ones this
+ * file may choose: `LISTING_PROBE_BUDGET_S = 12.0` for the fan-out and
+ * `LISTING_CLIENT_TIMEOUT_S = 20.0` for the client above it
+ * (`local_operator/network/relay.py`).
+ *
+ * THE APP'S DEADLINE MUST SIT ABOVE THE BACKEND'S, which is the whole reason these
+ * are here: on the 20 s control budget this layer would give up FIRST and report a
+ * failure about a read that was still working, and the give-up sentence cannot name
+ * the cause (the same defect `sessions.transfer`'s envelope fixes on the write
+ * side). 90 s is comfortably above the 20 s the daemon itself waits, and a mesh
+ * whose peer answers neither is a state the tab reports rather than one the app
+ * waits out.
+ */
+const MESH_READ_OPS: ReadonlySet<string> = new Set([
+	"networks.list",
+	"peers.list",
+]);
+
 /** Every op on the long budget, whichever of the two shapes put it there. */
 const LONG_READ_OPS: ReadonlySet<string> = new Set([
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
+	...MESH_READ_OPS,
 ]);
 
-/** The deadline one op's request may run for. */
-export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
+/*
+ * THE TRANSFER'S BOUND IS THE ONE OP WHOSE DEADLINE DEPENDS ON ITS OWN REQUEST.
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE. `network/mobility.py` publishes
+ * `move_client_bound_s(wait_s, keep, to)` — "the deadline a CLIENT's own request
+ * must not be shorter than" — and every term below is one of its constants, named
+ * so a reader can diff this against that file. The published answers at the
+ * `wait_s=0` both routes default to are **145 s** for an offload, **415 s** for a
+ * `keep` copy and **415 s** for a recall; the terms are 90 s (the peer's slow-op
+ * budget), 30 s or 300 s (the relay's own held time for that shape), 10 s (the
+ * control socket's answer coming back) and 15 s (the client's margin over the
+ * route's answer).
+ *
+ * WHY THIS EXISTS AT ALL, and it is not symmetry: the desktop transport used to
+ * give up at `wait_s + 15` against a route that answers at `wait_s + 30`, so a
+ * user read "the move may have happened, check the other device" while the backend
+ * was about to answer "nothing was deleted". The timeout's vaguer sentence always
+ * won, because the client's own bound was shorter than the backend's. A recall is
+ * the harder half: it is bounded by a BUDGET rather than a promise (the copy is
+ * transcript-sized), so a client deadline that fires on one knows NOTHING about
+ * the outcome and must report it as unknown — never as a refusal, and never retry
+ * into a second move.
+ */
+const MOVE_OP_DEADLINE_S = 90;
+const MOVE_OFFLOAD_CONFIRM_S = 30;
+const MOVE_COPY_WAIT_S = 300;
+const MOVE_CONTROL_SLACK_S = 10;
+const MOVE_CLIENT_MARGIN_S = 15;
+
+/**
+ * The app's own margin over the route's published bound.
+ *
+ * The transport must outwait the route, so `moveClientBoundMs` is the FLOOR and
+ * this is what makes the app's deadline strictly above it rather than exactly on
+ * it — an answer landing on the boundary is the one case where a client that
+ * waited long enough still reports its own timeout.
+ */
+const MOVE_APP_MARGIN_MS = 10_000;
+
+/** One transfer request's shape, as the deadline needs it. */
+export type MoveShape = { to: string; keep?: boolean; waitS?: number };
+
+/**
+ * The route's own bound for one transfer shape, in the terms it publishes.
+ *
+ * `to: "local"` is the recall, and it is NOT the offload's term with a different
+ * direction: nothing is confirmed over the link, so what bounds it is the copy
+ * (300 s) rather than the 30 s settle window — the mistake `move_bound_s`'s own
+ * docstring was written to stop being published as "the formula for all of them".
+ */
+export function moveClientBoundMs(shape: MoveShape): number {
+	const recall = shape.to === "local";
+	const hold = recall || shape.keep ? MOVE_COPY_WAIT_S : MOVE_OFFLOAD_CONFIRM_S;
+	const waitS = Math.max(0, shape.waitS ?? 0);
+	return (
+		(MOVE_OP_DEADLINE_S + hold + MOVE_CONTROL_SLACK_S + MOVE_CLIENT_MARGIN_S) *
+			1000 +
+		waitS * 1000
+	);
+}
+
+/**
+ * The deadline one request may run for.
+ *
+ * Takes the OP for every ordinary case and the whole REQUEST where the shape
+ * decides the budget — today that is `sessions.transfer` alone, and it is the only
+ * op whose answer may legitimately take minutes. A caller with the request in hand
+ * should pass it; the string form is what a caller that only has an op uses (a
+ * story, a test, a panel sizing its own spinner).
+ */
+export function desktopRequestDeadlineMs(
+	request: DesktopRequest | DesktopRequest["op"],
+): number {
+	if (typeof request !== "string" && request.op === "sessions.transfer") {
+		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
+	}
+	const op = typeof request === "string" ? request : request.op;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -2578,9 +3404,11 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
  */
 export const DESKTOP_DEADLINE_MARGIN_MS = 5000;
 
-/** The renderer's own deadline for one op, derived from the transport's. */
-export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
-	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
+/** The renderer's own deadline for one request, derived from the transport's. */
+export function desktopRequestTimeoutMs(
+	request: DesktopRequest | DesktopRequest["op"],
+): number {
+	return desktopRequestDeadlineMs(request) + DESKTOP_DEADLINE_MARGIN_MS;
 }
 
 /**
@@ -2671,11 +3499,15 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"mcp.catalog",
 	"mcp.list",
 	"models.catalogue",
+	"networks.list",
+	"peers.list",
 	"profiles.get",
 	"profiles.list",
 	"providers.list",
 	"sessions.aside.get",
+	"sessions.checkpoints",
 	"sessions.failovers",
+	"sessions.find",
 	"sessions.get",
 	"sessions.history",
 	"sessions.list",
@@ -2701,6 +3533,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 const PANEL_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
+	"networks.list",
+	"peers.list",
 	"usage.get",
 	"sessions.report",
 	"info.get",
@@ -2747,6 +3581,23 @@ export function desktopRequestDeadlineDetail(
 ): { code: string; message: string } {
 	const seconds = Math.round(deadlineMs / 1000);
 	const code = DESKTOP_DEADLINE_EXCEEDED_CODE;
+	/*
+	 * A MOVE THAT RAN OUT OF TIME IS NOT A FAILED REQUEST, and this is the one op
+	 * where the difference decides what the user does next. The route returns as soon
+	 * as it has a definite outcome but may legitimately hold one for minutes (145 s
+	 * for an offload, 415 s for a copy), so a client-side deadline can fire while the
+	 * move is still progressing on the other device. `deadline_exceeded` is one of the
+	 * move's OWN unconfirmed codes (`MOVE_REFUSAL_CODES`, and the set the route
+	 * journals rather than replays), so the sentence says what that code means: the
+	 * request was sent, the outcome is unknown, re-read the session — and never send
+	 * a second move for it.
+	 */
+	if (op === "sessions.transfer") {
+		return {
+			code,
+			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
 	if (READ_ONLY_OPS.has(op)) {
 		return {
 			code,
@@ -3256,6 +4107,17 @@ export type BackendSetting = {
 	 * of a feature that is switched off renders disabled and says which switch.
 	 */
 	gated_by?: string | null;
+	/**
+	 * A FIFTH additive field, and the reason the four above are no longer "the
+	 * four": which SURFACE a `hotkey` row's value belongs to — `"app"` (a
+	 * binding inside the terminal UI) or `"desktop"` (a global shortcut this app
+	 * owns). Absent means `"app"`, which is exactly today's behaviour for every
+	 * hotkey row an older server serves, so a client that ignores the field
+	 * stays correct: the field's arrival changes nothing until a surface reads
+	 * it, and this one is read only to switch the capture rules of the quick-send
+	 * row (see `setting-control.tsx`).
+	 */
+	hotkey_scope?: "app" | "desktop" | null;
 };
 export type BackendSettings = {
 	sections: {
@@ -3314,6 +4176,42 @@ function wakeTiming(request: {
 	};
 }
 
+/**
+ * Refuse a publication target that names only one of its two fields.
+ *
+ * WHY THIS EXISTS BESIDE THE SCHEMA'S OWN `.refine` (security review round 1,
+ * S-1): the refinement is what a CALLER meets, and this is the same rule one
+ * boundary later, where the path is composed. Both are needed for the property
+ * the comments promised — "a half-specified target is refused rather than
+ * silently published to the public hub" — because the failure mode was that a
+ * half pair parsed and then composed a plain `/publish`: a PUBLIC publication
+ * with no error anywhere, on the one field where failing open is a disclosure.
+ *
+ * It throws rather than returning a refusal because this is a programming error
+ * (a cast hole, a dynamic object with `tenantId: undefined`), not a state a user
+ * can be in: the dialog builds the pair as one unit.
+ */
+function assertPairedPublicationTarget(request: {
+	visibility?: "org";
+	tenantId?: string;
+}): void {
+	/*
+	 * ONE PREDICATE WITH THE SCHEMA'S, AND A PRESENCE TEST RATHER THAN A DEFINED
+	 * TEST (security review round 2, S-2). `!== undefined` read `""` as "present"
+	 * while the composition below reads it as "absent" -- the assert passed and the
+	 * query was dropped, which is the same silent public publication S-1 closed for
+	 * the undefined half. `Boolean` makes the two halves agree on what "a tenant"
+	 * is, so an empty string throws like a missing one. `""` is unreachable from
+	 * the renderer (`id` is `min(1)`), which is why this is the second boundary's
+	 * promise rather than a live hole.
+	 */
+	if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
+		throw new Error(
+			'A publication target needs both `visibility: "org"` and `tenantId`, or neither: one half would publish to the public hub.',
+		);
+	}
+}
+
 export function desktopEndpoint(request: DesktopRequest): {
 	path: string;
 	method: string;
@@ -3322,6 +4220,56 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		/*
+		 * The mesh reads. Both are plain GETs with no parameters at all - the backend
+		 * reads THIS device's own relay, so there is nothing for the client to scope it
+		 * by, and a network NAME would be the wrong thing to send anyway (a device in
+		 * two networks asks once and gets both).
+		 */
+		case "peers.list":
+			return { path: "/v1/desktop/peers", method: "GET" };
+		case "networks.list":
+			return { path: "/v1/desktop/networks", method: "GET" };
+		/*
+		 * THE THREE MESH WRITES. Each path segment is `encodeURIComponent`ed even
+		 * though `meshId` already refuses `/`, `.` and `%`: the schema is this
+		 * client's check, and a redirect or a hand-built request must not be able to
+		 * turn a device id into a path fragment. `device: null` on an invite is the
+		 * route's own "unbound token" — an invite any device may redeem once.
+		 */
+		case "networks.invite":
+			return {
+				path: `/v1/desktop/networks/${encodeURIComponent(request.networkId)}/invite`,
+				method: "POST",
+				body: { role: request.role, device: request.deviceId ?? null },
+			};
+		case "networks.member.remove":
+			return {
+				path: `/v1/desktop/networks/${encodeURIComponent(request.networkId)}/members/${encodeURIComponent(request.deviceId)}`,
+				method: "DELETE",
+				// The NETWORK'S NAME, as typed: see the op's own comment for why the
+				// route takes a name rather than a bool.
+				body: { confirm: request.confirm },
+			};
+		case "sessions.transfer":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/transfer`,
+				method: "POST",
+				body: {
+					to: request.to,
+					// Sent explicitly rather than omitted-when-false: `keep` decides whether
+					// the SOURCE'S COPY IS DELETED, so the request says which move it is
+					// rather than leaving the route's default to answer for a drop a user
+					// made from a menu that offered the copy.
+					keep: request.keep ?? false,
+					wait_s: request.waitS ?? 0,
+					// Omitted while absent, and this one is load-bearing: the route
+					// journals an UNCONFIRMED move under this key so a retry replays the
+					// recorded outcome instead of moving twice, and a request with no key
+					// is a different (unjournalled) request on purpose.
+					...(request.requestId ? { request_id: request.requestId } : {}),
+				},
+			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
 		case "profiles.get":
@@ -3406,6 +4354,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.scope_name) params.set("scope_name", request.scope_name);
 			if (request.cursor) params.set("cursor", request.cursor);
 			if (request.with_counts) params.set("with_counts", "true");
+			// Appended LAST and omitted when false, `with_counts`'s rule rather than
+			// the paging three's: it is a boolean whose route default is false, so the
+			// ordinary request keeps the exact bytes it sent before this flag existed.
+			if (request.include_peers) params.set("include_peers", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
@@ -3498,6 +4450,42 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "sessions.checkpoints":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints`,
+				method: "GET",
+			};
+		case "sessions.checkpoints.warm":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints/warm`,
+				method: "POST",
+				/*
+				 * Omitted, not zeroed: an absent `ids` IS the rail-open arm (the backend
+				 * selects its own default), and an absent `limit` leaves that selection
+				 * its own number — sending 8 here would be a second copy of the
+				 * backend's `DEFAULT_WARM_LIMIT` that could drift from it.
+				 */
+				body: {
+					...(request.ids ? { ids: request.ids } : {}),
+					...(request.limit !== undefined ? { limit: request.limit } : {}),
+				},
+			};
+		case "sessions.find": {
+			// `encodeURIComponent` rather than interpolation, for `sessions.search`'s
+			// reason: a query is whatever the user typed, and `&`, `#` or a space in
+			// it would otherwise change the request's meaning (or truncate it)
+			// instead of being searched for. `limit` is ALWAYS sent (the route's
+			// default is a second authority, and `truncated` on the answer is a fact
+			// about the list the caller actually asked for).
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? THREAD_FIND_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/find?${query}`,
+				method: "GET",
+			};
+		}
 		case "subagents.transcript": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
@@ -3517,6 +4505,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					text: request.text,
 					images: request.images ?? [],
 					mode: request.mode ?? "prompt",
+					/*
+					 * ABSENT, not empty, when the app has nothing to say: an older harness
+					 * validates this body with `extra="forbid"`, so a key present-but-null
+					 * would be refused where a missing one is simply a legacy body. That is
+					 * why these are conditional spreads rather than `?? undefined` values
+					 * (which `JSON.stringify` would drop anyway - stated so a reader does
+					 * not "simplify" them into a shape whose behaviour depends on the
+					 * serializer).
+					 */
+					...(request.inputMode ? { input_mode: request.inputMode } : {}),
+					...(request.inputPath ? { input_path: request.inputPath } : {}),
 				},
 			};
 		case "sessions.command":
@@ -3691,9 +4690,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
-		case "agent.publish":
+		case "agent.publish": {
+			/*
+			 * The org target rides on QUERY PARAMS, not in the body (§4.4): the
+			 * published document's schema is strict, and the target is not part of
+			 * the document. `URLSearchParams` rather than string interpolation so a
+			 * tenant id can never compose a path or a second parameter.
+			 */
+			/*
+			 * A HALF PAIR THROWS rather than composing a public publication (security
+			 * review round 1, S-1): this builder used to drop an unpaired half, which
+			 * turned `{visibility: "org"}` alone into a plain `/publish` — a silent
+			 * PUBLIC publication where the comment promised a refusal. The schema's own
+			 * `.refine` is the enforcement the renderer meets; this is the same rule at
+			 * the boundary that composes the path, so a caller that reached here through
+			 * a cast cannot publish to the wrong audience either.
+			 */
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "POST",
 				// The route's own body shape: a partial override of the document the
 				// backend builds from the local row. `{}` rather than `undefined` when
@@ -3702,15 +4723,42 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// answer 422.
 				body: { document: request.document ?? {} },
 			};
-		case "agent.republish":
+		}
+		case "agent.republish": {
+			/*
+			 * A HALF PAIR THROWS rather than composing a public publication (security
+			 * review round 1, S-1): this builder used to drop an unpaired half, which
+			 * turned `{visibility: "org"}` alone into a plain `/publish` — a silent
+			 * PUBLIC publication where the comment promised a refusal. The schema's own
+			 * `.refine` is the enforcement the renderer meets; this is the same rule at
+			 * the boundary that composes the path, so a caller that reached here through
+			 * a cast cannot publish to the wrong audience either.
+			 */
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "PUT",
 				body: {
 					hub_agent_id: request.hubAgentId,
 					document: request.document ?? {},
 				},
 			};
+		}
+		case "team.pull": {
+			const query = new URLSearchParams();
+			if (request.tenantId) query.set("tenant_id", request.tenantId);
+			const search = query.toString();
+			return {
+				path: `/v1/teams/pull/${request.teamId}${search ? `?${search}` : ""}`,
+				method: "GET",
+			};
+		}
 		case "agent.nameAvailability": {
 			// `name` travel as the user typed it: the hub is the one that trims and
 			// normalises, and a client that pre-normalised would be answering a
@@ -4113,6 +5161,93 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: "/v1/credentials",
 				method: "PATCH",
 				body: { key: request.key, value: request.value },
+			};
+		/*
+		 * The Projects routes, in the store's own wire vocabulary: snake_case
+		 * bodies, the typed NAME in `confirm` for the delete (the route compares
+		 * it case-insensitively against the row it resolved), and every key
+		 * URL-encoded because it is user text — a project name may carry dots
+		 * and dashes, and a milestone name is free text up to 80 chars.
+		 */
+		case "projects.list":
+			return { path: "/v1/desktop/projects", method: "GET" };
+		case "projects.get":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "GET",
+			};
+		case "projects.create":
+			return {
+				path: "/v1/desktop/projects",
+				method: "POST",
+				// Absent fields are OMITTED: the route's own defaults are the
+				// answer for "no status, no tags, no description".
+				body: {
+					name: request.name,
+					...(request.description !== undefined
+						? { description: request.description }
+						: {}),
+					...(request.status !== undefined ? { status: request.status } : {}),
+					...(request.tags !== undefined ? { tags: request.tags } : {}),
+				},
+			};
+		case "projects.update":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "PATCH",
+				// Exactly the keys the caller included travel, so an omitted key
+				// leaves its field alone and `""` clears a date (the route
+				// forwards `model_fields_set` into the store's edit model).
+				body: { ...request.fields },
+			};
+		case "projects.delete":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "DELETE",
+				body: { confirm: request.confirmed_name },
+			};
+		case "projects.link":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/links`,
+				method: "POST",
+				body: { session_id: request.sessionId },
+			};
+		case "projects.unlink":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/links/${encodeURIComponent(request.sessionId)}`,
+				method: "DELETE",
+			};
+		case "projects.milestone":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones`,
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.targetDate !== undefined
+						? { target_date: request.targetDate }
+						: {}),
+					...(request.completed !== undefined
+						? { completed: request.completed }
+						: {}),
+				},
+			};
+		case "projects.milestone.remove":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones/${encodeURIComponent(request.name)}`,
+				method: "DELETE",
+			};
+		case "aida.status":
+			return { path: "/v1/desktop/aida", method: "GET" };
+		case "aida.control":
+			return {
+				path: "/v1/desktop/aida",
+				method: "POST",
+				/*
+				 * The route's body is `{"op": ...}` — its own word, not this envelope's
+				 * — so the ACTION travels under the route's field name and the two `op`s
+				 * cannot be read as one.
+				 */
+				body: { op: request.action },
 			};
 	}
 }

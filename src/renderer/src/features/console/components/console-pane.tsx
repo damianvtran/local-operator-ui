@@ -287,16 +287,17 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	if (sessionId === null) {
 		return (
-			<div className={cn("flex h-full flex-col bg-surface")}>
-				{/* The slot's bar at the slot's height, so the pane's own bar does not move
-				    between a draft and a conversation — and the CLOSE control is in it for
+			<div className={cn("flex h-full flex-col bg-elevated")}>
+				{/* The slot's bar at the slot's height and with no ground of its own, so
+				    the pane reads as one surface and the bar does not move between a
+				    draft and a conversation — and the CLOSE control is in it for
 				    the same reason every other occupant of this slot has one: a pane the
 				    user cannot close from inside is a pane they have to find the trigger
 				    for, and a draft carries the control even though a draft has no session
 				    for its `+` to act on. */}
 				<div
 					className={cn(
-						"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+						"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 						/*
 						 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 						 * Electron draws the caption buttons into the client area's top-right 40px,
@@ -451,16 +452,28 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						   applies it, so a mirror mounted later for a surface the user never asked
 						   for finds a zero and leaves the keyboard where it is.
 
-						   THE CLEAR IS DEFERRED ONE MICROTASK, and that is not hedging: the app
-						   mounts its tree inside `React.StrictMode`, whose dev-mode double
-						   invocation runs this mirror's effects, unmounts it and runs them again
-						   inside ONE commit — so an acknowledgement applied synchronously spends the
-						   request on the mount that is immediately discarded and the caret never
-						   lands (measured in the browser harness with StrictMode on: the subscribe
-						   replayed twice and `helperFocused` was false; the shipped build has no
-						   double invocation and lands it). A microtask still clears the token
-						   before any LATER render can mount a mirror, because a lens change is a
-						   different task — which is the property the finding is about. */
+						   THE CLEAR IS DEFERRED ONE MICROTASK, AND THE DEFERRAL IS NOT WHAT PUTS
+						   THE CARET IN THE DEV LOOP — measured, and worth spelling out because
+						   this comment used to claim the opposite. What lands the caret is the
+						   mirror's own half: it takes neither the keyboard nor the
+						   acknowledgement from a terminal it no longer holds (the caret effect
+						   in `console-mirror.tsx`), so the request is still standing when the
+						   surviving terminal is in state — the StrictMode case in
+						   `scripts/console-mirror.test.mjs` is the reading. THAT HALF IS ALSO
+						   THE LIMIT OF THE CLAIM: on a mirror WITHOUT it, no ordering of this
+						   `setFocusRequest` could give the survivor a token to apply, because
+						   the acknowledgement is then emitted from the discarded mount's caret
+						   effect before React renders the survivor into state. So the account
+						   above is about the unfixed mirror, and it is why the clear was never
+						   the thing to change.
+
+						   THE DEFERRAL STAYS, AND IT IS UNOBSERVED RATHER THAN PROVEN INERT:
+						   nothing measures that it is needed — the F-1 case above clears
+						   synchronously and passes either way — and nothing measures that it is
+						   not. Its original rationale (a clear that lands before any LATER mount
+						   can inherit the token, since a lens change is a different task) is
+						   reasoning this lane did not test either way, so the line is left as it
+						   is rather than changed on an unmeasured claim. */
 						focusRequest={focusRequest}
 						onFocusTaken={(applied) =>
 							queueMicrotask(() =>
@@ -491,20 +504,27 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	return (
 		<div
-			// `bg-surface`, the same ground the canvas, the run panel and the browser
-			// pane take, so the four occupants of this slot read as one slot with four
-			// modes (§6.1, §9.4).
-			className={cn("flex h-full flex-col bg-surface")}
+			/*
+			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
+			 * (`canvas/index.tsx`): this slot is a drawer over the work plane, so it
+			 * stands on `elevated` — one rung above the chrome — rather than on the
+			 * conversation's `canvas`, which made these panes' bodies and the transcript
+			 * one plane. The lane's stop above the slot moves with it
+			 * (`chat-layout.tsx`), because a pane-only change leaves this tone meeting
+			 * the lane at y32 (§6.1, §9.4).
+			 */
+			className={cn("flex h-full flex-col bg-elevated")}
 			data-tour-tag="console-pane"
 		>
 			{/*
-			 * The pane's header: 40px and `bg-sunken`, the size and ground the slot's
-			 * other three panes state for their own bar, so the bar does not move when
-			 * the user switches mode.
+			 * The pane's header: 40px, the slot's own height, so the bar does not move
+			 * when the user switches mode. NO GROUND OF ITS OWN (`bg-sunken` until the
+			 * canvas chrome pass): the bar is transparent so the pane reads as one
+			 * surface, and the terminal below is what bounds it.
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					/*
 					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 					 * Electron draws the caption buttons into the client area's top-right 40px,
@@ -625,10 +645,18 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				   in the header cluster" is the slot's trigger; this is the pane's). A row
 				   per surface, the active one on `elevated`, and the two marks the design
 				   fixes: the agent marker the browser's strip already uses for an
-				   agent-opened tab, and the blip's dot. */
+				   agent-opened tab, and the blip's dot.
+
+				   THE LIST OWNS A `surface` PLANE, AND IT IS THE SAME RESOLUTION THE FILES
+				   LIST MADE (`canvas/index.tsx`): its rows paint `hover:bg-row-hover` and
+				   its active row paints `bg-elevated`, and neither mark survives an
+				   `elevated` pane — a row-hover step authored against `surface` rides off
+				   that plane, and an `elevated` fill on an `elevated` ground measures ΔE00
+				   0. So the scroller is `surface` and every mark inside it is unchanged;
+				   the rows are the reason, and the plane is theirs. */
 				<div
 					className={cn(
-						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b px-2 py-1",
+						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
 					)}
 					role="tablist"
 					aria-label="Console surfaces"

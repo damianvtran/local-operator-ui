@@ -69,7 +69,10 @@ import {
  * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
-import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import {
+	commissionAccountRead,
+	useRadientUserQuery,
+} from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -668,6 +671,41 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 		/*
+		 * THE ACCOUNT READ, when the credential that just landed is Radient's own.
+		 *
+		 * WHY IT MUST BE HERE AT ALL: every surface that completes a Radient
+		 * sign-in funnels through this callback - the settings grid's Radient row,
+		 * the connect dialog and the onboarding step all render this same panel,
+		 * and `RadientAuthButtons` renders it for the account section and the
+		 * upload dialog. Before this branch none of those wrote to
+		 * `radientUserKeys` from here: only `RadientAuthButtons`' own `onConnected`
+		 * (which its two surfaces reach through `onConnected` below) invalidated
+		 * the key, and the grid, connect dialog and onboarding step have no such
+		 * callback - so the re-read waited for something else to mount an observer
+		 * on the failed query. That is the operator's report: after a re-sign-in
+		 * the sidebar foot still read "Account unavailable", and it healed only
+		 * when a later Settings visit happened to mount a new observer.
+		 *
+		 * WHY THE GATE, when the four invalidations around it are unconditional:
+		 * their input is "any credential", the account read's input is the RADIENT
+		 * credential alone. A write to any other provider cannot change who the
+		 * account is, and re-asking anyway would make the foot say "Checking
+		 * account…" about a fact nothing touched.
+		 *
+		 * WHAT THE CALL DOES: `commissionAccountRead` clears the class the write
+		 * just falsified and CANCELS any pre-write chain before invalidating -
+		 * without the cancel, an invalidation JOINS a data-less chain still in
+		 * flight and re-asks nothing, and the abandoned chain's late settle would
+		 * re-record the stale class (review round 1, M1; both are measured in
+		 * `scripts/settings-account-gate.test.mjs`). The full reasoning lives on
+		 * the function's own docblock. `RadientAuthButtons`' own `onConnected`
+		 * invalidation, reached through `onConnected?.()` below, stays and is
+		 * idempotent with this one.
+		 */
+		if (provider.id === "radient") {
+			void commissionAccountRead(queryClient);
+		}
+		/*
 		 * AND THE CONFIG: a sign-in can write the default model, and the composer,
 		 * the model settings, the empty-chat card and the composer's model chip all
 		 * read it from there. The two invalidations answer two different questions
@@ -692,7 +730,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 */
 		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
 		onConnected?.();
-	}, [queryClient, onConnected]);
+	}, [queryClient, onConnected, provider.id]);
 
 	/*
 	 * The default this Local Operator writes ITSELF -- and only in ONE case.

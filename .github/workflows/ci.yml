@@ -339,6 +339,12 @@ jobs:
           # bytecode check failed on the x64 candidate of every release and the only
           # workflow that verifies a release shipped read as permanently red.
           node --test scripts/mac-build-arch.test.mjs
+          # The AppImage update information: the ELF64 `.upd_info` patch and
+          # readback, the `.zsync` header checks and the `latest-linux.yml`
+          # entry check, over synthetic fixtures. Hermetic by design - the real
+          # download, `7z` and `zsyncmake` are exercised by the Linux build
+          # job's own steps in publish.yml.
+          node --test scripts/appimage-update-info.test.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset

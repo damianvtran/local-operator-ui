@@ -37,9 +37,19 @@
  *     disclosure that describes the gap as a typing-only case understates it.
  */
 
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
-import { type AtResolved, atChipSpans } from "../components/at-contract";
+import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
+import {
+	type AtResolved,
+	atChipSpans,
+	atProjectName,
+} from "../components/at-contract";
 import { type AtSpan, atTokenSpans } from "../components/at-token";
 
 /**
@@ -130,6 +140,38 @@ export function useAtResolution({
 	>(new Map());
 
 	/*
+	 * THE PROJECT ARM (UX round 1, U1). A `project:` token's fact is not a path
+	 * fact — `probe-files` answers "no such file" for every one of them, so an
+	 * accepted project reference painted no chip and read as a typo in the one
+	 * language this composer has for "this reference resolves" — and it is not
+	 * this process's to invent either: the backend's classifier resolves
+	 * `@project:<name>` when a project of that name EXISTS, which is the fact
+	 * the store is asked for here, from the same `projects.list` op the picker
+	 * speaks.
+	 *
+	 * TWO THINGS THE STORE'S OWN RULE SETS. Names are matched
+	 * case-insensitively, because that is the store's uniqueness rule and what
+	 * the backend's `_project_for_query` matches on — a chip that only matched
+	 * the exact spelling would under-claim a reference the backend resolves.
+	 * And a miss is never cached, the same rule the file probe states below: a
+	 * project created while the composer is open must chip on the next pass
+	 * rather than never.
+	 *
+	 * THE CAPABILITY GATES THE REQUEST, not the paint: on a backend below the
+	 * version no `projects.list` is dialled at all, and a `project:` token is
+	 * what it was before this arm existed — prose unless a file happens to
+	 * share the name, which is the fallback the classifier itself documents.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
+	/** The names (lowercased) the store answered with; a miss is re-asked. */
+	const projectNames = useRef(new Set<string>());
+
+	/*
 	 * The batch, sorted and de-duplicated so an identical draft is an identical
 	 * request, and capped at the probe's own per-call limit (`MAX_PROBE_PATHS`).
 	 * Past the cap the excess is left UNDECORATED rather than chunked: the harness
@@ -148,7 +190,39 @@ export function useAtResolution({
 	}, [spans]);
 	const pathsKey = paths.join("\n");
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the request is keyed by `pathsKey`, the batch's own identity; `paths` is an array rebuilt every render and listing it would re-run the request with nothing changed.
+	/*
+	 * The draft's project references, by lowercased NAME — the same fact the
+	 * store's own lookups use. Derived from `paths`, so `pathsKey` is still the
+	 * effect's one identity for "the draft's reference set changed".
+	 */
+	const wantedProjects = useMemo(() => {
+		const names = new Set<string>();
+		for (const path of paths) {
+			const name = atProjectName(path);
+			if (name) names.add(name.toLowerCase());
+		}
+		return [...names];
+	}, [paths]);
+
+	/*
+	 * The facts `atChipSpans` reads, assembled from both halves: the file
+	 * probe's positive answers, and a project reference whose name the store
+	 * answered for. Keyed by the path AS TYPED (`project:Docs-Sweep` and
+	 * `project:docs-sweep` are two spans over one project).
+	 */
+	const buildFacts = () => {
+		const merged = new Map(cache.current);
+		if (projectNames.current.size === 0) return merged;
+		for (const path of paths) {
+			const name = atProjectName(path);
+			if (name && projectNames.current.has(name.toLowerCase())) {
+				merged.set(path, { exists: true, outside: false });
+			}
+		}
+		return merged;
+	};
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the request is keyed by `pathsKey`, the batch's own identity (`wantedProjects` rides it), and `projectsEnabled` because the project arm may only dial the store once the capability says the surface exists; `paths`/`wantedProjects` are arrays rebuilt every render and listing them would re-run the request with nothing changed.
 	useEffect(() => {
 		const api = (window as unknown as { api?: Partial<ProbeBridge> }).api;
 		/*
@@ -175,54 +249,91 @@ export function useAtResolution({
 		if (cacheCwd.current !== cwd) {
 			cacheCwd.current = cwd;
 			cache.current.clear();
-			setFacts(new Map());
+			/* Project answers are not relative to the working directory, so they
+			 * survive the move; only the file half is invalidated. */
+			setFacts(buildFacts());
 		}
-		if (
-			!enabled ||
-			paths.length === 0 ||
-			typeof api?.probeFiles !== "function"
-		) {
+		if (!enabled || paths.length === 0) {
+			/* Nothing in this draft is a reference — or the turn in flight made
+			 * every token prose — so no fill may paint and an answered map is
+			 * dropped rather than kept one state longer than its claim. */
 			setFacts((current) => (current.size > 0 ? new Map() : current));
 			return;
 		}
+		if (typeof api?.probeFiles !== "function" && wantedProjects.length === 0) {
+			// No bridge for files and no project reference to ask the store
+			// about: nothing this pass can learn, so the answers already
+			// painted stand (and a project hit stays a chip).
+			setFacts((current) => (current.size > 0 ? buildFacts() : current));
+			return;
+		}
 		const missing = paths.filter((path) => !cache.current.has(path));
-		if (missing.length === 0) {
-			// Every path in this draft has been answered before, so the pass costs one
-			// render and no request: the common case on the keystroke path once a mention
-			// has been typed and the user is editing around it.
-			setFacts(new Map(cache.current));
+		const unknownProjects = projectsEnabled
+			? wantedProjects.filter((name) => !projectNames.current.has(name))
+			: [];
+		if (missing.length === 0 && unknownProjects.length === 0) {
+			// Every reference in this draft has been answered before, so the pass costs
+			// one render and no request: the common case on the keystroke path once a
+			// mention has been typed and the user is editing around it.
+			setFacts(buildFacts());
 			return;
 		}
 		let cancelled = false;
 		const timer = setTimeout(() => {
-			api
-				.probeFiles?.(missing, cwd)
-				.then((answers) => {
-					if (cancelled) return;
-					for (const answer of answers) {
-						if (!answer.exists) continue;
-						cache.current.set(answer.input, {
-							exists: true,
-							// `outsideWorkspace` is absent when main could not ask (no
-							// workspace root), and an unanswerable question is NOT "outside":
-							// a chip painted for it would warn about a path the gate may
-							// never ask about. The card at submit is unaffected either way.
-							outside: answer.outsideWorkspace === true,
-						});
-					}
-					setFacts(new Map(cache.current));
-				})
-				.catch(() => {
-					// A probe that failed says nothing about whether the path exists, so
-					// the decoration simply does not change. Losing the previous fills
-					// because a stat call threw would be the worse failure.
-				});
+			const fileArm =
+				missing.length > 0 && typeof api?.probeFiles === "function"
+					? api
+							.probeFiles(missing, cwd)
+							.then((answers) => {
+								if (cancelled) return;
+								for (const answer of answers) {
+									if (!answer.exists) continue;
+									cache.current.set(answer.input, {
+										exists: true,
+										// `outsideWorkspace` is absent when main could not ask (no
+										// workspace root), and an unanswerable question is NOT "outside":
+										// a chip painted for it would warn about a path the gate may
+										// never ask about. The card at submit is unaffected either way.
+										outside: answer.outsideWorkspace === true,
+									});
+								}
+							})
+							.catch(() => {
+								// A probe that failed says nothing about whether the path exists, so
+								// the decoration simply does not change. Losing the previous fills
+								// because a stat call threw would be the worse failure.
+							})
+					: Promise.resolve();
+			const projectArm =
+				unknownProjects.length > 0
+					? desktopResult<{ projects: DesktopProject[] }>({
+							op: "projects.list",
+						})
+							.then((result) => {
+								if (cancelled) return;
+								for (const project of result.projects) {
+									const name = project.name.toLowerCase();
+									if (unknownProjects.includes(name)) {
+										projectNames.current.add(name);
+									}
+								}
+							})
+							.catch(() => {
+								// A store that did not answer says nothing about whether the
+								// project exists — the same rule the file probe states above, and
+								// the raw reason is the picker's to log on its own arm.
+							})
+					: Promise.resolve();
+			void Promise.allSettled([fileArm, projectArm]).then(() => {
+				if (cancelled) return;
+				setFacts(buildFacts());
+			});
 		}, AT_RESOLVE_DEBOUNCE_MS);
 		return () => {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [pathsKey, cwd]);
+	}, [pathsKey, cwd, projectsEnabled]);
 
 	const resolved = useMemo(() => atChipSpans(spans, facts), [spans, facts]);
 	return { spans, resolved };

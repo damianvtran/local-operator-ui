@@ -28,9 +28,12 @@ export const EmptyState: FC<{
 	description: string;
 	children?: ReactNode;
 }> = ({ title, description, children }) => (
+	/* The state is the pane's own body, so it wears the PANE's ground
+	   (`canvas/index.tsx`) — the drawer's rung — rather than the conversation's
+	   `canvas`. */
 	<div
 		className={cn(
-			"flex h-full flex-col items-center justify-center gap-2 bg-canvas p-6 text-center",
+			"flex h-full flex-col items-center justify-center gap-2 bg-elevated p-6 text-center",
 		)}
 	>
 		<h3 className={cn("text-heading text-ink")}>{title}</h3>
