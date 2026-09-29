@@ -271,7 +271,7 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
-	const laneLeadingColumn = useLaneLeadingColumn();
+	const laneLeadingColumn = useLaneLeadingColumn("elevated");
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -876,9 +876,17 @@ export const SettingsPage: FC = () => {
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-canvas">
 			{/*
-			 * The rail's edge lives here rather than on the nav, because only the
-			 * container knows which way the layout is running: the same hairline has
-			 * to be a right edge beside the content and a bottom edge above it.
+			 * No edge on this wrapper any more. The rail took `elevated` (see
+			 * `settings-sidebar`'s ground note), so the boundary beside the content
+			 * is the tone step it makes against `canvas` — and a drawn line over a
+			 * tone step is the redundant second mark the operator reported as
+			 * stopping partway up the window: "either make it extend all the way up
+			 * or remove the right border". It is removed rather than extended,
+			 * because extending would have the shell's lane paint a fence for a
+			 * boundary that already reads (the pass that took the dock's own
+			 * leading rule, #564, removed exactly this kind of mark) while the
+			 * lateral boundaries here — sidebar|rail and rail|content — are both
+			 * tone steps the rail's rung supplies.
 			 *
 			 * Two widths, and the `min-[1040px]:` step is paired with the
 			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
@@ -895,18 +903,20 @@ export const SettingsPage: FC = () => {
 			<div
 				/*
 				 * The shell puts this rail's ground behind the window's top strip: the
-				 * rail is a leading column on the default `surface` ground, and without
-				 * being handed over here the lane above the two shell columns paints
-				 * the CONTENT ground across this rail's width, so the rail's own panel
-				 * begins below the strip and the band over it is a different tone (the
-				 * operator's report of 2026-09-26, and again of 2026-09-27).
+				 * rail is a leading column standing on `elevated`, and nothing a route
+				 * renders can reach y0 itself (the column is inside two clipped
+				 * ancestors), so the lane above the shell's columns paints this
+				 * column's own ground across its width — without the hand-over the lane
+				 * would paint the CONTENT ground across the rail (the operator's report
+				 * of 2026-09-26, and again of 2026-09-27).
 				 *
 				 * The width is NOT restated there: the shell measures this element, which
 				 * is what keeps the two-width rule below (48px under 1040, 220 at and
-				 * above it) a single decision. `chat-layout.tsx` states the contract.
+				 * above it) a single decision, and the ground is named once, here —
+				 * `chat-layout.tsx` states the contract.
 				 */
 				ref={laneLeadingColumn}
-				className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55"
+				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
 			>
 				<SettingsSidebar
 					activeSection={activeSection}
