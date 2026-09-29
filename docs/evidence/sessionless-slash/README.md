@@ -49,7 +49,7 @@ and the raw logs sit beside the frames.
 | `theme/` | `/theme` + Enter (complete/close/submit) | the Theme picker (the row § 12.5 measured) |
 | `login/` | `/login` + Enter | "Sign in to a provider", its provider list loaded |
 | `logout/` | `/logout` + Enter | "Sign out" |
-| `resume/` | `/resume` + Enter | "Resume a conversation" — on a fresh daemon the list is empty; the MOUNT is the claim |
+| `resume/` | `/resume` + Enter | "Resume a conversation" with the run's sessions listed (5 rows dark / 4 light); the mount on a pane with no conversation is the claim |
 | `theme-live/` | a message sent and answered first, then `/theme` + Enter | the same picker on a live conversation ("Hello from the mock provider") — the session-ful path the change must not move |
 
 Each frame's partner is the same gesture on `origin/main` @ `ff34fb8ecc` under
