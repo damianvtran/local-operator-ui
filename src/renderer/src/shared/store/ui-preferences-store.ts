@@ -54,9 +54,15 @@ type UiPreferencesState = {
 	closeCommandPalette: () => void;
 
 	/**
-	 * Toggles the command palette visibility
+	 * Toggles the command palette visibility.
+	 *
+	 * `initialQuery` seeds the query when this call OPENS the palette, which is
+	 * how the Cmd/Ctrl+P door opens it as the conversation switcher (issue
+	 * #659); every other door passes nothing and gets the empty box it always
+	 * did. A call that CLOSES keeps the query as it is, and the close path is
+	 * what clears it.
 	 */
-	toggleCommandPalette: () => void;
+	toggleCommandPalette: (initialQuery?: string) => void;
 
 	/**
 	 * Sets the command palette query
@@ -1083,12 +1089,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ isCommandPaletteOpen: false, commandPaletteQuery: "" });
 			},
 
-			toggleCommandPalette: () => {
+			toggleCommandPalette: (initialQuery = "") => {
 				set((state) => ({
 					isCommandPaletteOpen: !state.isCommandPaletteOpen,
 					commandPaletteQuery: !state.isCommandPaletteOpen
-						? ""
-						: state.commandPaletteQuery, // Clear query if opening, retain if closing (though it's cleared by closeCommandPalette)
+						? initialQuery
+						: state.commandPaletteQuery, // Retain when closing (though it's cleared by closeCommandPalette)
 				}));
 			},
 
