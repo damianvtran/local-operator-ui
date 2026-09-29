@@ -1155,8 +1155,14 @@ export const useMessageInput = ({
 		scrollToBottom,
 		beginInFlight,
 		draftHeld,
-		/* The transcript's flush rides this submit's clear (see `clearOnce`). */
+		/*
+		 * The transcript's flush rides this submit's clear (see `clearOnce`),
+		 * and `retireDraft` reads this register to decide what its settle may
+		 * retire (QA round 1, Q-2) - so both are dependencies of this callback
+		 * in the literal sense the lint gate enforces.
+		 */
 		appendToDraft,
+		getCurrentInput,
 	]);
 
 	// Cursor position helpers
