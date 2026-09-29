@@ -4859,8 +4859,14 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	 * default), so the section truncates and its marker is the footer for a payload
 	 * past the declared bound. The marker is a STATEMENT rather than a control —
 	 * nothing in this pane can put a shed monitor back — so it wears the shared
-	 * `Disclosure` primitive's DISABLED branch, and the section names who CAN act on
-	 * the list it just drew.
+	 * `Disclosure` primitive's DISABLED branch, and the list it just drew carries
+	 * the control that acts on it: the revealed `Cancel monitor` on every drawn
+	 * row. That control is what the stopgap's "ask the agent to cancel it" sentence
+	 * retired for (the monitors controls pass) — a sentence pointing at the agent,
+	 * beside a button that cancels, would send a reader around it; the Wakes
+	 * section keeps its own sentence because wakes kept theirs. Both facts are
+	 * pinned below, and the sentence is pinned ABSENT so the pair cannot drift
+	 * back.
 	 */
 	const over = renderMonitors({
 		details: monitorsOf(
@@ -4885,8 +4891,13 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	assert.match(over, /9 monitors armed/, "the tally counts the WHOLE list");
 	assert.match(
 		over,
+		/data-monitor-cancel="n1"/,
+		"the list carries the control that acts on it",
+	);
+	assert.doesNotMatch(
+		over,
 		/ask the agent to cancel it/i,
-		"the list names who can act on it",
+		"the stopgap's sentence is retired with the control it stood in for",
 	);
 });
 
