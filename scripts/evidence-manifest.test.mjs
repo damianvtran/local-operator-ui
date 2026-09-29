@@ -2285,8 +2285,22 @@ const BRANCH_RECORDS = [
 	 */
 	"browserOauthPopupsRestampNote",
 	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
+	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
+	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
+	 * onto the moved `origin/main` (`eca30754b7`, `865da9ce78`), and the fold onto
+	 * `0738fa7eb3` re-registered all three here as the retired `STAMP_BINDING_NOTES`
+	 * registrations came into this list. Listed for the reason this list exists: a
+	 * fold resolved from main's copy would drop them first, and nothing else would
+	 * say so. The notes spell their pair as bare SHAs, so no name is added to the
+	 * quoting ledger above.
+	 */
+	"python314RefreshRestampNote",
+	"python314RefreshFoldNote",
+	"python314RefreshSecondFoldNote",
+	/*
 	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
-	 * `49491865ca` and `7ba0ddce94` (2026-09-29): that pass re-laid its records
+	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
 	 * onto this file - its ground restamp note and its fold records, one
 	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
 	 * already ships notes under both of its old names - and wrote a note per
@@ -2301,6 +2315,7 @@ const BRANCH_RECORDS = [
 	"foldOnto0738fa7eb3Note",
 	"foldOnto49491865caNote",
 	"foldOnto7ba0ddce94Note",
+	"foldOnto6f284060Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

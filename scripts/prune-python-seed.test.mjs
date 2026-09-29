@@ -13,7 +13,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
-import { LAYOUT } from "./bundled-runtime-layout.mjs";
+import {
+	LAYOUT,
+	PYTHON_ABI,
+	SEED_STDLIB_DIR,
+} from "./bundled-runtime-layout.mjs";
 import {
 	MACH_O_CPUTYPE,
 	MACH_O_FILETYPE,
@@ -39,6 +43,31 @@ import {
 	seedModeCheck,
 	seedVersionCheck,
 } from "./verify-macos-artifacts.mjs";
+
+/**
+ * The version-bearing names these fixtures write, DERIVED from the declaration.
+ *
+ * WHY NOT LITERALS: the modules under test expand `{pyver}`/`{pyminor}` from
+ * `src/shared/bundled-runtime-layout.json`, so a fixture that spells
+ * `lib/python3.12` while the declaration names 3.14 writes a tree the prune is
+ * not looking at - every listed path would be absent, and the cases below would
+ * fail for a reason that has nothing to do with what they assert. The refresh
+ * from 3.12 to 3.14 is what made those literals visible; deriving them is what
+ * keeps the next one from re-deriving them by hand.
+ */
+const STDLIB = SEED_STDLIB_DIR; // lib/python3.14
+const PY_EXE = `bin/python${PYTHON_ABI}`; // bin/python3.14
+const PY_EXE_NAME = `python${PYTHON_ABI}`; // what bin/python3 links to
+const LIBPYTHON = `lib/libpython${PYTHON_ABI}.dylib`; // lib/libpython3.14.dylib
+// The three names below are the `20260901` build's own, read off the staged
+// 3.14.7 tree (`pnpm setup-python`): the itcl directory and dylib, the
+// `ensurepip` wheel (only its `pip-*.whl` SHAPE is asserted, by the bootstrap
+// gate's glob), and a stdlib source file upstream ships with the execute bit -
+// `encodings/rot_13.py` is the 3.14 tree's own, where the 3.12 fixture used
+// `cgi.py`, which 3.13 removed.
+const ITCL_LIB = "lib/itcl4.3.8/libitcl4.3.8.dylib";
+const ENSUREPIP_WHEEL = "pip-26.2.1-py3-none-any.whl";
+const EXEC_SOURCE_FILE = "encodings/rot_13.py";
 
 /*
  * Coverage for the seed pruning an in-app update pays for, and for the release
@@ -182,36 +211,37 @@ function makeSeed(dir, { pruned = false } = {}) {
 			// real content, and the one the upstream tarball ships executable
 			// carries the bit that has to be cleared.
 			writeFile(join(dir, relative, "pyshell.py"), {
-				exec: relative === "lib/python3.12/idlelib",
+				exec: relative === `${STDLIB}/idlelib`,
 			});
 		}
 	} else {
 		// What a prune leaves behind: the parent directories survive while the
 		// pruned entries do not, which is why the gate checks the entries.
-		writeFile(join(dir, "lib/python3.12/os.py"));
+		writeFile(join(dir, `${STDLIB}/os.py`));
 	}
 	writeFile(join(dir, SEED_STDLIB_MARKER));
 	// The Tcl/Tk tree, in BOTH states: it is content the prune deliberately keeps,
 	// and it is what ties the `{tkver}` token to the build (review R2-5) - the
 	// prune refuses a tree that does not carry it.
 	writeFile(join(dir, SEED_TK_DIR, "tk.tcl"));
-	writeFile(join(dir, "lib/python3.12/venv/__init__.py"));
-	writeFile(join(dir, "lib/python3.12/ensurepip/__init__.py"));
-	writeFile(
-		join(dir, "lib/python3.12/ensurepip/_bundled/pip-25.0.1-py3-none-any.whl"),
-	);
-	if (!pruned) writeFile(join(dir, "lib/python3.12/cgi.py"), { exec: true });
-	writeMachO(join(dir, "bin/python3.12"));
-	symlinkSync("python3.12", join(dir, "bin/python3"));
+	writeFile(join(dir, `${STDLIB}/venv/__init__.py`));
+	writeFile(join(dir, `${STDLIB}/ensurepip/__init__.py`));
+	writeFile(join(dir, `${STDLIB}/ensurepip/_bundled/${ENSUREPIP_WHEEL}`));
+	if (!pruned)
+		writeFile(join(dir, `${STDLIB}/${EXEC_SOURCE_FILE}`), {
+			exec: true,
+		});
+	writeMachO(join(dir, PY_EXE));
+	symlinkSync(PY_EXE_NAME, join(dir, "bin/python3"));
 	// The shape the `20260901` build ships and the `20250529` one did not: loadable
 	// libraries, some of them at 0644 upstream (measured in the raw tarball). The
 	// passing case carries them so the exec-bit rule is exercised in the direction
 	// that made the old count equality false.
-	writeMachO(join(dir, "lib/libpython3.12.dylib"), {
+	writeMachO(join(dir, LIBPYTHON), {
 		fileType: MACH_O_FILETYPE.MH_DYLIB,
 		mode: 0o755,
 	});
-	writeMachO(join(dir, "lib/itcl4.3.8/libitcl4.3.8.dylib"), {
+	writeMachO(join(dir, ITCL_LIB), {
 		fileType: MACH_O_FILETYPE.MH_DYLIB,
 		mode: 0o644,
 	});
@@ -252,9 +282,9 @@ test("the prune removes exactly the content the layout lists", () => {
 	// The interpreter, the stdlib and the bootstrap survive it: this is a prune,
 	// not a strip, and the gate's other checks depend on all three.
 	for (const relative of [
-		"bin/python3.12",
+		PY_EXE,
 		SEED_STDLIB_MARKER,
-		"lib/python3.12/venv/__init__.py",
+		`${STDLIB}/venv/__init__.py`,
 	])
 		assert.equal(
 			existsSync(join(seed, relative)),
@@ -272,7 +302,7 @@ test("the prune refuses a tree that is not the Python the list was written for",
 	assert.throws(
 		() => pruneSeed(seed, { log: () => {} }),
 		(error) => error.message.includes(`no ${SEED_STDLIB_MARKER}`),
-		"a seed with no 3.12 stdlib must fail the build, not prune nothing quietly",
+		"a seed with no stdlib for the declared Python must fail the build, not prune nothing quietly",
 	);
 });
 
@@ -286,17 +316,17 @@ test("the execute bit survives on Mach-O files and nowhere else", () => {
 	const cleared = clearIncidentalExecBits(seed).sort();
 
 	assert.deepEqual(cleared, [
-		"lib/python3.12/cgi.py",
-		"lib/python3.12/idlelib/pyshell.py",
+		`${STDLIB}/${EXEC_SOURCE_FILE}`,
+		`${STDLIB}/idlelib/pyshell.py`,
 	]);
 	assert.equal(seedModeViolations(seed).length, 0);
 	// Mach-O files keep the bit: the kernel and `codesign` read it.
-	assert.equal(statSync(join(seed, "bin/python3.12")).mode & 0o111, 0o111);
+	assert.equal(statSync(join(seed, PY_EXE)).mode & 0o111, 0o111);
 	// Everything else keeps its read and write bits. The import machinery does
 	// not read the execute bit, and a file whose mode changed in any other way
 	// would be a different file to the runtime identity hash.
 	assert.equal(
-		statSync(join(seed, "lib/python3.12/cgi.py")).mode & 0o777,
+		statSync(join(seed, `${STDLIB}/${EXEC_SOURCE_FILE}`)).mode & 0o777,
 		0o644,
 	);
 });
@@ -304,7 +334,8 @@ test("the execute bit survives on Mach-O files and nowhere else", () => {
 test("a second prune refuses, a symlink is not a mode to own, and the prune owns only the executable half", () => {
 	const seed = makeSeed(tempDir("lo-seed-"));
 	pruneSeed(seed, { log: () => {} });
-	// `bin/python3` is a link into `bin/python3.12`; it must still resolve, and
+	// `bin/python3` is a link into the versioned executable; it must still
+	// resolve, and
 	// the walk must not have tried to own its mode (macOS has no `lchmod`, and
 	// `chmod` on a link follows it).
 	assert.equal(statSync(join(seed, "bin/python3")).mode & 0o111, 0o111);
@@ -321,37 +352,24 @@ test("a second prune refuses, a symlink is not a mode to own, and the prune owns
 		log: () => {},
 	});
 	// The tree this fixture models carries the interpreter AND the loadable
-	// libraries the `20260901` build ships - `libpython3.12.dylib` at 0755
+	// libraries the `20260901` build ships - `libpython<abi>.dylib` at 0755
 	// (upstream's mode) and two Tcl/Tk libraries at 0644 (also upstream's). What
 	// the prune owns is the EXECUTABLE half: one file, and the one the app spawns.
 	assert.deepEqual(second.removed.length, PRUNED_SEED_PATHS.length);
 	assert.deepEqual(second.absentOptional, PRUNED_SEED_OPTIONAL_PATHS);
-	assert.deepEqual(machOExecutables(seed), ["bin/python3.12"]);
+	assert.deepEqual(machOExecutables(seed), [PY_EXE]);
 	assert.equal(second.machO, 3);
-	assert.deepEqual(machOFiles(seed).sort(), [
-		"bin/python3.12",
-		"lib/itcl4.3.8/libitcl4.3.8.dylib",
-		"lib/libpython3.12.dylib",
-	]);
-	assert.deepEqual(seedExecBitFiles(seed).sort(), [
-		"bin/python3.12",
-		"lib/libpython3.12.dylib",
-	]);
-	assert.equal(
-		machOFileType(join(seed, "bin/python3.12")),
-		MACH_O_FILETYPE.MH_EXECUTE,
-	);
+	assert.deepEqual(machOFiles(seed).sort(), [PY_EXE, ITCL_LIB, LIBPYTHON]);
+	assert.deepEqual(seedExecBitFiles(seed).sort(), [PY_EXE, LIBPYTHON]);
+	assert.equal(machOFileType(join(seed, PY_EXE)), MACH_O_FILETYPE.MH_EXECUTE);
 	assert.equal(
 		machOFileType(join(seed, "lib/itcl4.3.8/libitcl4.3.8.dylib")),
 		MACH_O_FILETYPE.MH_DYLIB,
 	);
 	// The interpreter's bit, and nothing else's, is what the app needs; the
 	// library that carries one carries it because upstream does.
-	assert.equal(statSync(join(seed, "bin/python3.12")).mode & 0o111, 0o111);
-	assert.equal(
-		statSync(join(seed, "lib/itcl4.3.8/libitcl4.3.8.dylib")).mode & 0o111,
-		0,
-	);
+	assert.equal(statSync(join(seed, PY_EXE)).mode & 0o111, 0o111);
+	assert.equal(statSync(join(seed, ITCL_LIB)).mode & 0o111, 0);
 });
 
 test("the gate passes a pruned bundle and names each way it can regress", () => {
@@ -374,27 +392,27 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 
 	// 1. Content the prune removes comes back.
 	const restored = makePassingApp(tempDir("lo-app-"));
-	writeFile(join(restored.seed, "lib/python3.12/idlelib/idle.py"));
+	writeFile(join(restored.seed, `${STDLIB}/idlelib/idle.py`));
 	const restoredCheck = prunedSeedCheck(restored.app);
 	assert.equal(restoredCheck.passed, false);
-	assert.match(restoredCheck.output, /lib\/python3\.12\/idlelib/);
+	assert.match(restoredCheck.output, new RegExp(`${STDLIB}/idlelib`));
 
 	// 2. An execute bit on something that is not Mach-O, named by path.
 	const chmodded = makePassingApp(tempDir("lo-app-"));
-	chmodSync(join(chmodded.seed, "lib/python3.12/os.py"), 0o755);
+	chmodSync(join(chmodded.seed, `${STDLIB}/os.py`), 0o755);
 	const modeCheck = seedModeCheck(chmodded.app);
 	assert.equal(modeCheck.passed, false);
-	assert.match(modeCheck.output, /lib\/python3\.12\/os\.py/);
+	assert.match(modeCheck.output, new RegExp(`${STDLIB}/os.py`));
 
 	// 2b. An EXECUTABLE that lost its bit. This is the failure the check exists
 	// for (a packaging step that drops modes leaves an interpreter the OS refuses
 	// to spawn), and it is the case the old count equality could MISS: a library
 	// that gained a bit while the interpreter lost one kept the totals equal.
 	const bitless = makePassingApp(tempDir("lo-app-"));
-	chmodSync(join(bitless.seed, "bin/python3.12"), 0o644);
+	chmodSync(join(bitless.seed, PY_EXE), 0o644);
 	const bitlessCheck = seedModeCheck(bitless.app);
 	assert.equal(bitlessCheck.passed, false);
-	assert.match(bitlessCheck.output, /bin\/python3\.12/);
+	assert.match(bitlessCheck.output, new RegExp(PY_EXE));
 	assert.match(bitlessCheck.output, /do not carry the execute bit/);
 
 	// 2c. A library at 0644 is FINE, and this is the correction review round 1
@@ -413,11 +431,7 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 	// 3. A seed with no Mach-O at all: the subset test on its own is satisfied by
 	// a seed whose interpreter is gone, which is why the executables are named.
 	const noMachO = makePassingApp(tempDir("lo-app-"));
-	for (const gone of [
-		"bin/python3.12",
-		"lib/libpython3.12.dylib",
-		"lib/itcl4.3.8/libitcl4.3.8.dylib",
-	])
+	for (const gone of [PY_EXE, LIBPYTHON, ITCL_LIB])
 		rmSync(join(noMachO.seed, gone));
 	const emptyModeCheck = seedModeCheck(noMachO.app);
 	assert.equal(emptyModeCheck.passed, false);
@@ -427,7 +441,7 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 	// present, none of them is a filetype the kernel runs, and the check says so
 	// instead of passing on a count.
 	const libraryOnly = makePassingApp(tempDir("lo-app-"));
-	writeMachO(join(libraryOnly.seed, "bin/python3.12"), {
+	writeMachO(join(libraryOnly.seed, PY_EXE), {
 		fileType: MACH_O_FILETYPE.MH_DYLIB,
 		mode: 0o755,
 	});
@@ -446,7 +460,7 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 
 	// 4. The venv bootstrap: the half an install cannot recover from.
 	const noWheel = makePassingApp(tempDir("lo-app-"));
-	rmSync(join(noWheel.seed, "lib/python3.12/ensurepip/_bundled"), {
+	rmSync(join(noWheel.seed, `${STDLIB}/ensurepip/_bundled`), {
 		recursive: true,
 	});
 	const bootstrapCheck = seedBootstrapCheck(noWheel.app);
@@ -493,10 +507,10 @@ test("a named path the tree does not have is refused, and an optional one is rep
 	// `lib/tk8.6/demos` pruned nothing for a whole release because a stale
 	// version token made it a no-op that read as success.
 	const incomplete = makeSeed(tempDir("lo-seed-"));
-	rmSync(join(incomplete, "lib/python3.12/turtledemo"), { recursive: true });
+	rmSync(join(incomplete, `${STDLIB}/turtledemo`), { recursive: true });
 	assert.throws(
 		() => pruneSeed(incomplete, { log: () => {} }),
-		/lib\/python3\.12\/turtledemo/,
+		new RegExp(`${STDLIB}/turtledemo`),
 		"a required path that is missing must fail the build by name",
 	);
 
@@ -544,7 +558,7 @@ function makeVersionedApp(dir, version) {
 test("the shipped seed's own version is asserted against the declaration", () => {
 	// Review R1-5: this check had no committed test, and it is the only reading in
 	// the repository that can see a PATCH level - the tree's own markers
-	// (`lib/python3.12`, `_sysconfigdata`'s `VERSION`) carry the major.minor.
+	// (`lib/python<abi>`, `_sysconfigdata`'s `VERSION`) carry the major.minor.
 	const declared = JSON.parse(
 		readFileSync(join("src", "shared", "bundled-runtime-layout.json"), "utf8"),
 	).python.version;
@@ -556,6 +570,8 @@ test("the shipped seed's own version is asserted against the declaration", () =>
 	// A refresh that changes the declaration and never re-stages the seed is the
 	// failure this exists for: the bundle ships the previous patch release under
 	// the new number, and every other check is green.
+	// Deliberately an older LINE (3.12), not merely an older patch: the case
+	// must not be able to agree with a future declaration by accident.
 	const stale = makeVersionedApp(tempDir("lo-app-"), "3.12.10");
 	const fail = seedVersionCheck(stale.app);
 	assert.equal(fail.passed, false);
