@@ -124,6 +124,7 @@ import {
 	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
+	reportSkippedWhileQuitting,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -1637,6 +1638,25 @@ const actualSizeFromEvent = () => {
 	}
 };
 
+/*
+ * WHETHER THIS PROCESS HAS BEGUN QUITTING. Read by the two answer sites that
+ * must not answer a request with a window once it has — the `second-instance`
+ * handler below and the macOS `activate` handler — and set at the FIRST
+ * `before-quit` entry, before the session-cookie hold, which can hold the quit
+ * for up to 1500 ms while the window is already doomed: the operator's report is
+ * exactly that state, a relaunch answered by a process whose window is gone but
+ * whose lock and teardown are not, opening onto "the app still shutting down".
+ *
+ * Nothing clears it, and that is deliberate: from the first `before-quit` every
+ * descent this app has re-quits until the process is gone
+ * (`holdQuitForSessionCookieSnapshot` re-issues the quit it held, and `will-quit`
+ * re-issues the one it held for the owned cleanup), so a window created after
+ * this flips is one the process cannot promise to keep. A quit that could be
+ * cancelled AFTER `before-quit` would have to clear the flag beside its own
+ * cancellation; none exists in this file.
+ */
+let quitInProgress = false;
+
 // --- Single Instance Lock ---
 /*
  * THE WINDOW INTENT RIDES THE REQUEST THAT LOSES. `second-instance` hands the
@@ -1708,6 +1728,14 @@ if (!gotTheLock) {
 				}),
 				{
 					window: mainWindow,
+					/*
+					 * Read PER REQUEST rather than captured once: this handler outlives every
+					 * window, and the flag flips exactly once, so a request that arrives after
+					 * the quit began is refused instead of answered with a window the
+					 * shutdown would take down (`window-raise.ts` owns the refusal and its
+					 * line).
+					 */
+					quitting: quitInProgress,
 					openConversation: openConversationInWindow
 						? (session, request) =>
 								openConversationInWindow?.(
@@ -3385,9 +3413,32 @@ app
 			// queue emptied into a screen nobody can reach. The mode governs the launch;
 			// this is the other direction, and `OPERATOR_SHOW` is the plan that says so.
 			if (BrowserWindow.getAllWindows().length === 0) {
+				/*
+				 * A DOCK CLICK DURING A QUIT GETS A LINE, NOT A WINDOW — the same defect
+				 * as a relaunch during teardown, arriving on the operator's own act: the
+				 * click lands in the seconds between the window closing and the process
+				 * going, and the window it used to open died with that shutdown. The
+				 * refusal is reported like every other declined request
+				 * (`applied=skipped+quitting`), because a person who clicked the Dock icon
+				 * is owed the reason nothing appeared — and the NEXT click, after the
+				 * process is gone, launches a window normally.
+				 */
+				if (quitInProgress) {
+					reportSkippedWhileQuitting(
+						{ trigger: "activate", report: reportRaise },
+						OPERATOR_SHOW,
+					);
+					return;
+				}
 				setupMainWindowWithUpdateService(null, false, {
 					show: OPERATOR_SHOW,
-					trigger: "initial-present",
+					/*
+					 * The request names itself on its raise line. It used to present as
+					 * `initial-present` — this process's own launch — which is what a Dock
+					 * click is not, and the log's whole job is attribution; the refusal
+					 * above is the same request and must carry the same name.
+					 */
+					trigger: "activate",
 				});
 			}
 		});
@@ -3596,6 +3647,14 @@ const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 });
 
 app.on("before-quit", async (event) => {
+	/*
+	 * THE QUIT IS RECORDED BEFORE ANYTHING CAN WAIT ON IT. A request that arrives
+	 * after this line must not be answered with a window — the window is doomed
+	 * from here, whether the hold below passes now or holds the quit for the
+	 * session-cookie budget first — so the flag is set at the FIRST entry, ahead of
+	 * the hold, and never cleared (see `quitInProgress`'s own note).
+	 */
+	quitInProgress = true;
 	/*
 	 * Hold the quit for the browser host's stop, then let the ordinary pass
 	 * through: the stop settles or the budget expires, the hold asks for the quit
