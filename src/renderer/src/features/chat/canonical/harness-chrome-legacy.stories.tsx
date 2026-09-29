@@ -27,6 +27,10 @@
  *   with the continuation's head but does not close with its tail. It must
  *   keep painting in both halves; a fix that hid it would be eating the
  *   person's words to hide the harness's.
+ * - `multi-cycle`: the operator's real length - one ask, three (work turn,
+ *   continuation) cycles through a tool row and the answer, the turn opened.
+ *   Before: all three continuation rows paint among the person's own words.
+ *   After: all three are gone and the work and the answer stand.
  *
  * WHY THE `before` FRAMES ARE NOT HERE. They are these same states rendered by
  * the BASE tree (`origin/main`), captured separately into
@@ -64,6 +68,7 @@ const FIXTURE = fixtureJson as unknown as {
 		stored: { entries: Entry[] };
 		plain: { entries: Entry[] };
 		nearMiss: { entries: Entry[] };
+		multiCycle: { entries: Entry[] };
 	};
 	live: { continuation: LiveEvent };
 };
@@ -71,6 +76,7 @@ const FIXTURE = fixtureJson as unknown as {
 const STORED_PAGE = FIXTURE.pages.stored.entries;
 const PLAIN_PAGE = FIXTURE.pages.plain.entries;
 const NEAR_MISS_PAGE = FIXTURE.pages.nearMiss.entries;
+const MULTI_CYCLE_PAGE = FIXTURE.pages.multiCycle.entries;
 const LIVE_CONTINUATION = FIXTURE.live.continuation;
 
 /**
@@ -188,11 +194,17 @@ export const StoredTranscript: Story = {
  * The live wire is the second half of the report's surface: an older owner
  * still sends these rows, and this one carries no marker either, so the same
  * fallback has to hold on `message_start` as it does on the durable page.
+ *
+ * TAKEN AT REST, which is the round-1 design finding's fix: the live thinking
+ * counter ticks with the capture's own wall clock, so the pair's halves read
+ * different seconds (1s against 4s) and the stills were not comparable. With
+ * no turn in flight there is no counter to drift, and the row - the claim -
+ * is what the pair shows.
  */
 export const LiveArrival: Story = {
 	render: () => (
 		<Frame
-			waiting={true}
+			waiting={false}
 			caption="The same unstamped row arriving live from an owner on an older build (a `message_start` with no marker), folded over a reloaded page. Before: painted under the page. After: suppressed."
 			transcript={liveArrival()}
 		/>
@@ -214,6 +226,26 @@ export const TypedNearMiss: Story = {
 			openRows={true}
 			caption="The control: a message the PERSON typed that opens with the continuation's head (`Continue working toward this goal:`) but never closes with its tail, in the opened turn. It must keep painting in both halves."
 			transcript={withPage(NEAR_MISS_PAGE)}
+		/>
+	),
+};
+
+/**
+ * The operator's real shape at full length: repeated cycles.
+ *
+ * The report's transcript held ten continuation rows across repeated cycles,
+ * not one - so this is the same class with the repetition (one ask, three
+ * work-then-continuation cycles through a tool row, the answer), which is the
+ * shape a folding fix breaks on: every cycle's row must go, and the work must
+ * stay.
+ */
+export const MultiCycle: Story = {
+	render: () => (
+		<Frame
+			waiting={false}
+			openRows={true}
+			caption="The operator's real length: one ask, three repeated cycles (a work turn and the continuation that drove it) through a tool row, then the answer - the turn opened the way a reader reaches it. Before: all three continuation rows sit among the person's own words. After: all three are gone and only the work and the answer stand."
+			transcript={withPage(MULTI_CYCLE_PAGE)}
 		/>
 	),
 };
