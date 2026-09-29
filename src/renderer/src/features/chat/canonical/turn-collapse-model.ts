@@ -14,11 +14,22 @@
  * the caption rule and the foot line use, which is what stops a steered turn's
  * bar from disagreeing with its own foot (F5 in the design).
  *
- * WHAT COLLAPSES, in one sentence: a run whose head is in the list, that is
- * not the live one, and that has at least one row the reader is not already
- * owed (a hidden row — see `staysVisibleWhileCollapsed` for the pinned ones).
- * A run the window has cut (its opening user row is not loaded) renders as
- * today: a summary may only ever describe rows that are actually on hand.
+ * WHAT COLLAPSES, in one sentence: a run that is not the live one, that has
+ * at least one row the reader is not already owed (a hidden row — see
+ * `staysVisibleWhileCollapsed` for the pinned ones), and that either opens
+ * with its own user row in the list or has its CLOSING ANSWER in it.
+ *
+ * THE SECOND HALF IS THE END-LOADED RULE (operator report, 2026-09-29): a run
+ * whose head lies a few fetched pages above the window still condenses from the
+ * LOADED span — the bar describes exactly the rows on hand — instead of
+ * rendering head-cut until the reader pulls the head in. The old rule ("a
+ * summary may only ever describe rows that are actually on hand") reached for
+ * the right property and refused too much: the counts below already read
+ * nothing but the rows in the list, and a bar over a head-cut run states NO
+ * duration rather than one fabricated from the first loaded row. The window
+ * snap and the bounded align fetch (`snapWindowToRunBoundary`,
+ * `alignFetchDecision`) stay as refinements that bring the head in when it is
+ * cheap; neither is a precondition any more.
  *
  * EVERYTHING ELSE — counts, failure classification, the hover sentence — is
  * reused from the shipped fold vocabulary (`foldSummary`, `ledgerName`) or
@@ -202,11 +213,28 @@ export type CollapsePlan = {
  * The tail — rows the bar must NOT hide — is the run's closing answer and
  * everything after it: the collapse summarises the PREFIX of the turn, and the
  * row the reader is being handed stays where it is. Hidden rows are everything
- * between the opening user row and that tail that is not pinned.
+ * between the opening user row and that tail that is not pinned; for a
+ * head-cut run they start at the run's first LOADED row, which is exactly what
+ * makes an end-loaded bar describe only rows on hand.
+ *
+ * THE FOCUS HOLD (`options.focusHold` / `options.openRuns`). A collapse is a
+ * transition the reader did not initiate, and it UNMOUNTS rows — a reader
+ * whose keyboard focus sits inside a row this pass would hide loses focus to
+ * the body. The caller passes the record id holding focus inside the
+ * transcript (or null) and the keys of the runs the reader has opened; a run
+ * that would hide the focused row and is NOT open simply does not collapse
+ * this pass. The plan still states what it WOULD hide, and the next pass —
+ * focus moved on — folds it. Deliberately narrower than "no collapse while
+ * focused": a bar over a run the reader is not in cannot disturb them, and a
+ * reader already looking at the rows (the run is open) is not mid-transition.
  */
 export function collapsePlan(
 	rows: Row[],
-	options: { live: boolean },
+	options: {
+		live: boolean;
+		focusHold?: string | null;
+		openRuns?: ReadonlySet<string>;
+	},
 ): CollapsePlan {
 	/*
 	 * Only the NEWEST run can be the one in flight, and only while the pane says
@@ -217,12 +245,30 @@ export function collapsePlan(
 	 * happens to be running").
 	 */
 	const runs = runsOf(rows);
+	const focusHold = options.focusHold ?? null;
+	const openRuns = options.openRuns ?? NO_OPEN_RUNS;
 	return {
-		runs: runs.map((run, index) =>
-			planRun(rows, run, index === runs.length - 1 && options.live),
-		),
+		runs: runs.map((run, index) => {
+			const planned = planRun(
+				rows,
+				run,
+				index === runs.length - 1 && options.live,
+			);
+			if (
+				focusHold !== null &&
+				planned.collapses &&
+				!openRuns.has(planned.key) &&
+				planned.hidden.some((row) => row.record.id === focusHold)
+			) {
+				return { ...planned, collapses: false };
+			}
+			return planned;
+		}),
 	};
 }
+
+/** The empty set `collapsePlan` reads when the caller hands it no `openRuns`. */
+const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
 
 /*
  * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
@@ -344,9 +390,10 @@ function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 	/*
 	 * The span starts just after the opening USER row — or at the list's own
 	 * beginning for a run whose head is cut off, where the first row is simply
-	 * the oldest one loaded and nothing before it is knowable. (That run never
-	 * collapses anyway; this keeps `hidden` describing the same span the bar
-	 * would take.)
+	 * the oldest one loaded and nothing before it is knowable. A head-cut run
+	 * CAN collapse now (the end-loaded rule), which is exactly why the duration
+	 * gate below refuses to read `start` there: this position is the loaded
+	 * span's edge, not the turn's own beginning.
 	 */
 	const spanFrom = run.opensWithUserRow
 		? run.openingIndex + 1
@@ -385,17 +432,28 @@ function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 		key: run.key,
 		run,
 		/*
-		 * The bar exists iff there is something to hide, the head of the run is
-		 * loaded, and this is not the run a live turn is being written in.
+		 * The bar exists iff there is something to hide, this is not the run a
+		 * live turn is being written in, and the run can be honestly summarised:
+		 * its opening user row is on hand, OR its closing answer is (the
+		 * end-loaded rule — the bar then describes exactly the loaded span; see
+		 * the header). The focus hold is already applied by `collapsePlan`.
 		 */
-		collapses: hidden.length > 0 && run.opensWithUserRow && !live,
+		collapses:
+			hidden.length > 0 &&
+			(run.opensWithUserRow || run.closingAnswerId !== null) &&
+			!live,
 		recordIds: runRows.map((row) => row.record.id),
 		hidden,
 		/* The fold's placement rule: the bar takes the first hidden row's slot+gap. */
 		gap: hidden[0]?.gap ?? "item",
 		facts: {
-			/* Shown iff the span is at least a second — never a `0s` claim (§4.4). */
-			durationS: span >= 1000 ? span / 1000 : null,
+			/*
+			 * Shown iff the span is at least a second — never a `0s` claim (§4.4) —
+			 * AND the span is the run's REAL one: a head-cut run's `start` is its
+			 * first LOADED row, and a duration stated from there would be a number
+			 * the turn never had (the honesty half of the end-loaded rule).
+			 */
+			durationS: run.opensWithUserRow && span >= 1000 ? span / 1000 : null,
 			actions: actions.length,
 			failed,
 			firstFailedId,
