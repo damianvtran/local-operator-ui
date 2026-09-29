@@ -452,6 +452,19 @@ export type ChatDraft = {
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
 	/**
+	 * The provenance the FIRST attempt of the current message carried (arch
+	 * §4.2). Pinned beside `submittedMode` and for the same reason: the server
+	 * keys its receipt on a hash of the whole body, so a retry must replay the
+	 * bytes the first attempt sent - not re-derive them from a composer whose
+	 * flags have moved since.
+	 */
+	submittedInputMode?: "typed" | "dictated" | "mixed";
+	/**
+	 * The reserved `input_path` slot (§4.2a): no caller sets it today, and the
+	 * pin exists so the first one that does cannot get a 409 from its own retry.
+	 */
+	submittedInputPath?: string;
+	/**
 	 * When the CURRENT attempt was issued, from the press's own clock - the
 	 * anchor the wait line's clock counts from.
 	 *
@@ -2087,6 +2100,18 @@ export async function admitChatDraft(
 		images: ChatImage[];
 		mode: "prompt" | "steer";
 		cwd: string;
+		/**
+		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
+		 * `mixed` since the box last emptied. Carriage only.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed";
+		/**
+		 * RESERVED, AND NO CALLER IN THIS TREE SETS IT (arch §4.2a): the route
+		 * cascade owns the `input_path` vocabulary, and the field is pinned below
+		 * beside `inputMode` so that when its first caller arrives a replay stays
+		 * byte-identical instead of changing the receipt's hash.
+		 */
+		inputPath?: string;
 	},
 	sessionId?: string,
 	/**
@@ -2214,6 +2239,20 @@ export async function admitChatDraft(
 		: input.images;
 	const mode = replay ? (previous?.submittedMode ?? input.mode) : input.mode;
 	/*
+	 * THE SAME PINNING RULE GOVERNS `input_mode`, FOR THE SAME REASON: it is part
+	 * of the body the receipt hashes, so the lost-response case must replay the
+	 * value the FIRST attempt sent rather than re-derive it (a retry after the
+	 * user typed again would otherwise pin a different provenance for the same
+	 * request id). `input_path` rides the identical rule; it is `undefined` for
+	 * every caller today.
+	 */
+	const inputMode = replay
+		? (previous?.submittedInputMode ?? input.inputMode)
+		: input.inputMode;
+	const inputPath = replay
+		? (previous?.submittedInputPath ?? input.inputPath)
+		: input.inputPath;
+	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it
 	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
@@ -2248,6 +2287,8 @@ export async function admitChatDraft(
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
+		submittedInputMode: inputMode,
+		submittedInputPath: inputPath,
 		/*
 		 * The last attempt's sentence and code go with it: a retry that leaves a
 		 * stale refusal on screen over a request that is now in flight reads as the
@@ -2468,6 +2509,8 @@ export async function admitChatDraft(
 			text: rendered,
 			images: images.length ? images : undefined,
 			mode,
+			inputMode,
+			inputPath,
 		});
 		store.finishDraft(key, id);
 		// A send that landed retires every message about the send that did not.
@@ -6480,6 +6523,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						submittedInputMode: _inputMode,
+						submittedInputPath: _inputPath,
 						heldClaimCode: _claimCode,
 						error: _error,
 						errorCode: _errorCode,
