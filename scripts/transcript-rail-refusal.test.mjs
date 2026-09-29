@@ -101,7 +101,7 @@ const { createRoot } = await import("react-dom/client");
 
 /** The sentence, verbatim from `canonical-transcript.tsx`. */
 const REFUSAL =
-	"Could not reach that checkpoint. It is further back than the loaded history.";
+	"Could not reach that turn. It is further back than the loaded history.";
 
 /** The manifest's one checkpoint, absent from the empty transcript below. */
 const checkpoint = {

@@ -434,6 +434,14 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 					>
 						{activeCheckpoint.kind === "user" ? (
 							<div
+								/*
+								 * `data-checkpoint-card-text` is the driven scene's measurement
+								 * hook for the bound itself (the same pattern as
+								 * `data-jump-highlight`): the long-message frame asserts
+								 * `scrollHeight > clientHeight` here rather than trusting that
+								 * `max-h-40` is doing what it says (design round 1, D5).
+								 */
+								data-checkpoint-card-text=""
 								className={cn(
 									// ~8 lines of body-sm, then the preview scrolls.
 									"max-h-40 overflow-y-auto break-words whitespace-pre-wrap",

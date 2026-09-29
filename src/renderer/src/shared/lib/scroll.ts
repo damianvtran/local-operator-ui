@@ -87,7 +87,9 @@ export const scrollRegionToTop = (
  *
  * No high-end clamp, for the reason `scrollRegionToTop` gives: the browser
  * knows `scrollHeight - clientHeight` and this cannot, because content may
- * still grow. The low-end clamp is identical.
+ * still grow. The low-end clamp is the axis's, not the number's — see the
+ * `axis` note below, which is the whole difference between this helper's two
+ * legal shapes.
  *
  * PRECONDITION: the region must be the target's containing scroll box, or an
  * ancestor of it — the same rule `scrollRegionToTop` states at length, restated
@@ -97,6 +99,7 @@ export const scrollRegionToTop = (
 export const scrollRegionToCenter = (
 	region: HTMLElement,
 	target: HTMLElement,
+	axis: "normal" | "reversed" = "normal",
 ): void => {
 	const targetRect = target.getBoundingClientRect();
 	const offset =
@@ -105,5 +108,30 @@ export const scrollRegionToCenter = (
 		region.getBoundingClientRect().top -
 		region.clientTop -
 		(region.clientHeight - targetRect.height) / 2;
-	region.scrollTop = Math.max(0, offset);
+	/*
+	 * THE CLAMP IS THE AXIS'S, and design round 1 measured what happens when it
+	 * is assumed instead of named (D1). The offset arithmetic above is one
+	 * expression for both scroller shapes — it is stated in terms of the
+	 * target's rect relative to the region, so it holds whichever way the
+	 * content runs — but the values `scrollTop` may take are not the same. In a
+	 * normal scroller the origin is the top edge: `scrollTop` is bounded to
+	 * [0, overflow], so the low clamp is zero. In a `flex-col-reverse` scroller
+	 * the origin is the BOTTOM: the newest row sits at 0 and the oldest at a
+	 * NEGATIVE bound — `use-scroll-paging.ts` states the measured contract
+	 * ("`scrollTop` runs from 0 at the newest row to a negative bound at the
+	 * oldest"; making it more negative moves content DOWN). Clamping an
+	 * above-viewport target's negative offset at 0 was therefore a no-op on the
+	 * transcript's own scroller: the landing frames showed the wash painted
+	 * off-screen over pixel-identical bubble positions while the attribute the
+	 * scene asserted was set honestly. Allowed to go negative, the same
+	 * arithmetic moves the reader.
+	 *
+	 * The parameter is explicit rather than sniffed from computed styles: there
+	 * is exactly one reversed scroller in the renderer (the canonical
+	 * transcript), its shape is a fact of the DOM contract its own hook
+	 * documents, and a caller that gets it wrong should be one line to read at
+	 * the call site rather than a style query this helper hopes is right.
+	 */
+	region.scrollTop =
+		axis === "reversed" ? Math.min(0, offset) : Math.max(0, offset);
 };
