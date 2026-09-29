@@ -116,8 +116,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	assert.equal(steered.length, 1, "one turn, not two");
 	assert.equal(
 		steered[0].key,
-		"u1",
-		"the run is keyed by its opening user row",
+		"a1",
+		"the run is keyed by its closing answer (the head-independent identity)",
 	);
 	assert.equal(
 		steered[0].closingAnswerId,
@@ -135,8 +135,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		twoTurns.map((run) => run.key),
-		["u1", "u2"],
-		"a settled answer makes the next user message a new turn",
+		["a1", "a2"],
+		"a settled answer makes the next user message a new turn, keyed on its answer",
 	);
 	assert.equal(twoTurns[0].boundary, "answer");
 	assert.equal(twoTurns[0].closingAnswerId, "a1");
@@ -162,17 +162,41 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		marked.map((run) => run.key),
-		["u1", "u2"],
+		["m1", "a2"],
 		"a completion marker ends the turn even with no answer painted",
 	);
 	assert.equal(marked[0].boundary, "marker");
 });
 
-test("a run whose head the window cut off says so, and keys on its first row", () => {
+test("a head-cut run's identity survives the head arriving later", () => {
+	/*
+	 * The key is what the reader's expansion and the bar's React key hang on,
+	 * and a head-cut run's first row is NOT stable: the day a page brings the
+	 * opening user row in, that row is no longer first. The closing answer (or,
+	 * with none to key on, the run's last row) is the same row in both lists —
+	 * rows only ever arrive ABOVE a run's head.
+	 */
 	const cut = runsOf([tool("t1"), tool("t2", {}, "trace"), answer("a1")]);
 	assert.equal(cut.length, 1);
 	assert.equal(cut[0].opensWithUserRow, false);
-	assert.equal(cut[0].key, "t1", "the fallback key is the first row's id");
+	assert.equal(cut[0].key, "a1", "the closing answer keys the cut run");
+	const whole = runsOf([
+		user("u1"),
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1"),
+	]);
+	assert.equal(whole[0].key, cut[0].key, "the head landing does not move it");
+	assert.equal(
+		runsOf([tool("t3")])[0].key,
+		"t3",
+		"with no answer to key on, the run's last row is the stable half",
+	);
+	assert.equal(
+		runsOf([user("u2"), tool("t3")])[0].key,
+		"t3",
+		"and it is the same row before and after the head lands",
+	);
 });
 
 /* --------------------------- the case matrix (§5) ------------------------ */
@@ -370,19 +394,110 @@ test("a dead run with no settled row collapses to the bar alone", () => {
 	const withSteer = planOf([user("u1"), tool("t1"), user("s1")]);
 	assert.deepEqual(
 		withSteer.runs.map((run) => run.key),
-		["u1"],
+		["s1"],
 		"the following message is a steer, however unideal that is (R2)",
 	);
 });
 
-test("a window-cut run never collapses, whatever it hides", () => {
-	// §5 case 12: a summary may only ever describe rows that are on hand.
-	const plan = planOf([tool("t1"), tool("t2", {}, "trace"), answer("a1")]);
+test("a head-cut run with its closing answer loaded condenses from the loaded span, with no fabricated duration", () => {
+	/*
+	 * END-LOADED ELIGIBILITY (operator report, 2026-09-29; adopted from the dsh
+	 * comparison). The fetched list starts mid-run — the operator's "the
+	 * previous message is a few chunk loads up" — and the run used to render
+	 * its raw rows until the reader pulled the head in. The bar may only ever
+	 * describe rows on hand, and that is exactly what this plans: the loaded
+	 * calls, and NO `Took` (the span would have to start at the first loaded
+	 * row, a number the turn never had).
+	 */
+	const plan = planOf([
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1", { ts: TS + 5_000 }),
+	]);
+	const run = plan.runs[0];
+	assert.equal(
+		run.collapses,
+		true,
+		"the closing answer is on hand, so it folds",
+	);
+	assert.deepEqual(
+		run.hidden.map((hidden) => hidden.record.id),
+		["t1", "t2"],
+		"the loaded rows are what it hides",
+	);
+	assert.equal(
+		run.facts.durationS,
+		null,
+		"never fabricated from the first loaded row",
+	);
+	assert.equal(run.facts.actions, 2, "counted over the loaded rows only");
+	assert.equal(
+		run.stampTs,
+		TS + 5_000,
+		"the closing answer still stamps the turn",
+	);
+});
+
+test("a head-cut run with no closing answer stays unfolded — no answer, no bar", () => {
+	// The honesty property in its true form: the bar's tail is the closing
+	// answer, and a cut run that never handed one has no tail to keep.
+	const plan = planOf([tool("t1"), tool("t2", {}, "trace")]);
 	assert.equal(plan.runs[0].collapses, false);
 	assert.equal(
 		plan.runs[0].hidden.length,
 		2,
 		"the plan still says what it would hide; the flag is what refuses",
+	);
+});
+
+test("the focus hold keeps a run open while the reader's focus sits in a row it would hide", () => {
+	const rows = [user("u1"), tool("t1"), answer("a1")];
+	assert.equal(
+		collapsePlan(rows, { live: false }).runs[0].collapses,
+		true,
+		"the baseline: the completed run folds",
+	);
+	const held = collapsePlan(rows, { live: false, focusHold: "t1" });
+	assert.equal(
+		held.runs[0].collapses,
+		false,
+		"the run that would unmount the focused row stands open",
+	);
+	assert.deepEqual(
+		held.runs[0].hidden.map((hidden) => hidden.record.id),
+		["t1"],
+		"the plan still states what it would hide",
+	);
+	assert.equal(
+		collapsePlan(rows, { live: false, focusHold: "u1" }).runs[0].collapses,
+		true,
+		"a focused row OUTSIDE the hidden span does not hold it",
+	);
+	const two = collapsePlan(
+		[
+			user("u1"),
+			tool("t1"),
+			answer("a1"),
+			user("u2"),
+			tool("t2", {}, "trace"),
+			answer("a2"),
+		],
+		{ live: false, focusHold: "t2" },
+	);
+	assert.equal(
+		two.runs[0].collapses,
+		true,
+		"a bar over a run the reader is not in cannot disturb them",
+	);
+	assert.equal(two.runs[1].collapses, false, "the focused run stands open");
+	assert.equal(
+		collapsePlan(rows, {
+			live: false,
+			focusHold: "t1",
+			openRuns: new Set(["a1"]),
+		}).runs[0].collapses,
+		true,
+		"an OPEN run already renders its rows, so nothing is mid-transition",
 	);
 });
 
@@ -885,7 +1000,11 @@ test("R1-3(a): a prose-free settled answer does not close the run — the next m
 	);
 	const runs = runsOf(rows);
 	assert.equal(runs.length, 1, "so u2 folds into u1's run as a steer");
-	assert.equal(runs[0].key, "u1");
+	assert.equal(
+		runs[0].key,
+		"u2",
+		"keyed on its last row: the closure `a1` paints no row to key on",
+	);
 });
 
 test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", () => {
@@ -931,7 +1050,7 @@ test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", 
 	const runs = runsOf(rows);
 	assert.deepEqual(
 		runs.map((run) => run.key),
-		["u1", "u2"],
+		["n1", "u2"],
 		"the steer opens a run: the settled prose counted as the ending",
 	);
 });
