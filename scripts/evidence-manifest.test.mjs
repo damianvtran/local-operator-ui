@@ -2030,6 +2030,88 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"miniDictRestampNote",
 	/*
+	 * AND THE README-VISUALS REMEDIATION'S OWN: `readmeVisualsRestampNote` states
+	 * the pair this branch's change binds - the story under `src/` and the two
+	 * rigs under `scripts/` moved both stamped trees, and no sweep frame moved -
+	 * so it is held to the pair this file ships rather than read as history.
+	 */
+	"readmeVisualsRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `readmeVisualsFoldNote` is the fold onto
+	 * the moved `origin/main` `8dc87ea84c` (#642 over #573's view-settings
+	 * re-capture) while round 1 was being answered - the two conflicted paths
+	 * were the manifest and this list, both resolved as unions with no key
+	 * dropped from either side, and both stamps re-derived from the MERGED tree
+	 * by the docs-only amendment under the merge. It quotes that pair, so it is
+	 * held to the pair this file ships.
+	 */
+	"readmeVisualsFoldNote",
+	/*
+	 * AND THE ROUND-2 FIX'S OWN (2026-09-29): `readmeVisualsRoundTwoRestampNote`
+	 * states the pair its fix binds - the helper's required field and the scene's
+	 * store reset under `src/`, and its own registration here - and quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `readmeVisualsFoldTwoNote` is the
+	 * fold onto the moved `origin/main` `b23f789c10` (#643's keymap-consume
+	 * merge, whose branch re-stamped the evidence itself) - the single
+	 * conflicted path was the manifest, resolved with main's records whole and
+	 * this branch's laid back on top, and both stamps re-derived from the
+	 * MERGED tree by the docs-only amendment under the merge. It quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldTwoNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `readmeVisualsFoldThreeNote` is the
+	 * fold onto the moved `origin/main` `bc09a6d698` (#630's
+	 * transcript-checkpoint-rail merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldThreeNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFourNote` is the
+	 * fold onto the moved `origin/main` `dd51156839` (#644's
+	 * mini-view-shared-dictation merge) - both evidence files conflicted this
+	 * time and both were resolved as unions with no key dropped, and both stamps
+	 * re-derived from the MERGED tree by the docs-only amendment under the
+	 * merge. It quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldFourNote",
+	/*
+	 * AND THE FIFTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFiveNote` is the
+	 * fold onto the moved `origin/main` `0a2c8e7a30` (#647's release bump, with
+	 * #641 and #610 behind it) - the single conflicted path was the manifest,
+	 * resolved with main's records whole and this branch's laid back on top,
+	 * and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldFiveNote",
+	/*
+	 * AND THE SIXTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSixNote` is the
+	 * fold onto the moved `origin/main` `654c58f5f672` (#639's
+	 * relaunch-during-shutdown fix) - both evidence files conflicted and both
+	 * were resolved as unions with no key dropped, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. It
+	 * quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldSixNote",
+	/*
+	 * AND THE SEVENTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSevenNote` is
+	 * the fold onto the moved `origin/main` `a0cdaa759f5a` (#629's
+	 * thread-search-overlay merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldSevenNote",
+	/*
 	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (`headCutCondensationRestampNote`,
 	 * 2026-09-29): the operator report that a completed turn whose opening
 	 * message sits a few fetched pages up does not condense - it renders as its
@@ -2306,16 +2388,29 @@ const duplicateParagraphFailures = (manifest) => {
 	for (const [field, value] of Object.entries(mean)) {
 		if (typeof value !== "string") continue;
 		const paragraphs = value.trim().split(PARAGRAPH_BREAK);
-		for (let i = 1; i < paragraphs.length; i += 1) {
-			if (paragraphs[i] !== paragraphs[i - 1]) continue;
-			/*
-			 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
-			 * ERROR under this project's config, and the gate above treats an error-severity
-			 * diagnostic in a changed file as a failure - which is how this message was caught.
-			 */
-			failures.push(
-				`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
-			);
+		/*
+		 * A SEEN SET, not the adjacent pair this guard first read: the copies
+		 * review round 1 found were NON-adjacent (a paragraph repeated four
+		 * entries later in `surfaces`, and `frames` carrying the same
+		 * "MAIN'S OWN RECORD..." sentence twice), which an adjacent comparison
+		 * passes while looking like it guards the whole cell. One pass, with the
+		 * first-seen index kept so the message can say which entry it duplicates.
+		 */
+		const seen = new Map();
+		for (let i = 0; i < paragraphs.length; i += 1) {
+			const first = seen.get(paragraphs[i]);
+			if (first !== undefined) {
+				/*
+				 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
+				 * ERROR under this project's config, and the gate above treats an error-severity
+				 * diagnostic in a changed file as a failure - which is how this message was caught.
+				 */
+				failures.push(
+					`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (first seen at ${first}: ${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
+				);
+				continue;
+			}
+			seen.set(paragraphs[i], i);
 		}
 	}
 	return failures;
@@ -2343,6 +2438,24 @@ test("a countsMean cell that repeats a paragraph verbatim fails", () => {
 		}),
 		[],
 	);
+	/*
+	 * AND THE NON-ADJACENT SHAPE, which is the one the adjacent comparison
+	 * missed: a paragraph repeated with a different one between its copies is
+	 * still the same sentence twice, and review round 1 found the shipped file
+	 * carrying exactly that shape (frames: `MAIN'S OWN RECORD...` twice, four
+	 * entries apart; surfaces: a pair repeated at 12/16 and 13/17).
+	 */
+	const spaced = duplicateParagraphFailures({
+		countsMean: {
+			surfaces: `${sentence}\n\nRE-DERIVED FOR AN OLDER FOLD: 12 rows.\n\n${sentence}`,
+		},
+	});
+	assert.equal(
+		spaced.length,
+		1,
+		"a repeat with a different paragraph between its copies is still a repeat",
+	);
+	assert.match(spaced[0], /first seen at 0/);
 });
 
 test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
@@ -3127,6 +3240,72 @@ const BRANCH_RECORDS = [
 	 * is owed the pair this file ships and the reason no still was.
 	 */
 	"relaunchDuringQuitRestampNote",
+	/*
+	 * Grown by the README-visuals remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps: the story under `src/` and
+	 * the two rigs under `scripts/` moved both trees, and no sweep frame moved.
+	 * It is listed for the reason the list exists: a fold that started from
+	 * main's manifest would drop it (and with it the note that says which two
+	 * tree hashes this branch's delta moved) without a word.
+	 */
+	"readmeVisualsRestampNote",
+	/*
+	 * Grown by the README-visuals fold, this branch's newest top-level record:
+	 * the merge onto `origin/main` `8dc87ea84c` resolved both evidence files as
+	 * unions and re-derived the pair from the merged tree, and the note it wrote
+	 * is listed for the reason the list exists - a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"readmeVisualsFoldNote",
+	/*
+	 * Grown by the round-2 fix, this branch's newest top-level record: its
+	 * `notRunKind` and width-reset edits moved the src tree, and the note is
+	 * listed for the reason the list exists - a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * Grown by the second fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `b23f789c10` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldTwoNote",
+	/*
+	 * Grown by the third fold, this branch's newest top-level record: the merge
+	 * onto `origin/main` `bc09a6d698` re-derived the pair from the merged tree,
+	 * and the note it wrote is listed for the reason the list exists - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldThreeNote",
+	/*
+	 * Grown by the fourth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `dd51156839` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFourNote",
+	/*
+	 * Grown by the fifth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `0a2c8e7a30` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFiveNote",
+	/*
+	 * Grown by the sixth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `654c58f5f672` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSixNote",
+	/*
+	 * Grown by the seventh fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `a0cdaa759f5a` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSevenNote",
 	/*
 	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (2026-09-29):
 	 * `headCutCondensationRestampNote` is the re-stamp for the operator report
