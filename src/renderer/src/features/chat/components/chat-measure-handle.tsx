@@ -81,6 +81,7 @@ import {
 	CHAT_MEASURE_MIN_PX,
 	draggedChatMeasureWidth,
 	releasedChatMeasureWidth,
+	renderedChatMeasureWidth,
 } from "../chat-measure-drag";
 
 /**
@@ -218,6 +219,30 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		event.preventDefault();
 		if (target === null) {
 			onReset();
+			return;
+		}
+		/*
+		 * THE SAME RENDER CONSULTATION THE RELEASE MAKES, for the same reason
+		 * (UX round 3's U6): a step that cannot move a pixel may not move the
+		 * store. Measured before this guard: with the column clamped to a 968px
+		 * pane, ArrowLeft at a stored 1100 walked the store down (1100 -> 1084,
+		 * `aria-valuenow` and `max-width` following) while the rendered width
+		 * stayed 968 - the release's U4 defect, on the keyboard. The comparison
+		 * is `releasedChatMeasureWidth`'s own - the rendered width of the target
+		 * against the rendered width of the measure on screen - so the two paths
+		 * refuse by ONE arithmetic rather than drift apart the way the commit
+		 * and the pixels once did. It guards every step that lands on a width
+		 * (the arrows, Home, End); `Enter` above is deliberately outside it,
+		 * because the reset abandons the measure rather than stepping to one.
+		 * A host with no scroller to read answers `null`, and this falls through
+		 * to the write, as the release falls back to committing.
+		 */
+		const panePx = paneWidthPx();
+		if (
+			panePx !== null &&
+			renderedChatMeasureWidth(target, panePx) ===
+				renderedChatMeasureWidth(width, panePx)
+		) {
 			return;
 		}
 		onWidthChange(target);
