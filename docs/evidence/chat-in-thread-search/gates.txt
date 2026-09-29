@@ -69,3 +69,19 @@ $ node scripts/run-desktop-tests.mjs <the search suites + rail/collapse neighbou
 ℹ fail 0
 ℹ skipped 0
 rc=0
+
+# --- CI's Lint job, and the one real defect it found (2026-09-29) ---
+
+# CI run 36510516183 on ebb72ed11e: every job green except Lint, which reported
+# "Found 1 error. Found 122 warnings." The error was NOT one of the warnings:
+# it was a FORMAT mismatch on src/renderer/src/styles/index.css, the double
+# blank line left where the deleted `data-lo-search-landed` block had been
+# (deleting the block left an extra separator between the composer band's rules
+# and the chat measure's comment). Reproduced locally and fixed:
+$ node_modules/.bin/biome check src bin scripts/linux-sandbox.test.mjs
+Checked 989 files in 2s. No fixes applied.
+Found 122 warnings.
+rc=0   # after `biome check --write src/renderer/src/styles/index.css` removed the blank line
+
+# The earlier "rc=0" lines in this file were captured the same way (exit code
+# read directly, not through a pipe): the defect is this head's, not theirs.
