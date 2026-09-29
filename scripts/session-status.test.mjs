@@ -63,6 +63,7 @@ const {
 	effortDisplay,
 	effortQueryModel,
 	effortState,
+	fastModeState,
 	formatContextTokens,
 	formatCost,
 	formatWindow,
@@ -663,6 +664,38 @@ test("the effort VALUE is title-cased for display, and the raw level is untouche
 		}).label,
 		"high",
 		"the state's label stays the raw lowercase level",
+	);
+});
+
+/* ---- 7b. the fast dial: the tri-state the badge and the row share ------- */
+
+test("the fast dial is a tri-state, and `nothing` is not an OFF", () => {
+	// Mirrors `_fast_label` (`tui/widgets/status_line.py`): a segment exists
+	// only when the model HAS the tier, so a spec that reports none answers
+	// `null` — an `off` there would claim a dial the model does not have. The
+	// desktop's badge and the `/fast` row's slot both take their state from
+	// here, which is what keeps them from disagreeing about a session's dial.
+	assert.equal(fastModeState(null), null);
+	assert.equal(fastModeState(undefined), null);
+	assert.equal(fastModeState({}), null);
+	// "No tier" is `!== true` on purpose: absent, `false`, `null` and a
+	// non-boolean from a damaged frame are all the same fact to report.
+	assert.equal(fastModeState({ supports_fast_mode: false }), null);
+	assert.equal(fastModeState({ supports_fast_mode: null }), null);
+	assert.equal(fastModeState({ supports_fast_mode: "yes" }), null);
+	// With the tier present the dial is ON or OFF — and `off` is a state, not
+	// `null`, because the row may print it while the badge stays hidden.
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: false }),
+		"off",
+	);
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: null }),
+		"off",
+	);
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: true }),
+		"on",
 	);
 });
 
