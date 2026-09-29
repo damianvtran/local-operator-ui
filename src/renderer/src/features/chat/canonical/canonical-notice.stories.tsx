@@ -219,6 +219,155 @@ export const NoticeLengths: Story = {
 };
 
 /**
+ * The v2 neutral closure: a disposal that caught a zero-work run must read as a
+ * receipt on the desktop, never "Stopped with an error".
+ *
+ * The record is a `completion_attention` entry with `kind: "closed"` (core
+ * change: "render post-completion disposals neutrally"), painted here by the
+ * production reducer from the persisted payload shape — `type: "custom"` with
+ * details under `payload`, exactly as the frozen 664a transcript carries it —
+ * so the frame judges the row the app is actually given. The fixture shows the
+ * ORDERING the change is about (a delivered answer, then the receipt): the
+ * user and assistant rows use the `content: [{ text }]` block shape the reducer
+ * reads (design round 1, D1 — a `message:` field painted nothing, so the frame
+ * showed a receipt with nothing above it). What to look for: an info-ink
+ * receipt reading "Completed — runtime retired/disposed", carrying the
+ * `complete` marker that also retires the working line's wait, because a
+ * runtime that has been disposed is not still working.
+ */
+export const ClosedOutcomeNotice: Story = {
+	render: () => (
+		<Frame
+			records={
+				applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "u-closed",
+							ts: 1_760_000_000,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "carry the release" }],
+							},
+						},
+						{
+							id: "a-closed",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "The release is carried — the tag is pushed and the notes are up.",
+									},
+								],
+								stop_reason: "stop",
+							},
+						},
+						{
+							id: "marker-closed-23fc",
+							ts: 1_760_000_060,
+							type: "custom",
+							payload: {
+								custom_type: "completion_attention",
+								details: {
+									conversation_id: "session/23fc556c3799",
+									token: "t2",
+									anchor: "completion-23fc556c3799-0000-4000-8000-0000000000ab",
+									kind: "closed",
+									cause: "disposed",
+									reason: "",
+									notify: false,
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records
+			}
+		/>
+	),
+};
+
+/**
+ * The retire-for-build row (2026-09-29; core kind `retired`): a bound-expired
+ * build drain cut a live turn, so the desktop reads "Retired for an update — a
+ * turn was in flight and was cut; its earlier output is kept" in WARNING ink —
+ * truthful, never danger.
+ *
+ * Same production path and fixture shape as the closure above; the one
+ * difference that matters visually is the tier (`warning` — never the
+ * closure's `info` whisper and never the failure's `error`) and the copy,
+ * byte-identical to the core's `harness/rows.py::RETIRED_NOTICE_TEXT`. What to
+ * look for: a triangle-alert glyph, same muted trace ink as the info rows;
+ * the tier is carried by the glyph shape, not a tint (design round 2, D4 —
+ * this docblock previously promised "amber ink" the row has never worn, and
+ * a red anywhere would be the failure framing this arm exists to remove). No
+ * action button, and the same `complete` marker retiring the working-line
+ * wait — the runtime is leaving, so nothing is still in flight beside it.
+ */
+export const RetiredOutcomeNotice: Story = {
+	render: () => (
+		<Frame
+			records={
+				applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "u-retired",
+							ts: 1_760_000_000,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "verify the migration before I sign off" }],
+							},
+						},
+						{
+							id: "a-retired",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "Halfway through the check — the row counts agree so far; the backfill is next.",
+									},
+								],
+								stop_reason: "stop",
+							},
+						},
+						{
+							id: "marker-retired-7e79",
+							ts: 1_760_000_060,
+							type: "custom",
+							payload: {
+								custom_type: "completion_attention",
+								details: {
+									conversation_id: "session/7e797aaaf6e7",
+									token: "t3",
+									anchor: "completion-7e797aaaf6e7-0000-4000-8000-0000000000cd",
+									kind: "retired",
+									cause: "runtime-retired",
+									reason:
+										"the runtime retired so the next engage would run a newer build",
+									notify: true,
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records
+			}
+		/>
+	),
+};
+
+/**
  * Session incidents, and the other harness statements, on their own rows.
  *
  * The operator's report: a turn dies, and the row that explains why reads only
