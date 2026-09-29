@@ -1959,6 +1959,15 @@ const STAMP_BINDING_NOTES = [
 	 * this branch relies on and which do not.
 	 */
 	"sessionlessSlashThirdFoldNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `sessionlessSlashFourthFoldNote`
+	 * is the fold onto the moved `origin/main` `46d0bba0de` (#573's
+	 * view-settings audit) — ONE conflict this time (this file's sibling, the
+	 * manifest), resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFourthFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3018,6 +3027,12 @@ const BRANCH_RECORDS = [
 	 * fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashThirdFoldNote",
+	/*
+	 * And the fourth fold's own (`sessionlessSlashFourthFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not; a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFourthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
