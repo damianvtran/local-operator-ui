@@ -1,0 +1,53 @@
+# The gates, on the final head `8861d61ce7` (rebased onto the rail's `200b5c341a`), run 
+# on this host while ~25 sessions share it — the numbers are this machine's, not CI's.
+
+$ pnpm lint   # -> biome check src bin scripts/linux-sandbox.test.mjs
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 102.
+Checked 988 files in 2s. No fixes applied.
+Found 122 warnings.
+rc=0
+
+$ pnpm lint:scripts
+  scripts/use-thread-search.test.mjs
+check-scripts-lint: 9 changed file(s) under scripts/ are lint-clean against origin/main (b6f6d2c).
+rc=0
+
+$ pnpm check-types   # tsc --noEmit over tsconfig.app.json and tsconfig.node.json
+both projects: no output (clean)
+rc=0
+
+$ pnpm check-themes   # generate-theme-css --check && contrast-contract
+themes.generated.css is up to date (59 themes).
+Contrast contract holds: 29001 assertions across 59 themes, 0 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s), 10 pinned identity pair(s).
+Fleet: 14 dark canvas(es) in a 1.5 L* window (max 14), 14 below L* 13.5, spread 9.95 L*; 5 sub-1.0 and 2 identical dark canvas pair(s); light 10 in a 1.5 L* window, 12 at or above L* 91.3, 1 sub-1.0 pair(s); 34 moved value(s) over the 1 degree hue pin and inside the 8-bit envelope.
+rc=0
+
+$ node scripts/run-desktop-tests.mjs <the search suites + the suites whose surfaces the wire and the transcript touch>
+✔ the find op is bounded at both ends and closes its vocabulary (1.675375ms)
+✔ the chord is exactly Meta/Ctrl+F, and no neighbouring chord is claimed (0.511375ms)
+✔ a mounted row is marked at once and scrolled to the centre by the shared walk, and the mark moves and times out (296.558791ms)
+✔ the chord opens the panel from the chat surface, and nowhere else (81.207333ms)
+ℹ tests 193
+ℹ suites 0
+ℹ pass 193
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45181.548834
+rc=0
+
+$ node scripts/run-desktop-tests.mjs scripts/evidence-manifest.test.mjs scripts/evidence-histogram-parity.test.mjs
+ℹ tests 44
+ℹ pass 43
+ℹ fail 0
+ℹ skipped 1
+rc=0
+
+$ node scripts/check-evidence.mjs   # the full image loop, machine-lease guarded
+DEFERRED — another agent session's evidence sweep held the machine lease for the whole
+window this branch was being finished in ('another sweep holds the machine lease; retry
+after it finishes. No frames checked.'); the fast half of the same verdict — the stamp
+test above — ran green on this head, and the image half is left to CI/the next lease.
+
