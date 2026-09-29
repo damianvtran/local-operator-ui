@@ -1,44 +1,33 @@
 /**
- * The search hit's reveal seam: bring a matched message into view, expand the
- * collapsed turn that may be hiding it, and mark the row it landed on.
+ * The search hit's reveal seam: land the reader on a matched message and mark
+ * it, through the SAME machinery the failure jump and the collapsed turn's bar
+ * use.
  *
- * ## Why this is one function, and where the seam is
+ * ## What is whose
  *
- * The transcript is lazy and windowed, so "go to this message" has up to three
- * layers to cross — reveal the row inside a collapsed turn, page an older one
- * into the window, then scroll it to the centre — and every surface that
- * navigates the transcript (the checkpoint rail's ticks, the failure jump, this
- * overlay) must cross them through ONE implementation or the app grows two
- * reveal behaviours that agree until someone fixes only one of them.
+ * Expanding the gated layers (a collapsed turn's bar, a run's fold, the row's
+ * own detail) and scroll-centring the row is `failed-row-jump.ts`'s job — it
+ * was lifted out of the foot precisely so every "take me to this record" route
+ * crosses the same walk, and this module is the third caller rather than a
+ * second implementation of it. What belongs to THIS surface is the other half:
  *
- * That shared implementation is IN FLIGHT on sibling branches: the collapse
- * lane's `revealRecord` and the rail's Phase 2 `useTranscriptJump` (the TODO
- * in `use-checkpoints.ts` names it). Neither exists on this branch, so this
- * module is the smallest clean interface those will replace:
+ *   - the OUTCOME. `jumpToFailedRow` is fire-and-forget; a search hit needs to
+ *     know whether the row is on screen at all, because a message older than
+ *     the rendered window cannot be revealed by opening anything — it has to be
+ *     paged in, which is the transcript's own machinery and the caller's next
+ *     step (the integration phase's half of this seam). `not-mounted` is that
+ *     fact, named.
+ *   - the MARK. A landed match is this surface's own state and no other caller
+ *     wants it.
  *
- *   revealThreadSearchHit(scroller, id) -> "revealed" | "not-mounted"
+ * ## The wait, and why it is a poll rather than a frame count
  *
- * is the WHOLE surface the overlay consumes. When the shared primitive lands,
- * the staged walk below is deleted and its first half delegates to that
- * primitive; the second half — the transient mark — stays here, because a
- * landed match is this surface's own state and no other caller wants it.
- * TODO(thread-search-integration): swap the walk for the shared reveal; keep
- * `markLanded`.
- *
- * ## The staged walk, and its one layer
- *
- * A collapsed turn's rows are not in the DOM at all (`Disclosure` renders
- * `isOpen && children()`), and the bar that replaced them carries the FIRST
- * hidden row's id as its own anchor (`turn-summary.tsx`'s `data-record-id`),
- * so a lookup for that id must exclude the bar and a collapsed bar must be
- * opened before the row exists. This replicates the failure jump's staged
- * shape for the one layer a MESSAGE can hide behind: find results are user or
- * agent messages by contract, so they never sit inside a tool group's fold —
- * the layers a failed TOOL row needs are deliberately not duplicated here.
- *
- * The frame wait is load-bearing: a layer opens through React state, so its
- * children commit after the current task, and `requestAnimationFrame` is the
- * first moment the next layer — or the row — is in the DOM.
+ * The walk waits one frame per gated layer it opens, so its scroll happens up
+ * to two commits after the call. The mark needs the row, not the walk's
+ * schedule, so this waits on the ROW — one frame at a time, bounded — and
+ * applies the mark the moment it exists. A row already in the DOM is marked
+ * with no frame waited at all, which is the common case: most hits were never
+ * hidden.
  *
  * ## The mark, and who takes it away
  *
@@ -53,6 +42,8 @@
  * worlds, which is also why it survives a theme swap mid-flight.
  */
 
+import { jumpToFailedRow } from "./failed-row-jump";
+
 /**
  * How long a landed row keeps its mark.
  *
@@ -66,22 +57,21 @@ export const THREAD_SEARCH_LANDED_MS = 3000;
 /** The attribute a landed row carries while it is marked. */
 export const THREAD_SEARCH_LANDED_ATTR = "data-lo-search-landed";
 
+/**
+ * How many frames to wait for a row the walk may still be opening.
+ *
+ * Four, against a walk that waits one per layer and finds at most two on the
+ * way to a message (the bar and its fold; a message never sits inside a tool
+ * group's own detail). The budget only bounds a hop that cannot succeed — the
+ * outcome it names, `not-mounted`, is the honest answer for a row that is not
+ * in the window at all.
+ */
+export const THREAD_SEARCH_REVEAL_FRAMES = 4;
+
 /** What a reveal attempt found. */
 export type ThreadSearchRevealOutcome = "revealed" | "not-mounted";
 
-/**
- * Whether the user has asked the OS for less motion.
- *
- * Read per call rather than cached, for the reason the failure jump states:
- * the preference can change while the app is open, and this is one
- * `matchMedia` on a press. It decides whether `scrollIntoView` is told to
- * animate; the mark's own treatment under the setting lives in the stylesheet.
- */
-function prefersReducedMotion(): boolean {
-	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/** One frame, as a promise — the walk's only way to wait for React to commit. */
+/** One frame, as a promise — how the wait outlasts React's commits. */
 function nextFrame(): Promise<void> {
 	return new Promise((resolve) => {
 		window.requestAnimationFrame(() => resolve());
@@ -128,45 +118,36 @@ function markLanded(row: HTMLElement): void {
 }
 
 /**
- * Bring the message `id` into view inside `scroller`, and mark it.
+ * The row the walk would land on, excluding the collapsed bar that carries the
+ * first hidden row's id as its own anchor (`:not([data-turn-summary])`, the
+ * same exclusion `failed-row-jump.ts` makes).
+ */
+function landedRow(root: ParentNode, id: string): HTMLElement | null {
+	return root.querySelector<HTMLElement>(
+		`[data-record-id="${CSS.escape(id)}"]:not([data-turn-summary])`,
+	);
+}
+
+/**
+ * Land on the message `id` inside `scroller`, and mark it.
  *
- * `not-mounted` is not a failure: the message is older than the rendered
- * window (or inside a run that is still opening), and paging it in is the
- * transcript's own machinery — the integration phase's half of this seam. The
- * overlay treats both outcomes the same way today: the reader stays where they
- * are and the panel keeps its list.
+ * `scroller` is the transcript's own scroll container — the caller's ref, so a
+ * second transcript on the same screen (a canvas pane, the run panel's child
+ * reader) can never be the surface a hit navigates.
  */
 export async function revealThreadSearchHit(
 	scroller: HTMLElement | null,
 	id: string,
 ): Promise<ThreadSearchRevealOutcome> {
 	if (scroller === null) return "not-mounted";
-	const selector = `[data-record-id="${CSS.escape(id)}"]:not([data-turn-summary])`;
-	let row = scroller.querySelector<HTMLElement>(selector);
-	if (row === null) {
-		/*
-		 * Open the collapsed turn that holds the row, if one is there. The bar
-		 * lists its rows' ids verbatim in `data-run-ids`, and its trigger is the
-		 * first disclosure button in its subtree — the walk only ever OPENS, so a
-		 * run the reader already expanded is left exactly as it is.
-		 */
-		const bar = [
-			...scroller.querySelectorAll<HTMLElement>("[data-run-ids]"),
-		].find((node) =>
-			(node.getAttribute("data-run-ids") ?? "").split(" ").includes(id),
-		);
-		const trigger = bar?.querySelector<HTMLElement>("button[aria-expanded]");
-		if (trigger?.getAttribute("aria-expanded") === "false") {
-			trigger.click();
-			await nextFrame();
-			row = scroller.querySelector<HTMLElement>(selector);
+	jumpToFailedRow(scroller, id);
+	for (let attempt = 0; attempt < THREAD_SEARCH_REVEAL_FRAMES; attempt += 1) {
+		const row = landedRow(scroller, id);
+		if (row !== null) {
+			markLanded(row);
+			return "revealed";
 		}
-		if (row === null) return "not-mounted";
+		await nextFrame();
 	}
-	row.scrollIntoView({
-		block: "center",
-		behavior: prefersReducedMotion() ? "auto" : "smooth",
-	});
-	markLanded(row);
-	return "revealed";
+	return "not-mounted";
 }

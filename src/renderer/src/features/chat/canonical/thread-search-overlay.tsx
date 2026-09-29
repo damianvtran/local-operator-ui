@@ -485,6 +485,13 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 
 	const navigate = useCallback(
 		(hit: ThreadFindHit) => {
+			/*
+			 * TODO(thread-search-integration): a `not-mounted` outcome means the
+			 * message is older than the rendered window — the seek that pages it in
+			 * is the transcript's own machinery (`loadOlder`'s window), and THIS
+			 * callback is where it lands. Today the reader simply stays where they
+			 * are and the panel keeps its list.
+			 */
 			void revealThreadSearchHit(containerRef.current, hit.id);
 		},
 		[containerRef],
