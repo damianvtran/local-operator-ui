@@ -143,6 +143,47 @@ test("markdown from clipboard HTML: entities decode, unknown tags drop to text",
 	assert.equal(markdownFromClipboardHtml("<p>&#x2764;</p>"), "\u2764");
 });
 
+test("markdown from clipboard HTML: a closed <pre> restores the ordinary rules after it", () => {
+	/*
+	 * The four shapes review round 1 measured. Before the pop-to-own-frame
+	 * fix, `</pre>` popped the `<code>` frame instead of its own, so the pre
+	 * frame stayed on the stack and everything AFTER a fence kept pre
+	 * semantics: no whitespace collapse, no backticks, no quote prefixes.
+	 */
+	assert.equal(
+		markdownFromClipboardHtml("<pre><code>x  y</code></pre><p>a   b</p>"),
+		"```\nx  y\n```\n\na b",
+	);
+	assert.equal(
+		markdownFromClipboardHtml(
+			"<pre><code>x</code></pre><p>use <code>y</code> here</p>",
+		),
+		"```\nx\n```\n\nuse `y` here",
+	);
+	assert.equal(
+		markdownFromClipboardHtml(
+			"<pre><code>x</code></pre><blockquote><p>q</p></blockquote>",
+		),
+		"```\nx\n```\n\n> q",
+	);
+});
+
+test("markdown from clipboard HTML: inline markup inside a blockquote does not leak its prefix", () => {
+	assert.equal(
+		markdownFromClipboardHtml(
+			"<blockquote><p><strong>b</strong> after</p></blockquote><p>outside</p>",
+		),
+		"> **b** after\n\noutside",
+	);
+});
+
+test("markdown from clipboard HTML: an anchor without an href leaves no mark", () => {
+	assert.equal(
+		markdownFromClipboardHtml('<p>see <a name="x">here</a>.</p>'),
+		"see here.",
+	);
+});
+
 test("markdown from clipboard HTML: blockquotes prefix, three-plus blanks collapse", () => {
 	assert.equal(
 		markdownFromClipboardHtml(

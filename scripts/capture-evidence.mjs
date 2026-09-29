@@ -4509,6 +4509,10 @@ export const STORIES = [
 	["projects-tab--create-sheet-preview", 1280, 900],
 	["projects-tab--create-sheet-paste", 1280, 900],
 	["projects-tab--create-sheet-submit", 1280, 900],
+	/* Round-1 additions: the over-limit counter (D1) and the follow-up
+	 * refusal (R1-5) — the two states review caught without a frame. */
+	["projects-tab--create-sheet-over-limit", 1280, 900],
+	["projects-tab--create-sheet-follow-up-refusal", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
 	["projects-tab--detail-empty", 1280, 900],
@@ -9866,7 +9870,14 @@ const main = async () => {
 				 */
 				...(supplementary.length > 0 ? { supplementary } : {}),
 			};
-	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+	/*
+	 * TABS, MATCHING BIOME'S indentStyle (review round 1, R1-3): the manifest
+	 * is a checked-in JSON file under the formatter's eye, and a writer that
+	 * re-serialises with two spaces turns every later edit into a whole-file
+	 * whitespace diff — measured as 9,425 raw changed lines against 157
+	 * ignoring whitespace. Nothing reads the indentation; every human does.
+	 */
+	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, "\t")}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
 };

@@ -424,6 +424,8 @@ type StubState = {
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
 	hang: boolean;
+	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
+	failPatch: string | null;
 };
 
 let stub: StubState = {
@@ -432,6 +434,7 @@ let stub: StubState = {
 	details: null,
 	failList: null,
 	hang: false,
+	failPatch: null,
 };
 
 /**
@@ -511,6 +514,8 @@ const answer = (request: {
 		}
 		case "projects.update":
 			bridgeOps.push({ op: request.op, request });
+			if (stub.failPatch)
+				return { status: 422, body: { detail: stub.failPatch } };
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
 		case "projects.delete":
 			return { status: 200, body: { result: { deleted: true } } };
@@ -774,6 +779,7 @@ const page = (
 		details: null,
 		failList: null,
 		hang: false,
+		failPatch: null,
 		...state,
 	};
 	bridgeOps = [];
@@ -1146,6 +1152,15 @@ export const CreateSheetPreview: Story = {
 				null,
 			"the description mode toggle",
 		);
+		/*
+		 * THE PARITY MEASUREMENT (design round 1, D2): the write textarea and
+		 * the preview box must be the same height, so toggling Write|Preview
+		 * re-centres nothing. Measured before the toggle, asserted after it —
+		 * class names alone cannot promise a rendered box.
+		 */
+		const writeHeight = need<HTMLTextAreaElement>(
+			"[data-project-description]",
+		).getBoundingClientRect().height;
 		await clickWhen('[data-project-description-mode="preview"]');
 		await poll(
 			() =>
@@ -1153,6 +1168,14 @@ export const CreateSheetPreview: Story = {
 				null,
 			"the rendered description heading",
 		);
+		const previewHeight = need<HTMLElement>(
+			"[data-project-description-preview]",
+		).getBoundingClientRect().height;
+		if (Math.abs(writeHeight - previewHeight) > 1) {
+			throw new Error(
+				`write ${writeHeight}px vs preview ${previewHeight}px — the toggle re-centres`,
+			);
+		}
 	}),
 };
 
@@ -1195,6 +1218,76 @@ export const CreateSheetPaste: Story = {
 				textarea.value.includes("- One") &&
 				textarea.value.includes("- Two"),
 			"the converted paste in the description",
+		);
+	}),
+};
+
+/**
+ * The over-limit description (design round 1, D1): the counter turns danger and
+ * the field reads invalid WHILE the text is being written — the first cut
+ * stayed muted until the submit bounced.
+ */
+export const CreateSheetOverLimit: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("create-sheet-over-limit", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() => document.querySelector("[data-project-description]") !== null,
+			"the description textarea",
+		);
+		const textarea = need<HTMLTextAreaElement>("[data-project-description]");
+		await userEvent.clear(textarea);
+		await userEvent.type(textarea, "x".repeat(245));
+		await poll(() => {
+			const counter = [...document.querySelectorAll("p")].find(
+				(node) => node.textContent?.trim() === "245/240",
+			);
+			return (
+				counter?.className.includes("text-danger") === true &&
+				textarea.getAttribute("aria-invalid") === "true"
+			);
+		}, "the danger counter and the invalid field");
+	}),
+};
+
+/**
+ * The follow-up refusal (review round 1, R1-5): the create SUCCEEDS and the
+ * PATCH for the extra fields is refused — the project exists, and the toast
+ * says exactly that plus the way back in. The play asserts the toast text and
+ * the closed dialog; the frame shows both surfaces.
+ */
+export const CreateSheetFollowUpRefusal: Story = {
+	render: () =>
+		page({ projects: THREE, failPatch: "The target date must be a real day." }),
+	play: playOnce("create-sheet-follow-up-refusal", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() => document.querySelector("[data-project-title]") !== null,
+			"the title input",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-title]"),
+			"Refused extras",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-owner]"),
+			"atlas",
+		);
+		await clickWhen("[data-project-submit]");
+		await poll(
+			() =>
+				document
+					.querySelector("[data-sonner-toaster]")
+					?.textContent?.includes(
+						"was created, but the extra fields were not saved",
+					) ?? false,
+			"the follow-up refusal toast",
+		);
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="project-create-dialog"]') ===
+				null,
+			"the dialog to close",
 		);
 	}),
 };
@@ -1261,6 +1354,16 @@ export const CreateSheetSubmit: Story = {
 				null,
 			"the dialog to close",
 		);
+		/*
+		 * FOCUS RETURNS TO THE OPENER (UX round 1, U2) — asserted on the sheet;
+		 * the delete confirm's play carries the same check.
+		 */
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-tour-tag="create-project-button"]'),
+			"focus back on the create button",
+		);
 	}),
 };
 
@@ -1285,6 +1388,29 @@ export const DeleteConfirm: Story = {
 				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
 				null,
 			"the delete dialog",
+		);
+		/*
+		 * FOCUS RETURNS TO THE OPENER (UX round 1, U2), verified on this dialog
+		 * too: Escape closes, focus must be back on the trigger, and the story
+		 * reopens so the frame still shows the typed confirm the copy needs.
+		 */
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelector('[role="dialog"]') === null,
+			"the delete dialog to close on Escape",
+		);
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-tour-tag="project-delete"]'),
+			"focus back on the delete trigger",
+		);
+		await clickWhen('[data-tour-tag="project-delete"]');
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
+				null,
+			"the delete dialog again",
 		);
 		const input = document.querySelector<HTMLInputElement>(
 			'[data-tour-tag="project-delete-dialog"] input',
