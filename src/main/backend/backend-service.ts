@@ -728,8 +728,8 @@ export class BackendServiceManager {
 	private startupMode: LocalOperatorStartupMode =
 		LocalOperatorStartupMode.NOT_STARTED;
 	/**
-	 * The last answer `probeLauncherFor` produced, keyed by the launcher it
-	 * answered about.
+	 * The last POSITIVE answer `probeLauncherFor` produced, keyed by the launcher
+	 * it answered about.
 	 *
 	 * WHY IT IS CACHED. `checkLocalOperatorExists` runs twice in one startup tick -
 	 * once for the install decision in `index.ts`, once inside `startOwned` when it
@@ -746,10 +746,21 @@ export class BackendServiceManager {
 	 * an install moves). A launcher whose INTERPRETER is deleted underneath it, with
 	 * the shim itself untouched, keeps its old verdict until the app restarts - the
 	 * honest limit of a probe taken at startup, and one the spawn's own identity
-	 * probe still catches where it matters.
+	 * probe still REPORTS BETTER than this one can: as a start failure in its own
+	 * words, not as a recovery, because nothing falls back to the managed environment
+	 * once a start is refused.
 	 *
-	 * The PROMISE is what is held, not the awaited value, so two callers in the same
-	 * tick share one spawn rather than racing two.
+	 * AND ONLY POSITIVES ARE HELD; a negative is released the moment it settles
+	 * (`probeLauncherFor`, below). The directions are not symmetric: a positive is a
+	 * fact about an install that does not change under this process, while a negative
+	 * can be a fact about the MOMENT - a 15 s timeout on a loaded machine, a package
+	 * reinstall caught mid-flight - and one kept reading decides both call sites for
+	 * the whole session, which is how a working global install sits unused while the
+	 * app builds its own environment (review round 1, R1-1).
+	 *
+	 * The in-flight PROMISE is still what is held while it runs, so two callers in
+	 * one tick share one spawn rather than racing two; it is the settled negative
+	 * that is let go.
 	 */
 	private launcherVerdict: {
 		fingerprint: string;
@@ -1999,15 +2010,19 @@ export class BackendServiceManager {
 	/**
 	 * One probe per launcher FINGERPRINT, shared by both call sites in a startup tick.
 	 *
-	 * See the field for why this is cached, what the key is and what its limit is.
-	 * The stat is the cheap half of the key and it never decides anything on its own:
-	 * a launcher that cannot be stat'ed (removed between the resolution and this call)
-	 * is keyed by path alone, and the probe then answers for it honestly. `process.env`
-	 * is handed to the probe rather than `backendSpawnEnv()`: this answers a question
-	 * about the LAUNCHER (does its own `--version` run), not about the serve
-	 * environment, and the launcher's shebang names its interpreter absolutely. A child
-	 * that needs PATH customised is the serve child's problem, and it is solved where
-	 * that child is built.
+	 * See the field for why this is cached, what the key is, what its limit is and
+	 * which direction is released. The stat is the cheap half of the key and it never
+	 * decides anything on its own: a launcher that cannot be stat'ed (removed between
+	 * the resolution and this call) is keyed by path alone, and the probe then answers
+	 * for it honestly. `process.env` is handed to the probe rather than
+	 * `backendSpawnEnv()` - this answers a question about the LAUNCHER (does its own
+	 * `--version` run), not about the serve environment, and the launcher's shebang
+	 * names its interpreter absolutely - but it is handed WITH the bytecode guard:
+	 * this spawn runs an interpreter that imports `local_operator`, and every spawn of
+	 * an interpreter this app starts owes the bundle `withPythonBytecodeCache` (the
+	 * code-sealed-bundle mechanism; the same pair `backendSpawnEnv()` applies to the
+	 * serve child). A child that needs PATH customised beyond that is the serve
+	 * child's problem, and it is solved where that child is built.
 	 */
 	private probeLauncherFor(command: string): Promise<LauncherUsability> {
 		let fingerprint = command;
@@ -2020,8 +2035,21 @@ export class BackendServiceManager {
 		if (this.launcherVerdict?.fingerprint === fingerprint) {
 			return this.launcherVerdict.verdict;
 		}
-		const verdict = probeGlobalLauncher(command, process.env);
+		const verdict = probeGlobalLauncher(
+			command,
+			withPythonBytecodeCache(process.env, this.appDataPath),
+		);
 		this.launcherVerdict = { fingerprint, verdict };
+		/*
+		 * The negative is released the moment it settles, and the check names THIS
+		 * promise so a newer probe that has already replaced the slot is never cleared
+		 * by an older one. See the field for why the directions are asymmetric.
+		 */
+		verdict.then((answer) => {
+			if (!answer.usable && this.launcherVerdict?.verdict === verdict) {
+				this.launcherVerdict = null;
+			}
+		});
 		return verdict;
 	}
 
