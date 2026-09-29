@@ -2173,7 +2173,16 @@ const STAMP_BINDING_NOTES = [
 	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
 	 * that pair, so it is held to the pair this file ships.
 	 */
-	"updateDrainFoldNote",
+	/*
+	 * AND THE DESIGN ROUND'S FRAMES, COMMITTED (2026-09-29): `updateDrainFramesNote` is
+	 * the record for the frames the pass was owed - the four completion states, the two
+	 * re-shoots, the app-owned managed offer, the two refusal fixtures' frames and the
+	 * two before halves at `a0cdaa759f`. This commit also moves the scripts tree with
+	 * this registration itself, so both stamps are re-derived from this commit's tree
+	 * by the docs-only amendment that follows, and the note quotes the pair this file
+	 * ships like every entry above it.
+	 */
+	"updateDrainFramesNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3394,7 +3403,15 @@ const BRANCH_RECORDS = [
 	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
 	 * that pair, so it is held to the pair this file ships.
 	 */
-	"updateDrainFoldNote",
+	/*
+	 * AND THE DESIGN ROUND'S FRAMES' OWN (2026-09-29): `updateDrainFramesNote` is the
+	 * frames commit that pays the debt the two notes above state - it adds no declared
+	 * row, moves the scripts tree with the registrations themselves (both stamps
+	 * re-derived from this commit's tree by the docs-only amendment that follows) -
+	 * and a fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"updateDrainFramesNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
