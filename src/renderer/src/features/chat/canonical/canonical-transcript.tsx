@@ -2936,7 +2936,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * the scroller, so reaching its ticks meant tabbing through
 				 * every focusable row (46 Tabs from the composer, measured).
 				 * The rail is absolutely positioned, so DOM order costs no
-				 * pixels - the column's first tab stop is the rail now. Its
+				 * pixels - the column's first tab stop is the rail now. It DOES
+				 * cost paint order, which the rail's own wrapper answers: the rail
+				 * carries `z-10` because the scroller below it is positioned too
+				 * (`relative` + `translateZ(0)`), and without it the scroller's box
+				 * would take every pointer aimed at a tick (the scene's hover legs
+				 * went dead on this change until the rail carried z; measured). Its
 				 * props carry the one fact the component owns and the hook
 				 * does not - which conversation, so a session switch drops any
 				 * open card - plus the two callbacks; `building` is the hook's
