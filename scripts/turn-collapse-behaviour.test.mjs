@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
@@ -119,6 +120,13 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/*
+			 * The two query keys the transcript's own hook reads, so the hide case
+			 * below seeds the SAME entries the app resolves - a second spelling of
+			 * either key would pass here while the product read another cache entry.
+			 */
+			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
+			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -142,7 +150,18 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		/*
+		 * EXTERNAL, so the provider below and the hook inside the bundle resolve
+		 * to ONE copy: a bundled second copy carries a different React context
+		 * object and `useQuery` would not find the client this file seeds.
+		 */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL(
 	`./_turn-collapse-behaviour-${process.pid}.mjs`,
@@ -156,6 +175,8 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	backendSettingsKeys,
+	desktopKeys,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -260,26 +281,39 @@ const mount = async (t, records, over = {}) => {
 	});
 	mounted.container = document.createElement("div");
 	document.body.appendChild(mounted.container);
+	/*
+	 * A fresh client per mount, or the one the caller seeded: the transcript now
+	 * reads its cross-session visibility through react-query, so every mount
+	 * needs a provider - and the unseeded default is exactly the fail-closed
+	 * path (no capabilities answer ⇒ nothing hidden).
+	 */
+	const client =
+		over.client ??
+		new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const render = async (next, nextOver = over) => {
 		await act(async () => {
 			mounted.root.render(
-				h(CanonicalTranscript, {
-					frontend: nextOver.frontend ?? null,
-					transcript: {
-						...transcriptOf(next),
-						hasMore: nextOver.hasMore ?? false,
-					},
-					gate: nextOver.gate ?? null,
-					waiting: nextOver.waiting ?? false,
-					loadingOlder: false,
-					onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
-					containerRef: { current: mounted.container },
-					isSmallView: false,
-					status: "live",
-					failure: null,
-					awaitingHydration: false,
-					onReconnect: () => {},
-				}),
+				h(
+					QueryClientProvider,
+					{ client },
+					h(CanonicalTranscript, {
+						frontend: nextOver.frontend ?? null,
+						transcript: {
+							...transcriptOf(next),
+							hasMore: nextOver.hasMore ?? false,
+						},
+						gate: nextOver.gate ?? null,
+						waiting: nextOver.waiting ?? false,
+						loadingOlder: false,
+						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
+						containerRef: { current: mounted.container },
+						isSmallView: false,
+						status: "live",
+						failure: null,
+						awaitingHydration: false,
+						onReconnect: () => {},
+					}),
+				),
 			);
 		});
 	};
@@ -997,4 +1031,122 @@ test("the trigger is focusable; the only press inside it toggles", async (t) => 
 		[],
 		"no separate control lives inside the trigger",
 	);
+});
+
+test("hiding cross-session rows: the receipt and the send row leave, the bar's ids follow, and clearing the key restores them", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The component's own seam, end to end: `useCrossSessionHidden` reads the
+	 * settings query, `shownRecords` filters, and the rows plus the bar's ids
+	 * are downstream of BOTH. The query client is SEEDED with the two cache
+	 * entries the app resolves rather than mocking the hook, which is what
+	 * makes the toggle below meaningful: one `setQueryData` in each direction
+	 * under the same mount is "turning it off restores them", exactly as the
+	 * operator experiences it (no remount, no refetch).
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	const settings = (hide) => ({
+		sections: [],
+		settings: [{ key: "display.hide_cross_session", value: hide }],
+	});
+	client.setQueryData(backendSettingsKeys.all, settings(true));
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+
+	// On: the receipt and the send row are not mounted; the ordinary call is
+	// only behind the bar (collapsed), not gone.
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt is hidden");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row is hidden");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 tool:1 answer:1",
+		"the bar's ids name only what the pane keeps",
+	);
+	// Expand: the work comes back, and the hidden send does NOT — the filter
+	// sits above the collapse, so no interaction can reveal it.
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "tool:1"), "the ordinary call is revealed");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row stays gone");
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt stays gone");
+
+	// Off, under the same mount: both come back where they belong. The drain is
+	// two ticks rather than one: the query's notification is applied on a TASK
+	// and the row repaint then queues a FRAME, and the harness's own
+	// `flushFrames` no-ops when nothing has queued a frame yet - exactly this
+	// case's race. Both ticks are explicit, so the assert reads a settled tree.
+	await act(async () => {
+		client.setQueryData(backendSettingsKeys.all, settings(false));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt returns");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row returns");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the run is whole again",
+	);
+});
+
+test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback", async (t) => {
+	/*
+	 * The frozen contract's absent-key skew (an old backend behind a new app),
+	 * at the seam that reads it: capabilities answer `settings: 1` while the
+	 * registry carries no `display.hide_cross_session`. `setting?.value ===
+	 * true` is the whole read, so absence resolves false - nothing is hidden,
+	 * and no row is dropped by a key the backend never sent. Pinned because
+	 * this is the one fallback direction the seeded toggle test cannot reach.
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(backendSettingsKeys.all, {
+		sections: [],
+		settings: [{ key: "display.shimmer", value: true }],
+	});
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the bar's ids keep every row the run holds",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
 });

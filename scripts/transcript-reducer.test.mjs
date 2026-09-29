@@ -120,6 +120,74 @@ test("message_end is authoritative over accumulated deltas", () => {
 	assert.equal(a1.streaming, false);
 });
 
+test("a live settle carries the same completion mark the durable read writes", () => {
+	/*
+	 * The receipt's anchor gate asks for `data-completion-complete`, which the
+	 * view renders from `record.complete`; the durable `history` arm sets it for
+	 * a text-bearing answer, and the live `message_end` is the same fact by the
+	 * other path. Without it a completion that arrived while its conversation
+	 * was open could not be acknowledged until a re-read replaced the record
+	 * (QA round 1, Q1; measured in `docs/evidence/chat-sidebar-ack-and-selection/`).
+	 */
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_update", delta: "Hel", message: assistant("a1", "") },
+		2,
+	);
+	assert.equal(
+		live.records[0].complete,
+		undefined,
+		"a streaming row states no completion",
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		3,
+	);
+	assert.equal(
+		live.records[0].complete,
+		true,
+		"the settled answer is complete",
+	);
+	// The mark a replay carries is the same one, not a restamp.
+	assert.equal(
+		applyEvent(
+			live,
+			{ type: "message_end", message: assistant("a1", "Hello!") },
+			9,
+		).records[0].complete,
+		true,
+	);
+	/*
+	 * A turn whose only output was tool calls states no completion, on either
+	 * path: its answer is the paired tool rows, not prose (the durable arm's own
+	 * rule, mirrored here so the two cannot drift).
+	 */
+	const toolOnly = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				tool_calls: [{ id: "t1" }],
+				id: "a2",
+			},
+		},
+		4,
+	);
+	assert.equal(
+		toolOnly.records.find((r) => r.id === "a2").complete,
+		undefined,
+		"a tool-call-only end is not a completion",
+	);
+});
+
 test("a settled assistant is stamped with the instant it settled, once", () => {
 	/*
 	 * `settledAt` is the live half of a wall-clock span: a live assistant record's
@@ -3023,6 +3091,57 @@ test("the live path and the durable page produce the same receipt", () => {
 		pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]),
 	);
 	assert.equal(again, durable);
+});
+
+test("a send tool call projects to a tool row the filter can name by its tool", () => {
+	/*
+	 * `cross-session-visibility.ts` keys its hidden set on the RECORD fields the
+	 * reducer mints, so both halves of that key are pinned here — the filter's
+	 * literal cannot drift from its producer:
+	 *
+	 *  - a durable page entry whose `tool_name` is `send` (role "tool") reads
+	 *    back as `kind: "tool"` with `toolName` exactly `send`;
+	 *  - the live `tool_execution_start` for the same call mints the same
+	 *    fields.
+	 *
+	 * `send` is the registry's own literal (`local_operator/tools/registry.py`),
+	 * and the desktop side spells it outside the filter in exactly one place
+	 * besides this test: the TUI/mobile contract carries the identical string.
+	 */
+	const durable = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			{
+				id: "t1",
+				ts: 20,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c-send",
+					tool_name: "send",
+					content: [{ type: "text", text: "delivered" }],
+				},
+			},
+		]),
+	);
+	const [record] = durable.records;
+	assert.equal(record.kind, "tool");
+	assert.equal(record.toolName, "send");
+
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-send",
+			tool_name: "send",
+			args: { conversation: "other" },
+		},
+		21,
+	);
+	const liveRecord = live.records.find((row) => row.kind === "tool");
+	assert.ok(liveRecord, "the live start mints a tool row");
+	assert.equal(liveRecord.toolName, "send");
 });
 
 test("a wake delivery is a receipt, and the catch-up is not one", () => {
