@@ -35,6 +35,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
+import type { LoadOlderOutcome } from "../../canonical/load-older";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
@@ -63,6 +64,8 @@ export type ChildTranscriptHandle = {
 	loadingOlder: boolean;
 	/** Resolves `false` rather than rejecting, per the paging contract. */
 	loadOlder: () => Promise<boolean>;
+	/** The same ask, answering what happened (`LoadOlderOutcome`); never rejects. */
+	loadOlderDetailed: () => Promise<LoadOlderOutcome>;
 };
 
 export function useChildTranscript({
@@ -117,21 +120,23 @@ export function useChildTranscript({
 	/**
 	 * Merge one page into the reader's own state.
 	 *
-	 * `hasMore` is RESTORED rather than taken from the page on a tail read: a
-	 * tail page's `has_more: false` is a statement about the tail, not about the
-	 * rows already paged in above it, and taking it literally would leave the
-	 * reader unable to load earlier rows after the first pulse — the "load
-	 * earlier" affordance would vanish under a reader who had just used it.
-	 * `oldestId` needs no such care: `applyHistoryPage` already keeps the oldest
-	 * entry it knows rather than the page's own first row.
+	 * This used to RESTORE `hasMore` after every merge, because a tail page's
+	 * `has_more: false` is a statement about the tail, not about the rows already
+	 * paged in above it, and `applyHistoryPage` took it literally - the "load
+	 * earlier" affordance vanished under a reader who had just used it. The
+	 * reducer now owns that rule (a tail-type read moves neither the cursor nor
+	 * `hasMore` unless it reaches strictly older), so the restore is redundant -
+	 * and it would be WRONG for a continuation: `previous.hasMore || ...` forces
+	 * `true` back over the final page's honest `has_more: false`, and a child
+	 * could then never reach its start. `pagedBefore` is passed only by the
+	 * older-page ask; every tail read leaves it undefined.
 	 */
 	const merge = useCallback(
-		(previous: TranscriptState, page: DesktopChildTranscriptPage) => {
-			const merged = applyHistoryPage(previous, page);
-			return merged.hasMore === previous.hasMore
-				? merged
-				: { ...merged, hasMore: previous.hasMore || merged.hasMore };
-		},
+		(
+			previous: TranscriptState,
+			page: DesktopChildTranscriptPage,
+			options?: { pagedBefore?: string },
+		) => applyHistoryPage(previous, page, options),
 		[],
 	);
 
@@ -232,11 +237,11 @@ export function useChildTranscript({
 		return () => window.clearInterval(timer);
 	}, [childId, live, readTail, sessionId]);
 
-	const loadOlder = useCallback(async (): Promise<boolean> => {
-		if (!sessionId || !childId) return false;
+	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
+		if (!sessionId || !childId) return { kind: "nothing-to-load" };
 		const requested = `${sessionId}:${childId}`;
 		const before = transcript.oldestId;
-		if (!transcript.hasMore || !before) return false;
+		if (!transcript.hasMore || !before) return { kind: "nothing-to-load" };
 		setLoadingOlder(true);
 		try {
 			const page = await desktopResult<DesktopChildTranscriptPage>({
@@ -248,16 +253,44 @@ export function useChildTranscript({
 			});
 			// A page that resolves after the reader moved describes a transcript
 			// that is no longer on screen.
-			if (keyRef.current !== requested) return false;
+			if (keyRef.current !== requested) return { kind: "stale" };
 			setState(page.state);
-			setTranscript((previous) => merge(previous, page));
-			return true;
+			let newRecords = 0;
+			let exhausted = false;
+			setTranscript((previous) => {
+				/*
+				 * The same continuation rule as the parent's loader, and the same
+				 * guard: `pagedBefore` is asserted only while the cursor is still where
+				 * this ask started, so a tail read that landed while the page was out
+				 * cannot have the cursor dragged to a position the reader has left
+				 * (loader-continuity R1/R4). Without it, a page of only silent or
+				 * already-held rows left the cursor where it was and the next ask
+				 * repeated this one.
+				 */
+				const merged = merge(
+					previous,
+					page,
+					previous.oldestId === before ? { pagedBefore: before } : undefined,
+				);
+				newRecords = Math.max(
+					0,
+					merged.records.length - previous.records.length,
+				);
+				exhausted = !merged.hasMore;
+				return merged;
+			});
+			return { kind: "applied", newRecords, exhausted };
 		} catch {
-			return false;
+			return { kind: "failed", reason: "request" };
 		} finally {
 			if (keyRef.current === requested) setLoadingOlder(false);
 		}
 	}, [childId, merge, sessionId, transcript.hasMore, transcript.oldestId]);
+	const loadOlder = useCallback(
+		async (): Promise<boolean> =>
+			(await loadOlderDetailed()).kind === "applied",
+		[loadOlderDetailed],
+	);
 
-	return { state, transcript, loadingOlder, loadOlder };
+	return { state, transcript, loadingOlder, loadOlder, loadOlderDetailed };
 }

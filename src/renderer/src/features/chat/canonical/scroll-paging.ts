@@ -897,6 +897,37 @@ export const noteFailed = (state: PagingState): PagingState => ({
 	pageWidenOwed: false,
 });
 
+/**
+ * A page was asked for and NOTHING HAPPENED TO THE READER'S HISTORY: the
+ * conversation changed while it was in flight (`stale`), or there was nothing to
+ * ask for (`nothing-to-load`). It is not a failure and not a landing.
+ *
+ * WHY IT IS ITS OWN TRANSITION. The pump used to read every non-applied result
+ * as `false` and call `noteFailed`, so a healthy conversation that lost a race
+ * (the open-time align fetch had a page out, the reader switched sessions
+ * mid-request) counted toward `MAX_AUTO_ATTEMPTS` - three of them switched the
+ * automatic path off - and painted the failed row. `failures` is therefore left
+ * exactly as it was: aborts neither add to the count nor forgive it (only a real
+ * landing or a deliberate ask does that).
+ *
+ * Everything else is what `noteFailed` does, and for the same reasons: the
+ * demand is spent and dropped, nothing is owed because nothing landed, and
+ * nothing re-arms on its own - the next demand has to come from input. The act's
+ * fetch budget is cleared so a reader still pushing at the wall is not told the
+ * act is spent by a request that never delivered anything.
+ */
+export const noteAborted = (state: PagingState): PagingState => ({
+	...state,
+	busy: false,
+	armed: false,
+	deliberate: false,
+	retained: false,
+	turnedAround: false,
+	continuation: false,
+	actFetchSpent: false,
+	pageWidenOwed: false,
+});
+
 /** Whether the automatic path has given up and only an explicit ask remains. */
 export const isExhausted = (state: PagingState): boolean =>
 	state.failures >= MAX_AUTO_ATTEMPTS;

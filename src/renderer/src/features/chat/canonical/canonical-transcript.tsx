@@ -120,6 +120,7 @@ import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
+import type { LoadOlderOutcome } from "./load-older";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type ProviderErrorAction,
@@ -359,6 +360,14 @@ export type CanonicalTranscriptProps = {
 	 * loop or no retry at all, and neither is the contract.
 	 */
 	onLoadOlder: () => Promise<boolean>;
+	/**
+	 * The outcome-aware form of `onLoadOlder`, passed straight to the scroll pump
+	 * so a lost race is not read as a failure. Optional: a caller with only the
+	 * boolean keeps the old behaviour.
+	 */
+	onLoadOlderOutcome?: () => Promise<LoadOlderOutcome>;
+	/** The session hook's single statement that the last ask failed. */
+	olderFailed?: boolean;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -1954,6 +1963,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
+	onLoadOlderOutcome,
+	olderFailed,
 	containerRef,
 	isSmallView,
 	status,
@@ -2156,12 +2167,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
 	 * raw refusal semantics (`onLoadOlder` straight through).
 	 *
-	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
-	 * scroll that is right (no double-apply). But a walk reads `false` as
-	 * "history ends here", so a jump colliding with an align page used to fall
-	 * through to a clamped mount instead of awaiting the page already on its
-	 * way. Sharing the promise here makes that collision a wait for the two
-	 * consumers that walk; the scroll path's semantics are untouched.
+	 * HISTORY OF THE SPLIT: the pager used to answer a concurrent ask with
+	 * `false`, and a walk read that as "history ends here", so a jump colliding
+	 * with an align page fell through to a clamped mount instead of awaiting the
+	 * page already on its way. The session hook is now single-flight and SHARES
+	 * the in-flight page with every caller (`createOlderLoader`), so this wrapper
+	 * is redundant for the hook's own `onLoadOlder`; it is kept because the
+	 * walk's callers may be handed any boolean pager (the child reader's), and
+	 * sharing is idempotent.
 	 */
 	const walkLoadOlder = useMemo(
 		() => shareInFlight(onLoadOlder),
@@ -2451,6 +2464,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		hasMore: Boolean(transcript.hasMore),
 		onWiden: widen,
 		onLoadOlder,
+		onLoadOlderOutcome,
+		olderFailed,
 		loadingOlder,
 		// The content node exists only once the transcript is non-empty; this is
 		// what re-runs the observer effect at that moment.
