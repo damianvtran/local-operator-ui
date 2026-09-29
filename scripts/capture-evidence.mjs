@@ -734,6 +734,21 @@ export const STORIES = [
 	 */
 	["chat-turn-collapse--narration", 1280, 900],
 	["chat-turn-collapse--pinned", 1280, 900],
+	/*
+	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
+	 * collapse with the work. The second row presses the same story open so the
+	 * design round can judge the reveal.
+	 */
+	["chat-turn-collapse--receipts", 1280, 900],
+	[
+		"chat-turn-collapse--receipts",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "receipts-expanded",
+		},
+	],
 	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
