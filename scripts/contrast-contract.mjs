@@ -1208,8 +1208,8 @@ const CONTROLS = [
 		 * loop would then assert every ink on it including the two that fail.
 		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
-		 * than caution: the row is a sibling of the consent band and the popup notice in
-		 * the same strip, and the ground behind the strip is whichever one the route
+		 * than caution: the row is a sibling of the consent band in the same strip, and
+		 * the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */
@@ -1564,7 +1564,8 @@ const GRAPHICS = [
 	},
 	{
 		/*
-		 * The checkpoint rail's ticks (`checkpoint-rail.tsx`; design D5).
+		 * The checkpoint rail's marks (`checkpoint-model.ts` holds the role
+		 * map the rail paints; design D5, dsh rework 2026-09-29).
 		 *
 		 * A mark that is ALSO a control: each tick is a 3px bar inside a 24x12
 		 * invisible hit target, and it has to be findable at a glance — the rail
@@ -2775,14 +2776,16 @@ const STRUCTURAL_CALL_SITES = [
 		 * The checkpoint rail tick's fill, at its call site.
 		 *
 		 * The GRAPHICS row of the same name proves `inkDim` clears the floor on
-		 * `canvas`; only this pin can see the edit that repaints the 3px bar in a
-		 * role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
+		 * `canvas`; only this pin can see the edit that repaints the rest mark in
+		 * a role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
 		 * the role the usage mark above actually shipped in) or `hairline` (capped
 		 * below 2:1 by design). Either edit keeps every palette assertion green
-		 * while the rail's ticks stop being findable.
+		 * while the rail's ticks stop being findable. The class string lives in
+		 * `checkpoint-model.ts`'s role map (the dsh rework extracted it from the
+		 * component); the pin follows the string, not the file it used to sit in.
 		 */
 		what: "checkpoint rail tick fill",
-		file: "src/renderer/src/features/chat/canonical/checkpoint-rail.tsx",
+		file: "src/renderer/src/features/chat/canonical/checkpoint-model.ts",
 		must: "bg-ink-dim",
 		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
 	},

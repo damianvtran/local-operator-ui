@@ -30,6 +30,65 @@ import type {
 export const CHECKPOINT_GENERATING_NAME = "Generating name…";
 
 /**
+ * One mark's visual state, as the rail derives it (dsh ladder, 2026-09-29).
+ *
+ * `rest` and `preview` are the pointer/focus ladder (dsh: scaleX 0.6 -> 0.9);
+ * `active` is the turn the reader is ON (scaleX 1, primary ink); `unloaded` is
+ * a checkpoint whose turn is not in the resident window yet (scaleX 0.4 at 75%
+ * opacity) - the state that tells a reader a jump will have to load first.
+ */
+export type CheckpointMarkState = "rest" | "preview" | "active" | "unloaded";
+
+/**
+ * The mark's class per state, as ONE table so the ladder has one home.
+ *
+ * `bg-ink-dim` appears on the rest and unloaded rows on purpose: it is the
+ * role the contrast contract floors on canvas (`checkpoint rail tick`), so a
+ * repaint that would erase the affordance fails a gate rather than shipping.
+ * The transforms are the dsh ladder; the `duration-fast` token's transition
+ * (120 ms - the rendered value, D3) and the
+ * reduce-motion off-switch live on the caller (`motion-reduce:transition-none`
+ * plus the media query in `styles/index.css`) rather than here, because this
+ * module is deliberately DOM-free.
+ */
+export const CHECKPOINT_MARK_CLASS: Record<CheckpointMarkState, string> = {
+	rest: "scale-x-60 bg-ink-dim",
+	preview: "scale-x-90 bg-ink-muted",
+	active: "scale-x-100 bg-ink",
+	/*
+	 * 75% is the measured floor: the composite is ink-dim over canvas, and at
+	 * 60% the light themes fell to 2.42:1 (rosePineDawn) / 2.46:1
+	 * (localOperatorLight) - under the 3:1 non-text floor. At 75% every theme
+	 * in themes.generated.css clears it (rosePineDawn 3.17:1, worst case), so
+	 * the "not loaded" arm stays quiet without going under.
+	 */
+	unloaded: "scale-x-40 bg-ink-dim opacity-75",
+};
+
+/**
+ * One mark's state, given the three ids the rail holds.
+ *
+ * Precedence is active > preview > unloaded > rest: the reading position wins
+ * over a passing pointer (a hovered mark beside the active turn must not take
+ * the primacy the reader's eye is parked on), and a previewed mark whose turn
+ * is not resident still previews - the pointer is asking a question the mark
+ * can answer with its shape while the fill stays the quiet one. `loaded`
+ * defaults to true so a caller that has no resident window (the stories, this
+ * slice's first cut before the loader lands) renders the pre-loader ladder.
+ */
+export function checkpointMarkState(options: {
+	id: string;
+	previewId: string | null;
+	activeId: string | null;
+	loaded?: boolean;
+}): CheckpointMarkState {
+	if (options.id === options.activeId) return "active";
+	if (options.id === options.previewId) return "preview";
+	if (options.loaded === false) return "unloaded";
+	return "rest";
+}
+
+/**
  * One tick's place on the rail, as a fraction of the track's height.
  *
  * SEQ-PROPORTIONAL, not ordinal-uniform (D5): `(seq - min) / (max - min)` so
@@ -38,38 +97,6 @@ export const CHECKPOINT_GENERATING_NAME = "Generating name…";
  * journal ordinals grow monotonically, so the fraction is in [0, 1] by
  * construction and needs no clamp.
  */
-export type CheckpointTickPlacement = {
-	id: string;
-	/** 0 = track top, 1 = track bottom. */
-	fraction: number;
-};
-
-/**
- * Place every checkpoint on the rail.
- *
- * The degenerate case is ONE distinct seq (a single checkpoint, or a manifest
- * whose checkpoints all carry the same ordinal): the ratio is 0/0, and the
- * honest reading of "one mark" is the middle of the rail, not the top edge —
- * which is also where a tick would sit half-clipped. `0.5` is therefore the
- * rule, not a guard.
- */
-export function checkpointTickPlacement(
-	checkpoints: readonly Checkpoint[],
-): CheckpointTickPlacement[] {
-	if (checkpoints.length === 0) return [];
-	let minSeq = Number.POSITIVE_INFINITY;
-	let maxSeq = Number.NEGATIVE_INFINITY;
-	for (const checkpoint of checkpoints) {
-		if (checkpoint.seq < minSeq) minSeq = checkpoint.seq;
-		if (checkpoint.seq > maxSeq) maxSeq = checkpoint.seq;
-	}
-	const span = maxSeq - minSeq;
-	return checkpoints.map((checkpoint) => ({
-		id: checkpoint.id,
-		fraction: span > 0 ? (checkpoint.seq - minSeq) / span : 0.5,
-	}));
-}
-
 /**
  * The completion checkpoint's fallback title: its name, or `Turn N`.
  *
