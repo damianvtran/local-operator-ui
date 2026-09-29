@@ -154,6 +154,15 @@ const bundle = await build({
 					export const consoleInterpreter = () => "/fixture/python";
 					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
 					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					/*
+					 * The launcher-usability verdict this fixture does not exercise: this
+					 * file measures the spawn ENVIRONMENT and the token relay, and a real
+					 * answer would make the run depend on whether the machine has a global
+					 * install (CI and a developer's box could then differ). The negative
+					 * answer is the one a machine with none gives, so the branch taken is
+					 * the same everywhere.
+					 */
+					export const probeGlobalLauncher = async () => ({ usable: false, interpreter: null, reason: "this fixture does not run a global launcher" });
 					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
 				`,
 					}),
