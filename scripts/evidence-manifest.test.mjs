@@ -1896,6 +1896,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto20c3a207d7Note",
 	/*
+	/*
+	 * THE FOLD ONTO `origin/main` `d1fe9eb01e` (2026-09-29, the quick-send /
+	 * mini-view branch, #630s) UNIONED THIS LIST BY KEY: this branch's
+	 * `readReceiptForegroundRestampNote` and main's `quickSendRestampNote` are
+	 * both kept, exactly as the rule above requires - no key from either side
+	 * was dropped.
+	 */
+	/*
 	 * The receipt pass's own: the change moves BOTH trees this file binds -
 	 * `src/` for the completion-view hook's foreground deferral and `scripts/`
 	 * for the receipt suite's new cases - and takes no frame (its evidence is
@@ -1904,6 +1912,18 @@ const STAMP_BINDING_NOTES = [
 	 * pair it binds and why the stills did not move.
 	 */
 	"readReceiptForegroundRestampNote",
+	/*
+	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
+	 * hotkey / mini composer change's record. It moves BOTH trees - `src/` for
+	 * the mini view, its registrar, the config watch, the desktop-plane
+	 * admission and the settings row, `scripts/` for the registrar suite, the
+	 * rig stub, the extended gates and the driver's `mini-view` scene - and
+	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
+	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
+	 * and every list member above is re-pointed with it. It quotes that pair,
+	 * so it is held to this file like every entry above it.
+	 */
+	"quickSendRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2930,6 +2950,13 @@ const BRANCH_RECORDS = [
 	 * pair, `BRANCH_RECORDS` is where it belongs.
 	 */
 	"dirtyWorkingTreeNote",
+	/*
+	 * And the quick-send pass's own record (`quickSendRestampNote`), listed for
+	 * the list's usual reason: the note is this branch's statement of what moved
+	 * and what did not (no frame was committed by it), and a fold resolved from
+	 * main's copy would drop it.
+	 */
+	"quickSendRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
