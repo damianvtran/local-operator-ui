@@ -70,6 +70,14 @@ on 1111 and the guard refuses a capture that could be photographing its
 replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
 
+**Round 1's re-shoot.** The review round moved the panel to `right-6` (24px; at
+12px it covered the rail's ticks for 13 of 26 positions at three results) and
+carried new copy through the states: a tier-aware count line with the cut as
+its suffix ("1 exact · 99 related (first 100 shown)"), a soft-tier mark that
+reads "related match", a retained list that says it is the previous search's,
+and a far seek that reports itself while it runs. Every frame here is from
+that re-shoot.
+
 **Fold and re-stamp.** The branch now folds `origin/main` = `bc09a6d698`
 (#630, the checkpoint-rail merge; the rail's files and its jump are upstream
 rather than sibling), and the reveal rides that lane's `reveal-record.ts` —

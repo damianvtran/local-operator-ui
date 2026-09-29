@@ -85,3 +85,30 @@ rc=0   # after `biome check --write src/renderer/src/styles/index.css` removed t
 
 # The earlier "rc=0" lines in this file were captured the same way (exit code
 # read directly, not through a pipe): the defect is this head's, not theirs.
+
+# --- review round 1's remediation (2026-09-29) ---
+
+# The fold-onto-bc09a6d698 re-run (review NIT2), recorded with its output:
+$ node_modules/.bin/biome check src bin scripts/linux-sandbox.test.mjs
+Found 126 warnings.
+rc=0
+$ node scripts/check-scripts-lint.mjs
+check-scripts-lint: 6 changed file(s) under scripts/ are lint-clean against origin/main (bc09a6d).
+$ node_modules/.bin/tsc --noEmit -p tsconfig.app.json && node_modules/.bin/tsc --noEmit -p tsconfig.node.json
+both projects: no output (clean)
+$ node scripts/contrast-contract.mjs
+Contrast contract holds: 29178 assertions across 59 themes, 0 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s), 10 pinned identity pair(s).
+$ node scripts/run-desktop-tests.mjs <the search suites + rail/collapse neighbours + the wire>
+ℹ tests 256
+ℹ pass 255
+ℹ fail 0
+ℹ skipped 1
+
+# And the round-1 remediation's own run (this commit):
+$ node scripts/run-desktop-tests.mjs <the same battery>
+ℹ tests 259
+ℹ pass 258
+ℹ fail 0
+ℹ skipped 1
+$ node scripts/check-edit-diffs.mjs
+Edit diff regressions: 4 insertion previews + unchanged nonempty/dismissed states passed
