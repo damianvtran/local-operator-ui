@@ -203,13 +203,29 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 */
 	const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		/*
+		 * THE STEP STARTS FROM WHAT THE RENDER SHOWS WHEN THE COLUMN IS CLAMPED
+		 * (UX round 3's U8; measured: judging every press from the STORED width
+		 * left the first `ArrowLeft` landing at 1084 - which draws the same 968
+		 * and was refused - with the next press starting over from 1100, a 132px
+		 * dead zone against a 64px coarse step that no keyboard sequence could
+		 * cross, while a pointer drag crosses it in one gesture). `min(width,
+		 * panePx)` IS the rendered width: the first press lands at 952, visible
+		 * and committed, and every following press moves the column. Roomy panes
+		 * are unchanged - there `min(width, panePx)` is `width` itself - and a
+		 * host that cannot answer (`null`) steps from the stored width, as the
+		 * release falls back to committing.
+		 */
+		const panePx = paneWidthPx();
+		const base =
+			panePx === null ? width : renderedChatMeasureWidth(width, panePx);
+		/*
 		 * `undefined` is the shared map declining a key this widget does not own;
 		 * `null` is Enter (the caller's own default). See the file comment for the
 		 * two register choices.
 		 */
 		const target = keyboardTarget(event.key, {
 			shiftKey: event.shiftKey,
-			value: width,
+			value: base,
 			min: CHAT_MEASURE_MIN_PX,
 			max: CHAT_MEASURE_MAX_PX,
 			side: "right",
@@ -218,30 +234,26 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		if (target === undefined) return;
 		event.preventDefault();
 		if (target === null) {
+			/*
+			 * `Enter` is deliberately NOT under the guard below: the reset abandons
+			 * the measure rather than stepping to a width.
+			 */
 			onReset();
 			return;
 		}
 		/*
-		 * THE SAME RENDER CONSULTATION THE RELEASE MAKES, for the same reason
-		 * (UX round 3's U6): a step that cannot move a pixel may not move the
-		 * store. Measured before this guard: with the column clamped to a 968px
-		 * pane, ArrowLeft at a stored 1100 walked the store down (1100 -> 1084,
-		 * `aria-valuenow` and `max-width` following) while the rendered width
-		 * stayed 968 - the release's U4 defect, on the keyboard. The comparison
-		 * is `releasedChatMeasureWidth`'s own - the rendered width of the target
-		 * against the rendered width of the measure on screen - so the two paths
-		 * refuse by ONE arithmetic rather than drift apart the way the commit
-		 * and the pixels once did. It guards every step that lands on a width
-		 * (the arrows, Home, End); `Enter` above is deliberately outside it,
-		 * because the reset abandons the measure rather than stepping to one.
-		 * A host with no scroller to read answers `null`, and this falls through
-		 * to the write, as the release falls back to committing.
+		 * THE NO-INVISIBLE-WRITE PROPERTY, on the release rule's own arithmetic
+		 * (`renderedChatMeasureWidth`): a step whose target draws exactly the
+		 * width already on screen is refused before the write - the store,
+		 * `aria-valuenow` and the override property all untouched. With the
+		 * rendered base above, the steps that fail this test at a clamped column
+		 * are growth at the pane's edge (`ArrowRight`, `End`): there is nothing
+		 * wider to show, and nothing is written for it.
 		 */
-		const panePx = paneWidthPx();
 		if (
 			panePx !== null &&
 			renderedChatMeasureWidth(target, panePx) ===
-				renderedChatMeasureWidth(width, panePx)
+				renderedChatMeasureWidth(base, panePx)
 		) {
 			return;
 		}

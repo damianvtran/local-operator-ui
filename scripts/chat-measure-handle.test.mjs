@@ -19,11 +19,13 @@
  * `aria-orientation="vertical"` and `aria-valuenow/min/max` (the width handed
  * in, and the bounds exported by `chat-measure-drag.ts`), the keyboard
  * arithmetic (arrow steps, the coarse shift step, Home/End, Enter-to-reset),
- * and the render-gated commit path - round 2's U4 for releases and round 3's
- * U6 for keyboard steps: a synthetic press/move/release driven through the
- * same event path a pointer produces, and a synthetic keydown through the
- * handler, both with the scroller's geometry stubbed, asserting which widths
- * reach `onWidthChange` and which are refused before the store is touched.
+ * and the render-gated commit path - round 2's U4 for releases, round 3's
+ * U6/U8 for keyboard steps (the step starts from the RENDERED width when the
+ * column is clamped, and a step that cannot move a pixel writes nothing): a
+ * synthetic press/move/release driven through the same event path a pointer
+ * produces, and a synthetic keydown through the handler, both with the
+ * scroller's geometry stubbed, asserting which widths reach `onWidthChange`
+ * and which are refused before the store is touched.
  *
  * WHAT IT DELIBERATELY DOES NOT PIN. REAL layout (jsdom has none: the pane
  * reading is stubbed to the numbers the story host measures, so what is
@@ -114,21 +116,33 @@ const renderHandle = async (props, host = document.body) => {
 	host.appendChild(container);
 	const changes = [];
 	const resets = [];
+	const element = (p) =>
+		React.createElement(ChatMeasureHandle, {
+			edge: "right",
+			width: 900,
+			onWidthChange: (width) => changes.push(width),
+			onReset: () => resets.push(true),
+			label: "Widen or narrow the conversation column (right edge)",
+			...p,
+		});
+	const root = createRoot(container);
 	await act(async () => {
-		createRoot(container).render(
-			React.createElement(ChatMeasureHandle, {
-				edge: "right",
-				width: 900,
-				onWidthChange: (width) => changes.push(width),
-				onReset: () => resets.push(true),
-				label: "Widen or narrow the conversation column (right edge)",
-				...props,
-			}),
-		);
+		root.render(element(props));
 	});
 	const separator = container.querySelector('[role="separator"]');
 	assert.ok(separator, "the handle renders a separator");
-	return { separator, changes, resets };
+	/*
+	 * A RE-RENDER, so a walk of successive presses can run through ONE mounted
+	 * component rather than a remount per step (U8's walk pins what each key's
+	 * result then becomes the next key's starting width). The callbacks are the
+	 * same closures, so `changes` accumulates across the walk.
+	 */
+	const rerender = async (p) => {
+		await act(async () => {
+			root.render(element(p));
+		});
+	};
+	return { separator, changes, resets, rerender };
 };
 
 /**
@@ -325,20 +339,71 @@ test("the same release commits where the pane can show it", async () => {
 });
 
 /*
- * The keyboard half of the same rule (round 3's U6): a step that cannot move
- * a pixel must not reach the store. Measured seat: stored 1100 at the 968px
- * content box, where ArrowLeft used to walk the store to 1084 while the
- * rendered width stayed 968. Same scroller stub, same numbers as the pair
- * above, so the two paths' refusals are compared against one arithmetic.
+ * The keyboard half of the same rule, rebuilt for round 3's U8: the step
+ * starts from the RENDERED width when the column is clamped, and a step that
+ * cannot move a pixel still never reaches the store. Measured seats: stored
+ * 1100 at a 968px content box walks 952 -> 936 -> 872; the same key at the
+ * 800 and 780 panes steps from those content boxes; growth at the pane's edge
+ * (`ArrowRight`, `End`) is a no-op; a roomy pane is unchanged (the case
+ * below). Same scroller stub and numbers as the pair above, so the two paths
+ * are compared against one arithmetic.
  */
 
-test("a keyboard step the pane cannot show never reaches the store", async () => {
-	const { separator, changes } = await renderHandleInScroller({
+test("a clamped ArrowLeft steps from the rendered width and keeps walking", async () => {
+	const { separator, changes, rerender } = await renderHandleInScroller({
 		paneClientWidth: 1000,
 		props: { width: 1100 },
 	});
 	await press(separator, "ArrowLeft");
-	assert.deepEqual(changes, [], "an invisible step must not reach the store");
+	assert.deepEqual(
+		changes,
+		[952],
+		"the first press lands one step below what the pane draws",
+	);
+	await rerender({ width: 952 });
+	await press(separator, "ArrowLeft");
+	assert.deepEqual(changes, [952, 936], "and the next press moves again");
+	await rerender({ width: 936 });
+	await press(separator, "ArrowLeft", true);
+	assert.deepEqual(changes, [952, 936, 872], "the coarse step crosses too");
+});
+
+test("the same step starts from each pane's own rendered width", async () => {
+	const narrow = await renderHandleInScroller({
+		paneClientWidth: 800,
+		props: { width: 1100 },
+	});
+	await press(narrow.separator, "ArrowLeft");
+	assert.deepEqual(
+		narrow.changes,
+		[752],
+		"a 800px pane draws 768, so the step lands at 752",
+	);
+	const narrower = await renderHandleInScroller({
+		paneClientWidth: 780,
+		props: { width: 810 },
+	});
+	await press(narrower.separator, "ArrowLeft");
+	await press(narrower.separator, "ArrowLeft", true);
+	assert.deepEqual(
+		narrower.changes,
+		[732, 684],
+		"a 780px pane draws 748, and both steps move it",
+	);
+});
+
+test("growth at the pane's edge writes nothing", async () => {
+	const { separator, changes } = await renderHandleInScroller({
+		paneClientWidth: 1000,
+		props: { width: 1100 },
+	});
+	await press(separator, "ArrowRight");
+	await press(separator, "End");
+	assert.deepEqual(
+		changes,
+		[],
+		"there is nothing wider to show, so neither key reaches the store",
+	);
 	assert.equal(
 		separator.getAttribute("aria-valuenow"),
 		"1100",
