@@ -62,8 +62,8 @@ node scripts/capture-evidence.mjs http://localhost:<port> \
 `local-operator serve` answered on 1111 for the whole pass — and no surface here
 talks to it either: `window.api.desktop.request` is stubbed by the story
 (`capabilities`, `sessions.list`, `profiles.list`, `teams.list`, `sessions.search`)
-and anything else is refused by name. **Twenty frames** — ten states in both
-palettes: four in `group-bound/`, three in `section-gap/` and the same three in
+and anything else is refused by name. **Twenty-six frames** — thirteen states in both
+palettes: seven in `group-bound/`, three in `section-gap/` and the same three in
 `section-gap-before/`. The manifest keeps the capture's own readings in
 `captureOrigin`; the `srcTree`/`scriptsTree` stamps beside it are re-derived at
 each folded tip rather than frozen at the capture.
@@ -161,7 +161,10 @@ bound to it, one bound elsewhere, the rest of the sidebar as it ships.
 | `group-bound/ten/` | The report answered: **ten rows** drawn under `minervadev`, the badge still `41`, and the foot reading **`Show 15 more chats · 10 of 41`**. Before this change the same state drew all forty-one. |
 | `group-bound/after-one/` | After **one real press** on that foot: twenty-five rows, the foot reading `Show 16 more chats · 25 of 41`. The press is a click on the control the first frame draws, not a seeded state. |
 | `group-bound/after-two/` | After **two presses**: the third rung is fifty against forty-one held, so the group is fully drawn and **the foot is gone** — the other half of the count agreeing with the disclosure, since a reader seeing no control is seeing all of it. |
-| `group-bound/current-lifted/` | The reader is IN `team-0034` — the group's 35th row, which the bound withholds. It is **lifted to the head of the group** under the panel's own `CURRENT CHAT` label rather than admitted in place (admitting it would draw the thirty-four rows between: the complaint this change answers). Eleven rows are drawn and the foot says `11 of 41`, because eleven is what is on screen. |
+| `group-bound/current-lifted/` | The reader is IN `team-0034` — the group's 35th row, which the bound withholds. It is **lifted to the head of the group** under the panel's own `CURRENT CHAT` label rather than admitted in place (admitting it would draw the thirty-four rows between: the complaint this change answers). Eleven rows are drawn and the foot says `11 of 41`, because eleven is what is on screen. The row itself wears the current fill and weight, not just the label — the render seeds the store's `activeDraftKey: null` / `activeSessionId: team-0034`, the state the app reaches by opening the chat (design round 1, D1's re-shoot). |
+| `group-bound/current-settled/` | The other end of that movement, driven by two real presses (10 → 25 → 50 against forty-one held): the ladder has drawn past `team-0034`, so the lift and its label are **gone** and the row sits where the catalogue sorts it. The pair is design round 1's D6 as two stills. |
+| `group-bound/running-exempt/` | Design D4's case, framed: `team-0034` is **busy**, and a live row costs no quota, so eleven rows are drawn — the ten-row prefix plus the busy one in place — and the foot counts it: `Show 15 more chats · 11 of 41`. |
+| `group-bound/foot-hover/` | The foot under a real pointer (`:hover` asserted before the shutter): the idle `ink-dim` steps to `ink`, **12.8:1** dark / **15.23:1** light. The foot's focus still is not here — it is a roving stop (`tabindex=-1`, reached by the region's ArrowDown walk) and this rig's focus primitive is a Tab walk that cannot aim at it; recorded in the design-round remediation rather than faked. |
 
 **Withdrawn: `group-bound/search-finds-unloaded` has NO frame, deliberately.** The
 claim it existed for — a query reaches a row the bound has not loaded, which is
@@ -205,14 +208,14 @@ Panel 360px + 380px readout = 741px wide.
 | heading-to-first-entry distance, inside a section | 0.0px |
 | `minervadev` section height with 41 rows drawn | **1436px** of a 900px frame, so the group is 20 screens' worth of a 848px region — which is the complaint |
 | entity section height in the gap pair | 28px collapsed, 124px when `Teams` is expanded (heading 28 + three 32px rows) |
-| scroller content/box, `Agents` collapsed + `Teams` expanded | **628/568 before → 620/568 after** |
-| scroller content/box with 41 rows drawn | **2068/848** |
+| scroller content/box, `Agents` collapsed + `Teams` expanded | **588/568 before → 580/568 after** |
+| scroller content/box with 41 rows drawn | **2028/848** |
 | scroll layers (of which overflowing) | **6 (1)** — one real layer, the entity region; the other five are Storybook's own 0/0 decorators. The count is 6 (0) in `search-finds-unloaded`, where the query narrows the list until it fits. |
 
 **The bound does not introduce a second scroller.** The overflow count is 1 in
 every frame, and the one scroller is the entity region #534 established; the
 group's own rows are a flow of it. The gap fix moves the content height by
-exactly the 8px it removes (628 → 620) and the region still overflows (52px), so
+exactly the 8px it removes (588 → 580) and the region still overflows (12px), so
 nothing traded a header gap for a phantom scroll region.
 
 ## What these frames do NOT prove
@@ -220,7 +223,11 @@ nothing traded a header gap for a phantom scroll region.
 - **Latency.** Nothing here carries a timing; the completion-to-bin reading is in
   `../chat-sidebar-status-feed/README.md` (26.3 s before the fix, 1 ms after).
 - **Focus and hover states.** A hidden window has no focus, and hover is pointer
-  state; the band's own hover frames live in this set from earlier passes.
+  state; the band's own hover frames live in this set from earlier passes, and
+  the group foot's hover is `group-bound/foot-hover` (design round 1, D3's hover
+  half). The foot's focus still is deliberately not faked: it is a roving stop
+  reached by the region's arrow walk, and this rig's focus primitive is a Tab
+  walk that cannot aim at it — the record lives in the design-round remediation.
 - **Where the before half of the popover lives.** It is this set's previous
   revision in git (the three-group panel, captured under
   `remediationRound4EvidenceNote`'s pass); round 1 re-shoots `popover-open`, the
