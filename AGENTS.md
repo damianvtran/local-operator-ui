@@ -163,21 +163,10 @@ name, because a new binding is the defect the assertion exists for. The conventi
 it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
 SHIPS - is what kept those notes bound across every fold.
 
-### Re-stamp in a commit that moves `docs/` and nothing else
-
-A stamp has to be read *after* the commit that ships it exists. A working tree has
-no tree hash: derive while a `src/`/`scripts/` edit is still uncommitted and
-`git rev-parse HEAD:src` answers with the commit you are standing on - the
-*parent* of the change - and the hash it returns is real, so nothing about the
-diff looks wrong. Land the content in a commit of its own, then write the values
-into a commit that moves `docs/evidence/manifest.json` and nothing else. The
-`commit, derive, --amend` order above is the same rule, and it holds only while
-the amended commit moves `docs/` on its own.
-
-**Fold first, re-stamp second, as two commits.** The fold is where this keeps
-biting: the re-stamp reads like part of the merge, and sweeping it in reads the
-values against the pre-fold head. Merge `origin/main` in one commit; re-stamp in
-a separate `docs/`-only one.
+**Fold first, re-stamp second, as two commits.** The fold is where the
+two-commit rule above keeps biting: the re-stamp reads like part of the merge,
+and sweeping it in reads the values against the pre-fold head. Merge
+`origin/main` in one commit; re-stamp in a separate `docs/`-only one.
 
 Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
 (`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
