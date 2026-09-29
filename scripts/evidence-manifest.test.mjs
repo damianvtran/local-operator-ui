@@ -2187,6 +2187,28 @@ const BRANCH_RECORDS = [
 	 * reader is owed the reason no still was.
 	 */
 	"headCutCondensationRestampNote",
+	/*
+	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
+	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
+	 * bar on the item step and the bar's chevron on the rule's end, over the
+	 * re-shot `chat-turn-collapse` cells and the report's own before/after pair;
+	 * `condensedBarFoldNote`, `condensedBarFoldTwoNote`,
+	 * `condensedBarFoldThreeNote` and `condensedBarFoldFourNote` are its folds
+	 * onto the moved `origin/main` (`682f531120`, `9357d37a9f`, `036e501fdf`,
+	 * `f9053eaca5`), and `condensedBarHoverGroundNote` is design round 1's D1 fix
+	 * (the hover ground reaching the rule's end) with its re-shot hover cells.
+	 * They are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop them first, and nothing else would say so. The notes'
+	 * texts are written by the docs-only amendment this registration rides
+	 * beside; they spell their pairs as bare SHAs, per the rule the stamp
+	 * ledger above states.
+	 */
+	"condensedBarRestampNote",
+	"condensedBarFoldNote",
+	"condensedBarFoldTwoNote",
+	"condensedBarFoldThreeNote",
+	"condensedBarFoldFourNote",
+	"condensedBarHoverGroundNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
