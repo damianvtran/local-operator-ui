@@ -19,10 +19,11 @@
  * `aria-orientation="vertical"` and `aria-valuenow/min/max` (the width handed
  * in, and the bounds exported by `chat-measure-drag.ts`), the keyboard
  * arithmetic (arrow steps, the coarse shift step, Home/End, Enter-to-reset),
- * and - since round 2's U4 - the release decision itself: a synthetic
- * press/move/release driven through the same event path a pointer produces,
- * with the scroller's geometry stubbed, asserting which releases reach
- * `onWidthChange` and which are refused before the store is touched.
+ * and the render-gated commit path - round 2's U4 for releases and round 3's
+ * U6 for keyboard steps: a synthetic press/move/release driven through the
+ * same event path a pointer produces, and a synthetic keydown through the
+ * handler, both with the scroller's geometry stubbed, asserting which widths
+ * reach `onWidthChange` and which are refused before the store is touched.
  *
  * WHAT IT DELIBERATELY DOES NOT PIN. REAL layout (jsdom has none: the pane
  * reading is stubbed to the numbers the story host measures, so what is
@@ -320,5 +321,40 @@ test("the same release commits where the pane can show it", async () => {
 		changes,
 		[1060],
 		"a visible narrowing commits the dragged width",
+	);
+});
+
+/*
+ * The keyboard half of the same rule (round 3's U6): a step that cannot move
+ * a pixel must not reach the store. Measured seat: stored 1100 at the 968px
+ * content box, where ArrowLeft used to walk the store to 1084 while the
+ * rendered width stayed 968. Same scroller stub, same numbers as the pair
+ * above, so the two paths' refusals are compared against one arithmetic.
+ */
+
+test("a keyboard step the pane cannot show never reaches the store", async () => {
+	const { separator, changes } = await renderHandleInScroller({
+		paneClientWidth: 1000,
+		props: { width: 1100 },
+	});
+	await press(separator, "ArrowLeft");
+	assert.deepEqual(changes, [], "an invisible step must not reach the store");
+	assert.equal(
+		separator.getAttribute("aria-valuenow"),
+		"1100",
+		"the announcement must not move either",
+	);
+});
+
+test("the same keyboard step commits where the pane can show it", async () => {
+	const { separator, changes } = await renderHandleInScroller({
+		paneClientWidth: 1400,
+		props: { width: 1100 },
+	});
+	await press(separator, "ArrowLeft");
+	assert.deepEqual(
+		changes,
+		[1084],
+		"a step that moves pixels commits where the step lands",
 	);
 });
