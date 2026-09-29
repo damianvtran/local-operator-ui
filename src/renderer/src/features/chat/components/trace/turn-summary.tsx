@@ -124,7 +124,17 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 }) => {
 	return (
 		<div
-			className={className}
+			/*
+			 * The "there is more below" rule (design spec D1, operator feedback
+			 * 2026-09-28, after dsh's bottom rule): a hairline under the bar says the
+			 * block continues into hidden rows, where a bare row read as everything
+			 * having disappeared. It is the app-wide separator idiom (`border-hairline`,
+			 * no new ink), spans the block's content box with no inset, and sits at the
+			 * block's own bottom so it mounts and moves with the collapse — decorative,
+			 * never a hover surface, no animation, and none of the bar's numbers, stamp,
+			 * chevron or failure control change.
+			 */
+			className={cn("border-b border-hairline", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-record-id={anchorRecordId}
