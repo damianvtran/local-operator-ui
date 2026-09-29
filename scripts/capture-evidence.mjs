@@ -2361,6 +2361,21 @@ export const STORIES = [
 	["chat-run-panel--wake-long-message", 1280, 700],
 	["chat-run-panel--wakes-and-plan", 1280, 820],
 	["chat-run-panel--wakes-floor-320", 1280, 700],
+	/* The MONITORS section (the monitor design doc § 12's desktop row) — the Wakes
+	   section's sibling and the session's second standing-fact list: something
+	   being WATCHED on an interval rather than scheduled to fire. The block
+	   mirrors the wakes one so the two lists can be read side by side: one watch
+	   alone, the health vocabulary (live, mid-ladder, and parked by the failure
+	   ladder — the state ink the wakes rows deliberately lack), the cap and its
+	   marker one past the arm path's own eight, a description longer than its
+	   row, the pair with the wakes (`wakes-and-plan`'s sibling, in the order both
+	   surfaces draw: the wakes first), and the pane's 320px floor. */
+	["chat-run-panel--monitors-only", 1280, 700],
+	["chat-run-panel--monitors-health", 1280, 820],
+	["chat-run-panel--monitors-many", 1280, 820],
+	["chat-run-panel--monitor-long-description", 1280, 700],
+	["chat-run-panel--monitors-and-wakes", 1280, 820],
+	["chat-run-panel--monitors-floor-320", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -3005,6 +3020,14 @@ export const STORIES = [
 	   the same three widths as `activity-widths` plus 220, the column floor the wake
 	   change was specified against. */
 	["chat-composer-status-row--wake-widths", 1000, 1200],
+	/* The monitor chip (the monitor design doc § 12): the wake chip's count one
+	   over, one band per claim — a watch alone at the row's start, the
+	   wakes-and-watches pair in their own order, and the health band whose whole
+	   point is that this row does NOT move for a monitor's health (the ink is the
+	   pane's). `monitor-widths` is `wake-widths`' four widths with the fifth
+	   count chip in the group, each band printing its own numbers. */
+	["chat-composer-status-row--monitor-chip", 1000, 1000],
+	["chat-composer-status-row--monitor-widths", 1000, 1200],
 	/* THE DISMISS AFFORDANCES and the loop chip (this change): the two RESTING states
 	   only.
 

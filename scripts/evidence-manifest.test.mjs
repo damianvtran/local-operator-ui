@@ -1148,7 +1148,7 @@ const STAMP_BINDING_NOTES = [
 	 * This branch's own, and the first one that adds a declared set in the same
 	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
 	 * one fetch per gesture`, which moves both trees AND adds
-	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * `monitors`, so the reader is owed the pair, the frame
 	 * arithmetic, and the reason the swept count does not move.
 	 */
 	"transcriptRevealAtRestRestampNote",
@@ -3081,6 +3081,22 @@ const BRANCH_RECORDS = [
 	 * did not; a fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashFourthFoldNote",
+	/*
+	 * And this pass's own (`monitorsPass`), listed for the list's usual reason: the
+	 * note states what this pass ADDED (sixteen frames over two surfaces) and
+	 * what it did not (no live-app set yet, and why), and it is the record that
+	 * makes the new frames' provenance readable without walking the manifest's
+	 * partialCapture block.
+	 */
+	"monitorsPass",
+	/*
+	 * And this pass's own (`monitorsPass`), listed for the list's usual reason: the
+	 * note states what this pass ADDED (sixteen frames over two surfaces) and
+	 * what it did not (no live-app set yet, and why), and it is the record that
+	 * makes the new frames' provenance readable without walking the manifest's
+	 * partialCapture block.
+	 */
+	"monitorsPass",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
