@@ -135,7 +135,20 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 				onOpenChange={onOpenChange}
 				chevron="trailing"
 				rowClassName={ROW_HEIGHT}
-				triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
+				triggerClassName={cn(
+					/*
+					 * THE HOVER GROUND REACHES THE RULE'S END WITH THE CHEVRON (design round 1
+					 * D1). The `-mx-2` ground paints the trigger's border box, which ended 8px
+					 * short of the rule once the slot's `-mr-4` moved the row's right edge to
+					 * the rule's end — the wash's edge crossed the glyph. The width and the
+					 * right padding move as a PAIR (+0.5rem width, +0.5rem right padding), so
+					 * the border box grows to the rule's end while the CONTENT box — which
+					 * the stamp and the slot's pull are laid out from — stays exactly where
+					 * it was; either half alone would move the chevron 8px.
+					 */
+					"-ml-2 -mr-2 w-[calc(100%+0.5rem)] rounded-sm pl-2 pr-4",
+					"hover:bg-row-hover",
+				)}
 				/*
 				 * THE CHEVRON IS THIS ROW'S RIGHT EDGE, SO IT RECLAIMS THE TRIGGER'S
 				 * RIGHT SHORTFALL. The trigger is `w-full` inside the `-mx-2 px-2`
