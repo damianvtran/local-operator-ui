@@ -24,6 +24,7 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
 import {
 	useDraftWarmSession,
 	useWarmSession,
@@ -2543,6 +2544,14 @@ function SessionPanel({
 		sessionId,
 		busy,
 		available: interruptAvailable,
+		/*
+		 * Rung 4's answer, read from the surfaces that record rather than
+		 * inherited from `defaultPrevented` (UX round 1, U1): this listener runs
+		 * before the composer's own claim, so the flag cannot be the guard on the
+		 * trusted key path. `isDictationActive` is a live reader, so no re-render
+		 * is needed when a recording starts.
+		 */
+		recording: isDictationActive,
 		onInterrupt: stop,
 	});
 	const loadedTarget =

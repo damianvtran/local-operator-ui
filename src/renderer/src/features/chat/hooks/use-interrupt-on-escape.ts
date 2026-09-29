@@ -37,6 +37,13 @@
  * 4. VOICE RECORDING CANCEL. Esc during a recording cancels the recording and
  *    never the turn. This is the one that bites, and it is why the decision below
  *    is taken in a MICROTASK rather than at listener time - see the note there.
+ *    AND WHY THE PREDICATE READS THE RECORDING'S PRESENCE DIRECTLY (`recording`
+ *    below): the microtask only re-checks `defaultPrevented`, and on the trusted
+ *    key path this listener runs BEFORE the composer's own claim, so the
+ *    microtask was draining ahead of the claim and the turn died with the
+ *    recording (UX round 1, U1 - reproduced 7/7 on the real key path). The
+ *    presence reader answers "is a recording live" from the thing that owns the
+ *    recording, at key time, in every ordering.
  * 5. The slash autocomplete (`slash-contract.ts`'s `Escape` intent). It is a
  *    React handler on the composer's textarea, so it runs during the delegated
  *    dispatch - before this listener - and it calls `preventDefault`, which the
@@ -77,6 +84,14 @@ export type InterruptEscapeState = {
 	busy: boolean;
 	/** Whether this backend advertises `session_interrupt` at all. */
 	available: boolean;
+	/**
+	 * Whether a recording currently owns Escape (rung 4). A READER, not a value:
+	 * it is consulted at key time, so the answer cannot go stale between a
+	 * re-render and a press - and the surfaces that record do not have to thread
+	 * their state up through the panel to answer it (see
+	 * `isDictationActive` in `use-speech-to-text-manager.ts`).
+	 */
+	recording?: () => boolean;
 };
 
 /** The subset of a keyboard event the predicate reads, for tests. */
@@ -146,6 +161,7 @@ export function interruptEscapeApplies(
 		event.key === "Escape" &&
 		!event.defaultPrevented &&
 		!event.isComposing &&
+		!(state.recording?.() ?? false) &&
 		Boolean(state.sessionId) &&
 		state.busy &&
 		state.available &&
@@ -183,7 +199,15 @@ export function dispatchInterruptOnEscape(
 ): boolean {
 	if (!interruptEscapeApplies(event, state)) return false;
 	queueMicrotask(() => {
+		/*
+		 * Re-read BOTH answers that can have moved since the listener ran: a claim
+		 * (`defaultPrevented`) and a recording taking the press over
+		 * (`recording`, rung 4). The recording is re-checked here as well as in the
+		 * predicate because the two are read at different times and rung 4 must win
+		 * in both orderings.
+		 */
 		if (event.defaultPrevented) return;
+		if (state.recording?.() ?? false) return;
 		onInterrupt();
 	});
 	return true;
@@ -197,16 +221,17 @@ export function useInterruptOnEscape({
 	sessionId,
 	busy,
 	available,
+	recording,
 	onInterrupt,
 }: InterruptEscapeState & { onInterrupt: () => void }): void {
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) =>
 			void dispatchInterruptOnEscape(
 				event,
-				{ sessionId, busy, available },
+				{ sessionId, busy, available, recording },
 				onInterrupt,
 			);
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [sessionId, busy, available, onInterrupt]);
+	}, [sessionId, busy, available, recording, onInterrupt]);
 }

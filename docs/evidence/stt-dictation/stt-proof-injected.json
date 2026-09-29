@@ -1,7 +1,7 @@
 {
   "backend": "http://127.0.0.1:1131",
   "proxy": "http://127.0.0.1:8080",
-  "out": "/Users/damian/.local-operator/sessions/79490f91af55/scratchpad/stt-proof-inject2",
+  "out": "/Users/damian/.local-operator/sessions/79490f91af55/scratchpad/stt-proof-r1b",
   "steps": [
     {
       "step": "rig.radientUpstream",
@@ -51,35 +51,27 @@
       "boxHeight": 110
     },
     {
+      "step": "sessionA.micTooltip",
+      "text": [
+        "Start recording (Cmd+Shift+S or hold Right-Option)"
+      ]
+    },
+    {
       "step": "sessionA.combo.timestamps",
-      "t0": 5163.60000000149,
-      "flip": null
+      "t0": 7268,
+      "flip": 8216.300000000745
     },
     {
       "step": "sessionA.comboEngages",
-      "observed": false,
+      "observed": true,
       "deliveredToPage": true,
-      "flipped": false,
-      "latencyMs": null,
-      "budgetMs": 3000,
+      "flipped": true,
+      "latencyMs": 948,
+      "budgetMs": 9000,
       "cold": true
     },
     {
-      "step": "sessionA.space.timestamps",
-      "t0": 8200.5,
-      "flip": 11499.5
-    },
-    {
-      "step": "sessionA.spaceEngages",
-      "ok": true,
-      "deliveredToPage": true,
-      "flipped": true,
-      "latencyMs": 3299,
-      "budgetMs": 3500,
-      "cold": false
-    },
-    {
-      "step": "sessionA.recordingTreatmentSpace",
+      "step": "sessionA.recordingTreatment",
       "textarea": true,
       "recording": true,
       "indicator": true,
@@ -91,18 +83,53 @@
       "boxHeight": 150
     },
     {
+      "step": "sessionA.combo.transcribingSeen",
+      "transcribing": true
+    },
+    {
+      "step": "sessionA.transcriptLanded",
+      "transcribingSeen": true,
+      "draft": "review the stt overhaul dictated words from the fake upstream."
+    },
+    {
+      "step": "sessionA.space.timestamps",
+      "t0": 10636.599999997765,
+      "flip": 10672.099999997765
+    },
+    {
+      "step": "sessionA.spaceEngages",
+      "ok": true,
+      "deliveredToPage": true,
+      "flipped": true,
+      "latencyMs": 36,
+      "budgetMs": 6000,
+      "cold": false
+    },
+    {
+      "step": "sessionA.recordingTreatmentSpace",
+      "textarea": true,
+      "recording": true,
+      "indicator": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": "review the stt overhaul dictated words from the fake upstream.",
+      "boxHeight": 150
+    },
+    {
       "step": "sessionA.space.transcribingSeen",
       "transcribing": true
     },
     {
       "step": "sessionA.transcriptLandedSpace",
-      "draft": "review the stt overhauldictated words from the fake upstream."
+      "draft": "review the stt overhaul dictated words from the fake upstream."
     },
     {
       "step": "sessionA.sentBody",
       "body": {
-        "request_id": "5b28c19d-ab41-41a9-b912-9dc9cb5663c5",
-        "text": "review the stt overhauldictated words from the fake upstream.",
+        "request_id": "48703037-4a98-4ae3-be09-4f9861068878",
+        "text": "review the stt overhaul dictated words from the fake upstream.",
         "images": [],
         "mode": "prompt",
         "input_mode": "mixed"
@@ -121,7 +148,7 @@
     {
       "step": "sessionB.typedBody",
       "body": {
-        "request_id": "04856c51-7bc7-4770-b299-986b1e6b73e7",
+        "request_id": "ef4f842f-04da-440e-9775-530a781d8e8c",
         "text": "typed probe [bash:40]",
         "images": [],
         "mode": "prompt",
@@ -938,32 +965,32 @@
     },
     {
       "step": "sessionB.streamingWait",
-      "waitedMs": 30028
+      "waitedMs": 30080
     },
     {
       "step": "sessionB.streamingAfterTyped",
       "observed": false,
       "streaming": false,
-      "waitedMs": 30028,
+      "waitedMs": 30081,
       "outcome": ""
     },
     {
       "step": "sessionB.midTurnCombo.timestamps",
-      "t0": 53648.20000000298,
-      "flip": 53654
+      "t0": 54117.599999997765,
+      "flip": 54191.89999999851
     },
     {
       "step": "sessionB.midTurnComboEngages",
       "observed": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 6,
+      "latencyMs": 74,
       "budgetMs": 3000,
       "attempts": [
         {
           "deliveredToPage": true,
           "flipped": true,
-          "latencyMs": 6,
+          "latencyMs": 74,
           "budgetMs": 3000
         }
       ]
@@ -978,13 +1005,13 @@
     },
     {
       "step": "sessionB.midTurnTranscriptLanded",
-      "draft": "second dictation, also from the fake upstream."
+      "draft": "dictated steer probe from the fake upstream."
     },
     {
       "step": "sessionB.steerBody",
       "body": {
-        "request_id": "6ca2477a-72dc-4484-a427-83fbdb559968",
-        "text": "second dictation, also from the fake upstream.",
+        "request_id": "1d615b04-7ef8-4591-9cba-ab9688f64bce",
+        "text": "dictated steer probe from the fake upstream.",
         "images": [],
         "mode": "prompt",
         "input_mode": "dictated"
@@ -1046,8 +1073,8 @@
     {
       "step": "sessionC.transcriptionHeldUpstream",
       "ok": true,
-      "calls": 3,
-      "fixture": "dictated steer probe from the fake upstream."
+      "calls": 4,
+      "fixture": "fourth dictation from the fake upstream."
     },
     {
       "step": "sessionC.transcribingWhileSending",
@@ -1061,7 +1088,7 @@
     {
       "step": "sessionC.raceBody",
       "body": {
-        "request_id": "fd389ce2-bed5-49e8-8bf8-57c2af303f01",
+        "request_id": "ba2e0c93-ebaf-4753-88d0-664474ee5b74",
         "text": "typed line for the echo window",
         "images": [],
         "mode": "prompt",
@@ -1075,31 +1102,31 @@
     },
     {
       "step": "sessionC.raceTimeline",
-      "pressAt": 62686,
-      "releaseAt": 62686.5,
-      "proxyReleaseAt": 1790650649456,
+      "pressAt": 63733.89999999851,
+      "releaseAt": 63734.300000000745,
+      "proxyReleaseAt": 1790655680314,
       "writes": [
         {
-          "at": 62698.400000002235,
+          "at": 63743.099999997765,
           "value": ""
         },
         {
-          "at": 62711.800000000745,
-          "value": "dictated steer probe from the fake upstream."
+          "at": 63762.199999999255,
+          "value": "fourth dictation from the fake upstream."
         }
       ],
       "emptyWriteAfterPress": true
     },
     {
       "step": "sessionC.raceBox",
-      "draft": "dictated steer probe from the fake upstream.",
-      "fixture": "dictated steer probe from the fake upstream."
+      "draft": "fourth dictation from the fake upstream.",
+      "fixture": "fourth dictation from the fake upstream."
     },
     {
       "step": "sessionC.transcriptSurvivedTheEcho",
       "observed": true,
-      "draft": "dictated steer probe from the fake upstream.",
-      "fixture": "dictated steer probe from the fake upstream."
+      "draft": "fourth dictation from the fake upstream.",
+      "fixture": "fourth dictation from the fake upstream."
     },
     {
       "step": "sessionC.composedClear",
@@ -1107,39 +1134,83 @@
       "emptyWriteAfterPress": true,
       "writes": [
         {
-          "at": 62698.400000002235,
+          "at": 63743.099999997765,
           "value": ""
         },
         {
-          "at": 62711.800000000745,
-          "value": "dictated steer probe from the fake upstream."
+          "at": 63762.199999999255,
+          "value": "fourth dictation from the fake upstream."
         }
       ],
-      "fixture": "dictated steer probe from the fake upstream."
+      "fixture": "fourth dictation from the fake upstream."
+    },
+    {
+      "step": "sessionD.releaseInWindowSettles",
+      "ok": true,
+      "label": "release-in-window",
+      "recording": false,
+      "transcribing": false,
+      "micDisabled": false,
+      "draft": "edge take probe"
+    },
+    {
+      "step": "sessionD.doubleTapSettles",
+      "ok": true,
+      "label": "double-tap",
+      "recording": false,
+      "transcribing": false,
+      "micDisabled": false,
+      "draft": "edge take probe"
+    },
+    {
+      "step": "sessionD.abortInWindowSettles",
+      "ok": true,
+      "label": "abort-in-window",
+      "recording": false,
+      "transcribing": false,
+      "micDisabled": false,
+      "draft": "edge take probe"
+    },
+    {
+      "step": "sessionD.discardedTaps",
+      "transcriptionCalls": 0
+    },
+    {
+      "step": "sessionD.tapsNeverTranscribed",
+      "ok": true,
+      "calls": 0
+    },
+    {
+      "step": "sessionD.nextTakeStillLands",
+      "ok": true,
+      "draft": "edge take probe fourth dictation from the fake upstream."
+    },
+    {
+      "step": "sessionD.joinedDraft",
+      "draft": "edge take probe fourth dictation from the fake upstream."
     }
   ],
   "claims": [],
   "notes": [
-    "the Alt-Right combo did not engage a recording on this build (deliveredToPage says whether the key reached the page)",
     "session C could not land inside the ~8 ms press-to-echo window this rig measures (its release plumbing costs ~17 ms); the transcript rode the fresh-append path, asserted above, and the composed-clear path is covered by reading, not by this run"
   ],
   "wire": [
     {
-      "at": 1790650600136,
-      "path": "/v1/desktop/sessions/725e6609cf49/messages",
+      "at": 1790655629114,
+      "path": "/v1/desktop/sessions/a014444270a5/messages",
       "body": {
-        "request_id": "5b28c19d-ab41-41a9-b912-9dc9cb5663c5",
-        "text": "review the stt overhauldictated words from the fake upstream.",
+        "request_id": "48703037-4a98-4ae3-be09-4f9861068878",
+        "text": "review the stt overhaul dictated words from the fake upstream.",
         "images": [],
         "mode": "prompt",
         "input_mode": "mixed"
       }
     },
     {
-      "at": 1790650601377,
-      "path": "/v1/desktop/sessions/63f1306d3dc4/messages",
+      "at": 1790655630735,
+      "path": "/v1/desktop/sessions/fe436ce56553/messages",
       "body": {
-        "request_id": "04856c51-7bc7-4770-b299-986b1e6b73e7",
+        "request_id": "ef4f842f-04da-440e-9775-530a781d8e8c",
         "text": "typed probe [bash:40]",
         "images": [],
         "mode": "prompt",
@@ -1147,21 +1218,21 @@
       }
     },
     {
-      "at": 1790650642313,
-      "path": "/v1/desktop/sessions/63f1306d3dc4/messages",
+      "at": 1790655672751,
+      "path": "/v1/desktop/sessions/fe436ce56553/messages",
       "body": {
-        "request_id": "6ca2477a-72dc-4484-a427-83fbdb559968",
-        "text": "second dictation, also from the fake upstream.",
+        "request_id": "1d615b04-7ef8-4591-9cba-ab9688f64bce",
+        "text": "dictated steer probe from the fake upstream.",
         "images": [],
         "mode": "prompt",
         "input_mode": "dictated"
       }
     },
     {
-      "at": 1790650649453,
-      "path": "/v1/desktop/sessions/810674c9309d/messages",
+      "at": 1790655680313,
+      "path": "/v1/desktop/sessions/0663ccbc550a/messages",
       "body": {
-        "request_id": "fd389ce2-bed5-49e8-8bf8-57c2af303f01",
+        "request_id": "ba2e0c93-ebaf-4753-88d0-664474ee5b74",
         "text": "typed line for the echo window",
         "images": [],
         "mode": "prompt",
@@ -1169,30 +1240,45 @@
       }
     }
   ],
-  "sessionA": "725e6609cf49",
-  "sessionB": "63f1306d3dc4",
-  "sessionC": "810674c9309d",
+  "sessionA": "a014444270a5",
+  "sessionB": "fe436ce56553",
+  "sessionC": "0663ccbc550a",
+  "sessionD": "da587227d88a",
   "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}",
   "radientCalls": [
     {
-      "at": 1790650598967,
+      "at": 1790655626017,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
-      "bytes": 3712,
+      "bytes": 11126,
       "authorized": true
     },
     {
-      "at": 1790650641168,
+      "at": 1790655628613,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
-      "bytes": 11328,
+      "bytes": 14024,
       "authorized": true
     },
     {
-      "at": 1790650649311,
+      "at": 1790655671623,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
-      "bytes": 12294,
+      "bytes": 5330,
+      "authorized": true
+    },
+    {
+      "at": 1790655680238,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 2432,
+      "authorized": true
+    },
+    {
+      "at": 1790655686399,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 3398,
       "authorized": true
     }
   ]

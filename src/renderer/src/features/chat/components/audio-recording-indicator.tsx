@@ -269,7 +269,7 @@ export const AudioRecordingIndicator = ({
 		 */
 		<div
 			data-recording-indicator=""
-			className="mt-1 flex items-center gap-2 px-1 text-accent [min-height:1.5rem]"
+			className="mt-1 flex items-center gap-2 px-2 text-accent [min-height:1.5rem]"
 		>
 			<style>{PULSE_KEYFRAMES}</style>
 			<span className="relative block size-2 shrink-0" aria-hidden="true">

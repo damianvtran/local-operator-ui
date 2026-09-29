@@ -1,6 +1,9 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import { transcriptionFailureMessage } from "@shared/api/local-operator/transcription-failure";
+import {
+	EMPTY_TRANSCRIPTION_MESSAGE,
+	transcriptionFailureMessage,
+} from "@shared/api/local-operator/transcription-failure";
 import type {
 	AgentEditFileRequest,
 	EditDiff,
@@ -11,14 +14,21 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
+import { joinTranscript } from "@shared/hooks/use-message-input";
 import {
 	SpeechToTextPriority,
+	resolvePushToTalkBinding,
+	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { normalizePath } from "@shared/utils/path-utils";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import {
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+} from "@shared/utils/toast-manager";
 import {
 	Check,
 	ChevronLeft,
@@ -41,6 +51,25 @@ import {
 import { AttachmentsPreview } from "../attachments-preview";
 import { AudioRecordingIndicator } from "../audio-recording-indicator";
 import { WaveformAnimation } from "../waveform-animation";
+
+/**
+ * A take short enough to hold no words is discarded rather than transcribed -
+ * the same floor the composer applies: both doors speak the manager's
+ * `{ start, stop }` contract, and a release that beats `getUserMedia` settles
+ * into a ~0 ms take, so "discard" is the only outcome that does not ship an
+ * empty request for a press that captured nothing.
+ */
+const MIN_DICTATION_CLIP_MS = 250;
+
+/**
+ * The take in flight, and the marks a release or abort can leave on it before
+ * the recorder exists.
+ */
+type RecordingAttempt = {
+	startedAt: number | null;
+	released: boolean;
+	aborted: boolean;
+};
 
 type InlineEditProps = {
 	selection: string;
@@ -137,12 +166,27 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const isCancelledRef = useRef(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	/**
-	 * A hold released before `getUserMedia` resolved. The recorder does not exist
-	 * yet, so the release cannot stop anything - it is marked here and settled the
-	 * moment the recorder starts: an orphan capture (mic left on, nobody able to
-	 * end it) is the one outcome this ref exists to prevent.
+	 * The take in flight: the ONE recorder this component owns, plus the marks a
+	 * release or abort can leave on it before the recorder exists.
+	 *
+	 * WHY THE ATTEMPT IS A REF AND NOT THE STATE HANDLERS (review round 1, M1).
+	 * The first shape queued a release in a boolean and consumed it by calling
+	 * `handleConfirmRecording()` from `handleStartRecording`'s own closure - the
+	 * instance created with `deps: [canEnableRecordingFeature]`, whose
+	 * `isRecording` is `false` forever - so the consume was a NO-OP: the recorder
+	 * started and kept going, and only a manual Confirm/Cancel ended it. The
+	 * abort arm was equally dead: it called `handleCancelRecording()`, whose
+	 * guard is also `isRecording` (false until the recorder is up), so an abort
+	 * before the start did nothing at all. Settling BY THE REF means the outcome
+	 * does not depend on a render having happened: a mark left on the attempt is
+	 * read back the moment `start()` returns, whatever a closure remembers.
 	 */
-	const holdReleasePendingRef = useRef(false);
+	const recordingAttemptRef = useRef<RecordingAttempt | null>(null);
+
+	useEffect(() => {
+		setDictationActive("canvas-inline-edit", isRecording);
+		return () => setDictationActive("canvas-inline-edit", false);
+	}, [isRecording]);
 
 	useEffect(() => {
 		if (textareaRef.current) {
@@ -237,10 +281,61 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		return "Ctrl+Enter";
 	}, [platform]);
 
+	/**
+	 * Stop the take the current attempt owns, keeping it only when it is long
+	 * enough to hold words and was not aborted. A recorder that is already
+	 * INACTIVE makes this a no-op (review round 1, m1 class): the manager's abort
+	 * and this component's own Enter/Escape listener can both answer one press,
+	 * and `stop()` on a stopped recorder throws `InvalidStateError`.
+	 */
+	const settleRecordingAttempt = useCallback((reason: "release" | "abort") => {
+		const recorder = mediaRecorderRef.current;
+		if (!recorder) {
+			recordingAttemptRef.current = null;
+			return;
+		}
+		const startedAt = recordingAttemptRef.current?.startedAt ?? null;
+		const elapsed =
+			startedAt === null
+				? Number.POSITIVE_INFINITY
+				: performance.now() - startedAt;
+		recordingAttemptRef.current = null;
+		if (recorder.state === "inactive") {
+			setIsRecording(false);
+			return;
+		}
+		if (reason === "abort" || elapsed < MIN_DICTATION_CLIP_MS) {
+			// Discard: stop the tracks and drop the chunks without building a blob,
+			// so a discarded take never reaches the transcription request.
+			recorder.onstop = () => {
+				if (recorder.stream) {
+					for (const track of recorder.stream.getTracks()) {
+						track.stop();
+					}
+				}
+				setAudioBlob(null);
+				audioChunksRef.current = [];
+			};
+		}
+		recorder.stop();
+		setIsRecording(false);
+	}, []);
+
 	const handleStartRecording = useCallback(async () => {
 		if (!canEnableRecordingFeature) return;
-		holdReleasePendingRef.current = false;
+		/*
+		 * ONE RECORDER AT A TIME, the same guard the composer carries (review round
+		 * 1, M2's class): a second engagement inside the `getUserMedia` window would
+		 * overwrite the pending attempt and leave the first recorder with nothing
+		 * pointing at it.
+		 */
+		if (recordingAttemptRef.current) return;
 		if (navigator?.mediaDevices?.getUserMedia) {
+			recordingAttemptRef.current = {
+				startedAt: null,
+				released: false,
+				aborted: false,
+			};
 			try {
 				const stream = await navigator.mediaDevices.getUserMedia({
 					audio: true,
@@ -252,6 +347,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					audioChunksRef.current.push(event.data);
 				};
 
+				/*
+				 * The blob is built on THIS recorder's own stop, and the discard arm of
+				 * `settleRecordingAttempt` replaces this handler before stopping - so
+				 * "which end the take met" is decided by the stop path, never by a
+				 * closure's memory of the state.
+				 */
 				mediaRecorderRef.current.onstop = () => {
 					const completeAudioBlob = new Blob(audioChunksRef.current, {
 						type: "audio/webm",
@@ -264,13 +365,20 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				};
 
 				mediaRecorderRef.current.start();
+				const attempt = recordingAttemptRef.current;
+				if (attempt) attempt.startedAt = performance.now();
 				setIsRecording(true);
 				setAudioBlob(null); // Clear previous blob
-				if (holdReleasePendingRef.current) {
-					holdReleasePendingRef.current = false;
-					handleConfirmRecording();
+				/*
+				 * RELEASED OR ABORTED BEFORE THE RECORDER EXISTED: settle it now rather
+				 * than orphan it. The take is ~0 ms old, so the minimum-clip rule discards
+				 * it - the correct outcome for a press that captured nothing.
+				 */
+				if (attempt?.released || attempt?.aborted) {
+					settleRecordingAttempt(attempt.aborted ? "abort" : "release");
 				}
 			} catch (err) {
+				recordingAttemptRef.current = null;
 				console.error("Error accessing microphone:", err);
 				showErrorToast(
 					"Error accessing microphone. Please ensure microphone permissions are granted.",
@@ -282,50 +390,35 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			   this did not choose a browser and cannot change it. */
 			showErrorToast("Dictation is not available on this device.");
 		}
-	}, [canEnableRecordingFeature]);
+	}, [canEnableRecordingFeature, settleRecordingAttempt]);
 
 	const handleConfirmRecording = useCallback(() => {
-		if (mediaRecorderRef.current && isRecording) {
-			mediaRecorderRef.current.stop();
-			setIsRecording(false);
-		}
-	}, [isRecording]);
+		settleRecordingAttempt("release");
+	}, [settleRecordingAttempt]);
 
 	const handleCancelRecording = useCallback(() => {
-		if (mediaRecorderRef.current && isRecording) {
-			// Redefine onstop to just stop the tracks and clean up, without processing audio
-			mediaRecorderRef.current.onstop = () => {
-				if (mediaRecorderRef.current?.stream) {
-					for (const track of mediaRecorderRef.current.stream.getTracks()) {
-						track.stop();
-					}
-				}
-				setAudioBlob(null);
-				audioChunksRef.current = [];
-			};
-			mediaRecorderRef.current.stop();
-			setIsRecording(false);
-		}
-	}, [isRecording]);
+		settleRecordingAttempt("abort");
+	}, [settleRecordingAttempt]);
 
 	/**
-	 * The hold contract's stop (the manager's `{ start, stop }`), and it keeps
-	 * the queued-release case: a release that beat the recorder is settled when
-	 * the recorder starts (see `holdReleasePendingRef`).
+	 * The hold contract's stop (the manager's `{ start, stop }`). Before the
+	 * recorder exists the mark is left on the ATTEMPT and settled by
+	 * `handleStartRecording` when `start()` returns - the release arm confirms
+	 * (subject to the clip floor), the abort arm discards; after it exists, the
+	 * same settle runs here.
 	 */
 	const handleStopRecording = useCallback(
 		(reason: "release" | "abort" = "release") => {
-			if (reason === "abort") {
-				handleCancelRecording();
+			const attempt = recordingAttemptRef.current;
+			if (!attempt) return;
+			if (attempt.startedAt === null) {
+				if (reason === "abort") attempt.aborted = true;
+				else attempt.released = true;
 				return;
 			}
-			if (isRecording) {
-				handleConfirmRecording();
-				return;
-			}
-			holdReleasePendingRef.current = true;
+			settleRecordingAttempt(reason);
 		},
-		[isRecording, handleConfirmRecording, handleCancelRecording],
+		[settleRecordingAttempt],
 	);
 
 	const handleCancelEdit = useCallback(() => {
@@ -357,7 +450,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			);
 			if (response.result?.text) {
 				const newText = response.result?.text || "";
-				setPrompt((p) => p + newText);
+				/*
+				 * The same boundary rule the composer's transcript writer uses (design
+				 * round 1, D2): plain concatenation landed the words flush against a
+				 * prompt that did not end in whitespace.
+				 */
+				setPrompt((p) => joinTranscript(p, newText));
+			} else {
+				// A successful, empty transcript is said out loud rather than silently
+				// dropping the take (UX round 1, U3).
+				showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
 			}
 			setAudioBlob(null); // Clear the blob after sending
 		} catch (error) {
@@ -820,7 +922,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									content={
 										!canEnableRecordingFeature
 											? "Sign in to Radient in the settings page to enable audio recording"
-											: `Start recording (${shortcutText} or hold Space)`
+											: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 									}
 								>
 									<span>

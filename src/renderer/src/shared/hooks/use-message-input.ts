@@ -198,6 +198,25 @@ export const clearSubmittedText = (
 	submitted: string,
 ): string => (current === submitted ? "" : current);
 
+/**
+ * The boundary between a draft and a transcript that lands on it (design round
+ * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
+ * on the exact landing path this change re-publishes, and the joined word
+ * shipped as the sent message; the baseline records show it carried, which is
+ * why it is fixed HERE rather than deferred - this PR is the path's owner now.
+ *
+ * One space is added when the two sides would otherwise touch: the draft is
+ * non-empty and does not end in whitespace, and the transcript does not begin
+ * with it. Nothing changes when either side already had a boundary, so a draft
+ * ending in a space and a transcript starting with one both join exactly as
+ * before.
+ */
+export const joinTranscript = (draft: string, text: string): string => {
+	if (!draft) return text;
+	if (/\s$/.test(draft) || /^\s/.test(text)) return draft + text;
+	return `${draft} ${text}`;
+};
+
 /*
  * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
  *
@@ -229,6 +248,16 @@ export const COMPOSER_PLACEHOLDER = {
 	 */
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
+	/**
+	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
+	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
+	 * ladder, "Esc during a recording cancels the recording and never the turn" -
+	 * so the mid-turn sentence below ("Esc stops") would be a promise about the
+	 * wrong thing. Read before every other reading, because none of them can be
+	 * true at once with a live take the user started: the recording owns the
+	 * press until it ends.
+	 */
+	recording: "Recording. Enter confirms · Esc cancels",
 	waiting: "Steer the agent. Enter sends now · Esc stops",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
@@ -772,10 +801,10 @@ export const useMessageInput = ({
 				// The masked capture owns the box: append to it without touching the row,
 				// exactly as a keystroke inside the capture does (§6). The capture's own
 				// write at its end is what reconciles the merged value.
-				setInputValue((current) => current + text);
+				setInputValue((current) => joinTranscript(current, text));
 				return;
 			}
-			handleChange(getCurrentInput(conversationId) + text);
+			handleChange(joinTranscript(getCurrentInput(conversationId), text));
 		},
 		[conversationId, draftHeld, getCurrentInput, handleChange],
 	);

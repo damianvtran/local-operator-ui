@@ -23,6 +23,13 @@ export enum SpeechToTextPriority {
  * chord cannot be driven headlessly, which is why the binding lives here).
  * `MetaRight` on the other platforms, which is the same gesture one key over
  * and is not exercised by this tree yet - stated rather than implied.
+ *
+ * THE LABEL IS PART OF THE RESOLUTION (design round 1, D1). The tooltips on
+ * both recording doors name the binding, and naming it from a second,
+ * hand-written string is how a tooltip ends up teaching the OLD binding while
+ * the dispatcher matches the new one - which is exactly what shipped in round
+ * 1 ("or hold Space" beside an `AltRight` matcher). Whoever moves the default
+ * moves the label in the same edit, by construction.
  */
 /**
  * Which host this is, for the one binding whose default differs per platform.
@@ -30,13 +37,40 @@ export enum SpeechToTextPriority {
  */
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
 
-export const resolvePushToTalkBinding = (): { code: string } => {
+export const resolvePushToTalkBinding = (): { code: string; label: string } => {
 	const platform =
 		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
 	return MAC_PLATFORM.test(platform)
-		? { code: "AltRight" }
-		: { code: "MetaRight" };
+		? { code: "AltRight", label: "Right-Option" }
+		: { code: "MetaRight", label: "Right-Command" };
 };
+
+/*
+ * WHICH COMPONENTS CURRENTLY OWN A RECORDING, as a plain module fact.
+ *
+ * The Escape ladder's rung 4 ("Esc during a recording cancels the recording and
+ * never the turn") has to be answerable by the interrupt hook, which lives in
+ * the page ABOVE the surfaces that record and cannot see their state. Reading
+ * it from `defaultPrevented` was the first shape and it is order-dependent: the
+ * interrupt's listener is registered before the composer's, so on the trusted
+ * key path it reads the flag BEFORE the composer's own claim runs, queues its
+ * microtask, and the turn dies with the recording (UX round 1, U1 - reproduced
+ * 7/7). A presence the predicate can read directly removes the race instead of
+ * tightening it.
+ *
+ * Deliberately a Set of ids rather than a flag: two recorders cannot outlive
+ * their unmounts, each id's cleanup drops only its own seat, and the reader is
+ * a function called at KEY TIME (not a value captured at subscribe time), so no
+ * re-render is needed for the answer to be current.
+ */
+const activeDictation = new Set<string>();
+
+export const setDictationActive = (id: string, active: boolean): void => {
+	if (active) activeDictation.add(id);
+	else activeDictation.delete(id);
+};
+
+export const isDictationActive = (): boolean => activeDictation.size > 0;
 
 /**
  * What a registered component does for a HOLD: a start on the binding's
