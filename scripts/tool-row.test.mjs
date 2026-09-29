@@ -2455,7 +2455,8 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";\n' +
+			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -2474,6 +2475,7 @@ const {
 	stoppedAfterAdmission,
 	workingLineClaimed,
 	workingLineInputFor,
+	visibleRecords,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2988,6 +2990,47 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 		),
 		false,
 	);
+});
+
+test("a running send is absent from the working line once filtered", () => {
+	/*
+	 * The desktop working line reads RECORDS, not mounted cards (unlike the TUI's
+	 * card-derived line), so the transcript feeds it the FILTERED list - without
+	 * that, a pane hiding cross-session traffic would still say `running send`
+	 * beside rows that no longer include it. Both directions are pinned: the
+	 * unfiltered list names the card (the leak the seam removes), the filtered
+	 * one falls to the ladder's generic arm.
+	 */
+	const pane = (records) =>
+		workingLineInputFor({
+			waiting: true,
+			compacting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records,
+		});
+	const records = [
+		userRow("u1", "go"),
+		{ ...runningToolRow("t1"), toolName: "send" },
+	];
+	assert.deepEqual(deriveWorkingLine(pane(records)), {
+		activity: "running send",
+		phase: "running",
+		startedAt: 1,
+	});
+	const shown = visibleRecords(records, true);
+	assert.deepEqual(
+		deriveWorkingLine(pane(shown)),
+		{
+			activity: "thinking",
+			phase: "thinking",
+		},
+		"the hidden card is not named; the rung falls to its generic arm",
+	);
+	// And the default hands back the bare reference, so nothing about the line
+	// changes with the option off.
+	assert.equal(visibleRecords(records, false), records);
 });
 
 test("a notice's body is partitioned between its row and its disclosure", () => {

@@ -1363,6 +1363,36 @@
 			"redacted": false
 		},
 		{
+			"key": "display.hide_cross_session",
+			"section": "appearance",
+			"label": "Cross-session traffic",
+			"kind": "bool",
+			"help": "Hide `lop send` traffic — peer sends and inbound peer messages — from transcripts.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "hide it in transcripts"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "show it in transcripts"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null
+		},
+		{
 			"key": "tui.sidebar_visible",
 			"section": "appearance",
 			"label": "Session sidebar",
