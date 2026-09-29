@@ -99,8 +99,8 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 	 * reach is a separate handler that had no notion of the refusal: a press on a
 	 * `type="submit"` control (`handleSubmit`, the form's, which a click reaches
 	 * with no keydown to refuse), the slash popup's pick (`applyPlan`), the
-	 * dictation button and the speech-to-text manager's own gate (both
-	 * `setNewMessage`), and paste - which `readOnly` newly made REACHABLE,
+	 * dictation button and the speech-to-text manager's own gate (both write
+	 * into the box), and paste - which `readOnly` newly made REACHABLE,
 	 * because a read-only textarea is still a paste target and neither branch
 	 * below is an edit the attribute can suppress.
 	 *
@@ -168,18 +168,27 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 
 	assert.match(
 		source,
-		/disabled=\{\s*isInputDisabled \|\|\s*isLoading/,
+		/type="submit"[\s\S]{0,400}?disabled=\{\s*isInputDisabled \|\|\s*sendRefused/,
 		"the Send control carries the refusal itself, so the band does not offer a live primary action beside a box that takes nothing - and so the first control a refused keyboard user reaches is not the destructive one",
 	);
+	/*
+	 * THE DICTATION GATE, AND THE TERMS IT NO LONGER CARRIES (the in-flight
+	 * dictation change): `isLoading` used to be a term on the mic button and in
+	 * the manager's own gate, and it closed dictation for the whole
+	 * admit-to-first-answer window while the box itself stayed writable. The
+	 * refusal term is what this assertion is about, and it is the one that keeps
+	 * the hold path from writing into a box the app has told the user takes
+	 * nothing; `isRecording`/`isTranscribing` are the state terms beside it.
+	 */
 	assert.match(
 		source,
 		/if \(isInputDisabled \|\| !canEnableRecordingFeature\) return;/,
-		"dictation writes a transcript into the box with `setNewMessage`, so it refuses with the same predicate",
+		"dictation writes the transcript into the box, so its start refuses with the composer's own predicate",
 	);
 	assert.match(
 		source,
-		/!isInputDisabled &&\s*!isLoading/,
-		"and the speech-to-text manager's gate (the hold-Space path) has to refuse too, or the keyboard reaches it around the button",
+		/!isInputDisabled &&\s*!isRecording &&\s*!isTranscribing &&\s*canEnableRecordingFeature/,
+		"and the speech-to-text manager's gate refuses with it too - the hold path reaches the composer around the button, and this is the whole predicate it answers to",
 	);
 });
 
@@ -447,16 +456,87 @@ test("the refusal predicate is declared before the handler whose deps name it", 
 	 * component throws. The predicate is therefore hoisted deliberately, and a
 	 * later tidy that moves it back beside the render that paints it has to
 	 * come here.
+	 *
+	 * THE PREDICATE'S TERMS ARE PINNED HERE, because every door above answers to
+	 * THIS expression and a term that moved out of it would leave the guards
+	 * above refusing on a stale read. `unavailable` and `isBusy` are the base's
+	 * two; `secretAnswerPending` is the secret ask's (`secretAnswer` on the
+	 * props), and it is deliberately a TERM of this predicate rather than a
+	 * fourth guard beside the others: the composer must refuse typing, paste,
+	 * dictation, the slash popup, the chips and the form's own submit TOGETHER
+	 * while a credential question waits, and that togetherness is exactly what
+	 * this one expression buys (see the dedicated case below for why the box
+	 * must not take the credential at all).
 	 */
 	const source = code(COMPOSER);
 	const declared = source.indexOf(
-		"const isInputDisabled = unavailable || isBusy;",
+		"const isInputDisabled = unavailable || isBusy || secretAnswerPending;",
 	);
 	const handler = source.indexOf("const handleComposerKeyDown = useCallback(");
 	assert.ok(declared > -1 && handler > -1);
 	assert.ok(
 		declared < handler,
 		"`isInputDisabled` must be declared above the handler that lists it",
+	);
+});
+
+test("the secret gate's term refuses the box, and the box points at the dock's field", () => {
+	/*
+	 * THE SECRET ASK'S CLOSURE, as the composer's half of it. A `secret: true`
+	 * gate is answered from the dock's masked field
+	 * (`trace/question-dock.tsx`), and THIS box must not be the credential's way
+	 * in: in a real browser a `readOnly` textarea fires no `input` event at all,
+	 * so `onChange` never runs and the draft write the hook performs inside it
+	 * never happens — which is what keeps a credential out of the persisted
+	 * draft store and the recall log, and out of clear text on screen while it
+	 * is typed.
+	 *
+	 * The three pins below are the halves that can be asserted here: the term
+	 * (derived from the prop, so only the page's own gate reading can turn it
+	 * on), its membership in the ONE refusal predicate every writer and
+	 * submitter already answers to, and the placeholder's own arm — read BEFORE
+	 * `inputDisabled`'s, because "Agent is busy" over a parked secret question
+	 * is false about the state and would leave the reader hunting for an input
+	 * that is actually one card above. The browser half (no input event on a
+	 * readOnly field; no keystroke taken) is a real-engine fact that neither
+	 * jsdom nor this scan can see; `scripts/credential-composer.test.mjs`
+	 * carries the jsdom-provable half of the state, and QA drives the engine.
+	 */
+	const source = code(COMPOSER);
+	assert.match(
+		source,
+		/secretAnswer\?: boolean;/,
+		"the prop is declared, so the page's reading has somewhere to land",
+	);
+	assert.match(
+		source,
+		/const secretAnswerPending = Boolean\(secretAnswer\);/,
+		"the term is derived from the prop rather than read ad hoc",
+	);
+	assert.match(
+		source,
+		/const isInputDisabled = unavailable \|\| isBusy \|\| secretAnswerPending;/,
+		"and it joins the one predicate every writer and submitter answers to",
+	);
+	assert.match(
+		source,
+		/composerPlaceholder\(\{[\s\S]{0,240}?secretAnswer: secretAnswerPending,\s*\n\s*inputDisabled: isInputDisabled,/,
+		"the placeholder order hands the term to the sentence chooser ahead of the busy arm",
+	);
+	const placeholder = code(
+		"src/renderer/src/shared/hooks/use-message-input.ts",
+	);
+	assert.match(
+		placeholder,
+		/if \(state\.secretAnswer\) return COMPOSER_PLACEHOLDER\.secretAnswer;/,
+		"and the chooser itself reads it",
+	);
+	assert.ok(
+		placeholder.indexOf("state.secretAnswer") <
+			placeholder.indexOf("state.inputDisabled") &&
+			placeholder.indexOf("state.inputDisabled") <
+				placeholder.indexOf("state.awaitingAnswer"),
+		"the secret arm sits after `unavailable` and before `inputDisabled`/`awaitingAnswer`",
 	);
 });
 

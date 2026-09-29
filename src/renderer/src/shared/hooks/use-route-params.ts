@@ -66,6 +66,8 @@ export const useCurrentView = ():
 	| "agent-hub"
 	| "settings"
 	| "schedules"
+	| "projects"
+	| "mesh"
 	| "browser" => {
 	const currentPath = getCurrentPath();
 
@@ -89,8 +91,16 @@ export const useCurrentView = ():
 		return "schedules";
 	}
 
+	if (pathIncludes(currentPath, "/projects")) {
+		return "projects";
+	}
+
 	if (pathIncludes(currentPath, "/browser")) {
 		return "browser";
+	}
+
+	if (pathIncludes(currentPath, "/mesh")) {
+		return "mesh";
 	}
 
 	// Default to chat if no match

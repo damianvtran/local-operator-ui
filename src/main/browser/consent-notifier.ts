@@ -1,4 +1,8 @@
 import { Notification } from "electron";
+import {
+	type LifetimeNotification,
+	NotificationLifetime,
+} from "../notification-lifetime";
 
 /**
  * One native banner per pending site approval.
@@ -75,20 +79,31 @@ export interface ConsentNotifierOptions {
 	 * only prose and a headless run can speak for is a rule that fails on the day
 	 * someone changes the diff to a per-entry loop again — which is exactly the
 	 * change this seam was added to make fail in CI.
+	 *
+	 * The returned shape is the notification lifetime's contract: the click is
+	 * attached through `retain` (one `once("click")`), and `close`/`failed` are
+	 * what let an unclicked banner go — see `notification-lifetime.ts` for why an
+	 * unheld banner's click emits nothing (electron/electron#16922). A double that
+	 * implements only `on` cannot satisfy this type, which is the point: the
+	 * lifetime is part of the banner's contract, not an implementation detail a
+	 * fixture may skip.
 	 */
 	createNotification?: (options: {
 		title: string;
 		body: string;
 		silent: boolean;
-	}) => {
-		on(event: "click", listener: () => void): void;
-		show(): void;
-	};
+	}) => LifetimeNotification & { show(): void };
 }
 
 /** The live count the last banner was raised for. */
 export class ConsentNotifier {
 	private announced = 0;
+	/**
+	 * The banners this process has shown and must keep reachable until they
+	 * settle — the same reason and the same rules as the desktop notifier's
+	 * (`notification-lifetime.ts`): a collected wrapper's click emits nothing.
+	 */
+	private readonly lifetime = new NotificationLifetime();
 
 	constructor(private readonly options: ConsentNotifierOptions) {}
 
@@ -137,7 +152,14 @@ export class ConsentNotifier {
 					silent: false,
 				},
 			);
-			notification.on("click", () =>
+			/*
+			 * RETAINED AND WIRED BY ONE CALL, the same rule as the desktop
+			 * notifier's banners: this banner carries a click handler, and an
+			 * unheld wrapper's click emits nothing once V8 collects it
+			 * (electron/electron#16922). `retain` attaches the handler itself so
+			 * the wiring cannot drift away from the lifetime.
+			 */
+			this.lifetime.retain(notification, () =>
 				this.options.onAttention(oldest.entryId, oldest.requester),
 			);
 			// Electron's own banner API on a `Notification`, not a window:

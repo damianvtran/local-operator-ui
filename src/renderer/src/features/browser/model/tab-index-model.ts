@@ -433,6 +433,28 @@ export function closeToTheRightIntent(
 	return tabIds.length ? { mode: "ids", tabIds } : null;
 }
 
+/**
+ * `Close N failed tabs`: every tab in the list it is handed whose last navigation
+ * was refused.
+ *
+ * THE SET IS THE STRIP'S OWN FACT (`chromeState().tabs[].failed` — per tab because
+ * the failure panel belongs to the active tab and a background tab has no other way
+ * to say so), and it is read from the same visible list every other counted close
+ * reads: the count in the label and the ids the press closes are one filter, so the
+ * disclosure cannot drift from the action. Not positional like
+ * `closeToTheRightIntent` — the words say nothing about where the tabs are — so the
+ * `null` gate is simply "nothing failed", and the item is not offered rather than
+ * offered and inert, the same rule as its siblings.
+ */
+export function closeFailedIntent(
+	tabs: readonly TabInput[],
+): CloseTabsByIdsIntent | null {
+	const tabIds = pooledTabs(tabs)
+		.filter((tab) => tab.failed === true)
+		.map((tab) => tab.tabId);
+	return tabIds.length ? { mode: "ids", tabIds } : null;
+}
+
 /** `Close all tabs in this conversation`: the group item, resolved in main at
  * execution time rather than by the renderer holding a list. */
 export function closeConversationIntent(sessionId: string): CloseTabsIntent {

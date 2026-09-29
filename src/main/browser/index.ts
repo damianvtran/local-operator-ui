@@ -507,7 +507,11 @@ export async function startBrowserHost(
 	 */
 	const captureSession = (): void => {
 		sessionStore.record(
-			captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+			captureTabs(
+				registry.list(),
+				registry.activeTab?.tabId ?? null,
+				host.failedTabIds(),
+			),
 		);
 	};
 
@@ -774,6 +778,7 @@ export async function startBrowserHost(
 			const atStop = captureTabs(
 				registry.list(),
 				registry.activeTab?.tabId ?? null,
+				host.failedTabIds(),
 			);
 			const decision = sessionStore.commitStopCapture(atStop);
 			if (!decision.write) {

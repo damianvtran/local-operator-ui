@@ -32,6 +32,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	statSync,
 	utimesSync,
@@ -2909,6 +2910,47 @@ test("the capture document is appended to a dev origin and is a sibling in a bui
 		assert.ok(
 			!/index\.html$/.test(consoleCaptureUrlFor(url)),
 			`a dev origin must not resolve to the app's own document (${url})`,
+		);
+	}
+});
+
+/**
+ * EVERY RENDERER DOCUMENT IS DECLARED, AND THE MINI VIEW IN BOTH LISTS.
+ *
+ * The defect the console capture's own comment records, one level up: a
+ * document declared only in the renderer's dev `input` served fine in
+ * development and shipped no file at all — a 404 at the first use, found by
+ * the rig that needed it. So the rule that came out of it is asserted for the
+ * documents as a SET (every `*.html` under `src/renderer` appears at least
+ * once in the config, which is where the build's `rollupOptions.input` lives),
+ * and for the mini view specifically TWICE: the dev list too, because
+ * `pnpm dev` is a `normal` launch and the hotkey must work there (quick-send
+ * design §C.4). The config is read as text, deliberately: importing it pulls
+ * the plugin graph into this process for one string question, and the
+ * question is exactly "is this path spelled here".
+ */
+test("every renderer document is declared for the build, and the mini view for both lists", () => {
+	const config = readFileSync("electron.vite.config.js", "utf8");
+	const documents = readdirSync("src/renderer").filter((name) =>
+		name.endsWith(".html"),
+	);
+	assert.ok(
+		documents.length >= 4,
+		`expected at least the four renderer documents, saw ${documents.join(", ")}`,
+	);
+	for (const document of documents) {
+		const spelling = `src/renderer/${document}`;
+		assert.ok(
+			config.includes(spelling),
+			`${spelling} is not declared in electron.vite.config.js: a document the app can open and the build does not emit is a 404 at its first use`,
+		);
+	}
+	for (const document of ["index.html", "installer.html", "mini.html"]) {
+		const spelling = `src/renderer/${document}`;
+		const occurrences = config.split(spelling).length - 1;
+		assert.ok(
+			occurrences >= 2,
+			`${spelling} must be declared in BOTH the renderer's dev input and rollupOptions.input (found ${occurrences}): declaring only one served the page in development and shipped nothing`,
 		);
 	}
 });

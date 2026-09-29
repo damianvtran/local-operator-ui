@@ -91,15 +91,18 @@ export type CatalogueGateInput = {
 	 * Whether a statement about this same condition is ALREADY on screen, in a
 	 * stronger register than this one.
 	 *
-	 * `BackendCompatibilityBanner` renders full-bleed at the top of the window on
-	 * the same capabilities answer this gate reads, so a withdrawn gate that is
-	 * covered by it must not add a second warning - and, in the frames that carry
-	 * both, the two offered identically-labelled `Retry` controls whose remedies
-	 * disagreed ("restart the app" against a self-recovery the app performs
-	 * itself). One statement per condition is this file's own rule for the feed
-	 * line below (D9); this is the same rule applied to the banner rather than to
-	 * the store's alert. Design round 1, D3; review round 2, MINOR-2; QA round 1,
-	 * Q-5.
+	 * `BackendCompatibilityBanner` renders beside the status strip, inside the
+	 * conversation pane, on the same capabilities answer this gate reads, so a
+	 * withdrawn gate that is covered by it must not add a second warning - and, in
+	 * the frames that carry both, the two offered identically-labelled `Retry`
+	 * controls whose remedies disagreed ("restart the app" against a self-recovery
+	 * the app performs itself). One statement per condition is this file's own rule
+	 * for the feed line below (D9); this is the same rule applied to the banner
+	 * rather than to the store's alert. Design round 1, D3; review round 2,
+	 * MINOR-2; QA round 1, Q-5. (The clause this replaces said
+	 * "full-bleed at the top of the window" - true when it was written, stale
+	 * since the band moved into the pane's column and took the strip's own
+	 * grammar: design note § 3.)
 	 */
 	coveredByCompatibilityBanner: boolean;
 };
