@@ -22,13 +22,17 @@ import { build } from "esbuild";
  *    merge that writes it is the shipped merge.
  *  - The desktop transport supplies `desktopResult`, whose answer each case
  *    stages: a settled state, a no-op 200 whose body still says `unseen`, a
- *    superseded 409, a `503 store_busy`, or a state about another conversation.
+ *    superseded 409, a `503 store_busy`, main's foreground refusal, or a state
+ *    about another conversation.
  *  - The DOM is the handful of globals the hook reads: focus, visibility, the
  *    anchor's rect, and the element at its bottom edge.
  *
  * What is NOT covered here is the transport and the native foreground gate --
  * scripts/desktop-contract.test.mjs and scripts/desktop-renderer-transport.test.mjs
- * own those, with real loopback HTTP.
+ * own those, with real loopback HTTP, and the gate's own condition is walked in
+ * `attention-seen.test.mjs` (`guardForegroundReceipts`). What IS covered here is
+ * what the RECEIPT LOOP does with that refusal once the transport has classified
+ * it: a deferral with no ladder, and a wait the reader's return releases.
  */
 
 /* ------------------------------------------------------------------ store */
@@ -139,7 +143,7 @@ const fixtures = {
 		);
 	`,
 	"desktop-api": `
-		export { DesktopControlError } from ${JSON.stringify(
+		export { DesktopControlError, UserFacingError, isForegroundRequired } from ${JSON.stringify(
 			`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 		)};
 		export function desktopResult(request) {
@@ -153,7 +157,8 @@ const bundle = await build({
 		contents:
 			'export { useCompletionView } from "./src/renderer/src/shared/hooks/use-completion-view";' +
 			' export * from "./src/shared/desktop-session-contract";' +
-			' export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			' export { DesktopControlError, UserFacingError, isForegroundRequired } from "./src/renderer/src/shared/api/local-operator/desktop-api";' +
+			' export { DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -196,7 +201,13 @@ const bundle = await build({
 const contract = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { useCompletionView, DesktopControlError } = contract;
+const {
+	useCompletionView,
+	DesktopControlError,
+	UserFacingError,
+	DESKTOP_FOREGROUND_REQUIRED_CODE,
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+} = contract;
 const receiptSettled = (...args) => contract.receiptSettled(...args, TOKEN);
 
 const SESSION = "abcdef123456";
@@ -250,6 +261,18 @@ const storeBusy = (retryAfterMs) =>
 		undefined,
 		"store_busy",
 		retryAfterMs,
+	);
+
+/**
+ * Main's refusal to send a read receipt from a window that is not in the
+ * foreground, as the transport classifies it: a `UserFacingError` carrying the
+ * vetted code (`isForegroundRequired` reads the CLASS and the CODE, never the
+ * sentence).
+ */
+const foregroundRequired = () =>
+	new UserFacingError(
+		DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+		DESKTOP_FOREGROUND_REQUIRED_CODE,
 	);
 
 /** A `409 superseded_completion_token` refusal, as the transport raises it. */
@@ -310,9 +333,26 @@ function mount(
 		readAckNotice: null,
 	});
 	globalThis.__transport = transport;
+	/*
+	 * THE GESTURE CHANNEL. The loop registers two release arms (window `focus`,
+	 * document `visibilitychange`), and the real DOM is where they land -- so the
+	 * fixture provides the two methods the hook calls and the cases dispatch
+	 * through `fire`. One map for both targets, because the hook never has both
+	 * arms on one target and the cases ask by event name.
+	 */
+	const listeners = new Map();
+	const addListener = (type, fn) => {
+		if (!listeners.has(type)) listeners.set(type, new Set());
+		listeners.get(type).add(fn);
+	};
+	const removeListener = (type, fn) => {
+		listeners.get(type)?.delete(fn);
+	};
 	globalThis.document = {
 		visibilityState: "visible",
 		hasFocus: () => true,
+		addEventListener: addListener,
+		removeEventListener: removeListener,
 		/* `covered` stages what is on top at the row's bottom edge: "centre" is the
 		   measured collision with the app's own floating control, "all" is an
 		   overlay that hides the row (a modal scrim). */
@@ -340,6 +380,8 @@ function mount(
 		intervals.delete(id);
 	};
 	globalThis.window = {
+		addEventListener: addListener,
+		removeEventListener: removeListener,
 		setInterval: (check) => {
 			nextTimerId += 1;
 			intervals.set(nextTimerId, check);
@@ -404,6 +446,26 @@ function mount(
 		live: () => [...intervals.keys()],
 		/** Every anchor selector this mount's hit test has asked for. */
 		queries: () => [...queries],
+		/**
+		 * Fire a window/document event, as the OS window manager or a visibility
+		 * change would. The hook's two release arms are the only listeners these
+		 * cases dispatch to, and the map is the fixture's own, so a case can also
+		 * assert the arms were removed (`live` of listeners is not part of the
+		 * public surface; the teardown case asserts through `fire` + call counts).
+		 */
+		fire: (type) => {
+			for (const fn of [...(listeners.get(type) ?? [])]) fn();
+		},
+		/**
+		 * How many live listeners a window event has, by the fixture's own map.
+		 *
+		 * The teardown cases' second instrument (agent review round 1, F4): `fire`
+		 * plus call counts cannot tell an arm that was REMOVED from one that is
+		 * merely inert - a dismantled loop answers nothing either way, so deleting
+		 * the removal lines stayed green. The set itself answers the question the
+		 * cases are asking.
+		 */
+		listenerCount: (type) => (listeners.get(type) ?? new Set()).size,
 		/** One interval tick, then let the answer's microtasks run. */
 		tick: async () => {
 			// THE LIVE interval, not the newest callback ever registered: a stopped loop
@@ -867,6 +929,253 @@ test("a real failure still backs off, so a wedged backend is not hammered", asyn
 		3,
 		"an unreachable backend was retried past its ceiling",
 	);
+});
+
+test("a foreground refusal defers the receipt instead of spending the ladder", async () => {
+	// THE OPERATOR'S REPORT, at the layer this file owns. A completion lands while
+	// the window is not in the foreground, and the reader comes back to a mark
+	// that never cleared until they switched views - because the refusal that
+	// means "the person is not here" (main's `guardForegroundReceipts`) used to
+	// take the shared ladder: three flat attempts, the give-up clause on the row,
+	// one console warning, and the retry parked onto the 60 s ceiling. A window
+	// that is not in the foreground is not a failure - the reader's return is the
+	// remedy - so nothing here may be counted, warned or announced. The other
+	// half of the split is `a real failure still backs off, so a wedged backend is
+	// not hammered` above: the ladder still exists, for failures.
+	const calls = [];
+	const warnings = [];
+	let now = 0;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = (...args) => warnings.push(args.join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw foregroundRequired();
+		});
+		harness.seed([row(attention())]);
+		harness.start();
+		// A minute of ticks half a second apart, the cadence the poll itself runs
+		// at: the ladder would have reached its ceiling in here (about eight
+		// attempts), a deferral keeps asking at its own shorter cadence.
+		for (let i = 0; i < 120; i += 1) {
+			now += 500;
+			await harness.tick();
+		}
+		assert.ok(
+			calls.length >= 25,
+			`the deferral stopped asking (${calls.length} attempts in 60 s)`,
+		);
+		assert.equal(
+			warnings.length,
+			0,
+			"a window that is not in the foreground warned about its receipt",
+		);
+		assert.equal(
+			store.getState().readAckNotice,
+			null,
+			"the row was told the app had given up on a deferral",
+		);
+		assert.equal(
+			rowAttention()?.unseen,
+			true,
+			"a deferral changed the row without an answer",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("the window coming back releases a deferred attempt, and the arm dies with the loop", async () => {
+	// THE GESTURE THE OPERATOR'S EXPECTATION NAMES: "on window focus/refocus,
+	// notifications for the session that is currently open are acknowledged".
+	// The tick's gates read focus per attempt, so a loop that is merely waiting
+	// can go out by itself - what a WAIT holds back is exactly the attempts a
+	// return is owed, so an event that says the reader is back releases the wait
+	// and the attempt goes out at once. And the arm is registered where the loop
+	// lives: a conversation the reader left takes its listener with it.
+	const calls = [];
+	let now = 0;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = () => {};
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw foregroundRequired();
+		});
+		harness.start();
+		now += 500;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		now += 500;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the deferral did not defer anything");
+		harness.fire("focus");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.equal(
+			calls.length,
+			2,
+			"the window's return left the deferred attempt waiting",
+		);
+		now += 1;
+		await harness.tick();
+		assert.equal(
+			calls.length,
+			2,
+			"the released attempt was sent again inside its new wait",
+		);
+		assert.equal(
+			harness.listenerCount("focus"),
+			1,
+			"a waiting loop holds no focus arm to be released by",
+		);
+		harness.unmount();
+		assert.equal(
+			harness.listenerCount("focus"),
+			0,
+			"the loop's arm outlived the loop that owns it",
+		);
+		harness.fire("focus");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.equal(
+			calls.length,
+			2,
+			"a dismantled loop still answered the window",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("visibility returning releases it too, and a hidden page releases nothing", async () => {
+	// The second arm, and the one that covers a page the OS window manager never
+	// told us about: an app hidden and shown again is a reader arriving and
+	// leaving, and only the ARRIVAL is a gesture.
+	const calls = [];
+	let now = 0;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = () => {};
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw foregroundRequired();
+		});
+		harness.start();
+		now += 500;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		globalThis.document.visibilityState = "hidden";
+		harness.fire("visibilitychange");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.equal(
+			calls.length,
+			1,
+			"a page going away released a deferred attempt",
+		);
+		now += 1_000;
+		await harness.tick();
+		assert.equal(calls.length, 1, "a hidden page attempted at all");
+		globalThis.document.visibilityState = "visible";
+		harness.fire("visibilitychange");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.equal(
+			calls.length,
+			2,
+			"the page coming back did not release the deferred attempt",
+		);
+		assert.equal(
+			harness.listenerCount("visibilitychange"),
+			1,
+			"the visibility arm is not held while the loop lives",
+		);
+		harness.unmount();
+		assert.equal(
+			harness.listenerCount("visibilitychange"),
+			0,
+			"the visibility arm outlived the loop that owns it",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("deferrals do not spend the budget a later attempt settles with", async () => {
+	// THE WHOLE PATH, end to end at this layer: refusals for a window that is not
+	// in the foreground, then a reader who is back - and the receipt lands. Main's
+	// gate is not part of this file (the transport here IS main plus the backend,
+	// and `attention-seen.test.mjs` walks the gate's own condition), but the loop
+	// must survive the deferrals with its budgets intact and settle the moment the
+	// transport answers: no give-up state, no warning, the row cleared from the
+	// answer, and the interval gone.
+	const calls = [];
+	const warnings = [];
+	let refuse = 2;
+	let now = 0;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = (...args) => warnings.push(args.join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			if (refuse > 0) {
+				refuse -= 1;
+				throw foregroundRequired();
+			}
+			return attention({ unseen: false, revision: [1, 1] });
+		});
+		harness.seed([row(attention())]);
+		assert.equal(
+			rowAttention().unseen,
+			true,
+			"the fixture did not start unread",
+		);
+		harness.start();
+		for (let i = 0; i < 2; i += 1) {
+			now += 2_000;
+			await harness.tick();
+		}
+		assert.equal(calls.length, 2, "the two deferrals did not go out");
+		assert.equal(
+			rowAttention()?.unseen,
+			true,
+			"a refusal cleared the row without an answer",
+		);
+		now += 2_000;
+		await harness.tick();
+		assert.equal(calls.length, 3, "the settling attempt was not made");
+		assert.equal(
+			rowAttention()?.unseen,
+			false,
+			"the answer did not clear the row",
+		);
+		assert.equal(
+			warnings.length,
+			0,
+			"a deferral warned on the way to a settled receipt",
+		);
+		assert.equal(
+			store.getState().readAckNotice,
+			null,
+			"a clause outlived the receipt",
+		);
+		assert.equal(
+			harness.live().length,
+			0,
+			"the settled loop kept its interval",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
 });
 
 test("the loop survives a gate that was closed when it was created", async () => {
