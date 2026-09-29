@@ -1,8 +1,13 @@
 import { Popover, PopoverAnchor, PopoverContent } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert, CircleDot, CircleSlash } from "lucide-react";
-import type { FC } from "react";
+import type {
+	FC,
+	KeyboardEvent as ReactKeyboardEvent,
+	PointerEvent as ReactPointerEvent,
+} from "react";
 import {
+	memo,
 	useCallback,
 	useEffect,
 	useId,
@@ -16,59 +21,75 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import {
 	CHECKPOINT_GENERATING_NAME,
+	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
+	checkpointMarkState,
 	checkpointNamingPending,
 	checkpointSummary,
-	checkpointTickPlacement,
 	checkpointTitle,
 	checkpointTurnCount,
 } from "./checkpoint-model";
 
 /**
- * The transcript's checkpoint rail: the right-edge overlay whose ticks are the
+ * The transcript's checkpoint rail: the right-edge overlay whose marks are the
  * conversation's material checkpoints, with a hover card naming each one and a
- * press that jumps to it (design D5, slice UI-A).
+ * press that jumps to it (design D5, slice UI-A; reworked 2026-09-29 on the
+ * operator's feedback, dsh study `dsh-rail-study.md`).
  *
- * ## What this component owns, and what it does not
+ * ## Geometry (dsh)
  *
- * The rail is a pure function of the manifest it is handed — ticks render from
- * `checkpoints`, never from the rows currently loaded, so a tick exists for a
- * turn whose text has not been paged in yet. It does not fetch (the hook does),
- * it does not scroll (the parent's `onJump` does), and it does not decide what
- * a checkpoint IS (the backend's derivation does).
+ * One mark per checkpoint, drawn as a SHORT HORIZONTAL DASH (20x2px) in a
+ * fixed 10px pitch, right-aligned inside a 28px frame at `right: 12px`, the
+ * frame vertically centred with `max-height: min(band - 64px, 420px)` and its
+ * own scroll (24px mask fades, no chrome) when the conversation outgrows it.
+ * The rail hides below a 900px chat column: the marks need the transcript's
+ * gutter to sit in and a narrower column has none to give.
  *
- * ## Placement
+ * The pitch is FIXED rather than seq-proportional (the pre-rework rule): a
+ * proportional rail compresses a long conversation's early turns into marks
+ * that overlap at the top and never resolve, and the dsh study's operator-
+ * tested shape - even pitch, scroll for length - is the one a reader can aim
+ * at. `seq` still orders the marks and is the wire's own ordinal.
  *
- * The root is `absolute inset-y-0 right-0`, so it must be mounted inside a
- * POSITIONED box that spans the scroller's height — §D5's "sibling of the
- * scroller inside the chat column", over the gutter
- * `scrollbar-gutter: stable both-edges` already reserves. It is
- * `pointer-events-none`; only the ticks accept the pointer, so the rail adds
- * no dead zone beyond its own 24px strip and never reflows the transcript.
+ * ## The hover lane (perf)
  *
- * ## States (§D5)
+ * ONE rail-level `previewId` scalar and per-mark `onPointerMove`; each mark is
+ * `memo`ised and its state derives from that scalar, so a fly-over re-renders
+ * exactly the two marks whose state flips (the dsh rule). The hover path never
+ * measures, never scrolls the rail or the transcript, and never touches the
+ * naming warm - the warm rides the card's own 120ms intent below, so a fly-
+ * over still costs one gesture rather than one request per mark. The rail is
+ * NOT virtualised in this cut: with marks as flat rows at a fixed pitch the
+ * whole list is ~10px x N of static DOM, measured at N=267 (the density case
+ * the old rail documented) before the decision - a virtualiser would add a
+ * second scroll model for no frame time we could see in the trace.
  *
- * - loading: nothing rendered — skeleton ticks are deliberately SUPPRESSED, so
- *   the rail never paints placeholder marks that are not checkpoints;
- * - building: ticks plus one subtle pulsing mark at the top (`building`);
- * - empty: nothing rendered;
- * - error: nothing rendered, and the hook logs once — the rail itself has no
- *   error surface to show because there is nothing here to repair.
+ * ## States (dsh ladder, our tokens)
+ *
+ * rest `scaleX(0.6)` in `ink-dim`; preview `scaleX(0.9)` in `ink-muted`;
+ * active `scaleX(1)` in `ink` (the reading-position mark); unloaded
+ * `scaleX(0.4)` at 60% - the turn is not in the resident window yet, so the
+ * jump will have to load first. Transitions are 140ms on transform+colour and
+ * off under reduced motion. The building state keeps its one pulsing mark at
+ * the list's head (the index is refreshing), and the rail renders nothing for
+ * loading/empty/error as before.
  *
  * ## The hover card
  *
- * One Radix popover, re-anchored to whichever tick is active: hover intent
- * (~120ms open / ~80ms close) or focus opens it, side-left, and moving the
- * pointer INTO the card keeps it open so the user text can be scrolled. This
- * is deliberately one popover rather than one per tick — 267 moused-over Radix
- * roots is a lot of context for a surface that shows exactly one card.
+ * One Radix popover re-anchored to the previewed mark, `side="left"`, at most
+ * 300px wide and 100px tall, `role="tooltip"` and `pointer-events-none` (dsh):
+ * it previews, it is not a surface to read in. The card is supplementary -
+ * every fact a keyboard reader needs is in the mark's accessible name - and
+ * the text is clamped rather than scrollable for the same reason.
  *
- * The card is supplementary: every fact a keyboard reader needs is already in
- * the tick's accessible name (`checkpointAriaLabel`), which is why the card
- * needs no tab stop of its own. The user card's text is bounded with an
- * internal scroll (~8 lines of body-sm), so a long message previews rather
- * than swallowing the transcript.
+ * ## What this component owns, and what it does not
+ *
+ * It does not fetch (the hook does), it does not scroll the transcript (the
+ * parent's `onJump` does), and it does not decide what a checkpoint IS (the
+ * backend's derivation does). `loadedIds`/`activeId` are handed in by the
+ * transcript once the shared history loader lands; absent, every mark reads
+ * resident and no mark reads active, which is the pre-loader ladder.
  */
 
 /** Hover intent (D5): ~120 ms to open, ~80 ms to close. Exported for tests. */
@@ -88,10 +109,7 @@ const OUTCOME_ICONS: Record<CheckpointOutcome, typeof Check> = {
 
 /**
  * The outcome's ink. The glyph SHAPE carries the state and the word beside it
- * carries it again, so the colour is the third channel rather than the first —
- * the roles are the semantics' own (`success`/`danger`/`warning`) instead of a
- * single quiet register, because an interrupted turn is exactly the thing this
- * card exists to make findable.
+ * says it; this is the third channel, not the only one.
  */
 const OUTCOME_INK: Record<CheckpointOutcome, string> = {
 	complete: "text-success",
@@ -106,28 +124,35 @@ export type CheckpointRailProps = {
 	checkpoints: Checkpoint[];
 	/**
 	 * Activate a checkpoint's jump. The parent owns the jump itself (§D7's one
-	 * primitive, `reveal-record.ts`: ensure-loaded, reveal, scroll-to-centre,
-	 * highlight) — the rail only reports the press, which is what keeps a
-	 * refused jump the transcript's sentence to speak rather than the rail's.
+	 * primitive, `reveal-record.ts` / the shared loader): ensure-loaded,
+	 * reveal, land, highlight - the rail only reports the press.
 	 */
 	onJump: (id: string) => void;
 	/**
-	 * Which checkpoint is being inspected, or `null`.
-	 *
-	 * Mirrors the CARD rather than the raw pointer: a hover only counts once
-	 * the intent delay has passed, or the rail would spend a naming call on
-	 * every fly-over. Keyboard focus raises the same signal, because it opens
-	 * the same card (§D5: "focus also opens the card").
+	 * Which checkpoint is being inspected, or `null`. Fires on the CARD's own
+	 * identity (intent-gated), not on the raw pointer, so the naming warm costs
+	 * one call per gesture rather than one per mark crossed.
 	 */
 	onHover: (id: string | null) => void;
 	/**
 	 * §D5's building state: the backend is refreshing a stale index. The rail
 	 * keeps painting the checkpoints the previous answer carried and adds one
-	 * subtle pulsing mark at the top. Additive to §D10's four props because
-	 * the state is the rail's to draw and the hook is its only source;
-	 * loading, empty and error need no prop — all three render nothing.
+	 * subtle pulsing mark at the list's head.
 	 */
 	building?: boolean;
+	/**
+	 * The resident-window answer, per checkpoint id: a mark whose id is absent
+	 * paints the unloaded state (dsh: `scaleX(0.4)` at 60%). Handed in by the
+	 * transcript's history loader; absent means "no window known", which reads
+	 * every mark resident rather than guessing.
+	 */
+	loadedIds?: ReadonlySet<string>;
+	/**
+	 * The reading position's checkpoint (dsh: the active turn), painted at
+	 * `scaleX(1)` in primary ink. The transcript derives it from its own
+	 * viewport; absent means no mark is active.
+	 */
+	activeId?: string | null;
 };
 
 const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
@@ -148,7 +173,9 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 				</p>
 			)}
 			{summary && (
-				<p className={cn("break-words text-body-sm text-ink-muted")}>
+				<p
+					className={cn("line-clamp-3 break-words text-body-sm text-ink-muted")}
+				>
 					{summary}
 				</p>
 			)}
@@ -169,15 +196,97 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 	);
 };
 
+/**
+ * One mark. `memo` is the whole point: the parent re-renders on every preview
+ * flip, and only the marks whose `state`/`tabIndex` actually changed may
+ * follow - every handler here is a stable `useCallback` from the rail, which
+ * is what lets the shallow compare hold.
+ */
+const CheckpointMark = memo(function CheckpointMark({
+	checkpoint,
+	state,
+	label,
+	roving,
+	registerTick,
+	onPreview,
+	onPreviewEnd,
+	onFocusMark,
+	onBlurMark,
+	onActivate,
+	onKeyMark,
+	describedBy,
+}: {
+	checkpoint: Checkpoint;
+	state: ReturnType<typeof checkpointMarkState>;
+	label: string;
+	roving: boolean;
+	registerTick: (id: string, element: HTMLButtonElement | null) => void;
+	onPreview: (id: string) => void;
+	onPreviewEnd: () => void;
+	onFocusMark: (id: string) => void;
+	onBlurMark: () => void;
+	onActivate: (id: string) => void;
+	onKeyMark: (event: ReactKeyboardEvent<HTMLButtonElement>, id: string) => void;
+	/** The open card's element id, when this mark's card is the open one. */
+	describedBy?: string;
+}) {
+	const enter = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		/*
+		 * `pointermove`, not `pointerenter`: a move WITHIN one 10px row must
+		 * cost nothing, and the id-equality guard here is what makes the
+		 * setState a no-op rather than a re-render (the parent's state setter
+		 * also bails, but the call is the same either way).
+		 */
+		if (event.pointerType === "touch") return;
+		onPreview(checkpoint.id);
+	};
+	return (
+		<button
+			ref={(element) => registerTick(checkpoint.id, element)}
+			type="button"
+			data-checkpoint-id={checkpoint.id}
+			data-mark-state={state}
+			aria-label={label}
+			aria-describedby={describedBy}
+			tabIndex={roving ? 0 : -1}
+			/*
+			 * The dsh hit row: the full 28x10 pitch is the target, the visible
+			 * dash is 20x2 inside it. One row per checkpoint at a fixed pitch,
+			 * so a dense manifest cannot overlap two rows' targets.
+			 */
+			className={cn("group pointer-events-auto block h-2.5 w-7")}
+			onPointerMove={enter}
+			onPointerLeave={onPreviewEnd}
+			onFocus={() => onFocusMark(checkpoint.id)}
+			onBlur={onBlurMark}
+			onClick={() => onActivate(checkpoint.id)}
+			onKeyDown={(event) => onKeyMark(event, checkpoint.id)}
+		>
+			<span
+				aria-hidden="true"
+				className={cn(
+					"ml-auto mr-1.5 block h-0.5 w-5 origin-right rounded-full",
+					"transition-[transform,background-color] duration-fast ease-out-quart",
+					"motion-reduce:transition-none",
+					CHECKPOINT_MARK_CLASS[state],
+				)}
+			/>
+		</button>
+	);
+});
+
 export const CheckpointRail: FC<CheckpointRailProps> = ({
 	sessionId,
 	checkpoints,
 	onJump,
 	onHover,
 	building = false,
+	loadedIds,
+	activeId = null,
 }) => {
-	const cardId = useId();
-	const [activeId, setActiveId] = useState<string | null>(null);
+	const cardElementId = useId();
+	const [previewId, setPreviewId] = useState<string | null>(null);
+	const [openCardId, setOpenCardId] = useState<string | null>(null);
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -197,12 +306,12 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		(id: string, delayMs: number) => {
 			clearTimers();
 			if (delayMs <= 0) {
-				setActiveId(id);
+				setOpenCardId(id);
 				return;
 			}
 			openTimer.current = setTimeout(() => {
 				openTimer.current = null;
-				setActiveId(id);
+				setOpenCardId(id);
 			}, delayMs);
 		},
 		[clearTimers],
@@ -212,32 +321,30 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		(delayMs: number) => {
 			clearTimers();
 			if (delayMs <= 0) {
-				setActiveId(null);
+				setOpenCardId(null);
 				return;
 			}
 			closeTimer.current = setTimeout(() => {
 				closeTimer.current = null;
-				setActiveId(null);
+				setOpenCardId(null);
 			}, delayMs);
 		},
 		[clearTimers],
 	);
 
 	/*
-	 * A session switch invalidates every id an open card could be naming, and
-	 * nothing else would close it: the rail itself is not remounted by the
-	 * parent. Dropping the card on the switch is the same guard `loadOlder`
-	 * documents for a page that resolves into a transcript no longer on screen.
-	 * The ref records which session the open state belongs to, so the reset runs
-	 * on the SWITCH only — a fresh mount has nothing to drop — and the effect
-	 * reads the id rather than merely keying on it.
+	 * A session switch invalidates every id an open card could be naming. The
+	 * ref records which session the open state belongs to, so the reset runs on
+	 * the SWITCH only - a fresh mount has nothing to drop.
 	 */
 	const cardSessionRef = useRef(sessionId);
 	useEffect(() => {
 		if (cardSessionRef.current === sessionId) return;
 		cardSessionRef.current = sessionId;
 		clearTimers();
-		setActiveId(null);
+		previewRef.current = null;
+		setPreviewId(null);
+		setOpenCardId(null);
 	}, [sessionId, clearTimers]);
 
 	// Timers outliving the component would setState into nothing. One cleanup.
@@ -245,18 +352,14 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 
 	/*
 	 * The hover notification, tied to the card's identity rather than to the
-	 * pointer's: see the prop's own docstring. Held in a ref because call sites
-	 * legitimately pass an inline lambda, and an effect keyed on the callback's
-	 * identity would re-fire on every parent render.
+	 * pointer's. Held in a ref because call sites legitimately pass an inline
+	 * lambda, and an effect keyed on the callback's identity would re-fire on
+	 * every parent render.
 	 */
 	const onHoverRef = useRef(onHover);
 	useEffect(() => {
 		onHoverRef.current = onHover;
 	});
-	const placements = useMemo(
-		() => checkpointTickPlacement(checkpoints),
-		[checkpoints],
-	);
 	const labels = useMemo(
 		() =>
 			new Map(
@@ -270,13 +373,14 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	);
 
 	const activeCheckpoint =
-		(activeId && checkpoints.find((entry) => entry.id === activeId)) || null;
-	const anchorEl = (activeId && tickElements.current.get(activeId)) || null;
+		(openCardId && checkpoints.find((entry) => entry.id === openCardId)) ||
+		null;
+	const anchorEl = (openCardId && tickElements.current.get(openCardId)) || null;
 	const anchorRef = useMemo(() => ({ current: anchorEl }), [anchorEl]);
 	const cardOpen = activeCheckpoint !== null && anchorEl !== null;
 	useEffect(() => {
-		onHoverRef.current(cardOpen && activeId ? activeId : null);
-	}, [cardOpen, activeId]);
+		onHoverRef.current(cardOpen && openCardId ? openCardId : null);
+	}, [cardOpen, openCardId]);
 
 	const registerTick = useCallback(
 		(id: string, element: HTMLButtonElement | null) => {
@@ -285,33 +389,118 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		},
 		[],
 	);
+
 	/*
-	 * ROVING TABINDEX (UX round 1, U1). The block used to be one tab stop per
-	 * tick - 402 consecutive stops at the density case, so crossing the rail cost
-	 * up to ~400 presses with no in-rail movement. The group is now ONE tab stop:
-	 * only the roving tick carries `tabIndex=0`, ArrowUp/Down walk the neighbours
-	 * in DOM order, and Home/End take the ends. The default when the reader has
-	 * not touched the rail is the FIRST tick - the top of the rail is where the
-	 * natural reading order enters, and the focus handler below keeps a returning
-	 * reader where they left. Focus still opens the card and Escape still closes
-	 * it without moving focus; `tickElements` is how focus is moved, so the walk
-	 * works for ticks the pointer has never seen.
+	 * ROVING TABINDEX (UX round 1, U1): the block is ONE tab stop - only the
+	 * roving mark carries `tabIndex=0`, ArrowUp/Down walk the neighbours in DOM
+	 * order, Home/End take the ends. Focus opens the card; Escape closes it
+	 * without moving focus; `tickElements` is how focus moves, so the walk works
+	 * for marks the pointer has never seen.
 	 */
 	const [rovingId, setRovingId] = useState<string | null>(null);
 	const rovingTickId =
-		(rovingId && checkpoints.some((entry) => entry.id === rovingId)
+		rovingId && checkpoints.some((entry) => entry.id === rovingId)
 			? rovingId
-			: null) ??
-		checkpoints[0]?.id ??
-		null;
+			: (checkpoints[0]?.id ?? null);
 	const focusTickAt = useCallback(
 		(index: number) => {
-			const next = checkpoints[index];
-			if (!next) return;
-			setRovingId(next.id);
-			tickElements.current.get(next.id)?.focus();
+			const bounded = Math.max(0, Math.min(checkpoints.length - 1, index));
+			const target = checkpoints[bounded];
+			if (!target) return;
+			setRovingId(target.id);
+			tickElements.current.get(target.id)?.focus();
 		},
 		[checkpoints],
+	);
+
+	/*
+	 * The preview lane. The ref is the STORM guard: a pointermove inside one
+	 * row re-enters with the same id and returns before touching state or the
+	 * card's timer, so a fly-over costs one transition and one timer arm.
+	 */
+	const previewRef = useRef<string | null>(null);
+	const onPreview = useCallback(
+		(id: string) => {
+			if (previewRef.current === id) return;
+			previewRef.current = id;
+			setPreviewId(id);
+			openCard(id, CHECKPOINT_CARD_OPEN_DELAY_MS);
+		},
+		[openCard],
+	);
+	const onPreviewEnd = useCallback(() => {
+		previewRef.current = null;
+		setPreviewId((current) => (current === null ? current : null));
+		closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS);
+	}, [closeCard]);
+
+	const onFocusMark = useCallback(
+		(id: string) => {
+			previewRef.current = id;
+			setRovingId(id);
+			setPreviewId((current) => (current === id ? current : id));
+			openCard(id, 0);
+		},
+		[openCard],
+	);
+	const onBlurMark = useCallback(() => {
+		previewRef.current = null;
+		setPreviewId((current) => (current === null ? current : null));
+		closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS);
+	}, [closeCard]);
+
+	const onActivate = useCallback(
+		(id: string) => {
+			// The press performs the jump; the card has said what it had to say
+			// by then, and leaving it over the transcript the reader just landed
+			// in is noise.
+			closeCard(0);
+			previewRef.current = null;
+			setPreviewId(null);
+			onJump(id);
+		},
+		[closeCard, onJump],
+	);
+
+	const onKeyMark = useCallback(
+		(event: ReactKeyboardEvent<HTMLButtonElement>, id: string) => {
+			if (event.key === "Escape") {
+				closeCard(0);
+				return;
+			}
+			const index = checkpoints.findIndex((entry) => entry.id === id);
+			if (index < 0) return;
+			/*
+			 * The roving walk (U1). The arrows are claimed here rather than left
+			 * to bubble: the transcript's own scroller binds arrows for paging
+			 * when IT has focus, and a focused mark must move focus, not the
+			 * viewport.
+			 */
+			if (event.key === "ArrowDown") {
+				event.preventDefault();
+				event.stopPropagation();
+				focusTickAt(index + 1);
+				return;
+			}
+			if (event.key === "ArrowUp") {
+				event.preventDefault();
+				event.stopPropagation();
+				focusTickAt(index - 1);
+				return;
+			}
+			if (event.key === "Home") {
+				event.preventDefault();
+				event.stopPropagation();
+				focusTickAt(0);
+				return;
+			}
+			if (event.key === "End") {
+				event.preventDefault();
+				event.stopPropagation();
+				focusTickAt(checkpoints.length - 1);
+			}
+		},
+		[checkpoints, closeCard, focusTickAt],
 	);
 
 	if (checkpoints.length === 0 && !building) return null;
@@ -319,9 +508,8 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	return (
 		/*
 		 * `role="toolbar"` is the roving group's own semantics (U1): one tab
-		 * stop, arrow keys inside - which is exactly what the tick block is. The
-		 * name is what U3 measured as absent (`railAria: null`); the per-tick
-		 * labels stay as they were.
+		 * stop, arrow keys inside. The frame is centred in the column and hidden
+		 * below 900px of chat column (`@container/chatcol`, the shared measure).
 		 */
 		<div
 			data-lo-checkpoint-rail=""
@@ -329,128 +517,67 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 			aria-orientation="vertical"
 			aria-label={CHECKPOINT_RAIL_LABEL}
 			className={cn(
-				"pointer-events-none absolute inset-y-0 right-0 w-6 select-none",
+				"pointer-events-none absolute inset-y-0 right-3 hidden w-7 select-none",
+				"flex-col justify-center",
+				"@[900px]/chatcol:flex",
 			)}
 		>
-			{building && (
-				/*
-				 * The building state's one liveness mark: an opacity pulse, which
-				 * the motion contract allows to run indefinitely and whose end
-				 * keyframe is visible, so a reduced-motion user lands on a static
-				 * mark rather than an invisible one (`index.css`'s cap).
-				 */
-				<span
-					aria-hidden="true"
-					data-rail-building=""
-					className={cn(
-						"absolute top-0 right-1 h-0.5 w-3 rounded-sm bg-ink-dim",
-						"animate-pulse-visible",
-					)}
-				/>
-			)}
 			{/*
-			 * The track insets the extremes by 12px so a tick at fraction 0 or 1
-			 * is never clipped by the rail's own bounds: the last of the 12px
-			 * hit-target's half-height sits inside the root.
+			 * The frame: fixed pitch marks in a scroller that only appears when
+			 * the conversation outgrows `min(column - 64px, 420px)`. The mask's
+			 * 24px fades stand in for chrome - a mark dissolving at the edge
+			 * says "more above/below" without an affordance to click.
 			 */}
-			<div className={cn("absolute inset-y-3 right-0 w-6")}>
-				{checkpoints.map((checkpoint, index) => {
-					const fraction = placements[index]?.fraction ?? 0;
-					const active = checkpoint.id === activeId;
-					return (
-						<button
+			<div
+				data-rail-frame=""
+				className={cn(
+					"max-h-[min(calc(100%-4rem),420px)] w-7 overflow-y-auto overscroll-contain",
+					"[mask-image:linear-gradient(to_bottom,transparent_0,#000_24px,#000_calc(100%-24px),transparent_100%)]",
+				)}
+			>
+				{building && (
+					/*
+					 * The building state's one liveness mark: an opacity pulse, which
+					 * the motion contract allows to run indefinitely and whose end
+					 * keyframe is visible, so a reduced-motion user lands on a static
+					 * mark rather than an invisible one.
+					 */
+					<span
+						aria-hidden="true"
+						data-rail-building=""
+						className={cn(
+							"ml-auto mr-1.5 block h-0.5 w-5 animate-pulse-visible rounded-full bg-ink-dim",
+						)}
+					/>
+				)}
+				<div data-rail-track="">
+					{checkpoints.map((checkpoint) => (
+						<CheckpointMark
 							key={checkpoint.id}
-							ref={(element) => registerTick(checkpoint.id, element)}
-							type="button"
-							data-checkpoint-id={checkpoint.id}
-							aria-label={labels.get(checkpoint.id)}
-							aria-haspopup="dialog"
-							aria-expanded={active}
-							aria-controls={active ? cardId : undefined}
-							tabIndex={checkpoint.id === rovingTickId ? 0 : -1}
-							/*
-							 * A 24 x 12 hit target around a 3px mark: the visual tick is
-							 * the narrow vertical bar, the button is the invisible box
-							 * the pointer and the keyboard actually reach. Centred on
-							 * the track position, so overlapping ticks (267 is a real
-							 * manifest size) share a band without moving each other —
-							 * v1 lets them overlap rather than clustering (D5).
-							 */
-							className={cn(
-								"group pointer-events-auto absolute right-0 h-3 w-6",
-							)}
-							style={{
-								top: `calc(${(fraction * 100).toFixed(4)}% - 6px)`,
-							}}
-							onPointerEnter={() =>
-								openCard(checkpoint.id, CHECKPOINT_CARD_OPEN_DELAY_MS)
+							checkpoint={checkpoint}
+							state={checkpointMarkState({
+								id: checkpoint.id,
+								previewId,
+								activeId,
+								loaded: loadedIds ? loadedIds.has(checkpoint.id) : true,
+							})}
+							label={labels.get(checkpoint.id) ?? ""}
+							roving={checkpoint.id === rovingTickId}
+							registerTick={registerTick}
+							onPreview={onPreview}
+							onPreviewEnd={onPreviewEnd}
+							onFocusMark={onFocusMark}
+							onBlurMark={onBlurMark}
+							onActivate={onActivate}
+							onKeyMark={onKeyMark}
+							describedBy={
+								cardOpen && openCardId === checkpoint.id
+									? cardElementId
+									: undefined
 							}
-							onPointerLeave={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
-							onFocus={() => {
-								setRovingId(checkpoint.id);
-								openCard(checkpoint.id, 0);
-							}}
-							onBlur={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
-							onClick={() => {
-								// The press performs the jump; the card has said what it
-								// had to say by then, and leaving it over the transcript
-								// the reader just landed in is noise.
-								closeCard(0);
-								onJump(checkpoint.id);
-							}}
-							onKeyDown={(event) => {
-								// Radix closes the card on Escape at the document, but the
-								// tick's own focus means the focus is not inside the card;
-								// this is the same dismissal for the keyboard reader who
-								// opened it without the pointer.
-								if (event.key === "Escape") {
-									closeCard(0);
-									return;
-								}
-								/*
-								 * The roving walk (U1). The arrows are claimed here rather
-								 * than left to bubble: the transcript's own scroller binds
-								 * arrows for paging when IT has focus, and a focused tick
-								 * must move focus, not the viewport.
-								 */
-								if (event.key === "ArrowDown") {
-									event.preventDefault();
-									event.stopPropagation();
-									focusTickAt(index + 1);
-									return;
-								}
-								if (event.key === "ArrowUp") {
-									event.preventDefault();
-									event.stopPropagation();
-									focusTickAt(index - 1);
-									return;
-								}
-								if (event.key === "Home") {
-									event.preventDefault();
-									event.stopPropagation();
-									focusTickAt(0);
-									return;
-								}
-								if (event.key === "End") {
-									event.preventDefault();
-									event.stopPropagation();
-									focusTickAt(checkpoints.length - 1);
-								}
-							}}
-						>
-							<span
-								aria-hidden="true"
-								className={cn(
-									"mx-auto block h-3 w-[3px] rounded-sm",
-									"transition-colors duration-fast ease-out-quart",
-									active
-										? "bg-ink"
-										: "bg-ink-dim group-hover:bg-ink group-focus-visible:bg-ink",
-								)}
-							/>
-						</button>
-					);
-				})}
+						/>
+					))}
+				</div>
 			</div>
 			<Popover
 				open={cardOpen}
@@ -461,27 +588,37 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 				<PopoverAnchor virtualRef={anchorRef} />
 				{activeCheckpoint && (
 					<PopoverContent
-						id={cardId}
+						id={cardElementId}
 						side="left"
 						align="center"
-						sideOffset={8}
+						sideOffset={10}
 						collisionPadding={8}
+						/*
+						 * dsh's card is a TOOLTIP: it previews, it is not a surface
+						 * to read or click in. Its text is clamped rather than
+						 * scrollable for the same reason, and the pointer must be
+						 * able to travel to and past it without the card capturing
+						 * anything.
+						 */
+						role="tooltip"
+						aria-label={
+							activeCheckpoint.kind === "user"
+								? "Your message"
+								: checkpointTitle(activeCheckpoint)
+						}
 						// Radix's focus-scope defaults assume a press-opened popover.
-						// This one opens from a hover/focus gesture on a tick whose own
+						// This one opens from a hover/focus gesture on a mark whose own
 						// label already says everything, so neither opening nor closing
-						// may move the reader's focus — a returned focus would also
-						// re-open the NEXT tick's card on the way back.
+						// may move the reader's focus.
 						onOpenAutoFocus={(event) => event.preventDefault()}
 						onCloseAutoFocus={(event) => event.preventDefault()}
 						/*
-						 * Radix dismisses a non-modal popover when focus moves outside its
-						 * layer — but the ticks ARE this popover's trigger surface (there is no
-						 * Radix trigger; the anchor is virtual), so tabbing from one tick to
-						 * the next is not "leaving". Without this the dismissal fires AFTER the
-						 * next tick's focus handler has opened its card and closes it again,
-						 * so a keyboard reader could open the first tick's card and nothing
-						 * after it. Escape and outside presses are untouched: both keep
-						 * reaching `onOpenChange`.
+						 * Radix dismisses a non-modal popover when focus moves outside
+						 * its layer - but the marks ARE this popover's trigger surface
+						 * (there is no Radix trigger; the anchor is virtual), so tabbing
+						 * from one mark to the next is not "leaving". Without this the
+						 * dismissal fires AFTER the next mark's focus handler opened its
+						 * card and closes it again.
 						 */
 						onFocusOutside={(event) => {
 							const target = (
@@ -494,33 +631,22 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 								event.preventDefault();
 							}
 						}}
-						// Moving the pointer into the card keeps it open so the user
-						// text can be scrolled; leaving or blurring schedules the same
-						// close the tick's own leave would.
-						onPointerEnter={clearTimers}
-						onPointerLeave={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
-						onFocus={clearTimers}
-						onBlur={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
-						aria-label={
-							activeCheckpoint.kind === "user"
-								? "Your message"
-								: checkpointTitle(activeCheckpoint)
-						}
-						className={cn("flex flex-col gap-2")}
+						className={cn(
+							"pointer-events-none max-h-[100px] w-[300px] max-w-[300px] overflow-hidden",
+							"flex flex-col gap-2",
+						)}
 					>
 						{activeCheckpoint.kind === "user" ? (
 							<div
 								/*
 								 * `data-checkpoint-card-text` is the driven scene's measurement
-								 * hook for the bound itself (the same pattern as
-								 * `data-jump-highlight`): the long-message frame asserts
-								 * `scrollHeight > clientHeight` here rather than trusting that
-								 * `max-h-40` is doing what it says (design round 1, D5).
+								 * hook for the clamp itself: the long-message frame asserts the
+								 * text is CLIPPED to its budget rather than trusting that
+								 * `line-clamp-3` is doing what it says.
 								 */
 								data-checkpoint-card-text=""
 								className={cn(
-									// ~8 lines of body-sm, then the preview scrolls.
-									"max-h-40 overflow-y-auto break-words whitespace-pre-wrap",
+									"line-clamp-3 break-words whitespace-pre-wrap",
 									"text-body-sm text-ink",
 								)}
 							>
