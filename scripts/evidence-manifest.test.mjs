@@ -2261,17 +2261,18 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
-	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote` and
-	 * `sidebarLoadMoreFoldTwoNote` are the folds `feat/sidebar-load-more` made
-	 * while open - the second folded a #557 that had already folded itself onto
-	 * the same base as the first. The notes name each manifest resolution and
-	 * re-derivation, including the one semantic conflict (both lanes fixing the
-	 * collapsed-section gap in parallel, resolved to one tested mechanism).
-	 * Registered here because a third fold is exactly where a resolver starting
-	 * from main's copy would drop them uncaught.
+	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote`, `sidebarLoadMoreFoldTwoNote`
+	 * and `sidebarLoadMoreFoldThreeNote` are the folds `feat/sidebar-load-more`
+	 * made while open - the second folded a #557 that had already folded itself onto
+	 * the same base as the first, and the third folded #655's closed-dispose train.
+	 * The notes name each manifest resolution and re-derivation, including the one
+	 * semantic conflict (both lanes fixing the collapsed-section gap in parallel,
+	 * resolved to one tested mechanism). Registered here because a fold resolved by
+	 * a resolver starting from main's copy is where they would drop uncaught.
 	 */
 	"sidebarLoadMoreFoldNote",
 	"sidebarLoadMoreFoldTwoNote",
+	"sidebarLoadMoreFoldThreeNote",
 	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
