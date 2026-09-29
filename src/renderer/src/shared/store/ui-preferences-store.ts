@@ -620,14 +620,20 @@ type UiPreferencesState = {
  * union, so a section spelled at a call site and nowhere here would be a request
  * nothing could resolve.
  *
- * The four are the pane's four LIVE lists — the plan, the roster, the tool jobs
- * and the session's armed wake schedules — and they are named for their sections
- * rather than for their controls: `jobs` is the section that draws `bash` rows,
- * which the roster deliberately does not hold (`run-detail-model.ts`'s
- * partition), and `wakes` is the section that draws the schedules, which no other
- * section holds at all.
+ * The five are the pane's five LIVE lists — the plan, the roster, the tool jobs,
+ * the session's armed wake schedules and its armed monitors — and they are
+ * named for their sections rather than for their controls: `jobs` is the section
+ * that draws `bash` rows, which the roster deliberately does not hold
+ * (`run-detail-model.ts`'s partition), `wakes` is the section that draws the
+ * schedules, and `monitors` the section that draws the watches — neither of
+ * the last two held anywhere else in the pane.
  */
-export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
+export type RunPanelSection =
+	| "todos"
+	| "subagents"
+	| "jobs"
+	| "wakes"
+	| "monitors";
 
 /**
  * Which list the browser pane's strip shows: this conversation's tabs, or all of
