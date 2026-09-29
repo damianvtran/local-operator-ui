@@ -13,10 +13,12 @@ import { createElement as h } from "react";
  * that a completed run ARRIVES collapsed and its hidden rows are really
  * unmounted; that the reader's press opens it and puts it back; that the
  * expansion survives a remount (the property the per-session store exists for)
- * and follows the CONVERSATION rather than the component; that the failure
- * failure tally never renders and the failed row stays one press away; and
- * that a live run, and a run the window has cut, render exactly as they did
- * before the feature.
+ * and follows the CONVERSATION rather than the component; that no failure
+ * tally renders and the failed row stays one press away; that
+ * a live run, and a run the window has cut, render exactly as they did
+ * before the feature; and (operator report, 2026-09-29) that the row under
+ * the bar's rule renders at the block step with the bar's chevron landing on
+ * the rule's end.
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the collapsed and expanded
  * states look like; it cannot say that the collapsed state unmounts the rows
@@ -114,6 +116,8 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
+			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -151,6 +155,7 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	GAP,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -223,6 +228,21 @@ const wakeRecord = (id, over = {}) => ({
 	text: "(alarm) Scheduled wake w-9\n\nCollect the staged records.",
 	...over,
 });
+
+/**
+ * The memory statement: the pin list's first member, and the row the operator's
+ * 2026-09-29 report is about. Durable (no settled sentence of its own), so the
+ * text is the reader's `COMPACTED_LINE`.
+ */
+const compactionRecord = (id, over = {}) => ({
+	kind: "compaction",
+	id,
+	ts: TS + 6_000,
+	text: "Context compacted",
+	before: 41_000,
+	...over,
+});
+
 /** A statement the collapse pins in place (a completion marker). */
 const noticeRecord = (id, over = {}) => ({
 	kind: "notice",
@@ -731,6 +751,51 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 	assert.ok(
 		order(summary, notice),
 		"the pinned row keeps its place relative to the bar when expanded",
+	);
+});
+
+test("the row under the bar takes the block step, and the chevron reaches the rule (operator report, 2026-09-29)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the condensed row ('Context compacted') hugs the
+	 * summary row's rule too closely ... wants more breathing room between the
+	 * horizontal line and the row beneath it" and "the chevron ('>') doesn't
+	 * reach the right end of the rule". jsdom has no layout engine, so this pins
+	 * the MECHANISM per class - the pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-compaction/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 *
+	 * The row's gap: a pinned statement is BUILT against its original neighbour -
+	 * here a hidden tool row, which gives it the trace tier's 2px - so when the
+	 * collapse leaves it directly under the bar, the render pass re-tiers the
+	 * row to the item step: the same 12px the closing answer already sits below
+	 * the rule. The chevron: the trigger ends 16px short of the row on the right
+	 * (the disclosure's documented left-only bleed) and the slot's `-mr-4`
+	 * reclaims exactly that, so the row's right edge lands on the rule's end.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const row = rowBox(mounted, "compaction:1");
+	assert.ok(row, "the compaction row is pinned below the bar");
+	assert.ok(
+		row.classList.contains(GAP.item[0]),
+		`the first row under the bar renders at the item tier (${GAP.item[0]}), not the trace tier it was built with`,
+	);
+	assert.ok(
+		!row.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the row beneath the rule",
+	);
+	const chevron = barTrigger(mounted)?.querySelector("svg")?.closest("span");
+	assert.ok(chevron, "the bar's chevron slot exists");
+	assert.ok(
+		chevron.classList.contains("-mr-4"),
+		"the chevron slot reclaims the trigger's 16px right shortfall, landing the row's right edge on the rule's end",
 	);
 });
 
