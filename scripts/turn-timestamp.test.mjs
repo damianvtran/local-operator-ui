@@ -855,7 +855,7 @@ test("an answer that is still arriving carries none", async () => {
 	unmount();
 });
 
-test("a turn paints exactly one stamp, on the answer it closes with", async () => {
+test("a turn paints exactly one stamp, and a collapsed turn's is the bar's", async () => {
 	/*
 	 * THE SHAPE ROUND 1 FOUND THE PREVIOUS GATE PAINTING WRONG (design D1, QA Q-2).
 	 * Prose, the calls it narrates, more prose: gating on `!record.streaming` put a
@@ -863,12 +863,11 @@ test("a turn paints exactly one stamp, on the answer it closes with", async () =
 	 * clocks interleaved with the ledger in one turn - and the frames showed the
 	 * worst version of it, two clocks 56px apart with one sentence between them.
 	 *
-	 * The count that matters is therefore per TURN here, while the assertion that
-	 * says WHICH row carries it is positional: the turn's last settled answer, and
-	 * nothing under the narration the turn opened with. The ORDER is asserted for
-	 * the same reason the old test asserted it - a caption that drifted one row up
-	 * or down would still produce the right total, so the total alone is not the
-	 * claim.
+	 * The count that matters is still per TURN, and it still has to say WHICH row
+	 * carries it - but the collapse moved the carrier: a turn with in-between rows
+	 * condenses (the frozen design's §4), and the one stamp moves up to the bar
+	 * with the foot it re-homes. The answer below keeps its prose, no clock; the
+	 * narration that opened the turn is behind the bar.
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
@@ -881,12 +880,21 @@ test("a turn paints exactly one stamp, on the answer it closes with", async () =
 	assert.equal(
 		captions.length,
 		1,
-		"one caption per turn, not one per settled prose row",
+		"one stamp per turn, not one per settled prose row",
+	);
+	assert.ok(
+		captions[0].closest("[data-turn-summary]"),
+		"and with a bar over the run, the bar is what carries it",
 	);
 	assert.equal(
 		captions[0].closest("[data-record-id]")?.getAttribute("data-record-id"),
-		"answer:2",
-		"and it is the row the turn closes on rather than the narration it opened with",
+		"answer:1",
+		"the bar stands at the first hidden row's slot, and the stamp sits in it",
+	);
+	assert.equal(
+		container.textContent.includes("Worked"),
+		false,
+		"the foot line it replaces is not painted beside it",
 	);
 	assert.equal(
 		stamps(container, "tool").length,
@@ -896,9 +904,37 @@ test("a turn paints exactly one stamp, on the answer it closes with", async () =
 	assert.deepEqual(
 		allStamps(container).map((time) => time.getAttribute("data-stamp")),
 		["answer"],
-		"one carrier, on the row that closes the turn",
+		"one carrier, one stamp: the turn's own",
 	);
 	unmount();
+
+	/*
+	 * THE PAIR THE COLLAPSE MUST NOT BREAK: with nothing between the user row and
+	 * the answer, there is no bar and the foot line keeps the stamp exactly where
+	 * it always was - one stamp either way, and the FOOT is the carrier.
+	 */
+	const plain = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", { text: "Four invoices were late." }),
+	]);
+	assert.equal(
+		plain.container.querySelector("[data-turn-summary]"),
+		null,
+		"nothing in between: nothing to collapse",
+	);
+	const footStamp = stamps(plain.container, "answer");
+	assert.equal(footStamp.length, 1);
+	assert.equal(
+		footStamp[0].closest("[data-record-id]")?.getAttribute("data-record-id"),
+		"answer:1",
+		"the answer's own closing block keeps the stamp where it always was",
+	);
+	assert.equal(
+		footStamp[0].closest("[data-turn-summary]"),
+		null,
+		"and no bar exists to carry it (nothing hides)",
+	);
+	plain.unmount();
 });
 
 test("a turn still working carries no caption, on any of its settled rows", async () => {
