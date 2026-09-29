@@ -2340,6 +2340,14 @@ const BRANCH_RECORDS = [
 	 * Registered for the list's usual reason.
 	 */
 	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
