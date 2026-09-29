@@ -1921,6 +1921,14 @@ const STAMP_BINDING_NOTES = [
 	 * It quotes the folded tip's pair, so it is held to this file like every
 	 * entry above it.
 	 */
+	/*
+	 * AND THE UX ROUND'S OWN (2026-09-29): the roving rail - U1's one-tab-stop
+	 * group with the arrow/Home/End walk and U3's named toolbar root - moves the
+	 * src tree with `checkpoint-rail.tsx` and the scripts tree with its three
+	 * unit cases and the scene's keyboard legs. The frames are re-copied from
+	 * the run that asserts them (81 checks, 24 frames, no new states). It
+	 * quotes the pair below, so it is held to this file like every entry above.
+	 */
 	"transcriptRailRestampNote",
 ];
 
