@@ -2082,6 +2082,16 @@ const STAMP_BINDING_NOTES = [
 	 * merge. It quotes that pair, so it is held to the pair this file ships.
 	 */
 	"readmeVisualsFoldFourNote",
+	/*
+	 * AND THE FIFTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFiveNote` is the
+	 * fold onto the moved `origin/main` `0a2c8e7a30` (#647's release bump, with
+	 * #641 and #610 behind it) - the single conflicted path was the manifest,
+	 * resolved with main's records whole and this branch's laid back on top,
+	 * and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldFiveNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3199,6 +3209,13 @@ const BRANCH_RECORDS = [
 	 * fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldFourNote",
+	/*
+	 * Grown by the fifth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `0a2c8e7a30` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFiveNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
