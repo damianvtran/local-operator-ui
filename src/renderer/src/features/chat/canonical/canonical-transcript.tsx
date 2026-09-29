@@ -134,6 +134,7 @@ import {
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
+import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -2070,6 +2071,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
+	 * ONE in-flight page for the walk-side consumers — the align fetch below
+	 * and the jump walk — while the READER's own scroll path keeps the pager's
+	 * raw refusal semantics (`onLoadOlder` straight through).
+	 *
+	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
+	 * scroll that is right (no double-apply). But a walk reads `false` as
+	 * "history ends here", so a jump colliding with an align page used to fall
+	 * through to a clamped mount instead of awaiting the page already on its
+	 * way. Sharing the promise here makes that collision a wait for the two
+	 * consumers that walk; the scroll path's semantics are untouched.
+	 */
+	const walkLoadOlder = useMemo(
+		() => shareInFlight(onLoadOlder),
+		[onLoadOlder],
+	);
+	/*
 	 * The load-side half of the fix: when the edge sits inside a run whose head
 	 * the FETCHED rows cut off, the snap has no boundary to land on. Fetch the
 	 * head — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page
@@ -2088,8 +2105,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		);
 		if (!decision.fetch) return;
 		alignFetches.current = decision.spent;
-		void onLoadOlder();
-	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
+		void walkLoadOlder();
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2413,7 +2430,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						return current >= wanted ? current : wanted;
 					});
 				},
-				loadOlder: onLoadOlder,
+				loadOlder: walkLoadOlder,
 			});
 			if (!reachable) {
 				showInfoToast(missCopy);
@@ -2422,7 +2439,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const outcome = await jumpToEntry(root, region, id);
 			if (outcome === "missing") showInfoToast(missCopy);
 		},
-		[containerRef, onLoadOlder],
+		[containerRef, walkLoadOlder],
 	);
 	/*
 	 * The rail's ticks and the search overlay both land through this near path
