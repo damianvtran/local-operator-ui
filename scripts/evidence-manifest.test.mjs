@@ -2143,6 +2143,21 @@ const STAMP_BINDING_NOTES = [
 	 * quotes the pair, so it is held to this file like every entry above it.
 	 */
 	"crossSessionVisibilityRestampNote",
+	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (`headCutCondensationRestampNote`,
+	 * 2026-09-29): the operator report that a completed turn whose opening
+	 * message sits a few fetched pages up does not condense - it renders as its
+	 * raw rows while a fully loaded turn below it shows a bar; its round-1
+	 * remediation scoped the settle announcement to settles (a window reveal is
+	 * absorbed silently) and corrected the focus comment. It moves both
+	 * trees - the collapse model's end-loaded rule, the head-independent run
+	 * identity and the transcript's focus hold and settle announcement in
+	 * `src/`; the two suites and this registration in `scripts/` - and commits
+	 * no frame (the before/after stills live on the PR's `evidence/` branch), so
+	 * the note quotes the pair this file ships and is held to it like every
+	 * entry above.
+	 */
+	"headCutCondensationRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3335,21 +3350,37 @@ const BRANCH_RECORDS = [
 	 */
 	"crossSessionVisibilityRestampNote",
 	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (2026-09-29):
+	 * `headCutCondensationRestampNote` is the re-stamp for the operator report
+	 * that a completed turn whose opening message is a few fetched pages up
+	 * renders raw instead of condensing, kept through its round-1
+	 * remediation (the announcement scoped to settles, the focus comment
+	 * corrected). Both trees move (the end-loaded rule,
+	 * the head-independent run key, the focus hold and the settle announcement
+	 * in `src/`; the two suites and this registration in `scripts/`), no swept
+	 * frame was taken (the stills are the PR's own evidence branch), and the
+	 * reader is owed the reason no still was.
+	 */
+	"headCutCondensationRestampNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
-	 * `setWindowOpenHandler`), folded onto a four-times-moving main before its
-	 * first push (the thread-search overlay, the README-visuals remediation, the
-	 * sidebar-ack fix, then the hide-cross-session-transcript fold), with the
-	 * evidence pair re-derived over each folded tree. Both trees move - `src/`
-	 * for the popup policy, its presentation gate and the renderer/preload
-	 * deletions, `scripts/` for the proof rewrite, the policy matrix and the
-	 * trigger/guard cases - and no swept frame was taken: the change's evidence is
-	 * a new set of PNG frames and run transcripts that no supplementary set
-	 * declares (`docs/evidence/browser-oauth-popups/`), so the reader is owed the
-	 * pair this file ships and the reason no still was. It quotes no tree-hash
-	 * pair (read the pair off the two top-level fields), so it joins
-	 * `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 * `setWindowOpenHandler`), folded onto a five-times-moving main as it landed
+	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
+	 * fix, the hide-cross-session-transcript filter, then the head-cut
+	 * condensation pass), with the evidence pair re-derived over each folded tree.
+	 * Both trees move - `src/` for the popup policy, its presentation gate and the
+	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
+	 * matrix and the trigger/guard cases - and no swept frame was taken by the
+	 * change itself: its evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * plus one app-chrome WebP added in round 1's D2
+	 * (`band-without-notice/localOperatorDark.webp`, which is why the counts are
+	 * re-derived with the fifth fold), so the reader is owed the pair this file
+	 * ships and the reason no still was. It quotes no tree-hash pair (read the
+	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
+	 * `STAMP_BINDING_NOTES`.
 	 */
 	"browserOauthPopupsRestampNote",
 ];
