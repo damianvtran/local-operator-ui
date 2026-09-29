@@ -5590,6 +5590,179 @@ test("a new message identity starts from zero while the previous buffer stays pu
 	assert.equal(m2.text, "The lane has ", "the new identity starts from zero");
 });
 
+/* ------------------------------------------------ one id per update (#671) */
+
+/*
+ * #671: an assistant-only turn (a background job's auto-delivery, a scheduled
+ * wake) mis-rendered while the journal was clean — a later message SPLICED
+ * into an earlier assistant block and also DUPLICATED it. The reachable route
+ * at this layer is the id itself: the three live guards tested the TYPE of
+ * `message.id` alone, so `id: ""` was admitted, and every id-less frame —
+ * whatever turn it belonged to — resolved to ONE record. Overlapping streams
+ * then merged through the append-only contract (a frame that cannot be told
+ * apart from the row it names is the same message's next chunk), painting a
+ * paragraph that exists in no record; and because the durable entry carries
+ * the id the journal gave the message, the same message painted a second
+ * block beside the first. The contract these cells pin: ONE ID PER UPDATE — a
+ * frame that states no usable id paints nothing and fuses with nothing, and a
+ * durable row with no id is dropped rather than synthesised under "".
+ */
+
+test("an id-less live frame paints nothing, so two of them cannot fuse (#671)", () => {
+	// The reproduced input (triage, issue #671): two assistant-only streams,
+	// both id-less, overlapping — one delivery lands while the previous row is
+	// still being written. Pre-fix the second row's chunks append to the first
+	// row's buffer (id `""`), and the record on screen is a paragraph no
+	// producer ever wrote: "PARA-ONE-BODY. PARA-TWO-LEAD. PARA-TWO-MORE."
+	const refused = streamDiagnostics.idlessFrameRefused;
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-ONE-BODY. ",
+			message: assistant("", ""),
+		},
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-TWO-LEAD. ",
+			message: assistant("", ""),
+		},
+		4,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-TWO-MORE.",
+			message: assistant("", ""),
+		},
+		5,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			message: assistant("", "PARA-TWO-LEAD. PARA-TWO-MORE."),
+		},
+		6,
+	);
+	assert.equal(state.records.length, 0, "no usable id, no record");
+	assert.equal(
+		state.index.has(""),
+		false,
+		"the empty string is never a record id",
+	);
+	// The instrument, so the field can answer "did a frame arrive with no id"
+	// by data rather than by the absence of a symptom (the reason every other
+	// counter here exists). Six frames in the sequence stated no id.
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 6,
+		"every id-less frame was counted",
+	);
+});
+
+test("an id-less live stream does not double the block its durable entry paints (#671)", () => {
+	// The other half of the report: the same message painted twice. The live
+	// frames name no id while the journal's entry carries the message's own
+	// id, so pre-fix the text painted under `""` AND under `delivery-1`. Only
+	// a frame with a usable id may create a row; the durable page is where the
+	// message paints, under the id it actually has.
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Job done. ", message: assistant("", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("", "Job done. ") },
+		3,
+	);
+	state = applyHistoryPage(
+		state,
+		pageOf([
+			messageEntry("delivery-1", 40, {
+				kind: "message",
+				...assistant("delivery-1", "Job done. "),
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1, "one block, not two");
+	assert.equal(state.records[0].id, "delivery-1");
+	assert.equal(state.records[0].text, "Job done. ");
+});
+
+test("a history_delta row with no id is dropped, never synthesised under ''", () => {
+	// The durable door into the same class: the frame's rows used to be given
+	// `String(row.id ?? "")`, so id-less rows collided with themselves and with
+	// every live frame that stated none. A row that names no id names no
+	// record; it is refused exactly as the live guards refuse one.
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "history_delta",
+			messages: [
+				assistant("", "ROW-ONE-BODY. "),
+				assistant("", "ROW-TWO-BODY. "),
+			],
+		},
+		10,
+	);
+	assert.equal(state.records.length, 0, "no id, no row");
+	assert.equal(state.index.has(""), false);
+});
+
+test("a frame with a usable id still coalesces with its durable entry (the #671 control)", () => {
+	// The fix must refuse only frames that state NO id. The ordinary shape —
+	// live frames and the durable row of the SAME message under the same id —
+	// must keep coalescing into one record, or the cure is the disease.
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("m1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Hi. ", message: assistant("m1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("m1", "Hi. ") },
+		3,
+	);
+	state = applyHistoryPage(
+		state,
+		pageOf([
+			messageEntry("m1", 40, { kind: "message", ...assistant("m1", "Hi. ") }),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].id, "m1");
+	assert.equal(state.records[0].text, "Hi. ");
+});
+
 test("a row the seed painted carries the snapshot's cursor; an older replay is refused", () => {
 	let state = applyLiveSeed(
 		EMPTY_TRANSCRIPT,

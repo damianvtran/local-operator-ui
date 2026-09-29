@@ -2709,7 +2709,54 @@ export const streamDiagnostics = {
 	 * number never claims more than the refusals it saw.
 	 */
 	staleUpdateFrameDropped: 0,
+	/**
+	 * A live message frame (`message_start`/`message_update`/`message_end`)
+	 * refused because it states no USABLE id — absent, non-string, or empty.
+	 *
+	 * THE MEASUREMENT #671's report asked for: the guards used to test the type
+	 * alone, so `id: ""` passed, and every id-less frame resolved to one record —
+	 * two assistant-only deliveries overlapped into a single row whose text no
+	 * producer ever wrote, and the message's durable entry painted the same text
+	 * beside it as a second block. This number answers "did a frame actually
+	 * arrive without an id" by data rather than by the absence of the splice,
+	 * and it counts BOTH shapes the guard refuses — the empty string and the
+	 * non-string it always refused — because both are the same fact: the frame
+	 * cannot name the record it belongs to. The durable door's own refusal (a
+	 * `history_delta` row with no id, dropped before it can be painted under
+	 * "") is not counted here: it is a row, not a live frame.
+	 */
+	idlessFrameRefused: 0,
 };
+
+/**
+ * The id a live message frame may be applied under, or null when the frame
+ * states no usable one.
+ *
+ * AN EMPTY ID IS NOT AN ID, and admitting it is #671's splice. The live cases
+ * used to test the TYPE alone (`typeof id !== "string"`), so a wire frame
+ * carrying `id: ""` passed every guard, and every id-less frame — two turns of
+ * an assistant-only delivery among them — resolved to the SAME record. The
+ * updates then merged (`current.text + delta`), because a frame that cannot be
+ * told apart from the row it names is, by the append-only contract, the same
+ * message's next chunk: the block on screen held a paragraph that exists in no
+ * record, and the message's durable entry — which carries the id the journal
+ * gave the message, never minting one — painted the same text a second time
+ * beside it.
+ *
+ * THE REDUCER CANNOT RECONCILE two DISTINCT non-empty ids: two identical
+ * messages are legitimate, and no content comparison can tell "the same
+ * message under two ids" from "two messages that read alike". The boundary is
+ * therefore here, at the one value that can collide with itself: a frame that
+ * names no id names no record, and it is refused exactly as a non-string id
+ * always was. Nothing is lost — the durable page paints such a row under the
+ * id its journal entry actually has.
+ */
+function liveMessageId(
+	message: Record<string, unknown> | undefined,
+): string | null {
+	const id = message?.id;
+	return typeof id === "string" && id !== "" ? id : null;
+}
 
 /**
  * Apply one canonical AgentEvent. Idempotent: replaying an event whose
@@ -2833,8 +2880,12 @@ export function applyEvent(
 			return next;
 		}
 		case "message_start": {
-			if (!message || typeof message.id !== "string") return state;
-			const current = state.records[state.index.get(message.id) ?? -1];
+			const messageId = liveMessageId(message);
+			if (message === undefined || messageId === null) {
+				streamDiagnostics.idlessFrameRefused += 1;
+				return state;
+			}
+			const current = state.records[state.index.get(messageId) ?? -1];
 			if (message.role === "user") {
 				/*
 				 * The live half of the harness-chrome suppression (the durable half is in
@@ -2860,7 +2911,7 @@ export function applyEvent(
 					current?.kind === "user" && current.provisional === true;
 				return upsert(state, {
 					kind: "user",
-					id: message.id,
+					id: messageId,
 					// `monotonicStamp`, not `now`, mirrors #534's doctrine: a
 					// locally-derived time may never lift the row above what is
 					// already painted.
@@ -2868,7 +2919,7 @@ export function applyEvent(
 					text: messageText(message),
 					images: extractImages(
 						message,
-						message.id,
+						messageId,
 						current?.kind === "user" ? current.images : undefined,
 					),
 					...(keepsHold ? { provisional: true } : {}),
@@ -2879,7 +2930,7 @@ export function applyEvent(
 			if (current) return state;
 			return upsert(state, {
 				kind: "assistant",
-				id: message.id,
+				id: messageId,
 				ts: now,
 				text: "",
 				streaming: true,
@@ -2889,8 +2940,12 @@ export function applyEvent(
 			});
 		}
 		case "message_update": {
-			if (!message || typeof message.id !== "string") return state;
-			const position = state.index.get(message.id);
+			const messageId = liveMessageId(message);
+			if (message === undefined || messageId === null) {
+				streamDiagnostics.idlessFrameRefused += 1;
+				return state;
+			}
+			const position = state.index.get(messageId);
 			const delta = String(event.delta ?? "");
 			// The event's OWN text is the whole text this case may use. The
 			// producer assembles `message.content` once, at the END of the call, for
@@ -2923,7 +2978,7 @@ export function applyEvent(
 				if (!body && !delta) return state;
 				return upsert(state, {
 					kind: "assistant",
-					id: message.id,
+					id: messageId,
 					ts: now,
 					text: body ? body + delta : delta,
 					streaming: true,
@@ -3100,9 +3155,13 @@ export function applyEvent(
 			});
 		}
 		case "message_end": {
-			if (!message || typeof message.id !== "string") return state;
+			const messageId = liveMessageId(message);
+			if (message === undefined || messageId === null) {
+				streamDiagnostics.idlessFrameRefused += 1;
+				return state;
+			}
 			if (message.role !== "assistant") return state;
-			const position = state.index.get(message.id);
+			const position = state.index.get(messageId);
 			const text = messageText(message);
 			/*
 			 * THE SETTLE INSTANT, kept when the row already settled: a replayed
@@ -3135,7 +3194,7 @@ export function applyEvent(
 				: [];
 			const settled: TranscriptRecord = {
 				kind: "assistant",
-				id: message.id,
+				id: messageId,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
 				...(text || toolCalls.length === 0 ? { complete: true } : {}),
@@ -3155,8 +3214,19 @@ export function applyEvent(
 			const rows = Array.isArray(event.messages)
 				? (event.messages as Record<string, unknown>[])
 				: [];
+			/*
+			 * A row that names no id names no record, and `String(row.id ?? "")`
+			 * synthesised exactly the value every id-less row collides on: two such
+			 * rows folded onto one record — the second replacing the first, or fusing
+			 * with a live row that also stated none — which is #671's class arriving
+			 * through the durable door (see `liveMessageId` for the whole rule).
+			 * Dropped rather than painted under "", so the frame cannot manufacture a
+			 * row the journal does not have; the journal's own entry carries the id
+			 * the next read will paint it under.
+			 */
+			const identified = rows.filter((row) => String(row.id ?? "") !== "");
 			const page: DesktopHistoryPage = {
-				entries: rows.map((row) => ({
+				entries: identified.map((row) => ({
 					id: String(row.id ?? ""),
 					// The frame carries no entry time, so the reader's arrival second is
 					// the only stamp it can be given here. Dating these rows needs the
