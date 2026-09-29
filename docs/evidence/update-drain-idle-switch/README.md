@@ -90,6 +90,10 @@ frames are stale against the new copy. The stories are declared in
    sentence dropped the drain bound and now ends on the idle switch.
 7. `common-updatenotification--backend-update-offer-source-build` (re-shoot,
    only if the rendered string moves; S3 is unchanged on this branch).
+8. `common-updatenotification--backend-update-offer-app-owned` (new) — the
+   app-owned managed offer's cost sentence (S1), the one press that publishes a
+   generation and restarts the daemon; declared after the round-1 review found
+   neither frame nor declaration anywhere for it (UX U2).
 
 **The toast timer** (called out for the capturer): the completion toast
 self-closes — 6 s, or 8 s on the three arms that carry the second line — so a
