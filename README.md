@@ -90,9 +90,9 @@ The Local Operator backend is bundled with the application and is installed auto
 
 | Light | Dark |
 | :---: | :---: |
-| <img src="./resources/readme/subagents-light.webp" alt="Light theme: the run details panel, two subagents running with their elapsed time and cost, and the shared to-do list." width="420"> | <img src="./resources/readme/subagents-dark.webp" alt="Dark theme: the same run details panel." width="420"> |
+| <img src="./resources/readme/subagents-light.webp" alt="Light theme: the run details panel, two subagents running with their elapsed time and cost, a third child queued behind the capacity gate, and the shared to-do list." width="420"> | <img src="./resources/readme/subagents-dark.webp" alt="Dark theme: the same run details panel." width="420"> |
 
-<sub><code>subagents</code> — two helpers working one request, each with its own elapsed time, context use and cost.</sub>
+<sub><code>subagents</code> — two helpers working one request, each with its own elapsed time, context use and cost, and the next child queued behind the capacity gate.</sub>
 
 ### Teams
 
