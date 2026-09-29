@@ -42,6 +42,7 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	alignFetchDecision,
 	collapsePlan,
 	isFailedCall,
 	runsOf,
@@ -655,6 +656,43 @@ test("a durable run still dates itself: ts is the commit, and the span holds", (
 		answer("a1", { ts: 4_000 }),
 	]);
 	assert.equal(plan.runs[0].facts.durationS, 3);
+});
+
+/* ------------------- the alignment fetch's bound (F2) -------------------- */
+
+test("the align fetch's decision is the whole bound, by construction", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, F2: the window snap's load half. A page may be
+	 * spent only while there is more to load, nothing is in flight, and the
+	 * cut is real; and never past `max` — the property that keeps an open
+	 * from walking an unbounded conversation into memory.
+	 */
+	const step = (spent, over = {}) =>
+		alignFetchDecision(
+			spent,
+			over.hasMore ?? true,
+			over.loadingOlder ?? false,
+			over.headCut ?? true,
+			over.max ?? 2,
+		);
+	assert.deepEqual(step(0), { fetch: true, spent: 1 });
+	assert.deepEqual(step(1), { fetch: true, spent: 2 });
+	assert.deepEqual(step(2), { fetch: false, spent: 2 }, "the bound holds");
+	assert.deepEqual(
+		step(0, { hasMore: false }),
+		{ fetch: false, spent: 0 },
+		"nothing to load",
+	);
+	assert.deepEqual(
+		step(0, { loadingOlder: true }),
+		{ fetch: false, spent: 0 },
+		"a page is already in flight",
+	);
+	assert.deepEqual(
+		step(0, { headCut: false }),
+		{ fetch: false, spent: 0 },
+		"no cut to fix",
+	);
 });
 
 /* --------------------------- the failed count (F4) ----------------------- */

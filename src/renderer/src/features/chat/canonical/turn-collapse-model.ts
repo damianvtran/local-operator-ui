@@ -300,6 +300,31 @@ export function windowTopRunIsHeadCut(
 	return !enclosing.opensWithUserRow;
 }
 
+/**
+ * The alignment effect's whole decision, as a pure step: spend another page or
+ * not, and the counter it leaves behind.
+ *
+ * WHY IT IS A FUNCTION AND NOT FOUR GUARDS IN AN EFFECT (agent review round 1,
+ * F2): the bound (`ALIGN_FETCH_MAX` pages per conversation) is the property
+ * that keeps an open from walking an unbounded conversation into memory, and
+ * inside an effect it could only be observed by re-mounting a component — a
+ * harness whose own double-mount made the reading ambiguous (measured: the
+ * per-instance cap of two read as three across a strict-mode remount, and the
+ * counts stop either way). Here the table is decided by construction.
+ */
+export function alignFetchDecision(
+	spent: number,
+	hasMore: boolean,
+	loadingOlder: boolean,
+	headCut: boolean,
+	max: number,
+): { fetch: boolean; spent: number } {
+	if (spent >= max || loadingOlder || !hasMore || !headCut) {
+		return { fetch: false, spent };
+	}
+	return { fetch: true, spent: spent + 1 };
+}
+
 function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	/*
