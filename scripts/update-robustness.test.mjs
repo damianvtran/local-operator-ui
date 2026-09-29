@@ -9774,9 +9774,10 @@ const driveGlobalUpdate = async ({
 	/*
 	 * THE FLEET THE GATE SEES. `workState` is the app's existing busy reading
 	 * (`servingWorkState`), and a LIST is consumed one entry per read, which is how
-	 * "busy, then idle" - the drain that had to wait - is driven. `fleet` is the
+	 * "busy, then idle" - a drain that has to wait - would be driven. `fleet` is the
 	 * roster itself, read for the refusal's names and for the before/after pair the
-	 * re-engage compares.
+	 * re-engage compares, and the press that reads ANY of this is the rebuild route's
+	 * install leg: since the 2026-09-29 directive no restart waits on the fleet.
 	 */
 	workState = "idle",
 	fleet = [],
@@ -9877,7 +9878,8 @@ const driveGlobalUpdate = async ({
 		updateService.backendUrl = "http://127.0.0.1:9";
 		/*
 		 * The drain's own bounds, on the arm whose press reaches the gate before it
-		 * installs and again before it restarts.
+		 * installs - the rebuild route's install leg, the one press the directive left
+		 * waiting.
 		 */
 		updateService.fleetDrainBudgetMs = drainBudgetMs;
 		updateService.fleetDrainPollMs = drainPollMs;
@@ -10071,10 +10073,17 @@ test("an update that lands installs first and restarts the app's own daemon afte
 		assert.deepEqual(backendErrors(run.sent), []);
 		const completed = backendCompletion(run.sent);
 		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		/*
+		 * …AND THE COMPLETION NOW CARRIES THE FLEET COUNT (2026-09-29): this fixture's
+		 * world has no live pre-swap runtimes, so the reading is a MEASURED zero - the
+		 * arm that draws no second line - rather than the null an unreadable fleet
+		 * would produce.
+		 */
 		assert.deepEqual(completed.payload, {
 			installVersion: "0.56.0",
 			runningVersion: "0.56.0",
 			restarted: true,
+			sessionsOnOldBuild: 0,
 		});
 	} finally {
 		run.dispose();
@@ -14464,24 +14473,16 @@ const driveAppOwnedUpdate = async ({
 	 */
 	externalBackend = false,
 	/*
-	 * THE FLEET THE GATE SEES, on the arm where the app is the only thing that can
-	 * wait for the move to be safe. `workState` is the app's own busy reading
-	 * (`servingWorkState`), and a LIST is consumed one entry per read - which is how
-	 * "busy, then idle" drives a drain that had to wait. `fleet` is the roster the
-	 * refusal names and the re-engage compares, taken before the move; `fleetAfter`
-	 * is the roster read AFTER it, and its default is `fleet` (nothing moved).
+	 * THE FLEET THE GATE SEES, historically the arm where the app was the only thing
+	 * that could wait for the move to be safe. `workState` is the app's own busy
+	 * reading (`servingWorkState`) - which since the 2026-09-29 directive this route's
+	 * press does NOT read at all; a case asserts exactly that - and `fleet` is the
+	 * roster the re-engage compares, taken before the move; `fleetAfter` is the roster
+	 * read AFTER it, and its default is `fleet` (nothing moved).
 	 */
 	workState = "idle",
 	fleet = [],
 	fleetAfter = null,
-	/*
-	 * The drain's own bounds, in milliseconds. The shipped ones are ten minutes and
-	 * five seconds (`fleet-drain.ts`), which no case should pay, so the fixture
-	 * drives them at the smallest values that still exercise a WAIT rather than a
-	 * single read.
-	 */
-	drainBudgetMs = 5,
-	drainPollMs = 1,
 	/*
 	 * HOW LONG THE PRE-SWAP FLEET MUST HOLD STILL before the re-engage puts back
 	 * what left (`fleetRetireSettleMs`). The shipped value is the harness's own
@@ -14501,9 +14502,10 @@ const driveAppOwnedUpdate = async ({
 	engageHoldMs = 2_000,
 	/*
 	 * The roster as it reads BETWEEN THE PUBLISH AND THE RESTART, when a case needs the
-	 * publish's own retirement wave to be visible before the drain (review round 2,
-	 * R2-M3). Null is the default: nothing retires while the app waits, so the pre-restart
-	 * read is the only before-side and the older cases are unchanged.
+	 * publish's own retirement wave to be visible before the restart (review round 2,
+	 * R2-M3; the drain this window used to span was removed on 2026-09-29). Null is the
+	 * default: nothing retires while the app waits, so the pre-restart read is the only
+	 * before-side and the older cases are unchanged.
 	 */
 	fleetAfterPublish = null,
 	/*
@@ -14512,16 +14514,6 @@ const driveAppOwnedUpdate = async ({
 	 * R2-M1).
 	 */
 	refuseStreams = false,
-	/*
-	 * A LEDGER THAT ALREADY CARRIES AN EARLIER LEG'S WAIT, and the press that owns it. A
-	 * rebuild press drains twice under ONE budget (round 1, m2), so the second leg starts
-	 * with `spentMs > 0` and its own `outcome.waitedMs` near zero - which is the shape the
-	 * refusal's number has to survive (review round 2, R2-m1 = design D9). Driving the
-	 * rebuild route itself needs a checkout on PATH; this is its ledger, which is the
-	 * only part of it the refusal reads.
-	 */
-	presetDrainSpentMs = 0,
-	holdTakenElsewhere = false,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -14571,10 +14563,12 @@ const driveAppOwnedUpdate = async ({
 		/*
 		 * THE PRESS'S HOLD, recorded rather than dropped (review round 1, m1).
 		 * `updateBackend` raises `isAutoUpdating` for the WHOLE press now - it is what
-		 * the periodic drift check reads as its `update-in-flight` hold - and it used
-		 * to be raised around `backend.restart()` alone, which left a ten-minute drain
-		 * with no hold at all. `holdAtFleetRead` is that flag as it stood at each read
-		 * the gate takes, which is the fact the case is about.
+		 * the periodic drift check reads as its `update-in-flight` hold - and the
+		 * cases assert it is raised once at the top and cleared once, at the end.
+		 * `holdAtFleetRead` is that flag as it stood at each read the busy signal
+		 * answers: with the restart-leg drains removed (2026-09-29) a press on this
+		 * route does not read it at all, and the busy-proceeds case asserts exactly
+		 * that.
 		 */
 		autoUpdating: [],
 		holdAtFleetRead: [],
@@ -14684,14 +14678,15 @@ const driveAppOwnedUpdate = async ({
 				autoUpdating = value;
 				calls.autoUpdating.push(value);
 			},
-			checkIsAutoUpdating: () =>
-				holdTakenElsewhere === true ? true : autoUpdating,
+			checkIsAutoUpdating: () => autoUpdating,
 			/*
 			 * The app's existing busy reading, and the ROSTER beside it - the two the fleet
-			 * gate waits on (`drainFleetForUpdate`). A `workState` list is the machine that
-			 * was busy when the press arrived and idle a poll later; absent defaults keep
-			 * every older case in this file exactly where it was, because an idle first read
-			 * is the drain that costs one round trip and changes nothing.
+			 * gate waits on (`drainFleetForUpdate`, which since the 2026-09-29 directive
+			 * guards the rebuild route's install leg only). `holdAtFleetRead` still records
+			 * every read of THIS one, so a case can pin that the restart legs do not
+			 * consult it at all; a case that supplies a `workState` list still drives a
+			 * wait on the route that reads it. Absent defaults keep every older case in
+			 * this file exactly where it was.
 			 */
 			servingWorkState: async () => {
 				calls.holdAtFleetRead.push(autoUpdating);
@@ -14826,8 +14821,6 @@ const driveAppOwnedUpdate = async ({
 	};
 	try {
 		updateService.backendUrl = "http://127.0.0.1:9";
-		updateService.fleetDrainBudgetMs = drainBudgetMs;
-		updateService.fleetDrainPollMs = drainPollMs;
 		/*
 		 * The retire wait's own window, on the cases that reach the re-engage: the
 		 * shipped 30 s stride is the harness's real convergence and no case should pay
@@ -14913,12 +14906,13 @@ const driveAppOwnedUpdate = async ({
 		daemon = await startFakeDesktopDaemon({ refuseStreams });
 		relay = new service.DesktopStreamRelay(daemon.url, "fixture-token");
 		/*
-		 * THE LEDGER, SET BEFORE THE PRESS TAKES IT. `updateBackend` zeroes
-		 * `fleetDrainSpentMs` only when IT takes the update-in-flight flag, so a press whose
-		 * flag is already held carries the earlier leg's spend into its own drain - which is
-		 * how the rebuild route reaches a restart leg with ~0 left of the budget.
+		 * THE LEDGER IS NOT STOOD UP HERE ANY MORE. This fixture used to preset
+		 * `fleetDrainSpentMs` so a case could carry an earlier leg's spend into the
+		 * restart-leg drain; the operator's directive removed those drains (2026-09-29),
+		 * so the only press that reaches the gate is the rebuild route's install leg -
+		 * which takes the ledger from its own zero, and is driven in the global fixture
+		 * below.
 		 */
-		updateService.fleetDrainSpentMs = presetDrainSpentMs;
 		const result = await updateService.updateBackend(target);
 		return { result, sent, calls, order, updateService, daemon, dispose };
 	} catch (error) {
@@ -14969,6 +14963,11 @@ test("an app-owned press publishes first and only then moves the daemon", async 
 		);
 		const completed = completions(driven.sent);
 		assert.equal(completed.length, 1);
+		/*
+		 * …WITH THE FLEET COUNT BESIDE THE READINGS (2026-09-29): this fixture's world
+		 * holds no live pre-swap runtime, so the count is a MEASURED zero - the arm
+		 * that draws no second line.
+		 */
 		assert.deepEqual(
 			{
 				...completed[0].payload,
@@ -14977,6 +14976,7 @@ test("an app-owned press publishes first and only then moves the daemon", async 
 				installVersion: "0.56.12",
 				runningVersion: "0.56.12",
 				restarted: true,
+				sessionsOnOldBuild: 0,
 			},
 			"a restart that came back on the new build is the success payload, unchanged",
 		);
@@ -15388,15 +15388,24 @@ test("the app-owned offer states the restart and its cost, not the filler twice"
 		);
 		assert.match(
 			plan.remedy,
-			/publishes the new build beside the one the server is using, waits for the turns already running on this machine to finish/,
+			/publishes the new build beside the one the server is using and then moves the server onto it/,
 			plan.remedy,
 		);
 		/*
-		 * AND IT MAY NOT PROMISE A DROPPED TURN any more: this arm's whole press now
-		 * drains the fleet first, so the sentence states that nothing in flight is
-		 * cut off rather than admitting what it destroys.
+		 * AND IT MAY NOT PROMISE A DROPPED TURN, and no longer prices a wait: the
+		 * operator's directive (2026-09-29) removed the fleet wait from the restart
+		 * legs, so the sentence names the sequence, the absence of dropped work, and
+		 * the idle-switch that replaces the wait. Both halves are asserted, because
+		 * the old sentence's shape could otherwise sneak back through a copy edit
+		 * that kept the first clause.
 		 */
+		assert.match(
+			plan.remedy,
+			/Sessions that are still working move onto the new build when they next stop or go idle/,
+			plan.remedy,
+		);
 		assert.doesNotMatch(plan.remedy, /turn that is in flight is dropped/);
+		assert.doesNotMatch(plan.remedy, /waits for the turns already running/);
 		assert.equal(plan.canManageUpdate, true);
 	} finally {
 		if (interval) clearInterval(interval);
@@ -16385,26 +16394,38 @@ test("a start-up that observes an install arrived retires the record, and a fail
  * ---------------------------------------------------------------- the fleet gate
  *
  * THE RULE THESE CASES EXIST FOR, in the operator's words: "nothing should kill
- * runtimes en masse, ever". A restart of the server serving this app is
- * `stop(true)` - SIGTERM, ten seconds, SIGKILL - and the daemon's own `retire.py`
- * declines that exit for exactly this reason. So an update press now drains the
- * fleet first (`drainFleetForUpdate` -> `backend/fleet-drain.ts`), refuses rather
- * than cutting off a turn on a timer, and puts back what a move displaced.
+ * runtimes en masse, ever". The one route that can still cut a turn is the
+ * checkout REBUILD's install leg, which rewrites a tree a live runtime is
+ * reading - and that leg still drains the fleet first (`drainFleetForUpdate` ->
+ * `backend/fleet-drain.ts`) and refuses rather than cutting off a turn on a
+ * timer. THE RESTART LEGS STOPPED WAITING (2026-09-29, the operator's directive):
+ * a daemon bounce cuts no turns - session runtimes are detached and converge onto
+ * the new build at their own next idle - so what the cases below pin is the new
+ * contract: a press on a BUSY fleet proceeds without ever consulting
+ * `servingWorkState`, the restart and the re-engage still happen, and the
+ * completion carries the count of sessions still on the old build.
  *
  * The busy signal is the app's EXISTING one - the roster's `live_state`, read by
- * `servingWorkState`, which the version-drift gate already asks for - so the
+ * `servingWorkState`, which the version-drift gate already asks for - and the
  * fixtures below answer the two readers the manager already has
  * (`servingWorkState`, `servingSessionFleet`) rather than a new notion of busy.
  */
 
-test("a press that cannot drain does not restart the server, and says why", async () => {
+test("a press on a busy fleet proceeds, and the turns are never consulted", async () => {
+	/*
+	 * THE OPERATOR'S OWN CASE (2026-09-29). The press used to wait for the fleet and
+	 * refuse on a busy machine - the operator's log: "Refusing to restart: the fleet
+	 * did not drain in 602562ms (busy, 21 mid-turn ...)" - and the directive removed
+	 * the restart-leg drains: a daemon bounce cuts no turns, so a busy fleet is not a
+	 * reason to hold an update back, and `servingWorkState` is not read AT ALL
+	 * between the press and its completion.
+	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
 		servingAfterRestart: "0.56.12",
 		/*
 		 * The machine the operator's own report describes: somebody else's turn is
-		 * running when the press arrives, and a listed name, so the refusal can name
-		 * it rather than saying "something is busy".
+		 * running when the press arrives, and it stays running for the whole press.
 		 */
 		workState: "busy",
 		fleet: [
@@ -16414,6 +16435,82 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 				kind: "daemon",
 				live_state: "busy",
 			},
+		],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			true,
+			"a busy fleet is no longer a reason to refuse the press",
+		);
+		assert.equal(
+			driven.calls.restarts,
+			1,
+			"the restart the reader asked for happens",
+		);
+		assert.deepEqual(
+			phases(driven.sent),
+			["installing", "restarting"],
+			JSON.stringify(phases(driven.sent)),
+		);
+		assert.deepEqual(
+			updateErrors(driven.sent),
+			[],
+			"no refusal path exists on this route any more",
+		);
+		assert.deepEqual(
+			driven.calls.holdAtFleetRead,
+			[],
+			"the press never consults the busy reading on this route",
+		);
+		/*
+		 * THE HOLD STILL COVERS THE WHOLE PRESS (review round 1, m1): the flag is what
+		 * the periodic drift check reads as its `update-in-flight` hold, so it is
+		 * raised once at the top and cleared once at the end even though no wait runs
+		 * under it on this route.
+		 */
+		assert.deepEqual(
+			driven.calls.autoUpdating,
+			[true, false],
+			"raised once at the top of the press and cleared once, at the end",
+		);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1, JSON.stringify(completed));
+		assert.equal(completed[0].payload.restarted, true);
+		/*
+		 * AND THE COUNT RIDES THE COMPLETION (2026-09-29): a1 was live through the
+		 * whole re-engage window and is still on the old build, so the notice's second
+		 * line has a session to name.
+		 */
+		assert.equal(completed[0].payload.sessionsOnOldBuild, 1);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the completion counts the sessions still on the old build", async () => {
+	/*
+	 * THE OPERATOR'S MESSAGE, AS A READING (design §2d, 2026-09-29): "we can just
+	 * communicate in the popup that N sessions are still running old versions but
+	 * will get the updates when they next stop or idle". N is `stillResident` at
+	 * the re-engage window's end, and this case leaves TWO pre-swap runtimes live
+	 * for the whole window, so the count is 2 - not the displaced set's zero, and
+	 * not an unmeasured null.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "bbbbbbbbbbb2",
+				name: "Idle chat",
+				kind: "tui",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
 			{
 				id: "bbbbbbbbbbb2",
 				name: "Idle chat",
@@ -16423,86 +16520,53 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 		],
 	});
 	try {
+		assert.equal(driven.result, true);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(completed[0].payload.restarted, true);
 		assert.equal(
-			driven.result,
-			false,
-			"an update that cannot drain is REFUSED, not forced",
-		);
-		assert.equal(
-			driven.calls.restarts,
-			0,
-			"nothing may restart the daemon while a turn is in flight",
-		);
-		/*
-		 * The phase is announced as a wait: a press that sits still for minutes
-		 * behind an "installing" that has not started is the silence this panel's
-		 * copy exists to remove.
-		 */
-		assert.ok(
-			phases(driven.sent).includes("draining"),
-			JSON.stringify(phases(driven.sent)),
-		);
-		const refused = updateErrors(driven.sent);
-		assert.equal(refused.length, 1, JSON.stringify(refused));
-		assert.match(refused[0].payload.message, /still running a turn/);
-		assert.match(refused[0].payload.message, /Nightly enrichment/);
-		/*
-		 * The published environment IS on disk by then, and the sentence says so:
-		 * telling the reader an update did not happen when one did is the mirror of
-		 * the promise this change removes.
-		 */
-		assert.match(refused[0].payload.message, /install itself has landed/);
-		/*
-		 * AND THE HEADING'S FACT TRAVELS WITH IT (design round 2, D6). The panel cannot
-		 * infer this from the sentence: two of the three refusal sites happen after the
-		 * install landed, and a heading of "The update didn't start" over the sentence
-		 * above is the frame contradicting itself in one paragraph. The field is also what
-		 * keeps the OTHER clause out of this arm's sentence - they are alternatives, not
-		 * additions.
-		 */
-		assert.equal(refused[0].payload.refusal.installLanded, true);
-		assert.doesNotMatch(refused[0].payload.message, /Nothing was installed/);
-		assert.deepEqual(
-			completions(driven.sent),
-			[],
-			"a refused press reports the refusal, not a completion",
+			completed[0].payload.sessionsOnOldBuild,
+			2,
+			JSON.stringify(completed[0].payload),
 		);
 	} finally {
 		driven.dispose();
 	}
 });
 
-test("a press that had to wait installs anyway once the fleet drains", async () => {
+test("an unreadable fleet is reported as unmeasured, never as a zero", async () => {
+	/*
+	 * THE DEGRADED ARM (design §2a/§2d). The roster cannot be read at all, so
+	 * there is no snapshot to diff and no re-engage to run - the press still
+	 * proceeds (the restart never needed the fleet), and the completion says
+	 * `null`, which the renderer paints as the numberless sentence rather than
+	 * inventing a count of zero.
+	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
 		servingAfterRestart: "0.56.12",
-		/*
-		 * Busy on the FIRST read and idle on the next: the drain is a wait rather
-		 * than a refusal here, which is the whole difference between this case and
-		 * the one above.
-		 */
-		workState: ["busy", "idle"],
-		fleet: [
-			{
-				id: "aaaaaaaaaaa1",
-				name: "Nightly enrichment",
-				kind: "daemon",
-				live_state: "busy",
-			},
-		],
+		fleet: null,
+		fleetAfter: null,
 	});
 	try {
-		assert.equal(driven.result, true);
-		assert.equal(driven.calls.restarts, 1);
-		assert.deepEqual(
-			phases(driven.sent),
-			["installing", "draining", "restarting"],
-			JSON.stringify(phases(driven.sent)),
+		assert.equal(
+			driven.result,
+			true,
+			`a fleet the app cannot read no longer refuses the press: ${JSON.stringify(updateErrors(driven.sent).map((e) => e.payload.message))}`,
 		);
-		assert.deepEqual(updateErrors(driven.sent), []);
 		const completed = completions(driven.sent);
 		assert.equal(completed.length, 1);
 		assert.equal(completed[0].payload.restarted, true);
+		assert.equal(
+			completed[0].payload.sessionsOnOldBuild,
+			null,
+			"an unreadable fleet is not measured, and null is how that travels",
+		);
+		assert.deepEqual(
+			driven.calls.desktop.filter((request) => request.op === "sessions.watch"),
+			[],
+			"with no snapshot there is nothing to re-engage, so no lease is sent",
+		);
 	} finally {
 		driven.dispose();
 	}
@@ -16553,6 +16617,14 @@ test("the move re-engages the sessions it displaced, and only those", async () =
 		assert.match(watch.subscriptionId, /^[a-f0-9]{32}$/);
 		assert.equal(watch.visible, true);
 		assert.equal(watch.canNotify, false);
+		/*
+		 * AND THE COUNT THE COMPLETION CARRIES IS THIS WINDOW'S READING: a1 stayed live
+		 * through the whole re-engage wait, so it is the one session still on the old
+		 * build; c3's runtime came back during the window, so it is not.
+		 */
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(completed[0].payload.sessionsOnOldBuild, 1);
 	} finally {
 		driven.dispose();
 	}
@@ -16660,26 +16732,29 @@ test("a session whose stream cannot be opened is reported, never leased on an in
 	}
 });
 
-test("a retirement during the drain, before the restart, is still re-engaged", async () => {
+test("a retirement between the publish and the restart is still re-engaged", async () => {
 	/*
 	 * THE HOLE THE ROUND-1 M2 FIX LEFT ON THIS ROUTE (review round 2, R2-M3). The
-	 * before-side was the pre-restart read alone, and the publish happens minutes earlier
-	 * in the same method: an idle runtime retires on the build skew while the app waits
-	 * out a ten-minute drain, so it is gone before the only read that could name it and
-	 * is never put back. The reading is now taken between the publish and the drain and
-	 * unioned with the pre-restart one - which is the reading the rebuild route already
-	 * kept for its own install leg.
+	 * before-side was the pre-restart read alone, and the publish happens earlier in
+	 * the same method: an idle runtime retires on the build skew the moment the
+	 * publish lands, so it is gone before the only read that could name it and is
+	 * never put back. The reading is now taken between the publish and the restart
+	 * and unioned with the pre-restart one - which is the reading the rebuild route
+	 * already kept for its own install leg. When the fix landed, the window between
+	 * the two reads was a drain of up to ten minutes; the 2026-09-29 directive
+	 * removed that drain, but the publish itself is still what starts the retirement
+	 * wave, so the publish-side read is still the one that can name it.
 	 *
 	 * THE FIXTURE IS A READ SCHEDULE, NOT A MONOTONE MACHINE, and what this case is
 	 * worth is WHICH READ NAMES b2 (review round 3, R3-M1). The publish-side snapshot is
-	 * the only one of the press's reads that carries b2: the drain's own read and the
-	 * pre-restart read both answer without it, so the before-side can hold b2 ONLY
-	 * through the union, and reverting the union leaves nothing displaced at all. It used
-	 * to hand b2 to the drain's read and to every read after the publish-side one, so the
-	 * pre-restart snapshot named b2 by itself and this case passed with the union
-	 * reverted - an evidence defect, not a behavioural one: the union is correct and was
-	 * unguarded. The shape is `fleet: []` with `fleetAfterPublish: [b2]` for exactly that
-	 * reason, and the union is what makes the difference.
+	 * the only one of the press's reads that carries b2: the pre-restart read answers
+	 * without it, so the before-side can hold b2 ONLY through the union, and reverting
+	 * the union leaves nothing displaced at all. An earlier shape handed b2 to every
+	 * read after the publish-side one, so the pre-restart snapshot named b2 by itself
+	 * and this case passed with the union reverted - an evidence defect, not a
+	 * behavioural one: the union is correct and was unguarded. The shape is `fleet: []`
+	 * with `fleetAfterPublish: [b2]` for exactly that reason, and the union is what
+	 * makes the difference.
 	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
@@ -16707,85 +16782,6 @@ test("a retirement during the drain, before the restart, is still re-engaged", a
 			driven.daemon.acceptedLeases.map((lease) => lease.sessionId),
 			["bbbbbbbbbbb2"],
 			"a session the publish retired is displaced by this press and must come back",
-		);
-	} finally {
-		driven.dispose();
-	}
-});
-
-test("the refusal reports the press's wait, not the leg's", async () => {
-	/*
-	 * D9 = R2-m1: ONE JOURNEY, ONE NUMBER. The reading the reader watches (`draining`'s
-	 * `waitedMs`) is the press's total - `spentMs + elapsedMs` - and the refusal used to
-	 * report the SECOND leg's own elapsed, which is ~0 once the first leg has spent the
-	 * budget. The ledger below carries a spent leg with the flag already held, which is
-	 * the state the rebuild route reaches; the refusal's number must be the press's,
-	 * which is at least everything the panel already showed.
-	 */
-	const driven = await driveAppOwnedUpdate({
-		servingBeforeRestart: "0.56.8",
-		servingAfterRestart: "0.56.12",
-		workState: "busy",
-		fleet: [
-			{
-				id: "aaaaaaaaaaa1",
-				name: "Nightly enrichment",
-				kind: "daemon",
-				live_state: "busy",
-			},
-		],
-		presetDrainSpentMs: 240_000,
-		holdTakenElsewhere: true,
-	});
-	try {
-		assert.equal(driven.result, false);
-		const refused = updateErrors(driven.sent);
-		assert.equal(refused.length, 1, JSON.stringify(refused));
-		assert.ok(
-			refused[0].payload.refusal.waitedMs >= 240_000,
-			`the refusal must carry the press's total, not this leg's share: ${refused[0].payload.refusal.waitedMs}`,
-		);
-	} finally {
-		driven.dispose();
-	}
-});
-
-test("the press holds the update-in-flight flag for the whole drain, not only the restart", async () => {
-	const driven = await driveAppOwnedUpdate({
-		servingBeforeRestart: "0.56.8",
-		servingAfterRestart: "0.56.12",
-		/*
-		 * A fleet that is busy when the press arrives and idle a poll later, so the
-		 * press really WAITS inside the gate - which is the window this case is about.
-		 */
-		workState: ["busy", "idle"],
-		fleet: [
-			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
-		],
-		fleetAfter: [],
-	});
-	try {
-		assert.equal(driven.result, true);
-		/*
-		 * THE HOLD COVERS EVERY FLEET READ OF THE PRESS (review round 1, m1). The flag
-		 * is what the periodic drift check reads as its `update-in-flight` hold, and it
-		 * used to be raised around `backend.restart()` alone - so a drain of up to ten
-		 * minutes ran with no hold, and the moment it cleared the drift check could find
-		 * the pair stale and the fleet idle and bounce the daemon ITSELF: under the
-		 * press, with no snapshot of its own and no re-engage.
-		 */
-		assert.ok(
-			driven.calls.holdAtFleetRead.length >= 2,
-			`the press reads the fleet more than once: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
-		);
-		assert.ok(
-			driven.calls.holdAtFleetRead.every((held) => held === true),
-			`every fleet read happens under the hold: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
-		);
-		assert.deepEqual(
-			driven.calls.autoUpdating,
-			[true, false],
-			"raised once at the top of the press and cleared once, at the end",
 		);
 	} finally {
 		driven.dispose();
@@ -16895,12 +16891,14 @@ test("a generation install announces and leaves the app-owned daemon on its buil
 	}
 });
 
-test("a press with nothing left to install still moves the daemon, through the drain", async () => {
+test("a press with nothing left to install still moves the daemon, and never waits", async () => {
 	/*
 	 * The skew panel's own control: the install is already current, so there is
 	 * nothing to install and the restart IS the work the reader asked for. It is the
-	 * one press on the generation layout that moves the server, and it goes through
-	 * the same drain as every other restart.
+	 * one press on the generation layout that moves the server, and since the
+	 * 2026-09-29 directive it does not wait on the fleet to do it - the fixture gives
+	 * a busy reading all the same (a shape the case should never consult), and the
+	 * phase list must not contain a wait.
 	 */
 	const install = syntheticGenerationInstall("g0002");
 	const run = await driveGlobalUpdate({
@@ -16909,19 +16907,150 @@ test("a press with nothing left to install still moves the daemon, through the d
 		target: "0.56.0",
 		daemonReports: "0.56.0",
 		servingPrefix: install.prefix,
-		workState: ["busy", "idle"],
+		workState: "busy",
 	});
 	try {
 		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
 		assert.equal(run.calls.restarts, 1);
 		assert.ok(
-			backendPhases(run.sent).includes("draining"),
+			!backendPhases(run.sent).includes("draining"),
 			JSON.stringify(backendPhases(run.sent)),
 		);
 		const completed = backendCompletion(run.sent);
 		assert.equal(completed.payload.restarted, true);
+		/*
+		 * AND A MEASURED ZERO IS A COUNT, NOT A NULL (design §2d): no session had a
+		 * live runtime before the move, so nothing is still on the old build and the
+		 * notice draws its plain success rather than the numberless sentence.
+		 */
+		assert.equal(completed.payload.sessionsOnOldBuild, 0);
 	} finally {
 		run.dispose();
+	}
+});
+
+/**
+ * THE REBUILD ROUTE'S DRAIN IS THE ONE THAT STAYS, AND THIS DRIVES IT FOR REAL
+ * (2026-09-29, the variant-B scope decision).
+ *
+ * The operator's directive removed the fleet drain from the two RESTART legs; the
+ * rebuild route's INSTALL leg keeps it, because that leg rewrites a tree a live
+ * runtime is reading. This case is the counter-example to the busy-proceeds
+ * journeys above: the same busy machine, on the one route that still waits - the
+ * press refuses, nothing is installed, and the refusal is the install-less arm.
+ *
+ * WHAT MAKES THE ROUTE REACHABLE. It needs a serving install that classifies as a
+ * uv-tool SOURCE BUILD (a real console script, a `uv-receipt.toml`, a hex-ref
+ * `.lop-source` and a dist-info) AND a `lop-update` this machine resolves - which
+ * CI does not have. The case therefore writes BOTH: the install under its own temp
+ * root, and a shim `lop-update` FIRST on `process.env.PATH` for the duration of
+ * the press (`resolveCommandPath` searches the PATH entries before its own install
+ * locations, so the shim wins everywhere deterministically). PATH is restored in
+ * `finally` so no sibling case sees the shim, and the runner is stubbed, so the
+ * shim is never executed.
+ */
+test("the rebuild route still waits for the fleet, and refuses on a busy one", async () => {
+	const servingRoot = mkdtempSync(join(tmpdir(), "lo-rebuild-serving-"));
+	mkdirSync(join(servingRoot, "bin"), { recursive: true });
+	const servingScript = join(servingRoot, "bin", "local-operator");
+	writeFileSync(
+		servingScript,
+		'#!/bin/sh\nexec python -m local_operator "$@"\n',
+		{ mode: 0o755 },
+	);
+	writeFileSync(
+		join(servingRoot, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+	);
+	/*
+	 * The marker's real shape: `<sha> <ref>`, and the ref has to be the hex token
+	 * `isSourceBuildRef` accepts (7-40 hex characters) - `pypi` or a bare version
+	 * would classify the install as a release and take the entry point instead.
+	 */
+	writeFileSync(
+		join(servingRoot, ".lop-source"),
+		"2a0b4730f1e2d3c4b5a69788796a5b4c3d2e1f00 main\n",
+	);
+	const distInfo = join(
+		servingRoot,
+		"lib",
+		"python3.12",
+		"site-packages",
+		"local_operator-0.55.10.dist-info",
+	);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		"Metadata-Version: 2.1\nName: local-operator\nVersion: 0.55.10\n",
+	);
+
+	const toolDir = mkdtempSync(join(tmpdir(), "lo-rebuild-tool-"));
+	writeFileSync(join(toolDir, "lop-update"), "#!/bin/sh\nexit 0\n", {
+		mode: 0o755,
+	});
+	const originalPath = process.env.PATH;
+	process.env.PATH = `${toolDir}:${originalPath ?? ""}`;
+	try {
+		const run = await driveGlobalUpdate({
+			servingPrefix: servingRoot,
+			/*
+			 * The machine the operator's log describes, on the one route that still
+			 * waits: a session mid-turn, so the drain can only refuse.
+			 */
+			workState: "busy",
+			fleet: [
+				{
+					id: "aaaaaaaaaaa1",
+					name: "Nightly enrichment",
+					kind: "daemon",
+					live_state: "busy",
+				},
+			],
+		});
+		try {
+			assert.equal(await run.updateService.updateBackend("0.56.0"), false);
+			/*
+			 * THE WAIT IS ANNOUNCED (the draining phase), and NOTHING RAN: the refusal
+			 * comes before the installer is reached, which is what "Nothing was
+			 * installed" means.
+			 */
+			assert.ok(
+				backendPhases(run.sent).includes("draining"),
+				JSON.stringify(backendPhases(run.sent)),
+			);
+			assert.deepEqual(
+				run.calls.installers,
+				[],
+				"a refused rebuild runs nothing",
+			);
+			const refused = backendErrors(run.sent);
+			assert.equal(refused.length, 1, JSON.stringify(refused));
+			assert.match(refused[0].payload.message, /Nothing was installed/);
+			assert.match(refused[0].payload.message, /still running a turn/);
+			assert.match(refused[0].payload.message, /Nightly enrichment/);
+			/*
+			 * AND THE INSTALL-LESS ARM IS THE ONLY ONE (design round 2, D6; simplified
+			 * 2026-09-29): the after-the-install clause went with the restart-leg drains,
+			 * so neither the sentence nor the payload may still carry it.
+			 */
+			assert.doesNotMatch(
+				refused[0].payload.message,
+				/install itself has landed/,
+			);
+			assert.equal(refused[0].payload.refusal.installLanded, undefined);
+			/* The by-hand route is the plan's own command for this route. */
+			assert.equal(refused[0].payload.refusal.command, "lop-update");
+			assert.equal(backendCompletion(run.sent), undefined);
+		} finally {
+			run.dispose();
+		}
+	} finally {
+		if (originalPath === undefined) {
+			// biome-ignore lint/performance/noDelete: restoring the environment exactly - an ABSENT PATH is not an empty-string PATH, and `= undefined` would leave a synthesized one behind for every case after this one.
+			delete process.env.PATH;
+		} else process.env.PATH = originalPath;
+		rmSync(servingRoot, { recursive: true, force: true });
+		rmSync(toolDir, { recursive: true, force: true });
 	}
 });
 
