@@ -5084,7 +5084,24 @@ export const STORIES = [
 	 * exists to prevent.
 	 */
 	["common-updatenotification--backend-update-installing", 1280, 900],
-	["common-updatenotification--backend-update-restarting", 1280, 900],
+	[
+		"common-updatenotification--backend-update-restarting",
+		1280,
+		900,
+		/*
+		 * AND THE NEW CLAUSE IS THE SUBJECT (2026-09-29): the restarting sentence used
+		 * to say the app waited for the turns to finish first; the operator's directive
+		 * removed that wait, so the sentence now states the fact the directive rests
+		 * on - the turns kept running - and this claim is what refuses a stale frame of
+		 * the old wording.
+		 */
+		{
+			expectSentence: [
+				"The new build has landed",
+				"the turns running on this machine kept running",
+			],
+		},
+	],
 	/*
 	 * THE WAIT BEFORE ANYTHING MOVES, and the one in-flight state this branch adds
 	 * (design round 1, D3). It was undeclared until now, so the repo's own rig could
@@ -5121,35 +5138,88 @@ export const STORIES = [
 	 * own sentence said the app would offer the update again. Both arms are declared
 	 * because they say different things about what happened: a measured busy fleet,
 	 * and a fleet nothing could read.
+	 *
+	 * AND THE COMMAND IS CLAIMED TOO (review round 1, U1): the only reachable
+	 * refusal is the rebuild install leg, whose remedy is the plan's own
+	 * `lop-update` - the fixture carries it and both claims pin it, so a frame
+	 * cannot show a terminal command the producer cannot emit.
 	 */
 	[
 		"common-updatenotification--backend-update-refused-busy-fleet",
 		1280,
 		900,
-		{ expectSentence: "The app waited 10 minutes for them to finish" },
+		{
+			expectSentence: [
+				"The app waited 10 minutes for them to finish",
+				"lop-update",
+			],
+		},
 	],
 	[
 		"common-updatenotification--backend-update-refused-unreadable-fleet",
 		1280,
 		900,
-		{ expectSentence: "The server refused this app's credentials" },
+		{
+			expectSentence: [
+				"The server refused this app's credentials",
+				"lop-update",
+			],
+		},
 	],
 	/*
-	 * AND THE THIRD ARM, WHICH IS A DIFFERENT HEADING (design round 2, D6): this press
-	 * published the build and was refused the bounce, so the panel may not say "The
-	 * update did not start" over a sentence that says the install has landed. Declared
-	 * as its own story rather than injected into a page, which is how the round-2 review
-	 * had to judge it.
+	 * AND THE THIRD ARM IS GONE (2026-09-29): a refusal CANNOT happen after a
+	 * landed install any more, because the drains that ran after the build was on
+	 * disk were the restart legs' and the operator's directive removed them. The
+	 * story and its claim went with the arm rather than staying as copy nothing can
+	 * produce; the two arms above are the ones the rebuild install leg still
+	 * reaches.
+	 */
+	/*
+	 * THE COMPLETION'S FLEET LINE, in the four readings the producer can send
+	 * (2026-09-29; design §2/§4a). The operator's instruction - "we can just
+	 * communicate in the popup that N sessions are still running old versions but
+	 * will get the updates when they next stop or idle" - rendered where the
+	 * completion already lands: N = 0 draws the plain success, N = 1 and N >= 2 add
+	 * the counted second line, and an unmeasured count draws the numberless one.
+	 * ONE CAPTURE NOTE FOR THE SHOOTER: the toast self-closes (6 s, or 8 s once it
+	 * carries the second line), so a shutter that waits on the wrong cue lands on a
+	 * frame with no toast in it - these four want their shots inside that window.
 	 */
 	[
-		"common-updatenotification--backend-update-refused-landed-install",
+		"common-updatenotification--backend-update-completed",
+		1280,
+		900,
+		{ expectSentence: "Server update completed successfully" },
+	],
+	[
+		"common-updatenotification--backend-update-completed-one-session",
 		1280,
 		900,
 		{
 			expectSentence: [
-				"The update didn't finish restarting",
-				"The install itself has landed",
+				"Server update completed successfully",
+				"1 session is still running the old build",
 			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-completed-sessions-behind",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Server update completed successfully",
+				"3 sessions are still running the old build",
+				"will move onto the new build when they next stop or go idle",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-completed-count-unreadable",
+		1280,
+		900,
+		{
+			expectSentence: "Sessions that are still running the old build",
 		},
 	],
 	/*
@@ -5168,7 +5238,27 @@ export const STORIES = [
 	 * to photograph - which is what makes this pair evidence rather than an
 	 * illustration.
 	 */
-	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	[
+		"common-updatenotification--server-behind-app-owned",
+		1280,
+		900,
+		/*
+		 * THE COST SENTENCE IS THE SUBJECT OF THE RE-SHOOT (2026-09-29): S6 was recomposed
+		 * without the drain bound, so this panel's frame must show the outage AND the
+		 * promise that nothing in flight is cut off - the same pair `update-affirmation`
+		 * asserts, and the pair a frame of the old wording cannot carry. THE CLAIM BELOW
+		 * CARRIES THE SENTENCE'S OWN CAPITALISATION (review round 1, D1): the gate
+		 * compares case-sensitively (`painted.includes`, below), so the lowercase
+		 * spelling this claim first shipped could never match and the re-shoot died at
+		 * the shutter.
+		 */
+		{
+			expectSentence: [
+				"offline while it comes back",
+				"Nothing in flight is cut off",
+			],
+		},
+	],
 	/*
 	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
 	 * frame on any branch, and neither is reachable from a trigger flag: both exist
@@ -5200,6 +5290,24 @@ export const STORIES = [
 		1280,
 		900,
 		{ expectSentence: "The app updates this install itself" },
+	],
+	/*
+	 * AND THE OFFER THE OPERATOR'S OWN PRESS READS (review round 1, U2,
+	 * 2026-09-29): the app-owned managed arm, whose paragraph is the plan's own
+	 * managed sentence - it names the publish-and-move, the promise that nothing
+	 * in flight is cut off, and the idle switch. It is the one offer whose press
+	 * publishes a generation and restarts the daemon the app started, and it had
+	 * no frame and no declaration anywhere; declared here so the design round can
+	 * photograph it the ordinary way.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-app-owned",
+		1280,
+		900,
+		{
+			expectSentence:
+				"The app publishes the new build beside the one the server is using",
+		},
 	],
 	[
 		"common-updatenotification--backend-update-failed-orphan",
