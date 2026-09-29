@@ -76,6 +76,12 @@ const project = (
 const THREE: DesktopProject[] = [
 	project("p1", "payments-migration", {
 		description: "Cut the payments API over to the new service",
+		/* The team fields ship since the backend slice (`title`/`owner`/`team`);
+		 * the three rows cover the three section outcomes — a named team, an
+		 * owner-only row (the fallback bucket) and the `No team` bucket — so
+		 * every frame of this fixture exercises the grouping rule. */
+		owner: "atlas",
+		team: "platform",
 		tags: ["q4", "payments"],
 		start_date: "2026-09-01",
 		target_date: "2026-10-15",
@@ -91,6 +97,9 @@ const THREE: DesktopProject[] = [
 	}),
 	project("p2", "q4-hardening", {
 		description: "Error budgets, retries and the load shed",
+		/* Owner only: no team on this row, so it files under its owner's name. */
+		owner: "atlas",
+		team: null,
 		status: "paused",
 		start_date: "2026-09-10",
 		target_date: "2026-12-01",
@@ -105,6 +114,9 @@ const THREE: DesktopProject[] = [
 	}),
 	project("p3", "docs-pass", {
 		description: "Rewrite the guides against the new CLI",
+		/* Neither field: the `No team` bucket. */
+		owner: null,
+		team: null,
 		status: "done",
 		completed_at: "2026-09-12",
 		milestones_completed: 1,
@@ -122,6 +134,11 @@ const MANY: DesktopProject[] = [
 	...Array.from({ length: 9 }, (_, index) =>
 		project(`m${index}`, `migration-batch-${index + 1}`, {
 			description: `Batch ${index + 1} of the storage migration`,
+			/* Cycled across the two teams and the bucket: the twelve-row list
+			 * overflows its scroller under three sections, which is the state
+			 * the sticky pass photographs. */
+			team: (["platform", "atlas", null] as const)[index % 3],
+			owner: "atlas",
 			target_date: `2026-11-0${(index % 9) + 1}`,
 			estimate: index + 1,
 			milestones_completed: index % 3,
@@ -133,6 +150,52 @@ const MANY: DesktopProject[] = [
 		}),
 	),
 ];
+
+/**
+ * Twenty-four rows, for the sticky story alone: with twelve the whole list
+ * still fits a 1280x900 frame, so the one state that story exists for — the
+ * second section's header reaching the scroller's top — is unreachable, and
+ * the play would be asserting a pin that can never happen.
+ */
+const MANY_LONG: DesktopProject[] = [
+	...MANY,
+	...Array.from({ length: 12 }, (_, index) =>
+		project(`n${index}`, `hardening-batch-${index + 1}`, {
+			description: `Harden surface ${index + 1} against the new load`,
+			team: (["platform", "atlas", null] as const)[index % 3],
+			owner: "atlas",
+			estimate: index + 1,
+			milestones_completed: 0,
+			milestones_total: 2,
+			sessions: 0,
+			live_sessions: 0,
+			progress_stale: false,
+			progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 2) * HOUR_S,
+		}),
+	),
+];
+
+/**
+ * The board-sticky story's own fixture: twenty active cards over two teams, so
+ * the active column is taller than the frame and carries two straps. The
+ * shared board fixtures never fill a column past the frame, and a strap that
+ * cannot reach its pin offset cannot be measured against it.
+ */
+const BOARD_LONG: DesktopProject[] = Array.from({ length: 20 }, (_, index) =>
+	project(`b${index}`, `load-shed-${index + 1}`, {
+		description: `Slice ${index + 1} of the load shed`,
+		team: index % 2 === 0 ? "platform" : "atlas",
+		status: "active",
+		target_date: `2026-11-${String((index % 28) + 1).padStart(2, "0")}`,
+		estimate: (index % 8) + 1,
+		milestones_completed: index % 3,
+		milestones_total: 3,
+		sessions: index % 2,
+		live_sessions: 0,
+		progress_stale: false,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 1) * HOUR_S,
+	}),
+);
 
 const LINK = (
 	sessionId: string,
@@ -764,6 +827,59 @@ export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
 
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = { render: () => page({ projects: MANY }) };
+
+/**
+ * The sticky team headers, mid-scroll: the second section's header pinned at
+ * the scroller's top with its rows passing under it and the first section's
+ * header pushed out behind it — a state the resting list can never show,
+ * because at rest every header sits in its own flow position.
+ *
+ * THE PLAY SCROLLS BY ITS OWN MEASUREMENT rather than a hard-coded offset:
+ * it brings the second header flush to the scroller's top and asserts it
+ * pinned there, so the frame is the pinned state whenever the row heights
+ * drift or a theme's metrics differ.
+ */
+export const ListTeamsSticky: Story = {
+	render: () => page({ projects: MANY_LONG }),
+	play: playOnce("list-teams-sticky", async () => {
+		const scroller = () =>
+			document.querySelector<HTMLElement>('[data-testid="project-list"] ul');
+		await poll(() => {
+			const element = scroller();
+			return (
+				element !== null && element.scrollHeight > element.clientHeight + 100
+			);
+		}, "the list to overflow its scroller");
+		const element = scroller();
+		if (!element) throw new Error("the list scroller never mounted");
+		const headers = document.querySelectorAll<HTMLElement>(
+			"[data-project-team]",
+		);
+		if (headers.length < 2) {
+			throw new Error(
+				`fewer than two team headers rendered (${headers.length})`,
+			);
+		}
+		const second = headers[1];
+		element.scrollTop +=
+			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
+		/*
+		 * THE BOUNDED OVERSHOOT IS THE MEASUREMENT (review round 1, Q3): at the
+		 * flush point a pinned header and a static one sit at the same y, so an
+		 * assertion made there passes for `position: static` too — an identity,
+		 * not a test. A further 25px can leave the header at the scroller's top
+		 * only if it is actually sticky, and the fixture's headroom at 1280x620
+		 * is 37.7px, so the overshoot stays inside the range the list has.
+		 */
+		element.scrollTop += 25;
+		await poll(() => {
+			const top =
+				second.getBoundingClientRect().top -
+				element.getBoundingClientRect().top;
+			return top >= -1 && top <= 2;
+		}, "the second header to pin past the flush point");
+	}),
+};
 
 /** The one project's detail: progress, milestones in all three states, links. */
 export const Detail: Story = {
@@ -1499,6 +1615,75 @@ export const BoardColumnDropCommits: Story = {
 		) as string[];
 		if (stored.join(",") !== "planning,qa,validation,active,done,paused") {
 			throw new Error(`the drop did not persist: ${stored.join(",")}`);
+		}
+	}),
+};
+
+/**
+ * The board's sticky frame (design round 1, D2): the column header pins at 44
+ * (`h-11`), the team straps pin at `top-11` beneath it, and the incoming strap
+ * PUSHES the outgoing one out — the mechanics the round-1 finding (Q1/U1)
+ * holds this story to, asserted before the shutter rather than described.
+ */
+export const BoardSticky: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-sticky", async () => {
+		const column = () =>
+			document.querySelector<HTMLElement>('[data-board-column="active"]');
+		await poll(() => column() !== null, "the active column");
+		const element = column();
+		if (!element) throw new Error("the active column never mounted");
+		const header = element.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const straps = element.querySelectorAll<HTMLElement>("[data-board-team]");
+		if (!header || !strip || straps.length < 2) {
+			throw new Error(
+				`the active column's header, strip or two straps are missing (straps ${straps.length})`,
+			);
+		}
+		/* The two offsets the groups are written against: h-11 = 44, top-11 = 44. */
+		const headerHeight = header.getBoundingClientRect().height;
+		if (Math.abs(headerHeight - 44) > 0.6) {
+			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
+		}
+		if (getComputedStyle(straps[0]).top !== "44px") {
+			throw new Error(
+				`the strap's sticky offset is ${getComputedStyle(straps[0]).top}, not 44px`,
+			);
+		}
+		const [first, second] = [straps[0], straps[1]];
+		const rel = (node: HTMLElement) =>
+			node.getBoundingClientRect().top - strip.getBoundingClientRect().top;
+		/*
+		 * Flush, then a bounded overshoot: the pin has to hold past the point
+		 * where a static element would also happen to sit at the offset (the
+		 * identity the list's round-1 probe called out).
+		 */
+		strip.scrollTop += rel(second) - 44;
+		strip.scrollTop += 20;
+		await poll(
+			() => Math.abs(rel(second) - 44) <= 2,
+			"the second strap to pin under the header",
+		);
+		/*
+		 * THE PUSH-OUT: the outgoing strap is fully displaced — its bottom at or
+		 * above the incoming strap's top — rather than parked on the same
+		 * offset with the incoming one covering it (round 1 measured strap0 at
+		 * 56.00 against strap1 at 56.42 with the labels clipping).
+		 */
+		const firstBottom = first.getBoundingClientRect().bottom;
+		const secondTop = second.getBoundingClientRect().top;
+		if (firstBottom > secondTop + 0.5) {
+			throw new Error(
+				`the outgoing strap overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+			);
 		}
 	}),
 };

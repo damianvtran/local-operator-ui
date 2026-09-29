@@ -1901,6 +1901,27 @@ const STAMP_BINDING_NOTES = [
 	 * ships, so it is held to this file like every entry above it.
 	 */
 	"sessionlessSlashRestampNote",
+	/*
+	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
+	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * the mini view, its registrar, the config watch, the desktop-plane
+	 * admission and the settings row, `scripts/` for the registrar suite, the
+	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
+	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
+	 * and every list member above is re-pointed with it. It quotes that pair,
+	 * so it is held to this file like every entry above it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sessionlessSlashFoldNote` is the fold
+	 * onto the moved `origin/main` `2907f807b0` (release 0.31.17, #631's
+	 * quick-send train and #626's projects-chrome-teams) — main's manifest taken
+	 * as the base with this branch's records re-laid on top, the pair re-derived
+	 * from the resolved index and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2934,6 +2955,19 @@ const BRANCH_RECORDS = [
 	 * that started from main's manifest would drop it.
 	 */
 	"sessionlessSlashRestampNote",
+	/*
+	 * And the quick-send pass's own record (`quickSendRestampNote`), listed for
+	 * the list's usual reason: the note is this branch's statement of what moved
+	 * and what did not (no frame was committed by it), and a fold resolved from
+	 * main's copy would drop it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * And the fold's own (`sessionlessSlashFoldNote`), listed for the list's
+	 * usual reason: the note states what the fold moved and what it did not, and
+	 * a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
