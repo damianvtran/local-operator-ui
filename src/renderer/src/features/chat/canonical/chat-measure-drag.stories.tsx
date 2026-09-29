@@ -50,6 +50,7 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	output: "ok",
 	isError: false,
 	notRunReason: null,
+	notRunKind: null,
 	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
