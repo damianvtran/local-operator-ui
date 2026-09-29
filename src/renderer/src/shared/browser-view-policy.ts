@@ -167,9 +167,20 @@ export function useSuppressedOverlayIds(): string {
  * A follow-up worth having: route app-wide notices into the chrome band while the
  * browser route is the active one.
  *
- * **Menus, selects, popovers and tooltips** are not registered either, and for a
- * different reason: the ones this feature opens are anchored in the chrome band,
- * which is outside the view's rectangle, so nothing there is occluded and hiding
- * the view for a hover hint would flash the page for nothing. A menu opened from a
- * PAGE is page content, not app DOM.
+ * **Menus, selects, popovers and tooltips** did not register, for a different reason:
+ * the ones this feature used to open were anchored in the chrome band, which is
+ * outside the view's rectangle, so nothing there was occluded and hiding the view
+ * for a hover hint would flash the page for nothing. A menu opened from a PAGE is
+ * page content, not app DOM.
+ *
+ * REVISED 2026-09-28 (the tab-actions popout): a menu whose PANEL reaches into the
+ * content rect registers, from its own component, exactly like a dialog — the
+ * browser strip's tab-actions menu calls
+ * `useSuppressBrowserView(…, "browser-tab-actions")` while it is open, so the view
+ * hides and the paused note shows behind the panel. The band-anchored reasoning
+ * above holds only while nothing a menu draws crosses the view's top edge; a panel
+ * that floats over the page cannot be visible any other way, and a z-index cannot
+ * beat a native sibling view. The pinned "All tabs" list stays a band ROW instead
+ * of a menu — an in-flow list narrows the page rather than hiding it, and the two
+ * mechanisms are chosen per surface (`browser-tab-strip.tsx`).
  */

@@ -33,7 +33,23 @@ import {
 	Switch,
 	Textarea,
 } from "@shared/components/ui";
-import type { KeyboardEvent } from "react";
+import { cn } from "@shared/lib/utils";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+	DEFAULT_QUICK_SEND_VALUE,
+	type MiniViewRegistrationState,
+	formatQuickSendDisplay,
+	isFunctionKeyToken,
+} from "../../../../../shared/mini-view";
+import {
+	DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY,
+	MACOS_DETECTION_BOUNDARY_COPY,
+	QUICK_SEND_SCOPE_COPY,
+	alternatesCopy,
+	priorArtCopy,
+	registrationCopy,
+} from "../../../mini-view/mini-copy";
+import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { settingComboSource } from "../backend-setting-combos";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
 import { SettingCombobox } from "./setting-combobox";
@@ -130,6 +146,105 @@ export function hotkeyFromEvent(
 }
 
 /**
+ * Whether a captured chord may be a GLOBAL shortcut (design §H.2, §A.5).
+ *
+ * The desktop validator's first rule, mirrored at capture time so the refusal
+ * happens under the reader's fingers rather than at Save: at least one
+ * modifier — a bare letter would fire while they type, on every app on the
+ * machine — with bare function keys as the one documented exception (they are
+ * not typable). The backend still validates at the write boundary; this is the
+ * capture half, and it exists because a stored-but-unregistrable value is the
+ * dead key the design forbids, not because the server would accept it.
+ */
+function desktopChordAllowed(binding: string): boolean {
+	const tokens = binding.split("+");
+	const key = tokens.at(-1) ?? "";
+	const hasModifier = tokens.length > 1;
+	if (hasModifier) return true;
+	return isFunctionKeyToken(key);
+}
+
+/**
+ * The desktop-scope extras under a hotkey field (design §H.2): the scope line,
+ * the live registration state and the alternates sentence.
+ *
+ * The registration state is PUSHED to every renderer on every change
+ * (`mini-view:registration`), so a chord that failed to register while the
+ * page was open reads correctly on the next paint rather than after a reload —
+ * the design's "registration failure is surfaced, never silent". Absent bridge
+ * (Storybook, a headless rig) renders nothing rather than guessing: this row
+ * is the one place the app speaks about the shortcut's live state, and a
+ * fabricated answer there is worse than an absent one.
+ */
+const DesktopHotkeyDetails = () => {
+	const [registration, setRegistration] =
+		useState<MiniViewRegistrationState | null>(null);
+	const platform = useMemo(rendererPlatform, []);
+
+	useEffect(() => {
+		const api = window.api?.miniView;
+		if (!api) return undefined;
+		let cancelled = false;
+		api
+			.getRegistration()
+			.then((state) => {
+				if (!cancelled) setRegistration(state);
+			})
+			.catch(() => {
+				/* No registration state readable yet (an older main, a race at
+				   startup): the badge stays absent and the push path fills it. */
+			});
+		const unsubscribe = api.onRegistration((state) => {
+			if (!cancelled) setRegistration(state);
+		});
+		return () => {
+			cancelled = true;
+			unsubscribe();
+		};
+	}, []);
+
+	const display = formatQuickSendDisplay(
+		registration?.value ?? DEFAULT_QUICK_SEND_VALUE,
+		platform,
+	);
+
+	return (
+		<span
+			className="flex flex-col gap-0.5"
+			data-tour-tag="quick-send-registration"
+		>
+			<span className="text-meta text-ink-dim">{QUICK_SEND_SCOPE_COPY}</span>
+			{registration ? (
+				<output
+					className={cn(
+						"text-meta",
+						registration.status === "registered"
+							? "text-ink-muted"
+							: "text-danger",
+					)}
+				>
+					{registrationCopy(registration.status, display)}
+				</output>
+			) : null}
+			{/*
+			 * THE macOS HONESTY LINE (QA round 1, Q2): `register()` answers true
+			 * for a chord another app or the system owns on macOS, so a silent
+			 * dead key can sit behind a "Registered" badge. The row states the
+			 * practical path instead of promising a detection the platform
+			 * cannot deliver; Windows and Linux refuse such a chord and surface
+			 * it through the taken state, so the line is macOS-only.
+			 */}
+			{platform === "mac" && registration?.status === "registered" ? (
+				<span className="text-meta text-ink-dim">
+					{MACOS_DETECTION_BOUNDARY_COPY}
+				</span>
+			) : null}
+			<span className="text-meta text-ink-dim">{alternatesCopy(platform)}</span>
+		</span>
+	);
+};
+
+/**
  * The hotkey field: it captures a keystroke instead of accepting text.
  *
  * `readOnly`, because a hand-typed `ctrl+N` is exactly the value the runtime
@@ -140,46 +255,83 @@ export function hotkeyFromEvent(
  * The sentence under the field is the other half of that: until it existed, the
  * only instruction lived in the field's ACCESSIBLE NAME, which a sighted reader
  * never meets (UX round 1, U7).
+ *
+ * THE `desktop` HALF (quick-send design §H.2). A row whose `hotkey_scope` is
+ * `"desktop"` binds a GLOBAL chord rather than a key inside the terminal — so
+ * the same keystroke means a different thing, and the capture rules say so: a
+ * chord with no modifier is refused under the field instead of being stored
+ * (the backend would refuse the write anyway; the reader should learn it at the
+ * key press, not at Save), the field lists the live registration state, and it
+ * discloses the known soft claimants for the chord it is showing. Everything
+ * else — the escape/enter handling, the modifier-only filter, the hint
+ * sentence — is shared, because those are facts about capturing ANY chord.
  */
 const HotkeyInput = ({
 	value,
 	label,
 	disabled,
+	desktop = false,
 	onChange,
 }: {
 	value: string;
 	label: string;
 	disabled: boolean;
+	/** True for `hotkey_scope === "desktop"` — see the docstring above. */
+	desktop?: boolean;
 	onChange: (value: string) => void;
-}) => (
-	<span className="flex w-full flex-col gap-0.5">
-		<Input
-			readOnly
-			value={value}
-			disabled={disabled}
-			aria-label={`${label}: press the key you want`}
-			className="font-mono text-body-sm"
-			onKeyDown={(event) => {
-				// Cancel/commit first: a keystroke that ends the edit is not a
-				// binding, so it must not reach `hotkeyFromEvent` at all.
-				if (END_EDIT_KEYS.has(event.key)) {
-					event.currentTarget.blur();
-					return;
-				}
-				const binding = hotkeyFromEvent(event);
-				// An unmodified printable key is a keystroke the reader meant to bind;
-				// a modifier alone is not, and neither is a key the runtime cannot
-				// name — both are left alone rather than bound to something unusable.
-				if (!binding) return;
-				event.preventDefault();
-				onChange(binding);
-			}}
-		/>
-		<span className="text-meta text-ink-dim">
-			Press the keys you want; Esc cancels.
+}) => {
+	/*
+	 * The refusal holds until the next captured chord: it explains the LAST
+	 * press, so it must not linger once a different (accepted) chord replaces
+	 * the field's value — and it must not be committed anywhere, because
+	 * nothing was committed.
+	 */
+	const [refusal, setRefusal] = useState<string | null>(null);
+	const platform = useMemo(rendererPlatform, []);
+	const warning = desktop ? priorArtCopy(value, platform) : null;
+
+	return (
+		<span className="flex w-full flex-col gap-0.5">
+			<Input
+				readOnly
+				value={value}
+				disabled={disabled}
+				aria-label={`${label}: press the key you want`}
+				className="font-mono text-body-sm"
+				onKeyDown={(event) => {
+					// Cancel/commit first: a keystroke that ends the edit is not a
+					// binding, so it must not reach `hotkeyFromEvent` at all.
+					if (END_EDIT_KEYS.has(event.key)) {
+						event.currentTarget.blur();
+						return;
+					}
+					const binding = hotkeyFromEvent(event);
+					// An unmodified printable key is a keystroke the reader meant to bind;
+					// a modifier alone is not, and neither is a key the runtime cannot
+					// name — both are left alone rather than bound to something unusable.
+					if (!binding) return;
+					event.preventDefault();
+					if (desktop && !desktopChordAllowed(binding)) {
+						setRefusal(DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY);
+						return;
+					}
+					setRefusal(null);
+					onChange(binding);
+				}}
+			/>
+			<span className="text-meta text-ink-dim">
+				Press the keys you want; Esc cancels.
+			</span>
+			{refusal ? (
+				<output className="text-meta text-danger">{refusal}</output>
+			) : null}
+			{warning ? (
+				<span className="text-meta text-ink-muted">{warning}</span>
+			) : null}
+			{desktop ? <DesktopHotkeyDetails /> : null}
 		</span>
-	</span>
-);
+	);
+};
 
 export type SettingControlProps = {
 	setting: BackendSetting;
@@ -308,6 +460,12 @@ export const SettingControl = ({
 					value={value}
 					label={setting.label}
 					disabled={disabled}
+					/*
+					 * Absent (`null`/`undefined`) means `app`, which is what every
+					 * hotkey row meant before the field existed — an older server's
+					 * payloads therefore render exactly the control they always did.
+					 */
+					desktop={setting.hotkey_scope === "desktop"}
 					onChange={onValueChange}
 				/>
 			);

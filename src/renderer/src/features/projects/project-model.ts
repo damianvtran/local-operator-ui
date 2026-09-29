@@ -478,6 +478,95 @@ export const BOARD_COLUMNS = [
 export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 
 /**
+ * Where the user's own column order is stored, in the app's layout-choice key
+ * style (`projects-view`, `chat-sidebar-disclosures`): a preference kept
+ * between sessions, read with guarded fallbacks so a locked store reads as the
+ * default order rather than a broken board.
+ */
+export const PROJECTS_BOARD_ORDER_STORAGE_KEY = "projects-board-column-order";
+
+/**
+ * THE SESSION'S OWN COPY OF THE ORDER, ahead of the store (UX round 1, U4).
+ *
+ * WHY IT EXISTS. The write path was best-effort by design - a failed write
+ * must not fail the move - but the read path had only `localStorage` to go
+ * on, so with the store blocked a move survived until the board remounted
+ * (a view switch re-runs `readBoardColumnOrder`) and then silently reverted,
+ * which is not what "the move stands for this session" promised. The memory
+ * below is that promise made true: every write records the order here as
+ * well, and a read prefers it over the store, so the session's own choice
+ * survives remounts whether or not the store accepted it. It is deliberately
+ * module-scoped rather than component state: the point is that it outlives
+ * the mount.
+ */
+let sessionOrder: string[] | null = null;
+
+/**
+ * The column order for this board: the session's own choice when it has one,
+ * else the stored order, else `[]` (the lifecycle default).
+ *
+ * VALIDATED, NOT TRUSTED: the stored value crosses sessions and app versions,
+ * so a hand-edited array is read as ABSENT rather than half-applied — every
+ * entry must be a non-empty string or the whole order is dropped. Duplicates
+ * keep their first position (one status must not rank twice), and an empty
+ * list means the same as no list at all.
+ */
+export function readBoardColumnOrder(): string[] {
+	if (sessionOrder) return [...sessionOrder];
+	try {
+		const raw = localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY);
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		const order: string[] = [];
+		for (const entry of parsed) {
+			if (typeof entry !== "string" || entry.length === 0) return [];
+			if (!order.includes(entry)) order.push(entry);
+		}
+		return order;
+	} catch {
+		/* storage unavailable or the value not JSON: the default is the answer */
+		return [];
+	}
+}
+
+/** Persist the order; a failed write must not fail the move (see above). */
+export function writeBoardColumnOrder(order: string[]): void {
+	/* The session copy lands first and unconditionally: it is what keeps a
+	 * move alive when the store refuses it, and a stored value that later
+	 * fails to read still cannot lose the session its own choice. */
+	sessionOrder = [...order];
+	try {
+		localStorage.setItem(
+			PROJECTS_BOARD_ORDER_STORAGE_KEY,
+			JSON.stringify(order),
+		);
+	} catch {
+		/* storage unavailable: the session copy above is what keeps the move */
+	}
+}
+
+/**
+ * The order after ONE column moves: `status` re-inserted so it lands at index
+ * `to` of the full list, clamped to the ends.
+ *
+ * `to` is the column's NEW POSITION among all columns — the number a drag's
+ * drop index and the keyboard's ±1 both speak — so the arithmetic is "take
+ * the column out, put it back at that index", which is also why moving a
+ * column two places LEFT is `to = from - 1` and not a swap.
+ */
+export function reorderColumnOrder(
+	order: string[],
+	status: string,
+	to: number,
+): string[] {
+	const others = order.filter((entry) => entry !== status);
+	const clamped = Math.max(0, Math.min(to, others.length));
+	others.splice(clamped, 0, status);
+	return others;
+}
+
+/**
  * The board's columns: the five fixed pipeline phases, the side states
  * (`paused`, `archived`) when they hold rows, then one column per status
  * outside the vocabulary.
@@ -491,6 +580,7 @@ export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
  */
 export function boardColumns(
 	projects: DesktopProject[],
+	order: string[] = [],
 ): { status: string; projects: DesktopProject[] }[] {
 	const byStatus = new Map<string, DesktopProject[]>();
 	for (const project of projects) {
@@ -516,7 +606,22 @@ export function boardColumns(
 			columns.push({ status, projects: rows });
 		}
 	}
-	return columns;
+	if (order.length === 0) return columns;
+	/*
+	 * THE STORED ORDER APPLIES TO THE COLUMNS PRESENT, and this is the whole
+	 * merge rule: the columns the stored order names come first, sorted by their
+	 * stored rank; every other column keeps the derivation's own order and
+	 * appends after them (side states when populated, unknowns last). A stored
+	 * status that holds no column — a side state with no rows this session, a
+	 * status another build wrote — ranks nothing and is NOT resurrected; it is
+	 * only forgotten when the user reorders again, which writes the order of the
+	 * columns they actually saw.
+	 */
+	const rank = new Map(order.map((status, index) => [status, index]));
+	const ranked = columns.filter((column) => rank.has(column.status));
+	ranked.sort((a, b) => (rank.get(a.status) ?? 0) - (rank.get(b.status) ?? 0));
+	const rest = columns.filter((column) => !rank.has(column.status));
+	return [...ranked, ...rest];
 }
 
 /**
@@ -582,6 +687,73 @@ export function managedByLine(
 		if (text && !parts.includes(text)) parts.push(text);
 	}
 	return parts.join(" · ");
+}
+
+/* --------------------------------------------- slice 3: team grouping -- */
+
+/** The bucket a project with no team or owner files under. */
+export const NO_TEAM_LABEL = "No team";
+
+/**
+ * The team a project groups under: `team` first, `owner` as the fallback, and
+ * `null` for the bucket.
+ *
+ * WHY OWNER FALLS IN: both fields name who carries the stream, and rows in
+ * the store routinely carry one or the other rather than both — a row with
+ * only an owner would land in "No team" beside its own team's section, which
+ * reads as a missing project rather than as a different fact. Trimmed blanks
+ * count as absent: the fields have accepted `""` since they existed, and an
+ * empty section header is not a section.
+ */
+export function projectTeamName(project: {
+	team?: string | null;
+	owner?: string | null;
+}): string | null {
+	const team = project.team?.trim();
+	if (team) return team;
+	const owner = project.owner?.trim();
+	if (owner) return owner;
+	return null;
+}
+
+/** One group of items under a team header; `team: null` is the `No team` bucket. */
+export type TeamGroup<T> = {
+	team: string | null;
+	items: T[];
+};
+
+/**
+ * Group items under their teams by the same rule for the list, the timeline
+ * and every board column — one helper so the three surfaces cannot drift.
+ *
+ * ORDER IS A RULE, NOT AN ACCIDENT: named teams sort case-insensitively, and
+ * the `No team` bucket always renders LAST — a bucket is not a team, and a
+ * section that moves with the alphabet would read as one. Within a group the
+ * input order is kept (the store's own; the views do not re-sort what they
+ * were handed). Empty groups are omitted: a header with nothing under it is a
+ * promise the surface does not keep.
+ */
+export function groupByTeam<T>(
+	items: T[],
+	teamOf: (item: T) => string | null,
+): TeamGroup<T>[] {
+	const named = new Map<string, T[]>();
+	const bucket: T[] = [];
+	for (const item of items) {
+		const team = teamOf(item);
+		if (team === null) {
+			bucket.push(item);
+			continue;
+		}
+		const list = named.get(team);
+		if (list) list.push(item);
+		else named.set(team, [item]);
+	}
+	const groups: TeamGroup<T>[] = [...named.entries()]
+		.sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+		.map(([team, list]) => ({ team, items: list }));
+	if (bucket.length > 0) groups.push({ team: null, items: bucket });
+	return groups;
 }
 
 /**

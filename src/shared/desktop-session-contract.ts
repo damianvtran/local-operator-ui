@@ -42,6 +42,20 @@ export type SessionCatalogueRow = {
 	id: CanonicalSessionId;
 	name: string;
 	mtime: number;
+	/**
+	 * When the conversation was BORN, in epoch SECONDS - the backend's
+	 * `session_created_at`: the canonical `created_at.json` record, or the
+	 * directory's birth time when that record is absent, and `0.0` when neither
+	 * can be read.
+	 *
+	 * The second clock on this row, beside `mtime` (the activity clock the
+	 * sidebar's bins read by default): the "Created" basis reads THIS one, and it
+	 * is optional because a backend that predates the field simply does not send
+	 * it - absent and a non-positive value are the same answer to the same
+	 * question ("no birth time"), which is why the reader refuses `<= 0` rather
+	 * than printing 1970 (`rowTimeMs` in `chat-list-sections.ts`).
+	 */
+	created_at?: number | null;
 	preview: string;
 	live_state: string;
 	pending: string | null;
