@@ -1777,6 +1777,40 @@ const atTraceTierGroup = (group: SectionGroup): SectionGroup => {
 	return copy;
 };
 
+/*
+ * THE ROW DIRECTLY BELOW A BAR sits at the item tier rather than the trace tier
+ * (operator report, 2026-09-29: the pinned "Context compacted" row "hugs the
+ * summary row's rule too closely ... wants more breathing room between the
+ * horizontal line and the row beneath it"). The trace tier is the LEDGER's
+ * adjacency step; the rule is the bar saying the block below is a new one, so
+ * the first row under it takes the in-turn block step - the same 12px the
+ * closing answer already sits below the rule, so the block reads one way
+ * whichever lands there. RAISE-ONLY: a first-after-bar row whose own gap is
+ * wider (a steer's `turn` boundary, above all) keeps it; this loosens a 2px hug
+ * and moves nothing else. Same `WeakMap` reuse rule as its siblings: an
+ * untouched group keeps its identity so memoised rows are not re-rendered per
+ * streamed token.
+ */
+const itemTierGroups = new WeakMap<SectionGroup, SectionGroup>();
+const atItemTierGroup = (group: SectionGroup): SectionGroup => {
+	if (group.kind === "row") {
+		if (group.row.gap !== "trace") return group;
+		let copy = itemTierGroups.get(group);
+		if (!copy) {
+			copy = { ...group, row: { ...group.row, gap: "item" } };
+			itemTierGroups.set(group, copy);
+		}
+		return copy;
+	}
+	if (group.gap !== "trace") return group;
+	let copy = itemTierGroups.get(group);
+	if (!copy) {
+		copy = { ...group, gap: "item" };
+		itemTierGroups.set(group, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -2943,7 +2977,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		visible.forEach((row, index) => indexOf.set(row.record.id, index));
 
 		type ChatEntry =
-			| { kind: "group"; group: SectionGroup; suppressClosingLine: boolean }
+			| {
+					kind: "group";
+					group: SectionGroup;
+					suppressClosingLine: boolean;
+					/**
+					 * Whether this group renders directly under a collapsed run's
+					 * bar. The row beneath the bar's rule re-tiers at the render pass
+					 * (`atItemTierGroup`); this flag is the walk's half of that
+					 * decision, set where the bar is placed.
+					 */
+					afterBar?: boolean;
+			  }
 			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
 
 		const entries: ChatEntry[] = [];
@@ -2975,6 +3020,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			}
 			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
 			const children: SectionGroup[] = [];
+			/*
+			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
+			 * statement's gap was BUILT against its original neighbour - often a
+			 * tool row that has collapsed into the bar - so it arrives at the trace
+			 * tier and the collapse leaves it 2px under the rule, which the
+			 * operator read as the row hugging it. The SECOND report extended the
+			 * class: an incident row behind the memory statement hugged THAT row
+			 * by the same 2px, because only the first group was re-tiered. Every
+			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
+			 * so the statements under the rule sit at the block step, not the
+			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
+			 * read as statements of their own. Groups built at a wider tier (prose,
+			 * the closing answer) are handed back unchanged by the memoised
+			 * helper - the re-tier only ever fires on the trace tier.
+			 */
+			let afterBar = false;
 			for (const group of groups) {
 				const hidden =
 					group.kind === "run"
@@ -2985,17 +3046,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					if (children.length === 1) {
 						/* The bar sits where the first hidden group did. */
 						entries.push({ kind: "bar", plan, children });
+						afterBar = true;
 					}
 					continue;
 				}
 				/*
 				 * Everything visible in a bar'd run renders with its closing line
 				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
+				 *
+				 * `afterBar` is deliberately NOT reset: see the comment above -
+				 * every visible group of a bar'd run, not only the first, is the
+				 * block below the bar.
 				 */
 				entries.push({
 					kind: "group",
 					group,
 					suppressClosingLine: true,
+					afterBar,
 				});
 			}
 		}
@@ -3600,7 +3667,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											)}
 										</TurnSummary>
 									) : (
-										renderGroup(entry.group, entry.suppressClosingLine)
+										/*
+										 * The first group under a bar re-tiers to the item step;
+										 * every later group and every other run's groups keep the
+										 * gap the unfolded list gave them.
+										 */
+										renderGroup(
+											entry.afterBar
+												? atItemTierGroup(entry.group)
+												: entry.group,
+											entry.suppressClosingLine,
+										)
 									),
 								)}
 							</CanvasPaneProvider>
