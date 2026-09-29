@@ -9818,7 +9818,13 @@ async function railHoverTrace(cdp) {
 		window.__railHoverTrace = trace;
 		let last = performance.now();
 		const tick = (now) => {
-			const card = document.querySelector("[data-checkpoint-card]");
+			/*
+			 * BOTH HALVES DETECT THE CARD THE SAME WAY: the rework's card is
+			 * `data-checkpoint-card`, the pre-rework one `role=dialog`, and a
+			 * sampler that only knew one of them would report a different
+			 * measurement per half - the asymmetry this trace exists to avoid.
+			 */
+			const card = document.querySelector('[role="dialog"], [data-checkpoint-card]');
 			trace.frames.push([Math.round((now - last) * 100) / 100, card ? 1 : 0]);
 			last = now;
 			if (trace.on) requestAnimationFrame(tick);
