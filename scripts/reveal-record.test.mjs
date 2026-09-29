@@ -218,7 +218,15 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 			<button aria-expanded="false">turn</button>
 		</div>
 	`);
-	regionAt(region, { scroll: 40, top: 100, clientTop: 1, clientHeight: 600 });
+	/*
+	 * THE STUB'S GEOMETRY IS THE TRANSCRIPT'S OWN AXIS (design round 1, D1):
+	 * this region is the `flex-col-reverse` scroller, where a legal `scrollTop`
+	 * is NEGATIVE (0 at the newest row) - a positive stub value could not exist
+	 * on the real box, and the pre-fix helper's `Math.max(0, ...)` clamp was
+	 * exactly what this axis exposed. The row opens ABOVE the viewport: region
+	 * scrolled to -600, row at -800 in the region's frame.
+	 */
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
 	const trigger = root.querySelector("button");
 	let clicks = 0;
 	trigger.addEventListener("click", () => {
@@ -230,7 +238,7 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		row.setAttribute("data-record-id", "u9");
 		// The row's geometry, known the moment it exists: 500px into the
 		// content, 100px tall.
-		measure(row, { top: 500, height: 100 });
+		measure(row, { top: -800, height: 100 });
 		root.appendChild(row);
 	});
 
@@ -244,8 +252,9 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		const outcome = await jumpToEntry(root, region, "u9");
 		assert.equal(outcome, "landed");
 		assert.equal(clicks, 1, "the bar was opened exactly once");
-		// 40 + 500 - 100 - 1 - (600 - 100) / 2 = 189.
-		assert.equal(region.scrollTop, 189, "the row's centre met the region's");
+		// -600 + (-800 - 100 - 1) - (600 - 100) / 2 = -1751, and it must be
+		// ALLOWED to land there: clamping at zero is the no-op D1 measured.
+		assert.equal(region.scrollTop, -1751, "the row's centre met the region's");
 		const row = root.querySelector(
 			'[data-record-id="u9"]:not([data-turn-summary])',
 		);

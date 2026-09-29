@@ -1852,9 +1852,13 @@ const OPEN_TRACE_MS = 60_000;
  * this view cannot show. An INFO toast rather than an error: the reader asked
  * for a place in their own history, and the answer is "further back than this
  * view has loaded", not a failed request to retry.
+ *
+ * The noun is the UI's own: the cards and tick labels say "Turn N", and
+ * "checkpoint" is this design's internal word - it appears nowhere a reader
+ * can see it (design round 1, D4).
  */
 const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that checkpoint. It is further back than the loaded history.";
+	"Could not reach that turn. It is further back than the loaded history.";
 
 /**
  * A fold group as the aggregation pass hands it on: a run group carries the
