@@ -28719,14 +28719,16 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * and anything about the microphone permission prompt (the dictating frame is
  * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`).
  *
- * `--backend` EXTENDS THE MATRIX. Without one the run captures the refusal
- * instead of a live send (empty, typing, long, dictating, error — the
- * fail-closed state a machine with no daemon shows, with the draft kept). With
- * one, the Send path runs for real: the daemon this run OWNS is stopped for
- * the "sending" frame (the state lasts milliseconds otherwise, and a capture
- * that cannot land on it would be evidence of nothing), continued for the
- * answer, and the "sent" claim is then read back from the daemon's own history
- * route rather than taken from the window's word for it.
+ * THE REFUSAL IS WHERE THIS RIG STOPS, and why is stated rather than implied.
+ * The send path runs through the desktop plane, whose gate admits by FRAME: the
+ * window this scene builds is not one the app created — a `headless` launch
+ * creates no mini view at all — so its requests are refused inside the app
+ * before any HTTP leaves it, `--backend` or not. The frames here are therefore
+ * empty, typing, long, dictating and error; the live "sending"/"sent" pair (and
+ * the daemon's own history read-back) belongs to the QA pass against the app's
+ * own window, and an earlier version of this scene that tried to stage them by
+ * stopping the run's daemon was removed rather than kept as a branch that
+ * cannot pass.
  */
 async function sceneMiniView(app) {
 	/*
@@ -28778,7 +28780,6 @@ async function sceneMiniView(app) {
 	const hintSentence = copySentence("hint");
 	const recordingSentence = copySentence("recording");
 	const dictationStopSentence = copySentence("dictationStop");
-	const sentSentence = copySentence("sent");
 
 	const miniDocument = resolve(process.cwd(), "out", "renderer", "mini.html");
 	if (!existsSync(miniDocument)) {
@@ -28810,25 +28811,6 @@ async function sceneMiniView(app) {
 		JSON.stringify(existingWindows),
 	);
 	let mini = null;
-	let stalledDaemonPid = null;
-	const resumeDaemon = () => {
-		if (stalledDaemonPid === null) return;
-		const pid = stalledDaemonPid;
-		stalledDaemonPid = null;
-		/*
-		 * A daemon left stopped would hang every later request, so the continue
-		 * is surrendered three ways: after the capture, from `finally`, and from
-		 * an exit hook for a run killed mid-frame. The 20 second deadline is the
-		 * backstop for a signal delivered while this process is already dying.
-		 */
-		try {
-			process.kill(pid, "SIGCONT");
-		} catch {
-			/* the daemon is gone, which is the other quiet direction */
-		}
-	};
-	process.once("exit", resumeDaemon);
-	setTimeout(resumeDaemon, 20_000).unref();
 
 	try {
 		const chromePlatform =
@@ -28932,11 +28914,59 @@ async function sceneMiniView(app) {
 					'\tconst path = process.mainModule?.require("node:path") ?? globalThis.require?.("node:path");',
 					"\tconst window = globalThis.__lopMiniSceneWindow;",
 					"\tif (!fs || !path || !window || window.isDestroyed()) return { ok: false, detail: 'the mini window is gone' };",
-					"\tlet image = await window.webContents.capturePage();",
-					"\tif (image.isEmpty()) {",
-					"\t\tawait new Promise((resolve) => setTimeout(resolve, 250));",
-					"\t\timage = await window.webContents.capturePage();",
+					/*
+					 * A HIDDEN WINDOW'S FIRST CAPTURE IS NOT RELIABLE, in two ways this
+					 * loop covers: it can come back BLANK, and under load it can THROW
+					 * (`UnknownVizError` from a compositor that is not ready yet — measured
+					 * on this scene's second run under a load average above 70). The blank
+					 * test is the repo's own definition rather than a byte floor (the
+					 * byte floor was withdrawn in the console rig: it measured how much
+					 * text a program printed, not whether the capture worked): a frame
+					 * with fewer than 8 distinct colours or fewer than 32 pixels off its
+					 * first pixel's ground is not a screenshot of anything, and the first
+					 * version of this loop accepted exactly such a white frame once
+					 * (`mini-view-empty.png` came back 2,348 bytes of uniform white).
+					 * Three attempts with a growing wait; the failure record names which
+					 * way it failed rather than reading as a torn-down window.
+					 */
+					"\tconst looksBlank = (candidate) => {",
+					"\t\tconst bitmap = candidate.toBitmap();",
+					"\t\tconst ground = [bitmap[0], bitmap[1], bitmap[2]];",
+					"\t\tconst colours = new Set();",
+					"\t\tlet offGround = 0;",
+					"\t\tfor (let i = 0; i + 3 < bitmap.length; i += 4) {",
+					"\t\t\tcolours.add(bitmap[i] + ',' + bitmap[i + 1] + ',' + bitmap[i + 2]);",
+					"\t\t\tif (bitmap[i] !== ground[0] || bitmap[i + 1] !== ground[1] || bitmap[i + 2] !== ground[2]) offGround += 1;",
+					"\t\t}",
+					"\t\treturn colours.size < 8 || offGround < 32;",
+					"\t};",
+					"\tlet image = null;",
+					"\tlet problem = null;",
+					/*
+					 * INVALIDATE BEFORE EVERY ATTEMPT. A hidden window's compositor can
+					 * serve a frame older than the DOM (measured: the error state's frame
+					 * came back as the post-reload EMPTY surface, byte-identical with the
+					 * empty capture, while the DOM checks for the error state had all
+					 * passed). `invalidate()` schedules the repaint the capture then reads,
+					 * and it is a paint hint only — nothing about presentation.
+					 */
+					"\tconst captureOnce = async () => {",
+					"\t\twindow.webContents.invalidate();",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 200));",
+					"\t\treturn window.webContents.capturePage();",
+					"\t};",
+					"\tfor (let attempt = 1; attempt <= 3; attempt += 1) {",
+					"\t\ttry {",
+					"\t\t\timage = await captureOnce();",
+					"\t\t\tif (!image.isEmpty() && !looksBlank(image)) break;",
+					"\t\t\tproblem = 'the capture came back blank (the hidden window had not painted yet)';",
+					"\t\t} catch (error) {",
+					"\t\t\timage = null;",
+					"\t\t\tproblem = String(error);",
+					"\t\t}",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 250 * attempt));",
 					"\t}",
+					"\tif (!image || image.isEmpty() || looksBlank(image)) return { ok: false, detail: 'capture failed after three attempts: ' + problem };",
 					"\tconst png = image.toPNG();",
 					`\tfs.writeFileSync(path.join(${JSON.stringify(FRAMES)}, ${JSON.stringify(label)} + ".png"), png);`,
 					"\tconst size = image.getSize();",
@@ -29082,111 +29112,43 @@ async function sceneMiniView(app) {
 			JSON.stringify(held),
 		);
 
-		if (BACKEND === null) {
-			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
-			const refused = await pollMini(
-				`${select("mini-composer-status")}.textContent`,
-				(text) =>
-					typeof text === "string" && text !== "" && text !== hintSentence,
-				"the refusal sentence",
-			);
-			check(
-				"the send was refused with a sentence rather than silence",
-				refused.ok,
-				JSON.stringify(refused.value),
-			);
-			const after = await mini.evaluate(
-				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
-			);
-			check(
-				"the refusal kept the draft: nothing was lost to the failure",
-				after?.text === message,
-				JSON.stringify(after),
-			);
-			note("the refusal state", JSON.stringify(after));
-			await captureMini("mini-view-error");
-		} else {
-			/*
-			 * The daemon this run owns is stopped for the press, so the "sending"
-			 * state lasts long enough to capture (it is a few milliseconds of real
-			 * work otherwise, and a frame that cannot land on its state is evidence
-			 * of nothing). It is continued the moment the frame is written, by
-			 * `resumeDaemon` — which the deadline and the exit hook also hold.
-			 */
-			const listenerPid = spawnSync(
-				"lsof",
-				["-ti", `tcp:${new URL(BACKEND).port}`, "-sTCP:LISTEN"],
-				{ encoding: "utf8", timeout: 5_000 },
-			);
-			const stallPid = (listenerPid.stdout ?? "")
-				.split("\n")
-				.map((candidate) => candidate.trim())
-				.find((candidate) => candidate.length > 0);
-			if (stallPid !== undefined) {
-				process.kill(Number.parseInt(stallPid, 10), "SIGSTOP");
-				stalledDaemonPid = Number.parseInt(stallPid, 10);
-			}
-			check(
-				"the run's own daemon was found to hold the send in flight",
-				stalledDaemonPid !== null,
-				`listener for ${BACKEND}: ${JSON.stringify(stallPid ?? null)} (${listenerPid.status})`,
-			);
-			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
-			const sending = await pollMini(
-				`${select("mini-composer-send")}.disabled`,
-				(value) => value === true,
-				"the send in flight",
-			);
-			check(
-				"the press put the send in flight (the button is disabled while it is)",
-				sending.ok,
-				JSON.stringify(sending.value),
-			);
-			await captureMini("mini-view-sending");
-			resumeDaemon();
-
-			const sent = await pollMini(
-				`${select("mini-composer-status")}.textContent`,
-				(text) => text === sentSentence,
-				"the sent state",
-				30_000,
-			);
-			check(
-				"the send finished and the surface said so",
-				sent.ok,
-				JSON.stringify(sent.value),
-			);
-			await captureMini("mini-view-sent");
-
-			/*
-			 * THE SEND, PROVED FROM THE DAEMON'S OWN SIDE. The surface saying
-			 * "Sent" is the window's word for it; the read below is the seat
-			 * conversation's history as the daemon serves it, which is the same
-			 * evidence path the other scenes use (`fetchSessionHistory`). The seat's
-			 * id is read from the app's own route rather than guessed from a title.
-			 */
-			const seat = await mini.evaluate(
-				`window.api.desktop.request({ op: "aida.status" }).then((reply) => reply?.body?.result ?? null)`,
-			);
-			const seatId =
-				typeof seat?.session_id === "string" && seat.session_id.length > 0
-					? seat.session_id
-					: null;
-			check(
-				"the app's own route names the seat conversation the message went to",
-				seatId !== null,
-				JSON.stringify(seat),
-			);
-			if (seatId !== null) {
-				const history = await fetchSessionHistory(seatId);
-				const entries = JSON.stringify(history?.body?.result?.entries ?? []);
-				check(
-					"the daemon's own history carries the message the mini view sent",
-					history?.status === 200 && entries.includes(message),
-					`status=${history?.status} entries=${entries.slice(0, 240)}`,
-				);
-			}
-		}
+		/*
+		 * THE REFUSAL, and why there is no `--backend` arm beside it. The send path
+		 * this surface owns runs through the desktop plane, and that plane's gate
+		 * (`desktop-ipc.ts`) admits by FRAME: the window this scene builds is not
+		 * one the app created — a `headless` launch creates no mini view at all, by
+		 * design — so its requests are refused inside the app before any HTTP
+		 * leaves it, whatever `--backend` names. A stall-the-daemon arm was written
+		 * for this scene and then REMOVED rather than kept as a branch that cannot
+		 * pass: it would have "captured" a sending state no daemon ever saw, and a
+		 * dead instrument that returns a reading is worse than one that refuses.
+		 * The live send ("sending", "sent", and the read-back from the daemon's
+		 * own history route) therefore belongs to the QA pass against the app's own
+		 * window; what stays here is the surface's failure state, from the same
+		 * press a user makes, with the draft kept.
+		 */
+		await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+		const refused = await pollMini(
+			`${select("mini-composer-status")}.textContent`,
+			(text) =>
+				typeof text === "string" && text !== "" && text !== hintSentence,
+			"the refusal sentence",
+		);
+		check(
+			"the send was refused with a sentence rather than silence",
+			refused.ok,
+			JSON.stringify(refused.value),
+		);
+		const after = await mini.evaluate(
+			`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+		);
+		check(
+			"the refusal kept the draft: nothing was lost to the failure",
+			after?.text === message,
+			JSON.stringify(after),
+		);
+		note("the refusal state", JSON.stringify(after));
+		await captureMini("mini-view-error");
 
 		/*
 		 * THE GATE'S OWN READING, recorded rather than asserted, and the reason is
@@ -29234,7 +29196,6 @@ async function sceneMiniView(app) {
 			JSON.stringify(memory),
 		);
 	} finally {
-		resumeDaemon();
 		if (mini !== null) mini.close();
 		main.close();
 	}
