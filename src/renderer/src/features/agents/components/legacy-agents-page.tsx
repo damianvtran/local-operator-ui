@@ -50,7 +50,7 @@ type AgentsPageProps = Record<string, never>;
  * Layout follows the pattern of other pages with a sidebar and content area.
  */
 export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
-	const laneLeadingColumn = useLaneLeadingColumn();
+	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
@@ -127,7 +127,13 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 			 * routes draw `AgentsSidebar` as a leading `surface` column, and marking
 			 * only the one the operator screenshotted is exactly how this defect came
 			 * back a second time (2026-09-27). `chat-layout.tsx` states what the shell
-			 * does with the element.
+			 * does with the element, and the ground it is handed on is the column's
+			 * own (`surface`).
+			 *
+			 * The roster's `border-r` is gone with the roster route's: the boundary
+			 * beside the content is the `surface`-over-`canvas` tone step, and the
+			 * line was the same fence that stopped at the lane's lower edge (see
+			 * `agents-sidebar.tsx`).
 			 */}
 			<div ref={laneLeadingColumn} className="h-full w-70 shrink-0">
 				<AgentsSidebar
