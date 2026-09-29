@@ -541,10 +541,11 @@ declare global {
 				onBackendUpdateProgress: (
 					callback: (progress: {
 						/**
-						 * `draining` is the wait before anything is installed or restarted: the app
-						 * holds the update back while the sessions on this machine finish the turns
-						 * they are running. It is its own phase because it can last minutes and no
-						 * install has begun.
+						 * `draining` is the wait before the REBUILD install: the app holds the checkout
+						 * rebuild back while the sessions on this machine finish the turns they are
+						 * running - the one route whose tree rewrite can cut a turn; restarts stopped
+						 * waiting on 2026-09-29. It is its own phase because it can last minutes and
+						 * no install has begun.
 						 */
 						phase: "draining" | "installing" | "restarting";
 						/**
