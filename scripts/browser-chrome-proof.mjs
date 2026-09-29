@@ -4672,10 +4672,29 @@ async function main() {
 			`failed ${failedNow.length}: ${JSON.stringify(failedNow.map((tab) => tab.url))}`,
 		);
 		check(
-			"and the failed set is the hydrated wave, not the fleet: the drained rows are still loading, visibly",
+			"and the failed set is the hydrated wave, not the fleet: the drained rows are still loading at this instant (their own bounded wait marks them next — see the settled check)",
 			failedNow.length <= 4,
 			`failed ${failedNow.length} of ${stalledRows.length} stalled rows (the in-flight wave is RESTORE_CONCURRENCY 4)`,
 		);
+		// The frame comes BEFORE the prune wait, deliberately: the prune can take
+		// tens of seconds (it waits on the next capture), and the drained rows' own
+		// bounded waits would land inside that window — the frame must photograph
+		// the immediate post-relaunch state, not whatever the wall clock left.
+		// Chrome-only, because the active tab is a restored user tab and a user tab
+		// holds no handle to composite (design 7.3). It carries the three states at
+		// once — the restored user tab, the Failed chips on the quiet-dead wave (their
+		// tab mark now STATIC, round-1 D1), and the still-loading stragglers — and NOT
+		// the tab the session left behind.
+		const boundaryExposure = await exposeStrip();
+		lastStripReading = JSON.stringify(boundaryExposure);
+		record(
+			"strip exposure at the restore boundary",
+			JSON.stringify(boundaryExposure, null, 2),
+		);
+		const boundaryFrame = await captureRenderer("restore-boundary");
+		await compose("restore-boundary", boundaryFrame, null, await contentRect());
+		say(`frame: ${join(OUT_DIR, "restore-boundary.png")}`);
+
 		const pruned = await waitFor(
 			async () => {
 				const parsed = JSON.parse(readFileSync(boundarySessionPath, "utf8"));
@@ -4695,20 +4714,69 @@ async function main() {
 			`rows on disk now: ${pruned === null ? "(the row is still there)" : pruned.tabs.length}`,
 		);
 
-		// The frame: chrome-only, because the active tab is a restored user tab and a
-		// user tab holds no handle to composite (design 7.3). It carries the three
-		// states at once — the restored user tab, the Failed chips on the quiet-dead
-		// wave, and the still-loading stragglers — and NOT the tab the session left
-		// behind.
-		const boundaryExposure = await exposeStrip();
-		lastStripReading = JSON.stringify(boundaryExposure);
-		record(
-			"strip exposure at the restore boundary",
-			JSON.stringify(boundaryExposure, null, 2),
+		/*
+		 * THE DRAIN'S OWN TERMINAL STATE (round-1: m-1 = Q-1 = U1 = D3). A drained
+		 * straggler now carries the same bounded wait as the in-flight wave, so
+		 * against servers that accept and never answer ONE launch converges to one
+		 * honest Failed set — the spinner tail that used to survive launch after
+		 * launch is gone. Waited for rather than slept on: each drained row's mark
+		 * lands when its own wait expires, and what is asserted is that EVERY stalled
+		 * row reached one.
+		 */
+		const settled = await waitFor(
+			async () => {
+				const current = await chromeState();
+				const stalled = current.tabs.filter((tab) =>
+					String(tab.url).startsWith(`http://127.0.0.1:${stalledPort}/`),
+				);
+				return stalled.length === stalledRows.length &&
+					stalled.every((tab) => tab.failed === true)
+					? current
+					: null;
+			},
+			"every drained straggler to reach a terminal state (the drain's bounded wait)",
+			60_000,
+		).catch(() => null);
+		const settledFailed = settled
+			? settled.tabs.filter((tab) => tab.failed === true)
+			: [];
+		check(
+			"every drained straggler reaches a terminal state within one launch: the whole stalled set is Failed and closable",
+			settled !== null && settledFailed.length === stalledRows.length,
+			settled === null
+				? `not every stalled row was marked Failed within the wait; failed ${failedNow.length} at the frame`
+				: `failed ${settledFailed.length} of ${stalledRows.length} stalled rows`,
 		);
-		const boundaryFrame = await captureRenderer("restore-boundary");
-		await compose("restore-boundary", boundaryFrame, null, await contentRect());
-		say(`frame: ${join(OUT_DIR, "restore-boundary.png")}`);
+		// THE F7 FRAME (round-1 design D4/U1): the stills used to stop at "14 still
+		// loading". The counted close is opened on the last row of the settled set —
+		// the number the user presses is the number of stragglers the launch
+		// recovered, and the strip is scrolled to the drained rows that number is
+		// about.
+		const settledMenu = await openMenuTrigger(-1);
+		const settledItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-failed"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the counted failed-tabs close to be offered for the settled set",
+			10_000,
+		).catch(() => null);
+		check(
+			"the settled set is closed by ONE counted press: the menu counts every stalled row",
+			settledItem === `Close ${stalledRows.length} failed tabs`,
+			`menu: ${settledMenu}; item: ${JSON.stringify(settledItem)}`,
+		);
+		const settledFrame = await captureRenderer("restore-boundary-settled");
+		await compose(
+			"restore-boundary-settled",
+			settledFrame,
+			null,
+			await contentRect(),
+		);
+		say(`frame: ${join(OUT_DIR, "restore-boundary-settled.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

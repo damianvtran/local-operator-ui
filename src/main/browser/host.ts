@@ -1078,37 +1078,54 @@ export class BrowserHost implements BrowserActionContext {
 		// it is awaited: a straggler loads or fails visibly (a refusal reaches the
 		// ordinary `did-fail-load` wiring) instead of sitting blank, and a failure to
 		// even start is a log line rather than an unhandled rejection.
+		//
+		// THE BOUNDED WAIT IS PART OF THE DRAIN (round-1: m-1 = Q-1 = U1 = D3). It
+		// used to start the load and never look at it again, so a drained server that
+		// accepts and never answers spun forever OUTSIDE `Close N failed tabs` - one
+		// launch left a spinner tail only later launches would clear. The same step
+		// the awaited wave runs (`restoreUnderTimeout`) is started here unawaited, so
+		// a drained quiet death earns the same Failed mark within
+		// `RESTORE_TAB_TIMEOUT_MS` of its start: one launch, one honest close set.
 		for (const next of queue) {
-			const started = this.startRestore(next.tabId, next.recorded);
-			if (!started) continue;
-			void Promise.resolve(started).catch((error: unknown) => {
-				this.log(
-					`[browser] could not start the restore of tab ${next.tabId}: ${String(error)}`,
-				);
-			});
+			void this.restoreUnderTimeout(next.tabId, next.recorded).catch(
+				(error: unknown) => {
+					this.log(
+						`[browser] could not start the restore of tab ${next.tabId}: ${String(error)}`,
+					);
+				},
+			);
 		}
 	}
 
-	/** One tab's half of the pass: the history stack, then the debugger session. */
-	private async hydrateOne(
+	/**
+	 * The bounded half of ONE restore: start the load, wait
+	 * `RESTORE_TAB_TIMEOUT_MS`, and record a no-commit death as a load failure.
+	 *
+	 * Shared by the awaited first wave (`hydrateOne`) and the post-budget drain,
+	 * because the failure mode does not care whether anyone awaits it: a server
+	 * that accepts and never answers produces no `did-fail-load` and no commit,
+	 * so THIS timer is the only thing that can turn it into the strip's Failed
+	 * chip and the counted close. The drain ran a private half of this step until
+	 * round 1 (m-1 = Q-1 = U1 = D3), which is how stragglers spun outside the
+	 * close set.
+	 *
+	 * WHETHER THIS HYDRATION'S NAVIGATION COMMITTED A DOCUMENT, read from the
+	 * event rather than from a property, because neither of the two obvious
+	 * reads answers the question: `getURL()` already reports the TARGET url
+	 * while the restore is still pending, and `history.restore()`'s promise does
+	 * not settle until the load FINISHES, so it is still pending for a page that
+	 * committed seconds ago (both measured on Electron 44, 2026-09-29).
+	 * `did-navigate` is the commit, and it is what tells "the page came back but
+	 * is still fetching something" apart from "nothing ever arrived" — only the
+	 * second one is a failure to record (see the catch below).
+	 */
+	private async restoreUnderTimeout(
 		tabId: number,
 		recorded: PersistedTab,
 	): Promise<void> {
 		const record = this.registry.get(tabId);
-		// The user can close a restored tab while its page is still loading, and the
-		// `destroyed` path may already have taken it: a hydration step that ran anyway
-		// would drive a released `webContents`.
 		if (!record) return;
 		const contents = record.view.webContents;
-		// WHETHER THIS HYDRATION'S NAVIGATION COMMITTED A DOCUMENT, read from the
-		// event rather than from a property, because neither of the two obvious
-		// reads answers the question: `getURL()` already reports the TARGET url
-		// while the restore is still pending, and `history.restore()`'s promise does
-		// not settle until the load FINISHES, so it is still pending for a page that
-		// committed seconds ago (both measured on Electron 44, 2026-09-29).
-		// `did-navigate` is the commit, and it is what tells "the page came back but
-		// is still fetching something" apart from "nothing ever arrived" — only the
-		// second one is a failure to record (see the catch below).
 		let committed = false;
 		const onCommitted = (): void => {
 			committed = true;
@@ -1137,6 +1154,14 @@ export class BrowserHost implements BrowserActionContext {
 			// (`ERR_CONNECTION_REFUSED` and friends) whose description the panel maps
 			// to a sentence the user can act on, and this fallback exists only for the
 			// failures that path cannot see.
+			//
+			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
+			// path (`isReportableLoadFailure` drops `ERR_ABORTED`): that path reads a
+			// NUMERIC net code and this catch has none — its own timeout rejection is
+			// the only shape it produces itself — so a parity check would be a second,
+			// guessing spelling of the exemption. Nothing committed and nothing came
+			// back, so the mark is honest; a stop or a superseding navigation clears it
+			// through the same wiring on the commit that follows (round-1 n-1).
 			if (
 				!committed &&
 				!this.loadFailures.has(tabId) &&
@@ -1146,9 +1171,8 @@ export class BrowserHost implements BrowserActionContext {
 				const entry = recorded.entries[recorded.activeIndex];
 				// `ERR_FAILED` is Chromium's generic refusal and the parenthetical is
 				// the part a bug report needs: the panel shows the description verbatim
-				// in machine voice (`browser-load-failure.tsx`), and its sentence
-				// fallback says the one thing that is always true rather than inventing
-				// a cause.
+				// in machine voice (`browser-load-failure.tsx`), and its sentence for
+				// this key is the timeout's (the dominant cause here).
 				this.recordLoadFailure(tabId, {
 					code: -2,
 					description: "ERR_FAILED (restore)",
@@ -1163,6 +1187,20 @@ export class BrowserHost implements BrowserActionContext {
 				contents.removeListener("did-navigate", onCommitted);
 			}
 		}
+	}
+
+	/** One tab's half of the pass: the history stack, then the debugger session. */
+	private async hydrateOne(
+		tabId: number,
+		recorded: PersistedTab,
+	): Promise<void> {
+		// The user can close a restored tab while its page is still loading, and the
+		// `destroyed` path may already have taken it: a hydration step that ran anyway
+		// would drive a released `webContents`.
+		const record = this.registry.get(tabId);
+		if (!record) return;
+		const contents = record.view.webContents;
+		await this.restoreUnderTimeout(tabId, recorded);
 		if (!this.registry.get(tabId)) return;
 		try {
 			await withTimeout(this.cdp.attach(contents), RESTORE_TAB_TIMEOUT_MS);

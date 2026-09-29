@@ -716,6 +716,11 @@ test("a user tab has no capability until it is handed over, and revoking removes
 	);
 	// The session is stored BARE, whatever spelling the caller hands over.
 	registry.handOver(user.tabId, "session:b");
+	assert.equal(
+		user.handedFrom,
+		"user",
+		"the pre-hand-over owner is pinned for the restore boundary",
+	);
 	const token = surfaceToken(user);
 	assert.ok(token, "the hand-over mints the capability");
 	assert.equal(registry.requireSurface(token).tabId, user.tabId);
@@ -728,6 +733,7 @@ test("a user tab has no capability until it is handed over, and revoking removes
 	assert.equal(registry.mayDrive(user, "c"), false);
 	registry.revokeHandOver(user.tabId);
 	assert.equal(surfaceToken(user), null);
+	assert.equal(user.handedFrom, null, "the pin clears with the capability");
 	assert.throws(
 		() => registry.requireSurface(token),
 		(error) => error.code === "tab_closed",
@@ -4768,6 +4774,27 @@ test("a capture writes a handed-over tab as the user's, and an agent tab as the 
 		"agent",
 		"the registry flips a handed-over tab to agent ownership - the trap the capture adjustment exists for",
 	);
+	// A RE-HANDED AGENT TAB IS STILL THE AGENT'S (round 1, m-2): `handOver`
+	// accepts an agent tab (the cap does not change), so `handedTo !== null`
+	// cannot stand in for "the user's tab" - only the owner pinned BEFORE the
+	// hand-over can. Keyed on `handedTo`, this row was written `user` and survived
+	// the sweep (the review's own reproduced mutation).
+	const rehanded = registry.create({ owner: "agent", sessionId: "alice" });
+	navigate(rehanded, "http://127.0.0.1:3691/rehanded");
+	registry.handOver(rehanded.tabId, "session:bob");
+	// A re-hand does not move the pin: it records what the tab was before the
+	// FIRST hand-over, not what the previous handle was.
+	registry.handOver(rehanded.tabId, "session:carol");
+	assert.equal(
+		rehanded.handedFrom,
+		"agent",
+		"an agent's tab pins agent as the pre-hand-over owner, through re-hands",
+	);
+	assert.equal(
+		cruft.handedFrom,
+		null,
+		"a tab that was never handed over carries no pin",
+	);
 
 	const captured = captureTabs(registry.list(), mine.tabId, new Set());
 	assert.deepEqual(
@@ -4776,8 +4803,9 @@ test("a capture writes a handed-over tab as the user's, and an agent tab as the 
 			["https://example.com/mine", "user"],
 			["http://127.0.0.1:3691/cruft", "agent"],
 			["https://example.com/handed", "user"],
+			["http://127.0.0.1:3691/rehanded", "agent"],
 		],
-		"a plain user tab and an agent tab keep their owners; the handed-over tab is written as the user's, or the restore skip would lose it",
+		"a plain user tab and an agent tab keep their owners; the handed-over user tab is written as the user's, and the re-handed AGENT tab stays the agent's - or the sweep would launder it",
 	);
 
 	// The end-to-end consequence, because the write only matters through the read:
@@ -5048,6 +5076,28 @@ test("a restore budget that expires still starts every queued tab's load", async
 		),
 		`the budget line counts what the drain starts: ${JSON.stringify(messages)}`,
 	);
+
+	// THE DRAIN'S BOUNDED WAIT (round 1, F1 = m-1 = Q-1 = U1 = D3): the rows the
+	// drain starts get the SAME per-tab wait as the first wave, so a straggler
+	// whose server never answers is marked Failed within one launch instead of
+	// spinning outside `Close N failed tabs` forever. Every row here hangs, so
+	// after the drained promises' own timers fire every row must be terminal.
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		host.failedTabIds().size,
+		recorded.length,
+		"every drained straggler reached a terminal state within its own bounded wait",
+	);
+	assert.equal(
+		messages.filter((message) =>
+			message.includes(
+				"is marked as failed: the restore did not commit a page",
+			),
+		).length,
+		recorded.length,
+		`one terminal mark per row, wave and drain alike: ${JSON.stringify(messages)}`,
+	);
 });
 
 test("the drain uses history.restore when the view has it, and still starts every queued tab", async (t) => {
@@ -5057,11 +5107,14 @@ test("the drain uses history.restore when the view has it, and still starts ever
 		(_options, tabId) => {
 			const view = new FakeView(tabId);
 			view.webContents.navigationHistory.restore = (options) => {
-				restoreCalls.push({
-					tabId,
-					url: options.entries[options.index ?? 0]?.url,
-				});
-				return new Promise(() => {});
+				const url = options.entries[options.index ?? 0]?.url;
+				restoreCalls.push({ tabId, url });
+				// ONE drained row's load settles inside its wait: a healthy tab must NOT
+				// be flagged (round 1, F1's other half - the mark is for quiet deaths,
+				// not for stragglers in general).
+				return url?.endsWith("/restore/4")
+					? Promise.resolve()
+					: new Promise(() => {});
 			};
 			return view;
 		},
@@ -5095,6 +5148,23 @@ test("the drain uses history.restore when the view has it, and still starts ever
 	assert.ok(
 		[...counts.values()].every((count) => count === 1),
 		"and no tab started twice",
+	);
+
+	// ROUND 1, F1: the drained rows carry the same bounded wait as the first wave —
+	// the ones that never answer are marked, the one that answered is not.
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	const healthy = restoreCalls.find((call) => call.url.endsWith("/restore/4"));
+	assert.ok(healthy, "the healthy drained row was started");
+	assert.equal(
+		host.failedTabIds().size,
+		recorded.length - 1,
+		"every hung row reached a terminal state; the one that answered did not",
+	);
+	assert.equal(
+		host.failedTabIds().has(healthy.tabId),
+		false,
+		"a drained tab whose load settles inside its wait is not marked Failed",
 	);
 });
 

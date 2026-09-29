@@ -3323,6 +3323,13 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 		loadFailureSentence("ERR_NAME_NOT_RESOLVED"),
 		"That address does not resolve. Check the spelling.",
 	);
+	// The restore boundary's own mark shares the timeout's sentence (round-1
+	// U3/D2): the bounded wait expiring IS what it means, and falling to the
+	// generic copy would hide the one thing the app knows about the cause.
+	assert.equal(
+		loadFailureSentence("ERR_FAILED (restore)"),
+		"The site did not answer in time.",
+	);
 });
 
 /* ---------------------------------------------------------------- */
