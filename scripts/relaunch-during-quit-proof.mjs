@@ -61,7 +61,22 @@
  * HOME, `LOCAL_OPERATOR_CONFIG_DIR`, `LOCAL_OPERATOR_LOG_DIR` and the Electron
  * `--user-data-dir` are all scratch, and so is the backend address
  * (`VITE_LOCAL_OPERATOR_API_URL` on a free port), which is what keeps the app
- * from probing, adopting or stopping the operator's own daemon. The notification
+ * from probing, adopting or stopping the operator's own daemon. The app's
+ * WORKING DIRECTORY is scratch too, and that half is QA round 1's Q1:
+ * `src/main/backend/config.ts` folds a `.env` from the process's working
+ * directory over the launch environment (`override: true`), so running the app
+ * from a checkout whose root `.env` pins `VITE_DISABLE_BACKEND_MANAGER` or
+ * `VITE_LOCAL_OPERATOR_API_URL` — the shape a normal dev checkout carries —
+ * used to override the free-port assignment and turn the run into read-only
+ * probes of whatever the machine has on its real port, while the failure
+ * arrived as a premise check needing interpretation. The app is launched with
+ * an ABSOLUTE app path (`APP_ROOT` below), so Electron still finds this tree's
+ * `package.json`/`out` while `process.cwd()` inside the app stays in the run's
+ * scratch tree, where no `.env` exists. The app's remaining
+ * working-directory reads are its first-run install's `resources/` lookups
+ * (never reached here: the premise is a machine whose backend is already
+ * present, the state a real user has) and the requester `cwd` a second launch
+ * reports, which is diagnostic. The notification
  * and telemetry kill switches are applied through their own helpers, every
  * `CMUX_*`/`LOP_*` variable is stripped, and every child is killed by EXACT pid
  * (SIGTERM, then SIGKILL on that same pid; the process group as the fallback) so
@@ -126,6 +141,16 @@ const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const LOG_DIR = join(SCRATCH, "logs");
 const USER_DATA = join(SCRATCH, "userdata");
+/*
+ * The app is LOADED from this tree (the absolute path Electron gets, so its
+ * `package.json`/`out` resolve no matter where the process runs) and RUNS with
+ * its working directory in the run's own scratch tree — which is what makes a
+ * checkout's root `.env` unreachable to the app's dotenv fold. Both halves are
+ * the QA-round-1 (Q1) fix; see ISOLATION in the header, and
+ * `scripts/relaunch-during-quit-proof.test.mjs`, which pins them.
+ */
+const APP_ROOT = process.cwd();
+const APP_CWD = join(SCRATCH, "app-cwd");
 
 const transcript = [];
 let failures = 0;
@@ -326,7 +351,9 @@ function makeEnv() {
 		// A free address of this run's own, so A SPAWNS AND OWNS its backend — the
 		// stop of that owned child is the teardown window this bug lives in. Left
 		// unset, the app would probe the operator's own 1111/8080 first and the
-		// run's shape would depend on what is listening on the machine.
+		// run's shape would depend on what is listening on the machine. It cannot
+		// be overridden by a checkout `.env`: the app's working directory is in
+		// scratch (see ISOLATION) — before that, QA round 1's Q1 was this override.
 		...(backendPort === null
 			? {}
 			: { VITE_LOCAL_OPERATOR_API_URL: `http://127.0.0.1:${backendPort}` }),
@@ -344,7 +371,17 @@ function launchApp({ mode, inspectPort, label }) {
 	const child = spawn(
 		electronPath,
 		[
-			".",
+			/*
+			 * THE APP PATH IS ABSOLUTE and the working directory below is the run's
+			 * scratch tree — both halves of the QA-round-1 (Q1) isolation fix. A
+			 * relative `.` resolves against `cwd`, and `cwd` must NOT be the
+			 * checkout: the app folds a `.env` from its working directory over the
+			 * launch environment (`override: true`), so a dev checkout's own file
+			 * would beat every assumption this rig makes — the free port it
+			 * assigned, the spawn it waits for. Electron reads its app root from
+			 * THIS argument instead, so the tree is still found.
+			 */
+			APP_ROOT,
 			`--user-data-dir=${USER_DATA}`,
 			`--window-mode=${mode}`,
 			// The mode is named AND the switch rides along: the launch is a run by
@@ -354,7 +391,7 @@ function launchApp({ mode, inspectPort, label }) {
 		],
 		{
 			env: makeEnv(),
-			cwd: process.cwd(),
+			cwd: APP_CWD,
 			stdio: ["ignore", openSync(stdoutPath, "a"), openSync(stderrPath, "a")],
 			detached: true,
 		},
@@ -405,8 +442,21 @@ const WINDOW_READING =
 
 /** Let the app quit itself through the same chain Cmd+Q takes, then watch. */
 async function main() {
+	/*
+	 * THE REQUIREMENT, CHECKED BY NAME (QA round 1, Q1's remedy): this rig boots
+	 * the BUILT app — `out/main/index.js` is what Electron loads — and a missing
+	 * build used to surface as whatever failed first, minutes in. It is a
+	 * preflight so the message is the requirement.
+	 */
+	if (!existsSync(join(APP_ROOT, "out", "main", "index.js"))) {
+		say(
+			`FAILED: ${APP_ROOT} is not a BUILT tree - out/main/index.js is missing. Run \`pnpm build\` here first; this rig boots the built app, not the source.`,
+		);
+		process.exitCode = 1;
+		return;
+	}
 	rmSync(SCRATCH, { recursive: true, force: true });
-	for (const dir of [HOME_DIR, CONFIG_DIR, LOG_DIR, USER_DATA]) {
+	for (const dir of [HOME_DIR, CONFIG_DIR, LOG_DIR, USER_DATA, APP_CWD]) {
 		mkdirSync(dir, { recursive: true });
 	}
 	say(`scratch: ${SCRATCH}`);
