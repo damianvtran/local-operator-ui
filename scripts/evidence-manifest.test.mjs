@@ -2092,6 +2092,15 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships.
 	 */
 	"readmeVisualsFoldFiveNote",
+	/*
+	 * AND THE SIXTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSixNote` is the
+	 * fold onto the moved `origin/main` `654c58f5f672` (#639's
+	 * relaunch-during-shutdown fix) - both evidence files conflicted and both
+	 * were resolved as unions with no key dropped, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. It
+	 * quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldSixNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3165,6 +3174,19 @@ const BRANCH_RECORDS = [
 	 */
 	"miniDictRestampNote",
 	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `relaunchDuringQuitRestampNote` is the
+	 * re-stamp for the quit-in-progress gate (issue #636 - a relaunch inside the
+	 * teardown was answered by the dying instance with a window that died with it,
+	 * "the relaunched app opens onto the app still shutting down"), folded late
+	 * onto main's quick-send and projects lineages. Both trees move - `src/` for
+	 * the state, its two answer sites and the new refusal reporter, `scripts/` for
+	 * the proof rig, the suites that pin the gate and this list's own registration
+	 * - and no swept frame was taken: the change's evidence is a new set of a PNG
+	 * frame and run transcripts that no supplementary set declares, so the reader
+	 * is owed the pair this file ships and the reason no still was.
+	 */
+	"relaunchDuringQuitRestampNote",
+	/*
 	 * Grown by the README-visuals remediation, this branch's newest top-level
 	 * record and the one that re-derived both stamps: the story under `src/` and
 	 * the two rigs under `scripts/` moved both trees, and no sweep frame moved.
@@ -3216,6 +3238,13 @@ const BRANCH_RECORDS = [
 	 * fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldFiveNote",
+	/*
+	 * Grown by the sixth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `654c58f5f672` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSixNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
