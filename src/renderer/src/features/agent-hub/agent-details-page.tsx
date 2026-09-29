@@ -498,7 +498,7 @@ export const AgentDetailsPage: React.FC = () => {
 				{/*
 				 * The author's name, and the email only when the hub sent one. The hub is
 				 * dropping `email` from public rows (coordinated with the hub server,
-				 * 2026-09-29), and "(No email)" printed after every author claimed an
+				 * 2026-09-29), and a bracketed placeholder after every author claimed an
 				 * absence the reader never asked about. Name-only is the honest shape of
 				 * "the hub does not say".
 				 */}
