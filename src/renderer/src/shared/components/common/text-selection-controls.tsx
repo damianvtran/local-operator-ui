@@ -79,12 +79,15 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const { addReply, addAttachment } = useConversationInputStore();
 
-	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
-	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
+	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+	const canEnableSpeechFeature = canUseRadientSpeech;
 
 	// The probe returns no keys both when nothing is configured and when the
 	// local server cannot be reached, and those need different copy — one sends
-	// the reader to settings, the other tells them to wait.
+	// the reader to settings, the other tells them to wait. The sign-in sentence
+	// is owed only to a reader who is NOT signed in: a live Radient session
+	// enables the control by itself (issue #674), so this arm is reached only
+	// when the session read answered "no" and no key is listed.
 	const speechUnavailableReason = isUnavailable
 		? "Text to speech is unavailable while Local Operator is offline"
 		: "Sign in to Radient in the settings page to enable text to speech";

@@ -13,7 +13,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
-import { useCredentials } from "@shared/hooks/use-credentials";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { joinTranscript } from "@shared/hooks/use-message-input";
 import {
 	SpeechToTextPriority,
@@ -247,18 +247,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		onRejectAll,
 	]);
 
-	const { data: credentialsData, isLoading: isLoadingCredentials } =
-		useCredentials();
-
-	const isRadientApiKeyConfigured = useMemo(
-		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
-		[credentialsData?.keys],
-	);
-
-	const canEnableRecordingFeature = useMemo(
-		() => isRadientApiKeyConfigured && !isLoadingCredentials,
-		[isRadientApiKeyConfigured, isLoadingCredentials],
-	);
+	/*
+	 * THE SAME CAPABILITY THE COMPOSER READS (issue #674): a Radient sign-in
+	 * counts, not only the legacy key. This surface used to gate on the raw key
+	 * list and `!isLoading`, so — unlike the composer — it folded "could not
+	 * ask" into the sign-in sentence and told a signed-in user to sign in. The
+	 * shared probe answers both questions once; the copy below distinguishes
+	 * offline from not-signed-in.
+	 */
+	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+	const canEnableRecordingFeature = canUseRadientSpeech;
 
 	const shortcutText = useMemo(() => {
 		if (platform === "darwin") {
@@ -921,7 +919,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								<Tooltip
 									content={
 										!canEnableRecordingFeature
-											? "Sign in to Radient in the settings page to enable audio recording"
+											? isUnavailable
+												? "Voice input is unavailable while Local Operator is offline"
+												: "Sign in to Radient in the settings page to enable audio recording"
 											: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 									}
 								>

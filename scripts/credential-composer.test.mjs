@@ -67,6 +67,8 @@ for (const [key, value] of Object.entries({
 	Element: window.Element,
 	Node: window.Node,
 	Event: window.Event,
+	CustomEvent: window.CustomEvent,
+	FocusEvent: window.FocusEvent,
 	KeyboardEvent: window.KeyboardEvent,
 	InputEvent: window.InputEvent,
 	MouseEvent: window.MouseEvent,
@@ -5202,4 +5204,230 @@ test("the closed box with a draft carries a visible reason (UX round 1, U2)", as
 		/composer-secret-closure-notice/,
 		"and the field is described by it",
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The mic gate reads the Radient session, not only the file (#674)     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE REPORTED STATE AND ITS COUNTERSTATES, driven through this file's own
+ * rig. The report: a user signed in to Radient Cloud gets a permanently
+ * disabled mic whose tooltip says "Sign in to Radient in the settings page to
+ * enable audio recording" — the state they just left. The gate read the
+ * legacy `/v1/credentials` key list alone; a sign-in lands in the backend's
+ * auth store instead. The cases below pin the fixed matrix on the surface the
+ * report is about: session-only → live, key-only → live (unchanged), neither →
+ * off with the sign-in sentence, probe-dead → off with the offline sentence.
+ *
+ * The answers are the desktop transport's own shapes: capabilities advertises
+ * the `radient` feature (which is what ENABLES the account read at all),
+ * `credentials.list` is the legacy file the probe lists, and
+ * `radient.request` carries the account read in the `{data: {msg, result}}`
+ * chain `radientProxy` unwraps. The signed-out refusal goes through
+ * `transportInner` rather than a bare `transportSays(409, …)`: the shim's
+ * outer `!response.ok` check would throw the body away before it is read, and
+ * with the body goes the daemon's own "Sign in to Radient…" sentence — the
+ * 409-plus-prose pair the account read classifies as `signed-out` instead of
+ * `unknown`.
+ */
+
+const MIC_TEST_ACCOUNT = {
+	account: {
+		id: "acct_mic_gate",
+		tenant_id: "ten_mic_gate",
+		email: "mic-gate@example.test",
+		name: "Mic Gate",
+		role: "owner",
+		status: "active",
+		created_at: "2026-01-02T03:04:05Z",
+		updated_at: "2026-01-02T03:04:05Z",
+	},
+	identity: {
+		email: "mic-gate@example.test",
+		provider: "google",
+		provider_id: "google-mic-gate",
+	},
+};
+
+/** A refusal whose ENVELOPE survives the shim's outer `ok` check (see above). */
+const transportInner = (status, detail) => ({
+	ok: true,
+	status: 200,
+	json: async () => ({ status, body: { detail } }),
+});
+
+/** The transport for the mic-gate cases, per state under test. */
+const micTransport =
+	({ account = "signed-out", keys = [], credentialsFail = false } = {}) =>
+	(request) => {
+		if (request.op === "capabilities")
+			return transportSays(200, {
+				desktop_available: true,
+				features: { commands: 1, session_credential: 1, radient: 1 },
+			});
+		if (request.op === "credentials.list") {
+			if (credentialsFail)
+				return transportSays(503, {
+					detail: "rig: the server did not answer",
+				});
+			return transportSays(200, { keys });
+		}
+		if (request.op === "radient.request") {
+			if (account === "signed-in")
+				return transportSays(200, {
+					data: { msg: "ok", result: MIC_TEST_ACCOUNT },
+				});
+			return transportInner(409, "Sign in to Radient to access your account");
+		}
+		return undefined;
+	};
+
+/** The composer's dictation control, as the DOM carries it. */
+const micButton = () =>
+	window.document.querySelector('button[aria-label="Start recording"]');
+
+/** Flush React and the transport until `predicate` holds, or fail naming it. */
+async function until(predicate, what, timeoutMs = 20_000) {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		await act(async () => {
+			await new Promise((resolve) => realSetTimeout(resolve, 10));
+		});
+		const value = predicate();
+		if (value) return value;
+		if (Date.now() > deadline) {
+			throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}`);
+		}
+	}
+}
+
+/**
+ * The mic's tooltip, read by focusing its trigger span and matched BY NAME:
+ * the primitive keeps a previously opened panel mounted while the next opens,
+ * so the first `[role=tooltip]` can be the previous case's sentence. `prefix`
+ * asks for the enabled arm, whose text carries the binding after the prefix.
+ */
+async function openMicTooltip(expected, { prefix = false } = {}) {
+	const trigger = micButton().parentElement;
+	const seen = new Set();
+	for (let attempt = 0; attempt < 80; attempt += 1) {
+		await act(async () => {
+			trigger.dispatchEvent(
+				new window.FocusEvent("focusin", { bubbles: true, cancelable: true }),
+			);
+		});
+		for (const panel of window.document.querySelectorAll('[role="tooltip"]')) {
+			const text = (panel.textContent ?? "").trim();
+			seen.add(text);
+			if (prefix ? text.startsWith(expected) : text === expected) return text;
+		}
+		await act(async () => {
+			await new Promise((resolve) => realSetTimeout(resolve, 50));
+		});
+	}
+	throw new Error(
+		`no tooltip read "${expected}"; sentences seen: ${JSON.stringify([...seen])}`,
+	);
+}
+
+/**
+ * Mount a composer on a FRESH machine: the shared `client` keeps the previous
+ * case's key list and account otherwise, and a cached key answers for a machine
+ * that does not have one (measured: the `neither` case read the key-only case's
+ * cached key and left the mic live). This is the one place in this file that
+ * clears the shared cache between cases, and it is deliberate — these four
+ * cases are four different MACHINES.
+ */
+async function mountMicMachine() {
+	await act(async () => {
+		client.clear();
+	});
+	return mount();
+}
+
+test("a signed-in user gets a live mic with no key listed (issue #674)", async () => {
+	transportOverride = micTransport({ account: "signed-in", keys: [] });
+	try {
+		await mountMicMachine();
+		const mic = await until(
+			() => micButton(),
+			"the dictation control to render",
+		);
+		await until(
+			() => !mic.hasAttribute("disabled"),
+			"the mic of the reported state to go live",
+		);
+		assert.equal(
+			mic.hasAttribute("disabled"),
+			false,
+			"a signed-in user's mic must be live without a listed key",
+		);
+		/*
+		 * AND THE TOOLTIP IS THE ENABLED ONE. This is the control the report
+		 * watched advise signing in while its user was signed in.
+		 */
+		await openMicTooltip("Start recording (", { prefix: true });
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("a key-only install keeps the mic live, unchanged", async () => {
+	transportOverride = micTransport({
+		account: "signed-out",
+		keys: ["RADIENT_API_KEY"],
+	});
+	try {
+		await mountMicMachine();
+		const mic = await until(
+			() => micButton(),
+			"the dictation control to render",
+		);
+		await until(
+			() => !mic.hasAttribute("disabled"),
+			"the key-only install's mic to be live",
+		);
+		assert.equal(mic.hasAttribute("disabled"), false);
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("neither a session nor a key: the sign-in sentence, and only for that machine", async () => {
+	transportOverride = micTransport({ account: "signed-out", keys: [] });
+	try {
+		await mountMicMachine();
+		await until(() => micButton(), "the dictation control to render");
+		await until(
+			() => micButton().hasAttribute("disabled"),
+			"the mic to settle off",
+		);
+		await openMicTooltip(
+			"Sign in to Radient in the settings page to enable audio recording",
+		);
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("a probe that cannot answer reads offline, not sign-in", async () => {
+	transportOverride = micTransport({
+		account: "signed-out",
+		keys: [],
+		credentialsFail: true,
+	});
+	try {
+		await mountMicMachine();
+		await until(() => micButton(), "the dictation control to render");
+		await until(
+			() => micButton().hasAttribute("disabled"),
+			"the mic to settle off",
+		);
+		await openMicTooltip(
+			"Voice input is unavailable while Local Operator is offline",
+		);
+	} finally {
+		transportOverride = null;
+	}
 });

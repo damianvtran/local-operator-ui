@@ -44,7 +44,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	timestamp,
 }) => {
 	const [copied, setCopied] = useState(false);
-	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
+	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
 	const {
 		playSpeech,
 		stopSpeech,
@@ -58,11 +58,14 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	const isLoading = loadingMessageId === messageId;
 	const hasAudio = audioCache.has(messageId);
 
-	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
+	const canEnableSpeechFeature = canUseRadientSpeech;
 
 	// "Not signed in" and "could not reach the server to find out" look
 	// identical from the probe, and sending someone to the settings page to fix
-	// an account that is fine is the worse of the two mistakes.
+	// an account that is fine is the worse of the two mistakes. The sign-in
+	// sentence is owed only to a reader who is NOT signed in: a live Radient
+	// session enables the control by itself (issue #674), so this arm is reached
+	// only when the session read answered "no" and no key is listed.
 	const speechTooltip = isUnavailable
 		? "Text to speech is unavailable while Local Operator is offline"
 		: "Sign in to Radient in the settings page to enable text to speech";
