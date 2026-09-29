@@ -2293,16 +2293,29 @@ const duplicateParagraphFailures = (manifest) => {
 	for (const [field, value] of Object.entries(mean)) {
 		if (typeof value !== "string") continue;
 		const paragraphs = value.trim().split(PARAGRAPH_BREAK);
-		for (let i = 1; i < paragraphs.length; i += 1) {
-			if (paragraphs[i] !== paragraphs[i - 1]) continue;
-			/*
-			 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
-			 * ERROR under this project's config, and the gate above treats an error-severity
-			 * diagnostic in a changed file as a failure - which is how this message was caught.
-			 */
-			failures.push(
-				`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
-			);
+		/*
+		 * A SEEN SET, not the adjacent pair this guard first read: the copies
+		 * review round 1 found were NON-adjacent (a paragraph repeated four
+		 * entries later in `surfaces`, and `frames` carrying the same
+		 * "MAIN'S OWN RECORD..." sentence twice), which an adjacent comparison
+		 * passes while looking like it guards the whole cell. One pass, with the
+		 * first-seen index kept so the message can say which entry it duplicates.
+		 */
+		const seen = new Map();
+		for (let i = 0; i < paragraphs.length; i += 1) {
+			const first = seen.get(paragraphs[i]);
+			if (first !== undefined) {
+				/*
+				 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
+				 * ERROR under this project's config, and the gate above treats an error-severity
+				 * diagnostic in a changed file as a failure - which is how this message was caught.
+				 */
+				failures.push(
+					`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (first seen at ${first}: ${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
+				);
+				continue;
+			}
+			seen.set(paragraphs[i], i);
 		}
 	}
 	return failures;
@@ -2330,6 +2343,24 @@ test("a countsMean cell that repeats a paragraph verbatim fails", () => {
 		}),
 		[],
 	);
+	/*
+	 * AND THE NON-ADJACENT SHAPE, which is the one the adjacent comparison
+	 * missed: a paragraph repeated with a different one between its copies is
+	 * still the same sentence twice, and review round 1 found the shipped file
+	 * carrying exactly that shape (frames: `MAIN'S OWN RECORD...` twice, four
+	 * entries apart; surfaces: a pair repeated at 12/16 and 13/17).
+	 */
+	const spaced = duplicateParagraphFailures({
+		countsMean: {
+			surfaces: `${sentence}\n\nRE-DERIVED FOR AN OLDER FOLD: 12 rows.\n\n${sentence}`,
+		},
+	});
+	assert.equal(
+		spaced.length,
+		1,
+		"a repeat with a different paragraph between its copies is still a repeat",
+	);
+	assert.match(spaced[0], /first seen at 0/);
 });
 
 test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
