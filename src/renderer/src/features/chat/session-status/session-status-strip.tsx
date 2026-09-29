@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { Zap } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useState } from "react";
 import type {
 	CanonicalFrontendState,
@@ -29,6 +30,7 @@ import {
 	bandReadings,
 	effortDisplay,
 	effortState,
+	fastModeState,
 	modelIdentity,
 	reconcileEffort,
 } from "./session-model";
@@ -383,6 +385,23 @@ export const LAST_READING_NOTE = "Last reading from before the reconnect.";
  */
 export const READINGS_DROPPED_NOTE =
 	"Readings dropped when the connection was lost.";
+
+/**
+ * The fast badge's sentence, carried by the model chip's ONE tooltip.
+ *
+ * WHY IT IS NOT A TOOLTIP OF THE BOLT'S OWN (operator request, 2026-09-29:
+ * "Tooltip content 'Fast mode on'"): the badge lives INSIDE the chip's button,
+ * and a second Radix tooltip trigger nested in a first is a second interactive
+ * affordance inside the button — the defect `org-origin-badge.tsx` already
+ * records for this class. It is also measurably wrong here: Radix opens a
+ * trigger on `pointermove`, which BUBBLES, so hovering the bolt would open the
+ * chip's panel AND the bolt's, two panels for one pointer. The sentence
+ * therefore rides the chip's existing panel as its own line whenever the badge
+ * shows, and the chip's aria-label carries a lowercased clause of the same
+ * fact — one trigger, one panel, both registers truthful. Exported so the
+ * rendered-markup test can pin the exact string (`composer-readings.test.mjs`).
+ */
+export const FAST_MODE_ON_NOTE = "Fast mode on";
 
 /**
  * One reading, as a button when it can be opened and a label when it cannot.
@@ -802,6 +821,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const readings = bandReadings(frontend, pendingModel);
 	const model = readings.identity;
 	const identity = modelIdentity(model);
+	/*
+	 * THE FAST BADGE'S ONE CONDITION, read off the SAME spec the label prints
+	 * (`readings.identity` above), so the bolt can never contradict the name it
+	 * sits beside — the badge qualifies the model the chip is naming, including
+	 * the pending paint's window, where the pick's spec reports no tier and the
+	 * badge correctly hides until the owner's frame lands. The tri-state comes
+	 * from `fastModeState` so this chip and the `/fast` row's slot answer
+	 * identically (operator report, 2026-09-29).
+	 */
+	const fastOn = fastModeState(model) === "on";
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	/*
 	 * The four readings that come off the snapshot, asked for a pane that has no
@@ -1003,8 +1032,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// draft has no session to confirm a switch against.
 					label={
 						pending
-							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
-							: `Model: ${identity.selector}. ${modelReason(draft, Boolean(openModel))}`
+							? `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. Switching; waiting for the session to confirm it.`
+							: `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. ${modelReason(draft, Boolean(openModel))}`
 					}
 					tooltip={
 						<TooltipLines
@@ -1014,7 +1043,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 											identity.selector,
 											"Switching the model; waiting for the session to confirm it",
 										]
-									: [identity.selector, modelReason(draft, Boolean(openModel))]
+									: [
+											identity.selector,
+											...(fastOn ? [FAST_MODE_ON_NOTE] : []),
+											modelReason(draft, Boolean(openModel)),
+										]
 							}
 						/>
 					}
@@ -1042,6 +1075,23 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						pending && "text-ink-dim",
 					)}
 				>
+					{/*
+					 * THE FAST BADGE (operator's mock, 2026-09-29): the bolt, immediately
+					 * before the name it qualifies. A MARK, not a second control — the
+					 * chip's tooltip and `aria-label` both state the fact from
+					 * `FAST_MODE_ON_NOTE` above (its note says why the badge carries no
+					 * trigger of its own), and `shrink-0` keeps it whole when the name
+					 * truncates at the narrow end. Hidden when the dial is off OR the
+					 * model reports no fast tier — the one condition `fastOn` reads.
+					 */}
+					{fastOn && (
+						<Zap
+							aria-hidden="true"
+							className="size-3.5 shrink-0"
+							fill="currentColor"
+							stroke="none"
+						/>
+					)}
 					<span className="truncate">{identity.name}</span>
 					{/*
 					 * The pending state's non-hover cue (UX U3).
