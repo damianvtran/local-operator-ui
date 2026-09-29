@@ -4819,6 +4819,49 @@ export const STORIES = [
 			expectSentence: "Moving Active column",
 		},
 	],
+	/*
+	 * The scroll chain (operator refinement): the wheel delivered at ONE
+	 * trusted point over a column that cannot scroll (the quiet `planning`
+	 * cell) must reach the board, and over a column that CAN scroll (the
+	 * `active` queue) must first exhaust that cell and then reach the board —
+	 * each entry asserts its own reading before the shutter.
+	 */
+	[
+		"projects-tab--board-scroll-chain",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="planning"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'document.querySelector("[data-board-strip]").scrollTop > 200',
+				message:
+					"the wheel over a non-scrollable column did not advance the board (the wheel is trapped in the column)",
+			},
+		},
+	],
+	[
+		"projects-tab--board-scroll-edge",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="active"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'(() => { const strip = document.querySelector("[data-board-strip]"); const cell = document.querySelector(\'[data-board-strip] section [data-board-cell="active"]\'); return strip.scrollTop > 200 && cell.scrollTop >= cell.scrollHeight - cell.clientHeight - 1; })()',
+				message:
+					"the wheel over the active column did not exhaust the cell and then advance the board",
+			},
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
@@ -8186,28 +8229,34 @@ const main = async () => {
 			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
 			 * state - the same argument the `hold` arm states.
 			 */
+			/*
+			 * The point resolver both gesture options share: a selector's centre
+			 * once it has a painted box, or a named failure. A gesture that
+			 * finds nothing must fail the capture rather than photograph a
+			 * state the gesture never reached.
+			 */
+			const pointAt = async (selector, what) => {
+				for (let i = 0; i < 100; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(selector)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (result.value) return result.value;
+					await sleep(150);
+				}
+				throw new Error(
+					`${story} @ ${theme}: the ${what} selector \`${selector}\` never appeared (15s) - a gesture that finds nothing must fail rather than photograph the settled state`,
+				);
+			};
 			if (options?.drag) {
-				const point = async (selector) => {
-					for (let i = 0; i < 100; i++) {
-						const { result } = await cdp.send("Runtime.evaluate", {
-							returnByValue: true,
-							expression: `(() => {
-								const el = document.querySelector(${JSON.stringify(selector)});
-								if (!el) return null;
-								const r = el.getBoundingClientRect();
-								if (r.width === 0 || r.height === 0) return null;
-								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-							})()`,
-						});
-						if (result.value) return result.value;
-						await sleep(150);
-					}
-					throw new Error(
-						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
-					);
-				};
-				const from = await point(options.drag.from);
-				const to = await point(options.drag.to);
+				const from = await pointAt(options.drag.from, "drag");
+				const to = await pointAt(options.drag.to, "drag");
 				const mouse = (type, x, y, buttons) =>
 					cdp.send("Input.dispatchMouseEvent", {
 						type,
@@ -8241,6 +8290,54 @@ const main = async () => {
 				 * leaves stories without such a mechanism untouched.
 				 */
 				if (options.drag.settleMs) await sleep(options.drag.settleMs);
+			}
+
+			/*
+			 * A TRUSTED WHEEL, for the scroll-chain stories (operator
+			 * refinement): a play's synthetic wheel cannot scroll a container
+			 * (untrusted events skip the default action), so the gesture has
+			 * to come through CDP. Ticks are delivered at ONE point, which is
+			 * the case under test: a column that cannot scroll (or has hit
+			 * its edge) must let the wheel chain to the board's own scroller.
+			 */
+			if (options?.wheel) {
+				const at = await pointAt(options.wheel.at, "wheel");
+				const times = options.wheel.times ?? 5;
+				const deltaY = options.wheel.deltaY ?? 240;
+				const settleMs = options.wheel.settleMs ?? 120;
+				for (let i = 0; i < times; i += 1) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: at.x,
+						y: at.y,
+						deltaX: 0,
+						deltaY,
+						button: "none",
+						buttons: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(settleMs);
+				}
+			}
+
+			/*
+			 * THE GESTURE'S OWN CLAIM, checked in-page after it lands and
+			 * before the shutter: an expression that must read exactly `true`,
+			 * with the failure naming what was expected and what was read. A
+			 * wheel that a column swallowed fails here rather than shipping a
+			 * frame that claims a scroll the board never made.
+			 */
+			if (options?.expect) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: options.expect.expression,
+				});
+				if (result.value !== true) {
+					throw new Error(
+						`${story} @ ${theme}: ${options.expect.message} (read ${JSON.stringify(result.value)})`,
+					);
+				}
 			}
 
 			/*
