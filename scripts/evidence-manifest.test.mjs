@@ -1681,6 +1681,19 @@ const BRANCH_RECORDS = [
 	 */
 	"task17RestampNote",
 	/*
+	 * AND THE DESKTOP-STEP DIAGNOSTICS' OWN (2026-09-29): `desktopStepDiagnosticsRestampNote`
+	 * is the record for the CI step that makes a red desktop suite name the failing
+	 * test - the errexit-independent capture, the TAP summary, the `::error::`
+	 * annotations and the A17b/A17c driven pins. It moves `scripts/` only and takes
+	 * no frame (nothing in it is user-visible; the evidence is the step body
+	 * extracted and driven under `bash -e` with a stub `pnpm` against five
+	 * synthetic logs, plus the mutation table). The fold onto the stamp-discipline
+	 * train (#566) spells the note's pair bare: the convention that held new notes
+	 * to the pair is retired. A fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"desktopStepDiagnosticsRestampNote",
+	/*
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
 	 * moved, one set's states re-captured - so a fold that started from main's
@@ -2187,6 +2200,104 @@ const BRANCH_RECORDS = [
 	 * reader is owed the reason no still was.
 	 */
 	"headCutCondensationRestampNote",
+	/*
+	 * AND THE UPDATE DRAIN'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote`
+	 * is the record for the update drain → idle-switch change - the operator's
+	 * directive removed the fleet-drain gate from the two RESTART legs, the
+	 * rebuild route's install leg keeps it, and the completion now carries the
+	 * count of sessions still on the old build. It moves BOTH trees and re-shoots
+	 * nothing (the frames this state is owed are the design round's), so the pair
+	 * is re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. The fold onto the stamp-discipline train (#566) spells the note's pair bare: the
+	 * convention that held new notes to the pair is retired.
+	 */
+	"updateDrainIdleSwitchRestampNote",
+	/*
+	 * AND THE SAME PASS'S ROUND-1 REMEDIATION (2026-09-29): the round fixed the
+	 * evidence pipeline rather than the pixels - the S6 claim's capital (design
+	 * D1), the count's docblock and its refresh from the final read (agent review
+	 * m2), the refusal fixture's command (UX U1) and the app-owned managed offer's
+	 * own story (UX U2) - so both trees move once more and the pair is re-derived
+	 * from the tree this commit ships, every member above re-pointed with it. The fold onto the stamp-discipline train (#566) spells the note's pair bare: the
+	 * convention that held new notes to the pair is retired.
+	 */
+	"updateDrainRemediationRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-29): `updateDrainFoldNote` is the fold onto the
+	 * moved `origin/main` `036e501fdf` (#638's hide-cross-session-transcript merge
+	 * over the release train) - both evidence files conflicted, both were resolved
+	 * as unions with no key dropped from either side, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. The fold onto the stamp-discipline train (#566) spells the note's pair bare: the
+	 * convention that held new notes to the pair is retired.
+	 */
+	"updateDrainFoldNote",
+	/*
+	 * AND THE DESIGN ROUND'S FRAMES, COMMITTED (2026-09-29): `updateDrainFramesNote` is
+	 * the record for the frames the pass was owed - the four completion states, the two
+	 * re-shoots, the app-owned managed offer, the two refusal fixtures' frames and the
+	 * two before halves at `a0cdaa759f`. This commit also moves the scripts tree with
+	 * this registration itself, so both stamps are re-derived from this commit's tree
+	 * by the docs-only amendment that follows, and the note's pair is spelled bare by the fold onto the stamp-discipline train
+	 * (#566), which retires the convention that held new notes to the pair.
+	 */
+	"updateDrainFramesNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `updateDrainFoldTwoNote` is the fold onto
+	 * the moved `origin/main` `7461d814ae` (#651's condense-unloaded merge, over this
+	 * branch's fold base `036e501fdf`) - both evidence files conflicted, both resolved as
+	 * unions with no key dropped, and both stamps re-derived from the MERGED tree by the
+	 * docs-only amendment under the merge. The fold onto the stamp-discipline train (#566) spells the note's pair bare: the
+	 * convention that held new notes to the pair is retired.
+	 */
+	"updateDrainFoldTwoNote",
+	/*
+	 * Grown by the monitors read-out pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (sixteen frames over two
+	 * surfaces - six `Chat/Run panel` monitor states and two `Chat/Composer
+	 * status row` chip states) and what it did not (no live-app set yet, and
+	 * why), and it is the record that makes the new frames' provenance
+	 * readable without walking the manifest's partialCapture block. It spells
+	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"monitorsPass",
+	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
+	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
+	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
+	 * `setWindowOpenHandler`), folded onto a seven-times-moving main as it landed
+	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
+	 * fix, the hide-cross-session-transcript filter, the head-cut condensation
+	 * pass, the evidence-stamp-discipline pass, then the monitor-ui-render pass),
+	 * with the two tree fields re-derived over each folded tree - and, under the
+	 * discipline the sixth of those passes landed, no note binding itself to them
+	 * any more.
+	 * Both trees move - `src/` for the popup policy, its presentation gate and the
+	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
+	 * matrix and the trigger/guard cases - and no swept frame was taken by the
+	 * change itself: its evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * plus one app-chrome WebP added in round 1's D2
+	 * (`band-without-notice/localOperatorDark.webp`, which is why the counts are
+	 * re-derived with the folds), so the reader is owed the pair this file
+	 * ships and the reason no still was. It quotes no tree-hash pair (read the
+	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
+	 * the legacy-quoter ledger (`LEGACY_STAMP_QUOTING_NOTES`).
+	 */
+	"browserOauthPopupsRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
+	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
+	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
+	 * onto the moved `origin/main` (`eca30754b7`, `865da9ce78`), and the fold onto
+	 * `0738fa7eb3` re-registered all three here as the retired `STAMP_BINDING_NOTES`
+	 * registrations came into this list. Listed for the reason this list exists: a
+	 * fold resolved from main's copy would drop them first, and nothing else would
+	 * say so. The notes spell their pair as bare SHAs, so no name is added to the
+	 * quoting ledger above.
+	 */
+	"python314RefreshRestampNote",
+	"python314RefreshFoldNote",
+	"python314RefreshSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
