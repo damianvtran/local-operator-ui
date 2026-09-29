@@ -1884,6 +1884,17 @@ const STAMP_BINDING_NOTES = [
 	 * to this file like every entry above it.
 	 */
 	"notificationLifetimeRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-28): `foldOnto20c3a207d7Note` is the fold onto
+	 * the moved `origin/main` `20c3a207d7` (the 0.31.14 release, #622's
+	 * collapsed-turn branch and the 0.31.15 bump) over this branch's
+	 * notification lifetime fix and its round-1 guard - main's whole manifest
+	 * taken as the base with this branch's records re-laid on top, the pair
+	 * re-derived from the folded tip by the docs-only commit that follows, and
+	 * every list member above re-pointed with it. It quotes that pair, so it is
+	 * held to this file like every entry above it.
+	 */
+	"foldOnto20c3a207d7Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
