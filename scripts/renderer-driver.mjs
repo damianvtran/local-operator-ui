@@ -9818,8 +9818,24 @@ async function railHoverTrace(cdp) {
 	const geometry = await cdp.evaluate(`(() => {
 		const rail = document.querySelector('${rail}');
 		if (!rail) return null;
-		const trace = { on: true, frames: [], startedAt: 0 };
+		const trace = { on: true, frames: [], mutations: 0, startedAt: 0 };
 		window.__railHoverTrace = trace;
+		/*
+		 * THE SECOND READING, and the discriminating one: frame pacing alone
+		 * cannot see render WORK that stays inside the frame budget, and both
+		 * builds fit there at this density (measured: no long frames on either).
+		 * The DOM mutations the rail produces during a gesture are what the
+		 * memoization claim changes - one preview flip repaints two marks
+		 * instead of every mark - so the trace counts them per leg too.
+		 */
+		const observer = new MutationObserver((records) => {
+			trace.mutations += records.length;
+		});
+		observer.observe(rail, {
+			subtree: true,
+			attributes: true,
+			childList: true,
+		});
 		let last = performance.now();
 		const tick = (now) => {
 			/*
@@ -9849,6 +9865,7 @@ async function railHoverTrace(cdp) {
 	}
 	const leg = async (label, stations, dwellMs) => {
 		const start = Date.now();
+		await cdp.evaluate("window.__railHoverTrace.mutations = 0");
 		for (let i = 0; i < stations; i += 1) {
 			const y = Math.round(
 				geometry.top +
@@ -9857,9 +9874,10 @@ async function railHoverTrace(cdp) {
 			await movePointer(cdp, geometry.cx, y);
 			await wait(dwellMs);
 		}
+		const mutations = await cdp.evaluate("window.__railHoverTrace.mutations");
 		note(
 			`hover trace leg ${label}`,
-			`stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start}`,
+			`stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start} mutations=${mutations}`,
 		);
 	};
 	/* The DWELL leg: long enough at each station for the card's intent delay. */
@@ -9880,7 +9898,12 @@ async function railHoverTrace(cdp) {
 			firstAt += dt;
 			if (open === 1 && firstOpen === null) firstOpen = Math.round(firstAt - startedAt);
 		}
-		return { frames: trace.frames.map(([dt]) => dt), openFrames, firstOpenMs: firstOpen };
+		return {
+			frames: trace.frames.map(([dt]) => dt),
+			openFrames,
+			firstOpenMs: firstOpen,
+			mutations: trace.mutations,
+		};
 	})()`);
 	if (!trace || trace.frames.length === 0) {
 		check("the hover trace collected frames", false, JSON.stringify(trace));
