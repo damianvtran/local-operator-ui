@@ -197,6 +197,26 @@ const TRANSCRIBE_DELAY_MS = Number(
 );
 let fixtureIndex = 0;
 const radientCalls = [];
+/*
+ * THE GATE. Session C needs a transcription to land INSIDE the window between a
+ * send's press and its echo clear - tens of milliseconds wide, so no fixed
+ * delay can hold it open. When armed, the next transcription response parks on
+ * a promise the sequence resolves AT the press: the transcript then lands in
+ * the window by construction rather than by luck, and `heldTranscriptionText`
+ * is what the assertions read back (the fixture index is whatever the earlier
+ * steps left it at, in every run mode).
+ */
+let heldTranscription = null;
+let heldTranscriptionText = null;
+let holdNextTranscription = false;
+const armTranscriptionGate = () => {
+	holdNextTranscription = true;
+};
+const releaseTranscriptionGate = async () => {
+	const until = Date.now() + 5000;
+	while (!heldTranscription && Date.now() < until) await sleep(25);
+	heldTranscription?.();
+};
 const radientUpstream = createServer((req, res) => {
 	const chunks = [];
 	req.on("data", (c) => chunks.push(c));
@@ -212,7 +232,16 @@ const radientUpstream = createServer((req, res) => {
 		if (req.method === "POST" && req.url?.endsWith("/tools/transcriptions")) {
 			const text = FIXTURES[Math.min(fixtureIndex, FIXTURES.length - 1)];
 			fixtureIndex += 1;
-			await sleep(TRANSCRIBE_DELAY_MS);
+			if (holdNextTranscription) {
+				holdNextTranscription = false;
+				heldTranscriptionText = text;
+				await new Promise((resolve) => {
+					heldTranscription = resolve;
+				});
+				heldTranscription = null;
+			} else {
+				await sleep(TRANSCRIBE_DELAY_MS);
+			}
 			res.writeHead(200, { "content-type": "application/json" });
 			res.end(
 				JSON.stringify({
@@ -252,10 +281,32 @@ record("rig.radientUpstream", {
  * observable while the backend's own carriage is a separate stream.
  */
 const wireMessages = report.wire;
+/*
+ * When the page asked for the held transcription to be let go, rig-side; read
+ * back beside the page's own timestamps so the release and the writes are one
+ * timeline.
+ */
+let raceReleaseAt = null;
 const proxy = createServer((req, res) => {
 	const chunks = [];
 	req.on("data", (c) => chunks.push(c));
 	req.on("end", async () => {
+		/*
+		 * THE PAGE-SIDE RELEASE DOOR. The window the transcript must land inside is
+		 * a handful of milliseconds wide on this path, and a CDP evaluate roundtrip
+		 * is longer than the window it is trying to hit - the first versions of
+		 * this sequence lost that race and recorded `windowOpen:false` rather than
+		 * pretend. So the page releases the gate ITSELF, in the same turn it
+		 * dispatches the press, through this one route on the port the renderer's
+		 * connect-src already allows. Nothing else about the proxy changes.
+		 */
+		if (req.url === "/__race-release") {
+			raceReleaseAt = Date.now();
+			await releaseTranscriptionGate();
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(JSON.stringify({ released: true }));
+			return;
+		}
 		const requestBody = Buffer.concat(chunks);
 		const target = new URL(req.url ?? "/", BACKEND);
 		let recorded = null;
@@ -1053,13 +1104,34 @@ try {
 	// MID-TURN DICTATION: hold the combo while the turn runs. On the un-gated
 	// build the capture starts mid-turn; the release stops it, the transcript
 	// lands, and Enter steers.
-	const mid = await measureEngage({
+	/*
+	 * Press ONCE, and press AGAIN if the first press did not take. The warm
+	 * engage has measured 75-196 ms across runs, but this fleet stalls
+	 * `getUserMedia` under load: one run recorded `flipped:false` at the 3000 ms
+	 * budget where every neighbouring run flipped inside 200 ms. A retry is what
+	 * a user would do, and both attempts are recorded so the run says how many
+	 * it took rather than hiding a stalled first press.
+	 */
+	const midAttempts = [];
+	let mid = await measureEngage({
 		def: ALT_RIGHT,
 		label: "sessionB.midTurnCombo",
 		budgetMs: 3000,
 	});
+	midAttempts.push(mid.detail);
+	if (!mid.detail.flipped) {
+		await releaseHold(ALT_RIGHT, { holdExtraMs: 0 });
+		await sleep(400);
+		mid = await measureEngage({
+			def: ALT_RIGHT,
+			label: "sessionB.midTurnComboRetry",
+			budgetMs: 4500,
+		});
+		midAttempts.push(mid.detail);
+	}
 	expectMaybe("sessionB.midTurnComboEngages", mid.detail.flipped, {
 		...mid.detail,
+		attempts: midAttempts,
 	});
 	if (mid.detail.flipped) {
 		await cdp.shot("10-dictating-mid-turn.png");
@@ -1202,6 +1274,193 @@ try {
 			dictated: dictatedShape !== null,
 		});
 	}
+
+	/* ---------------- session C: the transcript inside the send's own window */
+
+	/*
+	 * THE RACE THE FIX EXISTS FOR, ON AN EXISTING SESSION. `appendTranscriptText`
+	 * either appends into the box or waits for the send's own clear
+	 * (`sendClearPendingRef` -> `pendingTranscriptRef`, composed by `clearOnce`),
+	 * and the window it must respect is the press-to-echo span. This run MEASURES
+	 * that span (~8 ms below - the empty write) and does not manufacture the
+	 * wider one the machinery exists for (the app's slow-create condition, where
+	 * the clear waits on `sessions.create` for p50 142 ms / max 409 ms under
+	 * load); a first attempt to reach that path through the `#/chat` route kept
+	 * the CURRENT session rather than staging a draft, so the sequence runs on a
+	 * session opened for it and the composed write is recorded rather than
+	 * claimed (see `sessionC.composedClear`). What IS asserted is what a user
+	 * would see in either ordering: the transcript survives, and the message that
+	 * went out stays the typed line.
+	 *
+	 * The press happens while the app is TRANSCRIBING, which is itself the
+	 * un-gating claim: the box is writable then, so Enter sends.
+	 */
+	const sessionC = await openSession();
+	report.sessionC = sessionC;
+	const typedC = await typeIntoComposer("typed line for the echo window");
+	verify("sessionC.draftTyped", typedC === "typed line for the echo window", {
+		draft: typedC,
+	});
+	armTranscriptionGate();
+	/*
+	 * The POINTER door opens the recording (the button a user clicks) and the
+	 * confirm control is the stop this sequence wants: it transcribes rather
+	 * than discards, and the clip is held past the 250 ms floor so the take is
+	 * not discarded by the app's own minimum-clip rule.
+	 */
+	const micPress = await clickSelector(MIC);
+	verify("sessionC.micPressed", micPress?.pressed === true, {
+		pressed: micPress?.pressed ?? null,
+	});
+	const recordingC = await waitFor(
+		`!!document.querySelector(${JSON.stringify(CONFIRM)})`,
+		5000,
+	);
+	verify("sessionC.recordingEngaged", recordingC === true, {
+		recorder: recordingC,
+	});
+	if (!recordingC) throw new Error("session C could not start a recording");
+	await sleep(600);
+	const confirmPress = await clickSelector(CONFIRM);
+	verify("sessionC.stopPressed", confirmPress?.pressed === true, {
+		pressed: confirmPress?.pressed ?? null,
+	});
+	/*
+	 * The request reaches the upstream and parks there. Its arrival is the proof
+	 * the app is TRANSCRIBING while the press below happens - waited for
+	 * rig-side, because that is a fact about this process's own server.
+	 */
+	const callsBeforeWait = radientCalls.length;
+	const heldAtUpstream = await (async () => {
+		const until = Date.now() + 15_000;
+		while (Date.now() < until) {
+			if (radientCalls.length > callsBeforeWait) return true;
+			await sleep(100);
+		}
+		return false;
+	})();
+	verify("sessionC.transcriptionHeldUpstream", heldAtUpstream === true, {
+		calls: radientCalls.length,
+		fixture: heldTranscriptionText,
+	});
+	if (!heldTranscriptionText)
+		throw new Error("the transcription never reached the gate");
+	const transcribingC = await waitFor(
+		`!!document.querySelector("[data-transcribing-indicator]") || document.body.innerText.includes("Processing audio")`,
+		8000,
+	);
+	record("sessionC.transcribingWhileSending", { transcribing: transcribingC });
+
+	/*
+	 * THE PRESS, DRIVEN FROM THE PAGE. One turn does three things the rig's CDP
+	 * roundtrips cannot: dispatch the Enter the composer's handler sees, release
+	 * the held transcript through the proxy door, and instrument the field so
+	 * every write to it is timestamped from inside the app's own frame. The
+	 * `value` setter is patched on THIS node, so a controlled re-render's write
+	 * is observed at the moment it lands rather than sampled for.
+	 */
+	await clickSelector(TEXTAREA);
+	const beforeRaceSend = report.wire.length;
+	const raceDriven = await cdp.evaluate(`(() => {
+		const field = document.querySelector(${JSON.stringify(TEXTAREA)});
+		if (!field) return false;
+		field.focus();
+		const proto = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
+		const state = { pressAt: null, releaseAt: null, writes: [] };
+		Object.defineProperty(field, "value", {
+			configurable: true,
+			get() { return proto.get.call(field); },
+			set(v) { state.writes.push({ at: performance.now(), value: v }); proto.set.call(field, v); },
+		});
+		state.pressAt = performance.now();
+		field.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }),
+		);
+		state.releaseAt = performance.now();
+		fetch("http://127.0.0.1:${PROXY_PORT}/__race-release").catch(() => {});
+		window.__loRace = state;
+		return true;
+	})()`);
+	verify("sessionC.pressDriven", raceDriven === true, { driven: raceDriven });
+	const raceBody = await (async () => {
+		const until = Date.now() + 10_000;
+		while (Date.now() < until) {
+			if (report.wire.length > beforeRaceSend) return report.wire.at(-1);
+			await sleep(100);
+		}
+		return null;
+	})();
+	record("sessionC.raceBody", { body: raceBody?.body ?? null });
+	expectInputMode("sessionC.raceInputMode", raceBody?.body, "typed");
+	const raceLanded = await waitForDraft(
+		(d) => d.includes(heldTranscriptionText),
+		20_000,
+	);
+	const raceTimeline = JSON.parse(
+		(await cdp.evaluate("JSON.stringify(window.__loRace ?? null)")) ?? "null",
+	);
+	/*
+	 * THE ORDERING, AS A READING. `writes` is every write the composer made to
+	 * its own field after the press, page-side: the wait path shows ONE write -
+	 * the transcript composed into the send's clear (the two writes land as one,
+	 * `clearOnce`'s comment) - while the fresh-append path shows the clear's
+	 * empty write and then the transcript's. An empty write after the press is
+	 * therefore the fresh path's own signature, and its absence is the evidence
+	 * the transcript was let go INSIDE the window.
+	 */
+	record("sessionC.raceTimeline", {
+		pressAt: raceTimeline?.pressAt ?? null,
+		releaseAt: raceTimeline?.releaseAt ?? null,
+		proxyReleaseAt: raceReleaseAt,
+		writes: raceTimeline?.writes ?? null,
+		emptyWriteAfterPress: (raceTimeline?.writes ?? []).some(
+			(w) => w.value === "",
+		),
+	});
+	const raceWrites = raceTimeline?.writes ?? [];
+	record("sessionC.raceBox", {
+		draft: raceLanded,
+		fixture: heldTranscriptionText,
+	});
+	/*
+	 * A claim in the shipping mode, an observation in the injected one (there the
+	 * stamped body is refused, the refusal hands the typed line back to the box,
+	 * and `sentTextNotResurrected` reads false for a reason that is the run's
+	 * subject rather than a defect - the transcript is still IN that box).
+	 */
+	expectMaybe(
+		"sessionC.transcriptSurvivedTheEcho",
+		raceLanded === heldTranscriptionText,
+		{
+			draft: raceLanded,
+			fixture: heldTranscriptionText,
+		},
+	);
+	/*
+	 * THE COMPOSED WRITE IS RECORDED, NOT CLAIMED, and this is the one place in
+	 * the rig where that is the honest shape. The wait path needs the transcript
+	 * to land INSIDE the press-to-echo window; this run measures that window at
+	 * ~8 ms (the empty write below) while the release's own plumbing - page ->
+	 * rig -> upstream -> backend -> app - costs ~17 ms, so no construction of
+	 * this rig can land inside it. The window the machinery exists for is the
+	 * app's own slow-create condition (the pane comment's p50 142 ms / max
+	 * 409 ms under load, where the clear waits on `sessions.create`), which this
+	 * rig does not manufacture. The outcome claims above hold either way, and
+	 * the timeline below is what the run actually saw: the fresh-append path,
+	 * with no loss and no resurrection.
+	 */
+	record("sessionC.composedClear", {
+		observed:
+			!raceWrites.some((w) => w.value === "") &&
+			raceWrites.some((w) => w.value === heldTranscriptionText),
+		emptyWriteAfterPress: raceWrites.some((w) => w.value === ""),
+		writes: raceWrites,
+		fixture: heldTranscriptionText,
+	});
+	note(
+		"session C could not land inside the ~8 ms press-to-echo window this rig measures (its release plumbing costs ~17 ms); the transcript rode the fresh-append path, asserted above, and the composed-clear path is covered by reading, not by this run",
+	);
+	await cdp.shot("13-transcript-in-echo-window.png");
 
 	// Whether this build carries the new inline treatment at all is read where it
 	// can be true - while a recording exists; see `composerBox().indicator`.
