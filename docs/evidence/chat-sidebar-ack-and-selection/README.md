@@ -162,6 +162,77 @@ name the operator's assistant). That row, and a real second-window or focused-wi
 state, are the two places left to look; nothing in the sidebar's own predicates can
 produce the reported state, which is why this branch changes no selection code.
 
+## Her row: the operator's defect-2 sequence, driven against the assistant's rail row
+
+The operator's exact words for the second defect — "if you click the aida sidebar
+it correctly selects the aida session but then if you click to another
+conversation it keeps aida highlighted instead of properly unhighlighting" — were
+driven against her rail row by `harness/drive-aida.mjs` (through
+`harness/run-aida.sh`, which opens the one gate that keeps her row off the first
+pass's frames: `ACK_AIDA_ENABLED=1` writes `aida.enabled: true` in the seed and
+`ACK_NO_AIDA=0` opens the launch env switch, both halves of
+`aida/bootstrap.py::config_enabled`).
+
+**The sequence passed on BOTH trees.** Press her rail row, then press two
+different conversations in the chat list:
+
+| press | before tree | after tree |
+| --- | --- | --- |
+| her rail row | `aria-current="page"` on her row, her session `<id>` current in the list, hash `#/chat/<id>` (selected after 1329 ms) | same (1230 ms) |
+| conversation 2 | her row `aria-current` GONE, list current = the pressed row alone, hash matches | same |
+| conversation 3 | same, exclusive | same |
+
+The pane was read through the transcript's own `role="log"` node, so "the switch
+happened" is not inferred from the highlight: after each press it carries the
+pressed conversation's transcript (the rig turn landed in hers), and her row's
+mark is gone in the same frame (`her-selected` / `after-other` / `after-third`).
+
+**Reading (b) — "the switch fails and rolls back" — is refuted structurally on
+this build, and the shipped history says it cannot be the operator's build.**
+`openSession` has had no guard read and no rollback since `2e97f9ddfe`
+(2026-09-23, "open a conversation without a guard read", shipped in v0.30.18+):
+it is a plain latest-wins `set` that reports `true`, so a switch can never be
+disproved into a restore and nothing can re-light her row. The gone-conversation
+scene (delete the seeded conversation's store, press its row while hers is
+current) is recorded as it ran: the switch stood, her row stayed unlit, and the
+pane painted the store's cached page within the window measured — the missing
+notice did not get a chance to appear in this run and is NOT claimed.
+
+**The one press this app holds back by design was measured too** (`repeat-same-point`
+/ `repeat-after-move`): a second press at the same point (pointer unmoved, ≤6 px)
+whose target is a different session is DROPPED by the list's repeat-press guard
+(`chat-sidebar.tsx::dropRepeatPress`) — the view does not move, so the previous
+selection stands. That is the only mechanism found on this build that can leave
+an old highlight standing after a press, and it is deliberate (the row that slid
+into place is not the row the press meant); the guard expires on a real move,
+after which the next press lands (`repeat-after-move`: the moved press selects
+the third conversation). If the operator's failing press was such a dropped
+press, this is what they saw; the reorder that would have moved a different row
+under their pointer between their two presses was not reproducible from the rig.
+
+**Her badge, and the working mark** (`badge-before` → `her-badge` → `her-badge-cleared`):
+a real completion in her session, while her conversation is the open view,
+raises the badge `1` 250 ms after the backend reports it (rail accessible name
+"Aida 1"; her list row "Unseen completion, unread"), and the same attention state
+drives it — `use-aida-missed-messages.ts` counts `unreadAckableRows`, the same
+predicate the bulk receipt reads. The busy state drew its own mark during the
+turn (sampled at 0 ms: the spinner plus "Working Aida ..."). The badge's live
+CLEAR cannot be shown in this rig for the same reason defect 1's clear cannot:
+every `sessions.seen` main accepts is refused for a window that is not in the
+foreground, and the bulk control is no exception — pressing "Mark all 1 read"
+produced the toast "View these completions in the foreground before marking them
+read. The unread marks were not cleared." (recorded verbatim in
+`after-readings.json`), and the badge stayed `1`.
+
+**What this pass cannot say:** the give-up discriminator defect 1 uses was not
+exercised for her session in this scene shape — neither tree's log carries a
+refused `sessions.seen` for her completion in the measured window (each log's
+single refusal sits at boot, seconds after launch), so `giveUp` is 0/0 on both
+halves and carries no signal here. The first pass's scenes remain the defect-1
+evidence. The operator's report is therefore neither reproduced nor closed: the
+exact sequence is clean on both trees in this rig, and the shortest path to
+closing it is the operator's own build and a recording of the failing gesture.
+
 ## The harness
 
 - `harness/run.sh` — isolation and guards: ports checked free, scratch `HOME` /
@@ -175,3 +246,6 @@ produce the reported state, which is why this branch changes no selection code.
 - `harness/drive.mjs` — the scenes, the CDP focus lever, the backend reads
   (`attention` ground truth), the give-up discriminator, and the verdict the exit
   code carries (2 when the defect's signature is present).
+- `harness/drive-aida.mjs` + `harness/run-aida.sh` — the her-row pass above;
+  `run-aida.sh` is `run.sh` with both halves of the assistant gate opened
+  (`ACK_AIDA_ENABLED=1`, `ACK_NO_AIDA=0`).
