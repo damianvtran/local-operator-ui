@@ -120,6 +120,32 @@ export type LoadThroughBudget = {
 export type LoadThroughOutcome = "landed" | "exhausted" | "over-budget";
 
 /**
+ * One fetch at a time, shared: a caller arriving while a fetch is in flight
+ * awaits THAT fetch instead of being told nothing applied.
+ *
+ * WHY IT IS NOT JUST "THE GUARD THE PAGER ALREADY HAS". The reader's pager
+ * refuses a concurrent ask with `false` — "no page applied" — which is the
+ * right answer for a scroll that would otherwise double-apply a page. But
+ * `false` is also what a walk reads as "history ends here", so a jump that
+ * fired while a paging fetch was in flight used to fall through to a clamped
+ * mount instead of awaiting the page already on its way. Sharing the promise
+ * makes the collision a WAIT for the callers that opt in, and leaves the
+ * refusals to the callers that want them.
+ */
+export const shareInFlight = (
+	load: () => Promise<boolean>,
+): (() => Promise<boolean>) => {
+	let inFlight: Promise<boolean> | null = null;
+	return () => {
+		if (inFlight !== null) return inFlight;
+		inFlight = load().finally(() => {
+			inFlight = null;
+		});
+		return inFlight;
+	};
+};
+
+/**
  * One backward loader over one pager.
  *
  * The reason it is a factory rather than a bare function is the SHARED
@@ -129,16 +155,8 @@ export type LoadThroughOutcome = "landed" | "exhausted" | "over-budget";
  * settle behind re-checks its own model rather than trusting a stale result.
  */
 export const createBackwardLoader = (pager: LoaderPager) => {
-	let inFlight: Promise<boolean> | null = null;
-
 	/** One older page, deduplicated across concurrent callers. */
-	const loadOne = (): Promise<boolean> => {
-		if (inFlight !== null) return inFlight;
-		inFlight = pager.loadOlder().finally(() => {
-			inFlight = null;
-		});
-		return inFlight;
-	};
+	const loadOne = shareInFlight(pager.loadOlder);
 
 	/**
 	 * Fetch the margin above the target, or say the store ends here.

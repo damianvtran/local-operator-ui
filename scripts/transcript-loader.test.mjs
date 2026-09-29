@@ -177,6 +177,33 @@ test("one in-flight fetch serves concurrent callers", async () => {
 	);
 });
 
+test("a shared fetch makes a collision a wait, not a false", async () => {
+	/*
+	 * The shape the walk-side consumers rely on: the pager refuses a
+	 * concurrent ask with `false`, and a walk would read that as history's
+	 * end. Sharing the promise turns the collision into a wait.
+	 */
+	let calls = 0;
+	let release;
+	const load = () => {
+		calls += 1;
+		return new Promise((resolve) => {
+			release = resolve;
+		});
+	};
+	const shared = loader.shareInFlight(load);
+	const first = shared();
+	const second = shared();
+	assert.equal(calls, 1, "one fetch for both askers");
+	release(true);
+	assert.equal(await first, true);
+	assert.equal(await second, true);
+	const third = shared();
+	assert.equal(calls, 2, "the next ask after settle is a new fetch");
+	release(false);
+	assert.equal(await third, false);
+});
+
 test("the outline keeps a turn's id when its head arrives (collapse lane repro)", async () => {
 	/*
 	 * The newer half of a page split: a turn whose opening user row has not
