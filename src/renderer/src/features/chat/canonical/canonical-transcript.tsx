@@ -257,6 +257,18 @@ function condenseSentence(plan: RunCollapsePlan): string {
 		: `Turn condensed: ${parts.join(", ")}.`;
 }
 
+/**
+ * Every row id a plan holds — the settle announcement's "was this run on
+ * screen last pass" denominator (see that effect's comment).
+ */
+function planRowIds(runs: readonly RunCollapsePlan[]): Set<string> {
+	const ids = new Set<string>();
+	for (const run of runs) {
+		for (const id of run.recordIds) ids.add(id);
+	}
+	return ids;
+}
+
 export type CanonicalTranscriptProps = {
 	frontend?: CanonicalFrontendState | null;
 	transcript: TranscriptState;
@@ -2047,16 +2059,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	/* Durable pages this conversation's open has spent aligning the window's
 	 * top edge onto a loaded run boundary. See the alignment effect below. */
 	const alignFetches = useRef(0);
-	/* The runs the settle announcement has already stated — see the effect
-	 * beside the collapse plan. `null` until the first pass that has runs, and
-	 * re-set on a session switch so a conversation's first paint is a LOAD the
-	 * announcement stays out of. */
-	const announcedRuns = useRef<Set<string> | null>(null);
+	/* The settle announcement's own memory — see the effect beside the collapse
+	 * plan. `keys` are the bars already stated (or absorbed silently, when they
+	 * were window-entered rather than settled); `rowIds` are every row the
+	 * PREVIOUS pass's plan held, which is what tells a settle from a reveal. */
+	const announcedPlan = useRef<{
+		keys: Set<string>;
+		rowIds: Set<string>;
+	} | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
 		alignFetches.current = 0;
-		announcedRuns.current = null;
+		announcedPlan.current = null;
 	}
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
@@ -2611,11 +2626,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * `focusHold`): the record id of the row holding `document.activeElement`
 	 * inside the scroller. Focus EVENTS rather than a render-time DOM read, so
 	 * the value is React state and a focus move is a re-render the plan can
-	 * answer; `null` means "focus is not in a row" — the state on every pointer
-	 * gesture, so the guard costs pointer readers nothing. The bar is excluded
-	 * deliberately: it carries `data-record-id` too (its anchor row's), and a
-	 * reader tabbing onto a bar's button must not hold that bar's run open —
-	 * the bar is not a row being hidden, it IS the collapse.
+	 * answer; `null` means "focus is not in a row". A CLICK IS ALSO A FOCUS
+	 * (agent review round 1, NIT-1): in Chromium, pressing a control focuses
+	 * it, so a pointer reader who just clicked a row's button holds that run
+	 * open exactly as a keyboard reader does — the guard makes them the same
+	 * promise (a collapse never unmounts the focused row) and releases it the
+	 * same way, when focus moves on. The bar is excluded deliberately: it
+	 * carries `data-record-id` too (its anchor row's), and a reader focusing a
+	 * bar's button must not hold that bar's run open — the bar is not a row
+	 * being hidden, it IS the collapse.
 	 */
 	const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null);
 	const handleTranscriptFocus = useCallback(
@@ -2678,12 +2697,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * session switch re-arms that skip (the transcript component outlives a
 	 * conversation switch). A reader's own press never reaches here: it changes
 	 * the reader's expansion, not which runs collapse.
+	 *
+	 * A WINDOW REVEAL IS NOT A SETTLE EITHER (agent review round 1, MAJOR-1).
+	 * The window only ever GROWS, and every step of that growth presents bars
+	 * for runs the previous pass never held — a scroll-up widen, the open's
+	 * snap, a jump's mount. A set-difference against the previous pass's keys
+	 * announced every one of them ("ten announcements on a widen, zero
+	 * settles", the reviewer's probe-widen-announce.test.mjs), while nothing
+	 * the reader could see was unmounted: those runs were folded before the
+	 * reader ever saw them unfold. So an utterance must also find the run
+	 * PRESENT in the previous pass — sharing at least one row with it — which
+	 * is exactly "its rows were on screen a moment ago". The row-id test also
+	 * bridges the live→settled KEY JUMP: a run being written keys on its last
+	 * row and a settled one on its answer, but its rows are the same rows.
+	 * Window-entered bars are absorbed into `keys` silently, so a later reveal
+	 * of the same run stays quiet.
 	 */
 	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
 	useEffect(() => {
 		const collapsed = collapse.runs.filter((run) => run.collapses);
-		const next = new Set(collapsed.map((run) => run.key));
-		const previous = announcedRuns.current;
+		const rowIds = planRowIds(collapse.runs);
+		const previous = announcedPlan.current;
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
@@ -2691,11 +2725,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * with no runs at all — a held or empty pane — leaves the
 			 * initialisation for the first pass that paints rows.
 			 */
-			if (collapse.runs.length > 0) announcedRuns.current = next;
+			if (collapse.runs.length > 0) {
+				announcedPlan.current = {
+					keys: new Set(collapsed.map((run) => run.key)),
+					rowIds,
+				};
+			}
 			return;
 		}
-		announcedRuns.current = next;
-		const appeared = collapsed.filter((run) => !previous.has(run.key));
+		const appeared = collapsed.filter(
+			(run) =>
+				!previous.keys.has(run.key) &&
+				run.recordIds.some((id) => previous.rowIds.has(id)),
+		);
+		announcedPlan.current = {
+			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			rowIds,
+		};
 		if (appeared.length === 0) return;
 		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
 	}, [collapse]);
