@@ -114,7 +114,6 @@ import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
-import { jumpToFailedRow } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -1001,34 +1000,10 @@ const AssistantRow = memo(function AssistantRow({
 							<span className={cn("text-ink-dim")}>
 								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
 							</span>
-							{foot.failed > 0 && (
-								<>
-									<span aria-hidden={true} className={cn("text-ink-dim")}>
-										·
-									</span>
-									<button
-										type="button"
-										onClick={(event) => {
-											const failedId = foot.firstFailedId;
-											if (!failedId) return;
-											const root =
-												event.currentTarget.closest(
-													"[data-lo-transcript-content]",
-												) ?? document;
-											/*
-											 * The walk itself is lifted to `failed-row-jump.ts`: the collapsed
-											 * turn's bar is a gated layer ABOVE the fold now, and the bar's
-											 * own failure control drives the same one. The foot only renders
-											 * where no bar does, so from here the bar step is a no-op.
-											 */
-											jumpToFailedRow(root, failedId);
-										}}
-										className={cn("font-medium text-danger hover:underline")}
-									>
-										{foot.failed === 1 ? "1 failed" : `${foot.failed} failed`}
-									</button>
-								</>
-							)}
+							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
+							 * foot's `· N failed` control is retired with the bar's —
+							 * failures stay discoverable by expanding the rows, which
+							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
 					<span className={cn("ml-auto")}>
@@ -2551,7 +2526,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				recordIds={group.rows.map((row) => row.record.id)}
 				summary={group.summary}
 				actionCount={group.rows.length}
-				failedCount={group.failedCount}
 				span={group.span}
 				live={group.live}
 				/*
@@ -3031,8 +3005,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
 										durationS={entry.plan.facts.durationS}
 										actionCount={entry.plan.facts.actions}
-										failedCount={entry.plan.facts.failed}
-										firstFailedId={entry.plan.facts.firstFailedId}
 										title={entry.plan.facts.title}
 										stampTs={entry.plan.stampTs}
 										open={openRuns.has(entry.plan.key)}
