@@ -125,6 +125,34 @@ export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
 export const CHECKPOINT_WARM_MAX_IDS = 16;
 
 /**
+ * Longest in-thread find query the `sessions.find` op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and it matches `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user
+ * typed": the overlay's input carries `maxLength` at this number, so a paste
+ * cannot exceed it either, and the schema refuses an over-long query BY NAME
+ * rather than projecting it into every doc comparison of the session's index.
+ */
+export const THREAD_FIND_MAX_CHARS = 256;
+
+/**
+ * How many in-thread hits one find may return.
+ *
+ * The backend's own route default (`limit: int = Query(default=100, ge=1,
+ * le=200)`), sent explicitly by the client so the request the app makes does
+ * not depend on a route default that could move: find is a navigation surface,
+ * not an export, and the panel renders a screenful at a time.
+ */
+export const THREAD_FIND_DEFAULT_LIMIT = 100;
+
+/**
+ * The route's ceiling, mirrored so a client cannot compute its own refusal:
+ * `sessions.find` refuses `limit > 200` here rather than letting the backend's
+ * generic "invalid fields" 422 answer a request this app built itself.
+ */
+export const THREAD_FIND_MAX_LIMIT = 200;
+
+/**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
  *
  * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
@@ -1187,6 +1215,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			ids: z.array(id).max(CHECKPOINT_WARM_MAX_IDS).optional(),
 			limit: z.number().int().min(1).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+		})
+		.strict(),
+	/*
+	 * In-thread find (D9): messages of ONE conversation matching `q`, best
+	 * first, served from the per-session transcript index.
+	 *
+	 * A READ like `history` and `checkpoints` beside it. The answer's `state` is
+	 * the checkpoint manifest's own ladder: a cold or stale index answers
+	 * `building` inside the first-paint budget (with hits ranked from the
+	 * previous scan marked `partial`) while the background refresh runs, so the
+	 * overlay's first paint is immediate; `unsupported` is a peer conversation
+	 * whose journal is not on this device; `error` is a failed refresh inside
+	 * its cooldown. The overlay renders both tiers (`exact`/`soft`) and treats
+	 * `ranges` as snippet-relative — empty on a soft hit, which has no literal
+	 * occurrence of the query by construction.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.find"),
+			sessionId,
+			// `.min(1)`: an empty query is not a search. The overlay's client never
+			// sends one — it answers an empty query locally, without a request — so
+			// refusing it by name keeps the vocabulary closed rather than paying a
+			// round trip for an answer the box already knows.
+			q: z.string().min(1).max(THREAD_FIND_MAX_CHARS),
+			limit: z.number().int().min(1).max(THREAD_FIND_MAX_LIMIT).optional(),
 		})
 		.strict(),
 	/*
@@ -2977,6 +3031,64 @@ export type CheckpointWarmAnswer = {
 };
 
 /**
+ * What one find hit matched (D3/D9): a casefolded literal substring of what was
+ * said (`exact`), or the bounded soft tier (`soft` — prefix, token-AND, or edit
+ * distance <= 2 on 4+ character tokens).
+ *
+ * The tiers are the backend's and are rendered differently rather than
+ * re-derived here: a client that guessed which hits were literal would differ
+ * from the index exactly where the index's ranking is subtlest.
+ */
+export type ThreadFindTier = "exact" | "soft";
+
+/**
+ * The find answer's lifecycle state (D9); see the op's own comment for what
+ * each one means and how the overlay degrades.
+ */
+export type ThreadFindState = "ready" | "building" | "error" | "unsupported";
+
+/**
+ * One message the query matched, with the snippet the results list renders.
+ *
+ * `ranges` are match offsets RELATIVE TO `snippet` (non-overlapping, oldest
+ * first, at most five), so the client marks `snippet[start:end]` without
+ * knowing the window offset into the message. They are always present — empty
+ * for a soft hit, which has no literal occurrence of the query. `role` is the
+ * wire vocabulary (`user`/`agent`); the backend translates the stored docs'
+ * `assistant` so both clients read the same word.
+ *
+ * `ts` is the journal's own epoch SECONDS, not milliseconds — the same unit
+ * every durable transcript entry carries; a caller that shows a clock converts
+ * once, where it formats (the rail's `checkpointClockLabel` is the precedent).
+ */
+export type ThreadFindHit = {
+	id: string;
+	role: "user" | "agent";
+	ts: number;
+	snippet: string;
+	ranges: [number, number][];
+	tier: ThreadFindTier;
+};
+
+/**
+ * The `sessions.find` 200 body (D9).
+ *
+ * `query` is echoed rather than assumed: the overlay debounces its input, so
+ * responses can arrive out of order and it must be able to tell which of its
+ * queries this answers. `partial` is true exactly when `hits` were ranked from
+ * an index that does not reflect the journal's current tail (`building`),
+ * never as a substitute for `truncated`, which reports the hit list itself
+ * being cut at `limit`.
+ */
+export type ThreadFindAnswer = {
+	query: string;
+	state: ThreadFindState;
+	partial: boolean;
+	hits: ThreadFindHit[];
+	truncated: boolean;
+};
+
+/**
  * How many bytes of serialized JSON body one desktop operation may carry.
  *
  * These live here, beside the schemas they bound, because the two were allowed
@@ -3383,6 +3495,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.aside.get",
 	"sessions.checkpoints",
 	"sessions.failovers",
+	"sessions.find",
 	"sessions.get",
 	"sessions.history",
 	"sessions.list",
@@ -4334,6 +4447,22 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.limit !== undefined ? { limit: request.limit } : {}),
 				},
 			};
+		case "sessions.find": {
+			// `encodeURIComponent` rather than interpolation, for `sessions.search`'s
+			// reason: a query is whatever the user typed, and `&`, `#` or a space in
+			// it would otherwise change the request's meaning (or truncate it)
+			// instead of being searched for. `limit` is ALWAYS sent (the route's
+			// default is a second authority, and `truncated` on the answer is a fact
+			// about the list the caller actually asked for).
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? THREAD_FIND_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/find?${query}`,
+				method: "GET",
+			};
+		}
 		case "subagents.transcript": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
