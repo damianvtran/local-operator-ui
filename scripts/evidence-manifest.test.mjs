@@ -2188,6 +2188,16 @@ const BRANCH_RECORDS = [
 	 */
 	"headCutCondensationRestampNote",
 	/*
+	 * Grown by the monitors read-out pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (sixteen frames over two
+	 * surfaces - six `Chat/Run panel` monitor states and two `Chat/Composer
+	 * status row` chip states) and what it did not (no live-app set yet, and
+	 * why), and it is the record that makes the new frames' provenance
+	 * readable without walking the manifest's partialCapture block. It spells
+	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"monitorsPass",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
