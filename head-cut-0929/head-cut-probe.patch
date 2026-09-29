@@ -1,0 +1,288 @@
+--- /Users/damian/.local-operator/sessions/ad29ec5abf86/scratchpad/condense-rig/driver/.base-renderer-driver.mjs	2026-09-29 11:40:02
++++ /Users/damian/.local-operator/sessions/ad29ec5abf86/scratchpad/condense-rig/driver/renderer-driver.mjs	2026-09-29 11:54:11
+@@ -8160,6 +8160,265 @@
+ }
+ 
+ /**
++ * HEAD-CUT PROBE (scratchpad-only; not part of the repo's scenes).
++ *
++ * Reproduces the operator report: "condensation doesn't handle the case where
++ * the previous message is a few chunk loads up - i.e. when it isn't loaded yet
++ * due to transcript lazy-loading, the turn 'doesn't condense properly'."
++ *
++ * Fixture: `seed-long-turns.mjs` (session be1a9fef00a1, 8 turns of 444-604
++ * rows each). Legs:
++ *   A. open + settle  - the last turn is 6 pages tall, so the tail page's
++ *      window top sits inside it, head-cut.
++ *   B. jump to turn 7's completion tick (~7 pages back) - the landed turn's
++ *      head is 4+ pages above the loaded set.
++ *   C. manual pulls (wheel -500 x 4, then x 4 more) - how many chunk-loads the
++ *      reader has to pull before the head arrives.
++ *   D. jump to the last turn's USER tick - the loaded-head contrast case.
++ *
++ * Every leg: DOM readings (bars, mounted rows, earlier-count, rail ticks,
++ * highlight, aria-live regions) + a settled frame. Also reads the transcript's
++ * own render marks (`lop:transcript:render`) for the visible-row count.
++ */
++const HEAD_CUT_SESSION = "be1a9fef00a1";
++
++async function sceneHeadCutProbe(cdp) {
++	const facts = await factsOf(cdp);
++	note("facts (from main)", JSON.stringify(facts));
++	check(
++		"window mode is headless and the window is never shown or focused",
++		facts.windowMode === "headless" &&
++			facts.visible === false &&
++			facts.focused === false,
++		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
++	);
++	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
++	await verb(cdp, "navigate", "/chat");
++	const mounted = await waitForCondition(
++		cdp,
++		`Boolean(document.querySelector('[data-session-row="${HEAD_CUT_SESSION}"]'))`,
++		90_000,
++	);
++	check(
++		"the seeded conversation row is in the sidebar",
++		mounted.ok,
++		JSON.stringify(mounted.last),
++	);
++	const pressed = await verb(cdp, "press", {
++		selector: `[data-session-row="${HEAD_CUT_SESSION}"] [data-chat-row]`,
++	});
++	note("sidebar press", JSON.stringify(pressed));
++	await waitForCondition(
++		cdp,
++		`document.querySelectorAll("[data-record-id]").length > 0`,
++		60_000,
++	);
++
++	/**
++	 * Settle until the painted shape stops changing (rows + bars + earlier
++	 * count) for three consecutive polls, with a floor of 3.5 s (the open's own
++	 * alignment fetches need their round trips) and a 25 s ceiling.
++	 */
++	const settleStable = async (floorMs = 3500, ceilingMs = 25_000) => {
++		const started = Date.now();
++		let last = "";
++		let stableFor = 0;
++		for (;;) {
++			const shape = await cdp.evaluate(`(() => {
++				const log = document.querySelector('[role="log"]');
++				if (!log) return null;
++				return [
++					log.querySelectorAll('[data-record-id]').length,
++					log.querySelectorAll('[data-turn-summary]').length,
++					(log.textContent.match(/(\\d+)\\s+earlier/) ?? [''])[0],
++				].join('|');
++			})()`);
++			const now = JSON.stringify(shape);
++			if (now === last) stableFor += 1;
++			else {
++				last = now;
++				stableFor = 0;
++			}
++			const elapsed = Date.now() - started;
++			if (elapsed >= floorMs && stableFor >= 3) return;
++			if (elapsed >= ceilingMs) return;
++			await wait(500);
++		}
++	};
++	await settleStable();
++
++	const readState = () =>
++		cdp.evaluate(`(() => {
++			const log = document.querySelector('[role="log"]');
++			if (!log) return null;
++			const rows = Array.from(log.querySelectorAll('[data-record-id]'));
++			const bars = Array.from(log.querySelectorAll('[data-turn-summary]'));
++			const earlier = (log.textContent.match(/(\\d+)\\s+earlier/) ?? [])[0] ?? null;
++			const marks = performance.getEntriesByName('lop:transcript:render');
++			return {
++				mountedRows: rows.length,
++				bars: bars.map(b => ({
++					runIds: (b.getAttribute('data-run-ids') ?? '').split(',').slice(0, 3).join(','),
++					text: (b.textContent ?? '').replace(/\\s+/g, ' ').slice(0, 170),
++					took: /Took/.test(b.textContent ?? ''),
++					top: Math.round(b.getBoundingClientRect().top),
++				})),
++				firstRows: rows.slice(0, 3).map(r => ({
++					id: r.getAttribute('data-record-id'),
++					kind: r.getAttribute('data-record-kind'),
++					top: Math.round(r.getBoundingClientRect().top),
++				})),
++				lastRow: rows.length
++					? {
++							id: rows[rows.length - 1].getAttribute('data-record-id'),
++							kind: rows[rows.length - 1].getAttribute('data-record-kind'),
++						}
++					: null,
++				scrollTop: Math.round(log.scrollTop),
++				geometry: (() => {
++					const content = document.querySelector('[data-lo-transcript-content]');
++					return {
++						content: content ? Math.round(content.getBoundingClientRect().height) : null,
++						pane: Math.round(log.clientHeight),
++					};
++				})(),
++				earlier,
++				railTicks: document.querySelectorAll('[data-checkpoint-id]').length,
++				highlight: Boolean(document.querySelector('[data-jump-highlight]')),
++				highlightId: (() => {
++					const h = document.querySelector('[data-jump-highlight]');
++					return h ? h.getAttribute('data-record-id') : null;
++				})(),
++				liveRegions: Array.from(document.querySelectorAll('[aria-live]'))
++					.map(e => (e.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 120))
++					.filter(Boolean),
++				lastMarks: marks.slice(-3).map(e => ({ rows: e.detail && e.detail.rows, commit: e.detail && e.detail.commit })),
++			};
++		})()`);
++
++	const tickIds = () =>
++		cdp.evaluate(
++			`Array.from(document.querySelectorAll('[data-checkpoint-id]')).map(e => e.getAttribute('data-checkpoint-id'))`,
++		);
++
++	const jumpTo = async (candidates, label) => {
++		const present = await tickIds();
++		const target = candidates.find((id) => present.includes(id));
++		if (target === undefined) {
++			note(`jump ${label}: no candidate present`, JSON.stringify(present));
++			return false;
++		}
++		const started = Date.now();
++		await cdp.evaluate(`(() => {
++			const prior = document.querySelector('[data-jump-highlight]');
++			if (prior) prior.removeAttribute('data-jump-highlight');
++			return true;
++		})()`);
++		const press = await verb(cdp, "press", {
++			selector: `[data-checkpoint-id="${target}"]`,
++		});
++		const landed = await waitForCondition(
++			cdp,
++			`Boolean(document.querySelector('[data-jump-highlight]'))`,
++			60_000,
++		);
++		note(
++			`jump ${label}`,
++			JSON.stringify({
++				target,
++				press,
++				landed: landed.ok,
++				waitedMs: Date.now() - started,
++			}),
++		);
++		if (landed.ok) await wait(3000);
++		return landed.ok;
++	};
++	const wheel = async (deltaY) => {
++		const point = await cdp.evaluate(`(() => {
++			const r = document.querySelector('[role="log"]').getBoundingClientRect();
++			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
++		})()`);
++		await cdp.send("Input.dispatchMouseEvent", {
++			type: "mouseWheel",
++			x: point.x,
++			y: point.y,
++			button: "none",
++			buttons: 0,
++			clickCount: 0,
++			modifiers: 0,
++			deltaX: 0,
++			deltaY,
++			pointerType: "mouse",
++		});
++	};
++
++	/* LEG A: open + settle. */
++	const s0 = await readState();
++	note("A open-settled", JSON.stringify(s0));
++	await captureSettled(cdp, "headcut-open-settled");
++
++	/* LEG B: jump to turn 7's completion (~7 pages back). */
++	await jumpTo(["an0007", "acm0007", "au0007"], "t7-completion");
++	await settleStable(2500, 20_000);
++	const s1 = await readState();
++	note("B jump-t7-settled", JSON.stringify(s1));
++	/*
++	 * DESIGN ROUND 1, D1: the caption promises a FOLDED bar, and a capture of
++	 * the tick-centred strip can miss it — the bar stands at the run's first
++	 * hidden row, hundreds of rows above a landing centred on the completion
++	 * tick. Bring the landed run's OWN bar into view so the frame carries the
++	 * claim it makes: [bar counts][answer][stamp].
++	 */
++	const barReveal = await cdp.evaluate(`(() => {
++		const log = document.querySelector('[role="log"]');
++		const bar = Array.from(document.querySelectorAll('[data-turn-summary]'))
++			.find((b) => (b.getAttribute('data-run-ids') || '').includes('an0007'));
++		if (!bar) return { found: false };
++		const delta = bar.getBoundingClientRect().top - log.getBoundingClientRect().top;
++		log.scrollTop += delta - 160;
++		return {
++			found: true,
++			delta: Math.round(delta),
++			text: (bar.textContent || '').replace(/\\s+/g, ' ').slice(0, 90),
++		};
++	})()`);
++	note("B2 jump-t7-bar-reveal", JSON.stringify(barReveal));
++	await wait(1500);
++	const s1b = await readState();
++	note("B2 jump-t7-post-reveal", JSON.stringify(s1b));
++	await captureSettled(cdp, "headcut-jump-t7");
++
++	/* LEG C: manual pulls, four notches then four more. */
++	for (let i = 0; i < 4; i += 1) {
++		await wheel(-500);
++		await wait(900);
++	}
++	await settleStable(1500, 12_000);
++	const s2 = await readState();
++	note("C after-4-pulls", JSON.stringify(s2));
++	await captureSettled(cdp, "headcut-pull4");
++
++	for (let i = 0; i < 4; i += 1) {
++		await wheel(-500);
++		await wait(900);
++	}
++	await settleStable(1500, 12_000);
++	const s3 = await readState();
++	note("C after-8-pulls", JSON.stringify(s3));
++	await captureSettled(cdp, "headcut-pull8");
++
++	/* LEG D: jump to the last turn's USER tick (the loaded-head contrast). */
++	await jumpTo(["au0008"], "t8-user");
++	await settleStable(2500, 20_000);
++	const s4 = await readState();
++	note("D jump-t8-user-settled", JSON.stringify(s4));
++	await captureSettled(cdp, "headcut-jump-t8user");
++
++	say("head-cut probe complete");
++}
++
++/**
+  * THE COLLAPSED TURN, driven end to end in the built app: the interaction half
+  * of the turn-collapse design's evidence plan (§10.3), which a still cannot
+  * state.
+@@ -31181,6 +31440,11 @@
+ 			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+ 		);
+ 	}
++	if (SCENE === "head-cut-probe" && BACKEND === null) {
++		throw new Error(
++			"--scene head-cut-probe needs --backend: the seeded conversation is served by the run's daemon",
++		);
++	}
+ 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
+ 		console.error(
+ 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
+@@ -31405,6 +31669,7 @@
+ 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
+ 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+ 			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
++			else if (SCENE === "head-cut-probe") await sceneHeadCutProbe(cdp);
+ 			else if (SCENE === "conversation-start")
+ 				await sceneConversationStart(cdp);
+ 			else if (SCENE === "conversation-start-away-failure")
