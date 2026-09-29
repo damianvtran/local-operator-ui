@@ -37,17 +37,27 @@ const { NotificationLifetime, NOTIFICATION_LIFETIME_BOUND } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+/** The two error shapes asserted below, hoisted so no regex is built per call. */
+const ROUTING_ERROR = /routing exploded/;
+const BOUND_ERROR = /positive integer/;
+
 /** A `LifetimeNotification` double that records and fires its own settle events. */
 function fakeNotification() {
 	const listeners = new Map();
 	return {
 		once(event, listener) {
-			listeners.set(event, listener);
+			const list = listeners.get(event) ?? [];
+			list.push(listener);
+			listeners.set(event, list);
 		},
 		emit(event) {
-			const listener = listeners.get(event);
+			const list = listeners.get(event) ?? [];
 			listeners.delete(event);
-			listener?.();
+			for (const listener of list) listener();
+		},
+		/** How many one-shot listeners this event carries — the count F1 is about. */
+		listenerCount(event) {
+			return (listeners.get(event) ?? []).length;
 		},
 	};
 }
@@ -102,12 +112,48 @@ test("a click runs the callback, settles the entry, and the notification becomes
 	);
 });
 
+test("a re-retain is a no-op: one listener, one fire, and the entry keeps its place", async () => {
+	// F1 (review round 1): retaining a notification that is already live must
+	// leave it exactly as it was. Two independent failures are pinned here. A
+	// second `once("click")` would fire the callback twice on one click; and an
+	// entry re-inserted into the FIFO would move to the newest slot, so the
+	// bound would let go of the wrong (next-oldest) banner.
+	const lifetime = new NotificationLifetime();
+	const first = [];
+	const second = [];
+	const single = fakeNotification();
+	lifetime.retain(single, () => first.push("fired"));
+	lifetime.retain(single, () => second.push("fired"));
+	assert.equal(single.listenerCount("click"), 1, "one click listener, not two");
+	single.emit("click");
+	assert.deepEqual(first, ["fired"], "the first callback ran, once");
+	assert.deepEqual(second, [], "the re-retain's callback must never run");
+	assert.equal(lifetime.size, 0, "the single entry settled");
+
+	// The order half: A, B retained, then A re-retained, then C arrives at a
+	// bound of 2. With the guard A is still the oldest entry and is the one let
+	// go; a re-insert would have made A the newest and evicted B instead.
+	const ordered = new NotificationLifetime(2);
+	const aRef = retained(ordered);
+	const bRef = retained(ordered);
+	ordered.retain(aRef.deref(), () => {});
+	const cRef = retained(ordered);
+	assert.equal(ordered.size, 2, "the bound still caps the registry");
+	await collectGarbage();
+	assert.equal(
+		aRef.deref(),
+		undefined,
+		"A was the oldest, so A gives up its handler — a re-retain must not move it to the newest slot",
+	);
+	assert.ok(bRef.deref() && cRef.deref(), "B and C are still clickable");
+});
+
 test("a throwing click callback still settles the entry", async () => {
 	const lifetime = new NotificationLifetime();
 	const ref = retained(lifetime, () => {
 		throw new Error("routing exploded");
 	});
-	assert.throws(() => ref.deref().emit("click"), /routing exploded/);
+	assert.throws(() => ref.deref().emit("click"), ROUTING_ERROR);
 	assert.equal(
 		lifetime.size,
 		0,
@@ -155,7 +201,7 @@ test("the bound is validated at construction", () => {
 	for (const bad of [0, -1, 1.5, Number.NaN]) {
 		assert.throws(
 			() => new NotificationLifetime(bad),
-			/positive integer/,
+			BOUND_ERROR,
 			`bound ${String(bad)} must be refused rather than silently making the registry useless`,
 		);
 	}
