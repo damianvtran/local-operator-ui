@@ -1,27 +1,41 @@
 /**
- * The mini view's dictation controller — the §F seam, kept deliberately small
- * so the speech-to-text overhaul can replace its BODY without touching a
- * single call site in the composer.
+ * The mini view's dictation controller — the §F seam, now riding the shared
+ * speech-to-text stack (`use-speech-to-text-manager.ts`, #633).
  *
- * WHAT THE SEAM IS. `start()`, `stop()`, `cancel()`, a `state` read, and two
- * callbacks (`onState`, `onResult`). The overhaul's shared layer is being built
- * to the same shape, so when it lands this module keeps its interface and its
- * body swaps to their primitives; the composer imports
- * `createMiniDictation` and nothing else, which is what makes that swap one
- * commit (design §F).
+ * WHAT THE SEAM IS. `start()`, `stop(reason)`, `cancel()`, a `state` read, and
+ * two callbacks (`onState`, `onResult`). The shared layer's frozen registration
+ * contract is the `{start, stop}` pair (its `HoldActionHandler` type): `start`
+ * begins a take, `stop` ends it — and the REASON is load-bearing, because a
+ * release confirms what was said while an abort means the press was never a
+ * hold at all and its capture is discarded. `cancel()` is that abort door under
+ * the name the composer's own Esc gesture has always called it by. The
+ * composer registers this same pair with the shared manager, which is what
+ * makes this surface and the main composer ONE dictation stack rather than two.
  *
- * WHAT THE BODY IS TODAY, and why it is not an import from `message-input.tsx`:
- * the composer's recorder is inline state in a file the redesign owns, and
- * importing a component's internals is not a seam. So the three primitives the
- * design names are used directly — `getUserMedia`, `MediaRecorder`,
- * `TranscriptionApi.createTranscription` — in the same order and with the same
- * failure sentences the composer already uses (both reused verbatim, see
- * `mini-copy.ts`).
+ * WHAT THE BODY IS TODAY. The recording primitives are the three the design
+ * names — `getUserMedia`, `MediaRecorder`, `TranscriptionApi.createTranscription`
+ * — in the same order and with the same failure sentences the composer already
+ * uses (both reused verbatim, see `mini-copy.ts` and
+ * `transcription-failure.ts`). What is NOT here: any dispatch of its own. The
+ * hold binding and the IPC toggle live in the shared manager; this file never
+ * installs a listener, and its `{start, stop}` is meaningful only through that
+ * one dispatcher.
  *
- * WHAT THIS FILE DOES NOT DO: no streaming, no partial transcripts, no
- * push-to-talk (that is the STT stream's own key, and Electron's
- * `globalShortcut` cannot even observe key-up). Press the mic, speak, press
- * again — one gesture, one transcript appended to the draft.
+ * TWO RULES COPIED FROM THE CONTRACT, stated because they are the edges a
+ * naively small controller gets wrong:
+ *
+ * 1. A RELEASE THAT BEATS `getUserMedia` ENDS THE TAKE THE MOMENT IT EXISTS.
+ *    The manager dispatches `stop` on the key release, which can land inside
+ *    the recorder's async bring-up; a take whose release arrived first must end
+ *    as soon as it starts — never an orphan recording nothing can stop.
+ * 2. TAPS BELOW `MIN_DICTATION_CLIP_MS` ARE DISCARDED AFTER THE FACT, which is
+ *    the composer's own rule (`message-input.tsx`): a clip that short is the
+ *    tail of a press that was never speech, and the discard happens once the
+ *    capture is over rather than by delaying the engage.
+ *
+ * WHAT THIS FILE DOES NOT DO: no streaming, no partial transcripts. Press the
+ * mic, speak, press again — or hold the binding the manager dispatches — one
+ * gesture, one transcript appended to the draft.
  */
 
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
@@ -31,6 +45,9 @@ import {
 	DICTATION_UNAVAILABLE_COPY,
 	MICROPHONE_DENIED_COPY,
 } from "./mini-copy";
+
+/** How a take ends: what a release keeps the abort discards. */
+export type MiniDictationStopReason = "release" | "abort";
 
 /** What the mic control draws from. */
 export type MiniDictationState =
@@ -43,8 +60,8 @@ export interface MiniDictationCallbacks {
 	onState: (state: MiniDictationState) => void;
 	/**
 	 * A finished transcript, not a partial one. The composer appends it to the
-	 * draft; whether it also marks the send as dictated is the overhaul's flag
-	 * (`meta.dictated`, design §F) and deliberately absent here.
+	 * draft and marks the send's provenance at this callback (`sawDictation`,
+	 * its `wireInputMode`); nothing else about the transcript is signalled here.
 	 */
 	onResult: (text: string) => void;
 	/** A sentence to show in the hint row, already user-facing. */
@@ -54,10 +71,34 @@ export interface MiniDictationCallbacks {
 export interface MiniDictationController {
 	readonly state: MiniDictationState;
 	start(): Promise<void>;
-	stop(): void;
+	/**
+	 * End the take in progress. `release` (the default) confirms it — subject
+	 * to the minimum-clip rule — and `abort` discards it. Both are no-ops when
+	 * no take is in flight, so a stray dispatch can never throw.
+	 */
+	stop(reason?: MiniDictationStopReason): void;
 	/** Discard the capture in progress; nothing is transcribed. */
 	cancel(): void;
 	dispose(): void;
+}
+
+/**
+ * The minimum take, in milliseconds (the composer's `MIN_DICTATION_CLIP_MS`,
+ * same value and same reason): below it the capture is the tail of a press that
+ * was never speech — a tap of the binding, or a hold released before the
+ * recorder came up — and it is discarded once the capture is over.
+ */
+const MIN_DICTATION_CLIP_MS = 250;
+
+/**
+ * The take in flight, if any. `startedAt` stays `null` until the recorder is
+ * actually running, because a release that lands inside the `getUserMedia`
+ * window must find something to mark; `released`/`aborted` are that mark.
+ */
+interface MiniDictationAttempt {
+	startedAt: number | null;
+	released: boolean;
+	aborted: boolean;
 }
 
 export function createMiniDictation(
@@ -68,6 +109,7 @@ export function createMiniDictation(
 	let stream: MediaStream | null = null;
 	let chunks: Blob[] = [];
 	let discarding = false;
+	let attempt: MiniDictationAttempt | null = null;
 	/*
 	 * A generation counter, because every step here is asynchronous and a
 	 * disposed controller (the window hid, the component unmounted) must not
@@ -90,7 +132,15 @@ export function createMiniDictation(
 	}
 
 	async function start(): Promise<void> {
-		if (state === "recording" || state === "transcribing") return;
+		/*
+		 * ONE RECORDER AT A TIME, the contract's rule (`start` is reachable
+		 * without any control's `disabled` being consulted — the manager
+		 * dispatches it): while a take is resolving or running, a second start
+		 * would overwrite the only reference to the first recorder, leaving a
+		 * live microphone the UI no longer shows. Transcribing is excluded too:
+		 * the previous take's words are still in flight.
+		 */
+		if (attempt !== null || state === "transcribing") return;
 		if (
 			typeof navigator === "undefined" ||
 			!navigator.mediaDevices?.getUserMedia ||
@@ -101,6 +151,18 @@ export function createMiniDictation(
 			return;
 		}
 		const mine = generation;
+		/*
+		 * The local reference is the same object `stop` marks: a release that
+		 * lands inside the `getUserMedia` window mutates THIS take, and the
+		 * narrow type here is what lets the check below read the mark without
+		 * re-reading the nullable module slot.
+		 */
+		const take: MiniDictationAttempt = {
+			startedAt: null,
+			released: false,
+			aborted: false,
+		};
+		attempt = take;
 		try {
 			const obtained = await navigator.mediaDevices.getUserMedia({
 				audio: true,
@@ -121,8 +183,19 @@ export function createMiniDictation(
 			};
 			mediaRecorder.start();
 			recorder = mediaRecorder;
+			take.startedAt = performance.now();
 			setState("recording");
+			/*
+			 * RELEASED BEFORE THE RECORDER EXISTED (rule 1): end it now rather
+			 * than orphan it. The take is ~0 ms old, so the minimum-clip rule
+			 * discards it — the correct outcome for a press that captured
+			 * nothing.
+			 */
+			if (take.released) {
+				settle(take.aborted ? "abort" : "release");
+			}
 		} catch (error) {
+			attempt = null;
 			releaseStream();
 			setState("error");
 			/*
@@ -134,31 +207,62 @@ export function createMiniDictation(
 		}
 	}
 
-	function stop(): void {
-		if (recorder === null || state !== "recording") return;
-		discarding = false;
-		/*
-		 * The busy state goes up with the STOP, not with the response: the
-		 * machine's own `onstop` may be a tick away and the reader pressed a
-		 * control that must answer immediately.
-		 */
-		setState("transcribing");
-		try {
-			recorder.stop();
-		} catch {
-			// A recorder already stopping fires `onstop` on its own; `finish`
-			// owns what happens next either way.
+	/**
+	 * End the current take with the contract's REASON. The reason is what both
+	 * the release and the abort door below funnel into, so there is one settle
+	 * path rather than two that can drift.
+	 */
+	function stop(reason: MiniDictationStopReason = "release"): void {
+		const current = attempt;
+		if (current === null) return;
+		if (current.startedAt === null) {
+			/*
+			 * The release/abort beat `getUserMedia` (rule 1): mark the attempt
+			 * and let `start` finish the job the moment the recorder exists.
+			 */
+			current.released = true;
+			current.aborted = reason === "abort";
+			return;
 		}
+		settle(reason);
 	}
 
 	function cancel(): void {
-		if (recorder === null) return;
-		discarding = true;
-		setState("idle");
+		stop("abort");
+	}
+
+	/**
+	 * Settle a take whose recorder is up. A release keeps the words (subject to
+	 * rule 2), an abort discards them; either way the busy state — "transcribing"
+	 * for a kept take — goes up with the STOP, not with the response, because
+	 * the reader pressed a control that must answer immediately.
+	 */
+	function settle(reason: MiniDictationStopReason): void {
+		const current = recorder;
+		if (current === null) return;
+		const startedAt = attempt?.startedAt ?? null;
+		const elapsed =
+			startedAt === null
+				? Number.POSITIVE_INFINITY
+				: performance.now() - startedAt;
+		attempt = null;
+		if (reason === "abort" || elapsed < MIN_DICTATION_CLIP_MS) {
+			discarding = true;
+			setState("idle");
+			try {
+				current.stop();
+			} catch {
+				releaseStream();
+			}
+			return;
+		}
+		discarding = false;
+		setState("transcribing");
 		try {
-			recorder.stop();
+			current.stop();
 		} catch {
-			releaseStream();
+			// A recorder already stopping fires `onstop` on its own; `finish`
+			// owns what happens next either way.
 		}
 	}
 
@@ -175,9 +279,9 @@ export function createMiniDictation(
 		if (mine !== generation) return;
 		if (discarding || blob.size === 0) {
 			/*
-			 * A cancel, or a stop with nothing captured: no request, no
-			 * transcript, no sentence. Both are the user's own act, not a
-			 * failure to report.
+			 * A cancel, a tap below the minimum clip, or a stop with nothing
+			 * captured: no request, no transcript, no sentence. All are the
+			 * user's own act, not a failure to report.
 			 */
 			discarding = false;
 			setState("idle");
@@ -216,6 +320,7 @@ export function createMiniDictation(
 		cancel,
 		dispose(): void {
 			generation += 1;
+			attempt = null;
 			if (recorder !== null) {
 				try {
 					recorder.stop();
