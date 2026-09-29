@@ -1494,12 +1494,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * nothing left here to keep.
 		 */
 
-		const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
-		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
+		const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+		const canEnableRecordingFeature = canUseRadientSpeech;
 
 		// The probe cannot tell "no key" apart from "could not ask", so the
 		// offline case is named separately rather than sending the user to the
-		// settings page to fix an account that is not broken.
+		// settings page to fix an account that is not broken. And the sign-in
+		// sentence is owed only to a reader who is NOT signed in: a live Radient
+		// session enables the control by itself (issue #674), so this arm is
+		// reached only when the session read answered "no" and no key is listed
+		// — never for the signed-in user the old gate misdirected.
 		const recordingUnavailableReason = isUnavailable
 			? "Voice input is unavailable while Local Operator is offline"
 			: "Sign in to Radient in the settings page to enable audio recording";
@@ -5215,11 +5219,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 *
 			 * THE REFUSAL TERM IS LOAD-BEARING (review round 1, MAJOR 2), and it is the
 			 * only thing closing the hold path besides `canEnableRecordingFeature`:
-			 * that flag is `hasRadientApiKey && !isUnavailable` (the CREDENTIAL PROBE's
-			 * own flag - offline or no key), which is a different fact from the
-			 * composer's refusal. On the `view.missing` arm, `hasRadientApiKey` is
-			 * true for a configured user, so without `isInputDisabled` a press here
-			 * would write into a box the app has just told the user takes nothing.
+			 * that flag is `canUseRadientSpeech` (the CREDENTIAL PROBE's capability -
+			 * a Radient session or a listed key, and not offline), which is a
+			 * different fact from the composer's refusal. On the `view.missing`
+			 * arm, that capability is true for a configured user, so without
+			 * `isInputDisabled` a press here would write into a box the app has
+			 * just told the user takes nothing.
 			 *
 			 * `isLoading` is deliberately NOT a term (the operator's report): dictation
 			 * is a state of the composer and the composer is writable mid-turn.

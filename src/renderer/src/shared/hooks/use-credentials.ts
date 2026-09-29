@@ -9,8 +9,9 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { CredentialListResult } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
+import { useRadientAuth } from "./use-radient-auth";
 
 /**
  * Query key for credentials
@@ -91,13 +92,74 @@ export const useCredentials = () => {
  *
  * `isPending && fetchStatus === "idle"` is react-query's shape for a query the
  * connectivity gate disabled: pending forever, never fetching.
+ *
+ * THE SESSION IS THE FIRST SATISFIER, THE FILE THE SECOND (issue #674). The
+ * legacy `/v1/credentials` list is the `credentials.env` file; a Radient
+ * sign-in lands in the backend's auth store instead, which is the store the
+ * backend's own speech and transcription routes resolve first
+ * (`resolve_radient_credential`: auth store, then the legacy key). Reading the
+ * file alone therefore left a signed-in user's mic and speech controls
+ * disabled while the backend they guard would have served the request — and
+ * the disabled copy told the user to sign in to the account they were signed
+ * in to. The capability mirrors the backend's precedence now: a live Radient
+ * session first, the legacy key after it, the offline case stated over both.
  */
 export const useRadientCredentialProbe = () => {
-	const { data, isError, isPending, fetchStatus } = useCredentials();
+	const { data, isError, isPending, fetchStatus, refetch } = useCredentials();
+	const { isAuthenticated } = useRadientAuth();
+
+	/** The legacy question: the credentials file lists a Radient API key. */
+	const hasRadientApiKey = Boolean(data?.keys?.includes("RADIENT_API_KEY"));
+
+	/**
+	 * The session question: the account read ANSWERED with a signed-in account.
+	 * `isAuthenticated` is `!!data && !loading` on that query, so a read that
+	 * failed or never ran cannot satisfy it — a refused or signed-out session
+	 * does not enable speech, and its remedy (sign in again) is the copy the
+	 * disabled control already carries.
+	 */
+	const hasRadientSession = isAuthenticated;
+
+	/** The probe could not answer. Offline, not unconfigured. */
+	const isUnavailable = isError || (isPending && fetchStatus === "idle");
+
+	/*
+	 * A RADIENT AUTH CHANGE RE-RUNS THE FILE PROBE.
+	 *
+	 * The session tier flips the capability by itself — its read is the account
+	 * query, which every sign-in funnel already invalidates — but the file list
+	 * has no funnel: a provisioned or replaced `RADIENT_API_KEY` lands beside a
+	 * sign-in, and a surface mounted across the change would keep the pre-sign-in
+	 * answer until something else happened to refetch it. Watching the session
+	 * transition covers every path that moves it (the provider grid, the connect
+	 * dialog, onboarding and the account section all land as this boolean
+	 * flipping), including re-sign-ins the file probe was never told about.
+	 *
+	 * Nothing is refetched on the first mount: whatever stale read exists, the
+	 * query's own initial fetch is already the fresh one.
+	 */
+	const previousSession = useRef(isAuthenticated);
+	useEffect(() => {
+		if (previousSession.current === isAuthenticated) return;
+		previousSession.current = isAuthenticated;
+		void refetch();
+	}, [isAuthenticated, refetch]);
+
+	/**
+	 * The capability, in the backend's own precedence: a live Radient session
+	 * first, the legacy key after it — and the offline term over both, because
+	 * with the server unreachable neither tier can serve the request the control
+	 * is asking about (a sign-in does not make the media relay reachable).
+	 */
+	const canUseRadientSpeech =
+		(hasRadientSession || hasRadientApiKey) && !isUnavailable;
 
 	return {
-		hasRadientApiKey: Boolean(data?.keys?.includes("RADIENT_API_KEY")),
+		hasRadientApiKey,
+		hasRadientSession,
 		/** The probe could not answer. Offline, not unconfigured. */
-		isUnavailable: isError || (isPending && fetchStatus === "idle"),
+		isUnavailable,
+		/** Whether a speech surface (dictation, speak-aloud) may be enabled. */
+		canUseRadientSpeech,
 	};
 };
