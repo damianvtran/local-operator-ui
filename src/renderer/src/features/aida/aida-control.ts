@@ -119,3 +119,22 @@ export function aidaControlFailureCopy(error: unknown): string {
 		"Aida's controls could not reach the backend.",
 	);
 }
+
+/**
+ * The sentence for a request that arrives at the route with the install's
+ * switch already off (`aida.enabled === false`; a control op after the flip
+ * answers `409 aida_disabled` — `desktop_aida.py`'s contract).
+ *
+ * WHY IT EXISTS HERE. `aidaControlFailureCopy` above is the transport's own
+ * sentence and it NAMES her, which is correct for the surfaces that already
+ * address her by name and wrong for the quick-send mini view, whose copy is
+ * deliberately name-free (quick-send design D11) so the rename slice cannot
+ * break it. The rail's row is ABSENT while the switch is off — a dead control
+ * is what fail-closed omits — but the mini view is already open when it
+ * learns, and cannot un-summon itself; so it states the fact once, in the
+ * same register as the rest of that surface, and offers nothing it cannot
+ * honestly do. One sentence, one place, per the design's own cross-surface
+ * rule (§E.5).
+ */
+export const AIDA_DISABLED_SENTENCE =
+	"The chief of staff is switched off on this install.";
