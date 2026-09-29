@@ -382,3 +382,18 @@ function clip(detail: string): string {
 	const head = lastSpace > MIN_CLIP_CHARS ? cut.slice(0, lastSpace) : cut;
 	return `${head.trimEnd()}…`;
 }
+
+/**
+ * What a SUCCESSFUL transcription that returned no words says (UX round 1,
+ * U3). The request did not fail - the take simply held no speech - so this is
+ * shown as info, not as an error, and the remedy it names is the one that can
+ * actually help (speak nearer the microphone) rather than "try again", which
+ * claims the request failed.
+ *
+ * Before this, an empty transcript was a SILENT no-op on the exact flow this
+ * change teaches: the strip disappeared, the box was unchanged, and nothing
+ * said whether the app had heard anything at all - a user reads that as a
+ * broken gesture.
+ */
+export const EMPTY_TRANSCRIPTION_MESSAGE =
+	"No words were picked up. Try again a little closer to the microphone.";

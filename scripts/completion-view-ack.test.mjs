@@ -89,6 +89,13 @@ export const desktopResult = request => globalThis.__storeRequest(request);`,
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => undefined;`,
 						}[args.path],
 						loader: "js",
@@ -1134,7 +1141,7 @@ for (const outcome of ["unread", "wrong-token", "alternating"]) {
  * states distinguishable rather than three names for one screen. `useCompletionView`
  * publishes `readAckNotice` while it has a loop for a conversation, and the
  * sidebar's row renders the clause; the sentence for the give-up arm is fired
- * into the panel's toast lane by the same panel (one home for the words:
+ * into the app's toast container by the panel (one home for the words:
  * `features/chat/read-ack-notice.ts`). What is asserted here is the STATE, which
  * is the half that lives in this tree's shipped hook - the row's rendering and
  * the toast are the sidebar's, and `scripts/mark-all-read-control.test.mjs`

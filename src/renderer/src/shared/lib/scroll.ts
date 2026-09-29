@@ -66,3 +66,72 @@ export const scrollRegionToTop = (
 		region.clientTop;
 	region.scrollTop = Math.max(0, offset);
 };
+
+/**
+ * The same walk, aimed at the region's MIDDLE instead of its top.
+ *
+ * The checkpoint rail's jump (§D7 stage 3) is the reason this exists: a tick
+ * press must land the target row where a search-result jump lands it — centred
+ * — rather than at the region's top edge, where a reader arriving from the rail
+ * would lose the row's own turn context above it. The failure jump's
+ * `scrollIntoView` was never the right tool here for the reasons above (and it
+ * moved the app frame at narrow widths, measured), so the rail's jump is this
+ * arithmetic and never `scrollIntoView`.
+ *
+ * The centre term is half the target's own height minus half the region's
+ * visible height, subtracted from the top-aligned offset: the target's centre
+ * then lands on the region's centre. Both are rect measurements like every
+ * other term — the target's height is read from its rect (not `offsetHeight`,
+ * which rounds to an integer and skips transforms), and the region's from
+ * `clientHeight`, whose padding box is the scrollport.
+ *
+ * No high-end clamp, for the reason `scrollRegionToTop` gives: the browser
+ * knows `scrollHeight - clientHeight` and this cannot, because content may
+ * still grow. The low-end clamp is the axis's, not the number's — see the
+ * `axis` note below, which is the whole difference between this helper's two
+ * legal shapes.
+ *
+ * PRECONDITION: the region must be the target's containing scroll box, or an
+ * ancestor of it — the same rule `scrollRegionToTop` states at length, restated
+ * here only because this is a second entry point to it: a region that does not
+ * contain the target computes a number with no meaning rather than throwing.
+ */
+export const scrollRegionToCenter = (
+	region: HTMLElement,
+	target: HTMLElement,
+	axis: "normal" | "reversed" = "normal",
+): void => {
+	const targetRect = target.getBoundingClientRect();
+	const offset =
+		region.scrollTop +
+		targetRect.top -
+		region.getBoundingClientRect().top -
+		region.clientTop -
+		(region.clientHeight - targetRect.height) / 2;
+	/*
+	 * THE CLAMP IS THE AXIS'S, and design round 1 measured what happens when it
+	 * is assumed instead of named (D1). The offset arithmetic above is one
+	 * expression for both scroller shapes — it is stated in terms of the
+	 * target's rect relative to the region, so it holds whichever way the
+	 * content runs — but the values `scrollTop` may take are not the same. In a
+	 * normal scroller the origin is the top edge: `scrollTop` is bounded to
+	 * [0, overflow], so the low clamp is zero. In a `flex-col-reverse` scroller
+	 * the origin is the BOTTOM: the newest row sits at 0 and the oldest at a
+	 * NEGATIVE bound — `use-scroll-paging.ts` states the measured contract
+	 * ("`scrollTop` runs from 0 at the newest row to a negative bound at the
+	 * oldest"; making it more negative moves content DOWN). Clamping an
+	 * above-viewport target's negative offset at 0 was therefore a no-op on the
+	 * transcript's own scroller: the landing frames showed the wash painted
+	 * off-screen over pixel-identical bubble positions while the attribute the
+	 * scene asserted was set honestly. Allowed to go negative, the same
+	 * arithmetic moves the reader.
+	 *
+	 * The parameter is explicit rather than sniffed from computed styles: there
+	 * is exactly one reversed scroller in the renderer (the canonical
+	 * transcript), its shape is a fact of the DOM contract its own hook
+	 * documents, and a caller that gets it wrong should be one line to read at
+	 * the call site rather than a style query this helper hopes is right.
+	 */
+	region.scrollTop =
+		axis === "reversed" ? Math.min(0, offset) : Math.max(0, offset);
+};

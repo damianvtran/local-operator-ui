@@ -205,6 +205,31 @@ reader had dropped. Fetch the job log from the API instead: `gh api
 Pass `--allow-escape-sequences`, or `gh` refuses the body outright ("the response
 contains terminal escape sequences") and prints nothing.
 
+**A green `evidence-manifest.test.mjs` is not evidence about the CITATIONS.** The
+stamp half above is sound. The citation half is not, in two ways that both live on a
+shallow clone. (1) The ancestry test (`the SHIPPED manifest's head citations lie in
+the history it ships in`) STANDS DOWN when the checkout is shallow - and every
+checkout on this machine is (`git rev-parse --is-shallow-repository` -> `true`), as
+is `actions/checkout`'s default - so it SKIPS rather than passes, and a local `35/35`
+says nothing about whether `head`, `partialCapture.addedAtHead` or
+`partialCapture.refreshedAtHead` name commits a reviewer can fetch. (2) The
+reachability half is worse: it is not bound to the shipped manifest at all, and it is
+answered against EVERY local ref, of which this machine carries around a thousand
+(sibling sessions' branches), so a citation kept alive only by a peer's scratch
+branch passes locally and dies in a fresh clone. Five citation failures shipped
+behind a local green for exactly that reason (design review round 2, D2b).
+
+Before quoting a local manifest pass, ask the citations directly against a
+REMOTE-BACKED ref: `git fetch origin <branch>`, then call `citationFailures` and
+`citationAncestryFailures` from `scripts/check-evidence.mjs` with a `git` reader
+restricted to `refs/remotes/**` and `refs/tags/**`, and with the ancestry question
+asked against `origin/<branch>` rather than `HEAD`. A remote branch tip is the
+strongest thing to cite, because a fresh clone of the PR gets it by construction.
+Measured 2026-09-27 with that reader: the three head citations came back clean once
+re-pointed, while eight `supplementary[].capturedAtHead` citations in
+`docs/evidence/manifest.json` are reachable from no remote ref (all eight
+byte-identical on `origin/main`, so pre-existing and not any one branch's).
+
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
@@ -2064,6 +2089,18 @@ derivation to guard. What remains:
   — or drop the bump with `git revert <the bump commit>` and cut the version the
   window actually wants. Neither is something to leave unattended: a version that
   was bumped but never tagged is a number the next window has to skip.
+- **The Linux AppImage must be built from the prepared toolset, and never edited
+  post-build.** The update information AppImageUpdate reads lives in the AppImage
+  runtime's `.upd_info` ELF section, and the only place it can be written is that
+  runtime inside the toolset `build-linux` prepares
+  (`scripts/appimage-update-info.mjs prepare-toolset`, wired to the build through
+  `APPIMAGE_TOOLS_PATH`); electron-builder prepends it verbatim. Editing the
+  finished AppImage instead — an in-place section write, an appimagetool repack —
+  invalidates the embedded blockmap and/or `latest-linux.yml`, which
+  electron-updater consumes, and the release ships metadata describing bytes nobody
+  downloads. The `finalize` step is what turns that into a failed build instead of
+  an un-updatable release, and the `dist/*.AppImage.zsync` upload glob is what
+  carries the update channel to the release.
 
 ## Notes for Future Agents
 

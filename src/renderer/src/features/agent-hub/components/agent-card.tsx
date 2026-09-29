@@ -8,6 +8,7 @@ import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
+import { OrgOriginBadge } from "./org-origin-badge";
 
 type AgentCardProps = {
 	agent: Agent;
@@ -51,13 +52,25 @@ type AgentCardProps = {
 	 * no account. It is honoured now, and the caller's own flow is what decides.
 	 */
 	showActions?: boolean;
+	/**
+	 * The organization this row came from, when it is an org row (§8.4).
+	 *
+	 * Named by the origin badge. It does NOT decide that the row is org-private —
+	 * `agent.visibility` does — so a caller that has no name to hand still gets the
+	 * badge, saying less.
+	 */
+	orgName?: string | null;
 };
 
 /**
  * Renders a card displaying information about a public agent.
  *
- * One boundary per card: a `bg-surface` panel with a hairline edge, rounded
- * `lg`. Hover is a colour step on the border only — nothing lifts.
+ * No boundary at rest: a `bg-surface` card, rounded `md`, separating from the
+ * canvas by its ground step. A grid of twelve hairline boxes is eight boxes'
+ * worth of chrome — the shared `Card`'s `plain` variant doc states the rule —
+ * and this pass applies it here. Hover is a colour step on the ground
+ * (`elevated`) rather than on a border that only existed to carry it; nothing
+ * lifts.
  *
  * Structure note: the info half is one native `<button>` (the card is the
  * "open details" affordance), and like/favourite/download live in their own
@@ -84,6 +97,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	onRetryAction,
 	showActions = true,
 	viewerStateKnown = true,
+	orgName = null,
 }) => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth();
@@ -148,8 +162,17 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			? "Unfavourite agent"
 			: "Favourite agent";
 
+	/*
+	 * Whether this row lives in an organization's private workspace (§1.5).
+	 *
+	 * The hub omits `visibility` for a public row, so only the literal "org"
+	 * narrows the card to org behaviour — testing for "public" would be testing a
+	 * value the wire never sends, and every row would read as public.
+	 */
+	const isOrgRow = agent.visibility === "org";
+
 	return (
-		<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:border-control">
+		<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated">
 			<button
 				type="button"
 				onClick={() => navigate(`/agent-hub/${agent.id}`)}
@@ -159,6 +182,15 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				<h3 className="truncate font-medium text-heading text-ink">
 					{agent.name}
 				</h3>
+				{/*
+				 * The org origin badge, inline with the name rather than on a row of its own.
+				 * The card's settled height is a pinned number — the placeholder above
+				 * reproduces it box for box, and design rounds 1 and 2 both corrected it — so
+				 * a badge that took its own line would reflow the whole grid the moment an org
+				 * scope was selected. Beside the title it costs nothing: the badge's box fits
+				 * inside the heading's own line box.
+				 */}
+				{isOrgRow && <OrgOriginBadge orgName={orgName} />}
 				{/*
 				 * A fixed three-line description. Clamping rather than truncating
 				 * at a character count keeps every card's footer on the same
@@ -239,83 +271,100 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				<div
 					className="flex min-w-0 items-center gap-0.5"
 					data-viewer-state={
-						!isAuthenticated
-							? "signed-out"
-							: viewerStateKnown
-								? "known"
-								: "unknown"
+						isOrgRow
+							? "org"
+							: !isAuthenticated
+								? "signed-out"
+								: viewerStateKnown
+									? "known"
+									: "unknown"
 					}
 				>
-					<Tooltip content={likeTooltip}>
-						<span>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={
-									isAuthenticated && viewerStateKnown
-										? () => onLikeToggle(agent.id)
-										: undefined
-								}
-								disabled={
-									isLikeActionLoading || !isAuthenticated || !viewerStateKnown
-								}
-								aria-label={likeLabel}
-								className={cn(isLiked && "text-danger")}
-							>
-								<Heart
-									fill={isLiked ? "currentColor" : "none"}
-									data-testid="agent-like-heart"
-								/>
-								<span
-									data-testid="agent-like-count"
-									className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
-								>
-									{/*
-									 * `?? 0`, not a dash. `like_count` (and its two siblings) is a REQUIRED
-									 * number on the declared wire type, so the only payload this default
-									 * can meet is one that omits a field its own contract says is present
-									 * — and 0 is the benign reading of that, where a dash would claim an
-									 * "unknown" the type does not have. These three are RECORD data, not
-									 * the viewer state the batched read carries, so the
-									 * absent-is-unknown rule that governs the heart beside them does not
-									 * reach them.
-									 */}
-									{agent.like_count ?? 0}
+					{/*
+					 * LIKE AND FAVOURITE ARE NOT RENDERED FOR AN ORG ROW (§8.4). They are
+					 * PUBLIC-ONLY interactions: the hub answers 404 to a like, a favourite or a
+					 * comment on an org row (§4.4), so a control here would be one that cannot
+					 * work — and a counter beside it would claim a public reaction on a row
+					 * whose audience is one organization. `data-viewer-state="org"` is what the
+					 * rendered page can be asked, so a frame-less check can tell this state from
+					 * "signed out" and from "not known".
+					 */}
+					{!isOrgRow && (
+						<>
+							<Tooltip content={likeTooltip}>
+								<span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={
+											isAuthenticated && viewerStateKnown
+												? () => onLikeToggle(agent.id)
+												: undefined
+										}
+										disabled={
+											isLikeActionLoading ||
+											!isAuthenticated ||
+											!viewerStateKnown
+										}
+										aria-label={likeLabel}
+										className={cn(isLiked && "text-danger")}
+									>
+										<Heart
+											fill={isLiked ? "currentColor" : "none"}
+											data-testid="agent-like-heart"
+										/>
+										<span
+											data-testid="agent-like-count"
+											className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
+										>
+											{/*
+											 * `?? 0`, not a dash. `like_count` (and its two siblings) is a REQUIRED
+											 * number on the declared wire type, so the only payload this default
+											 * can meet is one that omits a field its own contract says is present
+											 * — and 0 is the benign reading of that, where a dash would claim an
+											 * "unknown" the type does not have. These three are RECORD data, not
+											 * the viewer state the batched read carries, so the
+											 * absent-is-unknown rule that governs the heart beside them does not
+											 * reach them.
+											 */}
+											{agent.like_count ?? 0}
+										</span>
+									</Button>
 								</span>
-							</Button>
-						</span>
-					</Tooltip>
-					<Tooltip content={favouriteTooltip}>
-						<span>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={
-									isAuthenticated
-										? () => onFavouriteToggle(agent.id)
-										: undefined
-								}
-								disabled={
-									isFavouriteActionLoading ||
-									!isAuthenticated ||
-									!viewerStateKnown
-								}
-								aria-label={favouriteLabel}
-								className={cn(isFavourited && "text-warning")}
-							>
-								<Star
-									fill={isFavourited ? "currentColor" : "none"}
-									data-testid="agent-favourite-star"
-								/>
-								<span
-									data-testid="agent-favourite-count"
-									className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
-								>
-									{agent.favourite_count ?? 0}
+							</Tooltip>
+							<Tooltip content={favouriteTooltip}>
+								<span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={
+											isAuthenticated
+												? () => onFavouriteToggle(agent.id)
+												: undefined
+										}
+										disabled={
+											isFavouriteActionLoading ||
+											!isAuthenticated ||
+											!viewerStateKnown
+										}
+										aria-label={favouriteLabel}
+										className={cn(isFavourited && "text-warning")}
+									>
+										<Star
+											fill={isFavourited ? "currentColor" : "none"}
+											data-testid="agent-favourite-star"
+										/>
+										<span
+											data-testid="agent-favourite-count"
+											className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
+										>
+											{agent.favourite_count ?? 0}
+										</span>
+									</Button>
 								</span>
-							</Button>
-						</span>
-					</Tooltip>
+							</Tooltip>
+						</>
+					)}
 					<Tooltip content="Downloads">
 						<span className="ml-1 inline-flex items-center gap-1 pr-1 text-ink-dim">
 							<Download aria-hidden="true" className="size-3.5" />
