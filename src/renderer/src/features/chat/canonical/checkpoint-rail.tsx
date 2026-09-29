@@ -75,6 +75,9 @@ import {
 export const CHECKPOINT_CARD_OPEN_DELAY_MS = 120;
 export const CHECKPOINT_CARD_CLOSE_DELAY_MS = 80;
 
+/** The rail group's accessible name (UX round 1, U3 measured it absent). */
+export const CHECKPOINT_RAIL_LABEL = "Turn checkpoints";
+
 /** The tick's glyph per outcome (D5: ✓ / ! / ⊘ / dot). */
 const OUTCOME_ICONS: Record<CheckpointOutcome, typeof Check> = {
 	complete: Check,
@@ -282,12 +285,49 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		},
 		[],
 	);
+	/*
+	 * ROVING TABINDEX (UX round 1, U1). The block used to be one tab stop per
+	 * tick - 402 consecutive stops at the density case, so crossing the rail cost
+	 * up to ~400 presses with no in-rail movement. The group is now ONE tab stop:
+	 * only the roving tick carries `tabIndex=0`, ArrowUp/Down walk the neighbours
+	 * in DOM order, and Home/End take the ends. The default when the reader has
+	 * not touched the rail is the FIRST tick - the top of the rail is where the
+	 * natural reading order enters, and the focus handler below keeps a returning
+	 * reader where they left. Focus still opens the card and Escape still closes
+	 * it without moving focus; `tickElements` is how focus is moved, so the walk
+	 * works for ticks the pointer has never seen.
+	 */
+	const [rovingId, setRovingId] = useState<string | null>(null);
+	const rovingTickId =
+		(rovingId && checkpoints.some((entry) => entry.id === rovingId)
+			? rovingId
+			: null) ??
+		checkpoints[0]?.id ??
+		null;
+	const focusTickAt = useCallback(
+		(index: number) => {
+			const next = checkpoints[index];
+			if (!next) return;
+			setRovingId(next.id);
+			tickElements.current.get(next.id)?.focus();
+		},
+		[checkpoints],
+	);
 
 	if (checkpoints.length === 0 && !building) return null;
 
 	return (
+		/*
+		 * `role="toolbar"` is the roving group's own semantics (U1): one tab
+		 * stop, arrow keys inside - which is exactly what the tick block is. The
+		 * name is what U3 measured as absent (`railAria: null`); the per-tick
+		 * labels stay as they were.
+		 */
 		<div
 			data-lo-checkpoint-rail=""
+			role="toolbar"
+			aria-orientation="vertical"
+			aria-label={CHECKPOINT_RAIL_LABEL}
 			className={cn(
 				"pointer-events-none absolute inset-y-0 right-0 w-6 select-none",
 			)}
@@ -327,6 +367,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 							aria-haspopup="dialog"
 							aria-expanded={active}
 							aria-controls={active ? cardId : undefined}
+							tabIndex={checkpoint.id === rovingTickId ? 0 : -1}
 							/*
 							 * A 24 x 12 hit target around a 3px mark: the visual tick is
 							 * the narrow vertical bar, the button is the invisible box
@@ -345,7 +386,10 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 								openCard(checkpoint.id, CHECKPOINT_CARD_OPEN_DELAY_MS)
 							}
 							onPointerLeave={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
-							onFocus={() => openCard(checkpoint.id, 0)}
+							onFocus={() => {
+								setRovingId(checkpoint.id);
+								openCard(checkpoint.id, 0);
+							}}
 							onBlur={() => closeCard(CHECKPOINT_CARD_CLOSE_DELAY_MS)}
 							onClick={() => {
 								// The press performs the jump; the card has said what it
@@ -359,7 +403,39 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 								// tick's own focus means the focus is not inside the card;
 								// this is the same dismissal for the keyboard reader who
 								// opened it without the pointer.
-								if (event.key === "Escape") closeCard(0);
+								if (event.key === "Escape") {
+									closeCard(0);
+									return;
+								}
+								/*
+								 * The roving walk (U1). The arrows are claimed here rather
+								 * than left to bubble: the transcript's own scroller binds
+								 * arrows for paging when IT has focus, and a focused tick
+								 * must move focus, not the viewport.
+								 */
+								if (event.key === "ArrowDown") {
+									event.preventDefault();
+									event.stopPropagation();
+									focusTickAt(index + 1);
+									return;
+								}
+								if (event.key === "ArrowUp") {
+									event.preventDefault();
+									event.stopPropagation();
+									focusTickAt(index - 1);
+									return;
+								}
+								if (event.key === "Home") {
+									event.preventDefault();
+									event.stopPropagation();
+									focusTickAt(0);
+									return;
+								}
+								if (event.key === "End") {
+									event.preventDefault();
+									event.stopPropagation();
+									focusTickAt(checkpoints.length - 1);
+								}
 							}}
 						>
 							<span
