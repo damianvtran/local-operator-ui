@@ -50,6 +50,7 @@ import {
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { Message } from "@features/chat/types/message";
 import { MeshPage } from "@features/mesh/mesh-page";
 import { ProjectsPage } from "@features/projects/components/projects-page";
@@ -576,6 +577,11 @@ const INERT_REMEDY: McpRemedyControls = {
 	clearFailure: () => undefined,
 };
 
+/** No-op monitor controls: no monitors are staged in this world. */
+const INERT_MONITOR_CONTROLS: MonitorControls = {
+	cancel: async () => ({ ok: true }),
+};
+
 /** The chrome state Storybook has no main process for; see `docs-hero`. */
 const useMacChrome = () => {
 	useLayoutEffect(() => {
@@ -719,6 +725,7 @@ const AppShell: FC<{
 										mcpServers={deriveMcpServers([], {}, [])}
 										mcpGrantRunning={mcpGrantInFlight([])}
 										mcpRemedy={INERT_REMEDY}
+										monitorControls={INERT_MONITOR_CONTROLS}
 										sessionId="3f9c1a2b4d5e"
 										pulses={{}}
 										childrenOpenable

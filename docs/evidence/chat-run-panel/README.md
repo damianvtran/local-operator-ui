@@ -301,3 +301,28 @@ does not touch, so it is unchanged by it: the stamps visible here are the child 
 **Three frames in this set look empty to a scan that starts below their sentence, and they are not (design round 1, D4).** `reader-pending`, `reader-gone` and `reader-unaddressed` each carry their own copy — `This subagent has no transcript on disk yet.`, `This subagent's session directory is no longer on disk.`, `This subagent's row carries no session id, so there is no conversation to open from here.` — near the TOP of the body, because the reader's absence arms are `QuietLine`s in a top-anchored body rather than foot rows; everything below the sentence is ground. Measured on the committed frames: ink deviation in the band `y 120–250` is 20.1 / 21.1 / 23.7 (text present, and three DIFFERENT strings — the files hash differently) and exactly **0.00** in `y 260–860`, which is the band that scan covered. No frame was dropped: each depicts its state, and the rows above now say where the copy sits.
 
 **`reader-childless` opens a FIXTURE page on a `queued` child** (design round 1's NIT), which the wire will usually not produce together — a child that has not started normally has no transcript file yet, i.e. § 10.1's `pending` rather than a ready page. Both facts the frame exists for are true of its row (status `queued`, a populated page) and the claim is about the FOOT: a queued child gets no line even when the row carries an activity string.
+
+## Re-taken for the monitor controls (slice 4b-ui B)
+
+**The Monitors section gained its row-level cancel, and the section's stopgap footer retired.** `docs/design/monitor-tool.md`'s cancel-affordance paragraph shipped v1 cancel as the agent tool and the CLI; this change adds the desktop half — a `Cancel monitor` control revealed on hover and on focus-within (the app's row idiom), one shared confirmation, the `monitors.cancel` DELETE op behind it, and a refusal rendered in the dialog that asked. The footer sentence ("To stop a monitor, ask the agent to cancel it.") went with it rather than staying beside the control.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its base `6083a5135e`:**
+
+```
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+```
+
+**Twenty frames: four new surfaces and six re-shot states.** Added: `monitor-cancel-hover` (the control under the rig's real pointer — `:hover` is browser state a story cannot set, and the rig asserts it before the shutter), `monitor-cancel-focus` (the keyboard's `:focus-visible` ring, `focus({focusVisible:true})` the way the MCP remedy's own frame does it), `monitor-cancel-confirm` (the dialog, opened by pressing the real control), and `monitor-cancel-refused` (the dialog after the route refused — the two-press flow driven by the story, the owner-present sentence injected verbatim from the core's `monitors/arm.py`). Re-shot: the six at-rest states, because the footer's removal and the reserved action column change every one of them.
+
+**The before half is this same diff.** The six re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff rather than a supplementary directory; the four new directories have no before because the control did not exist, and their affordance-absent state is what the six re-shot frames show.
+
+**One cost the frames carry rather than hide.** The reserved action column narrows each row's first line by about 54px, so the health tail truncates one clause earlier than in the base frames (the first row of `monitors-health` reads `3 fa…` where it read `3 failed`). That is the row's established degradation — the full string stays in the element's `title` and its screen-reader twin, the pair the section's own comment records for long reasons — and the alternative (an overlay that appears only on hover) would move a pointer target while the pointer is on it, which is why the action column lives in the layout.
+
+**A still cannot carry the write path, so the PR's e2e transcript does.** The cancel was exercised end to end against a locally booted isolated daemon of core main: arm/list/cancel through the app's own `desktopEndpoint` mapping, plus the 404 already-gone, the 422 malformed handle and the 503 owner-present refusals, and the on-disk transcript and index states.

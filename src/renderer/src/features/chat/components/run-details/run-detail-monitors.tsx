@@ -35,12 +35,16 @@
  * the model's `alerting` flag (disabled, or mid-ladder), so the colour rule
  * lives in one place and the row only paints it.
  *
- * **Quiet, non-interactive rows.** A monitor is read here and cancelled by the
- * agent (`monitor({op:"cancel"})`) or from the CLI (`lop monitor cancel`) — the
- * design's own cancel-affordance paragraph splits those three paths, and the
- * desktop command route that will carry this pane's own control is a separate
- * slice. No hover ground, no pointer cursor, no button role, exactly the Wakes
- * rows' posture.
+ * **Quiet rows with one revealed action.** Each row carries `Cancel monitor`,
+ * revealed on hover and on focus-within (the app's row idiom,
+ * `wake-conversation-row.tsx`), so the list stays a readout until the pointer
+ * or the keyboard asks. It is the desktop half of the design's
+ * cancel-affordance paragraph - the same DELETE `lop monitor cancel` takes -
+ * behind one confirmation, and a refusal renders in the dialog that asked (the
+ * `delete-conversation-dialog.tsx` rule) rather than vanishing into a toast. A
+ * conversation a LIVE session owns refuses this route by design and answers
+ * the backend's own sentence, shown verbatim; the session's `monitor` tool
+ * remains the writer that may touch it.
  *
  * **Nothing here ticks.** The whole section takes the UNTIMED model, like the
  * plan and the wakes list: a monitor carries absolute instants (next due, last
@@ -49,16 +53,19 @@
  * relative age — see `MonitorRow`'s own note.
  */
 
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { ScanEye } from "lucide-react";
-import type { Ref } from "react";
+import { type Ref, useState } from "react";
 import {
 	type MonitorRow,
 	type RunDetails,
 	monitorClause,
 	visibleMonitors,
 } from "./run-detail-model";
+import type { MonitorControls } from "./use-monitor-controls";
 
 /**
  * One armed monitor: when it next checks, how often, how it is doing, and what
@@ -91,7 +98,14 @@ import {
  * all of the pane's row lists carry it, so a capture rig or a QA pass that can
  * address a child's row can address a watch's.
  */
-const MonitorRowView = ({ row }: { row: MonitorRow }) => {
+const MonitorRowView = ({
+	row,
+	onCancel,
+}: {
+	row: MonitorRow;
+	/** Ask to cancel this watch; the section owns the confirmation and the write. */
+	onCancel: (row: MonitorRow) => void;
+}) => {
 	/*
 	 * The identity line: the name first — it is what the CLI's own listing
 	 * labels the row with (`f"{row['monitor_id']} {row['name']}"`) — and the
@@ -107,7 +121,7 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 	return (
 		<li
 			data-run-panel-row={row.id}
-			className={cn("flex items-start gap-2 px-3 py-0.5")}
+			className={cn("group/monitor flex items-start gap-2 px-3 py-0.5")}
 		>
 			<span className={cn("pt-0.5")}>
 				<span
@@ -179,6 +193,32 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 					</>
 				)}
 			</div>
+			{/*
+			 * The row's one control, revealed on hover and on focus-within (the app's
+			 * row idiom) and ALWAYS IN THE LAYOUT - opacity, not display - so that
+			 * revealing it moves nothing. `h-5` keeps the control inside the dense
+			 * row's own 20px rhythm: a one-line watch row is `py-0.5` around a 16px
+			 * line, and a `size="sm"` (28px) button would grow every row it sits in.
+			 * The danger wash on hover is the wake line's own cancel ink, one list
+			 * over.
+			 */}
+			<div className={cn("flex shrink-0 items-center")}>
+				<Button
+					variant="ghost"
+					size="sm"
+					data-monitor-cancel={row.id}
+					aria-label={`Cancel monitor ${row.name}`}
+					onClick={() => onCancel(row)}
+					className={cn(
+						"pointer-events-none opacity-0",
+						"group-hover/monitor:pointer-events-auto group-hover/monitor:opacity-100",
+						"group-focus-within/monitor:pointer-events-auto group-focus-within/monitor:opacity-100",
+						"h-5 px-1.5 hover:bg-danger-wash hover:text-danger",
+					)}
+				>
+					Cancel
+				</Button>
+			</div>
 		</li>
 	);
 };
@@ -186,6 +226,7 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 export const RunDetailMonitors = ({
 	details,
 	sectionRef,
+	controls,
 }: {
 	details: RunDetails;
 	/**
@@ -197,8 +238,58 @@ export const RunDetailMonitors = ({
 	 * Nothing here reads the ref; the section is simply where the node exists.
 	 */
 	sectionRef?: Ref<HTMLElement>;
+	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), threaded from
+	 * `chat-page.tsx` for the MCP remedies' reason: the page owns the session
+	 * identity and the section stays presentational.
+	 */
+	controls: MonitorControls;
 }) => {
 	const { rows, hidden } = visibleMonitors(details.monitors);
+	/*
+	 * The confirmation's own state, held ONCE here rather than per row (the MCP
+	 * section's arrangement): one dialog, one sentence and one write path, with
+	 * the pressed row carried as the pending selection.
+	 */
+	const [pending, setPending] = useState<MonitorRow | null>(null);
+	/*
+	 * A refusal belongs to the row that was refused and is TRACKED BY ID rather
+	 * than cleared by an effect - the delete dialog's rule
+	 * (`delete-conversation-dialog.tsx`): opening the dialog on another row must
+	 * not inherit a sentence about a different request, and a stored id compares
+	 * rather than races.
+	 */
+	const [refusal, setRefusal] = useState<{
+		monitorId: string;
+		detail: string;
+	} | null>(null);
+	/*
+	 * A COUNTER rather than a boolean, because the modal takes the signal as a
+	 * CHANGE (`focusCancelSignal`): a second refusal has to move the keyboard
+	 * back to Keep again, and a boolean already true would be no change at all.
+	 */
+	const [refusalSeq, setRefusalSeq] = useState(0);
+	const shownRefusal =
+		refusal && pending && refusal.monitorId === pending.id ? refusal : null;
+	const confirmCancel = () => {
+		if (!pending) return;
+		void (async () => {
+			const outcome = await controls.cancel(pending.id);
+			/*
+			 * Success needs nothing here beyond closing: the canonical re-read the
+			 * controls fire is what drops the row, and it is the evidence the watch is
+			 * gone. A refusal keeps the dialog up with the backend's own sentence - the
+			 * one surface that can still say what happened - and hands the keyboard
+			 * back to Keep.
+			 */
+			if (outcome.ok) {
+				setPending(null);
+				return;
+			}
+			setRefusal({ monitorId: pending.id, detail: outcome.detail });
+			setRefusalSeq((seq) => seq + 1);
+		})();
+	};
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
 			{/*
@@ -225,7 +316,7 @@ export const RunDetailMonitors = ({
 			</div>
 			<ul className={cn("flex flex-col")}>
 				{rows.map((row) => (
-					<MonitorRowView key={row.id} row={row} />
+					<MonitorRowView key={row.id} row={row} onCancel={setPending} />
 				))}
 				{/*
 				 * The overflow marker, and it is a STATEMENT rather than a control,
@@ -250,21 +341,40 @@ export const RunDetailMonitors = ({
 				)}
 			</ul>
 			{/*
-			 * WHO CAN ACT ON THIS LIST, said once, in the list's own voice — the
-			 * Wakes section's footer, for its reason: the rows are a readout and
-			 * deliberately not controls (the design's cancel-affordance paragraph
-			 * ships v1 cancel as the agent tool and the CLI; this pane's own control
-			 * is a separate slice), and before this section existed an armed monitor
-			 * was invisible, so this is the first surface where a reader forms the
-			 * intent to stop one. Leaving the flow to end in silence is the same
-			 * defect as a count with nothing behind it; the fix is copy rather than a
-			 * control this slice does not ship.
+			 * The footer sentence - "To stop a monitor, ask the agent to cancel it." -
+			 * retired WITH the control rather than kept beside it: it was the
+			 * stopgap's copy for a pane that had no control, and with the revealed
+			 * `Cancel monitor` on every row it would send a reader around a button that
+			 * is right beside the sentence. A refusal that leaves the reader with no
+			 * move is answered where it happens, in the dialog.
 			 */}
-			{details.monitors.length > 0 && (
-				<p className={cn("px-3 pt-1 text-meta text-ink-dim")}>
-					To stop a monitor, ask the agent to cancel it.
-				</p>
-			)}
+			<ConfirmationModal
+				open={pending !== null}
+				title="Cancel this monitor?"
+				message={
+					<>
+						<p>
+							{pending
+								? `“${pending.name}” will not check again. The conversation stays.`
+								: ""}
+						</p>
+						{shownRefusal && (
+							<p className="pt-2 text-danger">{shownRefusal.detail}</p>
+						)}
+					</>
+				}
+				confirmText="Cancel monitor"
+				cancelText="Keep"
+				isDangerous
+				/*
+				 * The refusal is the only thing this dialog can be told that makes the
+				 * SAFE action the one the keyboard should hold: the cancel did not
+				 * happen, and the next Enter must not repeat it.
+				 */
+				focusCancelSignal={refusalSeq}
+				onConfirm={confirmCancel}
+				onCancel={() => setPending(null)}
+			/>
 		</section>
 	);
 };
