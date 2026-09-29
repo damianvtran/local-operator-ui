@@ -1,6 +1,6 @@
 # The speech-to-text overhaul, proven in the shipped app
 
-Twelve frames and a wire record from `scripts/stt-dictation-proof.mjs`, which
+Thirteen frames and two wire records from `scripts/stt-dictation-proof.mjs`, which
 drives the BUILT app headless against an **isolated** `local-operator` backend
 (its own config root, its own bearer), a **fake Radient upstream** bound by the
 rig, and a **recording proxy** in front of the backend. The microphone is
@@ -147,8 +147,39 @@ subtree - tag plus class list per element, text excluded. They are identical;
 the field is carried and never rendered. (The frames 08/09 and 12 show the two
 rows side by side.)
 
+## 7. A transcript landing around a send: the ordering, measured
+
+`13-transcript-in-echo-window.png` and `sessionC.*` in the record. The rig
+holds the fake upstream's ANSWER behind a gate, starts a recording, stops it,
+lets the transcription park upstream, then sends the typed draft with a
+released answer - and instruments the composer FIELD itself (a patched `value`
+setter on the node) so every write the app makes to its own box is timestamped
+from inside the frame rather than sampled for.
+
+The measured ordering of that run: press at `24086.6`, the send's clear (an
+empty write) at `+10.8 ms`, the transcript's write at `+21.9 ms` - so in THIS
+rig the transcript rides the fresh-append path: it is not lost, and it does not
+resurrect the sent text; both are asserted (`transcriptSurvivedTheEcho`, and
+the box ends holding exactly the transcript).
+
+The composed-clear path - the transcript arriving INSIDE the press-to-echo
+window, where `appendTranscriptText` waits on `sendClearPendingRef` and
+`clearOnce` writes the clear and the transcript as one - is RECORDED, NOT
+CLAIMED (`sessionC.composedClear`): this rig's own release plumbing (page ->
+rig -> upstream -> backend -> app) costs ~17 ms against a window it measures at
+~11 ms, so no construction of it can land inside; the wider window the
+machinery exists for is the app's slow-create condition (the pane comment's p50
+142 ms / max 409 ms under load, where the clear waits on `sessions.create`),
+which this rig does not manufacture. The wait path's correctness therefore
+rests on reading, not on this run - stated here rather than buried.
+
 ## What this does NOT claim
 
+- **The composed-clear ordering** (§7): the wait machinery's in-window path
+  is recorded, not claimed - this rig measures the press-to-echo window at
+  ~11 ms against its own ~17 ms release plumbing, so the run rides the
+  fresh-append path (asserted: no loss, no resurrection). The in-window path is
+  covered by reading; a future rig that delays `sessions.create` could claim it.
 - **The main-process chords** (`Cmd/Ctrl+Shift+S`, and the palette chords) are
   bound in `before-input-event`, which a headless window never receives - see
   `docs/agent-driver.md`. They are untouched by this change and unmeasured
