@@ -2017,6 +2017,19 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sessionlessSlashFourthFoldNote",
 	/*
+	 * AND THE MINI DICTATION SWAP'S OWN: `miniDictRestampNote` is the change
+	 * that puts the mini composer's dictation onto the shared speech manager
+	 * and stamps its sends. It moves BOTH trees — `src/` for the mini view's
+	 * controller, composer and state, `scripts/` for the new dictation suite,
+	 * the extended contract test and the `test:desktop` list — and re-shoots
+	 * nothing (the run's stills and records live on the PR's own
+	 * `evidence/mini-dict-0929` branch, not in this tree), so the pair is
+	 * re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. It quotes that pair, so it is held to this
+	 * file like every entry above it.
+	 */
+	"miniDictRestampNote",
+	/*
 	 * AND THE README-VISUALS REMEDIATION'S OWN: `readmeVisualsRestampNote` states
 	 * the pair this branch's change binds - the story under `src/` and the two
 	 * rigs under `scripts/` moved both stamped trees, and no sweep frame moved -
@@ -2060,6 +2073,15 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships.
 	 */
 	"readmeVisualsFoldThreeNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFourNote` is the
+	 * fold onto the moved `origin/main` `dd51156839` (#644's
+	 * mini-view-shared-dictation merge) - both evidence files conflicted this
+	 * time and both were resolved as unions with no key dropped, and both stamps
+	 * re-derived from the MERGED tree by the docs-only amendment under the
+	 * merge. It quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldFourNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3126,6 +3148,13 @@ const BRANCH_RECORDS = [
 	 */
 	"sessionlessSlashFourthFoldNote",
 	/*
+	 * And the mini dictation swap's own record (`miniDictRestampNote`), listed
+	 * for the list's usual reason: the note is this branch's statement of what
+	 * moved and what did not (no frame was committed by it), and a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"miniDictRestampNote",
+	/*
 	 * Grown by the README-visuals remediation, this branch's newest top-level
 	 * record and the one that re-derived both stamps: the story under `src/` and
 	 * the two rigs under `scripts/` moved both trees, and no sweep frame moved.
@@ -3163,6 +3192,13 @@ const BRANCH_RECORDS = [
 	 * that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldThreeNote",
+	/*
+	 * Grown by the fourth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `dd51156839` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFourNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
