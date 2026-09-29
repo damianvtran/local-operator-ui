@@ -42,10 +42,13 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	alignFetchDecision,
 	collapsePlan,
 	isFailedCall,
 	runsOf,
+	snapWindowToRunBoundary,
 	staysVisibleWhileCollapsed,
+	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
 	applyEvent,
@@ -283,6 +286,75 @@ test("an interrupted run keeps its marker and its answer in place", () => {
 	assert.equal(run.stampTs, null, "no answer, no stamp — the foot's own rule");
 });
 
+/*
+ * ------------------- on-load window alignment (operator report) ------------
+ *
+ * The operator's report (2026-09-28): opening a long conversation showed
+ * in-between rows on completed turns, and the bars only appeared after
+ * scrolling the run's head into view. The window's top edge is the cause: a
+ * raw row count lands mid-run, and a cut run cannot collapse. These tests pin
+ * the two halves of the fix — the snap that moves the edge onto a boundary it
+ * can see, and the head-cut predicate the load path fetches against.
+ */
+
+const LONG = [
+	user("u1"),
+	tool("t1"),
+	tool("t2"),
+	answer("a1"),
+	user("u2"),
+	tool("t3"),
+	tool("t4"),
+	tool("t5"),
+	answer("a2"),
+	user("u3"),
+	tool("t6"),
+	answer("a3"),
+];
+
+test("the window edge snaps up to the run boundary it lands in", () => {
+	// Size 5 lands the top at index 7, inside run 2 (which opens at 4): the
+	// snap adds the three rows that close the run, so the list starts whole.
+	assert.equal(snapWindowToRunBoundary(LONG, 5, 300), 8);
+	const windowed = LONG.slice(LONG.length - 8);
+	assert.deepEqual(
+		runsOf(windowed).map((run) => run.opensWithUserRow),
+		[true, true],
+	);
+});
+
+test("a snap beyond the bound stands down, and the edge already on a boundary does not move", () => {
+	assert.equal(snapWindowToRunBoundary(LONG, 5, 2), 5);
+	// Size 3 lands the top exactly on `u2` — a boundary already.
+	assert.equal(snapWindowToRunBoundary(LONG, 3, 300), 3);
+	// A window wider than the transcript has no edge to move.
+	assert.equal(snapWindowToRunBoundary(LONG, 60, 300), 60);
+});
+
+test("an edge inside a head-cut run cannot snap — that is the load path's case", () => {
+	// The fetched list starts mid-run: no opening row exists to snap to.
+	const cut = [
+		tool("t0"),
+		tool("t1"),
+		answer("a1"),
+		user("u2"),
+		tool("t2"),
+		answer("a2"),
+	];
+	assert.equal(snapWindowToRunBoundary(cut, 4, 300), 4);
+	assert.equal(windowTopRunIsHeadCut(cut, 4), true);
+	// Once the head is loaded the same window snaps and stops asking.
+	const whole = [user("u1"), ...cut];
+	assert.equal(windowTopRunIsHeadCut(whole, 4), false);
+	assert.equal(snapWindowToRunBoundary(whole, 4, 300), 7);
+});
+
+test("the head-cut predicate is false when the edge lands in a whole run", () => {
+	assert.equal(windowTopRunIsHeadCut(LONG, 5), false);
+	assert.equal(windowTopRunIsHeadCut(LONG, 9), false);
+	assert.equal(windowTopRunIsHeadCut(LONG, 60), false);
+});
+
 test("a dead run with no settled row collapses to the bar alone", () => {
 	// §5 case 8 (the residual edge F2 names): nothing settled, no marker, so
 	// there is no tail — and a following user message folds in as a steer.
@@ -337,9 +409,10 @@ test("the live run does not collapse; finished runs above it still do", () => {
 	);
 });
 
-test("pinned rows inside the span stay visible, in their own order", () => {
-	// §5 case 15, and the pin list's reason: these rows are messages the reader
-	// is owed, not steps of the work.
+test("in-turn receipts hide with the work; the pinned kinds keep their place", () => {
+	// §5 case 15, NARROWED for the operator's feedback (2026-09-29, issue #5):
+	// peer and wake receipts collapse with the work, and the rows that remain
+	// pinned are the ones a collapsed turn cannot be read without.
 	const plan = planOf([
 		user("u1"),
 		{
@@ -353,13 +426,33 @@ test("pinned rows inside the span stay visible, in their own order", () => {
 			gap: "turn",
 			closesTurn: false,
 		},
+		{
+			record: { kind: "wake", id: "r2", ts: TS + 1, text: "a wake delivery" },
+			gap: "item",
+			closesTurn: false,
+		},
 		tool("t1", {}, "trace"),
 		answer("a1"),
 	]);
 	assert.deepEqual(
 		plan.runs[0].hidden.map((hidden) => hidden.record.id),
+		["r1", "r2", "t1"],
+		"the receipts hide with the work",
+	);
+	const withMemory = planOf([
+		user("u1"),
+		{
+			record: { kind: "compaction", id: "c9", ts: TS + 2, text: "compacted" },
+			gap: "turn",
+			closesTurn: false,
+		},
+		tool("t1", {}, "trace"),
+		answer("a1"),
+	]);
+	assert.deepEqual(
+		withMemory.runs[0].hidden.map((hidden) => hidden.record.id),
 		["t1"],
-		"the peer message is not hidden",
+		"the memory statement stays on screen",
 	);
 });
 
@@ -404,11 +497,24 @@ test("a receipt after the answer is not part of the collapsed span", () => {
 /* -------------------------------- pins ---------------------------------- */
 
 test("the pin list is one predicate, and every kind is decided by it", () => {
-	for (const kind of ["peer", "wake", "compaction"]) {
+	for (const kind of ["compaction"]) {
 		assert.equal(
 			staysVisibleWhileCollapsed({ kind, id: "x", ts: TS }),
 			true,
 			kind,
+		);
+	}
+	/*
+	 * ISSUE #5 (operator feedback, 2026-09-29): the receipts collapse with the
+	 * work. The v1 pins argued "a message the reader never saw"; real turns
+	 * showed they are in-turn evidence and the visual weight the collapse
+	 * exists for.
+	 */
+	for (const kind of ["peer", "wake"]) {
+		assert.equal(
+			staysVisibleWhileCollapsed({ kind, id: "x", ts: TS }),
+			false,
+			`${kind} receipts collapse with the work`,
 		);
 	}
 	assert.equal(
@@ -550,6 +656,43 @@ test("a durable run still dates itself: ts is the commit, and the span holds", (
 		answer("a1", { ts: 4_000 }),
 	]);
 	assert.equal(plan.runs[0].facts.durationS, 3);
+});
+
+/* ------------------- the alignment fetch's bound (F2) -------------------- */
+
+test("the align fetch's decision is the whole bound, by construction", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, F2: the window snap's load half. A page may be
+	 * spent only while there is more to load, nothing is in flight, and the
+	 * cut is real; and never past `max` — the property that keeps an open
+	 * from walking an unbounded conversation into memory.
+	 */
+	const step = (spent, over = {}) =>
+		alignFetchDecision(
+			spent,
+			over.hasMore ?? true,
+			over.loadingOlder ?? false,
+			over.headCut ?? true,
+			over.max ?? 2,
+		);
+	assert.deepEqual(step(0), { fetch: true, spent: 1 });
+	assert.deepEqual(step(1), { fetch: true, spent: 2 });
+	assert.deepEqual(step(2), { fetch: false, spent: 2 }, "the bound holds");
+	assert.deepEqual(
+		step(0, { hasMore: false }),
+		{ fetch: false, spent: 0 },
+		"nothing to load",
+	);
+	assert.deepEqual(
+		step(0, { loadingOlder: true }),
+		{ fetch: false, spent: 0 },
+		"a page is already in flight",
+	);
+	assert.deepEqual(
+		step(0, { headCut: false }),
+		{ fetch: false, spent: 0 },
+		"no cut to fix",
+	);
 });
 
 /* --------------------------- the failed count (F4) ----------------------- */
