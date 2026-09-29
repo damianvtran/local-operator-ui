@@ -456,6 +456,16 @@ function mount(
 		fire: (type) => {
 			for (const fn of [...(listeners.get(type) ?? [])]) fn();
 		},
+		/**
+		 * How many live listeners a window event has, by the fixture's own map.
+		 *
+		 * The teardown cases' second instrument (agent review round 1, F4): `fire`
+		 * plus call counts cannot tell an arm that was REMOVED from one that is
+		 * merely inert - a dismantled loop answers nothing either way, so deleting
+		 * the removal lines stayed green. The set itself answers the question the
+		 * cases are asking.
+		 */
+		listenerCount: (type) => (listeners.get(type) ?? new Set()).size,
 		/** One interval tick, then let the answer's microtasks run. */
 		tick: async () => {
 			// THE LIVE interval, not the newest callback ever registered: a stopped loop
@@ -1018,7 +1028,17 @@ test("the window coming back releases a deferred attempt, and the arm dies with 
 			2,
 			"the released attempt was sent again inside its new wait",
 		);
+		assert.equal(
+			harness.listenerCount("focus"),
+			1,
+			"a waiting loop holds no focus arm to be released by",
+		);
 		harness.unmount();
+		assert.equal(
+			harness.listenerCount("focus"),
+			0,
+			"the loop's arm outlived the loop that owns it",
+		);
 		harness.fire("focus");
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		assert.equal(
@@ -1069,6 +1089,17 @@ test("visibility returning releases it too, and a hidden page releases nothing",
 			calls.length,
 			2,
 			"the page coming back did not release the deferred attempt",
+		);
+		assert.equal(
+			harness.listenerCount("visibilitychange"),
+			1,
+			"the visibility arm is not held while the loop lives",
+		);
+		harness.unmount();
+		assert.equal(
+			harness.listenerCount("visibilitychange"),
+			0,
+			"the visibility arm outlived the loop that owns it",
 		);
 	} finally {
 		Date.now = originalNow;

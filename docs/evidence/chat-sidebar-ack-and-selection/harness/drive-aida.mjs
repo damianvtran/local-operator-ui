@@ -757,11 +757,30 @@ if (!herOpen) {
 			verdicts.notes.push(
 				"the gone-conversation scene could not re-select her row before the press",
 			);
-		/* The run's OWN scratch store: the seeded conversation is unlinked. */
+		/*
+		 * The row's LAST painted rect, captured before the store moves under it:
+		 * a reader presses the row they can SEE, and the feed's reap of a deleted
+		 * conversation can land between the unlink and the press (measured: the
+		 * press then lands on whichever row slid into place, and the readings
+		 * record that instead of the scene refusing to run). The run's OWN
+		 * scratch store is what is unlinked.
+		 */
+		const before = await readRows();
+		const otherRow = rowById(before, OTHER);
+		readings.gonePress = {
+			rowPresent: Boolean(otherRow?.button?.visible),
+		};
 		const otherDir = join(SCRATCH, "config", "sessions", OTHER);
 		rmSync(otherDir, { recursive: true, force: true });
-		await pressListRow(OTHER);
-		await wait(3_500);
+		if (otherRow?.button?.visible) {
+			await press(otherRow.button.rect);
+			await wait(900);
+		} else {
+			verdicts.notes.push(
+				"the gone-conversation row was already reaped before the press; the scene records the hold only",
+			);
+		}
+		await wait(2_600);
 		const gone = await sceneRead("after-gone");
 		/* The stream's 404 is a round trip: give it a second window, then re-read. */
 		await wait(6_000);
@@ -797,24 +816,86 @@ if (!herOpen) {
 			},
 		};
 		console.log(`DRIVE: badge before=${JSON.stringify(before.herBadge)}`);
+		/*
+		 * THE FRESH-COMPLETION TIMELINE, and the frame the busy mark gets (round-2
+		 * D1/Q1). `data-completion-complete` is the attribute the receipt's anchor
+		 * gate asks for; the probe records, per 200 ms, whether it is present on
+		 * the pane's own anchors and whether the row still says it is responding,
+		 * so the moment the harness can (and cannot) acknowledge a fresh
+		 * completion is measured rather than inferred. The working frame is taken
+		 * on the first sample that shows the spinner, before the turn settles.
+		 */
+		const FRESHNESS_PROBE = `(() => {
+		  const pane = document.querySelector('[role="log"]');
+		  const anchors = [...document.querySelectorAll('[data-completion-anchor]')].map((el) => ({
+		    id: el.getAttribute('data-completion-anchor'),
+		    complete: el.getAttribute('data-completion-complete') === 'true',
+		  }));
+		  return {
+		    anchors,
+		    completeCount: anchors.filter((a) => a.complete).length,
+		    responding: pane ? /responding/i.test(pane.innerText || '') : null,
+		  };
+		})()`;
+		const freshness = { samples: [], workingFrame: null };
+		let workingSeen = null;
 		const sent = await sendTurn(
 			herSessionId,
 			"Rig turn: a ledger note, please.",
 		);
 		readings.badge.turn = { status: sent.status };
-		/* Sample the working mark while the turn runs (best effort - mock turns are fast). */
-		let workingSeen = null;
-		for (let i = 0; i < 60; i += 1) {
-			await wait(150);
-			const w = await evaluate(
-				`(() => { const b = document.querySelector('[data-tour-tag="nav-item-aida"]'); return b ? Boolean(b.querySelector('svg[class*="animate-spin"]')) : null; })()`,
+		/*
+		 * The busy mark is the turn's own length, and the rail row states it in
+		 * its own accessible name ("Aida, working", `renderNavItem`'s `markLabel`)
+		 * as well as in the spinner glyph, so the poll asks the NAME rather than
+		 * a class that a reduced-motion build drops (`motion-safe:animate-spin`
+		 * keeps the static glyph). Generous on purpose: the mark's window is the
+		 * mock turn plus the status feed's lag.
+		 */
+		for (let i = 0; i < 200; i += 1) {
+			const busy = await evaluate(
+				`(() => { const b = document.querySelector('[data-tour-tag="nav-item-aida"]'); if (!b) return null; return { label: b.getAttribute('aria-label'), spin: Boolean(b.querySelector('svg[class*="animate-spin"]')) }; })()`,
 			);
-			if (w === true) {
-				workingSeen = i * 150;
+			if (
+				busy &&
+				(/(^|, )working$/.test(busy.label ?? "") || busy.spin === true)
+			) {
+				workingSeen = i * 100;
+				await shoot("her-working");
+				freshness.workingFrame = "her-working";
 				break;
 			}
+			await wait(100);
 		}
+		for (let i = 0; i < 150; i += 1) {
+			await wait(200);
+			const sample = await evaluate(FRESHNESS_PROBE);
+			const last = freshness.samples.at(-1);
+			if (
+				!last ||
+				last.completeCount !== sample.completeCount ||
+				last.responding !== sample.responding
+			) {
+				freshness.samples.push({
+					t: i * 200,
+					completeCount: sample.completeCount,
+					responding: sample.responding,
+					anchors: sample.anchors,
+				});
+			}
+			freshness.lastT = i * 200;
+			if (i > 4 && sample.completeCount > 0 && sample.responding === false)
+				break;
+		}
+		freshness.finalSample = {
+			t: freshness.lastT ?? 0,
+			completeCount: (freshness.samples.at(-1) ?? {}).completeCount ?? 0,
+		};
+		readings.badge.freshness = freshness;
 		readings.badge.workingSeenAfterMs = workingSeen;
+		console.log(
+			`DRIVE: freshness last=${JSON.stringify(freshness.samples.at(-1) ?? null)} workingSeen=${workingSeen}`,
+		);
 		const appeared = await waitForUnseen(
 			herSessionId,
 			(s) => s.unseen === true,
@@ -841,9 +922,45 @@ if (!herOpen) {
 		readings.badge.badgeWaitMs = badgeWaitMs;
 		const marked = await sceneRead("her-badge");
 		readings.badge.marked = { badge: marked.herBadge, herRow: marked.herRow };
+		/* The notice's own arrival, read while it is still fresh (Q3's "early" arm). */
+		readings.viewedRowEarly = {
+			describedBy: await evaluate(
+				`(() => { const b = document.querySelector('[data-session-row=${JSON.stringify(herSessionId)}] [data-chat-row]'); return b ? b.getAttribute('aria-describedby') : null; })()`,
+			),
+			badge: marked.herBadge,
+		};
 		console.log(
 			`DRIVE: badge after completion=${JSON.stringify(marked.herBadge)}`,
 		);
+		/*
+		 * Q3: the viewed unread row's own channels, read before touching anything
+		 * else - the flyout text (a dwell), and the `aria-describedby` attribute
+		 * (present only while this row has a remedy sentence to point at).
+		 */
+		{
+			const described = await evaluate(
+				`(() => { const b = document.querySelector('[data-session-row=${JSON.stringify(herSessionId)}] [data-chat-row]'); return b ? b.getAttribute('aria-describedby') : null; })()`,
+			);
+			const flyout = await hoverRowAndRead(herSessionId, "viewed-row-flyout");
+			readings.viewedRow = { describedBy: described, flyout };
+			console.log(
+				`DRIVE: viewed-row: describedBy=${JSON.stringify(described)} flyout=${JSON.stringify(flyout && flyout.text)}`,
+			);
+		}
+		/*
+		 * The re-read leg of the freshness question: leave the conversation and
+		 * come back, then read the same probe - the operator's own switch shape,
+		 * and the reading QA's Q1 says makes the attribute appear.
+		 */
+		{
+			await pressListRow(THIRD);
+			await wait(1200);
+			await pressHerRow();
+			await wait(1800);
+			const after = await evaluate(FRESHNESS_PROBE);
+			readings.badge.freshnessAfterReRead = after;
+			console.log(`DRIVE: freshness after re-read=${JSON.stringify(after)}`);
+		}
 		/* The ladder's own window, so a give-up (if any) is on the log by now. */
 		await wait(75_000);
 		const logLines = giveUpLines(readAppLog());

@@ -42,6 +42,8 @@ Frames are PNG, not WebP, on purpose: `check-evidence.mjs`'s frame walker counts
 | `remedy-flyout` | the pointer on the unread row | the row's flyout. Both trees read `Quarterly ledger reconciliation Unseen completion, unread · scroll to the result to mark this chat read` — see "what this rig cannot see" |
 | `away-unread`, `away-recheck` | a delivery while the app is not the foreground application, then the window's return | the mark, then the mark after the return |
 | `switch-away-unread`, `switch-back` | the operator's own workaround | the mark, then the state after switching to another conversation and back |
+| `viewed-row-flyout` | the viewed row's own channels (Q3) | the flyout of the unread row the pane is on, and its `aria-describedby` in the readings |
+| `her-badge-clear-refused` | the bulk control on the unread badge | the badge still `1` and the foreground refusal's toast |
 
 `before-readings.json` / `after-readings.json` are the rig's full readings for the
 two passes (every timeline sample, every row's `aria-current`, background and
@@ -210,28 +212,78 @@ the third conversation). If the operator's failing press was such a dropped
 press, this is what they saw; the reorder that would have moved a different row
 under their pointer between their two presses was not reproducible from the rig.
 
-**Her badge, and the working mark** (`badge-before` → `her-badge` → `her-badge-cleared`):
+The two repeat-press frames carry the parked pointer's own choreography, and it is
+the row's documented behaviour rather than a defect: the pointer never moves
+between the presses, so the trailing acts stay revealed, the row title is mid-pan
+(its first letters under the pan's edge fade - the pointer-only pan holds until
+the pointer leaves, and leaving clears it in the same frame), and the `rowHover`
+and `rowSelected` grounds sit side by side. `repeat-after-move` shows the same row
+after a real move: the pan is gone and the pressed row is current.
+
+**Her badge, and the working mark** (`badge-before` → `her-badge` → `her-badge-clear-refused`):
 a real completion in her session, while her conversation is the open view,
 raises the badge `1` 250 ms after the backend reports it (rail accessible name
 "Aida 1"; her list row "Unseen completion, unread"), and the same attention state
 drives it — `use-aida-missed-messages.ts` counts `unreadAckableRows`, the same
-predicate the bulk receipt reads. The busy state drew its own mark during the
-turn (sampled at 0 ms: the spinner plus "Working Aida ..."). The badge's live
-CLEAR cannot be shown in this rig for the same reason defect 1's clear cannot:
-every `sessions.seen` main accepts is refused for a window that is not in the
-foreground, and the bulk control is no exception — pressing "Mark all 1 read"
-produced the toast "View these completions in the foreground before marking them
-read. The unread marks were not cleared." (recorded verbatim in
-`after-readings.json`), and the badge stayed `1`.
+predicate the bulk receipt reads. The badge's live CLEAR cannot be shown in this
+rig for the same reason defect 1's clear cannot: every `sessions.seen` main
+accepts is refused for a window that is not in the foreground, and the bulk
+control is no exception — pressing "Mark all 1 read" produced the toast "View
+these completions in the foreground before marking them read. The unread marks
+were not cleared." (recorded verbatim in `after-readings.json`), and the badge
+stayed `1` (hence the frame's name, `her-badge-clear-refused`).
 
-**What this pass cannot say:** the give-up discriminator defect 1 uses was not
-exercised for her session in this scene shape — neither tree's log carries a
-refused `sessions.seen` for her completion in the measured window (each log's
-single refusal sits at boot, seconds after launch), so `giveUp` is 0/0 on both
-halves and carries no signal here. The first pass's scenes remain the defect-1
-evidence. The operator's report is therefore neither reproduced nor closed: the
-exact sequence is clean on both trees in this rig, and the shortest path to
-closing it is the operator's own build and a recording of the failing gesture.
+**Q1's freshness question, and the second mechanism it found.** The receipt's
+anchor gate asks the DOM for `[data-completion-anchor=…][data-completion-complete=
+"true"]`, and this pass measured when that attribute appears after a FRESH
+completion — the rig's own probe, per 200 ms, read from the pane:
+
+| | before `ff34fb8ecc` | after this branch |
+| --- | --- | --- |
+| fresh completion, attribute on its anchor | **absent for the whole 30 s** (`completeCount: 0`) | **present at the first sample** (`completeCount: 1`) |
+| after switching away and back | present (`1`) | present (`1`) |
+
+The before half is the operator's "cannot be cleared until you switch away and
+back": a completion that arrives while its conversation is open is settled by the
+live `message_end`, and that arm wrote the row without the `complete` mark the
+durable read writes — so the receipt never found the anchor to acknowledge until
+some re-read replaced the record. It is not mock-specific: the live arm is the
+shipped producer's own path, and the fix gives it the same mark for the same
+fact (`transcript-reducer.ts`'s `message_end`, mirrored from the `history` arm;
+`a live settle carries the same completion mark the durable read writes` in
+`scripts/transcript-reducer.test.mjs` fails without it). With the fix the after
+half shows the attribute at the first sample, with no re-read. The re-read leg
+also closes the loop on defect 1 for HER session: after it, the before tree logs
+the give-up line and paints the give-up clause (`giveUp: 1/1`), while the after
+tree defers silently (`0/0`).
+
+**Q3's two channels, both states recorded.** On the before tree, ~30 s after the
+completion (no re-entry), the viewed unread row carries
+`aria-describedby="chat-row-read-ack-<id>"` and its flyout reads "Unseen
+completion, unread · scroll to the result to mark this chat read"
+(`viewed-row-flyout`). On the after tree at the pre-Q1-fix head the same. On the
+Q1-fixed head the same row reads `aria-describedby: null` and its flyout carries
+no clause — a deferral is silent, which is the designed state
+(`read-ack-notice.ts`: the notice exists for the states the reader must act on,
+and the loop's notice is cleared with the loop). Both readings are in
+`before-readings.json` / `after-readings.json` (`viewedRow`, `viewedRowEarly`).
+
+**D1, declined with its measurement.** A committed frame of her row's busy mark
+was attempted across three consecutive runs: after the send, her rail row's own
+accessible name ("Aida, working") and its spinner were polled every 100 ms for
+20 s, and the mock turn's busy window never coincided with a capture (two earlier
+runs of the same scene DID paint it — list-row label "Working Aida", DOM sample
+`workingSeenAfterMs: 0` — and QA's independent pass photographed the same label).
+The state is covered by QA's evidence; no frame is claimed here.
+
+**What this pass says about defect 1, and what it cannot say about defect 2.**
+The freshness leg closes the loop on defect 1 for HER session: after the re-read
+the before tree's receipt chases and gives up (`giveUp: logLines 1, rowClauses
+1`), while the after tree's defers silently (`0/0`) — the same discriminator as
+the first pass, now on her own conversation. The operator's defect-2 report is
+neither reproduced nor closed: the exact sequence is clean on both trees in this
+rig, and the shortest path to closing it is the operator's own build and a
+recording of the failing gesture.
 
 ## The harness
 
