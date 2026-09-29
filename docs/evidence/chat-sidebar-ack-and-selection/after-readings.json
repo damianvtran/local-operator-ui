@@ -1,0 +1,1558 @@
+{
+	"label": "after",
+	"theme": "localOperatorDark",
+	"scenes": {
+		"arrive": {
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconciliation now , last active just no"
+					}
+				],
+				"unreadRows": [],
+				"rows": [
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary n",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Recent Loader cache invalidation",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconcil",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			}
+		},
+		"selection-other": {
+			"frame": {
+				"label": "after-selection-other",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-selection-other.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Recent Loader cache invalidation now , last active just now"
+					}
+				],
+				"unreadRows": [],
+				"rows": [
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary n",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Recent Loader cache invalidation",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconcil",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c2c2c2c2c2c2",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"selection-third": {
+			"frame": {
+				"label": "after-selection-third",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-selection-third.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary now , last active just now"
+					}
+				],
+				"unreadRows": [],
+				"rows": [
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary n",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Recent Loader cache invalidation",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconcil",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c3c3c3c3c3c3",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"selection-viewed-back": {
+			"frame": {
+				"label": "after-selection-viewed-back",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-selection-viewed-back.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconciliation now , last active just no"
+					}
+				],
+				"unreadRows": [],
+				"rows": [
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary n",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Recent Loader cache invalidation",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Recent Quarterly ledger reconcil",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"focused-unread": {
+			"frame": {
+				"label": "after-focused-unread",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-focused-unread.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": null,
+						"srTexts": ["Unseen completion, unread", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Recent Retention sweep summary n",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"focused-after": {
+			"frame": {
+				"label": "after-focused-after",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-focused-after.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": "Scroll to the result to mark this chat read.",
+						"srTexts": [
+							"Unseen completion, unread",
+							", last active just now",
+							"Scroll to the result to mark this chat read."
+						],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"remedy-flyout": {
+			"frame": {
+				"label": "after-remedy-flyout",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-remedy-flyout.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation , last"
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": "Scroll to the result to mark this chat read.",
+						"srTexts": [
+							"Unseen completion, unread",
+							", last active just now",
+							"Scroll to the result to mark this chat read."
+						],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"away-unread": {
+			"frame": {
+				"label": "after-away-unread",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-away-unread.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": "Scroll to the result to mark this chat read.",
+						"srTexts": [
+							"Unseen completion, unread",
+							", last active just now",
+							"Scroll to the result to mark this chat read."
+						],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"away-recheck": {
+			"frame": {
+				"label": "after-away-recheck",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-away-recheck.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": "Scroll to the result to mark this chat read.",
+						"srTexts": [
+							"Unseen completion, unread",
+							", last active just now",
+							"Scroll to the result to mark this chat read."
+						],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"switch-away-unread": {
+			"frame": {
+				"label": "after-switch-away-unread",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-switch-away-unread.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": "Scroll to the result to mark this chat read.",
+						"srTexts": [
+							"Unseen completion, unread",
+							", last active just now",
+							"Scroll to the result to mark this chat read."
+						],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active just now"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		},
+		"switch-back": {
+			"frame": {
+				"label": "after-switch-back",
+				"file": "/tmp/chat-sidebar-ack-and-selection/after4/frames/after-switch-back.png",
+				"pixels": {
+					"width": 2760,
+					"height": 1800
+				},
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				}
+			},
+			"page": {
+				"current": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+					}
+				],
+				"unreadRows": ["c1c1c1c1c1c1"],
+				"rows": [
+					{
+						"id": "c1c1c1c1c1c1",
+						"label": "Unseen completion, unread Quarte",
+						"ariaCurrent": "page",
+						"buttonBg": "rgb(55, 47, 36)",
+						"wrapperBg": "rgb(55, 47, 36)",
+						"unread": true,
+						"described": null,
+						"srTexts": ["Unseen completion, unread", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c3c3c3c3c3c3",
+						"label": "Ready Retention sweep summary no",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c2c2c2c2c2c2",
+						"label": "Ready Loader cache invalidation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Ready", ", last active just now"],
+						"visible": true
+					},
+					{
+						"id": "c4c4c4c4c4c4",
+						"label": "Recent Throughput investigation ",
+						"ariaCurrent": null,
+						"buttonBg": "rgba(0, 0, 0, 0)",
+						"wrapperBg": "rgba(0, 0, 0, 0)",
+						"unread": false,
+						"described": null,
+						"srTexts": ["Recent", ", last active 1 minute ago"],
+						"visible": true
+					}
+				],
+				"railCurrent": [],
+				"railBadges": []
+			},
+			"raw": {
+				"hash": "#/chat/c1c1c1c1c1c1",
+				"hasFocus": true,
+				"visibility": "visible"
+			}
+		}
+	},
+	"catalogue": {
+		"status": 200,
+		"found": true,
+		"rowKeys": [
+			"id",
+			"name",
+			"mtime",
+			"preview",
+			"pinned",
+			"locality",
+			"peer",
+			"owner_device",
+			"owner_device_name",
+			"reachable",
+			"unreachable_reason",
+			"placement",
+			"origin",
+			"last_synced_at",
+			"archived",
+			"subagents_running",
+			"subagents_queued",
+			"opened_by",
+			"forked",
+			"live_state",
+			"heartbeat_age_s",
+			"pending",
+			"leaving",
+			"wakes",
+			"wakes_dormant",
+			"kind",
+			"degraded",
+			"created_at",
+			"placement_stale",
+			"active",
+			"status",
+			"binding",
+			"attention"
+		],
+		"attention": {
+			"conversation_id": "session/c1c1c1c1c1c1",
+			"completion_token": null,
+			"anchor_id": null,
+			"kind": null,
+			"reason": "",
+			"cause": "",
+			"unseen": false,
+			"revision": [0, 0]
+		}
+	},
+	"focusEmulationOn": true,
+	"selection": {
+		"steps": [
+			{
+				"clicked": "c2c2c2c2c2c2",
+				"state": "selection-other",
+				"after": {
+					"current": [
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Recent Loader cache invalidation now , last active just now"
+						}
+					],
+					"unreadRows": [],
+					"rows": [
+						{
+							"id": "c4c4c4c4c4c4",
+							"label": "Recent Throughput investigation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Recent Retention sweep summary n",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Recent Loader cache invalidation",
+							"ariaCurrent": "page",
+							"buttonBg": "rgb(55, 47, 36)",
+							"wrapperBg": "rgb(55, 47, 36)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Recent Quarterly ledger reconcil",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						}
+					],
+					"railCurrent": [],
+					"railBadges": []
+				},
+				"verdict": {
+					"current": ["c2c2c2c2c2c2"],
+					"expected": "c2c2c2c2c2c2",
+					"exclusive": true
+				}
+			},
+			{
+				"clicked": "c3c3c3c3c3c3",
+				"state": "selection-third",
+				"after": {
+					"current": [
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Recent Retention sweep summary now , last active just now"
+						}
+					],
+					"unreadRows": [],
+					"rows": [
+						{
+							"id": "c4c4c4c4c4c4",
+							"label": "Recent Throughput investigation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Recent Retention sweep summary n",
+							"ariaCurrent": "page",
+							"buttonBg": "rgb(55, 47, 36)",
+							"wrapperBg": "rgb(55, 47, 36)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Recent Loader cache invalidation",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Recent Quarterly ledger reconcil",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						}
+					],
+					"railCurrent": [],
+					"railBadges": []
+				},
+				"verdict": {
+					"current": ["c3c3c3c3c3c3"],
+					"expected": "c3c3c3c3c3c3",
+					"exclusive": true
+				}
+			},
+			{
+				"clicked": "c1c1c1c1c1c1",
+				"state": "selection-viewed-back",
+				"after": {
+					"current": [
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Recent Quarterly ledger reconciliation now , last active just no"
+						}
+					],
+					"unreadRows": [],
+					"rows": [
+						{
+							"id": "c4c4c4c4c4c4",
+							"label": "Recent Throughput investigation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Recent Retention sweep summary n",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Recent Loader cache invalidation",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Recent Quarterly ledger reconcil",
+							"ariaCurrent": "page",
+							"buttonBg": "rgb(55, 47, 36)",
+							"wrapperBg": "rgb(55, 47, 36)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active just now"],
+							"visible": true
+						}
+					],
+					"railCurrent": [],
+					"railBadges": []
+				},
+				"verdict": {
+					"current": ["c1c1c1c1c1c1"],
+					"expected": "c1c1c1c1c1c1",
+					"exclusive": true
+				}
+			},
+			{
+				"clicked": "c2c2c2c2c2c2",
+				"state": null,
+				"after": {
+					"current": [
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Ready Loader cache invalidation now , last active just now"
+						}
+					],
+					"unreadRows": ["c1c1c1c1c1c1"],
+					"rows": [
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Unseen completion, unread Quarte",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": true,
+							"described": null,
+							"srTexts": [
+								"Unseen completion, unread",
+								", last active just now"
+							],
+							"visible": true
+						},
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Ready Retention sweep summary no",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Ready", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Ready Loader cache invalidation ",
+							"ariaCurrent": "page",
+							"buttonBg": "rgb(55, 47, 36)",
+							"wrapperBg": "rgb(55, 47, 36)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Ready", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c4c4c4c4c4c4",
+							"label": "Recent Throughput investigation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active 1 minute ago"],
+							"visible": true
+						}
+					],
+					"railCurrent": [],
+					"railBadges": []
+				}
+			},
+			{
+				"clicked": "c1c1c1c1c1c1",
+				"state": null,
+				"after": {
+					"current": [
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Unseen completion, unread Quarterly ledger reconciliation now , "
+						}
+					],
+					"unreadRows": ["c1c1c1c1c1c1"],
+					"rows": [
+						{
+							"id": "c1c1c1c1c1c1",
+							"label": "Unseen completion, unread Quarte",
+							"ariaCurrent": "page",
+							"buttonBg": "rgb(55, 47, 36)",
+							"wrapperBg": "rgb(55, 47, 36)",
+							"unread": true,
+							"described": null,
+							"srTexts": [
+								"Unseen completion, unread",
+								", last active just now"
+							],
+							"visible": true
+						},
+						{
+							"id": "c3c3c3c3c3c3",
+							"label": "Ready Retention sweep summary no",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Ready", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c2c2c2c2c2c2",
+							"label": "Ready Loader cache invalidation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Ready", ", last active just now"],
+							"visible": true
+						},
+						{
+							"id": "c4c4c4c4c4c4",
+							"label": "Recent Throughput investigation ",
+							"ariaCurrent": null,
+							"buttonBg": "rgba(0, 0, 0, 0)",
+							"wrapperBg": "rgba(0, 0, 0, 0)",
+							"unread": false,
+							"described": null,
+							"srTexts": ["Recent", ", last active 1 minute ago"],
+							"visible": true
+						}
+					],
+					"railCurrent": [],
+					"railBadges": []
+				}
+			}
+		]
+	},
+	"giveUp": {
+		"logLines": [],
+		"rowClauses": [],
+		"settled": false,
+		"returned": false,
+		"switchBack": false
+	},
+	"receipt": {
+		"focused": {
+			"blur": null,
+			"drain": {
+				"ok": true,
+				"timeline": [
+					{
+						"t": 31,
+						"unseen": false,
+						"token": "fb2aede5-7c5f-5dc7-8163-6a1927f5e08d",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "fb2aede5-7c5f-5dc7-8163-6a1927f5e08d",
+					"anchor_id": "000000006aa7b794assistant0000000",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": false,
+					"revision": [1, 1]
+				},
+				"status": 200
+			},
+			"baselineToken": "fb2aede5-7c5f-5dc7-8163-6a1927f5e08d",
+			"turn": {
+				"status": 200,
+				"body": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"8763983f-860c-4164-a001-98e9235a2b05\",\"replayed\":false}}"
+			},
+			"appear": {
+				"ok": true,
+				"timeline": [
+					{
+						"t": 114,
+						"unseen": true,
+						"token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+					"anchor_id": "3d8e0f03b734422bae5ed5411b8692ff",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [3, 1]
+				},
+				"status": 200
+			},
+			"cleared": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 54,
+						"unseen": true,
+						"token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+					"anchor_id": "3d8e0f03b734422bae5ed5411b8692ff",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [3, 1]
+				},
+				"status": 200
+			},
+			"notes": [],
+			"focusedWhileUnread": true,
+			"clearedWhileWatching": false,
+			"flyout": {
+				"point": {
+					"x": 126,
+					"y": 690.390625
+				},
+				"text": "Quarterly ledger reconciliation Unseen completion, unread · scroll to the result to mark this chat read"
+			}
+		},
+		"away": {
+			"blur": true,
+			"drain": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 44,
+						"unseen": true,
+						"token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+					"anchor_id": "3d8e0f03b734422bae5ed5411b8692ff",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [3, 1]
+				},
+				"status": 200
+			},
+			"baselineToken": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+			"turn": {
+				"status": 200,
+				"body": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"0b5ca96d-9f03-4cdc-8213-069bd24bd8f3\",\"replayed\":false}}"
+			},
+			"appear": {
+				"ok": true,
+				"timeline": [
+					{
+						"t": 101,
+						"unseen": true,
+						"token": "0bd3098a-ca52-4fa7-af31-e3eab481f46e",
+						"event": null,
+						"statusCode": "busy"
+					},
+					{
+						"t": 471,
+						"unseen": true,
+						"token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+					"anchor_id": "48b9d95c528f4e6e8dc2550c7eb4fc7d",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [6, 1]
+				},
+				"status": 200
+			},
+			"cleared": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 36,
+						"unseen": true,
+						"token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+					"anchor_id": "48b9d95c528f4e6e8dc2550c7eb4fc7d",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [6, 1]
+				},
+				"status": 200
+			},
+			"notes": [],
+			"focusedWhileUnread": true,
+			"stillUnreadWhileAway": true,
+			"returned": true,
+			"clearedOnReturn": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 16,
+						"unseen": true,
+						"token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+					"anchor_id": "48b9d95c528f4e6e8dc2550c7eb4fc7d",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [6, 1]
+				},
+				"status": 200
+			},
+			"clearedWhileReturned": false
+		},
+		"switchAway": {
+			"blur": true,
+			"drain": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 56,
+						"unseen": true,
+						"token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+					"anchor_id": "48b9d95c528f4e6e8dc2550c7eb4fc7d",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [6, 1]
+				},
+				"status": 200
+			},
+			"baselineToken": "bb6b1736-b20c-47cf-8dbd-1af568397386",
+			"turn": {
+				"status": 200,
+				"body": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"98c1b129-f3d4-4964-89b7-d507251aa4c8\",\"replayed\":false}}"
+			},
+			"appear": {
+				"ok": true,
+				"timeline": [
+					{
+						"t": 102,
+						"unseen": true,
+						"token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+						"event": null,
+						"statusCode": "busy"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+					"anchor_id": "4177b6c500524cbbb91c20d359263cb9",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [7, 1]
+				},
+				"status": 200
+			},
+			"cleared": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 96,
+						"unseen": true,
+						"token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+					"anchor_id": "4177b6c500524cbbb91c20d359263cb9",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [7, 1]
+				},
+				"status": 200
+			},
+			"notes": [],
+			"focusedWhileUnread": true,
+			"clearedOnSwitchBack": {
+				"ok": false,
+				"timeline": [
+					{
+						"t": 68,
+						"unseen": true,
+						"token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+						"event": null,
+						"statusCode": "complete"
+					}
+				],
+				"attention": {
+					"conversation_id": "session/c1c1c1c1c1c1",
+					"completion_token": "3d6e7c32-5707-43eb-b080-1d7819937aeb",
+					"anchor_id": "4177b6c500524cbbb91c20d359263cb9",
+					"kind": "complete",
+					"reason": "",
+					"cause": "",
+					"unseen": true,
+					"revision": [7, 1]
+				},
+				"status": 200
+			},
+			"backProbeUnread": ["c1c1c1c1c1c1"]
+		}
+	},
+	"verdicts": {
+		"defects": [],
+		"passes": [
+			"selection: exactly one current row after each click, always the clicked one",
+			"focused: a real completion produced a real unseen mark while the conversation was the open view",
+			"the foreground refusal deferred: no give-up warning in the app log, no give-up clause on the row"
+		],
+		"notes": [
+			"RESIDUAL, BY CONSTRUCTION: the final CLEAR cannot be observed in this rig. Every receipt is refused by main's `guardForegroundReceipts`, because a headless window is never visible or focused and stealing the operator's focus to satisfy it is not a lever a rig may use. What is proven here is the deferral and its shape; the clear under a genuine foreground window is covered by the in-process suite (`scripts/completion-view-ack.test.mjs`) and the operator's live app.",
+			"FOCUS LAYER: the renderer gate (`document.hasFocus()` / `visibilityState`) was driven with CDP `Emulation.setFocusEmulationEnabled`, and `document.hasFocus()` was read back in every scene (see `raw.hasFocus`); main's gate (`BrowserWindow.isVisible() && !isMinimized() && isFocused()`) is the layer no agent rig can satisfy."
+		]
+	}
+}
