@@ -913,9 +913,16 @@ export const AgentHubPage: React.FC = () => {
 								{/*
 								 * `{" "}` rather than `ml-2` alone: the gap is a layout decision, but
 								 * the SPACE is what stops the live region announcing
-								 * "30 agentsUpdating" - the two spans are one sentence.
+								 * "30 agentsUpdating" - the two spans are one sentence. The word sits in a
+								 * span of its own so it is addressable (the page-change story waits on
+								 * it) without becoming a second live region.
 								 */}
-								{view === "agents" && isRefreshing ? <> Updating…</> : null}
+								{view === "agents" && isRefreshing ? (
+									<>
+										{" "}
+										<span>Updating…</span>
+									</>
+								) : null}
 							</p>
 							{view === "agents" && (
 								<>
