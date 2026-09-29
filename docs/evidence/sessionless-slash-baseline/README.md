@@ -22,6 +22,14 @@ on Electron 44.3.0). `/theme` needs the same complete/close/submit press
 sequence here as on the head tree (the inline list predates this change), and
 the scene asserts it the same way.
 
+The tree was built through electron-vite's own entry point
+(`VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 node_modules/.bin/electron-vite build`,
+with `node ./bin/ensure-electron.js` first) rather than `pnpm build`: the pnpm
+wrapper proposed reinstalling this worktree's shared `node_modules` clone
+(`ERR_PNPM_IGNORED_BUILDS`, this machine's established pnpm 12 state) and was
+not allowed to — the direct entry point is the same build `pnpm build` runs,
+minus that dependency check.
+
 The live half is deliberately not run here: it asserts the session-ful path,
 which this half is not about, and the scene's own log says so ("live half
 skipped").
