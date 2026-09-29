@@ -10618,6 +10618,87 @@ async function sceneTranscriptRail(cdp) {
 		`ticks=${tickCount}`,
 	);
 
+	/*
+	 * #680's landing probe: press ticks across the reach and read WHERE THEY
+	 * LAND - the washed row's top relative to the scroller's top (`offset`; the
+	 * fixed anchor is 0), with the scroller's own numbers beside it. Run with
+	 * `--scoped-case rail-jump-probe`; the before/after pair is the same
+	 * command against the pre-anchor and post-anchor builds, and each jump's
+	 * frame is captured under its case name.
+	 */
+	if (RAIL_CASE === "rail-jump-probe") {
+		const anchorView = () =>
+			evaluate(`(() => {
+				const sc = document.querySelector('[role="log"]');
+				const row = document.querySelector("[data-jump-highlight]");
+				if (!sc || !row) return null;
+				const sr = sc.getBoundingClientRect();
+				const rr = row.getBoundingClientRect();
+				return {
+					landed: row.getAttribute("data-record-id"),
+					offset: Math.round((rr.top - sr.top) * 10) / 10,
+					scrollTop: Math.round(sc.scrollTop * 10) / 10,
+					maxNeg: Math.round((sc.scrollHeight - sc.clientHeight) * -1),
+					rowH: Math.round(rr.height),
+					viewport: sc.clientHeight,
+					rows: sc.querySelectorAll("[data-record-id]").length,
+				};
+			})()`);
+		const jumpCase = async (name, id, expect) => {
+			await washGone();
+			const rowsBefore = await evaluate(
+				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
+			);
+			const jump = await jumpVia(id);
+			/*
+			 * The settle's own window, then the reading: the anchor re-measures
+			 * for up to the loader's settle plus two frames (issue #680), so a read
+			 * taken earlier would be a read of the race, not of the landing.
+			 */
+			await wait(700);
+			const view = await anchorView();
+			await capture(cdp, `rail-jump-${name}`);
+			note(
+				`landing ${name}`,
+				`id=${id} ms=${jump.ms} landed=${view?.landed ?? "none"} offset=${view?.offset ?? "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"}`,
+			);
+			check(
+				`the ${name} jump lands the target's top at the scrollport's top (issue #680)`,
+				view !== null &&
+					jump.landed === id &&
+					(expect === "clamp"
+						? view.scrollTop === 0
+						: Math.abs(view.offset) <= 1.5),
+				JSON.stringify({ jump: jump.landed, view }),
+			);
+			return view;
+		};
+		const ids = await evaluate(`(() => {
+			const ticks = Array.from(document.querySelectorAll('${rail} [data-checkpoint-id]'));
+			const ns = ticks
+				.map((el) => el.getAttribute("data-checkpoint-id"))
+				.filter((id) => (id || "").startsWith("n"));
+			return {
+				first: ns[0] ?? null,
+				deep: ns[Math.floor(ns.length * 0.65)] ?? null,
+				count: ns.length,
+			};
+		})()`);
+		note("rail ids", JSON.stringify(ids));
+		/*
+		 * The deep leg FIRST - it walks the store back, so a deep read taken
+		 * after the near legs would be reading a store they warmed. The warm leg
+		 * is that same row re-jumped.
+		 */
+		await jumpCase("deep-cold", ids.deep, "anchor");
+		await jumpCase("warm", ids.deep, "anchor");
+		await jumpCase("very-top", ids.first, "anchor");
+		/* The newest completion: within a viewport of the end, so the anchor is
+		 * unreachable by construction - the documented clamp at max scroll. */
+		await jumpCase("near-newest", nearTick, "clamp");
+		return;
+	}
+
 	const themes = sceneThemes();
 	for (const theme of themes) {
 		check(

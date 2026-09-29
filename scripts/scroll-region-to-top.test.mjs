@@ -122,6 +122,37 @@ test("a target already flush with the content top is a no-op", () => {
 });
 
 /*
+ * ---- the reversed axis --------------------------------------------------
+ *
+ * The jump's landing (issue #680) calls this helper on the transcript's
+ * `flex-col-reverse` scroller, where the low bound is not zero: the origin is
+ * the BOTTOM (0 at the newest row, a negative bound at the oldest - the
+ * measured contract in `use-scroll-paging.ts`). The clamp cases below pin that
+ * the same offset arithmetic keeps its two legal shapes, the property
+ * `scrollRegionToCenter` gained for the same reason (design round 1's D1).
+ */
+
+test("the reversed axis takes the top-anchored offset and lets it go negative", () => {
+	// The anchor's own geometry: the scroller parked at -600, the target row
+	// 800px above it, a 1px border: -600 + (-800 - 100 - 1) = -1501, a value the
+	// box CAN hold on this axis. A top anchor that clamped at zero here would be
+	// the D1 no-op on the very axis the rail's jump lives on.
+	const region = regionStub({ scroll: -600, top: 100, clientTop: 1 });
+	scrollRegionToTop(region, targetStub(-800), "reversed");
+	assert.equal(region.scrollTop, -1501);
+});
+
+test("the reversed axis clamps up at zero for a target toward the newest row", () => {
+	// -100 + (500 - 100 - 0) = 300; on this axis the legal value nearest it is 0
+	// (the newest-row origin), which is also the jump's documented boundary: a
+	// target within a viewport of the newest rows lands at max scroll, the
+	// closest achievable, rather than at an invented positive offset.
+	const region = regionStub({ scroll: -100, top: 100 });
+	scrollRegionToTop(region, targetStub(500), "reversed");
+	assert.equal(region.scrollTop, 0);
+});
+
+/*
  * ---- the centre sibling -------------------------------------------------
  *
  * `scrollRegionToCenter` (the checkpoint rail's jump, design §D7 stage 3)

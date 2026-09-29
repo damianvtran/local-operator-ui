@@ -98,6 +98,18 @@ export function checkpointMarkState(options: {
  * construction and needs no clamp.
  */
 /**
+ * The rail's structural identity for one checkpoint: "Turn N of M".
+ *
+ * ONE formatter on purpose (issue #680's vocabulary item): the tick's label
+ * and the hover card both lead with this string, and a second spelling in
+ * either place is how the two surfaces drift apart. The generated name and
+ * summary are secondary content that rides beneath it, never a replacement.
+ */
+export function checkpointTurnLabel(turn: number, turnCount: number): string {
+	return `Turn ${turn} of ${turnCount}`;
+}
+
+/**
  * The completion checkpoint's fallback title: its name, or `Turn N`.
  *
  * `Turn N` is the FALLBACK rather than a placeholder to be replaced later

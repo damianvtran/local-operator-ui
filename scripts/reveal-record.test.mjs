@@ -310,7 +310,7 @@ test("a page that fails to apply stops the loop", async () => {
  * written for.
  */
 
-test("a row behind a collapsed bar: the bar opens, the row centres, the flash lands", async () => {
+test("a row behind a collapsed bar: the bar opens, the row anchors, the flash lands", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">
 			<button aria-expanded="false">turn</button>
@@ -334,9 +334,29 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		trigger.setAttribute("aria-expanded", "true");
 		const row = document.createElement("div");
 		row.setAttribute("data-record-id", "u9");
-		// The row's geometry, known the moment it exists: 500px into the
-		// content, 100px tall.
-		measure(row, { top: -800, height: 100 });
+		/*
+		 * THE ROW MOVES WITH THE SCROLL. The anchor settle (issue #680)
+		 * re-measures over frames, so a static stub would be a page that never
+		 * answers a re-apply and the loop would diverge frame by frame instead
+		 * of settling. The real contract on this axis: a scroll of `S` places
+		 * the row's top at `-1400 - S` (its -600-era position, plus the
+		 * distance scrolled - more negative moves content DOWN), so the
+		 * geometry is a function of `region.scrollTop`, not a constant.
+		 */
+		row.getBoundingClientRect = () => {
+			const top = -1400 - region.scrollTop;
+			return {
+				top,
+				height: 100,
+				bottom: top + 100,
+				left: 0,
+				right: 0,
+				width: 0,
+				x: 0,
+				y: top,
+				toJSON() {},
+			};
+		};
 		root.appendChild(row);
 	});
 
@@ -350,9 +370,12 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		const outcome = await jumpToEntry(root, region, "u9");
 		assert.equal(outcome, "landed");
 		assert.equal(clicks, 1, "the bar was opened exactly once");
-		// -600 + (-800 - 100 - 1) - (600 - 100) / 2 = -1751, and it must be
-		// ALLOWED to land there: clamping at zero is the no-op D1 measured.
-		assert.equal(region.scrollTop, -1751, "the row's centre met the region's");
+		// The anchor: -600 + (-800 - 100 - 1) = -1501 puts the row's TOP at the
+		// scrollport's top (the fixed anchor, issue #680), and the settle
+		// re-measures against a page that moves with the scroll to confirm it.
+		// The centring era's -1751 (the row's centre met the region's) is gone
+		// by decision.
+		assert.equal(region.scrollTop, -1501, "the row's top met the region's top");
 		const row = root.querySelector(
 			'[data-record-id="u9"]:not([data-turn-summary])',
 		);
@@ -367,6 +390,69 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 	} finally {
 		window.setTimeout = realSetTimeout;
 	}
+});
+
+/*
+ * The settle's two bounds, driven directly: the frame budget, and the reader.
+ * Both use a row that NEVER answers the re-measure (a static rect is a page
+ * that does not move with the scroll), so the loop cannot converge - which is
+ * exactly the shape that proves the bounds rather than the convergence the
+ * case above already covers.
+ */
+test("a page that never answers the re-measure is left after the frame budget", async () => {
+	const { root, region } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed", "the jump still resolves");
+	// The first assignment plus one per frame of the budget (JUMP_SETTLE_FRAMES
+	// + 2), and no more: a pathological layout costs frames, not a hang.
+	assert.equal(assigned, 1 + 8, "the settle spent its budget and stopped");
+});
+
+test("a reader's gesture during the settle stops the re-apply", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	// The anchor's first assignment and the gesture listeners arm in one task,
+	// so waiting for the assignment guarantees the listener can see the wheel.
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+	}
+	region.dispatchEvent(new window.Event("wheel"));
+	const outcome = await pending;
+	assert.equal(outcome, "landed", "the jump still resolves");
+	// At most the initial apply plus one frame that was already in flight when
+	// the wheel landed; the budget's 1 + 8 would mean the yield was ignored.
+	assert.ok(
+		assigned <= 2,
+		`the loop stopped touching scrollTop (assigned ${assigned})`,
+	);
 });
 
 test("a row behind a bar AND a fold: both open, outermost first", async () => {

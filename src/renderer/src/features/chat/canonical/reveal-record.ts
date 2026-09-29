@@ -1,7 +1,7 @@
 /**
  * The checkpoint rail's jump: §D7's near path in one place — ensure the row is
- * within the DOM's reach, reveal it through the collapse branch's walk, centre
- * it in the transcript region, and flash where it landed.
+ * within the DOM's reach, reveal it through the collapse branch's walk, anchor
+ * its top at the transcript region's top, and flash where it landed.
  *
  * WHY THE LOOP LIVES HERE AND NOT IN THE COMPONENT. `canonical-transcript.tsx`
  * owns the two halves the loop cannot: where the row sits in the row model
@@ -15,27 +15,32 @@
  * this caller by D7's ownership note). A second copy of it in this file is
  * the defect that note exists to prevent.
  *
- * WHY `scrollRegionToCenter` AND NOT `scrollIntoView`. The rail's jump is the
- * third consumer this repository's region-scroll helper was written for (see
- * `shared/lib/scroll.ts`'s header): `scrollIntoView` walks the ancestor chain
- * and can scroll the app frame at narrow widths — measured, twice, in the
- * built app. The rail targets a row inside the transcript's own scroller, so
- * the jump moves that region and nothing else - with the region's OWN axis
- * named at the call site (`"reversed"`: the transcript scrolls on
- * `flex-col-reverse`), which design round 1's D1 measured as the difference
- * between landing and a silent no-op. The failure jump keeps its platform
- * scroll; that is its shipped behaviour and this module does not own it.
+ * WHY A FIXED TOP ANCHOR AND NOT THE CENTRE. Issue #680 measured the centred
+ * landing resolving at varying viewport positions — the single synchronous
+ * read races the windowed mount and the collapse walk's own layout changes,
+ * and the reversed-axis clamps make both content ends ambiguous. The decided
+ * rule, ONE deterministic landing, anchors the target row's TOP at the
+ * transcript scrollport's top and re-measures it over a bounded settle before
+ * resolving; the boundary cases (nearest-end offset clamping, the oldest-end
+ * clamp, taller-than-viewport rows) are named at `landOnTop` below.
+ * `scrollIntoView` stays out for the reason `shared/lib/scroll.ts`'s header
+ * measures (it scrolls the app frame at narrow widths, twice in the built
+ * app), and the region's OWN axis is still named at the call site
+ * (`"reversed"`: the transcript scrolls on `flex-col-reverse`, the contract in
+ * `use-scroll-paging.ts`). The failure jump keeps its platform scroll; that is
+ * its shipped behaviour and this module does not own it.
  *
  * This module honours the rail's contract that a failed jump is a SENTENCE,
  * never an error: every path resolves, and the caller (the transcript) is the
  * one that speaks to the reader.
  */
 
-import { scrollRegionToCenter } from "@shared/lib/scroll";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { revealRecord } from "./failed-row-jump";
 import {
 	LOADER_SETTLE_FRAMES,
 	createBackwardLoader,
+	nextFrame,
 } from "./transcript-loader";
 
 /** The attribute the landing highlight paints on the revealed row. */
@@ -69,6 +74,18 @@ export const JUMP_MAX_MOUNTED_ROWS = 1200;
  * its state after each wait, so a slow frame costs latency, never correctness.
  */
 export const JUMP_SETTLE_FRAMES = LOADER_SETTLE_FRAMES;
+
+/*
+ * The anchor settle (issue #680). `JUMP_ANCHOR_MAX_FRAMES` is the loader's own
+ * settle plus the two frames a late window-mount commit can take before a
+ * re-apply is believed; a target that holds for `JUMP_ANCHOR_STABLE_FRAMES`
+ * consecutive frames at the scrollport's top is anchored. The tolerance is a
+ * pixel: sub-pixel rounding is not drift, and chasing it would re-assign
+ * `scrollTop` forever on a fractional layout.
+ */
+const JUMP_ANCHOR_MAX_FRAMES = JUMP_SETTLE_FRAMES + 2;
+const JUMP_ANCHOR_STABLE_FRAMES = 2;
+const JUMP_ANCHOR_EPSILON_PX = 1;
 
 export type ReachOptions = {
 	/**
@@ -145,6 +162,82 @@ export type JumpOutcome = "landed" | "missing";
  * reports there is nothing in the DOM to reveal (`"missing"` — the caller's
  * ensure half was skipped or raced a remount; either way the caller speaks).
  */
+/**
+ * Anchor, then settle.
+ *
+ * The first assignment is the anchor arithmetic; the loop that follows exists
+ * because the reveal can commit layout AFTER the walk reports `onRevealed`
+ * (the window mount is a React state write, and expanding a collapsed run
+ * changes the heights above the target), so a single read is a read of a
+ * moving page. Each frame re-measures the target's top against the
+ * scrollport's top and re-applies the anchor while it drifts; a target that
+ * holds for `JUMP_ANCHOR_STABLE_FRAMES` frames is anchored, and the loop is
+ * bounded by `JUMP_ANCHOR_MAX_FRAMES` so a pathological layout costs frames,
+ * not a hang.
+ *
+ * THE SETTLE YIELDS TO THE READER: a wheel, pointer-down or touch on the
+ * region during the window means the reader is steering, and re-applying the
+ * anchor would yank the view out from under them — the jump has already
+ * revealed the target, so the loop stops touching `scrollTop` and returns.
+ *
+ * Boundary rules on the reversed axis (issue #680's table): a target within a
+ * viewport of the newest rows cannot be pushed to the scrollport's top (that
+ * needs a positive offset, and nothing exists past the newest row) — it lands
+ * at `scrollTop` 0, the closest achievable, the only allowed alternative; a
+ * target at the oldest end clamps at the browser's negative bound, where the
+ * content's oldest edge IS the scrollport's top (trivially anchored); and a
+ * row taller than the viewport anchors its TOP by construction.
+ */
+async function landOnTop(
+	region: HTMLElement,
+	target: HTMLElement,
+): Promise<void> {
+	scrollRegionToTop(region, target, "reversed");
+	let yielded = false;
+	const yieldToReader = () => {
+		yielded = true;
+	};
+	/*
+	 * `passive` and `once`: the listener never reads or prevents anything, and
+	 * only the first gesture matters. The listeners that never fire are removed
+	 * below - `once` releases only the one that does.
+	 */
+	region.addEventListener("wheel", yieldToReader, {
+		passive: true,
+		once: true,
+	});
+	region.addEventListener("pointerdown", yieldToReader, {
+		passive: true,
+		once: true,
+	});
+	region.addEventListener("touchstart", yieldToReader, {
+		passive: true,
+		once: true,
+	});
+	try {
+		let stable = 0;
+		for (let frame = 0; frame < JUMP_ANCHOR_MAX_FRAMES; frame += 1) {
+			await nextFrame();
+			if (yielded) break;
+			const drift =
+				target.getBoundingClientRect().top -
+				region.getBoundingClientRect().top -
+				region.clientTop;
+			if (Math.abs(drift) <= JUMP_ANCHOR_EPSILON_PX) {
+				stable += 1;
+				if (stable >= JUMP_ANCHOR_STABLE_FRAMES) break;
+				continue;
+			}
+			stable = 0;
+			scrollRegionToTop(region, target, "reversed");
+		}
+	} finally {
+		region.removeEventListener("wheel", yieldToReader);
+		region.removeEventListener("pointerdown", yieldToReader);
+		region.removeEventListener("touchstart", yieldToReader);
+	}
+}
+
 export function jumpToEntry(
 	root: ParentNode,
 	region: HTMLElement,
@@ -154,16 +247,15 @@ export function jumpToEntry(
 		revealRecord(root, id, {
 			onRevealed: (target) => {
 				/*
-				 * `"reversed"`: the region here is the canonical transcript's own
-				 * scroller, whose `flex-col-reverse` axis runs 0 at the newest row to
-				 * a negative bound at the oldest (the measured contract in
-				 * `use-scroll-paging.ts`). Design round 1's D1 measured the cost of
-				 * leaving this to the default: with the normal-axis clamp the
-				 * landing was a no-op and the wash painted off-screen.
+				 * The wash paints at the reveal, not after the settle: it is the
+				 * arrival cue, and it belongs to the target row wherever the settle
+				 * leaves it. The promise resolves once the anchor has settled (or the
+				 * reader took over), matching the contract above.
 				 */
-				scrollRegionToCenter(region, target, "reversed");
 				paintJumpHighlight(target);
-				resolve("landed");
+				void landOnTop(region, target).then(() => {
+					resolve("landed");
+				});
 			},
 			onMissing: () => {
 				resolve("missing");
