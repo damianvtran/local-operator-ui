@@ -42,6 +42,7 @@ const {
 	WINDOW_MODE_ENV,
 	WINDOW_SIZE_ENV,
 	describeWindowLaunch,
+	hotkeysAllowed,
 	parseWindowMode,
 	parseWindowSize,
 	readWindowIntent,
@@ -1942,6 +1943,80 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 	assert.ok(
 		scanned.some((file) => file.includes(sep)),
 		`the scan reached subdirectories (scanned ${scanned.length} modules)`,
+	);
+});
+
+test("the mini view's window module raises nothing on its own", () => {
+	/*
+	 * THE NAMED REGRESSION TARGET for the scan above, written as its own case
+	 * rather than left to the recursive walk (quick-send design §D.5): the scan
+	 * covers `src/main` by construction, and this file is the one the design's
+	 * D7 hand-review asks about by name. Two assertions, because two different
+	 * deletions would satisfy each alone: the module contains no raise-family
+	 * call, AND it still presents — through `presentMiniView`, the one function
+	 * in `window-raise.ts` whose gate refuses unless the launch resolved
+	 * `focus`. A module that had simply lost its summon path would pass a
+	 * scan-only check.
+	 */
+	const source = readFileSync("src/main/mini-view.ts", "utf8");
+	const offSite = source
+		.split("\n")
+		.map((line, index) => ({ line, number: index + 1 }))
+		.filter(({ line }) =>
+			/\.(show|showInactive|focus|maximize)\(\)/.test(line),
+		);
+	assert.deepEqual(
+		offSite,
+		[],
+		"mini-view.ts must reach presentation only through window-raise.ts, where the launch mode's gate lives",
+	);
+	assert.ok(
+		source.includes("presentMiniView"),
+		"mini-view.ts presents through `presentMiniView`; without it the module has no way to show the window and the assertion above would be vacuous",
+	);
+});
+
+test("hotkeys are registered only by a normal launch", () => {
+	/*
+	 * The one comparison the quick-send feature rests on (design §D.5/§C.4):
+	 * "an agent run never answers the operator's global hotkey" is
+	 * `hotkeysAllowed(windowLaunch.mode)`, and the negative arms are the point —
+	 * `headless` renders a run nobody watches and `inactive` promises never to
+	 * activate, while a global shortcut's handler activates the app by design.
+	 */
+	assert.equal(hotkeysAllowed("normal"), true);
+	assert.equal(hotkeysAllowed("inactive"), false);
+	assert.equal(hotkeysAllowed("headless"), false);
+});
+
+test("the mini view is created only for a normal launch or the headless dev-driver exerciser", () => {
+	/*
+	 * THE EXERCISER'S GATE AT THE CALL SITE (M-B1). The window may be created for
+	 * a normal launch (the feature) or for the armed dev driver in a headless run
+	 * (the rigs' exerciser, so a scene can drive a window the app OWNS — the
+	 * desktop plane admits by frame, `desktop-ipc.ts`), and for nothing else.
+	 *
+	 * The REGISTRATION half is not this condition's and is asserted above: it
+	 * stays `hotkeysAllowed`'s alone, so a rig run may hold a hidden window and
+	 * still answer no keyboard. The helper's own arms are driven in
+	 * `dev-driver-gate.test.mjs`; what this case pins is that `index.ts` uses
+	 * it, alongside nothing else, and that exactly one registrar exists.
+	 */
+	const source = readFileSync("src/main/index.ts", "utf8");
+	assert.match(
+		source,
+		/hotkeysAllowed\(windowLaunch\.mode\) \|\| miniViewExerciser/,
+		"the mini view's creation condition must be `hotkeysAllowed(...) || miniViewExerciser`",
+	);
+	assert.match(
+		source,
+		/const miniViewExerciser = headlessExerciserAllowed\(\{\s*arming: devDriverArming,\s*windowMode: windowLaunch\.mode,\s*\}\)/,
+		"the exerciser must be the dev-driver helper, so its headless-only truth has one definition",
+	);
+	assert.equal(
+		source.split("createRegistrar(").length - 1,
+		1,
+		"one registrar, under the normal-only gate; a second would be a second opinion on the chord",
 	);
 });
 

@@ -84,7 +84,14 @@ export type RaiseTrigger =
 	| "activate"
 	| "banner-click"
 	| "viewer-focus"
-	| "viewer-resume";
+	| "viewer-resume"
+	/*
+	 * The global hotkey's mini composer (design §D.5). A raise under this name
+	 * is the ONLY way the mini view may come forward: it reports through
+	 * `presentMiniView` below, which is gated on the launch plan's `focus`
+	 * policy like every other presentation in this file.
+	 */
+	| "mini-view";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -327,6 +334,10 @@ const REFUSABLE_DELIVERY: Record<
 	// HIS OWN CLICK ROUTES THROUGH THIS, and the ladder reads any ack as
 	// "displayed", so refusing it is a silent no-op on his own notification (U1).
 	"viewer-resume": "never",
+	// The hotkey's mini view raises and delivers nothing to retarget, so the
+	// gate's question (may this request REPLACE an in-use window's conversation)
+	// never arises; declared for the same totality rule as `viewer-focus`.
+	"mini-view": "never",
 };
 
 /**
@@ -895,4 +906,39 @@ export function applySecondLaunch(
 		requester: request.requester ?? undefined,
 		report: target.report,
 	});
+}
+
+/**
+ * The mini view's one presentation path (design §D.5).
+ *
+ * WHY IT IS A SEPARATE FUNCTION rather than a `raiseWindow` call: the mini
+ * view only ever presents under a FOCUS policy — it takes the keyboard for the
+ * composer, which is the interaction's point — while `raiseWindow` also has the
+ * `inactive` half, which orders a window without activating the app and is the
+ * wrong promise for "press a key, type immediately". So the gate here is the
+ * strict one: unless the launch plan resolved `focus`, this returns WITHOUT a
+ * single call. That is the second half of the mode discipline the design states
+ * — `mini-view.ts` contains no raise call, and this function refuses even when
+ * it is the caller — so an `inactive` or `headless` run has two independent
+ * reasons the mini view can never appear.
+ *
+ * `restore()` is kept: the ONLY way this window is minimised is an operator
+ * gesture against a visible window, and the hotkey's meaning is "bring it back"
+ * (the same reading `raiseWindow` takes for a focus-class request).
+ */
+export function presentMiniView(
+	window: RaisableWindow,
+	show: WindowShow,
+	context: RaiseContext,
+): void {
+	if (show !== "focus") return;
+	const applied: string[] = [];
+	if (window.isMinimized()) {
+		window.restore();
+		applied.push("restore");
+	}
+	window.show();
+	window.focus();
+	applied.push("show", "focus");
+	context.report?.(raiseLine(context, show, applied));
 }
