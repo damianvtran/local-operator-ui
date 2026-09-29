@@ -251,6 +251,18 @@ function press(window, element, key, over = {}) {
 	);
 }
 
+/**
+ * The same, wrapped in `act`, for the controller's own DOM: the chord's
+ * listener is a DOCUMENT listener, so its `setOpen` is scheduled by the
+ * dispatch itself and a call outside `act` is the update React warns about
+ * (measured: three of them across the two controller cases).
+ */
+async function pressAct(window, element, key, over = {}) {
+	await act(async () => {
+		press(window, element, key, over);
+	});
+}
+
 /* --------------------------------------------------------------- the panel */
 
 async function mountPanel(initial) {
@@ -514,26 +526,46 @@ test("a truncated list says so, and only a truncated, non-empty one does", async
 
 /* -------------------------------------------------------------- the reveal */
 
-test("a mounted row is scrolled to the centre and marked, and the mark moves and times out", async (t) => {
+/** One frame of the fixture's own clock, for the walk's staged frames. */
+const nextFrame = () =>
+	new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+/** The frames `jumpToFailedRow` itself waits: two layers is two rAFs. */
+const walkFrames = async () => {
+	for (let frame = 0; frame < 3; frame += 1) await nextFrame();
+};
+
+test("a mounted row is marked at once and scrolled to the centre by the shared walk, and the mark moves and times out", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const env = installDom(
 		"<div id='scroller'><div data-record-id='m1'>one</div><div data-record-id='m2'>two</div></div>",
 	);
 	try {
 		const scroller = env.document.getElementById("scroller");
-		assert.equal(await revealThreadSearchHit(scroller, "m1"), "revealed");
 		const first = env.document.querySelector("[data-record-id='m1']");
-		assert.equal(first.hasAttribute(THREAD_SEARCH_LANDED_ATTR), true);
+		const second = env.document.querySelector("[data-record-id='m2']");
+		assert.equal(await revealThreadSearchHit(scroller, "m1"), "revealed");
+		assert.equal(
+			first.hasAttribute(THREAD_SEARCH_LANDED_ATTR),
+			true,
+			"a row already in the DOM is marked without waiting for the walk",
+		);
+
+		/* The SCROLL is the shared walk's: `jumpToFailedRow` centres the row two
+		   of its own frames later, after the two layers it may have to open. */
+		await walkFrames();
 		assert.deepEqual(env.scrolls.at(-1).options, {
 			block: "center",
 			behavior: "smooth",
 		});
+		assert.equal(env.scrolls.at(-1).element, first);
 
 		/* The mark MOVES rather than stacking: the old row loses it. */
 		assert.equal(await revealThreadSearchHit(scroller, "m2"), "revealed");
 		assert.equal(first.hasAttribute(THREAD_SEARCH_LANDED_ATTR), false);
-		const second = env.document.querySelector("[data-record-id='m2']");
 		assert.equal(second.hasAttribute(THREAD_SEARCH_LANDED_ATTR), true);
+		await walkFrames();
+		assert.equal(env.scrolls.at(-1).element, second);
 
 		/* And the timer, not only the next jump, takes it away. */
 		t.mock.timers.tick(THREAD_SEARCH_LANDED_MS);
@@ -576,7 +608,7 @@ test("a collapsed turn is opened once, then the row is found; a bar that is not 
 		assert.equal(
 			await revealThreadSearchHit(scroller, "m1"),
 			"revealed",
-			"the walk crosses one layer and waits a frame for the commit",
+			"the shared walk opens the bar; this fixture's click mounts the row synchronously, as a discrete event's state update commits",
 		);
 		assert.equal(clicks, 1, "the bar is opened exactly once");
 
@@ -707,36 +739,31 @@ test("the chord opens the panel from the chat surface, and nowhere else", async 
 		/* A foreign overlay's press stays its own. */
 		const dialog = window.document.getElementById("dialog");
 		dialog.focus();
-		press(window, dialog, "f", { metaKey: true });
-		await act(async () => {});
+		await pressAct(window, dialog, "f", { metaKey: true });
 		assert.equal(view.overlay(), null, "a dialog owns its own keys");
 
 		/* Outside the chat surface the press is not ours either. */
 		const outside = window.document.getElementById("outside");
 		outside.focus();
-		press(window, outside, "f", { metaKey: true });
-		await act(async () => {});
+		await pressAct(window, outside, "f", { metaKey: true });
 		assert.equal(view.overlay(), null);
 
 		/* From the transcript it opens, with the box focused and the caret in it. */
 		transcript.focus();
-		press(window, transcript, "f", { metaKey: true });
-		await act(async () => {});
+		await pressAct(window, transcript, "f", { metaKey: true });
 		assert.notEqual(view.overlay(), null);
 		assert.equal(window.document.activeElement, view.input());
 
 		/* The chord re-answering itself selects the box rather than toggling. */
 		view.input().value = "ledger";
 		view.input().setSelectionRange(0, 0);
-		press(window, view.input(), "f", { metaKey: true });
-		await act(async () => {});
+		await pressAct(window, view.input(), "f", { metaKey: true });
 		assert.equal(view.window.document.activeElement, view.input());
 		assert.equal(view.input().selectionStart, 0);
 		assert.equal(view.input().selectionEnd, 6, "the box's text is selected");
 
 		/* Escape closes and hands focus back to where it was. */
-		press(window, view.input(), "Escape");
-		await act(async () => {});
+		await pressAct(window, view.input(), "Escape");
 		assert.equal(view.overlay(), null);
 		assert.equal(window.document.activeElement, transcript);
 	} finally {
@@ -751,8 +778,7 @@ test("typing asks the conversation, and a click lands on the row in the scroller
 		const { window } = view;
 		const transcript = window.document.getElementById("transcript");
 		transcript.focus();
-		press(window, transcript, "f", { metaKey: true });
-		await act(async () => {});
+		await pressAct(window, transcript, "f", { metaKey: true });
 
 		await act(async () => {
 			typeInto(window, view.input(), "ledger");
