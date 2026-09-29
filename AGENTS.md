@@ -550,6 +550,26 @@ because a request that was declined must not look like one that never arrived.
 Undeclared and `normal` requests keep restoring, because those are the ones that
 mean "bring this to me".
 
+A request that arrives while the app is QUITTING is declined and for a stronger
+reason: a window created by a process on its way out dies with the shutdown,
+which is exactly what an immediate relaunch used to open onto (issue #636 — the
+window appeared over the teardown and closed ~0.5 s later). The whole request is
+refused — nothing created, nothing raised, nothing parked — and reported
+(`applied=skipped+quitting`), for a second launch and for a Dock click alike and
+for every request that would have to CREATE the window (a banner click, the
+consent toast's reopen, the viewer's `resume_session` and `focusWindow`
+recreate); that create gate sits in `setupMainWindowWithUpdateService`, the one
+function every creation goes through, and ahead of the park decision in
+`openSessionInWindow`. A delivery into a window that still exists is not refused
+by it — the window is already up and dies with the shutdown either way, and the
+refusal that matters is of requests that would ADD one. The state is set at the
+first `before-quit` entry, which is BEFORE the session-cookie hold can wait, so
+the refusal covers the whole teardown — and a quit that is CANCELLED lets go of
+it beside its own cancellation (the setup window's declined "Quit without
+setup?" is the one cancellation a running quit has), so a cancelled quit refuses
+nothing later. The next launch — the one that finds the process gone — opens
+normally.
+
 Every raise writes one line to the backend log, naming the site, the mode and
 what it did — ONE line per present: the window's `ready-to-show` handler is
 one-shot, because it can fire twice for one window (a reload) and two identical
@@ -561,10 +581,13 @@ lines for one window is a log a person cannot read.
 ```
 
 The triggers are `initial-present` (this process's own launch, including a window
-created for a conversation and presented late), `second-instance`, `banner-click`,
-`viewer-focus` and `viewer-resume` — one name per REQUEST, so the three requests
-that deliver a conversation before raising are told apart rather than collapsing
-into one. `mode` is the mode token a reader greps for; `requested` is the show
+created for a conversation and presented late), `second-instance`, `activate` (a
+macOS Dock click on a windowless app — a person's request, not this process's own
+launch), `banner-click`, `viewer-focus`, `viewer-resume` and `mini-view` (the
+global hotkey's mini composer, which presents only through `presentMiniView`) —
+one name per
+REQUEST, so the three requests that deliver a conversation before raising are
+told apart rather than collapsing into one. `mode` is the mode token a reader greps for; `requested` is the show
 policy it produced; `pid`/`cwd` are printed only when the requester declared them
 across the single-instance boundary, and their absence means this process asked
 itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
