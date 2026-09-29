@@ -53,7 +53,7 @@ const HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
+			'export { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -73,7 +73,8 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { shouldReinitialiseComposer } = await import(bundlePath.href);
+const { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } =
+	await import(bundlePath.href);
 await unlink(bundlePath);
 
 test("a composer seeds for a conversation it has not seeded for", () => {
@@ -106,6 +107,104 @@ test("nothing seeds before hydration", () => {
 	 */
 	assert.equal(shouldReinitialiseComposer(undefined, "conv-1", false), false);
 	assert.equal(shouldReinitialiseComposer("conv-1", "conv-1", false), false);
+});
+
+/* ------------------------------------------------------------------ */
+/* The transcript's boundary (design round 1, D2; UX round 1, U2)      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE GLUE, AS ONE RULE. Plain concatenation landed a transcript flush against
+ * a draft that did not end in whitespace - "review the stt overhauldictated
+ * words..." - on the exact landing path this change re-publishes, and the
+ * joined word shipped as the sent message (measured in both the design round's
+ * and the UX round's frames; carried from the baseline build, fixed here
+ * because this branch now owns the path).
+ */
+test("a transcript landing on a draft without a trailing space gets one", () => {
+	assert.equal(
+		joinTranscript(
+			"review the stt overhaul",
+			"dictated words from the fake upstream.",
+		),
+		"review the stt overhaul dictated words from the fake upstream.",
+	);
+});
+
+test("a boundary either side already carried is not doubled", () => {
+	assert.equal(
+		joinTranscript("draft ending with space ", "follow-up"),
+		"draft ending with space follow-up",
+	);
+	assert.equal(
+		joinTranscript("draft", " leading-space transcript"),
+		"draft leading-space transcript",
+	);
+	assert.equal(joinTranscript("", "fresh"), "fresh");
+});
+
+test("the transcript writer goes through that rule, not through `+`", () => {
+	const hook = code(HOOK);
+	assert.match(
+		hook,
+		/handleChange\(joinTranscript\(getCurrentInput\(conversationId\), text\)\)/,
+		"the row's write adds the boundary",
+	);
+	assert.match(
+		hook,
+		/setInputValue\(\(current\) => joinTranscript\(current, text\)\)/,
+		"the masked capture's write adds it too",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The settle's retire rule (QA round 1, Q-2)                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A LANDING TRANSCRIPT MAY NOT DROP WHAT IS ON SCREEN. QA's send -> dictate ->
+ * dictate sequence: after a send, the settle ran `retireDraft()` seconds after
+ * the echo and cleared the PERSISTED copy unconditionally - while the box kept
+ * the first take, because the settle's clear never touched the local value.
+ * The next landing then appended against the emptied register (`joinTranscript(
+ * "", take2)`), and the write REPLACED the box's text: visible loss in 3 of 4
+ * runs. The fix makes the settle retire only the copy the send actually owned.
+ */
+test("a send's settle retires its own payload and nothing newer", () => {
+	assert.equal(
+		retireDraftApplies("typed line", "typed line"),
+		true,
+		"the register still holds exactly what was sent",
+	);
+	assert.equal(
+		retireDraftApplies("", "typed line"),
+		true,
+		"already retired: clearing again is a no-op",
+	);
+	assert.equal(
+		retireDraftApplies("qa take 1", "typed line"),
+		false,
+		"the register moved on (a landing, or keystrokes) - not this send's to clear",
+	);
+});
+
+test("send -> settle -> dictate-append cannot replace the visible text", () => {
+	/*
+	 * The sequence, in the register's own terms: take 1 landed after the send
+	 * (so the settle must leave it), and take 2 then joins the copy the box is
+	 * showing instead of replacing it.
+	 */
+	assert.equal(retireDraftApplies("qa take 1", "typed line"), false);
+	assert.equal(joinTranscript("qa take 1", "qa take 2"), "qa take 1 qa take 2");
+});
+
+test("the settle consults that rule, not an unconditional clear", () => {
+	const hook = code(HOOK);
+	assert.match(
+		hook,
+		/retireDraftApplies\(getCurrentInput\(conversationId\), submitted\)/,
+		'`retireDraft` must ask the rule before writing `""`',
+	);
 });
 
 test("the seeding effect is GATED on the rule, not merely accompanied by it", () => {

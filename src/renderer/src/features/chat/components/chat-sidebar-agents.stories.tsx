@@ -28,11 +28,25 @@
  * fixture shaped like the route's own refusal (`install_seed`'s
  * `NameTakenError`), not a live call. Whether the real server copies the seed is
  * QA's job against a real app.
+ *
+ * ## The dismissal, and why every story pins it
+ *
+ * The built-ins offer is dismissible, and the dismissal persists into
+ * `ui-preferences-storage` — ONE localStorage key on ONE browser origin, shared
+ * by every story the capture sweep visits in a session. A story that left the
+ * offer dismissed would therefore render the next story's section differently
+ * than that story's own frame claims — and the batch stories' plays would press
+ * a button a dismissed section no longer has. Every story below mounts
+ * `OfferDismissalFixture`, which states the stored value at render, so the set
+ * is order-independent by construction: a story cannot inherit a dismissal it
+ * did not ask for.
  */
 
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { useLayoutEffect } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
@@ -188,16 +202,43 @@ const installBridge = ({
 
 /* --------------------------------------------------------------- stories */
 
+/* ---------------------------------------------------- the dismissal fixture */
+
+/**
+ * States the persisted dismissal for the story it is mounted in.
+ *
+ * WHY EVERY STORY CARRIES ONE is the header's "The dismissal" section: the
+ * sweep shares one origin, so `ui-preferences-storage` is shared too, and this
+ * is what makes the set order-independent — each story states the value it
+ * expects instead of inheriting whatever ran before it.
+ *
+ * A LAYOUT effect, so the store holds the fixture's value BEFORE the story's
+ * first paint: a passive effect would let the first frame — and any play that
+ * starts at mount — record the pre-fixture value.
+ */
+const OfferDismissalFixture = ({ signature }: { signature: string }) => {
+	const dismissBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissBuiltinOffer,
+	);
+	useLayoutEffect(() => {
+		dismissBuiltinOffer(signature);
+	}, [dismissBuiltinOffer, signature]);
+	return null;
+};
+
 const Page = () => (
-	<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
-		<div className="w-[360px] shrink-0 border-r border-hairline">
-			<ChatSidebar
-				selectedConversation={undefined}
-				onSelectConversation={() => undefined}
-				onStageDraft={() => undefined}
-			/>
+	<>
+		<OfferDismissalFixture signature="" />
+		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
+			<div className="w-[360px] shrink-0 border-r border-hairline">
+				<ChatSidebar
+					selectedConversation={undefined}
+					onSelectConversation={() => undefined}
+					onStageDraft={() => undefined}
+				/>
+			</div>
 		</div>
-	</div>
+	</>
 );
 
 const meta: Meta = {
@@ -212,12 +253,36 @@ type Story = StoryObj;
 /**
  * A user with no agents of their own, and six built-ins waiting: the state the
  * program item is about, where the next step is one action rather than a tour of
- * the catalogue.
+ * the catalogue. The dismiss control rides the "No agents yet" line — this is
+ * the frame that shows it.
  */
 export const EmptyWithShortcut: Story = {
 	render: () => {
 		installBridge({ profiles: BUILTINS });
 		return <Page />;
+	},
+};
+
+/**
+ * The offer AFTER the reader dismissed it: the empty-state block is gone — no
+ * line, no sentence, no action — and the section is its heading and the create
+ * row the caret landed on. The press is a real click on the shipped control in
+ * the play, so the frame is the component REACTING to a dismissal rather than a
+ * prop that fakes the state.
+ */
+export const OfferDismissed: Story = {
+	render: () => {
+		installBridge({ profiles: BUILTINS });
+		return <Page />;
+	},
+	play: async () => {
+		await userEvent.click(await screen.findByTestId("agents-offer-dismiss"));
+		await waitFor(() => {
+			expect(screen.queryByTestId("agents-sidebar-empty")).toBeNull();
+		});
+		// The control went with the block, and the create row is what is left.
+		expect(screen.queryByTestId("agents-offer-dismiss")).toBeNull();
+		expect(screen.getByRole("button", { name: "Create agent" })).toBeTruthy();
 	},
 };
 

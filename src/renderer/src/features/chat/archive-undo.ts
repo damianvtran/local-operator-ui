@@ -30,31 +30,33 @@
  * opposite - an archived conversation is exactly the row they CANNOT see, which is
  * why they need the offer.
  *
- * A CEILING AS WELL AS THE SUBSCRIPTION, because the catalogue is not guaranteed
- * to answer at all: a backend that is down leaves the fact standing, and an
- * unretired subscription per archive press is a listener that outlives the press
- * that made it. Both halves are needed and neither is a fallback for the other.
+ * NO CEILING ANY MORE (2026-09-27, superseding design rounds 4-9's D6/D30 pair):
+ * a 15 s timeout used to stand beside the subscription, on the premise that a
+ * subscription per archive press could otherwise outlive the press - the offer
+ * was `Infinity`-lived then, and only the panel's own clock ever took it down.
+ * The message now ends itself (sonner's documented life, `ARCHIVE_UNDO_TOAST_MS`,
+ * pausable while the reader holds it), and its end clears the store slot, which
+ * is what tears this watch down - so the listener's bound is the offer's own life
+ * rather than a second, unseen clock. Keeping the ceiling would also retire a
+ * message the reader is HOLDING, which is the one moment the watch must still be
+ * armed: the state moving while the offer is held is exactly when the offer has
+ * to go. A LATE PRESS remains harmless in every ordering: `sessions.archive`
+ * carries the DESIRED state rather than a toggle, so an Undo pressed after
+ * another surface restored the conversation re-sends `archived: false` - a no-op,
+ * not a double flip.
  *
- * A LATE PRESS IS HARMLESS, which is why the ceiling is a bound rather than a
- * correctness constraint: `sessions.archive` carries the DESIRED state rather than
- * a toggle, so an Undo pressed after another surface restored the conversation
- * re-sends `archived: false` - a no-op, not a double flip.
- *
- * A PANEL REGISTER RATHER THAN A TOAST (design round 2, D12), and that is the one
- * thing about this module's shape that changed. The offer used to be
- * `showInfoToast(..., { action: "Undo" })`, which put a box with the word Undo in
- * it over the composer: measured in both palettes the toast covered x
- * 1001..1360.5, y 789..842.5 while the Send control sits at x 1307..1339, y
- * 803..835, so the offer's own press target sat exactly where Send had been for up
- * to 15 s. An offer to take an action back must not be able to send a message, and
- * it must sit on the surface that performed the action - and the archive is
- * performed from the sidebar (a row's control, the conversation header's menu, a
- * typed slash command dispatched by the composer but acting on the chat pane),
- * never from the composer. The register lives at the panel's ROOT, above both regions
- * (drawn beside the pin's own failure line, so every assembly mode carries it), so it
- * cannot reach the composer at all, and the rule above is implemented exactly as
- * it was: the offer is written when the press is accepted and cleared by the same
- * subscription or the same ceiling.
+ * BACK TO AN ORDINARY TOAST, WHICH IS THE OPERATOR'S OWN CALL (2026-09-27,
+ * verbatim: "instead of having a separate sidebar notification, we should
+ * probably just use the normal sonner toast. These don't properly show up and
+ * look janky"). Design round 2's D12 is the trade being re-accepted rather than
+ * refuted, and it is recorded here so nobody re-discovers it as new: measured in
+ * both palettes, a bottom-right toast covers x 1001..1360.5, y 789..842.5 while
+ * the composer's Send control sits at x 1307..1339, y 803..835 - so an offer can
+ * sit over Send for its (now hover-pausable) eight seconds. The panel register
+ * that answer built was itself retired by the operator's request, this time in
+ * favour of the standard register the app's other toasts use; the lane it became
+ * (`docs/design/sidebar-row-space.md` §10, D11) and that record's supersession
+ * entry carry the full history.
  */
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -63,27 +65,27 @@ import { useEffect } from "react";
 import { undoOfferStands } from "./chat-archived";
 
 /**
- * How long the offer stands if no answer ever speaks about the conversation.
- *
- * Long enough to read the line and reach for it, and short enough that a
- * forgotten subscription cannot accumulate over a session of archives.
- */
-export const ARCHIVE_UNDO_CEILING_MS = 15_000;
-
-/**
- * How long the offer's CARD is drawn for - the panel's own clock, not sonner's.
+ * The offer's documented display life - sonner's own `duration` now.
  *
  * WHY THIS NUMBER LIVES HERE (agent review round 2's R9 context, design round 2's
- * D6): it was spelled in `chat-sidebar.tsx` beside the clock effect that runs it,
- * and it is the DISPLAY life the lane's own design record quotes ("the offer's
- * eight seconds"); the field above answers a different question - how long a
- * forgotten SUBSCRIPTION may stand - and a module that wanted the visible life
- * reaching for the ceiling was measuring the wrong thing. A second offer now shares
- * this card life exactly (`drafts-undo.ts`'s `DRAFTS_UNDO_CEILING_MS`), so the number
- * is exported from the offer's own module: one home, and both offers' lives are the
- * same number by construction rather than by coincidence.
+ * D6): it was spelled in `chat-sidebar.tsx` beside the clock effect that ran it;
+ * the clock is gone (sonner ends the message now, pausably), but the number
+ * still has one home because BOTH offers share it - the discard offer's toast
+ * reads this constant - and because the design record quotes it ("the offer's
+ * eight seconds"). It is no longer a ceiling's neighbour: the 15 s subscription
+ * bound beside it was removed with the panel clocks (see the header).
  */
 export const ARCHIVE_UNDO_TOAST_MS = 8_000;
+
+/**
+ * The refusal's documented display life - sonner's `duration` for it.
+ *
+ * Longer than an offer's, because the refusal carries a Retry the reader has to
+ * read before pressing, and the read-ack announcement (`chat-sidebar.tsx`) takes
+ * the same number for the same shape. It lives here so the archive family's two
+ * lifetimes sit together and cannot drift.
+ */
+export const ARCHIVE_FAILURE_TOAST_MS = 10_000;
 
 /**
  * The quoted NAME an archive offer prints, with the verb left outside it.
@@ -137,13 +139,14 @@ function knownArchived(sessionId: string): boolean | undefined {
  * Retire the standing offer when the state it was taken from stops being true.
  *
  * WHY THIS IS A HOOK RATHER THAN PART OF THE RAISE (design round 8, D27's second clause).
- * The offer itself is now written by the STORE, in the update that settles the archive
- * write, because the accepted departure and the band that answers it have to land in one
- * commit - and the store cannot call into this module (this module imports the store). What
- * cannot move to the store is this subscription, and it should not: deciding WHEN the offer
- * stops being true is this module's rule, the same way `undoOfferStands` and the sentence
- * beside it are. So the panel calls this once, and the watch keys on the offer's identity -
- * a second archive in a row re-arms it rather than stacking two.
+ * The offer itself is written by the STORE, in the update that settles the archive
+ * write, because the accepted departure and the state that answers it have to land in one
+ * commit - and the store cannot call into this module (this module imports the store).
+ * WHAT CANNOT MOVE TO THE STORE IS THIS SUBSCRIPTION, and it should not: deciding WHEN
+ * the offer stops being true is this module's rule, the same way `undoOfferStands` and the
+ * sentence beside it are. So the undo-toast surface (`components/undo-toasts.tsx`, mounted
+ * for the app's whole life since 2026-09-27) calls this once, and the watch keys on the
+ * offer's identity - a second archive in a row re-arms it rather than stacking two.
  *
  * The offer's own claim, kept from the version that installed this at the raise: a press
  * that has NOT been answered decides nothing (`fact.answered`), so an optimistic fact cannot
@@ -151,9 +154,13 @@ function knownArchived(sessionId: string): boolean | undefined {
  * where the panel dismissed the lane and the refusal that replaced the offer was created
  * into the id's own unmount window.
  *
- * The ceiling bounds it as well, because the catalogue is not obliged to answer at all: a
- * backend that is down leaves the fact standing, and a subscription per archive press is a
- * listener that would outlive the press that made it.
+ * ITS BOUND IS THE OFFER'S OWN LIFE, not a clock (2026-09-27; the 15 s ceiling that stood
+ * here went with the panel clocks - see the module header). The watch lives exactly as long
+ * as the store holds the offer, and the offer's end now clears that slot in every ending
+ * route (sonner's timed end, the close button, the swipe, or the state moving). A HELD
+ * offer is the case the ceiling used to shorten: while the reader hovers, both the message
+ * and this watch stand, which is right - the state moving under a held offer is precisely
+ * when the offer must retire.
  */
 export function useArchiveUndoRetirement(): void {
 	const offer = useCanonicalSessionsStore((state) => state.archiveUndo);
@@ -165,14 +172,13 @@ export function useArchiveUndoRetirement(): void {
 			if (closed) return;
 			closed = true;
 			unsubscribe();
-			clearTimeout(ceiling);
 		};
 		/*
 		 * Retire the offer, but only if THIS offer is still the one the store holds.
 		 *
 		 * GUARDED BY THE OFFER'S OWN IDENTITY, NOT BY ITS SESSION ID (agent review round 5, R5-5).
 		 * Two offers for the SAME conversation can follow one another - archive, undo it, archive it
-		 * again inside the first watch's ceiling - and a guard on the id alone lets the first watch's
+		 * again while the first watch is still armed - and a guard on the id alone lets the first watch's
 		 * expiry take the SECOND offer off the screen: the same lie the retirement rule exists to
 		 * avoid, one press later. The stamp tells them apart, because every raise carries the write's
 		 * own `at`.
@@ -196,7 +202,6 @@ export function useArchiveUndoRetirement(): void {
 				return;
 			stop();
 		});
-		const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
 		return teardown;
 	}, [offer]);
 }

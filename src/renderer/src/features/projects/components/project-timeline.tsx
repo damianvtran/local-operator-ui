@@ -16,6 +16,17 @@
  * yet; the toolbar says how many are still arriving rather than a frame
  * pretending the marks are all there are.
  *
+ * THE VIEW IS BORDERLESS (slice 3): the panel ground retired with the list's,
+ * and the three chrome rules it carried — the toolbar's, the axis' and the
+ * undated footer's — went with it. The pinned name column KEEPS its `border-r`
+ * because that hairline is structural, not decorative: it is the edge that
+ * separates a pinned strip from content scrolling under it.
+ *
+ * THE SECTIONS ARE TEAMS: the same `groupByTeam` rule as the list and the
+ * board, pinned `top-0` inside the scroller; the header's label pins `left-0`
+ * with the name column so a horizontally scrolled axis cannot carry the team
+ * name off-screen while its rows are in view.
+ *
  * THE TIER IS AUTO UNTIL TOUCHED: the finest tier whose axis fits the measured
  * track wins, and `+`/`-` coarsen or refine it from there (zoom is level of
  * detail; `+` moves toward days). The manual choice is this mount's, the same
@@ -27,7 +38,12 @@ import { cn } from "@shared/lib/utils";
 import { Minus, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { formatProjectDay } from "../project-model";
+import {
+	NO_TEAM_LABEL,
+	formatProjectDay,
+	groupByTeam,
+	projectTeamName,
+} from "../project-model";
 import {
 	TIMELINE_TIERS,
 	TIMELINE_TIER_PX_PER_DAY,
@@ -91,6 +107,14 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	const today = todayUtcMs(nowMs);
 	const span = useMemo(() => timelineSpan(items, today), [items, today]);
 	const sections = useMemo(() => timelineSections(items), [items]);
+	/*
+	 * Grouped from the SECTION's dated items, so the team rule cannot reorder
+	 * what `timelineSections` split; the undated footer stays one line.
+	 */
+	const groups = useMemo(
+		() => groupByTeam(sections.dated, (item) => projectTeamName(item.project)),
+		[sections],
+	);
 	useLayoutEffect(() => {
 		const element = panelRef.current;
 		if (!element) return;
@@ -118,10 +142,10 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	return (
 		<div
 			ref={panelRef}
-			className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline bg-surface"
+			className="flex min-h-0 flex-1 flex-col"
 			data-testid="project-timeline"
 		>
-			<div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3 py-2">
+			<div className="flex shrink-0 items-center justify-between gap-3 px-3 py-2">
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
 					{failedDetails > 0
 						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
@@ -176,16 +200,44 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 							pxPerDay={pxPerDay}
 							trackPx={trackPx}
 						/>
-						{sections.dated.map((item) => (
-							<TimelineRow
-								key={item.project.id}
-								item={item}
-								spanStart={span.startMs}
-								pxPerDay={pxPerDay}
-								trackPx={trackPx}
-								today={today}
-								onOpen={() => onOpen(item)}
-							/>
+						{groups.map((group) => (
+							/*
+							 * THE GROUP IS THE HEADER'S CONTAINING BLOCK (round 1, Q1/U1): a
+							 * header that is a sibling of its rows has no box to stick inside,
+							 * so it parks at the offset and the next header covers it — the
+							 * stacking the round-1 frames measured. Wrapping the group restores
+							 * the ordinary push-out contract: the incoming header displaces the
+							 * outgoing one as its own group reaches the top.
+							 */
+							<div key={group.team ?? ""}>
+								<div
+									className="sticky top-0 z-20 flex items-stretch bg-canvas"
+									data-project-team={group.team ?? ""}
+								>
+									<span
+										className="sticky left-0 z-20 flex shrink-0 items-center gap-2 bg-canvas px-3 py-1 text-meta"
+										style={{ width: NAME_COL_PX }}
+									>
+										<span className="truncate text-ink">
+											{group.team ?? NO_TEAM_LABEL}
+										</span>
+										<span className="shrink-0 text-ink-muted">
+											{group.items.length}
+										</span>
+									</span>
+								</div>
+								{group.items.map((item) => (
+									<TimelineRow
+										key={item.project.id}
+										item={item}
+										spanStart={span.startMs}
+										pxPerDay={pxPerDay}
+										trackPx={trackPx}
+										today={today}
+										onOpen={() => onOpen(item)}
+									/>
+								))}
+							</div>
 						))}
 					</div>
 				</div>
@@ -197,7 +249,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			)}
 
 			{sections.undated.length > 0 && (
-				<div className="shrink-0 border-t border-hairline px-3 py-2 text-meta text-ink-muted">
+				<div className="shrink-0 px-3 py-2 text-meta text-ink-muted">
 					No dates ({sections.undated.length}):{" "}
 					{sections.undated.map((item, index) => (
 						<span key={item.project.id}>
@@ -227,9 +279,9 @@ const Axis: FC<{
 }> = ({ startMs, endMs, tier, pxPerDay, trackPx }) => {
 	const ticks = timelineTicks(startMs, endMs, tier);
 	return (
-		<div className="flex items-stretch border-b border-hairline">
+		<div className="flex items-stretch">
 			<span
-				className="sticky left-0 z-10 shrink-0 bg-surface"
+				className="sticky left-0 z-10 shrink-0 bg-canvas"
 				style={{ width: NAME_COL_PX }}
 			/>
 			<span className="relative block h-6" style={{ width: trackPx }}>
@@ -277,7 +329,7 @@ const TimelineRow: FC<{
 			className="flex w-full items-stretch text-left transition-colors duration-fast ease-out-quart hover:bg-elevated"
 		>
 			<span
-				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-surface px-3"
+				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-canvas px-3"
 				style={{ width: NAME_COL_PX, height: ROW_PX }}
 			>
 				<span className="truncate text-body-sm text-ink">{project.name}</span>

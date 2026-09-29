@@ -21,6 +21,17 @@ import type {
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import {
+	MINI_VIEW_DISMISS,
+	MINI_VIEW_REGISTRATION,
+	MINI_VIEW_REGISTRATION_GET,
+	MINI_VIEW_SUMMONED,
+	type MiniViewDismissReason,
+	type MiniViewRegistrationState,
+	type MiniViewSummonedPayload,
+	isMiniViewRegistrationState,
+	isMiniViewSummonedPayload,
+} from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import {
 	type WebauthnRequestPayload,
@@ -464,14 +475,25 @@ const api = {
 		onBackendUpdateProgress: (
 			callback: (progress: {
 				/**
-				 * `draining` is the WAIT before anything is installed or restarted: the app
-				 * holds the update back while sessions on this machine finish the turns they
-				 * are running (`backend/fleet-drain.ts`). It is its own phase rather than
-				 * part of `installing` because it can last minutes and no install has begun
-				 * - reporting it as installing would make the panel's "this can take a minute
-				 * or two" the wrong sentence for the whole of it.
+				 * `draining` is the WAIT before the REBUILD install: the app holds the
+				 * checkout rebuild back while sessions on this machine finish the turns
+				 * they are running (`backend/fleet-drain.ts`) - the one route whose tree
+				 * rewrite can cut a turn; restarts stopped waiting on 2026-09-29. It is
+				 * its own phase rather than part of `installing` because it can last
+				 * minutes and no install has begun - reporting it as installing would make
+				 * the panel's "this can take a minute or two" the wrong sentence for the
+				 * whole of it.
 				 */
 				phase: "draining" | "installing" | "restarting";
+				/**
+				 * How long the PRESS has been waiting for the fleet, when the phase is
+				 * `draining` (design round 1, D3). The one number the app has for a wait
+				 * that can run to ten minutes; absent on the other phases, and absent from
+				 * an older producer. Declared here since 2026-09-29: the sibling
+				 * declaration in `index.d.ts` carried it alone before, and a renderer
+				 * reading this type saw a shape the shipped event always had.
+				 */
+				waitedMs?: number;
 				/**
 				 * True when the running attempt is the checkout REBUILD rather than the
 				 * release path. The two promise different things while they run - the
@@ -1110,6 +1132,48 @@ const api = {
 		settled: (report: { renderer: string }): void => {
 			ipcRenderer.send("console-capture-settled", report);
 		},
+	},
+
+	/*
+	 * The mini view's bridge (design §D.3).
+	 *
+	 * A NAMESPACE OF ITS OWN rather than an extension of `desktop`: these calls
+	 * are about the app's own window and registration state, not about the
+	 * backend, and the mini renderer needs `onSummoned`/`dismiss` even when no
+	 * backend has ever answered. Every listener verifies the payload's shape
+	 * before handing it on, the same rule every other channel here keeps.
+	 */
+	miniView: {
+		/** Main -> this window: the composer is on screen and may take the keystroke. */
+		onSummoned: (
+			callback: (payload: MiniViewSummonedPayload) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, payload: unknown) => {
+				if (isMiniViewSummonedPayload(payload)) callback(payload);
+			};
+			ipcRenderer.on(MINI_VIEW_SUMMONED, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_SUMMONED, handler);
+			};
+		},
+		/** This window -> main: put the mini window away, naming the act. */
+		dismiss: (reason: MiniViewDismissReason): Promise<void> =>
+			ipcRenderer.invoke(MINI_VIEW_DISMISS, reason),
+		/** Main -> every renderer: the live global-shortcut state. */
+		onRegistration: (
+			callback: (state: MiniViewRegistrationState) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) => {
+				if (isMiniViewRegistrationState(state)) callback(state);
+			};
+			ipcRenderer.on(MINI_VIEW_REGISTRATION, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_REGISTRATION, handler);
+			};
+		},
+		/** The current state, for a freshly mounted settings row or the mini header. */
+		getRegistration: (): Promise<MiniViewRegistrationState> =>
+			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
 	},
 
 	/** Opens a native dialog to select a directory */

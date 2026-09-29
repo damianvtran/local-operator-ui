@@ -146,7 +146,7 @@ export const OrgTeamsList: React.FC<{
 
 	return (
 		<section
-			className="mb-6 rounded-lg border border-hairline bg-surface"
+			className="mb-6 rounded-md bg-surface"
 			aria-labelledby="org-teams-heading"
 			data-testid="org-teams"
 		>

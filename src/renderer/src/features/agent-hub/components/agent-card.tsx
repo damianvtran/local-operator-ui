@@ -65,8 +65,12 @@ type AgentCardProps = {
 /**
  * Renders a card displaying information about a public agent.
  *
- * One boundary per card: a `bg-surface` panel with a hairline edge, rounded
- * `lg`. Hover is a colour step on the border only — nothing lifts.
+ * No boundary at rest: a `bg-surface` card, rounded `md`, separating from the
+ * canvas by its ground step. A grid of twelve hairline boxes is eight boxes'
+ * worth of chrome — the shared `Card`'s `plain` variant doc states the rule —
+ * and this pass applies it here. Hover is a colour step on the ground
+ * (`elevated`) rather than on a border that only existed to carry it; nothing
+ * lifts.
  *
  * Structure note: the info half is one native `<button>` (the card is the
  * "open details" affordance), and like/favourite/download live in their own
@@ -168,7 +172,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	const isOrgRow = agent.visibility === "org";
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:border-control">
+		<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated">
 			<button
 				type="button"
 				onClick={() => navigate(`/agent-hub/${agent.id}`)}
