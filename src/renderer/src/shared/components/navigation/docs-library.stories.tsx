@@ -529,6 +529,9 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	output: "ok",
 	isError: false,
 	notRunReason: null,
+	// Required beside its reason since main's `e9ae98fd54`; null says this row
+	// is a call that really was sent.
+	notRunKind: null,
 	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
@@ -1026,7 +1029,10 @@ const SubagentsScene = () => {
 			runPanelWidth: 480,
 		});
 		return () => {
-			useUiPreferencesStore.setState({ isRunPanelOpen: false });
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: false,
+				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			});
 		};
 	}, []);
 	/*
