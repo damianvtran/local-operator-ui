@@ -1681,6 +1681,19 @@ const BRANCH_RECORDS = [
 	 */
 	"task17RestampNote",
 	/*
+	 * AND THE DESKTOP-STEP DIAGNOSTICS' OWN (2026-09-29): `desktopStepDiagnosticsRestampNote`
+	 * is the record for the CI step that makes a red desktop suite name the failing
+	 * test - the errexit-independent capture, the TAP summary, the `::error::`
+	 * annotations and the A17b/A17c driven pins. It moves `scripts/` only and takes
+	 * no frame (nothing in it is user-visible; the evidence is the step body
+	 * extracted and driven under `bash -e` with a stub `pnpm` against five
+	 * synthetic logs, plus the mutation table). The fold onto the stamp-discipline
+	 * train (#566) spells the note's pair bare: the convention that held new notes
+	 * to the pair is retired. A fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"desktopStepDiagnosticsRestampNote",
+	/*
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
 	 * moved, one set's states re-captured - so a fold that started from main's
@@ -2248,6 +2261,30 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
+	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
+	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
+	 * `setWindowOpenHandler`), folded onto a seven-times-moving main as it landed
+	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
+	 * fix, the hide-cross-session-transcript filter, the head-cut condensation
+	 * pass, the evidence-stamp-discipline pass, then the monitor-ui-render pass),
+	 * with the two tree fields re-derived over each folded tree - and, under the
+	 * discipline the sixth of those passes landed, no note binding itself to them
+	 * any more.
+	 * Both trees move - `src/` for the popup policy, its presentation gate and the
+	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
+	 * matrix and the trigger/guard cases - and no swept frame was taken by the
+	 * change itself: its evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * plus one app-chrome WebP added in round 1's D2
+	 * (`band-without-notice/localOperatorDark.webp`, which is why the counts are
+	 * re-derived with the folds), so the reader is owed the pair this file
+	 * ships and the reason no still was. It quotes no tree-hash pair (read the
+	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
+	 * the legacy-quoter ledger (`LEGACY_STAMP_QUOTING_NOTES`).
+	 */
+	"browserOauthPopupsRestampNote",
+	/*
 	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
 	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
 	 * bar on the item step and the bar's chevron on the rule's end, over the
@@ -2294,6 +2331,12 @@ const BRANCH_RECORDS = [
 	 * written by the docs-only amendment this registration rides beside.
 	 */
 	"condensedBarRoundTwoNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldEightNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldEightNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
