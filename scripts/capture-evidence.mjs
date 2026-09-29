@@ -5032,18 +5032,33 @@ export const STORIES = [
 	 * own sentence said the app would offer the update again. Both arms are declared
 	 * because they say different things about what happened: a measured busy fleet,
 	 * and a fleet nothing could read.
+	 *
+	 * AND THE COMMAND IS CLAIMED TOO (review round 1, U1): the only reachable
+	 * refusal is the rebuild install leg, whose remedy is the plan's own
+	 * `lop-update` - the fixture carries it and both claims pin it, so a frame
+	 * cannot show a terminal command the producer cannot emit.
 	 */
 	[
 		"common-updatenotification--backend-update-refused-busy-fleet",
 		1280,
 		900,
-		{ expectSentence: "The app waited 10 minutes for them to finish" },
+		{
+			expectSentence: [
+				"The app waited 10 minutes for them to finish",
+				"lop-update",
+			],
+		},
 	],
 	[
 		"common-updatenotification--backend-update-refused-unreadable-fleet",
 		1280,
 		900,
-		{ expectSentence: "The server refused this app's credentials" },
+		{
+			expectSentence: [
+				"The server refused this app's credentials",
+				"lop-update",
+			],
+		},
 	],
 	/*
 	 * AND THE THIRD ARM IS GONE (2026-09-29): a refusal CANNOT happen after a
@@ -5125,12 +5140,16 @@ export const STORIES = [
 		 * THE COST SENTENCE IS THE SUBJECT OF THE RE-SHOOT (2026-09-29): S6 was recomposed
 		 * without the drain bound, so this panel's frame must show the outage AND the
 		 * promise that nothing in flight is cut off - the same pair `update-affirmation`
-		 * asserts, and the pair a frame of the old wording cannot carry.
+		 * asserts, and the pair a frame of the old wording cannot carry. THE CLAIM BELOW
+		 * CARRIES THE SENTENCE'S OWN CAPITALISATION (review round 1, D1): the gate
+		 * compares case-sensitively (`painted.includes`, below), so the lowercase
+		 * spelling this claim first shipped could never match and the re-shoot died at
+		 * the shutter.
 		 */
 		{
 			expectSentence: [
 				"offline while it comes back",
-				"nothing in flight is cut off",
+				"Nothing in flight is cut off",
 			],
 		},
 	],
@@ -5165,6 +5184,24 @@ export const STORIES = [
 		1280,
 		900,
 		{ expectSentence: "The app updates this install itself" },
+	],
+	/*
+	 * AND THE OFFER THE OPERATOR'S OWN PRESS READS (review round 1, U2,
+	 * 2026-09-29): the app-owned managed arm, whose paragraph is the plan's own
+	 * managed sentence - it names the publish-and-move, the promise that nothing
+	 * in flight is cut off, and the idle switch. It is the one offer whose press
+	 * publishes a generation and restarts the daemon the app started, and it had
+	 * no frame and no declaration anywhere; declared here so the design round can
+	 * photograph it the ordinary way.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-app-owned",
+		1280,
+		900,
+		{
+			expectSentence:
+				"The app publishes the new build beside the one the server is using",
+		},
 	],
 	[
 		"common-updatenotification--backend-update-failed-orphan",

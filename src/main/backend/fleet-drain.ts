@@ -562,7 +562,21 @@ export async function reengageDisplacedSessions(input: {
 	 * arm is the narrow one (the wave's own stagger is 20 s, so a >30 s gap between
 	 * retirements is the unusual shape) - narrow, and named rather than covered.
 	 */
-	const stillResident = snapshot.filter((row) => stillLive.has(row.sessionId));
+	/*
+	 * AND THE COUNT COMES FROM THAT SAME FRESH READ (review round 1, m2): a
+	 * retirement that landed inside the final gap is displaced - and re-engaged -
+	 * rather than counted as left behind, so the two outputs partition the
+	 * snapshot instead of contradicting each other. An unreadable final read falls
+	 * back to the loop's last set, so a roster that did not answer cannot invent a
+	 * smaller count. It remains a LIVENESS reading rather than a build one: the
+	 * change test above admits a pre-swap id that becomes live again, so a session
+	 * re-warmed onto the NEW build inside the window stays counted, and nothing on
+	 * this roster carries a build to exclude it with.
+	 */
+	const stillLiveAtEnd = stillLiveIn(finalRead) ?? stillLive;
+	const stillResident = snapshot.filter((row) =>
+		stillLiveAtEnd.has(row.sessionId),
+	);
 	const engaged: string[] = [];
 	const failed: { sessionId: string; reason: string }[] = [];
 	for (const row of displaced) {

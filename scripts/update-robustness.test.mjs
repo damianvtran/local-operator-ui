@@ -9804,18 +9804,30 @@ const driveGlobalUpdate = async ({
 	// which this fixture pins to its own temp directory.
 	const markerPath = join(userData, "pending-server-update.json");
 	const sent = [];
+	/*
+	 * THE UPDATE-IN-FLIGHT FLAG, modelled rather than dropped (review round 1,
+	 * n1): the rebuild leg's drain runs under the press's hold, so this records
+	 * both the hold's own transitions and what it stood at on every fleet read -
+	 * which is what the refusal case pins the window with.
+	 */
+	let autoUpdating = false;
 	const calls = {
 		installers: [],
 		/** The budget each reach for an installer was given, in the order taken. */
 		budgets: [],
 		restarts: 0,
 		starts: 0,
+		autoUpdating: [],
+		holdAtFleetRead: [],
 	};
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
 		isUsingExternalBackend: () => external,
-		setAutoUpdating: () => {},
+		setAutoUpdating: (value) => {
+			autoUpdating = value;
+			calls.autoUpdating.push(value);
+		},
 		restart: async () => {
 			calls.restarts += 1;
 			return restartOk;
@@ -9843,8 +9855,12 @@ const driveGlobalUpdate = async ({
 			managedByThisApp: false,
 			owned: { owned: !external, because: "this fixture's own answer" },
 		}),
-		servingWorkState: async () =>
-			Array.isArray(workState) ? (workState.shift() ?? "idle") : workState,
+		servingWorkState: async () => {
+			calls.holdAtFleetRead.push(autoUpdating);
+			return Array.isArray(workState)
+				? (workState.shift() ?? "idle")
+				: workState;
+		},
 		/*
 		 * The roster, in the WIRE's own field names, converted by the shipped parse -
 		 * the same read and the same shape the gate sees in the app.
@@ -9852,7 +9868,7 @@ const driveGlobalUpdate = async ({
 		servingSessionFleet: async () =>
 			service.fleetRosterFromSessions({ result: { sessions: fleet } }),
 		hasOpenSessionStreams: () => false,
-		checkIsAutoUpdating: () => false,
+		checkIsAutoUpdating: () => autoUpdating,
 	};
 	const updateService = new service.UpdateService(
 		{
@@ -17040,6 +17056,28 @@ test("the rebuild route still waits for the fleet, and refuses on a busy one", a
 			assert.equal(refused[0].payload.refusal.installLanded, undefined);
 			/* The by-hand route is the plan's own command for this route. */
 			assert.equal(refused[0].payload.refusal.command, "lop-update");
+			/*
+			 * AND THE PRESS'S HOLD SPANS THE DRAIN (review round 1, n1): the flag the
+			 * periodic drift check reads as `update-in-flight` is up for every fleet
+			 * read of the wait - this leg's wait can run to ten minutes, and the drift
+			 * check bouncing the daemon mid-wait is exactly what the hold exists to
+			 * prevent - and it is cleared once, at the end. The deleted app-owned case
+			 * covered this window on the route that no longer drains; this is the same
+			 * pin on the route that still does.
+			 */
+			assert.ok(
+				run.calls.holdAtFleetRead.length >= 2,
+				`the drain reads the fleet more than once: ${JSON.stringify(run.calls.holdAtFleetRead)}`,
+			);
+			assert.ok(
+				run.calls.holdAtFleetRead.every((held) => held === true),
+				`every fleet read happens under the hold: ${JSON.stringify(run.calls.holdAtFleetRead)}`,
+			);
+			assert.deepEqual(
+				run.calls.autoUpdating,
+				[true, false],
+				"raised once at the top of the press and cleared once, at the end",
+			);
 			assert.equal(backendCompletion(run.sent), undefined);
 		} finally {
 			run.dispose();

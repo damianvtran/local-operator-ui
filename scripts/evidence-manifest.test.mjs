@@ -2041,6 +2041,16 @@ const STAMP_BINDING_NOTES = [
 	 * file like every entry above it.
 	 */
 	"updateDrainIdleSwitchRestampNote",
+	/*
+	 * AND THE SAME PASS'S ROUND-1 REMEDIATION (2026-09-29): the round fixed the
+	 * evidence pipeline rather than the pixels - the S6 claim's capital (design
+	 * D1), the count's docblock and its refresh from the final read (agent review
+	 * m2), the refusal fixture's command (UX U1) and the app-owned managed offer's
+	 * own story (UX U2) - so both trees move once more and the pair is re-derived
+	 * from the tree this commit ships, every member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"updateDrainRemediationRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3170,6 +3180,14 @@ const BRANCH_RECORDS = [
 	 * file ships and says which stories the round must shoot.
 	 */
 	"updateDrainIdleSwitchRestampNote",
+	/*
+	 * And the same pass's round-1 remediation's own, the newest top-level record
+	 * on the branch: it states the pair the round re-derives, and the round's
+	 * capture plan gains the app-owned managed offer's story with it, so a later
+	 * fold that started from main's copy would drop it first - the same reason
+	 * this list exists.
+	 */
+	"updateDrainRemediationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

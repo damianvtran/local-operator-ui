@@ -1072,11 +1072,18 @@ export type BackendUpdateCompletion = {
 	 * The count the success notice's second line carries (2026-09-29, the
 	 * operator's own instruction: "we can just communicate in the popup that N
 	 * sessions are still running old versions but will get the updates when they
-	 * next stop or idle"). It is a SNAPSHOT taken at the re-engage window's end:
-	 * sessions on this machine with a live runtime whose build is not the one this
-	 * press landed. A runtime whose build cannot be read is EXCLUDED rather than
-	 * counted as old, and a session with no live runtime is not counted either -
-	 * it is already on the new build whenever it next engages.
+	 * next stop or idle"). It is a POINT-IN-TIME COUNT OF LIVENESS, not a build
+	 * reading: the pre-swap live sessions still resident in the freshest fleet
+	 * read at the re-engage window's end - which in the ordinary flow is exactly
+	 * the sessions still running the old build, and a session with no live runtime
+	 * is not counted either, because it is already on the new build whenever it
+	 * next engages.
+	 *
+	 * THE ONE NARROW OVER-COUNT, named rather than papered over (review round 1,
+	 * m2): liveness does not prove the build, and the fleet roster carries none,
+	 * so a pre-swap session whose runtime came BACK inside the window (re-warmed
+	 * onto the NEW build) is still counted as still on the old one. Excluding it
+	 * would need a build read, which is deferred (`/v1/desktop/runtimes`).
 	 *
 	 * 0 is a MEASURED zero (the notice draws no second line); null is "not
 	 * measured" (no readable fleet snapshot, or the re-engage never ran), which
@@ -7685,10 +7692,12 @@ export class UpdateService {
 	 * daemon refuses must not turn a landed update into an error panel.
 	 *
 	 * THE RESULT IS RETURNED FOR THE COMPLETION'S COUNT (2026-09-29): the caller
-	 * reads `stillResident` - pre-swap runtimes still running when the wait ended,
-	 * i.e. sessions still on the old build - into `sessionsOnOldBuild`. A failure
-	 * here answers null and the count is reported as not measured, so the notice
-	 * degrades to the numberless sentence rather than inventing a zero.
+	 * reads `stillResident` - the pre-swap runtimes still resident in the freshest
+	 * read at the wait's end, which in the ordinary flow are the sessions still on
+	 * the old build - into `sessionsOnOldBuild`. It is a liveness reading rather
+	 * than a build read (the field's own docblock names the one narrow over-count).
+	 * A failure here answers null and the count is reported as not measured, so
+	 * the notice degrades to the numberless sentence rather than inventing a zero.
 	 */
 	private async reengageFleetAfterRestart(
 		backend: BackendServiceManager,
@@ -8818,9 +8827,10 @@ export class UpdateService {
 		);
 		/*
 		 * THE FLEET COUNT RIDES THE COMPLETION (2026-09-29; `stillResident` is the
-		 * primary source). What is still running when the re-engage window ends is
-		 * exactly "sessions still on the old build": pre-swap runtimes that did not
-		 * move during the window, on their way out at their own next idle. Null -
+		 * primary source). What is still resident when the re-engage window ends
+		 * is, in the ordinary flow, "sessions still on the old build": pre-swap
+		 * runtimes that did not move during the window, on their way out at their
+		 * own next idle. Null -
 		 * not measured - when no snapshot was readable or the re-engage failed, and
 		 * the notice then degrades to the numberless sentence rather than inventing
 		 * a zero. The completion is ALWAYS sent: a count is a reading, and a landed

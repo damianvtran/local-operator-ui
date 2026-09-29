@@ -135,7 +135,17 @@ const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
  */
 const DRAIN_WAITED_MS = 12_000;
 
-const DRAIN_REFUSAL_COMMAND = "uv tool upgrade local-operator";
+/**
+ * THE COMMAND THE ONE REACHABLE REFUSAL SENDS (review round 1, U1): the
+ * restart-leg drains went with the operator's directive, so the press that can
+ * still be refused is the rebuild install leg - and its remedy is the plan's own
+ * `lop-update` (`update-install.ts`'s `sourceRebuildRoute ? "lop-update" : ...`),
+ * the command that rebuilds the checkout this install came from. It used to name
+ * `uv tool upgrade local-operator`, which no reachable arm of this state emits
+ * (for this install class it is a *failing* remedy, per `update-install.ts`) - a
+ * frame of the design round would have shown a command the product cannot send.
+ */
+const DRAIN_REFUSAL_COMMAND = "lop-update";
 const DRAIN_REFUSAL_LOG_PATH =
 	"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log";
 
@@ -148,6 +158,20 @@ const ORPHANED_UPDATER_OUTPUT = [
 
 const SOURCE_BUILD_REMEDY =
 	"Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+
+/**
+ * THE MANAGED OFFER'S OWN COST SENTENCE, verbatim from the producer (UX U2).
+ *
+ * `resolveBackendUpdatePlan` composes it for the app-owned managed arm
+ * (`update-service.ts`), and `managedCostSentence` renders it as the paragraph
+ * above `Update server`; the story cannot import a main-process module, so the
+ * literal is transcribed here and the claim in `capture-evidence.mjs`
+ * (`...--backend-update-offer-app-owned`) pins its lead. It is the sentence the
+ * operator's own press reads before the press, and it no longer prices a wait -
+ * the idle switch replaced the wait on 2026-09-29.
+ */
+const MANAGED_OFFER_REMEDY =
+	"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.";
 
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
@@ -459,6 +483,26 @@ const mockUpdaterApi = () => {
 					remedy: SOURCE_BUILD_REMEDY,
 					detail: OFFER_DETAIL,
 					sourceBuild: true,
+				});
+			}
+			/*
+			 * AND THE APP-OWNED MANAGED OFFER, standing (review round 1, U2): the
+			 * install is the app's own managed environment, the app started the daemon,
+			 * and the paragraph is the plan's own managed `remedy` verbatim - the sentence
+			 * no fixture carried, so the one press that publishes a generation and
+			 * restarts the daemon had no photograph anywhere.
+			 */
+			if (window.triggerBackendUpdateOfferAppOwned) {
+				callback({
+					currentVersion: "0.56.10",
+					latestVersion: "0.56.12",
+					updateCommand: "pip install --upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "APP_BUNDLED_VENV",
+					restartable: true,
+					remedy: MANAGED_OFFER_REMEDY,
+					detail: "The app started this server itself (APP_BUNDLED_VENV).",
+					sourceBuild: false,
 				});
 			}
 			if (window.triggerBackendUpdateNonManaged) {
@@ -1127,6 +1171,16 @@ declare global {
 		triggerBackendUpdateWithNotes?: boolean;
 		/** The same offer with a summary AT the producer's budget, shot at the floor. */
 		triggerBackendUpdateWithLongNotes?: boolean;
+		/**
+		 * Raise the app-owned managed offer, standing (review round 1, U2).
+		 *
+		 * Its own flag for the reason the notes flags above have theirs: the press
+		 * stories render the fallback sentence for the ~20 ms before their automatic
+		 * click, so only a STANDING offer can be photographed - and no other fixture
+		 * carries this arm's managed `remedy`, the sentence the operator's own press
+		 * reads.
+		 */
+		triggerBackendUpdateOfferAppOwned?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
@@ -1605,7 +1659,8 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateFailedOrphan"
 	| "triggerBackendUpdateManualRequiredAppOwned"
 	| "triggerBackendUpdateWithNotes"
-	| "triggerBackendUpdateWithLongNotes";
+	| "triggerBackendUpdateWithLongNotes"
+	| "triggerBackendUpdateOfferAppOwned";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -2257,6 +2312,18 @@ export const BackendUpdateOfferSourceBuild: Story = {
 export const BackendUpdateOfferSourceBuildAdopted: Story = {
 	args: { autoCheck: false },
 	render: () => <Triggered flag="triggerBackendUpdateSourceBuildAdopted" />,
+};
+
+/**
+ * THE APP-OWNED MANAGED OFFER (review round 1, U2): the install is the app's own
+ * managed environment, the app started the daemon, so this press is the one that
+ * publishes a generation and restarts it - and the paragraph above `Update
+ * server` is the plan's own managed sentence, which no fixture carried before
+ * this round. Standing, so a shutter can land on it.
+ */
+export const BackendUpdateOfferAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateOfferAppOwned" />,
 };
 
 /**
