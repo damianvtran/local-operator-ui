@@ -2101,6 +2101,16 @@ const STAMP_BINDING_NOTES = [
 	 * quotes that pair, so it is held to the pair this file ships.
 	 */
 	"readmeVisualsFoldSixNote",
+	/*
+	 * AND THE SEVENTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSevenNote` is
+	 * the fold onto the moved `origin/main` `a0cdaa759f5a` (#629's
+	 * thread-search-overlay merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldSevenNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2365,16 +2375,29 @@ const duplicateParagraphFailures = (manifest) => {
 	for (const [field, value] of Object.entries(mean)) {
 		if (typeof value !== "string") continue;
 		const paragraphs = value.trim().split(PARAGRAPH_BREAK);
-		for (let i = 1; i < paragraphs.length; i += 1) {
-			if (paragraphs[i] !== paragraphs[i - 1]) continue;
-			/*
-			 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
-			 * ERROR under this project's config, and the gate above treats an error-severity
-			 * diagnostic in a changed file as a failure - which is how this message was caught.
-			 */
-			failures.push(
-				`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
-			);
+		/*
+		 * A SEEN SET, not the adjacent pair this guard first read: the copies
+		 * review round 1 found were NON-adjacent (a paragraph repeated four
+		 * entries later in `surfaces`, and `frames` carrying the same
+		 * "MAIN'S OWN RECORD..." sentence twice), which an adjacent comparison
+		 * passes while looking like it guards the whole cell. One pass, with the
+		 * first-seen index kept so the message can say which entry it duplicates.
+		 */
+		const seen = new Map();
+		for (let i = 0; i < paragraphs.length; i += 1) {
+			const first = seen.get(paragraphs[i]);
+			if (first !== undefined) {
+				/*
+				 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
+				 * ERROR under this project's config, and the gate above treats an error-severity
+				 * diagnostic in a changed file as a failure - which is how this message was caught.
+				 */
+				failures.push(
+					`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (first seen at ${first}: ${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
+				);
+				continue;
+			}
+			seen.set(paragraphs[i], i);
 		}
 	}
 	return failures;
@@ -2402,6 +2425,24 @@ test("a countsMean cell that repeats a paragraph verbatim fails", () => {
 		}),
 		[],
 	);
+	/*
+	 * AND THE NON-ADJACENT SHAPE, which is the one the adjacent comparison
+	 * missed: a paragraph repeated with a different one between its copies is
+	 * still the same sentence twice, and review round 1 found the shipped file
+	 * carrying exactly that shape (frames: `MAIN'S OWN RECORD...` twice, four
+	 * entries apart; surfaces: a pair repeated at 12/16 and 13/17).
+	 */
+	const spaced = duplicateParagraphFailures({
+		countsMean: {
+			surfaces: `${sentence}\n\nRE-DERIVED FOR AN OLDER FOLD: 12 rows.\n\n${sentence}`,
+		},
+	});
+	assert.equal(
+		spaced.length,
+		1,
+		"a repeat with a different paragraph between its copies is still a repeat",
+	);
+	assert.match(spaced[0], /first seen at 0/);
 });
 
 test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
@@ -3245,6 +3286,13 @@ const BRANCH_RECORDS = [
 	 * exists - a fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldSixNote",
+	/*
+	 * Grown by the seventh fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `a0cdaa759f5a` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSevenNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
