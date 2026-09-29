@@ -1914,9 +1914,9 @@ const STAMP_BINDING_NOTES = [
 	/*
 	 * THE FOLDS OF THE READ-RECEIPT BRANCH, each stated where it happened and
 	 * each kept by every later fold (union by key - no key from either side is
-	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s) and
-	 * onto `3de40b0fc9` (the turn-collapse train), and now onto `7c9c98ecc7`
-	 * (the #633 stt-overhaul merge). This branch's own record,
+	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s),
+	 * onto `3de40b0fc9` (the turn-collapse train), onto `7c9c98ecc7` (the #633
+	 * stt-overhaul merge) and onto `46d0bba0de` (the #573 view-settings merge). This branch's own record,
 	 * `readReceiptForegroundRestampNote`, states the receipt pass and its
 	 * round-1 remediation; the change moves `src/` (the completion-view hook and
 	 * the transcript reducer's live-settle arm) and `scripts/` (the receipt
