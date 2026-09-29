@@ -542,8 +542,19 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 			role="toolbar"
 			aria-orientation="vertical"
 			aria-label={CHECKPOINT_RAIL_LABEL}
+			/*
+			 * `z-10` IS THE ORDER THE COLUMN CANNOT GIVE (round-1 remediation,
+			 * measured): the rail moved FIRST in the column for the tab order (UX
+			 * round 1, U3), and the scroller it used to follow is a positioned
+			 * sibling (`relative` + `[transform:translateZ(0)]`) - so tree order
+			 * alone paints the scroller's box OVER this band and swallows every
+			 * pointer aimed at a tick. The scene's hover and press legs died there:
+			 * no card ever opened, and `elementFromPoint` along the rail column
+			 * resolved to the scroller. 10 is the gap the column already has:
+			 * above the scroller (z-auto), below the in-thread search overlay's 20.
+			 */
 			className={cn(
-				"pointer-events-none absolute inset-y-0 right-3 hidden w-7 select-none",
+				"pointer-events-none absolute inset-y-0 right-3 z-10 hidden w-7 select-none",
 				"flex-col justify-center",
 				"@[900px]/chatcol:flex",
 			)}
