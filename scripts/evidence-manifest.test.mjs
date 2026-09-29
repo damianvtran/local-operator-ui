@@ -1874,6 +1874,16 @@ const STAMP_BINDING_NOTES = [
 	 * is held to this file like every entry above it.
 	 */
 	"foldOntod11a15febfNote",
+	/*
+	 * AND THE NOTIFICATION LIFETIME'S OWN (2026-09-28): `notificationLifetimeRestampNote`
+	 * is the re-stamp for the fix that keeps a shown notification reachable until
+	 * it can serve no further click — both trees move (`src/` for the lifetime
+	 * module and the two banner sites, `scripts/` for the GC probe, the lifetime
+	 * suite and the fixtures), no frame was re-taken, and the pair is re-derived
+	 * from the tree the re-stamp commit ships. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"notificationLifetimeRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
