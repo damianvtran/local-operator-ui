@@ -26,6 +26,8 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	applyHistoryPage,
+	loadOlderStep,
+	reanchorAfterCursorMiss,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -5547,4 +5549,83 @@ test("a row a person typed is untouched, marker or no marker", () => {
 		1,
 	);
 	assert.equal(elsewhere.records.length, 1);
+});
+
+test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {
+	/*
+	 * The operator report (2026-09-28): after a /compact replaced the journal
+	 * under a loaded conversation, "Load earlier messages" loaded nothing,
+	 * forever. The backend answers a cursor it cannot locate with the current
+	 * tail plus `cursor_missing` (read_transcript_page) so a reader can dedupe
+	 * and MOVE; the load path kept the stale id, so every click re-fetched a
+	 * page it already had. The move is the page's own oldest id — a row this
+	 * journal just served, so the next request can locate it.
+	 */
+	const tail = {
+		entries: [{ id: "row:90" }, { id: "row:91" }],
+		has_more: true,
+		cursor_missing: true,
+	};
+	assert.equal(reanchorAfterCursorMiss(tail, "row:pre-compaction"), "row:90");
+	// A normal page needs no move, an empty one offers nowhere to move, and a
+	// page whose oldest IS the anchor would repeat the same request.
+	assert.equal(
+		reanchorAfterCursorMiss({ ...tail, cursor_missing: false }, "x"),
+		null,
+	);
+	assert.equal(reanchorAfterCursorMiss({ ...tail, entries: [] }, "x"), null);
+
+	test("a second cursor_missing is the failed state, not another retry", () => {
+		/*
+		 * AGENT REVIEW ROUND 1, F1. The reviewer's finding: the retried page was
+		 * applied and the call resolved true, so a click that loaded nothing in
+		 * the second-miss corner still looked like success. This pins the whole
+		 * decision table: one re-anchored retry, a failure on the second miss,
+		 * and an immediate failure when there is no row to re-anchor at.
+		 */
+		const tail = {
+			cursor_missing: true,
+			entries: [{ id: "row:120" }, { id: "row:121" }],
+		};
+		assert.deepEqual(
+			loadOlderStep(tail, "row:pre-compaction", false),
+			{ cursor: "row:120", failed: false },
+			"the first miss re-anchors to the page's own oldest row",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:120", true),
+			{ cursor: null, failed: true },
+			"the second miss is the failed state",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: false, entries: [] }, "row:120", false),
+			{ cursor: null, failed: false },
+			"a healthy page is a success",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: true, entries: [] }, "row:120", false),
+			{ cursor: null, failed: true },
+			"a miss with nothing to anchor at fails immediately",
+		);
+		/*
+		 * AGENT REVIEW ROUND 2, MINOR-1: the table must kill a guard-dropped
+		 * mutation, so it pins both directions of the equals-anchor refusal and
+		 * the retry guard on a page that COULD have been re-anchored.
+		 */
+		assert.deepEqual(
+			loadOlderStep(
+				{ cursor_missing: true, entries: [{ id: "row:120" }] },
+				"row:120",
+				false,
+			),
+			{ cursor: null, failed: true },
+			"a moved tail whose oldest row IS the anchor fails on the first answer (nothing to re-anchor to)",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:999", true),
+			{ cursor: null, failed: true },
+			"a re-anchorable page is still a failure once already retried: the guard is the retry, not the page",
+		);
+	});
+	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
 });

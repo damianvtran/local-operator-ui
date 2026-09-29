@@ -3,17 +3,18 @@
  * standing in for a completed turn's pre-answer rows.
  *
  * The operator's reference is dsh's `Took 1m 19s` line, deliberately improved
- * on in three app-native ways: the counts and the failure control survive the
- * collapse (the failure control is the foot's U14 jump, generalised to open
- * this bar first), the turn's one timestamp re-homes here from the foot it
- * suppresses (`turn-timestamp.tsx`'s contract: one stamp per turn), and the
- * gesture is the app's single disclosure idiom, so the bar opens the way every
- * tool row already taught.
+ * on in three app-native ways: the counts survive the collapse (the span and
+ * the action count — the failure TALLY was retired on the operator's own call,
+ * 2026-09-29: a completed run's failure count is noise at a glance, and the
+ * red rows are one press away), the turn's one timestamp re-homes here from
+ * the foot it suppresses (`turn-timestamp.tsx`'s contract: one stamp per
+ * turn), and the gesture is the app's single disclosure idiom, so the bar
+ * opens the way every tool row already taught.
  *
  * WHAT THIS COMPONENT OWNS, and what it does not. The copy, the numbers, the
  * span and the hidden/pinned partition are `turn-collapse-model.ts` (pure and
- * unit-tested). This file owns the row, the disclosure, the stamp's placement,
- * and the failure control's press. The OPEN STATE is the caller's — the
+ * unit-tested). This file owns the row, the disclosure and the stamp's
+ * placement. The OPEN STATE is the caller's — the
  * transcript keeps the reader's expansion per conversation for the renderer's
  * lifetime (`shared/store/turn-collapse-open.ts`) — so the component is
  * controlled in the React sense, exactly like `TraceFold`.
@@ -28,29 +29,19 @@
  * non-text floor (the primitive's own docstring measured 2.70:1 — the case
  * `chevronClassName` exists for).
  *
- * THE FAILURE CONTROL IS A REAL BUTTON, in the disclosure's `trailing` slot
- * (UX round 1, U1). It used to be a span inside the trigger watched by an
- * `onClickCapture`, which left the foot's own control — a real `<button>`
- * (`canonical-transcript.tsx`'s closing line) — with a keyboard route the bar
- * lost exactly when the turn collapsed: a parity regression, not a symmetric
- * trade, because the jump's auto-open and centre-scroll is the part a keyboard
- * reader could no longer reach. A control that belongs beside the trigger
- * cannot be a child of it (a `<button>` inside a `<button>` is invalid markup),
- * and the primitive ships the slot for exactly this pairing — so the clause's
- * press is the primitive's own trailing control now, with the SAME copy and
- * the SAME classes as the foot's button. The layout note the move carries:
- * the clause now sits at the row's trailing edge, past the chevron, rather
- * than inside the left sentence; the design round verifies that placement from
- * the re-shot frames.
- *
- * The trade, stated rather than hidden: the control renders only when the run
- * has a first failed row, so a passing turn's row is byte-identical to before.
+ * NO FAILURE TALLY (operator, 2026-09-29, issue #6). The bar carried a
+ * `· N failed` control in the disclosure's `trailing` slot (UX round 1, U1).
+ * The operator's call retires it — "remove summaries of failed counts both on
+ * the response messages and in the collapsed headers, typically they are not
+ * relevant since the action completed anyways, if a user needs to access the
+ * failures they can review them by expanding" — so the clause, its jump and
+ * this surface's whole failure affordance are gone; the red rows still carry
+ * the state, one press away, and nothing here tallies them.
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
-import { jumpToFailedRow } from "../../canonical/failed-row-jump";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
 
@@ -78,10 +69,6 @@ export type TurnSummaryProps = {
 	durationS: number | null;
 	/** Tool rows in the run; zero omits the clause. */
 	actionCount: number;
-	/** Tool rows whose outcome is a genuine error; zero omits the clause. */
-	failedCount: number;
-	/** The first failed row, for the failure control's jump. */
-	firstFailedId: string | null;
 	/**
 	 * The fold-style class sentence (`foldSummary`, e.g. "Explored 4 files, 1
 	 * search"), one hover away at zero line weight; null when the run has no
@@ -114,8 +101,6 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	className,
 	durationS,
 	actionCount,
-	failedCount,
-	firstFailedId,
 	title,
 	stampTs,
 	open,
@@ -124,7 +109,17 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 }) => {
 	return (
 		<div
-			className={className}
+			/*
+			 * The "there is more below" rule (design spec D1, operator feedback
+			 * 2026-09-28, after dsh's bottom rule): a hairline under the bar says the
+			 * block continues into hidden rows, where a bare row read as everything
+			 * having disappeared. It is the app-wide separator idiom (`border-hairline`,
+			 * no new ink), spans the block's content box with no inset, and sits at the
+			 * block's own bottom so it mounts and moves with the collapse — decorative,
+			 * never a hover surface, no animation, and none of the bar's numbers, stamp
+			 * or chevron change.
+			 */
+			className={cn("border-b border-hairline", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-record-id={anchorRecordId}
@@ -169,8 +164,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * THE TURN'S ONE STAMP, re-homed from the foot this bar suppresses
 							 * (`answer` scope because the instant is the closing answer's — the same
 							 * fact the foot stated, moved one row up). Its box sits ahead of the
-							 * trailing chevron, so the row's rightmost ink is the chevron (or the
-							 * failure control, when one renders) — which groups with the ledger's
+							 * trailing chevron, so the row's rightmost ink is the chevron — which groups with the ledger's
 							 * value edge, not with the foot stamp's own right edge (design review
 							 * round 1, D6 measured the two: foot 1043 vs bar 1007; the value edge is
 							 * the one the design round judged better).
@@ -180,27 +174,6 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							</span>
 						)}
 					</span>
-				}
-				// A real control, outside the trigger: the same one the foot renders,
-				// with keyboard parity lost nowhere (UX round 1, U1).
-				trailing={
-					failedCount > 0 && firstFailedId ? (
-						<button
-							type="button"
-							data-failed-clause=""
-							onClick={(event) => {
-								const root =
-									event.currentTarget.closest("[data-lo-transcript-content]") ??
-									document;
-								jumpToFailedRow(root, firstFailedId);
-							}}
-							className={cn(
-								"-mr-2 shrink-0 px-2 font-medium text-danger text-meta hover:underline",
-							)}
-						>
-							{failedCount === 1 ? "1 failed" : `${failedCount} failed`}
-						</button>
-					) : undefined
 				}
 			>
 				{/*
