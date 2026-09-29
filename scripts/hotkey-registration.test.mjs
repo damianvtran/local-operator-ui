@@ -181,6 +181,24 @@ test("the alternates and the aliases map per platform", () => {
 		"CommandOrControl+Alt+Space",
 		"case-insensitive, because a hand edit is the only writer that can vary it",
 	);
+	/*
+	 * THE bare carve-out is F1–F24 ONLY (design §A.5), mirroring the backend's
+	 * `validate_desktop_key` after its own review round 1 (review round 1, R1):
+	 * a bare function key is the one modifier-less chord both halves accept —
+	 * not typable, so it cannot fire while the user types — and an in-field
+	 * capture of `F8` must register rather than dead-ending as `invalid`.
+	 */
+	assert.equal(
+		resolveAccelerator("f8", "darwin"),
+		"F8",
+		"a bare function key is registrable: the capture rule and the backend both allow it",
+	);
+	assert.equal(resolveAccelerator("f24", "linux"), "F24");
+	assert.equal(
+		resolveAccelerator("F1", "win32"),
+		"F1",
+		"case-insensitive like every other token",
+	);
 });
 
 test("the structural refusals are refusals, not guesses", () => {
@@ -188,7 +206,14 @@ test("the structural refusals are refusals, not guesses", () => {
 		"",
 		"   ",
 		"space",
-		"f8",
+		/*
+		 * The bare carve-out is function keys ONLY: a named key is consumed by every
+		 * editing app all the same, so a global binding on one steals it
+		 * system-wide — the backend refuses these too (review round 1, R1).
+		 */
+		"pageup",
+		"delete",
+		"f8+f9",
 		"banana+space",
 		"primary+tab",
 		"primary+escape",
@@ -276,6 +301,24 @@ test("apply registers the chord and a press reaches the trigger", () => {
 	assert.ok(shortcut.isRegistered("CommandOrControl+Alt+Space"));
 	assert.equal(states.length, 1, "one state push for one registration");
 	shortcut.press("CommandOrControl+Alt+Space");
+	registrar.dispose();
+});
+
+test("a bare function key registers where the old refusal used to dead-end", () => {
+	/*
+	 * The end-to-end reading of review round 1, R1: pressing F8 in the settings
+	 * field is accepted in-field and storable by the backend, so the registrar
+	 * must register it — before this fix it reported `invalid` and the row told
+	 * the user "this key can't be used on this system" about a chord the system
+	 * was never asked for. A dead key for a value the design sanctions.
+	 */
+	const shortcut = fakeShortcut();
+	const { registrar, states } = registrarFor(shortcut);
+	const state = registrar.apply("f8");
+	assert.equal(state.status, "registered");
+	assert.equal(state.accelerator, "F8");
+	assert.ok(shortcut.isRegistered("F8"));
+	assert.equal(states.at(-1).status, "registered");
 	registrar.dispose();
 });
 

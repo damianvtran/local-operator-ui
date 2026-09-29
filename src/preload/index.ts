@@ -29,6 +29,7 @@ import {
 	type MiniViewDismissReason,
 	type MiniViewRegistrationState,
 	type MiniViewSummonedPayload,
+	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
@@ -1151,10 +1152,9 @@ const api = {
 		onRegistration: (
 			callback: (state: MiniViewRegistrationState) => void,
 		): (() => void) => {
-			const handler = (
-				_event: IpcRendererEvent,
-				state: MiniViewRegistrationState,
-			) => callback(state);
+			const handler = (_event: IpcRendererEvent, state: unknown) => {
+				if (isMiniViewRegistrationState(state)) callback(state);
+			};
 			ipcRenderer.on(MINI_VIEW_REGISTRATION, handler);
 			return () => {
 				ipcRenderer.removeListener(MINI_VIEW_REGISTRATION, handler);

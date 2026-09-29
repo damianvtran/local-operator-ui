@@ -174,10 +174,26 @@ function resolveWithProblem(
 		parts.push(key);
 	}
 	if (modifiers === 0) {
-		return {
-			problem:
-				"a global shortcut needs a modifier — it would otherwise fire while you type",
-		};
+		/*
+		 * THE bare carve-out is F1–F24 ONLY — design §A.5 ("Bare function keys
+		 * are allowed (they are not typable)"), mirrored from the backend's
+		 * `validate_desktop_key` after its own review round 1: every other
+		 * modifier-less token is refused, because a letter or `space` fires
+		 * while the user types and a NAMED key (`pageup`, an arrow, `delete`)
+		 * is consumed by every editing app all the same — a global binding on
+		 * one steals it system-wide. A value the backend refuses to store must
+		 * not register here either; the two rules are one rule, and a stored
+		 * bare `f8` (accepted in-field, storable by the backend) must reach
+		 * the OS rather than dead-ending as `invalid` (review round 1, R1).
+		 */
+		const bareFunctionKey =
+			tokens.length === 1 && isFunctionKeyToken(tokens[0]);
+		if (!bareFunctionKey) {
+			return {
+				problem:
+					"a global shortcut needs a modifier — it would otherwise fire while you type",
+			};
+		}
 	}
 	if (keyParts !== 1)
 		return { problem: "a global shortcut sets exactly one chord" };
@@ -384,6 +400,21 @@ export function createRegistrar(options: RegistrarOptions): MiniViewRegistrar {
 			});
 		}
 		if (!ok) {
+			/*
+			 * `taken` IS THE SYSTEM'S ANSWER, NOT THIS MODULE'S, and on macOS that
+			 * answer is NARROWER than the word suggests (QA round 1, Q2; measured on
+			 * this machine, Electron 44.3.0): a chord another PROCESS or the system
+			 * itself owns still registers TRUE — `Command+Space` (Spotlight) and
+			 * `Command+Tab` both returned true — while false was reachable only for a
+			 * duplicate inside this process. Windows and Linux do refuse a chord
+			 * another process holds. So this state can say "the system refused"
+			 * wherever it fires, but on macOS it must not be read — or rendered — as
+			 * "another app's conflict was detected": a conflict there is a silent
+			 * dead key, and the honest surface is the settings row's macOS boundary
+			 * sentence (`mini-copy.ts`'s `platformDetectionBoundaryCopy`), which
+			 * states the practical path instead of promising detection the platform
+			 * cannot deliver.
+			 */
 			return report({
 				value,
 				accelerator,

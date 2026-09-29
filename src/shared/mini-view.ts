@@ -48,18 +48,27 @@ export const MINI_VIEW_REGISTRATION_GET = "mini-view:registration-get";
  * Whether the global shortcut is live, and why not when it is not.
  *
  * `registered` is the only state in which pressing the chord opens the mini
- * view. `taken` means the OS or another app holds the chord (Electron's
- * `register() === false`); `invalid` means the stored value names a chord this
- * system cannot express; `unavailable` is the platform-level refusal (Wayland
- * sessions own the global shortcut space, so a registration there would be a
- * silent dead key). Every one of the four is surfaced to the settings row and
- * logged — a dead key nobody is told about is the failure this design forbids.
+ * view. `taken` means the system refused the chord at `register()` — Electron's
+ * `register() === false`; the platform's answer is narrower than the word:
+ * macOS returns false only for a duplicate inside this process (a cross-app
+ * conflict there registers true and is the silent dead key the settings row's
+ * macOS boundary sentence exists for — see `mini-copy.ts`), while Windows and
+ * Linux refuse a chord another process holds. `invalid` means the stored value
+ * names a chord this system cannot express; `unavailable` is the platform-level
+ * refusal (Wayland sessions own the global shortcut space, so a registration
+ * there would be a silent dead key). Every one of the four is surfaced to the
+ * settings row and logged — a dead key nobody is told about is the failure this
+ * design forbids.
  */
+export const MINI_VIEW_REGISTRATION_STATUSES = [
+	"registered",
+	"taken",
+	"invalid",
+	"unavailable",
+] as const;
+
 export type MiniViewRegistrationStatus =
-	| "registered"
-	| "taken"
-	| "invalid"
-	| "unavailable";
+	(typeof MINI_VIEW_REGISTRATION_STATUSES)[number];
 
 export interface MiniViewRegistrationState {
 	/** The effective stored value the registration was attempted with. */
@@ -112,6 +121,31 @@ export function isMiniViewSummonedPayload(
 		value !== null &&
 		typeof value === "object" &&
 		typeof (value as { at?: unknown }).at === "number"
+	);
+}
+
+/**
+ * Whether a value off the wire has the registration state's shape.
+ *
+ * THE PRELOAD'S OWN RULE MADE REAL (review round 1, R2/nit-1): its
+ * `onRegistration` listener used to hand the payload to the callback
+ * unvalidated while the namespace's comment claimed every listener verified
+ * its shape, and a malformed push would reach the settings row and the mini
+ * header, which degrade silently. Required fields are the two the consumers
+ * read unconditionally; `reason` is optional by contract and, when present,
+ * must still be a string.
+ */
+export function isMiniViewRegistrationState(
+	value: unknown,
+): value is MiniViewRegistrationState {
+	if (value === null || typeof value !== "object") return false;
+	const state = value as Partial<MiniViewRegistrationState>;
+	if (typeof state.value !== "string") return false;
+	if (typeof state.accelerator !== "string") return false;
+	if (state.reason !== undefined && typeof state.reason !== "string")
+		return false;
+	return (MINI_VIEW_REGISTRATION_STATUSES as readonly unknown[]).includes(
+		state.status,
 	);
 }
 
@@ -172,6 +206,28 @@ export function formatQuickSendDisplay(
 	value: string,
 	platform: MiniViewPlatform,
 ): string {
+	const parts = formatQuickSendTokens(value, platform);
+	/*
+	 * macOS renders modifiers as glyphs and joins them with NO separator (⌘⌥Space
+	 * is how the system prints it); the other platforms use "+" between words.
+	 */
+	return platform === "mac" ? parts.join("") : parts.join("+");
+}
+
+/**
+ * The stored value's tokens as a person reads them, ONE ENTRY PER CAP.
+ *
+ * The pieces `formatQuickSendDisplay` joins, exported because the mini
+ * header draws the chord as the app's key caps (`KeyboardShortcut` splits its
+ * `shortcut` prop on "+") and a macOS sentence spelling — `⌘⌥Space`, no
+ * separators — cannot be split back without guessing. One token table, so the
+ * caps and the sentences can never disagree about the same chord (design
+ * round 1, D4).
+ */
+export function formatQuickSendTokens(
+	value: string,
+	platform: MiniViewPlatform,
+): string[] {
 	const mac = platform === "mac";
 	const MODIFIERS: Record<string, string> = mac
 		? {
@@ -202,7 +258,7 @@ export function formatQuickSendDisplay(
 		left: "Left",
 		right: "Right",
 	};
-	const parts = value
+	return value
 		.split("+")
 		.map((token) => token.trim().toLowerCase())
 		.filter((token) => token.length > 0)
@@ -213,9 +269,4 @@ export function formatQuickSendDisplay(
 			if (token.length === 1) return token.toUpperCase();
 			return token;
 		});
-	/*
-	 * macOS renders modifiers as glyphs and joins them with NO separator (⌘⌥Space
-	 * is how the system prints it); the other platforms use "+" between words.
-	 */
-	return mac ? parts.join("") : parts.join("+");
 }
