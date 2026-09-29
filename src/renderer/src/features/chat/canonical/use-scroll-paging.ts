@@ -6,6 +6,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { LoadOlderOutcome } from "./load-older";
 import type { OlderHistoryState } from "./older-history-slot";
 import {
 	type AnchorSample,
@@ -18,6 +19,7 @@ import {
 	decide,
 	initialPagingState,
 	isExhausted,
+	noteAborted,
 	noteFailed,
 	noteInput,
 	noteSettled,
@@ -139,6 +141,23 @@ export type ScrollPagingOptions = {
 	 * rule needs; it never rejects.
 	 */
 	onLoadOlder: () => Promise<boolean>;
+	/**
+	 * The outcome-aware form of `onLoadOlder`. When present it is what the pump
+	 * calls, and it can tell a FAILURE from a lost race: `failed` counts toward
+	 * the automatic budget, `stale` and `nothing-to-load` do not (`noteAborted`),
+	 * and `applied` settles. Optional so a caller that only has the boolean (the
+	 * child reader's preview, the stories) keeps working; the boolean form maps
+	 * `false` to a failure exactly as it always did.
+	 */
+	onLoadOlderOutcome?: () => Promise<LoadOlderOutcome>;
+	/**
+	 * The last "load earlier" ask failed and nothing has been applied since, as
+	 * the SESSION HOOK reports it (`CanonicalSessionView.olderFailed`). The failed
+	 * row has one owner, and this is not it: the pump used to keep its own copy,
+	 * which only saw its own asks and mistook a lost race for a failure. Optional
+	 * and false by default so the stories that build these props keep type-checking.
+	 */
+	olderFailed?: boolean;
 	/** A page fetch is in flight, as the session hook sees it. */
 	loadingOlder: boolean;
 	/**
@@ -173,6 +192,8 @@ export function useScrollPaging({
 	hasMore,
 	onWiden,
 	onLoadOlder,
+	onLoadOlderOutcome,
+	olderFailed = false,
 	loadingOlder,
 	contentKey,
 	rowCount,
@@ -182,7 +203,8 @@ export function useScrollPaging({
 	// the only thing that re-renders the transcript. Everything else lives in
 	// refs: a demand arming or a settle timer firing must not repaint a list
 	// that repaints per token already.
-	const [failed, setFailed] = useState(false);
+	// No `failed` state of its own: see `olderFailed`. The pump's own `failures`
+	// counter (rule G, the automatic retry budget) stays in the policy state.
 	/*
 	 * Whether the pump is between dispatching a reveal and the reader being able
 	 * to see it — the same fact the policy holds in `busy` and `pageWidenOwed`,
@@ -210,8 +232,20 @@ export function useScrollPaging({
 	const [revealInFlight, setRevealInFlight] = useState(false);
 
 	// Latest values for the rAF pump, which must not be re-created per render.
-	const live = useRef({ hiddenRows, hasMore, onWiden, onLoadOlder });
-	live.current = { hiddenRows, hasMore, onWiden, onLoadOlder };
+	const live = useRef({
+		hiddenRows,
+		hasMore,
+		onWiden,
+		onLoadOlder,
+		onLoadOlderOutcome,
+	});
+	live.current = {
+		hiddenRows,
+		hasMore,
+		onWiden,
+		onLoadOlder,
+		onLoadOlderOutcome,
+	};
 
 	const anchor = useRef<{
 		sample: AnchorSample | null;
@@ -481,10 +515,28 @@ export function useScrollPaging({
 				requestAnimationFrame(awaitCommit);
 				return;
 			}
-			void live.current.onLoadOlder().then((ok) => {
-				setFailed(!ok);
-				if (!ok) {
+			/*
+			 * What the page DID, not whether it was applied. The boolean form is kept
+			 * for callers that have no better answer and maps to the two outcomes it
+			 * can express; the outcome form is what the session hook offers, and it is
+			 * what lets a lost race (`stale`, `nothing-to-load`) release the pump
+			 * WITHOUT counting a failure or painting the failed row.
+			 */
+			const ask: () => Promise<LoadOlderOutcome> = live.current
+				.onLoadOlderOutcome
+				? live.current.onLoadOlderOutcome
+				: async () =>
+						(await live.current.onLoadOlder())
+							? { kind: "applied", newRecords: 0, exhausted: false }
+							: { kind: "failed", reason: "request" };
+			void ask().then((outcome) => {
+				if (outcome.kind === "failed") {
 					state.current = noteFailed(state.current);
+					requestAnimationFrame(schedule);
+					return;
+				}
+				if (outcome.kind !== "applied") {
+					state.current = noteAborted(state.current);
 					requestAnimationFrame(schedule);
 					return;
 				}
@@ -573,7 +625,6 @@ export function useScrollPaging({
 				// the top would mean nothing.
 				travelledPx: Math.max(0, moved),
 			});
-			if (deliberate) setFailed(false);
 			travel.current = {
 				...travel.current,
 				revision: travel.current.revision + 1,
@@ -616,7 +667,6 @@ export function useScrollPaging({
 			clamped: false,
 			revision: travel.current.revision + 1,
 		};
-		setFailed(false);
 		setRevealInFlight(false);
 		// A fresh conversation may already be shorter than its viewport with more
 		// history behind it, which is clause L's case and has no gesture to start
@@ -835,7 +885,7 @@ export function useScrollPaging({
 	const slotState: OlderHistoryState =
 		loadingOlder || revealInFlight
 			? "loading"
-			: failed && (exhaustedRetries || hiddenRows === 0)
+			: olderFailed && (exhaustedRetries || hiddenRows === 0)
 				? "failed"
 				: hiddenRows > 0
 					? "windowed"
