@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 import {
 	type FC,
+	type FocusEvent,
 	type RefObject,
 	memo,
 	useCallback,
@@ -189,15 +190,15 @@ const WINDOW_STEP = 60;
  * How far the render window may be extended to land its top edge on a run
  * boundary (the on-load fix, operator report 2026-09-28).
  *
- * The extension exists so a completed run the window's edge cuts through can
- * still collapse: the bar needs the run's opening user row inside the list it
- * plans over (`turn-collapse-model.ts`, the window-cut rule), and a reader who
- * had to scroll that row in was the reported pain. Three durable pages is the
- * same order as `RECONCILE_TAIL_MAX_ENTRIES` and covers every run whose collapse
- * fills a screen; a run taller than this keeps the shipped behaviour (renders
- * cut until the reader widens past it), which is stated rather than silently
- * dropped. The cost of an extension is one heavier commit, not heavier DOM: a
- * collapsed run unmounts its hidden rows in the same render that plans them.
+ * The extension is the CHEAP half of alignment: a completed run the window's
+ * edge cuts through lands its opening user row inside the list the plan reads,
+ * so the bar gains the head row and the real duration in the same commit.
+ * Three durable pages is the same order as `RECONCILE_TAIL_MAX_ENTRIES` and
+ * covers every run whose collapse fills a screen; a run taller than this keeps
+ * the window cut (renders cut at its top until the reader widens past it) —
+ * since the end-loaded rule that costs the bar its Took clause, never the bar.
+ * The cost of an extension is one heavier commit, not heavier DOM: a collapsed
+ * run unmounts its hidden rows in the same render that plans them.
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
@@ -205,11 +206,37 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  * Durable pages one open may fetch to bring a cut run's head into the loaded
  * rows (`windowTopRunIsHeadCut`).
  *
- * The first automatic follow-up load, bounded: a run whose head is more than
- * two pages above the tail stands down with today's behaviour, because the
- * alternative is an open that walks an unbounded conversation into memory.
+ * The first automatic follow-up load, bounded: an open must not walk an
+ * unbounded conversation into memory. SINCE THE END-LOADED RULE (operator
+ * report, 2026-09-29) the bound no longer decides whether a completed turn
+ * folds — a run whose head stays cut still condenses from its loaded span —
+ * only whether its bar gains the head row and the real duration clause.
  */
 const ALIGN_FETCH_MAX = 2;
+
+/**
+ * What a bar's appearance says out loud (the settle announcement's sentence).
+ *
+ * The bar's own words and quantities, so the announcement never states more
+ * than the row does: the duration clause only when the bar carries one (a
+ * head-cut bar does not — the number would be fabricated), the action count
+ * only when non-zero. `formatDuration` is the bar's own formatter, so the
+ * sentence and the row cannot disagree about "20m30s".
+ */
+function condenseSentence(plan: RunCollapsePlan): string {
+	const parts: string[] = [];
+	if (plan.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	}
+	if (plan.facts.actions > 0) {
+		parts.push(
+			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+		);
+	}
+	return parts.length === 0
+		? "Turn condensed."
+		: `Turn condensed: ${parts.join(", ")}.`;
+}
 
 export type CanonicalTranscriptProps = {
 	frontend?: CanonicalFrontendState | null;
@@ -2001,10 +2028,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	/* Durable pages this conversation's open has spent aligning the window's
 	 * top edge onto a loaded run boundary. See the alignment effect below. */
 	const alignFetches = useRef(0);
+	/* The runs the settle announcement has already stated — see the effect
+	 * beside the collapse plan. `null` until the first pass that has runs, and
+	 * re-set on a session switch so a conversation's first paint is a LOAD the
+	 * announcement stays out of. */
+	const announcedRuns = useRef<Set<string> | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
 		alignFetches.current = 0;
+		announcedRuns.current = null;
 	}
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
@@ -2051,13 +2084,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
-	 * The load-side half of the fix: when the edge sits inside a run whose head
-	 * the FETCHED rows cut off, the snap has no boundary to land on. Fetch the
-	 * head — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page
-	 * is not already in flight — and let the snap do the rest when it lands.
-	 * This is the "first automatic follow-up load"; a run whose head is farther
-	 * than the bound keeps the shipped cut behaviour rather than walking an
-	 * unbounded conversation into memory.
+	 * The alignment's load half: when the edge sits inside a run whose head the
+	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
+	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
+	 * not already in flight — and let the snap do the rest when it lands.
+	 *
+	 * SINCE THE END-LOADED RULE (operator report, 2026-09-29) this is a
+	 * REFINEMENT, not the fix: a run whose head is farther than the bound still
+	 * condenses from its loaded span, so the bound no longer decides whether a
+	 * completed turn folds — only whether its bar gains the head row and the
+	 * real duration. The bound still exists because its old reason does: an open
+	 * must not walk an unbounded conversation into memory.
 	 */
 	useEffect(() => {
 		const decision = alignFetchDecision(
@@ -2516,6 +2553,39 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const working = workingLine === undefined ? paneWorking : workingLine;
 
 	/*
+	 * THE READER'S FOCUS, tracked for the collapse's own guard (the model's
+	 * `focusHold`): the record id of the row holding `document.activeElement`
+	 * inside the scroller. Focus EVENTS rather than a render-time DOM read, so
+	 * the value is React state and a focus move is a re-render the plan can
+	 * answer; `null` means "focus is not in a row" — the state on every pointer
+	 * gesture, so the guard costs pointer readers nothing. The bar is excluded
+	 * deliberately: it carries `data-record-id` too (its anchor row's), and a
+	 * reader tabbing onto a bar's button must not hold that bar's run open —
+	 * the bar is not a row being hidden, it IS the collapse.
+	 */
+	const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null);
+	const handleTranscriptFocus = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const row = (event.target as Element).closest("[data-record-id]");
+			setFocusedRecordId(
+				row === null || row.closest("[data-turn-summary]") !== null
+					? null
+					: row.getAttribute("data-record-id"),
+			);
+		},
+		[],
+	);
+	const handleTranscriptBlur = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const next = event.relatedTarget as Node | null;
+			if (next === null || !event.currentTarget.contains(next)) {
+				setFocusedRecordId(null);
+			}
+		},
+		[],
+	);
+
+	/*
 	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
@@ -2531,10 +2601,50 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * the working line deliberately stands down while the question dock holds
 		 * the stage, so a rule that read only `working` condensed a parked turn
 		 * and un-condensed it when the call resumed, with no reader action.
+		 *
+		 * `focusHold`/`openRuns` are the focus guard's inputs (see
+		 * `focusedRecordId` above): a run that would unmount the row the reader's
+		 * keyboard focus is in stands open until the focus moves on.
 		 */
-		() => collapsePlan(visible, { live: working !== null || gate !== null }),
-		[visible, working, gate],
+		() =>
+			collapsePlan(visible, {
+				live: working !== null || gate !== null,
+				focusHold: focusedRecordId,
+				openRuns,
+			}),
+		[visible, working, gate, focusedRecordId, openRuns],
 	);
+	/*
+	 * THE SETTLE ANNOUNCEMENT (polite). A bar appearing is a transition the
+	 * reader did not initiate — rows readable a moment ago are unmounted — and
+	 * nothing on screen says so out loud. ONE `<output aria-live="polite">`
+	 * states each newly appeared bar in the bar's own words. Two skips keep it
+	 * about SETTLES rather than loads: the first pass that has any runs
+	 * initialises without announcing (opening a conversation is a load), and a
+	 * session switch re-arms that skip (the transcript component outlives a
+	 * conversation switch). A reader's own press never reaches here: it changes
+	 * the reader's expansion, not which runs collapse.
+	 */
+	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
+	useEffect(() => {
+		const collapsed = collapse.runs.filter((run) => run.collapses);
+		const next = new Set(collapsed.map((run) => run.key));
+		const previous = announcedRuns.current;
+		if (previous === null) {
+			/*
+			 * The first pass that has RUNS initialises without announcing: its
+			 * bars are what the conversation loaded with, not a settle. A pass
+			 * with no runs at all — a held or empty pane — leaves the
+			 * initialisation for the first pass that paints rows.
+			 */
+			if (collapse.runs.length > 0) announcedRuns.current = next;
+			return;
+		}
+		announcedRuns.current = next;
+		const appeared = collapsed.filter((run) => !previous.has(run.key));
+		if (appeared.length === 0) return;
+		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
+	}, [collapse]);
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
@@ -2836,6 +2946,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					aria-describedby={
 						slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
 					}
+					/*
+					 * The focus guard's two inputs (see `focusedRecordId` above): React's
+					 * onFocus/onBlur are focusin/focusout at this container, so focus
+					 * arriving anywhere inside updates the held row and focus leaving the
+					 * scroller clears it.
+					 */
+					onFocus={handleTranscriptFocus}
+					onBlur={handleTranscriptBlur}
 					className={cn(
 						// `min-h-0`, not `h-full`: this is the flex child that must absorb
 						// the column's leftover height. `h-full` resolves its flex base to
@@ -2872,6 +2990,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							{perf}
 						</span>
 					)}
+					{/*
+					 * The settle announcement (see the effect beside the collapse plan):
+					 * `output` with `aria-live="polite"`, the idiom the older-history
+					 * slot and the aside panel already use — a quiet statement of a
+					 * transition the reader did not initiate. The data attribute is
+					 * what tells this region from the slot's (both are `output`s with
+					 * `aria-live`), for a rig and for the behaviour suite.
+					 */}
+					<output
+						data-condense-announcement=""
+						className="sr-only"
+						aria-live="polite"
+					>
+						{condenseAnnouncement}
+					</output>
 					<div
 						data-lo-transcript-content
 						/*
@@ -3102,10 +3235,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the run's key is its opening user row's id,
-											 * and that row renders as its own group in the same list —
-											 * an unprefixed key collided with it (two children, one key)
-											 * and React silently dropped one of the pair.
+											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's), and both candidates
+											 * render as their own groups elsewhere in the same list — an
+											 * unprefixed key collided with one of them (two children, one
+											 * key) and React silently dropped one of the pair. The prefix
+											 * also states which collided: the replaced slot is not the bar.
 											 */
 											key={`turn-summary:${entry.plan.key}`}
 											recordIds={entry.plan.recordIds}
