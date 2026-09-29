@@ -34,7 +34,7 @@ export const CHECKPOINT_GENERATING_NAME = "Generating name…";
  *
  * `rest` and `preview` are the pointer/focus ladder (dsh: scaleX 0.6 -> 0.9);
  * `active` is the turn the reader is ON (scaleX 1, primary ink); `unloaded` is
- * a checkpoint whose turn is not in the resident window yet (scaleX 0.4 at 60%
+ * a checkpoint whose turn is not in the resident window yet (scaleX 0.4 at 75%
  * opacity) - the state that tells a reader a jump will have to load first.
  */
 export type CheckpointMarkState = "rest" | "preview" | "active" | "unloaded";

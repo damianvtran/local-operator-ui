@@ -22,7 +22,7 @@ import React, { act } from "react";
  * The ported layout is jsdom's, so this file cannot see the card's position or
  * the overlap density of 267 ticks — those are the driver scenes' subject
  * (Phase 2). What it can see, and what it pins, is that every tick exists,
- * carries its accessible name, is placed by the model's fractions, and that
+ * carries its accessible name, is placed at the fixed pitch, and that
  * the card's sentences come from the manifest rather than from markup.
  */
 
@@ -303,7 +303,7 @@ test("an empty manifest renders nothing, and a building one renders only its mar
 	}
 });
 
-test("ticks render from the manifest, in order, at the model's fractions", async () => {
+test("ticks render from the manifest, in order, at the fixed pitch", async () => {
 	const checkpoints = [
 		checkpoint({
 			id: "u1",

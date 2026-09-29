@@ -167,6 +167,7 @@ import {
 	snapWindowToRunBoundary,
 	windowTopRunIsHeadCut,
 } from "./turn-collapse-model";
+import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionHidden } from "./use-cross-session-hidden";
@@ -2142,71 +2143,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
-	 * The rail's two reader-side rungs (design round 1, D2 + U1): the ladder
-	 * shipped with `loadedIds`/`activeId` passed by nobody, so 402/402 marks
-	 * rendered at rest and the top arms could not paint. Derived HERE because
-	 * this is where the store and the marks meet: `loadedIds` is the record ids
-	 * this store holds (everything else in the manifest wears the light
-	 * "unloaded" arm), and `activeId` is the checkpoint the reader is LOOKING
-	 * AT - the last loaded checkpoint above the scroller's top edge - so the
-	 * ladder's top arm tracks the reading position instead of a counter.
-	 *
-	 * The position read is viewport-based (rects, not scrollTop) so it holds
-	 * under either scroll direction, and it is rAF-throttled: a scroll frame
-	 * asks the DOM for the loaded checkpoints' tops (bounded by the mounted
-	 * window, not by the manifest) and sets state only when the answer CHANGES.
+	 * The rail's reader-side cue (design round 1, D2 + U1; the settle re-read
+	 * is UX round 1, N1): one derivation of both halves the rail consumes,
+	 * owned and unit-pinned in `use-active-checkpoint.ts` beside this file.
+	 * `loadedIds` is the record ids this store holds; `activeId` is the
+	 * checkpoint at the reading position.
 	 */
-	const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(
-		null,
-	);
-	const loadedCheckpointIds = useMemo(
-		() => new Set(rows.map((row) => row.record.id)),
-		[rows],
-	);
-	const loadedCheckpoints = useMemo(
-		() =>
-			checkpoints.checkpoints.filter((checkpoint) =>
-				loadedCheckpointIds.has(checkpoint.id),
-			),
-		[checkpoints.checkpoints, loadedCheckpointIds],
-	);
-	const syncActiveCheckpoint = useCallback(() => {
-		const region = containerRef.current;
-		if (region === null) return;
-		const top = region.getBoundingClientRect().top;
-		let best: string | null = null;
-		let bestTop = Number.NEGATIVE_INFINITY;
-		for (const checkpoint of loadedCheckpoints) {
-			const element = region.querySelector(
-				`[data-record-id="${CSS.escape(checkpoint.id)}"]`,
-			);
-			if (element === null) continue;
-			const elementTop = element.getBoundingClientRect().top;
-			if (elementTop <= top + 1 && elementTop > bestTop) {
-				bestTop = elementTop;
-				best = checkpoint.id;
-			}
-		}
-		setActiveCheckpointId((previous) => (previous === best ? previous : best));
-	}, [containerRef, loadedCheckpoints]);
-	useEffect(() => {
-		const region = containerRef.current;
-		if (region === null) return;
-		let frame = 0;
-		const onScroll = () => {
-			if (frame !== 0) return;
-			frame = window.requestAnimationFrame(() => {
-				frame = 0;
-				syncActiveCheckpoint();
-			});
-		};
-		region.addEventListener("scroll", onScroll, { passive: true });
-		syncActiveCheckpoint();
-		return () => {
-			region.removeEventListener("scroll", onScroll);
-			if (frame !== 0) window.cancelAnimationFrame(frame);
-		};
-	}, [containerRef, syncActiveCheckpoint]);
+	const { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds } =
+		useActiveCheckpoint(containerRef, rows, checkpoints.checkpoints);
 	/*
 	 * ONE in-flight page for the walk-side consumers — the align fetch below
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
