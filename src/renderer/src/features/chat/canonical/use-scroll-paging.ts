@@ -101,8 +101,12 @@ import {
  * cap. Distinguishing reader-initiated growth from a landing page would mean
  * attributing every extent change to a cause, which is the inference clause A
  * deliberately refuses to make.
+ *
+ * Exported for `scripts/transcript-paging-hook.test.mjs`, whose expiry hand-over
+ * case (round 1, R1-1) has to wait past the window - the suite then waits on the
+ * same constant the hold is bounded by rather than a copy.
  */
-const ANCHOR_HOLD_MS = 1200;
+export const ANCHOR_HOLD_MS = 1200;
 
 /** How long a scrollbar drag's attribution window outlives its `pointerup`. */
 const DRAG_TAIL_MS = 120;
@@ -359,9 +363,20 @@ export function useScrollPaging({
 		 * A reveal's hold is FINITE and has priority while it lives: it was sampled
 		 * BEFORE the growth this module dispatched, and re-sampling mid-settling
 		 * would adopt a position that is still drifting. It hands over at its own
-		 * expiry - `correctAnchor`'s expiry arm re-reads the reader's place then.
+		 * expiry - `correctAnchor`'s expiry arm re-reads the reader's place then,
+		 * and a settled non-input motion re-reads it here.
+		 *
+		 * The window test is what makes "while it lives" true (review round 1,
+		 * R1-1): a FINITE hold past its expiry is not a hold, and returning for it
+		 * anyway made both of those re-reads dead - the expired sample stayed the
+		 * invariant, and the next correction reverted the motion it had missed
+		 * instead of adopting it as the reader's new place.
 		 */
-		if (anchor.current.sample !== null && Number.isFinite(anchor.current.until))
+		if (
+			anchor.current.sample !== null &&
+			Number.isFinite(anchor.current.until) &&
+			performance.now() <= anchor.current.until
+		)
 			return;
 		if (Math.abs(el.scrollTop) <= TAIL_EPS_PX) {
 			anchor.current = { sample: null, until: 0, inputRevision: 0 };
