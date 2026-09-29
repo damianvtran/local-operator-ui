@@ -52,6 +52,10 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
+	expandedRunsOf,
+	writeRunExpanded,
+} from "@shared/store/turn-collapse-open";
+import {
 	CircleAlert,
 	Info,
 	MessageSquareText,
@@ -104,11 +108,13 @@ import {
 	toolOp,
 } from "../components/trace/tool-row-model";
 import { TraceFold } from "../components/trace/trace-fold";
+import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { jumpToFailedRow } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -117,7 +123,12 @@ import {
 } from "./provider-error-guidance";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
-import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
+import {
+	type FoldGroup,
+	type TurnFoot,
+	foldRuns,
+	turnFeet,
+} from "./trace-fold-model";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -138,8 +149,10 @@ import {
 	buildRows,
 	ledgerName,
 	paintsSomething,
+	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
+import { type RunCollapsePlan, collapsePlan } from "./turn-collapse-model";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
@@ -158,20 +171,6 @@ import {
  * `markdown.css`'s measure comment carries the report and the numbers, and the
  * rule that also keeps a cap off the agent's answer.
  */
-
-/**
- * Whether the user has asked the OS for less motion.
- *
- * The failure jump (§E3) scrolls, and it is the app's only scroll animation in
- * this surface: §B7's 240ms is a CEILING rather than a target, and a preference
- * set at the OS level is the one signal that outranks it. Read per call rather
- * than cached, because the preference can change while the app is open and this
- * is one `matchMedia` on a press.
- */
-const prefersReducedMotion = (): boolean =>
-	typeof window !== "undefined" &&
-	typeof window.matchMedia === "function" &&
-	window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
@@ -773,6 +772,7 @@ const AssistantRow = memo(function AssistantRow({
 	isSmallView,
 	closesTurn,
 	foot = null,
+	closingLineSuppressed = false,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
@@ -780,6 +780,13 @@ const AssistantRow = memo(function AssistantRow({
 	closesTurn: boolean;
 	/** §E3's foot line data, on the row that closes the turn. */
 	foot?: TurnFoot | null;
+	/**
+	 * The run above carries a turn bar, so its closing line (the numbers AND the
+	 * stamp) lives there instead: one summary and one stamp per turn (§4.3/§4.5,
+	 * and the F5 defect the bar suppresses the foot for). Expanded or not — the
+	 * bar stays the toggle and the line stays withheld.
+	 */
+	closingLineSuppressed?: boolean;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -930,7 +937,7 @@ const AssistantRow = memo(function AssistantRow({
 			 * one left edge structurally rather than by a second measurement (the frame
 			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
 			 */}
-			{closesTurn && (
+			{closesTurn && !closingLineSuppressed && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
@@ -978,45 +985,12 @@ const AssistantRow = memo(function AssistantRow({
 													"[data-lo-transcript-content]",
 												) ?? document;
 											/*
-											 * Open the fold that holds the failed row first: a
-											 * collapsed fold has unmounted its rows, so the row is not
-											 * in the DOM to be found until its fold is open (U14's
-											 * jump, into the §E2 fold). The fold's own trigger is the
-											 * first `aria-expanded` button inside its wrapper.
+											 * The walk itself is lifted to `failed-row-jump.ts`: the collapsed
+											 * turn's bar is a gated layer ABOVE the fold now, and the bar's
+											 * own failure control drives the same one. The foot only renders
+											 * where no bar does, so from here the bar step is a no-op.
 											 */
-											const fold = [
-												...root.querySelectorAll<HTMLElement>(
-													"[data-fold-ids]",
-												),
-											].find((node) =>
-												(node.dataset.foldIds ?? "")
-													.split(" ")
-													.includes(failedId),
-											);
-											const foldTrigger = fold?.querySelector(
-												'button[aria-expanded="false"]',
-											);
-											if (foldTrigger instanceof HTMLElement)
-												foldTrigger.click();
-											/*
-											 * One frame later, once React has committed the opened
-											 * fold's rows: then the failed row exists, its own detail
-											 * opens, and it is scrolled to the centre.
-											 */
-											window.requestAnimationFrame(() => {
-												const target = root.querySelector(
-													`[data-record-id="${failedId}"]`,
-												);
-												if (!(target instanceof HTMLElement)) return;
-												const trigger = target.querySelector(
-													'button[aria-expanded="false"]',
-												);
-												if (trigger instanceof HTMLElement) trigger.click();
-												target.scrollIntoView({
-													block: "center",
-													behavior: prefersReducedMotion() ? "auto" : "smooth",
-												});
-											});
+											jumpToFailedRow(root, failedId);
 										}}
 										className={cn("font-medium text-danger hover:underline")}
 									>
@@ -1687,6 +1661,38 @@ const atTraceTier = (row: Row): Row => {
 	return copy;
 };
 
+/*
+ * The GROUP-level twin of `atTraceTier`, for the one caller that passes
+ * groups instead of rows: a collapsed run's hidden groups mount inside the
+ * bar's disclosure, and the FIRST of them must arrive at the trace tier the
+ * way `TraceFold` demotes its first row — otherwise it keeps the turn-tier
+ * margin it earned as the turn's opener and the expansion re-introduces a
+ * 32px step between the bar and the row beneath it (design review round 1,
+ * D2: measured 36px box gap / Δ57px centers in the driven app, against the
+ * ledger's own 22px pitch). Same `WeakMap` reuse rule as the row helper: an
+ * untouched group keeps its identity so this adds no per-render copies.
+ */
+const traceTierGroups = new WeakMap<SectionGroup, SectionGroup>();
+const atTraceTierGroup = (group: SectionGroup): SectionGroup => {
+	if (group.kind === "row") {
+		const row = atTraceTier(group.row);
+		if (row === group.row) return group;
+		let copy = traceTierGroups.get(group);
+		if (!copy) {
+			copy = { ...group, row };
+			traceTierGroups.set(group, copy);
+		}
+		return copy;
+	}
+	if (group.gap === "trace") return group;
+	let copy = traceTierGroups.get(group);
+	if (!copy) {
+		copy = { ...group, gap: "trace" };
+		traceTierGroups.set(group, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -1705,6 +1711,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
 	 */
 	foot = null,
+	closingLineSuppressed = false,
 	labelPending = false,
 	undelivered = null,
 	labelHoldLate = false,
@@ -1716,6 +1723,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	conversationId?: string;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
+	/** The run above carries a bar; see `AssistantRow`'s copy of this prop. */
+	closingLineSuppressed?: boolean;
 	/**
 	 * §F3's per-message failure state, or null. ONE OBJECT FOR THE WHOLE LIST,
 	 * and every row but the one it names keeps the null it already had: the rows
@@ -1755,6 +1764,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
 					foot={foot}
+					closingLineSuppressed={closingLineSuppressed}
 					conversationId={conversationId}
 				/>
 			);
@@ -1828,6 +1838,15 @@ const TranscriptRow = memo(function TranscriptRow({
  * is the case that would otherwise be measured as a multi-second click.
  */
 const OPEN_TRACE_MS = 60_000;
+
+/**
+ * A fold group as the aggregation pass hands it on: a run group carries the
+ * section flag it was decorated with (`isNewestTurn`), a row group is the
+ * partition's own row variant unchanged.
+ */
+type SectionGroup =
+	| (Extract<FoldGroup, { kind: "run" }> & { isNewestTurn: boolean })
+	| Extract<FoldGroup, { kind: "row" }>;
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	frontend,
@@ -1936,6 +1955,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
 	}
+	/*
+	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
+	 * sibling of the paint cache (`shared/store/turn-collapse-open.ts`) so the
+	 * state survives the window's edge walking past a bar and a switch away and
+	 * back; a reload arrives at the shipped default (collapsed) by design. The
+	 * render-phase adjustment mirrors the window reset above and for the same
+	 * reason: a switch must read the NEW conversation's set in its first paint,
+	 * not one commit later. `openRuns` is the readable copy; every write goes
+	 * through the store so the two cannot drift.
+	 */
+	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
+		expandedRunsOf(sessionId),
+	);
+	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	if (openRunsSession !== sessionId) {
+		setOpenRunsSession(sessionId);
+		setOpenRuns(expandedRunsOf(sessionId));
+	}
+	const setRunOpen = useCallback(
+		(runKey: string, open: boolean) => {
+			setOpenRuns(writeRunExpanded(sessionId, runKey, open));
+		},
+		[sessionId],
+	);
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -2008,17 +2051,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				: group,
 		);
 	}, [visible]);
-	const feet = useMemo(
-		() =>
-			turnFeet(visible, {
-				failedOf: (row) =>
-					row.record.kind === "tool" && row.record.isError === true,
-				durationOf: (row) =>
-					row.record.kind === "tool" ? row.record.durationS : null,
-				isAction: (row) => row.record.kind === "tool",
-			}),
-		[visible],
-	);
+	const feet = useMemo(() => {
+		/*
+		 * The foot counts the SAME unit the caption rule and the collapse model use:
+		 * the rows are partitioned by `runsOf`, and the tally resets at a run's
+		 * opener. The historical `gap === "turn"` proxy also fires on a steer row,
+		 * which used to reset the count mid-turn and let a steered run's foot
+		 * disagree with everything above it (F5: a bar saying `12 actions` over a
+		 * foot saying `4`).
+		 */
+		const openerIds = new Set(
+			runsOf(visible).map((run) => visible[run.openingIndex].record.id),
+		);
+		return turnFeet(visible, {
+			failedOf: (row) =>
+				row.record.kind === "tool" && row.record.isError === true,
+			durationOf: (row) =>
+				row.record.kind === "tool" ? row.record.durationS : null,
+			isAction: (row) => row.record.kind === "tool",
+			opensRun: (row) => openerIds.has(row.record.id),
+		});
+	}, [visible]);
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
@@ -2321,6 +2374,178 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * two values that are already computed, and only `paneWorking` costs anything.
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
+
+	/*
+	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
+	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
+	 * renders, so a bar can only ever summarise rows that are loaded and on
+	 * screen. `live` is the liveness the working line and the folds read; the
+	 * model applies it to the newest run, so a finished turn above the reader's
+	 * place still collapses while a later turn streams.
+	 */
+	const collapse = useMemo(
+		/*
+		 * `live` is the newest run's UNSETTLEDNESS, and it has two halves here,
+		 * not one (design review round 1, D3): the working line covers a turn
+		 * being written, and the READER GATE covers a turn parked on a question —
+		 * the working line deliberately stands down while the question dock holds
+		 * the stage, so a rule that read only `working` condensed a parked turn
+		 * and un-condensed it when the call resumed, with no reader action.
+		 */
+		() => collapsePlan(visible, { live: working !== null || gate !== null }),
+		[visible, working, gate],
+	);
+
+	/*
+	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
+	 * with one exception: a collapsed run's hidden groups move INSIDE its bar
+	 * (so they are merely unmounted while collapsed — the fold's own contract)
+	 * and the bar takes the FIRST hidden row's slot and gap. Pinned and tail
+	 * groups keep their places, so a collapse never reorders a visible row.
+	 */
+	const chatEntries = useMemo(() => {
+		const indexOf = new Map<string, number>();
+		visible.forEach((row, index) => indexOf.set(row.record.id, index));
+
+		type ChatEntry =
+			| { kind: "group"; group: SectionGroup; suppressClosingLine: boolean }
+			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+
+		const entries: ChatEntry[] = [];
+		let next = 0;
+		for (const plan of collapse.runs) {
+			/*
+			 * Runs and groups both partition `visible`, so this walk consumes each
+			 * group exactly once, in order.
+			 */
+			const groups: SectionGroup[] = [];
+			while (next < rowGroups.length) {
+				const group = rowGroups[next];
+				const start = indexOf.get(
+					group.kind === "run" ? group.id : group.row.record.id,
+				);
+				if (start === undefined || start > plan.run.endIndex) break;
+				groups.push(group);
+				next += 1;
+			}
+			if (!plan.collapses) {
+				for (const group of groups) {
+					entries.push({
+						kind: "group",
+						group,
+						suppressClosingLine: false,
+					});
+				}
+				continue;
+			}
+			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
+			const children: SectionGroup[] = [];
+			for (const group of groups) {
+				const hidden =
+					group.kind === "run"
+						? group.rows.every((row) => hiddenIds.has(row.record.id))
+						: hiddenIds.has(group.row.record.id);
+				if (hidden) {
+					children.push(group);
+					if (children.length === 1) {
+						/* The bar sits where the first hidden group did. */
+						entries.push({ kind: "bar", plan, children });
+					}
+					continue;
+				}
+				/*
+				 * Everything visible in a bar'd run renders with its closing line
+				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
+				 */
+				entries.push({
+					kind: "group",
+					group,
+					suppressClosingLine: true,
+				});
+			}
+		}
+		return entries;
+	}, [visible, rowGroups, collapse]);
+
+	/**
+	 * One group as the list has always rendered it — a folded run of calls, or a
+	 * single row — with the turn's closing line (the foot numbers AND the stamp)
+	 * withheld from a run that carries a bar: the bar states both, one per turn
+	 * (`feet.get(...) ?? null` and the caption block share one switch).
+	 */
+	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+		group.kind === "run" ? (
+			<TraceFold
+				key={group.id}
+				/*
+				 * The fold carries its first row's gap (a turn's 32px when
+				 * the run opens the turn), and every row inside it sits at
+				 * the trace tier - the fold holds the WHOLE run, D8.
+				 */
+				className={GAP[group.gap][isSmallView ? 1 : 0]}
+				recordIds={group.rows.map((row) => row.record.id)}
+				summary={group.summary}
+				actionCount={group.rows.length}
+				failedCount={group.failedCount}
+				span={group.span}
+				live={group.live}
+				/*
+				 * THE FOLD'S SECTION: the newest turn while that turn is in
+				 * flight. While it is true nothing condenses the fold; when it
+				 * turns false the fold closes itself once (see `TraceFold`'s
+				 * condense rule). `working` is the same liveness the working
+				 * line reads, so the section ends exactly when the pane says the
+				 * turn did.
+				 */
+				sectionLive={working !== null && group.isNewestTurn}
+			>
+				{group.rows.map((row, index) => (
+					<TranscriptRow
+						key={row.record.id}
+						row={index === 0 ? atTraceTier(row) : row}
+						isSmallView={isSmallView}
+						scope={mediaScope}
+						conversationId={conversationId}
+						labelPending={
+							row.record.kind === "tool" &&
+							labelPending?.has(row.record.toolCallId) === true
+						}
+						labelHoldLate={labelHoldLate === true}
+						labelMarked={
+							row.record.kind === "tool" &&
+							labelMarked?.has(row.record.toolCallId) === true
+						}
+						foot={
+							suppressClosingLine ? null : (feet.get(row.record.id) ?? null)
+						}
+						closingLineSuppressed={suppressClosingLine}
+						undelivered={undelivered}
+					/>
+				))}
+			</TraceFold>
+		) : (
+			<TranscriptRow
+				key={group.row.record.id}
+				row={group.row}
+				isSmallView={isSmallView}
+				scope={mediaScope}
+				conversationId={conversationId}
+				labelPending={
+					group.row.record.kind === "tool" &&
+					labelPending?.has(group.row.record.toolCallId) === true
+				}
+				labelHoldLate={labelHoldLate === true}
+				labelMarked={
+					group.row.record.kind === "tool" &&
+					labelMarked?.has(group.row.record.toolCallId) === true
+				}
+				foot={
+					suppressClosingLine ? null : (feet.get(group.row.record.id) ?? null)
+				}
+				closingLineSuppressed={suppressClosingLine}
+				undelivered={undelivered}
+			/>
+		);
 
 	return (
 		/*
@@ -2721,72 +2946,49 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							 * so a held or mark-ended row states its column inside a fold exactly
 							 * as it would standing alone.
 							 */}
-							{rowGroups.map((group) =>
-								group.kind === "run" ? (
-									<TraceFold
-										key={group.id}
+							{chatEntries.map((entry) =>
+								entry.kind === "bar" ? (
+									<TurnSummary
 										/*
-										 * The fold carries its first row's gap (a turn's 32px when
-										 * the run opens the turn), and every row inside it sits at
-										 * the trace tier - the fold holds the WHOLE run, D8.
+										 * Prefixed: the run's key is its opening user row's id,
+										 * and that row renders as its own group in the same list —
+										 * an unprefixed key collided with it (two children, one key)
+										 * and React silently dropped one of the pair.
 										 */
-										className={GAP[group.gap][isSmallView ? 1 : 0]}
-										recordIds={group.rows.map((row) => row.record.id)}
-										summary={group.summary}
-										actionCount={group.rows.length}
-										failedCount={group.failedCount}
-										span={group.span}
-										live={group.live}
+										key={`turn-summary:${entry.plan.key}`}
+										recordIds={entry.plan.recordIds}
 										/*
-										 * THE FOLD'S SECTION: the newest turn while that turn is in
-										 * flight. While it is true nothing condenses the fold; when it
-										 * turns false the fold closes itself once (see `TraceFold`'s
-										 * condense rule). `working` is the same liveness the working
-										 * line reads, so the section ends exactly when the pane says the
-										 * turn did.
+										 * The bar stands where the FIRST hidden row stood, so it
+										 * carries that row's identity: a lookup for the row finds the
+										 * bar that replaced its slot.
 										 */
-										sectionLive={working !== null && group.isNewestTurn}
+										anchorRecordId={entry.plan.hidden[0].record.id}
+										className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
+										durationS={entry.plan.facts.durationS}
+										actionCount={entry.plan.facts.actions}
+										failedCount={entry.plan.facts.failed}
+										firstFailedId={entry.plan.facts.firstFailedId}
+										title={entry.plan.facts.title}
+										stampTs={entry.plan.stampTs}
+										open={openRuns.has(entry.plan.key)}
+										onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
 									>
-										{group.rows.map((row, index) => (
-											<TranscriptRow
-												key={row.record.id}
-												row={index === 0 ? atTraceTier(row) : row}
-												isSmallView={isSmallView}
-												scope={mediaScope}
-												conversationId={conversationId}
-												labelPending={
-													row.record.kind === "tool" &&
-													labelPending?.has(row.record.toolCallId) === true
-												}
-												labelHoldLate={labelHoldLate === true}
-												labelMarked={
-													row.record.kind === "tool" &&
-													labelMarked?.has(row.record.toolCallId) === true
-												}
-												foot={feet.get(row.record.id) ?? null}
-												undelivered={undelivered}
-											/>
-										))}
-									</TraceFold>
+										{entry.children.map((child, index) =>
+											/*
+											 * The first hidden group drops to the trace tier, the way
+											 * `TraceFold` demotes its first row: the bar replaces the
+											 * group's slot, so the group cannot also keep the turn-tier
+											 * margin it earned as the turn's opener (D2). Every other
+											 * group keeps the gap the unfolded list gave it.
+											 */
+											renderGroup(
+												index === 0 ? atTraceTierGroup(child) : child,
+												true,
+											),
+										)}
+									</TurnSummary>
 								) : (
-									<TranscriptRow
-										key={group.row.record.id}
-										row={group.row}
-										isSmallView={isSmallView}
-										scope={mediaScope}
-										conversationId={conversationId}
-										labelPending={
-											group.row.record.kind === "tool" &&
-											labelPending?.has(group.row.record.toolCallId) === true
-										}
-										labelHoldLate={labelHoldLate === true}
-										labelMarked={
-											group.row.record.kind === "tool" &&
-											labelMarked?.has(group.row.record.toolCallId) === true
-										}
-										foot={feet.get(group.row.record.id) ?? null}
-										undelivered={undelivered}
-									/>
+									renderGroup(entry.group, entry.suppressClosingLine)
 								),
 							)}
 						</CanvasPaneProvider>
