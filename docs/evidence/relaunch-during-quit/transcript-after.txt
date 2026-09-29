@@ -1,0 +1,25 @@
+scratch: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578
+A: 43611 (headless, inspector on 49196)
+A windows before the quit: [{"id":1,"visible":false,"destroyed":false}]
+[PASS] A owns a backend of its own, so its teardown has real work to do
+        http://127.0.0.1:49197
+A's window is gone +214ms after app.quit()
+inspector socket closed (no wire is held into a process that is tearing itself down)
+B: 44687 (inactive — its request is A's to answer)
+[PASS] A still holds the single-instance lock while it tears down (the premise)
+        A alive +2818ms after app.quit(), its window already closed
+[PASS] A answered the relaunch without creating or raising a window
+        A's windows 2825ms after app.quit(): []
+[PASS] the refusal is on the record (applied=skipped+quitting)
+        [2026-09-29 03:10:53.552] [info]  [window-raise] trigger=second-instance mode=inactive requested=inactive pid=44687 cwd=/private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578/app-cwd applied=skipped+quitting
+[PASS] B never started a window of its own
+        [second-instance] this launch did not start a window of its own: the app already open is the instance answering (profile: /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578/userdata), and this launch's window mode (inactive) was handed to it — it named no conversation; the app may order its window forward without activating it. Quit that app to start a fresh instance. Exiting.
+[PASS] A exits cleanly, well inside this rig's bound
+        exit 0 5069ms after app.quit()
+[PASS] the teardown window was real (A outlived its window by more than a second)
+        window gone +214ms, process gone +5069ms
+C: 45301 (inactive; the relaunch the operator makes after the quit finished)
+[PASS] the next relaunch opens and shows its window
+        [{"id":1,"visible":true,"destroyed":false}]
+
+OK: 0 failing check(s) of this run.
