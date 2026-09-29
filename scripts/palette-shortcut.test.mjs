@@ -21,8 +21,12 @@ const bundle = await build({
 const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { paletteShortcutCaps, paletteShortcutIntent, paletteShortcutLabel } =
-	module;
+const {
+	paletteShortcutCaps,
+	paletteShortcutIntent,
+	paletteShortcutLabel,
+	switcherShortcutLabel,
+} = module;
 
 /** A keystroke, with everything unset unless the test asks for it. */
 const key = (overrides = {}) => ({
@@ -85,9 +89,11 @@ test("Cmd+P is not this module's gesture", () => {
 	 * with, and the people who learned it from the app's own tour still have it —
 	 * it is answered by the main process's own hook, which knows nothing about
 	 * what the renderer is doing and therefore cannot be the place Cmd+K is
-	 * decided. Two gestures, two owners, and no keystroke claimed twice: if this
-	 * function also answered P, a single press would toggle twice and the palette
-	 * would not open at all.
+	 * decided. Since issue #659 that hook's message opens the palette seeded to
+	 * its conversations source (the quick switcher), while this module keeps
+	 * answering the unseeded toggle: two gestures, two owners, two jobs, and no
+	 * keystroke claimed twice — if this function also answered P, a single press
+	 * would toggle twice and the palette would not open at all.
 	 */
 	assert.equal(paletteShortcutIntent(key({ metaKey: true, key: "p" })), null);
 	assert.equal(paletteShortcutIntent(key({ ctrlKey: true, key: "p" })), null);
@@ -100,4 +106,8 @@ test("the copy and the key caps are the same spellings", () => {
 	// and the letter as two keys.
 	assert.equal(paletteShortcutCaps(true), "⌘+K");
 	assert.equal(paletteShortcutCaps(false), "Ctrl+K");
+	// The switcher door's label (issue #659), for the tour's prose and any
+	// future cap: spelled here so a rebinding cannot leave stale `⌘P` copy.
+	assert.equal(switcherShortcutLabel(true), "⌘P");
+	assert.equal(switcherShortcutLabel(false), "Ctrl+P");
 });
