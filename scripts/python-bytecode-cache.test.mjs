@@ -3529,6 +3529,100 @@ test("closing the window mid-run asks the same question Cancel does", async () =
 	});
 });
 
+test("a declined quit confirmation releases the app's quit state; a proceeding one does not", async () => {
+	/*
+	 * ROUND-1 FINDING F-1, on the shipped installer. This dialog is the ONE
+	 * cancellation a running quit has — `app.quit()` stops when a window refuses
+	 * its close — so its declined answer has to RELEASE the app's quit state, or
+	 * every later second launch and Dock click is refused for the process's life
+	 * although the app is serving (the F-1 defect). The accepted answer exits the
+	 * process and must NOT release it: a quit that PROCEEDS keeps claiming the
+	 * process, because the release belongs to the cancellation, not to the
+	 * question. The state object itself is driven in `scripts/window-mode.test.mjs`
+	 * (begin/cancel/answer, plus the source pins over this wiring); here the
+	 * callback the app hands in is a spy, so the assertion is about WHICH answer
+	 * calls it — the half a source pin cannot prove.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		// Declined: "Keep setting up". The quit aborts; the release fires once.
+		resetInstallerFixture(0);
+		const released = [];
+		const installer = new BackendInstaller({
+			onQuitCancelled: () => released.push(true),
+		});
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.install("never");
+		await waitForSpawn();
+
+		const window = globalThis.__loWindows.at(-1);
+		const closeHandler = window?.handlers.close?.at(-1);
+		assert.equal(
+			typeof closeHandler,
+			"function",
+			"the setup window no longer listens for its own close",
+		);
+		closeHandler({ preventDefault: () => {} });
+		await waitFor(
+			() => released.length === 1,
+			"the declined answer to release the app's quit state",
+		);
+		assert.equal(
+			released.length,
+			1,
+			"a cancelled quit lets go of the state exactly once",
+		);
+		assert.equal(
+			globalThis.__loExitCode,
+			undefined,
+			"and the app keeps running, which is what the release is for",
+		);
+
+		// Accepted: "Quit without setup". The app leaves; the state is NOT
+		// released — a quit that proceeds must keep claiming the process. The
+		// FIRST dialog in this flow is the non-darwin consent prompt (only its
+		// cancel, `response === 1`, leaves), so the accepted answer is armed only
+		// after the spawn — once the close question is the next dialog read.
+		resetInstallerFixture(0);
+		const releasedOnAccept = [];
+		const leaving = new BackendInstaller({
+			onQuitCancelled: () => releasedOnAccept.push(true),
+		});
+		leaving.pythonPath = join(PATHS.home, "external-python");
+		void leaving.install("never");
+		await waitForSpawn();
+		globalThis.__loDialogResponse = 1;
+		const kills = [];
+		const realKill = process.kill;
+		process.kill = (pid, signal) => {
+			kills.push([pid, signal]);
+			return true;
+		};
+		try {
+			globalThis.__loWindows.at(-1).handlers.close.at(-1)({
+				preventDefault: () => {},
+			});
+			await waitFor(
+				() => globalThis.__loExitCode !== undefined,
+				"the accepted answer to leave the app",
+			);
+		} finally {
+			process.kill = realKill;
+		}
+		assert.deepEqual(
+			releasedOnAccept,
+			[],
+			"a quit that proceeds is never released: only the cancellation releases the state",
+		);
+		assert.equal(
+			globalThis.__loExitCode,
+			1,
+			"and the app leaves on the accepted answer, as it promised",
+		);
+		assert.equal(kills.length, 1, "with the install child killed first");
+	});
+});
+
 test("the click is authorised by the hold, not by the report flag", async () => {
 	/*
 	 * Review R3-3: the mutation matrix showed the round-2 guard alone stayed green

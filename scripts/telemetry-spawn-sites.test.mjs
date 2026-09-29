@@ -315,6 +315,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/relaunch-during-quit-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*makeEnv\(\),/,
+		"boots the built app THREE times over one quit - the dying instance, the relaunch answered by it, and the relaunch after it - three runs' worth of events for a rig about a teardown",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/mentioned-files-app-proof.mjs",
 		"spawn",
 		1,
