@@ -122,6 +122,7 @@ import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
+import { FoldMedia } from "./fold-media";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -136,6 +137,7 @@ import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
 	type TurnFoot,
+	foldImages,
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
@@ -155,6 +157,7 @@ import {
 } from "./transcript-pane";
 import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
+	type TranscriptImage,
 	type TranscriptRecord,
 	type TranscriptState,
 	isInterruptedFault,
@@ -1329,11 +1332,7 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={
-							record.images.length === 1
-								? "Screenshot"
-								: `Screenshot ${index + 1}`
-						}
+						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				))}
 			</div>
@@ -1983,7 +1982,19 @@ const CHECKPOINT_JUMP_MISS_COPY =
  * partition's own row variant unchanged.
  */
 type SectionGroup =
-	| (Extract<FoldGroup, { kind: "run" }> & { isNewestTurn: boolean })
+	| (Extract<FoldGroup, { kind: "run" }> & {
+			isNewestTurn: boolean;
+			/**
+			 * The run's images, computed by the groups memo while the rows are still
+			 * in hand (`foldImages`). The fold's condensed header carries them because
+			 * a collapsed fold UNMOUNTS the rows that draw them: without this, the
+			 * artifact a call produced went with the rows and the reader had to expand
+			 * the group to see it, which is the cost condensing was built to remove.
+			 * Empty for almost every run, which is what keeps the no-image case's DOM
+			 * and its height exactly what they were.
+			 */
+			images: TranscriptImage[];
+	  })
 	| Extract<FoldGroup, { kind: "row" }>;
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
@@ -2298,6 +2309,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				? {
 						...group,
 						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
+						/*
+						 * The run's pictures, computed HERE rather than at the fold's call
+						 * site: a collapsed fold unmounts the rows that draw them, so the
+						 * condensed group has to carry what they would have shown, and
+						 * this memo is where the rows are still in hand. Empty for almost
+						 * every run (`foldImages` returns nothing when no action produced
+						 * an image), which is what keeps the no-image case's DOM and its
+						 * height exactly what they were.
+						 */
+						images: foldImages(group.rows),
 					}
 				: group,
 		);
@@ -2989,7 +3010,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 */
 					afterBar?: boolean;
 			  }
-			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+			| {
+					kind: "bar";
+					plan: RunCollapsePlan;
+					children: SectionGroup[];
+					/**
+					 * The hidden span's pictures, computed HERE because the bar's children
+					 * are unmounted while it is collapsed and these are what they would
+					 * have shown. `plan.hidden` rather than the whole run: the bar shows
+					 * exactly what the collapse hides, and a pinned row that stays on
+					 * screen keeps drawing its own media.
+					 */
+					images: TranscriptImage[];
+			  };
 
 		const entries: ChatEntry[] = [];
 		let next = 0;
@@ -3045,7 +3078,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					children.push(group);
 					if (children.length === 1) {
 						/* The bar sits where the first hidden group did. */
-						entries.push({ kind: "bar", plan, children });
+						entries.push({
+							kind: "bar",
+							plan,
+							children,
+							images: foldImages(plan.hidden),
+						});
 						afterBar = true;
 					}
 					continue;
@@ -3075,7 +3113,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * withheld from a run that carries a bar: the bar states both, one per turn
 	 * (`feet.get(...) ?? null` and the caption block share one switch).
 	 */
-	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+	const renderGroup = (
+		group: SectionGroup,
+		suppressClosingLine: boolean,
+		soleImageGroup = false,
+	) =>
 		group.kind === "run" ? (
 			<TraceFold
 				key={group.id}
@@ -3099,6 +3141,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * turn did.
 				 */
 				sectionLive={working !== null && group.isNewestTurn}
+				/*
+				 * The run's images, while the rows that draw them are unmounted.
+				 * Rendered only while the fold is condensed, and not passed at all
+				 * for a run that produced none - the overwhelmingly common case, and
+				 * the reason a group with no images is byte-for-byte the group it was.
+				 */
+				condensedMedia={
+					group.images.length > 0
+						? (expand: () => void) => (
+								<FoldMedia
+									images={group.images}
+									scope={mediaScope}
+									onRevealMore={expand}
+									uncapped={soleImageGroup}
+								/>
+							)
+						: undefined
+				}
+				/*
+				 * The count travels beside the node: the header prints it as text,
+				 * because a 64px tile cannot carry a label and the count is what the
+				 * strip's own accessible name already says. `soleImageGroup` is the
+				 * bar's own children's case, with two effects, both keyed to the same
+				 * fact - this group IS the span's whole image story:
+				 *
+				 * - the clause drops (D3/U6): when its count would repeat the bar's
+				 *   number one line above, the BAR keeps the aggregate and the group
+				 *   omits the duplicate; two image-bearing groups make the numbers
+				 *   differ, and then each level states its own;
+				 * - the strip uncaps (U8): the press that opened the bar asked for
+				 *   `the rest`, so this group's strip shows its whole set rather than
+				 *   charging a second press for pictures the reader already asked for.
+				 */
+				mediaCount={soleImageGroup ? 0 : group.images.length}
 			>
 				{group.rows.map((row, index) => (
 					<TranscriptRow
@@ -3651,6 +3727,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											stampTs={entry.plan.stampTs}
 											open={openRuns.has(entry.plan.key)}
 											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											/*
+											 * The span's pictures, while the rows that draw them are
+											 * unmounted - the same composition and the same rule as
+											 * `renderGroup`'s: rendered only while collapsed, and not
+											 * passed at all for a run that produced none.
+											 */
+											condensedMedia={
+												entry.images.length > 0
+													? (expand: () => void) => (
+															<FoldMedia
+																images={entry.images}
+																scope={mediaScope}
+																onRevealMore={expand}
+																indent="flush"
+															/>
+														)
+													: undefined
+											}
+											mediaCount={entry.images.length}
 										>
 											{entry.children.map((child, index) =>
 												/*
@@ -3659,10 +3754,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												 * group's slot, so the group cannot also keep the turn-tier
 												 * margin it earned as the turn's opener (D2). Every other
 												 * group keeps the gap the unfolded list gave it.
+												 *
+												 * The third argument is the span's sole-image-group fact,
+												 * named with both of its effects at the parameter's own
+												 * comment: D3/U6's duplicate rule for the clause, and
+												 * U8's uncapped strip so one press reaches the rest.
 												 */
 												renderGroup(
 													index === 0 ? atTraceTierGroup(child) : child,
 													true,
+													child.kind === "run" &&
+														entry.images.length > 0 &&
+														child.images.length === entry.images.length,
 												),
 											)}
 										</TurnSummary>
