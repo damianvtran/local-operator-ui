@@ -136,6 +136,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const isCancelledRef = useRef(false);
 	const containerRef = useRef<HTMLDivElement>(null);
+	/**
+	 * A hold released before `getUserMedia` resolved. The recorder does not exist
+	 * yet, so the release cannot stop anything - it is marked here and settled the
+	 * moment the recorder starts: an orphan capture (mic left on, nobody able to
+	 * end it) is the one outcome this ref exists to prevent.
+	 */
+	const holdReleasePendingRef = useRef(false);
 
 	useEffect(() => {
 		if (textareaRef.current) {
@@ -232,6 +239,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const handleStartRecording = useCallback(async () => {
 		if (!canEnableRecordingFeature) return;
+		holdReleasePendingRef.current = false;
 		if (navigator?.mediaDevices?.getUserMedia) {
 			try {
 				const stream = await navigator.mediaDevices.getUserMedia({
@@ -258,6 +266,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				mediaRecorderRef.current.start();
 				setIsRecording(true);
 				setAudioBlob(null); // Clear previous blob
+				if (holdReleasePendingRef.current) {
+					holdReleasePendingRef.current = false;
+					handleConfirmRecording();
+				}
 			} catch (err) {
 				console.error("Error accessing microphone:", err);
 				showErrorToast(
@@ -295,6 +307,26 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			setIsRecording(false);
 		}
 	}, [isRecording]);
+
+	/**
+	 * The hold contract's stop (the manager's `{ start, stop }`), and it keeps
+	 * the queued-release case: a release that beat the recorder is settled when
+	 * the recorder starts (see `holdReleasePendingRef`).
+	 */
+	const handleStopRecording = useCallback(
+		(reason: "release" | "abort" = "release") => {
+			if (reason === "abort") {
+				handleCancelRecording();
+				return;
+			}
+			if (isRecording) {
+				handleConfirmRecording();
+				return;
+			}
+			holdReleasePendingRef.current = true;
+		},
+		[isRecording, handleConfirmRecording, handleCancelRecording],
+	);
 
 	const handleCancelEdit = useCallback(() => {
 		isCancelledRef.current = true;
@@ -369,19 +401,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				}
 			};
 
-			const handleKeyUp = (event: KeyboardEvent) => {
-				if (event.code === "Space") {
-					event.preventDefault();
-					handleConfirmRecording();
-				}
-			};
-
+			/*
+			 * THE `Space` KEYUP ARM IS GONE: the hold contract's release now ends a
+			 * hold (`handleStopRecording`) and a second confirm from here would call
+			 * `stop()` on an already-stopped recorder, which throws.
+			 */
 			window.addEventListener("keydown", handleKeyDown);
-			window.addEventListener("keyup", handleKeyUp);
 
 			return () => {
 				window.removeEventListener("keydown", handleKeyDown);
-				window.removeEventListener("keyup", handleKeyUp);
 			};
 		}
 
@@ -392,7 +420,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	useSpeechToTextManager(
 		"inline-edit",
 		SpeechToTextPriority.INLINE_EDIT,
-		handleStartRecording,
+		{ start: handleStartRecording, stop: handleStopRecording },
 		() =>
 			Boolean(
 				!isLoading &&

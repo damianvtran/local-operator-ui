@@ -1874,6 +1874,19 @@ const STAMP_BINDING_NOTES = [
 	 * is held to this file like every entry above it.
 	 */
 	"foldOntod11a15febfNote",
+	/*
+	 * AND THE SPEECH-TO-TEXT OVERHAUL'S OWN (2026-09-28): both trees move - the
+	 * src tree with the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate and the `input_mode` carriage,
+	 * and the scripts tree with the rig that proves them, its spawn-site guard
+	 * entry and the refusal test's re-pointed dictation assertions - and no frame
+	 * of the sweep moves: the two new sets are declared supplementary in the
+	 * manifest, counted out of `frames` the way the guard's arithmetic does.
+	 * The note quotes the pair, so it is held to this file like every entry
+	 * above it; the pair is re-derived from the commit carrying this
+	 * registration, and the docs-only amendment that follows writes it in.
+	 */
+	"sttDictationRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
