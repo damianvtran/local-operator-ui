@@ -29711,16 +29711,21 @@ async function sceneRouteTops(cdp) {
 			 * and the guard passes by having nothing to check (measured on the base
 			 * tree, 2026-09-27). What is derived instead is the rule itself - a
 			 * full-height column standing on a column rung of the ladder at the
-			 * route's own left edge - which holds on both trees, and which a route
+			 * route's own left edge, and narrower than the route it stands in (a
+			 * full-width box is a PANE, and the width term below refuses it - QA
+			 * round 2, Q1) - which holds on both trees, and which a route
 			 * added later is subject to without anybody remembering to mark it.
 			 *
 			 * SURFACE AND ELEVATED ARE BOTH RUNG GROUNDS the derivation accepts
 			 * (2026-09-27): the lane is a MIRROR of whatever rung it finds, so it has
 			 * to find both, and the settings rail moved one rung up. A canvas
 			 * column would be the content ground the lane already paints and is not
-			 * a distinct case.
+			 * a distinct case. The browser pane's elevated arrived from #590 after
+			 * QA round 1 and is the case the width term exists for: a full-width
+			 * pane is refused rather than claimed as a column nobody registered.
 			 *
-			 * Two levels, and those two conditions, because anything deeper is a card
+			 * Two levels, and those three conditions - left edge, full height,
+			 * narrower than the route - because anything deeper is a card
 			 * rather than a column: schedules' own surface panels are neither
 			 * full-height nor at the route's left edge, and they must not be read as
 			 * columns here.
@@ -29735,6 +29740,18 @@ async function sceneRouteTops(cdp) {
 				if (!route || !bounds) return null;
 				if (Math.abs(bounds.left - route.left) > 0.5) return null;
 				if (bounds.height < route.height - 0.5) return null;
+				/*
+				 * A FULL-WIDTH BOX IS A PANE, NOT A LEADING COLUMN (QA round 2, Q1).
+				 * #590 puts the browser pane's own box on elevated across the route's
+				 * whole width; the widened rung set would otherwise derive it as a
+				 * column nobody registered and red five checks on /browser for a panel
+				 * this change does not govern. A column is a strip narrower than its
+				 * route - the settings rail is 220px and the rosters 280px - so the
+				 * three real columns are still derived (their before-tree red is
+				 * untouched) and /browser keeps reading as the no-column control route
+				 * it is.
+				 */
+				if (bounds.width >= route.width - 0.5) return null;
 				return el;
 			};
 			const leading = (() => {
