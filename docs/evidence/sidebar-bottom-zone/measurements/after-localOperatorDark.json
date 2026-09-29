@@ -1,0 +1,312 @@
+{
+  "scene": "sidebar-bottom",
+  "theme": "localOperatorDark",
+  "expect": "after",
+  "runtime": {
+    "installed": "44.3.0",
+    "pinned": "44.3.0"
+  },
+  "viewport": {
+    "w": 1380,
+    "h": 900
+  },
+  "states": {
+    "both-expanded": {
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      },
+      "expanded": {
+        "agents": "true",
+        "teams": "true"
+      },
+      "boxes": {
+        "newChat": {
+          "x": 8,
+          "y": 72,
+          "width": 244,
+          "height": 30,
+          "bottom": 102
+        },
+        "searchRow": {
+          "x": 8,
+          "y": 104,
+          "width": 244,
+          "height": 30,
+          "bottom": 134
+        },
+        "destinations": {
+          "x": 8,
+          "y": 142,
+          "width": 244,
+          "height": 126,
+          "bottom": 268
+        },
+        "lastDestination": {
+          "x": 8,
+          "y": 238,
+          "width": 244,
+          "height": 30,
+          "bottom": 268
+        },
+        "band": {
+          "x": 8,
+          "y": 284,
+          "width": 244,
+          "height": 28,
+          "bottom": 312
+        },
+        "agentsHeading": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 28,
+          "bottom": 352
+        },
+        "teamsHeading": {
+          "x": 12,
+          "y": 464,
+          "width": 228,
+          "height": 28,
+          "bottom": 492
+        },
+        "agentsSection": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 124,
+          "bottom": 448
+        },
+        "teamsSection": {
+          "x": 12,
+          "y": 464,
+          "width": 228,
+          "height": 124,
+          "bottom": 588
+        },
+        "scroller": {
+          "x": 8,
+          "y": 320,
+          "width": 244,
+          "height": 515,
+          "bottom": 835
+        },
+        "foot": {
+          "x": 0,
+          "y": 843,
+          "width": 260,
+          "height": 57,
+          "bottom": 900
+        }
+      },
+      "gaps": {
+        "withinPrimary": 2,
+        "primaryToDestinations": 8,
+        "destinationsToBand": 16,
+        "bandToFirstHeading": 12,
+        "agentsToTeams": 16,
+        "scrollerToFoot": 8,
+        "footToViewportBottom": 0
+      },
+      "strip": false
+    },
+    "agents-collapsed": {
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      },
+      "expanded": {
+        "agents": "false",
+        "teams": "true"
+      },
+      "boxes": {
+        "newChat": {
+          "x": 8,
+          "y": 72,
+          "width": 244,
+          "height": 30,
+          "bottom": 102
+        },
+        "searchRow": {
+          "x": 8,
+          "y": 104,
+          "width": 244,
+          "height": 30,
+          "bottom": 134
+        },
+        "destinations": {
+          "x": 8,
+          "y": 142,
+          "width": 244,
+          "height": 126,
+          "bottom": 268
+        },
+        "lastDestination": {
+          "x": 8,
+          "y": 238,
+          "width": 244,
+          "height": 30,
+          "bottom": 268
+        },
+        "band": {
+          "x": 8,
+          "y": 284,
+          "width": 244,
+          "height": 28,
+          "bottom": 312
+        },
+        "agentsHeading": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 28,
+          "bottom": 352
+        },
+        "teamsHeading": {
+          "x": 12,
+          "y": 360,
+          "width": 228,
+          "height": 28,
+          "bottom": 388
+        },
+        "agentsSection": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 28,
+          "bottom": 352
+        },
+        "teamsSection": {
+          "x": 12,
+          "y": 360,
+          "width": 228,
+          "height": 124,
+          "bottom": 484
+        },
+        "scroller": {
+          "x": 8,
+          "y": 320,
+          "width": 244,
+          "height": 515,
+          "bottom": 835
+        },
+        "foot": {
+          "x": 0,
+          "y": 843,
+          "width": 260,
+          "height": 57,
+          "bottom": 900
+        }
+      },
+      "gaps": {
+        "withinPrimary": 2,
+        "primaryToDestinations": 8,
+        "destinationsToBand": 16,
+        "bandToFirstHeading": 12,
+        "agentsToTeams": 8,
+        "scrollerToFoot": 8,
+        "footToViewportBottom": 0
+      },
+      "strip": false
+    },
+    "both-collapsed": {
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      },
+      "expanded": {
+        "agents": "false",
+        "teams": "false"
+      },
+      "boxes": {
+        "newChat": {
+          "x": 8,
+          "y": 72,
+          "width": 244,
+          "height": 30,
+          "bottom": 102
+        },
+        "searchRow": {
+          "x": 8,
+          "y": 104,
+          "width": 244,
+          "height": 30,
+          "bottom": 134
+        },
+        "destinations": {
+          "x": 8,
+          "y": 142,
+          "width": 244,
+          "height": 126,
+          "bottom": 268
+        },
+        "lastDestination": {
+          "x": 8,
+          "y": 238,
+          "width": 244,
+          "height": 30,
+          "bottom": 268
+        },
+        "band": {
+          "x": 8,
+          "y": 284,
+          "width": 244,
+          "height": 28,
+          "bottom": 312
+        },
+        "agentsHeading": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 28,
+          "bottom": 352
+        },
+        "teamsHeading": {
+          "x": 12,
+          "y": 360,
+          "width": 228,
+          "height": 28,
+          "bottom": 388
+        },
+        "agentsSection": {
+          "x": 12,
+          "y": 324,
+          "width": 228,
+          "height": 28,
+          "bottom": 352
+        },
+        "teamsSection": {
+          "x": 12,
+          "y": 360,
+          "width": 228,
+          "height": 28,
+          "bottom": 388
+        },
+        "scroller": {
+          "x": 8,
+          "y": 320,
+          "width": 244,
+          "height": 515,
+          "bottom": 835
+        },
+        "foot": {
+          "x": 0,
+          "y": 843,
+          "width": 260,
+          "height": 57,
+          "bottom": 900
+        }
+      },
+      "gaps": {
+        "withinPrimary": 2,
+        "primaryToDestinations": 8,
+        "destinationsToBand": 16,
+        "bandToFirstHeading": 12,
+        "agentsToTeams": 8,
+        "scrollerToFoot": 8,
+        "footToViewportBottom": 0
+      },
+      "strip": false
+    }
+  }
+}

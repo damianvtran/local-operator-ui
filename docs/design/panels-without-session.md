@@ -209,7 +209,7 @@ evidence):** `appearance` (`ThemePicker` reads `onClose` + `action`,
 `:2503`) read no session either, so `/theme` on a draft is refused for a reason
 that is not true. They are *not* in the set because neither requirement asks for
 them, they widen the QA matrix, and `/theme`'s refusal is a separate defect with
-a separate reproduction. § 12 records them.
+a separate reproduction. § 12 records them. **Landed by issue #625 — see § 15.**
 
 **What the kind drives, site by site.**
 
@@ -360,13 +360,20 @@ Both hosts may therefore be mounted at once — which they are on every chat rou
 
 ### 4.3 What happens to the session-scoped pickers
 
-Nothing. `/session`, `/context`, `/failovers`, `/model`, `/effort`, `/goal`,
-`/compact`, `/team`, `/agent`, `/loop`, `/rename`, `/fork`, `/stop`, `/resume`,
-`/new`, `/skills`, `/credential`, `/copy`, `/mcp` and the rest keep
+Nothing changes for them. `/session`, `/context`, `/failovers`, `/model`,
+`/effort`, `/goal`, `/compact`, `/team`, `/agent`, `/loop`, `/rename`, `/fork`,
+`/stop`, `/new`, `/skills`, `/credential`, `/copy`, `/mcp` and the rest keep
 `kind: "picker"`, keep their `PickerContext`, keep their `!sessionId` refusal,
 and keep being presented by `SessionPanel` at `chat-page.tsx:1965` with the pane's own
 `canonical`, `draft`, `note` and `rebind`. The claim changes *when* the pane
 consumes a palette request, not what it consumes or how it renders it.
+
+The five rows issue #625 measured as session-free (`/help`, `/theme`, `/login`,
+`/logout`, `/resume`) are the exception, and it is a per-row opt-in rather than
+a change to this section: they keep the kind, the context and the presenter, and
+their refusal is what § 12.5's "one table row each when they are wanted"
+replaced with direct presentation (§ 15 records the landing). `/resume` moved
+out of the list above for exactly this reason.
 
 ---
 
@@ -785,11 +792,14 @@ it walks the real flow over the running app, not stills.
 3. **No second presentation slot for session-scoped destinations**, and no
    persistence of the pane's handles into a store (§ 4.1, option A).
 4. **No new npm dependencies.**
-5. **`/theme`, `/login`, `/logout` on a sessionless pane stay refused.** Measured
-   as session-free (`destination-pickers.tsx:1130`, `:2440`, `:2503`) and named
-   here so the next reader does not re-derive it; not in this change because
-   neither requirement asks, and each needs its own reproduction and QA pass. One
-   table row each when they are wanted.
+5. **`/theme`, `/login`, `/logout` on a sessionless pane now present — the
+   wanted rows of issue #625.** They were measured as session-free here
+   (`destination-pickers.tsx:1554`, `:2906`, `:2969`) and set aside as "one
+   table row each when they are wanted"; #625 is that wanting, and `/help` and
+   `/resume` joined them on the same measurement (`:3082`; `:2213` reads the
+   pane's id only for the current-row mark). All five carry the per-row
+   `sessionless` opt-in; § 15 records the landing, the expression and what
+   still refuses.
 6. **`/settings`, `/providers`, `/accounts`, `/updates` on a sessionless pane stay
    refused** for the same reason (`slash-dispatch.ts:487` covers `navigate`
    destinations too, and their routes ignore the session id they are handed at
@@ -885,3 +895,48 @@ notice is what the user reads.
     presenter holds no live frontend, and the frames for both `frontend: null`
     states show it. This is the item that replaced "Environment is untouched",
     which was false.
+
+---
+
+## 15. The sessionless picker rows land (issue #625)
+
+Issue #625 is § 12 item 5's "one table row each when they are wanted", at the
+scope the triage measured rather than the report's headline: FIVE picker rows
+present on a pane with no conversation, and everything else keeps § 4.3's
+refusal.
+
+**The five, and why each is session-free.** `/help` (`commands`, `HelpPalette`)
+renders the command catalogue it is handed — the palette IS the read. `/theme`
+(`appearance`, `ThemePicker`) reads `onClose` + `action` (§ 12.5's own
+measurement). `/login` and `/logout` (`auth.login`/`auth.logout`) read the
+provider grid and the stored accounts. `/resume` (`sessions.resume`,
+`ResumePicker`) lists every canonical session and reads the pane's id only to
+mark the CURRENT row — a pane with no conversation has no current row, and the
+pick is the very act of choosing one.
+
+**How it is expressed.** One optional field on the `picker` arm of
+`DestinationEntry` — `sessionless?: true` — set on exactly those five rows, with
+`destinationNeedsSession` as its only reader, so the dispatcher's gate, the
+composer's staged line, its Enter footer and the palette stay one answer (§ 3.1;
+a FIFTH call site would be the defect § 14.1 exists to prevent). The dispatcher
+presents a flagged row directly with `sessionId: ""` and NO `sessions.command`
+POST: the endpoint's path needs a session id a sessionless pane does not have,
+and the adapters it would mount are the ones presented directly (measured
+session-free above), so nothing on screen depends on the round trip.
+
+**What still refuses** on a sessionless pane, deliberately not widened: the rows
+whose adapters read `sessionId` themselves — `/skills`, `/mcp`, `/reload`,
+`/model`, `/effort`, `/goal`, `/compact`, `/team`, `/agent`, `/loop`, `/rename`,
+`/fork`, `/stop`, `/new`, `/copy`, `/credential`, `/session`, `/context`,
+`/failovers` — both `/move` forms (§ 14.2), the archive/delete directs, and § 12
+item 6's `navigate` rows.
+
+**Pins and pictures.** `scripts/panel-presentation.test.mjs` pins the five rows
+(each by its full row), the counter-cases that must NOT carry the opt-in
+(`/skills`, `/mcp`, `/reload`, `session.diagnostics`), the count (exactly five
+occurrences), and the dispatcher's direct presentation (the named presenter,
+the call site after the refusal, no round trip). The frames are
+`docs/evidence/sessionless-slash/` (branch head) against
+`docs/evidence/sessionless-slash-baseline/` (`origin/main`), captured by
+`scripts/renderer-driver.mjs --scene sessionless-slash`, one theme per launch,
+with `--slash-expect open|refused` naming which half each run is.

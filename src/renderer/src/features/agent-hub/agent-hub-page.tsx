@@ -1,4 +1,8 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { Agent } from "@shared/api/radient/types";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -15,6 +19,7 @@ import {
 	SelectValue,
 	Skeleton,
 } from "@shared/components/ui";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { Store } from "lucide-react";
@@ -24,15 +29,19 @@ import { useNavigate } from "react-router-dom";
 import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { categoryEntry } from "./components/agent-tags-and-categories";
+import { OrgTeamsList } from "./components/org-teams-list";
 import {
 	isAgentStatusKnown,
 	useAgentStatusesQuery,
 } from "./hooks/use-agent-statuses-query";
 import { useDebouncedValue } from "./hooks/use-debounced-value";
+import { useMembershipsQuery } from "./hooks/use-memberships-query";
 import {
 	type PublicAgentSort,
 	usePublicAgentsQuery,
 } from "./hooks/use-public-agents-query";
+import { orgRefusalFromError, usableOrgs } from "./org-access";
+import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
 
 /**
  * The hub's sort control, as the list control it really is.
@@ -98,6 +107,9 @@ const SEARCH_SCOPES = [
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+/** The scope value that means the public hub, and the one value no tenant can be. */
+const PUBLIC_SCOPE = "public";
+
 /**
  * The placeholder card, at the SETTLED card's own geometry.
  *
@@ -130,7 +142,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * subject.
  */
 const AgentCardSkeleton: React.FC = () => (
-	<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
+	<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface">
 		<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
 			<Skeleton className="h-5.5 w-2/3" />
 			<Skeleton className="h-3.5 w-full" />
@@ -181,6 +193,14 @@ export const AgentHubPage: React.FC = () => {
 		useState<(typeof SEARCH_SCOPES)[number]["value"]>("name");
 	const [sortValue, setSortValue] = useState(SORT_OPTIONS[0].value);
 	/*
+	 * WHICH NAMESPACE THE HUB IS SHOWING: the public hub, or one organization's
+	 * private workspace (design §8.4). The value is a tenant id, or the sentinel
+	 * above, and it is deliberately ONE piece of state: the scope decides the key
+	 * the list registers under and the route it is read from, so a second copy of
+	 * "which org" anywhere on this page is a second place for them to disagree.
+	 */
+	const [scope, setScope] = useState<string>(PUBLIC_SCOPE);
+	/*
 	 * Categories seen on the hub, so the rail does not empty itself.
 	 *
 	 * The rail lists what the records carry, and a filtered result only carries
@@ -197,6 +217,85 @@ export const AgentHubPage: React.FC = () => {
 	const sort =
 		SORT_OPTIONS.find((option) => option.value === sortValue) ??
 		SORT_OPTIONS[0];
+
+	/*
+	 * WHETHER THE ORG SURFACE MAY RENDER AT ALL (agent review round 1's M2).
+	 *
+	 * The four operations ride the `radient_org` capability, and a backend that
+	 * predates them answers with a MASKED 422 — indistinguishable from a malformed
+	 * call — so the reads are never issued against it (`enabled: orgSurfaceReady`)
+	 * and the surface says which remedy applies instead. `usePairingCause` is the
+	 * same seam the banner and the sidebar catalogue gate read, so an unpaired
+	 * backend gets that table's sentence rather than a restatement of it.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const pairingCause = usePairingCause();
+	const orgState = desktopFeatureState(capabilities.data, "radient_org");
+	const orgNotice = isAuthenticated
+		? orgSurfaceNotice(orgState, pairingCause)
+		: null;
+	/*
+	 * The viewer's organizations (§4.1), read once for the whole surface.
+	 *
+	 * The query is disabled for a signed-out viewer (there is no membership to
+	 * read), and a failure degrades to the PUBLIC hub alone rather than to a wrong
+	 * org: an empty list is the same reading as "this account holds none", which
+	 * is exactly why the publish picker says when the read failed rather than
+	 * claiming the user has no organizations.
+	 *
+	 * It is ALSO gated on the backend advertising `radient_org` (§8.4, M2): a
+	 * backend without it answers these operations with a masked 422, so this app
+	 * asks for nothing and says which remedy applies instead — see
+	 * `org-surface-gate.ts`.
+	 */
+	const { memberships } = useMembershipsQuery({
+		enabled: orgSurfaceReady(orgState),
+	});
+	const selectableOrgs = useMemo(() => usableOrgs(memberships), [memberships]);
+
+	/*
+	 * The scope falls back to the public hub when the org it names stops being
+	 * usable — the plan behind a selected org can lapse while the page is open, and
+	 * a scope the selector no longer offers must not keep sending reads to a route
+	 * that now refuses them. An EFFECT rather than a guard in render, because the
+	 * list is read from the scope value and this is the one place that changes it
+	 * for a reason other than a press.
+	 */
+	const scopeIsAvailable =
+		scope === PUBLIC_SCOPE ||
+		selectableOrgs.some((org) => org.tenant_id === scope);
+	useEffect(() => {
+		if (!scopeIsAvailable) setScope(PUBLIC_SCOPE);
+	}, [scopeIsAvailable]);
+
+	const activeOrg =
+		scope === PUBLIC_SCOPE
+			? null
+			: (selectableOrgs.find((org) => org.tenant_id === scope) ?? null);
+	const orgScopeId = activeOrg?.tenant_id;
+
+	/*
+	 * Publishing INTO an organization needs the admin rank or above (§4.4), so the
+	 * empty org workspace offers its "Publish an agent" action only to a viewer the
+	 * hub would accept one from. Reading the rank off the same membership row the
+	 * scope came from is deliberate: a second source for "what may I do here" is a
+	 * second answer, and a member whose press is refused would have been offered a
+	 * control the server was always going to refuse.
+	 */
+	const canPublishToOrg =
+		activeOrg?.role === "owner" || activeOrg?.role === "admin";
+
+	/*
+	 * Tenant id to organization name, from the memberships this page already read.
+	 *
+	 * The org badge names the organization a row came from, and the row carries
+	 * only its `tenant_id` — so the name has to come from here. A Map rather than a
+	 * lookup per card, because the grid renders twelve of them.
+	 */
+	const membershipNames = useMemo(
+		() => new Map(memberships.map((row) => [row.tenant_id, row.tenant_name])),
+		[memberships],
+	);
 
 	const {
 		data: agentsData,
@@ -215,7 +314,18 @@ export const AgentHubPage: React.FC = () => {
 			searchScope === "description" ? debouncedSearch || undefined : undefined,
 		sort: sort.sort,
 		order: sort.order,
+		// Absent means the public hub; present means `org_agents.list`.
+		tenantId: orgScopeId,
 	});
+
+	/*
+	 * The frozen org refusals this read can be answered with (§2.2): a revoked or
+	 * not-yet-active membership and a lapsed plan are NOT outages, and design §8.4
+	 * renders them as "no access" rather than as the failure panel below. Read off
+	 * the error's own code, so a backend that is simply unreachable keeps the
+	 * failure treatment it has always had.
+	 */
+	const orgRefusal = activeOrg ? orgRefusalFromError(error) : null;
 
 	/*
 	 * `keepPreviousData` leaves the previous page's records in `data` while the
@@ -231,6 +341,12 @@ export const AgentHubPage: React.FC = () => {
 	 * Every card used to ask for its own like and favourite state, which is
 	 * twenty-four requests for the records below at the moment the signed-in
 	 * hub opens; this is one, keyed on exactly the ids on screen.
+	 *
+	 * INSIDE AN ORG IT IS NOT ASKED AT ALL: liking, favouriting and commenting are
+	 * public-only interactions (§4.4 answers 404 to them on an org row), and the
+	 * cards hide those affordances for org rows — so a read whose answer nothing
+	 * renders would be a round trip bought and thrown away. The empty id list
+	 * disables the query on the hook's own rule rather than by a second flag.
 	 */
 	const {
 		statuses,
@@ -239,7 +355,7 @@ export const AgentHubPage: React.FC = () => {
 		isFetching: viewerStateIsFetching,
 		refetch: refetchViewerState,
 	} = useAgentStatusesQuery({
-		agentIds: agents.map((agent) => agent.id),
+		agentIds: orgScopeId ? [] : agents.map((agent) => agent.id),
 	});
 
 	/*
@@ -424,6 +540,83 @@ export const AgentHubPage: React.FC = () => {
 					)}
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+					{/*
+					 * The SCOPE, above the controls row and outside its own gate.
+					 *
+					 * It is a row of its own rather than a third control beside the search group
+					 * for design round 1's D4 reason (the row reads as peers with nothing saying
+					 * which qualifies which) — and a scope is not a filter of the list, it is
+					 * which list this is, so it is read before them. It also has to be outside
+					 * `browseControlsAreInert`: that gate hides the whole controls row when an org
+					 * has no agents, and a scope control that disappeared with the records it
+					 * scopes would strand the user in an empty org with no way back to the hub.
+					 *
+					 * Rendered only when the viewer has an organization to switch to: "Public hub"
+					 * alone is a control that cannot change anything.
+					 */}
+					{/*
+					 * The CAPABILITY notice, in the scope row's own place: without
+					 * `radient_org` there is no scope to offer, and the reader is owed the
+					 * reason rather than silence (agent review round 1's M2). It sits above
+					 * the controls row and outside every gate, like the scope row it replaces,
+					 * because the fact is about the BACKEND and not about the records.
+					 */}
+					{orgNotice && (
+						/*
+						 * `warning`, not `info` (design review round 2, D5): this notice
+						 * belongs to the app's "needs a newer backend" family, and every other
+						 * member of it — backend settings, MCP, Radient sign-in, projects —
+						 * renders `warning`. It also carries the pairing sentence verbatim
+						 * when the cause is a pairing fact, and the banner states that one at
+						 * `warning`; one fact in two registers reads as two facts.
+						 */
+						<Alert
+							variant="warning"
+							className="mb-3 max-w-2xl"
+							data-testid="agent-hub-org-unavailable"
+						>
+							<AlertTitle>Organizations are unavailable</AlertTitle>
+							<AlertDescription>{orgNotice}</AlertDescription>
+						</Alert>
+					)}
+					{selectableOrgs.length > 0 && (
+						<div className="mb-3 flex flex-wrap items-center gap-2">
+							<span
+								id="agent-hub-scope-label"
+								className="text-meta text-ink-muted"
+							>
+								Showing
+							</span>
+							{/*
+							 * `w-56` and a truncating trigger value: an organization's name is user
+							 * data of unknown length, and a trigger that grew with it would reflow
+							 * the row on every switch.
+							 */}
+							<Select
+								value={scope}
+								onValueChange={(value) => {
+									setScope(value);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger
+									className="w-56"
+									aria-labelledby="agent-hub-scope-label"
+									data-testid="agent-hub-scope"
+								>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={PUBLIC_SCOPE}>Public hub</SelectItem>
+									{selectableOrgs.map((org) => (
+										<SelectItem key={org.tenant_id} value={org.tenant_id}>
+											{org.tenant_name || "Organization"}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					)}
 					{/*
 					 * The controls row, and its hierarchy.
 					 *
@@ -630,9 +823,11 @@ export const AgentHubPage: React.FC = () => {
 					<output
 						aria-live="polite"
 						data-testid="agent-hub-outage"
-						className={cn(!isColdLoading && error ? "block" : "sr-only")}
+						className={cn(
+							!isColdLoading && error && !orgRefusal ? "block" : "sr-only",
+						)}
 					>
-						{!isColdLoading && error && (
+						{!isColdLoading && error && !orgRefusal && (
 							<Alert
 								variant="danger"
 								className="max-w-2xl"
@@ -699,6 +894,64 @@ export const AgentHubPage: React.FC = () => {
 							</Alert>
 						)}
 					</output>
+					{/*
+					 * THE ORG'S OWN REFUSAL, which is a state of this surface rather than a
+					 * failure of it (design §8.4: "empty/revoked states render as 'no access'
+					 * per plan status, not as errors").
+					 *
+					 * The three frozen codes (§2.2) are what separates it from the outage arm
+					 * above, and the distinction is not cosmetic: a lapsed plan is retried into
+					 * the same answer, and rendering it as "The hub could not be loaded" over a
+					 * Try again sends the user to do the one thing that cannot work.
+					 *
+					 * A `warning` rather than `danger`: nothing about the user's own agent or
+					 * account is broken — an authority or a subscription outside this window is
+					 * what has to change — and the accent budget has no call for an alarm here.
+					 * The retry is kept for the plan arm only, where it is not empty: an owner
+					 * can activate the plan on the console and come back to a page whose query is
+					 * still cached, so this is the control that gets them out of the state they
+					 * went to fix (the outage arm's own reasoning).
+					 */}
+					{!isColdLoading && orgRefusal && activeOrg && (
+						<Alert
+							variant="warning"
+							className="max-w-2xl"
+							data-testid="agent-hub-org-no-access"
+						>
+							<AlertTitle>
+								{orgRefusal === "plan"
+									? "That organization needs an active Team plan"
+									: "You do not have access to that organization"}
+							</AlertTitle>
+							<AlertDescription>
+								{orgRefusal === "plan"
+									? `Sharing agents inside an organization is part of the Team plan. An owner of ${activeOrg.tenant_name || "this organization"} can activate it in the Radient console, and then its agents will be listed here.`
+									: `You are not a member of ${activeOrg.tenant_name || "that organization"}, so its agents are not listed here. An owner can invite you again.`}
+							</AlertDescription>
+							{orgRefusal === "plan" && (
+								<div className="mt-2">
+									{/*
+									 * `primary`, not `outline` (design round 1, D1): an outlined
+									 * control's only boundary is its own edge against the alert's wash,
+									 * and `borderControl` against `warningWash`/`dangerWash` is below
+									 * the repo's own 3:1 non-text floor in 7 and 2 of the 59 palettes
+									 * respectively — the same measurement that moved
+									 * `update-error-alert`'s retry onto `primary`
+									 * (`contrast-contract.mjs`, "THE FAILURE ALERT'S OWN CONTROL").
+									 */}
+									<Button
+										variant="primary"
+										size="sm"
+										onClick={() => void refetch()}
+										disabled={isFetching}
+										aria-busy={isFetching}
+									>
+										{isFetching ? "Trying…" : "Try again"}
+									</Button>
+								</div>
+							)}
+						</Alert>
+					)}
 					{!isColdLoading && !error && (
 						/*
 						 * The column count comes from the room the grid actually has,
@@ -740,17 +993,31 @@ export const AgentHubPage: React.FC = () => {
 								 * the same width. Two panels for the same moment, 295px apart, one of
 								 * which was a full-bleed 967px slab holding two centred sentences
 								 * (design round 1, D6).
+								 *
+								 * AN ORGANIZATION'S SCOPE KEEPS THE ROSTER'S WIDTH INSTEAD: there
+								 * this panel is the grid's only child, and its company is not the
+								 * load-failure alert but the Teams roster below — which spans the
+								 * content column. A 672px island centred in a 968px column, with a
+								 * full-width card flush beneath it, read as a panel that had lost its
+								 * width (the operator's report of 2026-09-27), so here the panel takes
+								 * the roster's own width. The public shapes — the ones D6 is about —
+								 * keep the capped, centred form.
 								 */
 								<div
 									data-testid="agent-hub-empty"
-									className="col-span-full w-full max-w-2xl justify-self-center flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-10 text-center"
+									className={cn(
+										"col-span-full w-full flex flex-col items-center gap-2 rounded-md bg-surface px-6 py-10 text-center",
+										!orgScopeId && "max-w-2xl justify-self-center",
+									)}
 								>
 									<p className="text-heading text-ink">
-										{selectedCategory
-											? `No agents in ${categoryEntry(selectedCategory).label}.`
-											: hasFilters
-												? "No agents match that search."
-												: "The hub is empty."}
+										{orgScopeId
+											? "This organization has no shared agents yet."
+											: selectedCategory
+												? `No agents in ${categoryEntry(selectedCategory).label}.`
+												: hasFilters
+													? "No agents match that search."
+													: "The hub is empty."}
 									</p>
 									<p className="max-w-md text-body-sm text-ink-muted">
 										{/*
@@ -759,12 +1026,19 @@ export const AgentHubPage: React.FC = () => {
 										 * written for a category a user switched to and reads wrong for a
 										 * query they TYPED: nothing "carries" what they searched for
 										 * (design round 1, D8a).
+										 *
+										 * The ORG sentence is its own because the public hub's is about
+										 * publishing to the world: "Yours could be the first" invites a public
+										 * publication on a surface whose rows are visible to one organization
+										 * (design §8.4 keeps the two namespaces distinct).
 										 */}
-										{selectedCategory
-											? "Nothing in this category yet. Clear the filter to see the whole hub."
-											: hasFilters
-												? "No agent's name or description carries that. Clear it to see the whole hub."
-												: "Nobody has published an agent yet. Yours could be the first."}
+										{orgScopeId
+											? `Agents published into ${activeOrg?.tenant_name || "this organization"} appear here for its members.`
+											: selectedCategory
+												? "Nothing in this category yet. Clear the filter to see the whole hub."
+												: hasFilters
+													? "No agent's name or description carries that. Clear it to see the whole hub."
+													: "Nobody has published an agent yet. Yours could be the first."}
 									</p>
 									<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
 										{hasFilters ? (
@@ -784,7 +1058,14 @@ export const AgentHubPage: React.FC = () => {
 											<Button variant="secondary" onClick={handleClearFilters}>
 												{selectedCategory ? "Clear filter" : "Clear search"}
 											</Button>
-										) : (
+										) : orgScopeId && !canPublishToOrg ? /*
+										 * A MEMBER WHO CANNOT PUBLISH GETS NO CONTROL, rather than one the hub
+										 * would refuse: publishing into an org needs admin+ (§4.4), and the
+										 * sentence above already says whose job it is. `null` renders no action
+										 * row at all, which is the honest shape of "there is nothing you can do
+										 * here".
+										 */
+										null : (
 											<Button
 												ref={publishRef}
 												variant="secondary"
@@ -818,6 +1099,16 @@ export const AgentHubPage: React.FC = () => {
 											isAuthenticated &&
 											isAgentStatusKnown(viewerStateIsKnown, statuses, agent.id)
 										}
+										/*
+										 * The organization an org row came from, resolved through the memberships
+										 * this page already read — and `null` for a public row, which has no
+										 * organization to name and gets no badge.
+										 */
+										orgName={
+											agent.visibility === "org"
+												? (membershipNames.get(agent.tenant_id) ?? null)
+												: null
+										}
 									/>
 								))
 							)}
@@ -836,6 +1127,27 @@ export const AgentHubPage: React.FC = () => {
 								onChange={handlePageChange}
 							/>
 						</div>
+					)}
+					{/*
+					 * The org roster, BELOW the agent grid — v1's whole team surface (§8.4).
+					 *
+					 * Below rather than above because the grid is what this page is for: a
+					 * roster first would push the agents a reader came for down the scroll.
+					 * It renders only inside an org scope, which is also the only scope it
+					 * answers in — `org_teams.list` is the org workspace's route and there are no
+					 * public teams in v1 (§11 O-7).
+					 *
+					 * Mounted on the REFUSAL arms too, deliberately: `org_teams.list` needs the
+					 * same membership and plan `org_agents.list` does, so a page whose agent read
+					 * was refused would have a roster read refused the same way — and the roster's
+					 * own error line is where that is said, once per section, instead of the page
+					 * pretending the org has no teams.
+					 */}
+					{activeOrg && (
+						<OrgTeamsList
+							tenantId={activeOrg.tenant_id}
+							orgName={activeOrg.tenant_name || null}
+						/>
 					)}
 				</div>
 			</div>

@@ -62,6 +62,7 @@ import type {
 	PendingDesktopGate,
 } from "../shared/desktop-session-contract";
 import type { ConsoleCompletionNotice } from "./console/completion";
+import { NotificationLifetime } from "./notification-lifetime";
 import type { WindowShow } from "./window-mode";
 import { type RaiseReport, raiseWindow } from "./window-raise";
 
@@ -304,6 +305,13 @@ export type DesktopNotifierHost = {
 
 export class DesktopNotifier {
 	private readonly delivered = new Map<string, number>();
+	/**
+	 * The banners this process has shown and must keep reachable until they
+	 * settle. See `notification-lifetime.ts` for why a collected notification is
+	 * a click that does nothing (electron/electron#16922), and why an entry ends
+	 * on click/close/failed plus a bound rather than on a TTL.
+	 */
+	private readonly lifetime = new NotificationLifetime();
 	/** Last known frontend epoch per session, to key dedupe on owner epoch. */
 	private readonly epochs = new Map<string, string>();
 	/** Window state per (window id) used to decide whether a toast is needed. */
@@ -1258,7 +1266,39 @@ export class DesktopNotifier {
 			body: `${lead}${body}`.slice(0, MAX_BODY_CHARS),
 			silent: false,
 		});
-		notification.on("click", () => {
+		/*
+		 * RETAINED AND WIRED BY THE SAME CALL (see `notification-lifetime.ts`): an
+		 * unheld notification is collected the next time V8 runs, and a collected
+		 * wrapper's click emits nothing (`~Notification` nulls the native
+		 * delegate) — the operator's "clicking a notification often does not open
+		 * the conversation". Every test this repo had until now held the banner
+		 * strongly enough to miss it, which is why the lifetime is the thing the
+		 * probe in `desktop-notifier.test.mjs` asserts. `retain` attaches the
+		 * handler itself so the wiring cannot drift away from the lifetime.
+		 */
+		this.lifetime.retain(notification, () => {
+			/*
+			 * SURFACE-AWARE ROUTING, and the one case that needs a stated answer.
+			 * A session can be attached to different surfaces, and this click must
+			 * land on the one that holds it:
+			 *
+			 *  - this app's window (any route): the send below opens the named
+			 *    conversation wherever the window already is, and the raise brings
+			 *    it forward as far as the launch plan allows;
+			 *  - the in-app console surface: the `surface` field adds the pane
+			 *    claim, so the click lands on the terminal that finished;
+			 *  - a background session with no surface: the same send — the feed
+			 *    delivers these banners on purpose (`desktop-feed.ts`), and the
+			 *    click opens the conversation like any other.
+			 *
+			 * An EXTERNAL terminal surface is the case with no mechanical route:
+			 * nothing here can focus another process's TUI (the backend's own
+			 * `resume-click` points the other way — it asks this app to come
+			 * forward). The pragmatic behaviour is therefore DEFINED rather than
+			 * left as a dead click: the conversation still opens in the UI, where
+			 * its transcript is readable, which is the same landing every other
+			 * surface gets.
+			 */
 			const target = this.window();
 			if (!target || target.isDestroyed()) {
 				/*
