@@ -63,8 +63,9 @@ import {
  * config at import time (which throws in Node bundles) - the same reason
  * `provider-detail.tsx` imports the leaf.
  */
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { commissionAccountRead } from "@shared/hooks/use-radient-user-query";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -272,6 +273,7 @@ function useRadientAuthStatus({
 	retryOnMount = true,
 }: RadientLoginVerdictOptions = {}) {
 	const capabilities = useDesktopCapabilities();
+	const { client, provided } = useOptionalQueryClient();
 	/*
 	 * Fail closed on the capability, which is a NEW key the backend advertises
 	 * only once it answers `radient_login` at all. A backend that predates it
@@ -279,28 +281,40 @@ function useRadientAuthStatus({
 	 * login is fine" is the one thing the key was added to prevent - so with no
 	 * `tunnel` feature there is no read and no callout, rather than a callout
 	 * that can never appear.
+	 *
+	 * AND FAIL CLOSED ON THE PROVIDER TOO, through this same fold rather than
+	 * only at the query below: a document with no `QueryClientProvider` (the
+	 * mini view, which the shared composer drags this hook into) reads through
+	 * `useOptionalQueryClient`, and "no provider" is as much a statement that
+	 * this surface cannot ask as a missing capability is. The returned `enabled`
+	 * is the same boolean the query gates on, so no caller can see "on" while
+	 * the read is off.
 	 */
-	const enabled = desktopFeatureEnabled(capabilities.data, "tunnel");
+	const enabled =
+		provided && desktopFeatureEnabled(capabilities.data, "tunnel");
 
-	const status = useQuery({
-		queryKey: radientSessionIssueKey,
-		queryFn: () => desktopResult<AuthStatusResult>({ op: "accounts.list" }),
-		enabled,
-		staleTime: TUNNEL_VERDICT_POLL_MS,
-		refetchInterval: TUNNEL_VERDICT_POLL_MS,
-		refetchOnWindowFocus: true,
-		/*
-		 * No retry: a refusal here is a state to render rather than a transient
-		 * to hammer, and a read that failed has already told the caller nothing
-		 * about the login - which renders as `hidden` either way.
-		 */
-		retry: false,
-		/*
-		 * Per OBSERVER in React Query (`shouldLoadOnMount` reads the mounting
-		 * observer's options), so one caller's choice cannot change another's.
-		 */
-		retryOnMount,
-	});
+	const status = useQuery(
+		{
+			queryKey: radientSessionIssueKey,
+			queryFn: () => desktopResult<AuthStatusResult>({ op: "accounts.list" }),
+			enabled,
+			staleTime: TUNNEL_VERDICT_POLL_MS,
+			refetchInterval: TUNNEL_VERDICT_POLL_MS,
+			refetchOnWindowFocus: true,
+			/*
+			 * No retry: a refusal here is a state to render rather than a transient
+			 * to hammer, and a read that failed has already told the caller nothing
+			 * about the login - which renders as `hidden` either way.
+			 */
+			retry: false,
+			/*
+			 * Per OBSERVER in React Query (`shouldLoadOnMount` reads the mounting
+			 * observer's options), so one caller's choice cannot change another's.
+			 */
+			retryOnMount,
+		},
+		client,
+	);
 
 	return {
 		status,
@@ -376,7 +390,13 @@ export function useRadientLoginVerdict(
 }
 
 export function useRadientSessionIssue(): UseRadientSessionIssue {
-	const queryClient = useQueryClient();
+	/*
+	 * The provider's client where there is one, an inert private instance where
+	 * there is not (see `useOptionalQueryClient`): this hook must be callable in
+	 * the mini document, which mounts no provider, and its invalidations then
+	 * no-op by construction rather than throwing at mount.
+	 */
+	const { client: queryClient } = useOptionalQueryClient();
 	const { status, enabled } = useRadientAuthStatus();
 
 	const [phase, setPhase] = useState<Phase>({ kind: "idle" });

@@ -25,6 +25,7 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -197,18 +198,31 @@ export function useEntities<T = Record<string, unknown>>(
 	name?: string,
 	enabled = true,
 ) {
-	return useQuery({
-		queryKey: ["desktop", "entities", sessionId, command, name ?? ""],
-		queryFn: () =>
-			desktopResult<Entities<T>>({
-				op: "commands.entities",
-				sessionId,
-				command,
-				name: name || undefined,
-			}),
-		enabled,
-		staleTime: 15_000,
-	});
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: ["desktop", "entities", sessionId, command, name ?? ""],
+			queryFn: () =>
+				desktopResult<Entities<T>>({
+					op: "commands.entities",
+					sessionId,
+					command,
+					name: name || undefined,
+				}),
+			/*
+			 * `provided &&`: the shared composer reaches this query through
+			 * `useSlashCompletion`'s argument rows, and it must be callable in
+			 * documents that mount no `QueryClientProvider` (the mini view). The
+			 * fallback client must not fetch there (see
+			 * `useOptionalQueryClient`), and an unanswered entity list is already a
+			 * supported state - the rows simply offer nothing. In the app
+			 * `provided` is always true, so this is a no-op.
+			 */
+			enabled: enabled && provided,
+			staleTime: 15_000,
+		},
+		client,
+	);
 }
 
 // ------------------------------------------------------------------ model

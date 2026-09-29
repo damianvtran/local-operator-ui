@@ -5,14 +5,21 @@ import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attenti
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import {
+	type ComposerSendError,
+	MessageInput,
+	type MessageInputHandle,
+} from "@shared/components/composer/message-input";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
@@ -31,6 +38,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	type FC,
 	type ReactNode,
@@ -83,11 +91,6 @@ import {
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
-import {
-	type ComposerSendError,
-	MessageInput,
-	type MessageInputHandle,
-} from "./message-input";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
@@ -588,6 +591,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
+		/*
+		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential
+		 * probe and the credentials-cache invalidation used to live INSIDE
+		 * `MessageInput`, as react-query reads - which made a provider a mount
+		 * requirement for every document, and the shared composer must mount in
+		 * the mini view's document, which carries none. The shell is the host for
+		 * both: this component is always inside the app's provider, and the
+		 * composer rendered below takes the answers as props, so a providerless
+		 * consumer supplies its own instead.
+		 */
+		const recordingProbe = useRadientCredentialProbe();
+		const queryClient = useQueryClient();
+		const invalidateStoredCredentials = useCallback(
+			(sessionId: string) =>
+				queryClient.invalidateQueries({
+					queryKey: desktopKeys.credentials(sessionId),
+				}),
+			[queryClient],
+		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -1620,6 +1642,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * stand-down read, so the hint cannot outlive the line.
 								 */
 								deliveryRemediesReachable={undeliveredOnScreen !== null}
+								/*
+								 * The two host seams, straight from the reads above: the
+								 * credential probe's answer and the callback that invalidates
+								 * the credentials key the picker reads after a store. See
+								 * `MessageInputProps.onCredentialsStored`/`recordingProbe`
+								 * for why they live out here now.
+								 */
+								onCredentialsStored={invalidateStoredCredentials}
+								recordingProbe={recordingProbe}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

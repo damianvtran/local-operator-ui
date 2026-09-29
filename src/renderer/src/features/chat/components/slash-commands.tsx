@@ -39,6 +39,7 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -496,15 +497,27 @@ export function useSlashCompletion({
 			: undefined,
 	);
 	const listId = useId();
-	const query = useQuery({
-		queryKey: desktopKeys.commands,
-		queryFn: () =>
-			desktopResult<{ commands: SlashCommandMeta[] }>({
-				op: "commands.list",
-			}).then((result) => result.commands),
-		enabled,
-		staleTime: 300_000,
-	});
+	const { client, provided } = useOptionalQueryClient();
+	const query = useQuery(
+		{
+			queryKey: desktopKeys.commands,
+			queryFn: () =>
+				desktopResult<{ commands: SlashCommandMeta[] }>({
+					op: "commands.list",
+				}).then((result) => result.commands),
+			/*
+			 * `provided &&`: this hook is reached by the shared composer in documents
+			 * that mount no `QueryClientProvider` (the mini view), where the fallback
+			 * client must not fetch (see `useOptionalQueryClient`). `enabled` already
+			 * folds the capability; the provider is the second half of "can this
+			 * surface ask at all", and the empty registry either way leaves the popup
+			 * rendering nothing.
+			 */
+			enabled: enabled && provided,
+			staleTime: 300_000,
+		},
+		client,
+	);
 
 	const registry = useMemo(() => query.data ?? [], [query.data]);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
