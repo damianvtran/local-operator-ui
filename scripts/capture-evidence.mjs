@@ -5523,10 +5523,14 @@ export const STORIES = [
 	   supplementary `chat-harness-chrome-legacy-before/`, the same stories
 	   against the base tree's reducer (which hides stamped rows only).
 	   `typed-near-miss` is the control: the person's own words, opening with the
-	   same head, must paint in both halves. */
+	   same head, must paint in both halves. `multi-cycle` is the same class at
+	   the operator's real length - one ask, three (work turn, continuation)
+	   cycles and the answer - because the repetition is the shape a folding fix
+	   breaks on, and all three rows must go together. */
 	["chat-harness-chrome-legacy--stored-transcript", 1280, 800],
 	["chat-harness-chrome-legacy--live-arrival", 1280, 800],
 	["chat-harness-chrome-legacy--typed-near-miss", 1280, 800],
+	["chat-harness-chrome-legacy--multi-cycle", 1280, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
