@@ -214,11 +214,13 @@ under their pointer between their two presses was not reproducible from the rig.
 
 The two repeat-press frames carry the parked pointer's own choreography, and it is
 the row's documented behaviour rather than a defect: the pointer never moves
-between the presses, so the trailing acts stay revealed, the row title is mid-pan
-(its first letters under the pan's edge fade - the pointer-only pan holds until
-the pointer leaves, and leaving clears it in the same frame), and the `rowHover`
-and `rowSelected` grounds sit side by side. `repeat-after-move` shows the same row
-after a real move: the pan is gone and the pressed row is current.
+between the presses, so the trailing acts stay revealed and the row title is
+mid-pan (its first letters under the pan's edge fade - the pointer-only pan holds
+until the pointer leaves, and leaving clears it in the same frame). No
+hover-family fill is on the row's ground in the re-shot pair (0 px of it in these
+frames), so what the two show of the pointer is the pan and the revealed acts, not
+a hover wash. `repeat-after-move` shows the same row after a real move: the pan is
+gone and the pressed row is current.
 
 **Her badge, and the working mark** (`badge-before` → `her-badge` → `her-badge-clear-refused`):
 a real completion in her session, while her conversation is the open view,
@@ -263,18 +265,26 @@ completion (no re-entry), the viewed unread row carries
 completion, unread · scroll to the result to mark this chat read"
 (`viewed-row-flyout`). On the after tree at the pre-Q1-fix head the same. On the
 Q1-fixed head the same row reads `aria-describedby: null` and its flyout carries
-no clause — a deferral is silent, which is the designed state
-(`read-ack-notice.ts`: the notice exists for the states the reader must act on,
-and the loop's notice is cleared with the loop). Both readings are in
-`before-readings.json` / `after-readings.json` (`viewedRow`, `viewedRowEarly`).
+no clause — a state the design allows rather than a missing surface: with the
+anchor found, a deferral has nothing to tell the reader (`read-ack-notice.ts`
+publishes only the states the reader must act on), and the notice is not a
+constant - it is cleared with the loop that published it and republished only when
+a later attempt has something to say. That is also why a clause-present read and a
+null read can both be this row at different moments of its loop; QA's three null
+reads (taken in scenes that re-entered the conversation) are consistent with a
+sample near one of those clears. Both readings are in `before-readings.json` /
+`after-readings.json` (`viewedRow`, `viewedRowEarly`).
 
 **D1, declined with its measurement.** A committed frame of her row's busy mark
 was attempted across three consecutive runs: after the send, her rail row's own
 accessible name ("Aida, working") and its spinner were polled every 100 ms for
-20 s, and the mock turn's busy window never coincided with a capture (two earlier
-runs of the same scene DID paint it — list-row label "Working Aida", DOM sample
-`workingSeenAfterMs: 0` — and QA's independent pass photographed the same label).
-The state is covered by QA's evidence; no frame is claimed here.
+20 s, and the mock turn's busy window never coincided with a capture. The state
+itself is on the record from this rig's own round-1 revision, which sampled it
+(`workingSeenAfterMs: 0`), committed at `82a8ea6962` and readable with
+`git show 82a8ea6962:docs/evidence/chat-sidebar-ack-and-selection/her-row/after-readings.json`;
+this revision's re-shot readings carry the three null samples
+(`workingSeenAfterMs: null`, `her-row/after-readings.json`) beside them. No frame
+is claimed here.
 
 **What this pass says about defect 1, and what it cannot say about defect 2.**
 The freshness leg closes the loop on defect 1 for HER session: after the re-read
