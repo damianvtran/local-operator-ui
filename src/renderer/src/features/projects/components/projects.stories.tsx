@@ -161,6 +161,10 @@ const MANY_LONG: DesktopProject[] = [
 	...MANY,
 	...Array.from({ length: 12 }, (_, index) =>
 		project(`n${index}`, `hardening-batch-${index + 1}`, {
+			/* The first row carries a title: the list's title display is
+			 * photographed here (title primary, key kept as the addressable
+			 * hook), on a fixture this story owns. */
+			title: index === 0 ? "Hardening sweep" : null,
 			description: `Harden surface ${index + 1} against the new load`,
 			team: (["platform", "atlas", null] as const)[index % 3],
 			owner: "atlas",
@@ -177,12 +181,18 @@ const MANY_LONG: DesktopProject[] = [
 
 /**
  * The board-sticky story's own fixture: twenty active cards over two teams, so
- * the active column is taller than the frame and carries two straps. The
- * shared board fixtures never fill a column past the frame, and a strap that
- * cannot reach its pin offset cannot be measured against it.
+ * the board is two tall bands — taller than the frame, which is what gives
+ * the band headers room to travel and pin. The shared board fixtures never
+ * fill a band past the frame, and a header that cannot reach its pin offset
+ * cannot be measured against it.
+ *
+ * The FIRST card carries a title: this story's frames are where the title
+ * display (title primary, key as the muted subtitle) is photographed and
+ * asserted, on a fixture no other frame shares.
  */
 const BOARD_LONG: DesktopProject[] = Array.from({ length: 20 }, (_, index) =>
 	project(`b${index}`, `load-shed-${index + 1}`, {
+		title: index === 0 ? "Load-shed hardening" : null,
 		description: `Slice ${index + 1} of the load shed`,
 		team: index % 2 === 0 ? "platform" : "atlas",
 		status: "active",
@@ -1618,9 +1628,10 @@ export const BoardStatuses: Story = {
 };
 
 /**
- * An EMPTY column: only active and done hold rows, so the board draws its own
- * "No projects here." line — the state no populated story photographs (design
- * round 1, D8).
+ * EMPTY columns on the banded board: only active and done hold rows, so the
+ * other columns render as cells of quiet well ground under a `0` count — the
+ * "No projects here." copy retired with the bands rework (spec §4/§7: the
+ * count is the signal), and this story keeps the state photographed.
  */
 export const BoardEmptyColumns: Story = {
 	render: () =>
@@ -1948,10 +1959,12 @@ export const BoardColumnDropCommits: Story = {
 };
 
 /**
- * The board's sticky frame (design round 1, D2): the column header pins at 44
- * (`h-11`), the team straps pin at `top-11` beneath it, and the incoming strap
- * PUSHES the outgoing one out — the mechanics the round-1 finding (Q1/U1)
- * holds this story to, asserted before the shutter rather than described.
+ * The board's sticky frame, BANDED (the teams rework), held to the mechanics
+ * the sticky rounds measured: the column header row pins at 44 (`h-11`), the
+ * band headers pin at `top-11` beneath it as a constant `h-8`, the incoming
+ * band header PUSHES the outgoing one out (no stacked pair, no dead slot),
+ * and every cell of the pinned band is stretched to that band's tallest —
+ * numbers asserted before the shutter rather than described.
  */
 export const BoardSticky: Story = {
 	render: () =>
@@ -1961,32 +1974,45 @@ export const BoardSticky: Story = {
 			details: detailsFor(BOARD_LONG),
 		}),
 	play: playOnce("board-sticky", async () => {
-		const column = () =>
-			document.querySelector<HTMLElement>('[data-board-column="active"]');
-		await poll(() => column() !== null, "the active column");
-		const element = column();
-		if (!element) throw new Error("the active column never mounted");
-		const header = element.querySelector<HTMLElement>(
-			'[data-board-column-handle="active"]',
+		/*
+		 * Poll for the mounted board first: a play runs on mount, and the old
+		 * per-column play paid this wait for the same reason — a synchronous
+		 * query against a not-yet-painted tree reads an empty board.
+		 */
+		await poll(
+			() =>
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector('[data-board-column-handle="active"]') !==
+					null &&
+				document.querySelectorAll("[data-board-team]").length >= 2,
+			"the banded board (strip, active header, two band headers)",
 		);
 		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
-		const straps = element.querySelectorAll<HTMLElement>("[data-board-team]");
-		if (!header || !strip || straps.length < 2) {
+		const handle = document.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const bands = [
+			...document.querySelectorAll<HTMLElement>("[data-board-team]"),
+		];
+		if (!strip || !handle || bands.length < 2) {
 			throw new Error(
-				`the active column's header, strip or two straps are missing (straps ${straps.length})`,
+				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
-		/* The two offsets the groups are written against: h-11 = 44, top-11 = 44. */
-		const headerHeight = header.getBoundingClientRect().height;
+		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
+		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
 			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
 		}
-		if (getComputedStyle(straps[0]).top !== "44px") {
+		const bandHeaderHeight = bands[0].getBoundingClientRect().height;
+		if (Math.abs(bandHeaderHeight - 32) > 0.6) {
+			throw new Error(`the band header is ${bandHeaderHeight}px tall, not 32`);
+		}
+		if (getComputedStyle(bands[0]).top !== "44px") {
 			throw new Error(
-				`the strap's sticky offset is ${getComputedStyle(straps[0]).top}, not 44px`,
+				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 44px`,
 			);
 		}
-		const [first, second] = [straps[0], straps[1]];
 		const rel = (node: HTMLElement) =>
 			node.getBoundingClientRect().top - strip.getBoundingClientRect().top;
 		/*
@@ -1994,23 +2020,60 @@ export const BoardSticky: Story = {
 		 * where a static element would also happen to sit at the offset (the
 		 * identity the list's round-1 probe called out).
 		 */
-		strip.scrollTop += rel(second) - 44;
+		strip.scrollTop += rel(bands[1]) - 44;
 		strip.scrollTop += 20;
 		await poll(
-			() => Math.abs(rel(second) - 44) <= 2,
-			"the second strap to pin under the header",
+			() => Math.abs(rel(bands[1]) - 44) <= 2,
+			"the second band header to pin under the row",
 		);
 		/*
-		 * THE PUSH-OUT: the outgoing strap is fully displaced — its bottom at or
-		 * above the incoming strap's top — rather than parked on the same
-		 * offset with the incoming one covering it (round 1 measured strap0 at
-		 * 56.00 against strap1 at 56.42 with the labels clipping).
+		 * THE PUSH-OUT: the outgoing band header is fully displaced — its
+		 * bottom at or above the incoming header's top — rather than stacked
+		 * under it, which is what makes the handoff continuous (bands are
+		 * flush, so there is no empty slot between them either).
 		 */
-		const firstBottom = first.getBoundingClientRect().bottom;
-		const secondTop = second.getBoundingClientRect().top;
+		const firstBottom = bands[0].getBoundingClientRect().bottom;
+		const secondTop = bands[1].getBoundingClientRect().top;
 		if (firstBottom > secondTop + 0.5) {
 			throw new Error(
-				`the outgoing strap overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+				`the outgoing band header overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+			);
+		}
+		/*
+		 * ALL CELLS OF A BAND ARE THE BAND'S TALLEST (the operator's item 1 in
+		 * its banded form): measured per cell, the readout the design round
+		 * asks for rather than an eyeball.
+		 */
+		const section = bands[1].closest("section");
+		const cells = [
+			...(section?.querySelectorAll<HTMLElement>("[data-board-cell]") ?? []),
+		];
+		if (cells.length === 0) throw new Error("the pinned band has no cells");
+		const heights = cells.map((cell) => cell.getBoundingClientRect().height);
+		const tallest = Math.max(...heights);
+		const shortest = Math.min(...heights);
+		if (tallest < 100 || tallest - shortest > 0.5) {
+			throw new Error(
+				`the band's cells are not equal height: shortest ${shortest.toFixed(2)}, tallest ${tallest.toFixed(2)}`,
+			);
+		}
+		/*
+		 * THE TITLE DISPLAY, read off the live card: the fixture's titled row
+		 * shows its title as the primary line and its key as the muted
+		 * subtitle, while `data-project-name` stays the KEY (the addressable
+		 * hook) — the swap the finding asked for, asserted here rather than
+		 * trusted to the fixture.
+		 */
+		const titled = document.querySelector<HTMLElement>(
+			'[data-project-name="load-shed-1"]',
+		);
+		if (
+			!titled ||
+			!titled.textContent.includes("Load-shed hardening") ||
+			!titled.textContent.includes("load-shed-1")
+		) {
+			throw new Error(
+				"the titled card does not render title + key (the title display regressed)",
 			);
 		}
 	}),
