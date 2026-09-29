@@ -3145,6 +3145,21 @@ const BRANCH_RECORDS = [
 	 * is owed the pair this file ships and the reason no still was.
 	 */
 	"relaunchDuringQuitRestampNote",
+	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
+	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
+	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
+	 * `setWindowOpenHandler`), folded onto main's thread-search overlay before its
+	 * first push. Both trees move - `src/` for the popup policy, its presentation
+	 * gate and the renderer/preload deletions, `scripts/` for the proof rewrite,
+	 * the policy matrix and the trigger/guard cases - and no swept frame was
+	 * taken: the change's evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * so the reader is owed the pair this file ships and the reason no still was.
+	 * It quotes no tree-hash pair (read the pair off the two top-level fields), so
+	 * it joins `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 */
+	"browserOauthPopupsRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
