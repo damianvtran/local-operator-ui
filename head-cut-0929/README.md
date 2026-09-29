@@ -9,8 +9,11 @@ properly'."*
 
 - Branch: `fix/condense-unloaded-ea851b`. `before/` and `before-light/` are the
   tree at `91617c21ec` (the fix absent) built and driven; `after/` and
-  `after-light/` are the remediation head of the PR (fix present) built and
-  driven — same rig, same daemon, same probe, one run per half.
+  `after-light/` are the FOLDED remediation head `83500a06bd` (fix present,
+  with main's #638/#637/#617 merges behind it) built and driven — same rig,
+  same daemon, same probe, one run per half; the folded re-shoot's readings
+  are identical to the pre-fold run's (checked field by field), so the pair
+  is content-stable across the fold.
 - Seeded conversation: 8 turns, 444–604 rows each, written by
   `seed-long-turns.mjs` (included). Session id `be1a9fef00a1`, deterministic.
 - An isolated `local-operator serve` on 127.0.0.1:8080 serving that config;
@@ -58,7 +61,7 @@ C after-8-pulls     {"mountedRows":158,"bars":[turn 8's only],"scrollTop":-4000,
                      "earlier":"40 earlier"}
 ```
 
-AFTER (fix present; the remediation head):
+AFTER (fix present; the folded remediation head `83500a06bd`):
 
 ```
 A open-settled      {"mountedRows":2,"bars":[{"text":"49 actions","took":false}],
