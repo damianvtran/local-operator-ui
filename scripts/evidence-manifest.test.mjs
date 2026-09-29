@@ -1874,6 +1874,17 @@ const STAMP_BINDING_NOTES = [
 	 * is held to this file like every entry above it.
 	 */
 	"foldOntod11a15febfNote",
+	/*
+	 * THE CHECKPOINT RAIL'S PHASE-2 INTEGRATION re-derived both stamps: the src tree
+	 * with the rail's own files and the transcript's mount/jump/warm wiring, and the
+	 * scripts tree with the four rail suites' registration in test:desktop (they
+	 * shipped unregistered in Phase 1, so CI was not running them), the reveal/centre
+	 * suites, the contrast row and this note's own registration. It re-shoots no
+	 * frame: the driver-scene frames land with the phase that can photograph a real
+	 * manifest answer. It quotes this file's pair, so it is held to it like every
+	 * entry above it.
+	 */
+	"transcriptRailRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
