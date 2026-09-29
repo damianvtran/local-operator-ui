@@ -1,0 +1,803 @@
+{
+  "backend": "http://127.0.0.1:1131",
+  "proxy": "http://127.0.0.1:8080",
+  "out": "/Users/damian/.local-operator/sessions/79490f91af55/scratchpad/stt-proof-before",
+  "steps": [
+    {
+      "step": "rig.radientUpstream",
+      "port": 8799,
+      "delayMs": 900
+    },
+    {
+      "step": "rig.proxy",
+      "port": 8080,
+      "upstream": "http://127.0.0.1:1131"
+    },
+    {
+      "step": "bridge",
+      "present": true
+    },
+    {
+      "step": "capabilities",
+      "desktop_available": true,
+      "input_mode_injected": true,
+      "features_keys": 28
+    },
+    {
+      "step": "capabilities.input_modeInjected",
+      "ok": true,
+      "input_mode": 1
+    },
+    {
+      "step": "sessionA.draftTyped",
+      "ok": true,
+      "draft": "review the stt overhaul"
+    },
+    {
+      "step": "sessionA.idle",
+      "textarea": true,
+      "recording": false,
+      "transcribing": false,
+      "confirm": false,
+      "cancel": false,
+      "micDisabled": false,
+      "draft": "review the stt overhaul",
+      "boxHeight": 110
+    },
+    {
+      "step": "sessionA.combo.timestamps",
+      "t0": 5367.799999998882,
+      "flip": null
+    },
+    {
+      "step": "sessionA.comboEngages",
+      "observed": false,
+      "deliveredToPage": true,
+      "flipped": false,
+      "latencyMs": null,
+      "budgetMs": 3000,
+      "cold": true
+    },
+    {
+      "step": "sessionA.space.timestamps",
+      "t0": 8489.799999998882,
+      "flip": 10299.699999999255
+    },
+    {
+      "step": "sessionA.spaceEngages",
+      "ok": true,
+      "deliveredToPage": true,
+      "flipped": true,
+      "latencyMs": 1810,
+      "budgetMs": 3500,
+      "cold": false
+    },
+    {
+      "step": "sessionA.recordingTreatmentSpace",
+      "textarea": false,
+      "recording": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": null,
+      "boxHeight": null
+    },
+    {
+      "step": "sessionA.space.transcribingSeen",
+      "transcribing": true
+    },
+    {
+      "step": "sessionA.transcriptLandedSpace",
+      "draft": "review the stt overhauldictated words from the fake upstream."
+    },
+    {
+      "step": "sessionA.sentBody",
+      "body": {
+        "request_id": "a535f773-39c0-4c43-9016-2928cdba5bf0",
+        "text": "review the stt overhauldictated words from the fake upstream.",
+        "images": [],
+        "mode": "prompt"
+      }
+    },
+    {
+      "step": "sessionA.inputModeMixed",
+      "observed": false,
+      "input_mode": null
+    },
+    {
+      "step": "sessionB.draftTyped",
+      "ok": true,
+      "draft": "typed probe [bash:40]"
+    },
+    {
+      "step": "sessionB.typedBody",
+      "body": {
+        "request_id": "b3740cd7-99e3-427f-835d-3548b3515722",
+        "text": "typed probe [bash:40]",
+        "images": [],
+        "mode": "prompt"
+      }
+    },
+    {
+      "step": "sessionB.inputModeTyped",
+      "observed": false,
+      "input_mode": null
+    },
+    {
+      "step": "sessionB.micWindowSamples",
+      "disabledCount": 54,
+      "firstEnabledAt": 2160,
+      "lastDisabledAt": 2120,
+      "samples": [
+        {
+          "t": 0,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 200,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 400,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 600,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 800,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 1000,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 1200,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 1400,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 1600,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 1800,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 2000,
+          "micDisabled": true,
+          "recording": false
+        },
+        {
+          "t": 2160,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2200,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2240,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2280,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2320,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2360,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2400,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2440,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2480,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2520,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2560,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2600,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2640,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2680,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2720,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2760,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2800,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2840,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2880,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2920,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 2960,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3000,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3040,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3080,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3120,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3160,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3200,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3240,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3280,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3320,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3360,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3400,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3440,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3480,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3520,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3560,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3600,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3640,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3680,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3720,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3760,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3800,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3840,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3880,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3920,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 3960,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4000,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4040,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4080,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4120,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4160,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4200,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4240,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4280,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4320,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4360,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4400,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4440,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4480,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4520,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4560,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4600,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4640,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4680,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4720,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4760,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4800,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4840,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4880,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4920,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 4960,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5000,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5040,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5080,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5120,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5160,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5200,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5240,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5280,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5320,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5360,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5400,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5440,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5480,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5520,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5560,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5600,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5640,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5680,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5720,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5760,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5800,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5840,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5880,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5920,
+          "micDisabled": false,
+          "recording": false
+        },
+        {
+          "t": 5960,
+          "micDisabled": false,
+          "recording": false
+        }
+      ]
+    },
+    {
+      "step": "sessionB.streamingSamples",
+      "samples": [
+        {
+          "t": 0,
+          "streaming": false
+        },
+        {
+          "t": 600,
+          "streaming": false
+        },
+        {
+          "t": 1200,
+          "streaming": true
+        },
+        {
+          "t": 1800,
+          "streaming": true
+        },
+        {
+          "t": 2400,
+          "streaming": true
+        },
+        {
+          "t": 3000,
+          "streaming": true
+        },
+        {
+          "t": 3600,
+          "streaming": true
+        },
+        {
+          "t": 4200,
+          "streaming": true
+        },
+        {
+          "t": 4800,
+          "streaming": true
+        },
+        {
+          "t": 5400,
+          "streaming": true
+        }
+      ]
+    },
+    {
+      "step": "sessionB.streamingWait",
+      "waitedMs": 11
+    },
+    {
+      "step": "sessionB.streamingAfterTyped",
+      "ok": true,
+      "streaming": true,
+      "waitedMs": 11,
+      "outcome": ""
+    },
+    {
+      "step": "sessionB.midTurnCombo.timestamps",
+      "t0": 25527,
+      "flip": null
+    },
+    {
+      "step": "sessionB.midTurnComboEngages",
+      "observed": false,
+      "deliveredToPage": true,
+      "flipped": false,
+      "latencyMs": null,
+      "budgetMs": 3000
+    },
+    {
+      "step": "rows.shapes",
+      "typed": [
+        "P",
+        "DIV|lo-markdown",
+        "DIV|relative",
+        "DIV|bg-message-surface.break-words.max-w-[85%].px-3.py-2.5.relative.rounded-frame.text-ink",
+        "DIV|flex.group.justify-end.relative.w-full",
+        "DIV|flex.flex-col.gap-1.items-end.w-full",
+        "DIV|flex.justify-end.w-full",
+        "DIV"
+      ],
+      "dictated": null
+    },
+    {
+      "step": "rows.dictatedMatchesTyped",
+      "skipped": "one of the two rows is not on screen",
+      "typed": true,
+      "dictated": false
+    },
+    {
+      "step": "treatmentMarkerPresent",
+      "value": false
+    }
+  ],
+  "claims": [],
+  "notes": [
+    "the Alt-Right combo did not engage a recording on this build (deliveredToPage says whether the key reached the page)",
+    "the mid-turn hold did not engage on this build; the window samples above carry the mic's own state across the same span"
+  ],
+  "wire": [
+    {
+      "at": 1790644751015,
+      "path": "/v1/desktop/sessions/41b0af09dc63/messages",
+      "body": {
+        "request_id": "a535f773-39c0-4c43-9016-2928cdba5bf0",
+        "text": "review the stt overhauldictated words from the fake upstream.",
+        "images": [],
+        "mode": "prompt"
+      }
+    },
+    {
+      "at": 1790644752442,
+      "path": "/v1/desktop/sessions/10ddfc20d683/messages",
+      "body": {
+        "request_id": "b3740cd7-99e3-427f-835d-3548b3515722",
+        "text": "typed probe [bash:40]",
+        "images": [],
+        "mode": "prompt"
+      }
+    }
+  ],
+  "sessionA": "41b0af09dc63",
+  "sessionB": "10ddfc20d683",
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}",
+  "radientCalls": [
+    {
+      "at": 1790644749882,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 7248,
+      "authorized": true
+    }
+  ]
+}

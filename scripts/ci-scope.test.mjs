@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	chmodSync,
 	cpSync,
 	mkdirSync,
 	mkdtempSync,
@@ -976,6 +977,42 @@ test("A16: docs/evidence/** keeps the suite and nothing else", () => {
  * job was paid twice for no signal. `pipefail` gives the first half; the counts
  * give the second (a renamed script or a glob matching nothing still exits 0).
  * Mutation: re-add the second `pnpm test:desktop`.
+ *
+ * Defect, second half (2026-09-27, run 36287261534, ATTEMPT 1 - the attempt has
+ * to be named, because `gh run view <run> --log` reports the run's CURRENT
+ * attempt and attempt 2 of this one is green): GitHub runs a `run:` step as
+ * `bash -e`, so a RED suite ended the step at its own pipeline - the count greps
+ * never ran, the `desktop suite: ...` line never printed, and the job's only
+ * message was the runner's `Process completed with exit code 1`. The one failing
+ * test was invisible in the artefact everyone reads: the job log is 37,750,309
+ * bytes and `gh run view 36287261534 --attempt 1 --log` returns 19,396,643 bytes
+ * of it containing no `not ok` line at all, so a single failing test read as a
+ * silent hang in a file it never touched. The step now captures the suite's
+ * status and annotates the `not ok` lines, which a check-run carries outside the
+ * log.
+ *
+ * WHAT THE PINS BELOW GUARANTEE, AND WHAT THEY DO NOT - written down because the
+ * first draft advertised more than it held. The string pins say which shapes are
+ * present in the step; the driven pins (A17b/A17c) say what those shapes DO.
+ * Round-1 review and QA each measured a one-line edit that left every string pin
+ * green while restoring the whole defect - dropping the `set +e`/`set -e` pair
+ * around the capture, and moving the diagnostics BELOW the `exit 1` arms so a
+ * red run emits nothing. A pin that cannot see the failure it was written for is
+ * worse than no pin: it advertises protection that is not there. So the
+ * guarantee is pinned by behaviour - the step body, extracted from this file, run
+ * under `bash -e` with a stub `pnpm` against synthetic logs - and A17c re-runs
+ * that against each named mutation and fails if any of them still satisfies it.
+ *
+ * WHAT IS STILL NOT PINNED HERE, so this list is not read as coverage it does
+ * not have: the `PASS -lt 60` floor and the FAIL arm are string-pinned only, and
+ * the step's explicit TAP-summary echo is not pinned by behaviour at all (`tee`
+ * already puts the suite's own summary on the step's output, so an assertion on
+ * it would pass with or without that echo). And two fail-closed holes are
+ * PRE-EXISTING and out of scope for this change - a log carrying two TAP
+ * summaries can read as a false red, and a pass count that is not a single
+ * integer reaches `[ ... -lt 60 ]` as an arithmetic error, which evaluates false
+ * and can read as a false GREEN (identical on `origin/main`; QA's Q7 records
+ * both). Neither is introduced here and neither is closed here.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
 	const invocations = runBlocks("test")
@@ -997,6 +1034,42 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 	// reading as a pass have to survive the collapse.
 	assert.match(suite, /-lt 60/, "the pass-count floor is gone");
 	assert.match(suite, /"\$FAIL" != "0"/, "the fail-count assertion is gone");
+	/*
+	 * AND THE ONES THAT MAKE A RED SUITE SAY WHICH TEST WAS RED. Without them a
+	 * future `bash -e` regression puts the step back to dying at its pipeline
+	 * with only an exit code (the second defect above), and the diagnostics this
+	 * step now writes - the rc line, the TAP summary, the annotations - are the
+	 * difference between a five-minute diagnosis and a fleet-wide hunt for a
+	 * hang that never existed.
+	 */
+	assert.match(
+		suite,
+		/SUITE_RC=\$\?/,
+		"the step no longer captures the desktop suite's own status, so `bash -e` will swallow its counts and diagnostics again",
+	);
+	assert.match(
+		suite,
+		/::error::/,
+		"the step no longer annotates the failing tests, so a truncated log hides them again",
+	);
+	/*
+	 * The capture is only worth anything if something READS it: this arm is what
+	 * turns a non-zero suite status into a red step when the summary says
+	 * `fail 0` - the case the runner produces when it re-raises a signal death
+	 * after a clean summary. Delete it and a suite that dies silently is green,
+	 * which the round-1 review measured (step exit 0 for a suite that printed a
+	 * clean summary and exited 1).
+	 *
+	 * Matched by the arm's OWN message, not by the `"$SUITE_RC" != "0"` test:
+	 * the missing-summary arm inside the `-z "$PASS"` branch carries the same
+	 * test, so the looser pin is satisfied by a body that has lost this arm
+	 * entirely - which is the defect it exists to catch, one level down.
+	 */
+	assert.match(
+		suite,
+		/if \[ "\$SUITE_RC" != "0" \]; then\s*\n\s*echo "The desktop suite exited \$SUITE_RC while reporting/,
+		"the arm that consumes the captured status is gone, so a suite that dies AFTER printing a clean summary leaves the step green",
+	);
 	assert.ok(
 		blocks.some((block) => block.includes("git status --porcelain")),
 		"the 'the run left the tree clean' assertion is gone",
@@ -1005,6 +1078,357 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		JOB_COMMANDS.test.some((command) => command.includes("pnpm test:desktop")),
 		"the module's local command for the 'test' job no longer names the suite CI runs",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// A17b/A17c (UI) - the desktop step's guarantees, pinned by BEHAVIOUR
+// ---------------------------------------------------------------------------
+
+/*
+ * A17's string pins say which shapes are IN the step; these say what those
+ * shapes DO. They exist because round-1 review and QA each found a one-line edit
+ * that left A17 green while restoring the whole defect - a pin that asserts the
+ * PRESENCE of a string asserts nothing about the behaviour it enables - and
+ * because the `set +e`/`set -e` pair this step used to carry could be dropped
+ * without any pin noticing.
+ *
+ * So the step body is extracted from the workflow, run under `bash -e` (how
+ * GitHub runs it) with a stub `pnpm`, and judged on what a reader actually gets:
+ * the exit status, the line naming the suite's status, the echoed TAP summary,
+ * the reason the step gave, and the annotations it emitted. A17c then applies the
+ * mutations that remove the guarantee and asserts the outcome MOVES - a mutation
+ * that still meets the expectation is a pin that does not hold what it claims to.
+ */
+
+/** The `test` job's desktop-suite step, exactly as the shell will read it. */
+function desktopStepBody() {
+	const step = (jobs.test?.steps ?? []).find(
+		(candidate) =>
+			typeof candidate.run === "string" &&
+			candidate.run.includes("pnpm test:desktop"),
+	);
+	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
+	return step.run;
+}
+
+/**
+ * Run an extracted step body the way GitHub does - `bash -e` over the step's own
+ * text - against a synthetic suite log, and hand back its status and output.
+ *
+ * The body runs UNCHANGED except for one literal: its `tee /tmp/desktop-tests.log`
+ * (a fixed path every runner on this fleet shares) is rewritten to a file under
+ * this case's scratch directory. Nothing else is edited, because asserting
+ * against a hand-written paraphrase of the step is how a pin ends up testing the
+ * paraphrase instead of the step.
+ *
+ * The stub `pnpm` writes the synthetic log down the same pipe the real suite
+ * writes to and exits with the status the scenario names, so `pipefail`, the
+ * `tee` and the capture are all exercised rather than simulated.
+ */
+function runDesktopStep(body, scenario) {
+	const dir = realpathSync(
+		mkdtempSync(join(tmpdir(), "ci-scope-desktop-step-")),
+	);
+	const bin = join(dir, "bin");
+	mkdirSync(bin, { recursive: true });
+	const synthetic = join(dir, "synthetic.log");
+	writeFileSync(synthetic, scenario.log);
+	const stub = join(bin, "pnpm");
+	writeFileSync(
+		stub,
+		[
+			"#!/usr/bin/env bash",
+			'cat "$CI_SCOPE_STUB_LOG"',
+			'exit "$CI_SCOPE_STUB_RC"',
+			"",
+		].join("\n"),
+	);
+	chmodSync(stub, 0o755);
+	const script = join(dir, "step.sh");
+	writeFileSync(
+		script,
+		body.replaceAll("/tmp/desktop-tests.log", join(dir, "desktop-tests.log")),
+	);
+	const result = spawnSync("bash", ["-e", script], {
+		cwd: dir,
+		encoding: "utf8",
+		env: {
+			PATH: `${bin}:${process.env.PATH}`,
+			HOME: process.env.HOME,
+			// Namespaced so the step cannot shadow them: bash keeps the export
+			// attribute when a variable that is already in the environment is
+			// reassigned, so a stub reading `SUITE_RC` would have read the step's
+			// own `SUITE_RC=0` and exited green for every case.
+			CI_SCOPE_STUB_LOG: synthetic,
+			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
+		},
+	});
+	return {
+		dir,
+		status: result.status,
+		stdout: result.stdout ?? "",
+		stderr: result.stderr ?? "",
+	};
+}
+
+/**
+ * What the pin judges, as data rather than a chain of assertions - so the
+ * MUTATION test can compare a mutated body against the same expectation the
+ * shipped body has to meet, and a difference is reported as a difference.
+ *
+ * Only the step's OWN diagnostics are here. The TAP summary is deliberately NOT
+ * one of them: `tee` already puts the suite's own summary on the step's stdout,
+ * so an assertion on it would pass whether or not the step echoed it again - it
+ * would advertise a guarantee it cannot see.
+ */
+function desktopOutcome(run) {
+	const lines = run.stdout.split("\n");
+	const first = (test) => lines.find(test) ?? null;
+	return {
+		status: run.status,
+		statusLine: first((line) => line.startsWith("desktop suite: rc=")),
+		notOk: first((line) => line.startsWith("desktop suite: not-ok lines=")),
+		exitReason: first((line) =>
+			/^(The desktop suite exited|Desktop suite reported)/.test(line),
+		),
+		annotations: lines.filter((line) => line.startsWith("::error::")),
+	};
+}
+
+const GREEN_LOG = [
+	"# tests 4597",
+	"# pass 4548",
+	"# fail 0",
+	"# skipped 49",
+	"",
+].join("\n");
+const PASSING_ONE = "ok 1 - a passing test";
+/** Two failures, so the annotation loop repeats and the escaping is visible. */
+const RED_FAILURES = [
+	"not ok 1599 - the operator's report: an ADOPTED daemon that reloads in place never re-discovers",
+	"not ok 1600 - a second failure whose name carries 100% of a percent sign",
+];
+const RED_LOG = [
+	PASSING_ONE,
+	...RED_FAILURES,
+	"# tests 4597",
+	"# pass 4547",
+	"# fail 2",
+	"# skipped 49",
+	"",
+].join("\n");
+/** No TAP summary at all: the run died mid-flight, the shape that started this. */
+const TRUNCATED_LOG = [PASSING_ONE, ""].join("\n");
+/** More failures than the annotation surface keeps, so the cap is observable. */
+const MANY_FAILURES = Array.from(
+	{ length: 12 },
+	(_, index) => `not ok 200${index} - failure number ${index}`,
+);
+const MANY_FAILURES_LOG = [
+	...MANY_FAILURES,
+	"# tests 4597",
+	"# pass 4585",
+	"# fail 12",
+	"# skipped 49",
+	"",
+].join("\n");
+
+/*
+ * One scenario per shape the step has to survive, with the outcome a reader is
+ * owed for each. The mutations in A17c name the scenario whose expectation they
+ * break, because a mutation only shows in the case that exercises the arm it
+ * removes - deleting the status arm, for instance, changes nothing about a run
+ * whose summary already says `fail 2`.
+ */
+const DESKTOP_SCENARIOS = {
+	green: {
+		log: GREEN_LOG,
+		suiteRc: 0,
+		expected: {
+			status: 0,
+			statusLine: "desktop suite: rc=0 pass=4548 fail=0",
+			notOk: "desktop suite: not-ok lines=0; annotating the first 10",
+			exitReason: null,
+			annotations: [],
+		},
+	},
+	red: {
+		log: RED_LOG,
+		suiteRc: 1,
+		expected: {
+			status: 1,
+			statusLine: "desktop suite: rc=1 pass=4547 fail=2",
+			notOk: "desktop suite: not-ok lines=2; annotating the first 10",
+			exitReason: "Desktop suite reported 2 failing tests.",
+			annotations: [
+				`::error::${RED_FAILURES[0]}`,
+				// The runner escapes `%` in a workflow command; unescaped, this
+				// annotation is malformed and the runner drops it.
+				`::error::${RED_FAILURES[1].replaceAll("%", "%25")}`,
+			],
+		},
+	},
+	rcOnly: {
+		log: GREEN_LOG,
+		suiteRc: 1,
+		expected: {
+			status: 1,
+			statusLine: "desktop suite: rc=1 pass=4548 fail=0",
+			notOk: "desktop suite: not-ok lines=0; annotating the first 10",
+			exitReason:
+				"The desktop suite exited 1 while reporting pass=4548 fail=0.",
+			annotations: [],
+		},
+	},
+	truncated: {
+		log: TRUNCATED_LOG,
+		suiteRc: 1,
+		expected: {
+			status: 1,
+			statusLine: "desktop suite: rc=1 pass= fail=",
+			notOk: "desktop suite: not-ok lines=0; annotating the first 10",
+			// Naming the missing summary, not a coverage problem: the suite EXITED
+			// non-zero, so it ran - it did not lose its tests.
+			exitReason: "The desktop suite exited 1 without printing a TAP summary.",
+			annotations: [],
+		},
+	},
+	manyFailures: {
+		log: MANY_FAILURES_LOG,
+		suiteRc: 1,
+		expected: {
+			status: 1,
+			statusLine: "desktop suite: rc=1 pass=4585 fail=12",
+			notOk: "desktop suite: not-ok lines=12; annotating the first 10",
+			exitReason: "Desktop suite reported 12 failing tests.",
+			// The cap and the head agree, and the count beside them names the two
+			// that are NOT annotated - so an 11th failure is still traceable.
+			annotations: MANY_FAILURES.slice(0, 10).map((line) => `::error::${line}`),
+		},
+	},
+};
+
+/**
+ * The mutations that remove the guarantee. Every one of them was measured -
+ * round-1 review and QA each found at least one that every string pin in A17
+ * still matched - so they are re-run here rather than asserted to be caught by
+ * hand: a mutation that still meets the expectation fails this test.
+ */
+const GUARANTEE_MUTATIONS = [
+	{
+		name: "the step is restored to `main`'s shape (no capture, no status arm)",
+		what: "the entire original defect: a red suite dies at its pipeline with no status line, no summary and no annotation - the shape the fleet misdiagnosed as a hang",
+		scenario: "red",
+		apply: (body) =>
+			body
+				.replace("SUITE_RC=0\n", "")
+				.replace("|| SUITE_RC=$?", "")
+				.replace(
+					/\n *if \[ "\$SUITE_RC" != "0" \]; then *\n *echo "The desktop suite exited \$SUITE_RC while reporting[\s\S]*?\n *fi/,
+					"",
+				),
+	},
+	{
+		name: "the arm that consumes the captured status is deleted",
+		what: "a suite that prints a clean summary and then exits non-zero reads as green",
+		scenario: "rcOnly",
+		// Anchored on the arm's own message, because the missing-summary arm
+		// inside the `-z "$PASS"` branch carries the same `"$SUITE_RC" != "0"`
+		// test - a looser pattern deletes THAT one and the mutation never lands.
+		apply: (body) =>
+			body.replace(
+				/\n *if \[ "\$SUITE_RC" != "0" \]; then *\n *echo "The desktop suite exited \$SUITE_RC while reporting[\s\S]*?\n *fi/,
+				"",
+			),
+	},
+	{
+		name: "the diagnostics are moved below the `exit 1` arms",
+		what: "a red run exits before the status line, the summary or any annotation is emitted",
+		scenario: "red",
+		apply: moveDiagnosticsBelowTheExits,
+	},
+	{
+		name: "the annotation echo is dropped",
+		what: "the failing tests are back to being log-only, which is the defect",
+		scenario: "red",
+		apply: (body) => body.replace('echo "::error::$line"', 'echo "$line"'),
+	},
+	{
+		name: "the workflow-command escaping is dropped",
+		what: "a test name carrying `%` renders as a malformed annotation",
+		scenario: "red",
+		apply: (body) => body.replace("line=${line//%/%25}\n", ""),
+	},
+	{
+		name: "the annotation head goes back over the platform's cap",
+		what: "failures 11 and 12 are asked for and silently dropped, with nothing naming them",
+		scenario: "manyFailures",
+		apply: (body) => body.replace('head -n "$ANNOTATION_CAP"', "head -20"),
+	},
+];
+
+/**
+ * The QA mutation: everything the step SAYS about the suite moved BELOW the
+ * `exit 1` arms, where a red run never reaches it. It restores the defect by a
+ * different edit than deleting the emits, which is why it is run rather than
+ * reasoned about.
+ */
+function moveDiagnosticsBelowTheExits(body) {
+	const lines = body.split("\n");
+	const first = lines.findIndex((line) =>
+		line.startsWith('echo "desktop suite: rc='),
+	);
+	const last = lines.findIndex((line) => line.includes("^not ok "));
+	assert.ok(
+		first > 0 && last > first,
+		"the step no longer emits its diagnostics where this mutation expects them",
+	);
+	const moved = lines.splice(first, last - first + 1);
+	return [...lines, ...moved].join("\n");
+}
+
+test("A17b: the desktop step is red, and names the red test, on every red shape", () => {
+	const body = desktopStepBody();
+	const scratch = [];
+	try {
+		for (const [name, scenario] of Object.entries(DESKTOP_SCENARIOS)) {
+			const run = runDesktopStep(body, scenario);
+			scratch.push(run.dir);
+			assert.deepEqual(
+				desktopOutcome(run),
+				scenario.expected,
+				`the '${name}' case: step stderr was ${JSON.stringify(run.stderr)}`,
+			);
+		}
+	} finally {
+		for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("A17c: every mutation that removes the guarantee changes the outcome", () => {
+	const body = desktopStepBody();
+	const scratch = [];
+	try {
+		for (const mutation of GUARANTEE_MUTATIONS) {
+			const mutated = mutation.apply(body);
+			assert.notEqual(
+				mutated,
+				body,
+				`${mutation.name}: the mutation no longer applies to the step body - fix the mutation, not this assertion`,
+			);
+			const scenario = DESKTOP_SCENARIOS[mutation.scenario];
+			assert.ok(scenario, `unknown scenario '${mutation.scenario}'`);
+			const run = runDesktopStep(mutated, scenario);
+			scratch.push(run.dir);
+			assert.notDeepEqual(
+				desktopOutcome(run),
+				scenario.expected,
+				`${mutation.name} still satisfies the pin on the '${mutation.scenario}' case: it removes the guarantee (${mutation.what}) while the pin stays green`,
+			);
+		}
+	} finally {
+		for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 // ---------------------------------------------------------------------------

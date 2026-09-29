@@ -178,6 +178,27 @@ function updateStageOf(message: string): UpdateStage | null {
 }
 
 /**
+ * What a stage-labelled message says AFTER the label.
+ *
+ * WHY THE REMAINDER AND NOT THE WHOLE STRING (design D1, remediation round 1): the
+ * label is the app's own and is not part of what the machine said - the transport
+ * branch below already drops it from the detail - and the fragment-less branch kept
+ * it, which only became visible once a remainder existed that carried NO mark at
+ * all. The download watchdog's cancel is exactly that: `builder-util-runtime`'s
+ * `CancellationError` spells "cancelled", five words of label-prefixed text with no
+ * machine mark, so the authored-sentence test accepted the whole string and the
+ * download stage's own sentence never rendered. The remainder goes to the machine
+ * line; it is never re-tested as a sentence, because a label that matched is a
+ * machine failure of that stage by construction.
+ */
+function stageRemainderOf(message: string): string {
+	return message
+		.replace(UPDATE_STAGE_LABEL, "")
+		.replace(LEADING_SEPARATOR, "")
+		.trim();
+}
+
+/**
  * The whole set of labels THIS APP writes in front of an update failure, and why it
  * is a closed set rather than a length.
  *
@@ -212,6 +233,8 @@ const APP_AUTHORED_LABELS: string[] = [];
  */
 const TRAILING_SEPARATOR = /[:\uff1a\u2014]+$/;
 const WHITESPACE_RUN = /\s+/;
+/** What follows a stage label: the colon (ASCII or fullwidth) and any spacing. */
+const LEADING_SEPARATOR = /^[:\uff1a\s]+/;
 
 /**
  * Split one update-path message into the sentence and the machine detail.
@@ -232,13 +255,29 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 		 * line, under the sentence for its stage: the download stage says what the
 		 * reader can do about it, and the check stage promises only what the app
 		 * will do, because a retry is exactly what this family refuses.
+		 *
+		 * A STAGE LABEL IS CHECKED FIRST, and its remainder is what reaches the
+		 * machine line. The label is the app's, not the message's subject, and the
+		 * shape it prefixes is a machine failure by construction - so it must not be
+		 * offered to `isAuthoredSentence` at all. That test counts words and looks
+		 * for machine marks, and the watchdog's cancel ("Error downloading update:
+		 * cancelled") has five words and no mark: it passed as authored, the raw
+		 * string became the reading-weight sentence, and the download stage's own
+		 * sentence never rendered (design D1, remediation round 1).
 		 */
+		if (stage !== null) {
+			const remainder = stageRemainderOf(cleaned);
+			return {
+				sentence: UPDATE_STAGE_SENTENCE[stage],
+				detail: remainder === "" ? null : remainder,
+				action: null,
+			};
+		}
 		if (isAuthoredSentence(cleaned)) {
 			return { sentence: cleaned, detail: null, action: null };
 		}
 		return {
-			sentence:
-				stage === null ? UPDATE_CHECK_INCOMPLETE : UPDATE_STAGE_SENTENCE[stage],
+			sentence: UPDATE_CHECK_INCOMPLETE,
 			detail: cleaned === "" ? null : cleaned,
 			action: null,
 		};

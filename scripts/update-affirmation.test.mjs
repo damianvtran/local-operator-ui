@@ -580,7 +580,7 @@ const INCONCLUSIVE = {
  * setter is visible to the next read - which is how a case observes what the
  * user would be looking at after a sequence.
  */
-function mount({ appVersion } = {}) {
+function mount({ appVersion, slowWaitHintMs } = {}) {
 	standIn.reset();
 	/*
 	 * A fresh bridge per mount. A case that leaves a check unanswered (the
@@ -594,7 +594,7 @@ function mount({ appVersion } = {}) {
 	 * the app (design D1). A case leaves it out to stand for a card that has not
 	 * read the version yet.
 	 */
-	standIn.render = () => CheckForUpdatesButton({ appVersion });
+	standIn.render = () => CheckForUpdatesButton({ appVersion, slowWaitHintMs });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -850,7 +850,7 @@ test("R9: an offer before the check does not rob a later check of the sentence",
  * in flight can ask for it, and the check-channel case prefers a check the user's
  * own control started for that same reason.
  */
-function mountNotification({ autoCheck = false } = {}) {
+function mountNotification({ autoCheck = false, slowWaitHintMs } = {}) {
 	standIn.reset();
 	updater.checks.length = 0;
 	updater.backendUpdates.length = 0;
@@ -859,7 +859,7 @@ function mountNotification({ autoCheck = false } = {}) {
 	 * cannot be handled twice - by the panel under test and by an earlier case's.
 	 */
 	updater.handlers.clear();
-	standIn.render = () => UpdateNotification({ autoCheck });
+	standIn.render = () => UpdateNotification({ autoCheck, slowWaitHintMs });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -1239,6 +1239,175 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 });
 
 /**
+ * THE OPERATOR'S STALL, at the surface they watched: the checking frame must
+ * clear when the check is ANSWERED, and the answer the deadline produces is a
+ * failure - so it clears into the sentence the copy already has, not into
+ * silence and not into the machine's raw string.
+ *
+ * The main-process half (a feed that never answers is abandoned at its
+ * deadline) is `update-robustness.test.mjs`; this is what the shipped panel
+ * does with the rejection it produces. The rejection IS the shape: a check the
+ * user asked for rethrows, and the component's catch is the only path that
+ * reports it.
+ */
+test("the checking frame clears when the deadline rejects the check", async () => {
+	const handle = mountNotification();
+	// The refusal panel's own control starts the check the user asked for -
+	// the half of the operator's rule that reports a failure.
+	updater.emit("update-install-blocked", {
+		code: "installed-bundle-not-sealed",
+		version: "0.19.5",
+		message: "The downloaded update did not pass its integrity check.",
+		remedy: { text: "Download a fresh copy." },
+	});
+	handle.render();
+	control(handle, "Check for updates").props.onClick();
+	handle.render();
+	assert.ok(
+		showsText(handle, "Checking for updates"),
+		"the frame is up while the check is unanswered",
+	);
+
+	await settleCheck(
+		handle,
+		new Error(
+			"net::ERR_TIMED_OUT - the update feed did not answer within 30s, so the attempt was abandoned",
+		),
+	);
+
+	assert.equal(
+		showsText(handle, "Checking for updates"),
+		false,
+		"the bounded failure clears the frame",
+	);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(
+		toasts[0].text,
+		/could not reach the update server/i,
+		"the sentence this family already has",
+	);
+	assert.match(toasts[0].text, /net::ERR_TIMED_OUT/);
+	assert.equal(
+		toasts[0].text.includes("was abandoned"),
+		false,
+		"the machine's own code is the subordinate line, not the message",
+	);
+});
+
+/**
+ * THE BOUNDED WAIT SAYS SO (UX U1, remediation round 1).
+ *
+ * Three surfaces watch the same class of wait - the check ladder, which can
+ * run ~94 s, and the download stage's ~90 s no-progress bound - and each
+ * rendered as one still image until the moment it ended, which is how a
+ * bounded wait still read as a hung app. The line appears only once the wait
+ * has outlasted the delay, and it is copy: no control is added and none of the
+ * no-dismiss / no-cancel decisions move. The delay is narrowed through the
+ * same override the components take, because the shipped twelve seconds are
+ * exactly what a test must not sit through.
+ */
+test("the settings button says a long check is still running", async () => {
+	const handle = mount({ slowWaitHintMs: 20 });
+	press(handle);
+	handle.render();
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"a fresh check shows no line yet",
+	);
+	await new Promise((resolve) => realSetTimeout(resolve, 60));
+	handle.render();
+	assert.match(
+		allText(handle),
+		/Still checking/,
+		"the line arrives once the wait outlasts the delay",
+	);
+	await settleCheck(handle, new Error("net::ERR_TIMED_OUT"));
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"the line leaves with the wait",
+	);
+});
+
+test("the checking card says a long check is still running", async () => {
+	const handle = mountNotification({ slowWaitHintMs: 20 });
+	// The refusal panel's own control starts the check, the route the sibling
+	// case takes; `autoCheck` would re-run the mount effect on every render this
+	// harness makes, re-arming the frame after the settle.
+	updater.emit("update-install-blocked", {
+		code: "installed-bundle-not-sealed",
+		version: "0.19.5",
+		message: "The downloaded update did not pass its integrity check.",
+		remedy: { text: "Download a fresh copy." },
+	});
+	handle.render();
+	control(handle, "Check for updates").props.onClick();
+	handle.render();
+	assert.ok(
+		showsText(handle, "Checking for updates"),
+		"the frame is up while the check is unanswered",
+	);
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"a fresh check shows no line yet",
+	);
+	await new Promise((resolve) => realSetTimeout(resolve, 60));
+	handle.render();
+	assert.match(
+		allText(handle),
+		/Still checking/,
+		"the line arrives once the wait outlasts the delay",
+	);
+	await settleCheck(
+		handle,
+		new Error(
+			"net::ERR_TIMED_OUT - the update feed did not answer within 30s, so the attempt was abandoned",
+		),
+	);
+	assert.equal(
+		showsText(handle, "Checking for updates"),
+		false,
+		"the bounded failure clears the frame",
+	);
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"the line leaves with the frame",
+	);
+});
+
+test("the download panel says a stalled download is still running", async () => {
+	const handle = mountNotification({ slowWaitHintMs: 20 });
+	updater.emit("update-available", { version: "9.9.9" });
+	handle.render();
+	assert.ok(showsText(handle, "Update available"), "the offer is up");
+	const held = new Promise(() => {});
+	const original = updater.downloadUpdate;
+	updater.downloadUpdate = () => held;
+	try {
+		control(handle, "Download update").props.onClick();
+		handle.render();
+		assert.equal(
+			allText(handle).includes("Still downloading"),
+			false,
+			"a fresh download shows no line yet",
+		);
+		await new Promise((resolve) => realSetTimeout(resolve, 60));
+		handle.render();
+		assert.match(
+			allText(handle),
+			/Still downloading/,
+			"the line arrives once the wait outlasts the delay",
+		);
+	} finally {
+		updater.downloadUpdate = original;
+	}
+});
+
+/**
  * A check's failure cannot become the attempt's reason (review R2-1, QA Q2).
  *
  * A server update takes minutes and the sibling surfaces stay live, so a check
@@ -1470,18 +1639,20 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	 * withdrawn. The sentence is asserted as the same one the restart phase uses, so
 	 * the two cannot drift apart.
 	 *
-	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18): the press drains the fleet
-	 * before it restarts anything, so the sentence prices the WAIT and promises that
-	 * nothing in flight is cut off. The assertion is the promise, because a later
-	 * reader who "restores" the old clause would be promising work loss the app no
-	 * longer inflicts.
+	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18), AND NO LONGER A WAIT
+	 * (2026-09-29): the sentence prices the outage, and it promises that nothing in
+	 * flight is cut off - the harness truth for a daemon bounce, whose runtimes are
+	 * detached and converge onto the new build at their own next idle. The restart
+	 * legs used to drain the fleet first and say so; the operator's directive
+	 * removed those waits, so a reader who "restores" the old wait clause here
+	 * would be pricing a wait this press no longer pays.
 	 */
 	assert.ok(
 		copy.some(
 			(text) =>
 				/offline while it comes back - usually a few seconds, up to half a minute/.test(
 					text,
-				) && /nothing in flight is cut off/.test(text),
+				) && /Nothing in flight is cut off/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
 	);
@@ -1912,12 +2083,13 @@ test("a restart that came back on the new build is still the success toast", () 
  * app's own completion notice. The event now carries `restartable`, and this case
  * pins both directions off the SAME payload: only the ownership reading differs.
  *
- * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE. It used to
- * promise a dropped turn ("...so a turn that is in flight is dropped while the
- * server comes back"); a restart now waits for the running turns to finish first,
- * so no surface may describe one as dropping work in flight - and the sentence
- * below is the plan's own, kept verbatim because that is the whole subject of this
- * case.
+ * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE, and again
+ * with the operator's directive: it used to promise a dropped turn ("...so a turn
+ * that is in flight is dropped while the server comes back"), then priced a wait
+ * once the gate existed, and the 2026-09-29 directive removed the restart-leg
+ * waits - so no surface may describe one as dropping work in flight OR as waiting
+ * on it. The sentence below is the plan's own, kept verbatim because that is the
+ * whole subject of this case.
  */
 test("the offer names the restart cost only where the app may restart the server", () => {
 	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.

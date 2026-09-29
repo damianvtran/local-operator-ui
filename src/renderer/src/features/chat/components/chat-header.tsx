@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
 	Button,
@@ -14,6 +15,7 @@ import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { formatDirectory, middleTruncatePath } from "@shared/utils/path-utils";
+import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
 	ArchiveRestore,
@@ -24,10 +26,12 @@ import {
 	Pencil,
 	SquareTerminal,
 	Trash2,
+	X,
 } from "lucide-react";
-import { type FC, useEffect, useRef } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
+import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
@@ -82,16 +86,19 @@ type ChatHeaderProps = {
 	 */
 	identity?: HeaderIdentityData | null;
 	/**
-	 * Opens the EXISTING rename flow for this conversation.
+	 * The session the inline rename writes to, when this header offers rename.
 	 *
-	 * A callback rather than a picker mounted here, because the header must not
-	 * grow a second rename surface: the one it opens is the dispatcher's own
-	 * (`/rename` with empty args presents `RenamePicker`), the same call
-	 * `chat-page.tsx` already routes for its inline options. Absent on a draft -
-	 * there is no conversation yet to rename - which is also what keeps the
-	 * pencil off the draft pane.
+	 * A session id rather than a callback, because the write path lives HERE now:
+	 * the pencil opens an inline editor whose save runs `sessions.command`
+	 * `rename` through `useSessionCommand` - the same hook and the same command
+	 * `RenamePicker` submits (`destination-pickers.tsx`), so the two surfaces
+	 * cannot disagree about what a rename is, and `/rename` from the composer or
+	 * the options row keeps the picker it always had. Threaded from
+	 * `chat-page.tsx` under the page's own `commands` capability gate, so a
+	 * backend that cannot run commands withholds the whole affordance (and, on a
+	 * draft, the session it would need) instead of rendering a dead pencil.
 	 */
-	onRenameConversation?: () => void;
+	renameSessionId?: string;
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
@@ -242,7 +249,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	description = "Your on-device AI assistant",
 	descriptionPending = false,
 	identity,
-	onRenameConversation,
+	renameSessionId,
 	onOpenOptions,
 	runDetails = null,
 	fileCount = 0,
@@ -442,6 +449,149 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		consolePaneWasOpen.current = isConsolePaneOpen;
 	}, [isConsolePaneOpen]);
 
+	/*
+	 * THE INLINE RENAME (the operator's report, 2026-09-26): "the rename
+	 * interaction ... only happens when you hover to the right of the
+	 * conversation title but not on the title itself ... double clicking also
+	 * allows for edit ... inline edit with enter or unfocus to save, esc or
+	 * click x to cancel (pencil turns into an X)".
+	 *
+	 * ONE WRITE PATH, TWO SURFACES. The pencil used to open `RenamePicker`
+	 * through the page's dispatcher; that door is still `/rename`'s (the
+	 * composer and the options row) and this surface stops using it. The editor
+	 * submits `sessions.command` `rename` through the SAME hook and the same
+	 * command the picker runs (`useSessionCommand`, `destination-pickers.tsx`),
+	 * so the two surfaces cannot diverge, and the page still gates the whole
+	 * affordance on `commands` (`renameSessionId` is absent without it) - no
+	 * dead pencil on a backend that cannot run commands.
+	 *
+	 * NO OPTIMISTIC LABEL: a save closes the editor and nothing else - the
+	 * title repaints from the canonical stream when the owner publishes the new
+	 * name, the same rule the identity controls state for a switch. The ONE
+	 * case the editor stays open for is a FAILED save, with the typed value
+	 * kept: the owner's own text goes to the app's toast channel (the identity
+	 * pattern), and discarding the user's typing because the backend refused it
+	 * would make them type it twice - the convention the composer's returned
+	 * payload already ships for a failed submit.
+	 *
+	 * THE BLUR RACE, AND WHICH LATCH CLOSES IT. Three exits want the same
+	 * moment: Enter saves, blur saves, the X cancels. A blur arriving after a
+	 * cancel - or after a save already ran - must not re-run anything, so all
+	 * three go through one phase latch (`edit` -> `saving` -> `closed`) and a
+	 * blur that finds the latch past `edit` no-ops. The X press also consumes
+	 * its own `mousedown` (`preventDefault`) so the input never even blurs on
+	 * that path, and a multi-click's second press is let go (`event.detail >
+	 * 1`), so double-clicking the PENCIL cannot open-then-cancel in one
+	 * gesture.
+	 *
+	 * THE BOX IS MEASURED BEFORE IT IS REPLACED. The input takes the title's
+	 * own width, read off the box it is replacing, because the identity
+	 * controls sit on the same line right after it: letting the field size
+	 * itself would move them (and the clipped wrap) mid-gesture, and the
+	 * contract this header's rounds fixed is that the row does not reflow under
+	 * the pointer. The ramp is the h2's own (`font-medium text-body text-ink`),
+	 * so the swap is a box carrying the same ink in the same place.
+	 *
+	 * FOCUS RETURNS TO THE CONTROL when an explicit gesture closes the editor
+	 * (Enter, Escape, the X); a blur-close leaves focus wherever the user put
+	 * it. Without the return, Escape on a keyboard walk dropped focus onto
+	 * `<body>` - the defect UX round 1 (U2) found on the pane triggers.
+	 */
+	const renameCommand = useSessionCommand(renameSessionId ?? "");
+	/* The in-flight span of the save, read from the hook's own `busy` rather than
+	 * tracked a second time here: it is true from the `run` call to its settle,
+	 * which is exactly the span in which a submitted save is committed - the field
+	 * freezes and the slot shows the spinner (see the U1/U3 notes at both). */
+	const renameSaving = renameCommand.busy;
+	const [renaming, setRenaming] = useState(false);
+	const [renameDraft, setRenameDraft] = useState("");
+	const [renameWidth, setRenameWidth] = useState<number | null>(null);
+	const renamePhaseRef = useRef<"edit" | "saving" | "closed">("closed");
+	const renameInputRef = useRef<HTMLInputElement | null>(null);
+	const renameTitleRef = useRef<HTMLHeadingElement | null>(null);
+	const renameControlRef = useRef<HTMLButtonElement | null>(null);
+
+	const startRename = () => {
+		if (!renameSessionId || renaming) return;
+		const box = renameTitleRef.current?.getBoundingClientRect();
+		/*
+		 * CEIL, not the exact fraction, and the difference is measured rather than
+		 * argued: the input's text engine lays the same string a hair wider than
+		 * the h2 laid it (217.0 against 216.86 at this ramp), so an exact pin
+		 * would leave the field ~0.14px short of its own text - scrollWidth past
+		 * clientWidth, a clipped glyph tail - while the ceil costs the cluster
+		 * +0.14px of sub-pixel growth. Two reads of ONE unchanged box already
+		 * span 0.17px on this host, so neither is visible; keep the side that
+		 * cannot clip text.
+		 */
+		setRenameWidth(box ? Math.ceil(box.width) : null);
+		setRenameDraft(agentName);
+		renamePhaseRef.current = "edit";
+		setRenaming(true);
+	};
+
+	const closeRename = (restoreFocus: boolean) => {
+		/* The latch closes BEFORE the focus move: focusing the control blurs the
+		 * input, and that blur must find the latch past `edit` so it cannot run a
+		 * save on the way out (the race this sequence exists for). */
+		renamePhaseRef.current = "closed";
+		if (restoreFocus) renameControlRef.current?.focus();
+		setRenaming(false);
+	};
+
+	const commitRename = async (restoreFocus: boolean) => {
+		if (renamePhaseRef.current !== "edit") return;
+		const next = renameDraft.trim();
+		if (!next || next === agentName) {
+			/* Empty or unchanged: exit, no command - the picker's
+			 * disabled-submit rule, stated as an outcome. */
+			closeRename(restoreFocus);
+			return;
+		}
+		renamePhaseRef.current = "saving";
+		const { result } = await renameCommand.run(
+			"rename",
+			next,
+			"Could not rename the conversation",
+		);
+		if (result.tone === "error") {
+			showErrorToast(result.text);
+			/* Re-open only if the editor was still the user's current move: a
+			 * cancel during the flight keeps its outcome (the toast still
+			 * reports the failed command). */
+			if (renamePhaseRef.current === "saving") {
+				renamePhaseRef.current = "edit";
+				/* THE RETRY STARTS WHERE THE VALUE IS (UX round 1's U4): a failed
+				 * save leaves the editor open with the typed value, so the field
+				 * gets its focus back - the Enter path never lost it, and the blur
+				 * path used to leave the editor open but unfocused on `body`. */
+				renameInputRef.current?.focus();
+			}
+			return;
+		}
+		if (result.tone === "warning") showWarningToast(result.text);
+		/* ONLY THIS SAVE MAY CLOSE THE EDITOR (agent review round 1's MINOR-1):
+		 * the latch is read back before acting, so a stale resolution can never
+		 * close an editor that came after it - the error branch above guards the
+		 * same case, and this closes the latch's completeness. */
+		if (renamePhaseRef.current === "saving") closeRename(restoreFocus);
+	};
+
+	/*
+	 * The editor opens FOCUSED AND SELECTED: the gesture's point is to type a
+	 * replacement, and the selection makes the first keystroke replace the name
+	 * rather than append to it (the picker cannot offer this - its field opens
+	 * empty). An effect rather than `autoFocus` so the selection lands after the
+	 * node is committed, which is the order the double-click path needs.
+	 */
+	useEffect(() => {
+		if (!renaming) return;
+		const input = renameInputRef.current;
+		if (!input) return;
+		input.focus();
+		input.select();
+	}, [renaming]);
+
 	return (
 		<header
 			/*
@@ -489,7 +639,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * sidebar's brand row, the chrome lane's neighbour), and it is what lets the
 			 * sidebar's brand row and this row share one line once the macOS lane is
 			 * shell-level. The row is a DRAG REGION and every control in it opts out
-			 * (`data-titlebar-no-drag` on the cluster and on the archived pair), which is
+			 * (`data-titlebar-no-drag` on the cluster, on the archived pair and on the
+			 * title block), which is
 			 * the vocabulary `styles/index.css` gates on `data-chrome-mode` +
 			 * `data-chrome-platform` (agent review round 1's R9: this sentence still named
 			 * `data-titlebar-platform`, the gate THIS PR REMOVED - and
@@ -597,16 +748,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * thing they were looking at anyway. 14 is one step above the rows the bar
 				 * heads, which is what the reference products use. */}
 				{/*
-				 * THE RENAME PENCIL LANDS WHERE THE ACTION IS: on the conversation's own
+				 * THE RENAME CONTROL LANDS WHERE THE ACTION IS: on the conversation's own
 				 * name, not on the identity chip beside it (the operator wrote "on the
-				 * team name" and the manager's clarification, 2026-09-26, pinned that the
-				 * title block is the rename's subject; the design round sees this note).
-				 *
-				 * ONE WRITE PATH: it calls `onRenameConversation`, which the page wires
-				 * to the dispatcher's own `/rename` (empty args) through
-				 * `dispatchFromControl` - the same door, and the same failure note, as
-				 * the page's inline options - so no second rename surface exists to
-				 * drift, and a dead command surface reports instead of swallowing.
+				 * team name" and the manager's clarification, 2026-09-26, pinned that
+				 * the title block is the rename's subject; the design round sees this
+				 * note). It OPENS AN INLINE EDITOR rather than the picker - the
+				 * operator's report asks for "inline edit with enter or unfocus to
+				 * save, esc or click x to cancel (pencil turns into an X)", and the
+				 * editor's one write path is the state block above this return.
 				 *
 				 * The slot is RESERVED rather than inserted: opacity is the only thing
 				 * that changes on hover (/motion), so nothing reflows under the pointer,
@@ -629,36 +778,197 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					className={cn(
 						"group/title inline-flex min-w-0 max-w-full items-center gap-1",
 					)}
+					/*
+					 * THE TITLE IS A CLIENT-AREA SURFACE, AND THIS IS THE LINE THAT MAKES
+					 * IT ONE (operator's report, 2026-09-26: "the rename interaction ...
+					 * only happens when you hover to the right of the conversation title
+					 * but not on the title itself").
+					 *
+					 * WHY IT WAS NOT: the header row is a drag region (`data-titlebar-drag`
+					 * above) and a point inside a drag region belongs to the OS's
+					 * window-move hit test - the renderer never sees the pointer there (the
+					 * mechanism is written down in `styles/index.css`'s drag vocabulary,
+					 * and `scripts/overlay-drag-zones.test.mjs` F-5 pins this marker so a
+					 * refactor cannot quietly remove it). The pencil beside the title
+					 * worked because it is a `<button>` and the descendant rule opts
+					 * controls out; the title text had no opt-out, so hovering IT was a
+					 * window drag - `group-hover` never fired, the pencil never revealed,
+					 * and a double-click never reached the title at all. The marker
+					 * subtracts the whole block's rect, which is what makes hovering
+					 * anywhere over the title text reveal the pencil and stand the editor's
+					 * entry gestures on client-area ground.
+					 *
+					 * THE TRADE, stated where the marker is (and flagged for the design/UX
+					 * rounds): the title is no longer a window-drag HANDLE. Dragging must
+					 * start beside it - the row's own empty lane, the padding, or the
+					 * strip above - and the `stillDrags` point in the `hit-zones` scene
+					 * measures that lane to prove it.
+					 */
+					data-titlebar-no-drag=""
 				>
-					<h2
-						data-header-title=""
-						className={cn(
-							"min-w-0 max-w-full truncate font-medium text-body text-ink",
-						)}
-					>
-						{agentName}
-					</h2>
-					{onRenameConversation && (
+					{renaming ? (
+						<input
+							ref={renameInputRef}
+							data-header-rename-input=""
+							/*
+							 * `outline-none` is deliberate, the second exemption the focus-ring
+							 * rule in `styles/index.css` names: focus moved here
+							 * programmatically as the edit OPENED, and the block's one-line
+							 * clip would cut a ring anyway. What says "editing" is the X in
+							 * the slot, the caret, and the selected text.
+							 */
+							className={cn(
+								"min-w-0 max-w-full border-0 bg-transparent p-0 outline-none",
+								"font-medium text-body text-ink",
+							)}
+							style={renameWidth === null ? undefined : { width: renameWidth }}
+							value={renameDraft}
+							/*
+							 * FROZEN WHILE SAVING, visibly (UX round 1's U3): the command
+							 * already carries the value that was on screen when Enter or the
+							 * blur submitted it, so edits accepted after that point could only
+							 * be text the write silently ignores. `readOnly` rather than
+							 * `disabled`: it blocks edits while keeping focus, caret and
+							 * selection, and the busy spinner in the slot states why nothing
+							 * types rather than the keystrokes simply vanishing.
+							 */
+							readOnly={renameSaving}
+							aria-label="Conversation name"
+							onChange={(event) => setRenameDraft(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									void commitRename(true);
+								} else if (event.key === "Escape") {
+									/* Claimed with `preventDefault`, the way every layer that
+									 * must win claims Escape (the ladder in
+									 * `use-interrupt-on-escape.ts`): the field owns the key,
+									 * so a cancel cannot also reach the turn's interrupt. */
+									event.preventDefault();
+									/* A SUBMITTED SAVE IS COMMITTED (UX round 1's U1): once
+									 * the write is in flight its outcome is the backend's, and
+									 * an exit that only closed the editor would promise an
+									 * abort it cannot make. The no-op is visible - the slot
+									 * shows the busy spinner and the field is read-only - and
+									 * the escape claim above still runs, so the key cannot
+									 * fall through to the turn's interrupt either. */
+									if (renamePhaseRef.current === "saving") return;
+									closeRename(true);
+								}
+							}}
+							onBlur={() => void commitRename(false)}
+							spellCheck={false}
+						/>
+					) : (
+						<h2
+							ref={renameTitleRef}
+							data-header-title=""
+							onDoubleClick={renameSessionId ? startRename : undefined}
+							className={cn(
+								"min-w-0 max-w-full truncate font-medium text-body text-ink",
+								/*
+								 * Client-area now, so the two things such a text needs: no
+								 * native selection (a drag across a window title that
+								 * highlights like a document reads as broken, and a
+								 * double-click's word-select would race the select-all the
+								 * editor opens with), and the arrow cursor - a pointer
+								 * cursor would promise a single click the text does not act
+								 * on (the double-click and the pencil are the affordances).
+								 * `user-select: none` does not stop `dblclick`, which is the
+								 * event the editor opens on.
+								 */
+								"cursor-default select-none",
+							)}
+						>
+							{agentName}
+						</h2>
+					)}
+					{renameSessionId && (
 						<button
+							ref={renameControlRef}
 							type="button"
 							data-header-rename=""
-							aria-label="Rename conversation"
-							title="Rename conversation"
-							onClick={onRenameConversation}
+							/*
+							 * THE LABEL STATES THE TRUE AFFORDANCE OF EACH PHASE: the
+							 * pencil's name, the X's cancel, and - while the write is in
+							 * flight - the busy state itself, because a "Cancel rename"
+							 * label over a no-op would be the same lie the U1 rule exists
+							 * to avoid.
+							 */
+							aria-label={
+								renameSaving
+									? "Saving the conversation name"
+									: renaming
+										? "Cancel rename"
+										: "Rename conversation"
+							}
+							title={
+								renameSaving
+									? "Saving the conversation name"
+									: renaming
+										? "Cancel rename"
+										: "Rename conversation"
+							}
+							/*
+							 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
+							 * plus the spinner taking the icon's slot, the 20px box fixed so
+							 * geometry never moves. `aria-disabled`, not `disabled`: the
+							 * button keeps its place and never steals focus back from the
+							 * field; the press guard below is what actually no-ops.
+							 */
+							aria-busy={renameSaving || undefined}
+							aria-disabled={renameSaving || undefined}
+							/*
+							 * The X half of the blur race: consume the press's own
+							 * `mousedown` so the input never blurs on the way to this
+							 * handler (a blur would save first), and let go of a
+							 * multi-click's second press so NOTHING toggles twice in one
+							 * gesture - the guard is symmetric (agent review round 1's
+							 * NIT-1): without it a double-click on the X cancels on the
+							 * first press and RE-OPENS on the second.
+							 */
+							onMouseDown={(event) => {
+								if (renaming) event.preventDefault();
+							}}
+							onClick={(event) => {
+								if (event.detail > 1) return;
+								/* A submitted save is committed (U1): while it is in
+								 * flight this control is the busy indicator, never the
+								 * cancel exit. */
+								if (renamePhaseRef.current === "saving") return;
+								if (!renaming) {
+									startRename();
+									return;
+								}
+								closeRename(true);
+							}}
 							className={cn(
 								"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs",
 								"text-ink-dim",
 								// The duration governs the transition INTO the current state, so
 								// the resting value is the fade-OUT and the hovered value the
 								// fade-IN: quick to appear, gentler to leave (the reveal pattern
-								// `chat-sidebar.tsx`'s entity rows ship).
+								// `chat-sidebar.tsx`'s entity rows ship). While editing the
+								// reveal gates are dropped: the X is the mode's own control
+								// and must be visible without a pointer.
 								"transition-opacity duration-base ease-out-quart",
-								"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
-								"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
+								!renaming &&
+									"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
+								!renaming &&
+									"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
 								"hover:text-ink-muted",
 							)}
 						>
-							<Pencil className={cn("size-3")} aria-hidden="true" />
+							{renameSaving ? (
+								/* The spinner takes the X's slot while the write is in
+								 * flight - the identity trigger's busy glyph, one scale
+								 * step up from the 12px icons to match it. */
+								<Spinner size="xs" />
+							) : renaming ? (
+								<X className={cn("size-3")} aria-hidden="true" />
+							) : (
+								<Pencil className={cn("size-3")} aria-hidden="true" />
+							)}
 						</button>
 					)}
 				</span>

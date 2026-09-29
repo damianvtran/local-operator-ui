@@ -179,6 +179,13 @@ export function useState(initial) { let current = typeof initial === "function" 
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => undefined;`,
 						loader: "js",
 						resolveDir: process.cwd(),
@@ -767,6 +774,109 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	// The initial connection did not publish an authoring recovery generation;
 	// one false-to-true transition after that connection published exactly one,
 	// while the repeated connected state only republishes the live transport state.
+});
+
+/*
+ * THE COMPLETION'S OWN TRIGGER, and why it is not the catalogue frame's job.
+ *
+ * A finished turn advances the transcript's activity clock, and the bins and the
+ * row label read that clock - but only a LIST read carries it. The backend
+ * publishes a `catalogue` invalidation when the completion moves the row's order
+ * key, and that covers the common case; it CANNOT fire for a completion that
+ * moves no key (the subject already in its completion band, busy band missed),
+ * and there the row sat in its old bin until the 30 s safety poll (measured live:
+ * 26.3 s after the completion, on the installed runtime). So the two frames a
+ * finished turn ALWAYS publishes - the status edge and the completion mark -
+ * each publish this counter too, and the sidebar's effect keyed on it re-reads
+ * the catalogue.
+ *
+ * An acknowledgement is not an edge here: clearing a receipt writes no
+ * transcript byte, so no row's time moved and there is nothing to re-read.
+ */
+test("a completion's own frames publish the activity revision the sidebar refetches on", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames = () => {
+		throw new Error("the hook never subscribed");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: (onFrame) => {
+						globalThis.__frames = onFrame;
+						return () => {};
+					},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	assert.equal(connection.available, true);
+	for (const effect of globalThis.__effects) effect();
+	// Before any frame the counter is zero - the sidebar's effect reads no edge.
+	assert.equal(connection.activityRevision, 0);
+
+	// The status edge a completion always carries.
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 9,
+		type: "session_status",
+		session_id: SESSION,
+		payload: { code: "complete", label: "Complete", revision: 5 },
+	});
+	assert.deepEqual(globalThis.__stateSets, [1]);
+
+	// The completion mark, which is the only frame an adverse completion publishes.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 10,
+		type: "attention",
+		session_id: SESSION,
+		payload: {
+			conversation_id: `session/${SESSION}`,
+			completion_token: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			anchor_id: "row-1",
+			kind: "complete",
+			unseen: true,
+			revision: [1, 1],
+		},
+	});
+	assert.deepEqual(globalThis.__stateSets, [2]);
+
+	// A receipt being CLEARED is not an activity edge: nothing was written.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 11,
+		type: "attention",
+		session_id: SESSION,
+		payload: {
+			conversation_id: `session/${SESSION}`,
+			completion_token: null,
+			anchor_id: null,
+			kind: null,
+			unseen: false,
+			revision: [2, 2],
+		},
+	});
+	assert.deepEqual(globalThis.__stateSets, []);
+
+	// And the catalogue frame's own revision is a separate trigger, unchanged.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 12,
+		type: "catalogue",
+		payload: { revision: 7 },
+	});
+	assert.deepEqual(globalThis.__stateSets, [7]);
 });
 
 test("the catalogue frame publishes the revision the sidebar refetches on", () => {
