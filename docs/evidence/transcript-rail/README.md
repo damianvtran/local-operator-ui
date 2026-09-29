@@ -39,12 +39,21 @@ values:
   hosting: test
   model_name: mock-model
 YAML
-# an isolated daemon this run owns, from local-operator's merged main
-# (BE-1: `sessions.checkpoints`), a bearer of this run's own choosing
+# the local-operator checkout that serves the manifest: a worktree of the
+# operator's checkout at the ref the re-shoot used,
+# a5007c8e64455fd07134037e639afde0ccb189b3 (its first-parent line carries
+# BE-1's #1712 and #1718; #1721's naming op is NOT on this line - which is why
+# the hover cards show their fallback text and the hook logs its 404 warn)
+LO_WORKTREE="$RIG/lo"
+# an isolated daemon this run owns, from that ref (BE-1:
+# `sessions.checkpoints`), a bearer of this run's own choosing. The port is a
+# flag on all three lines below; the final re-shoot used 8081 because 8080
+# was held by the operator's live daemon (left untouched).
+PORT=8081
 LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
   HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
   "$LO_WORKTREE/.venv/bin/local-operator" serve \
-  --host 127.0.0.1 --port 8080 --hosting test --model mock-model &
+  --host 127.0.0.1 --port $PORT --hosting test --model mock-model &
 # the worktree rebuilt against it; the four auth vars to placeholders is
 # enough for a local build (scripts/vite-plugins/replace-backend-config.ts
 # refuses to compile without them set, and a placeholder satisfies it) -
@@ -52,11 +61,11 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
 # worktree's `.env` carries it EMPTY, a build inlines "", and the renderer
 # refuses to boot ("PostHog host must be a valid URL") before the driver arms
 VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 pnpm build
+VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$PORT" pnpm build
 # the scene
 LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
   node scripts/renderer-driver.mjs --scene transcript-rail \
-  --backend http://127.0.0.1:8080 --backend-records "$RIG/config/run/serve" \
+  --backend "http://127.0.0.1:$PORT" --backend-records "$RIG/config/run/serve" \
   --seed-onboarding-complete --out "$RIG/frames"
 ```
 

@@ -7866,7 +7866,7 @@
 			"frames": 24,
 			"surfaces": 12,
 			"themes": 2,
-			"source": "`scripts/renderer-driver.mjs`'s `--scene transcript-rail` (round 2: the D1 landing fix, the physical pointer-press leg, and D5's sparse / bounded-card / outcome / building states), on the app built from this change's own tree, against an isolated `local-operator` daemon on 127.0.0.1:8080 whose config root carries the scene's four fixture conversations (`scripts/transcript-rail-fixture.mjs`, 200 + 320 + 6 + 240 turns); ALL CHECKS PASSED (73); the timings and every caveat are in the set's README."
+			"source": "`scripts/renderer-driver.mjs`'s `--scene transcript-rail` (round 2: the D1 landing fix, the physical pointer-press leg, and D5's sparse / bounded-card / outcome / building states), on the app built from this change's own tree, against an isolated `local-operator` daemon this run owned (`local-operator` @ `a5007c8e64455fd07134037e639afde0ccb189b3`, a `~/local-operator` worktree carrying BE-1's #1712/#1718; #1721 is not on that line, so the hover cards show their fallback text) whose config root carries the scene's four fixture conversations (`scripts/transcript-rail-fixture.mjs`, 200 + 320 + 6 + 240 turns); ALL CHECKS PASSED (81); the timings and every caveat are in the set's README."
 		}
 	],
 	"remediationRecord": {
