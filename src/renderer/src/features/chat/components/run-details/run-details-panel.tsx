@@ -23,6 +23,7 @@ import { RunDetailJobs } from "./run-detail-jobs";
 import { RunDetailMcp } from "./run-detail-mcp";
 import type { McpServerRow, RunDetails } from "./run-detail-model";
 import { hasRunDetails } from "./run-detail-model";
+import { RunDetailMonitors } from "./run-detail-monitors";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
 import { RunDetailWakes } from "./run-detail-wakes";
@@ -83,6 +84,15 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * request through whichever ref that section owns.
 	 */
 	wakesSectionRef?: Ref<HTMLElement>;
+	/**
+	 * The Monitors section's element, for the same request.
+	 *
+	 * The fifth ref, and with it the fifth destination the composer's status row
+	 * can name (`RunPanelSection`): the monitor chip opens the pane at this
+	 * section exactly as the wake chip opens it at the wakes, and the pane
+	 * resolves the request through whichever ref that section owns.
+	 */
+	monitorsSectionRef?: Ref<HTMLElement>;
 };
 
 export const RunDetailsPanel = ({
@@ -99,6 +109,7 @@ export const RunDetailsPanel = ({
 	subagentsSectionRef,
 	jobsSectionRef,
 	wakesSectionRef,
+	monitorsSectionRef,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -218,6 +229,33 @@ export const RunDetailsPanel = ({
 		sections.push({
 			key: "wakes",
 			body: <RunDetailWakes details={details} sectionRef={wakesSectionRef} />,
+		});
+	}
+	/*
+	 * The Monitors section, `wakes`' sibling and its gate's twin: at least one
+	 * ARMED monitor, off the model's own list. A session whose only content is an
+	 * armed monitor is one this pane has something to show for, which is why this
+	 * section (and not a widened `hasRunDetails`) is what keeps the QUIET STATE
+	 * below out of reach for it — exactly as the wake section's own note argues
+	 * for wakes: the section renders at `monitors.length > 0`, so
+	 * `sections.length` is non-zero and the quiet branch is unreachable.
+	 *
+	 * It takes the UNTIMED model, like the plan and the wakes above it: a monitor
+	 * carries absolute instants (next due, last check) and a health word, none of
+	 * which is a function of when it is read.
+	 *
+	 * ORDER: directly after the wakes and before the MCP servers. The same rule
+	 * that fixed the wakes section's place decides this one — the section order is
+	 * fixed rather than reordered by state, the MCP list is LAST — and within the
+	 * session's own standing facts the wakes lead and the monitors follow, which
+	 * is the TUI band's own order ("wake rows first, then a monitor section").
+	 */
+	if (details.monitors.length > 0) {
+		sections.push({
+			key: "monitors",
+			body: (
+				<RunDetailMonitors details={details} sectionRef={monitorsSectionRef} />
+			),
 		});
 	}
 	if (mcpServers.length > 0) {

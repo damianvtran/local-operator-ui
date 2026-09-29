@@ -923,6 +923,22 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The mini composer's field (quick-send design §D; design round 1, D5):
+		 * an `elevated` box with a 1px `border-control` edge on the summoned
+		 * window's `canvas`, whose ink is the base role. A new component with its
+		 * own fill and edge has to be LISTED — by this table's own first rule,
+		 * green output about surfaces nobody named is not evidence about this one.
+		 * The same triple rides under "ask option button (hover)", but that row's
+		 * grounds are the pane's, and a summoned window draws on its own canvas.
+		 */
+		name: "mini composer field",
+		on: ["canvas"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The browser tab strip's agent marker: the one element that distinguishes a
 		 * tab an AGENT opened from one the user opened (design 6.1/11.8).
 		 *
@@ -1546,6 +1562,27 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "inkDim",
 	},
+	{
+		/*
+		 * The checkpoint rail's marks (`checkpoint-model.ts` holds the role
+		 * map the rail paints; design D5, dsh rework 2026-09-29).
+		 *
+		 * A mark that is ALSO a control: each tick is a 3px bar inside a 24x12
+		 * invisible hit target, and it has to be findable at a glance — the rail
+		 * is the transcript's whole checkpoint navigation — while carrying no
+		 * label of its own, so there is no ink-on-fill pair for a `CONTROLS` row
+		 * and no edge to assert either. `inkDim` clears the graphic floor on
+		 * `canvas`, and the hover/focus step to `ink` needs no second row: it is a
+		 * role on a ground, one of the INKS x GROUNDS pairs asserted above. The
+		 * row is here because the role a mark PAINTS is the thing no palette
+		 * assertion can see — the "usage unmeasured mark" precedent directly
+		 * above: that mark shipped in the floor-exempt `inkDisabled` while sitting
+		 * under a green run.
+		 */
+		name: "checkpoint rail tick",
+		on: ["canvas"],
+		fg: "inkDim",
+	},
 	/*
 	 * The panel share meter's fill, drawn inside the same `border-control` track
 	 * `/usage` uses (its geometry is a port of that meter, one primitive instead
@@ -1591,6 +1628,22 @@ const GRAPHICS = [
 		 * repeating a pairing another loop covers.
 		 */
 		name: "link toolbar action icon (hovered)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row: the 2px accent bar on its
+		 * leading edge.
+		 *
+		 * The same pairing the link toolbar's row above asserts (`accent` on
+		 * `accentWash`, 4.53:1 at worst), listed under its own name because it is
+		 * a new component's mark and this file's rule is that green output about
+		 * a component nobody listed is no evidence about that component. The bar
+		 * is what distinguishes the row Enter opens from the pointer's own tint
+		 * on the ground where the wash alone cannot.
+		 */
+		name: "search result active bar (accent)",
 		on: ["accentWash"],
 		fg: "accent",
 	},
@@ -1974,6 +2027,29 @@ const PERCEPTIBLE = [
 		pairedWith: "canvas",
 		maxWeightChange: 2.0,
 		against: "canvas",
+	},
+	{
+		/*
+		 * The checkpoint jump's landing wash (`reveal-record.ts` and the
+		 * `[data-jump-highlight]` rules in `styles/index.css`, design §D7): the
+		 * row a tick jump landed on holds a transient `accentWash` ground for
+		 * ~1.4 s. Here rather than in `CONTROLS` because it is not a control -
+		 * no border, no interaction, a state of the reader's own view - and its
+		 * question is this table's: the wash must be SEEN against the ground a
+		 * transcript row sits on (`canvas`), or the flash is a no-op - worst of
+		 * all for a reduced-motion reader, whom the stylesheet deliberately
+		 * keeps on the static wash and nothing else.
+		 *
+		 * The pair is one this file already measures (the reading buttons' hover
+		 * row above: `accentWash` against `canvas` is ΔE00 13.33 dark / 6.75
+		 * light); the floor is the wide "a human can tell these apart" reading
+		 * (2.0), and the row exists so a component that now DEPENDS on the pair
+		 * keeps it asserted rather than borrowing it silently.
+		 */
+		name: "checkpoint jump landing wash",
+		role: "accentWash",
+		on: ["canvas"],
+		minDeltaE: 2.0,
 	},
 ];
 
@@ -2695,6 +2771,66 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'variant="primary"',
 		why: "the banner's band draws the same washes as the strip's; an outlined or secondary primary control collapses into them below the 3:1 floor, and the palette rows cannot see which variant the component renders",
 	},
+	{
+		/*
+		 * The checkpoint rail tick's fill, at its call site.
+		 *
+		 * The GRAPHICS row of the same name proves `inkDim` clears the floor on
+		 * `canvas`; only this pin can see the edit that repaints the rest mark in
+		 * a role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
+		 * the role the usage mark above actually shipped in) or `hairline` (capped
+		 * below 2:1 by design). Either edit keeps every palette assertion green
+		 * while the rail's ticks stop being findable. The class string lives in
+		 * `checkpoint-model.ts`'s role map (the dsh rework extracted it from the
+		 * component); the pin follows the string, not the file it used to sit in.
+		 */
+		what: "checkpoint rail tick fill",
+		file: "src/renderer/src/features/chat/canonical/checkpoint-model.ts",
+		must: "bg-ink-dim",
+		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row, at its call site.
+		 *
+		 * The row Enter opens is the one the reader is deciding about, and the
+		 * family's own history is why this pin exists: a selection carried by
+		 * `accent-wash` alone is ΔE00 0.77 on `elevated` in obsidian (1.014:1) —
+		 * the defect D12 records for the picker and the slash popup — so the wash
+		 * is paired with a 2px `accent` bar on the leading edge, the same second
+		 * signal `slash-commands.tsx` and `at-picker.tsx` draw. The bar is the
+		 * non-luminance mark, so the pin holds the composed class: dropping the
+		 * bar leaves every palette row green while the row Enter will open stops
+		 * being distinguishable in the themes the wash collapses in.
+		 */
+		what: "search result row active mark",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+		why: "the active row's fill is a wash that collapses onto the panel's own ground in four of twelve themes; the 2px accent bar is its second, non-luminance signal, and only this pin can see the class string that draws it",
+	},
+	{
+		/*
+		 * The marked runs inside a result's snippet.
+		 *
+		 * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
+		 * editor's `FIND_MATCH_CLASS`), and the ink half is what keeps it legal:
+		 * the INKS loop asserts `ink` on `accentWash` at the strong-text floor.
+		 * The rest of the string is deliberately pinned too, because the frames
+		 * proved the fill cannot carry the mark alone: on the panel's `elevated`
+		 * ground the wash measures ΔE00 0.77 in obsidian (2 mentions of the
+		 * matched word, no mark), so the ACCENT UNDERLINE is the signal that
+		 * cannot collapse — `accent` is asserted at the 3:1 structural floor on
+		 * every ground by this file's `STRUCTURAL` list — and `font-medium` is
+		 * what keeps the mark readable on the two row states whose fill is the
+		 * same wash. A repaint that keeps the fill but drops the underline or
+		 * the weight keeps every palette assertion green while the match stops
+		 * being findable in four of twelve themes.
+		 */
+		what: "search match mark in a snippet",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
+		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
+	},
 ];
 
 /**
@@ -3389,12 +3525,21 @@ if (palettes.length === 0) {
  * at 0.00 — where `accent` and `success` are the same hex. In the brand pair
  * that is the point, because the brand has one hue and "it worked" is the state
  * it is happiest to own; in monokai and sage it follows from palettes built
- * around a single signature green. Either way it is a decision rather than a
- * defect: nothing in the product asks a user to distinguish an accent from a
- * success, whereas `success` against `info` is a distinction a callout exists
- * to make. A gate that fails by design teaches people to
- * silence gates, so accent is out of the family rather than pinned as an
- * exception in every palette.
+ * around a single signature green.
+ *
+ * THAT USED TO REST ON "nothing in the product asks a user to distinguish an
+ * accent from a success", AND THE STATUS CHANNEL NOW ASKS IT (design round 1,
+ * D1): the projects detail page renders `active` (accent) and `done` (success)
+ * as chips SIDE BY SIDE in one Status column, at the numbers above - 2.22 in
+ * localOperatorLight and 5.07 in localOperatorDark, whose washes are
+ * byte-identical, and 0.00 in monokai. The answer is not a palette change:
+ * `ProjectStatusBadge` carries a check glyph on `done`, so the difference the
+ * channel asks for is made by SHAPE in every palette, and this family stays as
+ * it is - there is no chromatic step left for a user to read. The acceptance is
+ * recorded here rather than re-litigated per palette, the same way
+ * `accentAlt`/`info` records its own below. A gate that fails by design teaches
+ * people to silence gates, so accent is out of the family rather than pinned as
+ * an exception in every palette.
  *
  * The floor is 15 and it is a judgement about *recall*, not comparison. A
  * ΔE00 around 2.3 is where a difference becomes visible with both colours

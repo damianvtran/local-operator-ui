@@ -290,7 +290,12 @@ test("Aida is the FIRST destination, above Agents (R3)", () => {
 	);
 	assert.match(
 		nav,
-		/label: "Aida",/,
+		/const aidaName = aida\.data\?\.name \?\? "Aida";/,
+		"her display name is the payload's, with the shipped default for a backend that predates the field",
+	);
+	assert.match(
+		nav,
+		/label: aidaName,/,
 		"the row's own label; the collapsed strip's tooltip reads the same string via renderNavRow",
 	);
 });
@@ -333,8 +338,8 @@ test("`/aida` is a table destination, with the two predicate answers that follow
 	assert.match(registry, /"aida\.open": \{ kind: "aida" \},/);
 	assert.match(
 		registry,
-		/return kind !== "machine-panel" && kind !== "aida";/,
-		"the aida kind addresses no conversation, so it joins machine-panel as the second exemption",
+		/if \(entry\.kind === "machine-panel" \|\| entry\.kind === "aida"\) return false;/,
+		"the aida kind addresses no conversation, so it stays an exemption beside machine-panel; issue #625 added the third (the `sessionless` picker opt-in) without touching this one",
 	);
 });
 

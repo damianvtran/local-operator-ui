@@ -145,7 +145,15 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 	);
 	const foot = between(
 		"{(error || profiles.error || teams.error) &&",
-		"\n\t\t\t{/*",
+		/*
+		 * THE SLICE ENDS AT THE NAV'S OWN CLOSE now, not at a `{/*` comment: the comment that
+		 * followed the foot line belonged to the sidebar's toast lane, and the lane was
+		 * deleted on 2026-09-27 (`docs/design/sidebar-row-space.md` §10's supersession
+		 * entry) - so no `{/*` follows this block any more, and the structural boundary is
+		 * what the slice ends at. What the case asserts is the foot line's OWN reading of
+		 * the shared predicate, which needs no comment after it.
+		 */
+		"\n\t\t\t</TooltipProvider>",
 	);
 	assert.ok(
 		foot.includes(SHARED_GATE),

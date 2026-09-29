@@ -664,9 +664,12 @@ isolation.**
   tooltip, badge, skeleton. A 32px-tall control cannot carry more: 10px eats a
   third of its height and reads as a lozenge, and every desktop tool that feels
   precise sits at 4–6.
-- **10px, panels and callouts.** Things that sit over or beside content and are
-  read as one block: menu, popover, select panel, alert.
-- **14px, frames.** Cards and dialogs — the containers other things sit inside.
+- **10px, panels, frames and cards.** Things that sit over or beside content
+  and are read as one block — menu, popover, select panel, alert — and, at the
+  same tier, the app's in-flow surfaces: a view's own frame (board, list,
+  timeline, schedules) and a panel-scale card (the agent-hub card).
+- **14px, dialogs.** The one frame that leaves the flow and carries the
+  system's shadow; the radius stays with it.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
 - **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
@@ -678,6 +681,13 @@ isolation.**
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
+- **A card's boundary is its ground, not an edge.** A card, a frame and the
+  well under a board's cards separate by their step on the four grounds (§ 2);
+  a hairline on a repeating card is the extra mark this system deletes, the
+  way `message-surface`'s border was retired. A card nested inside a well
+  takes 6 — the tabs track's own 10/6 pair (the board card in its sunken
+  column). A card in a STATE keeps its edge, because the state is the
+  information (the overdue board card's `warning-border`).
 - `rounded-full` stays reserved for avatars, status dots and pill badges.
 
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
@@ -833,8 +843,14 @@ equally important**, and the interface must not present them as though they are.
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
   itself once and only when its section ends — finished sections condense; the
   live section and anything the reader opened obey the reader, and nothing
-  condenses while a call in it is still running. A finished turn also carries
-  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The fold is a
+  condenses while a call in it is still running, nor while the turn waits on
+  the reader's own gate (an approval or question parks the turn; a parked turn
+  is unsettled, so nothing condenses). A finished turn also carries
+  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`) — EXCEPT a
+  turn that has condensed to its own summary bar: there the foot stands down
+  and the bar IS the line (its own stamp replaces the foot's, one stamp per
+  turn), so the agent-output tier reads as two levels — the turn's single bar,
+  then the runs' folds inside it once opened. The fold is a
   VIEW: it hides rows and never reorders them, so the placement rule a few lines
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
   tier a 40-step turn is 40 lines, which is the "every internal step at equal
