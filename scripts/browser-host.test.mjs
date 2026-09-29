@@ -77,6 +77,10 @@ const bundle = await build({
 			'export * from "./src/main/browser/vendor/driver/file-transfer-policy";',
 			'export * from "./src/main/browser/vendor/driver/file-transfer.tables.gen";',
 			'export * from "./src/main/browser/settle";',
+			// The popup policy for driven pages (docs/design/browser-oauth-popups.md 1-2).
+			// Bundled so the whole allow/deny table is driven here as RULES — the real
+			// popup it describes (a real child window over real CDP) is the proof's job.
+			'export * from "./src/main/browser/popups";',
 			'export * from "./src/main/browser/log-capture";',
 			'export * from "./src/main/browser/actions/gate";',
 			// The vendored driver modules. Their app-side counterparts live in
@@ -153,6 +157,12 @@ const {
 	safeHttpUrl,
 	navigateView,
 	settle,
+	// The popup policy's pure decision function and its cap constant: the matrix
+	// below drives this directly, and reads the cap rather than hard-coding 4 — a
+	// test that hard-codes the cap stops testing it the day the cap moves.
+	decidePopup,
+	effectivePresentation,
+	MAX_POPUP_CHILDREN_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -6501,4 +6511,159 @@ test("the download reveal opens the host's own directory and takes no path from 
 	);
 	downloads.forget(7);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/*
+ * ---- the popup policy for driven pages -------------------------------------
+ *
+ * The whole §1.1 table as RULES (docs/design/browser-oauth-popups.md). These
+ * cases pin the DECISION; the run that proves a real child window opens with a
+ * live `window.opener`, carries the session's cookies and closes on cue is
+ * `scripts/browser-host-proof.mjs` — the same division every other browser
+ * surface uses here. The grandchild rule ("a popup from a popup is refused") is
+ * NOT in this bundle by construction: a child gets its own deny-all handler in
+ * `wirePopup`, which is Electron-side code only the running app can exercise, and
+ * the proof asserts it end to end.
+ */
+test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
+	const policy = { mode: "focus", live: 0 };
+	const ask = (url, disposition = "default") =>
+		decidePopup({ url, disposition }, policy);
+
+	// `about:blank` EXACTLY is the one allowed `about:` — MSAL opens the blank
+	// window first and navigates it, and a denied blank popup is the failure the
+	// policy exists to remove. The near-misses must not ride the check.
+	assert.deepEqual(ask("about:blank"), { allow: true, presentation: "focus" });
+	for (const near of ["about:blankx", "about:srcdoc", "about:config"]) {
+		assert.deepEqual(
+			ask(near),
+			{ allow: false, reason: "scheme" },
+			`${near} must not pass the exact-string blank check`,
+		);
+	}
+
+	// http(s), ANY host: the boundary is the hardened window (partition, sandbox,
+	// no preload) plus the cap, not a domain list — so even a host nobody would
+	// allowlist is admitted, and that is the design asserted here rather than a
+	// hole. A second domain allowlist beside the window hardening is exactly what
+	// the design rejects, because it would have to name every IdP a user or agent
+	// may meet.
+	for (const url of [
+		"http://127.0.0.1:8080/login",
+		"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		"https://good.com.evil.test/",
+	]) {
+		assert.deepEqual(ask(url), { allow: true, presentation: "focus" });
+	}
+	// A form POST `target=_blank` is the same URL check: Electron carries the body
+	// in its own `details.postBody`, which this decision never reads.
+	assert.deepEqual(
+		ask("https://login.microsoftonline.com/post", "foreground-tab"),
+		{ allow: true, presentation: "focus" },
+	);
+
+	// Everything else refuses BY PARSED SCHEME, never by prefix: a
+	// `startsWith("http")` test would admit `httpfoo:`, and a prefix test on a
+	// host admits `https://good.com.evil.test`. The unparseable cases refuse too.
+	for (const url of [
+		"file:///etc/passwd",
+		"javascript:alert(1)",
+		"data:text/html,<h1>hi</h1>",
+		"blob:https://example.com/9f8c",
+		"chrome://settings",
+		"devtools://devtools/bundled/inspector.html",
+		"msauth://com.example.app",
+		"mailto:someone@example.com",
+		"httpfoo:not-a-scheme",
+		"not a url at all",
+		"",
+	]) {
+		assert.deepEqual(
+			ask(url),
+			{ allow: false, reason: "scheme" },
+			`${JSON.stringify(url)} must be refused as a scheme`,
+		);
+	}
+});
+
+test("the popup cap bounds the view's LIVE children, driven from the constant", () => {
+	const cap = MAX_POPUP_CHILDREN_PER_VIEW;
+	for (let live = 0; live < cap; live += 1) {
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition: "default" },
+				{ mode: "focus", live },
+			).allow,
+			true,
+			`live=${live} is under the cap`,
+		);
+	}
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+	// The cap counts LIVE children rather than opens, which is what keeps a retry
+	// from being refused for a window Chromium will REUSE rather than create
+	// (`window.open(url, "name")` while a window named `name` lives); a slot a
+	// closed child freed is open again.
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap - 1 },
+		).allow,
+		true,
+	);
+	// The cap is decided BEFORE presentation: an over-cap `background-tab` is
+	// refused for the cap, not admitted as an unforegrounded window.
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+});
+
+test("the §2.4 effective-show table: disposition picks presentation only under a normal launch", () => {
+	// Under a `normal` launch the disposition is the only input that selects:
+	// `background-tab` presents without foregrounding, everything else focuses.
+	const foregrounding = ["default", "foreground-tab", "new-window", "other"];
+	for (const disposition of foregrounding) {
+		assert.equal(effectivePresentation("focus", disposition), "focus");
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition },
+				{ mode: "focus", live: 0 },
+			).presentation,
+			"focus",
+		);
+	}
+	assert.equal(effectivePresentation("focus", "background-tab"), "inactive");
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: 0 },
+		).presentation,
+		"inactive",
+	);
+	// `inactive`: every disposition presents the same way — visible, never
+	// foregrounded.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("inactive", disposition), "inactive");
+	}
+	// `headless`: the popup still EXISTS — the page's flow needs it and CDP can
+	// drive it — so the effective show is `never`, not a refusal.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("never", disposition), "never");
+		assert.deepEqual(
+			decidePopup(
+				{ url: "about:blank", disposition },
+				{ mode: "never", live: 0 },
+			),
+			{ allow: true, presentation: "never" },
+		);
+	}
 });
