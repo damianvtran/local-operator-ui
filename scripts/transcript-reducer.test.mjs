@@ -4278,11 +4278,38 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		false,
 		"the tail read leaves the paging state alone",
 	);
+	/*
+	 * CHANGED BY THE LOADER-CONTINUITY FIX (design spec 1.1 rule 4), and this is
+	 * the one sanctioned change to a caller that passes no option. An ordinary
+	 * (tail-type) read used to adopt the page's `has_more` unconditionally, which
+	 * is how a re-applied newest page flipped a fully loaded conversation back to
+	 * "load earlier". It now believes the page only when the page reaches
+	 * STRICTLY OLDER than the stored cursor - a genuinely wider read.
+	 */
 	const ordinary = applyHistoryPage(loaded, page);
 	assert.equal(
 		ordinary.hasMore,
+		false,
+		"an ordinary read of a NEWER page leaves the paging state alone",
+	);
+	const wider = applyHistoryPage(
+		loaded,
+		{
+			...pageOf([
+				{
+					id: "u-1",
+					ts: at / 1000 - 5,
+					type: "message",
+					payload: { role: "user", content: "oldest" },
+				},
+			]),
+			has_more: true,
+		},
+	);
+	assert.equal(
+		wider.hasMore,
 		true,
-		"an ordinary read still believes the page",
+		"an ordinary read that reaches strictly older still believes the page",
 	);
 
 	/*
