@@ -2596,6 +2596,12 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--completion-in-place", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	/*
+	 * The completion that moves the row's TIME BIN: same shape as the two above,
+	 * with the frames a finished turn always publishes and no `catalogue` frame
+	 * at all - the half the base tree's client could not act on.
+	 */
+	["chat-sidebar-status-feed--completion-moves-bin", 780, 660],
 	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
@@ -4218,6 +4224,23 @@ export const STORIES = [
 	["chat-sidebar-view-menu--popover-open", 741, 760],
 	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
 	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	/*
+	 * THE TIME BASIS PAIR (2026-09-28): one roster, both clocks, so the frames
+	 * differ only in the pressed row and what the sections below read - and the
+	 * rail's own state, where the pair this fix removes would have stood.
+	 */
+	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
+	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	["chat-sidebar-view-menu--reorder-edges", 741, 760],
+	/* The design direction's D2 capture: the same panel in the window floor. */
+	["chat-sidebar-view-menu--popover-open-short", 800, 600],
+	/*
+	 * The same state in the shape the APP can reach with a short window (round
+	 * 1's Q-2): the popover does not exist below ~1024px because the rail
+	 * collapses, so a docked width and a short height is the honest worst case
+	 * the reader can drive.
+	 */
+	["chat-sidebar-view-menu--popover-open-narrow", 1100, 600],
 	[
 		/*
 		 * The first rung needs no scroll: the rig proved it by refusing - at ten
