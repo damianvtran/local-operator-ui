@@ -126,6 +126,7 @@ import {
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
@@ -2302,8 +2303,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * exactly as far as the row and no further — the same write the reader's
 	 * own scroll makes, one commit wide.
 	 */
-	const jumpToCheckpoint = useCallback(
-		async (id: string) => {
+	const jumpTo = useCallback(
+		async (id: string, missCopy: string) => {
 			const region = containerRef.current;
 			const root =
 				region?.querySelector<HTMLElement>("[data-lo-transcript-content]") ??
@@ -2325,13 +2326,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				loadOlder: onLoadOlder,
 			});
 			if (!reachable) {
-				showInfoToast(CHECKPOINT_JUMP_MISS_COPY);
+				showInfoToast(missCopy);
 				return;
 			}
 			const outcome = await jumpToEntry(root, region, id);
-			if (outcome === "missing") showInfoToast(CHECKPOINT_JUMP_MISS_COPY);
+			if (outcome === "missing") showInfoToast(missCopy);
 		},
 		[containerRef, onLoadOlder],
+	);
+	/*
+	 * The rail's ticks and the search overlay both land through this near path
+	 * (`ensureReachable` above); the two callers differ only in the sentence a
+	 * refusal speaks, so that is the argument rather than a second loop.
+	 */
+	const jumpToCheckpoint = useCallback(
+		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		[jumpTo],
+	);
+	const jumpToSearchHit = useCallback(
+		(id: string) => void jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
+		[jumpTo],
 	);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
@@ -3173,6 +3187,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				<ThreadSearchOverlay
 					sessionId={sessionId}
 					containerRef={containerRef}
+					onReveal={jumpToSearchHit}
 				/>
 			)}
 		</div>
