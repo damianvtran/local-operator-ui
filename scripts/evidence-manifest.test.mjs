@@ -1895,6 +1895,12 @@ const STAMP_BINDING_NOTES = [
 	 * held to this file like every entry above it.
 	 */
 	"foldOnto20c3a207d7Note",
+	/*
+	 * The sessionless-slash pass (issue #625), this branch's newest record: it
+	 * re-derived both stamps for the branch's own change and quotes the pair it
+	 * ships, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2921,6 +2927,13 @@ const BRANCH_RECORDS = [
 	 * pair, `BRANCH_RECORDS` is where it belongs.
 	 */
 	"dirtyWorkingTreeNote",
+	/*
+	 * And the sessionless-slash pass's own newest top-level record, which
+	 * re-derived both stamps for this branch's change (issue #625) and quotes
+	 * the pair it ships. Listed here for the reason the list exists: a fold
+	 * that started from main's manifest would drop it.
+	 */
+	"sessionlessSlashRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
