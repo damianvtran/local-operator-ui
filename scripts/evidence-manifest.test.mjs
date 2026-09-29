@@ -2214,6 +2214,17 @@ const BRANCH_RECORDS = [
 	"condensedGroupMediaNote",
 	"condensedGroupMediaRoundOneNote",
 	"condensedGroupMediaFoldNote",
+	/*
+	 * And the SAME LANE'S SECOND LEVEL (`condensedTurnMediaNote`): the pass
+	 * that keeps a folded span's pictures under the condensed BAR, with its
+	 * three new `chat-turn-collapse--images*` cells and its declared
+	 * `chat-turn-collapse-images-before` half. Registered for the list's usual
+	 * reason - a fold resolved from main's copy would drop the only statement
+	 * of what the pass moved and of the two trees' difference the pair
+	 * measures - and its note spells its identity as bare SHAs, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"condensedTurnMediaNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
