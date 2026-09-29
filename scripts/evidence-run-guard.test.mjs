@@ -574,8 +574,15 @@ function trackedSourceFiles(cwd = process.cwd()) {
 	);
 	// Tracked paths stay stable while parallel tests create and remove transient
 	// bundles; argv keeps filenames from being interpreted as shell syntax.
+	//
+	// The explicit bound is this call's own: it reads the WHOLE tracked list in
+	// one child, and the list itself outgrew Node's default `maxBuffer` (1 MiB)
+	// on 2026-09-29 - 1,051,160 bytes here against main's 1,047,391 - which
+	// surfaced as `spawnSync git ENOBUFS` in this suite. 64 MiB is the idiom the
+	// repo's other whole-tree git readers use.
 	return execFileSync("git", ["-C", cwd, "ls-files", "-z"], {
 		encoding: "utf8",
+		maxBuffer: 64 * 1024 * 1024,
 	})
 		.split("\0")
 		.filter(Boolean)
