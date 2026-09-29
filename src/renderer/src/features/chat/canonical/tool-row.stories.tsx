@@ -94,6 +94,7 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	// call was still being dictated. Every row here but the never-run states is
 	// a call that really was sent to a tool.
 	notRunReason: null,
+	notRunKind: null,
 	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
@@ -377,6 +378,163 @@ export const States: Story = {
 						"Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 1978 (char 1977)",
 					neverSent: true,
 					durationS: null,
+					output: null,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The meta tools' operations, each naming what the call DID (operator report,
+ * 2026-09-27).
+ *
+ * `agent`, `team` and `hub` are one tool each that does many jobs, and their
+ * name-only verbs said `Delegated` for all of them - three profile READS on the
+ * operator's screenshot painted `Delegated list` and `Delegated designer` while
+ * nothing was delegated. The rows run through the shipped pipeline (`toolOp` -
+ * `summaryFromArgs` - `toolRowLabel`), so the frame shows the real composition:
+ * the operation's verb, and an object that never echoes it.
+ */
+export const ToolOps: Story = {
+	render: () => (
+		<Frame
+			height={570}
+			/*
+			 * OPEN, because the rows are the subject: fifteen consecutive actions
+			 * condense into one fold, and a frame of that header alone would be a
+			 * picture of the container rather than of the verbs this story exists
+			 * for. Opening leaves both halves in frame - the folded run's own
+			 * summary line and every row beneath it.
+			 */
+			openRows
+			records={[
+				// The three rows the operator reported: a profile listing and two
+				// profile views, which read `Delegated` before this change.
+				tool({
+					id: "op:1",
+					toolName: "agent",
+					args: { op: "list" },
+					durationS: 0.34,
+					output: "3 roles: designer, coder, reviewer",
+				}),
+				tool({
+					id: "op:2",
+					toolName: "agent",
+					args: { op: "show", name: "designer" },
+					durationS: 0.12,
+					output: "Designs the rendered surface...",
+				}),
+				// A write op beside the reads, so the verb table is judged on both
+				// directions in one frame.
+				tool({
+					id: "op:3",
+					toolName: "agent",
+					args: { op: "create", name: "docs-writer" },
+					durationS: 0.08,
+					output: "created",
+				}),
+				tool({
+					id: "op:4",
+					toolName: "team",
+					args: { op: "list" },
+					durationS: 0.2,
+					output: "lopdev (manager + 6)",
+				}),
+				tool({
+					id: "op:5",
+					toolName: "hub",
+					args: { op: "peek", to: ["9f2a"], steps: 3 },
+					durationS: 0.4,
+					output: "step 12: running pnpm test",
+				}),
+				tool({
+					id: "op:6",
+					toolName: "hub",
+					args: {
+						op: "send",
+						to: ["9f2a"],
+						message: "check the fold header",
+						wake: false,
+					},
+					durationS: 0.1,
+					output: "delivered (quiet)",
+				}),
+				tool({
+					id: "op:7",
+					toolName: "secret",
+					args: { op: "retrieve", name: "DB_PASSWORD" },
+					durationS: 0.05,
+					output: "registered for redaction",
+				}),
+				tool({
+					id: "op:8",
+					toolName: "project",
+					args: { op: "link", name: "trace-tool-labels", session_id: "5d3f" },
+					durationS: 0.11,
+					output: "linked",
+				}),
+				// The operator's follow-up report (2026-09-27): a project VIEW rendered
+				// `Called project ui-update-account-robustness` under the generic
+				// wrench. Three rows pin the family: the view that was reported, the
+				// milestone op going the OTHER way (`remove`, which is why its verb is
+				// composed from the flag rather than the op alone), and the separate
+				// delete tool, whose name alone could not say it.
+				tool({
+					id: "op:9",
+					toolName: "project",
+					args: { op: "show", name: "ui-update-account-robustness" },
+					durationS: 0.09,
+					output: "active · est 5pt · 1 session",
+				}),
+				tool({
+					id: "op:10",
+					toolName: "project",
+					args: { op: "milestone", milestone: "ship-v2", remove: true },
+					durationS: 0.06,
+					output: "removed",
+				}),
+				tool({
+					id: "op:11",
+					toolName: "project_delete",
+					args: { name: "ui-update-account-robustness" },
+					durationS: 0.07,
+					output: "deleted",
+				}),
+				tool({
+					id: "op:12",
+					toolName: "network",
+					args: { action: "status", network: "" },
+					durationS: 0.3,
+					output: "home: 3 peers, 0 pending",
+				}),
+				tool({
+					id: "op:13",
+					toolName: "console",
+					args: { method: "create", command: "pnpm", args: ["test:desktop"] },
+					durationS: 1.2,
+					output: "con:1:9f2a",
+				}),
+				tool({
+					id: "op:14",
+					toolName: "lsp",
+					args: {
+						action: "definitions",
+						path: "src/renderer/src/features/chat/canonical/trace-fold-model.ts",
+						line: 190,
+					},
+					durationS: 0.07,
+					output: "trace-fold-model.ts:190",
+				}),
+				// A live row, so the present-participle half of the op table is on the
+				// frame too: `Waiting for jobs`, with the job id as its object.
+				tool({
+					id: "op:15",
+					toolName: "wait",
+					args: { job_id: "9360", wait_ms: 600000 },
+					phase: "running",
+					durationS: null,
+					startedAt: Date.now() - 41_000,
 					output: null,
 				}),
 			]}

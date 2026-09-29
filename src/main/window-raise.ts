@@ -19,10 +19,12 @@
  * EVERY RAISE NAMES ITS TRIGGER, and reports one line through the caller's
  * logger. This file used to log nothing, which is why the operator's report —
  * "the app steals my focus whenever a chat completes" — was unanswerable on the
- * machine where it happened: five causes raise a window here, from an ordinary
- * launch to a second instance sharing the profile, a clicked banner, the viewer's
- * focus endpoint and a conversation delivered to a window, and nothing recorded
- * which one had just taken the focus. The trigger is a required part of the call
+ * machine where it happened: seven causes raise a window here, from an ordinary
+ * launch and a macOS Dock click to a second instance sharing the profile, a
+ * clicked banner, the viewer's focus endpoint, a conversation delivered to a
+ * window and the global hotkey's mini composer, and nothing recorded which one
+ * had just taken the focus. The trigger is
+ * a required part of the call
  * so a new raise cannot be added anonymously, and `never` — the path that raises
  * nothing — is deliberately silent: a headless run's whole value is that it leaves
  * no trace on the machine, its logs included. A `never` delivery that REPLACES an
@@ -69,13 +71,28 @@ export interface RaisableWindow {
  * `viewer-resume` and `viewer-focus` are separate verbs of one control endpoint
  * because they are separate requests: one opens a conversation, the other only
  * raises the window.
+ *
+ * `activate` IS THE REQUEST `initial-present` CANNOT NAME: a person clicking the
+ * Dock icon of a windowless app is not this process's own launch, and before this
+ * name existed its window presented under `initial-present` — which reads, in the
+ * one log whose job is attribution, exactly like the launch that already
+ * presented. The Dock click names itself now, on its present line and on the
+ * refusal a quitting process answers it with.
  */
 export type RaiseTrigger =
 	| "initial-present"
 	| "second-instance"
+	| "activate"
 	| "banner-click"
 	| "viewer-focus"
-	| "viewer-resume";
+	| "viewer-resume"
+	/*
+	 * The global hotkey's mini composer (design §D.5). A raise under this name
+	 * is the ONLY way the mini view may come forward: it reports through
+	 * `presentMiniView` below, which is gated on the launch plan's `focus`
+	 * policy like every other presentation in this file.
+	 */
+	| "mini-view";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -304,6 +321,11 @@ const REFUSABLE_DELIVERY: Record<
 	// THE ONE REFUSAL. The residual above says what it rests on and what it cannot
 	// see.
 	"second-instance": "when-its-plan-is-silent",
+	// A Dock click carries no conversation and installs nothing: it only ever
+	// opens this process's own window, so there is no delivery here to refuse or
+	// to park. (The refusal a QUITTING process answers it with is not this gate's;
+	// it has a line of its own, `applied=skipped+quitting`.)
+	activate: "never",
 	// A person clicked a real banner, so refusing it and applying it must not
 	// differ — and with a window up it does not even reach this gate.
 	"banner-click": "never",
@@ -313,6 +335,10 @@ const REFUSABLE_DELIVERY: Record<
 	// HIS OWN CLICK ROUTES THROUGH THIS, and the ladder reads any ack as
 	// "displayed", so refusing it is a silent no-op on his own notification (U1).
 	"viewer-resume": "never",
+	// The hotkey's mini view raises and delivers nothing to retarget, so the
+	// gate's question (may this request REPLACE an in-use window's conversation)
+	// never arises; declared for the same totality rule as `viewer-focus`.
+	"mini-view": "never",
 };
 
 /**
@@ -609,6 +635,44 @@ export function reportParksAtQuit(
 }
 
 /**
+ * A request was REFUSED because this process is quitting: a window it created now
+ * would die with the shutdown. The refusal answers from the two request sites (a
+ * second launch and a Dock click) AND from the window-CREATE path itself — a
+ * banner click, the consent toast's reopen, the viewer's recreate verbs — so one
+ * line shape covers every source, carrying the source's own `trigger`.
+ *
+ * WHY THIS IS A LINE AND NOT SILENCE. The reported shape: Cmd+Q closes the window
+ * while the process keeps tearing down — the session-cookie hold, then the
+ * owned-backend stop, seconds of it — with the single-instance lock still held.
+ * A relaunch inside that window used to be answered by the dying process with a
+ * fresh window (an undeclared relaunch resolves `focus`), which appeared over a
+ * teardown that killed it again seconds later: "the relaunched app opens onto
+ * the app still shutting down". The request is refused instead — nothing is
+ * created, nothing is raised, nothing is parked — and this line is the account of
+ * it. Without one, the log's answer to "what happened to what I asked for" would
+ * be nothing at all for a request whose losing launch was told "the app will
+ * raise its window", which is the same silence the park line exists to remove
+ * (UX round 2, U5). `applied=skipped+...` is the family the declined `inactive`
+ * raise reports in, and `quitting` names the one reason that holds for every plan
+ * at once: the process is going away, so nothing it showed could be promised to
+ * stay.
+ */
+export function reportSkippedWhileQuitting(
+	context: RaiseContext,
+	requested: WindowShow,
+): void {
+	context.report?.(
+		[
+			`trigger=${context.trigger}`,
+			`mode=${MODE_OF_SHOW[requested]}`,
+			`requested=${requested}`,
+			...requesterFields(context),
+			"applied=skipped+quitting",
+		].join(" "),
+	);
+}
+
+/**
  * What a second launch or a clicked notification banner asks for: bring this
  * window to the operator.
  *
@@ -764,6 +828,21 @@ export interface SecondLaunchTarget {
 	 * consumes whatever is parked as its initial session.
 	 */
 	openWindow?: ((request: SecondLaunchRequest) => void) | null;
+	/**
+	 * True when this process has already begun quitting and the quit has NOT been
+	 * cancelled since (see `quit-state.ts`; `index.ts` reads it per request, so a
+	 * cancelled quit answers normally again).
+	 *
+	 * WHY THE TARGET CARRIES IT. A window created or raised during teardown is a
+	 * window that dies with the shutdown — and the operator sees exactly that: the
+	 * relaunch "opens onto the app still shutting down" and is gone again a second
+	 * later, because the process that answered it was the one on its way out. The
+	 * whole request is refused instead (`reportSkippedWhileQuitting`), so the next
+	 * launch — the one that finds the process gone — is the one that starts.
+	 * `index.ts` reads its own quit state per request; the default keeps every other
+	 * caller's behaviour.
+	 */
+	quitting?: boolean;
 	report?: RaiseReport;
 }
 
@@ -781,11 +860,36 @@ export interface SecondLaunchTarget {
  * building one would leave an invisible window holding a screen nobody can reach,
  * so the conversation waits for the operator's next window instead
  * (`canCreateWindowFor`, and the queue in `index.ts`).
+ *
+ * A QUITTING PROCESS ANSWERS WITH NOTHING BUT A LINE. Every path below ends in a
+ * window the shutdown is about to take down, so the request is refused whole
+ * (`reportSkippedWhileQuitting`) rather than answered by a process that cannot
+ * keep what it shows.
  */
 export function applySecondLaunch(
 	request: SecondLaunchRequest,
 	target: SecondLaunchTarget,
 ): void {
+	/*
+	 * A PROCESS THAT IS QUITTING ANSWERS NOTHING WITH A WINDOW, whatever the
+	 * request named and whatever else the target could do with it. This is the
+	 * first check rather than a condition inside a branch: every path below ends in
+	 * a window that the shutdown is about to take down — created, raised, or
+	 * delivered into — and refusing the request whole is the only answer that is
+	 * still true a second later. The line is the account of the refusal (see
+	 * `reportSkippedWhileQuitting` for the defect it answers).
+	 */
+	if (target.quitting) {
+		reportSkippedWhileQuitting(
+			{
+				trigger: "second-instance",
+				requester: request.requester ?? undefined,
+				report: target.report,
+			},
+			request.show,
+		);
+		return;
+	}
 	if (request.session !== null) {
 		if (target.openConversation) {
 			target.openConversation(request.session, request);
@@ -808,4 +912,39 @@ export function applySecondLaunch(
 		requester: request.requester ?? undefined,
 		report: target.report,
 	});
+}
+
+/**
+ * The mini view's one presentation path (design §D.5).
+ *
+ * WHY IT IS A SEPARATE FUNCTION rather than a `raiseWindow` call: the mini
+ * view only ever presents under a FOCUS policy — it takes the keyboard for the
+ * composer, which is the interaction's point — while `raiseWindow` also has the
+ * `inactive` half, which orders a window without activating the app and is the
+ * wrong promise for "press a key, type immediately". So the gate here is the
+ * strict one: unless the launch plan resolved `focus`, this returns WITHOUT a
+ * single call. That is the second half of the mode discipline the design states
+ * — `mini-view.ts` contains no raise call, and this function refuses even when
+ * it is the caller — so an `inactive` or `headless` run has two independent
+ * reasons the mini view can never appear.
+ *
+ * `restore()` is kept: the ONLY way this window is minimised is an operator
+ * gesture against a visible window, and the hotkey's meaning is "bring it back"
+ * (the same reading `raiseWindow` takes for a focus-class request).
+ */
+export function presentMiniView(
+	window: RaisableWindow,
+	show: WindowShow,
+	context: RaiseContext,
+): void {
+	if (show !== "focus") return;
+	const applied: string[] = [];
+	if (window.isMinimized()) {
+		window.restore();
+		applied.push("restore");
+	}
+	window.show();
+	window.focus();
+	applied.push("show", "focus");
+	context.report?.(raiseLine(context, show, applied));
 }

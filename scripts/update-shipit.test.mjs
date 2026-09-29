@@ -1122,6 +1122,23 @@ async function loadUpdateServiceModule() {
 									autoInstallOnAppQuit: false,
 									logger: null,
 								};
+								/*
+								 * electron-updater re-exports this from builder-util-runtime, and
+								 * the service constructs one per download. A fixture-sized mirror
+								 * of its interface, like the autoUpdater above it - it exists so
+								 * the module imports resolve when update-service is bundled
+								 * here.
+								 */
+								export class CancellationToken {
+									constructor() { this.cancelled = false; this.handlers = []; }
+									onCancel(handler) { if (this.cancelled) handler(); else this.handlers.push(handler); }
+									onCancelRequested(handler) { this.onCancel(handler); return { dispose: () => {} }; }
+									cancel() {
+										if (this.cancelled) return;
+										this.cancelled = true;
+										for (const handler of this.handlers.splice(0)) handler();
+									}
+								}
 							`);
 						}
 						return fixture(`

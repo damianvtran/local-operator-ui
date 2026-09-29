@@ -29,6 +29,31 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+/*
+ * The storage shim the store needs to load in node at all: zustand's `persist`
+ * writes through `localStorage` on every `setState`, which node lacks (the same
+ * shim `chat-sidebar-sections.test.mjs` and `console-pane.test.mjs` carry). It
+ * is also the instrument for the persistence case below - the store writes into
+ * it, and a fresh parse reads it the way a launch does.
+ *
+ * THE KEY IS DISCOVERED, NOT SPELLED: the test finds the entry whose parsed
+ * state carries `chatSidebarView`. Hard-coding the storage key would make this
+ * file a second place a rename has to land, and the reader of this assertion
+ * does not care what the key is - only that the store wrote one and that what
+ * it wrote is the view the popover had just set.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 
@@ -37,6 +62,13 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/chat-sidebar-view";',
 			'export * from "./src/renderer/src/features/chat/chat-list-sections";',
+			/*
+			 * The store joins the bundle for the PERSISTENCE case, and for one
+			 * reason: the view the popover writes is a persisted field, so the
+			 * claim "this setting survives a relaunch" is a claim about the
+			 * store's own round trip and not about the sidebar's markup.
+			 */
+			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
@@ -61,6 +93,7 @@ const {
 	SIDEBAR_SECTION_LABEL,
 	isEntitySection,
 	isSectionShown,
+	canMoveSection,
 	moveSection,
 	pageLimit,
 	pageMoreLabel,
@@ -71,6 +104,8 @@ const {
 	sectionRows,
 	shownSections,
 	toggleSection,
+	persistedUiPreferences,
+	useUiPreferencesStore,
 	isActiveRow,
 	entityRows,
 	entityMore,
@@ -491,7 +526,7 @@ test("the section grouping is the list's own, not a second partition", () => {
 	);
 	// The arrangement the null defers to, driven through the module that owns it,
 	// so the deferral is a fact about the shipped code and not about a stub.
-	const sectioned = sectionRows(rows, NOW);
+	const sectioned = sectionRows(rows, NOW, "active");
 	assert.deepEqual(
 		sectioned.running.map((entry) => entry.session_id),
 		["busy"],
@@ -518,7 +553,7 @@ test("every chat-list section has a place in the view's canonical order", () => 
 	assert.deepEqual(
 		ENTITY_SECTIONS.slice(),
 		["agents", "teams"],
-		"the two entity sections are the ones the Agents disclosure owns",
+		"the two entity sections are the ones the AGENTS/TEAMS region draws",
 	);
 });
 
@@ -622,11 +657,125 @@ test("an unreadable or tampered view draws the column nobody has configured", ()
 	);
 	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.hidden, []);
 	assert.equal(DEFAULT_SIDEBAR_VIEW.groupBy, "section");
+	assert.equal(DEFAULT_SIDEBAR_VIEW.basis, "active");
 	assert.equal(DEFAULT_SIDEBAR_VIEW.orderBy, "active-first");
 	assert.equal(DEFAULT_SIDEBAR_VIEW.loads, 0);
 });
 
-test("the component draws the band's controls and the popover's three groups", () => {
+test("the time basis parses like the other two choices: stored, validated, defaulted", () => {
+	assert.equal(parseSidebarView({ basis: "created" }).basis, "created");
+	assert.equal(
+		parseSidebarView({ basis: "modified" }).basis,
+		"active",
+		"a basis this build cannot name falls back to the default rather than emptying the field",
+	);
+	assert.equal(parseSidebarView({ basis: 7 }).basis, "active");
+});
+
+test("a reorder pair is offered only where a press can land (D1)", () => {
+	/*
+	 * The defect this pins, measured on the operator's panel: Pinned draws first
+	 * whatever the stored order says, and the entity region draws in fixed source
+	 * order, so a pair on either moved the stored order and the popover while the
+	 * column it describes stood still. The pair is drawn on the chat sections
+	 * alone, and enabled only when the adjacent SHOWN section in that direction is
+	 * another chat section.
+	 */
+	for (const key of ["pinned", "agents", "teams"]) {
+		assert.equal(
+			canMoveSection(DEFAULT_SIDEBAR_VIEW, key, -1),
+			false,
+			`${key} must offer no up`,
+		);
+		assert.equal(
+			canMoveSection(DEFAULT_SIDEBAR_VIEW, key, 1),
+			false,
+			`${key} must offer no down`,
+		);
+	}
+	// The default order's interior chat neighbours: running/down, today/both, week/up.
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "running", 1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", -1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", 1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "week", -1), true);
+	// The edges: Pinned above running, the entity region below Older.
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "running", -1), false);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "older", 1), false);
+});
+
+test("an empty section cannot move, and nothing moves against one (round 1's m1/U1)", () => {
+	/*
+	 * THE DEFECT THIS PINS, driven end to end in round 1: with a store whose only
+	 * row sits in Today, `This week` is shown but draws no rows (an empty chat
+	 * section contributes no label), and `Move Today down` was enabled - pressing
+	 * it rewrote the stored order and the panel's own list while the column the
+	 * reader was watching stood still. The mirror is an empty SOURCE: pressing an
+	 * empty section's own arrow at a drawn neighbour is equally invisible, because
+	 * the section being moved contributed nothing to the drawn sequence either
+	 * way. So the predicate asks BOTH ends - the section being moved and the
+	 * adjacent shown section in that direction must both draw - and with no
+	 * predicate (a caller with no rows to point at) the geometric rule stands.
+	 */
+	const draws = (drawn) => (key) => drawn.includes(key);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today"]),
+		),
+		false,
+		"today cannot move against an empty week",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"running",
+			1,
+			draws(["today", "week"]),
+		),
+		false,
+		"an empty section cannot move at all",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today", "week"]),
+		),
+		true,
+		"both ends drawn: the press is real",
+	);
+	assert.equal(
+		canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", 1),
+		true,
+		"no predicate: the geometric rule alone",
+	);
+});
+
+test("a hidden section cannot move, and a hidden neighbour makes a new one adjacent", () => {
+	const hidden = toggleSection(DEFAULT_SIDEBAR_VIEW, "today");
+	assert.equal(
+		canMoveSection(hidden, "today", -1),
+		false,
+		"a section that is not drawn has no up",
+	);
+	// With today hidden, running's shown down-neighbour is week - still a chat section.
+	assert.equal(canMoveSection(hidden, "running", 1), true);
+	const shuffled = {
+		...DEFAULT_SIDEBAR_VIEW,
+		order: ["pinned", "running", "agents", "today", "week", "older", "teams"],
+	};
+	assert.equal(
+		canMoveSection(shuffled, "today", -1),
+		false,
+		"its shown up-neighbour is an entity row",
+	);
+	assert.equal(canMoveSection(shuffled, "today", 1), true);
+});
+
+test("the component draws the band's controls and the popover's four groups", () => {
 	// The markup assertions this suite can make about a component it cannot
 	// render: the three icon-only buttons exist, each is named for a screen
 	// reader, and each of the popover's groups is drawn. A control that lost its
@@ -652,7 +801,7 @@ test("the component draws the band's controls and the popover's three groups", (
 	]) {
 		assert.ok(source.includes(hook), `${hook} is not drawn`);
 	}
-	for (const label of ["Group by", "Order by", "Sections"]) {
+	for (const label of ["Group by", "Time basis", "Order by", "Sections"]) {
 		assert.ok(
 			menu.includes(`"${label}"`) || menu.includes(`>${label}<`),
 			`the view popover draws no ${label} group`,
@@ -660,11 +809,16 @@ test("the component draws the band's controls and the popover's three groups", (
 	}
 	for (const hook of [
 		"data-sidebar-view-choice",
+		"data-sidebar-view-basis",
 		"data-sidebar-view-section",
 		"data-sidebar-view-move",
 	]) {
 		assert.ok(menu.includes(hook), `${hook} is not drawn`);
 	}
+	assert.ok(
+		menu.includes("basis: option.key"),
+		"the Time basis rows do not write the view's basis on press",
+	);
 	assert.ok(
 		source.includes('navigate("/agents?create=agent")') &&
 			source.includes('navigate("/agents?create=team")'),
@@ -674,4 +828,140 @@ test("the component draws the band's controls and the popover's three groups", (
 		source.includes('aria-label="Search chats and agents"'),
 		"the band's search control has no accessible name",
 	);
+});
+
+/*
+ * THE TWO ENTITY SECTIONS OBEY THE POPOVER LIKE EVERY OTHER SECTION.
+ *
+ * The operator's report (2026-09-27), verbatim: "I unchecked the Agents section
+ * from the view settings and that section still seems to be there". The tick
+ * went out and the panel's own "1 section hidden" sentence appeared, while the
+ * region below kept drawing the row - both halves of one frame disagreeing
+ * about one state.
+ *
+ * WHICH SIDE WAS WRONG, because it decides the shape of the fix: the WRITE
+ * reached the store (the panel's tick and its sentence are read from that same
+ * `view.hidden`), and the READ half of the region simply never asked. The
+ * chats list asked (`drawnSections`), which is why its six sections hid
+ * correctly while these two did not - one code path, two callers, one of them
+ * missing.
+ *
+ * THE MODEL HALF is asserted first: an entity key is an ordinary member of
+ * `hidden`, survives the store's own parse, and is claimed by the same
+ * `isSectionShown` the switch's tick reads.
+ */
+test("an entity section is hidden by the same field as a chat section", () => {
+	const stored = parseSidebarView({ hidden: ["agents"] });
+	assert.deepEqual(
+		stored.hidden,
+		["agents"],
+		"a stored entity key is not discarded on the way in",
+	);
+	assert.equal(isSectionShown(stored, "agents"), false);
+	assert.equal(shownSections(stored).includes("agents"), false);
+	const restored = toggleSection(stored, "agents");
+	assert.equal(isSectionShown(restored, "agents"), true);
+});
+
+/*
+ * THE COMPONENT HALF, read rather than rendered: the sidebar cannot be mounted
+ * by this suite (the module's own header says why), so the gate is asserted
+ * where it is written. Each entity heading must sit behind
+ * `isSectionShown(view, <key>)` - the call the popover's switch reads - and the
+ * assertion is a window AROUND the heading call rather than a substring search
+ * of the whole file, so a gate copied elsewhere cannot stand in for this one.
+ * It fails on the revision the operator reported: no such gate existed, so the
+ * window held no match.
+ */
+test("the AGENTS/TEAMS region draws each entity row behind the view's own gate", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	for (const key of ENTITY_SECTIONS) {
+		const at = source.indexOf(`{heading("${key}", `);
+		assert.ok(at > 0, `the ${key} section's heading call is gone`);
+		const window = source.slice(Math.max(0, at - 600), at);
+		assert.ok(
+			window.includes(`isSectionShown(view, "${key}") && (`),
+			`${key} is drawn without asking the view, so the popover's switch cannot hide it`,
+		);
+	}
+});
+
+/*
+ * THE PINNED ROWS RIDE IN A GROUPED LIST TOO.
+ *
+ * `Group by` is one of the popover's promises and it is a LAYOUT: switching it
+ * must not change which conversations are drawn. Grouping by agent or
+ * flattening handed `groupRows` the page alone, and `Pinned` is only drawn
+ * under the section arrangement - so every pinned chat disappeared from the
+ * column, silently, on a press that claims to rearrange it. Asserted as source
+ * because the fix is which array the component passes (the rule itself is
+ * `groupRows`'s, and the suite above already pins that it keeps every row it is
+ * given).
+ */
+test("a grouped list is the page plus the pinned rows, never the page alone", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes("groupRows([...pinned, ...pagedRows], view.groupBy)"),
+		"the grouped arrangement drops the pinned rows, so grouping acts as a filter",
+	);
+});
+
+/*
+ * PERSISTENCE, per control, and stated apart from whether the control works.
+ *
+ * A setting that works until the app restarts is a different bug from one that
+ * never works, and the popover's controls all ride ONE persisted object
+ * (`chatSidebarView`): the module's `toggleSection`/`moveSection` and the two
+ * single-choice writes each return a complete next view, the store keeps the
+ * whole object, and a launch rehydrates it through `parseSidebarView`. So the
+ * instrument is a write of the shape the panel makes, the bytes the persist
+ * middleware leaves behind, and a parse of those bytes - the same round trip
+ * `chat-sidebar-sections.test.mjs` takes for the dragged height, and the one
+ * half of this audit a mounted frame cannot show (Storybook never reloads the
+ * page a play function drove).
+ */
+test("every view setting the popover writes survives a relaunch", () => {
+	memory.clear();
+	const store = useUiPreferencesStore;
+	// One press, per control, in the panel's own spelling.
+	const hidden = toggleSection(DEFAULT_SIDEBAR_VIEW, "agents");
+	const moved = moveSection(hidden, "today", 1);
+	const grouped = { ...moved, groupBy: "flat" };
+	const ordered = { ...grouped, orderBy: "recent" };
+	store.getState().setChatSidebarView(ordered);
+	// The store is the writer, and the filter the middleware keeps is the one it
+	// ships: assert the field is IN the persisted blob rather than assuming it.
+	assert.deepEqual(
+		persistedUiPreferences(store.getState()).chatSidebarView,
+		ordered,
+	);
+	// The bytes on disk, parsed the way the next launch parses them.
+	const key = [...memory.keys()].find((entry) => {
+		try {
+			return JSON.parse(memory.get(entry)).state?.chatSidebarView !== undefined;
+		} catch {
+			return false;
+		}
+	});
+	assert.ok(key, "the store wrote a key carrying the sidebar's view");
+	const relaunched = parseSidebarView(
+		JSON.parse(memory.get(key)).state.chatSidebarView,
+	);
+	assert.deepEqual(
+		relaunched.hidden,
+		["agents"],
+		"the hidden section came back",
+	);
+	assert.equal(isSectionShown(relaunched, "agents"), false);
+	assert.deepEqual(relaunched.order, ordered.order, "the reorder came back");
+	assert.equal(relaunched.groupBy, "flat", "the grouping came back");
+	assert.equal(relaunched.orderBy, "recent", "the ordering came back");
+	// And the one control with a non-default value nothing else writes: the page
+	// ladder, whose counter is the only field that can only ever grow.
+	store.getState().setChatSidebarView({ ...relaunched, loads: 2 });
+	const again = parseSidebarView(
+		JSON.parse(memory.get(key)).state.chatSidebarView,
+	);
+	assert.equal(again.loads, 2, "the page rung came back");
+	assert.equal(pageLimit(again.loads), CHAT_PAGE_STEPS[1]);
 });

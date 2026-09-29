@@ -14,6 +14,8 @@ import {
 	type FC,
 	type ReactNode,
 	forwardRef,
+	useEffect,
+	useRef,
 } from "react";
 
 /**
@@ -96,6 +98,33 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 	dialogProps = {},
 	dataTourTag,
 }) => {
+	/*
+	 * FOCUS RETURNS TO THE OPENER (UX round 1, U2): the sheet closed with focus
+	 * on `<body>`, so a keyboard user who pressed `Edit` had to tab from the top
+	 * of the page again. Radix restores focus to a DialogTrigger's element, but
+	 * every caller here opens a CONTROLLED dialog from ordinary state — there is
+	 * no trigger to remember — so the opener is captured while the dialog is
+	 * open and refocused after it closes. Central on purpose: the same miss was
+	 * measured on the delete confirm, and every dialog gets it once.
+	 *
+	 * The `document.contains` guard is the unmount arm: a dialog whose flow
+	 * navigates away on close (the deleted project's detail screen) must not
+	 * throw the focus at a detached node — it just leaves focus where the
+	 * navigation put it.
+	 */
+	const openerRef = useRef<HTMLElement | null>(null);
+	useEffect(() => {
+		if (open) {
+			openerRef.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+			return;
+		}
+		const opener = openerRef.current;
+		openerRef.current = null;
+		if (opener && document.contains(opener)) opener.focus();
+	}, [open]);
 	/*
 	 * `className` is lifted out of the escape hatch and merged: spread after
 	 * the base classes it would replace them wholesale, dropping the height

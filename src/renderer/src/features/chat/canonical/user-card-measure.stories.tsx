@@ -16,9 +16,12 @@
  * these frames are the pane's own box, and every number below is read from the
  * live DOM at that pane in localOperatorDark on
  * `chat-canonical-user-card-measure--reported-shape`. At that pane the measure
- * is 900px (62..962) - `CHAT_MEASURE` caps the CONTENT div and the scroller's
- * `p-4` sits outside it, so the 900 is the row content box itself rather than
- * 900 minus that padding. `max-w-[75%]` then puts the card at 675px, with a
+ * was 900px (62..962) when these readings were taken - the shipped measure is
+ * 810px since the follow-up narrowing, against which the same arithmetic caps
+ * the card at 0.75 x 810 = 607.5px. `CHAT_MEASURE` caps the CONTENT div and the
+ * scroller's `p-4` sits outside it, so the 900 is the row content box itself
+ * rather than 900 minus that padding. `max-w-[75%]` then puts the card at
+ * 675px, with a
  * 641px content box inside its `px-4` and its 1px border, and the agent's
  * answer resolves against 860px of the same measure because it loses the 40px
  * avatar gutter. 675 against 860 is the aside the hierarchy asks for, and both
@@ -193,9 +196,9 @@ const LONG_TEXT: TranscriptRecord[] = [
  * The transcript pane in a fixed 1024x`height` frame.
  *
  * Pinned in PIXELS rather than left to the preview's own viewport: the claim is
- * about what the column measure does when it is at its 900px cap, and a story
- * rendered in a wider or narrower preview pane would be photographing a
- * different case than the one written down here.
+ * about what the column measure does when it is at its cap (900px when these
+ * frames were taken), and a story rendered in a wider or narrower preview pane
+ * would be photographing a different case than the one written down here.
  */
 const Frame = ({
 	records,

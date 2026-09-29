@@ -561,6 +561,7 @@ export const RunPanel = ({
 	const subagentsSectionRef = useRef<HTMLElement | null>(null);
 	const jobsSectionRef = useRef<HTMLElement | null>(null);
 	const wakesSectionRef = useRef<HTMLElement | null>(null);
+	const monitorsSectionRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (!revealRequest) return;
@@ -592,6 +593,7 @@ export const RunPanel = ({
 			subagents: subagentsSectionRef,
 			jobs: jobsSectionRef,
 			wakes: wakesSectionRef,
+			monitors: monitorsSectionRef,
 		};
 		const target = sectionRefs[revealRequest.section].current;
 		const region = bodyRef.current;
@@ -682,17 +684,29 @@ export const RunPanel = ({
 			data-run-panel-pane=""
 			aria-label="Run details"
 			tabIndex={-1}
-			className={cn("flex h-full flex-col bg-surface")}
+			/*
+			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
+			 * (`canvas/index.tsx`): the right-pane slot is a drawer over the work plane,
+			 * so it stands on `elevated` — one rung above the chrome — rather than on
+			 * the conversation's `canvas`, which made this pane's body and the
+			 * transcript one plane. The reasoning, the two refused alternatives and the
+			 * measured separations are argued once there; the lane's stop above this
+			 * slot moves with it (`chat-layout.tsx`), because a pane-only change leaves
+			 * this tone meeting the lane at y32.
+			 */
+			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			{/*
-			 * `bg-sunken`, the canvas's ground for this bar and the same 40px, so the
-			 * two panes read as one slot with two modes. `shrink-0` because the body
-			 * below owns the remaining height and the bar must not lose a pixel of
-			 * its declared size to a flex deficit.
+			 * NO GROUND OF ITS OWN. It was `bg-sunken`, which made this pane's icon row a
+			 * band whose background differed from the pane's body — the same defect the
+			 * canvas reports, and the same fix: the bar is transparent so the pane reads
+			 * as one surface. `shrink-0` because the body below owns the remaining
+			 * height and the bar must not lose a pixel of its declared size to a flex
+			 * deficit.
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					/*
 					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 					 * Electron draws the caption buttons into the client area's top-right 40px,
@@ -1049,6 +1063,7 @@ export const RunPanel = ({
 						subagentsSectionRef={subagentsSectionRef}
 						jobsSectionRef={jobsSectionRef}
 						wakesSectionRef={wakesSectionRef}
+						monitorsSectionRef={monitorsSectionRef}
 					/>
 				</div>
 			)}

@@ -556,9 +556,28 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						<span className="flex flex-wrap items-baseline gap-x-2 text-body text-ink">
 							{brandOf(provider)}
 							{isRecommended ? (
-								<span className="font-medium text-ink text-meta">
-									Recommended
-								</span>
+								<>
+									{/*
+									 * The `·` is what keeps the row from reading as one string: the brand
+									 * and the cue share a baseline, a size and an ink, so without a
+									 * separator the line reads as "Radient Recommended". #436's design
+									 * round 1 recorded exactly that (D5) and remedied it with the app's
+									 * own separator, taken from the transcript's
+									 * `never sent · N composed`; #494's rebuild of this list dropped it and
+									 * nothing in that change records the substitution, so it is restored
+									 * here as the same two nodes. `aria-hidden` because a screen reader
+									 * announcing a punctuation mark would read it as content.
+									 */}
+									<span
+										aria-hidden="true"
+										className="shrink-0 text-ink-dim text-meta"
+									>
+										·
+									</span>
+									<span className="shrink-0 font-medium text-ink text-meta">
+										Recommended
+									</span>
+								</>
 							) : null}
 						</span>
 						<span className="text-ink-muted text-meta">
@@ -857,46 +876,172 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		</div>
 	);
 
-	const groupedBlocks = nothingMatches ? (
-		<div className="flex flex-col items-center gap-2 py-6 text-center">
-			<p className="text-body-sm text-ink-muted">
-				No providers match this search.
-			</p>
-			{/* Clear search restores the list and hands the field back: a reader
-			    who cleared a query is about to type another (UX round 1, U4). */}
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => {
-					setQuery("");
-					searchRef.current?.focus();
-				}}
-			>
-				<X aria-hidden="true" />
-				Clear search
-			</Button>
-		</div>
-	) : (
-		groupOrder.map((group) =>
-			groups[group].length > 0 ? (
-				<div key={group} className="flex flex-col gap-2">
-					<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
-					<RowList label={GROUP_HEADINGS[group]}>
-						{groups[group].map(addRow)}
-					</RowList>
-				</div>
-			) : null,
-		)
+	/*
+	 * The two sentences this panel can carry INSTEAD of a group list.
+	 *
+	 * There are two because "nothing here" has two different meanings on the
+	 * onboarding shape, and saying the wrong one is a lie: a query that matches no
+	 * provider anywhere means the search failed, while a query whose every match is
+	 * in the shortcut block ABOVE means the panel is simply empty of the rest --
+	 * and the second state used to render as a search field over blank space, which
+	 * is the shape the hidden-trigger rule below exists to avoid (code round 1,
+	 * P2 / QA-1).
+	 */
+	const NO_MATCH_SENTENCE = "No providers match this search.";
+	const MATCHES_ABOVE_SENTENCE =
+		"The matching providers are in the suggested rows above.";
+	/*
+	 * The same claim for the case where the SUGGESTED block is not the one holding
+	 * the match (review round 3, R3-1). Which sentence is true is a question about
+	 * which block is on screen, and the census cannot answer it alone: with a
+	 * CONNECTED Radient and the query `rad`, `featured` is empty by construction
+	 * (`provider-catalog.ts` excludes every connected row from it) while the groups
+	 * are empty too, so the panel named a Suggested block that is not rendered and
+	 * the reader looked for rows that are not there. The suggested sentence's
+	 * wording is deliberately unchanged -- it is what `in-dialog-more-open-query`
+	 * photographs -- so the connected shape gets its own rather than a rewording of
+	 * both.
+	 */
+	const MATCHES_CONNECTED_ABOVE_SENTENCE =
+		"The matching providers are in the connected rows above.";
+
+	/*
+	 * The grouped blocks for ONE bucket set, so the two surfaces can hand this
+	 * function different buckets without either restating the markup.
+	 *
+	 * `sentence` is the caller's answer rather than a boolean read here, because
+	 * which sentence is true differs by surface: onboarding's shape paints a
+	 * shortcut block ABOVE these groups, so a query that only matches a suggested
+	 * row has found something and must not be told otherwise (see the `featuredOnly`
+	 * branch). Both sentences keep the way back, because a reader who cleared a
+	 * query is about to type another (UX round 1, U4).
+	 */
+	const blocksFor = (
+		buckets: Record<ProviderGroup, DesktopProvider[]>,
+		sentence: string | null,
+	) =>
+		sentence ? (
+			<div className="flex flex-col items-center gap-2 py-6 text-center">
+				<p className="text-body-sm text-ink-muted">{sentence}</p>
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => {
+						setQuery("");
+						searchRef.current?.focus();
+					}}
+				>
+					<X aria-hidden="true" />
+					Clear search
+				</Button>
+			</div>
+		) : (
+			groupOrder.map((group) =>
+				buckets[group].length > 0 ? (
+					<div key={group} className="flex flex-col gap-2">
+						<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
+						<RowList label={GROUP_HEADINGS[group]}>
+							{buckets[group].map(addRow)}
+						</RowList>
+					</div>
+				) : null,
+			)
+		);
+
+	const groupedBlocks = blocksFor(
+		groups,
+		nothingMatches ? NO_MATCH_SENTENCE : null,
 	);
 
 	if (featuredOnly) {
+		/*
+		 * WHICH ROWS THE SHORTCUT BLOCK MAY HOLD, and why it is filtered at all.
+		 *
+		 * The block is a SHORTCUT, not a second list: it repeats the matcher the
+		 * groups below use (through `visibleProviders`, which is where that rule is
+		 * written down) so a query cannot mean one thing above the field and another
+		 * underneath it -- type `rad` and the shortcut narrows to the row it names
+		 * instead of sitting there unfiltered above a blank list.
+		 *
+		 * `featuredIds` is the set of ids the shortcut block EXISTS for and this census
+		 * has, taken from the ids rather than from the painted rows: the painted set
+		 * varies with the credential and the query, while what the disclosure must not
+		 * repeat is the block's subject. The groups are filtered on the same two
+		 * predicates, so the exclusion cannot drop a row the block is not painting.
+		 */
+		const matched = new Set(
+			visibleProviders(rows, query, null).map((p) => p.id),
+		);
 		const featured = FEATURED_PROVIDER_IDS.map((id) =>
 			rows.find((provider) => provider.id === id),
 		).filter(
 			(provider): provider is DesktopProvider =>
 				provider !== undefined &&
-				!connected.some((row) => row.id === provider.id),
+				!connected.some((row) => row.id === provider.id) &&
+				matched.has(provider.id),
 		);
+		const featuredIds: Set<string> = new Set(
+			FEATURED_PROVIDER_IDS.filter((id) =>
+				rows.some((provider) => provider.id === id),
+			),
+		);
+		/*
+		 * "MORE PROVIDERS" IS THE REST OF THE REGISTRY, LITERALLY.
+		 *
+		 * `addRowsByGroup` excludes only CONNECTED rows, so the four suggested rows
+		 * came back a second time inside their own groups: measured on the shipped
+		 * census, opening the disclosure painted 22 rows for 18 providers, with
+		 * Radient twice -- both carrying the "Recommended" cue and the accent
+		 * primary, which is the two-accent-primaries-in-one-dialog shape design
+		 * round 1 removed (D2). The step's own docblock says "the rest behind 'More
+		 * providers'", so the code and the contract disagreed; the contract wins.
+		 */
+		const rest: Record<ProviderGroup, DesktopProvider[]> = {
+			subscription: groups.subscription.filter((p) => !featuredIds.has(p.id)),
+			key: groups.key.filter((p) => !featuredIds.has(p.id)),
+			local: groups.local.filter((p) => !featuredIds.has(p.id)),
+		};
+		const restCount = groupOrder.reduce(
+			(count, group) => count + rest[group].length,
+			0,
+		);
+		/*
+		 * A disclosure with nothing behind it is not rendered at all: with a census
+		 * that is only the shortcut rows there is no "rest", and an open panel whose
+		 * whole content is a search field over an empty list is the shape that reads
+		 * as broken. A query keeps it, because the field lives inside it -- hiding the
+		 * trigger mid-search would take away the reader's own way back.
+		 */
+		const searching = query.trim().length > 0;
+		/*
+		 * Which sentence the panel owes the reader when it has no group list, and the
+		 * one state that must NOT get one: `rad` narrows the shortcut block to
+		 * Radient and leaves the groups empty, so the panel would otherwise be a
+		 * search field over blank space (code round 1, P2 / QA-1).
+		 *
+		 * THE FAILED-SEARCH TEST IS THE CENSUS, NOT THE GROUPS (review round 2, R2-1).
+		 * `nothingMatches` asks `addRowsByGroup`'s buckets, and those SKIP every
+		 * connected row (`provider-catalog.ts`, `isConnectedRow`), so with a connected
+		 * Radient and the query `rad` it is TRUE while the Connected block above paints
+		 * the very row the query matched -- the panel told the reader their search had
+		 * failed beside its own answer. `matched` is the whole-census set the shortcut
+		 * block already filters on, so the two cannot disagree about whether the query
+		 * found anything. The sentence's wording is deliberately unchanged: it is what
+		 * `in-dialog-more-open-query` photographs. WHICH BLOCK THAT SENTENCE NAMES IS
+		 * NOT UNCHANGED (review round 3, R3-1): a matching connected row is a match in
+		 * a row above, but not in a SUGGESTED one -- `featured` is empty whenever the
+		 * match is connected, so naming it is the R2-1 defect one layer down. The
+		 * choice is made below, where both blocks are in scope.
+		 */
+		const emptyBody = searching
+			? matched.size === 0
+				? NO_MATCH_SENTENCE
+				: restCount === 0
+					? featured.length > 0
+						? MATCHES_ABOVE_SENTENCE
+						: MATCHES_CONNECTED_ABOVE_SENTENCE
+					: null
+			: null;
 		return (
 			<div
 				ref={gridRef}
@@ -910,16 +1055,18 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				{featured.length > 0 ? (
 					<RowList label="Suggested providers">{featured.map(addRow)}</RowList>
 				) : null}
-				<Disclosure
-					summary="More providers"
-					defaultOpen={focusGroup !== null || initialProviderId !== null}
-					chevron="trailing"
-				>
-					<div className="flex flex-col gap-4 pt-3">
-						{searchField}
-						{groupedBlocks}
-					</div>
-				</Disclosure>
+				{searching || restCount > 0 ? (
+					<Disclosure
+						summary="More providers"
+						defaultOpen={focusGroup !== null || initialProviderId !== null}
+						chevron="trailing"
+					>
+						<div className="flex flex-col gap-4 pt-3">
+							{searchField}
+							{blocksFor(rest, emptyBody)}
+						</div>
+					</Disclosure>
+				) : null}
 			</div>
 		);
 	}
