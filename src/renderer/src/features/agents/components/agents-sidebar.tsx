@@ -442,8 +442,13 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 		[handleOpenUploadDialog],
 	);
 
+	/* No leading `border-r`: the roster's `surface` against the `canvas` content
+	   is a tone step, and the line over it was a redundant fence — and the one
+	   the operator reported as stopping at the lane's lower edge rather than
+	   the window's top (2026-09-27). The roster keeps its ground; the boundary
+	   is the step. */
 	return (
-		<div className="flex h-full w-full flex-col overflow-hidden border-hairline border-r bg-surface">
+		<div className="flex h-full w-full flex-col overflow-hidden bg-surface">
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}

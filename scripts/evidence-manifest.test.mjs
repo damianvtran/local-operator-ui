@@ -2280,8 +2280,13 @@ const BRANCH_RECORDS = [
 	 * manifest and `package.json`'s test list) were resolved key by key, and of
 	 * which capture's head/capturedAt the merged block keeps. It quotes no
 	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
+	 *
+	 * RE-KEYED in the fold onto `a7b4f88a18`: main's copy already ships a note
+	 * under the plain name (the settings-rail lane's fold onto the same tip),
+	 * so this branch's record moved to `foldOnto0738fa7eb3MonitorControlsNote` -
+	 * the name this entry now carries.
 	 */
-	"foldOnto0738fa7eb3Note",
+	"foldOnto0738fa7eb3MonitorControlsNote",
 	/*
 	 * And the round-1 remediation's own record (agent review round 1's F1;
 	 * UX review round 1's U2-U8): the confirmation's busy window, the
@@ -2340,8 +2345,12 @@ const BRANCH_RECORDS = [
 	 * copy would drop the record of that resolution. It quotes no tree-hash pair -
 	 * the pair is re-derived over the staged tree in the fold commit itself - so
 	 * `BRANCH_RECORDS` is where it belongs.
+	 *
+	 * RE-KEYED in the fold onto `a7b4f88a18` for the same collision as its sibling
+	 * above: main's copy ships a note under the plain name, so this branch's
+	 * record moved to `foldOnto7ba0ddce94MonitorControlsNote`.
 	 */
-	"foldOnto7ba0ddce94Note",
+	"foldOnto7ba0ddce94MonitorControlsNote",
 	/*
 	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
 	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
@@ -2367,6 +2376,34 @@ const BRANCH_RECORDS = [
 	 * `BRANCH_RECORDS` is where it belongs.
 	 */
 	"foldOntof9dbf8b455Note",
+	/*
+	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
+	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
+	 * onto this file - its ground restamp note and its fold records, one
+	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
+	 * already ships notes under both of its old names - and wrote a note per
+	 * fold. They are listed for the reason this list exists: a fold that
+	 * started from main's copy would drop them first, and with them the only
+	 * statements of which trees each pass moved.
+	 */
+	"settingsRailGroundRestampNote",
+	"foldOnto8320e52366SettingsRailNote",
+	"foldOntoE2394f9ff1Note",
+	"foldOntoA8ac7f673cSettingsRailNote",
+	"foldOnto0738fa7eb3Note",
+	"foldOnto49491865caNote",
+	"foldOnto7ba0ddce94Note",
+	"foldOnto6f284060Note",
+	/*
+	 * And the fold onto `origin/main` = `a7b4f88a18` (the settings-rail-edge lane),
+	 * listed for the list's own reason: it is the fold that hit the NAME COLLISION
+	 * between this branch's and the settings-rail lane's fold records and resolved
+	 * it by re-keying this branch's two names (above). A later fold started from
+	 * main's copy would drop both the re-keyed names and this record. It quotes no
+	 * tree-hash pair - the pair is re-derived over the staged tree in the fold commit
+	 * itself - so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"foldOntoa7b4f88a18Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
