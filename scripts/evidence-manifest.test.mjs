@@ -2299,7 +2299,7 @@ const BRANCH_RECORDS = [
 	"python314RefreshFoldNote",
 	"python314RefreshSecondFoldNote",
 	/*
-	 * And by THIS branch, whose records the merge of `origin/main` = `0738fa7eb3` had to keep: its
+	 * And by THIS branch, whose records the merge of `origin/main` = `f9dbf8b455` had to keep: its
 	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
 	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
 	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
