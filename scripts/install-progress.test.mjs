@@ -712,6 +712,20 @@ test("the rail's markers follow the run's own state", () => {
 		!markerOf(rows[2]).includes("bg-accent"),
 		"the running step is drawn as a finished one",
 	);
+	/*
+	 * And the RUNNING ring's stroke is pinned for the same reason the waiting
+	 * ring's weigh is, one block down: design round 2's D7 - the working mark
+	 * shipped in the faintest border token and measured 1.22:1 against the
+	 * waiting rings' 3.13-3.42:1, so the mark that says "working" was the
+	 * faintest object in the column. `border-control` is the floor; the accent
+	 * quadrant is the one channel telling the two rings apart besides the turn.
+	 */
+	for (const name of ["border-2", "border-control", "border-t-accent"]) {
+		assert.ok(
+			markerOf(rows[2]).includes(name),
+			`a running ring no longer draws the floored stroke (missing ${name})`,
+		);
+	}
 	for (const name of ["border-2", "border-control"]) {
 		assert.ok(
 			markerOf(rows[3]).includes(name),
@@ -741,6 +755,22 @@ test("the rail claims work is happening only while it is", () => {
 		unannounced.indexOf("animate-install-turn") < unannounced.indexOf("<li"),
 		"the unannounced mark is not at the rail's head",
 	);
+	/*
+	 * The head mark draws the same ring the running step does (design round 2,
+	 * D7: both sites were `hairline`, both are `control` now), so the stroke is
+	 * pinned here as well - a single-site pin would stay green while this one
+	 * regressed.
+	 */
+	const headMark = unannounced
+		.slice(0, unannounced.indexOf("<li"))
+		.match(/class="([^"]*animate-install-turn[^"]*)"/);
+	assert.ok(headMark, "the unannounced head mark renders no element");
+	for (const name of ["border-2", "border-control", "border-t-accent"]) {
+		assert.ok(
+			headMark[1].split(/\s+/).includes(name),
+			`the head mark no longer draws the floored stroke (missing ${name})`,
+		);
+	}
 
 	const running = renderPanel(panelProps({ phase: "components" }));
 	assert.equal(
