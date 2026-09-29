@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import {
 	type BrowserWindow,
+	type DidCreateWindowDetails,
 	type Event,
 	WebContentsView,
 	type WebFrameMain,
@@ -19,7 +20,7 @@ import {
 	attachWebauthnChooser,
 	installWebauthn,
 } from "../webauthn";
-import type { RaiseReport } from "../window-raise";
+import { type RaiseReport, presentPopupWindow } from "../window-raise";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import {
@@ -33,6 +34,7 @@ import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
+import { decidePopup, effectivePresentation } from "./popups";
 import {
 	BROWSER_PARTITION,
 	type ClearWhat,
@@ -87,15 +89,30 @@ import { PSL_RULES } from "./vendor/driver/psl.gen";
  * half-applied.
  *
  * WHAT THIS DELIBERATELY DOES NOT DO: it never shows, raises or activates
- * anything (see the repo's window-mode guard, which scans this directory), it
- * never attaches a view to `session.defaultSession`, and it never exposes CDP on
- * a socket. The driven views are children of the window's content view and
- * nothing else.
+ * anything (see the repo's window-mode guard, which scans this directory) — a
+ * popup's presentation goes through `window-raise.ts`'s `presentPopupWindow`,
+ * the same way a consent banner's click comes forward. It also never attaches a
+ * view to `session.defaultSession`, and it never exposes CDP on a socket. The
+ * driven views are children of the window's content view and nothing else.
  */
 
-/** A popup a driven page asked for. Only http(s) URLs are offered to the user;
- * anything else is logged and dropped. Module scope: the linter's rule. */
-const HTTP_SCHEME = /^https?:/i;
+/**
+ * Whether a navigation must be refused: http(s) only, `about:blank` the one
+ * allowed `about:` URL, compared on a PARSED url — design 11.6 is explicit that
+ * a `startsWith` comparison is not a check. `file:`, `javascript:`, `data:`,
+ * `blob:`, `chrome:`, `devtools:` and every `about:` other than `about:blank`
+ * are refused. Shared by the driven views and by the windows they open, because
+ * a popup enforces the same scheme rule as the view it came from.
+ */
+function refusesNavigation(rawUrl: string): boolean {
+	try {
+		const url = new URL(rawUrl);
+		if (url.protocol === "about:") return url.href !== "about:blank";
+		return !permittedScheme(url);
+	} catch {
+		return true;
+	}
+}
 
 export interface StartBrowserHostOptions {
 	/** The app's main window: the surface the browser views are added to. */
@@ -115,6 +132,14 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * The launch plan's `backgroundThrottling`, forwarded for the same reason
+	 * `windowShow` is: a hidden popup must render like a shown one (a capture of it
+	 * is evidence), so `headless`/`inactive` runs hold the page at full rate and
+	 * `normal` keeps the platform's own throttling — one decision, made in
+	 * `window-mode.ts`, applied here rather than re-derived.
+	 */
+	backgroundThrottling: boolean;
 	/**
 	 * Where a raise reports its one line, so a consent banner's click is
 	 * attributable the way every other raise is.
@@ -859,42 +884,85 @@ export async function startBrowserHost(
 	function wireView(view: WebContentsView, tabId: number): void {
 		const contents = view.webContents;
 
-		// Popups: DENY everything, and do not auto-open the URL. The main window's
-		// own handler is deliberately not copied: its trusted-auth-domain allowlist
-		// exists for the app's own OAuth popup, while a driven page's `window.open`
-		// is arbitrary web content. Only same-tab HTTP(S) navigation is supported;
-		// this is not popup OAuth parity. POST bodies, window.opener and postMessage
-		// exchanges cannot be recreated safely from a blocked popup's URL.
+		// Popups: `about:blank` and http(s) open as real child windows, everything
+		// else is refused with a log line (docs/design/browser-oauth-popups.md 1.1).
+		// The deny-all that used to live here was measured against a real page whose
+		// sign-in legitimately uses `window.open` — the console's MSAL `loginPopup` —
+		// and lost: a denied `window.open` returns `null`, and the opener/postMessage
+		// contract cannot be rebuilt from the URL. The main window's own handler is
+		// still deliberately not copied: its trusted-auth-domain allowlist exists for
+		// the app's own OAuth popup, while a driven page is arbitrary web content, so
+		// the boundary here is the hardened window plus the per-view cap — not a
+		// domain list that would have to name every IdP a page may meet.
+		const popupChildren = new Set<BrowserWindow>();
 		contents.setWindowOpenHandler((details) => {
-			if (HTTP_SCHEME.test(details.url)) {
+			const decision = decidePopup(
+				{ url: details.url, disposition: details.disposition },
+				{ mode: options.windowShow, live: popupChildren.size },
+			);
+			if (!decision.allow) {
 				log(
-					`[browser] blocked a popup from a driven page: ${details.url} (offered to the user rather than opened)`,
+					`[browser] refused a popup from a driven page: ${details.url} (${decision.reason})`,
 				);
-				options.window.webContents.send("browser-popup-blocked", {
-					tabId,
-					url: details.url,
-				});
-			} else {
-				log(`[browser] blocked a non-http popup: ${details.url}`);
+				return { action: "deny" };
 			}
-			return { action: "deny" };
+			log(
+				`[browser] tab ${tabId} opened a popup: ${details.url} ` +
+					`(disposition=${details.disposition}, presentation=${decision.presentation})`,
+			);
+			return {
+				action: "allow",
+				overrideBrowserWindowOptions: {
+					width: 640,
+					height: 720,
+					minWidth: 480,
+					minHeight: 560,
+					center: true,
+					frame: true,
+					autoHideMenuBar: true,
+					// Nothing shows itself: presentation happens only through
+					// `presentPopupWindow` (window-raise.ts), under the launch plan's own
+					// gate. Under `never` the window exists hidden and drivable over CDP.
+					show: false,
+					// Defence in depth beside the plan gate: a window that will never be
+					// shown must also not be focusable — the same pairing `window-mode.ts`
+					// applies to the main window in `headless`.
+					focusable: decision.presentation !== "never",
+					backgroundColor: "#FFFFFF",
+					webPreferences: {
+						/*
+						 * EXPLICIT, and load-bearing (design 2.3): `partition` is NOT among the
+						 * security-related prefs Electron merges from the parent, and a popup
+						 * created in a different session is not RELATED to its opener —
+						 * Chromium severs `window.opener`, which is the entire contract a
+						 * popup-based sign-in needs. The `about:blank` case lands in this same
+						 * session by prefs-copy instead of by this line.
+						 */
+						partition: BROWSER_PARTITION,
+						sandbox: true,
+						contextIsolation: true,
+						nodeIntegration: false,
+						webSecurity: true,
+						allowRunningInsecureContent: false,
+						spellcheck: false,
+						navigateOnDragDrop: false,
+						// Not security-inherited either: a hidden popup must render like a
+						// shown one so a capture of it is evidence (design 2.5).
+						backgroundThrottling: options.backgroundThrottling,
+						// No `preload` — a popup has no bridge to anything, like the view.
+					},
+				},
+			};
+		});
+		contents.on("did-create-window", (child, details) => {
+			wirePopup(child, details, popupChildren);
 		});
 
-		// Navigation limits: http(s) only, compared on a PARSED url — design 11.6 is
-		// explicit that a `startsWith` comparison is not a check. `file:`,
-		// `javascript:`, `data:`, `blob:`, `chrome:`, `devtools:` and every `about:`
-		// other than `about:blank` are refused.
-		const refuses = (rawUrl: string): boolean => {
-			try {
-				const url = new URL(rawUrl);
-				if (url.protocol === "about:") return url.href !== "about:blank";
-				return !permittedScheme(url);
-			} catch {
-				return true;
-			}
-		};
+		// Navigation limits, shared with every popup this view opens: http(s) only,
+		// compared on a PARSED url — design 11.6 is explicit that a `startsWith`
+		// comparison is not a check.
 		const onWillNavigate = (event: Event, rawUrl: string): void => {
-			if (refuses(rawUrl)) {
+			if (refusesNavigation(rawUrl)) {
 				event.preventDefault();
 				log(`[browser] refused a navigation to ${rawUrl}`);
 			}
@@ -1000,6 +1068,71 @@ export async function startBrowserHost(
 			// removal a no-op too, so this is safe to run on a death we did not ask for.
 			releaseTab(tabId, contents.id);
 		});
+	}
+
+	/**
+	 * Everything a popup child gets, attached synchronously in
+	 * `did-create-window` — during creation, before the child's first response or
+	 * script runs, so every later navigation and redirect is covered. The initial
+	 * URL was vetted by the open handler one event earlier, which is why
+	 * `will-navigate`'s documented blind spot (it is for renderer-initiated
+	 * navigations; the browser-side initial load is not covered) is acceptable
+	 * here: the first hop IS the vetted one, and every hop after it walks through
+	 * these listeners.
+	 *
+	 * NO grandchildren: a child opens with its own deny-all handler, because no
+	 * known auth flow nests popups and unbounded nesting is what the per-view cap
+	 * would otherwise have to chase.
+	 *
+	 * NO registry, tab id, state file, CDP driver attachment or change
+	 * notification: the popup is not a tab and must not become one — the proof
+	 * asserts the tab count does not move. It appears nowhere in `session.json`
+	 * either; closing the app ends it.
+	 *
+	 * The child closes when its opener does (Electron's documented default —
+	 * `outlivesOpener` is deliberately absent), which is what covers the tab-close
+	 * path: `releaseView` destroys the view's webContents, and the popup goes with
+	 * it.
+	 */
+	function wirePopup(
+		child: BrowserWindow,
+		details: DidCreateWindowDetails,
+		popupChildren: Set<BrowserWindow>,
+	): void {
+		popupChildren.add(child);
+		child.on("closed", () => popupChildren.delete(child));
+		const childContents = child.webContents;
+		childContents.setWindowOpenHandler((childDetails) => {
+			log(`[browser] refused a popup from a popup: ${childDetails.url}`);
+			return { action: "deny" };
+		});
+		const onWillNavigate = (event: Event, rawUrl: string): void => {
+			if (refusesNavigation(rawUrl)) {
+				event.preventDefault();
+				log(`[browser] refused a popup navigation to ${rawUrl}`);
+			}
+		};
+		childContents.on("will-navigate", onWillNavigate);
+		childContents.on("will-redirect", onWillNavigate);
+		// A driven page must never be able to embed one — the same rule the view
+		// enforces above, for the same reason.
+		childContents.on("will-attach-webview", (event) => {
+			event.preventDefault();
+			log("[browser] refused a webview attachment inside a popup");
+		});
+		// The post-creation call covers the `about:blank` children whose
+		// `WebPreferences` are copied from the opener rather than taken from our
+		// options: a hidden popup must still render like a shown one, so a capture
+		// of it is a full-fidelity frame (`webContents.setBackgroundThrottling` is
+		// the documented way to say so after creation).
+		if (!options.backgroundThrottling) {
+			childContents.setBackgroundThrottling(false);
+		}
+		presentPopupWindow(
+			child,
+			effectivePresentation(options.windowShow, details.disposition),
+			{ trigger: "popup-open", report: options.reportRaise },
+		);
 	}
 }
 
