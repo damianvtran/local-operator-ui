@@ -1685,3 +1685,247 @@ export const wakesAndPlan = (): RunDetailsInput => ({
 		}),
 	],
 });
+
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One armed monitor in `MonitorState`'s own shape — the spec's identity fields
+ * joined with the health counters, which is exactly what the scheduler's
+ * `index_rows()` publishes (design § 10.2).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS — deliberately NOT
+ * `at()` above, which mints epoch SECONDS for the job rows. Getting either wrong
+ * is a factor of 1000 with nothing on screen to say so: the label would simply
+ * print a 1970 date, so the units are spelled on the fields rather than left to
+ * the reader's sense of which clock a field came off.
+ *
+ * `disabled_reason` is the wire's own shape — the check's last error line, which
+ * the scheduler copies into the counters when the failure ladder trips
+ * (`scheduler.py`: `counters["disabled_reason"] = counters["last_error"]`) — so
+ * a fixture states a plausible stderr line rather than a sentence about being
+ * disabled that no writer would produce.
+ */
+const monitorWatch = (spec: {
+	id: string;
+	name: string;
+	/** Minutes from the fixture's now; `null` for a monitor with no due slot. */
+	dueInMinutes: number | null;
+	/** `every_ms`: the check interval, in MINUTES for legibility. */
+	everyMinutes?: number;
+	/** Minutes since the last check, when one has run. */
+	lastCheckMinutesAgo?: number;
+	checks?: number;
+	description?: string;
+	consecutiveFailures?: number;
+	disabled?: boolean;
+	disabledReason?: string;
+}): Record<string, unknown> => ({
+	id: spec.id,
+	name: spec.name,
+	tool: "bash",
+	arguments: { command: "gh pr view 1710 --json state,reviews" },
+	every_ms: (spec.everyMinutes ?? 1) * 60_000,
+	until_at: null,
+	description: spec.description ?? "",
+	notify: false,
+	sort_lines: false,
+	ignore: [],
+	cwd: "/tmp/fixture",
+	created_at: FIXTURE_NOW_MS - 3_600_000,
+	next_due_at:
+		spec.dueInMinutes === null
+			? null
+			: FIXTURE_NOW_MS + spec.dueInMinutes * 60_000,
+	last_check_at:
+		spec.lastCheckMinutesAgo === undefined
+			? 0
+			: FIXTURE_NOW_MS - spec.lastCheckMinutesAgo * 60_000,
+	checks: spec.checks ?? 0,
+	deliveries: 0,
+	consecutive_failures: spec.consecutiveFailures ?? 0,
+	disabled: spec.disabled ?? false,
+	disabled_reason: spec.disabledReason ?? "",
+});
+
+/**
+ * One watch and nothing else: the monitor chip alone, at the row's start, and
+ * the Monitors section as the pane's only section.
+ *
+ * The state the whole slice exists for — a session whose only standing fact is
+ * something being WATCHED, which nothing in this app could show before.
+ */
+export const monitorsOnly = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+	],
+});
+
+/**
+ * The three health states on ONE list, published out of due order — which is
+ * also the section's ordering claim, the twin of `wakesRecurring`'s.
+ *
+ * Live and simply waiting (`loom-pr-1710`, due soonest, `41 checks` so far),
+ * mid-ladder (`ingest-queue`, `3 failed`), and parked by the ladder
+ * (`staging-pings`, no due slot — its slot reads `disabled` and its tail is the
+ * reason the counters carry). The disabled row arrives LAST on the wire and
+ * sorts last here too, because its `next_due_at` is null.
+ */
+export const monitorsHealth = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m2",
+			name: "ingest-queue",
+			dueInMinutes: 3,
+			lastCheckMinutesAgo: 2,
+			checks: 12,
+			consecutiveFailures: 3,
+			description: "Sweep the ingest queue for stuck rows",
+		}),
+		monitorWatch({
+			id: "m3",
+			name: "staging-pings",
+			dueInMinutes: null,
+			lastCheckMinutesAgo: 9,
+			checks: 57,
+			disabled: true,
+			disabledReason: "connection refused",
+			description: "Ping the staging cluster",
+		}),
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+	],
+});
+
+/**
+ * Nine monitors — ONE past `MONITOR_ROW_CAP` (8), so the overflow marker is in
+ * frame.
+ *
+ * The cap is the arm path's own `values.monitor.maxMonitors` default, so nine is
+ * reachable the way a full session with the setting raised would be, and the
+ * marker's wording ("1 more monitor") is what that state has to read like.
+ */
+export const monitorsMany = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: Array.from({ length: 9 }, (_, index) =>
+		monitorWatch({
+			id: `m${index + 1}`,
+			name: `watch-${index + 1}`,
+			dueInMinutes: (index + 1) * 2,
+			lastCheckMinutesAgo: index + 1,
+			checks: 10 * (index + 1),
+			everyMinutes: index % 3 === 0 ? 30 : 1,
+			description: `Watch ${MONITOR_MANY_DESCRIPTIONS[index]}`,
+		}),
+	),
+});
+
+/** Nine distinct subjects, so no two rows in that frame read alike. */
+const MONITOR_MANY_DESCRIPTIONS = [
+	"the build queue for a stuck job",
+	"the nightly import's row counts",
+	"the ledger for the unpaid rows",
+	"the staging cluster for a failed ping",
+	"the ingest queue for stuck rows",
+	"the backup log for last night's run",
+	"the exchange-rate feed for a stale quote",
+	"the card statement for a new charge",
+	"the failed-jobs list for a retry",
+];
+
+/** The long prose, for the row that has to clamp one and keep the whole text. */
+const LONG_MONITOR_DESCRIPTION =
+	"Watch the pull request's review state for anything that moves: new review comments, a changed approval, the merge queue position, and the check runs against the head commit, then report only what changed since the last look before the release window closes";
+
+/**
+ * One watch whose description is longer than the row can show.
+ *
+ * The truncation claim: the description is the one unbounded, authored string on
+ * a monitor row, so it clamps at two lines while the whole text stays readable
+ * on hover and in the accessible name. The pair is `monitorsOnly` above,
+ * whose description fits — an ellipsis with nothing beside it is not a
+ * comparison.
+ */
+export const monitorLongDescription = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "release-gate",
+			dueInMinutes: 2,
+			lastCheckMinutesAgo: 1,
+			checks: 8,
+			description: LONG_MONITOR_DESCRIPTION,
+		}),
+	],
+});
+
+/**
+ * Wakes and watches together: both standing-fact sections in one scroll region
+ * and both count chips on the row above them, the wakes first.
+ *
+ * The pair order is the TUI band's ("wake rows first, then a monitor section"),
+ * and this fixture is what the pane's section order and the chip group's order
+ * are read against.
+ */
+export const monitorsAndWakes = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "w1",
+			message: "Stand-up reminder",
+			dueInMinutes: 12,
+		}),
+		wakeSchedule({
+			id: "w2",
+			message: "Sweep the ingest queue for stuck rows",
+			dueInMinutes: 90,
+			everyMinutes: 90,
+		}),
+	],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+		monitorWatch({
+			id: "m2",
+			name: "ingest-queue",
+			dueInMinutes: 3,
+			lastCheckMinutesAgo: 2,
+			checks: 12,
+			consecutiveFailures: 3,
+			description: "Sweep the ingest queue for stuck rows",
+		}),
+	],
+});
