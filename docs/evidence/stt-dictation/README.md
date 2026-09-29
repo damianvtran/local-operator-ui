@@ -59,18 +59,18 @@ it starts by pid.
 
 ## 1. Recording is a state of the composer (the frames)
 
-`docs/evidence/stt-dictation-baseline/05-recording-space.webp` is the defect: at
+`docs/evidence/stt-dictation-baseline/05-recording-space/localOperatorDark.webp` is the defect: at
 the press the field disappears and a full-width washed panel - `● Recording`, a
 waveform across the whole box, a border - takes its place. The draft the user
 was mid-thought in is gone from the screen; the baseline record says it in data:
 `textarea:false, draft:null`.
 
-`02-recording-combo.webp` (this tree) is the same moment: the draft ("review the
+`02-recording-combo/localOperatorDark.webp` (this tree) is the same moment: the draft ("review the
 stt overhaul") is still in the field, the field is still mounted
 (`textarea:true`), and the state is one small line under it - dot, "Recording",
 a bounded waveform - with the confirm/cancel controls where they already were.
 The record: `textarea:true, indicator:true, draft:"review the stt overhaul"`
-(`sessionA.recordingTreatment`). `03-transcribing.webp` is the same treatment for
+(`sessionA.recordingTreatment`). `03-transcribing/localOperatorDark.webp` is the same treatment for
 the transcribing state ("Processing audio" on one small line, the draft
 untouched). The box grows 110px → 150px for the strip; nothing is centred across
 the measure and nothing covers a character.
@@ -100,7 +100,7 @@ the TCC prompt on top and is not measurable headlessly.
 
 ## 3. Dictation is available while a turn runs
 
-`09-typed-row-mid-turn.webp` follows a `[bash:40]` turn that is genuinely
+`09-typed-row-mid-turn/localOperatorDark.webp` follows a `[bash:40]` turn that is genuinely
 streaming (checked against the backend, not inferred). The rig samples the
 mic's own DOM state across the first ~6 s after the press:
 
@@ -111,7 +111,7 @@ mic's own DOM state across the first ~6 s after the press:
 
 ## 4. A mid-turn send rides the steer path
 
-`12-sent-mid-turn-steer.webp` is taken at the echo, while the turn still runs:
+`12-sent-mid-turn-steer/localOperatorDark.webp` is taken at the echo, while the turn still runs:
 the dictated message is in the transcript, and the composer shows its
 send-unsettled line "Sending your message" (the steer line - "Steer the agent.
 Enter sends now · Esc stops" - is the NEXT state, once the echo settles). The
@@ -161,7 +161,7 @@ the field is carried and never rendered.
 
 ## 7. A transcript landing around a send: the ordering, measured
 
-`13-transcript-in-echo-window.webp` and `sessionC.*` in the record. The rig
+`13-transcript-in-echo-window/localOperatorDark.webp` and `sessionC.*` in the record. The rig
 holds the fake upstream's ANSWER behind a gate, starts a recording, stops it,
 lets the transcription park upstream, then sends the typed draft with a
 released answer - and instruments the composer FIELD itself (a patched `value`
@@ -185,7 +185,7 @@ not on this run - stated here rather than buried.
 
 ## 8. The recording's own edges (review round 1)
 
-`15-edge-takes-settled.webp` and `sessionD.*`. Three takes whose release or
+`15-edge-takes-settled/localOperatorDark.webp` and `sessionD.*`. Three takes whose release or
 abort lands INSIDE the `getUserMedia` window, plus the control:
 
 - release-in-window (a tap): `recording:false, transcribing:false` after the
@@ -198,12 +198,12 @@ abort lands INSIDE the `getUserMedia` window, plus the control:
   (`edge take probe fourth dictation from the fake upstream.`), which is what a
   wedged recorder - the silent-mic ordering the review found - would fail.
 
-`14-mic-tooltip.webp` is the tooltip, hovered through the trusted input pipeline:
+`14-mic-tooltip/localOperatorDark.webp` is the tooltip, hovered through the trusted input pipeline:
 `Start recording (Cmd+Shift+S or hold Right-Option)` - the binding named from
 the same resolver the dispatcher matches (design round 1, D1), so the tooltip
 can no longer teach the old hold-Space gesture.
 
-`16-esc-ptt-cancels-take-not-turn.webp` and `sessionE.*` (QA round 1, Q-1): with
+`16-esc-ptt-cancels-take-not-turn/localOperatorDark.webp` and `sessionE.*` (QA round 1, Q-1): with
 a turn genuinely streaming (`streamingBeforeEsc:true`), the binding is held
 until the strip is up and Escape is pressed once. The take is cancelled
 (`recording:false` after the settle), the discarded take never reached the
@@ -260,11 +260,13 @@ whatever this process advertises rather than a fixed shape.
 - **`pnpm check-evidence`** (the frame sweep) is NOT run by any CI workflow;
   what CI runs is the desktop suite, including
   `scripts/evidence-manifest.test.mjs` (the manifest/stamp half). The frames
-  ship as WebP - re-encoded losslessly from this rig's PNG captures
-  (pixel-identical to the originals, ICC profile carried; verified by a direct
-  decode comparison, 0 differing bytes) so the set is inside the sweep's terms -
-  and the rig now captures WebP directly (`format: "webp"`, `quality: 88`, the
-  same convention `capture-evidence.mjs` uses).
+  ship as WebP on the sweep's canonical `<stem>/<theme>.webp` layout (theme
+  `localOperatorDark`, measured - worst `\u0394E00 0.00` across all 22), re-encoded
+  losslessly from this rig's PNG captures (pixel-identical to the originals, ICC
+  profile carried; verified by a direct decode comparison, 0 differing bytes), so
+  the set resolves in the sweep - counts and per-frame theme - and the rig now
+  captures WebP directly into the same layout (`format: "webp"`, `quality: 88`,
+  the convention `capture-evidence.mjs` uses).
 - **The real `local-operator` carriage** of `input_mode` does not exist yet;
   the stamped run therefore uses an injected capability and a backend that
   refuses the field (see §5). The app-side gate is what makes shipping ahead of

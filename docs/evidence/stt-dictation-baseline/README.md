@@ -7,18 +7,18 @@ every pair in that directory; nothing here is a defect report of its own.
 
 What they show:
 
-- `05-recording-space.webp` - hold Space, outside any editable field: the
+- `05-recording-space/localOperatorDark.webp` - hold Space, outside any editable field: the
   composer's field is GONE and a full-width washed panel (`● Recording`, a
   waveform across the whole box, a border) has replaced it. The record says it
   as data: `sessionA.recordingTreatmentSpace` is
   `{"textarea":false,"draft":null}`.
-- `06-transcribing-space.webp`, `07-dictated-landed-space.webp` - the same
+- `06-transcribing-space/localOperatorDark.webp`, `07-dictated-landed-space/localOperatorDark.webp` - the same
   treatment for transcribing, and the transcript landing afterwards (the field
   comes back with the old text plus the new words, which is the one good
   behaviour this capture also holds).
-- `08-mixed-row.webp`, `09-typed-row-mid-turn.webp` - sends against the live
+- `08-mixed-row/localOperatorDark.webp`, `09-typed-row-mid-turn/localOperatorDark.webp` - sends against the live
   backend, for the row comparison.
-- `01-idle-draft.webp` - the idle field, for the before/after pair.
+- `01-idle-draft/localOperatorDark.webp` - the idle field, for the before/after pair.
 
 And the record's own numbers, the ones the AFTER set is measured against:
 

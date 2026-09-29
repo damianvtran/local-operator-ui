@@ -511,7 +511,16 @@ class Cdp {
 			format: "webp",
 			quality: 88,
 		});
-		writeFileSync(join(OUT, name), Buffer.from(data, "base64"));
+		/*
+		 * The sweep derives the theme from the FRAME'S OWN basename, so a flat
+		 * `<stem>.webp` fails `no palette named <stem>` however the set is
+		 * declared (see `paletteStemRenameNote`). Write the canonical
+		 * `<stem>/<theme>.webp` shape; the app under this rig runs the brand
+		 * dark theme, which is also what the committed frames measure.
+		 */
+		const stem = name.replace(/\.webp$/, "");
+		mkdirSync(join(OUT, stem), { recursive: true });
+		writeFileSync(join(OUT, stem, "localOperatorDark.webp"), Buffer.from(data, "base64"));
 	}
 }
 
