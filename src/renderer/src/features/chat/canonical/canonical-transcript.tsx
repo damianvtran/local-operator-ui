@@ -115,7 +115,6 @@ import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { visibleRecords } from "./cross-session-visibility";
-import { jumpToFailedRow } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -153,7 +152,13 @@ import {
 	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
-import { type RunCollapsePlan, collapsePlan } from "./turn-collapse-model";
+import {
+	type RunCollapsePlan,
+	alignFetchDecision,
+	collapsePlan,
+	snapWindowToRunBoundary,
+	windowTopRunIsHeadCut,
+} from "./turn-collapse-model";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
@@ -176,6 +181,32 @@ import {
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
+
+/**
+ * How far the render window may be extended to land its top edge on a run
+ * boundary (the on-load fix, operator report 2026-09-28).
+ *
+ * The extension exists so a completed run the window's edge cuts through can
+ * still collapse: the bar needs the run's opening user row inside the list it
+ * plans over (`turn-collapse-model.ts`, the window-cut rule), and a reader who
+ * had to scroll that row in was the reported pain. Three durable pages is the
+ * same order as `RECONCILE_TAIL_MAX_ENTRIES` and covers every run whose collapse
+ * fills a screen; a run taller than this keeps the shipped behaviour (renders
+ * cut until the reader widens past it), which is stated rather than silently
+ * dropped. The cost of an extension is one heavier commit, not heavier DOM: a
+ * collapsed run unmounts its hidden rows in the same render that plans them.
+ */
+const WINDOW_ALIGN_MAX_EXTRA = 300;
+
+/**
+ * Durable pages one open may fetch to bring a cut run's head into the loaded
+ * rows (`windowTopRunIsHeadCut`).
+ *
+ * The first automatic follow-up load, bounded: a run whose head is more than
+ * two pages above the tail stands down with today's behaviour, because the
+ * alternative is an open that walks an unbounded conversation into memory.
+ */
+const ALIGN_FETCH_MAX = 2;
 
 export type CanonicalTranscriptProps = {
 	frontend?: CanonicalFrontendState | null;
@@ -972,34 +1003,10 @@ const AssistantRow = memo(function AssistantRow({
 							<span className={cn("text-ink-dim")}>
 								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
 							</span>
-							{foot.failed > 0 && (
-								<>
-									<span aria-hidden={true} className={cn("text-ink-dim")}>
-										·
-									</span>
-									<button
-										type="button"
-										onClick={(event) => {
-											const failedId = foot.firstFailedId;
-											if (!failedId) return;
-											const root =
-												event.currentTarget.closest(
-													"[data-lo-transcript-content]",
-												) ?? document;
-											/*
-											 * The walk itself is lifted to `failed-row-jump.ts`: the collapsed
-											 * turn's bar is a gated layer ABOVE the fold now, and the bar's
-											 * own failure control drives the same one. The foot only renders
-											 * where no bar does, so from here the bar step is a no-op.
-											 */
-											jumpToFailedRow(root, failedId);
-										}}
-										className={cn("font-medium text-danger hover:underline")}
-									>
-										{foot.failed === 1 ? "1 failed" : `${foot.failed} failed`}
-									</button>
-								</>
-							)}
+							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
+							 * foot's `· N failed` control is retired with the bar's —
+							 * failures stay discoverable by expanding the rows, which
+							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
 					<span className={cn("ml-auto")}>
@@ -1971,9 +1978,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// belongs to the previous transcript.
 	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
+	/* Durable pages this conversation's open has spent aligning the window's
+	 * top edge onto a loaded run boundary. See the alignment effect below. */
+	const alignFetches = useRef(0);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
+		alignFetches.current = 0;
 	}
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
@@ -2000,11 +2011,46 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[sessionId],
 	);
 	const total = rows.length;
+	/*
+	 * The window's top edge lands on a RUN boundary, not a raw row count (the
+	 * on-load fix, operator report 2026-09-28: a completed run the edge cut
+	 * through could not collapse until the reader scrolled its head in). See
+	 * `snapWindowToRunBoundary` for the rule and its bound. The snap is a pure
+	 * derivation of `rows` and `windowSize` — no state, so nothing can race the
+	 * first paint — and it composes with the widen steps below: a widened window
+	 * snaps again, and the snapshot's own arrival snaps the first non-empty
+	 * window without an effect.
+	 */
+	const alignSize = useMemo(
+		() => snapWindowToRunBoundary(rows, windowSize, WINDOW_ALIGN_MAX_EXTRA),
+		[rows, windowSize],
+	);
 	const visible = useMemo(
-		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
-		[rows, total, windowSize],
+		() => (total > alignSize ? rows.slice(total - alignSize) : rows),
+		[rows, total, alignSize],
 	);
 	const hidden = total - visible.length;
+	/*
+	 * The load-side half of the fix: when the edge sits inside a run whose head
+	 * the FETCHED rows cut off, the snap has no boundary to land on. Fetch the
+	 * head — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page
+	 * is not already in flight — and let the snap do the rest when it lands.
+	 * This is the "first automatic follow-up load"; a run whose head is farther
+	 * than the bound keeps the shipped cut behaviour rather than walking an
+	 * unbounded conversation into memory.
+	 */
+	useEffect(() => {
+		const decision = alignFetchDecision(
+			alignFetches.current,
+			transcript.hasMore,
+			loadingOlder,
+			windowTopRunIsHeadCut(rows, alignSize),
+			ALIGN_FETCH_MAX,
+		);
+		if (!decision.fetch) return;
+		alignFetches.current = decision.spent;
+		void onLoadOlder();
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2506,7 +2552,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				recordIds={group.rows.map((row) => row.record.id)}
 				summary={group.summary}
 				actionCount={group.rows.length}
-				failedCount={group.failedCount}
 				span={group.span}
 				live={group.live}
 				/*
@@ -2986,8 +3031,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
 										durationS={entry.plan.facts.durationS}
 										actionCount={entry.plan.facts.actions}
-										failedCount={entry.plan.facts.failed}
-										firstFailedId={entry.plan.facts.firstFailedId}
 										title={entry.plan.facts.title}
 										stampTs={entry.plan.stampTs}
 										open={openRuns.has(entry.plan.key)}
