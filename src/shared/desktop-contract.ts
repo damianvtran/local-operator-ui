@@ -884,6 +884,8 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
+const hubItemKind = z.enum(["agent", "team"]);
+
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -908,6 +910,57 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			name: profileName,
 			requestId,
 			fields: profileFields,
+		})
+		.strict(),
+	/*
+	 * THE HUB AUTO-UPDATE PLANE (backend `server/routes/desktop_hub.py`, gated by
+	 * the `hub_updates` capability). `hub.updates` is a STORE READ on the backend
+	 * (no network, O(items)), which is what makes it safe to poll from the
+	 * sidebar; the five mutations are the ones that touch the hub or write a
+	 * local definition, and each carries a `requestId` so a lost response is
+	 * replayed by the server's receipts rather than re-run.
+	 *
+	 * `kind` is closed to the two definition families the hub carries, and `name`
+	 * is the profile/team NAME because names are the runtime's attachment keys.
+	 * `prefer` is per-item only: the backend refuses it on apply-all, since a
+	 * conflict decision cannot be made for a set of items at once, so the
+	 * apply-all schema does not offer it.
+	 */
+	z
+		.object({ op: z.literal("hub.updates") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.check"),
+			requestId,
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.apply"),
+			requestId,
+			kind: hubItemKind,
+			name: profileName,
+			prefer: z.enum(["local", "remote"]).optional(),
+			acknowledgeUnknownBaseline: z.boolean().optional(),
+			dryRun: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.applyAll"),
+			requestId,
+			kind: hubItemKind.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.retry"),
+			requestId,
+			kind: hubItemKind,
+			name: profileName,
 		})
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
@@ -3484,6 +3537,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"commands.list",
 	"config.get",
 	"credentials.list",
+	"hub.updates",
 	"info.get",
 	"instructions.get",
 	"legacy.agent.get",
@@ -4298,6 +4352,55 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/profiles/${encodeURIComponent(request.name)}`,
 				method: "PATCH",
 				body: { request_id: request.requestId, ...request.fields },
+			};
+		case "hub.updates":
+			return { path: "/v1/desktop/hub/updates", method: "GET" };
+		case "hub.check":
+			return {
+				path: "/v1/desktop/hub/updates/check",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
+				},
+			};
+		case "hub.apply":
+			return {
+				path: "/v1/desktop/hub/updates/apply",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					kind: request.kind,
+					name: request.name,
+					...(request.prefer ? { prefer: request.prefer } : {}),
+					...(request.acknowledgeUnknownBaseline !== undefined
+						? {
+								acknowledge_unknown_baseline:
+									request.acknowledgeUnknownBaseline,
+							}
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+				},
+			};
+		case "hub.applyAll":
+			return {
+				path: "/v1/desktop/hub/updates/apply-all",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.kind ? { kind: request.kind } : {}),
+				},
+			};
+		case "hub.retry":
+			return {
+				path: "/v1/desktop/hub/updates/retry",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					kind: request.kind,
+					name: request.name,
+				},
 			};
 		case "teams.list":
 			return { path: "/v1/desktop/teams", method: "GET" };

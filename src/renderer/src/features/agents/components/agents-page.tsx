@@ -19,6 +19,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Plus, Users } from "lucide-react";
 import { type FormEvent, Suspense, lazy, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { HubUpdatePanel } from "./hub-update-panel";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
 // Loading them explicitly preserves compatibility without contaminating the
@@ -673,23 +674,31 @@ export function AgentsPage() {
 				) : name && detail.isLoading ? (
 					<p aria-live="polite">Loading details…</p>
 				) : name && detail.data ? (
-					teamMode ? (
-						<TeamEditor
-							key={name}
-							team={detail.data as ReusableTeam}
-							onSaved={saved}
+					<>
+						{/* Renders nothing unless the hub lists THIS item as not up to date. */}
+						<HubUpdatePanel
+							kind={teamMode ? "team" : "agent"}
+							name={name}
+							enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
 						/>
-					) : (
-						<ProfileEditor
-							/* Identity is name AND source: installing does not rename a
+						{teamMode ? (
+							<TeamEditor
+								key={name}
+								team={detail.data as ReusableTeam}
+								onSaved={saved}
+							/>
+						) : (
+							<ProfileEditor
+								/* Identity is name AND source: installing does not rename a
 							   profile, so keying on name alone kept the builtin-seeded form
 							   mounted across builtin -> installed. */
-							key={`${name}:${(detail.data as ReusableProfile).source}`}
-							profile={detail.data as ReusableProfile}
-							creating={false}
-							onSaved={saved}
-						/>
-					)
+								key={`${name}:${(detail.data as ReusableProfile).source}`}
+								profile={detail.data as ReusableProfile}
+								creating={false}
+								onSaved={saved}
+							/>
+						)}
+					</>
 				) : (
 					<div>
 						<h2 className="text-title">

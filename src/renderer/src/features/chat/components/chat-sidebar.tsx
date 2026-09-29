@@ -11,6 +11,18 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
+	useHubActions,
+	useHubUpdates,
+} from "@shared/api/local-operator/hub-hooks";
+import {
+	type HubItemKind,
+	hubAvailableCount,
+	hubItemIndex,
+	hubItemKey,
+	hubMarkFor,
+	hubSignInLine,
+} from "@shared/api/local-operator/hub-updates";
+import {
 	type ChatTarget,
 	useProfiles,
 	useTeams,
@@ -154,6 +166,7 @@ import {
 } from "../sidebar-scope-paging";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
+import { HubRowNote, HubSectionStrip, HubUpdateMark } from "./hub-update-mark";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -997,6 +1010,17 @@ export function ChatSidebar({
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
+	/*
+	 * THE HUB'S UPDATE MARKS (design B6). One store read, polled at 60 s, gated on
+	 * its own capability so a backend that predates it is never asked. The marks
+	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
+	 * read this one snapshot, so a row and its section can never disagree.
+	 */
+	const hubUpdates = useHubUpdates(
+		ready && desktopFeatureEnabled(capabilities.data, "hub_updates"),
+	);
+	const hubItems = hubItemIndex(hubUpdates.data);
+	const hub = useHubActions();
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
@@ -3800,6 +3824,45 @@ export function ChatSidebar({
 			row.session_id,
 		);
 	};
+	/*
+	 * WHAT PRESSING A MARK DOES, by the mark's kind. `available` updates the item;
+	 * `failed` retries it (the server clears the backoff and re-runs); `review` is a
+	 * decision only the person can make, so it goes to the detail pane where the
+	 * choice lives. An `available` press whose answer is `needs-review` goes there
+	 * too - the merge ran and refused, and pressing again would only refuse again.
+	 */
+	const openHubDetail = (kind: HubItemKind, name: string) =>
+		navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`);
+	const pressHubMark = async (
+		kind: HubItemKind,
+		name: string,
+		mark: "available" | "review" | "failed" | "updating" | "applied",
+	) => {
+		if (mark === "review") return openHubDetail(kind, name);
+		const reports =
+			mark === "failed"
+				? await hub.retryItem(kind, name)
+				: await hub.applyItem(kind, name);
+		if (reports?.some((report) => report.outcome === "needs-review"))
+			openHubDetail(kind, name);
+	};
+	/*
+	 * The section's strip: "Update all" while something is waiting, the sign-in
+	 * line once, and the roll-up sentence after an update-all. It renders nothing
+	 * when it has nothing to say (see `HubSectionStrip`).
+	 */
+	const hubStrip = (kind: HubItemKind) => (
+		<HubSectionStrip
+			kind={kind}
+			available={hubAvailableCount(hubUpdates.data, kind)}
+			busy={hub.pending.has(`all:${kind}`)}
+			signIn={hubSignInLine(hubUpdates.data)}
+			rollup={hub.rollups[kind]}
+			failure={hub.failures[`all:${kind}`]}
+			onUpdateAll={() => void hub.applyAll(kind)}
+			onDismissRollup={() => hub.clearRollup(kind)}
+		/>
+	);
 	const entity = (kind: ChatTarget["kind"], name: string) => {
 		const rows = scopeRows(kind, name);
 		const key = catalogueScopeKey(kind, name);
@@ -3850,6 +3913,9 @@ export function ChatSidebar({
 		 * step; and the two 24px controls drop the hover step while they sit on it.
 		 */
 		const staged = draft?.target?.kind === kind && draft.target.name === name;
+		const hubKey = hubItemKey(kind, name);
+		const hubItem = hubItems.get(hubKey);
+		const hubMark = hubMarkFor(hubItem);
 		return (
 			<div key={key} data-entity>
 				<div
@@ -3954,6 +4020,15 @@ export function ChatSidebar({
 					{badge > 0 && (
 						<span className="sr-only">{groupBadgeLabel(badge)}</span>
 					)}
+					{hubMark && hubItem && (
+						<HubUpdateMark
+							item={hubItem}
+							mark={hubMark}
+							busy={hub.pending.has(hubKey)}
+							staged={staged}
+							onPress={() => pressHubMark(kind, name, hubMark.kind)}
+						/>
+					)}
 					<button
 						type="button"
 						// Stepped down from `ink` so the row's own action outranks it.
@@ -3971,6 +4046,7 @@ export function ChatSidebar({
 						<MoreHorizontal className="size-4" />
 					</button>
 				</div>
+				{hub.failures[hubKey] && <HubRowNote message={hub.failures[hubKey]} />}
 				{open && (
 					<div>
 						{rows.map((row) => sessionRow(row, true))}
@@ -4848,6 +4924,7 @@ export function ChatSidebar({
 											Loading agents…
 										</p>
 									)}
+									{hubStrip("agent")}
 									{/*
 									    A user with no agents of their own gets the shortcut as the
 									    next step rather than as a quiet line: on a fresh install this
@@ -5039,6 +5116,7 @@ export function ChatSidebar({
 											Loading teams…
 										</p>
 									)}
+									{hubStrip("team")}
 									{teams.data &&
 										cappedRows(
 											"teams",
