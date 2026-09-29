@@ -4501,6 +4501,14 @@ export const STORIES = [
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
 	["projects-tab--edit-dialog", 1280, 900],
+	/* The sheet's own interactions (S6d-ii part 2): the description editor's
+	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
+	 * `text/html`), and the two-phase create driven to submit — each asserts
+	 * its state before the shutter, so the frames photograph a state the play
+	 * proved, not a coincidence. */
+	["projects-tab--create-sheet-preview", 1280, 900],
+	["projects-tab--create-sheet-paste", 1280, 900],
+	["projects-tab--create-sheet-submit", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
 	["projects-tab--detail-empty", 1280, 900],
