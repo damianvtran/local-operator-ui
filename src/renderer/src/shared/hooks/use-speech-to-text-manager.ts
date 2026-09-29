@@ -1,3 +1,7 @@
+import {
+	type BackendSettings,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef } from "react";
 
 /**
@@ -10,39 +14,140 @@ export enum SpeechToTextPriority {
 }
 
 /**
- * ONE RESOLUTION POINT FOR THE PUSH-TO-TALK BINDING.
+ * ONE RESOLUTION POINT FOR THE PUSH-TO-TALK BINDING, consuming the registry
+ * row (`keymap.push_to_talk`, local-operator's bare-modifier hold family) - the
+ * seam this module reserved when the binding was a hard-coded platform pair.
  *
- * The sibling keymap work (`keymap.push_to_talk`, a desktop-scoped hotkey row)
- * will replace the body of this function; nothing else in this module reads
- * the binding, so that lands here as a one-line change rather than as a
- * second listener that has to be kept in step.
+ * The row stores one of six tokens (`alt|meta|ctrl` x `left|right`, `-hold`);
+ * the renderer READS the persisted value once per handler registration through
+ * the desktop transport and maps token -> `{code, label}` here. Nothing else
+ * in this module reads the binding, so the keydown path asks this one
+ * synchronous function at key time and a second listener never has to be kept
+ * in step.
  *
- * Right-Option by default, and the choice is the prior-art brief's: a bare
- * modifier types nothing, no surveyed macOS product binds it, and Electron
- * delivers `AltRight` to the renderer's own keydown/keyup pair (a MAIN-process
- * chord cannot be driven headlessly, which is why the binding lives here).
- * `MetaRight` on the other platforms, which is the same gesture one key over
- * and is not exercised by this tree yet - stated rather than implied.
+ * CODES. `alt` is the command-position modifier - Alt on macOS, Meta elsewhere
+ * - which is why the registry's default token (`alt-right-hold`) keeps
+ * today's binding on every platform: `AltRight`/"Right-Option" on macOS,
+ * `MetaRight`/"Right-Command" elsewhere. `meta` and `ctrl` map to their own
+ * codes everywhere; on non-mac platforms `alt` and `meta` therefore name the
+ * same physical modifier (the registry keeps them distinct tokens, and this
+ * seam reports the aliasing rather than inventing a third key).
  *
- * THE LABEL IS PART OF THE RESOLUTION (design round 1, D1). The tooltips on
- * both recording doors name the binding, and naming it from a second,
- * hand-written string is how a tooltip ends up teaching the OLD binding while
- * the dispatcher matches the new one - which is exactly what shipped in round
- * 1 ("or hold Space" beside an `AltRight` matcher). Whoever moves the default
- * moves the label in the same edit, by construction.
- */
-/**
- * Which host this is, for the one binding whose default differs per platform.
- * A module-level constant because the check runs on every engage.
+ * LABELS follow the token, one source: the registry's own per-platform scheme
+ * (`alt` -> Option/Command, `meta` -> Command/Win/Super, `ctrl` -> Control),
+ * so whoever changes the stored value changes what both tooltips teach. The
+ * label here is the key NAME because both tooltips compose "or hold ${label}"
+ * - the registry's settings surface is what appends " (hold)".
+ *
+ * A MAIN-PROCESS CHORD COULD NOT CARRY THIS BINDING ANYWAY: a bare modifier
+ * held down is not expressible as an Electron accelerator, and a
+ * `before-input-event` chord cannot be driven headlessly - which is why the
+ * binding lives here, in the renderer's own keydown/keyup pair.
  */
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
+type PlatformFamily = "darwin" | "win32" | "other";
+type PushToTalkBinding = { code: string; label: string };
 
-export const resolvePushToTalkBinding = (): { code: string; label: string } => {
+/**
+ * The registry's modifier names, per platform - the same table its own
+ * `display_key` renders from (one scheme, two surfaces).
+ */
+const MODIFIER_LABELS: Record<PlatformFamily, Record<string, string>> = {
+	darwin: { alt: "Option", meta: "Command", ctrl: "Control" },
+	win32: { alt: "Command", meta: "Win", ctrl: "Control" },
+	other: { alt: "Command", meta: "Super", ctrl: "Control" },
+};
+
+/** Read per call, never cached: the tests drive every family from one process. */
+const platformFamily = (): PlatformFamily => {
 	const platform =
 		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
-	return MAC_PLATFORM.test(platform)
-		? { code: "AltRight", label: "Right-Option" }
-		: { code: "MetaRight", label: "Right-Command" };
+	if (MAC_PLATFORM.test(platform)) return "darwin";
+	return /Win/i.test(platform) ? "win32" : "other";
+};
+
+const codeForToken = (
+	modifier: string,
+	side: string,
+	family: PlatformFamily,
+): string => {
+	const base =
+		modifier === "alt"
+			? family === "darwin"
+				? "Alt"
+				: "Meta"
+			: modifier === "meta"
+				? "Meta"
+				: "Control";
+	return `${base}${side === "left" ? "Left" : "Right"}`;
+};
+
+/**
+ * One stored value -> this surface's binding, or `null` when it is not one of
+ * the six tokens (`null` = "no resolution", the caller falls back). Case and
+ * whitespace are normalised the way the registry normalises on write; an
+ * unknown or invalid value is a FALLBACK, never an error - both tooltips call
+ * this on the render path, so it cannot throw.
+ *
+ * Exported for the resolution test; production reads go through
+ * `resolvePushToTalkBinding`.
+ */
+export const pushToTalkBindingForToken = (
+	raw: unknown,
+): PushToTalkBinding | null => {
+	if (typeof raw !== "string") return null;
+	const parts = /^(alt|meta|ctrl)-(left|right)-hold$/.exec(
+		raw.trim().toLowerCase(),
+	);
+	if (!parts) return null;
+	const family = platformFamily();
+	const [, modifier, side] = parts;
+	return {
+		code: codeForToken(modifier, side, family),
+		label: `${side === "left" ? "Left" : "Right"}-${MODIFIER_LABELS[family][modifier]}`,
+	};
+};
+
+const platformDefaultBinding = (): PushToTalkBinding =>
+	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
+
+let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
+
+/** The live binding: the last resolved row, or the platform default. */
+export const resolvePushToTalkBinding = (): PushToTalkBinding =>
+	resolvedPushToTalkBinding ?? platformDefaultBinding();
+
+let pushToTalkRefresh: Promise<void> | null = null;
+
+/**
+ * Read the persisted `keymap.push_to_talk` row and re-resolve.
+ *
+ * Single-flight (concurrent asks share one transport call) and called from
+ * `register()` - the moment a surface that will use the binding comes up. A
+ * refresh that FAILS leaves the last resolution in place: an unreachable
+ * settings plane tells us nothing new, and silently reverting a user's custom
+ * binding because one read missed is worse than serving the last known value.
+ * There is deliberately no settings listener here (no new listener on any
+ * settings channel); a caller that changes the row can call this directly.
+ */
+export const refreshPushToTalkBinding = async (): Promise<void> => {
+	if (pushToTalkRefresh) return pushToTalkRefresh;
+	pushToTalkRefresh = (async () => {
+		try {
+			const settings = await desktopResult<BackendSettings>({
+				op: "settings.list",
+			});
+			const row = settings.settings.find(
+				(setting) => setting.key === "keymap.push_to_talk",
+			);
+			resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+		} catch {
+			/* Keep the last resolution (see the doc above). */
+		} finally {
+			pushToTalkRefresh = null;
+		}
+	})();
+	return pushToTalkRefresh;
 };
 
 /*
@@ -126,6 +231,16 @@ export class SpeechToTextManager {
 		isActive: () => boolean,
 	): void {
 		this.handlers.set(id, { id, priority, handler, isActive });
+		/*
+		 * RE-READ THE ROW WHENEVER A SURFACE THAT USES THE BINDING COMES UP. The
+		 * stored value can change between mounts (the settings page, `lop config
+		 * edit`), and registration is the one moment this module hears about; a
+		 * refresh is single-flight and a failed one keeps the last resolution
+		 * (see `refreshPushToTalkBinding`). Not awaited: the binding this
+		 * surface uses is the synchronous resolver, which serves the platform
+		 * default until the read lands.
+		 */
+		void refreshPushToTalkBinding();
 		this.setupListener();
 	}
 

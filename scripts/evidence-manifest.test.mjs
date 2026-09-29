@@ -1912,6 +1912,19 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sttDictationRestampNote",
 	/*
+	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
+	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
+	 * (local-operator #1750 landed while #633 was in review): the renderer reads
+	 * the persisted value per registration instead of hard-coding the platform
+	 * pair. Both trees move - `src/` for the resolver's read path + token table,
+	 * `scripts/` for the resolution suite, the rig's session F and its
+	 * capability-following claims. No frames change; the pair is re-derived from
+	 * the tip and every list member above is re-pointed with it. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"pttKeymapRestampNote",
+
+	/*
 	 * The sessionless-slash pass (issue #625), this branch's newest record: it
 	 * re-derived both stamps for the branch's own change and quotes the pair it
 	 * ships, so it is held to this file like every entry above it.
