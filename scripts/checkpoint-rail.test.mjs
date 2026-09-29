@@ -468,6 +468,11 @@ test("focus opens the completion card; Escape closes it; Enter's click is the ju
 		await rail.focusTick("c1");
 		const ready = rail.dialog();
 		assert.ok(ready.textContent.includes("Fix the build"));
+		assert.equal(
+			ready.querySelector("p")?.textContent,
+			"Turn 1 of 1",
+			"the structural identity leads the card, matching the tick's own label (issue #680)",
+		);
 		assert.ok(ready.textContent.includes("One sentence."));
 		assert.ok(ready.textContent.includes("Error"));
 		assert.ok(!ready.textContent.includes("Generating name…"));
@@ -480,6 +485,57 @@ test("focus opens the completion card; Escape closes it; Enter's click is the ju
 		assert.ok(
 			clamped.className.includes("line-clamp-3"),
 			"clamped to its budget rather than scrollable",
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a warm landing while the card is open does not swap its text (issue #680)", async () => {
+	const rail = await mountRail({
+		checkpoints: [
+			completion({
+				id: "c1",
+				turn: 3,
+				seq: 50,
+				naming: { state: "pending", name: null, summary: null },
+			}),
+		],
+	});
+	try {
+		await rail.focusTick("c1");
+		const card = rail.dialog();
+		assert.ok(card, "the card is open");
+		assert.ok(card.textContent.includes("Generating name…"));
+		/*
+		 * The naming warm lands while the reader is still looking at the card -
+		 * the exact race issue #680 reports: a live read swaps the summary under
+		 * the cursor. The open-time snapshot must hold instead.
+		 */
+		await rail.render({
+			checkpoints: [
+				completion({
+					id: "c1",
+					turn: 3,
+					seq: 50,
+					naming: {
+						state: "ready",
+						name: "Fixed the jump",
+						summary: "One line.",
+					},
+				}),
+			],
+		});
+		assert.ok(rail.dialog(), "the card is still open");
+		assert.ok(
+			!rail.dialog().textContent.includes("Fixed the jump"),
+			"the open card's text is frozen at open",
+		);
+		/* The warmed text is what the NEXT hover shows. */
+		await rail.focusTick("c1");
+		assert.ok(
+			rail.dialog().textContent.includes("Fixed the jump"),
+			"the next open carries the warmed name",
 		);
 	} finally {
 		await rail.close();

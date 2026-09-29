@@ -29,6 +29,7 @@ import {
 	checkpointSummary,
 	checkpointTitle,
 	checkpointTurnCount,
+	checkpointTurnLabel,
 } from "./checkpoint-model";
 
 /**
@@ -163,11 +164,21 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 	const outcome = checkpoint.outcome;
 	const OutcomeIcon = outcome ? OUTCOME_ICONS[outcome] : null;
 	const summary = checkpointSummary(checkpoint);
+	const name =
+		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
 	return (
 		<>
+			{/*
+			 * STRUCTURAL IDENTITY FIRST (issue #680's vocabulary item): "Turn N of M"
+			 * is the string the tick's own label leads with, and the generated name
+			 * and summary ride beneath it as derived content rather than replacing
+			 * it - one convention across the two surfaces, built by one formatter so
+			 * they cannot drift. Design may refine the weighting.
+			 */}
 			<p className={cn("text-body-sm font-medium text-ink")}>
-				{checkpointTitle(checkpoint)}
+				{checkpointTurnLabel(checkpoint.turn, turnCount)}
 			</p>
+			{name && <p className={cn("text-body-sm text-ink")}>{name}</p>}
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
 					{CHECKPOINT_GENERATING_NAME}
@@ -180,8 +191,8 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 					{summary}
 				</p>
 			)}
-			<div className={cn("flex items-center gap-1.5 text-ink-dim text-meta")}>
-				{outcome && OutcomeIcon && (
+			{outcome && OutcomeIcon && (
+				<div className={cn("flex items-center gap-1.5 text-ink-dim text-meta")}>
 					<span className={cn("flex items-center gap-1", OUTCOME_INK[outcome])}>
 						<OutcomeIcon
 							aria-hidden="true"
@@ -189,10 +200,8 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 						/>
 						{CHECKPOINT_OUTCOME_LABELS[outcome]}
 					</span>
-				)}
-				{outcome && <span aria-hidden="true">&middot;</span>}
-				<span>{`Turn ${checkpoint.turn} of ${turnCount}`}</span>
-			</div>
+				</div>
+			)}
 		</>
 	);
 };
@@ -288,6 +297,15 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
+	/*
+	 * THE CARD'S TEXT IS FROZEN AT OPEN (issue #680): the snapshot of the entry
+	 * the card was opened for, so the naming warm that fires on the same
+	 * gesture cannot swap the summary mid-hover. The warmed text is what the
+	 * NEXT hover shows.
+	 */
+	const [cardEntry, setCardEntry] = useState<Checkpoint | null>(null);
+	const checkpointsRef = useRef(checkpoints);
+	checkpointsRef.current = checkpoints;
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
 	const frameRef = useRef<HTMLDivElement | null>(null);
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,13 +325,25 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const openCard = useCallback(
 		(id: string, delayMs: number) => {
 			clearTimers();
-			if (delayMs <= 0) {
+			const open = () => {
 				setOpenCardId(id);
+				/*
+				 * The snapshot is taken HERE, at the moment the card opens - the
+				 * `checkpoints` array may already hold the warmed text or may land
+				 * it a frame later, and only this capture decides what the card
+				 * says while it is open (issue #680's mid-hover swap).
+				 */
+				setCardEntry(
+					checkpointsRef.current.find((entry) => entry.id === id) ?? null,
+				);
+			};
+			if (delayMs <= 0) {
+				open();
 				return;
 			}
 			openTimer.current = setTimeout(() => {
 				openTimer.current = null;
-				setOpenCardId(id);
+				open();
 			}, delayMs);
 		},
 		[clearTimers],
@@ -347,6 +377,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		previewRef.current = null;
 		setPreviewId(null);
 		setOpenCardId(null);
+		setCardEntry(null);
 	}, [sessionId, clearTimers]);
 
 	/*
@@ -410,9 +441,14 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		[checkpoints],
 	);
 
+	/*
+	 * The card renders the OPEN-TIME snapshot (`cardEntry`), not a live lookup:
+	 * a live read is what swapped the summary mid-hover when the naming warm
+	 * landed (issue #680). The anchor and the open id stay live - a tick's
+	 * remount is not a text swap.
+	 */
 	const activeCheckpoint =
-		(openCardId && checkpoints.find((entry) => entry.id === openCardId)) ||
-		null;
+		openCardId && cardEntry?.id === openCardId ? cardEntry : null;
 	const anchorEl = (openCardId && tickElements.current.get(openCardId)) || null;
 	const anchorRef = useMemo(() => ({ current: anchorEl }), [anchorEl]);
 	const cardOpen = activeCheckpoint !== null && anchorEl !== null;
