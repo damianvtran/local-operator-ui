@@ -58,6 +58,17 @@ export type CanonicalSessionRow = {
 	title?: string | null;
 	cwd?: string | null;
 	updated_at?: number | null;
+	/**
+	 * When this conversation was born, in epoch SECONDS (the wire's
+	 * `created_at`), or absent/non-positive when the backend could not read its
+	 * birth record.
+	 *
+	 * Declared explicitly beside `updated_at` because this row type has an index
+	 * signature: without it, every read of the "Created" basis is `unknown`
+	 * where the one reader lives (`chat-list-sections.ts`'s `rowTimeMs`), which
+	 * is how a renamed field would empty the basis silently.
+	 */
+	created_at?: number | null;
 	preview?: string | null;
 	attention?: CompletionAttention;
 	live_state?: string;

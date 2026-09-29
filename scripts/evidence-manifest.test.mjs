@@ -1765,12 +1765,37 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA8ac7f673cNote",
 	/*
-	 * AND THIS BRANCH'S OWN, the agents offer's dismissal: its subject IS this
-	 * file's binding - the change moves BOTH trees (the offer module, the store
-	 * field, the sidebar control and its story fixture under `src/`; the capture
-	 * row, the new behavioural suite and this registration under `scripts/`)
-	 * AND adds one story's twelve frames while re-shooting the set - so a reader
-	 * is owed the pair and what the capture moved with it.
+	 * AND THE SIDEBAR'S TIME BASIS PASS'S OWN (2026-09-28):
+	 * `sidebarBinBasisRestampNote` quotes the pair its commit derives - the src
+	 * tree with the basis control and the completion's own refetch, the scripts
+	 * tree with the driver scene, the two suites and the rig's four new STORIES
+	 * rows - and is re-pointed by the docs-only amendment that follows, exactly
+	 * like every entry above it.
+	 */
+	"sidebarBinBasisRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `sidebarBinBasisFoldNote` is the fold onto
+	 * the moved `origin/main` `160faa5f9f`, the manifest conflict (the only one)
+	 * resolved as a union with both sides' records carried, and the pair re-derived
+	 * from the folded tip. It quotes that pair, so it is held to this file like
+	 * every entry above it.
+	 */
+	"sidebarBinBasisFoldNote",
+	/*
+	 * AND THE ROUND-1 FOLD'S OWN (2026-09-28): `roundOneFoldNote` is the fold onto
+	 * the moved `origin/main` `1b1a52d5cf` while the four round-1 reports were
+	 * being answered - the manifest conflict (the only one) resolved as a union,
+	 * the pair re-derived from the folded tip. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"roundOneFoldNote",
+	/*
+	 * AND THE AGENTS OFFER BRANCH'S OWN, the way main's tree words it: its subject
+	 * IS this file's binding - the change moves BOTH trees (the offer module, the
+	 * store field, the sidebar control and its story fixture under `src/`; the
+	 * capture row, the new behavioural suite and this registration under
+	 * `scripts/`) AND adds one story's twelve frames while re-shooting the set -
+	 * so a reader is owed the pair and what the capture moved with it.
 	 */
 	"agentsOfferDismissNote",
 	/*
@@ -1800,6 +1825,24 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"agentsOfferDismissCommentRestampNote",
 	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto3d99ab8d92Note` is the fold onto
+	 * the moved `origin/main` `3d99ab8d92` (#623, the agents offer's dismissal)
+	 * at merge time - BOTH this file and its manifest conflicted this time,
+	 * resolved as unions (this list's members, and the manifest's keys and
+	 * curated notes), and the pair re-derived from the folded tip. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"foldOnto3d99ab8d92Note",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto525d464279Note` is the fold onto
+	 * the moved `origin/main` `525d464279` (#618, the board column order, over
+	 * #623) at merge time - the manifest conflicted this time while this file
+	 * auto-merged to the union of both note families, and the pair and counts are
+	 * re-derived from the folded tip by the docs-only commit that follows. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"foldOnto525d464279Note",
+	/*
 	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
 	 * it ships and the set the pass moves, so it is held to the same bar as every
 	 * other member - it quotes both stamps and the file it sits in ships them.
@@ -1821,6 +1864,16 @@ const STAMP_BINDING_NOTES = [
 	 * file ships rather than read as history, on the same bar as its two neighbours.
 	 */
 	"browserTabCleanupRoundTwoPass",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOntod11a15febfNote` is the fold onto
+	 * the moved `origin/main` `d11a15febf` (#624, the dead-tab and popout cleanup,
+	 * over #618) at merge time - both this file and its manifest conflicted,
+	 * resolved as unions (both note families kept whole here; main's records whole
+	 * with this branch's laid on top there), and the pair re-derived from the
+	 * folded tip by the docs-only commit that follows. It quotes that pair, so it
+	 * is held to this file like every entry above it.
+	 */
+	"foldOntod11a15febfNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
