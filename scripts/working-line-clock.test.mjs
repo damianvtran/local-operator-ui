@@ -162,6 +162,16 @@ const transcriptBundle = await build({
 	 *   variable present. `development` keeps every value it looks up.
 	 */
 	define: {
+		/*
+		 * The whole object, for `loadConfig` (`Object.entries(import.meta.env)` at
+		 * module scope). The transcript's answer action row reads the speech
+		 * credential probe, which reads `@shared/config`, so a bundle that defines
+		 * only the members below still throws `Cannot convert undefined or null to
+		 * object` at import time. The members stay where they are: esbuild matches
+		 * the longest key first, so the cases that assert DEV/PROD still read what
+		 * they always did.
+		 */
+		"import.meta.env": "{}",
 		"import.meta.env.DEV": "false",
 		"import.meta.env.PROD": "true",
 		"process.env.NODE_ENV": '"development"',
