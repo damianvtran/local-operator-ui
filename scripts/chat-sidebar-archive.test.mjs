@@ -47,6 +47,13 @@ const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
 const DIALOG =
 	"src/renderer/src/features/chat/components/delete-conversation-dialog.tsx";
+/**
+ * The ARCHIVE confirmation and the module behind it (2026-09-30): one dialog for five
+ * doors, and the copy + the successor-focus rule it shares with nothing else.
+ */
+const ARCHIVE_DIALOG =
+	"src/renderer/src/features/chat/components/archive-conversation-dialog.tsx";
+const ARCHIVE_CONFIRM = "src/renderer/src/features/chat/archive-confirm.ts";
 const PALETTE = "src/renderer/src/features/chat/components/slash-commands.tsx";
 const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
 const REGISTRY = "src/renderer/src/features/chat/pickers/picker-registry.tsx";
@@ -728,19 +735,49 @@ test("a typed /delete stages the dialog and can never reach the wire itself", ()
 	assert.match(branch, /needs an open conversation/);
 });
 
-test("a typed /archive writes the store, reports a refusal, and offers an undo on success", () => {
+test("a typed /archive STAGES the confirmation, and /unarchive still writes straight through", () => {
 	const branch = between(
 		DISPATCH,
 		'entry.action === "archive" || entry.action === "unarchive"',
 		'entry.action === "request-delete"',
 	);
-	// The desired state is the word: archive asks for true, unarchive for false.
+	// The desired state is still the word, and it is what tells the two halves apart -
+	// but the halves are no longer one write with a flag.
 	assert.match(branch, /const archived = entry\.action === "archive"/);
-	assert.match(branch, /setSessionArchived\(\s*sessionId,\s*archived,/);
-	// Offered with the STATE it is about (see `undoOfferStands`): the offer stands
-	// while the conversation still holds that state, so a catalogue answer that
-	// merely mentions the row cannot retire it after 0.4-1.6 s (UX round 1, U4).
-	assert.match(branch, /archived,/);
+	/*
+	 * THE ARCHIVE DOES NOT REACH THE WRITE (2026-09-30). It stages the candidate and
+	 * returns, exactly as `/delete` does one branch down: the pane's one dialog is what
+	 * archives, so no typed word can be the gesture that hides a conversation from the
+	 * lists and the search.
+	 */
+	assert.match(
+		branch,
+		/if \(archived\) \{\s*store\.requestArchiveConfirm\(\{\s*sessionId,\s*fromRow: false,?\s*\}\);\s*return "consumed";/,
+	);
+	/*
+	 * AND `/unarchive` KEEPS ITS OWN PRESS: the restore is one press on every surface
+	 * that offers it, so the branch writes directly and the only write it can reach is
+	 * the `false` one. The literal is pinned rather than the variable the branch used to
+	 * pass, which is what makes "the restore never asks" fail here if it is undone.
+	 */
+	assert.match(
+		branch,
+		/setSessionArchived\(\s*sessionId,\s*false,\s*title,?\s*\)/,
+	);
+	assert.equal(
+		/setSessionArchived\(\s*sessionId,\s*archived,/.test(branch),
+		false,
+		"the typed branch hands `archived` to the write again, which would archive with no question",
+	);
+	/*
+	 * The `fromRow: false` is the SURFACE, and it is the clause that keeps a typed
+	 * `/archive` from taking the reader's caret down into the list: the successor
+	 * correction belongs to the row door, and the dialog applies it to that door alone.
+	 */
+	assert.match(branch, /fromRow: false/);
+	// The STORE raises the Undo offer for the restore's accepted write (design round 8,
+	// D27), in the update that settles it, exactly as it does for every archive.
+	assert.doesNotMatch(branch, /offerArchiveUndo/);
 	// The rule is the palette's own, asked once more, so a hidden row that is typed
 	// anyway is refused WITH A REASON rather than swallowed.
 	assert.match(
@@ -776,6 +813,98 @@ test("a typed /archive writes the store, reports a refusal, and offers an undo o
 	assert.doesNotMatch(branch, /onUndo:/);
 });
 
+test("the confirmation asks the reversible question, and the copy is written in ONE place", () => {
+	const dialog = code(ARCHIVE_DIALOG);
+	const copy = code(ARCHIVE_CONFIRM);
+	/*
+	 * THE SENTENCE IS THE MODULE'S, AND THE MODULE IS THE ONLY PLACE IT IS WRITTEN
+	 * (`archive-confirm.ts`). It is asserted here in the exact words the user reads, because
+	 * every clause of it is a claim about the shipped build - the lists and the search, the
+	 * store's own Undo in the update that settles the write, and the search block's remembered
+	 * `Include archived` control - so a copy edit that quietly dropped one of the three ways
+	 * back would be a claim quietly lost rather than a string quietly changed.
+	 */
+	assert.match(
+		copy,
+		/export const ARCHIVE_CONFIRM_MESSAGE =\s+"It leaves your lists and search\. Undo brings it back for a few seconds, and “Include archived” in search finds it again\.";/,
+	);
+	assert.match(copy, /export const ARCHIVE_CONFIRM_VERB = "Archive";/);
+	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
+	// two places to keep in step with the three facts it promises.
+	assert.match(dialog, /message=\{<p>\{ARCHIVE_CONFIRM_MESSAGE\}<\/p>\}/);
+	/*
+	 * THE TITLE NAMES THE CONVERSATION AND ONLY THE NAME GIVES: the name sits in its own
+	 * `min-w-0 truncate` box between two `shrink-0` halves, so a long name ellipsises while
+	 * "Archive" and the question mark stay fixed. A title that truncated as a whole would
+	 * eventually leave "Archive…" on screen, which is the rule `archiveOfferedName` already
+	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
+	 * modal.
+	 */
+	assert.match(dialog, /className="shrink-0">\{\`\$\{ARCHIVE_CONFIRM_VERB\}/);
+	assert.match(
+		dialog,
+		/className="min-w-0 truncate">\{\`“\$\{candidateTitle\}”\`\}/,
+	);
+	/*
+	 * AND IT IS NOT THE DANGER DIALOG. `isDangerous={false}` is this component's default, which
+	 * is exactly why it is spelled at the call site: the archive is reversible and the danger
+	 * role belongs to the act that is not - the delete dialog beside it, which is the pair a
+	 * reader is meant to be able to tell apart at a glance.
+	 */
+	assert.match(dialog, /isDangerous=\{false\}/);
+	assert.match(dialog, /confirmText="Archive"/);
+	assert.match(dialog, /cancelText="Cancel"/);
+});
+
+test("every cancel path clears the candidate and writes nothing", () => {
+	const dialog = code(ARCHIVE_DIALOG);
+	/*
+	 * THE X, ESCAPE AND THE SCRIM all arrive as one close: `BaseDialog` takes
+	 * `onClose={onCancel}`, and this component's `onCancel` is the only thing on that
+	 * path - so a double-click whose second press lands on the scrim has archived
+	 * nothing, and the row is where it was. What must not be reachable from there is the
+	 * WRITE.
+	 */
+	assert.match(dialog, /onCancel=\{\(\) => requestArchiveConfirm\(null\)\}/);
+	assert.equal(
+		/onCancel=[\s\S]{0,120}?setSessionArchived/.test(dialog),
+		false,
+		"a cancel path reaches the archive write",
+	);
+	// One write, in the confirm arm: three paths (X, ESC, scrim) and one confirm is
+	// four ways to leave, and a second `setSessionArchived` here would mean one of
+	// them archives.
+	assert.equal(
+		(dialog.match(/setSessionArchived\(/g) ?? []).length,
+		1,
+		"the dialog reaches the archive write from more than one arm",
+	);
+	/*
+	 * AND A DROPPED PRESS NEVER OPENS THE QUESTION: the row's guard returns before the
+	 * candidate is staged, so the second click of a double-click cannot put a dialog on
+	 * screen that the reader's hand did not ask for. The order of the two statements is
+	 * the assertion - a guard that ran after the staging would leave the dialog up and
+	 * the row still there.
+	 */
+	const guardAt = code(SIDEBAR).indexOf("if (press.drop) return;");
+	assert.notEqual(
+		guardAt,
+		-1,
+		"the repeat-press guard is gone from the row's control",
+	);
+	const control = code(SIDEBAR).slice(guardAt);
+	assert.match(
+		control.slice(0, 400),
+		/if \(press\.drop\) return;[\s\S]{0,320}?requestArchiveConfirm\(/,
+		"the repeat-press guard must run BEFORE the confirmation is staged",
+	);
+	assert.ok(
+		control.indexOf("if (press.drop) return;") <
+			control.indexOf("requestArchiveConfirm("),
+		"the guard and the staging are in the wrong order",
+	);
+});
+
 test("the three destinations resolve to local actions, with no control of their own", () => {
 	const source = code(REGISTRY);
 	for (const destination of [
@@ -794,7 +923,7 @@ test("the three destinations resolve to local actions, with no control of their 
 	);
 });
 
-test("the row's press is the same act as the typed command, and keeps the reader's place", () => {
+test("the row's press asks first, the restore does not, and the confirm keeps the reader's place", () => {
 	const source = code(SIDEBAR);
 	/*
 	 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving from the row takes the row
@@ -807,22 +936,83 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * knows the write was accepted.
 	 */
 	assert.doesNotMatch(source, /offerArchiveUndo/);
-	// A refused press changes nothing, focus included: the row is still there and
-	// the store's sentence is beside the list.
-	assert.match(source, /if \(!accepted\) return;/);
 	/*
-	 * AND THE KEYBOARD KEEPS ITS PLACE (UX round 1, U5). Activating the control
-	 * unmounts it and its row, which used to leave the reader on `<body>` with the
-	 * next Tab restarting at the top of the document; the successor row is snapped
-	 * before the press (the element is unreadable after an await) and focused only
-	 * when the write was accepted.
+	 * THE ARCHIVE HALF OF THE CONTROL NOW STAGES, AND THE RESTORE HALF STILL WRITES
+	 * (2026-09-30, D1). The two are asserted here TOGETHER because the whole point of
+	 * the branch is that they differ: one candidate staged for the pane's one dialog,
+	 * and one press straight through for the act that puts a conversation back.
 	 */
 	assert.match(
 		source,
-		/const restoreFocus = focusRowAfterRemoval\(event\.currentTarget\)/,
+		/if \(!archived\) \{\s*requestArchiveConfirm\(\{\s*sessionId: row\.session_id,\s*fromRow: true,?\s*\}\);\s*return;/,
 	);
-	assert.match(source, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
-	assert.match(source, /element\.isConnected/);
+	assert.match(
+		source,
+		/setSessionArchived\(\s*row\.session_id,\s*false,\s*row\.title \?\? undefined,?\s*\)/,
+	);
+	// A refused RESTORE changes nothing, focus included: the row is still there and
+	// the store's sentence is beside the list.
+	assert.match(source, /if \(!accepted\) return;/);
+	/*
+	 * AND THE KEYBOARD KEEPS ITS PLACE (UX round 1, U5; moved to the confirmation,
+	 * 2026-09-30). Activating the control REMOVES its row, which used to leave the reader
+	 * on `<body>` with the next Tab restarting at the top of the document; the successor
+	 * row is snapped before the write (the element is unreadable after an await) and
+	 * focused only when the write was accepted. The RULE is unchanged - what moved is WHO
+	 * takes the snapshot: with a question in front of the act the press removes nothing,
+	 * so the snapshot belongs to the confirmation, which no longer has a press event to
+	 * read and resolves the row by id (`archiveRowBox`).
+	 */
+	const dialog = code(ARCHIVE_DIALOG);
+	assert.match(
+		dialog,
+		/const restoreFocus = row === null \? null : focusRowAfterRemoval\(row\)/,
+	);
+	assert.match(dialog, /archiveRowBox\(sessionId\)/);
+	/*
+	 * AND THE DIALOG'S OWN ARMS, which are D4's: the row door takes the successor, and
+	 * every other door leans on the modal's opener restore. `fromRow` is what selects
+	 * between them, and it is read from the CANDIDATE rather than guessed from the DOM,
+	 * because a typed `/archive` can name a conversation the list is drawing and the caret
+	 * still belongs in the composer.
+	 */
+	assert.match(dialog, /const \{ sessionId, fromRow \} = candidate;/);
+	assert.match(
+		dialog,
+		/const row = fromRow \? archiveRowBox\(sessionId\) : null;/,
+	);
+	/*
+	 * THE OPENER'S OWN ARM, and why it needs one of its own: the row's control is a
+	 * REVEAL (`hidden` at rest), and `focus()` on a `display: none` element is a no-op - so
+	 * `BaseDialog`'s generic restore would leave the reader on `<body>` for exactly the
+	 * door that asked from a row. The fallback is the row's own button, and then the header
+	 * menu's trigger, which is the delete dialog's own `[data-conversation-actions]`.
+	 */
+	assert.match(dialog, /document\.activeElement === element\) return;/);
+	assert.match(dialog, /archiveRowBox\(row\)/);
+	assert.match(dialog, /\[data-chat-row\]/);
+	assert.match(dialog, /\[data-conversation-actions\]/);
+	/*
+	 * AND A CONFIRM CLOSES THE DIALOG BEFORE IT WRITES (D3): the candidate is cleared
+	 * first, so nothing about the write is rendered inside a dialog that has shut - the
+	 * store's settle semantics (the Undo offer, the refusal toast) are the only account of
+	 * it. The delete dialog beside it is the opposite shape on purpose: its act cannot be
+	 * undone, so its refusal has to stay in the dialog that asked.
+	 */
+	assert.match(dialog, /requestArchiveConfirm\(null\);/);
+	assert.equal(
+		dialog.includes("busy"),
+		false,
+		"the archive confirmation grew a busy state, which D3 refuses (the write settles in the store)",
+	);
+	/*
+	 * THE RULE ITSELF MOVED WITH THE CALL, and it is read off its own module now
+	 * (`archive-confirm.ts`), because the confirmation is a different subtree from the
+	 * row that used to own it. Every clause below is unchanged.
+	 */
+	const rule = code(ARCHIVE_CONFIRM);
+	assert.match(rule, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
+	assert.match(rule, /element\.isConnected/);
 	/*
 	 * AND IT DOES NOT TAKE THE READER'S SCROLL WITH IT (QA round 2, Q2). `preventScroll` is half of
 	 * what this clause's own name claims: a plain `focus()` scrolls its element into view, and the
@@ -832,7 +1022,7 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * `scrollTop` moved `20 -> 4` and a surviving row's top by 16px, and under this one both are
 	 * byte-equal across every sampled frame. The pin is the cheap half; the reading is the claim.
 	 */
-	assert.match(source, /successor\?\.focus\(\{ preventScroll: true \}\)/);
+	assert.match(rule, /successor\?\.focus\(\{ preventScroll: true \}\)/);
 	/*
 	 * AND THE ROW IT HANDS THE CARET TO IS READ FROM THE LIST'S OWN REGION (UX round 2, U1). The
 	 * query is scoped because the merged panel's document order begins in the ENTITY region, so an
@@ -842,7 +1032,7 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * both the caret's region and the stops the next ↓ reaches; this is the cheap half.
 	 */
 	assert.match(
-		source,
+		rule,
 		/querySelectorAll<HTMLElement>\(\s*'\[data-sidebar-region="chats"\] \[data-chat-row\]'\s*,?\s*\)/,
 		"the successor must be read from the chats region, not the panel's document order",
 	);
@@ -856,7 +1046,7 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * row-press clause asserts the successor by id - the cheap half belongs here.
 	 */
 	assert.match(
-		source,
+		rule,
 		/\.closest<HTMLElement>\(\s*"\[data-session-row\]"\s*\)/,
 		"the pressed row must be resolved from the row element, not the control's parent",
 	);
@@ -866,7 +1056,7 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * caret down to the list's first conversation - further than the unscoped rule did.
 	 */
 	assert.match(
-		source,
+		rule,
 		/listRows\.includes\(rowButton\)/,
 		"a press outside the list must keep the panel's order, not fall to the list's first row",
 	);

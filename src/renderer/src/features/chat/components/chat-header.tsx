@@ -230,6 +230,12 @@ type ChatHeaderProps = {
 	 *
 	 * `onRequestDelete` OPENS a confirmation and deletes nothing: the wire requires
 	 * a confirmed delete, so this component's job ends at asking.
+	 *
+	 * `onSetArchived` ends the same way for ONE of its two directions since
+	 * 2026-09-30: `true` (archive) opens the archive confirmation and writes nothing,
+	 * while `false` (restore) writes straight through - the restore is one press on
+	 * every surface that offers it. Both halves are the HOST's (`chat-content.tsx`),
+	 * which is where the store's one archive path lives.
 	 */
 	onSetArchived?: (archived: boolean) => void;
 	deleteEnabled?: boolean;
