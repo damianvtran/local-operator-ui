@@ -1,0 +1,8334 @@
+import {
+	type AsideAdoptArm,
+	adoptAside,
+	asideAdoptChord,
+	asideAdoptChordStep,
+	asideAdoptConfirm,
+	asideAdoptReady,
+	closeAside,
+} from "@features/chat/aside";
+import {
+	approvalAnswerValue,
+	composerFocusIsOurs,
+	shouldTabIntoAnswerOptions,
+} from "@features/chat/ask-answer";
+import { sendUnsettledForSession } from "@features/chat/canonical/working-line-model";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "@features/chat/chat-measure";
+import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
+import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
+import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
+/*
+ * The composer's inline credential capture (design §1-§9). The pure module owns
+ * every rule the gesture rests on — the arm predicate, the mask, the positional
+ * mirror, the marker grammar, the citation rewrite — and this file only routes
+ * keystrokes, pastes and the submit seam into it. See `credential-capture.ts`
+ * for why that split is the point rather than tidiness.
+ */
+import {
+	CREDENTIAL_CLEAR_UNDO_LABEL,
+	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_NOTICE,
+	CREDENTIAL_TOKEN,
+	CREDENTIAL_TYPING_NOTICE,
+	CREDENTIAL_WORDS,
+	type CancelledToken,
+	type Capture,
+	type CredentialFate,
+	type CredentialPayload,
+	HELD_TAKEN_BY,
+	IDLE_CAPTURE,
+	MASK_CELL,
+	type UnredactedDisclosure,
+	applyDomEdit,
+	armSpan,
+	cancelTypedCredential,
+	capturePasted,
+	charsOf,
+	citedPayloads,
+	clearCitedCredential,
+	clearedToastLine,
+	credentialNamesFrom,
+	holdsCancelledToken,
+	isArmed,
+	isTyping,
+	mintTypedCredential,
+	noticeLineFor,
+	pastedCredentialRun,
+	restoreClearedCredential,
+	standsAsToken,
+	storedNotice,
+	substituteCredentials,
+	syncCapture,
+	typeIntoCapture,
+	unbackedMarkers,
+	unconfirmedNotice,
+	unredactedBuffer,
+	unredactedNotice,
+	unredactedOverBuffer,
+	unstoredNotice,
+} from "@features/chat/components/credential-capture";
+import {
+	COMPOSER_TEXTAREA_SELECTOR,
+	registerComposerFocus,
+} from "@features/chat/composer-field";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "@features/chat/draft-selection";
+import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
+import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
+import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
+import {
+	DESTINATIONS,
+	destinationNeedsSession,
+} from "@features/chat/pickers/picker-registry";
+import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
+import type { Message } from "@features/chat/types/message";
+import {
+	DesktopControlError,
+	desktopRequestTimeoutMs,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
+import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
+import {
+	EMPTY_TRANSCRIPTION_MESSAGE,
+	transcriptionFailureMessage,
+} from "@shared/api/local-operator/transcription-failure";
+import type { AgentDetails } from "@shared/api/local-operator/types";
+import { ErrorBoundary } from "@shared/components/common/error-boundary";
+import { Button, Tooltip } from "@shared/components/ui";
+import { apiConfig } from "@shared/config/api-config";
+import {
+	COMPOSER_PLACEHOLDER,
+	type SendOutcome,
+	composerPlaceholder,
+	isOffRecordAsk,
+	settleOffRecordPayload,
+	useMessageInput,
+} from "@shared/hooks/use-message-input";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
+import {
+	SpeechToTextPriority,
+	resolvePushToTalkBinding,
+	setDictationActive,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
+import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
+import {
+	CLEAR_LABEL,
+	RETRY_LABEL,
+	SEND_FAILURE_COPY,
+	buildSendPayload,
+} from "@shared/store/canonical-sessions-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	type Attachment,
+	type Reply,
+	useConversationInputStore,
+} from "@shared/store/conversation-input-store";
+import { normalizePath } from "@shared/utils/path-utils";
+import {
+	dismissToast,
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
+import {
+	Check,
+	CircleAlert,
+	Mic,
+	Paperclip,
+	Send,
+	Square,
+	X,
+} from "lucide-react";
+import {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type {
+	ClipboardEvent,
+	FormEvent,
+	KeyboardEvent,
+	PointerEvent,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
+
+/**
+ * The capture's words, in the shape the planner takes them.
+ *
+ * Built ONCE, at module scope, because the words must not be written a second
+ * time here: `credential-capture.ts` owns the spellings its token is armed with,
+ * and this is that vocabulary handed to `planSlashSubmission` unchanged. See
+ * that argument's `commandLockedWords` for what the planner does with it, and
+ * the capture module for why the words are its to declare.
+ */
+const CREDENTIAL_LOCKED_WORDS: ReadonlySet<string> = new Set(CREDENTIAL_WORDS);
+
+/**
+ * Whether this platform spells its shortcuts with the command key.
+ *
+ * Module scope because the fact cannot change while the app runs, and because the
+ * sentence that PROMISES the key (`lockedCommandNote`, a constant) and the handler
+ * that LISTENS for it have to agree on one label. `navigator.platform` rather than
+ * the main process's answer, which is the shape `chat-header.tsx` and
+ * `chat-sidebar.tsx` already take for their own shortcut labels.
+ */
+const IS_MAC = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+
+/**
+ * The id the capture's notice carries, so the field it describes can name it.
+ *
+ * One composer per pane and one notice per composer, so a constant is enough;
+ * it is a constant rather than a prop because the relationship is between two
+ * elements of THIS component and nothing outside it should need to know.
+ */
+const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
+
+/**
+ * The composer's OWN sentence for the secret closure, and the id its element
+ * carries so the field can be described by it.
+ *
+ * The closure's explanation used to be the PLACEHOLDER alone ("Answer the
+ * secret request above"), and a placeholder paints only while the box is
+ * EMPTY — so the reader most likely to need the reason, the one whose box
+ * holds their own words, got a dimmed box and no words at all (UX round 1,
+ * U2). This is that explanation, in the `<output>` register above the box the
+ * capture's own sentence uses, rendered only while the box holds a draft (the
+ * empty case is the placeholder's, and two sentences saying one thing would be
+ * noise). `aria-describedby` names it while it renders, for the reason
+ * `MISSING_SESSION_NOTICE_ID` exists: a control that refuses input is the one
+ * whose own reason a reader cannot otherwise reach.
+ */
+const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
+const SECRET_CLOSURE_NOTICE =
+	"Answer the secret request above — this box is paused until it is answered, and your draft is kept.";
+
+/**
+ * The id the mention layer's description carries, so the field can name it.
+ *
+ * The chip's own states are carried by a FILL, and a fill is `aria-hidden`
+ * decoration: the field's value is the literal text, which is the right
+ * announcement for the reference itself but says nothing about a reference the
+ * agent will ask before reading. This sentence is the one channel that reaches
+ * every user without adding visual noise, which is the shape UX round 1's U7
+ * asked for.
+ */
+const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
+
+/**
+ * The id the delivery remedies' hint carries, so the field it describes can
+ * name it (UX round 1, U3).
+ *
+ * WHAT IT DESCRIBES, AND WHY A HINT RATHER THAN A CONTROL. A post-paint
+ * failure's `Send again` / `Edit` controls sit in the transcript ABOVE this
+ * box, which precedes the composer in DOM order: a keyboard reader sitting in
+ * the box reaches them with Shift+Tab, and nothing on screen says so - the
+ * round measured forward Tab leaving the chat for the sidebar rail. A forward
+ * path cannot be added without moving the controls out of the reading order
+ * that puts them under the message they repair, and capturing Tab in a textarea
+ * to redirect it is the kind of focus trap that breaks the platform's contract,
+ * so the hint is the honest half of that trade: one sentence, present only
+ * while the line it speaks about is on screen.
+ */
+const DELIVERY_REMEDIES_HINT_ID = "composer-delivery-remedies-hint";
+import { sampleSuggestions } from "@features/chat/components/composer-suggestions";
+import { ComposerTipRow } from "@features/chat/components/composer-tip";
+import { CredentialChipLayer } from "@features/chat/components/credential-chip-layer";
+import {
+	CredentialOverlay,
+	composerTextBox,
+} from "@features/chat/components/credential-overlay";
+import {
+	ConnectProviderCard,
+	NoProviderLine,
+} from "@features/providers/connect-provider-card";
+import {
+	NO_PROVIDER_NOTICE,
+	useConnectProviderStore,
+} from "@features/providers/connect-provider-store";
+
+import { AsidePanel } from "@features/chat/components/aside-panel";
+/*
+ * The `@` mention layer: the tokenizer, the list over the field, and the chip
+ * layer that draws behind the field's own glyphs. Three modules rather than one
+ * because each has a different owner — the grammar is a port of the harness's,
+ * the list is a popup, and the chip is a drawing — and because the grammar and
+ * the ranking are bundled and executed by `scripts/at-mentions.test.mjs`, which a
+ * component module cannot be.
+ */
+import { atDeleteSpan } from "@features/chat/components/at-contract";
+import { AtMentionOverlay } from "@features/chat/components/at-mention-overlay";
+import {
+	AtSuggestionsPopup,
+	handleAtKeyDown,
+	useAtPicker,
+} from "@features/chat/components/at-picker";
+import type { AtRow } from "@features/chat/components/at-rank";
+import { atPickerToken, atReference } from "@features/chat/components/at-token";
+import {
+	ComposerHighlight,
+	highlightPaints,
+} from "@features/chat/components/composer-highlight";
+import {
+	DirectoryIndicator,
+	type DirectoryIndicatorHandle,
+	type DirectoryWritePath,
+} from "@features/chat/components/directory-indicator";
+import { MeasuredSuggestionStack } from "@features/chat/components/measured-suggestion-stack";
+import { RadientSessionIssueCallout } from "@features/chat/components/radient-session-issue";
+import { ReplyPreview } from "@features/chat/components/reply-preview";
+import type { RunDetails } from "@features/chat/components/run-details";
+import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom-button";
+/*
+ * The `$` layer, beside the `@` layer above and for the same reasons: the
+ * grammar and the expansion are separate owners (`skill-invocation.ts` is the
+ * port of `invoke.py`, `skill-list` reads the catalogue), and both are bundled
+ * and executed by `scripts/skill-list.test.mjs` / `skill-invocation.test.mjs`,
+ * which component modules cannot be.
+ */
+import { skillCompletionFor } from "@features/chat/components/skill-completion";
+import {
+	parseSkillInvocation,
+	renderSkillInvocation,
+	skillBodyHasContent,
+} from "@features/chat/components/skill-invocation";
+import {
+	type SkillCatalogRow,
+	SkillSuggestionsPopup,
+	handleSkillKeyDown,
+	readSkillBody,
+	useSkillCompletion,
+} from "@features/chat/components/skill-picker";
+import { shouldRunArgumentAction } from "@features/chat/components/slash-argument-rows";
+import {
+	type CompletionRow,
+	SlashSuggestionsPopup,
+	handleSlashKeyDown,
+	useSlashCompletion,
+} from "@features/chat/components/slash-commands";
+import { completionFor } from "@features/chat/components/slash-completion";
+/*
+ * `extensionFor` comes from the CONTRACT module rather than from the popup
+ * component: the ambiguous Enter's splice is a pure function of the draft, the
+ * caret and the word span, and living there is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
+ */
+import {
+	extensionFor,
+	lockedCommandNote,
+	lockedRunUndoCap,
+	pickArmsCommand,
+	pointerPickRuns,
+	reassembledNote,
+	stagedNote,
+} from "@features/chat/components/slash-contract";
+/*
+ * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
+ * spliced command line to the page's dispatcher and must know whether it ran to
+ * decide what the box holds afterwards, but it must not own any part of how the
+ * command runs.
+ */
+import type { SlashDispatchOutcome } from "@features/chat/components/slash-dispatch";
+import {
+	runsMatchingPlan,
+	slashHighlightRuns,
+} from "@features/chat/components/slash-highlight";
+import {
+	planSlashArming,
+	planSlashSubmission,
+} from "@features/chat/components/slash-submit";
+import type {
+	SlashCommandInvocation,
+	SlashSubmissionPlan,
+} from "@features/chat/components/slash-submit";
+/*
+ * `replaceSpan` is the ONE splice this app performs on a token, and the atomic
+ * mention delete uses it rather than writing a second one: its separator rule is
+ * already worked out for both directions (`slash-token.ts:262-308`), and reusing
+ * it is what keeps the inline slash gesture and the mention delete from
+ * disagreeing about what "remove a token" means.
+ */
+import { replaceSpan } from "@features/chat/components/slash-token";
+import { WaveformAnimation } from "@features/chat/components/waveform-animation";
+import { useAtResolution } from "@features/chat/hooks/use-at-resolution";
+import {
+	activeModelForDefault,
+	writeModelDefaultSettings,
+} from "@features/chat/pickers/model-default-settings";
+import { BrandMark } from "@shared/components/common/brand-mark";
+
+/**
+ * A send that did not land, described for the composer that owns its text.
+ *
+ * Exported because the type is the contract between the page that KNOWS why a
+ * send failed and the composer that shows it; `chat-content` only forwards it.
+ */
+export type ComposerSendError = {
+	/**
+	 * The sentence. One, and never a paragraph: what happened, and what to do if
+	 * that is not already obvious from the controls beside it.
+	 */
+	message?: string;
+	/**
+	 * The failure's code, for the surfaces that read one (the ask-answer report,
+	 * the draft row's own copy). Nothing in this file branches on it any more -
+	 * the decisions it used to make are taken where the failure is classified.
+	 */
+	code?: string;
+	/**
+	 * Whether the notice offers `Retry`.
+	 *
+	 * Decided by `sendFailureCopy` from the failure itself: a press that the app
+	 * would refuse again (an unreadable file, a slash-prefixed draft, a store that
+	 * cannot write) is not offered as a remedy, and neither is one the far side
+	 * cannot take (a conversation that is gone, a pairing state).
+	 */
+	retry?: boolean;
+	/**
+	 * The muted register: a statement of fact rather than a failure. The send lock
+	 * ("Your last message is still sending.") and the late delivery notice ("Your
+	 * earlier message was delivered.") are the two, and neither is a failure -
+	 * nothing was lost and there is nothing to repair.
+	 */
+	muted?: boolean;
+	/**
+	 * Whether this line is ANNOUNCED rather than asserted (review round 2, NIT).
+	 *
+	 * `muted` is about ink and weight; this is about the screen reader. The muted
+	 * register holds two quite different events: the send lock, which answers a press
+	 * the user just made (assertive - what they do next depends on it), and the late
+	 * delivery, which is the app catching up with a message that arrived on its own
+	 * (polite). Rendering both inside the failure's `role="alert"` region made a
+	 * reader interrupt itself to say the message that had just been delivered had not
+	 * been sent - and re-announce the failure it replaced.
+	 */
+	polite?: boolean;
+	/**
+	 * The extra remedies a specific refusal owns - choosing an agent for an
+	 * unresolved attachment, the agents page for an unreachable registry. They sit
+	 * beside Retry and Clear rather than replacing them.
+	 */
+	actions?: { label: string; onClick: () => void }[];
+	/** Retry: the composer's own Send, so the two can never disagree. */
+	onRetry?: () => void;
+	/** Clear: empty the box, the chips and the quotes, and drop the claim. */
+	onClear?: () => void;
+	onDismiss?: () => void;
+};
+
+/**
+ * The absent `recordingProbe`, as the state it reads: no key, and not because
+ * the probe could not be asked. One instance rather than a fresh object, so the
+ * default cannot churn an identity; the fail-closed direction is stated once
+ * (see `recordingProbe` on the props).
+ */
+const EMPTY_RECORDING_PROBE: {
+	hasRadientApiKey: boolean;
+	isUnavailable: boolean;
+} = { hasRadientApiKey: false, isUnavailable: false };
+
+/**
+ * Props for the MessageInput component
+ */
+export type MessageInputProps = {
+	onSendMessage: (
+		content: string,
+		attachments: string[],
+		/**
+		 * Called when the send's optimistic echo reaches a transcript, i.e. when the
+		 * text is on screen. Threaded through to `admitChatDraft`; a host with no
+		 * echo to wait on (the legacy chat path) may ignore it.
+		 *
+		 * Read it as "the echo is in a transcript now", not as "your box was
+		 * cleared": on the New-chat path the drain delivers it to the composer the
+		 * identity flip has already unmounted, while the visible panel paints the
+		 * echo in its first state. See `use-message-input.ts` (round 7, F1).
+		 */
+		onEchoPainted?: () => void,
+		/*
+		 * What the user actually TYPED, before `buildSendPayload` wraps it in any
+		 * staged `<reply-to>` prefix.
+		 *
+		 * Only the pending-gate answer path reads it, and it exists because that
+		 * path must decide whether the composer holds an option ordinal. With a
+		 * reply staged, `content` is `"<reply-to>…</reply-to>\n2"`, which is not a
+		 * bare ordinal — so the resolver passed it through and the owner received
+		 * the whole wrapped string as the answer value (code review round 1,
+		 * MAJOR). Passing the typed text beside the payload keeps that decision
+		 * independent of how the payload is composed, instead of teaching the
+		 * resolver to parse a prefix format it would then have to track forever.
+		 */
+		typed?: string,
+		/**
+		 * Called once the session the send is about to use EXISTS and before the
+		 * message is admitted, and the only window in which the credential capture
+		 * can store into a conversation that send is creating. See
+		 * `admitChatDraft`'s `beforeAdmission` for the whole argument; a host that
+		 * cannot offer the window simply ignores it, and the composer then keeps
+		 * the pre-seam behaviour (an honest not-stored citation).
+		 */
+		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/**
+		 * HOW THIS MESSAGE WAS PRODUCED (arch §4.2): `typed`, `dictated`, or
+		 * `mixed` since the composer's box last emptied. Carriage only - no surface
+		 * renders it - and the page gates it behind `features.input_mode` so a
+		 * harness that cannot carry it receives the legacy body.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
+	) => SendOutcome | Promise<SendOutcome>;
+	isLoading: boolean;
+	/**
+	 * A send this composer made has been admitted and the owner has not answered
+	 * it yet.
+	 *
+	 * Its own prop rather than a reuse of `isLoading`, because the two mean
+	 * different things here and only one of them may change what the user can
+	 * DO. `isInputDisabled` (below) is `isLoading && currentJobId` and it is what
+	 * disables the box and swaps Send for Stop; a canonical turn deliberately
+	 * keeps the composer live, because typing during a turn steers it and a
+	 * pending gate is answered here. So this one changes the PLACEHOLDER only -
+	 * the empty box says why pressing Enter does nothing instead of inviting a
+	 * message it will refuse - and it gates no send: a send that would have gone
+	 * through before still goes through (QA round 1 verified exactly that for
+	 * the disabled Send control, and this prop adds no second gate).
+	 */
+	awaitingReply?: boolean;
+	/**
+	 * A question is pending and the composer is where it is answered.
+	 *
+	 * The card above says what is being asked and the reply it expects, and the
+	 * box under it said "Ask me for help" - the one place the answer goes was the
+	 * one place that did not mention the question (UX round 2, U8). This changes
+	 * the PLACEHOLDER only, for the same reason `awaitingReply` does: an
+	 * approval is answered by typing into this box, so the box must not invite
+	 * something else, and no send is gated by it.
+	 */
+	awaitingAnswer?: boolean;
+	/**
+	 * A failed message's own `Send again` / `Edit` controls are on screen in this
+	 * pane's transcript, which a keyboard reader in this box reaches with
+	 * Shift+Tab (UX round 1, U3).
+	 *
+	 * The fact lives in the pane ("the row exists in this transcript", computed
+	 * once by `ChatContent`) rather than here: a composer mounted alone - a
+	 * story, a rig - has no transcript to be described by, and the hint must not
+	 * outlive the line it points at.
+	 */
+	deliveryRemediesReachable?: boolean;
+	/**
+	 * A pending question takes a SECRET answer, and the composer is not where it
+	 * goes.
+	 *
+	 * A `secret: true` ask is answered from the dock's own masked field
+	 * (`trace/question-dock.tsx`), and this prop is what closes the plain
+	 * composer route while it waits: the refusal predicate below takes this as a
+	 * TERM — the same `isInputDisabled` every other writer and submitter on this
+	 * composer already answers to — so typing, paste, dictation, the slash
+	 * popup, the suggestion chips and the form's own submit are all refused
+	 * together, and the placeholder points at the field instead of inviting a
+	 * message. That is the whole point rather than a nicety: a credential typed
+	 * here would be VISIBLE while it is typed and would pass through the draft
+	 * store on its way to being sent, which is the exposure the dock exists to
+	 * remove.
+	 *
+	 * NOT a second copy of `awaitingAnswer`'s semantics: for an ordinary ask the
+	 * composer remains the first-class answer path (typing `yes`/`no`/ordinals),
+	 * and this prop is false there. For a secret ask the composer's answer path
+	 * is replaced, not merely announced — which is why it refuses input rather
+	 * than only changing its placeholder. The page derives it from the same
+	 * pending gate (`chat-content.tsx`), and the field it points at is the only
+	 * surface that posts the value (`answerWithSecret` -> `answerGateSecret`).
+	 */
+	secretAnswer?: boolean;
+	/**
+	 * The canonical session the aside panel addresses, or undefined on a pane that
+	 * has none (a draft, a legacy pane).
+	 *
+	 * The panel is the ONE above-composer surface that is not derived from
+	 * anything this component already holds: it is keyed by the session the
+	 * dispatcher's `/btw` addressed, and the store that holds it is keyed the same
+	 * way. Absent means no panel can be attached here, which is the honest answer
+	 * for every harness that mounts a composer alone.
+	 */
+	asideSessionId?: string;
+	/**
+	 * Whether that session is mid-turn — the second term of the adopt gate
+	 * (`asideAdoptReady`, mirroring the TUI's `_aside_can_fork`: splicing a message
+	 * into a live turn is a request no provider accepts).
+	 *
+	 * Passed in rather than read here for the reason `canonicalStop.active` is: the
+	 * page that owns the canonical stream owns the answer, and a second reading of
+	 * it here is a second thing that can disagree with the Stop control beside it.
+	 */
+	asideStreaming?: boolean;
+	conversationId?: string;
+	messages: Message[];
+	currentJobId?: string | null;
+	onCancelJob?: (jobId: string) => void;
+	isFarFromBottom?: boolean;
+	/**
+	 * The user started composing into an empty box.
+	 *
+	 * Called from the textarea's own onChange because that is the only place a
+	 * keystroke is observable; the composer deliberately knows nothing about
+	 * what it triggers. Its consumer warms the session's runtime so the send
+	 * that follows does not pay a cold engage, and the latch that makes it fire
+	 * once per session lives there (`useWarmSession`).
+	 */
+	onComposerInput?: () => void;
+	/** New messages landed while the reader was scrolled up. */
+	hasNewActivity?: boolean;
+	scrollToBottom?: () => void;
+	/**
+	 * Canonical-session stop control. Unlike the legacy job cancel, a turn in
+	 * flight does NOT disable the composer: typing during a turn steers it, and
+	 * a pending gate is answered here. So the stop button sits beside Send
+	 * rather than replacing it, and only while the owner is actually working.
+	 *
+	 * `active` is `busy` AND the backend's `session_interrupt` capability, folded
+	 * at the call site rather than here so that the ESCAPE accelerator's own
+	 * predicate can be the same expression (`use-interrupt-on-escape.ts`). An
+	 * older backend therefore renders no control at all rather than one whose
+	 * every press is refused: the button promises this session's CURRENT WORK,
+	 * and the only other route this build has for stopping work is `/stop`, which
+	 * ends the session - a different promise than the control makes.
+	 */
+	canonicalStop?: { active: boolean; onStop: () => void };
+	/**
+	 * Whether this session's backend negotiates `session_interrupt` at all.
+	 *
+	 * The control's SLOT can only be held on a backend that could ever fill it, so
+	 * this is the outer half of the reservation's gate - an invisible placeholder
+	 * that no control will ever stand in for is a gap, not a reservation. It is the
+	 * same capability `canonicalStop.active` is folded with at the call site, so the
+	 * reservation cannot outlive the control it reserves for.
+	 *
+	 * It is no longer the whole gate: the slot is held while a turn runs and for a
+	 * grace window after it ends, and is empty once the row has settled (the
+	 * operator's report that the standing gap put the dictation control away from
+	 * Send). See the reservation at the row and `interrupt-slot-grace.ts`.
+	 */
+	canonicalStopAvailable?: boolean;
+	/**
+	 * What the last interrupt left running, or null for the common case.
+	 *
+	 * Deliberately NOT the `sendError` alert, which is the failure register: this
+	 * sentence says a stop worked and names work that outlived it, so routed
+	 * through the alert it would read as an error and take `role="alert"`'s
+	 * assertive announcement for a press the user just made themselves. Muted ink
+	 * and its own line, which is what `heldNotice` and `refusedNotice` do in that
+	 * same region for the same reason.
+	 */
+	interruptNotice?: string | null;
+	/**
+	 * The last send that failed, rendered against this composer rather than at
+	 * the top of the page.
+	 *
+	 * A failed send leaves the user's text in this textarea (see
+	 * `useMessageInput.handleSubmit`, which retires a draft on admission and not
+	 * on the keypress), so the failure and the message it names are the same
+	 * object and belong in the same place. The previous banner rendered at the
+	 * very top of the chat column, measured 709px away from the composer holding
+	 * the text it was talking about, and re-printed that text into a read-only
+	 * box - a second copy of an input the user could already edit.
+	 *
+	 * `actions` is the "what to do" half of the error contract (branding § 8):
+	 * an errorCode that has a specific remedy supplies it here, so the remedy
+	 * travels with the message instead of being stranded wherever the message
+	 * used to render.
+	 */
+	sendError?: ComposerSendError;
+	/**
+	 * The label pool an empty chat samples from. `readonly` because the pool is
+	 * a constant the caller owns: the composer draws a sample and never sorts,
+	 * appends to or otherwise edits what it was handed.
+	 */
+	initialSuggestions?: readonly string[];
+	/**
+	 * True when the app KNOWS no model provider is connected (the census was
+	 * read and nothing answers; see `useProviderStatus`). The empty chat then
+	 * shows the connect card instead of suggestion chips, the placeholder says
+	 * what to do, and a status line offers "Connect" -- design audit section 6.
+	 * Typing stays allowed so a draft is never lost; the backend's own notice
+	 * still answers a send. A plain prop rather than a hook read here, so the
+	 * composer stays mountable without a query client in its Node tests.
+	 */
+	noProvider?: boolean;
+	/**
+	 * A provider IS connected and no model can be named for it yet (UX round 5, U21).
+	 *
+	 * WHY THE COMPOSER NEEDS IT SEPARATELY: `noProvider` covers "nothing is connected",
+	 * and this is the state one step past it -- a first run whose provider is connected
+	 * but whose default was deliberately NOT written, because the backend lists no
+	 * models for it. Measured live: the band said "Choose a model", `Send` was disabled
+	 * while the box was empty, and **Enter sent anyway** -- the turn then sat at
+	 * "waiting for the agent" with no completion request reaching the daemon at all.
+	 * Typing is still allowed; the send is not, and the line under the box says why.
+	 */
+	noModel?: boolean;
+	agentData?: AgentDetails | null;
+	/**
+	 * Working directory for this conversation, and the way to change it.
+	 *
+	 * `cwdWritePath` describes the write path, and it is one value rather than a
+	 * callback plus a flag because its two kinds answer differently and the chip
+	 * must not be able to mix them: a DRAFT stages the directory
+	 * `sessions.create` will use, and a LIVE session with `session_move` moved
+	 * (see `useSessionMove`). Absent means the chip renders read-only, with
+	 * `cwdReadOnlyReason` saying why - the honest state for an older backend or a
+	 * session still being created, rather than a control whose every use fails.
+	 */
+	cwd?: string;
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * Why the chip is read-only here. Supplied per cause rather than assumed:
+	 * `MOVE_UNAVAILABLE_REASON` is false on a session that is merely still being
+	 * created, and the composer is the layer that knows which of the two it is
+	 * looking at (agent review m1).
+	 */
+	cwdReadOnlyReason?: string;
+	/**
+	 * A directory move for this session has not been confirmed yet.
+	 *
+	 * Reaches the chip as `DirectoryIndicatorProps.pending`. It does change the
+	 * chip's pixels - the folder glyph becomes the app's spinner, the tooltip and
+	 * the live region carry the two pending sentences - because the state has to be
+	 * visible on the surface the user is looking at rather than behind a hover
+	 * (design review D2); the remaining anatomy is unchanged, so this is the app's
+	 * existing in-flight treatment and not a new one.
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight.
+	 *
+	 * The chip's two pending sentences make different claims: the first is true from
+	 * the commit, the second is a statement about what the backend did. Timed, the
+	 * second could announce a restart on a slow refusal; driven by the receipt, it
+	 * cannot (UX review round 2, U3).
+	 */
+	cwdPendingAccepted?: boolean;
+	isSmallView?: boolean;
+	/**
+	 * History has not resolved yet, so "no messages" is not yet a FACT.
+	 * The empty state is a claim about the conversation; making it before the
+	 * transcript loads is how a populated chat flashed "no messages yet" and
+	 * then repainted (design D7).
+	 */
+	isHydrating?: boolean;
+	/**
+	 * Whether the `@` affordance may be offered at all — see
+	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
+	 * closed.
+	 *
+	 * ONE PROP FOR BOTH SURFACES it gates, because they are one mechanism: the list
+	 * that writes the token and the fill that asserts it. `undefined` is the same as
+	 * false, which is what a caller that has not thought about it gets — the composer
+	 * offering a chip the harness will not expand is the defect this exists for, so
+	 * a broken wire has to fail in the quiet direction.
+	 */
+	mentionsEnabled?: boolean;
+	/**
+	 * Whether the HARNESS is why the affordance above is absent, which the composer
+	 * has to be told separately.
+	 *
+	 * The flag above is false for two different facts — a turn in flight, and a
+	 * harness that does not carry references — and only the page owns the answer to
+	 * the second, because the capability read is its. The composer's sentence for it
+	 * ("this backend cannot carry file references…", UX round 2's U12) must not be
+	 * said over a turn: that would be a claim about the backend made from a fact
+	 * about the turn.
+	 */
+	mentionsUnsupported?: boolean;
+	/**
+	 * The conversation is not on this machine (M6), so nothing typed here could
+	 * be sent anywhere.
+	 *
+	 * A separate gate from `isHydrating`, which is about not knowing yet: this
+	 * one is a known answer, and it is the one state where leaving the composer
+	 * writable invites a doomed action. The transcript above it names the state
+	 * and offers the way out; this only refuses the keystroke.
+	 */
+	unavailable?: boolean;
+	/**
+	 * Whether this pane can address a SESSION — the dispatcher's own question.
+	 *
+	 * The page builds one dispatcher per pane and hands it the canonical session id
+	 * it may address (`chat-page.tsx`), so this is that answer, stated once beside
+	 * the dispatcher instead of re-derived here. The composer needs it because two
+	 * of its sentences are about what the NEXT Enter can do — the popup's arming
+	 * line and the staged note — and a pane that cannot address a session answers
+	 * both with the dispatcher's refusal clause rather than a promise.
+	 *
+	 * Optional, and absent means NO session to address: the only callers that leave
+	 * it out are the story fixtures, and the honest reading of "nobody said" is the
+	 * one that does not promise a run. It is deliberately NOT derived from
+	 * `sessionStatus` (present on a draft pane, from the preview) or from
+	 * `conversationId` (on a draft pane that is the PANE's identity, a non-empty
+	 * string) — that derivation is exactly how the note came to promise a goal on
+	 * the pane whose next Enter is refused (UX U1).
+	 */
+	paneHasSession?: boolean;
+	/**
+	 * The session's own readings — model, effort, context, spend — and the way
+	 * to open each one's picker.
+	 *
+	 * Optional because the legacy (non-canonical) chat path has no canonical
+	 * snapshot to read and no command dispatcher to hand back; there the strip
+	 * simply does not mount. `onCommand` runs a slash command exactly as typing
+	 * it would, which is what keeps the chips from becoming a second way to
+	 * reach a picker. See `session-status/session-status-strip.tsx`.
+	 */
+	sessionStatus?: {
+		frontend: CanonicalFrontendState | null;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
+		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
+		effortEntities?: readonly unknown[];
+		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
+		pendingModel?: CanonicalModel | null;
+		/**
+		 * This pane is a NEW conversation's draft: there is no session yet, so the
+		 * readings come from `sessions.preview` and render inert unless the backend
+		 * can select for a draft. See `SessionStatusStripProps["draft"]` for why the
+		 * state is passed in rather than inferred from a missing dispatcher.
+		 */
+		draft?: boolean;
+		/**
+		 * Open a model or effort picker for this DRAFT pane's own selection.
+		 *
+		 * Absent unless the backend advertises the capability, which is what leaves
+		 * the two readings inert with their existing copy on a backend that cannot
+		 * honour a pick. See `SessionStatusStripProps["onOpenDraftPicker"]`.
+		 */
+		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		/**
+		 * Where a draft's resolution IS, while it has no reading yet; see
+		 * `SessionStatusStripProps["draftResolution"]`.
+		 */
+		draftResolution?: DraftResolution;
+		/** Whether this DRAFT pane's model is resolved; see the strip's own note. */
+		draftResolved?: boolean;
+		/**
+		 * The readings are the last ones the session reported, held across a
+		 * transient stream gap; see `SessionStatusStripProps["held"]`.
+		 *
+		 * Forwarded verbatim rather than derived here: a composer that recomputed
+		 * this from its own `isLoading` or from the absence of a `frontend` would be
+		 * a second authority for a fact the session handle owns.
+		 */
+		held?: boolean;
+		/**
+		 * The readings were dropped at a spent retry budget (task-17, U4); see
+		 * `SessionStatusStripProps["readingsDropped"]`. Forwarded verbatim, for
+		 * the reason `held` is: the pane owns the distinction between "never
+		 * arrived" and "dropped", and this composer must not re-derive it.
+		 */
+		readingsDropped?: boolean;
+	};
+	/**
+	 * Run the command the composer's planner pulled out of the draft, and report
+	 * what happened to it.
+	 *
+	 * The SAME dispatcher the chips use, so a command cannot take a second route
+	 * with its own outcome mapping. The composer owns the restore/splice decision
+	 * afterwards because it is the only place that knows what it held before; when
+	 * absent (the legacy chat path has no command dispatcher), nothing is ever
+	 * spliced and the draft sends as prose.
+	 *
+	 * It is handed the planner's answer — a `SlashCommandInvocation` — rather than
+	 * the draft: the decision about WHAT a draft submits is the planner's alone
+	 * (see `slash-submit.ts`), and this signature is what makes a second such
+	 * decision impossible.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * Say something in the composer's own note idiom.
+	 *
+	 * The dispatcher already owns that surface (`useSlashDispatch`'s `note`), so
+	 * the composer borrows it rather than growing a second one. Used for the three
+	 * outcomes a user cannot read off the box: a mid-draft name-list command whose
+	 * list cannot answer, a staged reassembly that did NOT send, and a staged
+	 * ARMING by a pick (the goal is set by the next Enter, not by this one).
+	 */
+	onSlashNote?: (text: string) => void;
+	/**
+	 * The run's derived model, for the status row's plan count.
+	 *
+	 * Passed in rather than derived here, and that is the point of the prop: the
+	 * counts on this composer and the counts in the run pane have to be ONE
+	 * derivation (`deriveRunDetails`), because a second call here is a second tally
+	 * free to disagree with the pane's. `null` on every path with no canonical
+	 * session, which is also what keeps the status row off a legacy pane.
+	 */
+	runDetails?: RunDetails | null;
+	/**
+	 * The credential-store seam: called after credentials cited in a send have
+	 * been stored, with the session they were stored against.
+	 *
+	 * The composer used to repair the picker's own cache here, through
+	 * `useQueryClient()` — which made a QueryClient provider a MOUNT requirement
+	 * for every host, and the mini view's document mounts none. The repair is the
+	 * HOST's now: the chat page invalidates `desktopKeys.credentials(sessionId)`
+	 * (the same key the picker reads), and a host with no cache simply omits
+	 * this. Nothing is called when nothing stored: a refusal already has its own
+	 * notice, and an empty store must not make a picker re-ask for an empty
+	 * list.
+	 */
+	onCredentialsStored?: (sessionId: string) => void | Promise<void>;
+	/**
+	 * The credential probe's answer, for the voice-input gate: whether this
+	 * document has a Radient API key, and whether the probe could be read at all
+	 * (`isUnavailable` — offline is a different sentence from unconfigured).
+	 *
+	 * The composer cannot ask this itself any more, for the mount reason
+	 * `onCredentialsStored` states: the probe is a react-query read
+	 * (`useRadientCredentialProbe` -> `useCredentials`). The chat reads it in
+	 * `chat-content.tsx` and passes the answer; a host with no such probe leaves
+	 * the default, which reads as "no key" and carries the app's existing
+	 * sentence for that state — the fail-closed direction, matching
+	 * `mentionsEnabled`.
+	 */
+	recordingProbe?: { hasRadientApiKey: boolean; isUnavailable: boolean };
+	/**
+	 * Fired on every change of this composer's take state (the same fact
+	 * `setDictationActive` writes to the shared manager), so a host's own guards
+	 * — the mini frame's blur and Esc — can defer to a live recording.
+	 *
+	 * A callback rather than only the module read because a React host keeps it
+	 * as state; a host that needs the answer synchronously at event time can
+	 * call `isDictationActive()` from
+	 * `@shared/hooks/use-speech-to-text-manager` instead, which is current by
+	 * construction. Fires once with `false` when the composer mounts, and is NOT
+	 * fired on unmount (the surface that owned the take is gone).
+	 */
+	onDictationStateChange?: (active: boolean) => void;
+	/**
+	 * The host's own sentence for the box's INVITATION slot, in place of the
+	 * app's `idle` line ("Ask anything. @ adds files, / runs commands") — the
+	 * mini view's copy.
+	 *
+	 * Only the invitation: every state sentence (refusals, the recording line,
+	 * gates, the sending line) still outranks it through `composerPlaceholder`,
+	 * because those describe facts about the box that a host's copy cannot.
+	 */
+	placeholderOverride?: string;
+};
+
+/**
+ * How long a send-failure alert stays put before the next keystroke retires it.
+ *
+ * Dismiss-on-edit is right - an alert over text the user has since fixed is the
+ * defect this whole change replaces - but at zero delay it fired on the first
+ * character, taking two sentences and up to three remedy buttons off screen
+ * before they could be read. Long enough to read the first line, short enough
+ * that a user who is deliberately rewriting never notices it.
+ */
+const ALERT_READ_DWELL_MS = 1500;
+
+/**
+ * `promise`, or a rejection once `ms` has passed.
+ *
+ * The credential store sits ON THE SUBMIT SEAM (§9), so an answer that never
+ * comes cannot be waited for indefinitely: a never-resolving transport would park
+ * the composer behind a spinner with the user's message inside it. The TUI bounds
+ * the same wait with `CREDENTIAL_STORE_TIMEOUT_S` and degrades LOUDLY rather than
+ * holding the box, and this is that bound — now applied to one ATTEMPT rather
+ * than to the whole seam (see the two constants below). The timer is cleared on
+ * both outcomes so a late answer cannot leave a rejection nobody handles.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	/*
+	 * A FUNCTION DECLARATION, not a generic arrow, and that is not a style
+	 * preference: `canonical-chat.test.mjs` walks this file with a minimal JSX
+	 * scanner to assert that no ancestor of the slash popup clips it, and a
+	 * `<T,>` arrow reads to that walker as an opening tag — it loses the tree
+	 * and the guard fails closed with "the instrument is broken". The walker is
+	 * right to refuse rather than guess; the cost here is one declaration.
+	 */
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error("credential store timed out")),
+			ms,
+		);
+		promise.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+/**
+ * How long ONE store attempt may take before this seam stops waiting for it.
+ *
+ * THE TRANSPORT'S OWN BUDGET FOR THIS OP, and that is the whole correction. This
+ * seam used to cut the store off at the TUI's 5 s (`CREDENTIAL_STORE_TIMEOUT_S`),
+ * copied on the reasoning that "the two products give up at the same moment" —
+ * but the two products do not have the same transport, and the copy is what
+ * produced the false citation in the operator's session. The TUI stores through
+ * an IN-PROCESS call to a session that is already live, where five seconds can
+ * only mean a hung socket; this store crosses to a session RUNTIME that may not
+ * be running yet, and the route has to engage one before it can answer
+ * (`desktop_lifecycle.py` → `bridge.remote.bind_runtime()`). Measured on this host
+ * against a real isolated backend, `2026-09-19`: a cold store answered 200 in
+ * 4.2 s, and six concurrent cold stores answered 200 in 5.6-8.2 s; the resolution
+ * round's own independent measurement through the app's proxy the next day saw
+ * 1.09-1.47 s cold and 1.33-3.51 s for six in flight, and the operator's own
+ * first message landed behind an engage whose boot lines arrived ~13 s after the
+ * spawn. Every one of those writes was past the old 5 s bound, and all of them
+ * landed.
+ *
+ * So the bound is `desktopRequestTimeoutMs`, the transport's own deadline for
+ * this op (main's 20 s control budget plus its 5 s renderer margin) — the same
+ * rule `desktop-api.ts` states for that margin, applied to the seam: the
+ * composer must never be the layer that gives up first, because the layer that
+ * knows the HTTP status is the one that can tell a refusal from a silence. The
+ * wait is not wasted either: the message cannot be sent before the runtime the
+ * store needs is up, so this is the send's own wait, reported rather than hidden.
+ *
+ * THE WHOLE SEAM'S WAIT IS THIS PLUS TWO SHORTER ONES, and saying so is the
+ * point of the number being a constant rather than an expression: one credential
+ * that nothing ever answers costs 25 s here, then a 5 s re-issue, then a 5 s list
+ * read — **35 s** at worst, and every second of it is a second the alternative
+ * spends asserting something false. A credential that answers at all costs a
+ * fraction of that (a refusal pays only the list read; the measured rows came in
+ * between 6.9 s and 30 s end to end). Credentials resolve CONCURRENTLY, so N
+ * cited in one message cost that same worst case rather than N times it.
+ */
+const CREDENTIAL_STORE_TIMEOUT_MS = desktopRequestTimeoutMs(
+	"sessions.credential",
+);
+
+/**
+ * How long a RESOLUTION step may take, once a first attempt proved nothing.
+ *
+ * Shorter than the attempt above on purpose. A resolution runs only after the
+ * store already spent the op's full budget without an answer, and its job is to
+ * catch a response that was LOST while the write landed — an engaged runtime
+ * answers it in milliseconds. Waiting the whole budget again would not find more
+ * truth; it would only park the send, which is the failure the seam's bound
+ * exists to prevent. Both resolution steps (the re-issue and the list read) are
+ * bounded by this one value, so the seam's own worst case is the attempt above
+ * plus two of these — see that constant for the arithmetic.
+ */
+const CREDENTIAL_RESOLVE_TIMEOUT_MS = 5000;
+
+/** What one store attempt settled, or `null` when it settled nothing at all. */
+type CredentialStoreAttempt =
+	| { kind: "stored" }
+	| { kind: "fate"; fate: CredentialFate };
+
+/**
+ * One store attempt, and the classification of every way it can end.
+ *
+ * WHAT THE WIRE CAN AND CANNOT SAY, because this is where the last false
+ * citation lived. `{ kind: "stored" }` is an answer that the store took the
+ * value. `{ kind: "fate" }` is an answer that says the value is NOT there — and
+ * it is a CANDIDATE, not a verdict, which is the correction the first round of
+ * review forced: the route collapses the store's own refusal AND the owner's own
+ * `disconnected` answer into ONE 409 with no reason in the body
+ * (`server/routes/desktop_lifecycle.py` raises it whenever
+ * `bridge.remote.credential_op` returns `not result.get("ok")`, and
+ * `session/attached.py`'s `credential_op` returns exactly that shape both when
+ * the viewer is not connected and when the client RAISED — i.e. for a lost reply
+ * over a landed write, `run_credential_verb` having applied the store before it
+ * returned). So a 4xx proves that something ANSWERED; it does not prove the value
+ * is absent, and the caller therefore confirms every non-store answer against the
+ * session's own list before citing it (`sessionHoldsCredential`).
+ *
+ * `null` is the third answer and the one this change exists for: a transport
+ * failure or this composer's bound expiring (`status: null`), and any 5xx
+ * including the transport's own `504` — none of which says anything about the
+ * write. It used to be reported as `"unreachable"`, i.e. as `[credential NOT
+ * stored — the session could not be reached]`, on the strength of a silence, and
+ * the operator's own session is the measured proof that a store can be silent
+ * here and still land.
+ */
+async function attemptCredentialStore(
+	sessionId: string,
+	payload: CredentialPayload,
+	timeoutMs: number,
+): Promise<CredentialStoreAttempt | null> {
+	try {
+		const answer = await withTimeout(
+			desktopResult<{ data?: { ok?: boolean; reason?: string } }>({
+				op: "sessions.credential",
+				sessionId,
+				action: "store",
+				key: payload.key,
+				value: payload.value,
+			}),
+			timeoutMs,
+		);
+		if (answer?.data?.ok === false)
+			return {
+				kind: "fate",
+				fate: answer.data.reason === "empty-key" ? "rejected-key" : "lost",
+			};
+		return { kind: "stored" };
+	} catch (error) {
+		const status = error instanceof DesktopControlError ? error.status : null;
+		if (status !== null && status >= 400 && status < 500)
+			return { kind: "fate", fate: "lost" };
+		return null;
+	}
+}
+
+/**
+ * Whether the session's own store holds `key`: present, absent, or unreadable.
+ *
+ * Three answers rather than a boolean, because the two callers need different
+ * halves of the same read and collapsing them is how the last false citation got
+ * in:
+ *
+ *  - `true` — a POSITIVE WITNESS. The list names the key, so the write landed and
+ *    the citation can be the confident one the model needs, whatever the store op
+ *    itself said (or failed to say);
+ *  - `false` — the read ANSWERED with a name list and the key is not in it. Enough
+ *    to confirm a refusal **when nothing was left in flight** (see
+ *    `resolveCredentialStore`, which is where that condition lives); never enough on
+ *    its own, because the store request that preceded it may still be in flight
+ *    behind the same cold engage, or may have landed under a runtime that has since
+ *    retired;
+ *  - `null` — the read itself could not answer, OR answered with nothing this
+ *    function can read as a name list. Proves nothing in either direction, so the
+ *    caller may not cite either outcome.
+ *
+ * WHAT COUNTS AS UNREADABLE, and why it is checked here rather than left to the
+ * parser (code review round 2, R2-m2). `credentialNamesFrom` is deliberately total
+ * — it returns `[]` for a body it cannot parse — so reading THIS answer through it
+ * alone collapsed "a list that does not name the key" and "a list I could not read"
+ * into the same `false`, which is the same class of mistake as a 4xx being read as a
+ * verdict, one layer down. A 2xx carrying no `credentials` array, or carrying
+ * `ok: false` (the owner's own `disconnected` answer to a list it never performed),
+ * is therefore `null`.
+ *
+ * The one reader of the store's name list this seam is allowed to use is
+ * `credentialNamesFrom` (§9.7).
+ */
+async function sessionHoldsCredential(
+	sessionId: string,
+	key: string,
+	timeoutMs: number,
+): Promise<boolean | null> {
+	try {
+		const answer = await withTimeout(
+			desktopResult<unknown>({
+				op: "sessions.credential",
+				sessionId,
+				action: "list",
+			}),
+			timeoutMs,
+		);
+		const data = (
+			answer as {
+				data?: { ok?: boolean; credentials?: unknown };
+			} | null
+		)?.data;
+		if (data?.ok === false || !Array.isArray(data?.credentials)) return null;
+		return credentialNamesFrom(answer).includes(key);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Everything this seam can find out about one credential, cheapest proof first.
+ *
+ * THE DECISION TABLE, and each row is a thing the wire can and cannot say:
+ *
+ * | first attempt | re-issue | list read | citation |
+ * | --- | --- | --- | --- |
+ * | `ok` | — | — | stored |
+ * | a refusal | not re-issued — an answer is an answer | names the key | stored — the 409 was a lost reply |
+ * | a refusal | not re-issued | answered, no key | the refusal stands: two agreements, and nothing left in flight |
+ * | a refusal | not re-issued | unreadable | unconfirmed |
+ * | silent | `ok` | — | stored |
+ * | silent | a refusal | names the key | stored |
+ * | silent | a refusal | answered, no key | unconfirmed — and this row is review round 2's R2-m1 |
+ * | silent | silent | anything | unconfirmed |
+ *
+ * THE SILENT ROW ABOVE IS THE ONE THAT MOVED IN ROUND 2, and the mechanism is why:
+ * `withTimeout` clears its own timer but does NOT cancel the request it wrapped, so a
+ * silent first attempt's write can still be in flight — or land — after the list has
+ * answered. An absent name at that moment is therefore not a name that will never
+ * arrive, and the re-issue's 4xx is that same 409 the route also raises for the
+ * owner's own `disconnected` reply to a write it applied. The refusal citation needs
+ * an ANSWER and nothing outstanding; with a silence in the history it has neither,
+ * so the seam says only what it knows. The round-1 code returned the refusal here
+ * while this table said `unconfirmed`; the table was right and the CODE was wrong —
+ * the opposite of what a documentation-only fix would have assumed.
+ *
+ * The re-issue runs only when the first attempt was SILENT, because that is the
+ * only state a second attempt can repair: a refusal is an answer, and repeating it
+ * changes nothing on the wire. The list read runs after either, because a positive
+ * witness settles both states, and it is the only step that can tell a refusal
+ * from a lost reply about a write that landed.
+ */
+async function resolveCredentialStore(
+	sessionId: string,
+	payload: CredentialPayload,
+): Promise<CredentialStoreAttempt | null> {
+	const first = await attemptCredentialStore(
+		sessionId,
+		payload,
+		CREDENTIAL_STORE_TIMEOUT_MS,
+	);
+	if (first?.kind === "stored") return first;
+	/*
+	 * Whether the FIRST attempt was silent decides what a refusal is worth below,
+	 * and the reason is in the table above: a silence leaves a write that nothing
+	 * here cancelled, so a no-name answer taken afterwards cannot settle it.
+	 */
+	const silentFirst = first === null;
+	let attempt: CredentialStoreAttempt | null = first;
+	if (attempt === null)
+		attempt = await attemptCredentialStore(
+			sessionId,
+			payload,
+			CREDENTIAL_RESOLVE_TIMEOUT_MS,
+		);
+	if (attempt?.kind === "stored") return attempt;
+	const holds = await sessionHoldsCredential(
+		sessionId,
+		payload.key,
+		CREDENTIAL_RESOLVE_TIMEOUT_MS,
+	);
+	if (holds === true) return { kind: "stored" };
+	if (holds === false && attempt !== null && !silentFirst) return attempt;
+	/*
+	 * Either nothing answered at all, the store answered after a silence (which is
+	 * not proof of anything while that silence's write may still land), or the list
+	 * could not answer — and in every one of them the seam knows of no key it may
+	 * cite as missing. `null` is that state, and the caller renders it as the one
+	 * citation that claims nothing.
+	 */
+	return null;
+}
+
+const EMPTY_REPLIES: Reply[] = [];
+const EMPTY_ATTACHMENTS: Attachment[] = [];
+
+/**
+ * The pending gate's first option that a user could actually reach, or null.
+ *
+ * A held card (an answer in flight, or one already answered) renders every option
+ * `disabled`, so this matches nothing and the caller leaves the key event alone.
+ */
+const firstLiveAnswerOption = (): HTMLElement | null =>
+	document.querySelector<HTMLElement>(
+		'[aria-label="Answer options"] button:not([disabled])',
+	);
+
+/**
+ * The composer's textarea, as the reader below finds it.
+ *
+ * Queried rather than read from a ref because the one caller
+ * (`composerHoldsFocusUntouched`) runs from `chat-page.tsx`'s layout effect,
+ * outside this component's render, and `COMPOSER_TEXTAREA_SELECTOR` is the same
+ * handle the answer options are found by - and the same one the escape ladder's
+ * field rule uses, which is why the name lives in a leaf module rather than
+ * here (see `composer-field.ts`).
+ */
+const composerBox = (): HTMLTextAreaElement | null =>
+	document.querySelector<HTMLTextAreaElement>(COMPOSER_TEXTAREA_SELECTOR);
+
+/**
+ * A staged quote's own remove control, as the removal's focus hand-off finds it.
+ *
+ * The accessible name is the handle rather than a `data-` attribute, because it
+ * is the same one `reply-preview.tsx` labels the control with and the same one a
+ * screen reader announces - a second name for the same button is how the
+ * control and its selector stop meaning the same thing.
+ */
+const REPLY_CHIP_REMOVE_SELECTOR = '[aria-label="Remove reply"]';
+
+/**
+ * Whether the user has POINTED at the composer since it was last handed focus.
+ *
+ * A press on an option hands focus here (`chat-page.tsx`), which makes "the
+ * composer holds focus" ambiguous between "we put it there" and "the user moved
+ * on". Typing resolves that ambiguity on its own - a box with content is not
+ * ours - but a CLICK into an empty box does not, and an ask gate advances on its
+ * own schedule: the caret is taken, the characters typed next reach nothing, and
+ * the following `Space` presses the option that stole focus and posts it as the
+ * user's answer to the NEXT question (UX round 4, U13).
+ *
+ * Module scope rather than component state because the reader is called from
+ * `chat-page.tsx`, outside this component. It is set by the textarea's own
+ * `onPointerDown` - the interaction that says "I am about to type here" - and
+ * cleared wherever this component hands focus over itself, so the flag means
+ * "the user has taken it since we last gave it" rather than "the user has ever
+ * touched it". Clearing at the hand-off rather than at the press is deliberate:
+ * `focusInput` is the single place focus is given, including the press's own
+ * hand-off, so a new call site cannot forget to reset it.
+ */
+let composerPointerTouched = false;
+
+/**
+ * Whether the composer holds focus with a box the user has neither typed in nor
+ * pointed at.
+ *
+ * `chat-page.tsx` hands focus HERE at a keyboard press on an option, because the
+ * pressed option is `disabled` the moment the press lands and a disabled control
+ * cannot hold focus: the browser drops it to the document body, where it stays
+ * for the whole request (UX round 3, U12). The decision itself - focus, an empty
+ * box, and no pointer interaction since the hand-off - is `composerFocusIsOurs`
+ * in `ask-answer.ts`, where it can be asserted without a DOM; this is only the
+ * DOM read that feeds it.
+ */
+export const composerHoldsFocusUntouched = (): boolean =>
+	composerFocusIsOurs(
+		composerBox(),
+		document.activeElement,
+		composerPointerTouched,
+	);
+
+/**
+ * Type for the imperative handle to expose focusInput method
+ */
+export type MessageInputHandle = {
+	focusInput: () => void;
+	/**
+	 * Focus the working-directory chip and open its menu.
+	 *
+	 * The bare `/move` form's whole effect: the destination resolves in the
+	 * composer's own control rather than in a dialog, so the command has to be able
+	 * to reach it. A no-op when the chip is not mounted (no directory is known) or
+	 * is read-only, which is why the dispatch branch checks the capability before
+	 * asking.
+	 */
+	openWorkingDirectoryMenu: () => void;
+	/**
+	 * Send whatever the box holds, exactly as the Send button does.
+	 *
+	 * The notice row's `Retry` is this call and nothing else, deliberately: a retry
+	 * IS a send, so it takes the composer's own path - the slash/gate planner, the
+	 * credential seam, the send lock - and a second implementation of "send" for
+	 * the failure case is how the two come to disagree about what the user asked
+	 * for (the planner is the whole of that argument in `submitMessage`).
+	 */
+	submitNow: () => void;
+	/**
+	 * Consume the composer's text as the answer a press just gave.
+	 *
+	 * The press path's half of the typed path's own behaviour (UX round 1, U4): a
+	 * keyboard user types `1`, presses Approve, and the keystrokes used to stay in
+	 * the box - focus is already there, so the next Enter sent `1` as an ordinary
+	 * message (measured: a real turn started with it). Called by the winning arm
+	 * of an approval press, this clears the box ONLY when what it holds IS an
+	 * approval answer (`approvalAnswerValue` returns a verdict); a message someone
+	 * was writing fails that test and is never touched. The ask gate keeps its
+	 * inherited behaviour - its presses still leave the box alone.
+	 */
+	consumeApprovalAnswerDraft: () => void;
+};
+
+/*
+ * The composer box, defined once: an `elevated` panel, radius 16, and NO edge at
+ * rest (chat redesign §G1; design round 1's D12).
+ *
+ * It wore `border-control` on `bg-surface`, and on the dark brand palette that
+ * edge is the accent's green: the composer was the loudest thing on the screen at
+ * rest, a ring around an empty box, while the transcript - the surface the reader
+ * came for - sat at `canvas` with nothing pointing at it. §G1 spends the accent
+ * on READY (the send control's fill) and on FOCUS (the ring below), and separates
+ * the panel from its column with the lightness step the system already has:
+ * `elevated` over `canvas` is the same pair every menu, popover and dialog in the
+ * app uses.
+ *
+ * THE FOCUS RING IS UNCHANGED and is now the only boundary: the base-layer
+ * `:focus-visible` outline, promoted from the textarea to this box via `:has` so
+ * the whole composer - previews and toolbar included - reads as one control; the
+ * textarea suppresses its own outline, so there is never a second ring inside the
+ * box. No decorative shadow.
+ */
+const COMPOSER_BOX = cn(
+	"mx-auto flex w-full flex-col bg-elevated",
+	"box-border transition-colors duration-fast ease-out-quart",
+	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
+	//
+	// This box also contains the attach, model and send controls. Unscoped, it
+	// ringed itself whenever any of those took focus, while the button drew its
+	// own ring at the same time - a ring inside a ring, pointing at the box
+	// when the user is on a button. The wrapper draws the ring for the FIELD it
+	// frames; every other control in here is responsible for its own.
+	//
+	// `outline-solid` is required, not decorative: the textarea carries
+	// `outline-none`, which pins `--tw-outline-style: none`, and that token
+	// survives into this state - so the width from `outline-2` applied and no
+	// outline ever painted, leaving the app's primary input with no keyboard
+	// focus indicator.
+	//
+	// `outline-offset-2` matches the other three field wrappers; this one sat
+	// at 0 and was the odd one out.
+	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
+);
+
+/**
+ * MessageInput component
+ */
+export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
+	(
+		{
+			onSendMessage,
+			isLoading,
+			awaitingReply = false,
+			awaitingAnswer = false,
+			deliveryRemediesReachable = false,
+			secretAnswer = false,
+			asideSessionId,
+			asideStreaming = false,
+			conversationId,
+			messages,
+			currentJobId,
+			onCancelJob,
+			onComposerInput,
+			isFarFromBottom = false,
+			hasNewActivity = false,
+			scrollToBottom = () => {},
+			canonicalStop,
+			canonicalStopAvailable = false,
+			interruptNotice,
+			sendError,
+			initialSuggestions,
+			noProvider = false,
+			noModel = false,
+			agentData,
+			cwd,
+			cwdWritePath,
+			cwdReadOnlyReason,
+			cwdPending,
+			cwdPendingAccepted,
+			isSmallView = false,
+			isHydrating = false,
+			unavailable = false,
+			mentionsEnabled = false,
+			mentionsUnsupported = false,
+			sessionStatus,
+			onSlashCommand,
+			onSlashNote,
+			paneHasSession: propPaneHasSession,
+			runDetails,
+			recordingProbe = EMPTY_RECORDING_PROBE,
+			onCredentialsStored,
+			onDictationStateChange,
+			placeholderOverride,
+		},
+		ref,
+	) => {
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * agent record is the fallback so the old backend path keeps its chip.
+		 */
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * store's value is the fallback below it.
+		 *
+		 * The AGENT RECORD is a fallback only where the chip has no live write path.
+		 * A live move commits against the SESSION, so the value it displays has to come
+		 * from the session's own canonical source: falling back to the agent record
+		 * would put a directory the session may not be in on an editable chip, one menu
+		 * row away from being the path a move commits to (agent review n2). A draft is
+		 * the case the backstop is for - its staged cwd starts from the agent's own
+		 * default, so the two agree by construction - and the read-only chip keeps it
+		 * for the same reason: it displays, and cannot commit.
+		 */
+		const cwdToShow =
+			cwd ??
+			(cwdWritePath?.kind === "move"
+				? undefined
+				: agentData?.current_working_directory);
+		/*
+		 * The aside attached to this session, or null.
+		 *
+		 * ONE subscription for what the composer itself needs — the placeholder that
+		 * names the destination and the two keys that act on it — while the PANEL
+		 * subscribes to the streaming text on its own. That split is deliberate: the
+		 * attachment changes on the attach/detach/ask edges, whereas every
+		 * `aside_delta` rewrites one stream entry, and a composer this size must not
+		 * repaint per chunk of an answer it does not display.
+		 */
+		const aside = useAsideStore((state) =>
+			asideSessionId ? (state.attached[asideSessionId] ?? null) : null,
+		);
+		/*
+		 * The newest aside turn the adopt chord has ARMED, or null (UX round 2, U16).
+		 *
+		 * A ref rather than state: nothing here paints it - the panel's own notice line
+		 * states the confirm - and the keydown handler is the only reader. Keyed on the
+		 * turn id AND stamped with the time the confirm went up (`asideAdoptChordStep`,
+		 * `ASIDE_ADOPT_CONFIRM_FLOOR_MS`), so an arm neither outlives the exchange it was
+		 * shown for nor lets a reflex second press stand in for the decision; the panel's
+		 * `beginAsk`/`attachAside` clear the notice it raised.
+		 */
+		const adoptArmedTurn = useRef<AsideAdoptArm | null>(null);
+		/*
+		 * THE CONFIRM IS WITHDRAWN WHEN A CONVERSATION TURN STARTS (agent review round
+		 * 6, R6-5). Adopt needs an idle session (`asideAdoptReady`), so once a turn
+		 * runs the second press falls through - yet the notice went on saying "Press
+		 * ⌘+F again…" beside the panel's own line saying the conversation is working.
+		 * Both the arm and the notice go, so the next press after the turn asks again
+		 * rather than adopting on a confirm shown before the context changed.
+		 *
+		 * Only the notice this composer raised is cleared: the same line carries the
+		 * owner's adopt refusals, which are the user's to read, not this effect's to
+		 * retire.
+		 */
+		useEffect(() => {
+			if (!asideStreaming || adoptArmedTurn.current === null) return;
+			adoptArmedTurn.current = null;
+			const store = useAsideStore.getState();
+			const sessionForAside = asideSessionId ?? "";
+			if (store.attached[sessionForAside]?.notice === asideAdoptConfirm(IS_MAC))
+				store.setAsideNotice(sessionForAside, null);
+		}, [asideStreaming, asideSessionId]);
+		const removeReply = useConversationInputStore((state) => state.removeReply);
+		const addAttachment = useConversationInputStore(
+			(state) => state.addAttachment,
+		);
+		const removeAttachment = useConversationInputStore(
+			(state) => state.removeAttachment,
+		);
+		const replies = useConversationInputStore(
+			useCallback(
+				(state) =>
+					conversationId
+						? (state.inputByConversation[conversationId]?.replies ??
+							EMPTY_REPLIES)
+						: EMPTY_REPLIES,
+				[conversationId],
+			),
+		);
+		const attachments = useConversationInputStore(
+			useCallback(
+				(state) =>
+					conversationId
+						? (state.inputByConversation[conversationId]?.attachments ??
+							EMPTY_ATTACHMENTS)
+						: EMPTY_ATTACHMENTS,
+				[conversationId],
+			),
+		);
+		const onCredentialsStoredRef = useRef(onCredentialsStored);
+		useEffect(() => {
+			onCredentialsStoredRef.current = onCredentialsStored;
+		});
+		const [isRecording, setIsRecording] = useState(false);
+		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
+		 * so it cannot outlive the moment it explains.
+		 */
+		const [noProviderHint, setNoProviderHint] = useState(false);
+		useEffect(() => {
+			if (!noProviderHint) return undefined;
+			const timer = window.setTimeout(() => setNoProviderHint(false), 5000);
+			return () => window.clearTimeout(timer);
+		}, [noProviderHint]);
+		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+		const audioChunksRef = useRef<Blob[]>([]);
+		const [platform, setPlatform] = useState("");
+		/*
+		 * When the current alert text appeared, for the read dwell above.
+		 *
+		 * A ref and not state: it is read inside an event handler and must never
+		 * itself cause a render, least of all a render of the composer on every
+		 * keystroke. Keyed on the message so a SECOND failure restarts the dwell -
+		 * new text the user has not read yet, even though the region never
+		 * unmounted.
+		 */
+		/*
+		 * What the refusal's own adoption could not hand back.
+		 *
+		 * Set by the adoption effect below and only when the halves of the refused
+
+		/*
+		 * Timestamp of the last alert render, so an edit that answers the notice is
+		 * only allowed to dismiss it after the user has had a chance to read it (see
+		 * the dwell check on the composer's change handler).
+		 */
+		const alertShownAt = useRef(0);
+		useEffect(() => {
+			const message = sendError?.message;
+			alertShownAt.current = message ? Date.now() : 0;
+		}, [sendError?.message]);
+		/*
+		 * NO LOCAL NOTICE STATE LIVES HERE ANY MORE.
+		 *
+		 * This component used to keep three of its own: the confirmation of a discard
+		 * ("Message discarded."), the sentence about the half of a refused payload that
+		 * could not be adopted, and "One message at a time - the current message is
+		 * still on its way." Every one of them existed because the composer could not
+		 * see the state it was describing. The message comes back to the box and the
+		 * sentence comes from the failure itself (`composerAlert` below), so there is
+		 * nothing left here to keep.
+		 */
+
+		/*
+		 * THE PROBE IS THE HOST'S READ NOW (see `recordingProbe` on the props): it
+		 * used to be `useRadientCredentialProbe()` here, a react-query read that
+		 * made a provider a mount requirement for every document. The chat reads
+		 * it in `chat-content.tsx`; the absent case reads as "no key".
+		 */
+		const { hasRadientApiKey, isUnavailable } = recordingProbe;
+		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
+
+		// The probe cannot tell "no key" apart from "could not ask", so the
+		// offline case is named separately rather than sending the user to the
+		// settings page to fix an account that is not broken.
+		const recordingUnavailableReason = isUnavailable
+			? "Voice input is unavailable while Local Operator is offline"
+			: "Sign in to Radient in the settings page to enable audio recording";
+
+		/*
+		 * Whether the empty-chat prompt belongs in the band.
+		 *
+		 * Derived here rather than written into the JSX so the wrapper below does not
+		 * have to repeat the condition three times: the wrapper is always rendered and
+		 * only the prompt's presence is conditional. See the wrapper's own comment for
+		 * why that matters (QA round 1, Q4 - focus dropped to `<body>` when a press on
+		 * the plan chip narrowed the column across `isSmallView`).
+		 *
+		 * Above the suggestion sample because that sample is drawn for the prompt's
+		 * own mount rather than at the top of the composer's render: a resumed session
+		 * that is never empty must not consume the opening sample the first empty chat
+		 * of the session is pinned to.
+		 */
+		/*
+		 * THE EMPTY BAND: one fact with two consumers, so one expression. On an
+		 * empty, settled chat the splash above the composer claims the column's free
+		 * height (`grow`) and centres the greeting and chips inside it; the composer
+		 * itself stays docked at the band's foot in every state (§G2), which is what
+		 * keeps the first send from moving it.
+		 */
+		const bandCentred = messages.length === 0 && !isHydrating;
+
+		/*
+		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
+		 *
+		 * It was `bandCentred && !isSmallView`, and `isSmallView` is the column's
+		 * `< 550` flag. That gate deleted the mark, the greeting and all four chips
+		 * exactly where §H says they must survive: "Every width keeps them (D13/U12):
+		 * at 800x600 the chips stack onto two rows inside the 640 column, the mark and
+		 * greeting stay, and nothing is dropped. This is the one place the redesign
+		 * must not degrade."
+		 * THE 640 IN THAT QUOTE IS THE REDESIGN'S MEASURE, which the operator
+		 * restored to 900 on 2026-09-26 (`branding.md` § 7); §H's rule — nothing is
+		 * dropped at any width — is what this gate protects, and the rule is
+		 * width-agnostic. The reviewer's frame is 960x673 with the canvas docked,
+		 * where the chat column sits at its 480px floor (§I) - 480x673 of room for a
+		 * 32px mark, a two-line greeting and two rows of chips - and the screen drew
+		 * the composer and nothing else.
+		 *
+		 * `isSmallView` is NOT the wrong flag, it was the wrong QUESTION for this
+		 * decision: it also drives the composer's own narrow variants (paddings, icon
+		 * sizes, chip spacing), which are correct and stay. The column can never be
+		 * narrower than §I's 480px floor, so there is no width at which the splash has
+		 * nowhere to go, and the splash's own parts already have narrow forms - the
+		 * chips wrap because `MeasuredSuggestionStack` measures what fits.
+		 */
+		const showEmptyChatPrompt = bandCentred;
+
+		/*
+		 * The empty chat's sample, drawn once and HELD for this composer's mount.
+		 *
+		 * A ref rather than the memo's deps, because `showEmptyChatPrompt` is not "a
+		 * new chat": the canvas opening or the column crossing `isSmallView` flips it
+		 * too, and re-running the draw there re-sampled the row under the reader's
+		 * eye - by then the session's pin is consumed, so the second draw is a random
+		 * four replacing the four being read (review round 1, R3). The mount is the
+		 * unit that owns the sample in both directions: a genuinely new empty chat is
+		 * a new identity, and the chat page keys the panel on that identity
+		 * (`chat-page.tsx`), so a new chat remounts this composer and draws again.
+		 *
+		 * The draw still happens during render, and still only while the prompt is
+		 * shown: a resumed session that is never empty must not consume the opening
+		 * sample the first empty chat of the session is pinned to. Holding it also
+		 * keeps the array identity stable across a gate flip, so
+		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
+		 */
+		const heldSample = useRef<readonly string[] | null>(null);
+		/*
+		 * The last held-press sentence RAISED, AND THE RECORD IT WAS RAISED FOR, so a
+		 * repeated Enter on an unchanged held box does not append the same transcript
+		 * line again (remediation round 1, U4). A ref rather than state: this decides
+		 * whether to say something, never what the frame draws, and a change that
+		 * re-rendered the composer here would be the re-render for its own sake.
+		 *
+		 * KEYED TO THE RECORD, NOT TO THE SENTENCE (agent review round 2, R6). The
+		 * dedupe used to hold the bare string and be reset imperatively when the
+		 * record was pruned — and that prune lives in `applyCapture`, which the
+		 * notice's OWN remedy never runs: clearing the box with the keyboard goes
+		 * through the textarea `onChange` → `applyDomEdit` route, which clears
+		 * `cancelledToken.current` (its effect is keyed on the buffer) but never this
+		 * ref. So the operator followed the app's named way out, re-armed the
+		 * identical shape, and the second hold was SILENT — the box kept, nothing
+		 * dispatched, no sentence. Folding the record into the key removes the
+		 * imperative reset altogether: a fresh cancel writes a NEW `CancelledToken`
+		 * object, so identity alone says this is a new hold that owes its own words,
+		 * on every route that can retire the old one — the keystroke path included.
+		 */
+		const lastHeldNotice = useRef<{
+			token: CancelledToken;
+			notice: string;
+		} | null>(null);
+		const suggestions = useMemo(() => {
+			if (!initialSuggestions || initialSuggestions.length === 0) return [];
+			/*
+			 * Nothing is sampled while the prompt is hidden, and the session's FIRST
+			 * draw is the pool's head, which is what makes a committed frame of this
+			 * surface reproducible (`composer-suggestions.ts` has the whole
+			 * argument).
+			 */
+			if (!showEmptyChatPrompt) return [];
+			if (heldSample.current === null) {
+				heldSample.current = sampleSuggestions(initialSuggestions);
+			}
+			return heldSample.current;
+		}, [initialSuggestions, showEmptyChatPrompt]);
+
+		// Node-valued callback refs follow conditional splash remounts; a stable
+		// suggestion sample does not imply that the measured DOM is still alive.
+		const [band, setBand] = useState<HTMLDivElement | null>(null);
+		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
+		const [foot, setFoot] = useState<HTMLDivElement | null>(null);
+
+		/*
+		 * ---------------------------------------------------------------------
+		 * The inline credential capture (§1-§9 of the design document)
+		 * ---------------------------------------------------------------------
+		 *
+		 * THE VALUE LIVES HERE AND NOWHERE ELSE. `payloadsRef` is the map §6
+		 * specifies — `{ index, key, value, marker }` keyed by the marker's index —
+		 * held in a REF rather than in React state, because state is what gets
+		 * serialised: `conversation-input-store` persists to localStorage and the
+		 * draft mirror rides on it, so a value that reached either would land on
+		 * disk. The buffer carries mask cells and, after Enter, a marker; neither
+		 * carries a byte of the secret.
+		 *
+		 * `capture` is state as well as a ref: the overlay and the notice line have
+		 * to repaint as the mode changes, and the ref is what the event handlers read
+		 * so a handler built for one render cannot act on a stale capture.
+		 *
+		 * `unredactedChars` is the one disclosure the app makes, and it is the
+		 * operator's
+		 * own Esc: §5's notice that the characters are now plain text in the
+		 * composer. The sentence is derived from the count at the render site rather
+		 * than held as state, because it describes an EVENT and the state that follows
+		 * it is an ordinary composer holding prose.
+		 */
+		const [capture, setCaptureState] = useState<Capture>(IDLE_CAPTURE);
+		const captureRef = useRef<Capture>(IDLE_CAPTURE);
+		const setCapture = useCallback((next: Capture) => {
+			captureRef.current = next;
+			setCaptureState(next);
+		}, []);
+		const payloadsRef = useRef(new Map<number, CredentialPayload>());
+		const nextIndexRef = useRef(1);
+		/*
+		 * §5's disclosure, held as the COUNT of characters it is about AND the buffer
+		 * those characters are in, rather than as the sentence or as a bare number.
+		 * The sentence itself stays one authority (`unredactedNotice`).
+		 *
+		 * THE TEXT IS THE OTHER HALF, and round 3 is why (UX round 3, U12; code review
+		 * round 3, MINOR 1). A count on its own is a claim somebody else can invalidate:
+		 * the sentence says "N characters are now PLAIN TEXT in the composer", and after
+		 * the operator's very next Backspace the box holds fewer than N — while the
+		 * number was still written to the draft WITH the new text on every keystroke, so
+		 * a reload brought the false sentence back (measured: four backspaces left the
+		 * notice claiming 11 characters over a 7-character remnant, and a cleared box
+		 * re-persisted the stale 7 under nine characters of ordinary prose). Pairing the
+		 * count with the text it describes makes "does this draft disclose anything" a
+		 * DERIVATION rather than a second fact to keep in step: the disclosure stands
+		 * only while the box still holds that text, so ANY edit retires it and the
+		 * rendered sentence and the persisted count fall together, in one rule, instead
+		 * of one of them going stale in one direction (`setCurrentInput` zeroes it for an
+		 * EMPTY value; this is the half that covers every other edit).
+		 *
+		 * A ref beside the state for the same reason `captureRef` exists: the
+		 * CANCEL that produces this number writes it in the same tick as the buffer
+		 * (`applyCapture` → `persistDraft`), and a closure still reading the render
+		 * it was built in would persist the previous count — or none — which is
+		 * exactly the class of defect design round 2's D2 filed.
+		 */
+		const [disclosure, setDisclosureState] =
+			useState<UnredactedDisclosure | null>(null);
+		const disclosureRef = useRef<UnredactedDisclosure | null>(null);
+		const setDisclosure = useCallback((next: UnredactedDisclosure | null) => {
+			disclosureRef.current = next;
+			setDisclosureState(next);
+		}, []);
+		/*
+		 * THE CLEAR'S OWN SENTENCE, ON THE NOTICE LINE (UX round 1, U2).
+		 *
+		 * State rather than a derivation because there is nothing left in the buffer to
+		 * derive it from: the reference is gone, and only the toast used to say so. The
+		 * pair is the disclosure's — a value, a ref that always matches it, and a setter
+		 * that writes both — for the same reason: the retirement effect below compares
+		 * against the BUFFER the sentence describes, and a closure reading render state
+		 * would compare against an older one and retire a sentence that is still true.
+		 */
+		const [clearedReference, setClearedReferenceState] = useState<{
+			key: string;
+			/** The composer-local ordinal the chip's face carries: what correlates the two channels (UX round 3, U16). */
+			index: number;
+			over: string;
+		} | null>(null);
+		const clearedReferenceRef = useRef<{
+			key: string;
+			index: number;
+			over: string;
+		} | null>(null);
+		const setClearedReference = useCallback(
+			(
+				next: {
+					key: string;
+					index: number;
+					over: string;
+				} | null,
+			) => {
+				clearedReferenceRef.current = next;
+				setClearedReferenceState(next);
+			},
+			[],
+		);
+		/*
+		 * The disclosure AS IT APPLIES TO ONE BUFFER: 0 unless this is the text the
+		 * count describes. Every writer of the draft asks THIS — including the
+		 * keystroke path inside `useMessageInput`, which asks it about the value it is
+		 * about to persist — so a count can never be written with text it does not
+		 * describe (UX round 3, U12's repro B, which persisted `unredactedChars: 7`
+		 * beside `just some prose`).
+		 */
+		const disclosureOver = useCallback(
+			(buffer: string) =>
+				unredactedOverBuffer(disclosureRef.current, buffer) ?? 0,
+			[],
+		);
+		/*
+		 * The buffer the CAPTURE itself last wrote, so a whole-buffer replacement can
+		 * be told apart from the capture's own edit (see the teardown effect below).
+		 * A ref rather than a derivation: the two writers land in one React commit,
+		 * and the question is only ever "did the capture put this text here?".
+		 */
+		const captureOwnedBuffer = useRef<string | null>(null);
+		/*
+		 * The token an Esc cancel just left inert in the buffer (§5).
+		 *
+		 * It is what keeps the SUBMIT seam from re-reading the restored plaintext as
+		 * the `/credential` COMMAND: the notice promices "Enter will expose them",
+		 * and the dispatcher used to take the leading token instead — opening the
+		 * picker and stripping the very characters the sentence was about (QA round
+		 * 1, Q2). Held as the cancel's own arrival offset and text, so it stops
+		 * applying the instant an edit moves the token (`holdsCancelledToken`).
+		 */
+		const cancelledToken = useRef<CancelledToken | null>(null);
+		/*
+		 * The token the PICKER wrote into the box, as the run text a later draft still
+		 * contains, or `null`. The counterpart of `cancelledToken` for the other
+		 * gesture that makes a word the dispatcher's: a pick is a command wherever it
+		 * sits (the operator's own rule), and nothing in the buffer's TEXT distinguishes
+		 * a token the picker inserted from one typed by hand — so the record is the
+		 * distinction, taken where the pick happens.
+		 */
+		const pickedToken = useRef<string | null>(null);
+		/*
+		 * The credential run a PASTE brought in, and its word (QA round 6, Q-1).
+		 *
+		 * The third provenance, and the one that had no record at all: the typed capture
+		 * arms for typing and the picker records its own write, but a pasted
+		 * `/credential <secret>` arrives with neither, sits in the box in the clear, and
+		 * `Esc` afterwards changes nothing — so one keystroke after the paste the in-word
+		 * forms reached the model. It is a record of its own rather than a re-widening of
+		 * the boundary, because the two drafts it separates are not look-alikes:
+		 * `the docs/credential rotation policy is stale` was never pasted, and stays prose.
+		 */
+		const pastedRun = useRef<{ word: string; run: string } | null>(null);
+		/*
+		 * The draft a LOCKED run consumed, and what the undo owes the user (UX round 1, U3).
+		 *
+		 * The words after a locked word are the command's ARGUMENT: the dispatcher strips
+		 * them, so they are neither run nor stored, and the splice removed them from the
+		 * box. What the user has left is a shorter sentence and no way to the words —
+		 * `Command+Z` in a textarea is the platform's own undo, which knows nothing about
+		 * a value the component wrote (`undo-after.png`). So the one press that can take a
+		 * secret out of a draft keeps the draft it took it from, and `handleLockedRunUndo`
+		 * puts it back on the key the note names.
+		 *
+		 * `text` IS THE AUTHOR'S OWN CHARACTERS, not the buffer's mask cells (UX round 2,
+		 * U8): `unredactedBuffer` replaces a live mask with the value it stands for, because
+		 * a restore that put the bullets back would be a box that LOOKS recovered and holds
+		 * nothing — the characters stand for no value any more, the capture died with the
+		 * run, and the next thing the user types lands in plain text beside them. A mask the
+		 * app cannot keep is worse than no undo at all, because the user stops looking for
+		 * the value.
+		 *
+		 * THE RECORD IS RETIRED BY EVENTS, NOT BY CONTENT (code review round 2, MINOR 1).
+		 * The first form restored only while the box still equalled what the run left there,
+		 * so a later send, an edit that returned the box to the same text, or a conversation
+		 * switch left it armed to hijack the platform's own `⌘Z` for a state the user had
+		 * left behind. It is cleared on the first edit of the box, on a send, and on a
+		 * conversation change, and it is spent by its own press.
+		 */
+		const lockedRun = useRef<{
+			/** The draft as the user typed it, with any live mask unredacted. */
+			text: string;
+			caret: number;
+			/**
+			 * HOW MANY CHARACTERS THE RUN TOOK — its argument, the span the receipt's own
+			 * sentence names — which is what the undo hands back and what the notice it
+			 * raises counts (review round 3, MAJOR 1). It is the dispatcher's own reading of
+			 * the argument (trimmed at its edges), which is the closest thing to an exact
+			 * count available at this seam.
+			 */
+			plain: number;
+		} | null>(null);
+		/*
+		 * Set when a submit has succeeded, so the payload map is retired with the
+		 * BUFFER rather than ahead of it. Clearing the map first left a window in
+		 * which the raw `[Credential #1, 19 chars]` painted un-pilled and an Enter
+		 * sent a citation nothing backed any more (code review round 1, MINOR-5).
+		 */
+		const retirePayloads = useRef(false);
+		/*
+		 * The COMMIT that makes the retirement effect below look at `retirePayloads`
+		 * again when the box itself has not changed (review round 3, F11). An
+		 * off-record aside empties the box at the press and is answered seconds later,
+		 * so the request is written in a commit where `newMessage` is unchanged - and a
+		 * ref alone never re-runs an effect, which left the consumed credential values
+		 * in memory until the next edit, longer than §9.5 intends. Bumped with every
+		 * request; its value means nothing, only that it moved.
+		 */
+		const [retireRequest, setRetireRequest] = useState(0);
+		/*
+		 * The names the session's store already holds, for the key guard (§8).
+		 *
+		 * Fetched when the capture ARMS and cached, because the desktop contract is
+		 * asynchronously reachable while minting at Enter must stay synchronous —
+		 * and a failed or still-running fetch must not block minting, so the mint
+		 * consults whatever is cached and always unions this composer's own
+		 * in-flight keys (design §7.2). Empty is the honest degrade: it narrows the
+		 * collision guard to probability rather than failing a capture whose secret
+		 * has already left the buffer.
+		 */
+		const sessionNamesRef = useRef<string[]>([]);
+		const fetchedNamesFor = useRef<string | undefined>(undefined);
+		/*
+		 * The session a store can reach, or `undefined` for a draft pane.
+		 *
+		 * `sessionStatus` IS NOT THE QUESTION — its `draft` flag is (UX round 2, U8;
+		 * QA round 2, Q5). The page supplies a status object for BOTH cases: a live
+		 * session and a New-chat pane reading `sessions.preview` (`draft: true`,
+		 * `chat-page.tsx`), because the status strip renders the draft's own readings
+		 * from the preview. Testing the object for truthiness therefore answered "yes,
+		 * there is a session" on exactly the pane where there is not one, and the
+		 * composer stored against the pane's own non-session id: `desktopRequestSchema`
+		 * refuses it locally (a session id must be twelve hex digits) with a 422 that
+		 * never reaches the wire, the composer reads that 4xx as a store refusal, and
+		 * the operator's FIRST message in a new chat arrived at the model as
+		 * `[credential NOT stored — its value did not survive]` with a warning toast
+		 * after the fact. Measured three times over three lanes: no
+		 * `POST …/credentials` on the wire, an empty session store, and no child ever
+		 * seeing a value — while the in-process pin passed, because it mounts the
+		 * composer with no status object at all.
+		 *
+		 * `draft` is the authoritative "no session yet" signal, and it is the page's
+		 * own: it is set in the two branches that have no `sessionId` and nowhere
+		 * else. Absent (a live session, or the legacy path) means the pane can store
+		 * directly.
+		 */
+		const credentialSessionId =
+			sessionStatus && !sessionStatus.draft ? conversationId : undefined;
+
+		/*
+		 * The submit seam (§9): store what the text cites, then rewrite every
+		 * citation.
+		 *
+		 * ORDER IS THE WHOLE OF IT. The citation the model receives is written from
+		 * the store's ANSWER, so the model is never handed a name nothing holds —
+		 * and a marker the user backspaced away is not cited, so its secret is never
+		 * stored (the same rule that drops an uncited image).
+		 *
+		 * The value never touches the outgoing text: the citation names the key and
+		 * states that its value cannot be read. That is the entire point of the
+		 * substitution, and `substituteCredentials` is the one authority for its
+		 * wording, shared with the tests.
+		 */
+		const storeCitedCredentials = useCallback(
+			async (
+				text: string,
+				/*
+				 * The session to store into, defaulting to the pane's own. The argument
+				 * exists for ONE caller — the send that is creating the session — which
+				 * has the id only inside the seam (`beforeAdmission`) because the create
+				 * happens between the composer and the transport (UX round 1, U2).
+				 */
+				sessionId: string | undefined = credentialSessionId,
+			): Promise<{
+				text: string;
+				stored: string[];
+				refused: string[];
+				unconfirmed: string[];
+			}> => {
+				/*
+				 * Materialised ONCE, because the submit walks the map more than once (the
+				 * cited set, the unbacked markers, the rewrite) and a `Map.values()`
+				 * iterator answers only the first walk.
+				 */
+				const listed = [...payloadsRef.current.values()];
+				const cited = citedPayloads(text, listed);
+				/*
+				 * AN UNBACKED MARKER IS A REASON TO RUN, WITH NO STORE CALL BEHIND IT
+				 * (design round 2, D2 + UX round 2, U11). A restored draft's marker is
+				 * part of a NORMAL message — nothing is stored for it, because its value
+				 * did not survive — but the model must still not receive the
+				 * composer-local `[Credential #N, M chars]`, so the rewrite has to
+				 * happen exactly as it does for a citation. Without this the early
+				 * return sent the bare marker verbatim, which is the silent failure
+				 * `substituteCredentials` exists to remove.
+				 */
+				if (cited.length === 0 && unbackedMarkers(text, listed).length === 0)
+					return { text, stored: [], refused: [], unconfirmed: [] };
+				/*
+				 * ONE MAP, because the map IS the per-payload fate: the rewrite below takes
+				 * exactly this value, so the citation the model receives and the two notices
+				 * the operator reads cannot disagree about what happened to a credential.
+				 */
+				const fates = new Map<number, CredentialFate>();
+				const stored: string[] = [];
+				/*
+				 * EVERY CITED CREDENTIAL RESOLVES AT ONCE, and that is not an optimisation.
+				 * One credential that nothing ever answers costs up to 35 s of dead wait
+				 * (the arithmetic is at `CREDENTIAL_STORE_TIMEOUT_MS`), and the loop this
+				 * replaces awaited that PER PAYLOAD — so the operator's own two-key message
+				 * would have parked the composer behind ~70 s and a four-key one behind
+				 * ~2.3 min, all of it inside `beforeAdmission`. The ops are independent (one
+				 * key each, one idempotent verb, one session), so N citations now cost one
+				 * resolution rather than N (code review round 1, MINOR-1).
+				 *
+				 * `resolveCredentialStore` is the whole decision table for one credential —
+				 * attempt, re-issue, positive-witness read — so the ordering that matters is
+				 * in one place rather than spread across a loop body.
+				 */
+				const verdicts = await Promise.all(
+					cited.map(
+						async (
+							payload,
+						): Promise<{
+							payload: CredentialPayload;
+							attempt: CredentialStoreAttempt | null;
+						}> => ({
+							payload,
+							attempt: sessionId
+								? await resolveCredentialStore(sessionId, payload)
+								: /*
+									 * No session to reach (a draft pane with no seam). The one case
+									 * that needs no round trip, and the only one where the composer does
+									 * not have to GUESS: it is holding the proof itself — there is no
+									 * address to write to — so this is a confirmed non-store, not an
+									 * unknown.
+									 */
+									{ kind: "fate", fate: "unreachable" },
+						}),
+					),
+				);
+				for (const { payload, attempt } of verdicts) {
+					if (attempt === null) {
+						/*
+						 * NOTHING CONFIRMED EITHER OUTCOME, so the fate is `"unconfirmed"` and
+						 * NOT `"unreachable"`: the value may be in the store this instant — the
+						 * operator's own session is the measurement — and asserting otherwise is
+						 * the lie this resolution exists to make unreachable.
+						 */
+						fates.set(payload.index, "unconfirmed");
+						continue;
+					}
+					if (attempt.kind === "stored") {
+						stored.push(payload.key);
+						continue;
+					}
+					fates.set(payload.index, attempt.fate);
+				}
+				/*
+				 * EVERY citation is rewritten, whether it stored or not — a marker left
+				 * alone would send a composer-local `[Credential #1, 52 chars]` the
+				 * model cannot use (`substitute_credentials`).
+				 */
+				/*
+				 * THE LIST THE USER IS ABOUT TO LOOK AT IS THE CACHED ONE (QA round 1, Q-5),
+				 * and the cache belongs to the HOST.
+				 *
+				 * A store that lands here used to leave `sessions.credential`'s list entry
+				 * fresh for the rest of its five-minute `staleTime`, so `/credential` then
+				 * mounted a picker over a list that predated the store: QA measured it
+				 * rendering "No credentials stored yet." while the same route answered with the
+				 * name that had just been stored, which takes the row the user opened the
+				 * picker for off its own screen. The key is `desktopKeys.credentials` — the
+				 * SAME one the picker reads — so the invalidation cannot drift from the read
+				 * it repairs; it just happens in the host now, through
+				 * `onCredentialsStored` (the chat page's callback), because the provider this
+				 * used to reach for is a mount requirement the mini view's document cannot
+				 * meet. Nothing is said when nothing stored: a refusal already has its own
+				 * notice, and an empty store must not make the picker re-ask for the same
+				 * empty list.
+				 */
+				if (stored.length > 0 && sessionId)
+					await onCredentialsStoredRef.current?.(sessionId);
+				/** The stored names behind one fate, for the two notices below. */
+				const namesWith = (matches: (fate: CredentialFate) => boolean) =>
+					[...fates.entries()]
+						.filter(([, fate]) => matches(fate))
+						.map(
+							([index]) =>
+								listed.find((payload) => payload.index === index)?.key ??
+								`#${index}`,
+						);
+				return {
+					text: substituteCredentials(text, listed, fates),
+					stored,
+					refused: namesWith((fate) => fate !== "unconfirmed"),
+					unconfirmed: namesWith((fate) => fate === "unconfirmed"),
+				};
+			},
+			[credentialSessionId],
+		);
+
+		/*
+		 * THE SEND GATE'S OWN VALUE (UX round 1, U1): a DRAFT pane whose model is not
+		 * resolved. `draftResolved` is absent on a pane with a session behind it - there
+		 * is nothing to resolve there - so only a new chat can be gated, which is where
+		 * `baseline-U2` was measured.
+		 */
+		const draftModelUnresolved =
+			sessionStatus?.draft === true && sessionStatus?.draftResolved === false;
+		/*
+		 * WHAT AN ACCEPTED SEND RETIRES, in ONE place because TWO paths now ask for
+		 * it: the submit's own tail, and an off-record ask's answer — which retires
+		 * the payload only once the ask has been ANSWERED (see `OffRecordAsk`, and
+		 * the off-record arm of the tail below). Written twice, the two would drift
+		 * and the failure path would go on quietly retiring what a refusal keeps.
+		 *
+		 * The disclosure is retired by the same submit that sends the text it warns
+		 * about (design round 2, D2's re-raise has this as its other half), which is
+		 * why `setDisclosure` is a dependency of THIS callback rather than of the
+		 * memo that calls it.
+		 *
+		 * THE STAGED CHIPS AND QUOTES ARE NOT THIS CALLBACK'S, on either path. An
+		 * ordinary send's leave with its text at the echo (`clearOnce` in
+		 * `use-message-input`, #479's one-payload-one-clock rule), and an off-record
+		 * ask's are settled on the ask's own answer by that same hook, by identity
+		 * (`clearStagedPayload`) - so what is retired here is only what the composer
+		 * alone holds: the credential map, the disclosure and the locked run.
+		 */
+		const retireAcceptedPayload = useCallback(() => {
+			/*
+			 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
+			 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
+			 * real window: clearing the map first left the raw
+			 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
+			 * and an Enter inside that window sent a citation no map entry backed any
+			 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
+			 * effect below performs it in the commit that empties the box, so the two
+			 * cannot be seen apart - or, for an answered aside whose box emptied at the
+			 * press, in the commit `setRetireRequest` makes here. A REFUSED send keeps the map, because the
+			 * operator's unsent draft must not lose the value behind a pill they can
+			 * still see, and an off-record ask keeps it until its own answer says
+			 * whether the value was consumed (both are `false`-like outcomes: nothing
+			 * left the machine with it).
+			 */
+			retirePayloads.current = true;
+			setRetireRequest((request) => request + 1);
+			setDisclosure(null);
+			/*
+			 * And the locked run's record goes with the buffer it was made from: the box a
+			 * SENT message left behind is not the box that ran the command, and an undo
+			 * pressed after the send used to put the consumed line back on screen (code
+			 * review round 2, MINOR 1).
+			 */
+			lockedRun.current = null;
+		}, [setDisclosure]);
+
+		/*
+		 * HOW THE BOX'S CURRENT CONTENT WAS PRODUCED (arch §4.2's `input_mode`).
+		 *
+		 * Two booleans over "since the box last emptied", and the emptiness is the
+		 * delimiter on purpose: an accepted send clears the box, the Clear control
+		 * empties it, a select-all-and-delete empties it - after any of those, the
+		 * next message's provenance starts over. The alternative (stamping on the
+		 * send and clear EVENTS) has to enumerate every door and gets the refused
+		 * send wrong: a refusal hands the text back, and the retry of that same
+		 * message is still the dictation it was.
+		 *
+		 * ONE value reaches the wire: `dictated` for a message only a transcript
+		 * put there, `typed` for one only the keyboard did, `mixed` for both. It is
+		 * never RENDERED anywhere - carried, pinned for replay, and shown to no one
+		 * (a row that carries it renders exactly like one that does not).
+		 */
+		const sawTypingRef = useRef(false);
+		const sawDictationRef = useRef(false);
+		const inputModeForSend = useCallback(
+			(): "typed" | "dictated" | "mixed" =>
+				sawDictationRef.current
+					? sawTypingRef.current
+						? "mixed"
+						: "dictated"
+					: "typed",
+			[],
+		);
+
+		/*
+		 * THE SKILL VOCABULARY, READ AT THE PRESS RATHER THAN AT RENDER (issue #664).
+		 * A ref, not a dep, because the composer's send memo has to be created BEFORE
+		 * `useMessageInput` while the vocabulary hook is created AFTER it — the hook
+		 * reads `newMessage` — so a render-time read would be one vocabulary STALE
+		 * for exactly the send that follows a query landing. The effect below
+		 * refreshes it whenever the answer changes, and the send reads it at call
+		 * time: the vocabulary in force at the press.
+		 */
+		const skillNamesRef = useRef<string[]>([]);
+
+		/*
+		 * THE `$` READ'S CLIENT, ON THE LIFT'S TERMS (issue #664). The composer now
+		 * mounts in documents that carry no `QueryClientProvider` (the mini view's),
+		 * where `useQueryClient()` cannot be called at all — the same reason
+		 * `useDesktopCapabilities` and the pickers read through this hook. The
+		 * expansion's body read is IMPERATIVE (`readSkillBody` -> `fetchQuery`), so
+		 * `enabled: provided` is not expressible there and the gate is explicit:
+		 * with no provider the vocabulary is empty anyway (the list's capabilities
+		 * read is off too), and `skillReadProvided` keeps the read off the inert
+		 * fallback client as well, so nothing can fetch on a document that mounts
+		 * no cache. Fail-closed: an unexpandable `$name` is sent as prose, which is
+		 * what a host with no cache could ever have rendered.
+		 */
+		const { client: skillReadClient, provided: skillReadProvided } =
+			useOptionalQueryClient();
+
+		const onSubmit = useMemo(
+			() => async (message: string, onEchoPainted?: () => void) => {
+				/*
+				 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
+				 *
+				 * §K answers `baseline-U2` in one sentence: "with no model resolved the send
+				 * control IS `Choose a model` … Enter does the same; a bubble that cannot run
+				 * is never posted." The chip half shipped; the Enter half did not. Measured on
+				 * the live app: with the draft's model unresolved, Enter posted a user bubble
+				 * into the transcript that no runtime could answer, stamped in the transcript a
+				 * turn that never ran - the exact state `baseline-U2` is about.
+				 *
+				 * GATED HERE, ON `onSubmit`, because this is the ONE function both doors reach:
+				 * the form's `type="submit"` control and the Enter key both end in
+				 * `useMessageInput`'s submit, which calls this. A second gate on the key alone
+				 * is how the button and the key start disagreeing - the defect round 1 found in
+				 * the refusal, one door over.
+				 *
+				 * WHAT HAPPENS INSTEAD. The affordance is the pane's own `Choose a model`
+				 * (it is rendered by the strip, above the box, in exactly this state), and when
+				 * the backend can honour a pick the same affordance is one key away, so the key
+				 * opens it rather than doing nothing. With no picker to open (a backend that
+				 * advertises no `draft_selection`) the press is a no-op and the chip is the
+				 * only route, which is what §K says the screen offers.
+				 */
+				if (draftModelUnresolved) {
+					sessionStatus?.onOpenDraftPicker?.("session.model");
+					return;
+				}
+				// Assembled by the same function the composer compares against, so the
+				// string sent, stored, guarded and reasoned about by the copy is one
+				// string on the reply path too. Building the prefix inline here put it
+				// downstream of every comparison and deadlocked Restore - see
+				// `buildSendPayload`.
+				/*
+				 * A DRAFT PANE IS THE ONE PLACE THE STORE CANNOT RUN YET, and the most
+				 * likely first use of this feature is exactly that pane (UX round 1, U2).
+				 * `credentialSessionId` is undefined until a session exists, the session is
+				 * created INSIDE the send, and the whole point of §9 is that the value is
+				 * in the session's tool environment BEFORE the message citing it leaves.
+				 * So when there is no session to reach, the store defers to the host's own
+				 * `beforeAdmission` seam - the one window between `sessions.create`
+				 * answering and `sessions.message` going out - and the payload it sends is
+				 * the UNSUBSTITUTED text, so the seam still gets to write the citation
+				 * after it has stored. `settled` carries the answer back out of the seam
+				 * for the toasts, which cannot be raised before the send on this path
+				 * because there is nothing to raise them about until it lands.
+				 */
+				let settled:
+					| {
+							text: string;
+							stored: string[];
+							refused: string[];
+							unconfirmed: string[];
+					  }
+					| undefined;
+				const seam = credentialSessionId
+					? undefined
+					: async (sessionId: string) => {
+							settled = await storeCitedCredentials(message, sessionId);
+							return settled.text;
+						};
+				// Assembled by the same function the composer compares against, so the
+				// string sent, stored, guarded and reasoned about by the copy is one
+				// string on the reply path too. Building the prefix inline here put it
+				// downstream of every comparison and deadlocked Restore - see
+				// `buildSendPayload`.
+				const carried = seam
+					? { text: message, stored: [], refused: [], unconfirmed: [] }
+					: await storeCitedCredentials(message);
+				if (carried.stored.length > 0)
+					showSuccessToast(storedNotice(carried.stored));
+				/*
+				 * THE OPERATOR HEARS IT TOO, on every refusal and not only the
+				 * all-failed one. Warning rather than info: it reports a gesture that
+				 * did not do what it looked like it did, and it names the retry that
+				 * actually works — arming `/credential` and pasting again, because
+				 * `/credential <KEY>` cannot reach any store (the space after the token
+				 * opens a masked capture and the KEY is minted as a short secret).
+				 */
+				if (carried.refused.length > 0)
+					showWarningToast(unstoredNotice(carried.refused));
+				/*
+				 * AND THE THIRD RECEIPT, which is not a failure and must not be worded as
+				 * one: the store never confirmed the write, so the operator is told what
+				 * was observed ("could not be confirmed") rather than what was not
+				 * ("could not be stored"), and the notice names the one check that settles
+				 * it. Raised on the same warning surface for the same reason as the refusal
+				 * above: a gesture that did not do what it looked like it did.
+				 */
+				if (carried.unconfirmed.length > 0)
+					showWarningToast(unconfirmedNotice(carried.unconfirmed));
+				/*
+				 * THE `$skill` EXPANSION (issue #664), resolved on the SUBMITTED line
+				 * and applied where the message leaves. Only a FIRST-TOKEN `$name`
+				 * matching a DISCOVERED skill fires — `parseSkillInvocation` is the
+				 * harness's own recognition rule, and the vocabulary is the
+				 * `skills.list` answer with no hard-coded names — and the payload it
+				 * injects is `invoke.py`'s expansion character-for-character
+				 * (`skill-invocation.ts` owns that half, escape order included).
+				 *
+				 * WHAT KEEPS A PASTED DOCUMENT FROM FIRING IS THE ANCHOR, not a
+				 * typed-vs-pasted marker: the rule reads the FIRST token of what is
+				 * being submitted, so a document whose later line says `$research …`
+				 * cannot fire — the harness's own stated guarantee
+				 * (`command_picker.py`). A paste whose content IS the first line
+				 * behaves exactly as typing it does, which is also the harness's
+				 * behaviour (`$skill` at offset 0 IS the invocation). Mid-document
+				 * pastes stay prose for the same anchor reason.
+				 *
+				 * A skill whose body cannot be read is NOT silently swallowed: the
+				 * notice says so and the raw text goes through untouched, which is the
+				 * harness's own trade — a message the user can see and resend beats a
+				 * gesture that looked like it fired and did not. The REQUEST comes from
+				 * the substituted text (`carried.text`) when that still parses to the
+				 * SAME skill, because credential citations may have rewritten it inside
+				 * the request; a different or missing parse keeps the typed request.
+				 */
+				let outgoingText = buildSendPayload(carried.text, replies);
+				const skillNames = skillNamesRef.current;
+				const invocation = parseSkillInvocation(message, skillNames);
+				/*
+				 * `credentialSessionId`, not the pane id: the composer's own "a session
+				 * the host can resolve" predicate (a draft pane's id is not one), and
+				 * `skills.list` resolves the vocabulary from that session's cwd. The same
+				 * predicate the skill LIST reads, so the vocabulary the popup shows and
+				 * the vocabulary this parse reads are one answer.
+				 */
+				if (invocation && credentialSessionId && skillReadProvided) {
+					const body = await readSkillBody(
+						skillReadClient,
+						credentialSessionId,
+						invocation.name,
+					);
+					if (body !== null && skillBodyHasContent(body)) {
+						const substituted = parseSkillInvocation(carried.text, skillNames);
+						const request =
+							substituted && substituted.name === invocation.name
+								? substituted.request
+								: invocation.request;
+						outgoingText = buildSendPayload(
+							renderSkillInvocation({ ...invocation, request }, body),
+							replies,
+						);
+					} else if (body !== null) {
+						onSlashNote?.(
+							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
+						);
+					} else {
+						onSlashNote?.(
+							`could not load skill \`${invocation.name}\` — sending your message as written`,
+						);
+					}
+				}
+				const accepted = await onSendMessage(
+					/*
+					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.
+					 * With the seam the payload travels with its MARKERS as before — the
+					 * branch above read the TYPED line, and the payload's request came from
+					 * the substituted text when that still parsed.
+					 */
+					outgoingText,
+					attachments.map((a) => a.path),
+					onEchoPainted,
+					// The typed text, beside the composed payload: the gate answer path
+					// resolves an option ordinal against THIS, never against the string
+					// the reply prefix produced.
+					message,
+					seam,
+					/*
+					 * HOW THIS MESSAGE WAS PRODUCED, stamped at the press (arch §4.2):
+					 * `typed`, `dictated`, or `mixed`. Carriage only - nothing in this
+					 * app renders it, and the store pins it so a retry replays the same
+					 * bytes. `undefined` when the backend has not advertised
+					 * `features.input_mode`; the page's `send` applies that gate.
+					 */
+					inputModeForSend(),
+				);
+				if (accepted !== false) {
+					/*
+					 * THE PROVENANCE DIES WITH THE MESSAGE IT DESCRIBED. The reset
+					 * effect below would catch the empty box anyway, but only AFTER an
+					 * in-flight send settles - and a transcript landing inside that
+					 * window would otherwise inherit this message's flags (a dictated
+					 * follow-up reported `mixed`).
+					 */
+					sawTypingRef.current = false;
+					sawDictationRef.current = false;
+				}
+				// The deferred store's own receipts, raised now that they exist.
+				if (accepted !== false && settled) {
+					if (settled.stored.length > 0)
+						showSuccessToast(storedNotice(settled.stored));
+					if (settled.refused.length > 0)
+						showWarningToast(unstoredNotice(settled.refused));
+					if (settled.unconfirmed.length > 0)
+						showWarningToast(unconfirmedNotice(settled.unconfirmed));
+				}
+				/*
+				 * A failure leaves the composer's payload alone, replies and attachments
+				 * included, because the STORE put it back and this component must not
+				 * undo that: the chips it would restore are already restored, the text is
+				 * on its way in through `pendingText`, and the retry is one press of Send
+				 * (or of the notice's Retry) over unchanged bytes.
+				 */
+				if (accepted === false) return accepted;
+				/*
+				 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
+				 * than an omission. It used to be cleared on this line - i.e. once the
+				 * send had settled - while the text left the box at the echo, so the
+				 * whole in-flight window showed the transcript's copy of the message
+				 * with its attachment beside the composer's chip for the same file. The
+				 * two halves now leave together, in `use-message-input`'s `clearOnce`,
+				 * which is the one trigger both of them share (`clearStagedPayload`).
+				 * AN OFF-RECORD ASK'S PAYLOAD IS THE ASK'S TO SETTLE (review round 2, F6).
+				 * The question left at the press, so nothing here can know yet whether it
+				 * will be answered — and the two outcomes retire different things: an
+				 * ANSWERED ask consumed the staged reply and the credential it carried, so
+				 * both go as an accepted send's do; a REFUSED one keeps them, which is the
+				 * pre-F1 behaviour of that branch and the rule the block above states for a
+				 * refusal ("the operator's unsent draft must not lose the value behind a
+				 * pill they can still see"). Retiring on the press retired them either
+				 * way, and said nothing about it.
+				 *
+				 * The refusal itself is NOT repeated here: it belongs to the surface that
+				 * owns the exchange — the panel, or the composer's own error line when the
+				 * panel is gone (`chat-page.tsx`) — and a second copy of another surface's
+				 * sentence is a second place for the two to drift apart.
+				 */
+				if (isOffRecordAsk(accepted)) {
+					settleOffRecordPayload(accepted, retireAcceptedPayload);
+					return accepted;
+				}
+				retireAcceptedPayload();
+				return accepted;
+			},
+			[
+				onSendMessage,
+				attachments,
+				replies,
+				/*
+				 * The retirement is reached through `retireAcceptedPayload` and no longer
+				 * through this closure's own body, so the values it needs are ITS
+				 * dependencies rather than this memo's - listing them here too is the
+				 * stale-closure hazard in reverse (this memo would be rebuilt for a value
+				 * nothing in it reads).
+				 */
+				retireAcceptedPayload,
+				storeCitedCredentials,
+				// The seam's own decision reads it: with a session there is nothing to
+				// defer, so only a new-chat pane hands the host a callback.
+				credentialSessionId,
+				// The send gate above, and the affordance it hands the press to
+				// (UX round 1, U1): a memo that read neither would keep sending after a
+				// pick resolved, or refuse after one arrived.
+				draftModelUnresolved,
+				sessionStatus?.onOpenDraftPicker,
+				// The stamp read at the press (see `inputModeForSend`); a memo that
+				// did not read it would keep sending the value captured at mount.
+				inputModeForSend,
+				// The `$skill` expansion (issue #664): the cache a body is read
+				// through, and the note surface for a skill that cannot be loaded.
+				// The VOCABULARY itself rides `skillNamesRef` (see its declaration)
+				// because the send memo is built before the hook that fetches it.
+				skillReadClient,
+				skillReadProvided,
+				onSlashNote,
+			],
+		);
+
+		/*
+		 * IS A SEND FOR THIS CONVERSATION STILL GOING OUT?
+		 *
+		 * The window the operator reported as having nothing to say: the box has been
+		 * emptied by the echo, the transcript already shows the message, and the
+		 * field's slot showed the invitation to start something else while this one
+		 * was still on its way.
+		 *
+		 * READ FROM THE STORE'S ROW rather than from a prop or from this composer's
+		 * own state, which is what review round 2's R2-1 established the hard way.
+		 * `sendInFlight` (below) is a `useState` of THIS component, and `chat-page`'s
+		 * `admitting` - what round 1 wired this from - is a `useState` of the panel the
+		 * New-chat identity flip REPLACES (`panelIdentityFor`, "THE FLIP IS A
+		 * REMOUNT"), so on the arm the operator photographed both were false and the
+		 * box fell through to `Waiting for the agent`. A row is not state of the keyed
+		 * subtree: `sendUnsettledForSession` finds it by the CONVERSATION's identity -
+		 * the session id, a `send:<id>` key, or the draft key while the create is in
+		 * flight - and it describes the same send the pane's `starting` latch does
+		 * (there from the painted row, `pendingSendForView`; here from the claim's own
+		 * `pending`), so the box and the transcript's line cannot disagree about
+		 * whether a send is going out. A different conversation is a different row,
+		 * which is the boundary that keeps its send from reaching this composer.
+		 *
+		 * OR'd with `sendInFlight` at the placeholder call: the hook's flag covers the
+		 * press this composer made before that row exists at all (and on the arms - a
+		 * slash command, a gate answer, a legacy send - where it never will), and the
+		 * row covers the panel that replaces this one.
+		 */
+		const sendUnsettled = useCanonicalSessionsStore((state) =>
+			sendUnsettledForSession(state.drafts, conversationId),
+		);
+		const {
+			inputValue: newMessage,
+			setInputValue: setNewMessage,
+			handleKeyDown,
+			handleSubmit: submitMessage,
+			textareaRef,
+			sendInFlight,
+			appendTranscriptText,
+		} = useMessageInput({
+			conversationId,
+			onSubmit,
+			scrollToBottom,
+			// §6: no persisted draft write while a masked capture is open.
+			draftHeld: isTyping(capture),
+			/*
+			 * §5/§6's disclosure travels WITH the draft it describes, on every write
+			 * this hook makes — including the keystrokes that follow the cancel, which
+			 * is why it rides the hook rather than being written by the composer's own
+			 * capture path alone. Design round 2's D2 was the missing half of §6's
+			 * deliberate decision to persist the Esc-restored characters: the
+			 * characters came back and the sentence that makes them legible did not.
+			 *
+			 * A FUNCTION OF THE VALUE rather than a number, because the write happens
+			 * inside the keystroke's own handler: a number captured at render time still
+			 * describes the text BEFORE that keystroke, which is exactly how the stale
+			 * count reached the draft with text it did not describe (UX round 3, U12).
+			 * The hook asks with the value it is about to write, and the one answer for
+			 * "does this text disclose anything" is `disclosureOver`.
+			 */
+			draftUnredacted: disclosureOver,
+		});
+
+		/*
+		 * The reset: when the box is EMPTY and no send of this composer is still
+		 * unsettled - the moment the box's content has nothing left to attribute.
+		 * `sendInFlight`/`sendUnsettled` are the exclusion that keeps a send's own
+		 * clear from stealing a provenance the refusal arm is about to hand back
+		 * with the text (see the flags' own note above).
+		 */
+		useEffect(() => {
+			if (newMessage === "" && !sendInFlight && !sendUnsettled) {
+				sawTypingRef.current = false;
+				sawDictationRef.current = false;
+			}
+		}, [newMessage, sendInFlight, sendUnsettled]);
+
+		/*
+		 * What the sentence is about, AS OF THIS RENDER: the count when the box still
+		 * holds the text the Esc produced, and `null` otherwise.
+		 *
+		 * THE RENDERED HALF of `unredactedOverBuffer`, the same rule `disclosureOver`
+		 * wraps for the persisted half — one answer, asked with two buffers, instead of
+		 * two predicates that have to be kept in step. What it buys is that the notice
+		 * comes DOWN on the first edit (UX round 3, U12): the count and the buffer it
+		 * was taken over are compared HERE, so the sentence cannot be rendered over
+		 * text it does not describe, in the same commit as the edit that changed the
+		 * text. The retirement effect further down clears the state itself (and so the
+		 * store with it); this line is why the render cannot lag that effect by a
+		 * commit, and the effect is why the state does not outlive the box.
+		 */
+		const unredactedChars = unredactedOverBuffer(disclosure, newMessage);
+
+		// Slash completion reads the caret position, so it lives above the
+		// textarea's own onChange rather than deriving position from the value.
+		const [caret, setCaret] = useState(0);
+		const [composing, setComposing] = useState(false);
+		/*
+		 * The live session this composer addresses, or undefined for a draft.
+		 *
+		 * `sessionStatus` is supplied by the page only when a canonical session
+		 * exists, and in that case `conversationId` IS its id (the page opens the
+		 * stream on the identity it passes down). So this is the one argument the
+		 * argument list's entity source needs, and its ABSENCE is the honest
+		 * "needs an open conversation" state rather than a query against a draft
+		 * key that could only fail.
+		 */
+		const slashSessionId = sessionStatus ? conversationId : undefined;
+		/*
+		 * The pane's own answer, and the one the two arming sentences read: a draft
+		 * pane supplies `sessionStatus` (from the preview) and holds a non-empty
+		 * `conversationId` (the pane's identity), so "is this composer holding a
+		 * session id" is TRUE on the very pane whose next Enter the dispatcher
+		 * refuses (UX U1). The popup's line and the note are the surfaces on screen
+		 * before and after that Enter, so both take the caller's answer.
+		 */
+		const paneHasSession = propPaneHasSession ?? false;
+		const slash = useSlashCompletion({
+			inputValue: newMessage,
+			selectionStart: caret,
+			sessionId: slashSessionId,
+			paneHasSession,
+			activeProfile: {
+				team: sessionStatus?.frontend?.active_team,
+				agent: sessionStatus?.frontend?.active_agent,
+			},
+			activeModel: activeModelForDefault(
+				sessionStatus?.frontend?.effective_model ??
+					sessionStatus?.frontend?.selected_model,
+			),
+			/*
+			 * THE SPEC IN FORCE, whole rather than narrowed (`activeModel` above
+			 * keeps only the two fields `/model default` writes) — the source of
+			 * the `/fast` row's live slot. Same snapshot fields the model chip
+			 * labels itself from once no switch is pending: the chip's own path
+			 * also considers `pendingModel`, so during an unconfirmed switch the
+			 * two describe different specs (each truthful); outside it they agree.
+			 */
+			activeSpec:
+				sessionStatus?.frontend?.effective_model ??
+				sessionStatus?.frontend?.selected_model,
+		});
+
+		/*
+		 * THE `$skill` LIST (issue #664), the third member of the popup family and
+		 * gated the same ways the other two are: off while a masked capture owns the
+		 * box (its keys never reach a popup, and a `$` inside a secret must not paint
+		 * a list over the mask), and off on a pane with no resolvable session —
+		 * `skills.list` discovers from a session's cwd, so no session is no
+		 * vocabulary, not a policy (`credentialSessionId`'s predicate is the one that
+		 * says a draft pane's id is not a session the host can resolve). The claim
+		 * that suppresses it while a slash context is live at the caret is the hook's
+		 * own (`skill-token.ts` documents why the desktop keeps that claim total).
+		 */
+		const skills = useSkillCompletion({
+			text: newMessage,
+			caret,
+			sessionId: credentialSessionId,
+			commandNames: slash.commandNames,
+			argumentWords: slash.argumentWords,
+			enabled: !isTyping(capture),
+		});
+		/*
+		 * The vocabulary the SUBMIT seam reads, refreshed whenever the answer changes:
+		 * the send memo is created before this hook (see `skillNamesRef`), so this
+		 * effect is what keeps the ref it reads current at the press.
+		 */
+		useEffect(() => {
+			skillNamesRef.current = skills.vocabulary.map((row) => row.name);
+		}, [skills.vocabulary]);
+
+		/*
+		 * THE `@` MENTION LAYER, beside the slash hook because the two are one popup
+		 * mechanism over one field: both anchor to the same 4px strip, both route
+		 * their keys in the handler below, and a reader looking at one without the
+		 * other would not know which list a key is going to.
+		 *
+		 * TWO hooks and not one, because the two answers have different lifetimes. The
+		 * PICKER's is about where the caret is and which directory that names; the
+		 * RESOLUTION's is about every token in the whole draft, because the chip layer
+		 * draws all of them and the atomic delete is asked about the one the caret is
+		 * beside. They share the working directory and the value, which is all they
+		 * have in common.
+		 */
+		const at = useAtPicker({
+			text: newMessage,
+			caret,
+			cwd,
+			enabled: mentionsEnabled,
+			unsupported: mentionsUnsupported,
+		});
+		const atMentions = useAtResolution({
+			text: newMessage,
+			cwd,
+			enabled: mentionsEnabled,
+		});
+
+		/*
+		 * How many of the draft's references the agent will ask about before reading,
+		 * which is the fact the outside-workspace fill states and a fill cannot
+		 * announce.
+		 *
+		 * ONLY THE OUTSIDE HALF IS DESCRIBED, and the unresolved half deliberately is
+		 * not: an unresolved token is the normal state of a half-typed path, so a
+		 * sentence counting them would be re-announced on every keystroke of the one
+		 * state that has to stay quiet, and it would be describing what the user is in
+		 * the middle of writing. The sighted signal for that state is the ABSENCE of a
+		 * fill, and the field's own text is the same evidence a screen reader reads.
+		 */
+		const outsideMentions = useMemo(
+			() =>
+				[...atMentions.resolved.values()].filter((fact) => fact.outside).length,
+			[atMentions.resolved],
+		);
+
+		/*
+		 * A caret a programmatic edit asked for, written to the DOM once the new
+		 * value has rendered.
+		 *
+		 * `setCaret` alone only moves a shadow of the position: the textarea's own
+		 * selection stays where the browser left it, so a completion made under an
+		 * IME or by a click would leave the caret at the old cell and the next
+		 * keystroke would land in the middle of the completed word.
+		 */
+		const pendingCaret = useRef<number | null>(null);
+
+		/*
+		 * THE MIRROR'S ELEMENT, held here because TWO components need it: the overlay
+		 * paints the chip's ground through it, and the chip layer measures the marker
+		 * runs' boxes off it (a textarea exposes no per-run geometry). One element, one
+		 * ref, so the two layers cannot end up describing two different layouts.
+		 */
+		const mirrorRef = useRef<HTMLDivElement | null>(null);
+		/*
+		 * The last buffer React committed, so `applyCapture` can tell a write that
+		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
+		 * below, which is the whole of the empty-span Escape fix.
+		 */
+		/*
+		 * THE RESTORED DRAFT'S CARET IS SEEDED THROUGH THE MACHINERY ABOVE, not
+		 * beside it: one write of the pair every other caret move in this file uses
+		 * (`pendingCaret` plus `setCaret`), so the DOM selection and the state agree
+		 * in this paint - the effect above does the DOM half as soon as the ref is set.
+		 *
+		 * WHY THE PAINT NEEDS IT (design round 1, D1): the tint is withheld where
+		 * Enter would not run the draft, and that question is asked at the caret
+		 * (`planForDraft(newMessage, caret)`). A draft the app restored from the store
+		 * arrives with no keystroke, so without this the composer sits at position 0
+		 * and reads a leading line as prose - the tint never paints - while the
+		 * identical draft typed a character earlier runs as a command.
+		 *
+		 * RE-ARMED PER CONVERSATION, NOT PER MOUNT (code review round 5, MAJOR). The
+		 * composer is rendered without a `key`, so switching conversations does NOT
+		 * remount it - a once-per-mount flag left the incoming conversation's restored
+		 * draft reading the OUTGOING one's caret, which feeds both the paint gate and
+		 * the plan Enter reads. The id is the trigger, and it is the same identity the
+		 * draft store is keyed by below; a pane with no conversation yet has nothing to
+		 * restore, so `undefined` is left alone.
+		 *
+		 * The ref is still what makes it ONCE per conversation: the first non-empty
+		 * value is the trigger rather than the mount, because `useMessageInput` seeds
+		 * its value from the store in an effect - so the first render here is empty
+		 * even when the store already holds a draft - and every later edit would
+		 * otherwise drag a caret the user had moved to the end of the box.
+		 */
+		const caretSeededFor = useRef<string | null>(null);
+		useLayoutEffect(() => {
+			if (conversationId === undefined) return;
+			if (caretSeededFor.current === conversationId) return;
+			if (!newMessage) return;
+			caretSeededFor.current = conversationId;
+			pendingCaret.current = newMessage.length;
+			setCaret(newMessage.length);
+		}, [newMessage, conversationId]);
+
+		const bufferNow = useRef(newMessage);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the value is the trigger, the ref is what is written
+		useLayoutEffect(() => {
+			bufferNow.current = newMessage;
+			const field = textareaRef.current;
+			const at = pendingCaret.current;
+			if (!field || at === null) return;
+			pendingCaret.current = null;
+			field.setSelectionRange(at, at);
+		}, [newMessage, textareaRef, setDisclosure]);
+
+		/*
+		 * ---------------------------------------------------------------------
+		 * The capture's own routing: keys, the mirrored change path, and paste
+		 * ---------------------------------------------------------------------
+		 *
+		 * THE ORDER IS THE TUI'S (`editor.py:2890`): a live capture is asked FIRST,
+		 * ahead of the slash handler and ahead of the ordinary submit, because while
+		 * the mask is up the only safe default is that no other handler sees the key
+		 * at all. Enter mints rather than sends, Esc cancels rather than dismisses,
+		 * and every printable character is absorbed. The keys it does not claim fall
+		 * through untouched — the arrows, the modifiers, anything that is not a
+		 * printable character — so caret movement keeps its ordinary meaning.
+		 */
+		/** What the mint consults: the session's names UNION this composer's keys. */
+		const takenCredentialNames = useCallback(
+			() => [
+				...sessionNamesRef.current,
+				...[...payloadsRef.current.values()].map((payload) => payload.key),
+			],
+			[],
+		);
+
+		/**
+		 * §6's other half: the MARKER text reaches the persisted draft.
+		 *
+		 * The rule §6 states is that the marker text IS persisted — it holds no
+		 * secret — while the draft is not written WHILE the masked capture is open.
+		 * Only the first half was implemented: the write was gated on
+		 * `draftHeld: isTyping(capture)` as derived at RENDER time, and the mint
+		 * writes the new buffer through the same setter in the same tick, while the
+		 * mask is still open. So the post-mint value was skipped and no later write
+		 * followed: `localStorage` kept the PRE-capture `/credential `, and a remount
+		 * restored a token with no pill — contradicting §6 and losing the operator's
+		 * citation (QA round 1, Q1).
+		 *
+		 * Called from the capture's OWN writes, which is where that half of the rule
+		 * belongs: `handleChange` cannot see them, because the capture's edits never
+		 * went through the textarea. A masked state writes nothing — the whole point
+		 * of `draftHeld` — and every state the capture ENDS in does, which is what
+		 * makes the persisted draft agree with the box at the moments the box changes
+		 * for a reason the operator did not type.
+		 *
+		 * THE ESC-RESTORED PLAINTEXT IS PERSISTED TOO, deliberately (UX round 1,
+		 * U4). Leaving it out kept a secret off disk, which is defensible — but the
+		 * draft then held the inert `/credential ` the operator had just cancelled,
+		 * so a crash or a quit came back holding a token that looks like a capture
+		 * and is not one, with their line gone. The module's own words for that state
+		 * are the answer: after the unredact "it is their prose, not a credential",
+		 * and the composer persists prose.
+		 */
+		const persistDraft = useCallback(
+			(capture: Capture, buffer: string) => {
+				if (!conversationId) return;
+				if (isTyping(capture)) return;
+				useConversationInputStore.getState().setCurrentInput(
+					conversationId,
+					buffer,
+					// The capture's own writes go through the same one answer as the
+					// keystroke path, so a cancel that restores nothing (or a mint, which
+					// ends the disclosure) writes a draft that discloses nothing.
+					disclosureOver(buffer),
+				);
+			},
+			[conversationId, disclosureOver],
+		);
+
+		/**
+		 * Write one settled credential state into the composer.
+		 *
+		 * The value map and the buffer are written together and never apart: a
+		 * buffer updated without its map is a pill whose secret is gone, and a map
+		 * updated without its buffer is a secret nothing cites.
+		 */
+		const applyCapture = useCallback(
+			(next: {
+				capture: Capture;
+				buffer: string;
+				caret: number;
+				payload?: CredentialPayload | null;
+			}) => {
+				const payload = next.payload ?? null;
+				if (payload) {
+					payloadsRef.current.set(payload.index, payload);
+					nextIndexRef.current = Math.max(
+						nextIndexRef.current,
+						payload.index + 1,
+					);
+				}
+				/*
+				 * THE CARET IS ONLY MOVED WHEN THE BUFFER MOVED WITH IT (design §5; UX
+				 * round 1, U1). The two are one write in every state but one, and that
+				 * one is the EMPTY-SPAN ESCAPE: with nothing masked there is nothing to
+				 * restore, so `cancelTypedCredential` answers the buffer it was given —
+				 * React bails out of the identical `setNewMessage`, the effect above
+				 * never runs, and the position parked here was therefore never consumed.
+				 * It stayed armed for the operator's NEXT character, which landed at the
+				 * old offset with the caret snapped back one behind it — measured as
+				 * "/credential ", Esc, "hello there" -> "/credential ello thereh", every
+				 * character inserted before the previous one. The reference closes this
+				 * by suspending the cancel's own edit from the sync
+				 * (`_cancel_credential_typing`'s `_suspend_credential_sync`,
+				 * `editor.py:6452`); the port has no sync on that path at all, so the
+				 * equivalent is to not post a caret the buffer never asked for.
+				 */
+				if (next.buffer !== bufferNow.current) {
+					pendingCaret.current = next.caret;
+					setCaret(next.caret);
+				}
+				/*
+				 * The capture's own write, so the teardown effect below can tell it apart
+				 * from a whole-buffer replacement somebody else made.
+				 */
+				captureOwnedBuffer.current = next.buffer;
+				/*
+				 * AN ARM DOES NOT RETIRE THE GESTURE RECORD, and this is the difference
+				 * between the app and the harness (QA round 8, Q16). The arm is the
+				 * token's OWN consequence — the pick writes the token and arms it, and a
+				 * keystroke after a cancelled token re-syncs the same arm — so clearing
+				 * the record here meant a real edit that MOVED the token arrived at the
+				 * planner as a word nobody had touched: prose, sent, with the secret in
+				 * it. `#238`'s property is the reason the record must survive instead: a
+				 * token that reaches the dispatcher has its arguments REFUSED, so a
+				 * secret can never land in command text.
+				 *
+				 * What still retires the record: a new Escape (a new cancel writes its
+				 * own), a conversation switch, and a draft that no longer contains the
+				 * run the gesture left — the last two below, because the record describes
+				 * a token that is still in the box.
+				 */
+				/*
+				 * UNPINNED, and stated so rather than left looking pinned (review rounds
+				 * 11/12): this prune and the `lastIndex` reset above are both fixed-but-
+				 * unpinned. Removing the prune leaves the suite green because the harness's
+				 * edit path never produces the buffer state the app reaches (a masked
+				 * citation, or the token with its trailing space consumed), and removing
+				 * the reset leaves it green because the module's own readers reset the same
+				 * shared regex first — the reset is defence in depth. The seam's own rule,
+				 * below, IS pinned (round 12's tail case fails on the untrimmed seam).
+				 *
+				 * The record lives as long as the token it describes is still in the box,
+				 * and the test is on the token's WORD rather than the run it was recorded
+				 * with: the run carries the token's trailing space, so the ordinary buffer
+				 * an operator ends up with — `/credential SECRET`, or the masked citation —
+				 * does not contain it, and testing the run cleared the record at the first
+				 * real edit (QA round 9, Q16: the draft was then prose and the secret went
+				 * out as message text). The ARM is not that event either: it is the token's
+				 * own consequence, which is why it clears its sibling and not this.
+				 */
+				if (
+					pickedToken.current !== null &&
+					!next.buffer.includes(pickedToken.current.trim())
+				) {
+					pickedToken.current = null;
+				}
+				if (
+					cancelledToken.current !== null &&
+					!next.buffer.includes(cancelledToken.current.text.trim())
+				) {
+					cancelledToken.current = null;
+				}
+				setCapture(next.capture);
+				setNewMessage(next.buffer);
+				persistDraft(next.capture, next.buffer);
+			},
+			[persistDraft, setCapture, setNewMessage],
+		);
+
+		/*
+		 * A WHOLE-BUFFER REPLACEMENT ENDS A LIVE CAPTURE, and this is the teardown
+		 * the reference states twice over (`Editor.load_text`, `editor.py:7033-7099`:
+		 * `_abandon_credential_typing("gone")` + `_disarm_credential("gone")`,
+		 * naming "a history recall, a restored draft, a `/reload` hand-back, a
+		 * sidebar session switch").
+		 *
+		 * What it looked like without it, reproduced against the real module (code
+		 * review round 1, BLOCKER 1): with a masked capture open, an ArrowUp recalled
+		 * a prompt into the box, the capture went on reporting TYPING, the operator's
+		 * next characters were masked into the STALE value, and Enter minted
+		 * `[Credential #1, 7 chars]` over the recalled prompt — deleting their text —
+		 * with the stale secret then stored into whichever conversation was current.
+		 * The buffer, the mask and the value had stopped describing the same thing,
+		 * silently, in the one direction this feature must never fail.
+		 *
+		 * DROPPED RATHER THAN RE-SYNCED, which is the conservative half the reference
+		 * chose: routing this through `syncCapture(..., "arrival")` re-anchors the arm
+		 * onto whatever `/credential` the arriving text happens to contain, so a
+		 * recalled prompt that merely MENTIONED the command swallowed the next
+		 * ordinary paste as a secret, unrecoverably (review round 2, R6b/R6c; QA
+		 * round 2, Q4). Failing toward "not armed" costs one retype; failing the
+		 * other way cannot be undone.
+		 *
+		 * `captureOwnedBuffer` is what makes this an EXTERNAL write rather than every
+		 * write: `applyCapture` stamps the buffer it wrote and the mirrored DOM change
+		 * stamps the buffer it produced, so anything that arrives here without a
+		 * stamp came from a history recall, a draft restore, a session switch, a
+		 * transcription, a slash plan or a submit's clear — the four triggers the
+		 * reference names plus the two this composer adds.
+		 *
+		 * A layout effect rather than a passive one, so the drop lands in the same
+		 * commit as the text: no frame exists in which the buffer says one thing and
+		 * the capture another, and no keystroke can arrive in between.
+		 */
+		useLayoutEffect(() => {
+			if (captureOwnedBuffer.current === newMessage) return;
+			captureOwnedBuffer.current = newMessage;
+			if (!isArmed(captureRef.current)) return;
+			setCapture(IDLE_CAPTURE);
+			setDisclosure(null);
+		}, [newMessage, setCapture, setDisclosure]);
+
+		/*
+		 * A CONVERSATION SWITCH RETIRES BOTH HALVES, the payload map included.
+		 *
+		 * The teardown above drops the capture, which is what stops a stale value
+		 * being stored; the map is the other half, and it belongs to the buffer that
+		 * is going away. Kept, a payload minted in conversation A can be cited by
+		 * conversation B's restored draft the moment the two happen to contain the
+		 * same marker text — and it would be stored into B, which is precisely the
+		 * "stale value stored into whichever session is current" failure.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the conversation id is the event; the refs are what is written
+		useEffect(() => {
+			captureRef.current = IDLE_CAPTURE;
+			setCapture(IDLE_CAPTURE);
+			payloadsRef.current.clear();
+			nextIndexRef.current = 1;
+			retirePayloads.current = false;
+			/*
+			 * BOTH gesture records, together: they are the same kind of fact — which
+			 * tokens THIS box put there — and clearing one without the other left a
+			 * typed draft in the next conversation planned as a pick (review round 10,
+			 * MINOR-1: `please store /credential mysecretname` answered `splice`).
+			 */
+			cancelledToken.current = null;
+			pickedToken.current = null;
+			/*
+			 * The locked run's record belongs to the BOX, and the box belongs to this
+			 * conversation: kept, an undo pressed in the NEXT conversation would put the
+			 * previous one's draft back on screen, secret and all (code review round 2,
+			 * MINOR 1).
+			 */
+			lockedRun.current = null;
+			setDisclosure(null);
+		}, [conversationId, setCapture, setDisclosure]);
+
+		/*
+		 * WHAT THE DRAFT SAYS ABOUT ITSELF, re-raised on arrival (design round 2,
+		 * D2).
+		 *
+		 * §6 persists the Esc-restored characters deliberately — by then they are the
+		 * operator's prose — and the teardown above clears this composer's own
+		 * disclosure on a switch, which is right for a LIVE cancel and was the whole
+		 * of the persisted state: the restored draft came back holding a secret with
+		 * no notice, no arm and no pill, and one Enter exposed it. §5 says that state
+		 * must never be silent, so the count now travels with the characters in the
+		 * draft store and this raises the same sentence on the way back in.
+		 *
+		 * A subscription rather than a read of the hook's restored value, because the
+		 * store is what is persisted and the store is written on every keystroke: the
+		 * two are one fact (see `draftUnredacted`), and reading the store is what
+		 * makes the disclosure survive a write it did not itself make.
+		 *
+		 * ROUND 3 STEPPED ON TWO THINGS HERE (UX round 3, U12; code review round 3,
+		 * MINOR 3), and both come from the disclosure now being a count AND the text
+		 * it describes:
+		 *
+		 *  - the raise is over the TEXT THE STORE ITSELF NAMES as the draft, and only
+		 *    when the box actually holds it. Raising the bare number over whatever text
+		 *    happened to be in the box is how a restored count ended up describing
+		 *    characters the operator had already deleted.
+		 *  - the question "does this draft disclose anything" is asked of the store's
+		 *    own `getUnredactedChars`, which is the ONE owner of "0 when there is no
+		 *    draft, or one that discloses nothing" — a second reader of the raw field
+		 *    is a second rule, and the raw field is subscribed here only so that the
+		 *    raise is reactive.
+		 *
+		 * Ordering is deliberate — this effect is declared AFTER the two that clear
+		 * the state, so within the commit that switches conversation the clear runs
+		 * first and this re-raises the incoming draft's own disclosure over it. A
+		 * count of 0 (no draft, an empty draft, or a draft with nothing unredacted)
+		 * is the common case and does nothing at all.
+		 */
+		const storedUnredactedChars = useConversationInputStore((s) =>
+			conversationId ? s.getUnredactedChars(conversationId) : 0,
+		);
+		const storedDraftText = useConversationInputStore((s) =>
+			conversationId ? s.getCurrentInput(conversationId) : "",
+		);
+		useEffect(() => {
+			if (storedUnredactedChars <= 0) return;
+			if (!storedDraftText || newMessage !== storedDraftText) return;
+			if (disclosureRef.current?.over === storedDraftText) return;
+			setDisclosure({ chars: storedUnredactedChars, over: storedDraftText });
+		}, [storedUnredactedChars, storedDraftText, newMessage, setDisclosure]);
+
+		/*
+		 * ANY EDIT RETIRES THE DISCLOSURE (UX round 3, U12; code review round 3,
+		 * MINOR 1). This is the half that was missing: the sentence described the text
+		 * the Esc produced, and an edit produces different text — one Backspace left it
+		 * claiming eleven characters over seven, and clearing the box left the rendered
+		 * sentence up, because the old effect only ever RAISED (`if (stored <= 0)
+		 * return`, and nothing else could lower it) while the next keystroke re-persisted
+		 * the stale count beside the new prose. Retiring on the edit itself is what makes
+		 * the rendered sentence and the persisted count agree: the derivation guards the
+		 * render in this same commit, and this clears the state so the write that follows
+		 * cannot carry it either.
+		 *
+		 * A layout effect, so the retirement lands before the browser paints the edited
+		 * buffer, and declared after the restore effect so a restored draft is not
+		 * retired by the adoption of its own text.
+		 */
+		useLayoutEffect(() => {
+			const held = disclosureRef.current;
+			if (held && held.over !== newMessage) setDisclosure(null);
+		}, [newMessage, setDisclosure]);
+
+		/*
+		 * AND THE CLEAR'S SENTENCE RETIRES THE SAME WAY (UX round 1, U2): the words
+		 * describe ONE buffer — the one the `x` produced — and the first edit makes them
+		 * stale, so they go by the same rule the disclosure uses rather than on a timer.
+		 * Declared here, beside its sibling, because the two are one mechanism applied to
+		 * two facts.
+		 */
+		useLayoutEffect(() => {
+			const held = clearedReferenceRef.current;
+			if (held && held.over !== newMessage) setClearedReference(null);
+		}, [newMessage, setClearedReference]);
+
+		/*
+		 * The map is retired with the BUFFER, never ahead of it (code review round
+		 * 1, MINOR-5). `retirePayloads` is the submit's request; this is the commit
+		 * that honours it, once nothing in the box still cites a payload — so the box
+		 * can never paint a raw marker no map entry backs, and an Enter in that
+		 * window can never send a dangling citation.
+		 *
+		 * `retireRequest` is the second trigger: a request that lands after the box has
+		 * already emptied (an answered aside) is honoured in its own commit instead of
+		 * at the next edit. Firing early is safe by construction, because the cited-
+		 * payload check above still refuses while the box cites anything.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `retireRequest` is a trigger, not a value the body reads - it only makes a request written after the box emptied be seen in its own commit
+		useEffect(() => {
+			if (!retirePayloads.current) return;
+			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
+				return;
+			payloadsRef.current.clear();
+			nextIndexRef.current = 1;
+			retirePayloads.current = false;
+		}, [newMessage, retireRequest]);
+
+		/*
+		 * The session's stored names, fetched when the capture ARMS (§7.2).
+		 *
+		 * Fired once per session rather than per keystroke, and its failure is
+		 * silent on purpose: the guard's job is to avoid silently REPLACING a live
+		 * credential, and a name list that could not be read narrows it to
+		 * probability — which is the state the TUI documents as the honest degrade —
+		 * rather than being a reason to refuse a capture whose secret is already out
+		 * of the buffer.
+		 */
+		useEffect(() => {
+			if (capture.arm === null || !credentialSessionId) return;
+			if (fetchedNamesFor.current === credentialSessionId) return;
+			fetchedNamesFor.current = credentialSessionId;
+			void desktopResult<unknown>({
+				op: "sessions.credential",
+				sessionId: credentialSessionId,
+				action: "list",
+			})
+				.then((answer) => {
+					sessionNamesRef.current = credentialNamesFrom(answer);
+				})
+				.catch(() => {
+					/* Keep whatever is cached; see the comment above. */
+				});
+		}, [capture.arm, credentialSessionId]);
+
+		/**
+		 * The capture's answer to a SUBMIT — the ONE rule the key and the button
+		 * share (design round 1, D1; QA round 1, Q4).
+		 *
+		 * The composer already states this invariant about its own planning
+		 * ("the SAME planner the Enter key consults, so the Send button and the key
+		 * cannot disagree"), and on this one state they did: `planFor` knows about
+		 * slash commands and nothing about the capture, so Enter minted the pill and
+		 * the Send button submitted the MASK CELLS as the message — the operator's
+		 * secret unreachable, a citation the model cannot use, and the notice still
+		 * claiming to mask a box that was now empty. Traced in the design round from
+		 * the button's own DOM press.
+		 *
+		 * Three outcomes, and every one of them is one the operator can see:
+		 *
+		 * - a NON-EMPTY span mints, exactly as Enter does, and the send does not
+		 *   happen (the pill is one keystroke from leaving, and the notice has been
+		 *   saying what the gesture is);
+		 * - an EMPTY span answers `false`, which falls through to the same planner
+		 *   Enter falls through to, so `/credential ` + Send reaches the picker —
+		 *   the door §1 keeps open for the store, the list and the forget verbs;
+		 * - nothing open answers `false` and the send is an ordinary send.
+		 *
+		 * What is NOT an outcome any more: submitting mask cells, submitting a
+		 * half-captured secret, or doing nothing at all with no explanation. The
+		 * empty-span case used to be the quiet one — `/credential ` + Send reached
+		 * `planFor`, which dispatched `/credential` with the mask cells as its
+		 * arguments and let the dispatcher refuse it, leaving the box, the store and
+		 * the screen exactly as they were.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the caret comes from the LIVE field at event time, not from a render value; depending on it would rebuild the key handler on every caret move
+		const submitCapture = useCallback((): boolean => {
+			const current = captureRef.current;
+			if (!isTyping(current)) return false;
+			const minted = mintTypedCredential({
+				capture: current,
+				buffer: newMessage,
+				caret: textareaRef.current?.selectionEnd ?? newMessage.length,
+				index: nextIndexRef.current,
+				taken: takenCredentialNames(),
+			});
+			// An empty span mints NOTHING and leaves the capture open, so this
+			// submit is the ordinary one (§4).
+			if (!minted.minted) return false;
+			applyCapture(minted);
+			setDisclosure(null);
+			return true;
+		}, [applyCapture, newMessage, takenCredentialNames, setDisclosure]);
+
+		/*
+		 * `true` when this keypress belonged to the capture.
+		 *
+		 * Returning `false` is a real answer and not a miss: an Enter over an EMPTY
+		 * span falls through to submit, which is what `/credential ` + Enter means —
+		 * the token reaches the dispatcher and the existing picker opens, which is
+		 * how the store, the list and the forget verbs stay reachable (§1).
+		 */
+		const handleCredentialKeyDown = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const current = captureRef.current;
+				if (!isTyping(current)) return false;
+				const field = event.currentTarget;
+				const selection = {
+					start: field.selectionStart ?? newMessage.length,
+					end: field.selectionEnd ?? newMessage.length,
+				};
+
+				if (
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					return submitCapture();
+				}
+
+				if (event.key === "Escape") {
+					const cancelled = cancelTypedCredential(current, newMessage);
+					if (!cancelled.cancelled) return false;
+					/*
+					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam can
+					 * keep the promise the notice below makes (QA round 1, Q2). Enter on
+					 * the restored draft used to reach the dispatcher, which read the
+					 * leading `/credential` as the COMMAND: it opened the picker and
+					 * stripped the restored characters out of the operator's sentence, so
+					 * the text they were told they were about to expose was destroyed
+					 * instead. Recorded at the cancel because the cancel is the only place
+					 * that knows which token was the gesture.
+					 *
+					 * RECORDED FOR THE EMPTY-SPAN CANCEL TOO (UX round 2, U9), which is
+					 * the round-2 correction: `null` there was justified by the NOTICE
+					 * being suppressed — nothing was restored, so there is nothing to
+					 * warn about — and that is true about the notice and false about the
+					 * submit. With no token registered, `/credential ` + Esc +
+					 * `mysecretname` + Enter dispatched the command, ate the operator's
+					 * words as its argument and stripped them out of the box. What the
+					 * cancel promises is that the gesture is OVER; the token is how the
+					 * submit is told.
+					 */
+					cancelledToken.current = cancelled.token;
+					/*
+					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
+					 * say it on its own: after the unredact the composer looks entirely
+					 * ordinary while holding characters that are now plain text, and
+					 * the very next Enter exposes them. The length is the count, never
+					 * the value. An empty cancel owes no warning — it put nothing in
+					 * the buffer — and the count travels with the draft it describes, so
+					 * the same sentence comes back on a reload (design round 2, D2).
+					 *
+					 * SET BEFORE `applyCapture`, deliberately, because that call is what
+					 * PERSISTS the draft: it asks `disclosureOver` for this buffer, and a
+					 * cancel that wrote the characters first and the disclosure second would
+					 * put a disclosure-free plaintext draft on disk — silently, and only
+					 * after a reload, which is exactly the shape D2 filed. There is ONE such
+					 * pair here: the remediation briefly had two, and the duplicate made the
+					 * ordering invisible to the pin (code review round 3, MINOR 2).
+					 */
+					setDisclosure(
+						cancelled.restored > 0
+							? { chars: cancelled.restored, over: cancelled.buffer }
+							: null,
+					);
+					applyCapture(cancelled);
+					return true;
+				}
+
+				if (event.key === "Enter") {
+					// shift+Enter. An explicit newline ENDS the capture rather than
+					// being masked: the masked span is a contiguous run of cells and a
+					// newline inside it desynchronises the mint's splice. Composing
+					// prose around the pill is what the keystroke is for; a multi-line
+					// secret arrives through the paste route instead.
+					applyCapture(typeIntoCapture(current, newMessage, selection, "\n"));
+					return true;
+				}
+
+				if (event.key === "Tab") {
+					// Swallowed: a secret has no completions, and a literal tab inside
+					// one is far more likely to be a reach for a picker that is not
+					// there than an intent to leave the composer mid-capture.
+					return true;
+				}
+
+				/*
+				 * THE GATE IS PRINTABLE CHARACTERS, NEVER KEY NAMES. Textual spells
+				 * punctuation keys as words (`minus`, `full_stop`), so a `len(key) == 1`
+				 * gate masks letters and digits while every punctuation character falls
+				 * straight into the document — measured in the TUI: the canary
+				 * `zQ7-TYPED-LEAK-CANARY-4417` rendered as
+				 * `•••-TYPED-LEAK-CANARY-4417`. Real credentials are full of `-`, `_`,
+				 * `.` and `/`, so that gate leaked almost every actual secret while
+				 * looking correct against an alphanumeric test value. Here the test is
+				 * one code point of `event.key` with no modifier held, which is the
+				 * printable payload rather than the key's name.
+				 */
+				const printable =
+					Array.from(event.key).length === 1 &&
+					!event.ctrlKey &&
+					!event.metaKey &&
+					!event.altKey &&
+					!event.nativeEvent.isComposing;
+				if (!printable) return false;
+				applyCapture(
+					typeIntoCapture(current, newMessage, selection, event.key),
+				);
+				return true;
+			},
+			[
+				newMessage,
+				applyCapture,
+				// The submit rule the Enter branch shares with the Send button: one
+				// function, so the two gestures cannot drift apart again. It carries
+				// `takenCredentialNames` itself, which is why that is no longer a
+				// dependency here.
+				submitCapture,
+				setDisclosure,
+			],
+		);
+
+		/*
+		 * NO ADOPTION EFFECT LIVES HERE ANY MORE, and that is the point of the change:
+		 * a refused payload used to arrive as two props (text and file paths) that this
+		 * component merged into the box in a layout effect, which only worked while the
+		 * component that sent it stayed mounted. The payload now returns through the
+		 * store that owns the composer, so text, chips and quotes arrive together and
+		 * the box is already correct by the time it renders - including on the
+		 * New-chat path, where the composer that pressed Send is unmounted before the
+		 * failure lands.
+		 */
+
+		/*
+		 * What Enter should do with this draft, decided by the pure planner — the ONLY
+		 * place that answers it (see `slash-submit.ts`'s "one decision" note).
+		 *
+		 * Both halves of `enabled` matter: a command needs the feature ON and
+		 * somewhere to hand it. With neither, the planner answers `send`, so nothing
+		 * is ever spliced on a path that could not run it.
+		 */
+		const planFor = useCallback(
+			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
+				planSlashSubmission({
+					gesture,
+					draft,
+					caret: at,
+					commandNames: slash.commandNames,
+					promptCommands: slash.promptCommands,
+					// The two halves of "this command's trailing text is its
+					// argument": a free-text prompt, or a value chosen from a list.
+					// Both are registry-derived; the planner takes the union — and
+					// `armedOnlyCommands` narrows it further, from main's own arming
+					// work, which this branch's rule composes with rather than
+					// replaces.
+					armedOnlyCommands: slash.armedOnlyCommands,
+					valueArgumentCommands: slash.valueArgumentCommands,
+					// The registry's own declaration of an argument, which is the
+					// only one of the three vocabularies `/login`, `/logout`,
+					// `/credential`, `/stop`, `/fast` and `/move` appear in.
+					argumentCommands: slash.argumentCommands,
+					/*
+					 * The WIRE's own vocabulary, and the authority the three sets above
+					 * approximate: `argument_shape` + `argument_words` are what the messages
+					 * endpoint's admission rule is written against, so a row that publishes
+					 * them decides whether the text after it is its argument — and
+					 * `prefixes_text` is the free-text half the endpoint asks first.
+					 * Absent on a backend older than the fields, which is why the
+					 * approximations stay wired beside them rather than being replaced.
+					 */
+					argumentShapes: slash.argumentShapes,
+					prefixingCommands: slash.prefixingCommands,
+					/*
+					 * The capture's own words, so a mid-draft `/credential <secret>` plans as
+					 * the COMMAND instead of as a message. The words are the module's, not
+					 * this file's, and they are handed over unchanged: a word nobody named
+					 * there cannot be locked by accident, and a spelling added there is a
+					 * locked word here without a second edit. See `slash-submit.ts`'s
+					 * `lockedWordPlan` for why the direction this decides is the safe one —
+					 * a refused command in front of the user rather than a secret in the
+					 * transcript.
+					 */
+					commandLockedWords: CREDENTIAL_LOCKED_WORDS,
+					/*
+					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when the cancel record says it
+					 * put characters back — and NOTHING for a draft the app never un-masked.
+					 *
+					 * This is the whole difference between the two drafts that look alike:
+					 * `the docs/credential rotation policy is stale` is prose (no live run, so
+					 * the planner's boundary rule holds it to a word-opening slash, and the
+					 * sentence sends), while `please /credxential <secret>` one keystroke
+					 * after the app's own Escape is credential material (the run is still in
+					 * the box, so it is taken whatever spelling the word now has). The word
+					 * handed over is the record's own, and it is handed over only while the
+					 * run it restored is still in the draft — a record that restored nothing,
+					 * or whose characters have been edited away, hands nothing over. See
+					 * `carriesRestoredRun` above and `lockedWordPlan`.
+					 */
+					unmaskedRunWord: carriesRestoredRun(draft)
+						? cancelledToken.current?.text.trim().replace(/^\//, "")
+						: carriesPastedRun(draft)
+							? pastedRun.current?.word
+							: undefined,
+					nameListCommands: slash.nameListCommands,
+					enabled: slash.available && Boolean(onSlashCommand),
+				}),
+			[
+				slash.commandNames,
+				slash.promptCommands,
+				slash.armedOnlyCommands,
+				slash.valueArgumentCommands,
+				slash.argumentCommands,
+				slash.argumentShapes,
+				slash.prefixingCommands,
+				slash.nameListCommands,
+				slash.available,
+				onSlashCommand,
+			],
+		);
+
+		/**
+		 * Put a line in the box and say what the key DID NOT do.
+		 *
+		 * Both staging paths — a free-text command reassembled by Enter, and an
+		 * armed-only command hoisted by a pick — write the box and the caret the same
+		 * way, and both owe the user a sentence about a draft that changed under them.
+		 * One helper, so a stage that silently rewrites what somebody typed cannot
+		 * exist beside one that explains itself.
+		 */
+		const stage = useCallback(
+			(text: string, at: number, note: string) => {
+				pendingCaret.current = at;
+				setNewMessage(text);
+				setCaret(at);
+				onSlashNote?.(note);
+			},
+			[onSlashNote, setNewMessage],
+		);
+
+		/**
+		 * The planner, with §5's one exception in front of it.
+		 *
+		 * AFTER AN ESC CANCEL THE TEXT THE OPERATOR SEES IS WHAT GETS SENT (QA round
+		 * 1, Q2). The notice the composer itself raises for that state promises
+		 * "Enter will expose them", and Enter did the opposite: the restored draft
+		 * still begins with `/credential`, so the planner read it as a COMMAND — the
+		 * picker opened, nothing was sent or stored, and mid-prose the dispatcher
+		 * stripped the restored characters out of the operator's sentence. The
+		 * characters they were just told they were about to expose were destroyed.
+		 *
+		 * Scoped to the token the composer KNOWS it just cancelled, which is why the
+		 * predicate is `holdsCancelledToken` rather than a flag: it matches the exact
+		 * run at the exact arrival offset, so any edit that moves it ends the
+		 * exception and the token is the dispatcher's again. That leaves today's
+		 * behaviour for the case it exists for — `/credential <args>` submitted with
+		 * no capture still routes through the dispatcher, which refuses the
+		 * arguments, so a secret can never land in command text.
+		 *
+		 * An EMPTY-span cancel reports its token too (UX round 2, U9), so it is
+		 * covered by the same rule: `/credential ` + Esc + `mysecretname` + Enter
+		 * used to dispatch the command, eat those words as its argument and strip
+		 * them out of the box. `/credential ` + Enter with NO escape at all is
+		 * untouched — nothing was cancelled, so the planner still routes it to the
+		 * picker, the door §1 keeps open for the store, the list and the forget
+		 * verbs.
+		 */
+		/*
+		 * WHICH GESTURE A DRAFT CARRIES, as a fact this box observed rather than one
+		 * the buffer's text can imply.
+		 *
+		 * A token the operator PICKED is a command wherever it sits, and so is one this
+		 * box CANCELLED and an edit then moved — the half of the operator's own report
+		 * he kept ("if you don't actually hit enter on the suggested command or click
+		 * it"), and the reason #238's property holds: a token that reaches the
+		 * dispatcher has its arguments refused, so a secret can never land in command
+		 * text. A word merely TYPED is prose unless it is the whole draft, or opens one
+		 * for a command that consumes text — the planner's own rule, untouched here.
+		 *
+		 * THE TEST IS ON THE TOKEN'S WORD, not on the run the record was built with:
+		 * `credential-capture.ts` records `buffer.slice(tokenStart, span.start)` — the
+		 * token PLUS its separator, `"/credential "` — so a draft that ends in the bare
+		 * token would fail a run-shaped test, fall through to prose, and send the secret
+		 * as message text (review round 12, MAJOR). The empty-text record is excluded
+		 * deliberately: the same module builds `text: ""` on its other branch, and
+		 * `includes("")` is true for EVERY draft, so an unguarded test would make any
+		 * draft the record's.
+		 */
+		/** The word of the record that owns a token in this draft, or null. */
+		const recordWord = useCallback((draft: string): string | null => {
+			const cancelled = cancelledToken.current;
+			if (
+				cancelled !== null &&
+				cancelled.text.trim().length > 0 &&
+				draft.includes(cancelled.text.trim())
+			) {
+				return cancelled.text.trim();
+			}
+			const pick = pickedToken.current;
+			if (
+				pick !== null &&
+				pick.trim().length > 0 &&
+				draft.includes(pick.trim())
+			) {
+				return pick.trim();
+			}
+			return null;
+		}, []);
+		const gestureFor = useCallback(
+			(draft: string): "send" | "pick" | "typed" =>
+				holdsCancelledToken(draft, cancelledToken.current)
+					? "send"
+					: recordWord(draft) === null
+						? "typed"
+						: "pick",
+			[recordWord],
+		);
+		/**
+		 * Whether THIS DRAFT still holds the characters the cancel put back.
+		 *
+		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
+		 * composer's record lives until a send, a dispatch or a conversation change —
+		 * that is the pane's history, and handing the record's word to the planner on
+		 * the strength of it alone applied the run's rule to drafts holding NONE of the
+		 * app's characters: `/credential <secret>` -> Escape -> clear the box -> write a
+		 * sentence -> Enter truncated the sentence, opened a Credential dialog for a
+		 * secret the operator does not have, and left it unsendable (round 5's loop, on
+		 * prose). The control — the same sentence with no Escape — was never consumed.
+		 *
+		 * So the byte comparison decides, not the history: the record counts only while
+		 * the run it restored is still in the box, which is exactly the state every
+		 * shape this branch closes is in at the press.
+		 */
+		const carriesRestoredRun = useCallback((draft: string): boolean => {
+			const cancelled = cancelledToken.current;
+			if (cancelled === null || cancelled.restored === 0) return false;
+			/*
+			 * AS A TOKEN, not as a substring (UX round 7, U27): `prod` restored from
+			 * `/credential prod` is not the `prod` inside `the prod/staging split is stale`,
+			 * and a sentence the operator wrote must not have its tail taken because two
+			 * characters of it happen to match a short value.
+			 */
+			return standsAsToken(draft, cancelled.restoredText);
+		}, []);
+		/**
+		 * Whether this draft still carries the run a PASTE brought in (QA round 6, Q-1).
+		 *
+		 * The same shape as `carriesRestoredRun` and for the same reason — the bytes
+		 * decide, not the history — with the pasted TAIL as the bytes: an edit inside the
+		 * word leaves the secret exposed and must stay covered, while a box that no longer
+		 * holds the pasted value is prose again.
+		 */
+		const carriesPastedRun = useCallback((draft: string): boolean => {
+			const pasted = pastedRun.current;
+			return pasted !== null && standsAsToken(draft, pasted.run);
+		}, []);
+		/**
+		 * Whether THIS draft is one whose press is HELD — nothing runs, nothing
+		 * sends, the box is kept, one notice names the way out.
+		 *
+		 * ONE PREDICATE, TWO READERS (agent review round 2, R5). `planForDraft`
+		 * answers `{kind:"held"}` on exactly this shape, and the composer line must
+		 * not claim the hold on any other: the line said so on `unredactedChars !=
+		 * null`, and that disclosure OUTLIVES the record. On the reload /
+		 * conversation-switch shape the disclosure and the buffer persist while
+		 * `cancelledToken.current` (a ref) dies, so the old test passed where the
+		 * press runs no hold at all — Enter DISPATCHED `/credential <secret>` and ate
+		 * the trailing words as its argument, the very defect this change closes,
+		 * under a sentence promising the opposite. Both readers ask this now, so the
+		 * claim and the press cannot drift.
+		 *
+		 * The two facts are the press's own: `holdsCancelledToken` is the exact span
+		 * `gestureFor` reads (the draft still carries the box's cancelled token where
+		 * it was put back), and `restored > 0` is the branch's own condition — an
+		 * empty span restores nothing, so its words are prose and its press sends.
+		 * CARET-INDEPENDENT by construction, which is what lets the render path read
+		 * it: `gestureFor` takes the draft alone, and no part of the held answer
+		 * depends on where the cursor sits. A `useCallback` with NO dependency, like
+		 * `gestureFor` its sibling: it reads refs only, so its identity is stable and
+		 * `planForDraft` can list it without re-creating on every render.
+		 */
+		const holdsHeldPress = useCallback((draft: string): boolean => {
+			const token = cancelledToken.current;
+			return (
+				token !== null &&
+				token.restored > 0 &&
+				holdsCancelledToken(draft, token)
+			);
+		}, []);
+		const planForDraft = useCallback(
+			(draft: string, at: number): SlashSubmissionPlan => {
+				const gesture = gestureFor(draft);
+				if (gesture === "send" && holdsHeldPress(draft)) {
+					/*
+					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
+					 *
+					 * `send` here means "what you see is what gets sent" — the box cancelled this
+					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
+					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
+					 * tail, whose tail is a secret: [redacted] on a live conversation, type
+					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
+					 * offers in its own notice — and the press put `/credential <the secret>` into
+					 * the conversation, on the remediation's first head and on `main` alike (UX
+					 * round 1, U1). The exception promises the user their own words, not their
+					 * secret's.
+					 *
+					 * WHAT THE CANCEL ITSELF RECORDED DECIDES, and it is the only fact that can
+					 * (review round 3, MINOR 1). The first form of this asked the DISCLOSURE
+					 * (`unredactedChars !== null`), a whole-buffer equality any keystroke clears — so
+					 * one keystroke after the Escape the exception answered `send` and the secret went
+					 * to the model (QA round 2, Q-1). The second form asked the planner for EVERY
+					 * draft holding a locked run: that closed the door, and it also cost the
+					 * operator's own sentence on the one shape where a locked word arrives through a
+					 * route the app has already told them is over — `/credential ` + Escape + words +
+					 * Enter deleted the words instead of sending them.
+					 *
+					 * `token.restored` is the fact both readings were guessing at, taken where it is
+					 * known. An EMPTY span puts nothing back, so the words written after it are the
+					 * operator's own (§5) and the composer sends them as prose — and where the draft
+					 * OPENS with the token, the leading-slash policy refuses that send outright and
+					 * the words stay in the box with nothing sent (UX round 4, U16 [redacted] both, and
+					 * corrected this: the earlier claim here that the shape re-sends the sentence was
+					 * wrong — it is refused, and the gain over the previous head is that the words are
+					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
+					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
+					 * here; the press is HELD, which is what `holdsHeldPress` asks and the composer
+					 * line now reads too (agent review round 2, R5 — the two used to ask different
+					 * questions, and the line's was the survivor-less disclosure).
+					 */
+					/*
+					 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
+					 *
+					 * The dispatch route below used to run here and it answered Q-1 — the restored
+					 * secret was never SENT to the model — but at the operator's own cost: the words
+					 * they typed after the cancelled token became the command's ARGUMENT, the run
+					 * consumed them, and the receipt said so. The operator's requirement outranks
+					 * that route. Both of the plan's old answers are wrong at this state:
+					 * dispatching consumes their words, and `send` puts the restored secret into a
+					 * message record. So the press is HELD: nothing runs, nothing sends, the box is
+					 * kept, and one notice names the way out. The Q-1 security invariant is met by
+					 * the hold rather than by the dispatch.
+					 */
+					return {
+						kind: "held",
+						notice:
+							"These characters are still the credentials you cancelled — clear the box to release your words and send your sentence.",
+					};
+				}
+				if (gesture === "send") return { kind: "send" };
+				const plan =
+					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
+				if (gesture !== "pick" || plan.kind !== "send") return plan;
+				/*
+				 * THE CARET IS NOT THE ONLY KEY TO A TOKEN THE BOX WROTE (QA round 10).
+				 *
+				 * `slashTokenSpan` claims the token at the CARET, and `activeSlash`'s claim
+				 * branch returns the running candidate — `null` — when the caret sits exactly
+				 * AT the claiming token's slash (`column > index` is false at equality). The
+				 * caret is left there by the ordinary gesture of typing a prefix in front of
+				 * the token, and the planner then answered `send` three lines before its own
+				 * gesture, span and pick rules were consulted: prose, sent, secret in the
+				 * transcript. So when the caret-led plan finds nothing AND the box recorded
+				 * the gesture itself, the fallback points the planner at the token's own
+				 * position — a positional fact the box holds, which the caret could not
+				 * supply.
+				 *
+				 * WHAT DECIDES IS THE RECORD, which is why the typed rule is untouched: a
+				 * merely typed word has no record, this branch is unreachable for it, and its
+				 * caret rule stands exactly as it was (a typed mid-draft word stays prose, and
+				 * a whole draft runs from any caret). `holdsCancelledToken` still answers
+				 * `send` first, so M6 is untouched.
+				 */
+				const word = recordWord(draft);
+				if (word === null) return plan;
+				const index = draft.indexOf(word);
+				if (index < 0) return plan;
+				return planFor(draft, index + word.length, "pick");
+			},
+			/*
+			 * No dependency on a locked-run helper: the held press replaced the dispatch
+			 * route that read one, and the helper itself is gone with it (remediation
+			 * round 1, R4 — this comment used to claim it was "still used elsewhere",
+			 * which stopped being true when the call site at the composer line moved to
+			 * the held sentinel).
+			 */
+			[gestureFor, holdsHeldPress, planFor, recordWord],
+		);
+		/*
+		 * The composer's syntax highlight, and the ONE gate that decides whether the
+		 * transparent-text technique is in play.
+		 *
+		 * `slashHighlightRuns` is the pure port of the TUI's own rule
+		 * (`editor.py:4232-4359`), fed the vocabularies this component already holds
+		 * for the planner plus the roster snapshot the completion list's query already
+		 * holds (`slash.nameChoices`) — no second vocabulary, no new request on the
+		 * render path. `picking` is the list's own open state, which is what
+		 * suppresses the "unknown word" tint while a word is still being chosen.
+		 *
+		 * `composing` is the IME half, and it is why this is one predicate rather than
+		 * two: the composition string is drawn by the BROWSER, is not in the mirror,
+		 * and would therefore be invisible under `text-transparent` while it is being
+		 * typed. Zero runs turns both the mirror and the transparency off together, so
+		 * the native path — including a squiggle the operator never asked to lose — is
+		 * what an ordinary draft gets.
+		 */
+		const slashRuns = useMemo(() => {
+			if (composing) return [];
+			const runs = slashHighlightRuns({
+				draft: newMessage,
+				commandNames: slash.commandNames,
+				nameListCommands: slash.nameListCommands,
+				nameChoices: slash.nameChoices,
+				picking: slash.open && slash.matches.length > 0,
+			});
+			if (runs.length === 0) return runs;
+			/*
+			 * THE TINT HAS TO MEAN WHAT ENTER DOES. The run rule is the TUI's, and it
+			 * paints a word that OPENS the line whether or not this host will run it:
+			 * on this composer a single-line draft whose trailing text the command does
+			 * not own is SENT as a message (design D6 / QA Q4 — `/compact hello` wore the
+			 * command tint while Enter posted it to the model). So the plan is asked
+			 * here, once, and a draft Enter will not run paints nothing — which also
+			 * makes two line counts of the same prose agree, since the multi-line rule
+			 * below already paints nothing.
+			 *
+			 * The `unknown` run is narrowed the same way: `/teem` is a word whose own
+			 * line the app refuses (the "unknown command" note keeps the draft), so its
+			 * documented meaning — "inert text that WILL be sent" — only holds where the
+			 * word is the whole line. With text after it nothing is painted.
+			 */
+			/*
+			 * THE PLAN IS THIS MOUNT'S OWN, asked once and read by both the tint and
+			 * Enter (code review round 1 MAJOR 1). No capability override here: the
+			 * gate used to ask `enabled: true` so the harness's dispatcher-less
+			 * composer would still paint, which let a commands-off mount show a
+			 * tinted word Enter posts as prose. `planFor` knows this mount's
+			 * capability, and the harness supplies its half of it.
+			 */
+			const plan = planFor(newMessage, caret, "typed");
+			return runsMatchingPlan(runs, newMessage, {
+				sendsAsWritten: plan.kind === "send",
+			});
+		}, [
+			newMessage,
+			caret,
+			composing,
+			planFor,
+			slash.commandNames,
+			slash.nameListCommands,
+			slash.nameChoices,
+			slash.open,
+			slash.matches.length,
+		]);
+		const highlighting = highlightPaints(slashRuns);
+
+		/**
+		 * Carry out a plan that is not a plain send, and decide what the box holds
+		 * afterwards.
+		 *
+		 * EVERY non-`send` plan lands here, `whole` included: a whole-draft command is
+		 * a consequence of the caret rule, not a different route, and giving it one
+		 * (a submit that re-examined the raw text one layer down) is exactly how a
+		 * two-line draft was dispatched as `/usage` with line 2 as its argument (QA
+		 * round 2, Q4). The command is handed on as the planner parsed it, so nothing
+		 * here can disagree with the planner about what the draft is.
+		 *
+		 * The outcome contract is the dispatcher's, unchanged: `consumed` means the
+		 * command ran, so the token is gone and whatever survives it stays;
+		 * `retained` and `not-a-command` mean it did NOT run, so the ORIGINAL draft
+		 * comes back in full, token included. Restoring rather than deleting is the
+		 * whole point — a splice that produced no note and no run would be a silent
+		 * deletion of text the user typed.
+		 */
+		const applyPlan = useCallback(
+			async (
+				plan: Exclude<SlashSubmissionPlan, { kind: "send" }>,
+				draft: string,
+				at: number,
+			) => {
+				/*
+				 * A WIRING GUARD THAT IS NO LONGER VACUOUS (code review round 2, MINOR 5). It used to
+				 * be justified by "a non-`send` plan only exists with a dispatcher", and the locked
+				 * rule is now asked BEFORE the capability flag — deliberately, so that a host which
+				 * cannot run a command cannot send the secret either (the F2 decision, held closed).
+				 * `enabled` is `slash.available && Boolean(onSlashCommand)`, so a composer with NO
+				 * dispatcher can hold a locked plan, and this line is what the press meets: the box
+				 * is left exactly as the user typed it, nothing is sent and no note is raised, which
+				 * is the closed direction but a silently dead Enter. Production always wires the
+				 * dispatcher (`chat-content.tsx`, `chat-page.tsx`), so the state is reachable only
+				 * from a harness that mounts the composer alone — which is why the guard stays a
+				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
+				 */
+				const runSlashCommand = onSlashCommand;
+				if (plan.kind === "held") {
+					/*
+					 * A HELD PRESS (operator requirement). This plan is asked of the composer
+					 * when the box still carries an Esc-cancelled credential token whose
+					 * characters were restored: the operator's own words after the token must not
+					 * become the command's argument, and the restored secret must not go to the
+					 * model. So the plan's answer is "do nothing, keep the box, and say the way
+					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
+					 * the hold is a property of the composer's own state, not of whether a
+					 * dispatcher is wired, so a harness that mounts the composer alone still gets
+					 * the one sentence rather than a silently dead Enter.
+					 *
+					 * AND THE SENTENCE IS RAISED ONCE PER HOLD (remediation round 1, U4). The box
+					 * is byte-identical after the press, so nothing else about the frame changes:
+					 * four presses on a held box would otherwise append four identical transcript
+					 * lines, and the hold is one standing state rather than one event per press.
+					 * The guard lives HERE and not in the host's `note` for exactly that reason -
+					 * every other note is a fresh outcome with something new to say, and only this
+					 * branch repeats a sentence that is already the whole answer. A ref, not state:
+					 * re-raising the line must not itself re-render the composer, and any state
+					 * change (a keystroke, a clear) re-plans the draft and starts a new hold.
+					 */
+					const held = cancelledToken.current;
+					if (
+						held !== null &&
+						(lastHeldNotice.current?.token !== held ||
+							lastHeldNotice.current?.notice !== plan.notice)
+					) {
+						lastHeldNotice.current = { token: held, notice: plan.notice };
+						onSlashNote?.(plan.notice);
+					}
+					return;
+				}
+				if (!runSlashCommand) return;
+				if (plan.kind === "list-open") {
+					// The roster owns the next Enter — but only while it can give a row.
+					// While the list is up with rows in it, nothing is submitted and
+					// nothing is rewritten: the TUI's own exception
+					// (`editor.py:8219-8222`), the name is picked from the autofill
+					// first. Dismissed or empty, the same plan was a DEAD Enter —
+					// nothing ran, nothing sent, no note — so say what the key is
+					// waiting for (round 1 UX U5).
+					if (slash.open && slash.matches.length > 0) return;
+					onSlashNote?.(
+						`Type a name after /${plan.command.name}, or choose one from the list.`,
+					);
+					return;
+				}
+				if (plan.kind === "unrecognised") {
+					// Reported through the SAME dispatch that owns the "did you mean"
+					// note, then the ORIGINAL draft comes back whole: the misspelling
+					// is the thing the user has to fix, so consuming it removes the
+					// only copy of it (round 1 UX U8).
+					await runSlashCommand(plan.command);
+					pendingCaret.current = at;
+					setNewMessage(draft);
+					setCaret(at);
+					return;
+				}
+				if (plan.kind === "reassemble") {
+					// Staged, never submitted: the user reads the assembled line and
+					// sends it themselves. The box changing IS the guard against
+					// guessing which trailing words are a name — but a user who pressed
+					// Enter twice has no other signal that their sentence MOVED and the
+					// key did not send, so say it (round 1 UX U7).
+					stage(
+						plan.text,
+						plan.caret,
+						/*
+						 * The REASSEMBLY's own sentence, from the helper that owns it: the quote's
+						 * punctuation is `stagedSentence`'s (QA round 2, Q2-2) and the pane
+						 * clause is the dispatcher's own, shared with the arming note — the
+						 * clause this line was missing while its sibling already carried it
+						 * (review F3). It keeps its own verb because the two answers are to
+						 * different gestures: "again" is what tells a user who just pressed
+						 * Enter that their sentence moved rather than sent (round 1 UX U7).
+						 */
+						reassembledNote(plan.text.trim(), paneHasSession),
+					);
+					return;
+				}
+				const outcome = await runSlashCommand(plan.command);
+				if (outcome === "consumed") {
+					const text = plan.kind === "whole" ? "" : plan.text;
+					const next = plan.kind === "whole" ? 0 : plan.caret;
+					pendingCaret.current = next;
+					setNewMessage(text);
+					setCaret(next);
+					/*
+					 * A LOCKED RUN OWES THE USER TWO THINGS NO OTHER OUTCOME OWES (design round
+					 * 1, D1/D2; UX round 1, U2/U3; code review, F4).
+					 *
+					 * A SENTENCE, because the words after the token are now the command's argument
+					 * and the dispatcher strips it — nothing stored, nothing sent, and the box
+					 * quietly shorter while a dialog opens asking for a Name and a Value as though
+					 * nothing had been typed. It reaches the transcript through the same note idiom
+					 * the staged and list-open paths use, and it never echoes the value.
+					 *
+					 * AND A WAY BACK, because the tail is not run and not kept: this records the
+					 * draft the run consumed, which `handleLockedRunUndo` puts back on the key the
+					 * sentence names. Recovery, not data loss, for a pasted value (the clipboard
+					 * still holds it) and recovery in the only sense available for a typed one.
+					 * The record is kept OUTSIDE the draft store on purpose: it is not the draft,
+					 * it is what one press took from it.
+					 */
+					if (plan.locked === true) {
+						/*
+						 * THREE THINGS A LOCKED RUN OWES AND NO OTHER OUTCOME DOES (design round 1,
+						 * D1/D2; UX round 1, U2/U3; code review, F4).
+						 *
+						 * A SENTENCE, because the words after the token are now the command's argument
+						 * and the dispatcher strips it — nothing stored, nothing sent, and the box quietly
+						 * shorter while a dialog opens asking for a Name and a Value as though nothing
+						 * had been typed. It reaches the transcript through the same note idiom the staged
+						 * and list-open paths use, and it never echoes the value.
+						 *
+						 * THE TWO FACTS ITS VARIANT NEEDS, both of them the caller's rather than the
+						 * sentence's: whether this pane can address a session, and whether the catalogue
+						 * resolves the word the run hands the dispatcher — a word it cannot resolve
+						 * reaches its own `Unknown command` note and opens no dialog, so naming the
+						 * dialog's fields would promise a door that never opened (code review round 2,
+						 * MINOR 4). Those panes get the sentence without the fields and let the
+						 * dispatcher's own refusal or miss carry why nothing ran (UX round 2, U12).
+						 *
+						 * AND A WAY BACK, because the tail is not run and not kept: the record holds the
+						 * draft the run consumed — the AUTHOR'S characters, with a live mask unredacted
+						 * (UX round 2, U8) — and `handleLockedRunUndo` puts it back on the key the
+						 * sentence names. Recovery, not data loss, for a pasted value (the clipboard
+						 * still holds it) and for a typed one now genuinely recovered rather than
+						 * re-painted as a mask whose value is gone. The record is kept OUTSIDE the draft
+						 * store on purpose: it is not the draft, it is what one press took from it.
+						 */
+						/*
+						 * WHAT THE RECORD HOLDS, and what it refuses to hold (UX round 2, U8; review
+						 * round 3, MINOR 2). `unredactedBuffer` replaces a LIVE mask with the value it
+						 * stands for, so the record holds what the user typed rather than the bullets
+						 * the composer painted over it.
+						 *
+						 * THE RUN THE WORD OWNS IS WHERE A MASK CAN LIVE, so the scan for one is scoped to
+						 * that run rather than to the whole buffer: a `•` in the OPERATOR'S own prose — a
+						 * bulleted sentence that happens to carry the token — is a character they typed,
+						 * and it must not disarm a recovery the text can back. The cells this app paints
+						 * only ever sit in the argument, and §6 persists them there, so a cell INSIDE this
+						 * run is a mask whose value did not survive and a cell outside it is the operator's
+						 * text. Where a mask did not survive there is no honest restore to offer and NONE
+						 * IS ARMED: a box that looks recovered and holds nothing is worse than the silence
+						 * it replaced — the user types beside the bullets, gets plain text, and stops
+						 * looking.
+						 */
+						const restored = unredactedBuffer(draft, captureRef.current);
+						const owned =
+							plan.kind === "whole"
+								? restored
+								: restored.slice(plan.start, plan.end);
+						const restorable = !owned.includes(MASK_CELL);
+						lockedRun.current = restorable
+							? {
+									text: restored,
+									caret: at,
+									/*
+									 * THE CHARACTERS THE RUN TAKES — the dispatcher's own reading of the
+									 * argument, which is the span the sentence above names — because that is what
+									 * the undo hands back and what the notice it raises counts (review round 3,
+									 * MAJOR 1). The first source was the LIVE mask's length, and that is
+									 * unreachable: a live span answers Enter by minting and never reaches this
+									 * rule, so the count was always 0, the notice was never raised, and the undo
+									 * put a real secret back on screen undisclosed — the one state §5 says must
+									 * never be silent.
+									 */
+									plain: charsOf(plan.command.args).length,
+								}
+							: null;
+						onSlashNote?.(
+							lockedCommandNote(
+								plan.command.name,
+								{
+									dialog:
+										paneHasSession && slash.commandNames.has(plan.command.name),
+									undo: restorable,
+								},
+								IS_MAC,
+							),
+						);
+					}
+					return;
+				}
+				pendingCaret.current = at;
+				setNewMessage(draft);
+				setCaret(at);
+			},
+			[
+				onSlashCommand,
+				onSlashNote,
+				setNewMessage,
+				slash.commandNames,
+				slash.open,
+				slash.matches.length,
+				stage,
+				// The reassembly's note carries the pane's own clause too (review F3):
+				// the promise is conditioned on this pane being able to address a
+				// session, which the dispatcher answers with the same value.
+				paneHasSession,
+			],
+		);
+
+		/*
+		 * Two reasons a composer refuses input, kept apart (design review round
+		 * 1, D3). `unavailable` is a conversation this machine does not have, and
+		 * the two used to share one placeholder, so the composer's only text read
+		 * "Agent is busy" over a session that does not exist - a false statement
+		 * about the state, in the one place the user is looking to find out what
+		 * to do about it. They still share the REFUSAL (typing into a conversation
+		 * that is gone is not a thing that can work); only the sentence differs.
+		 *
+		 * WHAT THEY NO LONGER SHARE IS THE CARET, and that is why the refusal is
+		 * expressed as `readOnly` rather than `disabled` on the textarea below. A
+		 * disabled control cannot refuse a keystroke without also dropping it:
+		 * Chromium blurs the field, the caret goes to `document.body`, and on the
+		 * `unavailable` arm it never comes back - `missing` is reset only when the
+		 * session id changes, so the same node's predicate never flips back and
+		 * the self-focus effect below never runs for that panel again. Worse, a
+		 * disabled textarea cannot be focused, selected or copied, so the words
+		 * the reader was in the middle of are unreachable in the one state that
+		 * also tells them the conversation is gone. `readOnly` refuses the same
+		 * edits (no `input` event fires) while the box keeps the caret and its
+		 * text.
+		 *
+		 * DECLARED HERE, ABOVE EVERY CONSUMER, rather than beside the render that
+		 * paints it. Every reference below sits in a callback's dependency array as
+		 * well as in its body, and a dependency array is evaluated during the render
+		 * that builds the callback, so a `const` declared under one is in the
+		 * temporal dead zone and the component throws. The FIRST consumer is
+		 * `handleSlashPick` (review round 1, MAJOR 2: the popup's click has to
+		 * refuse with the same predicate the key guard uses), so that is where the
+		 * declaration sits.
+		 */
+		const isBusy = Boolean(isLoading && currentJobId);
+		/*
+		 * THE SECRET TERM (see the `secretAnswer` prop's own note): a pending
+		 * question that takes a credential refuses this composer the same way a
+		 * conversation this machine does not have does — every door that TYPES
+		 * INTO or SUBMITS the box answers to this one predicate, which is why the
+		 * term lives HERE rather than beside the placeholder that shouts it.
+		 *
+		 * The placeholder reads it BEFORE it reads `inputDisabled`, because the two
+		 * sentences are different facts: "Agent is busy" over a parked secret
+		 * question would be false about the state — the agent is waiting, not busy
+		 * — and would leave the reader hunting for an input that is actually one
+		 * card above.
+		 */
+		const secretAnswerPending = Boolean(secretAnswer);
+		const isInputDisabled = unavailable || isBusy || secretAnswerPending;
+		/*
+		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
+		 * round 7, U27).
+		 *
+		 * Three doors lead onto the same refusal - Enter, the form's own submit, and a press
+		 * that lands on the disabled Send control - and each used to spell the pair out
+		 * again. The copy on the POINTER path was the one that drifted: it inherited
+		 * `holdCaretOnRefusedPress`, whose gate is `isInputDisabled`, so a press on a Send
+		 * disabled for `noProvider || noModel` was refused SILENTLY and took the caret out of
+		 * the box (measured: `composer.focused true -> false`, value kept, no notice) while
+		 * Enter, in the very same state, raised the line and kept the caret. One term, read
+		 * by the button's `disabled`, by both refusal doors and by the press handler, is what
+		 * stops a fourth door from falling behind the other three.
+		 *
+		 * `isInputDisabled` IS DELIBERATELY NOT IN HERE, and neither is the empty box's own
+		 * disabling term: this pair is "nothing can answer", while `isInputDisabled` is the
+		 * box refusing input (whose press is suppressed and deliberately quiet), and a
+		 * control disabled for its OWN reason keeps the browser's press behaviour - see the
+		 * note on `holdCaretOnRefusedPress`.
+		 */
+		const sendRefused = noProvider || noModel;
+		/**
+		 * Refuse a send and say so, which is what the KEY already does (U27).
+		 *
+		 * One function rather than a `setNoProviderHint(true)` per door: the press and the
+		 * key have to raise the same line for the same state, and the press is exactly where
+		 * the two had drifted apart.
+		 */
+		const explainRefusedSend = useCallback(() => {
+			setNoProviderHint(true);
+		}, []);
+
+		const handleSlashAction = useCallback(
+			async (row: Extract<CompletionRow, { kind: "action" }>["row"]) => {
+				const model = activeModelForDefault(row.model);
+				if (
+					isInputDisabled ||
+					!shouldRunArgumentAction(row, true) ||
+					row.id !== "model-default" ||
+					!model
+				)
+					return;
+				/*
+				 * A session command cannot write machine configuration: the active owner
+				 * may be remote. Use the same validated local settings path as the model
+				 * picker's explicit action, and keep failures visible in the composer.
+				 */
+				slash.close();
+				try {
+					await writeModelDefaultSettings(model, (key, value) =>
+						desktopResult({ op: "settings.edit", key, value }),
+					);
+					setNewMessage("");
+					onSlashNote?.(
+						`Default for new sessions: ${model.provider}/${model.model_id}`,
+					);
+				} catch (error) {
+					onSlashNote?.(
+						`The default was not saved: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
+					);
+				}
+			},
+			[isInputDisabled, slash.close, setNewMessage, onSlashNote],
+		);
+
+		const handleSlashPick = useCallback(
+			async (row: CompletionRow, disposition: { run: boolean }) => {
+				if (row.kind === "action") {
+					if (disposition.run) await handleSlashAction(row.row);
+					return;
+				}
+				/*
+				 * THE REFUSAL COVERS THE POPUP'S CLICK TOO (review round 1, MAJOR 2).
+				 * A pick does not type into the box - it writes the completion into it
+				 * and can RUN it (`applyPlan`), which is a mutation of a composer the app
+				 * has just told the user takes nothing. `readOnly` cannot close this path:
+				 * the popup is a sibling of the textarea, not a keystroke in it.
+				 */
+				if (isInputDisabled) return;
+				const completion = completionFor(
+					newMessage,
+					caret,
+					row,
+					slash.commandNames,
+					slash.argumentWords,
+					slash.inline?.nameThenMessage ?? false,
+				);
+				if (!completion) return;
+				slash.close();
+				/*
+				 * The pick's OWN record, taken here rather than beside the run: Tab
+				 * completes the word without running it and Enter/click runs it, and BOTH
+				 * are this box writing the token — which is the fact the planner needs,
+				 * because a buffer's text cannot say whether a token was picked or typed.
+				 * A pick of any other row clears it, since that write is not this token.
+				 *
+				 * The module's own discipline for this global regex: a fresh `lastIndex`
+				 * before every read, because `test`/`exec` carry the previous match's
+				 * position and two identical unreset calls answer `"/credential"` then
+				 * `null` (review round 10, MINOR-2).
+				 */
+				CREDENTIAL_TOKEN.lastIndex = 0;
+				const pickedRun = CREDENTIAL_TOKEN.exec(completion.text);
+				pickedToken.current = pickedRun ? pickedRun[0].trim() : null;
+				/*
+				 * ARMED, when the pick named an armed-only command's own row on the key that
+				 * ACTS — the one gesture that arms it, and the reason Enter needs no
+				 * inference. The pick hoists the command to the front and STAGES the line, so
+				 * the box shows exactly what the next Enter will run: the goal set and the
+				 * text sent.
+				 *
+				 * `disposition.run` is the gate, and it is #221's own rule read back: the
+				 * keyboard hands it `true` only for an unambiguous ENTER, and a pointer click
+				 * passes it directly; Tab — the completion key, which "never runs" — hands it
+				 * `false` and therefore never arms. That keeps this row's two meanings exactly
+				 * as they read: Tab completes the word, Enter stages the line. (It is also the
+				 * gate `tab-no-arm` photographs and the reason this line survived a merge
+				 * that rewrote the composer around it.)
+				 *
+				 * The route is the ROW's (`pickArmsCommand`) and the line is the DRAFT's
+				 * (`planSlashArming`), both read off the vocabulary the registry derives,
+				 * so no command name and no destination is written into this path.
+				 *
+				 * `none` means there was nothing to arm — a bare `/goal` pick, where the
+				 * completion below is the same write it has always been and the bare form
+				 * still opens the goal read on the next Enter.
+				 */
+				// The `row.kind` test is the same rule `pickArmsCommand` applies, stated
+				// here so the destination below is reachable without a cast.
+				if (
+					row.kind === "command" &&
+					disposition.run &&
+					pickArmsCommand(row, slash.armedOnlyCommands)
+				) {
+					const armed = planSlashArming({
+						draft: completion.text,
+						caret: completion.caret,
+						commandNames: slash.commandNames,
+						armedOnlyCommands: slash.armedOnlyCommands,
+					});
+					if (armed.kind === "armed") {
+						/*
+						 * The RECEIPT, and the one thing it may not guess at: the dispatcher
+						 * refuses a destination that addresses no conversation, and the staged
+						 * line goes with the refusal, so on a draft pane the note says what the
+						 * pane can actually do instead of promising an action that will not run
+						 * (UX U5 / design D5). `stagedNote` owns the sentence, keyed by the
+						 * destination the row carries, so a second armed destination cannot
+						 * inherit a false one.
+						 *
+						 * The pane's state is folded in through `destinationNeedsSession`
+						 * rather than passed raw: a MACHINE panel (`/info`, `/usage`,
+						 * `/analytics`) runs on a sessionless pane, so for those the clause is
+						 * never printed whatever the pane's state — and with the raw bit the
+						 * composer would promise a refusal the dispatcher no longer gives.
+						 */
+						stage(
+							armed.text,
+							armed.caret,
+							stagedNote(
+								armed.text.trim(),
+								row.command.destination,
+								destinationNeedsSession(row.command.destination)
+									? paneHasSession
+									: true,
+							),
+						);
+						return;
+					}
+				}
+				/*
+				 * THE SECOND ARMING DOOR (§1), and it has to be a SYNC rather than a plain
+				 * write. Accepting `/credential` from the list inserts `/credential `, and
+				 * that trailing space opens the capture — "the TUI gets this from
+				 * `_apply_command`, so a hand-typed space and a picker-accepted space are
+				 * one rule". Writing the text alone left the capture idle, so the paste
+				 * that follows fell past the armed gate and landed VERBATIM in the
+				 * document, the draft, the transcript and the prompt — the exact failure
+				 * this feature exists to close, on the one route a user actually
+				 * discovers, with nothing on screen to contradict it (code review round
+				 * 1, MAJOR 2).
+				 *
+				 * `"completion"` is the origin that carries the arming power for it, and
+				 * the module is where the two are one rule: a completion that is not the
+				 * token's trailing space answers `IDLE` (or drops a live arm), a
+				 * completion that is opens the span, and `/credential <key>` reached this
+				 * way is masked rather than run. The stamp this write leaves is what the
+				 * whole-buffer teardown reads: the capture performed this write, so it is
+				 * not an arrival and the arm survives it.
+				 */
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						completion.text,
+						completion.caret,
+						"completion",
+					),
+					buffer: completion.text,
+					caret: completion.caret,
+				});
+				/*
+				 * RUN, when the pick named a row that runs and the gate let it through.
+				 * The ambiguity gate is applied by `handleSlashKeyDown` for the keyboard
+				 * and deliberately waived for a pointer click (`editor.py:8040`);
+				 * `runs: false` is honoured here so no `/team` name can ever be run on
+				 * the keystroke that chose it.
+				 *
+				 * The two row kinds answer "does a pick run this?" from different places,
+				 * because they are different questions. An ARGUMENT row's own list
+				 * declares it (`slash.inline.runs`: `/model` runs its choice, `/team` and
+				 * `/theme` never do). A COMMAND row's DESTINATION declares it
+				 * (`pointerPickRuns`), which is the rule that lets a click open a panel
+				 * instead of only completing the word.
+				 *
+				 * That destination rule is the ONE predicate both gestures read, and it is
+				 * read HERE rather than at either caller so a click and an unambiguous
+				 * Enter cannot disagree about whether `/model` runs: the keyboard's own
+				 * answer is the ambiguity gate alone, and a destination with an inline
+				 * list refuses a run on both paths. It is also why `window.close`,
+				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
+				 * single keystroke never detaches the app or clears the transcript view,
+				 * which is the behaviour they already had.
+				 */
+				const shouldRun =
+					disposition.run &&
+					(row.kind === "command"
+						? pointerPickRuns(
+								row.command.destination,
+								DESTINATIONS[row.command.destination],
+							)
+						: (slash.inline?.runs ?? false)) &&
+					Boolean(onSlashCommand);
+				if (!shouldRun) return;
+				// Run through the SAME plan a submit takes, so a command picked
+				// mid-draft splices out and leaves the prose, and a whole-draft
+				// command reports its outcome exactly as typing it would.
+				/*
+				 * The PICK's gesture, stated: the row was chosen out of the popup, so the
+				 * word is a command wherever it sits. Without this a click on `/loop` in
+				 * the middle of a sentence completed the word and then did nothing —
+				 * the planner read the draft as prose — while the footer promised the
+				 * line would be staged (`Click stages /loop.`).
+				 */
+				const plan = planFor(completion.text, completion.caret, "pick");
+				if (plan.kind === "send") return;
+				/*
+				 * Record the token the picker just wrote, so a LATER Enter still knows
+				 * this word was picked rather than typed even if an edit has moved it:
+				 * a pick is a command wherever it sits (the operator's own rule), and the
+				 * buffer's text cannot say which gesture put the token there.
+				 */
+				await applyPlan(plan, newMessage, caret);
+			},
+			[
+				newMessage,
+				caret,
+				slash,
+				applyCapture,
+				onSlashCommand,
+				planFor,
+				applyPlan,
+				stage,
+				// The staged note's promise is conditioned on whether this pane can run
+				// anything yet (UX U5), so the callback reads the dispatcher's own answer
+				// with the rest.
+				paneHasSession,
+				// The refusal (review round 1, MAJOR 2): the guard at the top of this
+				// callback closes the popup's click on a box that takes nothing, and a
+				// dependency array is what keeps that guard reading the CURRENT state
+				// rather than the state of the render that first built the callback.
+				isInputDisabled,
+				handleSlashAction,
+			],
+		);
+		/*
+		 * The AMBIGUOUS Enter's half of the pick path: grow the typed command word
+		 * to the matches' common prefix and leave the popup open.
+		 *
+		 * A second entry point rather than a flag on `handleSlashPick`, because the
+		 * two are genuinely different gestures: a pick APPLIES a row, closes the
+		 * list and may run a command, while this one writes part of the word, keeps
+		 * the list up and never acts on a row. Sharing one callback would mean a
+		 * disposition that means "do not act" (`_extend_to_common_prefix`,
+		 * `editor.py:8326-8345`).
+		 *
+		 * The caret is placed at the new END OF THE WORD rather than at the end of
+		 * the draft, so a user narrowing a command in front of a written message
+		 * keeps typing where they were.
+		 */
+		const handleSlashExtend = useCallback(
+			(prefix: string) => {
+				const extension = extensionFor(
+					newMessage,
+					caret,
+					prefix,
+					slash.commandNames,
+				);
+				if (!extension) return;
+				pendingCaret.current = extension.caret;
+				setNewMessage(extension.text);
+				setCaret(extension.caret);
+			},
+			[newMessage, caret, slash.commandNames, setNewMessage],
+		);
+		/*
+		 * ACCEPTING A ROW, and the ONE divergence from what the harness's own picker
+		 * writes. The token's text is `atReference`: the directory part survives (the
+		 * row's path already carries it), a name containing a space is quoted around
+		 * the whole path, a directory keeps its trailing `/` so the token stays open
+		 * and the list drills in — and a FILE takes a trailing space, which the
+		 * harness's own picker does not add.
+		 *
+		 * The space is what closes the list, and `at_token` is why: a token ends at
+		 * whitespace, so with the caret still at the token's last cell the token is
+		 * ACTIVE and the list would stay up over the sentence the user is now writing.
+		 * It is OUTSIDE the token, so the block the harness builds carries exactly the
+		 * `typed="@src/app.py"` it would carry without it — the same expansion, not a
+		 * second rule.
+		 *
+		 * THE SPAN THIS REPLACES INCLUDES ONE FOLLOWING SEPARATOR WHEN THERE IS ONE,
+		 * because the replacement brings its own space and keeping both would leave the
+		 * user's sentence with a doubled gap. That is `replaceSpan`'s own absorbing
+		 * rule, applied where this write needs it: the helper absorbs only when the
+		 * token opened the buffer, which is the case it was written for — SO THIS ONE
+		 * DEFERS TO IT THERE (review round 1, N4). Claiming the separator here as well
+		 * meant the start-of-draft case absorbed two, and `@a.py  fix` came back with
+		 * one of the user's own spaces gone.
+		 *
+		 * AND THE CARET GOES INSIDE THE CLOSING QUOTE for a spaced directory. The
+		 * unspaced form `@src/` carries the caret after its own slash, which is inside
+		 * the token, so the list stays open and the next segment drills in. The quoted
+		 * form ends at the closing quote (`tokenEnd`), so the identical caret position
+		 * left the token CLOSED: the directory resolved, the picker shut, and the rest
+		 * of the name went out as prose beside a reference to the folder — accepted a
+		 * row, typed the next segment, silently referenced the wrong thing (review
+		 * round 1, M5). Placing the caret before the quote makes the two forms agree on
+		 * the only thing that matters here: the caret is inside the token.
+		 */
+		const handleAtPick = useCallback(
+			(row: AtRow) => {
+				/*
+				 * THE REFUSAL COVERS THIS POPUP'S CLICK TOO, which is `handleSlashPick`'s
+				 * rule (review round 1, MAJOR 2) applied to the second sibling popup
+				 * rather than a second rule invented here. A pick does not type into the
+				 * box - it WRITES a reference into it - and this list is a child of the
+				 * anchoring wrapper beside the textarea rather than a keystroke in it, so
+				 * `readOnly` cannot close the path: the row's own `onClick` is the way in.
+				 * The KEYBOARD half is already closed one level up, where
+				 * `handleComposerKeyDown` returns before `handleAtKeyDown` while the
+				 * composer refuses; the mouse half is this guard.
+				 *
+				 * A refusal can arrive while a list is open (`isBusy` turns true when a
+				 * send settles into a job), so this is a state the composer reaches with
+				 * the picker up rather than a hypothetical one.
+				 */
+				if (isInputDisabled) return;
+				const token = atPickerToken(newMessage, caret);
+				if (!token) return;
+				const write = atReference(row);
+				const following = newMessage.slice(token.end, token.end + 1);
+				// `replaceSpan` absorbs one separator of its own when the token opened the
+				// buffer, so this side must not claim that one a second time.
+				const absorb =
+					token.start > 0 && (following === " " || following === "\n") ? 1 : 0;
+				const spliced = replaceSpan(
+					newMessage,
+					token.start,
+					token.end + absorb,
+					write,
+				);
+				// `atReference` writes the quoted, CLOSED form for a name with a space;
+				// the caret belongs in front of that quote for the reason above.
+				const caretAfter = write.endsWith('"')
+					? spliced.caret - 1
+					: spliced.caret;
+				pendingCaret.current = caretAfter;
+				setNewMessage(spliced.text);
+				setCaret(caretAfter);
+				// The ring the next `@` ranks against is written from HERE, where a pick
+				// actually happened, rather than from the row's render: ranking reads the
+				// ring, and a write during render would re-enter its own derivation.
+				at.remember(row.path);
+				at.close();
+			},
+			[newMessage, caret, at, setNewMessage, isInputDisabled],
+		);
+
+		/*
+		 * THE `$skill` ACCEPT (issue #664) — the one gesture whose whole output is a
+		 * STAGED DRAFT. Accepting a row writes `$name ` plus the surviving draft
+		 * (the pure `skillCompletionFor`, the TUI's own `_complete_skill`
+		 * arithmetic) and stops there: neither Tab nor Enter ever submits for a
+		 * skill row, because a completed `$skill ` is the opening of a prompt the
+		 * user is still writing. What the NEXT Enter sends is the expanded payload,
+		 * built in `onSubmit` to match `invoke.py` character-for-character.
+		 *
+		 * The refusal covers this popup's click too — the same MAJOR-2 rule the two
+		 * sibling popups carry. `readOnly` cannot close this path here either,
+		 * because the list is a sibling of the textarea rather than a keystroke in
+		 * it.
+		 */
+		const handleSkillPick = useCallback(
+			(row: SkillCatalogRow) => {
+				if (isInputDisabled) return;
+				if (!skills.token) return;
+				const completion = skillCompletionFor(
+					newMessage,
+					skills.token,
+					row.name,
+				);
+				skills.close();
+				pendingCaret.current = completion.caret;
+				setNewMessage(completion.text);
+				setCaret(completion.caret);
+			},
+			[newMessage, skills, setNewMessage, isInputDisabled],
+		);
+
+		/**
+		 * The undo a LOCKED run owes the user (UX round 1, U3), in front of the platform's.
+		 *
+		 * `lockedRun` holds the draft the run consumed and the box it left; this restores
+		 * it while the box still holds exactly what the run left there. Both modifiers are
+		 * accepted because the handler cannot know which one the platform's undo uses, and
+		 * the note tells the user only its own spelling (`lockedRunUndoCap`).
+		 *
+		 * A `false` here is not a refusal: it hands the keystroke on, and the textarea's
+		 * native undo does exactly what it did before this feature existed.
+		 */
+		const handleLockedRunUndo = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const record = lockedRun.current;
+				if (record === null) return false;
+				if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+					return false;
+				if (event.key.toLowerCase() !== "z") return false;
+				// The record is retired by an edit, a send or a conversation change, never by
+				// comparing the box with what the run left there (code review round 2, MINOR 1).
+				lockedRun.current = null;
+				pendingCaret.current = record.caret;
+				/*
+				 * AND THE SENTENCE THAT DESCRIBES THE STATE IT RESTORES. Where the run took
+				 * characters, `record.text` is those characters — the operator's own — so the box
+				 * is holding a credential in plain text: exactly what §5's own Escape produces and
+				 * announces, and the one state this app says must never be silent (design round 2,
+				 * D2). `plain` is that run's count, so the announcement fires wherever the restore
+				 * is REAL rather than wherever a live mask was unredacted — a live mask never
+				 * reaches this record at all (it answers Enter by minting), so keying it on that
+				 * made this a dead line whose absence nothing could see (review round 3, MAJOR 1).
+				 * The notice's own word comes from the planner, asked of the RESTORED draft at the
+				 * render site, so the sentence and the next Enter cannot disagree: that press
+				 * really does take the restored characters as the command's argument.
+				 *
+				 * THE ANNOUNCEMENT GOES IN BEFORE THE TEXT, and that order is load-bearing rather
+				 * than tidy: `setNewMessage` is what PERSISTS the draft (the store's own writer
+				 * asks `disclosureOver` for the buffer it is about to write), so an undo that
+				 * wrote the characters first and the disclosure second would persist a plaintext
+				 * secret with `unredactedChars: 0`, silently — measured exactly that way: the
+				 * sentence right on screen, `0` in the store. The Escape path sets its disclosure
+				 * before its own persist for the same reason, and there is ONE such pair here.
+				 */
+				if (record.plain > 0)
+					setDisclosure({ chars: record.plain, over: record.text });
+				setNewMessage(record.text);
+				setCaret(record.caret);
+				return true;
+			},
+			[setDisclosure, setNewMessage],
+		);
+
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
+		const handleComposerKeyDown = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				/*
+				 * THE REFUSAL COMES FIRST, because `readOnly` is not `disabled`: this
+				 * handler still RUNS while the composer refuses input (the attribute
+				 * suppresses the edit, not the keydown), so without this guard the
+				 * Enter branch below would submit from a box the app has just told the
+				 * user refuses input - and on the `unavailable` arm it would submit a
+				 * message for a conversation this machine does not have.
+				 *
+				 * THE OTHER PATHS ARE GUARDED, EACH WHERE IT CAN BE (review round 1,
+				 * MAJOR 2; design round 1, D3; UX round 1, U2). This comment used to claim
+				 * the Send control carried the same predicate; it did not - its predicate
+				 * was `isLoading || (!trim && !attachments)`, `handleSubmit` had no guard,
+				 * and a press therefore submitted for a conversation this machine does not
+				 * have and cleared the reader's sentence (measured, all twelve head pick
+				 * runs). So the refusal is carried by every path that TYPES INTO or SUBMITS
+				 * this composer, and the band says one story: the Send control's own
+				 * predicate (it is `disabled` while the box refuses), `handleSubmit` (the
+				 * form's submit, whatever focused it), the slash popup's pick, the
+				 * dictation button and its manager gate, and `handlePaste` - which
+				 * `readOnly` newly made reachable, because a read-only textarea is still a
+				 * paste target. The chips and the attach button carried it already.
+				 *
+				 * THREE WRITERS LIE OUTSIDE THAT CLAIM ON PURPOSE (review round 2, MINOR 3),
+				 * because a sentence wider than the code is the one thing this comment has
+				 * already cost a round: the composer alert's Restore (`setNewMessage(
+				 * composerAlert.restore ?? "")`) and Discard (`setNewMessage("")`), and the
+				 * store-to-box adoption effect. The claim above is about the paths a user
+				 * TYPE or SUBMIT gesture reaches while the box refuses: none of these three
+				 * is such a gesture and none of them submits. Two are the reader's own
+				 * explicit intent over the words this state is deliberately HOLDING -
+				 * refusals that swallow them would destroy the very text the refusal exists
+				 * to keep - and the third is the draft-identity family this change excludes
+				 * by design (the deferred C5). Guarding them would need that design decided,
+				 * not a term added here, so they are named rather than covered.
+				 */
+				if (isInputDisabled) return;
+				/*
+				 * A LIVE CAPTURE OWNS THE KEYS FIRST (§3), ahead of the slash handler and
+				 * ahead of the submit: while the mask is up the safe default is that no
+				 * other handler sees the key at all. The TUI routes it the same way.
+				 */
+				if (handleCredentialKeyDown(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * THEN THE CLEAR'S UNDO (`handleClearedUndo`), which shares the key with the
+				 * locked run's below it and is asked first: see its own comment for why the
+				 * newer edit goes first and why the two are not an exclusion. It ignores the
+				 * keystroke when no clear is pending, which is what hands it on.
+				 */
+				if (handleClearedUndo(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * Then the locked run's undo, which is this composer's own key: the box the
+				 * user is looking at was written by a component, so the native undo has no
+				 * entry that restores it (UX round 1, U3 — measured: `Command+Z` left the box
+				 * at the survivor). Its key is this one and no other, so it neither takes nor
+				 * needs an order against the mentions list above; it sits here because it must
+				 * run before the Enter branch below.
+				 */
+				if (handleLockedRunUndo(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * THE FILE LIST COMES BEFORE THE SLASH LIST, and it is a render-order fact
+				 * rather than a rule about grammars.
+				 *
+				 * The two grammars CAN both claim one caret: `/team @foo` puts the caret in
+				 * the command's argument (`caretPhase` says so, because the word opened the
+				 * draft) and opens an `@` token at the same time, because the space before
+				 * the `@` is exactly the boundary `isBoundary` asks for. Both popups then
+				 * anchor to the same 4px strip. The design direction forbids inventing a
+				 * tiebreak — a hand-written rule is a rule that can disagree with the
+				 * grammar — so this does not add one: the same ordering is applied in RENDER
+				 * (the `@` popup is mounted after the slash popup, so it is the one on top)
+				 * and here, which is the only property that matters. Whichever list a user
+				 * can SEE is the one whose keys they get.
+				 */
+				if (handleAtKeyDown(event, at, handleAtPick)) {
+					event.preventDefault();
+					return;
+				}
+				if (
+					handleSlashKeyDown(event, slash, handleSlashPick, handleSlashExtend)
+				) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * THEN THE `$` LIST. It sits after the slash list because the two stand
+				 * down for each other by construction (a live slash context suppresses
+				 * the `$` token, `skill-token.ts`), so the order between them is not a
+				 * second rule — it is kept beside its siblings for the same reason the
+				 * `@` list is: whichever list a user can SEE is the one whose keys they
+				 * get.
+				 */
+				if (handleSkillKeyDown(event, skills, handleSkillPick)) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * THE ASIDE'S TWO KEYS, after the two lists and before the submit.
+				 *
+				 * The lists run first because their Escape closes THEM: a popup the user is
+				 * looking at owns its own exit before the surface behind it does, which is
+				 * the same precedence `use-interrupt-on-escape.ts` records one rung up (a
+				 * press the composer claims with `preventDefault` cannot also stop the
+				 * turn — that is why both branches here prevent it).
+				 *
+				 * ESC CLOSES THE ASIDE and routing returns to the conversation at once,
+				 * because the routing IS this attachment: the composer's `send` asks the
+				 * store where a submitted draft goes, so with the attachment gone the next
+				 * Enter goes to the thread. The panel's own close control makes the same
+				 * call through the same function.
+				 */
+				if (aside !== null && event.key === "Escape") {
+					event.preventDefault();
+					closeAside(asideSessionId ?? "");
+					return;
+				}
+				if (aside !== null && asideAdoptChord(event)) {
+					/*
+					 * Readiness is asked AT PRESS TIME rather than subscribed, and that is the
+					 * same decision as the `aside` subscription above: every `aside_delta`
+					 * rewrites a stream entry, and this composer must not repaint per chunk of
+					 * an answer it does not itself paint. An unfit press falls through — the
+					 * chord does nothing rather than being consumed — and the panel is already
+					 * saying why the control is not live.
+					 */
+					const lastTurn = aside.turns.at(-1);
+					const stream = lastTurn
+						? useAsideStore.getState().streams[lastTurn.asideId]
+						: undefined;
+					if (!lastTurn || !asideAdoptReady(stream, asideStreaming)) return;
+					event.preventDefault();
+					/*
+					 * THE FIRST PRESS ASKS, THE SECOND ADOPTS (UX round 2, U16). `⌘+F` is Find
+					 * everywhere else and adopting cannot be taken back, so a press from habit
+					 * must not be the one that commits an off-the-record exchange to the
+					 * model's context. The confirm goes on the panel's notice line - the
+					 * surface already reserved for what the panel has to say about adopting -
+					 * so it is one interaction and no new surface. `asideAdoptConfirm` records
+					 * why the pointer control is not gated the same way.
+					 */
+					const sessionForAside = asideSessionId ?? "";
+					const now = Date.now();
+					const step = asideAdoptChordStep(
+						adoptArmedTurn.current,
+						lastTurn.asideId,
+						now,
+					);
+					if (step === "arm") {
+						adoptArmedTurn.current = { turnId: lastTurn.asideId, at: now };
+						useAsideStore
+							.getState()
+							.setAsideNotice(sessionForAside, asideAdoptConfirm(IS_MAC));
+						return;
+					}
+					/*
+					 * A press inside the floor is neither a decision nor an instruction (U17): the
+					 * arm and its confirm stay where the first press put them, so the gesture is
+					 * still armed for the press that follows a read.
+					 */
+					if (step === "ignore") return;
+					adoptArmedTurn.current = null;
+					void adoptAside(sessionForAside).catch(() => {
+						// The refusal is stated on the panel (`adoptAside` writes it there); this
+						// call site has nothing to add to it.
+					});
+					return;
+				}
+				/*
+				 * THE ATOMIC DELETE, after the two lists and before the submit: a Backspace at
+				 * a chip's right edge (or a Delete at its left) takes the whole token in one
+				 * keystroke and one undo step, through the same `replaceSpan` the inline slash
+				 * gesture uses. It is the ONE promise the chip makes that is not a drawing,
+				 * and it stops where the chip stops: only a RESOLVED token is a chip, so a
+				 * hand-typed path that names nothing deletes one character at a time like any
+				 * other prose, and a caret on the separator after a token deletes the
+				 * separator — neither gesture removes anything the user cannot see.
+				 */
+				if (event.key === "Backspace" || event.key === "Delete") {
+					const span = atDeleteSpan(
+						caret,
+						event.key === "Backspace" ? "back" : "forward",
+						atMentions.spans,
+						atMentions.resolved,
+					);
+					if (span && !event.nativeEvent.isComposing) {
+						const spliced = replaceSpan(newMessage, span.start, span.end, "");
+						pendingCaret.current = spliced.caret;
+						setCaret(spliced.caret);
+						setNewMessage(spliced.text);
+						event.preventDefault();
+						return;
+					}
+				}
+				// Forward Tab leaves the conversation for the sidebar; while a
+				// question is waiting and the user is DONE with the box, the option
+				// group is the thing they were just shown and is one press away in
+				// this direction. The rule for "done with the box" is
+				// `shouldTabIntoAnswerOptions` — unmodified Tab, content in the
+				// composer, caret at the end, a live option to land on. Every other
+				// Tab, and every Tab with an empty box or a caret mid-draft, keeps
+				// its native meaning (UX round 2, U7; code review round 2, F2).
+				const textarea = textareaRef.current;
+				const target = firstLiveAnswerOption();
+				if (
+					target &&
+					shouldTabIntoAnswerOptions(
+						event,
+						{
+							value: newMessage,
+							selectionStart: textarea?.selectionStart ?? null,
+							selectionEnd: textarea?.selectionEnd ?? null,
+						},
+						true,
+					)
+				) {
+					target.focus();
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * Enter is the submit key, and the planner is the only thing that decides
+				 * what this draft submits: a command typed into a sentence is spliced out
+				 * and run, a whole-draft command is run here too, and a free-text command
+				 * is reassembled and STAGED. Only `send` falls through to the message
+				 * path, which is the ONE answer that means "this is prose" — so a command
+				 * can never be quietly turned back into prose by a later re-read of the
+				 * text, and a draft the planner called prose can never be claimed by a
+				 * command (QA round 2, Q4).
+				 *
+				 * Prose is also what an ARMED-ONLY command's word makes this draft, which
+				 * is why `/goal` in a sentence falls through here instead of being moved
+				 * to the front: that arming is the popup PICK's gesture, and only a pick
+				 * produces the staged line that arms it.
+				 */
+				if (
+					sendRefused &&
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					/*
+					 * NOTHING CAN ANSWER, so Enter does not send. The button was already
+					 * disabled and the key was not: measured live, typing with no provider
+					 * connected and pressing Enter issued `sessions.create` and
+					 * `sessions.message`, and the message landed in the transcript waiting
+					 * for an agent that could never run (QA round 2 R2-Q2). Typing stays
+					 * allowed -- the box is where the failure is explained -- and the
+					 * status line under it carries the Connect action.
+					 */
+					event.preventDefault();
+					/*
+					 * AND IT SAYS SO. The refusal is right and silent, and the placeholder
+					 * that explained it disappears the moment the user types: "Enter did
+					 * nothing" with no reason is the complaint (UX round 3 U13). The line
+					 * clears itself, so it cannot become furniture. The PRESS raises the same
+					 * line through the same call (U27).
+					 */
+					explainRefusedSend();
+					return;
+				}
+				if (
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					const plan = planForDraft(newMessage, caret);
+					if (plan.kind !== "send") {
+						event.preventDefault();
+						void applyPlan(plan, newMessage, caret);
+						return;
+					}
+				}
+				handleKeyDown(event);
+			},
+			/*
+			 * WHAT THIS ARRAY DOES NOT NAME, AND WHAT THAT COSTS (agent review round 1,
+			 * MINOR 3 - recorded rather than fixed). The body now reads `sendRefused` and
+			 * calls `explainRefusedSend`, and the array names neither: `isInputDisabled` is
+			 * listed because the body's own first guard reads it. A provider connected
+			 * while an untouched draft sits in the box can therefore leave a handler built
+			 * for an earlier render still answering with `sendRefused === true`.
+			 *
+			 * THE STALE BRANCH IS A SILENT NO-OP, NOT A LATE SENTENCE, and that is the
+			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
+			 * the sentence the branch raises on its way out is gated by the same pair the
+			 * stale read is wrong about - the notice renders only while
+			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
+			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on a
+			 * composer that can send, and the app answers nobody.
+			 *
+			 * THAT GATE IS NAMED BY ITS OWN TEXT, NOT BY A LINE NUMBER, and the reason is the
+			 * history of this one sentence (agent review round 3, MINOR 1): three rounds have
+			 * now quoted three different numbers for the same gate - `:7122`, then `:7175`,
+			 * which the very commit that wrote it had already pushed to `:7177`, because the
+			 * anchor was recorded in the same change that added lines above it. A reference
+			 * that invalidates itself as it is written is worse than no reference, and what
+			 * the sibling recording one fact with one reference is for (round 2's NIT 1) is
+			 * a reference a reader can still resolve. The gate's own text is that reference,
+			 * and this file moves past it only when the gate itself changes.
+			 *
+			 * WHY IT STAYS OPEN. The omission is pre-existing (the base's inline
+			 * `(noProvider || noModel)` was equally unlisted), and closing it means
+			 * rebuilding this handler on every provider change - a behavioural change of
+			 * its own, with its own review, rather than a tidy-up to fold in here.
+			 */
+			[
+				slash,
+				handleSlashPick,
+				handleSlashExtend,
+				skills,
+				handleSkillPick,
+				handleKeyDown,
+				handleCredentialKeyDown,
+				planForDraft,
+				applyPlan,
+				newMessage,
+				caret,
+				isInputDisabled,
+				aside,
+				asideSessionId,
+				asideStreaming,
+			],
+		);
+
+		/*
+		 * The chip's own ref, so the composer can be asked to open it.
+		 *
+		 * A bare `/move` focuses this chip and opens its menu instead of mounting a
+		 * dialog that hosted a copy of it (design § 5.2, settled by the measured menu
+		 * clipping inside the dialog): one control, one write path. The composer is the
+		 * owner of the chip, so the request travels through its handle rather than
+		 * through a store or an event, which keeps the "only one chip" rule true by
+		 * construction.
+		 */
+		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
+
+		/*
+		 * The one place focus is given to this box, and the reason it is one place:
+		 * handing focus over is the moment the box becomes ours again, so a pointer
+		 * interaction from BEFORE the call stops counting as the user's and the ask
+		 * gate may hand focus here again. Both the imperative handle and the
+		 * handler registry below (see `composer-field.ts`) publish THIS function
+		 * rather than a copy, so a new call site cannot forget the reset.
+		 */
+		const focusInput = useCallback(() => {
+			composerPointerTouched = false;
+			textareaRef.current?.focus();
+		}, [textareaRef]);
+
+		/*
+		 * THE PRESS'S DRAFT-CONSUME (UX round 1, U4), guarded by the one predicate
+		 * that separates "an answer the press just consumed" from "a message the
+		 * user is writing": `approvalAnswerValue` returns a verdict only for the
+		 * shipped words and the card's own ordinals, and `null` for everything
+		 * else - so prose, a partial token, or an unrelated draft is left exactly
+		 * where it was. Emptying through `handleChange` retires the persisted
+		 * draft with the box, the same write path a user's backspace takes.
+		 */
+		const consumeApprovalAnswerDraft = useCallback(() => {
+			if (approvalAnswerValue(newMessage) === null) return;
+			setNewMessage("");
+		}, [newMessage, setNewMessage]);
+
+		useImperativeHandle(ref, () => ({
+			focusInput,
+			openWorkingDirectoryMenu: () => {
+				cwdChipRef.current?.openMenu();
+			},
+			submitNow: () => submitMessage(),
+			consumeApprovalAnswerDraft,
+		}));
+
+		/*
+		 * The composer's focus hand-off, published to the surfaces that are not
+		 * handed this component's handle - today the transcript's Quote toolkit,
+		 * which stages a quote and then wants the caret in the box (design round 1,
+		 * D2; UX round 1, U1). Registered here rather than rebuilt there so that
+		 * `focusInput` stays the single place focus is given, flag reset included;
+		 * see `composer-field.ts`.
+		 */
+		/*
+		 * The node that hand-off focuses, as the registry has to be able to name it
+		 * (review round 1, NIT 1): a caller that reports WHERE the caret landed has
+		 * to be able to compare against the same element, and a document query can
+		 * name a second composer. A callback rather than the element, so the effect
+		 * below is not re-run every time the textarea is replaced by a pane switch.
+		 */
+		const composerNode = useCallback(() => textareaRef.current, [textareaRef]);
+		useEffect(
+			() => registerComposerFocus(focusInput, composerNode),
+			[focusInput, composerNode],
+		);
+
+		/*
+		 * ---------------------------------------------------------------------
+		 * The chip's `x`: throwing a credential away, in one edit
+		 * ---------------------------------------------------------------------
+		 *
+		 * The chip's control is the ONLY way to clear a reference, and it is the
+		 * composer's alone: the transcript's chip has none, because a sent message
+		 * cannot be un-sent (`credential-citation.tsx` states what one would take).
+		 *
+		 * WHAT IT DESTROYS, said plainly because the operator is told it too: the
+		 * payload is dropped from the map, and the value lived only there — the store on
+		 * the runtime is written at SUBMIT, so a reference dropped here was never
+		 * anywhere else, and only the operator can supply it again. That is why this
+		 * raises the durable sentence that names the key and offers the way back (the
+		 * copy that speaks a refusal left this module with the state that could show it -
+		 * R5-2), and why it is not offered on a marker nothing backs: there is nothing
+		 * behind that chip to clear.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * IT ANSWERS TO THE REFUSAL, and the rebase onto #308's base is what made that a
+		 * requirement rather than a courtesy: the refused composer is `readOnly` now,
+		 * not `disabled`, so the box stays focusable and a control painted over it can
+		 * still be pressed - where a `disabled` textarea made the whole region inert.
+		 * This path WRITES into the buffer and discards a payload, so it carries the
+		 * same `isInputDisabled` predicate every other writer on the rebased base
+		 * carries (`handleSubmit`, `handleComposerKeyDown`, `handlePaste`,
+		 * `handleStartRecording`), asked FIRST for the same reason they ask it first.
+		 * The layer stops RENDERING the control while the composer refuses rather than
+		 * leaving a pressable `x` that does nothing: a control that cannot act is not
+		 * shown, which is the rule the transcript's chipless turn already follows.
+		 *
+		 * THE SENTENCE GOES TO TWO CHANNELS, AND THE UNDO KEEPS IT OFFERABLE (UX round
+		 * 1, U2). It used to live only in a sonner toast, which retires in 3.5-6.5s while
+		 * the notice line — the channel carrying every other credential-fate sentence in
+		 * this flow, at the operator's own focus — stayed blank, and `Cmd+Z` restored
+		 * nothing (all three measured: `C2`-`C5`, `E1`-`E3`). So the words go on the
+		 * notice line, where they stay until the next edit, AND the toast carries an
+		 * `Undo` — the shape `composer-status-row.tsx` already gives a cheap destructive
+		 * step. That is why the payload is HELD rather than dropped here: it is what the
+		 * undo restores, and it was already held for the duration anyway.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * FOCUS GOES BACK THROUGH `focusInput`, the composer's single door — the control
+		 * that had focus unmounts with the chip, and the browser otherwise drops focus to
+		 * `document.body`: no ring anywhere, and the operator's next keystroke going
+		 * nowhere — and `composer-field.ts`'s rule for why the door rather than the node.
+		 * A direct `.focus()` here would leave `composerPointerTouched` set, which
+		 * SUPPRESSES the ask gate's next automatic hand-off, and a second implementation
+		 * of the hand-off is exactly what that registry exists to make impossible.
+		 * Applied HERE rather than through the reply chip's pending-ref effect because
+		 * the node it focuses does not unmount: the textarea outlives the chip that sat
+		 * over it, which is the one thing the quote's control cannot say.
+		 */
+		/** One clear, held open while its toast offers the undo. */
+		type PendingClear = {
+			index: number;
+			payload: CredentialPayload;
+			cleared: { buffer: string; caret: number; removed: string };
+			/** The toast offering this undo, so it can be withdrawn with the offer. */
+			toastId: string | number | null;
+		};
+		/*
+		 * DECLARED HERE, ABOVE THE KEY CHAIN, AND THAT IS LOAD-BEARING RATHER THAN
+		 * TIDY (UX round 2, U8). The composer's own `Cmd+Z` is where a credential
+		 * edit's undo belongs — `#302`'s locked-run handler beside this one states the
+		 * rule: the box was written by a component, so the platform's undo has no
+		 * entry that restores it — and the key chain is declared ABOVE this block, so
+		 * a callback it names has to exist here. A `const` declared below a
+		 * `useCallback` whose dependency array names it is in the temporal dead zone
+		 * during that render and the component throws, which is the trap
+		 * `isInputDisabled`'s own comment records.
+		 */
+		const pendingClearRef = useRef<PendingClear | null>(null);
+		/*
+		 * THE BUFFER AS THE UNDO MUST SEE IT, which is the LIVE one rather than this
+		 * render's. The toast's action closure is built in the render that performed
+		 * the clear, so a `newMessage` read from that closure is the buffer BEFORE the
+		 * splice — and the undo's own guard compares against the buffer the clear
+		 * PRODUCED, so it would refuse every time and restore nothing (caught by the
+		 * `credential-pill-cleared-undone` story, which is why that story exists). A
+		 * ref written after each commit is what makes the handler independent of which
+		 * render it was created in.
+		 */
+		const bufferRef = useRef(newMessage);
+		useLayoutEffect(() => {
+			bufferRef.current = newMessage;
+		}, [newMessage]);
+
+		/**
+		 * Close a clear off for good: the undo is over, so the value goes.
+		 *
+		 * THE SLOT IS PASSED BY IDENTITY, and that is the whole of the correctness here
+		 * rather than a convenience: sonner dismisses a toast when its action button is
+		 * clicked, so this runs on the SAME click that runs the undo — and a version
+		 * that deleted `slot.index`'s payload unconditionally would drop the value the
+		 * undo had just restored, or race the undo to the payload and leave the restored
+		 * marker UNBACKED. A slot that is no longer the current one (the undo ran, or a
+		 * newer clear replaced it) is a no-op here.
+		 */
+		const retireClear = useCallback((slot: PendingClear) => {
+			if (pendingClearRef.current !== slot) return;
+			pendingClearRef.current = null;
+			payloadsRef.current.delete(slot.index);
+		}, []);
+
+		/**
+		 * The clear's own undo, run from either route: the marker and the payload
+		 * back, in one edit, or the reason it cannot be.
+		 *
+		 * ONE MECHANISM, TWO ROUTES (UX round 2, U8). The toast's action and the
+		 * composer's `Cmd+Z` are the same edit asked for twice — a gesture that
+		 * disappears with its toast, and the reflex key that already exists in this
+		 * composer for the credential command-lock — so the mechanics live here once,
+		 * and each caller does its own follow-up (the toast returns focus to the box,
+		 * the key press does not need to: the box already has it).
+		 *
+		 * IT REFUSES WHEN THE BUFFER HAS MOVED ON, which is the guard that makes the
+		 * recorded offset safe to use: the operator may have typed since the clear, and
+		 * an insert at a stale offset would corrupt their prose.
+		 * `restoreClearedCredential` answers `null` for exactly that case (and for a
+		 * clear that spliced nothing).
+		 *
+		 * NO REFUSAL SENTENCE EXISTS ANY MORE (code review round 5, R5-2). `restoreClear`'s
+		 * `stale` register was the only reachable state of that copy, and R4-6's guard made
+		 * it unreachable: the withdrawal effect retires a slot on exactly the predicate the
+		 * splice refuses on (`slot.cleared.buffer !== newMessage` against
+		 * `buffer !== cleared.buffer`), both are layout effects on `[newMessage]`, so a
+		 * gesture either finds the slot current - and the buffer the clear produced, which
+		 * restores - or finds it already withdrawn. The string and its register are gone
+		 * from `credential-capture.ts` rather than left as a rule nothing can reach.
+		 */
+		const restoreClear = useCallback(
+			(slot: PendingClear): boolean => {
+				/*
+				 * A SLOT THAT IS NO LONGER CURRENT CANNOT BE RESTORED, BY EITHER ROUTE (code
+				 * review round 4, R4-6). The toast's own action closure survives its dismissal
+				 * for the exit animation and stayed pressable for ~50ms, answering with U12's
+				 * false sentence while the chip was visibly back; the same guard covers a
+				 * superseded slot whose offer has not been withdrawn yet.
+				 */
+				if (pendingClearRef.current !== slot) return false;
+				const restored = restoreClearedCredential({
+					buffer: bufferRef.current,
+					cleared: slot.cleared,
+				});
+				// Silent by design (see the note above the callback): a buffer the clear no
+				// longer describes is a slot the withdrawal has already retired, so there is
+				// no offer left to answer.
+				if (!restored) return false;
+				/*
+				 * THE PAYLOAD COMES BACK FROM THE SLOT, not from the map, and that is what
+				 * makes the undo independent of the toast's own dismissal order: sonner
+				 * retires the toast on the same click, so `retireClear` may already have
+				 * deleted the map entry by the time this runs. Re-setting it means the
+				 * restored marker is a BACKED chip in either order, which is the state the
+				 * reviewer's requirement names ("restore the marker AND the payload").
+				 */
+				payloadsRef.current.set(slot.index, slot.payload);
+				if (pendingClearRef.current === slot) pendingClearRef.current = null;
+				/*
+				 * AND THE OFFER GOES WITH THE EDIT IT WAS HONOURED BY (UX round 3, U12). The
+				 * withdrawal effect only inspects the CURRENT slot and returns early on
+				 * `null`, so a restore that arrives on the composer's own `Cmd+Z` left the
+				 * toast standing - measured: the chip visibly back in the message while the
+				 * toast still offered `Undo` and, pressed, answered "cannot be put back".
+				 * The app's most trust-sensitive sentence was false in the state its own key
+				 * produces. Sonner only dismisses on its own action's click, so the success
+				 * path dismisses it here, by the id the raiser returned.
+				 */
+				if (slot.toastId !== null) dismissToast(slot.toastId);
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						restored.buffer,
+						restored.caret,
+						"arrival",
+					),
+					buffer: restored.buffer,
+					caret: restored.caret,
+				});
+				// The sentence described the buffer the clear produced; the reference is
+				// back, so it is stale by the rule the retirement effect for the notice uses.
+				setClearedReference(null);
+				return true;
+			},
+			[applyCapture, setClearedReference],
+		);
+
+		/**
+		 * The offer never outlives what it can do (UX round 2, U7 / R2-2 / Q-R2-1).
+		 *
+		 * `restoreClearedCredential` refuses once the buffer has moved, so the toast
+		 * that offers the undo can only act while the buffer is still the one the clear
+		 * produced — and the notice line already compares exactly that (`held.over !==
+		 * newMessage`). This is the same comparison applied to the toast: the first
+		 * edit withdraws it, with its payload, rather than leaving a live-looking
+		 * button whose click silently does nothing. Withdrawing it is honest because the
+		 * durable line already carries the fact and the way back; the refusal itself is
+		 * silent by design (R5-2), since the only state that could speak it is the one this
+		 * effect retires.
+		 *
+		 * The toast is dismissed by its own id, the id `showWarningToast` returned; a
+		 * slot that is no longer current (a newer clear replaced it, or the undo ran)
+		 * is a no-op, the same identity rule `retireClear` states.
+		 */
+		useLayoutEffect(() => {
+			const slot = pendingClearRef.current;
+			if (slot === null) return;
+			if (slot.cleared.buffer === newMessage) return;
+			if (slot.toastId !== null) dismissToast(slot.toastId);
+			retireClear(slot);
+		}, [newMessage, retireClear]);
+
+		/**
+		 * The clear on the composer's own undo key (UX round 2, U8), beside `#302`'s
+		 * locked-run undo and ahead of it in the chain.
+		 *
+		 * WHY IT IS AHEAD, stated as what is true rather than as an exclusion (code
+		 * review round 3, R3-3): the two CAN both be live - a locked run's record is
+		 * retired on a textarea `onChange`, and a clear is a PROGRAMMATIC write, which
+		 * that rule explicitly does not fire on - so this sits first because the clear is
+		 * the more recent destructive edit and the key should undo the newer one first.
+		 * A second press then reaches `#302`'s handler and undoes the older edit, which
+		 * is the LIFO the composer's other undos use. A `false` here hands the keystroke
+		 * on, exactly as `handleLockedRunUndo` does.
+		 */
+		const handleClearedUndo = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const slot = pendingClearRef.current;
+				if (slot === null) return false;
+				if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+					return false;
+				if (event.key.toLowerCase() !== "z") return false;
+				restoreClear(slot);
+				return true;
+			},
+			[restoreClear],
+		);
+
+		const undoClear = useCallback(
+			(slot: PendingClear) => {
+				if (restoreClear(slot)) focusInput();
+			},
+			[focusInput, restoreClear],
+		);
+		const clearCredential = useCallback(
+			(index: number) => {
+				if (isInputDisabled) return;
+				const payload = payloadsRef.current.get(index);
+				if (!payload) return;
+				const cleared = clearCitedCredential({
+					buffer: newMessage,
+					payload,
+				});
+				// Nothing spliced: the marker's tail was edited by hand, or the text is gone
+				// already. The buffer, the map and the notice are all left alone rather than
+				// reporting a removal that did not happen.
+				if (!cleared.cleared) return;
+				/*
+				 * THE PAYLOAD IS HELD, NOT DROPPED (U2). It is what the undo restores, so it
+				 * lives until the toast offering the undo retires; a clear that arrives while
+				 * a previous undo is still open closes THAT one off first, so two undos can
+				 * never both hold a payload.
+				 */
+				const previous = pendingClearRef.current;
+				if (previous) {
+					pendingClearRef.current = null;
+					payloadsRef.current.delete(previous.index);
+					/*
+					 * AND ITS TOAST (UX round 3, U13; code review round 3, R3-4). The
+					 * withdrawal effect only ever inspects the CURRENT slot, so retiring the
+					 * previous one here left a live-looking `Undo` on a removal the app can no
+					 * longer reverse - measured: two clears, one edit, and the older offer
+					 * still stood while pressing it refused. The offer must not outlive its
+					 * ability by either route, and this is the one site that knows the older
+					 * slot is going.
+					 */
+					if (previous.toastId !== null) dismissToast(previous.toastId);
+				}
+				const slot: PendingClear = {
+					index,
+					payload,
+					cleared,
+					toastId: null,
+				};
+				pendingClearRef.current = slot;
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						cleared.buffer,
+						cleared.caret,
+						"arrival",
+					),
+					buffer: cleared.buffer,
+					caret: cleared.caret,
+				});
+				setClearedReference({
+					key: payload.key,
+					index,
+					over: cleared.buffer,
+				});
+				/*
+				 * THE TOAST'S WORDS ARE ITS OWN (UX round 2, U9). It used to print the
+				 * notice line's whole sentence — 110 characters twice at once, with the
+				 * `Undo` immediately beside "its value is gone", a claim the button
+				 * contradicts for as long as the button exists. The durable channel keeps
+				 * the fact and the manual path; this one says what it alone can do, which
+				 * is name the reference that went and offer to put it back.
+				 *
+				 * ITS ID IS KEPT, because the offer must not outlive its ability: the
+				 * effect above withdraws the toast on the first edit that would make the
+				 * undo refuse, and a toast can only be withdrawn by the id it was raised
+				 * with.
+				 */
+				/*
+				 * THE SLOT'S LIFE IS THE SENTENCE'S LIFE (code review round 4, R4-2). It used
+				 * to end with the toast - sonner's four-second default, and a manual dismissal
+				 * sooner - while the sentence on the notice line lives until the next edit, so
+				 * at +10s the line still promised `⌘Z` and one real press restored nothing,
+				 * silently. The undo now holds until the buffer it describes changes (the same
+				 * comparison the sentence retires on, in the effect above), which keeps U8's
+				 * cheap path real for as long as the app says it is; the toast is one route to
+				 * it, not the lifetime. `onAutoClose`/`onDismiss` no longer retire anything,
+				 * and they must not: a dismissal would put the line back in exactly the state
+				 * this fix removes.
+				 */
+				slot.toastId = showWarningToast(clearedToastLine(index), {
+					action: {
+						label: CREDENTIAL_CLEAR_UNDO_LABEL,
+						onClick: () => undoClear(slot),
+					},
+				});
+				focusInput();
+			},
+			/*
+			 * `retireClear` is NOT a dependency any more, and that is R4-2's change showing in the
+			 * list: this callback no longer retires anything on the toast's own retirement -
+			 * the slot now lives exactly as long as the sentence that names the undo, and the
+			 * effect above is the one place that ends both.
+			 */
+			[
+				applyCapture,
+				focusInput,
+				isInputDisabled,
+				newMessage,
+				setClearedReference,
+				undoClear,
+			],
+		);
+
+		/*
+		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
+		 *
+		 * The reservation itself is argued at the row (see `data-interrupt-slot`
+		 * below); the clock it runs on is `useInterruptSlotHold`, which owns the
+		 * edge, the single timer and its disposal, and which the review round's own
+		 * test drives through the measured sequence. What belongs here is the ONE
+		 * thing the argument decides and the gate cannot: the edge the window opens
+		 * on is the Stop control's own state (`canonicalStop?.active`), never the
+		 * capability or a busy flag - that argument and the gate's own
+		 * `!canonicalStop?.active` term are what between them keep the box off the
+		 * row while the control is drawn there.
+		 */
+		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
+
+		/*
+		 * Whether the suggestion chips are inert.
+		 *
+		 * The draft case is not the composer being disabled - the box is very much
+		 * live - it is that a suggestion press REPLACES what the box holds, so while
+		 * the user is mid-draft the chips are disabled rather than the press being
+		 * allowed to clobber a sentence they are writing (round 1, U2). DISABLED, not
+		 * hidden: the band must not move while they type, and a chip vanishing under
+		 * a keystroke is a reflow they watch. The styling is the app's existing
+		 * disabled contract, which is a colour change and never opacity - the
+		 * disabled ink role, as `variant="ghost"` already carries.
+		 *
+		 * Defined here rather than beside the sample because it reads the box's
+		 * CURRENT text, which `useMessageInput` owns further down.
+		 */
+		const suggestionsDisabled =
+			isInputDisabled ||
+			isRecording ||
+			isTranscribing ||
+			newMessage.trim().length > 0;
+
+		/*
+		 * Grow with the draft up to `max-h`, then scroll. Runs on every value
+		 * change — typed, transcribed, or restored from the draft store —
+		 * because a native textarea does not grow on its own.
+		 *
+		 * `newMessage`, `isRecording` and `isTranscribing` are triggers, not
+		 * reads: the body only touches the ref, so the linter sees them as
+		 * surplus. They are what tell the textarea to re-measure, and removing
+		 * them leaves it stuck at its previous height after a transcription
+		 * lands or a draft is restored.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
+		useEffect(() => {
+			const el = textareaRef.current;
+			if (!el) return;
+			el.style.height = "auto";
+			el.style.height = `${el.scrollHeight}px`;
+		}, [newMessage, textareaRef, isRecording, isTranscribing]);
+
+		useEffect(() => {
+			if (!isInputDisabled && !isRecording && !isTranscribing) {
+				const activeElement = document.activeElement;
+				const isInputFocused =
+					activeElement &&
+					(activeElement.tagName === "INPUT" ||
+						activeElement.tagName === "TEXTAREA");
+				/*
+				 * Not while nothing is connected: the empty chat's headline invites a
+				 * question and the connect card asks for a provider, and autofocus put
+				 * the composer's accent outline on screen as a third, competing signal
+				 * (design round 1 D5). Typing is still allowed - the user clicks in when
+				 * they want to.
+				 */
+				if (!isInputFocused && !noProvider) {
+					textareaRef.current?.focus();
+				}
+			}
+		}, [isInputDisabled, isRecording, isTranscribing, textareaRef, noProvider]);
+
+		useEffect(() => {
+			window.electron.ipcRenderer
+				.invoke("get-platform-info")
+				.then((info) => {
+					setPlatform(info.platform);
+				})
+				.catch((err) => {
+					console.error("Failed to get platform info:", err);
+				});
+		}, []);
+
+		/*
+		 * THE RECORDING ATTEMPT: the span between a start request and the moment
+		 * its recorder is actually running.
+		 *
+		 * A push-to-talk release can land inside that span, while `getUserMedia`
+		 * is still resolving. The old shape called the recorder's own stop there -
+		 * a no-op when nothing is recording yet - so the release was LOST and the
+		 * capture went on recording with nobody left to end it. `released` is read
+		 * the instant the recorder starts, and the take is settled right there.
+		 */
+		const recordingAttemptRef = useRef<{
+			startedAt: number | null;
+			released: boolean;
+			aborted: boolean;
+		} | null>(null);
+		/**
+		 * The minimum take, in milliseconds: below it the capture is the tail of a
+		 * press that was never speech (a right-Option tap used as a modifier, a
+		 * hold released before the recorder came up). Discarded AFTER the fact,
+		 * which is the whole point: the 1000 ms hold timer this replaces paid for
+		 * the same protection with a one-second delay on every real recording.
+		 */
+		const MIN_DICTATION_CLIP_MS = 250;
+
+		/*
+		 * The take's own broadcast, in two directions: the shared manager's presence
+		 * set (the Escape ladder's rung 4 reads it from the page above) and the
+		 * host's callback (the mini frame's own blur/Esc guards defer to a live
+		 * take). The callback rides a ref so an inline host closure cannot re-run
+		 * this effect; the ref assignment is declared FIRST, so it is current before
+		 * the effect below runs on the same commit.
+		 */
+		const onDictationStateChangeRef = useRef(onDictationStateChange);
+		useEffect(() => {
+			onDictationStateChangeRef.current = onDictationStateChange;
+		});
+		useEffect(() => {
+			setDictationActive("message-input", isRecording);
+			onDictationStateChangeRef.current?.(isRecording);
+			return () => setDictationActive("message-input", false);
+		}, [isRecording]);
+
+		/**
+		 * Stop the take the current attempt owns, keeping it only when it is long
+		 * enough to hold words and was not aborted. The discard arm reuses the
+		 * cancel path's own cleanup (tracks stopped, no blob), so a discarded take
+		 * never reaches the transcription request.
+		 */
+		const settleRecordingAttempt = useCallback(
+			(reason: "release" | "abort") => {
+				const recorder = mediaRecorderRef.current;
+				if (!recorder) return;
+				const startedAt = recordingAttemptRef.current?.startedAt ?? null;
+				const elapsed =
+					startedAt === null
+						? Number.POSITIVE_INFINITY
+						: performance.now() - startedAt;
+				recordingAttemptRef.current = null;
+				/*
+				 * A SECOND SETTLE IS A NO-OP (review round 1, m1). One press can reach here
+				 * twice inside one dispatch - the manager's abort and this composer's own
+				 * Enter/Escape listener both answer the same key, and the listener's
+				 * closure still reads the pre-press `isRecording` - and `stop()` on an
+				 * already-inactive recorder throws `InvalidStateError` out of a window
+				 * listener. There is nothing left to stop or discard, so only the state
+				 * flag is settled.
+				 */
+				if (recorder.state === "inactive") {
+					setIsRecording(false);
+					return;
+				}
+				if (reason === "abort" || elapsed < MIN_DICTATION_CLIP_MS) {
+					recorder.onstop = () => {
+						if (recorder.stream) {
+							for (const track of recorder.stream.getTracks()) {
+								track.stop();
+							}
+						}
+						setAudioBlob(null);
+						audioChunksRef.current = [];
+					};
+				}
+				recorder.stop();
+				setIsRecording(false);
+			},
+			[],
+		);
+
+		/**
+		 * The hold contract's stop. The REASON is load-bearing: a release keeps the
+		 * take, an abort discards it - and BOTH must end a take whose recorder is
+		 * not up yet (the attempt above), which is the release-before-start case the
+		 * old shape leaked.
+		 */
+		const handleStopRecording = useCallback(
+			(reason: "release" | "abort" = "release") => {
+				const attempt = recordingAttemptRef.current;
+				if (!attempt) return;
+				if (attempt.startedAt === null) {
+					attempt.released = true;
+					attempt.aborted = reason === "abort";
+					return;
+				}
+				settleRecordingAttempt(reason);
+			},
+			[settleRecordingAttempt],
+		);
+
+		const handleStartRecording = useCallback(async () => {
+			/*
+			 * The dictation button's own gate, beside the button's `disabled` and the
+			 * manager's own gate: this callback is ALSO the hold contract's `start`, so
+			 * it is reachable without the button's `disabled` ever being consulted.
+			 *
+			 * THE REFUSAL TERM IS LOAD-BEARING (review round 1, MAJOR 2), and it is the
+			 * only thing closing the hold path besides `canEnableRecordingFeature`:
+			 * that flag is `hasRadientApiKey && !isUnavailable` (the CREDENTIAL PROBE's
+			 * own flag - offline or no key), which is a different fact from the
+			 * composer's refusal. On the `view.missing` arm, `hasRadientApiKey` is
+			 * true for a configured user, so without `isInputDisabled` a press here
+			 * would write into a box the app has just told the user takes nothing.
+			 *
+			 * `isLoading` is deliberately NOT a term (the operator's report): dictation
+			 * is a state of the composer and the composer is writable mid-turn.
+			 */
+			if (isInputDisabled || !canEnableRecordingFeature) return;
+			/*
+			 * ONE RECORDER AT A TIME (review round 1, M2). Without this, two engagements
+			 * inside the `getUserMedia` window - a double-click on the mic, two taps of
+			 * the binding - overwrite the pending attempt and leave the FIRST recorder
+			 * with nothing pointing at it: depending on resolve order, a live
+			 * microphone the UI no longer shows, or a take the hold can no longer end.
+			 * ANY outstanding attempt refuses a new start (resolving, or already
+			 * recording - the take is the unit, and the release still settles the first
+			 * attempt, so a tap-tap ends idle either way).
+			 */
+			if (recordingAttemptRef.current) return;
+			if (navigator?.mediaDevices?.getUserMedia) {
+				/*
+				 * The attempt is recorded BEFORE the await: a release that lands
+				 * inside it must find something to mark, and `startedAt` stays null
+				 * until the recorder is actually running - the mark a
+				 * release-before-start is read against below.
+				 */
+				recordingAttemptRef.current = {
+					startedAt: null,
+					released: false,
+					aborted: false,
+				};
+				try {
+					const stream = await navigator.mediaDevices.getUserMedia({
+						audio: true,
+					});
+					mediaRecorderRef.current = new MediaRecorder(stream);
+					audioChunksRef.current = [];
+
+					mediaRecorderRef.current.ondataavailable = (event) => {
+						audioChunksRef.current.push(event.data);
+					};
+
+					mediaRecorderRef.current.onstop = () => {
+						const completeAudioBlob = new Blob(audioChunksRef.current, {
+							type: "audio/webm",
+						});
+						setAudioBlob(completeAudioBlob);
+						// Stop all tracks on the stream to release the microphone
+						for (const track of stream.getTracks()) {
+							track.stop();
+						}
+					};
+
+					mediaRecorderRef.current.start();
+					const attempt = recordingAttemptRef.current;
+					if (attempt) attempt.startedAt = performance.now();
+					setIsRecording(true);
+					setAudioBlob(null); // Clear previous blob
+					/*
+					 * RELEASED BEFORE THE RECORDER EXISTED: end it now rather than
+					 * orphan it. The take is ~0 ms old, so the minimum-clip rule
+					 * discards it - the correct outcome for a press that captured
+					 * nothing.
+					 */
+					if (attempt?.released) {
+						settleRecordingAttempt(attempt.aborted ? "abort" : "release");
+					}
+				} catch (err) {
+					recordingAttemptRef.current = null;
+					console.error("Error accessing microphone:", err);
+					showErrorToast(
+						"Error accessing microphone. Please ensure microphone permissions are granted.",
+					);
+				}
+			} else {
+				console.error("This runtime exposes no MediaRecorder");
+				/* Not "your browser": this is a desktop app, and the person reading
+				   this did not choose a browser and cannot change it. */
+				showErrorToast("Dictation is not available on this device.");
+			}
+		}, [canEnableRecordingFeature, isInputDisabled, settleRecordingAttempt]);
+
+		const handleConfirmRecording = useCallback(() => {
+			if (!isRecording) return;
+			settleRecordingAttempt("release");
+		}, [isRecording, settleRecordingAttempt]);
+
+		const handleCancelRecording = useCallback(() => {
+			if (!isRecording) return;
+			settleRecordingAttempt("abort");
+		}, [isRecording, settleRecordingAttempt]);
+
+		useEffect(() => {
+			if (isRecording) {
+				const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						handleConfirmRecording();
+					} else if (event.key === "Escape") {
+						event.preventDefault();
+						handleCancelRecording();
+					}
+				};
+
+				window.addEventListener("keydown", handleKeyDown);
+
+				return () => {
+					window.removeEventListener("keydown", handleKeyDown);
+				};
+			}
+
+			return undefined;
+		}, [isRecording, handleConfirmRecording, handleCancelRecording]);
+
+		const handleSendAudio = useCallback(async () => {
+			if (!audioBlob) return;
+
+			try {
+				setIsTranscribing(true);
+				const response = await TranscriptionApi.createTranscription(
+					apiConfig.baseUrl,
+					{
+						file: new File([audioBlob], "recording.webm", {
+							type: "audio/webm",
+						}),
+					},
+				);
+				if (response.result?.text) {
+					const newText = response.result?.text || "";
+					sawDictationRef.current = true;
+					/*
+					 * NOT `setNewMessage(newMessage + newText)`: that write reads a box
+					 * captured before the press, so a transcript landing between a send's
+					 * press and its clear was appended against a stale value - and the
+					 * clear then either took the fresh words back or resurrected the sent
+					 * text beside them. `appendTranscriptText` carries the wait that makes
+					 * the two writes one (its contract is in `use-message-input`).
+					 */
+					appendTranscriptText(newText);
+				} else {
+					/*
+					 * A SUCCESSFUL, EMPTY TRANSCRIPT IS SAID OUT LOUD (UX round 1, U3): the
+					 * strip used to disappear and nothing else happened, which reads as a
+					 * gesture that did not work. Info, not error - the request
+					 * succeeded; the take held no speech.
+					 */
+					showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
+				}
+				setAudioBlob(null); // Clear the blob after sending
+			} catch (error) {
+				// The raw server message stays on the console; the toast names the
+				// cause in a sentence a person can act on (see
+				// `transcriptionFailureMessage`), because "please try again" cannot
+				// fix an account with no credits or a refused sign-in.
+				console.error("Error transcribing audio:", error);
+				showErrorToast(transcriptionFailureMessage(error));
+			} finally {
+				setIsTranscribing(false);
+			}
+		}, [audioBlob, appendTranscriptText]);
+
+		// Automatically send audio for transcription when audioBlob is set
+		useEffect(() => {
+			if (audioBlob) {
+				handleSendAudio();
+			}
+		}, [audioBlob, handleSendAudio]);
+
+		// Register with speech-to-text manager
+		useSpeechToTextManager(
+			"message-input",
+			SpeechToTextPriority.MESSAGE_INPUT,
+			{ start: handleStartRecording, stop: handleStopRecording },
+			/*
+			 * THE GATE IS THE COMPOSER'S OWN STATE, NOT THE TURN (the operator's
+			 * report). `isLoading` sat here too, and it closed dictation for the whole
+			 * admit-to-first-answer window while the box itself stayed writable - the
+			 * contradiction at the heart of the report. The composer being writable is
+			 * `!isInputDisabled` (the same fact the refusal carries), and a send in
+			 * flight does not make this box unwritable: a mid-turn message rides the
+			 * existing steer path.
+			 */
+			() =>
+				Boolean(
+					!isInputDisabled &&
+						!isRecording &&
+						!isTranscribing &&
+						canEnableRecordingFeature,
+				),
+		);
+
+		const handleSubmit = (e: FormEvent) => {
+			e.preventDefault();
+			/*
+			 * THE REFUSAL COMES FIRST HERE TOO (review round 1, MAJOR 2), and this is
+			 * the guard the `readOnly` attribute cannot supply: `handleSubmit` is the
+			 * FORM's submit, so it is reachable by a press on a `type="submit"`
+			 * control as well as by Enter, and a press has no keydown to refuse. The
+			 * button beside the box carries the same predicate now, so today this is
+			 * the second of two - and it is the one that holds if a future control
+			 * submits this form.
+			 */
+			if (isInputDisabled) return;
+			// One more way in: nothing connected means no send, whichever control asked.
+			if (noProvider) return;
+			/*
+			 * AND THE SAME RULE ONE STEP PAST IT: a provider this app cannot name a model
+			 * for cannot answer either, so a press that reaches here is refused and
+			 * explained rather than sent (UX round 5, U21).
+			 */
+			if (noModel) {
+				explainRefusedSend();
+				return;
+			}
+			if (!newMessage.trim() && attachments.length === 0) return;
+			/*
+			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
+			 * button and the key cannot disagree about an open masked span (design
+			 * round 1, D1; QA round 1, Q4). `submitCapture` mints a non-empty span
+			 * and returns `true`; it returns `false` for an empty one, which then
+			 * takes the planner below to the picker — the same two outcomes Enter
+			 * has, by construction, because it is the same function.
+			 */
+			if (submitCapture()) return;
+			/*
+			 * The SAME planner the Enter key consults, so the Send button and the
+			 * key cannot disagree about whether a draft is a command — and every
+			 * non-`send` verdict is applied here, so the message path below is only
+			 * ever reached for prose. It does not re-examine the text: that is what
+			 * turned `/usage` on line 1 into a command that claimed line 2.
+			 */
+			const plan = planForDraft(newMessage, caret);
+			if (plan.kind !== "send") {
+				void applyPlan(plan, newMessage, caret);
+				return;
+			}
+			submitMessage();
+		};
+
+		/*
+		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
+		 * (QA round 2, Q-3).
+		 *
+		 * The Send, dictation and attach controls are `disabled` while this composer
+		 * refuses, and the browser's default action for a `mousedown` is to move the
+		 * caret to what was pressed. A disabled control cannot take focus, so that
+		 * default does not fail harmlessly - it CLEARS focus to `document.body`
+		 * instead. Measured, with the caret in a refused box still holding the
+		 * reader's sentence: a real mouse press on the Send control ends
+		 * `active=body, focused=false` where the keyboard path ends
+		 * `active=textarea[Message]`, and QA round 3 measured the same row for the
+		 * attach control (`attachPress active=body isComposer=false`) - which is why
+		 * the suppression is on every control the refusal's own `isInputDisabled`
+		 * term disables, rather than on the two the first measurement happened to
+		 * land on. That is the mouse half of the defect this refusal exists to fix -
+		 * the operator's "I type and nothing happens", one door over - and the words
+		 * survive the press only because the box was kept `readOnly` rather than
+		 * `disabled`.
+		 *
+		 * `preventDefault` suppresses ONLY the focus-changing default: the press still
+		 * reaches the control, and a refused control fires no `click` in any case, so
+		 * nothing that worked stops working.
+		 *
+		 * POINTERDOWN RATHER THAN THE SLASH ROWS' MOUSEDOWN, and the difference is
+		 * measured rather than stylistic: a DISABLED control dispatches no mouse
+		 * events at all in this browser (driven, document-level capture listeners: a
+		 * `pointerdown` arrives on the disabled Send control and no `mousedown`
+		 * follows, which is why the slash rows' technique fixes nothing here).
+		 *
+		 * Scoped to the refusal deliberately: outside it these controls keep the
+		 * browser's normal press behaviour, and a control that is disabled for its OWN
+		 * reason - an empty box's Send, the mic with no Radient credential - is not
+		 * this composer refusing with anyone. The gate below is the whole of that
+		 * scoping, and it is load-bearing in both directions: without it a blanket
+		 * suppression would also swallow the press on inert background, which has to
+		 * go on clearing the caret, and a live control has to be exactly what it was.
+		 */
+		const holdCaretOnRefusedPress = useCallback(
+			(event: PointerEvent<HTMLButtonElement>) => {
+				if (isInputDisabled) event.preventDefault();
+			},
+			[isInputDisabled],
+		);
+
+		/*
+		 * THE SEND CONTROL'S OWN PRESS, which the refusal's own predicate does not cover
+		 * (UX round 7, U27).
+		 *
+		 * The same suppression as above, widened to the terms THIS control is disabled by:
+		 * `sendRefused` is the pair this branch added to its `disabled`, and a press on a
+		 * control the box is refusing with has to keep the caret rather than clear it to
+		 * `<body>`. The empty box is absent here on purpose - that control is disabled for
+		 * its own reason, not because the composer refuses, so it keeps the browser's
+		 * normal press behaviour, which is the distinction `holdCaretOnRefusedPress` exists
+		 * to hold.
+		 *
+		 * AND IT ANSWERS THE WAY THE KEY DOES. The press used to be refused in silence while
+		 * Enter raised "Connect a provider to send." for its window; two doors onto one
+		 * refusal have to say the same thing, so the explanation is the same call the key
+		 * makes - and it is withheld in the one state where the KEY is silent too, the box
+		 * refusing input, because "a box that refuses input" and "nothing can answer" are
+		 * two different facts and only the second is this press's to explain.
+		 * `preventDefault` stays ONE call under one gate, for the reason the shared handler's
+		 * own note gives: a second, ungated call would swallow the press on a control
+		 * disabled for its own reason, which this refusal does not claim.
+		 */
+		const holdCaretOnSendPress = useCallback(
+			(event: PointerEvent<HTMLButtonElement>) => {
+				if (!isInputDisabled && !sendRefused) return;
+				event.preventDefault();
+				if (sendRefused && !isInputDisabled) explainRefusedSend();
+			},
+			[isInputDisabled, sendRefused, explainRefusedSend],
+		);
+
+		const handleRemoveAttachment = (id: string) => {
+			if (conversationId) {
+				removeAttachment(conversationId, id);
+			}
+		};
+
+		const handleAttachFile = async () => {
+			const result = await window.electron.ipcRenderer.invoke(
+				"show-open-dialog",
+				{
+					properties: ["openFile", "multiSelections"],
+				},
+			);
+
+			if (!result.canceled && result.filePaths.length > 0) {
+				if (conversationId) {
+					for (const path of result.filePaths) {
+						addAttachment(conversationId, {
+							id: uuidv4(),
+							path: normalizePath(path),
+						});
+					}
+				}
+			}
+		};
+
+		const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+			/*
+			 * A REFUSED BOX TAKES NO PASTE (review round 1, MINOR 1). This path is NEW
+			 * in this PR only in the sense that it became REACHABLE: `disabled` meant
+			 * the textarea could not be a paste target at all, and `readOnly` does not -
+			 * a read-only field is still focusable, so paste fires. Both branches below
+			 * WRITE: a live capture takes the payload (`applyCapture`) and a
+			 * file/image calls `addAttachment`, while the preview and the attach
+			 * button beside them are already gated. Neither is an edit `readOnly` can
+			 * suppress, because neither is an edit to the textarea's value.
+			 */
+			if (isInputDisabled) return;
+			/*
+			 * THE CREDENTIAL GATE IS THE FIRST BRANCH, ahead of every size and
+			 * whitespace rule (`Editor._on_paste`). It is a MODE question — did the
+			 * operator just type `/credential` here — and not a question about the
+			 * payload: a one-line API key is nowhere near the thresholds an ordinary
+			 * paste branch asks, so asking them first would insert the secret
+			 * verbatim and the redaction would never happen at all.
+			 */
+			const pasted = event.clipboardData?.getData("text/plain") ?? "";
+			if (pasted && captureRef.current.arm !== null) {
+				const field = event.currentTarget;
+				const captured = capturePasted({
+					capture: captureRef.current,
+					buffer: newMessage,
+					caret: field.selectionEnd ?? newMessage.length,
+					selection: {
+						start: field.selectionStart ?? newMessage.length,
+						end: field.selectionEnd ?? newMessage.length,
+					},
+					pasted,
+					index: nextIndexRef.current,
+					taken: takenCredentialNames(),
+				});
+				if (captured) {
+					// ONE EDIT, and the browser's own paste does not also happen: the
+					// capture is instant, never masked character by character, and a
+					// secret must not exist in the document for even one frame.
+					event.preventDefault();
+					applyCapture(captured);
+					setDisclosure(null);
+					return;
+				}
+			}
+			/*
+			 * AN ORDINARY PASTE IS ITS OWN PROVENANCE (QA round 6, Q-1). This is the
+			 * fall-through — no capture armed — so the browser's own insert is about to
+			 * happen and the payload is about to be IN the box, in the clear. Recording the
+			 * run it brought in is what lets the lock see the keystroke after it; the record
+			 * is asked for its word only while those bytes are still in the draft, exactly
+			 * like the cancel's, so an emptied box is prose again.
+			 */
+			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
+			const items = event.clipboardData?.items;
+			if (items) {
+				for (let i = 0; i < items.length; i++) {
+					if (
+						items[i].type.indexOf("image") !== -1 ||
+						items[i].kind === "file"
+					) {
+						const file = items[i].getAsFile();
+						if (file) {
+							const reader = new FileReader();
+							reader.onload = (e) => {
+								if (e.target?.result && conversationId) {
+									addAttachment(conversationId, {
+										id: uuidv4(),
+										path: e.target.result as string,
+									});
+								}
+							};
+							reader.readAsDataURL(file);
+						}
+					}
+				}
+			}
+		};
+
+		/*
+		 * A suggestion FILLS the composer; it does not send.
+		 *
+		 * WHAT CHANGED UNDER THIS HANDLER. It is byte-identical on `main`, where the
+		 * pool was a toy assistant's errands (trending stocks, MNIST, space invaders)
+		 * and one press spending a demo request on tokens was cheap. This change
+		 * replaced that pool with imperative asks that carry real side effects on the
+		 * user's machine - set up the mobile relay and tunnel, review the repo and
+		 * open a pull request, create a team - so the cost of a single click moved
+		 * with the copy without the interaction being revisited. The app's own
+		 * convention on this same surface is the opposite one: the slash picker under
+		 * the same composer COMPLETES rather than runs ("Enter completes the command.
+		 * Click completes /approvals."). The composer's own Send therefore stays the
+		 * single place a message leaves, and `onSendMessage` is no longer reachable
+		 * from the band at all.
+		 *
+		 * It also closes the draft loss at its source. The old handler cleared the box
+		 * AND the persisted per-conversation draft (`setNewMessage("")`), so a stray
+		 * press while the user was writing erased their sentence with no undo
+		 * (round 1, U2). Filling would still REPLACE such a draft, which is why the
+		 * chips are disabled outright while the box holds one - see
+		 * `suggestionsDisabled` above.
+		 */
+		const handleSuggestionClick = (suggestion: string) => {
+			if (isInputDisabled) return;
+			/*
+			 * THE FILL TAKES THE TYPED PATH, in the textarea's own order, because a
+			 * filled label has to behave exactly like the same sentence typed by hand
+			 * and a separate shortcut here would be a second path that can drift from
+			 * that one (review round 2, M3). Each step is the typed path's own:
+			 *
+			 * - `setNewMessage` IS `useMessageInput`'s `handleChange` (the hook returns
+			 *   it under the `setInputValue` key), which is the one steady-state writer
+			 *   of the persisted per-conversation draft. So a filled label reaches the
+			 *   draft store and survives a composer remount on the same terms a
+			 *   keystroke does; `scripts/suggestion-stack-react.test.mjs` runs it.
+			 * - `onComposerInput?.()` is the empty -> non-empty edge the textarea's own
+			 *   `onChange` fires (see its comment), and a chip press into an empty box is
+			 *   that same edge - `suggestionsDisabled` guarantees the box is empty here.
+			 *   Without it the press would skip the speculative session warm, so the send
+			 *   that follows would pay the cold runtime spawn a typed sentence does not.
+			 * - `pendingCaret`/`setCaret` is this file's convention for a programmatic
+			 *   edit (`applyPlan` above): the value and the selection are written
+			 *   together, so the caret is not left to whatever the browser does when the
+			 *   DOM value is replaced. It lands at the END of the label, which is the
+			 *   position "now edit what you just chose" means.
+			 */
+			if (!newMessage) onComposerInput?.();
+			pendingCaret.current = suggestion.length;
+			setNewMessage(suggestion);
+			setCaret(suggestion.length);
+			/*
+			 * The press lands on the chip, so the chip holds focus. Handing it back to
+			 * the box is what makes the interaction "complete this, then edit it"
+			 * rather than "complete this, then hunt for where to type": the caret is in
+			 * the sentence the user just chose, which is the same place the slash
+			 * picker's completion leaves them.
+			 */
+			textareaRef.current?.focus();
+		};
+
+		/*
+		 * WHAT THE COMPOSER SAYS ABOUT THE CAPTURE (§10: each state visible AND
+		 * explained).
+		 *
+		 * The TUI's own two sentences, verbatim, plus the unredact warning:
+		 *
+		 * - TYPING is the state where the operator most needs words, because their
+		 *   keystrokes are producing bullets instead of characters — alarming rather
+		 *   than reassuring unless something says it is deliberate AND how it ends,
+		 *   so the sentence names the mask and both keys. An EMPTY span is the same
+		 *   state with the other Enter outcome, so it gets its own sentence rather
+		 *   than the pill promise (UX round 2, U10 — see the constants);
+		 * - ARMED is shown only while the token is still the caret's own tail, which
+		 *   is exactly when a space would open the span. The TUI shows its armed
+		 *   notice in the picker's row, which only exists during the argument phase
+		 *   and so can never paint next to the token; a composer has no such row, and
+		 *   a notice that stayed up after the operator typed four more words would be
+		 *   describing a mode that is no longer one keystroke away;
+		 * - UNREDACTED outranks ARMED and TYPING cannot coexist with it. It reports a
+		 *   state the operator did not ask to be in (they asked to cancel) and the one
+		 *   where the next Enter discloses a secret, so it is the warning tone rather
+		 *   than muted ink — the same reason the TUI posts it as a warning. The
+		 *   sentence is built from the count here rather than stored, so the notice a
+		 *   RESTORE raises and the notice the cancel raised are the same words from the
+		 *   same authority (design round 2, D2).
+		 */
+		const credentialNotice = isTyping(capture)
+			? capture.value !== ""
+				? CREDENTIAL_TYPING_NOTICE
+				: credentialSessionId
+					? CREDENTIAL_EMPTY_SPAN_NOTICE
+					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
+			: noticeLineFor({
+					unredacted:
+						unredactedChars !== null
+							? unredactedNotice(
+									unredactedChars,
+									/*
+									 * WHAT THE NEXT ENTER WILL DO WITH THEM, and the sentinel is passed ONLY where
+									 * the press really is held (agent review round 2, R5). The hold is a fact
+									 * about the RECORD, not about the disclosure: `unredactedChars !== null`
+									 * survives a reload / conversation switch while `cancelledToken` (a ref)
+									 * dies with it, so gating on the disclosure alone painted "Enter is held:
+									 * clear the box to release your words" over a box whose Enter DISPATCHES
+									 * `/credential <secret>` and eats the trailing words as its argument — the
+									 * defect this change exists to close, under a sentence promising the
+									 * opposite. `holdsHeldPress` is the same predicate the press asks, so the
+									 * claim and the press cannot drift; where it is false the plain
+									 * `unredactedNotice(n)` sentence stands, which is what a restored draft with
+									 * no live record actually does — expose the characters.
+									 */
+									holdsHeldPress(newMessage) ? HELD_TAKEN_BY : undefined,
+								)
+							: null,
+					/*
+					 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
+					 * the disclosure first: the sentence that knows what the NEXT keystroke will do
+					 * beats the one reporting the last edit. Measured on round 1's order: arm the
+					 * capture at the end of the buffer, clear a chip, and the line stopped saying
+					 * the capture was armed while it still was.
+					 *
+					 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
+					 * difference is a race rather than a nicety: `caret` lags one commit behind the
+					 * keystroke that moved it, so a derivation that read it here would flicker the
+					 * armed notice on and off between renders — and in the evidence play functions
+					 * it did, producing a frame with the notice in one theme and not in the next.
+					 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
+					 * anchored to the caret's own line end), and the end of the buffer is that same
+					 * tail in every state the operator can be typing in.
+					 */
+					armed:
+						capture.arm !== null &&
+						armSpan(newMessage, newMessage.length) !== null,
+					cleared:
+						clearedReference === null
+							? null
+							: {
+									key: clearedReference.key,
+									index: clearedReference.index,
+								},
+					/*
+					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
+					 * (UX round 3, U15): the durable sentence has to name the key this
+					 * platform actually listens for, and the platform is the composer's to
+					 * know, not the copy module's.
+					 */
+					undoCap: lockedRunUndoCap(platform === "darwin"),
+				});
+
+		const shortcutText = useMemo(() => {
+			if (platform === "darwin") {
+				return "Cmd+Shift+S";
+			}
+			return "Ctrl+Shift+S";
+		}, [platform]);
+
+		/*
+		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
+		 *
+		 * `removeReply` unmounts the chip whose own remove control held focus, and the
+		 * browser then drops focus to `document.body` - no ring anywhere on the page,
+		 * measured after both a pointer press and a keyboard Enter. The reader's next
+		 * act is either removing the next quote or writing, so focus goes to the chip
+		 * that takes the removed one's place (the list closes upward, so that is the
+		 * next chip, or the last one when the removed chip was last) and to the
+		 * composer once nothing is staged.
+		 *
+		 * The index is recorded HERE and the focus applied in an effect below, because
+		 * the button that should take focus does not exist until the store change has
+		 * rendered: `removeReply` is synchronous and the DOM is not. Reaching for the
+		 * next chip by index is what makes repeated removals one Tab apart, which is
+		 * the thing the reader is doing when they hit this.
+		 */
+		const pendingChipFocus = useRef<number | null>(null);
+
+		const handleRemoveReply = (replyId: string) => {
+			if (!conversationId) return;
+			pendingChipFocus.current = replies.findIndex(
+				(reply) => reply.id === replyId,
+			);
+			removeReply(conversationId, replyId);
+		};
+
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `replies` is the TRIGGER, not a value the body reads - the effect runs once per list change and reads the index the removal recorded, so listing the chips themselves would only re-run it against an already-cleared intent.
+		useEffect(() => {
+			const at = pendingChipFocus.current;
+			if (at === null) return;
+			pendingChipFocus.current = null;
+			const chips = document.querySelectorAll<HTMLElement>(
+				REPLY_CHIP_REMOVE_SELECTOR,
+			);
+			const next = chips[Math.min(at, chips.length - 1)];
+			if (next) next.focus();
+			else focusInput();
+		}, [replies, focusInput]);
+
+		/*
+		 * The notice, one sentence plus at most two controls.
+		 *
+		 * The whole derivation used to live here: comparing the box against a held
+		 * payload, choosing between "Restore message" and "Discard message", deciding
+		 * whether the generic retry hint was true. All of that existed to explain a
+		 * state where the user's message was somewhere they could not see or edit.
+		 * The message is now in the box, so there is nothing to compare and nothing
+		 * to explain: the sentence and the two actions come from the failure itself
+		 * (`sendFailureCopy`, applied where the failure was classified).
+		 *
+		 * What is still decided here is whether `Clear` should render at all, and the
+		 * rule is the old one, kept because it was right: a control that would do
+		 * nothing invisible is noise. Clearing an EMPTY box is still meaningful when
+		 * there is a claim to drop (or a returned payload waiting to be adopted), and
+		 * it is that second half `hasSomethingToClear` reads.
+		 */
+		const composerAlert = useMemo(() => {
+			const boxPayload = buildSendPayload(newMessage, replies);
+			const hasSomethingToClear = boxPayload !== "" || attachments.length > 0;
+			/*
+			 * `noProvider` FIRST, not only the notice text: live, the failure a user
+			 * actually gets with nothing connected is the app's own 20-second timeout
+			 * (the backend's 503 arrives after the IPC deadline at load), so the
+			 * backend's sentence never matched and this action never appeared (UX round
+			 * 2 N3). The condition the action answers is "nothing can answer", which
+			 * this component already knows.
+			 */
+			const providerConnectActions =
+				noProvider ||
+				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
+					? [
+							{
+								label: "Connect a provider",
+								onClick: () => useConnectProviderStore.getState().openConnect(),
+							},
+						]
+					: [];
+			return {
+				message: sendError?.message,
+				muted: sendError?.muted === true,
+				polite: sendError?.polite === true,
+				/*
+				 * THE BACKEND'S "no model provider" REFUSAL ARRIVES HERE, as this
+				 * alert, not as a transcript record. The action the transcript notice
+				 * gained was therefore never rendered for the case it was written for -
+				 * a user who sends with nothing connected got the sentence, a Settings
+				 * path to type out, and no way to act (QA round 1 Q5, UX round 1 N3).
+				 * One action, opening the same dialog the other surfaces open.
+				 *
+				 * AND THIS LIST IS THE ONE THING THIS BRANCH CONTRIBUTES TO THIS MEMO. The memo's
+				 * own shape - the mute/politeness pair, `retry`, and the single `clear` hinge on
+				 * `hasSomethingToClear` - is main's, from the composer series that replaced the
+				 * held-claim register this branch's copy still carried, and the notice that reads
+				 * these fields is main's too. So the fold is a PORT rather than a side: main's memo
+				 * and main's notice, with this branch's action re-laid into it. See the note on the
+				 * Send control's `disabled` for the other half of the same fold.
+				 */
+				actions: [...(sendError?.actions ?? []), ...providerConnectActions],
+				retry: sendError?.retry === true,
+				/*
+				 * Clear is offered whenever the notice is - the box may hold the returned
+				 * message, or a claim may be waiting to be dropped, and in both cases the
+				 * user's way out is to empty the composer and be done with it. It is also
+				 * the ONE control on the pairing arms, where the payload cannot be sent at
+				 * all until the app is repaired.
+				 *
+				 * AND NOT on a MUTED notice, which is the other half of the same rule
+				 * (spec §4's table gives both muted rows no actions). A muted notice is a
+				 * statement of fact rather than a failure - the send lock ("Your last
+				 * message is still sending.") and the late delivery ("Your earlier message
+				 * was delivered.") - and on both the box holds text the user typed and
+				 * still means to send. Clear beside that sentence is a destructive control
+				 * offered over a state with nothing to repair, which is the shape this
+				 * change exists to remove rather than relocate.
+				 */
+				clear:
+					sendError?.muted !== true &&
+					(sendError?.onClear !== undefined || hasSomethingToClear),
+			};
+		}, [sendError, newMessage, replies, attachments, noProvider]);
+
+		/*
+		 * The session issue: the state of this machine's Radient sign-in, and the one
+		 * action that starts it again when it is dead.
+		 *
+		 * Read HERE rather than in the transcript because the composer band is the
+		 * session's own surface: every other standing fact about a session - its goal,
+		 * the size of its plan, a held message, an interrupted turn - is stated in this
+		 * band too, and the operator's report was that they had to go looking for this
+		 * one at all.
+		 *
+		 * It renders NOTHING in the healthy case, which is the common one, and nothing
+		 * for a backend that cannot answer the verdict either (see the hook's own
+		 * capability gate), so a healthy machine and an older server both draw the
+		 * composer exactly as they did before.
+		 */
+		const radientIssue = useRadientSessionIssue();
+
+		/*
+		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
+		 * button variants carry `[&_svg]:size-4` / `size-3.5`, which override an
+		 * SVG's own width and height - so a `size` prop on these icons states an
+		 * intent it cannot deliver and reads as the rendered value to anyone who
+		 * greps for it. It cost two rounds of review on a Storybook stand-in that
+		 * copied these numbers faithfully and drew a composer the app does not
+		 * draw. The variant owns the size; the call sites no longer claim to.
+		 */
+
+		/*
+		 * THE SENTENCE'S LINE: the credential notice above the composer box. It had a
+		 * second consumer - an invisible mirror below the group that cancelled the
+		 * centring shift on an empty chat (UX round 4, U16) - which went when the band
+		 * stopped centring the composer: a bottom-anchored box does not move when a
+		 * line is added above it.
+		 */
+		const credentialNoticeLine = cn(
+			"block text-body-sm",
+			// The same padding step the interrupt notice beside the composer uses, so
+			// the two sentences share one text edge with the box's own contents.
+			isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+			// The unredact is the one state where the next Enter discloses a
+			// secret, so it takes the warning role rather than muted ink.
+			unredactedChars !== null ? "text-warning" : "text-ink-muted",
+		);
+
+		/*
+		 * Whether the closed box owes the reader WORDS, which is the state the
+		 * placeholder cannot serve (UX round 1, U2): it paints only while the box
+		 * is empty, and this is about a box holding the reader's own draft. The
+		 * sentence renders beside the credential notice, in the same register and
+		 * line style, only while both are true.
+		 */
+		const secretClosureNotice = secretAnswerPending && newMessage.length > 0;
+
+		/*
+		 * THE SESSION ISSUE, THE GAP BETWEEN IT AND THE BOX, AND THE ANNOUNCEMENT.
+		 *
+		 * IT IS AN `<output>` - the band's own element for an asynchronous line,
+		 * which is what the sentence above the box uses too - and that is the fix
+		 * for UX round 1's U2. The block ARRIVES on its own: the credential dies
+		 * out of band, the 60 s poll finds it, and the callout appears while the
+		 * operator is mid-sentence. That is news, and none of it was announced - a
+		 * screen-reader user got nothing until they happened to tab into it.
+		 * `output` carries the status role implicitly, which is also why this is an
+		 * element rather than a `role="status"` attribute on a `div` (the lint
+		 * rule the a11y set carries wants the element). `hidden` while there is no
+		 * issue keeps the healthy band reserving no height and the region out of the
+		 * accessibility tree, exactly as the sentence above it does. The `alert` role
+		 * stays wrong here for the primitive's own reason: it is reserved for a
+		 * callout rendered IN RESPONSE to an action, which is the composer's
+		 * send-error alert.
+		 *
+		 * WHAT IS VERIFIED HERE AND WHAT IS NOT (agent review round 2, NIT-1; UX
+		 * round 2, N7). Verified: the element, its implicit role, and the fact that
+		 * the same node persists while the callout is up, so a poll that changes
+		 * `needs sign-in` into `signing-in` is a content change in a standing region
+		 * rather than a second mount. NOT verified: that any assistive stack SPEAKS
+		 * the arrival. No screen reader is in the loop for this repository, and the
+		 * arrival is the one case a live region is least reliable in - the region is
+		 * `display: none` while healthy and the callout mounts inside it, so a
+		 * stack that only watches an already-present region sees nothing. A
+		 * permanently-present clipped region (`sr-only` rather than `hidden`) is the
+		 * alternative shape; it was not taken here because it would reserve a
+		 * clipped line in the healthy band for an announcement this round cannot
+		 * measure either way. Recorded as unverified rather than claimed.
+		 *
+		 * THE GAP IS THE WRAPPER'S (design round 1, D1). Every other block above the
+		 * composer leaves its own bottom step for that gap (`px-4 pb-2` / `px-2
+		 * pb-1`, the status row's and the alert's own lists) - and the bordered
+		 * callout, which imported the alert's PADDING but not its gap, therefore sat
+		 * 0.5-1.0px above the composer's border at every width. Its ground is 1.02:1
+		 * from the box's, so there was no lightness step to read the edge by either.
+		 *
+		 * The collision is what makes it more than untidy: the composer carries a 2px
+		 * `outline-offset-2` ring whenever a draft is staged - i.e. in the DEFAULT
+		 * state - so the ring's 4px of extent was painted INSIDE the callout's
+		 * ground, drawing a green rule along its bottom edge and over its border at
+		 * the rounded corners; the callout's border read as part of the composer's
+		 * focus decoration. `branding.md` §5 gives the gap to the CONTAINER, which is
+		 * why it is here and not an `mb-*` on the callout.
+		 *
+		 * `pb-2` AT BOTH WIDTHS, deliberately unlike its siblings. `pb-1` is 4px and
+		 * the ring's extent is exactly 4px, so the compacted step that saves vertical
+		 * space in the small view would put the ring's outer edge back on the
+		 * callout's border. 8px is the band's own wide step, the minimum that clears
+		 * the ring with room to read the two edges as two, and the callout is the one
+		 * block up here that must not compact it.
+		 *
+		 * Rendered ONCE, above the box. It used to be mirrored below the group on an
+		 * empty chat so its arrival would not move a centred composer (UX round 1,
+		 * U5); the composer is docked at the band's foot now, so the arrival grows
+		 * the band upward and the splash above yields, as the transcript does in a
+		 * conversation.
+		 */
+		const radientIssueBlock = (
+			<output
+				className={cn(
+					CHAT_MEASURE,
+					"block pb-2",
+					radientIssue.issue.kind === "hidden" && "hidden",
+				)}
+			>
+				<RadientSessionIssueCallout
+					issue={radientIssue.issue}
+					onSignIn={radientIssue.start}
+					onCancel={radientIssue.cancel}
+					onDismiss={radientIssue.dismiss}
+					isSmallView={isSmallView}
+					/*
+					 * Every control in this block is REPLACED by its own press (the action by
+					 * Cancel, Dismiss by the action, and a completed sign-in by nothing at
+					 * all), so the focused control is unmounted under the user and Chromium
+					 * drops focus to `<body>` - 35 Tab stops from the control that replaced
+					 * it. The block hands it back HERE for the status row's reason: this is
+					 * where the composer's own ref lives (`UX round 2, U7`).
+					 */
+					onFocusComposer={() => textareaRef.current?.focus()}
+				/>
+			</output>
+		);
+
+		const inputContent = (
+			<form
+				onSubmit={handleSubmit}
+				/*
+				 * §C4's fourth region, and its second name: `Message composer`. The element is
+				 * already the `form` the spec's order names, so the region is a label on what
+				 * was here rather than a new wrapper - a wrapper would have made `form` a
+				 * fifth landmark and this one its child.
+				 *
+				 * THE DOOR IS THE FIELD, marked below rather than inferred: `enterChatRegion`
+				 * looks for this region's own `data-region-entry`, and the textarea is what a
+				 * reader pressing `F6` into the composer is asking for. The region root is
+				 * `tabIndex` -1 as a fallback for the states where the field is not mounted
+				 * (the refusal notice replaces the box).
+				 */
+				data-chat-region="composer"
+				aria-label={CHAT_REGION_LABEL.composer}
+				tabIndex={-1}
+				className="w-full"
+			>
+				{/*
+				 * The session's status row, ABOVE the alert and therefore above the box:
+				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
+				 * that points at the composer; this row is persistent ambient context, so
+				 * it sits outboard of the transient one. Band order, top to bottom: row,
+				 * alert, the interrupt notice, box - the fourth block is a transient too and
+				 * therefore sits inboard of the row as well; see its own comment for why it
+				 * is the alert's sibling rather than its child.
+				 *
+				 * KEYED ON THE CONVERSATION, and that is a requirement rather than
+				 * tidiness: the composer is not remounted on a session switch, so a goal
+				 * expanded in one conversation would arrive expanded in the next. The
+				 * goal's expansion is deliberately not persisted (spec § 3.3), and this
+				 * key is the whole reset mechanism.
+				 *
+				 * It returns null when the session has neither a goal nor a plan, so a
+				 * legacy pane and a fresh draft reserve no height at all. It renders inside
+				 * an error boundary with an empty fallback for the readings' own reason: a
+				 * crash in metadata must not cost the ability to type.
+				 */}
+				<ErrorBoundary fallback={null}>
+					<ComposerStatusRow
+						key={conversationId}
+						frontend={sessionStatus?.frontend}
+						runDetails={runDetails}
+						isSmallView={isSmallView}
+						/*
+						 * The judge stalling is a state the user cannot read off 0px of ink, so the
+						 * row writes one sentence about it to the transcript (design D2) — through
+						 * the composer's EXISTING note channel rather than a second one, which is
+						 * that prop's own rule (`onSlashNote`). A pane with no canonical session
+						 * falls back to the legacy chat store inside it, so the sentence always
+						 * lands somewhere the user reads.
+						 */
+						onNote={onSlashNote}
+						/*
+						 * The row's last activity chip unmounts when its work settles. If
+						 * that chip held focus the browser drops it to `<body>`, so the row
+						 * hands it back HERE rather than finding the box itself: this is
+						 * where the composer's own ref lives, and `textareaRef` is the same
+						 * node the field renders (`UX round 1, U1`).
+						 */
+						onFocusComposer={() => textareaRef.current?.focus()}
+					/>
+				</ErrorBoundary>
+				{/*
+				 * The session issue, between the persistent status row and the transient
+				 * send-error alert: ambient context sits outboard of the alert that points
+				 * at the box, which is the rule that put the row above it
+				 * (`docs/composer-status-tabs.md` § 2.1, amended with this block).
+				 *
+				 * It is NOT inside the box, for the alert's own reason: the box is one
+				 * control with one focus ring, and this block carries prose and two
+				 * controls. Its own gap to that ring is the wrapper's, above
+				 * `inputContent` - the ring is why it is 8px and not the siblings'
+				 * compacted 4px (design round 1, D1).
+				 */}
+				{radientIssueBlock}
+				{composerAlert.message !== undefined && (
+					/*
+					 * ONE SENTENCE, AT MOST TWO CONTROLS. THE WHOLE OF IT.
+					 *
+					 * This region used to carry a paragraph about a message being kept
+					 * elsewhere, two paragraphs of held-claim register, a "what was not
+					 * saved" clause, and three links (Restore, Discard, Stop holding it) -
+					 * all of it describing machinery the user had no reason to know about,
+					 * over a box that no longer held the message they had typed. The
+					 * message is in the box now, so the notice has one job: say what
+					 * happened, and offer the two things that could follow.
+					 *
+					 * `Retry` is the composer's own Send (`onRetry` calls the same path the
+					 * button and Enter take), and `Clear` empties text, chips and quotes
+					 * and drops the claim. Neither is an instruction to reproduce something
+					 * by hand, which is what the old copy asked for.
+					 *
+					 * ABOVE THE BOX, not inside it: the composer box is one control with
+					 * one focus ring (`COMPOSER_BOX`), and folding non-interactive prose
+					 * and two extra controls into it would put them inside the thing that
+					 * ring frames. Sharing `CHAT_MEASURE` - the same container-keyed track
+					 * `COMPOSER_BOX` resolves - keeps the two edge-aligned at every width;
+					 * viewport-keyed classes that merely look equivalent drift from it in
+					 * the band around the container's threshold, and a notice half a box-width off reads as
+					 * unrelated chrome rather than as this composer's own failure.
+					 *
+					 * `role="alert"` rather than `aria-live="polite"`: a send that did not
+					 * land is the assertive case. The user has just pressed Enter and what
+					 * they do next depends on knowing it failed.
+					 *
+					 * Icon and weight, not colour alone, are what rank the line: `danger`
+					 * is the highest-contrast ink in none of the twelve palettes, because
+					 * the ink ramps order by design intent and `danger` is a hue role
+					 * rather than a loudness rank. So the glyph marks which line is the
+					 * failure and `font-medium` carries the salience a contrast contest
+					 * cannot win. A MUTED notice (the send lock, a late delivery) is a
+					 * statement of fact rather than a failure, so it takes neither.
+					 */
+					<div
+						/*
+						 * The late-delivery line is a STATUS, not an alarm: it is the app
+						 * catching up, not a press that failed. Its own region rather than the
+						 * failure's means a screen reader announces it once, without
+						 * interrupting itself to repeat the sentence it just replaced
+						 * (review round 2, NIT).
+						 */
+						role={composerAlert.polite ? "status" : "alert"}
+						/*
+						 * The rig's address for this row (`scripts/renderer-driver.mjs`'s
+						 * `connection-drop` scene reads it, and waits on its clearance after a
+						 * reconnect): the same structural-marker rule as `data-undelivered`.
+						 */
+						data-composer-notice
+						/*
+						 * THE QUEUED-SEND MARK (task-17, U2), by IDENTITY of the sentence:
+						 * the queued line and the send lock are both muted statements of
+						 * fact about a flight, so the register cannot tell them apart and
+						 * neither can `role`. A reader (this repo's rigs included) that
+						 * needs "is this the queued line" reads this marker rather than the
+						 * copy, so the sentence can be reworded without moving the handle.
+						 */
+						data-composer-queued={
+							sendError?.message === SEND_FAILURE_COPY.queuedSend
+								? true
+								: undefined
+						}
+						className={cn(
+							CHAT_MEASURE,
+							"flex flex-col gap-1 text-body-sm",
+							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+						)}
+					>
+						<p
+							className={cn(
+								"flex items-start gap-1.5",
+								composerAlert.muted ? "text-ink-muted" : "text-danger",
+							)}
+						>
+							{!composerAlert.muted && (
+								<span className="flex shrink-0 items-center pt-0.5">
+									<CircleAlert size={14} aria-hidden="true" />
+								</span>
+							)}
+							{/*
+							 * `min-w-0 break-words`, because the sentence is not always this
+							 * app's: a store refusal names the volume, an unreadable attachment
+							 * names the file, and either can carry a word the app does not
+							 * control.
+							 */}
+							<span
+								className={cn(
+									"min-w-0 break-words",
+									!composerAlert.muted && "font-medium",
+								)}
+							>
+								{composerAlert.message}
+							</span>
+						</p>
+						{(composerAlert.retry ||
+							composerAlert.clear ||
+							composerAlert.actions.length > 0) && (
+							<div className="flex min-h-6 flex-wrap items-center gap-3">
+								{composerAlert.actions.map((action) => (
+									<Button
+										key={action.label}
+										type="button"
+										variant="link"
+										size="sm"
+										className={cn("cursor-pointer text-body-sm underline")}
+										onClick={action.onClick}
+									>
+										{action.label}
+									</Button>
+								))}
+								{composerAlert.retry && sendError?.onRetry && (
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										/*
+										 * WEIGHT RATHER THAN COLOUR, and that is the design round's
+										 * finding (D2) answered without a second palette rule: the two
+										 * ink roles these controls used (`ink` and `ink-dim`) measure
+										 * 1.05-1.11 apart in sage, iceberg, localOperatorLight, dune and
+										 * synth, so "Retry is the primary of the two" was invisible in
+										 * five of the twelve themes. A weight difference is the same
+										 * difference in all of them, and Retry is the control the
+										 * sentence is asking for.
+										 */
+										className={cn(
+											/*
+											 * `font-semibold`, not `font-medium`: the button's own base
+											 * already draws at medium weight, so a "medium" Retry is
+											 * indistinguishable from Clear - measured by
+											 * `composer-alert-geometry` at 500 for both, which is
+											 * exactly the D2 finding the class was meant to answer.
+											 */
+											"cursor-pointer font-semibold text-body-sm underline",
+										)}
+										onClick={() => sendError.onRetry?.()}
+									>
+										{RETRY_LABEL}
+									</Button>
+								)}
+								{composerAlert.clear && sendError?.onClear && (
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										/*
+										 * `aria-label` because "Clear" on its own names no object for a
+										 * screen reader: read out of the notice it is a verb with nothing
+										 * after it, and the visible label stays short on purpose (review
+										 * round 1, U8).
+										 */
+										aria-label="Clear message"
+										className={cn(
+											"cursor-pointer text-ink-dim text-body-sm underline",
+										)}
+										onClick={() => sendError.onClear?.()}
+									>
+										{CLEAR_LABEL}
+									</Button>
+								)}
+							</div>
+						)}
+					</div>
+				)}
+				{/*
+				 * What an interrupt left running, and NOT in the alert above.
+				 *
+				 * The band order the status row's comment records becomes row, alert,
+				 * notice, box, and the notice sits INBOARD of the alert because both are
+				 * transient results of a press while the row above is ambient context.
+				 * It is a sibling rather than a child of the alert region because that
+				 * region is the FAILURE register: it carries `text-danger` and
+				 * `role="alert"`, and this sentence says a stop WORKED. Sharing the
+				 * region would both paint it as an error and inherit the alert's
+				 * assertive announcement for a press the user made themselves - which is
+				 * the same reason the notifier deliberately raises no banner for a
+				 * completed `interrupted`. An `<output>` instead: it implies the same
+				 * polite `status` role, and its own definition - the outcome of a user
+				 * action - is this sentence exactly.
+				 *
+				 * Null in the common case by construction - see `interruptNotice` - so
+				 * a stopped turn with nothing under it leaves the band's height alone.
+				 * The padding steps are the alert's own, and they put this line one
+				 * padding step (16px at the default rung, 8 at the small one) inside
+				 * the box's OUTER edge - the same track the send-error alert resolves,
+				 * and NOT the textarea's text edge, which is that plus the textarea's
+				 * own step. Design round 1's D1 measured both (16/25 dev px at 1x,
+				 * +17/+25.5 CSS live): the two lines stacked here therefore do not share
+				 * a column with the placeholder beneath them, which is pre-existing and
+				 * which moving would move the alert too.
+				 */}
+				{interruptNotice && (
+					/*
+					 * `<output>` rather than a `role="status"` div, and the element is doing
+					 * real work rather than satisfying a linter: the role it implies IS
+					 * `status` (polite, an atomic whole), and its definition - the result of
+					 * a calculation or the outcome of a USER ACTION - is exactly this
+					 * sentence. `block` is needed because the element defaults to inline and
+					 * carries the padding steps the alert beside it uses.
+					 */
+					<output
+						className={cn(
+							CHAT_MEASURE,
+							"block text-body-sm text-ink-muted",
+							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+						)}
+					>
+						{interruptNotice}
+					</output>
+				)}
+				{/*
+				 * THE ASIDE PANEL, ABOVE THE BOX AND INSIDE THE BAND.
+				 *
+				 * In-flow and unportaled, like every other above-composer surface this band
+				 * carries (the status row, the interrupt notice, the alert). It is a SIBLING of
+				 * the box's anchoring wrapper rather than a child of it, so the slash popup —
+				 * whose `bottom-full` resolves against that wrapper — still paints in its own
+				 * strip and never inside the panel. And it is a plain element rather than a
+				 * Radix layer, which is the whole fix: a modal traps focus and disables the
+				 * pointer outside itself, and the composer underneath is the surface the user
+				 * still has to type in (`aside-panel.tsx` carries the mechanism).
+				 *
+				 * The conditional renders into ITS OWN SLOT: a falsy child keeps its position in
+				 * this children list, so the wrapper after it keeps its index and the textarea
+				 * is never unmounted and remounted — the one thing in this band that must not be
+				 * recreated under the user's hands.
+				 */}
+				{asideSessionId && aside !== null && (
+					<AsidePanel
+						sessionId={asideSessionId}
+						sessionStreaming={asideStreaming}
+						isSmallView={isSmallView}
+						/*
+						 * The panel's own controls take focus with them when they close it, so
+						 * the control that owns the textarea hands it back (UX round 1, U6).
+						 */
+						onReturnFocus={() => textareaRef.current?.focus()}
+					/>
+				)}
+				{/*
+				 * THE SENTENCE AND THE BOX SHARE ONE ANCHORING ELEMENT, and that is the round-3
+				 * fix for the composer's own layout around the capture (design round 3, D1; UX
+				 * round 3, U14; code review round 3, MAJOR 1; QA round 3, Q1/Q2).
+				 *
+				 * Why the notice is not inside the box, in one measured paragraph: the composer
+				 * is pinned by its BOTTOM edge, so anything added UNDER the box pushes the text
+				 * up. Measured on a populated pane at 1380x868 with the same rig, a 20px line
+				 * injected below the box moves `textarea.y` 757.00 -> 737.00 (a full 20.00px),
+				 * while the same line above the box moves it 757.00 -> 757.00 (0.00px): the
+				 * transcript above yields instead. That is what makes "the text the operator is
+				 * typing does not move when the capture arms" hold, and it is why the manager's
+				 * own candidate - the sentence below the box - was measured and rejected: it is
+				 * the one position that costs the typed line the sentence's full height. (An
+				 * empty chat is pinned the same way now - the composer is docked at the band's
+				 * foot and the splash above it yields - so the answer is 0.00px on both panes
+				 * without the mirror the centring band used to need.)
+				 *
+				 * The wrapper is also the slash popup's anchor. The list renders `absolute
+				 * bottom-full`, so anchoring it HERE - above the sentence - is what keeps the
+				 * armed state's completion list from painting over the armed state's sentence;
+				 * anchored to the box instead, the two occupy the same strip and the popup (a
+				 * later sibling) wins.
+				 *
+				 * AND THE WRAPPER CARRIES THE MEASURE, which is a round-4 fix rather than
+				 * tidiness (design round 4, D1). The popup's `left-0 right-0` resolves against
+				 * its CONTAINING BLOCK, so moving the anchor from the box (which carries
+				 * `CHAT_MEASURE`) to this wrapper silently re-pointed the list at the COLUMN:
+				 * measured on the same story and the same viewport against live `origin/main`,
+				 * the list was x 63..961 (w 898 - the box's own edge) on `main` and x 48..976
+				 * (w 928) here, and in a 1332px column 241..1139 (898) became 48..1332 (1284),
+				 * a 192px overhang on each side. A positioning wrapper that the thing it
+				 * positions does not measure against is a second measure by accident, which is
+				 * precisely what `chat-measure.ts` exists to prevent. The notice and the box
+				 * keep their own `CHAT_MEASURE` because each is read as the composer in its own
+				 * right (the notice's width is asserted on its own by the suites).
+				 */}
+				<div className={cn(CHAT_MEASURE, "relative w-full")}>
+					{/*
+					 * The popup is a CHILD of this anchoring wrapper and renders `absolute
+					 * bottom-full`, i.e. deliberately outside the box's content area, above it.
+					 * It is NOT portaled, unlike the Radix menus and
+					 * tooltips: those get their portal AND their positioning from
+					 * Popper, whereas this list is anchored to one element that never
+					 * moves relative to its own containing block, so `bottom-full` on a
+					 * `relative` parent is the whole positioning story and a portal
+					 * would mean hand-rolling anchor tracking on scroll and resize --
+					 * more machinery, and a mechanism this codebase has nowhere else
+					 * (`createPortal` appears in no renderer file).
+					 *
+					 * The cost of staying unportaled is that ANY ancestor which
+					 * establishes a vertical clipping context erases it, with no
+					 * symptom other than an invisible list, because the overflow is on
+					 * the far side of the scroller's origin so there is nothing to
+					 * scroll to. That is exactly what an `overflow-y-auto` on the
+					 * composer band did (round 2, R1). Keep every bound between here
+					 * and the band on the popup's SIBLINGS, never on its ancestors.
+					 */}
+					<SlashSuggestionsPopup
+						state={slash}
+						onPick={handleSlashPick}
+						onActionPick={handleSlashAction}
+					/>
+					{/*
+					 * MOUNTED AFTER THE SLASH POPUP, and that order is the whole of the
+					 * "which list owns this caret" answer: the two grammars can both be live
+					 * (`/team @foo`), they anchor to the same 4px strip, and the later sibling
+					 * is the one on top. The key handler routes `@` first to match. See
+					 * `handleComposerKeyDown` for why no tiebreak was added to the grammars
+					 * instead.
+					 */}
+					<AtSuggestionsPopup state={at} onPick={handleAtPick} />
+					{/*
+					 * THE `$` LIST, after the `@` popup for the same sibling-order reason:
+					 * the three anchor to one strip, and the later sibling is the one on
+					 * top. The three cannot all be up at once by construction — each
+					 * suppresses itself where another's grammar claims the caret — so the
+					 * order is what keeps "the visible list owns the keys" true if any two
+					 * are ever live together, which is the identical argument the `@`
+					 * mount records.
+					 */}
+					<SkillSuggestionsPopup state={skills} onPick={handleSkillPick} />
+					{/*
+					 * THE SCROLL-TO-BOTTOM DISC, anchored to this wrapper because this wrapper
+					 * IS the composer's top edge (§G5): the disc is `bottom-full`, so it sits
+					 * 12px ABOVE the panel at whatever height the panel has.
+					 *
+					 * HIDDEN WHILE A COMPOSER MENU IS OPEN, which is the other half of D15:
+					 * the slash list, the `@` picker and the `$` list anchor to this same 4px
+					 * strip, and a disc floating over the menu's own last row is the overlap
+					 * the round photographed. It is also not drawn at all when the reader is
+					 * already at the newest row (`isFarFromBottom`), so the two states that
+					 * own this strip are never drawn together.
+					 */}
+					{!slash.open && !at.open && !skills.open && (
+						<ScrollToBottomButton
+							visible={isFarFromBottom}
+							onClick={scrollToBottom}
+							hasNewActivity={hasNewActivity}
+						/>
+					)}
+					{/*
+					 * The capture's own sentence, in the `<output>` register the interrupt notice
+					 * above the composer already uses: the result of a user action, said politely.
+					 *
+					 * IT SITS ABOVE THE BOX, IN FLOW, AND COSTS THE TYPED LINE NOTHING. Both
+					 * earlier rounds kept it INSIDE the composer and paid in the same currency -
+					 * the composer's own height changed when the sentence arrived, so the line
+					 * under the caret moved: round 1 reserved a 19.5px band above the textarea and
+					 * still grew 4px on arming, round 2 moved it onto the 32px control row, where
+					 * a 353.86px sentence in 296.55px of free row wrapped to two lines and grew the
+					 * row 32 -> 39px at 1380, became a 168x78 block (and took the cwd chip's label
+					 * from 236px to 96px) at 950, and a 76.7px-wide, 175.5px-tall ribbon with the
+					 * row tripled at 800 - this app's own `WINDOW_MIN_WIDTH`.
+					 *
+					 * Here it takes the composer's whole width instead of the row's leftovers, so
+					 * the wrapping is the sentence's own measure and not a ribbon, no control can
+					 * be landed on, and the working-directory chip and the readings strip - the two
+					 * neighbours whose widths used to decide the sentence's fate - are out of the
+					 * argument entirely.
+					 *
+					 * ON AN EMPTY CHAT the composer is docked at the band's foot like everywhere
+					 * else (§G2), so the sentence arriving above the box grows the band upward and
+					 * the splash yields its line; the typed line does not move. The centring band
+					 * this used to cost 13.75px on, and the mirror that paid it back (UX round 4,
+					 * U16), are both gone.
+					 *
+					 * AN EMPTY SENTENCE RENDERS NO BOX AT ALL, so the idle composer reserves
+					 * nothing and is geometrically the composer that was there before the gesture
+					 * existed; `aria-describedby` is still set only while there is a sentence, so
+					 * an idle composer is not described by an empty element (UX round 1, U7).
+					 */}
+					<output
+						id={CREDENTIAL_NOTICE_ID}
+						className={cn(
+							CHAT_MEASURE,
+							credentialNotice ? credentialNoticeLine : "hidden",
+						)}
+					>
+						{credentialNotice}
+					</output>
+					{/*
+					 * THE CLOSED BOX'S OWN SENTENCE, for the state the placeholder cannot
+					 * reach (UX round 1, U2): the composer is paused for the secret request
+					 * above, and the box holds a draft no placeholder will explain to. It
+					 * takes the capture notice's line style and the same text edge, and is
+					 * wired into `aria-describedby` below while it renders; conditionally
+					 * rendered rather than `hidden`-classed because the same reserve-nothing
+					 * rule applies to it as to the sentence above.
+					 */}
+					{secretClosureNotice && (
+						<output
+							id={SECRET_CLOSURE_NOTICE_ID}
+							className={cn(CHAT_MEASURE, credentialNoticeLine)}
+						>
+							{SECRET_CLOSURE_NOTICE}
+						</output>
+					)}
+					{/*
+					 * The outside-workspace mentions, described rather than drawn: `sr-only`,
+					 * because the fill already says it to a sighted reader and a second visible
+					 * line under the box is the geometry every round of this composer has had to
+					 * argue for. It renders only while there is something to say, so an ordinary
+					 * draft is not described by an empty element.
+					 */}
+					{outsideMentions > 0 && (
+						<span id={MENTION_OUTSIDE_NOTICE_ID} className="sr-only">
+							{outsideMentions === 1
+								? "1 reference points outside this session's working directory; the agent will ask you to approve it before reading."
+								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
+						</span>
+					)}
+					{/*
+					 * The way back to the failed message's controls, described rather than
+					 * drawn, and the same shape the mention notice above uses: `sr-only`,
+					 * because the hint is for the reader whose focus is in this box and
+					 * cannot see that the controls above are one Shift+Tab away (UX round
+					 * 1, U3). It renders only while the line is on screen, so an ordinary
+					 * draft is not described by an empty element.
+					 */}
+					{deliveryRemediesReachable && (
+						<span id={DELIVERY_REMEDIES_HINT_ID} className="sr-only">
+							The message that could not be delivered has Send again and Edit
+							controls in the conversation above this box: press Shift+Tab to
+							reach them.
+						</span>
+					)}
+					<div
+						className={cn(
+							COMPOSER_BOX,
+							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
+							CHAT_MEASURE,
+						)}
+						/*
+						 * The geometry rigs' handle on the composer's own MEASURE, on the
+						 * `data-lo-composer-band` / `data-lo-composer-tip` convention: this is the box
+						 * the band centres, i.e. the edge a surface sharing the conversation's measure
+						 * has to line up with, and the classes that produce it are not a selector (a
+						 * re-skin that moves the measure would move them with it).
+						 * `scripts/interrupt-esc-proof.mjs` reads its left edge against §G3's stopped
+						 * line's - the operator's report of 2026-09-27 measured the two apart.
+						 */
+						data-lo-composer-measure=""
+						data-tour-tag="chat-input-textarea"
+					>
+						{(replies.length > 0 || attachments.length > 0) && (
+							/*
+							 * The previews carry their own bound, on a SIBLING of the popup
+							 * rather than on an ancestor of it.
+							 *
+							 * These two are the composer's only unbounded content: attachment
+							 * tiles are 100px each and wrap, and replies stack, so a dozen
+							 * attachments grew the band past the window and took the send
+							 * controls off the bottom with nothing left to scroll them back
+							 * (measured: 40 tiles + 10 replies made the band 1126px in an
+							 * 872px viewport, send button off screen). Bounding them HERE
+							 * bounds the band as a consequence -- 377px at every load -- so
+							 * the band needs no max-height of its own and therefore no
+							 * scroller, which is what keeps the slash popup above it
+							 * reachable.
+							 *
+							 * This is the pattern the textarea below already uses
+							 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
+							 * of the composer caps itself and scrolls internally, so no
+							 * wrapper has to clip on behalf of its children. ~240px shows two
+							 * full rows of tiles before scrolling.
+							 */
+							<div className="max-h-[240px] shrink-0 overflow-y-auto">
+								{replies.length > 0 && (
+									<ReplyPreview
+										replies={replies}
+										onRemoveReply={handleRemoveReply}
+									/>
+								)}
+								{attachments.length > 0 && (
+									<AttachmentsPreview
+										attachments={attachments.map((a) => a.path)}
+										onRemoveAttachment={(index) =>
+											handleRemoveAttachment(attachments[index].id)
+										}
+										disabled={isInputDisabled || isRecording || isTranscribing}
+									/>
+								)}
+							</div>
+						)}
+						{/*
+						 * THE FIELD STAYS MOUNTED WHILE RECORDING AND WHILE TRANSCRIBING (the
+						 * operator's report; research §2's "recording is a state of the composer,
+						 * not a screen").
+						 *
+						 * The arms that used to live here swapped the whole field for the
+						 * indicator or the `Processing audio` panel - a full-width, washed,
+						 * bordered block at the exact moment their author was mid-thought - and
+						 * the draft VANISHED at the press. That is the defect this change is:
+						 * the words stay where they are, and the recording state is the small
+						 * strip below them.
+						 */}
+						{/*
+						 * The textarea and its MIRROR, in one isolated wrapper.
+						 *
+						 * `isolate` is load-bearing rather than tidy: the overlay paints at
+						 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
+						 * without a stacking context here a negative index paints behind the
+						 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
+						 * on screen to say why (CSS 2.1 appendix E: negative-z children come
+						 * before in-flow block backgrounds).
+						 */}
+						<div className="relative isolate w-full">
+							<CredentialOverlay
+								text={newMessage}
+								payloads={payloadsRef.current}
+								capture={capture}
+								fieldRef={textareaRef}
+								mirrorRef={mirrorRef}
+								isSmallView={isSmallView}
+							/>
+							{/*
+							 * The mention chips, in the same `isolate` wrapper and at the same depth as
+							 * the credential pill: both draw behind the glyphs the textarea paints, and
+							 * neither takes the pointer. The two never overlap in practice — a chip is a
+							 * path token and a pill is a credential marker — but if they ever did, the
+							 * chip's fill would sit under the pill's, which is the right way round: the
+							 * pill marks a value the app holds and the chip marks a file the text names.
+							 */}
+							<AtMentionOverlay
+								text={newMessage}
+								spans={atMentions.spans}
+								resolved={atMentions.resolved}
+								fieldRef={textareaRef}
+								isSmallView={isSmallView}
+							/>
+							{/*
+							 * The highlight's two layers. `ComposerHighlight` owns the mirror, the
+							 * scroll write and the geometry correction; this JSX owns the input, so
+							 * the composer's key handling, its autosize and its refs are untouched by
+							 * the paint. The wrapper adds no size of its own — the mirror is
+							 * `absolute` — so the band's layout is exactly what the bare textarea
+							 * produced, and the credential overlay above stays a SIBLING of it
+							 * rather than an ancestor.
+							 */}
+							<ComposerHighlight
+								draft={newMessage}
+								runs={slashRuns}
+								textareaRef={textareaRef}
+								fieldClassName={composerTextBox(isSmallView)}
+								refused={isInputDisabled}
+							>
+								<textarea
+									ref={textareaRef}
+									data-region-entry
+									className={cn(
+										// The box model comes from ONE place, shared with the mirror:
+										// any drift between these two moves the pill off the characters
+										// it sits under.
+										composerTextBox(isSmallView),
+										// `block`, and it is a fix rather than a style choice (design round 3,
+										// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
+										// wrapper above is a block container, and a textarea left at its
+										// default `inline-block` sits in a LINE BOX there — so the wrapper
+										// measured 39.7px around a 34px field (the strut's descender space)
+										// and the composer box came out 5.7px taller than `origin/main`'
+										// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
+										// moving the control row, the ring and the box's bottom edge.
+										// On main the field is a direct child of the box's flex column and
+										// is blockified by it, which is why there was nothing to see there;
+										// the overlay's wrapper is what introduced the line box, so the
+										// field states its own display rather than depending on a parent's
+										// formatting context to do it.
+										"block",
+										isSmallView ? "max-h-24" : "max-h-28",
+										"resize-none overflow-y-auto bg-transparent",
+										/*
+										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because `caret-color: auto`
+										 * follows `color`, which is transparent here - an invisible caret in the app's primary input.
+										 * The ink comes back the moment no run is painted, so an ordinary draft keeps its native
+										 * rendering (and its spellcheck squiggle).
+										 */
+										highlighting ? "text-transparent caret-ink" : "text-ink",
+										"outline-none placeholder:text-ink-dim",
+										// A composer that REFUSES input STEPS COLOUR rather than fading
+										// (branding: disabled changes colour, never opacity), and without
+										// this the only signal was `cursor: not-allowed` after the user
+										// had already typed into a field that will not accept anything.
+										//
+										// `read-only:` is the pair that fires now, because the refusal
+										// is expressed as `readOnly` on the element below. The
+										// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
+										// this element any more, and deleting the pair would let a
+										// future `disabled` state ship with no ink step at all - the
+										// exact defect the pair was added for.
+										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+									)}
+									placeholder={
+										/*
+										 * THE ONE SENTENCE THE BOX CARRIES, and the ORDER is the rule rather than
+										 * the strings: `composerPlaceholder` holds it (with the reason each term
+										 * sits where it does), so the chain cannot be reordered into a state the
+										 * app cannot be in and then photographed as one.
+										 *
+										 * The two facts this call is built from: `sendInFlight` is this composer's own
+										 * unsettled press, and `sendingUnsettled` is the STORE's row for this
+										 * conversation (`sendUnsettledForSession` -> `draftRowForSession`, over the
+										 * row's own `pending`), which is what
+										 * survives the New-chat identity flip - a flag held by the panel being replaced
+										 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
+										 * are OR'd because they are the two halves of one fact at two scopes, and the
+										 * sentence is earned by the SCENARIO rather than by the box: while a send from
+										 * this conversation is going out, the empty box says so, and `Waiting for the
+										 * agent` takes over once it has settled. See `composerPlaceholder` for why that
+										 * outranks `awaitingReply` and what it must never claim.
+										 *
+										 * `asideAttached` is the attached `/btw` panel, which re-routes this box's
+										 * Enter off the record. Where its term sits in the order - after the two
+										 * refusals and the gate, ahead of both send-state sentences - and why each
+										 * side of that position is load-bearing is stated on `composerPlaceholder`.
+										 *
+										 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
+										 * composer's existing idiom - every state this box has ever had is one
+										 * of these strings and nothing else (design rounds 2 and 3). The
+										 * transcript already carries the turn's single liveness element while
+										 * this is true (branding section 7's working line, fed by the page's
+										 * `admitting`), so a second visible indicator here would be a second
+										 * liveness statement about one turn - and the new state ADDS no
+										 * layout: `pending-send` is geometrically `idle` with one word
+										 * changed, measured in the committed pair. What does move, in a send
+										 * carrying an attachment, is the band losing the chip row when the
+										 * echo paints (253px -> 125px at 1024 in the same pair): that is the
+										 * payload leaving, not an indicator arriving, and the field and the
+										 * control row hold their position through it (design round 1, D4).
+										 */
+										isRecording
+											? COMPOSER_PLACEHOLDER.recording
+											: composerPlaceholder({
+													unavailable,
+													secretAnswer: secretAnswerPending,
+													inputDisabled: isInputDisabled,
+													awaitingAnswer,
+													asideAttached: aside !== null,
+													sendingUnsettled: sendUnsettled || sendInFlight,
+													awaitingReply,
+													// The last reading before the invitation: nothing is in
+													// flight and the box is not refused, but no model
+													// provider is connected, so the invitation is a lie
+													// (design audit section 6).
+													noProvider,
+													/*
+													 * The host's own sentence for the invitation slot, when
+													 * it has one (the mini view's copy); every sentence
+													 * above still outranks it, and absent means the app's
+													 * own idle line.
+													 */
+													idle: placeholderOverride,
+												})
+									}
+									value={newMessage}
+									/*
+									 * The IME half of the paint: the composition string is drawn by the BROWSER, is not
+									 * in the mirror, and would be invisible under `text-transparent`, so zero runs turn
+									 * both the runs and the transparency off while it is being typed.
+									 */
+									onCompositionStart={() => setComposing(true)}
+									onCompositionEnd={() => setComposing(false)}
+									onChange={(e) => {
+										/*
+										 * THE KEYBOARD TOUCHED THIS BOX (arch §4.2): the input-mode
+										 * flag behind `mixed`/`typed`. Set HERE because this
+										 * handler is the one door every human edit arrives
+										 * through, and it does not fire for the transcript's own
+										 * programmatic write (a controlled value change is not an
+										 * `input` event) - which is exactly the distinction.
+										 */
+										sawTypingRef.current = true;
+										/*
+										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+										 * intercepted keystroke arrives here — Backspace, Delete, a
+										 * selection, a drop, an IME commit, and any paste that fell through
+										 * — and `applyDomEdit` maps the edit onto the held value at the
+										 * index the operator sees. The first door is the printable-key
+										 * branch of `handleCredentialKeyDown`, which never lets the
+										 * character reach the DOM at all; this one is the belt for the
+										 * routes a keyboard gate cannot see.
+										 *
+										 * `origin` is "typing" because a change IS a keystroke-shaped
+										 * event on this control — an arrival (a restored draft, a seed) is
+										 * written through `setNewMessage` by its own caller, never through
+										 * the DOM's change event for a textarea the user is in.
+										 */
+										const next = e.target.value;
+										const at = e.target.selectionStart ?? next.length;
+										/*
+										 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
+										 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
+										 * first keystroke, backspace, paste or drop that changes the draft. Content
+										 * equality could not say that — an edit that returned the box to the same
+										 * text left the record armed, and a `⌘Z` hours later put the consumed line
+										 * back. The programmatic writes the composer makes (a splice, a stage, the
+										 * undo itself) do not pass through here, so they do not clear it.
+										 */
+										lockedRun.current = null;
+										const applied = applyDomEdit(
+											captureRef.current,
+											newMessage,
+											next,
+											at,
+											"typing",
+										);
+										if (applied.buffer !== next) {
+											// A real character reached the span through a route the
+											// keyboard gate could not see, and it is already replaced by
+											// its mask cell here.
+											pendingCaret.current = applied.caret;
+											setCaret(applied.caret);
+										} else {
+											setCaret(at);
+										}
+										if (applied.capture !== captureRef.current)
+											setCapture(applied.capture);
+										// Only the empty -> non-empty edge: the whole point is one
+										// statement of intent per composed message, and the
+										// consumer's latch should not be asked to absorb a
+										// per-character call it can only discard.
+										if (!newMessage && applied.buffer) onComposerInput?.();
+										/*
+										 * The capture's own write, stamped so the whole-buffer teardown can
+										 * tell it from a replacement some other writer made. A DOM change
+										 * reaches here without passing `applyCapture`, which is exactly why
+										 * the stamp is not optional: without it, the operator's own
+										 * keystroke would read as an external write and end the gesture it
+										 * is in the middle of.
+										 */
+										captureOwnedBuffer.current = applied.buffer;
+										// An abandoned capture (the drop and IME routes) settles the box
+										// here rather than through `applyCapture`, so the §6 write has to
+										// be asked for here too.
+										persistDraft(applied.capture, applied.buffer);
+										setNewMessage(applied.buffer);
+										// Editing the text answers the alert. Leaving it up over a
+										// draft the user has since changed is the defect this whole
+										// change replaces, and moving the banner to the composer
+										// would only have moved that defect closer to the eye.
+										//
+										// After a dwell, though: the message is two sentences plus up
+										// to three controls, and a user who reaches straight for the
+										// keyboard lost all of it before finishing the first word -
+										// including the remedy buttons. The alert still goes on the
+										// edit, just not before it can be read.
+										if (
+											Date.now() - alertShownAt.current >=
+											ALERT_READ_DWELL_MS
+										)
+											sendError?.onDismiss?.();
+									}}
+									onSelect={(e) => {
+										const field = e.target as HTMLTextAreaElement;
+										/*
+										 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+										 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+										 *
+										 * `applyCapture` parks the caret it is about to set in
+										 * `pendingCaret` and the layout effect applies it with the
+										 * buffer. A `select`/`selectionchange` still in flight from the
+										 * PREVIOUS edit therefore reaches this handler between the state
+										 * write and its commit, carrying the older buffer (the render
+										 * closure has not moved yet) and the older offset — a pair that
+										 * is internally consistent and describes a state the composer
+										 * has already left. Re-syncing on it is how accepting the
+										 * `/credential` row closed the span that completion had just
+										 * opened: the report said "the caret is at 5, inside the token"
+										 * while the capture was already open at 6, so `syncCapture` read
+										 * a caret move out of the span.
+										 *
+										 * Skipping it is not a caret move being ignored: the offset that
+										 * arrives is the one this write is replacing, and the pending
+										 * value is applied by the layout effect either way. If the DOM
+										 * already agrees — a report about the caret we just set — the
+										 * marker is retired here so the guard cannot outlive its write.
+										 */
+										const pending = pendingCaret.current;
+										if (pending !== null) {
+											if (field.selectionStart === pending)
+												pendingCaret.current = null;
+											return;
+										}
+										setCaret(field.selectionStart);
+										/*
+										 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+										 * caret move may do: it may keep a latched arm, re-anchor it, and
+										 * RE-OPEN a span the caret has returned to — but it may never ARM
+										 * by itself. The TUI asks both questions at the same reactive
+										 * (`watch_selection`), because a mouse click, an app-set
+										 * selection and a completion's caret all move the caret with no
+										 * caret key pressed: without the re-open, leaving and coming back
+										 * left an armed token whose next typed character landed in
+										 * PLAINTEXT; without the "may not arm" half, a click at the end of
+										 * a restored draft would swallow the next paste.
+										 */
+										setCapture(
+											syncCapture(
+												captureRef.current,
+												newMessage,
+												field.selectionStart,
+												"caret",
+											),
+										);
+									}}
+									onKeyDown={handleComposerKeyDown}
+									onPointerDown={() => {
+										/*
+										 * "I am about to type here." An ask gate can advance while the
+										 * user is on their way into this box, and the restore must not
+										 * move them off it: the characters they type would reach
+										 * nothing and the next `Space` would answer the next question
+										 * (UX round 4, U13).
+										 */
+										composerPointerTouched = true;
+									}}
+									onPaste={handlePaste}
+									rows={1}
+									/*
+									 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
+									 * `isInputDisabled` declaration above. `disabled` blurs the field when
+									 * it lands, which parks the caret on `document.body` and, on the
+									 * `unavailable` arm, never gives it back on that panel; and a
+									 * disabled textarea cannot be focused, selected or copied, so the
+									 * reader cannot even retrieve the sentence they were writing from
+									 * the state that just told them the conversation is gone.
+									 *
+									 * `aria-disabled` is what says the same thing to a screen reader now
+									 * that the native attribute is gone: the field is still focusable
+									 * and still readable, so the accessible name has to carry the
+									 * refusal the ink step carries visually. It is undefined (absent)
+									 * while the composer works, because `aria-disabled="false"` on a
+									 * textarea that takes input is a statement about a state the user
+									 * is not in.
+									 *
+									 * The refusal itself is enforced by the guard at the top of
+									 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
+									 * event fires, so `onChange` never runs), but the keydown still
+									 * arrives — so Enter would submit without that guard. Every other
+									 * path that writes into this box or submits it carries the same
+									 * predicate, and `aria-describedby` ties the pane's own sentence
+									 * for the state to the control for as long as it refuses.
+									 */
+									readOnly={isInputDisabled}
+									/*
+									 * The TEXTAREA's own attribute: it reports the refusal that keeps the
+									 * box read-only, and nothing else. Round 5's U21 refusal is about
+									 * SENDING, not typing ("typing stays allowed; the send is not"), so
+									 * `noModel` must not appear here -- telling a screen reader the box
+									 * is disabled while it accepts every keystroke is the same class of
+									 * falsehood as a claim its surface cannot support, and
+									 * `composer-refusal` pins exactly that.
+									 */
+									aria-disabled={isInputDisabled || undefined}
+									aria-label="Message"
+									role="combobox"
+									/*
+									 * All THREE descriptions, space-separated as the attribute demands: the
+									 * credential capture's notice while one is owed, the mention sentence while
+									 * a reference points outside the workspace, and the pane's own sentence
+									 * while the conversation this machine would answer is gone. `undefined`
+									 * rather than an empty string when none applies, because an empty
+									 * `aria-describedby` is a reference to nothing. The three are independent
+									 * reasons to describe this box and any two of them can coincide, which is
+									 * why they are JOINED rather than chosen between.
+									 */
+									aria-describedby={
+										/*
+										 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
+										 * A screen reader in a refused box heard the value and "read-only,
+										 * disabled" and never WHY: the pane's statement of the state is a `<p>`
+										 * in the transcript with no programmatic tie to the control, and the
+										 * placeholder that carries the short form is painted and announced
+										 * only while the box is EMPTY - which is not the state this PR exists
+										 * for. Joining the other notices' ids rather than choosing between
+										 * them keeps each true at once; any two of the three can coincide.
+										 *
+										 * Named only for the `unavailable` arm, which is the one with a sentence
+										 * in the pane to point at. The busy arm's band carries the state's own
+										 * action (Stop agent) and has no pane sentence; it is also unreachable
+										 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
+										 * gets no invented one. An id that resolves to nothing is ignored by
+										 * assistive tech, which is what a composer mounted without a transcript
+										 * (a story, a rig) gets.
+										 *
+										 * AND SO DOES THE SECRET CLOSURE'S SENTENCE: the box is paused
+										 * with a draft in it — the one state the placeholder cannot reach
+										 * (UX round 1, U2) — so its own element joins while it renders.
+										 *
+										 * NOT A LIVE REGION. An announcement was the alternative, and it was
+										 * rejected: the state is already spoken by the transcript the reader is
+										 * in, this box is focusable precisely so the reader can go there, and a
+										 * polite region on every refusal is a second voice for one fact that
+										 * cannot be verified without an AT in this environment.
+										 */
+										[
+											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
+											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
+											unavailable ? MISSING_SESSION_NOTICE_ID : null,
+											deliveryRemediesReachable
+												? DELIVERY_REMEDIES_HINT_ID
+												: null,
+										]
+											.filter(Boolean)
+											.join(" ") || undefined
+									}
+									aria-expanded={slash.open || at.open}
+									aria-controls={
+										slash.open ? slash.listId : at.open ? at.listId : undefined
+									}
+									/*
+									 * The active option comes from whichever list is OPEN, and the popups rule
+									 * above guarantees only one is on top: handing both ids to one
+									 * `aria-activedescendant` would name an element in a list the user is not
+									 * looking at, which a screen reader announces as a row that does not exist.
+									 */
+									aria-activedescendant={
+										(slash.open
+											? slash.activeDescendantId
+											: at.activeDescendantId) ?? undefined
+									}
+								/>
+							</ComposerHighlight>
+							{/*
+							 * THE CHIPS, painted OVER the field's own glyphs.
+							 *
+							 * A sibling of `ComposerHighlight` inside the `relative isolate` wrapper, and
+							 * therefore AFTER the textarea in the DOM once `#303` moved the field behind
+							 * that wrapper's two layers. The order matters for two reasons and neither is
+							 * cosmetic: a positioned element paints above an in-flow one whatever the tree
+							 * order is (CSS 2.1 appendix E), so the chip is above the text either way -
+							 * but the DOM order is what decides where a keyboard user meets its `x`, and a
+							 * control that clears the reference the field holds belongs AFTER the field
+							 * rather than as a stop on the way in. It also keeps the chip above the
+							 * textarea's glyphs and below the popups that follow in this wrapper.
+							 *
+							 * It is a sibling rather than a child of `CredentialOverlay` so that the wash
+							 * (which must stay UNDER the glyphs) and the chip (which must sit OVER them)
+							 * can each take their own layer while measuring ONE mirror - this branch's
+							 * own, which is what the run's rects come from; `#303`'s `ComposerHighlight`
+							 * mirror carries the slash painting and is a different element.
+							 *
+							 * `onClear` is NULLED while the composer refuses input: the refusal on this
+							 * base is `readOnly` rather than `disabled`, so a control painted over the box
+							 * IS pressable in a state where every writer is refused, and the chip must not
+							 * offer a verb the composer will not run. The gate is passed in from the same
+							 * `isInputDisabled` the textarea and the other writers read, so there is one
+							 * predicate rather than two.
+							 */}
+							<CredentialChipLayer
+								small={isSmallView}
+								text={newMessage}
+								payloads={payloadsRef.current}
+								capture={capture}
+								mirrorRef={mirrorRef}
+								fieldRef={textareaRef}
+								onClear={isInputDisabled ? null : clearCredential}
+								/*
+								 * R4-5: when the clip rule drops the chip whose control held
+								 * focus, the keyboard needs a home - and this composer has
+								 * exactly one place that gives it back (`focusInput`, the
+								 * pointer gate's reset included).
+								 */
+								onControlUnmounted={focusInput}
+							/>
+						</div>
+						{/*
+						 * THE RECORDING STATE, as a full-width block under the field it belongs
+						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
+						 * field's own content column, its label row sits over it, and nothing
+						 * is washed or bordered - it reads as composer chrome, on the same
+						 * step of ground the box itself uses. The controls stay in the
+						 * cluster below, where `Confirm recording`/`Cancel recording` already
+						 * hold the boxes the interrupt-slot geometry reserves; this block
+						 * carries a status and no control, so the pointer map does not move.
+						 */}
+						{isRecording && (
+							<AudioRecordingIndicator isRecording={isRecording} />
+						)}
+						{isTranscribing && (
+							<div
+								data-transcribing-indicator=""
+								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+							>
+								<span className="font-medium text-body-sm text-ink-muted">
+									Processing audio
+								</span>
+								<WaveformAnimation />
+							</div>
+						)}
+						{/*
+						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
+						 *
+						 * The readings used to have a row of their own above this one, and when they moved
+						 * inside it the row kept a wrap keyed on the COLUMN's width: above 750px of column
+						 * the cluster sat inline, below it the cluster took the first line in full
+						 * (`basis-full`) and the controls kept the second. Design round 2's D21 is that
+						 * branch: §G1 requires "one control row, 32px, always one line, at every width",
+						 * and at 800x600 - one of §H's own blueprint widths - the composer measured 640x142
+						 * where it measures 640x109 at 1380, a permanent second row. (Both numbers were
+						 * taken under the redesign's 640 measure, which the operator restored to 900 on
+						 * 2026-09-26; the defect and the fix are about the ROW, and the row's rule below is
+						 * width-agnostic.)
+						 *
+						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. What reaches this row is the
+						 * composer's own box, not the window's width, and a breakpoint on the COLUMN
+						 * could only ever be about the column: a wrap that fired there moved the
+						 * controls while the composer's own box had not changed. (The numbers this
+						 * paragraph once leaned on - the same `640x109` content box at 1380 and at
+						 * 800x600 - were measured under the redesign's 640 measure, so they no longer
+						 * describe the restored 900 one; the ROW is what the rule below is about.)
+						 * So the row is `flex-nowrap` at every width and the yield §G1 names is what
+						 * makes room: the cwd chip
+						 * truncates, the usage reading drops below a 480px composer, the model selector
+						 * shortens to its glyph.
+						 *
+						 * `justify-between` cannot express this — with three children it
+						 * centres the middle one, which is the opposite of what the row needs — so
+						 * the row uses `ml-auto` instead, on the controls group, which is the one
+						 * child that always renders.
+						 *
+						 * That "always renders" is not a nicety, it is the round-1 blocker. The
+						 * readings cluster returns `null` in three ordinary states (no `frontend`
+						 * yet, nothing known at all, the error boundary's empty fallback), and
+						 * while the margin lived on the cluster those states had NO live auto
+						 * margin at all — the controls sat flush against the chip, mid-row, in
+						 * this PR's own draft frame (design round 1.5, D7).
+						 *
+						 * `gap-y-2` is GONE with the wrapped line it existed for: with one row there is
+						 * no second line to keep 8px from the first.
+						 *
+						 * `flex-nowrap` is NOT decoration either, and it is what holds the single row at
+						 * the narrow end. Wrapping happens on the items' CONTENT sizes, before any
+						 * shrinking: a long model name (an aggregator slug is ~48 characters) makes the
+						 * cluster wider than its share, so a still-wrapping row moves the microphone and
+						 * send to a second line instead of truncating the name — the exact inversion of
+						 * the yield order, where the name truncates first and the controls never move.
+						 * Measured on the live composer at a 750px box: with the row free to wrap, the
+						 * controls sat 24px below the readings; with `flex-nowrap` they stay on one line
+						 * and the name gives up the width. The same rule is what keeps D21's second row
+						 * from coming back: at the composer's own measure box, and at every box below
+						 * it, the row has no width to give and yields instead.
+						 */}
+						<div className="flex min-w-0 flex-nowrap items-center gap-x-2">
+							{/*
+							 * The session's readings, inside the row rather than on a row of their
+							 * own above it (R1).
+							 *
+							 * The DOM slot is FIRST, before the left group. `order-first` only
+							 * ever reordered the paint, leaving a keyboard user to walk down to
+							 * attach and the chip and back UP to the readings (UX round 1, U4),
+							 * so the cluster is first in the DOM and the strip's own `order-2`
+							 * puts it between the chip and the controls, with the controls'
+							 * `order-3` keeping mic and send last.
+							 *
+							 * THE RESIDUAL THIS LEAVES IS UNCHANGED AND STILL RECORDED (UX round 2,
+							 * U8). `order-2` moves the PAINT, not the tab order, so the keyboard
+							 * still meets the readings one stop before the attach/chip group drawn
+							 * to their left. What the never-wrapping row (design round 2, D21)
+							 * removes is the OTHER half of that trade: there is no longer a width
+							 * at which the same node has to be first for one layout and third for
+							 * the other, so the mismatch is now a single stop on one screen rather
+							 * than two layouts disagreeing. Putting the DOM in paint order would
+							 * close it and is deliberately NOT done here: it is a change to the
+							 * composer's tab sequence (its own finding, U8's, not D21's) and the
+							 * composer suite pins the slot this comment explains.
+							 *
+							 * A crash in the strip must not take the composer down with it — the
+							 * readings are metadata and the ability to type is not — so it renders
+							 * inside an error boundary with an empty fallback: a missing strip is a
+							 * degradation a user can work through, and a fallback panel here would
+							 * be a bigger interruption than the thing it reports. The row's other
+							 * groups survive the same fallback untouched.
+							 */}
+							{sessionStatus && (
+								<ErrorBoundary fallback={null}>
+									<SessionStatusStrip
+										frontend={sessionStatus.frontend}
+										onCommand={sessionStatus.onCommand}
+										effortEntities={sessionStatus.effortEntities}
+										draft={sessionStatus.draft}
+										onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
+										draftResolution={sessionStatus.draftResolution}
+										held={sessionStatus.held}
+										readingsDropped={sessionStatus.readingsDropped}
+										pendingModel={sessionStatus.pendingModel}
+									/>
+								</ErrorBoundary>
+							)}
+
+							{/*
+							 * The BUTTON LINE: attach and the working-directory chip, as one item.
+							 *
+							 * IT IS `display: contents` AT EVERY WIDTH NOW, so it is a DOM slot rather
+							 * than a box, and saying so is cheaper than leaving the paragraph that used
+							 * to explain the two-line layout here. While the row still wrapped (below
+							 * 750px of column) this was the row's SECOND flex item and `contents` was
+							 * how it dissolved above the threshold; the two-line layout is gone with
+							 * design round 2's D21 (§G1: one 32px row at every width), so the wrapper
+							 * only ever dissolves and the group below is a direct child of the row in
+							 * every rendering. It is kept because the composer suite reads this slot
+							 * and because removing a wrapper is a change to the composer's DOM, which
+							 * belongs to the pass that next touches that tree rather than to a
+							 * geometry fix.
+							 *
+							 * `min-w-0` on the group is still load-bearing: a flex item's automatic
+							 * floor is its content, so without it the chip cannot shrink and the row
+							 * overflows instead (design round 1, D1 and code review round 1, MAJOR 2
+							 * measured that overflow at 240-336px columns).
+							 */}
+							<div className="contents">
+								{/*
+								 * Left side: attachment button and the working-directory chip.
+								 *
+								 * `min-w-0` on this group AND on the row above it: a flex item's
+								 * automatic minimum size is its CONTENT, so an intermediate
+								 * wrapper that does not opt out of it refuses to shrink and the
+								 * `min-w-0` further down never gets the chance to apply. With the
+								 * canvas panel open the chat column collapses to its 220px floor
+								 * and the chip's 260px cap alone drove the row 97px past the
+								 * column's right edge (design round 2, D11); the chip carries the
+								 * shrink, but only these two ancestors can let it happen.
+								 *
+								 * ABOVE the threshold this group does not shrink at all, and that is
+								 * not a preference: the chip's own root is `shrink-0` there so a long
+								 * model name truncates before the path yields (D9). With the chip
+								 * refusing to shrink while its parent still could, the group shrank to
+								 * 145.6px around a 260px chip and the path painted straight over the
+								 * readings - visible in the 750px long-name frame, and invisible to
+								 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
+								 * order needs both halves stated.
+								 */}
+								<div className="flex min-w-0 items-center gap-1 shrink-0">
+									<Tooltip content="Attach file">
+										<span>
+											<Button
+												variant="ghost"
+												size={isSmallView ? "icon-sm" : "icon"}
+												className="text-ink-dim hover:bg-elevated hover:text-ink"
+												onPointerDown={holdCaretOnRefusedPress}
+												onClick={handleAttachFile}
+												aria-label="Attach file"
+												data-tour-tag="chat-input-attach-file-button"
+												disabled={
+													isInputDisabled || isRecording || isTranscribing
+												}
+											>
+												<Paperclip aria-hidden="true" />
+											</Button>
+										</span>
+									</Tooltip>
+									{/*
+									 * Gated on whether a directory is KNOWN, not on whether it is
+									 * truthy, and not on the session being idle.
+									 *
+									 * Two unsatisfiable-condition bugs in the same three lines,
+									 * one after the other. The original `!canonicalStop` gate
+									 * could never be true in the canonical chat - the stop
+									 * control is passed unconditionally - so the chip was
+									 * unreachable from v0.16.0 even though it was still mounted
+									 * here. Replacing it with `{cwdToShow && ...}` then made the
+									 * chip able to DELETE ITSELF: `""` is a legal value of the
+									 * staged cwd, it is falsy, and this chip is the only writer
+									 * of `state.cwd` now the full-width bar is gone. So clearing
+									 * the field unmounted the one control that could set it
+									 * again, and `cwd` is persisted, so the app came back from a
+									 * restart still with no chip - unrecoverable without
+									 * devtools.
+									 *
+									 * `!== undefined` is the honest question: undefined means "no
+									 * directory is known for this conversation", which is the one
+									 * case with nothing to render. An empty string means "known,
+									 * and empty" - a state the chip has an affordance for, and
+									 * the reason its `unset` branch is reachable again.
+									 */}
+									{cwdToShow !== undefined && (
+										<DirectoryIndicator
+											ref={cwdChipRef}
+											currentWorkingDirectory={cwdToShow}
+											writePath={cwdWritePath}
+											pending={cwdPending}
+											pendingAccepted={cwdPendingAccepted}
+											readOnlyReason={
+												cwdWritePath
+													? undefined
+													: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
+											}
+										/>
+									)}
+								</div>
+
+								{/*
+								 * THE CAPTURE'S SENTENCE IS NOT IN THIS ROW ANY MORE (design round 3,
+								 * D1; UX round 3, U14; code review round 3, MAJOR 1; QA round 3,
+								 * Q1/Q2).
+								 *
+								 * Both earlier rounds kept it inside the composer, and both paid the
+								 * same price: the composer's own height changed when the sentence
+								 * arrived, so the line the operator was typing moved under their caret.
+								 * Round 3 measured where that ends - 296.55px of free row against a
+								 * ~353.86px sentence at 1380 (two lines, the row 32 -> 39px), a 168x78
+								 * block and a 236 -> 96px cwd chip at 950, and at 800 a 76.7px ribbon
+								 * 175.5px tall with the row tripled - and those are the numbers that say
+								 * the row cannot hold a sentence of this length beside a chip, a
+								 * readings strip and three controls.
+								 *
+								 * It now lives ABOVE the box, in the form's own flow, where the
+								 * composer's pinned bottom edge cannot be pushed by it: the notice's own
+								 * comment above the box carries the measurement that decides the
+								 * placement. This slot stays as the pointer, because the obvious repair
+								 * for a crowded row is to put the sentence back into it, and that repair
+								 * has now been tried twice.
+								 */}
+
+								{/* Right side: microphone, send or stop button.
+								 *
+								 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
+								 * here rather than on the readings on purpose (design round 1.5, D7):
+								 * this group cannot return `null`, so the row's right-justification
+								 * does not depend on whether a cluster that can vanish happens to be
+								 * rendering. Below 750px of column it separates this group from the
+								 * attached line above it; above, it holds the free space between the
+								 * cluster and these controls, which is what leaves the readings
+								 * immediately after the working-directory chip. A second live auto
+								 * margin would share that space evenly and float the controls mid-row.
+								 *
+								 * `order-3` above the threshold is only needed because the strip's DOM
+								 * slot is first (see above); it makes the paint [attach][chip]
+								 * [readings][mic][send] out of a DOM whose first child is the cluster.
+								 */}
+								<div className="ml-auto flex order-3 items-center gap-1">
+									{!isRecording &&
+										!isTranscribing &&
+										!(isLoading && currentJobId) && (
+											<Tooltip
+												content={
+													!canEnableRecordingFeature
+														? recordingUnavailableReason
+														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
+												}
+											>
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-ink-dim hover:bg-elevated hover:text-ink"
+														onPointerDown={holdCaretOnRefusedPress}
+														onClick={handleStartRecording}
+														aria-label="Start recording"
+														/*
+														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
+														 * composer's own writability is `isInputDisabled`, and a send in
+														 * flight does not make this box unwritable - mid-turn messages
+														 * ride the steer path, and dictation is a state OF this box. The
+														 * old term closed the control for the whole admit-to-first-answer
+														 * window while the box itself stayed writable; the manager's own
+														 * gate (the registration below) carries the same correction.
+														 */
+														disabled={
+															isInputDisabled || !canEnableRecordingFeature
+														}
+													>
+														<Mic aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)}
+									{isRecording && (
+										<>
+											<Tooltip content="Confirm recording (Enter)">
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-success hover:bg-success-wash hover:text-success"
+														onClick={handleConfirmRecording}
+														aria-label="Confirm recording"
+														/*
+														 * NO `disabled` HERE, and NOT gated on the composer's refusal either
+														 * (the refusal contract's own test forbids that gate anywhere in this
+														 * file - see composer-refusal.test.mjs): the control must stay
+														 * pressable while a recording exists, including in a box that refuses
+														 * input, because the alternative is a live microphone nothing can
+														 * stop. Loading used to sit here and closed the pointer door for the
+														 * whole turn; the handler's own guard is what keeps it safe (a press
+														 * with nothing recording is a no-op).
+														 */
+													>
+														<Check aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+											<Tooltip content="Cancel recording (Esc)">
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-danger hover:bg-danger-wash hover:text-danger"
+														onClick={handleCancelRecording}
+														aria-label="Cancel recording"
+														// NO `disabled`: cancelling is the mic's own off switch and must work
+														// even where the box refuses input (see the confirm control above).
+													>
+														<X aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										</>
+									)}
+									{/*
+									 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER THE
+									 * TURN IT BELONGED TO ENDS - and empty otherwise.
+									 *
+									 * THE HAZARD, MEASURED TWICE. Pressing Stop used to slide the
+									 * dictation control 36px right - 32px of control plus the row's
+									 * 4px gap - into the exact centre of the box the press had just
+									 * landed in, so a reflex second press started a MICROPHONE
+									 * RECORDING. UX round 1 (U1) and QA (Q1) found it independently
+									 * on the unreserved build: the element at the Stop's own centre
+									 * was `button[aria-label="Start recording"]` once the turn
+									 * settled, and a press there reported `recording_started: true`.
+									 * A 120ms double press still hit Stop twice, which is what made
+									 * it a trap rather than something a user notices.
+									 *
+									 * WHY A GRACE RATHER THAN A STANDING RESERVATION. Holding the
+									 * box for as long as the capability is negotiated removes the
+									 * hazard and leaves the idle composer with a one-control gap
+									 * between dictation and Send, which the operator reported as a
+									 * defect of its own ("the dictation control should sit beside
+									 * Send"). Both cannot hold: the right cluster is right-justified
+									 * (`ml-auto`), so the dictation control sits exactly one
+									 * control-plus-gap - the Stop's own 32px plus the row's 4px -
+									 * further from Send while the Stop is rendered than with it gone,
+									 * and an idle row whose dictation control sits BESIDE Send is the
+									 * row in which the control has moved into the vacated box - the layout
+									 * cannot be preserved, only the hazard bounded. What a user
+									 * needs protection from is the moment the turn ends, which is
+									 * when the reflex press arrives; a row that has settled since is
+									 * a row nobody is mid-double-press on. So the box is held while
+									 * the turn runs and for `INTERRUPT_SLOT_GRACE_MS` (500) after the
+									 * control leaves, then released to nothing. The window's own
+									 * reasoning, the measurement behind the number and what it costs
+									 * (a second press more than 500ms after the turn settles lands on
+									 * the dictation control, which by then is where it is drawn) live
+									 * in `interrupt-slot-grace.ts`, where they can be tested without
+									 * a browser.
+									 *
+									 * WHAT IS DELIBERATELY NOT DONE: the recording action is never
+									 * refused, gated or greyed. The dictation control stays visible,
+									 * live and pressable at every instant, and during the grace it is
+									 * at its busy position - the row the operator sees today. The
+									 * reservation (the window's grace, or the in-flight dictation case
+									 * below) decides whether an invisible placeholder sits beside a
+									 * control, and nothing else. A control that looks live but is not
+									 * would be a worse defect than the gap it replaced, and it would
+									 * refuse a deliberate press.
+									 *
+									 * ALTERNATIVES CONSIDERED AND REJECTED. (a) No guard at all:
+									 * reintroduces the MAJOR above. (b) Putting Stop to the LEFT of
+									 * the dictation control, so the dictation control never moves:
+									 * changes the running layout the operator explicitly asked to keep
+									 * and moves Stop away from Send, where the hand that just sent the
+									 * message already is. (c) Refusing or greying the first press
+									 * inside the window: a control that looks live but is not, a grey
+									 * flicker after every turn, and a deliberate press refused. (d)
+									 * Holding the box while the pointer rests in it: a standing gap
+									 * for exactly the user who just pressed Stop, i.e. the reported
+									 * defect restored for the one person it was measured on.
+									 *
+									 * THE START-OF-TURN TRANSITION IS DELIBERATELY NOT CHANGED (noted
+									 * so a later reader does not "fix" it by symmetry). When the turn
+									 * starts, the Stop appears in the box the dictation control had
+									 * occupied, so the DICTATION control moves 36px LEFT - 32px of
+									 * control plus the row's 4px gap - and Send does not move at all:
+									 * it is pinned to the row's right edge in every state (measured,
+									 * default rung: Send 1307 while running, inside the window and
+									 * settled; the dictation control 1271 settled and 1235 running).
+									 * The residual is the mirror of the one this box exists for: a press
+									 * aimed at the dictation control's own position lands on the Stop
+									 * once the Stop is drawn there, so a user reaching for dictation as a
+									 * turn starts stops the turn instead. It stays unchanged on the
+									 * merits: the control that ARRIVES is the one the new turn needs,
+									 * stopping a turn is legible and recoverable (the transcript says
+									 * "Interrupted") where a silent microphone recording is not, and the
+									 * only alternative that removes it - holding the box while idle too -
+									 * is the operator's own reported defect.
+									 *
+									 * THE BOX IS HELD WHILE A DICTATION IS IN FLIGHT, on a different
+									 * reason than the window. While `isRecording` the row draws
+									 * `[Confirm recording][Cancel recording]` where the dictation control
+									 * and Send were (Send is gated on `!isRecording`), and the held box
+									 * renders AFTER them: `[Confirm 1235][Cancel 1271][box 1307]`, which
+									 * is this record's own `inFlight.grace`. Release the box and both
+									 * controls move 36px right, to the two-control row the PREVIOUS
+									 * head's record carries - a different head, so it is named with the
+									 * path to it: `git show 043b0b7c3:docs/evidence/interrupt-live/
+									 * interrupt-proof.json`, `slot.recordingCancelled.aim.rect.left =
+									 * 1307`, i.e. `[Confirm 1271][Cancel 1307]`. (That head's step is
+									 * that row with the box already released, which is why its Cancel
+									 * sits a slot right of this head's own `slot.recordingCancelled` -
+									 * the same aim, 1271, in the row with the box HELD. Same field,
+									 * two rows: read the record each number belongs to.) The slot the
+									 * Stop itself occupies in that shape is 1307, from THIS record
+									 * (`inFlight.pressed.rect.left`), so a
+									 * reflex press at the Stop's own centre would land on **Cancel
+									 * recording** and DISCARD in-flight audio - a mistimed Stop press
+									 * would throw away a recording the user made deliberately, which is
+									 * why the box is held for as long as the dictation controls are
+									 * rendered rather than only for the window.
+									 *
+									 * WHAT THIS SHAPE COSTS, stated because the honest version is not
+									 * "nothing visible": the row's rightmost VISIBLE control sits one
+									 * control-plus-gap short of the row's right edge for the whole
+									 * recording, because the third slot is held empty and the box draws
+									 * no ink. That is a TRAILING void - both controls are drawn where the
+									 * right-justified cluster puts them and nothing is displaced - and it
+									 * is not introduced here: it is `origin/main`'s own recording row,
+									 * whose reservation was unconditional. Against `main` this change
+									 * removes the void from the idle row and leaves this one alone.
+									 *
+									 * AND STARTING A RECORDING MOVES THE PAIR 36px LEFT: the third slot
+									 * fills from the instant `isRecording` is true, so `[mic 1271]
+									 * [Send 1307]` becomes `[Confirm 1235][Cancel 1271][box 1307]` - the
+									 * slot that was just pressed (the dictation control's own, 1271) comes
+									 * back as **Cancel recording**, where without the box it would be
+									 * Confirm. Legible and one press from recovery, and the alternative
+									 * (filling the slot only once a window opens during a recording)
+									 * trades it for a 36px jump at the moment a turn ends under a
+									 * recording - the re-layout class this change exists to bound. The
+									 * same class of note as the start-of-turn transition above, for the
+									 * same reason: recorded so a later reader does not "fix" it by
+									 * symmetry.
+									 *
+									 * `isTranscribing` deliberately gets no such term, and that is a
+									 * statement rather than an omission: `!isTranscribing` gates both the
+									 * dictation control and Send, so while a transcription is in flight
+									 * the row draws nothing a press could reach in the vacated box, and a
+									 * term for it would be symmetry rather than a fix.
+									 *
+									 * `aria-hidden`, no focus and no pointer events: this is geometry,
+									 * not a control - nothing may be reachable, announced or pressed
+									 * there. Gated on the same legacy condition the mic is (`isLoading
+									 * && currentJobId`), because that path hides the mic and renders
+									 * its own `Stop agent` in this cluster; reserving a slot nothing
+									 * will fill would move a control for no reason.
+									 */}
+									{canonicalStopAvailable &&
+										!canonicalStop?.active &&
+										(slotHold.held || isRecording) &&
+										!(isLoading && currentJobId) && (
+											<span
+												aria-hidden="true"
+												data-interrupt-slot=""
+												className={cn(
+													"pointer-events-none invisible flex items-center",
+												)}
+											>
+												{/*
+												 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
+												 * what makes "holding the place moves nothing" true rather than
+												 * nearly true (chat redesign §G3, U3).
+												 *
+												 * The control is the icon-only red square again (operator report,
+												 * 2026-09-26 - see the live branch below), so this renders that
+												 * SAME markup invisible: `visibility: hidden` keeps layout,
+												 * unlike `display: none`, so the two boxes agree by construction
+												 * rather than by a measured width that could drift. It carries
+												 * NO accessible name and no labelling attribute, because it must
+												 * stay out of the live probes that select the control by its own
+												 * name and must not be announced.
+												 */}
+												<Button
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													tabIndex={-1}
+												>
+													<Square aria-hidden="true" />
+												</Button>
+											</span>
+										)}
+									{canonicalStop?.active && (
+										/*
+										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
+										 * REDESIGN (operator report, 2026-09-26).
+										 *
+										 * The redesign relabelled it - a `surface` control with a
+										 * `border-control` edge, the word `Stop` and a visible `Esc` cap
+										 * (§G3, U3) - and the operator's verdict was that the row it sits
+										 * in is now over-full: the label and cap crowded a row that
+										 * already carries five other items, and at their window width the
+										 * cap read as a fragment clipped under this button. Restored: the
+										 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
+										 * sibling above.
+										 *
+										 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
+										 * icon-only destructive-adjacent control is worse than a
+										 * labelled one when it loses them: `aria-label="Stop"` is the
+										 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
+										 * states the key binding to assistive tech, and the tooltip
+										 * still says both in words. The VISIBLE cap is what went, not
+										 * the binding.
+										 */
+										<Tooltip content="Stop this session's current work (Esc)">
+											<span>
+												<Button
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													onClick={canonicalStop.onStop}
+													aria-label="Stop"
+													aria-keyshortcuts="Escape"
+												>
+													<Square aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)}
+									{isLoading && currentJobId ? (
+										<Tooltip content="Stop agent">
+											<span>
+												<Button
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													onClick={() => onCancelJob?.(currentJobId)}
+													aria-label="Stop agent"
+												>
+													<Square aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									) : (
+										!isRecording &&
+										!isTranscribing && (
+											<Tooltip
+												content={
+													/*
+													 * THE VERB FOLLOWS THE DESTINATION (UX round 1, U5). While an aside is
+													 * attached this press asks the aside and not the conversation, and the
+													 * control said "Send message" on both — so a screen-reader user got no
+													 * routing cue at all once the placeholder, the only one there was, was
+													 * gone on the first keystroke. The label is the one cue that survives
+													 * typing, because it is attached to the control the press uses.
+													 *
+													 * AND THE DESTINATION IS THE GATE'S WHILE ONE IS PENDING (agent review
+													 * round 5, R5-3). A pending `ask` gate is answered by the very same press
+													 * — `chat-page.tsx` resolves it before it looks for an aside — and the
+													 * placeholder already says so ("Answer the question above", which is
+													 * `composerPlaceholder`'s own order: gate, then aside). The control named
+													 * the aside in that state, which is the one thing this control exists not
+													 * to do.
+													 */
+													aside !== null && !awaitingAnswer
+														? "Ask the aside"
+														: "Send message"
+												}
+											>
+												<span>
+													{/*
+													 * AND NOT `isLoading` ANY MORE (review round 2, U6). While a
+													 * send is in flight this control used to be DISABLED, so a
+													 * second press did nothing at all: 3.5 s of DOM sampling found
+													 * no line and no state change, and the affordance that exists to
+													 * answer that press - the pane's send lock, "Your last message
+													 * is still sending." - was unreachable from the one control the
+													 * user would reach for. The refusal is the STORE's
+													 * (`admitChatDraft` returns without admitting while `pending`)
+													 * and the LINE is the pane's, so the press has to be delivered
+													 * to them rather than swallowed here. `isInputDisabled` stays:
+													 * a box that refuses input is a different fact.
+													 *
+													 * Spec § 6: with nothing connected (`noProvider`) Send is
+													 * disabled by COLOUR STEP. It used to be enabled and answered
+													 * the press with a backend refusal, which taught the user that
+													 * the app half-works (QA round 1 Q7). Typing stays allowed: the
+													 * box is where the failure is explained. The note sits here,
+													 * not inside `disabled`, so the Button's own attributes stay
+													 * one short block (interrupt-control.test.mjs reads the size
+													 * expression within a fixed window of its aria-label).
+													 *
+													 * The note sits ABOVE the element rather than inside its
+													 * attribute list on purpose: `interrupt-control.test.mjs`
+													 * reads this control's `size` expression out of the 400
+													 * characters before its label, and prose between the two
+													 * pushed that expression out of the window - a pin that
+													 * failed by naming the size rather than the comment.
+													 */}
+													<Button
+														variant="primary"
+														size={isSmallView ? "icon-sm" : "icon"}
+														type="submit"
+														onPointerDown={holdCaretOnSendPress}
+														disabled={
+															isInputDisabled ||
+															sendRefused ||
+															(!newMessage.trim() && attachments.length === 0)
+														}
+														className="rounded-full disabled:bg-surface"
+														aria-label={
+															aside !== null && !awaitingAnswer
+																? "Ask the aside"
+																: "Send message"
+														}
+													>
+														<Send aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				{/*
+				 * The two lines main's lane put under the box: the connect line for a
+				 * conversation with no provider, and the model/provider refusal's hint.
+				 * The rest of that lane's block - the tip row, the chips and the connect
+				 * card - lives in the splash above, where this branch's rework moved it
+				 * (the card takes the chips' slot there); the two mirrors main kept for a
+				 * centred band are dropped with the centring they existed for.
+				 */}
+				{noProvider && !showEmptyChatPrompt ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<NoProviderLine />
+					</div>
+				) : null}
+
+				{(noProvider || noModel) && noProviderHint ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<output className="block text-body-sm text-ink-muted">
+							{noModel
+								? "Choose a model for this conversation before sending."
+								: "Connect a provider to send."}
+						</output>
+					</div>
+				) : null}
+			</form>
+		);
+
+		return (
+			<div
+				className={cn(
+					// No ground of its own: this band inherits the chat column's, so
+					// the two cannot drift apart. That invariant is the requirement,
+					// not the role it names. It was written as `bg-surface` to MATCH a
+					// column that was also `surface`, and the reason was sound - a
+					// band painted on a different ground from its column reads as a
+					// hole punched through the panel to the page behind it, and on an
+					// empty chat this band holds the greeting, the composer and the
+					// suggestion chips, so it covers most of the column (the reported
+					// "large empty space with the wrong background colour"). Naming
+					// the ground instead of the relationship is what went stale: the
+					// column is `canvas` now, because it is the working surface (see
+					// chat-content.tsx), and a hardcoded `bg-surface` here would have
+					// re-opened that hole in reverse. The composer box keeps its own
+					// `border-control` edge (floored at 3:1 on all four grounds), so
+					// it stays legible whatever ground the band sits on.
+					//
+					// `shrink-0` alone: `grow` on the same element contradicted it and
+					// became actively harmful once the transcript stopped declaring
+					// `h-full`, because the band would then claim the column's free
+					// space instead of leaving it to the transcript.
+					//
+					// That reasoning holds ONLY while a transcript exists to leave the
+					// space to. With no messages there is nothing above this band but
+					// an empty scroller, and `shrink-0` then pinned the greeting,
+					// composer and chips to the bottom of the column under a large dark
+					// void -- the operator's report. So the vertical behaviour is
+					// conditional on the same fact that decides which content renders:
+					// empty means `grow` (claim the column; the splash above the docked
+					// composer centres the greeting and chips in it), non-empty means
+					// `shrink-0` (natural height at the bottom).
+					// The transcript yields its own `grow` on the same condition, so the
+					// two never split the free space between them.
+					//
+					// `data-lo-composer-band` is the band's stable identity. The
+					// slash-popup guard in scripts/canonical-chat.test.mjs used to find
+					// this element by `shrink-0 + bg-surface`, which the conditional
+					// below makes state-dependent; an attribute that does not move with
+					// the layout is what keeps that guard aimed at the band.
+					//
+					// NO `max-height` and NO `overflow` on this element, deliberately.
+					//
+					// `shrink-0` inside a now-`overflow-hidden` column really is
+					// unbounded, and round 1 bounded it here with `max-h-[70%]` plus
+					// `overflow-y-auto`. The bound was right and the scroller was a
+					// blocker (round 2, R1): the slash popup is `absolute bottom-full`
+					// inside this band and is not portaled, so a vertical clipping
+					// context here erased it -- 8/8 hit-testable rows to 0/8 with an
+					// ordinary transcript, and unrecoverable by scrolling because
+					// `bottom-full` puts the overflow above the scroller's origin
+					// (`scrollHeight === clientHeight`, so `maxScroll` is 0).
+					//
+					// What decides that is the BAND'S height, not the window's: on an
+					// empty chat the greeting and chips make the band tall enough to
+					// contain the popup, which is why the defect hid from a check that
+					// only looked at the empty screen.
+					//
+					// The bound now lives on the previews inside the composer box, which
+					// are the only unbounded content and are SIBLINGS of the popup, so
+					// the band ends up bounded (377px at every load measured) without
+					// any ancestor of the popup clipping. Do not re-add a bound here:
+					// cap whatever new content grows, where it grows.
+					CHAT_COLUMN_CONTAINER,
+					/*
+					 * NO `justify-center`: the band is a column whose LAST child is the
+					 * composer's foot, and it is bottom-anchored in every state. On an empty
+					 * chat the splash above the foot takes the free height (`grow`) and centres
+					 * its own group inside it; the foot does not move. See the splash's comment
+					 * for why that is the whole of §G2's "the first send moves nothing".
+					 */
+					"flex w-full flex-col items-center",
+					/*
+					 * The empty-chat band CLAIMS the column; every other state is natural
+					 * height at the bottom. `isHydrating` is the third case and the reason
+					 * this line is not simply `messages.length === 0`.
+					 *
+					 * A switch mounts this panel before the snapshot arrives, so the first
+					 * frames have no messages - and taking the empty-chat band put the
+					 * composer in the middle of the window (measured: composer top edge
+					 * 468px -> 736px, 30% of a 900px window, when the transcript landed).
+					 * "There is nothing here" is a CLAIM, and the hydration window is
+					 * exactly the state where the app does not know it yet; the composer is
+					 * therefore bottom-anchored at its settled geometry while hydrating, and
+					 * the placeholder that stands in for the transcript is rendered where the
+					 * transcript will be (`canonical-transcript.tsx`) rather than in this
+					 * band. A switch into a session that really is empty is the only case
+					 * that then moves, and that is the honest move.
+					 */
+					bandCentred ? "grow" : "shrink-0",
+					// The horizontal inset is the SHARED one and is the same at every
+					// width, because it is half of a shared edge: see
+					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
+					// small view -- vertical space is what a short window is short of,
+					// and compacting it moves no edge the transcript also owns.
+					CHAT_COLUMN_INSET,
+					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
+				)}
+				data-lo-composer-band={true}
+				ref={setBand}
+			>
+				{/*
+				 * THE SPLASH: the greeting, the chips and the tip, centred in the height
+				 * the COMPOSER DOES NOT USE - with the composer already docked below it
+				 * (§G2, §H).
+				 *
+				 * THE DEFECT THIS SHAPE REMOVES. The band used to centre ONE group -
+				 * greeting, composer and chips together - with `grow` + `justify-center`,
+				 * while a conversation anchors the composer at the foot. So the first
+				 * send moved the box the user had just typed in: measured on the running
+				 * app, the composer's top edge went y393 -> y774 at 1380x900 and
+				 * y227 -> y474 at 800x600, the column's width unchanged. Now the composer
+				 * is the band's LAST child in every state and the band is bottom-anchored,
+				 * so its box is the same box before and after the first message; only the
+				 * splash above it goes, and the transcript takes that height instead.
+				 *
+				 * TWO ELEMENTS, NOT ONE, and the split is arithmetic. The outer one takes
+				 * the free height (`grow`) and centres; the inner one is the GROUP, sized
+				 * by its content, and it is what the suggestion cap measures (`splash`).
+				 * A `grow` element's box is the free height, not its content, so measuring
+				 * the outer one would put the whole void into the cap's fixed budget and
+				 * cap the chips away.
+				 *
+				 * ALWAYS RENDERED, only its classes change, for the reason the old single
+				 * wrapper was (QA round 1, Q4): a column crossing `isSmallView` flips the
+				 * prompt, and swapping the element type at this position would remount
+				 * the siblings' subtree. `grow` rides `bandCentred` rather than the prompt
+				 * so an empty chat in a narrow column still docks the composer at the
+				 * foot with nothing drawn above it.
+				 *
+				 * THE MIRRORS ARE GONE WITH THE CENTRING (UX round 4's U16 device). They
+				 * existed because a line added above the box moved a centred group by
+				 * half the line; a bottom-anchored box does not move when anything above
+				 * it grows - the splash yields instead, exactly as the transcript does in
+				 * a conversation.
+				 *
+				 * Focus order follows the DOM: the chips now precede the composer, so a
+				 * Shift+Tab from the box reaches them, which matches where they are drawn.
+				 */}
+				<div
+					data-lo-composer-splash=""
+					className={cn(
+						"flex w-full flex-col items-center justify-center",
+						bandCentred ? "grow" : null,
+					)}
+				>
+					<div
+						ref={setSplash}
+						className={cn(
+							showEmptyChatPrompt
+								? "flex w-full flex-col items-center gap-6 py-4"
+								: "hidden",
+						)}
+					>
+						{showEmptyChatPrompt ? (
+							<>
+								{/*
+								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
+								 * (the app's own mark, `ink-muted`, not an illustration), the
+								 * greeting, then the chips"), in its BUBBLE - the operator's call on
+								 * the preview (2026-09-24) - and through the one `BrandMark` the
+								 * sidebar uses, so the empty state and the brand row cannot drift
+								 * into two treatments of one mark.
+								 *
+								 * `ink-muted` rather than `ink`: the mark is decoration on a screen
+								 * whose subject is the greeting, and §H spends the loudest ink there.
+								 * Unnamed (so `aria-hidden`) because the greeting below says
+								 * everything this figure means. `data-lo-empty-mark` is the handle
+								 * the driver's `first-send` scene waits on.
+								 */}
+								<span data-lo-empty-mark="" className="contents">
+									<BrandMark className="size-8" tone="ink-muted" />
+								</span>
+								{/*
+								 * With nothing connected there is no question to ask yet: the card
+								 * below says what to do, and a headline inviting a prompt the app
+								 * cannot run pointed the two strongest signals on the screen in
+								 * opposite directions (main's design round 1 D5; the gate arrived
+								 * with this fold).
+								 */}
+								{noProvider ? null : (
+									<h2 className="text-center text-ink text-title">
+										What can I help you with today?
+									</h2>
+								)}
+								{noProvider ? (
+									/*
+									 * The connect card takes the chips' slot, not a slot of its own
+									 * (main's design audit section 6): the chips are examples of what
+									 * to ask, and with nothing connected there is nothing to ask yet.
+									 */
+									<div className={cn("w-full", CHAT_MEASURE)}>
+										<ConnectProviderCard />
+									</div>
+								) : (
+									/*
+									 * The chips ABOVE the composer (§H), left-aligned on the shared
+									 * measure so they share the box's left edge. Borderless ghost
+									 * controls: twelve accent-washed pills was the accent budget spent
+									 * four times over, and outlined ones still drew seven 3:1
+									 * boundaries on examples rather than the primary action.
+									 */
+									<div className={cn("flex flex-col gap-3", CHAT_MEASURE)}>
+										<MeasuredSuggestionStack
+											band={band}
+											splash={splash}
+											foot={foot}
+											suggestions={suggestions}
+											disabled={suggestionsDisabled}
+											onRefusedPress={holdCaretOnRefusedPress}
+											onSelect={handleSuggestionClick}
+											focusComposer={() => textareaRef.current?.focus()}
+										/>
+										{/*
+										 * The ambient tip line, under the chips. OUTSIDE
+										 * `[data-lo-suggestion-stack]` deliberately: the cap reads that
+										 * node's children as chips and derives rows from shared top edges
+										 * (`suggestion-stack.ts`), so a non-chip child there would corrupt
+										 * the row model. Inside the group, so its row lands in the cap's
+										 * fixed budget automatically. The clock is suspended while the box
+										 * holds a draft, so a changing peripheral line cannot pull the eye
+										 * off what the user is typing.
+										 */}
+										<ComposerTipRow
+											suspended={newMessage.trim().length > 0}
+											mentionsEnabled={mentionsEnabled}
+										/>
+									</div>
+								)}
+							</>
+						) : null}
+					</div>
+				</div>
+				{/*
+				 * THE FOOT: the composer's form, docked. Its node is handed to the
+				 * suggestion cap as the third term of its budget, because the chips now
+				 * share the band's height with the composer below them rather than
+				 * containing it (`measured-suggestion-stack.tsx`).
+				 */}
+				<div ref={setFoot} data-lo-composer-foot="" className="w-full">
+					{inputContent}
+				</div>
+			</div>
+		);
+	},
+);
+
+MessageInput.displayName = "MessageInput";

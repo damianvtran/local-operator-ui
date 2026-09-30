@@ -144,7 +144,7 @@ test("no version-bearing path in the definition spells a Python minor", () => {
 });
 
 test("the version-bearing paths expand to the declared release", () => {
-	assert.equal(PYTHON_ABI, "3.12");
+	assert.equal(PYTHON_ABI, "3.14");
 	assert.equal(
 		SEED_STDLIB_MARKER,
 		`lib/python${PYTHON_ABI}/encodings/__init__.py`,
@@ -162,10 +162,9 @@ test("the version-bearing paths expand to the declared release", () => {
 });
 
 test("the prune list names the files the tree actually has", () => {
-	// The three spellings a standalone CPython tree uses, pinned to the real ones:
-	// `bin/2to3-3.12` carries the whole `<major>.<minor>`, while `bin/idle3.12` and
-	// `bin/pydoc3.12` carry only the minor after the tool's own name, and the stdlib
-	// lives under `lib/python3.12`.
+	// The spellings a standalone CPython tree uses, pinned to the real ones:
+	// `bin/idle3.14` carries only the minor after the tool's own name while the
+	// stdlib lives under `lib/python3.14`.
 	//
 	// WHY THIS IS A TEST AND NOT A COMMENT: one token for all three prunes NOTHING,
 	// and it fails in the direction nobody sees. Measured on the first version of
@@ -173,8 +172,28 @@ test("the prune list names the files the tree actually has", () => {
 	// has, so the prune removed 8 of the 10 files it names and the release gate's
 	// "the pruned paths are absent" assertion passed for the two that stayed - the
 	// exact silent outcome the `{pyver}` token exists to prevent.
-	for (const expected of [
+	//
+	// NO 2to3 ENTRY IS EXPECTED any more, and its absence is asserted rather than
+	// merely unlisted: CPython 3.13 removed both the `2to3` program and the
+	// `lib2to3` module (whatsnew/3.13, cpython#104780), so the 3.14 tree has
+	// `bin/2to3`, `bin/2to3-3.14` and `lib/python3.14/lib2to3` and none of them can
+	// come back under a version this repository would pin. The three entries were
+	// therefore DELETED from `prunedSeedPaths` rather than moved to
+	// `prunedSeedPathsOptional`: a required entry must exist in the tree the
+	// declared build produces (`pruneSeed` throws otherwise), and the optional list
+	// is bound to the Tcl/Tk line by its own test below, which encodes what it is
+	// for - content a build may ship under a versioned directory. A rollback to the
+	// previous release is a revert of this change, which restores the three.
+	for (const gone of [
+		"bin/2to3",
 		`bin/2to3-${PYTHON_ABI}`,
+		`lib/python${PYTHON_ABI}/lib2to3`,
+	])
+		assert.ok(
+			!PRUNED_SEED_PATHS.includes(gone),
+			`${gone} was removed upstream before ${PYTHON_VERSION}; a required prune entry for it fails the build`,
+		);
+	for (const expected of [
 		`bin/idle3.${PYTHON_MINOR}`,
 		`bin/pydoc3.${PYTHON_MINOR}`,
 		`lib/python${PYTHON_ABI}/idlelib`,
@@ -354,11 +373,21 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 				script.indexOf("Uv") < script.indexOf("pip install --upgrade pip"),
 			`${path}: the pip upgrade must sit on the fallback path, after the uv decision - the uv path skips it deliberately`,
 		);
-		// pip stays in the venv: the app's backend-update path runs
-		// `pip install --upgrade local-operator` inside this environment, and
-		// `uv venv` would produce one with no pip at all. Comments are stripped
-		// first, because the scripts explain this choice by naming the command they
-		// deliberately do not use.
+		/*
+		 * pip stays in the venv: the app's backend-update path runs
+		 * `pip install --upgrade local-operator` inside this environment, so BOTH
+		 * creation paths have to leave a pip behind - and the claims to hold them to
+		 * it are the ones this guard exists to pin.
+		 *
+		 * The comment that used to stand here stated the constraint backwards: the
+		 * BARE `uv venv` is what produces an environment with no pip, while the
+		 * SEEDED form (`uv venv --seed`) installs one - so a guard that passed on
+		 * `uv_run venv --seed` by an underscore's width would have hidden the very
+		 * change that made the comment false. What is forbidden is the UNSEEDED
+		 * form, not uv itself (an earlier review round's finding 6). Comments are
+		 * stripped first, because the scripts explain this choice by naming, in
+		 * prose, the command they deliberately do not use.
+		 */
 		const commands = script
 			.split("\n")
 			.filter((line) => !line.trimStart().startsWith("#"))
@@ -368,10 +397,35 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 			/-m venv/,
 			`${path}: the venv must keep being created with the interpreter's own venv module`,
 		);
-		assert.doesNotMatch(
+		for (const line of commands.split("\n")) {
+			if (!/\buv[_a-z]*\s+venv\b/.test(line)) continue;
+			assert.match(
+				line,
+				/--seed/,
+				`${path}: uv may create the environment only seeded (\`uv venv --seed\`); a bare \`uv venv\` produces one with no pip, which the app's backend-update path needs`,
+			);
+		}
+		/*
+		 * And each script has to hold the result: macOS and Linux check `bin/pip`
+		 * after creation, and Windows - whose venv pip is reached as a module of the
+		 * venv's activated interpreter - runs `python -m pip`, which the fallback
+		 * assertion above pins to the pip path. A creation path that stopped leaving
+		 * pip behind fails on its own line rather than passing on the other path's
+		 * claim.
+		 */
+		const pipHeld = {
+			"src/main/backend/scripts/macos-install-script.sh": /bin\/pip/,
+			"src/main/backend/scripts/linux-install-script.sh": /bin\/pip/,
+			"src/main/backend/scripts/windows-install-script.ps1": /python -m pip/,
+		}[path];
+		assert.ok(
+			pipHeld,
+			`${path}: no pip expectation is defined for this script`,
+		);
+		assert.match(
 			commands,
-			/\buv\s+venv\b/,
-			`${path}: the venv must not be created with uv; it would carry no pip, which the app's backend-update path needs`,
+			pipHeld,
+			`${path}: nothing holds pip in the created environment, so a creation path that lost it would pass`,
 		);
 	}
 });

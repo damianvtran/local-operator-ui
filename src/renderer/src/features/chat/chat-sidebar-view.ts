@@ -28,10 +28,24 @@
  *
  * WHERE THE OPTIONS STOP. `groupBy` and `orderBy` change how rows are ARRANGED
  * on screen; neither re-orders the catalogue, which owns the order the backend
- * sends (`desktop-session-contract.ts`). A "manual" ordering - drag a row where
- * you want it - is deliberately absent: the wire carries no rank for a
- * conversation, so a manual order would be a client-side illusion that survives
- * neither a relaunch nor the terminal.
+ * sends (`desktop-session-contract.ts`). A "manual" ordering of the WHOLE list -
+ * drag a row out of its section and into another - is deliberately absent: the
+ * wire carries no rank for a conversation, and a cross-section drag would have to
+ * invent one for rows the catalogue sorts by recency.
+ *
+ * WHAT CHANGED (issue #693, 2026-09-30). `pins` is a manual order, and the
+ * sentence above used to refuse one outright on the grounds that it "would
+ * survive neither a relaunch nor the terminal". The relaunch half was the weaker
+ * half: it is a fact about where the order is STORED, and this is the store the
+ * reader's own view already lives in (`ui-preferences-storage`, validated on
+ * read by `parseSidebarView`), so the order survives a relaunch exactly as the
+ * section order does. The terminal half is true and is now the SCOPE rather than
+ * the objection: the order is a permutation of the pinned ids this app knows,
+ * applied by `chat-pin-order.ts` to the Pinned section's rows only - the TUI
+ * keeps its own catalogue order, `sessions.pin` stays a boolean with no rank
+ * beside it, and nothing in this file re-orders what the backend sent. A
+ * desktop-local arrangement of one section is a preference; a rank the two
+ * surfaces disagree about would be a claim, which is why there is no wire field.
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
@@ -149,6 +163,19 @@ export type SidebarView = {
 	hidden: SidebarSectionKey[];
 	/** The user's order: a permutation of `SIDEBAR_SECTIONS`. */
 	order: SidebarSectionKey[];
+	/**
+	 * The Pinned section's manual row order: a permutation of the pinned
+	 * conversation ids the client has ranked (issue #693).
+	 *
+	 * EMPTY IS THE DEFAULT AND IS NOT AN ARRANGEMENT: an empty array means nobody
+	 * has moved a pinned row yet, and the section then draws the catalogue's own
+	 * order passed through (`chat-pin-order.ts` rule 1). It holds SESSION IDS rather
+	 * than rows, so a stored entry outlives the row it names - the materialization
+	 * drops an id the client no longer has rather than rendering it, which is why
+	 * this field is allowed to go stale and why the parser can do no more than
+	 * demand strings.
+	 */
+	pins: string[];
 	groupBy: SidebarGroupBy;
 	/**
 	 * Which clock the time sections and the row labels read.
@@ -166,6 +193,7 @@ export type SidebarView = {
 export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	hidden: [],
 	order: [...SIDEBAR_SECTIONS],
+	pins: [],
 	groupBy: "section",
 	basis: "active",
 	orderBy: "active-first",
@@ -309,6 +337,198 @@ export function pageRows(
 		return { rows: head, lifted: false, remaining };
 	}
 	return { rows: [ordered[index], ...head], lifted: true, remaining };
+}
+
+/** What one expanded entity's session list draws, and what it withholds. */
+export type EntityRows = {
+	/**
+	 * The rows to draw, in the catalogue's own order - with the viewed conversation
+	 * at the head when the bound withheld it (see `lifted`).
+	 */
+	rows: CanonicalSessionRow[];
+	/**
+	 * Whether `rows[0]` is the viewed conversation, lifted: it is drawn OUT OF the
+	 * catalogue's order because the bound withheld it from where it belongs.
+	 * `false` when it is drawn in place, or is not this group's row at all.
+	 */
+	lifted: boolean;
+	/** Rows this group holds and the bound did not draw, the lifted one excepted. */
+	hidden: number;
+	/** How many rows this group holds in total, drawn or not. */
+	held: number;
+};
+
+/**
+ * One EXPANDED ENTITY's own sessions, bounded by the operator's ladder.
+ *
+ * WHY THIS EXISTS (operator, 2026-09-27: "there's far too many team/agent
+ * messages shown on screen at once when expanded, can you have max 10 at first
+ * sorted by most recent/active then click to load more"). The chats list has
+ * been bounded since the ladder shipped (`pageRows` above); the rows INSIDE an
+ * expanded team or agent were not, so a team with 41 conversations drew all 41
+ * into a column that also holds the chats list and every other expanded group.
+ *
+ * THE ORDER IS THE CATALOGUE'S AND THIS FUNCTION DOES NOT TOUCH IT. "Sorted by
+ * most recent/active" is already true of the rows as they arrive: the backend
+ * ranks the catalogue `(tier, wake_rank, -birth, id)` (`session/catalog.py`),
+ * so the ACTIVE states lead and the rest run newest-first - and the id
+ * tie-break makes that key total, which is what stops two equal rows swapping
+ * places between two reads. Applying `pageOrder` here would be a SECOND
+ * ordering authority beside the one the wire already carries, which
+ * `chat-sections.ts` and `sidebar-scope-paging.ts` both refuse; it would also
+ * be free to invert the server's tier precedence (lifting a `busy` row above
+ * an `approval` one). So the bound takes a PREFIX, never a re-sort.
+ *
+ * RUNNING ROWS ARE EXEMPT FROM THE BOUND, and this is the one rule the brief did
+ * not state. The bound is a DISCLOSURE, and a disclosure must not be a way to
+ * hide live work: a conversation with a turn in flight, or one stopped on the
+ * reader for an approval, is the thing they most need to see, and at position 40
+ * of 41 the bound would put it behind a press. `isActiveRow` is the RUNNING
+ * section's own predicate, imported rather than restated so the exemption and
+ * the section cannot disagree about what "running" means. (The shape is dsh's -
+ * rows that must never be hidden leave the quota before it applies - but the
+ * ladder's numbers are the operator's, not dsh's.)
+ *
+ * A SEARCH IS NEVER BOUNDED, which is `pageRows`' invariant 2 one level down:
+ * the reader's query already narrowed these rows, so a bound applied on top of
+ * it could only hide a HIT - and a search that returns nothing for a session
+ * that exists is worse than a long list. The rows handed here are the group's
+ * already-queried rows, so `searching` bypasses the cut entirely.
+ *
+ * THE VIEWED CONVERSATION IS LIFTED, NOT ADMITTED. Raising the limit until the
+ * reader's own row fits was the alternative and is refused: in a 41-row group
+ * whose viewed row sits at 40, admitting it in place draws 40 rows - exactly the
+ * complaint this change exists to answer. One row is drawn at the head instead,
+ * wearing the panel's own `rowCurrent` ground, and the rest keep the catalogue's
+ * order exactly.
+ */
+export function entityRows(
+	rows: readonly CanonicalSessionRow[],
+	options: {
+		/** How many times this group's own `Show more` has been pressed. */
+		loads: number;
+		/** The conversation the transcript pane is drawing, if any. */
+		currentId?: string | null;
+		/** A query is active: the bound does not apply. */
+		searching?: boolean;
+	},
+): EntityRows {
+	if (options.searching) {
+		return { rows: [...rows], lifted: false, hidden: 0, held: rows.length };
+	}
+	const limit = pageLimit(options.loads);
+	const drawing: CanonicalSessionRow[] = [];
+	let quota = limit;
+	for (const row of rows) {
+		/*
+		 * Running rows cost no quota - see the exemption above. They are pushed in
+		 * place, so the order the reader sees is still the catalogue's.
+		 */
+		if (isActiveRow(row)) {
+			drawing.push(row);
+			continue;
+		}
+		if (quota > 0) {
+			drawing.push(row);
+			quota -= 1;
+		}
+	}
+	const currentId = options.currentId;
+	const viewed =
+		currentId == null
+			? null
+			: (rows.find((row) => row.session_id === currentId) ?? null);
+	const lifted = viewed !== null && !drawing.includes(viewed);
+	return {
+		/*
+		 * THE VIEWED ROW LEADS, the same shape and the same reason as `pageRows`: the
+		 * one way to guarantee the reader can see where they are is to draw it, and
+		 * the one way to keep that from being silent is to make it be first rather
+		 * than to move a row the rest of the list is ordered around.
+		 */
+		rows: lifted && viewed !== null ? [viewed, ...drawing] : drawing,
+		lifted,
+		hidden: rows.length - drawing.length - (lifted ? 1 : 0),
+		held: rows.length,
+	};
+}
+
+/**
+ * The foot control on ONE expanded entity, or `null` when there is nothing to
+ * disclose.
+ *
+ * WHY THE LABEL AND THE POSITION ARE ONE RETURNED FACT (the brief's fourth rule:
+ * "the count and the disclosure must agree"). The group's badge states the
+ * conversations the group HOLDS - the census, on a paging daemon - and it says
+ * nothing about how many of them are drawn, so `41` beside ten rows is a reader
+ * unable to tell ten-of-41 from all-of-41. The position rides in the control
+ * that already exists rather than in a second line, because this change is about
+ * vertical space: a disclosure line added to every bounded group would cost the
+ * height the bound was introduced to save.
+ *
+ * `drawn of total`, not `hidden of total`: the badge already states the total, so
+ * the number the reader cannot get anywhere else is how many they are looking at.
+ */
+export function entityMore(args: {
+	/**
+	 * Rows this group's press will ADD, already bounded by whatever can give them
+	 * (the ladder's next step, or the daemon's own page behind the cursor).
+	 */
+	add: number;
+	/** Rows this group is drawing right now, the lifted one included. */
+	drawn: number;
+	/** What this group's own badge states, so the two numbers agree. */
+	total: number;
+}): { label: string; aria: string } | null {
+	if (args.add <= 0) return null;
+	const label =
+		args.add === 1 ? "Show 1 more chat" : `Show ${args.add} more chats`;
+	/*
+	 * The position appears exactly while the badge states more than the reader is
+	 * looking at, and not otherwise - so it can never contradict the badge, and a
+	 * group that is fully drawn keeps the bare label it has today.
+	 */
+	if (args.drawn >= args.total) return { label, aria: label };
+	const position = `${args.drawn} of ${args.total}`;
+	return {
+		label: `${label} · ${position}`,
+		/*
+		 * WCAG 2.5.3 (round 1, U4): the accessible name must contain the visible
+		 * label, so the name reuses the label's own ` · ` joining rather than a
+		 * comma - the visible string is then a prefix of the name, and
+		 * `chat-sidebar.tsx` appends only the group's name (`… shown in minervadev`).
+		 */
+		aria: `${label} · ${position} shown`,
+	};
+}
+
+/**
+ * The vertical gap that separates two ENTITY SECTIONS in the one scroller.
+ *
+ * WHY THERE ARE TWO VALUES AND NOT ONE SMALLER CONSTANT (operator, 2026-09-27:
+ * "Also shrink the gap between agents and teams headers when agents is
+ * collapsed, there's an extra gap wasting space there"). Measured on the panel
+ * at 360px: the gap between the `Agents` and `Teams` headings is **16.0px**
+ * whether the first section is collapsed or expanded - it is `space-y-4` on the
+ * wrapper that holds both sections, and it does not know whether there are rows
+ * for it to separate. So the value is genuinely SHARED between the two cases,
+ * and lowering the constant would silently tighten the expanded case as well,
+ * where the 16px is doing real work (it is what tells the reader that the twelve
+ * agent rows above belong to `Agents` and the rows below to `Teams`).
+ *
+ * Hence a CONDITIONAL value, keyed on the one thing that changes the reading: a
+ * section that draws no rows has nothing for a section rhythm to separate, so
+ * the heading below it sits at the list's own 8px step instead. The condition is
+ * "does the preceding section draw rows", not "how many rows" - so a collapsed
+ * section with nothing in it and a collapsed section holding forty chats space
+ * identically, which is the case that a per-count rule would get wrong.
+ */
+export const ENTITY_SECTION_GAP = "mt-4";
+/** The same gap when the section above it is collapsed and draws no rows. */
+export const ENTITY_SECTION_GAP_COLLAPSED = "mt-2";
+
+export function entitySectionGap(previousDrawsRows: boolean): string {
+	return previousDrawsRows ? ENTITY_SECTION_GAP : ENTITY_SECTION_GAP_COLLAPSED;
 }
 
 /** One group of the agent-grouped list. */
@@ -517,6 +737,17 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * tampered `1e9` would ask the list for a page larger than the catalogue it is
  * paging (the store already caps a list read at 500 rows, which is the honest
  * bound and is stated in the sidebar's own note when it is hit).
+ *
+ * `pins` IS CHECKED FOR SHAPE AND FOR NOTHING ELSE, and that is the honest bound
+ * rather than a gap: its entries are conversation ids, which are the BACKEND's to
+ * issue, so this module cannot enumerate the set the way it enumerates
+ * `SIDEBAR_SECTIONS`. So an entry that is not a non-empty string is dropped, a
+ * duplicate is dropped, and an id that names a conversation this client no longer
+ * has is KEPT - only the panel knows which rows exist (`chat-pin-order.ts`
+ * materializes against the ids it is drawing and drops the rest there). Dropping
+ * unknown ids here would be this parser guessing at a fact it does not hold, and
+ * the guess would be wrong in the one direction that loses an arrangement: a
+ * pinned chat outside the loaded page is still pinned.
  */
 export function parseSidebarView(value: unknown): SidebarView {
 	if (typeof value !== "object" || value === null) return DEFAULT_SIDEBAR_VIEW;
@@ -554,5 +785,23 @@ export function parseSidebarView(value: unknown): SidebarView {
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
-	return { hidden, order, groupBy, basis, orderBy, loads };
+	const pins: string[] = [];
+	/*
+	 * THE DEDUPE IS A SET because this array is unbounded and the loop is reached on
+	 * every render of every mounted reader of the view (agent review round 1, R7):
+	 * `pins.includes` per entry makes the parse quadratic in a persisted list nothing
+	 * here caps. The array is still what is returned - the ORDER of the stored
+	 * entries is the arrangement - so only the membership test moves.
+	 */
+	const ranked = new Set<string>();
+	if (Array.isArray(raw.pins)) {
+		for (const entry of raw.pins) {
+			if (typeof entry !== "string") continue;
+			if (entry.length === 0) continue;
+			if (ranked.has(entry)) continue;
+			ranked.add(entry);
+			pins.push(entry);
+		}
+	}
+	return { hidden, order, groupBy, basis, orderBy, loads, pins };
 }

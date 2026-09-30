@@ -357,3 +357,81 @@ the store action, the wire shape and main's foreground gate are asserted in
 `scripts/attention-seen.test.mjs`. Together those two answer different questions
 — this set answers "what does the user see, in every theme", and that file
 answers "is the request, the answer and the write what they claim to be".
+
+## The subagent indicator (2026-09-29)
+
+Six rosters added for the operator's report: sessions "not displaying the icon
+where they're done but they still have running subagents, so it just looks like
+they're inactive in the sidebar".
+
+- **`subagent-rows-running/`** and **`subagent-rows-running-minimum/`** (280 and
+  240) — the rungs the catalogue ranks ABOVE `delegating`: a `busy` row with two
+  running children and one queued (the three-glyph worst case), a `busy` row with
+  two, a `wedged` row with one, the three `delegating` cells (queued-and-running,
+  running-only, queued-only), and TWO compatibility cells — `null` counts and
+  `0/0` counts, both on a busy row.
+- **`subagent-rows-resting/`** and **`subagent-rows-resting-minimum/`** (280 and
+  240) — the resting primaries the indicator has to read beside: an unseen
+  completion, an attached session, a scheduled wake with a queue, an idle ring, an
+  unseen failure, the same compatibility pair on a RESTING row (`0/0` and
+  `null`), and a bound (agent-attributed) row. The compatibility cells are four
+  because the rule is not a function of the status code, and the four are how
+  that is said in pixels: S11 asks for the pair on a busy row AND on an idle one
+  (review MINOR 2 — the first pass photographed two of the four).
+- **`subagent-selected-row/`** — the operator's own case: the row they had
+  opened, on the `rowSelected` ground, with two running children and an
+  unselected twin below it.
+  **THIS CELL'S FIRST PASS PHOTOGRAPHED TWO RESTING ROWS, and the frame was the
+  evidence for it**: the story passed `selected={`session/<id>`} while the row's
+  own definition of current is `selectedConversation === row.session_id` — the
+  BARE id the app's caller passes (`sidebar-navigation.tsx`) — so no row was ever
+  current, and a persisted `activeDraftKey` (the store's `partialize` names it)
+  suppressed it a second time even after the id was fixed. Both are repaired:
+  the story passes the bare id and clears the inherited key, and this cell's own
+  capture entry now refuses the frame unless
+  `[data-chat-row][aria-current="page"]` is on screen. The before/after pair was
+  re-taken so each half carries a genuinely selected row and differs only by the
+  indicator.
+- **`subagent-archived-row/`** — an archived row carrying BOTH conditional marks
+  (the leading `Archive` glyph and the post-title indicator). Archived rows are
+  filtered out of the at-rest list by `chat-archived.ts`'s `visibleRows`, so this
+  story reaches the row the only way a reader can: a query plus the search
+  block's own `Include archived` control.
+  **THE FIRST PASS OF THIS STORY PHOTOGRAPHED THE WRONG STATE** (QA round 1, Q-1;
+  design D1 on the same frame): the play asked for "Search chats and agents" by
+  label, and the band's search BUTTON and the search FIELD carry that one
+  accessible name, so the lookup matched two elements and the play died before a
+  character was typed — leaving a frame of the unarchived twin that still looked
+  like evidence. Roles separate them now, and the capture entry carries
+  `expectPresent: '[data-session-archived="true"]'`, so the rig itself refuses to
+  write these frames unless an archived row is on screen.
+
+**The before half is a separate declared set**, `docs/evidence/chat-sidebar-subagent-baseline/`
+— the same six rosters, same fixtures, same two viewports and same twelve
+palettes, rendered by unmodified `origin/main` at `073164505e` in its own
+worktree (re-taken at the round-1 fold, since the fold moved the tree the
+roster's own file is staged into). That set's manifest entry carries the
+provenance. Read against it: the archived baseline row carries the `Archive`
+mark and NO indicator, which is the pair this cell exists for. Every cell's before/after pair therefore
+differs by the indicator and by nothing else; on the baseline, a busy row with two
+running children draws one spinner and the sidebar says nothing about them.
+
+**The two widths are the point, not a courtesy.** One mark costs the title
+**22px**, measured box-to-box in the frames (14px glyph + the row's own 4px
+`gap-1` + `ml-1`'s 4px), 8px between two marks, and a truncated row carrying both
+loses **41px** of title - and
+`docs/design/sidebar-row-space.md` §2 states this row's invariant as "the title's
+leading edge never moves; what moves is the title's clip" — which is why the
+indicator sits AFTER the title rather than in the leading cluster. The 240px
+frames are where that clip pays hardest, and the worst cell in the set is the
+bound row at 240, where a trailing statement and a time leave the title ~3.8
+characters (design D3, recorded as a follow-up rather than fixed here).
+
+**Recorded gap.** The spec's S15 cell (a NESTED row, filed under its agent) is
+not photographed: this fixture's profile catalogue renders the Agents section's
+empty state rather than an entity row (the offered install line names the profile,
+so the read lands — the section lists installed agents and the fixture's catalogue
+has none; the committed `completion-reordered/` frames show the same empty
+section). The bound row in `subagent-rows-resting/` renders FLAT for that reason,
+and the nested under-an-agent frame is owed to whoever can drive an installed
+agent in this set.

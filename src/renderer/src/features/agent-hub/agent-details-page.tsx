@@ -495,9 +495,18 @@ export const AgentDetailsPage: React.FC = () => {
 
 			<AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
 			<div className="mt-4 mb-6 flex flex-col gap-2 text-body-sm text-ink-muted">
+				{/*
+				 * The author's name, and the email only when the hub sent one. The hub is
+				 * dropping `email` from public rows (coordinated with the hub server,
+				 * 2026-09-29), and a bracketed placeholder after every author claimed an
+				 * absence the reader never asked about. Name-only is the honest shape of
+				 * "the hub does not say".
+				 */}
 				<p>
-					Created by: {agent.account_metadata?.name ?? "Unknown"} (
-					{agent.account_metadata?.email ?? "No email"})
+					Created by: {agent.account_metadata?.name ?? "Unknown"}
+					{agent.account_metadata?.email
+						? ` (${agent.account_metadata.email})`
+						: ""}
 				</p>
 				<p>
 					Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago (

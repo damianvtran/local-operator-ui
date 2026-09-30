@@ -41,7 +41,6 @@ import type {
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
 import { ChatHeader } from "@features/chat/components/chat-header";
-import { MessageInput } from "@features/chat/components/message-input";
 import {
 	deriveMcpServers,
 	deriveRunDetails,
@@ -50,6 +49,7 @@ import {
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { Message } from "@features/chat/types/message";
 import { MeshPage } from "@features/mesh/mesh-page";
 import { ProjectsPage } from "@features/projects/components/projects-page";
@@ -63,6 +63,7 @@ import type {
 } from "@shared/api/local-operator/wakes-api";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -553,6 +554,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 		compactingSince: 0,
 		viewEpoch: 0,
 		oldestId: null,
+		oldestTs: 0,
 		hasMore: false,
 		argsByCall: new Map(),
 	};
@@ -574,6 +576,11 @@ const INERT_REMEDY: McpRemedyControls = {
 	refusalFor: () => null,
 	failureFor: () => null,
 	clearFailure: () => undefined,
+};
+
+/** No-op monitor controls: no monitors are staged in this world. */
+const INERT_MONITOR_CONTROLS: MonitorControls = {
+	cancel: async () => ({ ok: true }),
 };
 
 /** The chrome state Storybook has no main process for; see `docs-hero`. */
@@ -683,7 +690,7 @@ const AppShell: FC<{
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: rightPane === "run",
-			runPanelWidth,
+			rightSlotWidth: runPanelWidth,
 		});
 		return () => {
 			useUiPreferencesStore.setState({ isRunPanelOpen: false });
@@ -719,9 +726,12 @@ const AppShell: FC<{
 										mcpServers={deriveMcpServers([], {}, [])}
 										mcpGrantRunning={mcpGrantInFlight([])}
 										mcpRemedy={INERT_REMEDY}
+										monitorControls={INERT_MONITOR_CONTROLS}
 										sessionId="3f9c1a2b4d5e"
 										pulses={{}}
 										childrenOpenable
+										/* No session stream behind this board: the transport-up case. */
+										olderTransportDown={false}
 										paneWidth={slotWidth}
 										readerChildId={null}
 										previewPage={null}
@@ -811,8 +821,18 @@ const ExpandReceipt = ({ marker }: { marker: string }) => {
 };
 
 /**
- * Hold the shutter until the hub's scope switch (its `play`) has landed; a
- * play that failed shows no error display, so the timeout leaves
+ * Hold the shutter until the hub's scope switch (its `play`) has landed. An org
+ * badge on screen is the proof: the Teams roster used to be rendered under the
+ * grid and was the marker, but it is a tab now and only mounts when opened.
+ *
+ * THE SCENE STAYS ON THE AGENTS TAB ON PURPOSE (agent review round 1, m4). It is
+ * the library's picture of the hub's org workspace - grid, badges, scope - and
+ * the browse bar above it now shows the Teams tab with its count, which is the
+ * one-glance version of what the roster under the grid used to be. Opening the
+ * Teams tab would swap the grid the marketing shot exists for. The change is
+ * disclosed on the PR because the shot is a public asset.
+ *
+ * A play that failed shows no error display, so the timeout leaves
  * `data-capture-failed` for the rig to refuse on.
  */
 const HubHold = () => {
@@ -820,7 +840,7 @@ const HubHold = () => {
 		document.documentElement.dataset.capturePending = "1";
 		const started = Date.now();
 		const timer = window.setInterval(() => {
-			if (document.querySelector('[data-testid="org-teams"]')) {
+			if (document.querySelector('[data-testid="agent-org-badge"]')) {
 				document.documentElement.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 			} else if (Date.now() - started > 20_000) {
@@ -1026,12 +1046,12 @@ const SubagentsScene = () => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: true,
-			runPanelWidth: 480,
+			rightSlotWidth: 480,
 		});
 		return () => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: false,
-				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+				rightSlotWidth: 0,
 			});
 		};
 	}, []);
@@ -1585,12 +1605,10 @@ export const AgentHub: Story = {
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
 		await userEvent.click(
-			await screen.findByRole("option", { name: "Aster Labs" }),
+			await screen.findByRole("button", { name: "Aster Labs" }),
 		);
-		await screen.findByTestId("agent-org-badge");
-		await screen.findByTestId("org-teams");
+		await screen.findAllByTestId("agent-org-badge");
 	},
 };
 

@@ -122,9 +122,21 @@ export type CanonicalSessionRow = {
 	 * has an index signature, so without a declaration here every read of these two
 	 * keys is `unknown` and the next reader casts - and `row.subagents_queued === 0`
 	 * over `unknown` is exactly where a `null` {"does not report"} becomes a `0`
-	 * {"none"}. The renderer draws no count of its own: the numbers reach the user
-	 * inside `status.label` (see `chat-session-status.tsx`), and this declaration
-	 * exists so the keys are typed wherever someone does read them.
+	 * {"none"}.
+	 *
+	 * THE RENDERER NOW READS THESE TWO FIELDS, and anyone reading the paragraph
+	 * that used to stand here ("the renderer draws no count of its own: the numbers
+	 * reach the user inside `status.label`") should know why it changed rather
+	 * than "fixing" the read away. `status.label` carries the counts on ONE code
+	 * only - `delegating`, the rung the catalogue reaches when nothing louder is
+	 * true - so on every other rung they were on the row and nowhere on screen,
+	 * and a session that had finished its own turn while its children still worked
+	 * read as done (the operator's report, 2026-09-29). `features/chat/
+	 * chat-session-subagents.ts` is the one reader: it draws a mark and composes a
+	 * sentence from these fields on the rungs `status.label` cannot speak for, and
+	 * deliberately composes NOTHING on `delegating`, where the label already says
+	 * it. So the label remains the counts' channel wherever it has them, and this
+	 * is the channel for everywhere it does not.
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
@@ -3344,7 +3356,7 @@ type CanonicalSessionsState = {
 	beginAnswer: () => number;
 	applySearchAnswer: (
 		seq: number,
-		hits: { id: string; pinned?: boolean }[],
+		hits: { id: string; pinned?: boolean; archived?: boolean }[],
 	) => void;
 	setSessionPin: (
 		sessionId: string,
@@ -6624,6 +6636,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * removed on the other surface stops reading pinned here as soon as this client
 			 * asks again. A fact written AFTER the request started is left alone, and a hit
 			 * that carries no `pinned` says nothing and therefore supersedes nothing.
+			 *
+			 * AND THE HIT'S `archived` IS READ BESIDE IT (QA round 1, Q-1): a search
+			 * answer always carries both values (`SessionSearchHit`), so the archive half
+			 * below applies the same supersession to the archive fact AND writes the
+			 * answer's value onto the row - the two-sided move the pin arm makes, and
+			 * without the second half the menu's own Archive -> search -> Unarchive round
+			 * trip failed end to end.
 			 */
 			applySearchAnswer: (seq, hits) =>
 				set((state) => {
@@ -6652,11 +6671,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * id, which is the whole of what the archive rule needs - so gating both
 						 * halves on `pinned` would leave an archived fact alive through every
 						 * answer that happened not to describe a pin.
+						 *
+						 * AND THE ROW GIVES WAY TOO, the same two-sided move the pin arm below
+						 * makes (`row.pinned` at the end of it, and this is its model): the fact is
+						 * settled AND the row takes the answer's own value, unless a fact NEWER
+						 * than the answer outranks it - the pin arm's own currency rule. Without
+						 * the row half, a conversation this client archived fell back the moment
+						 * an answer settled its fact to the catalogue page written BEFORE the
+						 * press: the row rejoined the widened search (`Include archived`) drawn
+						 * live, and its menu offered `Archive conversation` again - so the press
+						 * followed the label straight back to `archived: true` and the unarchive
+						 * never happened (QA round 1, Q-1: the menu's own round trip failed).
 						 */
 						const archivedFact = state.archiveFacts[hit.id];
 						if (archivedFact !== undefined && archivedFact.at < seq) {
 							archiveFacts = archiveFacts ?? { ...state.archiveFacts };
 							delete archiveFacts[hit.id];
+						}
+						if (
+							!(archivedFact !== undefined && archivedFact.at >= seq) &&
+							typeof hit.archived === "boolean" &&
+							state.sessions.some(
+								(row) =>
+									row.session_id === hit.id && row.archived !== hit.archived,
+							)
+						) {
+							rows = rows ?? state.sessions.map((row) => ({ ...row }));
+							for (const row of rows) {
+								if (row.session_id === hit.id)
+									row.archived = hit.archived === true;
+							}
 						}
 						if (typeof hit.pinned !== "boolean") continue;
 						const fact = state.pinFacts[hit.id];

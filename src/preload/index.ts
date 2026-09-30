@@ -475,14 +475,25 @@ const api = {
 		onBackendUpdateProgress: (
 			callback: (progress: {
 				/**
-				 * `draining` is the WAIT before anything is installed or restarted: the app
-				 * holds the update back while sessions on this machine finish the turns they
-				 * are running (`backend/fleet-drain.ts`). It is its own phase rather than
-				 * part of `installing` because it can last minutes and no install has begun
-				 * - reporting it as installing would make the panel's "this can take a minute
-				 * or two" the wrong sentence for the whole of it.
+				 * `draining` is the WAIT before the REBUILD install: the app holds the
+				 * checkout rebuild back while sessions on this machine finish the turns
+				 * they are running (`backend/fleet-drain.ts`) - the one route whose tree
+				 * rewrite can cut a turn; restarts stopped waiting on 2026-09-29. It is
+				 * its own phase rather than part of `installing` because it can last
+				 * minutes and no install has begun - reporting it as installing would make
+				 * the panel's "this can take a minute or two" the wrong sentence for the
+				 * whole of it.
 				 */
 				phase: "draining" | "installing" | "restarting";
+				/**
+				 * How long the PRESS has been waiting for the fleet, when the phase is
+				 * `draining` (design round 1, D3). The one number the app has for a wait
+				 * that can run to ten minutes; absent on the other phases, and absent from
+				 * an older producer. Declared here since 2026-09-29: the sibling
+				 * declaration in `index.d.ts` carried it alone before, and a renderer
+				 * reading this type saw a shape the shipped event always had.
+				 */
+				waitedMs?: number;
 				/**
 				 * True when the running attempt is the checkout REBUILD rather than the
 				 * release path. The two promise different things while they run - the
@@ -866,25 +877,6 @@ const api = {
 			ipcRenderer.on("browser-consent-attention", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-consent-attention", handler);
-			};
-		},
-		onPopupBlocked: (
-			callback: (payload: { tabId: number; url: string }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; url?: unknown },
-			) => {
-				if (
-					typeof payload?.url === "string" &&
-					typeof payload.tabId === "number"
-				) {
-					callback({ tabId: payload.tabId, url: payload.url });
-				}
-			};
-			ipcRenderer.on("browser-popup-blocked", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-popup-blocked", handler);
 			};
 		},
 	},
