@@ -1040,6 +1040,65 @@ test("an unreachable index is not reported as a missing file", async () => {
 	);
 });
 
+test("a certificate verdict separates trust from expiry, and neither claims the other's remedy", async () => {
+	/*
+	 * Review round 1's R1-3: the verification entry used to carry a bare
+	 * `SSLError` alternative, so EVERY SSL-shaped failure - an expired
+	 * certificate, a proxy answering plain HTTP, an aborted handshake - was
+	 * answered with "ask IT for the root certificate", which only one of the
+	 * three causes deserves. The three strings below are the reviewer's own
+	 * reproductions, in their shapes; `null` is the honest answer for the two
+	 * that are not trust problems, because the app's generic sentence is true of
+	 * them and the certificate remedy is not.
+	 */
+	const causes = await bundleLeaf("./src/main/backend/setup-failure-causes.ts");
+	// The verification words still get the store remedy - uv's spelling and
+	// pip's, the two clients the install path actually runs.
+	assert.match(
+		causes.setupFailureCause(
+			new Error("uv: invalid peer certificate: UnknownIssuer"),
+		),
+		/root certificate/,
+	);
+	assert.match(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1006)'))",
+			),
+		),
+		/root certificate/,
+	);
+	// An expired certificate goes to the clock instead, and the ORDER is the
+	// mechanism: the raw text carries `CERTIFICATE_VERIFY_FAILED` too, so only
+	// the expiry entry sitting above the verification one can answer first.
+	assert.match(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1006)'))",
+			),
+		),
+		/date and time/,
+	);
+	// The two SSL shapes that are neither a trust problem nor an expiry fall
+	// through to the generic cause rather than borrowing the certificate remedy.
+	assert.equal(
+		causes.setupFailureCause(
+			new Error("SSLError(1, '[SSL: WRONG_VERSION_NUMBER]')"),
+		),
+		null,
+		"a proxy answering plain HTTP is not a certificate the user can add",
+	);
+	assert.equal(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol'))",
+			),
+		),
+		null,
+		"an aborted handshake is not a certificate the user can add either",
+	);
+});
+
 test("a probe's answer never becomes the reason a setup failed", () => {
 	/*
 	 * Captured from a REAL run of the shipped macOS script against an unreachable
