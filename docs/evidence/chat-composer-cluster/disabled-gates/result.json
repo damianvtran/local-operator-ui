@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/composer-cluster-proof.mjs",
-  "at": "2026-09-30T02:21:08.722Z",
+  "at": "2026-09-30T10:17:32.737Z",
   "cases": [
     {
       "name": "history-empty-recalls",
@@ -16,6 +16,7 @@
         "draft": "run the migration again please",
         "sel": 30,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "none",
@@ -28,6 +29,7 @@
           "draft": "",
           "sel": 0,
           "list": null,
+          "listText": null,
           "rows": [],
           "active": null,
           "sent": "none",
@@ -36,7 +38,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/history-empty-recalls.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-empty-recalls.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -47,6 +49,7 @@
         "draft": "run the migration again please",
         "sel": 30,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "none",
@@ -55,7 +58,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/history-draft-survives-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-draft-survives-arrowup.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"run the migration again please\" (expected \"draft\")"
@@ -68,6 +71,7 @@
         "draft": "run the migration again please",
         "sel": 30,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "none",
@@ -80,6 +84,7 @@
           "draft": "one\ntwo",
           "sel": 7,
           "list": null,
+          "listText": null,
           "rows": [],
           "active": null,
           "sent": "none",
@@ -91,6 +96,7 @@
           "draft": "one\ntwo",
           "sel": 3,
           "list": null,
+          "listText": null,
           "rows": [],
           "active": null,
           "sent": "none",
@@ -99,7 +105,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/history-draft-multiline-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-draft-multiline-arrowup.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"run the migration again please\" (expected \"one\\ntwo\")"
@@ -112,6 +118,7 @@
         "draft": "fix this $res",
         "sel": 13,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "none",
@@ -120,12 +127,35 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/skill-list-opens.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-list-opens.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Skills\")",
         "rows: 0 (expected 1)",
         "active starts with the skill: false (expected true)"
+      ]
+    },
+    {
+      "name": "skill-list-empty",
+      "why": "A `$` query with NO matches keeps its listbox and says the miss (design round 1, D3): `$zzz` unmounted the list silently where the sibling `/` palette renders \"No commands match.\" in the same place, so the two lists disagreed about how to answer a miss. The before half records the silent unmount (no listbox at all).",
+      "state": {
+        "draft": "$zzz",
+        "sel": 4,
+        "list": null,
+        "listText": null,
+        "rows": [],
+        "active": null,
+        "sent": "none",
+        "dispatched": "none",
+        "dialog": null,
+        "dialogRows": 0
+      },
+      "extra": null,
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-list-empty.png",
+      "verdict": "FAIL",
+      "mismatches": [
+        "list: null (expected \"Skills\")",
+        "the miss is stated: false (expected true)"
       ]
     },
     {
@@ -135,6 +165,7 @@
         "draft": "fix this $res",
         "sel": 13,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "none",
@@ -143,7 +174,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/skill-accepted-reassembles.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-accepted-reassembles.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"fix this $res\" (expected \"$research fix this \")"
@@ -156,6 +187,7 @@
         "draft": "",
         "sel": 0,
         "list": null,
+        "listText": null,
         "rows": [],
         "active": null,
         "sent": "fix this $res",
@@ -164,7 +196,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/skill-send-expands.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-send-expands.png",
       "verdict": "FAIL",
       "mismatches": [
         "the payload is the skill expansion: false (expected true)",
@@ -179,6 +211,7 @@
         "draft": "",
         "sel": 0,
         "list": "Theme",
+        "listText": "Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour — the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour — cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night — indigo storm skies under the same neon accents.GruvboxRetro groove after dark — warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard — cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark — deep teal-black with a cyan accent.Rosé PineDusty rose and muted pine on a deep plum night.Rosé Pine MoonRosé Pine lifted: the same rose and pine over a softer violet.Rosé Pine DawnRosé Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon — cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin FrappéThe middle flavour — warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour — cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light — warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.",
         "rows": [
           "Local Operator DarkThe default. Warm near-black with the brand green.",
           "Local Operator LightWarm paper and ink, with the brand green.",
@@ -247,7 +280,7 @@
         "dialogRows": 59
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/theme-qualified-confirms.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/theme-qualified-confirms.png",
       "verdict": "FAIL",
       "mismatches": [
         "no grid behind it: 59 (expected 0)"
@@ -260,6 +293,7 @@
         "draft": "",
         "sel": 0,
         "list": "Theme",
+        "listText": "Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour — the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour — cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night — indigo storm skies under the same neon accents.GruvboxRetro groove after dark — warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard — cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark — deep teal-black with a cyan accent.Rosé PineDusty rose and muted pine on a deep plum night.Rosé Pine MoonRosé Pine lifted: the same rose and pine over a softer violet.Rosé Pine DawnRosé Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon — cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin FrappéThe middle flavour — warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour — cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light — warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.",
         "rows": [
           "Local Operator DarkThe default. Warm near-black with the brand green.",
           "Local Operator LightWarm paper and ink, with the brand green.",
@@ -328,11 +362,11 @@
         "dialogRows": 59
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before2/theme-bare-keeps-the-grid.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/theme-bare-keeps-the-grid.png",
       "verdict": "PASS",
       "mismatches": []
     }
   ],
   "pageProblems": [],
-  "failures": 6
+  "failures": 7
 }
