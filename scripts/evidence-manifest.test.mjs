@@ -2395,6 +2395,40 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesFoldSixNote",
 	/*
+	 * And this lane's own - the scroll-shift fix's record (the reserved foot row,
+	 * the fold's open state and the standing reader-hold) and the note for its
+	 * latest fold here (`78b9c84c8f`), registered for the same completeness
+	 * reason: a fold that started from main's copy would drop them first. Both
+	 * spell their identity as bare SHAs, so they add no name to the quoting
+	 * ledger.
+	 */
+	"foldOnto78b9c84c8fNote",
+	"scrollShiftRestampNote",
+	/*
+	 * And the fold onto `efca9e16fc` (#696's update/reload drain and #699's
+	 * board time-window over the loader-continuity train): registered for the
+	 * list's own reason - a fold resolved from main's manifest copy would drop
+	 * the only statement of how the two conflicted paths (this file and
+	 * package.json's test list) were resolved, and of the pair and lead being
+	 * re-derived over the folded tree. It quotes no tree-hash pair.
+	 */
+	"foldOntoefca9e16fcNote",
+	/*
+	 * And the fold onto `e78e4395eb` (the loader-walk lane: `mayAutoWalk`,
+	 * `MAX_ACT_ASKS` and its paging cases): registered for the list's own
+	 * reason - a fold resolved from main's copy would drop how the two
+	 * conflicted paths (this file and the paging test's four-symbol header)
+	 * were resolved and the pair re-derived over the folded tree.
+	 */
+	"foldOntoe78e4395ebNote",
+	/*
+	 * And the fold onto `34ac02d33c` (#701's row-context menu): registered for
+	 * the list's own reason - a fold resolved from main's copy would drop how
+	 * the two conflicted paths (this file and package.json's test list) were
+	 * resolved and the pair re-derived over the folded tree.
+	 */
+	"foldOnto34ac02d33Note",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
@@ -2713,6 +2747,46 @@ const BRANCH_RECORDS = [
 	 * registered beside the others for the list's usual reason (agent review round 5, Q-3).
 	 */
 	"foldOnto48b4b90b66Note",
+	/*
+	 * And ROUND 2'S own, beside the focus return's records: the re-stamp U8's
+	 * move of `src/` (the pointer close's capture-and-restore) and the suite's
+	 * pins in `scripts/` forced. Registered for the list's usual reason - a fold
+	 * resolved from main's copy would drop it.
+	 */
+	"rowMenuRoundTwoRestampNote",
+	/*
+	 * And ROUND 3'S own, beside it: the re-stamp QA round 3's Q-1 fix forced by
+	 * moving `src/` (the capture-phase read) and the suite's pins in `scripts/`.
+	 * Registered for the list's usual reason - a fold resolved from main's copy
+	 * would drop it.
+	 */
+	"rowMenuRoundThreeRestampNote",
+	/*
+	 * And the FOLD RECORDS the round-2 folds wrote but left unregistered (their
+	 * passes added the records to the manifest without adding the list entries;
+	 * closed here with the round-3 fold's own). Same reason as every entry - a
+	 * fold resolved from main's copy would drop them.
+	 */
+	"foldOnto8712e8684cNote",
+	"foldOnto2e866d5d49Note",
+	/*
+	 * And THIS round-3 fold's own, alongside them.
+	 */
+	"foldOntoefca9e16fcNote",
+	/*
+	 * And THE #697 FOLD'S, whose semantic resolution (the hold extended to the
+	 * strip controls #697 adds) makes it a record worth keeping across a fold -
+	 * same reason as every entry.
+	 */
+	"foldOnto50b9daf8feNote",
+	/*
+	 * And the fold's own re-shoot record, beside it (same reason).
+	 */
+	"pinnedStripReshootNote",
+	/*
+	 * And THE #702 FOLD'S - the fourth fold's record (same reason).
+	 */
+	"foldOnte78e4395ebNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

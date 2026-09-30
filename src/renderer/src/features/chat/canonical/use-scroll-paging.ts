@@ -15,6 +15,7 @@ import {
 	type PagingState,
 	SETTLE_MS,
 	TAIL_EPS_PX,
+	anchorDrift,
 	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
@@ -103,8 +104,12 @@ import {
  * cap. Distinguishing reader-initiated growth from a landing page would mean
  * attributing every extent change to a cause, which is the inference clause A
  * deliberately refuses to make.
+ *
+ * Exported for `scripts/transcript-paging-hook.test.mjs`, whose expiry hand-over
+ * case (round 1, R1-1) has to wait past the window - the suite then waits on the
+ * same constant the hold is bounded by rather than a copy.
  */
-const ANCHOR_HOLD_MS = 1200;
+export const ANCHOR_HOLD_MS = 1200;
 
 /** How long a scrollbar drag's attribution window outlives its `pointerup`. */
 const DRAG_TAIL_MS = 120;
@@ -183,6 +188,29 @@ export type ScrollPagingHandle = {
 	 * about where they are.
 	 */
 	requestOlder: () => void;
+	/**
+	 * Whether the automatic COMPLETION WALK may ask for a page right now
+	 * (loader-continuity 1b, design spec section 7 clause b): the reader is
+	 * following the tail AND has given the pointer no reason to be answered —
+	 * no input for `SETTLE_MS` — AND the pane is actually following that tail
+	 * (`followingTail` in this module's own terms).
+	 *
+	 * WHY IT LIVES HERE. The walk is the one ask with no gesture behind it, so
+	 * it has to be authorised by the reader's POSITION rather than by their
+	 * demand, and the position is this module's: `followingTail` and the input
+	 * clock are derived from one number (`scrollTop`) and one ref
+	 * (`state.lastInputAt`), and a second copy of that derivation in the
+	 * transcript is exactly the "two authorities" this change removes. Read at
+	 * the MOMENT OF THE ASK rather than from a render-time snapshot: a
+	 * `followingTail` captured one commit ago would authorise a page the reader
+	 * has since scrolled away from.
+	 *
+	 * A tail-following reader is `scrollable` by construction, so the walk
+	 * cannot fire on the unscrollable pane the reveal chain (clause L) owns:
+	 * that pane has `scrollTop === 0`, which IS the tail, and the two would
+	 * otherwise both be asking.
+	 */
+	mayAutoWalk: () => boolean;
 };
 
 export function useScrollPaging({
@@ -282,6 +310,12 @@ export function useScrollPaging({
 	});
 	const pump = useRef<number>(0);
 	const settleTimer = useRef<number>(0);
+	/**
+	 * Reader-scroll settle, after which the standing hold re-reads the
+	 * reader's place (`refreshReaderHold`). Debounced because a sample taken
+	 * mid-gesture is a position the reader is still leaving.
+	 */
+	const scrollSettle = useRef<number>(0);
 
 	/** The scroller's geometry, in the terms the policy is written in. */
 	const measure = useCallback((): PagingGeometry | null => {
@@ -361,13 +395,80 @@ export function useScrollPaging({
 		[containerRef],
 	);
 
+	/*
+	 * The standing reader-hold (fold rounds, 2026-09-27).
+	 *
+	 * The reveal's hold (`holdAnchor`) was bounded to `ANCHOR_HOLD_MS` because its
+	 * only client was a growth this module had just dispatched; outside that
+	 * window every offset change was assumed to be the reader's and none of it
+	 * ours to undo. The operator's report names the case that assumption missed:
+	 * the reader holds a reading position, a fold's body collapses somewhere else
+	 * in the conversation, and the extent change drags their view - "even in that
+	 * case where they collapse, it shouldn't result in the conversation
+	 * shifting". So the place they left the scroll at is held until THEY move it:
+	 * the sample is taken once their own gesture has settled (a wheel notch
+	 * mid-gesture is them still moving, not a place), it carries no time bound
+	 * (the invariant is a position, not a window), and it is dropped the moment
+	 * they return to the tail (there, following the tail governs, and a hold would
+	 * fight the pinning the transcript wants).
+	 *
+	 * The correction itself is unchanged and deliberate: `correctAnchor` writes
+	 * `scrollTop` in the same frame as the layout change (the `useLayoutEffect`
+	 * below runs on every commit; the observer above catches changes with no
+	 * commit), so the reader never sees the lurch this exists to remove. The
+	 * drift computation refuses to act at all when the extent did not change -
+	 * a stable extent means the READER moved, and correcting that would scroll
+	 * the transcript out from under them (see `anchorDrift`).
+	 */
+	const refreshReaderHold = useCallback(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		/*
+		 * A reveal's hold is FINITE and has priority while it lives: it was sampled
+		 * BEFORE the growth this module dispatched, and re-sampling mid-settling
+		 * would adopt a position that is still drifting. It hands over at its own
+		 * expiry - `correctAnchor`'s expiry arm re-reads the reader's place then,
+		 * and a settled non-input motion re-reads it here.
+		 *
+		 * The window test is what makes "while it lives" true (review round 1,
+		 * R1-1): a FINITE hold past its expiry is not a hold, and returning for it
+		 * anyway made both of those re-reads dead - the expired sample stayed the
+		 * invariant, and the next correction reverted the motion it had missed
+		 * instead of adopting it as the reader's new place.
+		 */
+		if (
+			anchor.current.sample !== null &&
+			Number.isFinite(anchor.current.until) &&
+			performance.now() <= anchor.current.until
+		)
+			return;
+		if (Math.abs(el.scrollTop) <= TAIL_EPS_PX) {
+			anchor.current = { sample: null, until: 0, inputRevision: 0 };
+			return;
+		}
+		const sample = sampleAnchor();
+		if (!sample) return;
+		anchor.current = {
+			sample,
+			until: Number.POSITIVE_INFINITY,
+			inputRevision: travel.current.revision,
+		};
+	}, [containerRef, sampleAnchor]);
+
 	/** Re-assert the held anchor. Cheap, and a no-op on a stable extent. */
 	const correctAnchor = useCallback(() => {
 		const el = containerRef.current;
 		const held = anchor.current.sample;
 		if (!el || !held) return;
-		if (performance.now() > anchor.current.until) {
-			anchor.current.sample = null;
+		/*
+		 * THE TAIL GATE. At the tail the reader is following, not holding: the
+		 * newest content must stay pinned, and a correction fired out there would
+		 * drag it while it is being written. The sample is dropped here too, so a
+		 * reader who scrolls back down re-enters the following state rather than
+		 * staying held at a position they left.
+		 */
+		if (Math.abs(el.scrollTop) <= TAIL_EPS_PX) {
+			anchor.current = { sample: null, until: 0, inputRevision: 0 };
 			return;
 		}
 		const drift = anchorDriftForCurrentInput(
@@ -380,32 +481,46 @@ export function useScrollPaging({
 			anchor.current.sample = null;
 			return;
 		}
+		const expired = performance.now() > anchor.current.until;
+		if (drift !== 0) {
+			programmatic.current += 1;
+			/*
+			 * `+=`, and the sign is not the obvious one - it is inverted by
+			 * `column-reverse`.
+			 *
+			 * In a normal scroller, content that moved DOWN by `drift` is put back by
+			 * scrolling down, `scrollTop += drift`; the instinct is to write `-=` here
+			 * on the theory that the axis is reversed. Measured on the real scroller,
+			 * that instinct is wrong twice over and cancels out to the wrong answer:
+			 * making `scrollTop` MORE negative moves content DOWN (offset grows). So
+			 * a positive drift - the held row pushed down by rows mounting above it -
+			 * is undone by moving `scrollTop` toward zero, which is `+=`.
+			 *
+			 * Written as `-=`, every correction doubled the error it was meant to
+			 * remove: measured, a local widen displaced the held row by 6609px in a
+			 * single frame while the correction ran on every one of them. The
+			 * observation that settled it is in the evidence README (`scrollTop -100`
+			 * => offset +100) so the next reader does not have to re-derive it.
+			 */
+			el.scrollTop += drift;
+		}
+		if (expired) {
+			/*
+			 * The reveal's window has passed but the reader is still away from the
+			 * tail: their place becomes the standing sample rather than the hold
+			 * simply dying. It is taken AFTER the correction above, so a layout
+			 * change landing on this same frame is still absorbed before the
+			 * standing sample re-reads the position.
+			 */
+			refreshReaderHold();
+			return;
+		}
 		if (drift === 0) return;
-		programmatic.current += 1;
-		/*
-		 * `+=`, and the sign is not the obvious one — it is inverted by
-		 * `column-reverse`.
-		 *
-		 * In a normal scroller, content that moved DOWN by `drift` is put back by
-		 * scrolling down, `scrollTop += drift`; the instinct is to write `-=` here
-		 * on the theory that the axis is reversed. Measured on the real scroller,
-		 * that instinct is wrong twice over and cancels out to the wrong answer:
-		 * making `scrollTop` MORE negative moves content DOWN (offset grows). So
-		 * a positive drift — the held row pushed down by rows mounting above it —
-		 * is undone by moving `scrollTop` toward zero, which is `+=`.
-		 *
-		 * Written as `-=`, every correction doubled the error it was meant to
-		 * remove: measured, a local widen displaced the held row by 6609px in a
-		 * single frame while the correction ran on every one of them. The
-		 * observation that settled it is in the evidence README (`scrollTop -100`
-		 * => offset +100) so the next reader does not have to re-derive it.
-		 */
-		el.scrollTop += drift;
 		// The sample's extent is refreshed, not the offset: the offset is the
 		// invariant being defended, and re-reading it would let each correction
 		// ratify whatever the previous one failed to fix.
 		anchor.current.sample = { ...held, extent: el.scrollHeight };
-	}, [containerRef, measureHeld]);
+	}, [containerRef, measureHeld, refreshReaderHold]);
 
 	/** Hold the reader's place across the next `ANCHOR_HOLD_MS` of settling. */
 	const holdAnchor = useCallback(() => {
@@ -422,6 +537,7 @@ export function useScrollPaging({
 	 * Every path that can change the answer calls this; the rAF is what turns a
 	 * fling's dozens of wheel events into one evaluation per painted frame.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the pre-dispatch extent is read through the ref at the moment of the ask; a dependency on `containerRef.current` would re-create the pump on every render, which is the indirection the ref exists to provide.
 	const schedule = useCallback(() => {
 		if (pump.current) return;
 		pump.current = requestAnimationFrame(() => {
@@ -538,6 +654,28 @@ export function useScrollPaging({
 			 * what lets a lost race (`stale`, `nothing-to-load`) release the pump
 			 * WITHOUT counting a failure or painting the failed row.
 			 */
+			/*
+			 * THE REVEAL'S OWN GROWTH, MEASURED WHERE THE READER IS (loader-continuity
+			 * 1b; agent review round 1, R1-3). The policy's "did the reader see it"
+			 * question is about pixels ON SCREEN, and the quantity that answers it is
+			 * the displacement of the row the reader was looking at — the same
+			 * `sampleAnchor`/`measureHeld`/`anchorDrift` instrument the anchor hold
+			 * already uses, so there is one measurement rather than two.
+			 *
+			 * WHY NOT THE SCROLLER'S `scrollHeight` (the first cut did, and it was
+			 * wrong in the live case this feature exists for): the extent grows for
+			 * ANY reason, including a turn streaming BELOW a tail-following reader,
+			 * and that growth would be credited to the reveal — an invisible reveal
+			 * would read as visible, the chain would end, and the act's round trip
+			 * would stay spent. A row's viewport offset moves only when content is
+			 * added ABOVE it, so the drift's positive part is exactly the reveal's own
+			 * growth; content below the anchor contributes zero.
+			 *
+			 * `null` when there is no anchor to measure (a session switch mid flight,
+			 * an empty transcript) — the policy treats a missing measurement as visible
+			 * rather than inventing an invisible reveal.
+			 */
+			const anchorBefore = sampleAnchor();
 			const ask: () => Promise<LoadOlderOutcome> = live.current
 				.onLoadOlderOutcome
 				? live.current.onLoadOlderOutcome
@@ -590,8 +728,33 @@ export function useScrollPaging({
 					if (sessionEpoch.current !== landedFor) return;
 					const after = live.current.hiddenRows;
 					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
+						/*
+						 * The reveal's growth, read at the settle rather than at a
+						 * fixed frame: the rows a page mounts author their height over
+						 * several layout passes, so a measurement taken on the frame
+						 * the promise resolves would read the pre-landing extent and
+						 * call every page invisible. This is the same "settle on the
+						 * OBSERVED landing" rule the debt above uses, applied to the
+						 * reader's own currency.
+						 */
+						const el = containerRef.current;
+						const anchorAfter =
+							anchorBefore === null ? null : measureHeld(anchorBefore.id);
 						state.current = noteSettled(state.current, {
 							hiddenRowsAfter: after,
+							/*
+							 * The drift's positive part: how far the held row was pushed DOWN, which
+							 * is how much content landed above it. A negative drift (the reader's own
+							 * motion, or a browser re-clamp) reads as no growth rather than as
+							 * negative growth — the invisible test is `growthPx < floor`, and a
+							 * negative number must not buy a chain.
+							 */
+							growthPx:
+								anchorBefore === null
+									? null
+									: Math.max(0, anchorDrift(anchorBefore, anchorAfter)),
+							clientHeight: el?.clientHeight ?? 0,
+							newRecords: outcome.newRecords,
 						});
 						schedule();
 						return;
@@ -602,7 +765,7 @@ export function useScrollPaging({
 				requestAnimationFrame(awaitLanding);
 			});
 		});
-	}, [holdAnchor, measure]);
+	}, [holdAnchor, measure, sampleAnchor, measureHeld]);
 
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
@@ -664,9 +827,18 @@ export function useScrollPaging({
 			};
 			anchor.current.sample = null;
 			anchor.current.until = 0;
+			/*
+			 * The reader is moving, so the standing hold drops for the duration of
+			 * the gesture and re-reads their place once the scrolling stops. It is
+			 * scheduled HERE as well as on `scroll` because an input at a range edge
+			 * moves nothing - there is no scroll event to come - and the hold must
+			 * still re-arm for the place they are actually at.
+			 */
+			if (scrollSettle.current) window.clearTimeout(scrollSettle.current);
+			scrollSettle.current = window.setTimeout(refreshReaderHold, SETTLE_MS);
 			schedule();
 		},
-		[containerRef, measure, schedule],
+		[containerRef, measure, refreshReaderHold, schedule],
 	);
 
 	const requestOlder = useCallback(() => {
@@ -795,6 +967,13 @@ export function useScrollPaging({
 				programmatic.current -= 1;
 				return;
 			}
+			/*
+			 * Anything else that moved the viewport - the reader's own drag, the
+			 * browser's anchoring, a re-clamp - re-reads the standing hold once the
+			 * motion settles. See `refreshReaderHold` for the rules it applies.
+			 */
+			if (scrollSettle.current) window.clearTimeout(scrollSettle.current);
+			scrollSettle.current = window.setTimeout(refreshReaderHold, SETTLE_MS);
 			if (moved !== 0 && performance.now() <= dragUntil) {
 				input(moved > 0 ? "up" : "down", true);
 				return;
@@ -830,8 +1009,10 @@ export function useScrollPaging({
 			pump.current = 0;
 			if (settleTimer.current) clearTimeout(settleTimer.current);
 			settleTimer.current = 0;
+			if (scrollSettle.current) clearTimeout(scrollSettle.current);
+			scrollSettle.current = 0;
 		};
-	}, [containerRef, input, schedule]);
+	}, [containerRef, input, refreshReaderHold, schedule]);
 
 	/*
 	 * The anchor hold, driven by the extent itself rather than by the events
@@ -887,8 +1068,8 @@ export function useScrollPaging({
 	/*
 	 * Correct the anchor BEFORE the browser paints the rows that moved it.
 	 *
-	 * The ResizeObserver above is the general safety net — it catches growth
-	 * nobody enumerated, like a late image — but it is delivered AFTER layout,
+	 * The ResizeObserver above is the general safety net - it catches growth
+	 * nobody enumerated, like a late image - but it is delivered AFTER layout,
 	 * so the frame that mounted the new rows is painted uncorrected and the
 	 * reader sees exactly one lurch before it snaps back. Measured: a 6338px
 	 * single-frame displacement with a net drift of 0.00px, which is the
@@ -897,14 +1078,23 @@ export function useScrollPaging({
 	 * describes what the eye sees.
 	 *
 	 * `useLayoutEffect` runs after the DOM is updated and before paint, so the
-	 * correction lands in the same frame as the insertion that caused it. This
-	 * is why `rowCount` is a dependency rather than something read through the
-	 * ref: it must re-run when rows arrive, which is the whole point.
+	 * correction lands in the same frame as the layout change that caused it -
+	 * and it runs on EVERY COMMIT, not on `rowCount` alone (fold rounds,
+	 * 2026-09-27). The widening is itself a measured finding: `rowCount` changes
+	 * when rows ARRIVE, but a fold's body unmounting changes the transcript's
+	 * height WITHOUT changing it, and the collapse's 228px displaced every
+	 * settled row in the frame no correction ran (the operator's report: "even
+	 * in that case where they collapse, it shouldn't result in the conversation
+	 * shifting"). The drift computation is what keeps the every-commit run free:
+	 * a commit that moved nothing computes zero and writes nothing.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `rowCount` is not read in the body; it is the SIGNAL that rows landed, and re-running before paint is the entire purpose of this effect
 	useLayoutEffect(() => {
+		// `rowCount` stays read for the reason it exists in this signature: it is
+		// the caller's row-arrival signal, now one of the commits this runs on
+		// rather than the only trigger.
+		void rowCount;
 		correctAnchor();
-	}, [correctAnchor, rowCount]);
+	});
 
 	const exhaustedRetries = isExhausted(state.current);
 	/*
@@ -927,5 +1117,17 @@ export function useScrollPaging({
 						? "idle"
 						: "exhausted";
 
-	return { slotState, requestOlder };
+	/*
+	 * The completion walk's authorisation, in the module's own terms. See the
+	 * handle's docstring for why it reads the live geometry and the policy's own
+	 * clock instead of taking a snapshot: `state.current` is the same object
+	 * `decide` reduces, so "the reader has been quiet for `SETTLE_MS`" here
+	 * means exactly what it means to a spend.
+	 */
+	const mayAutoWalk = useCallback((): boolean => {
+		if (performance.now() - state.current.lastInputAt < SETTLE_MS) return false;
+		return measure()?.followingTail === true;
+	}, [measure]);
+
+	return { slotState, requestOlder, mayAutoWalk };
 }
