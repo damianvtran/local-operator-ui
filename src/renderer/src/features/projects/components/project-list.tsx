@@ -40,7 +40,6 @@ import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
-	NO_TEAM_LABEL,
 	PROGRESS_STALE_LABEL,
 	groupByTeam,
 	listRowMeta,
@@ -52,6 +51,7 @@ import {
 	projectTeamName,
 } from "../project-model";
 import { ProjectStatusBadge } from "./project-status-badge";
+import { TeamSectionHeader } from "./team-section-header";
 
 type ProjectListProps = {
 	projects: DesktopProject[];
@@ -145,17 +145,12 @@ export const ProjectList: FC<ProjectListProps> = ({
 			<ul className="min-h-0 flex-1 overflow-y-auto px-6">
 				{groups.map((group) => (
 					<li key={group.team ?? ""}>
-						<div
-							className="sticky top-0 z-10 flex items-center gap-2 bg-canvas px-3 py-1.5 text-meta"
+						<TeamSectionHeader
+							team={group.team}
+							count={group.items.length}
+							className="sticky top-0 z-10 px-3"
 							data-project-team={group.team ?? ""}
-						>
-							<span className="truncate text-ink">
-								{group.team ?? NO_TEAM_LABEL}
-							</span>
-							<span className="shrink-0 text-ink-muted">
-								{group.items.length}
-							</span>
-						</div>
+						/>
 						<ul className="divide-y divide-hairline">
 							{group.items.map((project) => {
 								const meta = new Map(
