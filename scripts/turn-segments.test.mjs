@@ -61,6 +61,7 @@ const {
 	collapsePlan,
 	cyclesOf,
 	EMPTY_TRANSCRIPT,
+	isCompletionMarker,
 	isStatementRow,
 	labelOfSegment,
 	partitionRun,
@@ -164,7 +165,6 @@ const seq = (spec) =>
 		.split(/\s+/)
 		.map((token, index) => RECORDS[token](`${token}${index}`, index));
 
-const ids = (records, indices) => indices.map((i) => records[i].id);
 const OPTS = { paints: paintsSomething, isStatement: isStatementRow };
 const PINNED = staysVisibleWhileCollapsed;
 
@@ -524,27 +524,33 @@ test("the invariant check catches overlap, a hidden answer and a hidden pinned r
 	);
 });
 
-test("every fixture above is sound AND non-vacuous: the hidden-row count matches an independent count", () => {
-	// An independent expectation: rows in the span that are neither pinned, nor the
-	// answer, nor a trailing statement. If the model hid nothing, this fails.
-	for (const spec of [
-		"U T A",
-		"U T C T A",
-		"U T A M W T A",
-		"U N T N T A",
-		"U T M T A",
-		"U T T",
-	]) {
+test("every fixture is sound AND non-vacuous: literal hidden-row counts, not derived ones", () => {
+	/*
+	 * The expectation is WRITTEN DOWN per shape, never computed from the result: a
+	 * count derived from `result.visible` agrees with any partition, including one
+	 * that hid nothing, which is the failure the invariant check exists for.
+	 * [spec, rows hidden, segments].
+	 */
+	const table = [
+		["U T A", 1, 1],
+		["U T C T A", 2, 2],
+		// T1 | (answer A2, marker M3 stay) | W4 T5 A6 - the follow-up is its own span.
+		["U T A M W T A", 4, 2],
+		["U N T N T A", 4, 1],
+		["U T M T A", 2, 2],
+		["U T T", 2, 1],
+		["U A", 0, 0],
+		["U T A O", 1, 1],
+	];
+	for (const [spec, rows, segments] of table) {
 		const p = partition(spec);
+		sound(p);
 		const hidden = p.result.segments.reduce(
 			(n, span) => n + (span.to - span.from + 1),
 			0,
 		);
-		const expected = p.records.filter(
-			(r, i) => i >= 1 && !p.result.visible.has(i),
-		).length;
-		assert.equal(hidden, expected, spec);
-		assert.ok(hidden > 0, `${spec}: a fixture with work must hide something`);
+		assert.equal(hidden, rows, `${spec}: rows hidden`);
+		assert.equal(p.result.segments.length, segments, `${spec}: segments`);
 	}
 });
 
@@ -861,4 +867,35 @@ test("a live run never collapses any segment", () => {
 	const run = collapsePlan(rows, { live: true }).runs[0];
 	assert.equal(run.collapses, false);
 	assert.ok(run.segments.every((s) => s.collapsed === false));
+});
+
+test("one definition of a completion marker: the partition, the pin list and the classifier agree", () => {
+	const marker = RECORDS.M("m", 0);
+	const closed = RECORDS.K("k", 0);
+	const plain = RECORDS.O("o", 0);
+	const incident = RECORDS.I("i", 0);
+	assert.equal(isCompletionMarker(marker), true);
+	assert.equal(
+		isCompletionMarker(closed),
+		true,
+		"the neutral receipt is a marker too",
+	);
+	assert.equal(isCompletionMarker(plain), false);
+	assert.equal(
+		isCompletionMarker(incident),
+		false,
+		"an incident is terminal but not a completion notice",
+	);
+	// The run partition closes a run at a marker exactly when this says so.
+	const closesRun = (record) =>
+		runsOf(
+			[RECORDS.U("u", 0), record, RECORDS.U("u2", 2)].map((r) => ({
+				record: r,
+				gap: "item",
+				closesTurn: false,
+			})),
+		).length === 2;
+	assert.equal(closesRun(marker), true);
+	assert.equal(closesRun(closed), true);
+	assert.equal(closesRun(plain), false);
 });

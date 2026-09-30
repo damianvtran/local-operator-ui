@@ -11,7 +11,7 @@
 
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
-import { cyclesOf, electAnswer } from "./turn-segments";
+import { cyclesOf, electAnswer, isCompletionMarker } from "./turn-segments";
 
 /**
  * A notice's body split into the line its row paints and the rest of it, if any.
@@ -226,7 +226,7 @@ function walkTurns<T>(
 			};
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
-		if (record.kind === "notice" && record.complete === true) sawMarker = true;
+		if (isCompletionMarker(record)) sawMarker = true;
 		open.endIndex = index;
 	});
 	flush("end", items.length - 1);
