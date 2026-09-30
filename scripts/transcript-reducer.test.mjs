@@ -4425,20 +4425,17 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		false,
 		"an ordinary read of a NEWER page leaves the paging state alone",
 	);
-	const wider = applyHistoryPage(
-		loaded,
-		{
-			...pageOf([
-				{
-					id: "u-1",
-					ts: at / 1000 - 5,
-					type: "message",
-					payload: { role: "user", content: "oldest" },
-				},
-			]),
-			has_more: true,
-		},
-	);
+	const wider = applyHistoryPage(loaded, {
+		...pageOf([
+			{
+				id: "u-1",
+				ts: at / 1000 - 5,
+				type: "message",
+				payload: { role: "user", content: "oldest" },
+			},
+		]),
+		has_more: true,
+	});
 	assert.equal(
 		wider.hasMore,
 		true,
