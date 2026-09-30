@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useSpeechStore } from "@shared/store/speech-store";
 import {
@@ -79,18 +80,18 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const { addReply, addAttachment } = useConversationInputStore();
 
-	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 	const canEnableSpeechFeature = canUseRadientSpeech;
 
-	// The probe returns no keys both when nothing is configured and when the
-	// local server cannot be reached, and those need different copy — one sends
-	// the reader to settings, the other tells them to wait. The sign-in sentence
-	// is owed only to a reader who is NOT signed in: a live Radient session
-	// enables the control by itself (issue #674), so this arm is reached only
-	// when the session read answered "no" and no key is listed.
-	const speechUnavailableReason = isUnavailable
-		? "Text to speech is unavailable while Local Operator is offline"
-		: "Sign in to Radient in the settings page to enable text to speech";
+	// The sentence for a disabled control comes from the one copy table the four
+	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
+	// unreachable for a signed-in reader by construction: only an ANSWERED "no
+	// account" or a refused credential earns it (issue #674; design round 1,
+	// D1).
+	const speechDisabledReason = speechUnavailableReason(
+		"speaking-aloud",
+		speechBlock,
+	);
 
 	const [currentSelectionId, setCurrentSelectionId] = useState<string | null>(
 		null,
@@ -332,7 +333,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 							isLoading
 								? "Loading"
 								: !canEnableSpeechFeature
-									? speechUnavailableReason
+									? speechDisabledReason
 									: "Speak aloud"
 						}
 					>

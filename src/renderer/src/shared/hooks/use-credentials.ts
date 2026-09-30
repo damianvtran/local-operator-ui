@@ -8,6 +8,7 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { CredentialListResult } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
+import { radientSpeechBlock } from "@shared/lib/speech-gate";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
@@ -85,14 +86,6 @@ export const useCredentials = () => {
  * is present so they can enable a button. They all used to derive that from
  * `data?.keys` alone, which cannot tell "no key is configured" apart from
  * "the probe never ran because the server is down" — both produce no keys.
- * The two need different copy: one sends the reader to the settings page, the
- * other tells them the feature is waiting on the server. Sending someone to
- * fix an account that is not broken is the worse mistake, so the ambiguity is
- * resolved once, here, rather than at each call site.
- *
- * `isPending && fetchStatus === "idle"` is react-query's shape for a query the
- * connectivity gate disabled: pending forever, never fetching.
- *
  * THE SESSION IS THE FIRST SATISFIER, THE FILE THE SECOND (issue #674). The
  * legacy `/v1/credentials` list is the `credentials.env` file; a Radient
  * sign-in lands in the backend's auth store instead, which is the store the
@@ -101,12 +94,43 @@ export const useCredentials = () => {
  * file alone therefore left a signed-in user's mic and speech controls
  * disabled while the backend they guard would have served the request — and
  * the disabled copy told the user to sign in to the account they were signed
- * in to. The capability mirrors the backend's precedence now: a live Radient
- * session first, the legacy key after it, the offline case stated over both.
+ * in to.
+ *
+ * ONE QUALIFICATION ON "THE BACKEND'S PRECEDENCE" (agent review round 1, NIT):
+ * the backend consults the auth store first only for a CANONICAL Radient
+ * destination. A non-canonical `RADIENT_API_BASE_URL` (a legacy gateway
+ * deployment) resolves the legacy key alone and never reads the session —
+ * `resolve_radient_credential`'s first branch. That branch has no channel to
+ * this renderer (the base URL lives in the daemon's environment), so the app
+ * cannot distinguish the two deployments: on the non-canonical one the
+ * session tier here would enable a control the backend then refuses — a
+ * false-enable this file cannot detect, stated rather than assumed away.
+ *
+ * The capability reads: the local server must be up (the connectivity gate's
+ * reading; with it down neither tier can serve the request, and the offline
+ * sentence and banner describe exactly that state), and then the session OR
+ * the legacy key. The session stands on its own — both reads travel the same
+ * desktop transport, so a failed file list beside an ANSWERED account read
+ * does not erase a live session (design/UX round 1 rework) — while the file
+ * probe's own failure closes the key branch.
+ *
+ * THE BLOCK IS THE COPY'S INPUT, NOT A SECOND GATE. `speechBlock` classifies
+ * the same reading for the disabled tooltip (`@shared/lib/speech-gate`), where
+ * `sign-in` is reachable only when the account read ANSWERED no: an outage or
+ * an in-flight read must not send a signed-in user to the settings page.
+ *
+ * `isPending && fetchStatus === "idle"` is react-query's shape for a query the
+ * connectivity gate disabled: pending forever, never fetching.
  */
 export const useRadientCredentialProbe = () => {
 	const { data, isError, isPending, fetchStatus, refetch } = useCredentials();
-	const { isAuthenticated } = useRadientAuth();
+	const {
+		isAuthenticated,
+		accountRead,
+		/* `unavailable` = the backend cannot serve Radient at all. */
+		unavailable: accountUnavailable,
+	} = useRadientAuth();
+	const { isServerOnline } = useConnectivityGate();
 
 	/** The legacy question: the credentials file lists a Radient API key. */
 	const hasRadientApiKey = Boolean(data?.keys?.includes("RADIENT_API_KEY"));
@@ -147,12 +171,27 @@ export const useRadientCredentialProbe = () => {
 
 	/**
 	 * The capability, in the backend's own precedence: a live Radient session
-	 * first, the legacy key after it — and the offline term over both, because
-	 * with the server unreachable neither tier can serve the request the control
-	 * is asking about (a sign-in does not make the media relay reachable).
+	 * first, the legacy key after it. The local server's own state gates both —
+	 * with it unreachable neither tier can serve the request the control is
+	 * asking about — while a file-list failure closes only the KEY branch: the
+	 * account read travels the same transport, so its answer is the session
+	 * tier's own witness.
 	 */
 	const canUseRadientSpeech =
-		(hasRadientSession || hasRadientApiKey) && !isUnavailable;
+		isServerOnline &&
+		(hasRadientSession || (hasRadientApiKey && !isUnavailable));
+
+	/**
+	 * Why the control is off, for the tooltip: the one classification all four
+	 * speech surfaces render from (`@shared/lib/speech-gate`). Always present
+	 * (there is a reason even when the capability holds; a surface renders it
+	 * only on the disabled arm).
+	 */
+	const speechBlock = radientSpeechBlock({
+		serverOnline: isServerOnline,
+		accountRead,
+		accountUnavailable,
+	});
 
 	return {
 		hasRadientApiKey,
@@ -161,5 +200,7 @@ export const useRadientCredentialProbe = () => {
 		isUnavailable,
 		/** Whether a speech surface (dictation, speak-aloud) may be enabled. */
 		canUseRadientSpeech,
+		/** The disabled tooltip's class (see speech-gate.ts). */
+		speechBlock,
 	};
 };

@@ -15,6 +15,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { Copy, Square, Volume2 } from "lucide-react";
@@ -44,7 +45,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	timestamp,
 }) => {
 	const [copied, setCopied] = useState(false);
-	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 	const {
 		playSpeech,
 		stopSpeech,
@@ -60,15 +61,12 @@ export const MessageControls: FC<MessageControlsProps> = ({
 
 	const canEnableSpeechFeature = canUseRadientSpeech;
 
-	// "Not signed in" and "could not reach the server to find out" look
-	// identical from the probe, and sending someone to the settings page to fix
-	// an account that is fine is the worse of the two mistakes. The sign-in
-	// sentence is owed only to a reader who is NOT signed in: a live Radient
-	// session enables the control by itself (issue #674), so this arm is reached
-	// only when the session read answered "no" and no key is listed.
-	const speechTooltip = isUnavailable
-		? "Text to speech is unavailable while Local Operator is offline"
-		: "Sign in to Radient in the settings page to enable text to speech";
+	// The sentence for a disabled control comes from the one copy table the four
+	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
+	// unreachable for a signed-in reader by construction: only an ANSWERED "no
+	// account" or a refused credential earns it (issue #674; design round 1,
+	// D1).
+	const speechTooltip = speechUnavailableReason("speaking-aloud", speechBlock);
 
 	// Only show copy button for assistant messages
 	const showCopyButton = content;

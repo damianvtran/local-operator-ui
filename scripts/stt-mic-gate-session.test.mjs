@@ -29,12 +29,16 @@ import { act } from "react";
  *      same bridge, and the speech control's disabled state and reason are read
  *      from the DOM — the exact thing the report says stays off for a
  *      signed-in user.
- *   3. SOURCE PINS for the two surfaces a jsdom mount cannot reach honestly
+ *   3. THE COPY TABLE, CALLED. `@shared/lib/speech-gate` is imported and its
+ *      classifier and sentences are CALLED across the whole state matrix, so
+ *      the strings the four surfaces render are asserted as values rather than
+ *      as regexes over three inline ladders (design round 1, D1/D2/D5).
+ *   4. SOURCE PINS for the two surfaces a jsdom mount cannot reach honestly
  *      (a selection toolbar needs a real Range; the canvas editor needs the
  *      canvas context): their enable flags derive from the SHARED capability
- *      and their copy ladders keep both the offline and the sign-in arms. The
- *      composer's own DOM cases live in `credential-composer.test.mjs`, beside
- *      its harness.
+ *      and every disabled sentence comes from the shared table. The composer's
+ *      own DOM cases live in `credential-composer.test.mjs`, beside its
+ *      harness.
  *
  * WHAT THIS IS NOT: proof of layout, of the composer's mic in a browser, or of
  * a real Radient round trip. jsdom has no layout engine; the strings and the
@@ -50,6 +54,8 @@ const bundle = await build({
 			import { useRadientCredentialProbe } from "./src/renderer/src/shared/hooks/use-credentials";
 			import { radientUserKeys, useRadientUserQuery } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			import { MessageControls } from "./src/renderer/src/features/chat/components/message-item/message-controls";
+			import { radientSpeechBlock, speechUnavailableReason } from "./src/renderer/src/shared/lib/speech-gate";
+			import { serverHealthQueryKey } from "./src/renderer/src/shared/hooks/use-connectivity-status";
 
 			/*
 			 * The probe, publishing BOTH readings it combines: the capability the
@@ -65,6 +71,7 @@ const bundle = await build({
 					hasRadientSession: probe.hasRadientSession,
 					isUnavailable: probe.isUnavailable,
 					canUseRadientSpeech: probe.canUseRadientSpeech,
+					speechBlock: probe.speechBlock,
 					accountRead: account.accountRead,
 				};
 				return null;
@@ -109,6 +116,7 @@ const bundle = await build({
 
 			export { QueryClient } from "@tanstack/react-query";
 			export { radientUserKeys };
+			export { radientSpeechBlock, speechUnavailableReason, serverHealthQueryKey };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -269,8 +277,14 @@ globalThis.__RIG_ENV__ = {
  * "paused" is a promise jsdom makes about a value this rig could accidentally
  * change.
  */
-Object.defineProperty(window.document, "visibilityState", { value: "hidden" });
-Object.defineProperty(window.document, "hidden", { value: true });
+Object.defineProperty(window.document, "visibilityState", {
+	configurable: true,
+	value: "hidden",
+});
+Object.defineProperty(window.document, "hidden", {
+	configurable: true,
+	value: true,
+});
 
 const liveTimers = [];
 const realSetTimeout = globalThis.setTimeout;
@@ -311,9 +325,15 @@ window.matchMedia = (query) => {
  * gate DISABLES credential queries when the server is offline, and this rig
  * wants the enabled path: a probe that never ran would read as unavailable
  * for the wrong reason and the whole matrix would be vacuous.
+ *
+ * `healthFails` is the offline switch: a case taking the server down mid-run
+ * flips it and invalidates the health query, which is exactly the reading the
+ * offline sentence and the connectivity banner follow.
  */
+let healthFails = false;
 globalThis.fetch = async (url) => {
 	if (String(url).includes("/health")) {
+		if (healthFails) throw new Error("rig: the server is down");
 		return {
 			ok: true,
 			status: 200,
@@ -378,18 +398,36 @@ const ACCOUNT_ANSWERS = {
 			},
 		},
 	},
+	"upstream-failed": {
+		status: 502,
+		body: {
+			detail: {
+				code: "radient_upstream_failed",
+				message: "Radient could not be reached",
+				details: {},
+			},
+		},
+	},
+	"unknown-401": {
+		status: 401,
+		body: { detail: { message: "unauthorized", details: {} } },
+	},
 };
 
 /**
  * The per-case bridge state. `null` keys mean "leave the fixture's own answer".
  * `credentialsCalls` counts the file-list reads, which is the instrument for
- * the refetch-on-auth-change case.
+ * the refetch-on-auth-change case; `radientCalls` counts the account reads,
+ * the instrument for the focus-recovery case; `holdAccount` makes the account
+ * read never answer, which is the state the tooltip used to mislabel.
  */
 const bridge = {
 	account: "signed-out",
 	keys: [],
 	credentialsFail: false,
 	credentialsCalls: 0,
+	radientCalls: 0,
+	holdAccount: false,
 };
 
 globalThis.window.api = {
@@ -422,6 +460,11 @@ globalThis.window.api = {
 				return { status: 200, body: { result: { keys: [...bridge.keys] } } };
 			}
 			if (request?.op === "radient.request") {
+				bridge.radientCalls += 1;
+				if (bridge.holdAccount) {
+					/* A read that never answers: the `checking` state, held stable. */
+					return new Promise(() => {});
+				}
 				return ACCOUNT_ANSWERS[bridge.account];
 			}
 			return { status: 503, body: { detail: "not part of this test" } };
@@ -429,8 +472,15 @@ globalThis.window.api = {
 	},
 };
 
-const { QueryClient, mountControls, mountProbe, radientUserKeys } =
-	await import(bundlePath.href);
+const {
+	QueryClient,
+	mountControls,
+	mountProbe,
+	radientUserKeys,
+	radientSpeechBlock,
+	speechUnavailableReason,
+	serverHealthQueryKey,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -485,6 +535,9 @@ async function mountProbeRig(state) {
 	bridge.keys = state.keys ?? [];
 	bridge.credentialsFail = state.credentialsFail ?? false;
 	bridge.credentialsCalls = 0;
+	bridge.radientCalls = 0;
+	bridge.holdAccount = state.holdAccount ?? false;
+	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
 	const container = containerForRig();
 	let root;
@@ -501,6 +554,9 @@ async function mountControlsRig(state) {
 	bridge.keys = state.keys ?? [];
 	bridge.credentialsFail = state.credentialsFail ?? false;
 	bridge.credentialsCalls = 0;
+	bridge.radientCalls = 0;
+	bridge.holdAccount = state.holdAccount ?? false;
+	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
 	const container = containerForRig();
 	let root;
@@ -521,6 +577,7 @@ function speechButton(container) {
 	return container.querySelector('button[aria-label="Speak aloud"]');
 }
 
+let lastTooltipTrigger = null;
 /**
  * Open a tooltip and return the sentence it shows, MATCHED BY NAME.
  *
@@ -529,35 +586,38 @@ function speechButton(container) {
  * "the last [role=tooltip]" can be the PREVIOUS case's sentence (measured: the
  * offline case read the previous case's sign-in sentence byte-for-byte). The
  * poll therefore returns the panel whose text is the expected sentence, and
- * fails naming every text it did see when none matches — which is what makes a
- * wrong sentence a readable failure rather than a timeout.
+ * fails naming every text it did see when none matches.
+ *
+ * THE DISPATCH HAPPENS ONCE AND THE POLL IS PLAIN. Re-dispatching inside an
+ * `act` every attempt — the first shape — made these reads hostage to fleet
+ * load: on 2026-09-29 (load average 95+) a single act-wrapped dispatch
+ * measured over three minutes, because every attempt paid a full React flush
+ * and the loop could outlast any bound. The panel opens once and stays while
+ * the focus does, so one dispatch plus quiet real-time polling is both cheaper
+ * and steadier; a re-dispatch every 30 attempts is the only retry there is.
  */
-let lastTooltipTrigger = null;
 async function openTooltip(trigger, expected) {
 	if (lastTooltipTrigger && lastTooltipTrigger !== trigger) {
 		const previous = lastTooltipTrigger;
-		await act(async () => {
-			previous.dispatchEvent(
-				new window.FocusEvent("focusout", { bubbles: true }),
-			);
-		});
+		previous.dispatchEvent(
+			new window.FocusEvent("focusout", { bubbles: true }),
+		);
 	}
 	lastTooltipTrigger = trigger;
 	const seen = new Set();
-	for (let attempt = 0; attempt < 80; attempt += 1) {
-		await act(async () => {
+	for (let attempt = 0; attempt < 200; attempt += 1) {
+		if (attempt % 30 === 0) {
 			trigger.dispatchEvent(
 				new window.FocusEvent("focusin", { bubbles: true, cancelable: true }),
 			);
-		});
+		}
+		// eslint-disable-next-line no-await-in-loop
+		await new Promise((resolve) => realSetTimeout(resolve, 100));
 		for (const panel of window.document.querySelectorAll('[role="tooltip"]')) {
 			const text = (panel.textContent ?? "").trim();
 			seen.add(text);
 			if (text === expected) return text;
 		}
-		await act(async () => {
-			await new Promise((resolve) => realSetTimeout(resolve, 50));
-		});
 	}
 	throw new Error(
 		`no tooltip read "${expected}"; sentences seen: ${JSON.stringify([...seen])}`,
@@ -618,7 +678,7 @@ test("a legacy key alone still satisfies the capability when no session is store
 	);
 });
 
-test("neither a session nor a key is the disabled state, and it is not the offline one", async () => {
+test("neither a session nor a key is the disabled state, and its reason is the sign-in one", async () => {
 	await mountProbeRig({ account: "signed-out", keys: [] });
 	// The file probe ANSWERED (an empty list is an answer, not a failure): wait
 	// for that settlement rather than for a sibling query's timing.
@@ -632,13 +692,13 @@ test("neither a session nor a key is the disabled state, and it is not the offli
 		"no session and no key means speech stays off",
 	);
 	assert.equal(
-		globalThis.__speechProbe.isUnavailable,
-		false,
-		"and it is the not-signed-in state, not the offline one — the two have different copy",
+		globalThis.__speechProbe.speechBlock,
+		"sign-in",
+		"and the block is the account read's answer: this machine is signed out, and signing in is its remedy",
 	);
 });
 
-test("a dead probe is the offline state, and it keeps speech off", async () => {
+test("a dead file probe keeps speech off, and the block still follows the account read", async () => {
 	await mountProbeRig({
 		account: "signed-out",
 		keys: [],
@@ -653,6 +713,11 @@ test("a dead probe is the offline state, and it keeps speech off", async () => {
 		false,
 		"a probe that could not ask cannot enable the control",
 	);
+	assert.equal(
+		globalThis.__speechProbe.speechBlock,
+		"sign-in",
+		"the copy's block is the ACCOUNT read's answer; the file probe's own trouble does not erase it (design round 1, D1)",
+	);
 });
 
 test("a refused sign-in does not enable speech: the remedy is the sign-in copy", async () => {
@@ -666,6 +731,11 @@ test("a refused sign-in does not enable speech: the remedy is the sign-in copy",
 		globalThis.__speechProbe.canUseRadientSpeech,
 		false,
 		"a refused credential is not a live session",
+	);
+	assert.equal(
+		globalThis.__speechProbe.speechBlock,
+		"sign-in",
+		"a refused credential's remedy is a new sign-in, and the copy says so (design round 1, D1)",
 	);
 });
 
@@ -729,7 +799,7 @@ test("and the sign-in sentence is owed only to a machine that is not signed in",
 	await until(
 		() =>
 			globalThis.__speechProbe?.accountRead === "signed-out" &&
-			globalThis.__speechProbe?.isUnavailable === false,
+			globalThis.__speechProbe?.speechBlock === "sign-in",
 		"the reads to settle signed-out with the file probe answered",
 	);
 	assert.equal(
@@ -746,37 +816,302 @@ test("and the sign-in sentence is owed only to a machine that is not signed in",
 	 */
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable text to speech",
+		"Sign in to Radient in the settings page to enable speaking aloud",
 	);
 });
 
-test("the offline sentence replaces the sign-in one when the probe cannot ask", async () => {
+test("before anything has answered, the reason is the check itself (UX round 1, U2)", async () => {
+	/*
+	 * A READ THAT NEVER ANSWERS holds the state a reader saw at mount. The old
+	 * ladder rendered the offline sentence here — a sentence about a failed
+	 * check, shown before any check had failed.
+	 *
+	 * WHY THE TOOLTIP IS NOT OPENED IN THIS CASE: the transport's own deadline
+	 * (about twenty seconds for a control op) eventually rejects the held read
+	 * and the block becomes `could-not-check`, while a jsdom tooltip can take
+	 * longer than that to open under fleet load (measured: over twenty-five
+	 * seconds). The sentence itself is pinned by the copy-table case, and the
+	 * block-to-tooltip wiring by this control's sibling cases; what this case
+	 * pins is U2's claim — the reason at first paint, which must be the check
+	 * and never the offline sentence.
+	 */
 	const { container } = await mountControlsRig({
 		account: "signed-out",
 		keys: [],
-		credentialsFail: true,
+		holdAccount: true,
+	});
+	/*
+	 * The wait targets `checking` rather than "whatever the first published
+	 * block is": there is one render between mount and the read going in
+	 * flight where the query has not fetched yet and the block still reads the
+	 * account's SILENCE as its answer (measured: that first publish was
+	 * `sign-in`, and a case that took it failed for a state it was never
+	 * testing). The held read keeps `checking` stable once it starts.
+	 */
+	const block = await until(
+		() =>
+			globalThis.__speechProbe?.speechBlock === "checking" ? "checking" : null,
+		"the account read to be in flight",
+	);
+	assert.equal(block, "checking", "the first reason is the check itself");
+	assert.notEqual(
+		globalThis.__speechProbe.speechBlock,
+		"offline",
+		"and it is NOT the offline sentence, which names a failure that has not happened yet (U2)",
+	);
+	assert.equal(
+		speechButton(container).hasAttribute("disabled"),
+		true,
+		"nothing has answered, so the control is off",
+	);
+});
+
+test("a refused credential earns the sign-in sentence", async () => {
+	const { container } = await mountControlsRig({
+		account: "refused",
+		keys: [],
 	});
 	await until(
-		() => globalThis.__speechProbe?.isUnavailable === true,
-		"the file probe to fail",
+		() =>
+			globalThis.__speechProbe?.accountRead === "refused" &&
+			globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the refused read to settle",
 	);
 	assert.equal(speechButton(container).hasAttribute("disabled"), true);
-	/*
-	 * The call is the assertion: sending someone to fix an account that is not
-	 * broken is the worse mistake, and the helper fails naming the sentences it
-	 * did see when the offline one never arrives.
-	 */
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Text to speech is unavailable while Local Operator is offline",
+		"Sign in to Radient in the settings page to enable speaking aloud",
+	);
+});
+
+test("an outage is told as a failed check, never as a sign-in (design round 1, D1)", async () => {
+	const { container } = await mountControlsRig({
+		account: "upstream-failed",
+		keys: [],
+	});
+	await until(
+		() => globalThis.__speechProbe?.accountRead === "unavailable",
+		"the account read to fail with the upstream code",
+	);
+	assert.equal(
+		globalThis.__speechProbe.speechBlock,
+		"could-not-check",
+		"an unreachable Radient is not a signed-out reader: signing in cannot fix an outage",
+	);
+	assert.equal(speechButton(container).hasAttribute("disabled"), true);
+	await openTooltip(
+		speechButton(container).parentElement,
+		"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
+	);
+});
+
+test("the offline sentence follows the server, not the file probe (design round 1, D3)", async () => {
+	const { container, client } = await mountControlsRig({
+		account: "signed-out",
+		keys: [],
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the reads to settle on the sign-in state",
+	);
+	/*
+	 * Take the server down the way the app learns it: the health read answers
+	 * offline, and the connectivity gate's reading is what the sentence states.
+	 * A dead FILE probe is not the offline state — that is D1's whole point.
+	 */
+	healthFails = true;
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: serverHealthQueryKey });
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "offline",
+		"the connectivity reading to go offline",
+	);
+	assert.equal(speechButton(container).hasAttribute("disabled"), true);
+	await openTooltip(
+		speechButton(container).parentElement,
+		"Speaking aloud is unavailable while Local Operator is offline",
+	);
+});
+
+test("a recovered Radient read re-asks and the control recovers (UX round 1, U1)", async () => {
+	const { container } = await mountControlsRig({
+		account: "upstream-failed",
+		keys: [],
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "could-not-check",
+		"the outage to settle",
+	);
+	assert.equal(speechButton(container).hasAttribute("disabled"), true);
+
+	/*
+	 * Radient comes back. The app's recovery is the focus re-ask on the account
+	 * read (`refetchOnWindowFocus`, and an errored read is stale), driven here
+	 * through the real focus manager — the window becoming visible — rather
+	 * than by writing the cache, because "does anything re-ask?" is the claim
+	 * UX round 1 found unproven in simulation.
+	 */
+	bridge.account = "signed-in";
+	const accountReadsBefore = bridge.radientCalls;
+	const fileReadsBefore = bridge.credentialsCalls;
+	Object.defineProperty(window.document, "visibilityState", {
+		configurable: true,
+		value: "visible",
+	});
+	try {
+		await act(async () => {
+			window.dispatchEvent(new window.Event("visibilitychange"));
+		});
+		await until(
+			() => bridge.radientCalls > accountReadsBefore,
+			"the focus re-ask of the account read",
+		);
+		await until(
+			() => globalThis.__speechProbe?.canUseRadientSpeech === true,
+			"the capability to recover",
+		);
+		await until(
+			() => bridge.credentialsCalls > fileReadsBefore,
+			"the file list to be re-asked once the session flipped",
+		);
+		/*
+		 * The DOM is waited on, not asserted in the same tick: the probe's
+		 * published reading and the control's own commit are two flushes apart
+		 * under load (measured — the capability read true while the button still
+		 * carried its disabled attribute).
+		 */
+		await until(
+			() => !speechButton(container).hasAttribute("disabled"),
+			"the control's own DOM to re-render enabled",
+		);
+		assert.equal(speechButton(container).hasAttribute("disabled"), false);
+		await openTooltip(speechButton(container).parentElement, "Speak aloud");
+	} finally {
+		/* Back to the hidden document every other case assumes. */
+		Object.defineProperty(window.document, "visibilityState", {
+			configurable: true,
+			value: "hidden",
+		});
+	}
+});
+
+/*
+ * THE COPY TABLE, CALLED (design round 1, D1/D2/D5; UX round 1, U1/U2). The
+ * module is bundled from `src/` and CALLED: the classification for every
+ * account class the reading can produce, and the exact sentence each control
+ * gets for each block. This is what replaces three inline ladders pinned by a
+ * regex; the DOM cases above prove the surfaces WIRE to it.
+ */
+test("the shared copy table classifies every state and names every sentence", () => {
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: false,
+			accountRead: "ready",
+			accountUnavailable: false,
+		}),
+		"offline",
+		"a down server is stated first, whoever the reader is",
+	);
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: false,
+			accountRead: "checking",
+			accountUnavailable: false,
+		}),
+		"offline",
+		"and it outranks an in-flight read, which cannot answer while the server holds it back",
+	);
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "checking",
+			accountUnavailable: false,
+		}),
+		"checking",
+		"an in-flight read is the check itself, never the offline sentence (U2)",
+	);
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "checking",
+			accountUnavailable: true,
+		}),
+		"could-not-check",
+		"a backend that cannot serve Radient will never leave checking: that is not something to wait out",
+	);
+	for (const answer of ["unavailable", "unknown"]) {
+		assert.equal(
+			radientSpeechBlock({
+				serverOnline: true,
+				accountRead: answer,
+				accountUnavailable: false,
+			}),
+			"could-not-check",
+			`${answer} is a failed check, not an account problem (D1: signing in cannot fix an outage)`,
+		);
+	}
+	for (const answer of ["signed-out", "refused"]) {
+		assert.equal(
+			radientSpeechBlock({
+				serverOnline: true,
+				accountRead: answer,
+				accountUnavailable: false,
+			}),
+			"sign-in",
+			`${answer} is one of the two states the sign-in sentence is for`,
+		);
+	}
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "ready",
+			accountUnavailable: false,
+		}),
+		"could-not-check",
+		"the enabled state's block is never rendered (a surface renders it only on the disabled arm); the ladder stays total",
+	);
+
+	assert.equal(
+		speechUnavailableReason("recording", "checking"),
+		"Checking your Radient sign-in…",
+	);
+	assert.equal(
+		speechUnavailableReason("recording", "sign-in"),
+		"Sign in to Radient in the settings page to enable recording",
+	);
+	assert.equal(
+		speechUnavailableReason("recording", "could-not-check"),
+		"Your Radient sign-in could not be checked, so recording is unavailable for now",
+	);
+	assert.equal(
+		speechUnavailableReason("recording", "offline"),
+		"Recording is unavailable while Local Operator is offline",
+	);
+	assert.equal(
+		speechUnavailableReason("speaking-aloud", "checking"),
+		"Checking your Radient sign-in…",
+	);
+	assert.equal(
+		speechUnavailableReason("speaking-aloud", "sign-in"),
+		"Sign in to Radient in the settings page to enable speaking aloud",
+	);
+	assert.equal(
+		speechUnavailableReason("speaking-aloud", "could-not-check"),
+		"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
+	);
+	assert.equal(
+		speechUnavailableReason("speaking-aloud", "offline"),
+		"Speaking aloud is unavailable while Local Operator is offline",
 	);
 });
 
 /*
  * THE SOURCE PINS. The two surfaces a jsdom mount cannot reach honestly, plus
- * the guard that no surface drifts back to the file-only gate: each enable flag
- * must derive from the shared capability, and each copy ladder must keep the
- * offline arm beside the sign-in arm.
+ * the guards that no surface drifts back to the file-only gate or to a copy
+ * ladder of its own: each enable flag must derive from the shared capability,
+ * each disabled sentence from the shared table (design round 1, D5), and each
+ * control must answer to its one name — recording / speaking aloud (D2).
  */
 const SOURCES = {
 	"the composer mic":
@@ -797,9 +1132,10 @@ const SOURCES = {
 const CAPABILITY_FLAG = /canUseRadientSpeech/;
 const FILE_ONLY_GATE =
 	/= hasRadientApiKey && !isUnavailable|isRadientApiKeyConfigured && !isLoadingCredentials/;
-const OFFLINE_SENTENCE = /unavailable while Local Operator is offline/;
-const SIGN_IN_SENTENCE =
-	/Sign in to Radient in the settings page to enable (audio recording|text to speech)/;
+const SHARED_COPY_CALL = /speechUnavailableReason\(/;
+const INLINED_SENTENCE =
+	/unavailable while Local Operator is offline|in the settings page to enable/;
+const DEPRECATED_CONTROL_NAMES = /Voice input|audio recording|text to speech/i;
 
 test("every speech surface derives its gate from the shared capability", async () => {
 	for (const [name, path] of Object.entries(SOURCES)) {
@@ -817,18 +1153,23 @@ test("every speech surface derives its gate from the shared capability", async (
 	}
 });
 
-test("every speech surface keeps both the offline and the sign-in sentences", async () => {
+test("every speech surface states its reason from the one shared copy table", async () => {
 	for (const [name, path] of Object.entries(SOURCES)) {
 		const source = await readFile(path, "utf8");
 		assert.match(
 			source,
-			OFFLINE_SENTENCE,
-			`${name} must name the offline case rather than folding it into the sign-in sentence`,
+			SHARED_COPY_CALL,
+			`${name} must read its disabled sentence from @shared/lib/speech-gate (design round 1, D5)`,
 		);
-		assert.match(
+		assert.doesNotMatch(
 			source,
-			SIGN_IN_SENTENCE,
-			`${name} keeps the sign-in sentence for a reader who is not signed in`,
+			INLINED_SENTENCE,
+			`${name} must not carry a sentence of its own beside the shared table`,
+		);
+		assert.doesNotMatch(
+			source,
+			DEPRECATED_CONTROL_NAMES,
+			`${name} must call its control by its one name — recording / speaking aloud (design round 1, D2)`,
 		);
 	}
 });
