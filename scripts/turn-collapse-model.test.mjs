@@ -43,7 +43,8 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
-	alignFetchDecision,
+	ALIGN_WALK_MAX_PAGES,
+	alignWalkDecision,
 	collapsePlan,
 	isFailedCall,
 	runsOf,
@@ -776,41 +777,56 @@ test("a durable run still dates itself: ts is the commit, and the span holds", (
 	assert.equal(plan.runs[0].facts.durationS, 3);
 });
 
-/* ------------------- the alignment fetch's bound (F2) -------------------- */
+/* ------- the completion walk's bound and gates (1b, spec section 7) ------- */
 
-test("the align fetch's decision is the whole bound, by construction", () => {
+test("the completion walk's decision is the whole bound and its whole gate, by construction", () => {
 	/*
-	 * AGENT REVIEW ROUND 1, F2: the window snap's load half. A page may be
-	 * spent only while there is more to load, nothing is in flight, and the
-	 * cut is real; and never past `max` — the property that keeps an open
-	 * from walking an unbounded conversation into memory.
+	 * LOADER-CONTINUITY 1b, design spec section 7. The open-time alignment used
+	 * to spend a FLAT two pages (`ALIGN_FETCH_MAX`), which is what left the
+	 * operator's bar stating "97 actions" against a run of 423 calls: a turn
+	 * whose head lay further up the journal than two pages could never complete
+	 * its own condensation. It is now a bounded WALK, and this is the table the
+	 * walk consults -- decided by construction, so the bound cannot be observed
+	 * only by re-mounting a component (a strict-mode remount once made a
+	 * per-instance cap of two read as three).
 	 */
+	assert.equal(ALIGN_WALK_MAX_PAGES, 12, "one act's worth of pages");
 	const step = (spent, over = {}) =>
-		alignFetchDecision(
-			spent,
-			over.hasMore ?? true,
-			over.loadingOlder ?? false,
-			over.headCut ?? true,
-			over.max ?? 2,
-		);
+		alignWalkDecision(spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: false,
+			...over,
+		});
 	assert.deepEqual(step(0), { fetch: true, spent: 1 });
-	assert.deepEqual(step(1), { fetch: true, spent: 2 });
-	assert.deepEqual(step(2), { fetch: false, spent: 2 }, "the bound holds");
 	assert.deepEqual(
-		step(0, { hasMore: false }),
-		{ fetch: false, spent: 0 },
-		"nothing to load",
+		step(ALIGN_WALK_MAX_PAGES - 1),
+		{ fetch: true, spent: ALIGN_WALK_MAX_PAGES },
+		"the last page inside the bound is spent",
 	);
 	assert.deepEqual(
-		step(0, { loadingOlder: true }),
-		{ fetch: false, spent: 0 },
-		"a page is already in flight",
+		step(ALIGN_WALK_MAX_PAGES),
+		{ fetch: false, spent: ALIGN_WALK_MAX_PAGES },
+		"and the next one is not: the bound holds",
 	);
-	assert.deepEqual(
-		step(0, { headCut: false }),
-		{ fetch: false, spent: 0 },
-		"no cut to fix",
-	);
+	for (const [reason, over] of [
+		["nothing left on the backend", { hasMore: false }],
+		["a page is already in flight", { loadingOlder: true }],
+		["no cut to complete", { headCut: false }],
+		[
+			"the reader is not following the tail, or has just given input",
+			{ mayWalk: false },
+		],
+		["a page did not apply", { halted: true }],
+	]) {
+		assert.deepEqual(
+			step(3, over),
+			{ fetch: false, spent: 3 },
+			`no page while ${reason}`,
+		);
+	}
 });
 
 /* --------------------------- the failed count (F4) ----------------------- */
@@ -1169,6 +1185,7 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 		"the bar's sentence names no hidden tool",
 	);
 });
+
 /* ---------- the window widen, measured in the reader's currency (1b) ---------- */
 
 /*
