@@ -24,6 +24,14 @@ import React, { act } from "react";
  * the run handle itself, which is a plain object in every case — the states
  * under test are decisions about a value, not about a hook.
  *
+ * THE SAME FILE PINS THE REFUSED STOP (UX review round 3, U1). A Stop the
+ * backend refuses is not the run stopping: it used to take the error branch,
+ * which dropped the live Stop control and the elapsed time and said the run had
+ * stopped while its turn ran on. The rule is a store fact (the status stays
+ * `running`, the id stays reachable) plus a strip fact (the sentence, with Stop
+ * still there), so both are asserted here — the store directly, the strip
+ * against the real component.
+ *
  * WHAT IT IS NOT: evidence about pixels. jsdom has no layout engine, so nothing
  * here says where the strip sits; that is the frames' job.
  */
@@ -83,6 +91,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { ConfigComposer } from "./src/renderer/src/features/agents/config-run/config-composer";',
+			'export { useConfigRunStore } from "./src/renderer/src/features/agents/config-run/config-run-store";',
 			'export { createRoot } from "react-dom/client";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -113,7 +122,9 @@ const bundle = await build({
 const bundlePath = new URL("._agents-config-retry.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
-const { ConfigComposer, createRoot } = await import(bundlePath.href);
+const { ConfigComposer, useConfigRunStore, createRoot } = await import(
+	bundlePath.href
+);
 
 /**
  * One run handle, in a named state.
@@ -129,6 +140,7 @@ const handle = (overrides = {}) => ({
 	sessionId: "session-1",
 	topic: "Add a reviewer that only reads tests",
 	error: "The run finished, but its results could not be read.",
+	stopError: null,
 	draft: "Add a reviewer that only reads tests",
 	setDraft: () => undefined,
 	about: null,
@@ -224,4 +236,85 @@ test("a failure that already delivered the request offers no Retry", async () =>
 		);
 		await act(async () => root.unmount());
 	}
+});
+
+/* --------------------------------------------------------- the refused stop */
+
+test("a refused Stop keeps the strip live and says the stop did not take", async () => {
+	const { host, root } = await mount(
+		handle({
+			// The shape U1 was measured on: the interrupt RPC refused, the run live.
+			status: "running",
+			stopError: "The run did not acknowledge the request.",
+			error: null,
+		}),
+	);
+	const refused = host.querySelector('[data-testid="config-stop-refused"]');
+	assert.ok(refused, "the strip says the stop was refused");
+	assert.match(refused.textContent ?? "", /did not take/);
+	assert.match(
+		refused.textContent ?? "",
+		/did not acknowledge/,
+		"the refusal's own reason is shown too",
+	);
+	/*
+	 * THE CONTROLS ARE THE POINT. The settled shape this replaced had Dismiss as
+	 * its only button, which left a write-capable run with nothing that ends it.
+	 */
+	const buttons = [...host.querySelectorAll("button")].map((node) =>
+		(node.textContent ?? "").trim(),
+	);
+	assert.ok(buttons.includes("Stop"), `Stop is still offered (got ${buttons})`);
+	assert.ok(!buttons.includes("Dismiss"), "no Dismiss while the run is live");
+	assert.match(host.textContent ?? "", /4s/, "the elapsed time keeps counting");
+	await act(async () => root.unmount());
+});
+
+test("a run that finished but could not be read back does not read as a stop", async () => {
+	const { host, root } = await mount(
+		handle({
+			status: "error",
+			canRetry: false,
+			error:
+				"The run finished, but the agents and teams lists could not be read to describe what changed.",
+		}),
+	);
+	const strip = host.querySelector('[data-testid="config-run-strip"]');
+	assert.match(strip.textContent ?? "", /Finished with an error/);
+	assert.doesNotMatch(
+		strip.textContent ?? "",
+		/Stopped with an error/,
+		"the heading must not contradict the sentence under it (U2)",
+	);
+	await act(async () => root.unmount());
+});
+
+test("the store keeps a refused stop's run reachable until it settles", () => {
+	const store = useConfigRunStore.getState();
+	store.adopt("session-1", "Add a reviewer", null);
+	useConfigRunStore.getState().settle([], "done", "");
+	useConfigRunStore.getState().adopt("session-2", "Add a team", null);
+	useConfigRunStore.getState().stopping();
+	assert.equal(useConfigRunStore.getState().status, "stopping");
+	useConfigRunStore.getState().stopFailed("refused by the rig");
+	const refused = useConfigRunStore.getState();
+	assert.equal(
+		refused.status,
+		"running",
+		"a refused stop is not a stopped run",
+	);
+	assert.equal(refused.sessionId, "session-2", "the run stays nameable");
+	assert.equal(refused.stopError, "refused by the rig");
+	assert.ok(refused.startedAt, "the clock the elapsed reads is untouched");
+	/*
+	 * A second press starts clean, and a settled run has nothing left to refuse —
+	 * without these two the sentence would outlive the situation it describes.
+	 */
+	useConfigRunStore.getState().stopping();
+	assert.equal(useConfigRunStore.getState().stopError, null);
+	useConfigRunStore.getState().stopFailed("refused again");
+	useConfigRunStore.getState().settle([], "done", "answer");
+	assert.equal(useConfigRunStore.getState().stopError, null);
+	useConfigRunStore.getState().dismiss();
+	assert.equal(useConfigRunStore.getState().stopError, null);
 });

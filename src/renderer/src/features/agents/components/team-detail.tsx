@@ -155,6 +155,15 @@ export function TeamDetail({
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	/** The collaboration field, so a refused create puts the caret in it (D14). */
 	const teamInstructionsRef = useRef<HTMLTextAreaElement>(null);
+	/**
+	 * The create form's name field, so a refusal can put the caret in it (U3).
+	 *
+	 * WHY A REF WHEN THE INPUT IS ALREADY `autoFocus`. `autoFocus` only fires
+	 * when the form MOUNTS; every refusal below happens with focus already on the
+	 * Create button, so the field the sentence is about was left behind the
+	 * operator's eye and hand.
+	 */
+	const teamNameRef = useRef<HTMLInputElement>(null);
 
 	/* A pane opened by a Create takes the caret itself (QA Q7) — see the note on
 	 * the handoff in `detail-parts`.
@@ -225,11 +234,13 @@ export function TeamDetail({
 		if (creating && !name.trim()) {
 			setError("Give the team a name.");
 			setErrorField("name");
+			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && /[\\/\s]/.test(name.trim())) {
 			setError("Names cannot contain spaces or slashes.");
 			setErrorField("name");
+			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && (teams ?? []).some((row) => row.name === name.trim())) {
@@ -237,6 +248,7 @@ export function TeamDetail({
 				`A team called “${name.trim()}” already exists. Open it to change it, or choose another name.`,
 			);
 			setErrorField("name");
+			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && !draft.instructions.trim()) {
@@ -356,7 +368,15 @@ export function TeamDetail({
 						</div>
 					) : null}
 				</div>
-				{error ? (
+				{/*
+				 * THE BANNER IS FOR ERRORS THAT HAVE NO FIELD (design review round 3,
+				 * D16; UX U3). A missing required field is answered beside that field,
+				 * where the operator is already looking — and the banner made one
+				 * mistake read twice, titled "That did not save", which is a
+				 * save/transport framing for what was a blank box. The agent form in
+				 * this same delta already splits it this way; this is that shape.
+				 */}
+				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="team-save-error">
 						<AlertTitle>That did not save</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
@@ -386,6 +406,7 @@ export function TeamDetail({
 									error={errorField === "name" ? error : null}
 								/>
 								<Input
+									ref={teamNameRef}
 									id="team-name"
 									data-testid="team-name-input"
 									value={name}
@@ -590,9 +611,26 @@ export function TeamDetail({
 							/>
 						</Section>
 						<Section title="Collaboration instructions">
+							{/*
+							 * THE REFUSAL LANDS ON THE FIELD (design review round 3, D16).
+							 * The sentence used to live only in the top banner, 300-plus px
+							 * ABOVE this textarea, measured off-screen at the moment of the
+							 * refusal — so the operator saw a focused empty box and no
+							 * explanation. Same register as `FieldLabel`'s own error line.
+							 */}
+							{errorField === "instructions" ? (
+								<p
+									className="text-meta text-danger"
+									role="alert"
+									data-testid="team-instructions-error"
+								>
+									{error}
+								</p>
+							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
 								aria-label="Collaboration instructions"
+								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.instructions}
