@@ -196,10 +196,19 @@ export function chipLabel(session: MeshSessionRow): string {
 export function chipFact(
 	session: MeshSessionRow,
 	ownerLabel: string,
-	ownerReachable: boolean,
+	ownerReach: DeviceReach,
 ): string {
-	if (!ownerReachable) {
-		return `unreachable${session.unreachable_reason ? ` (${session.unreachable_reason})` : ""}`;
+	if (ownerReach !== "reached" && ownerReach !== "self") {
+		/*
+		 * THE WORD IS THE REACH MODEL'S (agent review round 1, Q1). This sentence said
+		 * `unreachable`, which is the word this redesign deleted from every drawn surface -
+		 * and the chip is the surface that is READ ALOUD, so a not-attempted device was
+		 * still announced as a failure here after every visible copy had stopped saying it.
+		 */
+		const words = reachWords(ownerReach);
+		return session.unreachable_reason
+			? `${words} (${session.unreachable_reason})`
+			: words;
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
 	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
@@ -485,9 +494,14 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					<span
 						className={cn(
 							"min-w-0 truncate text-meta",
-							device.sessionCount === null
-								? "text-ink-disabled"
-								: "text-ink-muted",
+							/*
+							 * A STATED FLOOR, NOT A DISABLED-LOOKING WORD (UX review round 1, U6):
+							 * `ink-disabled` measured 1.99:1 on this fill in dark and 2.96:1 in light,
+							 * which hides the very null-vs-zero distinction this row exists to carry.
+							 * `ink-dim` reads 5.25:1 on the same ground and is still clearly quieter
+							 * than the count it labels.
+							 */
+							device.sessionCount === null ? "text-ink-dim" : "text-ink-muted",
 						)}
 					>
 						{conversationUnit(device.sessionCount)}
@@ -541,7 +555,13 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					 * box saying "nothing" beside a count that already said it, and the fact survives in
 					 * the rail above and in the node's accessible name.
 					 */
-					"m-0 flex h-6 list-none items-center gap-1 overflow-hidden px-3 pb-1.5",
+					/*
+					 * NO VERTICAL PADDING: the band is 24 px and the chips are now a 24 px target
+					 * each (UX review round 1, U7), so `pb-1.5` - which used to bias the shorter
+					 * chips upward - would centre a 24 px chip in an 18 px content box and clip it
+					 * against the band's own top edge. The row centres its children either way.
+					 */
+					"m-0 flex h-6 list-none items-center gap-1 overflow-hidden px-3",
 					/*
 					 * THE ROW UNDER THE GHOST DIMS (design review round 1, D4): the ghost is drawn at
 					 * the pointer, so over an accepting target it lands on the row it is aimed at and
@@ -558,6 +578,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						key={session.id}
 						session={session}
 						ownerLabel={device.label}
+						ownerReach={reach}
 						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}
 						dragging={draggedSessionId === session.id}
@@ -572,7 +593,12 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							data-mesh-more={device.id}
 							onClick={() => onShowAllSessions(device.id)}
 							className={cn(
-								"rounded-sm px-1.5 py-0.5 text-meta text-ink-dim",
+								/*
+								 * THE SAME 24 px FLOOR AS THE CHIPS (UX review round 1, U7): this control
+								 * sits in the same row, opens the same panel, and a row that fixed only
+								 * the chips would leave the audit reading the control beside them.
+								 */
+								"flex min-h-6 items-center rounded-sm px-1.5 text-meta text-ink-dim",
 								"hover:bg-row-hover hover:text-ink",
 								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 							)}
@@ -613,6 +639,14 @@ type SessionChipProps = {
 	 * `ChipStripeKey`.
 	 */
 	ownerReachable: boolean;
+	/**
+	 * The same device's REACH, for the sentence the chip SPEAKS (agent review round 1,
+	 * Q1): the stripe answers "will this refuse me" from the boolean, while the words
+	 * take the reach model's own vocabulary - a chip on a device nobody dialled said
+	 * `unreachable` in its `title` and `aria-label`, which is the word every drawn
+	 * surface had just stopped saying.
+	 */
+	ownerReach: DeviceReach;
 	moving: boolean;
 	dragging: boolean;
 	onPointerDown: (
@@ -643,18 +677,19 @@ type SessionChipProps = {
 const SessionChip: FC<SessionChipProps> = ({
 	session,
 	ownerLabel,
+	ownerReach,
 	ownerReachable,
 	moving,
 	dragging,
 	onPointerDown,
 	onClick,
 }) => {
-	const fact = chipFact(session, ownerLabel, ownerReachable);
+	const fact = chipFact(session, ownerLabel, ownerReach);
 	if (moving) {
 		return (
 			// biome-ignore lint/a11y/useSemanticElements: `role="status"` has no semantic element of its own; `<output>` is for a form's result, and this is a live region inside a list item.
 			<li role="status" data-mesh-session={session.id} data-mesh-moving="true">
-				<span className="rounded-sm bg-sunken px-1.5 py-0.5 text-meta text-ink-muted">
+				<span className="flex min-h-6 items-center rounded-sm bg-sunken px-1.5 text-meta text-ink-muted">
 					moving…
 				</span>
 			</li>
@@ -677,24 +712,18 @@ const SessionChip: FC<SessionChipProps> = ({
 				onPointerDown={(event) => onPointerDown(event, session)}
 				onClick={() => onClick(session)}
 				className={cn(
-					"w-full max-w-32 truncate rounded-sm border border-hairline bg-surface px-1.5 py-0.5 text-left text-meta text-ink-muted",
 					/*
-					 * LEFT-TRUNCATION: `direction: rtl` with `text-align: left` is what moves the
-					 * overflow - and the ellipsis - to the START, which is where it has to be, because a
-					 * device's conversations are named in series (`Sweep 011`, `Sweep 012`) and the part
-					 * that tells two of them apart is the END. End-truncation is what round 2 measured at
-					 * the cap: two conversations rendered as `Swe…` and `Res…`.
+					 * A 24 px TARGET (UX review round 1, U7): the chip measured 115.6 x 21.1, and its
+					 * miss-cost is a whole gesture - a drag start or the panel - not a no-op, while
+					 * WCAG 2.5.8's own spacing exception does not hold here: the 24 px circle centred
+					 * on a 21.1 px chip intersects the node body's button directly above it. The
+					 * height comes from `min-h-6`, which is exactly the row's reserved band
+					 * (`NODE_CHIP_BAND`), so the chip cannot grow the node.
 					 *
-					 * NOT `unicode-bidi: plaintext`, which is the tempting companion and the wrong one: it
-					 * makes the PARAGRAPH direction follow the first strong character, so the box goes back
-					 * to truncating at the end - photographed on this branch's own `cap-at-four` frame, where
-					 * the chips read `Sweep …` with the ellipsis on the right. An LTR title inside an RTL
-					 * box still renders its words in order (the run is LTR; only the line's overflow side
-					 * follows the box), and the full title is in the tooltip and the accessible name either
-					 * way, so a title in another script is a rendering this can be judged on rather than a
-					 * claim made here.
+					 * THE TEXT MOVED INTO ITS OWN SPAN with that change: a flex container cannot
+					 * ellipsise its own text, so the truncation lives on the one span that still can.
 					 */
-					"[direction:rtl]",
+					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-left text-meta text-ink-muted",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.
@@ -743,7 +772,9 @@ const SessionChip: FC<SessionChipProps> = ({
 				 * guess that clips the tail on exactly the widest titles. The browser measures; the
 				 * classes only say WHICH END loses characters.
 				 */}
-				{chipLabel(session)}
+				<span className="min-w-0 flex-1 truncate [direction:rtl]">
+					{chipLabel(session)}
+				</span>
 			</button>
 		</li>
 	);

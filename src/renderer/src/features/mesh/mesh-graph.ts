@@ -458,9 +458,18 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
  * single-sentence answer. `no answer` and `not asked` are counted apart now, so a
  * device nobody asked is never filed under a failure.
  *
- * `unknown` is deliberately NOT counted: "no answer" and "not asked" are claims the
- * reads support, while `unknown` is the absence of a read, and a summary that
- * enumerated its own blind spots would read as one more failure mode.
+ * AND THE COUNTS ARE A CENSUS NOW, NOT A SELECTION (UX review round 1, U4). The
+ * sentence used to read `2 no answer · 1 not asked · 1 suspected` over six devices:
+ * the suspect device was counted TWICE (once by reach, once as though "suspected"
+ * were a sixth kind of device - the counts read like a breakdown and did not add up),
+ * and `unknown` and `reached` were counted nowhere, so a reader could not tell an
+ * ordinary device from a blind spot. Every device is now in exactly one class, or
+ * named at the end as this device: `N of them suspected` is a QUALIFIER on the
+ * census (the overlay it is - the reach model's own rule), `reached` is counted with
+ * the rest, and naming `unknown` is the deliberate reversal of this comment's old
+ * rule - the reach model gives it a neutral word and no hue, so it reads as a fact
+ * rather than as one more failure mode, and leaving it out is what made the
+ * arithmetic uncheckable.
  */
 export function meshSummary(graph: MeshGraph): string {
 	const parts: string[] = [];
@@ -471,12 +480,16 @@ export function meshSummary(graph: MeshGraph): string {
 		`${graph.devices.length} ${graph.devices.length === 1 ? "device" : "devices"}`,
 	);
 	const reaches = graph.devices.map((device) => deviceReach(device));
+	const suspected = graph.devices.filter((device) => device.suspect).length;
+	const reached = reaches.filter((reach) => reach === "reached").length;
 	const unanswered = reaches.filter((reach) => reach === "unanswered").length;
 	const notAsked = reaches.filter((reach) => reach === "not-attempted").length;
-	const suspected = graph.devices.filter((device) => device.suspect).length;
+	const unknown = reaches.filter((reach) => reach === "unknown").length;
+	if (suspected) parts.push(`${suspected} of them suspected`);
+	if (reached) parts.push(`${reached} reached`);
 	if (unanswered) parts.push(`${unanswered} no answer`);
 	if (notAsked) parts.push(`${notAsked} not asked`);
-	if (suspected) parts.push(`${suspected} suspected`);
+	if (unknown) parts.push(`${unknown} unknown`);
 	if (graph.selfDeviceId !== null) {
 		const self = graph.devices.find(
 			(device) => device.id === graph.selfDeviceId,

@@ -7463,11 +7463,32 @@ export const STORIES = [
 	 */
 	["mesh-tab--reach-states", 1380, 900],
 	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
 	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
 	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
 	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
 	 */
 	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7609,6 +7630,12 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped

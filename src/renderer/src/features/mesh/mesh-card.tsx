@@ -37,7 +37,7 @@ import {
 	ShieldAlert,
 	TriangleAlert,
 } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useEffect } from "react";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
@@ -308,6 +308,37 @@ export const DevicePanel: FC<{
 }) => {
 	const reach = deviceReach(device);
 	/*
+	 * ESCAPE CLOSES THE PANEL, AND RETURNS FOCUS TO THE NODE THAT OPENED IT (UX review
+	 * round 1, U5). The key was bound and free: the panel had no keyboard exit at all -
+	 * measured, `Escape` with focus on this panel's own `Close` left the panel open, so a
+	 * keyboard reader had to Tab back out through controls - while the canvas beside it
+	 * already uses `Escape` for drag-cancel. The listener sits on the window because the
+	 * panel spans two focus contexts (its own controls and the canvas), and two guards
+	 * keep it from stealing a key another surface owns: a defaulted event is a drag the
+	 * canvas cancelled (that handler calls `preventDefault`), and a target inside a menu
+	 * or dialog is Radix's, whose own Escape belongs to that overlay.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			if (event.defaultPrevented) return;
+			const target = event.target as Element | null;
+			if (target?.closest('[role="menu"],[role="dialog"]')) return;
+			/*
+			 * FOCUS GOES BACK BEFORE THE CLOSE, while the opener is still mounted: the node
+			 * (or list row) carrying `data-mesh-device-open` is a sibling of this panel, so
+			 * focusing it here cannot race the unmount - and focusing it is what keeps the
+			 * keyboard reader where the panel took them from.
+			 */
+			document
+				.querySelector<HTMLElement>(`[data-mesh-device-open="${device.id}"]`)
+				?.focus();
+			onClose();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [device.id, onClose]);
+	/*
 	 * THE HEADER SPEAKS THE REACH MODEL, and the age is NOT in it (design round's panel
 	 * frame): the shipped header read `3 conversations · seen 9m ago`, which printed the
 	 * rotation stamp under a heartbeat's name AND printed it a second time in the section
@@ -450,7 +481,7 @@ export const DevicePanel: FC<{
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									{chipFact(session, device.label, device.reachable)}
+									{chipFact(session, device.label, deviceReach(device))}
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">
