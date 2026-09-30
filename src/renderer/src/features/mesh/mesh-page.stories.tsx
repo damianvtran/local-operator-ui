@@ -1003,18 +1003,23 @@ export const ScopesSharedTop: Story = {
 };
 
 /**
- * THREE LEVELS ON ONE OPENER (the design ruling's "n = 3 if cheap"): the same stack plus
- * the operator's own word.
+ * THREE LEVELS ON ONE OPENER (the design ruling's "n = 3 if cheap"): three INFERRED
+ * groups hanging off one row.
  *
- * `build-box` also carries a declared `scope`, so its row opens THREE enclosures - the
- * declared ring inside (it reaches only `build-box` itself), the probable one around
- * it, the shared one outermost - and the staircase is drawn at its full pitch: labels
- * 26 px apart, each frame 4 px wider than the one inside it, the layout clearing 84 px
- * above the row. The order here is a CONSEQUENCE of the ruling's bottom rule rather
- * than a special case: `lab-b` (the shared group's far member) reaches furthest down,
- * so the solid frame is outermost and the operator's declared ring is innermost. The
- * declared tier stays a styling proof: no backend sends the field yet (see
- * `ScopesDeclared`).
+ * `build-box` publishes three addresses on three prefixes - a LAN one (`192.168.1.40`,
+ * shared with this device) and two tunnel ones (`10.88.0.5` with `lab-a`, `10.44.0.9`
+ * with `lab-c`) - and it is topmost in all three, so the staircase draws at its full
+ * pitch: three labels 26 px apart, each frame 4 px wider than the one inside it, the
+ * layout clearing 84 px above the row. The order is the ruling's larger-bottom rule
+ * rather than a special case: `lab-c` reaches furthest down, so its probable frame is
+ * outermost.
+ *
+ * THE DECLARED TIER CANNOT APPEAR IN A STACK, which is why this story uses a third
+ * inferred prefix where an earlier draft put a `scope`: `prefixGroups` excludes a
+ * device with an authored scope from the prefix arithmetic entirely ("one machine is
+ * never inside two boundaries that disagree about why it is there"), so a declared
+ * group never shares an opener with an inferred one. `ScopesDeclared` stays the
+ * declared tier's own frame; this one is the stack at depth three.
  */
 export const ScopesNested: Story = {
 	render: () => {
@@ -1030,8 +1035,11 @@ export const ScopesNested: Story = {
 						}),
 						member(DEVICE_PEER, {
 							name: "build-box",
-							endpoints: ["10.88.0.5:4097", "192.168.1.40:4097"],
-							scope: "sim-lab",
+							endpoints: [
+								"10.88.0.5:4097",
+								"192.168.1.40:4097",
+								"10.44.0.9:4097",
+							],
 						}),
 						member(DEVICE_THIRD, {
 							name: "lab-a",
@@ -1040,6 +1048,10 @@ export const ScopesNested: Story = {
 						member(DEVICE_FOURTH, {
 							name: "lab-b",
 							endpoints: ["192.168.1.41:4097"],
+						}),
+						member(DEVICE_FIFTH, {
+							name: "lab-c",
+							endpoints: ["10.44.0.7:4097"],
 						}),
 					]),
 				],
@@ -1050,6 +1062,7 @@ export const ScopesNested: Story = {
 					peer(DEVICE_PEER, { name: "build-box", session_count: 3 }),
 					peer(DEVICE_THIRD, { name: "lab-a", session_count: 1 }),
 					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 0 }),
+					peer(DEVICE_FIFTH, { name: "lab-c", session_count: 2 }),
 				],
 				degraded: [],
 			},
