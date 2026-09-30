@@ -5788,13 +5788,13 @@ test("a frame with a usable id still coalesces with its durable entry (the #671 
 	assert.equal(state.records[0].text, "Hi. ");
 });
 
-test("an id-less end settles the session's last open assistant, writing no text (#671 fallback)", () => {
+test("an id-less end settles the ONE open assistant row, writing no text (#671 fallback)", () => {
 	/*
 	 * The bounded fallback agreed with the condense/continuity lane
-	 * (2026-09-29): an id-less end cannot name its record, so it ends the LAST
-	 * open assistant row — settle semantics only. The frame's own text is NOT
-	 * written (the record keeps its accumulated text), the earlier stream
-	 * stays open, and nothing is counted as refused.
+	 * (2026-09-29; re-bounded by the #671 review round, U3): an id-less end
+	 * cannot name its record, so it ends the session's single open assistant
+	 * row — settle semantics only. The frame's own text is NOT written (the
+	 * record keeps its accumulated text) and nothing is counted as refused.
 	 */
 	const refused = streamDiagnostics.idlessFrameRefused;
 	let state = applyEvent(
@@ -5806,20 +5806,10 @@ test("an id-less end settles the session's last open assistant, writing no text 
 		state,
 		{
 			type: "message_update",
-			delta: "First answer.",
+			delta: "Only answer.",
 			message: assistant("a1", ""),
 		},
 		2,
-	);
-	state = applyEvent(
-		state,
-		{ type: "message_start", message: assistant("a2", "") },
-		3,
-	);
-	state = applyEvent(
-		state,
-		{ type: "message_update", delta: "Second ", message: assistant("a2", "") },
-		4,
 	);
 	state = applyEvent(
 		state,
@@ -5828,25 +5818,67 @@ test("an id-less end settles the session's last open assistant, writing no text 
 			// No id at all, and a full assembled text the fallback must not adopt.
 			message: assistant(undefined, "FRAME-TEXT-THAT-NEVER-RAN"),
 		},
-		5,
+		3,
 	);
 	const a1 = state.records.find((record) => record.id === "a1");
-	const a2 = state.records.find((record) => record.id === "a2");
-	assert.equal(a2.streaming, false, "the last open row settled");
-	assert.equal(a2.complete, true, "an answer that ended is complete");
-	assert.equal(typeof a2.settledAt, "number", "the settle instant is stamped");
-	assert.equal(a2.text, "Second ", "the frame's text was not written");
-	assert.equal(a1.streaming, true, "the earlier stream is untouched");
-	assert.equal(a1.text, "First answer.", "two records never merge text");
+	assert.equal(a1.streaming, false, "the one open row settled");
+	assert.equal(a1.complete, true, "an answer that ended is complete");
+	assert.equal(typeof a1.settledAt, "number", "the settle instant is stamped");
+	assert.equal(a1.text, "Only answer.", "the frame's text was not written");
 	assert.equal(
 		state.records.length,
-		2,
-		"no third row appeared for the unnamed frame",
+		1,
+		"no second row appeared for the unnamed frame",
 	);
 	assert.equal(
 		streamDiagnostics.idlessFrameRefused,
 		refused,
 		"a settled end is not a refusal",
+	);
+});
+
+test("an id-less end with TWO open assistant rows guesses nothing and is refused (#671 fallback, U3)", () => {
+	/*
+	 * Concurrent assistant streams make the unnamed end a guess between rows —
+	 * settling either could pick the wrong one and strand the other (review
+	 * round 1, U3). Both stay streaming and the frame is counted as refused.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("b1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "One ", message: assistant("b1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("b2", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Two ", message: assistant("b2", "") },
+		4,
+	);
+	const refused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant(undefined, "Assembled.") },
+		5,
+	);
+	const b1 = state.records.find((record) => record.id === "b1");
+	const b2 = state.records.find((record) => record.id === "b2");
+	assert.equal(b1.streaming, true, "neither row settles on a guess");
+	assert.equal(b2.streaming, true, "neither row settles on a guess");
+	assert.equal(b1.text, "One ");
+	assert.equal(b2.text, "Two ");
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 1,
+		"the ambiguous end was counted as refused",
 	);
 });
 

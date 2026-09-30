@@ -143,3 +143,13 @@ test("the pane's chord refuses the same extensions, and both edges", () => {
 	);
 	assert.equal(pane.paneNavigationDirection(input({ key: "k" })), null);
 });
+
+test("the chords' captions are the app's spelling, per platform (U5)", () => {
+	// The caption is the ONE string the URL bar's tooltip and its
+	// `aria-keyshortcuts` share: `⌘[` / `Ctrl+[` for back, the bracket as
+	// written for the gesture (issue #675 round 1, U5).
+	assert.equal(app.navigationShortcutLabel("back", true), "⌘[");
+	assert.equal(app.navigationShortcutLabel("forward", true), "⌘]");
+	assert.equal(app.navigationShortcutLabel("back", false), "Ctrl+[");
+	assert.equal(app.navigationShortcutLabel("forward", false), "Ctrl+]");
+});

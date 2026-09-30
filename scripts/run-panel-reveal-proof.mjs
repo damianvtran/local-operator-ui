@@ -871,13 +871,16 @@ try {
 		 * left edge, and the pane's rect.
 		 */
 		const READ_DIVIDER = `(() => {
-			const sep = document.querySelector('[aria-label="Resize run details"]');
+			const sep = document.querySelector('[aria-label^="Resize run details"]');
 			const pane = document.querySelector("[data-run-panel-pane]");
 			let pref = null;
-			try {
-				const raw = localStorage.getItem("ui-preferences-storage");
-				if (raw) pref = JSON.parse(raw)?.state?.runPanelWidth ?? null;
-			} catch {
+				try {
+					const raw = localStorage.getItem("ui-preferences-storage");
+					// The right slot's width since #677: one shared value, whatever pane is
+					// up, so the persisted field is rightSlotWidth (a proof reading the old
+					// per-surface runPanelWidth would report null on every drag).
+					if (raw) pref = JSON.parse(raw)?.state?.rightSlotWidth ?? null;
+				} catch {
 				// A store that has not written yet; the reading stays null.
 			}
 			const sepRect = sep?.getBoundingClientRect();
@@ -897,7 +900,7 @@ try {
 		})()`;
 		const separatorCentre = async () => {
 			const point = await app.evaluate(`(() => {
-				const node = document.querySelector('[aria-label="Resize run details"]');
+				const node = document.querySelector('[aria-label^="Resize run details"]');
 				if (!node) return null;
 				const rect = node.getBoundingClientRect();
 				return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
@@ -948,7 +951,7 @@ try {
 		 */
 		const keyOnSeparator = async (key, code, virtualKey) => {
 			await app.evaluate(
-				`(() => { document.querySelector('[aria-label="Resize run details"]')?.focus(); return true; })()`,
+				`(() => { document.querySelector('[aria-label^="Resize run details"]')?.focus(); return true; })()`,
 			);
 			for (const type of ["keyDown", "keyUp"])
 				await app.send("Input.dispatchKeyEvent", {

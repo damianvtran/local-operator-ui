@@ -101,3 +101,25 @@ export function navigationMouseDirection(
 	if (event.button === 4) return "forward";
 	return null;
 }
+
+/**
+ * The navigation chords as the app writes them (issue #675's round-1 review,
+ * U5).
+ *
+ * The product caps every other chord on the control that owns it
+ * (`sidebarToggleCap`'s "⌘B", `paletteShortcutLabel`'s "⌘K"), and this pair
+ * had no caption anywhere — no tooltip, no keycap, no `aria-keyshortcuts`. The
+ * browser's back/forward buttons are the nearest affordances the gesture has,
+ * so they carry it: one string for the tooltip and `aria-keyshortcuts`, the
+ * same split the sidebar toggle uses (`label` names the action, the chord is
+ * the machine-readable shortcut). `Ctrl+[` off macOS: the bracket chord is
+ * written with the plus the way the app spells every multi-key chord whose
+ * second key is not a glyph name.
+ */
+export function navigationShortcutLabel(
+	direction: NavigationDirection,
+	isMac: boolean,
+): string {
+	const bracket = direction === "back" ? "[" : "]";
+	return isMac ? `⌘${bracket}` : `Ctrl+${bracket}`;
+}
