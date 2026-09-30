@@ -501,6 +501,7 @@ test("two arrival sentences, and the cold one's second line is mandatory", () =>
 		engaged: null,
 		name: "build-box",
 		from: null,
+		newSessionId: "session-1",
 		sourceRetired: true,
 	});
 	assert.equal(cold.verb, "Moved to build-box");
@@ -520,6 +521,7 @@ test("two arrival sentences, and the cold one's second line is mandatory", () =>
 			engaged: false,
 			name: "build-box",
 			from: null,
+			newSessionId: "session-1",
 			sourceRetired: true,
 		}).second,
 		cold.second,
@@ -529,6 +531,7 @@ test("two arrival sentences, and the cold one's second line is mandatory", () =>
 		engaged: true,
 		name: "build-box",
 		from: null,
+		newSessionId: "session-1",
 		sourceRetired: true,
 	});
 	assert.equal(live.verb, "Moved to build-box");
@@ -601,10 +604,58 @@ test("a recall's arrival says it came home, not that a copy here was deleted", (
 			engaged: null,
 			name: "this device",
 			from: "build-box",
+			newSessionId: "session-1",
 			sourceRetired: false,
 		}).detail,
 		"the conversation is here now",
 	);
+});
+
+test("a copy's arrival says the original stays, in the mesh tab's own words (QA Q3-1)", () => {
+	/*
+	 * THE DEFECT THIS ARM EXISTS FOR (QA round 3, Q3-1). The picker's dialog offers
+	 * `Copy to build-box` as its second option, and a `keep: true` receipt answers
+	 * with `source_retired: false`; the arrival notice read `sourceRetired` in the
+	 * recall arm alone, so a copy rendered in move vocabulary and told the user "the
+	 * copy here is deleted" - the opposite of the dialog they had just confirmed.
+	 * The facts asserted here are the ones the Mesh tab states for the same receipt
+	 * (`mesh-page.tsx`'s keep branch): the copy, its id's tail, and the original
+	 * staying.
+	 */
+	const coldCopy = arrivalCopy({
+		engaged: null,
+		name: "build-box",
+		from: null,
+		newSessionId: "c7ecaf735812f1",
+		sourceRetired: false,
+	});
+	assert.equal(coldCopy.verb, "Copied to build-box");
+	assert.equal(
+		coldCopy.detail,
+		"build-box holds a copy as 5812f1; the original is still here",
+	);
+	assert.equal(
+		coldCopy.detail.includes("deleted"),
+		false,
+		"a keep receipt's arrival must never claim a deletion - that was Q3-1",
+	);
+	assert.equal(
+		coldCopy.second,
+		"Nothing is running on build-box yet. Send a message in the copy to start it there, or open it from the session list.",
+	);
+	// An engaged destination is running the copy, so the cold line is not owed.
+	assert.equal(
+		arrivalCopy({
+			engaged: true,
+			name: "build-box",
+			from: null,
+			newSessionId: "c7ecaf735812f1",
+			sourceRetired: false,
+		}).second,
+		null,
+	);
+	// A recall that kept the far copy is untouched by this arm: it never came from
+	// a peer direction, and its own test above pins its sentence.
 });
 
 test("the sentence never invents a failed read, and never renders empty brackets", () => {

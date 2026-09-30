@@ -185,6 +185,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 		engaged: move.engaged,
 		name: move.name,
 		from: move.from,
+		newSessionId: move.receipt.new_session_id,
 		sourceRetired: move.receipt.source_retired,
 	});
 	return (
