@@ -979,12 +979,14 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 	 * row is unpinned, `flex` while it is pinned - because the pinned row's mark is a
 	 * STATE and must read without hovering, which is also the 240 fix (a pinned row there
 	 * used to draw no pin at all, because the mark lived inside the wrapper the query
-	 * hid). The reversal note that stays in the file is where the shed would go back.
+	 * hid) - OR while its context menu is open (`menuOpen`), the hold: the menu's portal
+	 * is modal, so the reveal cannot come from `:hover` while it is up and is state
+	 * instead. The reversal note that stays in the file is where the shed would go back.
 	 */
 	const pairWrapper = between(SIDEBAR, "data-session-control-pair", "</div>");
 	assert.match(pairWrapper, /"items-center gap-1"/);
 	assert.match(
 		pairWrapper,
-		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
 	);
 });

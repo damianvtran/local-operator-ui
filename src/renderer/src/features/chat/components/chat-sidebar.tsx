@@ -16,8 +16,15 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from "@shared/components/ui/context-menu";
 import { Label } from "@shared/components/ui/label";
 import {
 	Popover,
@@ -59,6 +66,7 @@ import {
 	MessageSquarePlus,
 	MoreHorizontal,
 	Pin,
+	PinOff,
 	Plus,
 	Search,
 	Share2,
@@ -69,11 +77,15 @@ import {
 	X,
 } from "lucide-react";
 import {
+	type Dispatch,
+	type FC,
 	type KeyboardEvent,
+	type MutableRefObject,
 	type FocusEvent as ReactFocusEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
+	type SetStateAction,
 	createElement,
 	useCallback,
 	useEffect,
@@ -121,7 +133,10 @@ import {
 } from "../chat-pin-order";
 import {
 	CHAT_REGION_ENTRY_ATTR,
+	CHAT_ROW_ACT_ATTR,
+	type ChatRowAct,
 	chatRowAct,
+	chatRowActCapJoined,
 	chatRowActControl,
 } from "../chat-regions";
 import {
@@ -684,6 +699,118 @@ const silentRemedyId = (sessionId: string) => `chat-row-remedy-${sessionId}`;
  * by a plain render function, where a hook cannot run.
  */
 const readAckClauseId = (sessionId: string) => `chat-row-read-ack-${sessionId}`;
+
+/**
+ * WHICH CHORD SPELLING A MENU PRINTS, as `chatRowActCapJoined`'s `isMac`.
+ *
+ * A function rather than a module constant, the shape `thread-search-overlay.tsx`
+ * established for the same read: this module is bundled by node in several
+ * harnesses, and a top-level `navigator` access runs in whatever global those
+ * processes happen to have (or none). The read only happens when a row renders.
+ */
+const menuIsMac = (): boolean =>
+	navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+
+/**
+ * Clears the sidebar's open-menu id when the row INSTANCE that could hold it
+ * leaves the tree (UX round 1, U1).
+ *
+ * WHY AN INSTANCE, NOT THE MENU'S DOM. Radix's context-menu root does nothing
+ * on unmount (`@radix-ui/react-context-menu@2.3.7`, `dist/index.mjs:20-53`),
+ * so the user-facing close paths - Escape, outside press, item select - were
+ * the only writers of `null`: a row that left the tree with its menu open
+ * (re-filed between containers on the same order key, dropped by a page or
+ * doorbell update, archived in another window) left the id naming a row that
+ * no longer renders - and the list's keydown stood down for the rest of the
+ * session, arrow-walk and Home/End and the two chords and type-to-filter all
+ * dead until some row's menu was opened and closed again.
+ *
+ * The clear is attached to the row's own life, so it happens in the commit
+ * that removes the row - and it can be EXACT, because "the id names me" is a
+ * fact about this instance. A sidebar-level check of the panel's DOM was
+ * measured wrong in both directions before this shipped (scratch CDP probe,
+ * round 1): Radix's `Presence` mounts the panel a render AFTER the open
+ * commit, so the id is briefly set with no panel in the document - a false
+ * "the menu is gone" a DOM check reads as death - and a sidebar `useEffect`
+ * only runs when the SIDEBAR re-renders, so whether it ever sees the panel
+ * while it is up (the fact that tells "still opening" apart from "gone") is a
+ * property of what else happens to re-render.
+ *
+ * `openMenuRowIdRef` is the sidebar's latest value: a cleanup runs with what
+ * its own closure saw last, and the row that is leaving does not re-render
+ * first. The keyboard flag is cleared on the same path, so a menu that is
+ * later opened by the POINTER cannot inherit this one's keyboard focus rules.
+ */
+const RowMenuOwner: FC<{
+	id: string;
+	openMenuRowIdRef: MutableRefObject<string | null>;
+	setOpenMenuRowId: Dispatch<SetStateAction<string | null>>;
+	openedByKeyboard: MutableRefObject<boolean>;
+}> = ({ id, openMenuRowIdRef, setOpenMenuRowId, openedByKeyboard }) => {
+	useEffect(
+		() => () => {
+			if (openMenuRowIdRef.current !== id) return;
+			setOpenMenuRowId(null);
+			openedByKeyboard.current = false;
+		},
+		[id, openMenuRowIdRef, setOpenMenuRowId, openedByKeyboard],
+	);
+	return null;
+};
+
+/**
+ * THE MENU'S OWN SENTENCE (U-D5): the row's box is a context-menu trigger and
+ * carries no `aria-haspopup` - the primitive writes only `data-state` and
+ * `data-disabled` on it - so without a clause a screen reader walking the list
+ * hears a title, a status and possibly a remedy, and nothing about the menu
+ * that is the whole point of the change. It rides the channel this row already
+ * uses for its remedies: an `sr-only` span beside the row's button, pointed at
+ * by that button's `aria-describedby` (the box is not focusable; the button is
+ * the row's only focusable element, so the association lives there).
+ *
+ * It names the menu and how to open it, and deliberately NOT the chords: those
+ * are printed inside the menu and stay in each item's accessible name, where
+ * the acts are; repeating them in the row's description would be a second
+ * telling of the same fact.
+ *
+ * AND THE SPELLING IS THE PLATFORM'S (UX round 1, U2), AS A PARENTHETICAL
+ * (UX round 2, U9). The clause is announced on every row, and on a
+ * macOS-first app that announcement cannot hand every reader `Shift+F10`
+ * unqualified: an Apple keyboard has no Menu key and sends F10 as a media key
+ * unless `Fn` is held - but "press `Fn+Shift+F10`" is itself exact only in
+ * the DEFAULT media-key mode: with "Use F1, F2, etc. keys as standard
+ * function keys" ON, `Fn` sends the special key instead and the advised
+ * chord would do nothing. The parenthetical holds in both modes and names
+ * the same device `chat-regions.ts` uses for the region walk's second
+ * spelling ("on macOS `F6` is a media key on most keyboards unless the user
+ * has turned that off"). `menuIsMac()` is read when a row renders, which is
+ * why this is a function over that read rather than a module constant.
+ */
+const rowMenuClause = (isMac: boolean): string =>
+	isMac
+		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
+		: "Right-click or press Shift+F10 for its actions.";
+const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
+
+/**
+ * Press the row's own control for an act, from the row's context menu.
+ *
+ * THE MENU DOES NOT REIMPLEMENT THE WRITE. Both controls carry guards that
+ * make a repeated press safe - the pin's `dropRepeatPress` and the archive's
+ * `archivePressOutcome`, which read `event.detail === 0` as "this came from
+ * the keyboard and always acts on the row it was invoked on" - and a menu item
+ * must take the same path a press makes on the control itself, guards
+ * included. `.click()` is that path (the chord in `keyDown` presses the
+ * control the same way), so the guards, the move correction and the
+ * `aria-pressed` state all arrive unchanged. The row is found by id because the
+ * menu is portalled: its items are not DOM descendants of the row they act on.
+ */
+const pressRowAct = (sessionId: string, act: ChatRowAct) => {
+	document
+		.querySelector<HTMLElement>(`[data-session-row="${CSS.escape(sessionId)}"]`)
+		?.querySelector<HTMLElement>(`[${CHAT_ROW_ACT_ATTR[act]}]`)
+		?.click();
+};
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -3508,6 +3635,30 @@ export function ChatSidebar({
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
 		 * what let the deleted browser mark paint its hover fill over the selected row). */
 		const current = selectedConversation === row.session_id && !activeDraftKey;
+		/*
+		 * WHETHER THIS ROW CARRIES THE MENU AT ALL, read once beside `current` for
+		 * the same reason: three consumers hang off it - the button's
+		 * `aria-describedby` list, the clause that id names, and the trigger itself
+		 * - and three copies of the predicate would be three chances to disagree.
+		 * With neither capability the menu does not exist (the withdrawn path
+		 * returns before it), and this is what keeps its clause off that row.
+		 */
+		const menuEnabled = pinsEnabled || archiveEnabled;
+		/**
+		 * WHICH CHORD SPELLING THIS PLATFORM PRINTS, read once for the row's two
+		 * items. `chatRowActCapJoined` takes `isMac` rather than reading the
+		 * platform so the strings stay testable; the read itself is the same one
+		 * the transcript's link toolbar and the undo manager use.
+		 */
+		const isMac = menuIsMac();
+		/*
+		 * THE HELD STATE: whether THIS row's menu is open, from the sidebar's one
+		 * piece of menu state. The hold's consequences are ordinary conditional
+		 * classes below (`menuOpen && ...`): the box's ground, both glyphs and the
+		 * pair wrapper. They cannot come from `:hover`, because while the menu is
+		 * open its portal is modal and the pointer cannot hover the row at all.
+		 */
+		const menuOpen = openMenuRowId === row.session_id;
 		/**
 		 * Whether this row is the one being DRAGGED (issue #697), read once for the same
 		 * reason `current` is: the box wears the mark twice - the `data-dragging`
@@ -3718,12 +3869,17 @@ export function ChatSidebar({
 				 * conversation" would be one fact announced twice (review round 4, R23).
 				 * The ", unread" tail is read from the SAME predicate the glyph, the
 				 * accessible name and the bulk count read (`unreadMarkKind`).
+				 *
+				 * AND THE MENU'S CLAUSE JOINS THE SAME LIST (U-D5): added whenever the row
+				 * carries the menu at all (`menuEnabled`), and withheld with it - the
+				 * withdrawn path renders no clause for this attribute to name.
 				 */
-				{...(silent || readAck
+				{...(silent || readAck || menuEnabled
 					? {
 							"aria-describedby": [
 								silent ? silentRemedyId(row.session_id) : null,
 								readAck ? readAckClauseId(row.session_id) : null,
+								menuEnabled ? rowMenuClauseId(row.session_id) : null,
 							]
 								.filter(Boolean)
 								.join(" "),
@@ -4049,6 +4205,20 @@ export function ChatSidebar({
 				{readAck.description}
 			</span>
 		) : null;
+		/*
+		 * THE MENU'S OWN SENTENCE (U-D5), rendered only while the menu does: it is
+		 * the target the button's `aria-describedby` points at on a row that carries
+		 * the menu, and it has to render whenever the attribute names it - a
+		 * dangling id resolves to no description at all (the rule the attribute's
+		 * own comment states). `rowMenuClause` carries why the sentence exists,
+		 * why it is not in the flyout's words, and why its spelling is the
+		 * platform's.
+		 */
+		const menuRemedy = menuEnabled ? (
+			<span id={rowMenuClauseId(row.session_id)} className="sr-only">
+				{rowMenuClause(isMac)}
+			</span>
+		) : null;
 
 		/*
 		 * THE FLYOUT'S TRIGGER IS THE ROW'S OWN BOX, and the blur guard is the other half of
@@ -4353,6 +4523,14 @@ export function ChatSidebar({
 										"text-ink-dim",
 										"group-hover:flex group-hover:text-ink-muted",
 										/*
+										 * The hold (see the pin's note): while this row is the one
+										 * whose menu is open the reveal is state - the fold added
+										 * #697's strip controls to the clause's sites. The narrow
+										 * shed stays stronger (`!`), so the grip remains shed below
+										 * the break.
+										 */
+										menuOpen && "flex text-ink-muted",
+										/*
 										 * NO `group-focus-within` TERM ON THIS CONTROL (agent review round 2, N1): the
 										 * grip is `aria-hidden` and unfocusable, so revealing it for the keyboard would
 										 * offer a sighted keyboard reader a handle they cannot operate. The pair below
@@ -4389,6 +4567,7 @@ export function ChatSidebar({
 							<button
 								type="button"
 								data-session-move-up
+								data-session-pin-move="up"
 								tabIndex={-1}
 								aria-disabled={!up}
 								/*
@@ -4416,6 +4595,8 @@ export function ChatSidebar({
 									"text-ink-dim",
 									"group-hover:flex group-hover:text-ink-muted",
 									"group-focus-within:flex group-focus-within:text-ink-muted",
+									/* The hold (see the pin's note): the strip's reveal is state while this row's menu is open. */
+									menuOpen && "flex text-ink-muted",
 									"hover:text-ink!",
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
@@ -4427,6 +4608,7 @@ export function ChatSidebar({
 							<button
 								type="button"
 								data-session-move-down
+								data-session-pin-move="down"
 								tabIndex={-1}
 								aria-disabled={!down}
 								aria-label={`Move “${label}” down`}
@@ -4445,6 +4627,8 @@ export function ChatSidebar({
 									"text-ink-dim",
 									"group-hover:flex group-hover:text-ink-muted",
 									"group-focus-within:flex group-focus-within:text-ink-muted",
+									/* The hold (see the pin's note): the strip's reveal is state while this row's menu is open. */
+									menuOpen && "flex text-ink-muted",
 									"hover:text-ink!",
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
@@ -4614,6 +4798,21 @@ export function ChatSidebar({
 										 * control, and the same two states are what make it operable.
 										 */
 										"group-hover:flex group-hover:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted",
+										/*
+										 * THE HOLD (spec §4), and it is not optional: while THIS row's
+										 * menu is open the reveal is state, not pointer state - the
+										 * menu's portal is modal, so it takes `pointer-events` off the
+										 * page and the row cannot be `:hover`ed however the pointer is
+										 * parked. `flex` and the revealed ink come from `openMenuRowId`
+										 * and stay until the menu closes. EVERY site that authors the
+										 * reveal carries the clause - this glyph, the archive's own,
+										 * the pair wrapper, and the move pair and grip #697 adds to
+										 * the pinned strip (folded in together) - because a hold on
+										 * the wrapper alone renders a `flex` box with nothing in it,
+										 * and one on a glyph alone is a revealed control inside a
+										 * `hidden` parent.
+										 */
+										menuOpen && "flex text-ink-muted",
 										"hover:text-ink!",
 									),
 							// Colour step only, and only while this row is NOT the current
@@ -4783,6 +4982,8 @@ export function ChatSidebar({
 								"text-ink-dim",
 								"group-hover:flex group-hover:text-ink-muted",
 								"group-focus-within:flex group-focus-within:text-ink-muted",
+								/* The hold, as the pin glyph's comment records: the reveal is authored in every revealing control, so the clause rides each. */
+								menuOpen && "flex text-ink-muted",
 							),
 							/*
 							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
@@ -4822,17 +5023,45 @@ export function ChatSidebar({
 			</>
 		);
 
-		return withFlyout(
+		/*
+		 * THE BOX IS THE MENU'S TRIGGER. `asChild`, inside the `Tooltip`, so the
+		 * flyout keeps anchoring to the box that does not shrink (spec §3): the
+		 * button shrinks by 56px when the acts reveal, so a menu anchored to it
+		 * would move under its own row. A consequence that is intended rather than
+		 * tolerated: whatever is inside the box - the title, the timestamp, either of
+		 * the pair's controls - is a right-click target, and a right-click is not a
+		 * press, so the control under the pointer does not act.
+		 *
+		 * THE MENU'S STATE IS THE SIDEBAR'S, not the trigger's: the box carries the
+		 * Tooltip's `data-state` too (two Radix triggers, one attribute), so the hold
+		 * classes read `openMenuRowId`, and `onOpenChange` below is what keeps it
+		 * true for exactly the row whose menu is up. The panel renders through the
+		 * primitive's portal and anchors from the point the opener wrote.
+		 *
+		 * THE WITHDRAWN PATH ABOVE CARRIES NONE OF THIS: no trigger, no
+		 * `data-session-menu-trigger`, no keydown handler - which is what keeps that
+		 * panel the one it had before this feature existed.
+		 */
+		const rowBox = (
 			<div
 				/* The row's own box, and the hook the current-row ground is asserted
 				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
 				data-session-row={row.session_id}
 				/*
-				 * THE DRAGGED ROW'S OWN MARK (issue #697, item 5). It is on the BOX and not on
-				 * the grip, because the claim is about the whole row the reader is moving; the
-				 * ground step it draws is `rowDragging`'s and the outline is `rowDraggingMark`'s
-				 * (both carry their own notes, including why the held state is not a fill).
+				 * THE DRIVER'S HOOK: the element a scene finds when it needs this row's
+				 * menu open (dispatch a `contextmenu` at it, or focus its button and
+				 * press `Shift+F10`). It is also the fact "this row's acts are
+				 * reachable outside the hover chord".
+				 *
+				 * AND THE DRAGGED ROW'S OWN MARK (issue #697, item 5) lives on the same
+				 * box: it is on the BOX and not on the grip, because the claim is about
+				 * the whole row the reader is moving; the ground step it draws is
+				 * `rowDragging`'s and the outline is `rowDraggingMark`'s (both carry
+				 * their own notes, including why the held state is not a fill).
 				 */
+				data-session-menu-trigger
+				onKeyDown={openRowMenuAtKeyboard}
+				onPointerDownCapture={rememberFocusBeforePress}
 				data-dragging={dragging ? "" : undefined}
 				onBlur={keepFlyoutWhileFocusStaysInRow}
 				className={cn(
@@ -4869,6 +5098,15 @@ export function ChatSidebar({
 					 * is the substitution `rowCurrent`'s own override exists to stop.
 					 */
 					(pinsEnabled || archiveEnabled) && !current && "hover:bg-row-hover",
+					/*
+					 * THE HELD GROUND: while this row's menu is open the pointer cannot hold
+					 * `:hover` (the menu's portal is modal), so the ground the reader opened
+					 * the menu on comes from `openMenuRowId` - the state-driven half of the
+					 * hold, the same rule the class above spells for the pointer. `!current`
+					 * for the reason that class's comment records: the selected ground must
+					 * not be repainted as the pointer's.
+					 */
+					menuOpen && !current && "bg-row-hover",
 					rowBoxStyle,
 					current && rowCurrent,
 					/*
@@ -4901,6 +5139,7 @@ export function ChatSidebar({
 				{rowButton}
 				{silentRemedy}
 				{readAckRemedy}
+				{menuRemedy}
 				{/*
 				 * THE PAIR. Both acts are siblings of the row's button, never children, and both
 				 * are absent from the layout until the pointer or the keyboard is inside the row
@@ -4926,7 +5165,13 @@ export function ChatSidebar({
 						data-session-control-pair
 						className={cn(
 							"items-center gap-1",
-							pinned
+							/*
+							 * `menuOpen` holds the wrapper revealed for the same reason each glyph
+							 * holds its own (see the pin's comment): the wrapper alone would be a
+							 * `flex` box with nothing in it, and the glyphs alone would be
+							 * revealed controls inside a `hidden` parent.
+							 */
+							pinned || menuOpen
 								? "flex"
 								: "hidden group-hover:flex group-focus-within:flex",
 						)}
@@ -4936,8 +5181,160 @@ export function ChatSidebar({
 				) : (
 					controls
 				)}
-			</div>,
-			row.session_id,
+			</div>
+		);
+
+		return (
+			<ContextMenu
+				key={row.session_id}
+				open={menuOpen}
+				onOpenChange={(open) => {
+					/*
+					 * THE POINTER CLOSE'S RETURN TARGET WHEN NO PRESS RAN (U8; the
+					 * restore lives in `onCloseAutoFocus`). The press records it
+					 * earlier, on `pointerdown`'s capture phase (QA round 3, Q-1 -
+					 * `rememberFocusBeforePress`), so this runs only when nothing has
+					 * been recorded yet - a dispatched `contextmenu` - and can never
+					 * overwrite the press-time value.
+					 */
+					if (open && menuFocusReturnRef.current === null)
+						menuFocusReturnRef.current =
+							document.activeElement instanceof HTMLElement
+								? document.activeElement
+								: null;
+					setOpenMenuRowId((current) =>
+						open ? row.session_id : current === row.session_id ? null : current,
+					);
+				}}
+			>
+				<RowMenuOwner
+					id={row.session_id}
+					openMenuRowIdRef={openMenuRowIdRef}
+					setOpenMenuRowId={setOpenMenuRowId}
+					openedByKeyboard={menuOpenedByKeyboard}
+				/>
+				{withFlyout(
+					<ContextMenuTrigger asChild>{rowBox}</ContextMenuTrigger>,
+					row.session_id,
+				)}
+				{/*
+				 * THE ITEMS: the row's own acts in the pair's measured order - the archive
+				 * glyph is `order-first` in the strip, so the menu reads Archive then Pin
+				 * and the two surfaces cannot present the same pair backwards - drawn from
+				 * THE SAME PREDICATES the pair reads (`archiveEnabled`,
+				 * `row.pinned !== undefined`), so the two cannot disagree about what a row
+				 * offers. WITHDRAWN, NEVER DISABLED: an act the row cannot take is an
+				 * absent row, not a greyed one, the rule the row's controls already
+				 * follow.
+				 *
+				 * Each item presses the row's own control through `pressRowAct`, so the
+				 * write, its guards and its focus correction arrive unchanged; the chord
+				 * cap is the `+`-joined spelling `KeyboardShortcut` splits (`joined`
+				 * suppresses the printed `+`), and it stays in the item's accessible name
+				 * - the discovery this menu exists to spend.
+				 */}
+				<ContextMenuContent
+					onFocus={(event) => {
+						/*
+						 * THE KEYBOARD PATH LANDS IN THE FIRST ITEM (U-D4's minimum; the
+						 * pointer path keeps the primitive's default - focus on the menu
+						 * itself, no item highlighted - because a row revealed by the
+						 * pointer has no keyboard place to keep).
+						 *
+						 * WHY THIS RIDES THE CONTAINER'S OWN FOCUS EVENT rather than
+						 * Radix's `onOpenAutoFocus`: that hook is real at runtime but the
+						 * primitive keeps it OUT of its public prop TYPES (the same
+						 * `MenuContentImplPrivateProps` interface `MenuSubContent` consumes
+						 * with different semantics), and this directory's wrappers take no
+						 * untyped escapes. The mount already focuses the content on this
+						 * path, so its first focus event is the public place to redirect
+						 * from - the spec's own second acceptable mechanism, "focusing the
+						 * first `[role=menuitem]` after the open effect".
+						 */
+						if (!menuOpenedByKeyboard.current) return;
+						if (event.target !== event.currentTarget) return;
+						event.currentTarget
+							.querySelector<HTMLElement>('[role="menuitem"]')
+							?.focus();
+					}}
+					onCloseAutoFocus={(event) => {
+						/*
+						 * BOTH PATHS PREVENT THE DEFAULT; what each focuses differs. The
+						 * keyboard path returns the caret to the row's own button - where
+						 * the press came from, the shape the pin control's caret correction
+						 * already uses. The pointer path focuses the element the open
+						 * captured (U8): the primitive moves focus into the panel on open
+						 * even under the pointer, and the element it sits on is unmounting
+						 * here, so returning without focusing dropped the caret to `<body>`
+						 * and the next keystroke a reader typed reached nothing (QA round 2:
+						 * composer focused -> right-click -> Escape -> `<body>`). When the
+						 * remembered node is gone, the row's own button is the deliberate
+						 * fallback - the keyboard path's own destination; with neither,
+						 * focus is left alone rather than aimed at a guess. The primitive's
+						 * own guard (focus back to the trigger) never runs: its listener is
+						 * composed after this one and checks `defaultPrevented`.
+						 */
+						event.preventDefault();
+						const remembered = menuFocusReturnRef.current;
+						menuFocusReturnRef.current = null;
+						if (!menuOpenedByKeyboard.current) {
+							if (remembered?.isConnected) remembered.focus();
+							else
+								document
+									.querySelector<HTMLElement>(
+										`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+									)
+									?.focus();
+							return;
+						}
+						menuOpenedByKeyboard.current = false;
+						document
+							.querySelector<HTMLElement>(
+								`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+							)
+							?.focus();
+					}}
+				>
+					{archiveEnabled && (
+						<ContextMenuItem
+							onSelect={() => pressRowAct(row.session_id, "archive")}
+						>
+							{archived ? (
+								<ArchiveRestore aria-hidden="true" />
+							) : (
+								<Archive aria-hidden="true" />
+							)}
+							<span>
+								{archived ? "Unarchive conversation" : "Archive conversation"}
+							</span>
+							<span className="ml-auto pl-6">
+								<KeyboardShortcut
+									shortcut={chatRowActCapJoined("archive", isMac)}
+									joined
+								/>
+							</span>
+						</ContextMenuItem>
+					)}
+					{row.pinned !== undefined && (
+						<ContextMenuItem
+							onSelect={() => pressRowAct(row.session_id, "pin")}
+						>
+							{pinned ? (
+								<PinOff aria-hidden="true" />
+							) : (
+								<Pin aria-hidden="true" />
+							)}
+							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
+							<span className="ml-auto pl-6">
+								<KeyboardShortcut
+									shortcut={chatRowActCapJoined("pin", isMac)}
+									joined
+								/>
+							</span>
+						</ContextMenuItem>
+					)}
+				</ContextMenuContent>
+			</ContextMenu>
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
@@ -5576,7 +5973,139 @@ export function ChatSidebar({
 		if (row !== null && row !== undefined && navRef.current?.contains(row))
 			applyRowStop(row as HTMLElement);
 	};
+	/*
+	 * THE ROW WHOSE CONTEXT MENU IS OPEN, as the sidebar's own state, because the
+	 * menu's consequences cannot be trigger attributes: the box is ALREADY a Radix
+	 * trigger (the shared Tooltip's) and carries the tooltip's `data-state` while
+	 * the flyout is drawn - the very state a right-click happens in - so two
+	 * triggers write one attribute and a rule authored against it would hold or
+	 * drop depending on which component re-rendered last. The row's own
+	 * consequences (the held reveal and ground) are ordinary conditional classes
+	 * computed from this id instead, and `scripts/chat-sidebar-row-menu.test.mjs`
+	 * pins the forbidden spelling rather than this comment. One id rather than a
+	 * boolean per row: only one menu can be open, and a boolean would need a set
+	 * of them.
+	 */
+	const [openMenuRowId, setOpenMenuRowId] = useState<string | null>(null);
+	/*
+	 * WHICH PATH OPENED THE OPEN MENU, because the two differ at both focus edges:
+	 * the keyboard path lands in the first item on open (U-D4's minimum) and
+	 * returns the caret to the row's button on close; the pointer path takes no
+	 * focus OF ITS OWN but gives back what the primitive's open took (U8 below).
+	 * A ref rather than state: it is read only inside the menu's own focus
+	 * callbacks, and it must not re-render the row it describes.
+	 */
+	const menuOpenedByKeyboard = useRef(false);
+	/*
+	 * WHAT HELD FOCUS BEFORE A ROW'S MENU WAS ASKED FOR, for the pointer path's
+	 * close (UX round 2, U8; re-read at the press by QA round 3's Q-1). The
+	 * pointer path takes no focus of its own, but the primitive still moves
+	 * focus into the panel on open - the shipped `pointer-hover` frame reads
+	 * `focus: menuitem` - and on close the element holding it unmounts, so
+	 * without a memory the caret fell to `<body>` and a reader who was typing
+	 * had to click before the next keystroke landed (QA round 2's reading:
+	 * composer focused -> right-click -> Escape -> `<body>`).
+	 *
+	 * READ AT `pointerdown`, IN THE CAPTURE PHASE, because the press itself is
+	 * what moves focus: a real right-press's `mousedown` default focuses the
+	 * row's button BEFORE the menu opens, so a capture inside `onOpenChange`
+	 * remembered the button - Escape returned it and the next keystroke started
+	 * the row's type-to-filter (QA round 3's Q-1, measured live). The capture
+	 * phase runs before that default, where the control the reader was in is
+	 * still the active element; `onOpenChange` keeps a capture for opens with
+	 * no press (a dispatched `contextmenu`), guarded so it cannot overwrite the
+	 * press-time value. One ref for the whole sidebar rather than one per row,
+	 * for the same reason `openMenuRowId` is one id: only one menu can be open.
+	 * Read in `onCloseAutoFocus`, never rendered - so a ref, not state.
+	 */
+	const menuFocusReturnRef = useRef<HTMLElement | null>(null);
+	/*
+	 * THE ID'S LATEST VALUE, read by the row instances' unmount cleanup
+	 * (`RowMenuOwner`): a cleanup runs with what its own closure saw last, and
+	 * the row that is LEAVING does not re-render first - so the value is kept
+	 * here rather than expected through a prop. Synced after every id change,
+	 * which every unmount that matters is a later commit of.
+	 */
+	const openMenuRowIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		openMenuRowIdRef.current = openMenuRowId;
+	}, [openMenuRowId]);
+	/*
+	 * THE KEYBOARD OPENER (`ContextMenu`, and `Shift+F10` with it): the keyboard's
+	 * own way to ask "what can I do with this", the shape `use-link-subject.ts`
+	 * already trusts over the platform.
+	 *
+	 * THE POINT IS SYNTHESISED, never read from the ambient event: a
+	 * keyboard-originated `contextmenu` carries coordinates that are not specified
+	 * (and may be `0,0`), which would anchor the panel to the viewport's corner
+	 * and trip the primitive's own "position is indeterminate" path. The box's own
+	 * edge is the anchor - `rect.left`, `rect.bottom - 1` - and dispatching the
+	 * trigger's own `contextmenu` also sets the primitive's `hasInteractedRef`
+	 * before `open`, so that path is unreachable by construction.
+	 *
+	 * WIRED ON THE BOX rather than on the button, because the box IS the trigger
+	 * and the pointer path already works this way - a right-click anywhere inside
+	 * the box opens the row's menu - so a `Shift+F10` pressed while focus is on
+	 * one of the row's own controls opens it too: the row is the unit the menu
+	 * acts on. `menuOpenedByKeyboard` is what the menu's focus callbacks read to
+	 * keep the two paths' focus behaviour apart.
+	 */
+	const openRowMenuAtKeyboard = (event: KeyboardEvent<HTMLElement>) => {
+		if (
+			event.key !== "ContextMenu" &&
+			!(event.shiftKey && event.key === "F10")
+		) {
+			return;
+		}
+		const box = event.currentTarget;
+		event.preventDefault();
+		menuOpenedByKeyboard.current = true;
+		const rect = box.getBoundingClientRect();
+		box.dispatchEvent(
+			new MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				clientX: rect.left,
+				clientY: rect.bottom - 1,
+			}),
+		);
+	};
+	/*
+	 * THE PRE-PRESS FOCUS (QA round 3, Q-1). Wired as the box's
+	 * `onPointerDownCapture`, so it runs in the CAPTURE phase - before the
+	 * press's own `mousedown` default moves focus to the row's button - and the
+	 * control the reader was in (the composer) is what gets remembered, which
+	 * is what the pointer close must give back: read at open time instead, the
+	 * remembered button came back and a following keystroke began the row's
+	 * type-to-filter. Every button, not only the right one: `Control`+click is
+	 * a context-menu press on this platform and its left-button default moves
+	 * focus the same way. Skipped while a menu is already open, so a press on
+	 * another row cannot overwrite the value the closing menu is about to
+	 * restore.
+	 */
+	const rememberFocusBeforePress = () => {
+		if (openMenuRowIdRef.current !== null) return;
+		menuFocusReturnRef.current =
+			document.activeElement instanceof HTMLElement
+				? document.activeElement
+				: null;
+	};
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
+		/*
+		 * AND WHILE A ROW'S MENU IS OPEN THE LIST STANDS DOWN (spec §6).
+		 *
+		 * Focus is inside the menu's portal, so the keys arriving through this
+		 * handler are the menu's - its roving focus, its typeahead, Escape - and none
+		 * of them is about the list. Without this guard the walk below would still
+		 * answer: it reads a target that is not a row as index -1, and `ArrowDown`
+		 * then steps to `rows[0]`, so an arrow pressed inside the open menu would
+		 * move focus OUT of it to the list's first conversation; the type-to-filter
+		 * branch is safe only by accident of its attribute check. `openMenuRowId` is
+		 * exactly the claim this guard reads - and it cannot outlive the row that
+		 * set it: `RowMenuOwner`, rendered with every menu-carrying row, clears it
+		 * on that row's unmount (UX round 1, U1).
+		 */
+		if (openMenuRowId !== null) return;
 		const target = event.target as HTMLElement;
 		/*
 		 * THE ROW ACTS' CHORD (§C4, U2). Both controls left the Tab ring below, and
