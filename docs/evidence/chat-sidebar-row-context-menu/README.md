@@ -158,10 +158,9 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   `pointer-open-unheld` control reproduces a defect the shipped hold removes,
   and nothing in this set re-photographs it.
 - **The fold.** The branch carries four merges of `origin/main` (`0044c53422`,
-  `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3`) before the review rounds; the frames
-  were captured over the committed implementation (the two round-1 remediation
-  states at the commit the manifest's `addedAtHead` names), and the manifest's
-  pass record names the commits they came from.
+  `9dd18ab318`, `0f35e824ac`, and `1cb4a2a8b3`, round 1's remediation fold);
+  the two remediation states were captured at the commit `addedAtHead` names,
+  and the manifest's pass record names the commits the frames came from.
 - The story renders the app's real `ChatSidebar` over a stubbed transport, so
   no frame touches a live backend; `--allow-backend` is passed because the
   operator's own backend answers on 1111 and the rig refuses a run that could
