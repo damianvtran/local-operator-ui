@@ -131,6 +131,7 @@ import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type ProviderErrorAction,
@@ -1084,12 +1085,17 @@ const AssistantRow = memo(function AssistantRow({
 			 * markdown's own block margins collapse.
 			 */}
 			{/*
-			 * Left-aligned by the container's own `pl-10` gutter, which is the padding
-			 * the answer's prose already starts at - so the caption and the prose share
-			 * one left edge structurally rather than by a second measurement (the frame
-			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
+			 * ALIGNED STRUCTURALLY, NOT BY A GUTTER. This line is a sibling of the answer's
+			 * content box inside `MessageContainer`, which is `relative w-full` for an agent
+			 * row (D11: the 40px gutter and the agent glyph it existed for are both
+			 * deleted), so the two share the container's own left edge with nothing between
+			 * them. The comment this replaces named a `pl-10` gutter that no class in
+			 * `features/chat` supplies any more, and a frame cannot settle an edge claim -
+			 * so the rail is MEASURED from the rendered DOM
+			 * (`scripts/chat-alignment-geometry.mjs`), and the numbers are in
+			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
-			{closesTurn && !closingLineSuppressed && (
+			{closesTurn && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
@@ -1107,9 +1113,35 @@ const AssistantRow = memo(function AssistantRow({
 				 * same record cannot be the one that opens, and it opens that row's
 				 * disclosure BEFORE scrolling - the detail is what the reader came for, and
 				 * landing on a closed row would make the jump a second click.
+				 *
+				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
+				 * not a second band: a band of its own would cost a whole row per turn and
+				 * would leave the turn's LAST line being controls rather than the turn's own
+				 * fact. The actions take the line's left so the reader's eye returns to one
+				 * rail - the prose's - and the caption follows them on the same line.
+				 *
+				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
+				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
+				 * answer (there is prose to copy), so they render whenever the turn closes;
+				 * the NUMBERS and the STAMP are facts about the turn's closing line, and a run
+				 * that carries a turn bar already states both (`closingLineSuppressed`, F5).
+				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{foot && foot.actions > 0 && (
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{isQuotable(record, remainingContent) && (
+						<AnswerActionRow
+							bodyText={remainingContent}
+							agentId={conversationId}
+							speechId={record.id}
+						/>
+					)}
+					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
@@ -1128,9 +1160,11 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
-					<span className={cn("ml-auto")}>
-						<TurnTimestamp timestamp={record.ts} scope="answer" />
-					</span>
+					{!closingLineSuppressed && (
+						<span className={cn("ml-auto")}>
+							<TurnTimestamp timestamp={record.ts} scope="answer" />
+						</span>
+					)}
 				</div>
 			)}
 		</MessageContainer>
