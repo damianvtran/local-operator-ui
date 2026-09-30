@@ -27,6 +27,11 @@
  * instead, after the flyout has drawn, and `flyout-alone` is its control - same
  * hover, same dwell, no menu. `menu-closed` is the before/after partner of
  * `pointer-open`: the same scene and the same settle, without the open.
+ *
+ * THE ARCHIVED-ROW STATE DRIVES THE SEARCH BLOCK'S OWN CONTROLS - the field's
+ * `input` event, then a real press on `Include archived` - because that is the
+ * only list an archived conversation is drawn in, and its menu is the one that
+ * reads `Unarchive conversation`, the widest label this panel draws.
  */
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -38,7 +43,7 @@ import { ChatSidebar } from "./chat-sidebar";
 
 /* --------------------------------------------------------------- the bridge */
 
-type BridgeRequest = { op: string; q?: string };
+type BridgeRequest = { op: string; q?: string; include_archived?: boolean };
 
 /** One row in `sessions.list`'s own wire field names, as the backend sends it. */
 type WireRow = {
@@ -54,6 +59,7 @@ type WireRow = {
 	status: { code: string; label: string };
 	status_revision: number;
 	status_epoch: string;
+	archived?: boolean;
 };
 
 const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
@@ -101,6 +107,17 @@ const roster = (): WireRow[] => {
 		 * control either.
 		 */
 		row("s3", "Quarterly revenue model", now - 900),
+		/*
+		 * THE ARCHIVED ROW. `archived: true` is what the daemon's own answer carries
+		 * for a conversation the search block's `Include archived` may draw, and it
+		 * is the value the menu's item copy reads (`Unarchive conversation`). The
+		 * default lists never draw it - the panel fetches it, the lists do not - so
+		 * this state has to widen the search before it can open the menu at all.
+		 */
+		row("s4", "Invoice reconciliation", now - 1200, {
+			pinned: false,
+			archived: true,
+		}),
 	];
 };
 
@@ -134,16 +151,26 @@ const bridge = (features: { pins: boolean; archive: boolean }) => {
 				});
 			case "sessions.list":
 				return ok({ sessions: rows, truncated: false });
-			case "sessions.search":
+			case "sessions.search": {
+				/*
+				 * The route's own default: archived conversations are ABSENT from an
+				 * ordinary answer and present only in a widened one - which is why the
+				 * archived-row state has to drive the checkbox before the menu can be
+				 * opened on its row.
+				 */
+				const widened = request.include_archived === true;
 				return ok({
 					query: request.q ?? "",
 					limit: 100,
-					sessions: rows.filter((entry) =>
-						entry.name
-							.toLowerCase()
-							.includes((request.q ?? "").toLocaleLowerCase()),
+					sessions: rows.filter(
+						(entry) =>
+							(widened || entry.archived !== true) &&
+							entry.name
+								.toLowerCase()
+								.includes((request.q ?? "").toLocaleLowerCase()),
 					),
 				});
+			}
 			case "profiles.list":
 				return ok({ profiles: [] });
 			case "teams.list":
@@ -165,6 +192,25 @@ const bridge = (features: { pins: boolean; archive: boolean }) => {
 /* --------------------------------------------------------------- helpers */
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The element `find` returns, polled until it exists.
+ *
+ * The states that drive the SEARCH controls wait on things a press produces -
+ * the checkbox renders only once a query is in the field, the archived row only
+ * once the widened request has answered - and a fixed sleep long enough for the
+ * slowest of those would be paid by every other state.
+ */
+const waitFor = async <T extends Element>(
+	find: () => T | null,
+): Promise<T | null> => {
+	for (let i = 0; i < 120; i++) {
+		const found = find();
+		if (found) return found;
+		await sleep(100);
+	}
+	return null;
+};
 
 const resetStores = () => {
 	useUiPreferencesStore.setState({
@@ -203,17 +249,49 @@ const Panel: FC<{
 	 * compared against.
 	 */
 	noMenu?: boolean;
-}> = ({ sessionId, spot, delayMs = 250, noMenu = false }) => {
+	/**
+	 * The query this state types into the search field before opening the menu.
+	 *
+	 * Set through the field's own `input` event and followed by a real press on
+	 * `Include archived` (the id is `INCLUDE_ARCHIVED_ID` in `chat-sidebar.tsx`),
+	 * because the row it photographs exists in no other list: the panel fetches
+	 * archived conversations and the default lists do not draw them.
+	 */
+	search?: string;
+}> = ({ sessionId, spot, delayMs = 250, noMenu = false, search }) => {
 	useEffect(() => {
 		let cancelled = false;
 		void (async () => {
-			let box: HTMLElement | null = null;
-			for (let i = 0; i < 120 && !box; i++) {
-				box = document.querySelector<HTMLElement>(
-					`[data-session-row="${sessionId}"]`,
+			if (search !== undefined) {
+				/*
+				 * THE REAL CONTROLS, driven the way the user drives them. The field's
+				 * value goes in through the native setter plus the `input` event
+				 * React listens for (React tracks the value on the node, so a bare
+				 * `.value =` write is discarded); `Include archived` is a Radix
+				 * checkbox root, so its own click handler is the honest press.
+				 */
+				const field = await waitFor(() =>
+					document.querySelector<HTMLInputElement>(
+						'input[aria-label="Search chats and agents"]',
+					),
 				);
-				if (!box) await sleep(100);
+				if (!field || cancelled) return;
+				Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				)?.set?.call(field, search);
+				field.dispatchEvent(new Event("input", { bubbles: true }));
+				const include = await waitFor(() =>
+					document.querySelector<HTMLElement>("#chat-search-include-archived"),
+				);
+				if (!include || cancelled) return;
+				include.click();
 			}
+			const box = await waitFor(() =>
+				document.querySelector<HTMLElement>(
+					`[data-session-row="${sessionId}"]`,
+				),
+			);
 			if (!box || cancelled) return;
 			/*
 			 * The row has to be IN the frame for its ground and its pair to be
@@ -276,7 +354,7 @@ const Panel: FC<{
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionId, spot, delayMs, noMenu]);
+	}, [sessionId, spot, delayMs, noMenu, search]);
 
 	return <Readout sessionId={sessionId} />;
 };
@@ -446,7 +524,8 @@ const Page: FC<{
 	spot: Spot;
 	delayMs?: number;
 	noMenu?: boolean;
-}> = ({ sessionId, spot, delayMs, noMenu }) => (
+	search?: string;
+}> = ({ sessionId, spot, delayMs, noMenu, search }) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		{/* The panel's own column: the app's 280px sidebar width, the width every
 		    row-space decision in this change was measured at. */}
@@ -470,6 +549,7 @@ const Page: FC<{
 				spot={spot}
 				delayMs={delayMs}
 				noMenu={noMenu}
+				search={search}
 			/>
 		</div>
 	</div>
@@ -493,6 +573,7 @@ const state = (
 		spot: Spot;
 		delayMs?: number;
 		noMenu?: boolean;
+		search?: string;
 		features: { pins: boolean; archive: boolean };
 	},
 ): Story => ({
@@ -506,6 +587,7 @@ const state = (
 				spot={args.spot}
 				delayMs={args.delayMs}
 				noMenu={args.noMenu}
+				search={args.search}
 			/>
 		);
 	},
@@ -569,4 +651,17 @@ export const MenuClosed = state("Row under the pointer, no menu", {
 	spot: "pointer",
 	noMenu: true,
 	features: BOTH,
+});
+
+/**
+ * `Unarchive conversation` on the archived row, reached the way the feature
+ * reaches it: a widened search (`Include archived`), then the menu at the row's
+ * own box. This label is the widest this menu draws, so the frame closes the
+ * width table's archived case as well as the copy variant.
+ */
+export const ArchivedRow = state("Archived row, unarchive at the pointer", {
+	sessionId: "s4",
+	spot: "pointer",
+	features: BOTH,
+	search: "Invoice",
 });
