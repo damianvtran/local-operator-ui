@@ -225,6 +225,41 @@ test("the announcement is bounded at rest and whole once the row is open", () =>
 		"a resting row announces the clamped lines, not the whole string",
 	);
 	assert.ok(lib.announcedDescription(long, false).endsWith("…"), "and says so");
+	/*
+	 * N3 (agent review round 2): the cut lands on a WORD boundary, not a character.
+	 * The property is that the next character in the source is the space the cut
+	 * backed off to - a character cut fails it, because the character at the bound
+	 * is then a letter ("...adverse med", "...grouped by regim").
+	 */
+	/*
+	 * A fixture whose words do NOT align with the bound, so the two cuts differ:
+	 * a character cut stops inside "Antidisestablishmentarianism", a word cut
+	 * backs off to the space before it.
+	 */
+	const prose = "Antidisestablishmentarianism ".repeat(20);
+	const cut = lib.announcedDescription(prose, false);
+	const head = cut.slice(0, -1);
+	assert.equal(cut.at(-1), "…");
+	assert.equal(
+		prose[head.length],
+		" ",
+		"the cut stopped at the space it backed off to, dropping no half word",
+	);
+	assert.ok(head.length < lib.DESCRIPTION_ANNOUNCE_CHARS);
+	assert.equal(
+		prose.slice(0, head.length),
+		head,
+		"everything announced is a whole-word prefix of the description",
+	);
+	/*
+	 * And the unbroken-token case above is the fallback, not an accident: a window
+	 * with no space in it has no word boundary to back off to, so it cuts at the
+	 * bound rather than dropping the whole announcement.
+	 */
+	assert.equal(
+		lib.announcedDescription("x".repeat(3_000), false).length,
+		lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
+	);
 	assert.equal(
 		lib.announcedDescription(long, true),
 		long,
@@ -360,13 +395,35 @@ const click = async (dom, element) => {
 	});
 };
 
+/**
+ * The accessible name, computed the one way jsdom can: the trigger's text with
+ * `aria-hidden` subtrees removed - which is what a browser does for a name built
+ * from content.
+ *
+ * M2 (agent review round 1): the separator commas ARE the pause the hidden dots
+ * stood for, and deleting them left the suite green, so they are asserted rather
+ * than described. M4 (round 2): the same helper is what proves the resting NAME is
+ * bounded - the sr-only copy's own length cannot see the visible element losing its
+ * `aria-hidden`.
+ */
+const accessibleName = (button) => {
+	const clone = button.cloneNode(true);
+	for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
+		hidden.remove();
+	}
+	return clone.textContent;
+};
+
 /** A team whose description is far past the expanded ceiling (row (f) of the fixture). */
 const longTeam = () =>
 	team({
 		id: "long",
 		name: "Regulatory watch",
-		description:
-			"This team keeps a running brief of every regulatory change. ".repeat(60),
+		// The marker sits past the announcement bound, so its presence in the name
+		// would be the description arriving twice (M4).
+		description: `${"This team keeps a running brief of every regulatory change. ".repeat(
+			60,
+		)}END-OF-DESCRIPTION`,
 	});
 const ROSTER = [
 	team({ id: "a", name: "Alpha", description: "Alpha does the first thing." }),
@@ -418,20 +475,6 @@ test("each row is one disclosure, Pull is its sibling, and the name carries the 
 			assert.ok(pull, "Pull is present");
 			assert.equal(triggers[0].contains(pull), false, "Pull is a sibling");
 		}
-		/*
-		 * The accessible name, computed the one way jsdom can: the trigger's text
-		 * with `aria-hidden` subtrees removed - which is what a browser does for a
-		 * name built from content. M2 (agent review round 1): the separator commas
-		 * ARE the pause the hidden dots stood for, and deleting them left the suite
-		 * green, so they are asserted here rather than described.
-		 */
-		const accessibleName = (button) => {
-			const clone = button.cloneNode(true);
-			for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
-				hidden.remove();
-			}
-			return clone.textContent;
-		};
 		const name = accessibleName(rows[0].querySelector("button[aria-expanded]"));
 		assert.match(
 			name,
@@ -609,6 +652,28 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 			assert.ok(
 				srOnly.textContent.length <= lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
 				`the resting announcement is bounded - ${srOnly.textContent.length}`,
+			);
+			/*
+			 * M4 (agent review round 2): the bound above measures the sr-only copy
+			 * alone, so it stayed green when the `aria-hidden` on the visible element
+			 * was stripped - and with it stripped the NAME carries the description
+			 * twice, measured 358 -> 3,957 characters. This asserts the property that
+			 * actually matters: the accessible name the reader hears is bounded, so
+			 * removing either half of the pair turns it red.
+			 */
+			const restingName = accessibleName(trigger);
+			assert.ok(
+				restingName.length <= lib.DESCRIPTION_ANNOUNCE_CHARS + 200,
+				`the resting NAME is bounded, not just the copy - ${restingName.length}`,
+			);
+			assert.doesNotMatch(
+				restingName,
+				/END-OF-DESCRIPTION/,
+				"the tail past the bound does not reach the name, so the description is not in it twice",
+			);
+			assert.ok(
+				restingName.length < long.description.length / 4,
+				"the name is the announcement, not the whole description",
 			);
 			assert.ok(
 				trigger.querySelector(".break-words").textContent.length > 3_000,

@@ -655,6 +655,14 @@ const TeamSummary = ({
 					>
 						{description}
 					</span>
+					{/*
+					 * Q2 (QA round 2): `innerText` for this row now carries the description
+					 * TWICE - once from the visible `aria-hidden` element and once from this
+					 * copy - so an assertion written against `innerText` measures the
+					 * duplication rather than the announcement. Target the accessible name
+					 * (the text with `aria-hidden` subtrees removed, as
+					 * `scripts/org-teams-summary.test.mjs` does) or this element itself.
+					 */}
 					<span className="sr-only">
 						{announcedDescription(description, expanded)}
 					</span>
@@ -682,8 +690,11 @@ const TeamSummary = ({
  * Without them the block read as a fifth summary line: the slot list repeated L3
  * in the same grammar, 8px under it (UX round 1, U8/U9). The `Members` label makes
  * it a block with a statement of its own, and `mt-1` on top of the primitive's own
- * `mt-1` gives the 12px the spacing ramp uses between things that are not one
- * thing - without a rule, which § 2's boundary test says earns nothing here.
+ * `mt-1` opens the gap - MEASURED 8.0px box-to-box, 9.4px text-to-text, which is
+ * what the two `mt-1` steps and the primitive's own `gap-2` actually produce (an
+ * earlier draft of this comment said "12px", the ramp step that was intended rather
+ * than the number on screen; design round 2, D6). No rule was added: § 2's boundary
+ * test says one would earn nothing here.
  *
  * ## The one repeat, and why it survives
  *
