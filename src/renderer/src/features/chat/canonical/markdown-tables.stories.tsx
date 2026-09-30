@@ -26,6 +26,18 @@
  *    competing for the same measure.
  *  - `FewRows`: two rows only, the control that must not regress while the
  *    wider tables are fixed.
+ *  - `ThreeShas`: three 40-character sha columns beside one short label
+ *    column, where the sum of the columns' min-contents (~1,000px) exceeds
+ *    the measure - the CONTAINMENT case: the table keeps its natural width
+ *    and the wrapper scrolls, instead of squeezing or pushing the page.
+ *  - `GiantToken`: a single 263-character unbreakable digest - the CEILING
+ *    case: the cell cap makes the token wrap inside its own column rather
+ *    than widening the table into a scroll.
+ *
+ * The last two are AFTER-only states (the fix's own capture registers them;
+ * the before half has the five reproduction states alone), added at the
+ * design consult's request so the containment and ceiling behaviours are
+ * photographed rather than only measured.
  *
  * WHY THE TRANSCRIPT AND NOT A BARE TABLE. `.lo-markdown` is styled by
  * descendant selectors against react-markdown's output (`markdown.css`), and
@@ -138,6 +150,43 @@ const FEW_ROWS = [
 	"| Loader continuity | PASS | 1a merged in f11952f1d2 |",
 ].join("\n");
 
+/*
+ * Three 40-character sha columns beside one short label column: each sha
+ * column's min-content is its whole token (~308px at the cell's face, read
+ * from the before set's MEASUREMENTS), so the table's natural width is
+ * ~1,000px against the 810px measure.
+ *
+ * This is the CONTAINMENT case: the table must keep its natural width and
+ * scroll inside the wrapper the fix adds, never squeeze its columns and never
+ * push the page sideways. The cells are this lane's own parent chain, read
+ * from git on 2026-09-30 - the fold commit and its parent and grandparent,
+ * then the parent and grandparent of that - so every string is a hash the
+ * product can actually carry (the rule the docblock above states for shas).
+ */
+const THREE_SHAS = [
+	"| Repo | Commit | Parent | Grandparent |",
+	"| --- | --- | --- | --- |",
+	"| local-operator-ui | 4d09415b7eedfc9bbaea7eeba75a7e9496699f53 | 195576496863d01078afd731c0613433db0c8b1e | fb565e2b8af1d2aa575fb5f5e5b02ac8e2aa3e9d |",
+	"| local-operator-ui | 195576496863d01078afd731c0613433db0c8b1e | fb565e2b8af1d2aa575fb5f5e5b02ac8e2aa3e9d | 20ccfd451242e72859fb040e9c0c83a89d49c610 |",
+].join("\n");
+
+/*
+ * One 263-character token with no word boundary at all (the design consult's
+ * own stress token, kept verbatim so the numbers here are comparable with the
+ * consult's).
+ *
+ * This is the CEILING case: a cell's min-content is capped at 64ch, so the
+ * digest wraps inside its own column as the last resort instead of demanding
+ * a 1932px table; the short `note` row beside it pins that the rest of the
+ * table stays at the measure while that wrap happens.
+ */
+const GIANT_TOKEN = [
+	"| Key | Value |",
+	"| --- | --- |",
+	"| digest | sha256:9f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b39f2b7c41e8d05a3b6c19f47e0d82a5b3 |",
+	"| note | short cell beside a 263-char unbreakable token |",
+].join("\n");
+
 /**
  * The transcript pane, filling the rig's viewport.
  *
@@ -209,4 +258,20 @@ export const ManyColumns: Story = {
 /** Two rows only: the control. */
 export const FewRows: Story = {
 	render: () => <Frame records={[answer("a1", FEW_ROWS)]} />,
+};
+
+/**
+ * Three sha columns past the measure: the wrapper must scroll, not squeeze.
+ *
+ * Captured at 1280 and (like `OperatorShape`) at 920: both resolve the same
+ * 810px measure, so the pair reads as margins rather than as a different
+ * table, and the scroll state shows at both of the rig's widths.
+ */
+export const ThreeShas: Story = {
+	render: () => <Frame records={[answer("a1", THREE_SHAS)]} />,
+};
+
+/** A 263-character digest: the cell cap wraps it instead of scrolling. */
+export const GiantToken: Story = {
+	render: () => <Frame records={[answer("a1", GIANT_TOKEN)]} />,
 };

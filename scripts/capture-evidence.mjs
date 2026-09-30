@@ -1180,31 +1180,40 @@ export const STORIES = [
 	 * the agent wrote into an answer rendered with its short columns squeezed
 	 * to a few pixels - the reported cells `#684 (1a)` and `MERGED f11952f1d2`
 	 * wrapped mid-token - while the long prose column beside them took the
-	 * width. Five fixture shapes from `markdown-tables.stories.tsx`: the reported
+	 * width. Seven fixture shapes from `markdown-tables.stories.tsx`: the reported
 	 * table over real pull requests, a 400+ character cell, unbreakable tokens
 	 * (a full 40-character sha, a deep link, a long path), seven mixed columns,
-	 * and a two-row control. Three of the five shapes are also captured at 920
-	 * wide - the narrow rung the agent-hub frames use - so the set carries them
-	 * at a comfort window and at a narrow one; both widths resolve the same 810px
-	 * chat measure, so the pair differs in margins rather than in the table's own
-	 * box (MEASUREMENTS.md in the before half carries the reading).
+	 * and a two-row control - plus the fix's two edge states, `three-shas` (three
+	 * sha columns whose min-contents sum past the measure; the wrapper must
+	 * scroll) and `giant-token` (a 263-character digest; the 64ch cell cap wraps
+	 * it instead). Four of the shapes are also captured at 920 wide - the narrow
+	 * rung the agent-hub frames use - so the set carries them at a comfort window
+	 * and at a narrow one; both widths resolve the same 810px chat measure, so the
+	 * pair differs in margins rather than in the table's own box (MEASUREMENTS.md
+	 * in the before half carries the reading).
 	 *
 	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
 	 * `../chat-markdown-tables-before/`: captured FIRST from this same tree,
 	 * with the fix not yet written and the story's title temporarily suffixed
 	 * `before` for that run, so the ids land in their own surface directory -
 	 * then the title and the temporary rows were restored. These rows are the
-	 * AFTER half the later fix's own capture writes `docs/evidence/
-	 * chat-markdown-tables/` with.
+	 * AFTER half the fix's own capture writes `docs/evidence/
+	 * chat-markdown-tables/` with, and the asymmetry runs one way by design: the
+	 * two edge states are AFTER-only because the before half is the reproduction
+	 * of the report the fix answers, while the containment and ceiling behaviours
+	 * are the fix's own - before the fix there is no wrapper to photograph.
 	 */
 	["chat-markdown-tables--operator-shape", 1280, 900],
 	["chat-markdown-tables--long-prose", 1280, 900],
 	["chat-markdown-tables--long-tokens", 1280, 900],
 	["chat-markdown-tables--many-columns", 1280, 900],
 	["chat-markdown-tables--few-rows", 1280, 900],
+	["chat-markdown-tables--three-shas", 1280, 900],
+	["chat-markdown-tables--giant-token", 1280, 900],
 	["chat-markdown-tables--operator-shape", 920, 900],
 	["chat-markdown-tables--long-tokens", 920, 900],
 	["chat-markdown-tables--many-columns", 920, 900],
+	["chat-markdown-tables--three-shas", 920, 900],
 	/*
 	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
 	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
