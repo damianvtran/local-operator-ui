@@ -5115,6 +5115,79 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The board's time window (feat/board-time-window): one frame per rung plus
+	 * the states around it. Each play asserts the visible card set - and the R5
+	 * frame's 12d-old progress line under a 24h window - so a capture whose
+	 * filter regressed FAILS rather than photographing the wrong board.
+	 * `-narrow` is the 800px window floor; `-menu-open` photographs the open
+	 * panel with its check on the current rung.
+	 */
+	["projects-tab--board-window-populated", 1280, 900],
+	["projects-tab--board-window-24h", 1280, 900],
+	["projects-tab--board-window-30d", 1280, 900],
+	["projects-tab--board-window-90d", 1280, 900],
+	["projects-tab--board-window-all", 1280, 900],
+	["projects-tab--board-window-empty", 1280, 900],
+	["projects-tab--board-window-widened", 1280, 900],
+	["projects-tab--board-window-menu-open", 1280, 900],
+	["projects-tab--board-window-narrow", 800, 900],
+	["projects-tab--board-window-no-projects", 1280, 900],
+	/*
+	 * The operator's title items (2026-09-30): the clipped card title's reveal
+	 * (the play opens it on hover and leaves it open on FOCUS - the keyboard
+	 * path is the state the shutter lands on), and the long-title detail at
+	 * the wide viewport and the 800px floor, whose wrap and edge-riding
+	 * scrollbar are the frame's whole claim.
+	 */
+	["projects-tab--board-title-tooltip", 1280, 900],
+	/*
+	 * The long-title detail, wide and at the 800px floor. `expectSentence`
+	 * scoped to the `h1` is the machine-checked half of the claim: the header
+	 * leads with the TITLE (not the key). The other half - that the title is not
+	 * clipped - is the frame's own subject, read off these pixels by the design
+	 * round (`expect` cannot carry it: that phase runs BEFORE the story-ready
+	 * probe, and a probe that reads a header the story has not mounted yet fails
+	 * for the wrong reason - measured here as `"No Preview"`).
+	 */
+	[
+		"projects-tab--detail-long-title",
+		1280,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * `:not([class*="sb-"])` is LOAD-BEARING: storybook keeps a HIDDEN
+				 * "No Preview" `<h1 class="sb-nopreview_heading">` in the document
+				 * before the story mounts, and it is the FIRST `h1` in document
+				 * order - so a bare `h1` selector reads the placeholder, whose
+				 * `innerText` is empty (measured on this entry: the claim failed
+				 * with the story's own header plainly on screen).
+				 */
+				includes:
+					"Payments migration onto the new reconciliation service and the ledger split",
+			},
+		},
+	],
+	[
+		"projects-tab--detail-long-title-narrow",
+		800,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * `:not([class*="sb-"])` is LOAD-BEARING: storybook keeps a HIDDEN
+				 * "No Preview" `<h1 class="sb-nopreview_heading">` in the document
+				 * before the story mounts, and it is the FIRST `h1` in document
+				 * order - so a bare `h1` selector reads the placeholder, whose
+				 * `innerText` is empty (measured on this entry: the claim failed
+				 * with the story's own header plainly on screen).
+				 */
+				includes:
+					"Payments migration onto the new reconciliation service and the ledger split",
+			},
+		},
+	],
+	/*
 	 * The column reorder: the layer the drag writes. `board-column-order-stored`
 	 * is the reload half (a stored order applied at mount),
 	 * `board-column-keyboard-move` is the accessible half (a focused grip's
