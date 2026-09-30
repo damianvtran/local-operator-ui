@@ -7523,6 +7523,59 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
+	 */
+	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7664,6 +7717,12 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
