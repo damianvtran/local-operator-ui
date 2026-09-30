@@ -793,15 +793,44 @@
 	 * would look like the window repainting, and neither property can move a
 	 * sibling.
 	 *
-	 * `sweep` is the indeterminate progress segment. It travels a segment across
-	 * the track rather than sizing or fading one, so the bar reads as "work is
-	 * happening" without stating a fraction - and at its final keyframe the
-	 * segment sits at the left edge, which is a quiet determinate-looking bar.
-	 * The static width and the animation are split across the query below: read
-	 * that rule before moving either half back in.
+	 * `turn` is the panel's two working marks - the rail's head mark, and the
+	 * running step's own marker - and it is the APP'S OWN indeterminate grammar
+	 * (`Spinner`'s ring with a single `accent` quadrant, where the gap is what
+	 * makes a rotation legible) rather than a cadence invented here. Three
+	 * properties of it are deliberate and load-bearing:
+	 *
+	 *   - 1.8s per turn, not `Spinner`'s 1s. This mark turns for the minutes an
+	 *     install takes rather than for the length of a request, and it is the one
+	 *     animation on this screen a user may sit and watch.
+	 *   - `linear` and `infinite`: an eased turn would imply an end the mark does
+	 *     not know.
+	 *   - it animates `transform` ALONE. An opacity breath spends contrast, and in
+	 *     the light themes its trough took the running ring below the waiting rings
+	 *     it has to be told apart from (design D3, measured at 2.88:1 against
+	 *     3.51:1). A turn spends no contrast: the accent quadrant is at full
+	 *     strength in every phase and the ring's other three sides are the `control`
+	 *     the waiting rings carry (design round 2, D7 - under `hairline` the
+	 *     running ring measured 1.22:1 against their 3.13-3.42:1), so the mark that
+	 *     says "working" is never the faintest thing in the column - and
+	 *     `transform`, unlike a width, cannot move a sibling.
+	 *
+	 * THERE IS NO SWEEP KEYFRAME HERE ANY MORE, deliberately. A travelling segment
+	 * used to carry the state where no step has been announced, and that state's own
+	 * reduced-motion parking is what retired it: parked anywhere on the rail it spans
+	 * a marker on each side of itself, and an accent rule joining two steps is a
+	 * determinate claim about them (measured in the frame). The unannounced state is
+	 * now the same ring the running step draws, at the rail's head, so this window
+	 * needs no third keyframe.
 	 */
 	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
 		both;
+	--animate-install-turn: install-turn 1.8s linear infinite;
+
+	@keyframes install-turn {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 	@keyframes install-enter {
 		from {
@@ -811,20 +840,6 @@
 		to {
 			opacity: 1;
 			transform: none;
-		}
-	}
-
-	@keyframes install-sweep {
-		/*
-		 * Off-track at BOTH ends, so the segment enters and leaves rather than staging
-		 * at a plausible fraction: 0% -> 100% spends its first visible moment flush at
-		 * the track's left edge, which is where a determinate fill sits (design D9).
-		 */
-		from {
-			margin-left: -35%;
-		}
-		to {
-			margin-left: 100%;
 		}
 	}
 
@@ -848,53 +863,13 @@
 
 @layer base {
 	/*
-	 * The installer's indeterminate progress segment. THE WIDTH IS OUTSIDE THE
-	 * QUERY AND ONLY THE ANIMATION IS INSIDE IT (design D4, review R1-8).
-	 *
-	 * Declining an animation is not the same as declining the STATE. This element
-	 * gets no width from the panel in the states that use it, so a reduced-motion
-	 * user who saw only the `animation` declined got a 0%-wide fill on a `sunken`
-	 * track - measured #1d1b19 on #22201c, 1.06:1, deltaE 2.07 - which is the empty
-	 * bar the paragraph below says an indeterminate state must never look like, held
-	 * for the whole pre-marker window. A static 35% segment says work is happening
-	 * without claiming how much.
-	 *
-	 * WHY A PLAIN CLASS RATHER THAN A TAILWIND UTILITY: there is no utility for
-	 * "this element's width follows a keyframe", and the panel sets a real width for
-	 * every state that has one (0%, 25%, 50%, 100%).
-	 */
-	.lo-install-sweep {
-		width: 35% !important;
-		/*
-		 * Mid-track when it is not moving. Parked at the left edge, a static segment is
-		 * indistinguishable from a determinate fill that has stopped there - measured
-		 * at 34.5% of the track in a still, exactly where a 35% determinate fill sits
-		 * (design D9).
-		 */
-		margin-left: 33%;
-	}
-
-	/*
-	 * And the motion, where the document has not asked for less of it. This is not
-	 * the global reduced-motion cap doing its work by accident: the cap truncates an
-	 * animation to 0.01ms, which would land this keyframe on `margin-left: 100%` - a
-	 * 35%-wide segment pushed off the end of its track, which is empty again.
-	 */
-	@media (prefers-reduced-motion: no-preference) {
-		.lo-install-sweep {
-			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-		}
-	}
-
-	/*
 	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7): the
 	 * row the reader jumped to holds a transient `accentWash` ground for
 	 * `JUMP_HIGHLIGHT_MS`, so "the row you asked for" is not left to the scroll
 	 * position alone on a surface where every row looks alike.
 	 *
 	 * WHY THE ANIMATION IS GATED ON `no-preference` AND A STATIC WASH SITS
-	 * OUTSIDE IT - the split `.lo-install-sweep` above documents, one state
-	 * over. The global cap truncates an animation to 0.01 ms and lands it on
+	 * OUTSIDE IT. The global cap truncates an animation to 0.01 ms and lands it on
 	 * the END keyframe, so a reduced-motion reader of a fade-to-nothing would
 	 * get no cue AT ALL; here the state that must survive is the wash itself,
 	 * so reduced motion holds it still for the attribute's lifetime and the
