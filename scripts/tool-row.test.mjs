@@ -39,6 +39,8 @@ const bundle = await build({
 });
 const {
 	compactPath,
+	deliveryRowOutcome,
+	deliveryStateFromDetails,
 	diffBody,
 	diffCount,
 	diffFromDetails,
@@ -51,10 +53,16 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
+	isFailedResult,
+	isPartialDelivery,
 	preferDiff,
 	preferDiffCounts,
+	preferDeliveryState,
 	outputFallbackLine,
 	requestDesktopMedia,
+	SEND_DELIVERY_LABEL,
+	SEND_DELIVERY_TITLE,
+	SEND_DELIVERY_WORD,
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
@@ -137,6 +145,99 @@ test("a send row leads with the delivery mode", () => {
 	// Nothing addresses a peer: `?` rather than a blank, which would read as
 	// though the next field were the target.
 	assert.equal(summaryFromArgs("send", { message: "hi" }), "wake · ? · hi");
+});
+
+test("a send row's delivery state is read from details, and absent or unknown is no statement", () => {
+	/*
+	 * The renderers must not sniff prose - the rule the row's other state fields
+	 * already keep - so the state comes from `details.delivery.state` alone. Two
+	 * ways of saying nothing have to read the SAME, because their fallback is
+	 * exactly the row this field did not exist for: an old transcript, an old core
+	 * and a tool that never had a delivery.
+	 */
+	for (const state of ["delivered", "mailbox", "unconfirmed", "failed"]) {
+		assert.equal(deliveryStateFromDetails({ delivery: { state } }), state);
+	}
+	// A state this build does not know is treated as absent, never guessed at.
+	assert.equal(deliveryStateFromDetails({ delivery: { state: "queued" } }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: "" } }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: 7 } }), null);
+	// Absent, in every shape a result can be absent in - and ANOTHER tool's
+	// `details` object, which must not be read as a delivery that says nothing
+	// new but as no delivery at all.
+	assert.equal(deliveryStateFromDetails({}), null);
+	assert.equal(deliveryStateFromDetails({ delivery: {} }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: "mailbox" }), null);
+	assert.equal(deliveryStateFromDetails({ diff: ["+ one"], pid: 42 }), null);
+	assert.equal(deliveryStateFromDetails(null), null);
+	assert.equal(deliveryStateFromDetails(undefined), null);
+
+	/*
+	 * And the reducer's rule, which is `preferDiffCounts`' rule because it is the
+	 * same question: a frame whose `details` were stripped says NOTHING and keeps
+	 * what the row held, where a frame that carried an object states the delivery
+	 * (`{}` included, which is the producer saying "no delivery here").
+	 */
+	assert.equal(preferDeliveryState(undefined, "mailbox"), "mailbox");
+	assert.equal(preferDeliveryState(null, "unconfirmed"), "unconfirmed");
+	assert.equal(preferDeliveryState(undefined, null), null);
+	assert.equal(preferDeliveryState({ delivery: { state: "failed" } }, "mailbox"), "failed");
+	assert.equal(preferDeliveryState({}, "mailbox"), null);
+
+	/*
+	 * THE WORD, THE MARK AND THE SPOKEN SENTENCE, verbatim - these are the frozen
+	 * interface's own strings, and each is asserted here rather than only in a
+	 * frame so a future edit to one of them fails in the suite instead of in a
+	 * screenshot nobody re-read.
+	 */
+	assert.deepEqual(SEND_DELIVERY_WORD, {
+		mailbox: "wake unconfirmed",
+		unconfirmed: "unconfirmed",
+		failed: "not delivered",
+	});
+	assert.deepEqual(SEND_DELIVERY_LABEL, {
+		mailbox: "delivered, wake unconfirmed",
+		unconfirmed: "delivery unconfirmed",
+		failed: "not delivered",
+	});
+	assert.deepEqual(SEND_DELIVERY_TITLE, {
+		mailbox:
+			"In their mailbox. The wake got no answer, so they will read it on their next turn.",
+		unconfirmed:
+			"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	});
+	// Only the two amber states carry a hover: `not delivered` is the whole
+	// statement and `delivered` says nothing at all.
+	assert.equal(SEND_DELIVERY_TITLE.failed, undefined);
+	assert.equal(SEND_DELIVERY_TITLE.delivered, undefined);
+	// Every word is distinct with the colour off, which is what makes the pair
+	// readable to a reader who cannot see the amber/red step.
+	assert.equal(
+		new Set(Object.values(SEND_DELIVERY_WORD)).size,
+		Object.keys(SEND_DELIVERY_WORD).length,
+	);
+
+	/*
+	 * Which outcome each state earns, and the COUNT rule that follows from it: the
+	 * fold's failed count, the turn foot's `· N failed` and the failed-row jump all
+	 * read `isFailedResult`, so a settled partial can never be counted or jumped to
+	 * as a failure even if a producer put `is_error` on it.
+	 */
+	assert.equal(deliveryRowOutcome("mailbox"), "partial");
+	assert.equal(deliveryRowOutcome("unconfirmed"), "partial");
+	assert.equal(deliveryRowOutcome("failed"), "error");
+	assert.equal(deliveryRowOutcome("delivered"), null);
+	assert.equal(deliveryRowOutcome(null), null);
+	assert.equal(deliveryRowOutcome(undefined), null);
+	assert.ok(isPartialDelivery("mailbox") && isPartialDelivery("unconfirmed"));
+	assert.ok(!isPartialDelivery("failed") && !isPartialDelivery("delivered"));
+	assert.ok(!isPartialDelivery(null));
+	assert.equal(isFailedResult(true, "failed"), true);
+	assert.equal(isFailedResult(true, null), true);
+	assert.equal(isFailedResult(false, "failed"), false);
+	assert.equal(isFailedResult(true, "mailbox"), false);
+	assert.equal(isFailedResult(true, "unconfirmed"), false);
+	assert.equal(isFailedResult(undefined, "failed"), false);
 });
 
 test("a sessions row names its operation, its address, and its window", () => {
@@ -3856,4 +3957,122 @@ test("a result with no details keeps the counts the row already had", () => {
 		added: 0,
 		removed: 0,
 	});
+});
+
+test("the partial delivery pair paints an amber word and its own mark, and never the danger ground", () => {
+	/*
+	 * The incident this exists for: a `send` whose message landed in a busy
+	 * peer's mailbox was painted with the SAME row as a refusal - danger wash,
+	 * the word `failed`, an Error block - so a delivered message read as a lost
+	 * one. These assertions are the pair's own properties, over the production
+	 * component's markup: the word, the mark BESIDE it (so the two states read
+	 * apart with the colour off), the sentence assistive tech hears instead of
+	 * the abbreviation, and the ground that must NOT be the failure's.
+	 */
+	/** The class list of the span that draws exactly `text`, or null. */
+	const wordClasses = (markup, text) => {
+		const match = markup.match(
+			new RegExp(`<span class="([^"]*)"[^>]*>${text}</span>`),
+		);
+		return match ? match[1].split(/\s+/) : null;
+	};
+	const WORD_INK = ["font-medium", "text-meta", "text-warning"];
+	const srOnly = (markup) =>
+		[...markup.matchAll(/<span class="sr-only">([^<]*)<\/span>/g)].map(
+			([, text]) => text,
+		);
+
+	const mailbox = renderRow("send", "partial", { deliveryState: "mailbox" });
+	assert.deepEqual(
+		wordClasses(mailbox, "wake unconfirmed"),
+		WORD_INK,
+		"the mailbox row draws its own word in the warning role",
+	);
+	assert.ok(
+		// The mark is a SECOND channel: a shape of its own beside the word, not a
+		// recollection of the tick or the cross.
+		mailbox.includes("lucide-mailbox"),
+		"the mailbox row draws the mailbox mark beside its word",
+	);
+	assert.deepEqual(
+		srOnly(mailbox),
+		["delivered, wake unconfirmed"],
+		"the row speaks the fact its word abbreviates, and only once",
+	);
+	assert.ok(
+		mailbox.includes('title="In their mailbox.'),
+		"the word tiles itself with the hedge the reader acts on",
+	);
+
+	const unconfirmed = renderRow("send", "partial", {
+		deliveryState: "unconfirmed",
+	});
+	assert.deepEqual(wordClasses(unconfirmed, "unconfirmed"), WORD_INK);
+	assert.ok(
+		unconfirmed.includes("lucide-circle-dashed"),
+		"the unconfirmed row draws a DIFFERENT mark from the mailbox one",
+	);
+	assert.ok(!unconfirmed.includes("lucide-mailbox"));
+	assert.deepEqual(srOnly(unconfirmed), ["delivery unconfirmed"]);
+	assert.ok(unconfirmed.includes('title="No wake answer'));
+
+	// Both are settled NON-failures: no danger on the ground, none in the ink,
+	// and the silhouette the failed row has (a word in `danger`) is not theirs.
+	for (const markup of [mailbox, unconfirmed]) {
+		assert.ok(
+			!markup.includes("bg-danger-wash"),
+			"a partial row never wears the failure's ground",
+		);
+		assert.ok(
+			!markup.includes("text-danger"),
+			"a partial row never wears the failure's ink",
+		);
+	}
+
+	// ...while `failed` keeps the danger pathway and says the fact the reader
+	// acts on - `not delivered`, not the generic `failed`, which read as a
+	// statement about the MESSAGE ("Sent ... failed").
+	const failed = renderRow("send", "error", { deliveryState: "failed" });
+	assert.deepEqual(wordClasses(failed, "not delivered"), [
+		"font-medium",
+		"text-meta",
+		"text-danger",
+	]);
+	assert.ok(failed.includes("bg-danger-wash"));
+	assert.ok(!failed.includes("text-warning"));
+	assert.ok(!failed.includes("lucide-mailbox"));
+	assert.deepEqual(
+		srOnly(failed),
+		[],
+		"the drawn word IS the announcement for a failure - never read out twice",
+	);
+
+	// `delivered`, and every row whose result stated nothing at all, keep
+	// exactly the row they had: no word, no mark, no delivery ink.
+	for (const [outcome, state] of [
+		["success", "delivered"],
+		["success", null],
+		["error", "queued"],
+	]) {
+		const quiet = renderRow("send", outcome, { deliveryState: state });
+		assert.deepEqual(wordClasses(quiet, "not delivered"), null);
+		assert.equal(wordClasses(quiet, "unconfirmed"), null);
+		assert.ok(!quiet.includes("text-warning"));
+		assert.ok(!quiet.includes("lucide-mailbox"));
+		assert.ok(!quiet.includes("lucide-circle-dashed"));
+	}
+
+	/*
+	 * THE WIDTH RULE, as a property of the markup rather than a story: the word
+	 * never truncates and the summary above it is the half that gives way.
+	 */
+	const narrow = renderRow("send", "partial", { deliveryState: "unconfirmed" });
+	assert.ok(
+		!wordClasses(narrow, "unconfirmed").includes("truncate"),
+		"the state word is never truncated (a `wake unconf…` would say nothing)",
+	);
+	assert.ok(
+		/class="min-w-0 flex-1 truncate[^"]*"/.test(narrow),
+		"the summary is the cell that truncates first",
+	);
 });

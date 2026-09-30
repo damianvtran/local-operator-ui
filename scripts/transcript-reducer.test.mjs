@@ -6554,3 +6554,114 @@ test("reanchorCandidate is the oldest held record that is a real journal entry i
 		"nothing usable held",
 	);
 });
+
+test("a send's delivery state rides the row, from both the durable and the live path", () => {
+	/*
+	 * ONE field with two producers and one frozen rule for each: the state is a
+	 * STRUCTURED fact that must survive the read (a reloaded transcript paints
+	 * what the live one painted) and must never be invented when the producer
+	 * said nothing - an old transcript, an old core, a state this build does not
+	 * know, or a tool that has no delivery at all. All four of those read as
+	 * "no statement", which is exactly the row that existed before the field.
+	 */
+	const row = (state, is_error = false) => ({
+		id: `t-${state}`,
+		ts: 1,
+		type: "message",
+		payload: {
+			role: "tool",
+			tool_call_id: `c-${state}`,
+			tool_name: "send",
+			content: [{ text: "→ release-owner: done", type: "text" }],
+			is_error,
+			provider_payload: {
+				duration_s: 5.1,
+				details: state === "none" ? undefined : { delivery: { state } },
+			},
+		},
+	});
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			row("delivered"),
+			row("mailbox"),
+			row("unconfirmed"),
+			// `is_error` is the wire's own claim and the core only sets it for
+			// `failed`; the row carries both facts through unaltered.
+			row("failed", true),
+			// A state this build does not know is treated as absent, never guessed.
+			row("queued"),
+			// No `delivery` key at all: an old core, or any other tool.
+			row("none"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records
+			.filter((record) => record.kind === "tool")
+			.map((record) => [record.delivery ?? null, record.isError]),
+		[
+			["delivered", false],
+			["mailbox", false],
+			["unconfirmed", false],
+			["failed", true],
+			[null, false],
+			[null, false],
+		],
+	);
+
+	/*
+	 * THE LIVE PATH, and the guard that is the whole reason `preferDeliveryState`
+	 * exists: the live-event budget (`_bound_live_result_in_place`) strips a
+	 * result's `details` when the row exceeds its share, so a reconnect seed for a
+	 * call the durable row already resolved carries NONE - and "said nothing" must
+	 * keep the state instead of blanking a mailbox row back to a silent success.
+	 */
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "live-1",
+			tool_name: "send",
+			args: { target: "night-audit", message: "re-run the shard" },
+		},
+		1,
+	);
+	live = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "live-1",
+			tool_name: "send",
+			result: {
+				content: [{ type: "text", text: "→ night-audit: delivered to its mailbox" }],
+				details: { delivery: { state: "mailbox", attempts: 3 } },
+			},
+			is_error: false,
+			duration_s: 5.1,
+		},
+		2,
+	);
+	const [liveRow] = live.records.filter((record) => record.kind === "tool");
+	assert.equal(liveRow.delivery, "mailbox");
+	assert.equal(liveRow.isError, false);
+
+	const stripped = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "live-1",
+			tool_name: "send",
+			result: { content: [{ type: "text", text: "→ night-audit: delivered to its mailbox" }] },
+			is_error: false,
+			duration_s: 5.1,
+		},
+		3,
+	);
+	const [resealed] = stripped.records.filter((record) => record.kind === "tool");
+	assert.equal(
+		resealed.delivery,
+		"mailbox",
+		"a seed end whose details were stripped keeps the state the row already had",
+	);
+});
