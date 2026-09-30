@@ -18,16 +18,17 @@
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
  *
- * The Storybook it reads has to BUILD first, and on the tree as it stands the
- * shipped `.storybook/main.ts` cannot build its preview: it sets
- * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
- * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
- * undefined (reading 'React')` inside the docgen parser before a single frame
- * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
- * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
- * rather than argued: the whole `chat-ask-options` set re-captured under it came
- * back byte-identical to the committed frames, so it changes how the preview is
- * BUILT and nothing about what is photographed (design round 3, D12).
+ * The Storybook it reads has to BUILD first, and the config on `main` now does.
+ * This paragraph used to say the opposite - that the shipped `.storybook/main.ts`
+ * set `reactDocgen: "react-docgen-typescript"`, that the pair threw `Cannot read
+ * properties of undefined (reading 'React')` under TypeScript 7 before a single
+ * frame was taken, and that a capturer must boot with `reactDocgen: false` in
+ * its own checkout until the config moved. It moved: `.storybook/main.ts` sets
+ * `reactDocgen: "react-docgen"` (with the why beside it), and the shipped config
+ * boots this rig unmodified - the log prints `Using tsconfig paths for
+ * react-docgen` and the first frame is taken. A capturer that still follows the
+ * old paragraph is disabling a docgen mode the tree no longer uses, which costs
+ * only the types-driven prop tables `react-docgen` already gives up.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -7357,6 +7358,99 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+	/*
+	 * THE ACTION ROW UNDER THE TURN-CLOSING ANSWER (issue #695, design memo (h)).
+	 *
+	 * `rest` is the discoverability claim itself: the row is present with NO
+	 * pointer in the frame, which is the whole difference from the toolbar this
+	 * supersedes. The interaction states are entries rather than stories because
+	 * every one of them is BROWSER state the rig has to produce with real input -
+	 * `hover` moves a real pointer, `tabTo` presses real Tabs until the button
+	 * holds focus, `press` is a real press through the input pipeline - and a
+	 * story that faked any of them in a class would photograph the story.
+	 *
+	 * `hover-answer-no-corner-control` is the pointer parked ON THE ANSWER (the
+	 * region the superseded pattern raised a corner toolbar from) with both
+	 * selectors asserted: the row must be present and no link toolbar may be
+	 * raised. It is the honest half of the before/after comparison - this set
+	 * carries no frame of the dead component, per the memo's ruling: what the
+	 * frame shows is that the live surface raises nothing there.
+	 *
+	 * `copied` asserts the label the press produced (`expectAttribute`) rather
+	 * than trusting the tick to be legible in six themes, and it is the one entry
+	 * whose subject is a TIMER: the button's own reset is 2000 ms and the rig
+	 * presses ~400 ms before the shutter, so the frame is the pressed state and
+	 * not a race the timing decides.
+	 *
+	 * Six themes, by the memo's logic rather than by taste: the two brand
+	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
+	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
+	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			// The action row is what hover must NOT change, and nothing may be raised
+			// over the answer: the link toolbar only exists for a link, and this
+			// fixture has none - so the assertion is that the surface is unchanged.
+			expectPresent: "[data-lo-answer-actions]",
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-answer-no-corner-control",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 400,
+			dir: "hover-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			tabTo: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			dir: "focus-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			press: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: "[data-lo-answer-actions] button",
+				name: "aria-label",
+				equals: "Copied",
+			},
+			dir: "copied",
+		},
+	],
+	["chat-canonical-message-actions--short-answer", 1024, 320],
+	["chat-canonical-message-actions--refused", 1024, 380],
+	["chat-canonical-message-actions--truncated", 1024, 400],
+	["chat-canonical-message-actions--streaming", 1024, 620],
+	["chat-canonical-message-actions--multi-answer", 1024, 640],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
+	["chat-canonical-message-actions--narrow", 420, 620],
 ];
 
 /**
