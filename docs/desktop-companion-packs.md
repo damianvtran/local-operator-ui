@@ -1,7 +1,12 @@
 # Desktop companion
 
-Click the pet to say hi; use its chat button or right-click **Chat** to talk with your
-default model. Drag to move it, or use the arrow keys while it has focus. In chat,
+Choose a companion during setup or in **Settings > Appearance**. It stays off until
+you enable it; existing saved choices are kept.
+
+Click the pet to say hi; use its chat button or right-click **Chat** to talk in the
+same chief-of-staff conversation as Quick send. **New chat** starts a separate
+conversation using your default model. Showing the pet never enables or resumes
+the chief of staff. Drag to move it, or use the arrow keys while it has focus. In chat,
 Enter sends; Shift+Enter adds a line. Escape collapses the input; drafts survive collapsing and hiding, but not
 quitting. Use **Open app** for approvals, attachments, model selection, or history.
 Right-click for character choices, Hide, and Open task in app.
@@ -26,7 +31,8 @@ Reduced motion lets you bounce at your own pace. Long naps sometimes bring tiny 
 
 ## Custom characters
 
-Right-click the pet and choose **Character > Add character…**, or use
+Choose **Add your own** in **Settings > Appearance**, right-click the pet and choose
+**Character > Add character…**, or use
 **View > Companion character > Add character…**. Select a transparent PNG, or a JSON
 pack for different task states. Use a consistent, tightly framed transparent canvas
 for every pose: the pet appears in a 110-pixel square, so large empty margins make it look small.
