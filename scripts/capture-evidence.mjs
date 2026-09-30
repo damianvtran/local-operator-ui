@@ -5230,6 +5230,28 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* THE TEAM HEADER UNDER THE POINTER, and the row beside it (issue #703).
+	 * The claim is that a header is a label and does not react - so the frame
+	 * that proves it is the header WITH the pointer on it, filed against the
+	 * same pointer on a project row, which does step to `elevated`. A resting
+	 * frame cannot show that the absence is intended. Real
+	 * `Input.dispatchMouseEvent`, the rig's own `hover` option, not a scripted
+	 * class. */
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{ hover: '[data-project-team="platform"]', dir: "team-header-hover" },
+	],
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{
+			hover: '[data-project-name="payments-migration"]',
+			dir: "project-row-hover",
+		},
+	],
 	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
 	 * frame cannot hold, because at rest every header is in its flow
 	 * position. The play brings the second header flush to the scroller's
