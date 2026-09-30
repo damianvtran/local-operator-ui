@@ -1392,15 +1392,16 @@ test("U1: the picker's running model is the value the strip paints, held or live
 	);
 
 	/*
-	 * AND BOTH DIALOGS ASK IT THAT WAY. The two reads that decided "the model
-	 * this session is on" are pinned here so a later edit cannot quietly go back
-	 * to the authoritative field at one of them — which is exactly how the two
-	 * phases came apart.
+	 * AND EVERY READ ASKS IT THAT WAY. The reads that decided "the model this
+	 * session is on" — the model picker, the effort picker, and the fast
+	 * picker's dial (UX round 1, U2) — are pinned here so a later edit cannot
+	 * quietly go back to the authoritative field at one of them — which is
+	 * exactly how the two phases came apart.
 	 */
 	assert.equal(
 		(source.match(/runningFrontend\(canonical\)/g) ?? []).length,
-		4,
-		"both reads use the helper, on both of the fields they name",
+		6,
+		"every read uses the helper, on both of the fields each one names",
 	);
 	assert.doesNotMatch(
 		source,
