@@ -78,6 +78,18 @@ export const teamDescription = (team: HubTeam): string | null => {
 export const DESCRIPTION_ANNOUNCE_CHARS = 240;
 
 /**
+ * How far into the window a word boundary has to be for the cut to back off to it.
+ *
+ * A description that OPENS with a short token and then runs on - "ID <300 chars of
+ * x>", "Sanctions <400 chars of q>" - has its only space within the window at the
+ * near edge, and backing off to it announced "ID…" (3 characters) and
+ * "Sanctions…" (10). That is worse than a mid-word cut: it hides almost the whole
+ * text behind an ellipsis and reads as if the description were empty. Half the
+ * bound is the floor, and the character cut is kept below it.
+ */
+const WORD_BOUNDARY_FLOOR = DESCRIPTION_ANNOUNCE_CHARS / 2;
+
+/**
  * The description as the summary should ANNOUNCE it: bounded at rest, whole once
  * the row is open. See `DESCRIPTION_ANNOUNCE_CHARS`.
  */
@@ -91,16 +103,24 @@ export const announcedDescription = (
 	/*
 	 * Cut at a WORD boundary, not at the character: the first version ended
 	 * announcements mid-word ("...adverse med...", "...grouped by regim..."), which
-	 * a screen reader reads as a broken word rather than as an abbreviation. The
-	 * bound is unchanged - `lastIndexOf` only ever moves the cut earlier - and a
-	 * description with no space inside the window (a long unbroken token, a URL)
-	 * falls back to the character cut, because a word boundary that does not exist
-	 * cannot be used.
+	 * a screen reader reads as a broken word rather than as an abbreviation.
+	 *
+	 * TWO cases keep the character cut, and neither is an accident:
+	 * - No space inside the window at all (a long unbroken token, a URL): there is
+	 *   no word boundary to back off to, and a boundary that does not exist cannot
+	 *   be used.
+	 * - A boundary NEAR THE EDGE (`WORD_BOUNDARY_FLOOR`): a description that opens
+	 *   with a short word and then runs on would otherwise announce three or ten
+	 *   characters. See that constant.
+	 *
+	 * Either way the bound is respected - the cut only ever moves earlier or stays
+	 * put, never past `DESCRIPTION_ANNOUNCE_CHARS`.
 	 */
 	const window = description.slice(0, DESCRIPTION_ANNOUNCE_CHARS);
 	const boundary = window.lastIndexOf(" ");
-	const head = (boundary > 0 ? window.slice(0, boundary) : window).trimEnd();
-	return `${head}…`;
+	const head =
+		boundary >= WORD_BOUNDARY_FLOOR ? window.slice(0, boundary) : window;
+	return `${head.trimEnd()}…`;
 };
 
 /** A date the way the expanded body and the tooltip both print it. */
