@@ -1,6 +1,6 @@
 # The projects tab before the team header register (#703)
 
-Eighteen frames, nine states, the two brand themes: the SAME stories the
+Sixteen frames, eight states, the two brand themes: the SAME stories the
 `../projects-tab/` after set carries, photographed against the four files
 `origin/main` (`20ccfd4512`) ships under
 `src/renderer/src/features/projects/components/` (`project-list.tsx`,
