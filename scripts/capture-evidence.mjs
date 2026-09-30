@@ -4625,6 +4625,21 @@ export const STORIES = [
 	 * footer at both widths - one row of cards keeps it inside the frame.
 	 */
 	["agent-hub-page--org-teams-empty", 1280, 900],
+	/*
+	 * The Teams summary rows (operator report, 2026-09-30: "just a list view, it
+	 * doesn't show a lot of information"). `org-teams` and `org-teams-loading` keep
+	 * their ids and are RE-SHOT as the before/after pair; the rest are new. A narrow
+	 * frame needs its OWN story because the per-state directory is named from the
+	 * story id. The six-row set is one row per awkward shape (long description with
+	 * an unbroken token, nine slots, every optional field absent, no manager, a
+	 * description past the expanded ceiling), and the expanded pair opens three of
+	 * them by pressing their triggers.
+	 */
+	["agent-hub-page--org-teams-narrow", 920, 900],
+	["agent-hub-page--org-teams-varied", 1280, 900],
+	["agent-hub-page--org-teams-varied-narrow", 920, 900],
+	["agent-hub-page--org-teams-expanded", 1280, 900],
+	["agent-hub-page--org-teams-expanded-narrow", 920, 900],
 	["agent-hub-page--org-teams-loading", 1280, 900],
 	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
 	["agent-hub-page--teams-public-scope", 1280, 900],
