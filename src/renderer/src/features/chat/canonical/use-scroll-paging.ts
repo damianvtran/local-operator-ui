@@ -211,6 +211,36 @@ export type ScrollPagingHandle = {
 	 * otherwise both be asking.
 	 */
 	mayAutoWalk: () => boolean;
+	/**
+	 * Acknowledge a write to the scroller's offset that THIS HOOK did not make,
+	 * so the `scroll` event it fires is read as our own motion rather than as
+	 * reader input (clause A).
+	 *
+	 * WHY A CALLER NEEDS THIS AT ALL. `onScroll` cannot tell a writer from a
+	 * reader: it reads `programmatic.current`, which only this hook's own
+	 * corrections (and now its callers) increment. A write from outside (the
+	 * transcript's press-anchor correction, U1 of #708) carries a `scroll` event
+	 * that the handler takes the reader path for — and a BAR PRESS has
+	 * `onPointerDown` on this scroller, so `dragUntil` is open and the handler
+	 * does more than re-read the hold: it calls `input(moved > 0 ? "up" : "down",
+	 * ...)`, recording a correction as the reader dragging older-ward and arming
+	 * a paging demand no gesture asked for (review round 2, MINOR-3).
+	 *
+	 * THE COUNT IS GUARDED BY THE OFFSET ITSELF, and that is not an optimisation.
+	 * A write clamped at either end of the scroller's range (or one that lands on
+	 * the number already there) moves nothing, so no `scroll` event is emitted and
+	 * a blind `+= 1` would sit unconsumed — swallowing the NEXT genuine reader
+	 * scroll, which is the same mis-attribution mirrored. Callers pass the offset
+	 * around the assignment, so the guard cannot be forgotten at a call site: the
+	 * caller writes
+	 *
+	 * ```ts
+	 * const before = region.scrollTop;
+	 * region.scrollTop += delta;
+	 * acknowledgeOwnWrite(before, region.scrollTop);
+	 * ```
+	 */
+	acknowledgeOwnWrite: (before: number, after: number) => void;
 };
 
 export function useScrollPaging({
@@ -289,6 +319,14 @@ export function useScrollPaging({
 	// Writes this hook makes to `scrollTop`. The resulting `scroll` event is our
 	// own motion and must never be attributed to the reader (clause A).
 	const programmatic = useRef(0);
+	/*
+	 * The same acknowledgement, offered to a caller that writes the offset
+	 * itself. See `ScrollPagingHandle.acknowledgeOwnWrite` for why the guard is
+	 * the offset's own change rather than an unconditional increment.
+	 */
+	const acknowledgeOwnWrite = useCallback((before: number, after: number) => {
+		if (after !== before) programmatic.current += 1;
+	}, []);
 	/*
 	 * The reader's own motion, as the SCROLLER reported it at the last input.
 	 *
@@ -1129,5 +1167,5 @@ export function useScrollPaging({
 		return measure()?.followingTail === true;
 	}, [measure]);
 
-	return { slotState, requestOlder, mayAutoWalk };
+	return { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite };
 }

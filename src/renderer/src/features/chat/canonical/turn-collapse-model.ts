@@ -272,14 +272,15 @@ export type RunCollapsePlan = {
 	 *
 	 * KEPT, NOT CONSUMED BY `src/` (agent review round 1 on #708, R1-4): the renderer
 	 * reads `segments[*]`, `recordIds` and `segment.stampTs`. `hidden`, `gap`,
-	 * `answerId` and `stampTs` are the run-level restatement the model's own suites
-	 * (`turn-collapse-model.test.mjs`, `turn-segments.test.mjs`) and the evidence
-	 * rigs read as the run's whole-turn contract - ~40 assertions written against
-	 * the pre-segments plan that still state the turn, not a bar. They are derived
-	 * from `segments` in this one function and never independently, so they cannot
-	 * drift; deleting them would move those assertions from "the turn" to "flatten
-	 * the bars" for no consumer's benefit. Do not add a `src/` reader without
-	 * asking whether it wants a bar's value instead.
+	 * `answerId` and `stampTs` are the run-level restatement the TWO MODEL SUITES
+	 * (`turn-collapse-model.test.mjs`, `turn-segments.test.mjs`) read as the run's
+	 * whole-turn contract - 32 property reads written against the pre-segments plan
+	 * that still state the turn, not a bar (agent review round 2, NIT-1: no
+	 * evidence rig reads a `collapsePlan` result). They are derived from `segments`
+	 * in this one function and never independently, so they cannot drift; deleting
+	 * them would move those assertions from "the turn" to "flatten the bars" for no
+	 * consumer's benefit. Do not add a `src/` reader without asking whether it
+	 * wants a bar's value instead.
 	 */
 	hidden: Row[];
 	/** The first bar's margin tier (kept for the same reason as `hidden`). */
@@ -970,7 +971,13 @@ function planRun(
 				gap: segmentGap(segRows[0], span.from > from),
 				afterAnswer,
 				label,
-				completed: segmentIsCompleted(records, span, answerAt, label !== null),
+				completed: segmentIsCompleted(
+					records,
+					partition.cycles,
+					span,
+					answerAt,
+					label !== null,
+				),
 				collapsed: collapsedHere,
 				stampTs:
 					i === nearest && answerAt !== null && preAnswerCount === 1
