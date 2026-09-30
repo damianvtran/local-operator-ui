@@ -64,8 +64,18 @@ export type SlashHighlightRun = {
 	 * `command`: a recognised command word. `name`: a recognised roster name
 	 * after a NAME+message command. `unknown`: a leading slash word that names
 	 * nothing, which is inert text that WILL be sent.
+	 *
+	 * `skill`: a leading `$name` naming a discovered skill — the structured
+	 * token that WILL act (built by `skill-highlight.ts`, the `$` sibling of
+	 * this file's builder, and the same run object so the mirror keeps one
+	 * pipeline). `skill-unknown`: a leading, whole-draft `$name`-shaped word
+	 * carrying lowercase evidence that names nothing — inert text that WILL be
+	 * sent as prose. Both are appended AFTER `runsMatchingPlan`, deliberately,
+	 * because a `$skill` draft goes to the model on Enter (`plan.kind`
+	 * `"send"`) and the gate would blank the very ink the feature exists for
+	 * (`message-input.tsx` carries the merge).
 	 */
-	kind: "command" | "name" | "unknown";
+	kind: "command" | "name" | "unknown" | "skill" | "skill-unknown";
 };
 
 export type SlashHighlightArgs = {
@@ -321,6 +331,22 @@ export const RUN_INK: Record<SlashHighlightRun["kind"], string> = {
 	command: "text-token-command slash-run-bold",
 	name: "text-success",
 	unknown: "text-ink-dim",
+	/*
+	 * RESOLVED `$skill` wears the structured-token role name-for-name (design
+	 * spec §1.1, ratified in reconciliation §2): `tokenCommand` is THE
+	 * composer's structured-token ink, its floors already proven on the
+	 * composer's ground, and `slash-run-bold` is the stroke that does not move
+	 * the mirror's wrap points. `text-success` was rejected — that role is the
+	 * resolved ARGUMENT after a command word, while a `$skill` is a leading
+	 * token, the same slot `/command` and `@path` occupy.
+	 */
+	skill: "text-token-command slash-run-bold",
+	/*
+	 * INERT `$skill` wears the same quietest legal ink as the slash `unknown`
+	 * run: "a typo in progress, not an alarm", and it sits on the 4.5:1 floor
+	 * (design spec §1.1).
+	 */
+	"skill-unknown": "text-ink-dim",
 };
 
 /** The class a run takes in the state it is drawn in. */
