@@ -2267,6 +2267,16 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 	 */
 	const RAISE_PATTERN = /\.(show|showInactive|focus|maximize)\(\)/;
 	const ALLOWED = /notification\.show\(\)/;
+	/*
+	 * AND ONE DOCK-POLICY LINE IS NOT A WINDOW RAISE. `app.dock.show()` asserts
+	 * the app's Dock participation, which `windowLaunch.hideDock` already decides —
+	 * it raises no window, so the mode gate this scan protects does not apply to
+	 * it. The allow is LINE-NARROW on purpose: it matches the STATEMENT alone, not
+	 * the file or the pattern, so a line that both asserted the dock and raised a
+	 * window would still fail here. The why-comment lives beside the call in
+	 * `src/main/index.ts`, which keeps the exemption auditable.
+	 */
+	const DOCK_POLICY_LINE = /^\s*app\.dock\.show\(\);\s*$/;
 	const offSite = [];
 	const scanned = [];
 	for (const file of readdirSync("src/main", { recursive: true }).filter(
@@ -2277,7 +2287,12 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 		readFileSync(join("src/main", file), "utf8")
 			.split("\n")
 			.forEach((line, index) => {
-				if (!RAISE_PATTERN.test(line) || ALLOWED.test(line)) return;
+				if (
+					!RAISE_PATTERN.test(line) ||
+					ALLOWED.test(line) ||
+					DOCK_POLICY_LINE.test(line)
+				)
+					return;
 				offSite.push(`src/main/${file}:${index + 1}: ${line.trim()}`);
 			});
 	}
@@ -2321,6 +2336,53 @@ test("the mini view's window module raises nothing on its own", () => {
 	assert.ok(
 		blankComments(source).includes("presentMiniView("),
 		"mini-view.ts presents through the `presentMiniView(...)` call; without the call the module has no way to show the window and the assertion above would be vacuous",
+	);
+});
+
+test("a non-headless launch asserts the Dock tile, and a headless one hides it", () => {
+	/*
+	 * THE REGRESSION TARGET for the operator's 2026-09-30 report: a running app
+	 * with no Dock tile while its window was on screen, `window mode normal` in
+	 * its own log. A `normal` launch is not launcher-bound, so it MUST participate
+	 * in the Dock, and the assertion is made where the mode is already known. Both
+	 * branches are pinned because the risk is symmetric: dropping
+	 * `app.dock.show()` restores the defect, and moving it into the headless branch
+	 * would put a tile on a run nobody is watching. The source is flattened the way
+	 * the wiring test above flattens it, so the assertion describes the branch
+	 * shape rather than the formatting.
+	 */
+	const flat = readFileSync(join("src/main", "index.ts"), "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/\/\/[^\n]*/g, " ")
+		.replace(/\s+/g, " ");
+	assert.match(
+		flat,
+		/app\.dock\.hide\(\)/,
+		"the headless branch hides the dock",
+	);
+	assert.match(
+		flat,
+		/app\.dock\.show\(\)/,
+		"a non-headless launch asserts the Dock tile",
+	);
+	const hideAt = flat.indexOf("if (windowLaunch.hideDock)");
+	assert.ok(
+		hideAt !== -1,
+		"the hideDock conditional was not found in index.ts",
+	);
+	const hideBlock = flat.slice(
+		flat.indexOf("{", hideAt) + 1,
+		flat.indexOf("}", hideAt),
+	);
+	assert.match(
+		hideBlock,
+		/app\.dock\.hide\(\)/,
+		"the headless branch must hide the dock",
+	);
+	assert.doesNotMatch(
+		hideBlock,
+		/app\.dock\.show\(\)/,
+		"a headless run must not assert a Dock tile",
 	);
 });
 
