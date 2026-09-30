@@ -990,7 +990,7 @@ const AssistantRow = memo(function AssistantRow({
 			<div
 				ref={turnRef}
 				className={cn(
-					"relative w-full break-words text-ink",
+					"relative break-words text-ink",
 					/*
 					 * THE ANSWER'S OWN MARK (issue #665): a 2px rule in the margin the row
 					 * already has, on the turn's ELECTED answer only (`closesTurn` is the
@@ -1003,7 +1003,15 @@ const AssistantRow = memo(function AssistantRow({
 					 * `data-turn-answer` is the hook rigs and tests read instead of a
 					 * class name.
 					 */
-					closesTurn && "-ml-2 border-l-2 border-ink-dim pl-1.5",
+					/*
+					 * AUTO WIDTH ON THE MARKED ROW, `w-full` otherwise. A block with a
+					 * negative left margin and auto width grows LEFT by exactly the margin
+					 * and keeps its right edge; `w-full` pinned the width, so the same
+					 * margin slid the box left and left the prose 8px short on the right
+					 * (measured: 802px against the row's 810). Left edge and right edge
+					 * both stay where an unmarked row's are.
+					 */
+					closesTurn ? "-ml-2 border-l-2 border-ink-dim pl-1.5" : "w-full",
 				)}
 				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
