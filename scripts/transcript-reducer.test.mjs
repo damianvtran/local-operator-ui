@@ -28,6 +28,7 @@ const {
 	applyHistoryPage,
 	loadOlderStep,
 	reanchorAfterCursorMiss,
+	reanchorCandidate,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -4410,11 +4411,35 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		false,
 		"the tail read leaves the paging state alone",
 	);
+	/*
+	 * CHANGED BY THE LOADER-CONTINUITY FIX (design spec 1.1 rule 4), and this is
+	 * the one sanctioned change to a caller that passes no option. An ordinary
+	 * (tail-type) read used to adopt the page's `has_more` unconditionally, which
+	 * is how a re-applied newest page flipped a fully loaded conversation back to
+	 * "load earlier". It now believes the page only when the page reaches
+	 * STRICTLY OLDER than the stored cursor - a genuinely wider read.
+	 */
 	const ordinary = applyHistoryPage(loaded, page);
 	assert.equal(
 		ordinary.hasMore,
+		false,
+		"an ordinary read of a NEWER page leaves the paging state alone",
+	);
+	const wider = applyHistoryPage(loaded, {
+		...pageOf([
+			{
+				id: "u-1",
+				ts: at / 1000 - 5,
+				type: "message",
+				payload: { role: "user", content: "oldest" },
+			},
+		]),
+		has_more: true,
+	});
+	assert.equal(
+		wider.hasMore,
 		true,
-		"an ordinary read still believes the page",
+		"an ordinary read that reaches strictly older still believes the page",
 	);
 
 	/*
@@ -6025,4 +6050,162 @@ test("a cursor_missing page re-anchors the load cursor to its own oldest row", (
 		);
 	});
 	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
+});
+
+/*
+ * THE PAGER CURSOR (loader-continuity, design spec sections 1.1 and 6).
+ *
+ * `oldestId`/`oldestTs`/`hasMore` are the reducer's sole statement of "where
+ * history stops". The cursor used to be derived by looking the page's first entry
+ * up among the RECORDS, which fails for every entry that is not one (silent
+ * customs, `tool:`-keyed results); it is now stored, and moved by five rules
+ * keyed on what kind of read the page was.
+ */
+const cursorEntry = (id, ts, type = "custom") => ({
+	id,
+	ts,
+	type,
+	payload:
+		type === "custom"
+			? { custom_type: "session_spend.v1", details: {} }
+			: {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: id }],
+					tool_calls: [],
+				},
+});
+const cursorPage = (entries, hasMore = true) => ({
+	entries,
+	has_more: hasMore,
+	cursor_missing: false,
+});
+
+test("the cursor's instant is stored with it, and an empty transcript has none", () => {
+	assert.equal(EMPTY_TRANSCRIPT.oldestTs, 0);
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("c1", 100), cursorEntry("m1", 101, "message")]),
+	);
+	assert.equal(s.oldestId, "c1", "the first page's first entry, silent or not");
+	assert.equal(
+		s.oldestTs,
+		100_000,
+		"stored in ms, not looked up from a record",
+	);
+	assert.equal(s.index.has("c1"), false, "the cursor entry is not a record");
+});
+
+test("a continuation page moves the cursor even when it adds no record", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")]),
+	);
+	const silent = cursorPage([cursorEntry("c3", 300), cursorEntry("c4", 400)]);
+	const next = applyHistoryPage(s, silent, { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "c3");
+	assert.equal(next.oldestTs, 300_000);
+	assert.equal(next.hasMore, true);
+	assert.notEqual(
+		next,
+		s,
+		"a moved cursor is a change, not the no-op early return",
+	);
+});
+
+test("an empty continuation page ends paging instead of repeating the ask", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const next = applyHistoryPage(s, cursorPage([], true), { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "m5", "nothing to move to");
+	assert.equal(next.hasMore, false, "a page that cannot advance is the end");
+});
+
+test("a tail-type read moves the cursor only to a strictly older instant", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	// A newer, changed tail (a live turn): cursor and hasMore are unchanged.
+	const newer = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m9", 900, "message")], false),
+	);
+	assert.equal(newer.oldestId, "m5");
+	assert.equal(
+		newer.hasMore,
+		true,
+		"a tail read's has_more is not this reader's",
+	);
+	// The same instant is not older: the reader keeps the cursor it has.
+	const same = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m5b", 500, "message")], false),
+	);
+	assert.equal(same.oldestId, "m5");
+	// A strictly older page (a wider read) does move it, and takes its has_more.
+	const older = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+	);
+	assert.equal(older.oldestId, "m1");
+	assert.equal(older.oldestTs, 100_000);
+	assert.equal(older.hasMore, false);
+});
+
+test("keepPaging wins over a continuation assertion, and replace reseeds the cursor", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const kept = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+		{ keepPaging: true, pagedBefore: "m5" },
+	);
+	assert.equal(kept.oldestId, "m5");
+	assert.equal(kept.hasMore, true);
+	const replaced = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m8", 800, "message")], false),
+		{ replace: true },
+	);
+	assert.equal(replaced.oldestId, "m8");
+	assert.equal(replaced.oldestTs, 800_000);
+	assert.equal(replaced.hasMore, false);
+});
+
+test("reanchorCandidate is the oldest held record that is a real journal entry id", () => {
+	const at = (kind, id, ts) => ({ kind, id, ts });
+	const held = {
+		...EMPTY_TRANSCRIPT,
+		records: [
+			at("tool", "tool:call-1", 100),
+			at("notice", "anchor-1", 110),
+			at("user", "u1", 120),
+			at("assistant", "a1", 130),
+		],
+	};
+	assert.equal(
+		reanchorCandidate(held),
+		"u1",
+		"tool:<callId> and notice anchors are not journal entry ids",
+	);
+	for (const kind of ["custom", "peer", "wake", "compaction"])
+		assert.equal(
+			reanchorCandidate({ ...EMPTY_TRANSCRIPT, records: [at(kind, "x1", 1)] }),
+			"x1",
+			`${kind} records carry the entry id`,
+		);
+	assert.equal(reanchorCandidate(EMPTY_TRANSCRIPT), null, "an empty store");
+	assert.equal(
+		reanchorCandidate({
+			...EMPTY_TRANSCRIPT,
+			records: [at("tool", "tool:c", 1), at("notice", "n", 2)],
+		}),
+		null,
+		"nothing usable held",
+	);
 });
