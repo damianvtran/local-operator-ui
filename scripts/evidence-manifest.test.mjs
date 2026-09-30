@@ -2846,6 +2846,7 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldFourNote",
 	"sttRecordingDisplayFoldFiveNote",
 	"sttRecordingDisplayFoldSixNote",
+	"sttRecordingDisplayFoldSevenNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
