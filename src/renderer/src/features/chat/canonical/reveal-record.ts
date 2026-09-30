@@ -36,6 +36,7 @@
  */
 
 import { scrollRegionToTop } from "@shared/lib/scroll";
+import { TRANSCRIPT_TOP_FADE_PX } from "@shared/lib/transcript-fade";
 import { revealRecord } from "./failed-row-jump";
 import {
 	LOADER_SETTLE_FRAMES,
@@ -86,6 +87,28 @@ export const JUMP_SETTLE_FRAMES = LOADER_SETTLE_FRAMES;
 const JUMP_ANCHOR_MAX_FRAMES = JUMP_SETTLE_FRAMES + 2;
 const JUMP_ANCHOR_STABLE_FRAMES = 2;
 const JUMP_ANCHOR_EPSILON_PX = 1;
+
+/*
+ * The landing inset (design round 1's D1): the target's top lands this far
+ * below the scrollport's top, and the value IS the transcript's top-fade depth
+ * - at 0px the row sits inside the mask's ramp and reads dimmed (peak ink 189
+ * against 238 unmasked, measured), which is the fix trading a row in the wrong
+ * place for one that is half-invisible. Derived from the fade's own constant
+ * rather than restated, so a fade edit moves the landing with it; the rail's
+ * reading line (`use-active-checkpoint.ts`) names the same constant, because a
+ * landing at `top + INSET` fails a `<= top + 1` line test and the rail would
+ * light the tick BEFORE the target (the correction to D1).
+ */
+export const JUMP_ANCHOR_INSET_PX = TRANSCRIPT_TOP_FADE_PX;
+
+/*
+ * The settle's generation (review round 1, MINOR 2): the LAST jump's loop owns
+ * the scroller. A newer settle (another tick press, a search hit) bumps this,
+ * and every earlier loop stops re-applying on its next frame check instead of
+ * contending for its own remaining budget - without it, two overlapping jumps
+ * can visibly oscillate between their anchors after the reader has moved on.
+ */
+let settleGeneration = 0;
 
 export type ReachOptions = {
 	/**
@@ -176,31 +199,48 @@ export type JumpOutcome = "landed" | "missing";
  * not a hang.
  *
  * THE SETTLE YIELDS TO THE READER: a wheel, pointer-down or touch on the
- * region during the window means the reader is steering, and re-applying the
- * anchor would yank the view out from under them — the jump has already
- * revealed the target, so the loop stops touching `scrollTop` and returns.
+ * region, or a scroll key (arrows, page keys, home/end, space) anywhere, during
+ * the window means the reader is steering, and re-applying the anchor would
+ * yank the view out from under them; the jump has already revealed the target,
+ * so the loop stops touching `scrollTop` and returns. The keyboard arm exists
+ * because the rail's own jump is a keyboard gesture (focus a tick, Enter) and
+ * the next press is a scroll key more often than not (review round 1's NIT 1).
  *
  * Boundary rules on the reversed axis (issue #680's table): a target within a
  * viewport of the newest rows cannot be pushed to the scrollport's top (that
- * needs a positive offset, and nothing exists past the newest row) — it lands
+ * needs a positive offset, and nothing exists past the newest row) - it lands
  * at `scrollTop` 0, the closest achievable, the only allowed alternative; a
- * target at the oldest end clamps at the browser's negative bound, where the
- * content's oldest edge IS the scrollport's top (trivially anchored); and a
- * row taller than the viewport anchors its TOP by construction.
+ * target at the oldest end clamps at the browser's negative bound; and a row
+ * taller than the viewport anchors its TOP by construction.
  */
 async function landOnTop(
 	region: HTMLElement,
 	target: HTMLElement,
 ): Promise<void> {
-	scrollRegionToTop(region, target, "reversed");
+	const generation = (settleGeneration += 1);
+	scrollRegionToTop(region, target, "reversed", JUMP_ANCHOR_INSET_PX);
+	const SCROLL_KEYS = new Set([
+		"ArrowUp",
+		"ArrowDown",
+		"PageUp",
+		"PageDown",
+		"Home",
+		"End",
+		" ",
+	]);
 	let yielded = false;
 	const yieldToReader = () => {
 		yielded = true;
 	};
+	const onKey = (event: KeyboardEvent) => {
+		if (SCROLL_KEYS.has(event.key)) yielded = true;
+	};
 	/*
 	 * `passive` and `once`: the listener never reads or prevents anything, and
 	 * only the first gesture matters. The listeners that never fire are removed
-	 * below - `once` releases only the one that does.
+	 * below - `once` releases only the one that does. The keyboard listener is
+	 * window-level: the transcript scroller is not focusable, so the next press
+	 * after a tick's Enter lands on the body (or the tick itself), not on it.
 	 */
 	region.addEventListener("wheel", yieldToReader, {
 		passive: true,
@@ -214,27 +254,30 @@ async function landOnTop(
 		passive: true,
 		once: true,
 	});
+	window.addEventListener("keydown", onKey);
 	try {
 		let stable = 0;
 		for (let frame = 0; frame < JUMP_ANCHOR_MAX_FRAMES; frame += 1) {
 			await nextFrame();
-			if (yielded) break;
+			if (yielded || generation !== settleGeneration) break;
 			const drift =
 				target.getBoundingClientRect().top -
 				region.getBoundingClientRect().top -
-				region.clientTop;
+				region.clientTop -
+				JUMP_ANCHOR_INSET_PX;
 			if (Math.abs(drift) <= JUMP_ANCHOR_EPSILON_PX) {
 				stable += 1;
 				if (stable >= JUMP_ANCHOR_STABLE_FRAMES) break;
 				continue;
 			}
 			stable = 0;
-			scrollRegionToTop(region, target, "reversed");
+			scrollRegionToTop(region, target, "reversed", JUMP_ANCHOR_INSET_PX);
 		}
 	} finally {
 		region.removeEventListener("wheel", yieldToReader);
 		region.removeEventListener("pointerdown", yieldToReader);
 		region.removeEventListener("touchstart", yieldToReader);
+		window.removeEventListener("keydown", onKey);
 	}
 }
 

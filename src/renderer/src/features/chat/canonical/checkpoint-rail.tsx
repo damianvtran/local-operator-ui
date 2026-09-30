@@ -169,16 +169,22 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 	return (
 		<>
 			{/*
-			 * STRUCTURAL IDENTITY FIRST (issue #680's vocabulary item): "Turn N of M"
-			 * is the string the tick's own label leads with, and the generated name
-			 * and summary ride beneath it as derived content rather than replacing
-			 * it - one convention across the two surfaces, built by one formatter so
-			 * they cannot drift. Design may refine the weighting.
+			 * STRUCTURAL IDENTITY FIRST (issue #680's vocabulary item, design D3):
+			 * the lead line is the SAME "Turn N of M" builder the tick's accessible
+			 * name leads with, and a ready name rides ON that line after a dot
+			 * separator in muted ink (design round 1's D2: one line fewer keeps the
+			 * named, summarised card inside its height budget). The summary is
+			 * clamped to two lines for the same reason.
 			 */}
 			<p className={cn("text-body-sm font-medium text-ink")}>
 				{checkpointTurnLabel(checkpoint.turn, turnCount)}
+				{name && (
+					<>
+						<span aria-hidden="true">{" \u00b7 "}</span>
+						<span className={cn("font-normal text-ink-muted")}>{name}</span>
+					</>
+				)}
 			</p>
-			{name && <p className={cn("text-body-sm text-ink")}>{name}</p>}
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
 					{CHECKPOINT_GENERATING_NAME}
@@ -186,7 +192,7 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 			)}
 			{summary && (
 				<p
-					className={cn("line-clamp-3 break-words text-body-sm text-ink-muted")}
+					className={cn("line-clamp-2 break-words text-body-sm text-ink-muted")}
 				>
 					{summary}
 				</p>
@@ -429,16 +435,19 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	useEffect(() => {
 		onHoverRef.current = onHover;
 	});
-	const labels = useMemo(
-		() =>
-			new Map(
-				checkpoints.map((entry) => [entry.id, checkpointAriaLabel(entry)]),
-			),
-		[checkpoints],
-	);
 	const turnCount = useMemo(
 		() => checkpointTurnCount(checkpoints),
 		[checkpoints],
+	);
+	const labels = useMemo(
+		() =>
+			new Map(
+				checkpoints.map((entry) => [
+					entry.id,
+					checkpointAriaLabel(entry, turnCount),
+				]),
+			),
+		[checkpoints, turnCount],
 	);
 
 	/*
@@ -742,7 +751,15 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 							}
 						}}
 						className={cn(
-							"pointer-events-none max-h-[100px] w-[300px] max-w-[300px] overflow-hidden",
+							/*
+							 * THE CAP FITS THE WORST STACK (design round 1's D2): the merged
+							 * identity line plus a two-line summary plus the outcome row is
+							 * ~139px of content against 34px of padding, and the design's
+							 * measured direction is that 100px clipped the outcome row - the
+							 * card's only colour and its state cue - silently. 176px is the
+							 * design's own number for the stack.
+							 */
+							"pointer-events-none max-h-[176px] w-[300px] max-w-[300px] overflow-hidden",
 							"flex flex-col gap-2",
 						)}
 					>
