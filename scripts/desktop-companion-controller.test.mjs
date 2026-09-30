@@ -9,6 +9,7 @@ import { setImmediate as settle } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { buildSync } from "esbuild";
+import sharp from "sharp";
 
 // Run the actual controller with Electron and timers replaced.
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -1089,23 +1090,32 @@ test("Inky selection persists and remains protected as a built-in character", (t
 	assert.throws(
 		() =>
 			restarted.companion.importCharacter(
-				join(root, "src/renderer/src/assets/companions/sprout.png"),
+				join(root, "src/renderer/src/assets/companions/sprout.webp"),
 				"inky",
 			),
 		{ message: "Choose a custom companion to replace." },
 	);
 });
 
-test("custom artwork can be replaced and removed through the shared character menu", (t) => {
+test("custom artwork can be replaced and removed through the shared character menu", async (t) => {
 	const f = fixture(t);
-	const art = (name) =>
-		join(root, `src/renderer/src/assets/companions/${name}.png`);
-	f.companion.importCharacter(art("sprout"));
+	const source = mkdtempSync(join(tmpdir(), "companion-artwork-"));
+	t.after(() => rmSync(source, { recursive: true, force: true }));
+	const art = (name) => join(source, `${name}.png`);
+	for (const [name, background] of [
+		["first", "red"],
+		["replacement", "blue"],
+	]) {
+		await sharp({ create: { width: 2, height: 2, channels: 4, background } })
+			.png()
+			.toFile(art(name));
+	}
+	f.companion.importCharacter(art("first"));
 	const first = f.companion.appearance.id;
 	assert.ok(
 		f.companion.characterMenu.find((item) => item.label === "Replace artwork…"),
 	);
-	f.companion.importCharacter(art("hoodie"), first);
+	f.companion.importCharacter(art("replacement"), first);
 	const replaced = f.companion.appearance.id;
 	assert.notEqual(first, replaced);
 	assert.equal(f.companion.characters.length, 5);

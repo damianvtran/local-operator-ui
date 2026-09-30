@@ -40,7 +40,7 @@ const bundle = buildSync({
 	packages: "external",
 	jsx: "automatic",
 	alias: { "@shared": `${rootPath}/src/renderer/src/shared` },
-	loader: { ".css": "empty", ".png": "empty" },
+	loader: { ".css": "empty", ".webp": "empty" },
 	write: false,
 });
 const module = { exports: {} };

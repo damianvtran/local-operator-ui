@@ -2,12 +2,12 @@ import { cn } from "@shared/lib/utils";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import type { BuiltinCompanionCharacter } from "../../shared/companion-skin";
 import type { CompanionMood } from "../../shared/desktop-companion";
-import hoodieMotion from "./assets/companions/hoodie-motion.png";
-import hoodie from "./assets/companions/hoodie.png";
-import inkyMotion from "./assets/companions/inky-motion.png";
-import inky from "./assets/companions/inky.png";
-import pixel from "./assets/companions/pixel.png";
-import sprout from "./assets/companions/sprout.png";
+import hoodieMotion from "./assets/companions/hoodie-motion.webp";
+import hoodie from "./assets/companions/hoodie.webp";
+import inkyMotion from "./assets/companions/inky-motion.webp";
+import inky from "./assets/companions/inky.webp";
+import pixel from "./assets/companions/pixel.webp";
+import sprout from "./assets/companions/sprout.webp";
 import {
 	type CompanionScene,
 	getCompanionReactionDuration,
