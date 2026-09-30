@@ -49,6 +49,7 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	keepPreviousData,
 	useQuery,
@@ -3140,17 +3141,31 @@ export const HelpPalette: FC<PickerContext> = ({
 
 // ---------------------------------------------------------------- reload
 
+/**
+ * The sentence a successful reload leaves behind.
+ *
+ * Its own function because it now has TWO readers (issue #679): the result strip
+ * the dialog used to keep on screen after closing nothing, and the toast that
+ * carries it once the dialog is gone. Two spellings of one receipt is how the
+ * strip and the toast would come to disagree about what just happened.
+ */
+export const reloadReceipt = (
+	sessionId: string,
+	cold: boolean,
+	recentRows: number,
+): string =>
+	`Reopened ${sessionId}: ${cold ? "cold (no owner running)" : "live owner attached"}, ${recentRows} recent rows.`;
+
 export const ReloadPicker: FC<PickerContext> = ({
 	sessionId,
 	onClose,
 	rebind,
 }) => {
-	const [result, setResult] = useState<PickerResult | null>(null);
 	const op = useOperation();
 	const submit = useCallback(async () => {
 		// Reopen the SAME identity: a fresh snapshot from the backend. Nothing
 		// is resubmitted; the stream re-subscribes and replays from scratch.
-		await op.perform(
+		const snapshot = await op.perform(
 			() =>
 				desktopResult<{
 					payload: { cold: boolean; history: DesktopHistoryPage };
@@ -3158,17 +3173,52 @@ export const ReloadPicker: FC<PickerContext> = ({
 					op: "sessions.get",
 					sessionId,
 				}),
-			(snapshot) => ({
+			(value) => ({
 				tone: "success",
-				text: `Reopened ${sessionId}: ${snapshot.payload.cold ? "cold (no owner running)" : "live owner attached"}, ${
-					snapshot.payload.history.entries.length
-				} recent rows.`,
+				text: reloadReceipt(
+					sessionId,
+					value.payload.cold,
+					value.payload.history.entries.length,
+				),
 			}),
 			"The conversation could not be reopened",
 		);
+		/*
+		 * FAILURE KEEPS THE DIALOG (issue #679). `op.perform` answers `null` when the
+		 * call threw, and its own inline error line is the only carrier of the reason
+		 * a reload failed - elsewhere in this file that is the whole pattern. So the
+		 * failure path is deliberately nothing at all: the strip stays readable, the
+		 * person can press Reload again, and nothing was rebound.
+		 */
+		if (snapshot === null) return;
+		/*
+		 * SUCCESS ENDS THE PICKER (issue #679). The reload has already replaced the
+		 * transcript the dialog was sitting over, and every neighbouring picker in
+		 * this file closes on pick, so leaving it up cost a mandatory extra press
+		 * (Done or Esc) and re-offered an action that had just run.
+		 *
+		 * THE REBIND IS SUCCESS-ONLY, and that is a decision rather than a tidy-up.
+		 * It used to run unconditionally, including when the snapshot could not be
+		 * read - and a rebind is the EFFECT of a reload: it tears the stream down and
+		 * re-attaches it to replay from scratch. Running it after a failed read
+		 * therefore re-subscribed a stream for a reload that did not happen, and the
+		 * one thing it bought the reader - the inline error saying the conversation
+		 * could not be reopened - was printed over a transcript that had just been
+		 * torn down and rebuilt for no reason. A failure changes nothing now.
+		 *
+		 * The receipt survives the dialog as a toast, because closing it would
+		 * otherwise be the end of the one confirmation this action ever prints.
+		 */
 		rebind(sessionId);
-		setResult(null);
-	}, [op, sessionId, rebind]);
+		showSuccessToast(
+			reloadReceipt(
+				sessionId,
+				snapshot.payload.cold,
+				snapshot.payload.history.entries.length,
+			),
+		);
+		onClose();
+	}, [onClose, op, rebind, sessionId]);
 	return (
 		<PickerHost
 			open
@@ -3178,7 +3228,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 			onSubmit={submit}
 			submitLabel="Reload"
 			busy={op.busy}
-			result={op.result ?? result}
+			result={op.result}
 		/>
 	);
 };
