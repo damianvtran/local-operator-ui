@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  Scroll-shift harness page: the shipped `ChatPage` on a scripted owner that can
+  PLAY a live turn, so a streaming answer grows a row under the real transcript.
+
+  `scripts/scroll-shift-evidence.vite.mjs` serves it; `scripts/scroll-shift-evidence.mjs`
+  drives it over raw CDP and reads the per-frame sampler the page installs on
+  `window.__shift`.
+
+  The store is persisted (`canonical-sessions-storage`), so it is cleared in the
+  head BEFORE the module graph loads - zustand's `persist` rehydrates when the
+  store module is first evaluated, and clearing later loses that race.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Scroll shift — streaming handover harness</title>
+		<script>
+			localStorage.clear();
+			localStorage.setItem(
+				"chat-sidebar-disclosures",
+				JSON.stringify({ previous: true }),
+			);
+		</script>
+	</head>
+	<body>
+		<!--
+		 * `#app`, not `#root`: `styles/index.css` pins the height chain on
+		 * `html, body, #app`; a differently named node breaks it silently.
+		 -->
+		<div id="app"></div>
+		<script type="module" src="./scroll-shift-evidence.tsx"></script>
+	</body>
+</html>

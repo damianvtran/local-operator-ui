@@ -94,7 +94,7 @@ import { after, test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import React, { act } from "react";
+import React, { act, useState } from "react";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -1036,10 +1036,12 @@ test("one picture in a group is named as one picture", async () => {
 /**
  * The fold's own header, mounted here so the strip's count and the tile's states
  * can be asserted against the REAL component tree rather than against a stand-in.
+ * The optional `Fold` mounts the same props through the caller's host (`FoldHost`
+ * below) for the cases that press the fold's own toggles.
  */
-const foldElement = (props) =>
+const foldElement = (props, Fold = TraceFold) =>
 	React.createElement(
-		TraceFold,
+		Fold,
 		{
 			summary: "Explored 1 file, ran 2 commands",
 			actionCount: 3,
@@ -1057,6 +1059,32 @@ const foldElement = (props) =>
 		},
 		React.createElement("span", { "data-testid": "fold-row" }, "row"),
 	);
+
+/*
+ * THE CALLER'S HALF OF THE CONTRACT, for the cases that press the fold's own
+ * toggles (`chat-image-expand` U1): `TraceFold` is CONTROLLED on this branch -
+ * `open`/`onOpenChange` are the conversation registry's, handed down at the
+ * transcript's call site (`open={foldOpenOf(...)}`, `onOpenChange` ->
+ * `setFoldOpenFor`), and BOTH the header's press and the count slot's report
+ * upward through that channel. `trace-fold.stories.tsx`'s `FoldHost` plays the
+ * registry's part for the story frames; this plays it for the mounted-tree
+ * cases, with a tap (`onPress`) so a case can assert the press REACHED the
+ * caller rather than only that a later frame looks open. A bare `TraceFold`
+ * render would press a path the component no longer has: the U1 case assumed an
+ * internal `setOpen`, which is why it threw `onOpenChange is not a function`
+ * until this host existed.
+ */
+const FoldHost = ({ onPress, ...props }) => {
+	const [open, setOpen] = useState(false);
+	return React.createElement(TraceFold, {
+		...props,
+		open,
+		onOpenChange: (next) => {
+			onPress?.(next);
+			setOpen(next);
+		},
+	});
+};
 
 test("the count is text in the header, and a run with no pictures gets no clause", async () => {
 	await mount(async (api) => {
@@ -1297,10 +1325,10 @@ test("the count slot opens the fold it belongs to (U1)", async () => {
 		/*
 		 * UX round 1, U1: past the cap the count slot is the only route to the
 		 * pictures the row did not draw, and it was inert text. It is a button now
-		 * whose press is the FOLD'S OWN toggle, so pressing it must open the fold -
-		 * the strip unmounts and the rows it stood for mount, exactly as the
-		 * header's own press does. Mounted on the real `TraceFold` because the
-		 * toggle is the fold's to hand over, and the wiring is what is under test.
+		 * whose press is the FOLD'S OWN toggle - the same upward channel the
+		 * header's press uses - so pressing it must reach the conversation (here
+		 * `FoldHost`, playing the registry's part) and open the fold: the strip
+		 * unmounts and the rows it stood for mount.
 		 */
 		const many = Array.from({ length: 8 }, (_, index) => ({
 			id: `image-expand:more:${index}`,
@@ -1308,17 +1336,21 @@ test("the count slot opens the fold it belongs to (U1)", async () => {
 			attachment: null,
 			mimeType: "image/png",
 		}));
+		const pressed = [];
 		await api.render(
-			foldElement({
-				sectionLive: false,
-				mediaCount: many.length,
-				condensedMedia: (expand) =>
-					React.createElement(FoldMedia, {
-						images: many,
-						scope: transcriptScope,
-						onRevealMore: expand,
-					}),
-			}),
+			foldElement(
+				{
+					mediaCount: many.length,
+					condensedMedia: (expand) =>
+						React.createElement(FoldMedia, {
+							images: many,
+							scope: transcriptScope,
+							onRevealMore: expand,
+						}),
+					onPress: (next) => pressed.push(next),
+				},
+				FoldHost,
+			),
 		);
 		const strip = api.document.querySelector("[data-fold-media]");
 		assert.ok(strip, "the strip is on screen while condensed");
@@ -1327,6 +1359,11 @@ test("the count slot opens the fold it belongs to (U1)", async () => {
 		);
 		assert.ok(more, "the count slot is a real button");
 		await api.click(more);
+		assert.deepEqual(
+			pressed,
+			[true],
+			"the press reached the conversation's registry - the channel the header's own press uses",
+		);
 		assert.equal(
 			api.document.querySelector("[data-fold-media]"),
 			null,
