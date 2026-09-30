@@ -309,16 +309,29 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							</span>
 						)}
 						{completed && (
-							/*
-							 * THE COMPLETION MARK. `success` on `canvas` is asserted by the
-							 * contrast contract's GRAPHICS table (the same pair the checkpoint
-							 * rail paints for `complete`). It is decoration - the label already
-							 * says what happened - so it is hidden from AT.
-							 */
-							<CircleCheck
-								aria-hidden={true}
-								className={cn("size-3.5 shrink-0 text-success")}
-							/>
+							<>
+								{/*
+								 * THE COMPLETION MARK. `success` on `canvas` is asserted by the
+								 * contrast contract's GRAPHICS table (the same pair the checkpoint
+								 * rail paints for `complete`). The glyph itself is decoration, so
+								 * it is hidden from AT - and the FACT it states is carried by the
+								 * word below, because an aria-hidden mark with no name is a state
+								 * a screen-reader user cannot learn at all (QA round 2, QA-1).
+								 */}
+								<CircleCheck
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0 text-success")}
+								/>
+								{/*
+								 * The mark's meaning as WORDS, off-screen. It joins the trigger's
+								 * own accessible name (the button has no `aria-label`, so its name
+								 * is its content), which is the one string a screen reader reads
+								 * before the press: "Wake · 2 actions completed". A second live
+								 * region would say the same fact twice, in a surface that already
+								 * has one voice for the list.
+								 */}
+								<span className={cn("sr-only")}>completed</span>
+							</>
 						)}
 						{label !== null && (durationS !== null || actionCount > 0) && (
 							<Dot />
