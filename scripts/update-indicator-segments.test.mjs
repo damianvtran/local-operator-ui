@@ -1362,6 +1362,82 @@ test("R10/U11: the hand-back returns to the surface the press came from, not the
 	);
 });
 
+/*
+ * A SWITCH IS NOT A CLOSE (UX round 3, U13). The hand-back compared the two
+ * open-sets and treated "the other surface's detail is no longer open" as a close,
+ * so pressing the second band item opened its card and then moved focus OUT of it
+ * onto the item of the surface just left. Both directions, because the bug is in
+ * the set arithmetic and a one-directional case would pass a fix that special-cased
+ * the app surface.
+ */
+for (const [from, to] of [
+	[UpdateType.UI, UpdateType.BACKEND],
+	[UpdateType.BACKEND, UpdateType.UI],
+]) {
+	test(`U13: switching the card ${from} -> ${to} keeps focus in the card`, async () => {
+		await reset();
+		await mount();
+		await fire("update-available", {
+			version: "0.31.0",
+			releaseNotes: "Fixes.",
+		});
+		await fire("backend-update-available", SERVER_OFFER);
+		const item = (type) =>
+			indicatorButtons().find(
+				(button) => button.getAttribute("data-update-indicator-open") === type,
+			);
+		await act(async () => {
+			item(from).dispatchEvent(
+				new DOM.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await act(async () => {
+			item(to).dispatchEvent(
+				new DOM.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		const card = document.querySelector("[data-release-detail]");
+		assert.ok(card, "the pressed surface's card is up");
+		assert.equal(
+			detailOpened()[to],
+			true,
+			"the detail moved to the surface that was pressed",
+		);
+		assert.ok(
+			card.contains(document.activeElement),
+			`focus stays inside the card the press opened, not ${document.activeElement?.outerHTML.slice(0, 80)}`,
+		);
+	});
+}
+
+test("R14: a settings check that finds both channels opens one card, not two", async () => {
+	await reset();
+	await mountSettings();
+	checkScript = () => ({
+		app: "available",
+		server: "available",
+		affirmation: null,
+	});
+	await press("Check for updates");
+	const open = detailOpened();
+	/*
+	 * THE THIRD ROUTE TO THE SAME OUTCOME as R9(b): the settings button called the
+	 * store's `openDetail` for each channel, so both flags were set and the second
+	 * card was queued behind the first. The invariant lives in the store now, so the
+	 * assertion is on the store's own state and holds for any caller.
+	 */
+	assert.equal(
+		[open[UpdateType.UI], open[UpdateType.BACKEND]].filter(Boolean).length,
+		1,
+		"exactly one surface holds the detail",
+	);
+	assert.equal(
+		open[UpdateType.BACKEND],
+		true,
+		"and the last one the check opened holds it, as the band's press does",
+	);
+});
+
 test("U12: the close control is not inside the card's scrolling box", async () => {
 	await reset();
 	const container = await mount();

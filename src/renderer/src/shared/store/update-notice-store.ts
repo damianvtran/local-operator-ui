@@ -106,6 +106,20 @@ type UpdateNoticeState = {
 	 * offer is gone is the same state one render later.
 	 */
 	clearSurface: (type: UpdateType) => void;
+	/**
+	 * Open one surface's detail card, and close every OTHER surface's.
+	 *
+	 * ONE CARD AT A TIME IS THE STORE'S INVARIANT, not each caller's habit (review
+	 * R14). The two cards are `fixed top-4 right-4 z-50` in one early-return chain,
+	 * so two open flags painted one card and QUEUED the other: closing the first
+	 * revealed a card nobody had asked for. The band's press, the aggregate's loud
+	 * step and the settings button's check each used to enforce that separately (or,
+	 * in the button's case, not at all - a check that found both channels queued
+	 * them). Doing it here means a new caller inherits it, and it is what lets the
+	 * focus hand-back reason from "nothing open" without a second bookkeeping path.
+	 * The surface that gives way keeps its OFFER - only its detail closes - so it
+	 * returns to the band rather than disappearing.
+	 */
 	openDetail: (type: UpdateType) => void;
 	closeDetail: (type: UpdateType) => void;
 	/** Drop every transient fact (a fresh test, a story, a signed-out app). */
@@ -167,8 +181,8 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 				})),
 
 			openDetail: (type) =>
-				set((state) => ({
-					detailOpen: { ...state.detailOpen, [type]: true },
+				set(() => ({
+					detailOpen: perSurface((surface) => surface === type),
 				})),
 
 			closeDetail: (type) =>
