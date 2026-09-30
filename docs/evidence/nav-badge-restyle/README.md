@@ -76,6 +76,17 @@ move the pixels". The round-1 remediation re-shot them again and every frame but
 the new three-digit pair came back byte-identical for the same reason — that pass
 changed comments, the instrument and this file, not the mark.
 
+A second fold (`origin/main` at `4ea16359` — the mesh-canvas train and the 0.31.26
+release) landed after round 2. **No frame was re-taken and none moved**, and that is
+measured rather than assumed: the fold's whole reach into the badge's path is
+additive (`styles/index.css` +41, `themes.generated.css` +60, both new
+`hairlineStrong` variables), the brand palettes' own roles are byte-for-byte what
+they were (`elevated` `#322D22`/`#fefdfa`, `inkDim` `#a6a091`/`#656056`, and the
+steps this change quotes — 3.29 / 2.50, 2.19 / 7.00 — re-measured unchanged), and a
+fresh scene run on the merged tree reproduces **all 14 frames byte-identical** at
+34 PASS / 0 FAIL per palette. The manifest's stamps were re-derived to the merged
+tree.
+
 ### The states (`before/` and `after/`, `-dark` and `-light`)
 
 | Frame | State |
