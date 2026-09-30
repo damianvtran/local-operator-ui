@@ -60,7 +60,7 @@ numbers below are what the final frames read.
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
 | `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
-| `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest |
+| `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest — re-shot at the #697 fold with its revealed move pair (both arrows boundary-inked while one pinned row is shown), the pair held under the open menu |
 | `pin-state-unknown` | s3, `pinned === undefined`: one row, and the row draws no pin control |
 | `archive-withheld` | `session_archive` absent: one row (`Pin conversation`), not a disabled one |
 | `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |
@@ -152,24 +152,27 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   18,352 bytes) — both are “hover settled, no menu, flyout drawn”. Sixteen
   distinct pictures under twenty names, and the coincidences are the
   measurement rather than two takes of one shot.
-- **Two capture clocks (design round 2, D6).** The round-1 half was written at
-  00:00:17–00:00:59 on 2026-09-30 over rows dated the previous local day, so
-  its list header reads `THIS WEEK` (ink 66px); the two remediation states
-  were written at 02:51 over rows dated minutes before, so they read `TODAY`
-  (ink 40px). Both are right for their capture instant — the sidebar sections
-  by the local calendar day — and no geometry, readout or claim in the set
+- **Two capture clocks — three since the #697 fold (design round 2, D6).** The
+  round-1 half was written at 00:00:17–00:00:59 on 2026-09-30 over rows dated
+  the previous local day, so its list header reads `THIS WEEK` (ink 66px); the
+  two remediation states were written at 02:51 over rows dated minutes before,
+  so they read `TODAY` (ink 40px); and `pinned-row` was re-shot at 05:35 on
+  the fold onto `50b9daf8fe`, over rows dated minutes before, so it reads
+  `TODAY` too. Each is right for its capture instant — the sidebar sections by
+  the local calendar day — and no geometry, readout or claim in the set
   depends on the header.
 - **This set supersedes the design round's proposal set**
   (`../chat-sidebar-row-context-menu-proposal/`), which lives on
   `design/row-context-menu-694` as the record of what was proposed — its
   `pointer-open-unheld` control reproduces a defect the shipped hold removes,
   and nothing in this set re-photographs it.
-- **The fold.** The branch carries seven merges of `origin/main` (`0044c53422`,
-  `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3`, `8712e8684c`, `2e866d5d49` and
-  `efca9e16fc` — the round-2 and round-3 folds, the last landed as
-  `64202be19f`); the two remediation states were captured at the commit
-  `addedAtHead` names, and the manifest's pass record names the commits the
-  frames came from.
+- **The fold.** The branch carries eight merges of `origin/main` (`0044c53422`,
+  `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3`, `8712e8684c`, `2e866d5d49`,
+  `efca9e16fc` and `50b9daf8fe` — the round-2 and round-3 folds, the last two
+  landed as `64202be19f` and `c88736f3b4`); the two remediation states were
+  captured at the commit `addedAtHead` names, `pinned-row` was re-shot at the
+  `50b9daf8fe` fold (see the clocks note), and the manifest's pass record
+  names the commits the frames came from.
 - The story renders the app's real `ChatSidebar` over a stubbed transport, so
   no frame touches a live backend; `--allow-backend` is passed because the
   operator's own backend answers on 1111 and the rig refuses a run that could
