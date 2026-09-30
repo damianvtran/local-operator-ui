@@ -157,7 +157,11 @@ export const HUB_ERROR_SENTENCE: Record<string, string> = {
 	// (a 401 answer, a write the backend could not finish) and would otherwise
 	// fall to the generic sentence, which names neither the cause nor the remedy.
 	"no-credential": "Sign in to Radient to update from the hub.",
-	"hub-error": "Couldn't write the update. Try again.",
+	// The backend raises this class for BOTH a failed hub fetch and a failed local
+	// write (one class, two directions), so the sentence names neither: it used to
+	// say "write", and the path that reaches it most often is a download (UX
+	// round 2, U12).
+	"hub-error": "The update didn't complete. Try again.",
 };
 
 const GENERIC_FAILURE = "Couldn't update this from the hub. Try again.";
