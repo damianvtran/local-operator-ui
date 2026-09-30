@@ -109,10 +109,12 @@ import {
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
+	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
 	isBareToolName,
 	isDiffBodyRow,
+	isFailedResult,
 	outputFallbackLine,
 	summaryFromArgs,
 	toolOp,
@@ -1292,6 +1294,17 @@ const ToolRow = memo(function ToolRow({
 	 * planning fault earns.
 	 */
 	const interruptedNotRun = notRun && isInterruptedFault(record.notRunKind);
+	/*
+	 * THE AMBER MIDDLE, read from the result's own state - `details.delivery.state`
+	 * - and never from its text. A `send` that settled `mailbox` or `unconfirmed`
+	 * is neither a success nor a failure: the core leaves `is_error` false for it,
+	 * so without this arm the row would print the SILENT SUCCESS over a wake that
+	 * was never answered, which is the incident this state model exists to stop
+	 * restating. `delivered` and every other tool answer `null` here and keep the
+	 * ladder exactly as it was; an unknown or absent state is already `null` by the
+	 * time it reaches the record.
+	 */
+	const partial = deliveryRowOutcome(record.delivery) === "partial";
 	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
@@ -1467,12 +1480,15 @@ const ToolRow = memo(function ToolRow({
 							: "not-run"
 						: running
 							? "running"
-							: record.isError
-								? "error"
-								: record.stopped
-									? "interrupted"
-									: "success"
+							: partial
+								? "partial"
+								: record.isError
+									? "error"
+									: record.stopped
+										? "interrupted"
+										: "success"
 				}
+				deliveryState={record.delivery}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}
@@ -2587,8 +2603,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 */
 		const groups = foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
+			/*
+			 * `isFailedResult`, not `isError` alone: a `send` that settled `mailbox` or
+			 * `unconfirmed` is a non-failure the core leaves `is_error` false for, and the
+			 * shared predicate says so here rather than assuming it of the producer. This
+			 * one expression feeds the fold's failed count, the turn foot's `· N failed`
+			 * AND the failed-row jump's target, so counting a partial result as a failure
+			 * would jump the reader to a message sitting in the peer's inbox.
+			 */
 			failedOf: (row) =>
-				row.record.kind === "tool" && row.record.isError === true,
+				row.record.kind === "tool" &&
+				isFailedResult(row.record.isError, row.record.delivery),
 			durationOf: workedSecondsOf,
 			/*
 			 * The fold's condensed header is fed from the records themselves: the
@@ -2651,8 +2676,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			runsOf(visible).map((run) => visible[run.openingIndex].record.id),
 		);
 		return turnFeet(visible, {
+			/*
+			 * `isFailedResult`, not `isError` alone: a `send` that settled `mailbox` or
+			 * `unconfirmed` is a non-failure the core leaves `is_error` false for, and the
+			 * shared predicate says so here rather than assuming it of the producer. This
+			 * one expression feeds the fold's failed count, the turn foot's `· N failed`
+			 * AND the failed-row jump's target, so counting a partial result as a failure
+			 * would jump the reader to a message sitting in the peer's inbox.
+			 */
 			failedOf: (row) =>
-				row.record.kind === "tool" && row.record.isError === true,
+				row.record.kind === "tool" &&
+				isFailedResult(row.record.isError, row.record.delivery),
 			/*
 			 * The SAME quantity every condensed bar states (`workedSecondsOf`): one
 			 * definition, so the bars of a ladder add up to this figure (#708 D1).

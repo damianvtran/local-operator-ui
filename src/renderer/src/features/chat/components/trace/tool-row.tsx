@@ -53,8 +53,17 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
-import { InterruptedGlyph, toolIcon } from "./tool-glyphs";
 import {
+	DeliveryUnconfirmedGlyph,
+	InterruptedGlyph,
+	MailboxGlyph,
+	toolIcon,
+} from "./tool-glyphs";
+import {
+	SEND_DELIVERY_LABEL,
+	SEND_DELIVERY_TITLE,
+	SEND_DELIVERY_WORD,
+	type SendDeliveryState,
 	type ToolCategory,
 	displayName,
 	formatDuration,
@@ -68,6 +77,26 @@ export type ToolRowOutcome =
 	| "success"
 	| "error"
 	| "interrupted"
+	/**
+	 * A call that SETTLED without failing and without the plain success either:
+	 * a `send` whose message landed but whose wake went unanswered (`mailbox`),
+	 * or whose landing could not be confirmed (`unconfirmed`). Which of the two
+	 * is the row's `deliveryState`, which also picks the word, the mark and the
+	 * hover.
+	 *
+	 * A state of its own rather than `success` or `error`, for the same reason
+	 * `not-run` is: either alternative is a false claim. `success` would paint
+	 * the silent tick the ledger reserves for "it worked", and `error` would
+	 * paint the danger wash, count it in the fold's "N failed" and arm the
+	 * failed-row jump for a message that may well be sitting in the peer's
+	 * mailbox. It wears the WARNING ink - the amber the TUI's partial glyph
+	 * already uses for "answered, not whole" - and never the danger wash.
+	 *
+	 * The amber-versus-red hue step is deliberately NOT the only channel: each
+	 * state has its own WORD and its own MARK (`MailboxGlyph`,
+	 * `DeliveryUnconfirmedGlyph`), so the states read apart with the colour off.
+	 */
+	| "partial"
 	/**
 	 * A RECEIPT: a ledger row that reports an event rather than a call — an
 	 * inbound peer message, a wake delivery.
@@ -205,6 +234,16 @@ export type ToolRowProps = {
 	 */
 	summaryHold?: boolean;
 	outcome: ToolRowOutcome;
+	/**
+	 * How a `send` call's delivery ended, when the result stated it
+	 * (`details.delivery.state`). `null`/absent is "no statement" and leaves the
+	 * row exactly as it was before the field existed.
+	 *
+	 * It refines `outcome` rather than replacing it: `partial` needs it to choose
+	 * between its two words, and `error` uses it to say `not delivered` for a
+	 * send instead of the generic `failed`. On any other outcome it is ignored.
+	 */
+	deliveryState?: SendDeliveryState | null;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
 	 * seconds. `null` on a settled row is a replay whose duration the transcript
@@ -458,6 +497,12 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
 	"not-run": "never ran",
+	// The partial states do not announce through the table: their sentence is
+	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
+	// unconfirmed`), which says more than the drawn word and is rendered where
+	// the drawn one is (`StatusCluster`). Empty here rather than a shorter
+	// duplicate, so the row cannot read its own outcome out twice.
+	partial: "",
 	// Nothing to report: a receipt is not an action, so it has no outcome to
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
@@ -510,10 +555,17 @@ function useRunningElapsed(startedAt: number | null): number | null {
  */
 const StatusCluster = ({
 	outcome,
+	deliveryState = null,
 	durationS,
 	startedAt,
 }: {
 	outcome: ToolRowOutcome;
+	/**
+	 * How a `send` call's delivery ended, when the result stated it. Only the two
+	 * states that draw a WORD need it here: it picks which word (`wake unconfirmed`
+	 * or `unconfirmed`), the mark beside it, and the spoken label.
+	 */
+	deliveryState?: SendDeliveryState | null;
 	durationS: number | null;
 	startedAt?: number | null;
 }) => {
@@ -530,20 +582,74 @@ const StatusCluster = ({
 	 * channel only while both drew a glyph, and a word is unambiguous.
 	 */
 	const failedLike = outcome === "error" || outcome === "not-run";
-	const Glyph = outcome === "interrupted" ? InterruptedGlyph : null;
 	/*
-	 * The outcome MARK is hueless (`ink-dim`), and it is now rendered for
-	 * `interrupted` only: a settled success draws nothing and a settled failure
-	 * draws the WORD in `danger` beside this slot. The three-arm expression that
-	 * used to live here mapped success to `text-success` and failure to
-	 * `text-danger`; those inks are retired HERE, where the word states the
-	 * outcome once at the edge the reader is already looking at - and NOT from
-	 * the row: `DiffCounters` above spends the same two roles on the diff's own
-	 * sides, a different question from this column's (operator report on PR #534,
-	 * 2026-09-26). Do not dim the counters back to restore "consistency" - the
-	 * pair is meant to be scannable at a glance.
+	 * THE AMBER MIDDLE, AND WHY IT IS A THIRD TREATMENT rather than one of the two
+	 * above. A `send` that settled `mailbox` or `unconfirmed` is not a success - a
+	 * silent row would say the wake was answered and it was not - and it is not a
+	 * failure, which is the claim this whole state model exists to stop making. So
+	 * it prints a WORD like a failure does, in the WARNING role (`warning` is
+	 * already this app's "attention, not failure": the parked-approval ink, and
+	 * the TUI's `tool.status.partial_glyph`), and it draws a MARK of its own beside
+	 * that word.
+	 *
+	 * The mark is not decoration: two states share this treatment, and the amber
+	 * step is deliberately not the only thing telling them apart - each draws its
+	 * own SHAPE (`MailboxGlyph`, `DeliveryUnconfirmedGlyph`) beside its own WORD, so
+	 * a reader with no colour still reads `mailbox` from `unconfirmed`.
 	 */
-	const glyphInk = "text-ink-dim";
+	const partial = outcome === "partial";
+	/*
+	 * THE STATE WORD, at `text-meta`/500, on the trailing edge where the eye
+	 * already is for the duration (§E1). For a `send` that stated its delivery this
+	 * is `SEND_DELIVERY_WORD` (`wake unconfirmed`, `unconfirmed`, `not delivered`)
+	 * and the ink is the ROLE - amber for the two partial states, danger for
+	 * `failed`; every other failure keeps its own words (`failed`, `never ran`) in
+	 * the danger role.
+	 */
+	const deliveryWord = deliveryState
+		? SEND_DELIVERY_WORD[deliveryState]
+		: undefined;
+	const word = partial
+		? (deliveryWord ?? null)
+		: failedLike
+			? (deliveryWord ?? OUTCOME_LABEL[outcome])
+		: null;
+	const wordInk = partial ? "text-warning" : "text-danger";
+	/*
+	 * The word the row STATES and the words it SPEAKS are not the same sentence for
+	 * the partial states: the drawn word is short enough to sit at the row's edge
+	 * (`wake unconfirmed`) while the spoken one carries the fact the word abbrevi-
+	 * ates (`delivered, wake unconfirmed`). Where the two differ the drawn word is
+	 * `aria-hidden` and only the spoken label reaches assistive tech; where they are
+	 * the same string (the failure words) the drawn text is already the announce-
+	 * ment and nothing is repeated - the rule the sr-only span below has always had.
+	 */
+	const spoken =
+		partial && deliveryState
+			? (SEND_DELIVERY_LABEL[deliveryState] ?? null)
+			: null;
+	const title =
+		partial && deliveryState
+			? SEND_DELIVERY_TITLE[deliveryState]
+			: undefined;
+	/*
+	 * The outcome MARK: the interrupted slashed circle, or the partial state's own
+	 * shape. Its ink used to be hueless (`ink-dim`) because the word carried the
+	 * statement alone; the partial pair takes the WARNING ink so the mark and the
+	 * word beside it read as one statement, which is what the TUI's `◐` does
+	 * (`tool.status.partial_glyph`). `interrupted` keeps the hueless mark - that is
+	 * a statement about the mark (the USER stopped the call), not about the row.
+	 */
+	const Glyph = partial
+		? deliveryState === "mailbox"
+			? MailboxGlyph
+			: deliveryState === "unconfirmed"
+				? DeliveryUnconfirmedGlyph
+				: null
+		: outcome === "interrupted"
+			? InterruptedGlyph
+			: null;
+	const glyphInk = partial ? "text-warning" : "text-ink-dim";
 	/*
 	 * The status column of a RUNNING row, which is either its own clock or
 	 * NOTHING AT ALL.
@@ -566,13 +672,24 @@ const StatusCluster = ({
 	return (
 		<span className={cn("flex shrink-0 items-center gap-1.5")}>
 			{/*
-			 * THE STATE WORD, at `text-meta`/500 in `danger`, on the trailing edge
-			 * where the eye already is for the duration (§E1). This is the row's only
-			 * loud ink, and it is only ever printed for a settled FAILURE.
+			 * THE STATE WORD, at `text-meta`/500, on the trailing edge where the eye
+			 * already is for the duration (§E1). This is the row's only loud ink, and
+			 * it is printed for a settled FAILURE (`danger`, its own words) and for a
+			 * `send` whose delivery the result stated (`SEND_DELIVERY_WORD`, in the
+			 * role that state earns: `warning` for the two partial states, `danger` for
+			 * `not delivered`).
 			 */}
-			{failedLike ? (
-				<span className={cn("font-medium text-danger text-meta")}>
-					{OUTCOME_LABEL[outcome]}
+			{word ? (
+				<span
+					className={cn("font-medium text-meta", wordInk)}
+					// The hover is the explanation the word cannot fit: it exists for the
+					// two partial states only (`SEND_DELIVERY_TITLE`), and `send` is the one
+					// row whose word is a hedge rather than a verdict.
+					title={title}
+					// Spoken by the sr-only label instead, where the two differ.
+					aria-hidden={spoken ? true : undefined}
+				>
+					{word}
 				</span>
 			) : null}
 			<span className={cn("flex size-3.5 shrink-0 [&_svg]:size-3.5", glyphInk)}>
@@ -593,6 +710,10 @@ const StatusCluster = ({
 				{!failedLike && OUTCOME_LABEL[outcome] ? (
 					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
 				) : null}
+				{/* The partial states' SPOKEN sentence, which is longer than the word the
+				    row draws (`SEND_DELIVERY_LABEL`); the drawn word is `aria-hidden`
+				    above so the two do not both announce. */}
+				{spoken ? <span className={cn("sr-only")}>{spoken}</span> : null}
 			</span>
 			<span
 				className={cn(
@@ -612,6 +733,7 @@ export const ToolRow = ({
 	summaryFallback = null,
 	summaryHold = false,
 	outcome,
+	deliveryState = null,
 	durationS,
 	startedAt = null,
 	added = 0,
@@ -784,6 +906,7 @@ export const ToolRow = ({
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
 				outcome={outcome}
+				deliveryState={deliveryState}
 				durationS={durationS}
 				startedAt={startedAt}
 			/>

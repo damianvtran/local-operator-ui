@@ -207,6 +207,165 @@ function sendSummary(args: Record<string, unknown>): string {
 }
 
 /**
+ * How a `send` call's delivery ended, as the core states it in
+ * `details.delivery.state`.
+ *
+ * FOUR states, because the sender can only learn two facts independently - did
+ * the message land, and did the wake get answered - and collapsing the middle
+ * two would force the row into a claim it cannot back:
+ *
+ * - `delivered`: landed, and the wake (if one was asked for) was answered.
+ * - `mailbox`: landed (the recipient's transcript holds it) but the wake got no
+ *   answer; it reads the message on its next turn. NOT a failure.
+ * - `unconfirmed`: no answer and no evidence it landed. It may still arrive, so
+ *   the row says neither "sent" nor "failed".
+ * - `failed`: nothing landed. The only state the core flags `is_error`.
+ *
+ * Read from structured `details`, never from the result text: the text is prose
+ * the core is free to reword, and sniffing it is how a renderer ends up
+ * claiming a delivery it cannot verify. An ABSENT or UNKNOWN value is `null`,
+ * which every caller treats as "no statement" and so falls back to exactly what
+ * the row did before this field existed (old transcripts, old cores, and a
+ * future core's new state all degrade to the plain tick/failure pathway).
+ */
+export type SendDeliveryState =
+	| "delivered"
+	| "mailbox"
+	| "unconfirmed"
+	| "failed";
+
+const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
+	"delivered",
+	"mailbox",
+	"unconfirmed",
+	"failed",
+]);
+
+/** The delivery state a result's `details` states, or `null` when it states none. */
+export function deliveryStateFromDetails(
+	details: unknown,
+): SendDeliveryState | null {
+	if (!details || typeof details !== "object") return null;
+	const delivery = (details as Record<string, unknown>).delivery;
+	if (!delivery || typeof delivery !== "object") return null;
+	const state = (delivery as Record<string, unknown>).state;
+	return typeof state === "string" && SEND_DELIVERY_STATES.has(state)
+		? (state as SendDeliveryState)
+		: null;
+}
+
+/**
+ * The delivery state a row should hold after a frame, under `preferDiff`'s
+ * "absent vs stated" rule: a frame with NO `details` object (the live-event
+ * budget strips it above a quarter of the row's share) says nothing and keeps
+ * `previous`, while a frame WITH one is the producer's statement and wins -
+ * including a statement that names no state.
+ */
+export function preferDeliveryState(
+	details: unknown,
+	previous: SendDeliveryState | null | undefined,
+): SendDeliveryState | null {
+	if (!details || typeof details !== "object") return previous ?? null;
+	return deliveryStateFromDetails(details);
+}
+
+/**
+ * The trailing word a send row prints for a state, in the slot a failure's word
+ * takes. Only the three states that need saying have one: a delivered row is
+ * silent like every other success. Each word is distinct from the others with
+ * the colour off, and none is `failed` - "Sent ... failed" reads as a statement
+ * about the message, while `not delivered` states the fact the reader acts on
+ * (the same precedent as `never ran`).
+ */
+export const SEND_DELIVERY_WORD: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox: "wake unconfirmed",
+	unconfirmed: "unconfirmed",
+	failed: "not delivered",
+};
+
+/**
+ * The hover text on the word, for the two states whose word alone under-tells
+ * them. Both hedges are deliberate and verbatim from the frozen interface:
+ * `mailbox` tells the reader the message is safe and will be read, while
+ * `unconfirmed` says the opposite half - it may still arrive, so check first.
+ * `failed` needs none (its word is the whole statement).
+ */
+export const SEND_DELIVERY_TITLE: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox:
+		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
+	unconfirmed:
+		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+};
+
+/** What assistive tech hears for each state (the word is drawn, this is spoken). */
+export const SEND_DELIVERY_LABEL: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox: "delivered, wake unconfirmed",
+	unconfirmed: "delivery unconfirmed",
+	failed: "not delivered",
+};
+
+/**
+ * Whether a state is the AMBER middle: settled without a failure claim, yet not
+ * the plain success either.
+ */
+export function isPartialDelivery(
+	state: SendDeliveryState | null | undefined,
+): state is "mailbox" | "unconfirmed" {
+	return state === "mailbox" || state === "unconfirmed";
+}
+
+/**
+ * The row outcome a `send` delivery state earns, or `null` when it earns none.
+ *
+ * `null` is the answer for `delivered` (a success draws nothing, so the row keeps
+ * the outcome it already had), for an absent or unknown state, and for every
+ * non-`send` row - which is what keeps an old transcript on exactly the path it
+ * had before this field existed.
+ *
+ * `error` is returned for `failed` so the CALLER can tell the two ways a row can
+ * be an error apart: a `send` that this state names has the delivery word
+ * (`not delivered`) available, where every other error keeps `failed`.
+ */
+export function deliveryRowOutcome(
+	state: SendDeliveryState | null | undefined,
+): "partial" | "error" | null {
+	if (isPartialDelivery(state)) return "partial";
+	if (state === "failed") return "error";
+	return null;
+}
+
+/**
+ * Whether a settled result is a FAILURE for the counts that mean it: the fold's
+ * `N failed`, the turn foot's `· N failed`, and the row the failed-row jump
+ * targets.
+ *
+ * `isError` alone is the whole answer for every tool this row model knows, and
+ * it stays the answer here - the core leaves `is_error` false for `mailbox` and
+ * `unconfirmed`. The predicate exists so the exception is STATED at the sites
+ * that count rather than ASSUMED of the producer: a partial `send` settled
+ * without failing, and a count that read one as a failure would jump the reader
+ * to a message that is sitting in the peer's inbox, which is the claim the whole
+ * state model was added to stop making.
+ *
+ * The sibling rule (`turn-collapse-model.ts`'s `isFailedCall`) carries the other
+ * exclusions - never-sent, stopped, interrupted. Both read the same two facts,
+ * so a partial result is excluded by both.
+ */
+export function isFailedResult(
+	isError: boolean | null | undefined,
+	delivery: SendDeliveryState | null | undefined,
+): boolean {
+	if (isError !== true) return false;
+	return !isPartialDelivery(delivery);
+}
+
+/**
  * The one thing an addressed `sessions` call acts on, in the resolver's order.
  *
  * `pid`, then the exact session id, then the name/cwd substring - the same

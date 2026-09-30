@@ -21,6 +21,7 @@
 
 import {
 	Check,
+	CircleDashed,
 	CircleSlash,
 	Clock,
 	Columns3,
@@ -32,6 +33,7 @@ import {
 	Inbox,
 	ListChecks,
 	type LucideIcon,
+	Mailbox,
 	Monitor,
 	PictureInPicture2,
 	Plug,
@@ -134,7 +136,25 @@ export function toolIcon(toolName: string): LucideIcon {
  * There is deliberately no fourth entry for a running row. A running row shows
  * NO outcome glyph — the empty status column is what says "still running" — and
  * a glyph invented for it would be the one thing that breaks that rule.
+ *
+ * ## The two `send` delivery marks, and why they are not the tick or the cross
+ *
+ * A `send` can settle in two ways that are neither: the message landed but the
+ * wake got no answer (`mailbox`), or nothing confirmed that it landed at all
+ * (`unconfirmed`). Both are non-errors, so painting them `✗` would be the false
+ * non-delivery claim the core stopped making; both are not successes, so `✓`
+ * would claim an answered wake the sender never got.
+ *
+ * They take a SHAPE of their own so the two read apart with the colour off,
+ * which is the same reason the pair above is three shapes and not three tints:
+ * `Mailbox` is the noun the state is named for (the message is sitting in the
+ * recipient's tray), and `CircleDashed` is the incomplete circle the TUI already
+ * spends on "answered, not whole" (`ICON_PARTIAL`, `◐`) — an unclosed outline,
+ * not a verdict. Neither is `Inbox` (`peer`'s own tool glyph) nor `Send`
+ * (`send`'s), so a row's mark and its tool glyph cannot be read as each other.
  */
 export const SuccessGlyph = Check;
 export const ErrorGlyph = X;
 export const InterruptedGlyph = CircleSlash;
+export const MailboxGlyph = Mailbox;
+export const DeliveryUnconfirmedGlyph = CircleDashed;
