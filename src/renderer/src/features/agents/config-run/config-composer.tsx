@@ -27,7 +27,7 @@ import { Button } from "@shared/components/ui/button";
 import { Textarea } from "@shared/components/ui/textarea";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /** Three things an operator actually asks for, as one-press examples. */
@@ -259,10 +259,11 @@ function RunStrip({
 						 * again rather than telling the operator to send it themselves
 						 * (review round 1, UX U10).
 						 */}
-						{run.sessionId ? (
+						{run.canRetry ? (
 							<Button
 								variant="secondary"
 								size="sm"
+								data-testid="config-retry"
 								disabled={run.starting}
 								onClick={() => void run.retry()}
 							>
@@ -354,14 +355,54 @@ export function ConfigComposer({
 	/** Names the row the next request is about, when one is selected. */
 	about,
 	onClearAbout,
+	onStripHeightChange,
 }: {
 	run: ConfigRunHandle;
 	hero?: boolean;
 	blockedReason?: string | null;
 	about: { kind: "agent" | "team"; name: string } | null;
 	onClearAbout: () => void;
+	/**
+	 * The docked strip's own height, in px, while it is shown (0 when it is not).
+	 *
+	 * THE OVERLAY TRADES ONE PROBLEM FOR ANOTHER unless the pane is told how much
+	 * room it is covering: floating above the composer stopped the strip from
+	 * resizing the scroller (D4), and then sat on the last 106 px of the detail,
+	 * which scrolling could not reach (design review round 2, D12). The page adds
+	 * this to the scroller's bottom padding, so the last block can clear it.
+	 */
+	onStripHeightChange?: (height: number) => void;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const stripObserver = useRef<ResizeObserver | null>(null);
+	/*
+	 * A CALLBACK REF RATHER THAN AN EFFECT, because the fact this measures is the
+	 * node MOUNTING: the strip exists only from `running` on, and what changes its
+	 * height afterwards is its own content (the Watch list opening, a settled
+	 * summary arriving). React calls this with the node when it mounts, with a new
+	 * node if it is replaced, and with null on the way out — which is exactly the
+	 * three moments the pane's reserved room changes, and it keeps the hook's own
+	 * dependency rule honest instead of listing values the effect never reads.
+	 */
+	const measureStrip = useCallback(
+		(node: HTMLDivElement | null) => {
+			stripObserver.current?.disconnect();
+			stripObserver.current = null;
+			if (!onStripHeightChange) return;
+			if (!node) {
+				onStripHeightChange(0);
+				return;
+			}
+			const report = () =>
+				onStripHeightChange(node.getBoundingClientRect().height);
+			report();
+			if (typeof ResizeObserver === "undefined") return;
+			const observer = new ResizeObserver(report);
+			observer.observe(node);
+			stripObserver.current = observer;
+		},
+		[onStripHeightChange],
+	);
 	const live = run.status === "running" || run.status === "stopping";
 	const disabled = !run.enabled || live || Boolean(blockedReason);
 	const placeholder = about
@@ -432,7 +473,10 @@ export function ConfigComposer({
 				hero ? (
 					<RunStrip run={run} onDismiss={dismissAndFocus} />
 				) : (
-					<div className="absolute inset-x-0 bottom-full rounded-t-md border-hairline border bg-canvas p-3">
+					<div
+						ref={measureStrip}
+						className="absolute inset-x-0 bottom-full rounded-t-md border-hairline border bg-canvas p-3"
+					>
 						<RunStrip run={run} onDismiss={dismissAndFocus} />
 					</div>
 				)

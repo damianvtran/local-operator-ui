@@ -51,7 +51,14 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { LogIn } from "lucide-react";
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import {
+	type FormEvent,
+	type Ref,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	type FieldTarget,
@@ -652,7 +659,9 @@ export function AgentDetail({
 				) : null}
 			</header>
 
+			{/* noValidate — the edit form validates in `save()` (D14). */}
 			<form
+				noValidate
 				onSubmit={(event) => {
 					event.preventDefault();
 					void save(event);
@@ -870,6 +879,7 @@ function EditSection({
 	rows,
 	required,
 	error,
+	fieldRef,
 }: {
 	title: string;
 	description?: string;
@@ -879,6 +889,15 @@ function EditSection({
 	rows?: number;
 	required?: boolean;
 	error?: string | null;
+	/**
+	 * The field itself, for the caller's own focus move.
+	 *
+	 * A REF RATHER THAN AN ID LOOKUP: `useId`'s generated ids contain colons
+	 * (`:r1e:`), which no CSS selector can name — the round-1 blocker rig found
+	 * that the hard way — and the caller that reports "give this field something"
+	 * owns the only reason to reach for it.
+	 */
+	fieldRef?: Ref<HTMLTextAreaElement>;
 }) {
 	const id = useId();
 	return (
@@ -887,6 +906,7 @@ function EditSection({
 			{rows ? (
 				<Textarea
 					id={id}
+					ref={fieldRef}
 					value={value}
 					rows={rows}
 					required={required}
@@ -1085,7 +1105,18 @@ export function AgentCreate({
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			) : null}
+			{/*
+			 * `noValidate`, AND OUR OWN MESSAGE INSTEAD (design review round 2, D14).
+			 * The Instructions textarea is `required`, so the browser refused the
+			 * submit and showed its own "Please fill out this field." bubble for an
+			 * EMPTY field, while the in-app sentence appeared only for whitespace-only
+			 * input — two different UIs for one mistake, and neither was the
+			 * field-level copy this form is built on. `required` stays on the field
+			 * for assistive technology; `noValidate` hands the verdict to `save()`,
+			 * which marks the field and moves the caret to it.
+			 */}
 			<form
+				noValidate
 				onSubmit={(event) => {
 					event.preventDefault();
 					void save(event);
@@ -1156,6 +1187,7 @@ export function AgentCreate({
 					value={draft.instructions}
 					rows={12}
 					required
+					fieldRef={instructionsRef}
 					error={errorField === "instructions" ? error : null}
 					onChange={(value) =>
 						setDraft((current) => ({ ...current, instructions: value }))

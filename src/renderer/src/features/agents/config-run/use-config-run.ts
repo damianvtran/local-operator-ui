@@ -209,6 +209,16 @@ export type ConfigRunHandle = {
 	stop: () => Promise<void>;
 	/** Re-send a request whose message call failed, on the run it already made. */
 	retry: () => Promise<void>;
+	/**
+	 * Whether there is anything to re-send: the request never reached the run.
+	 *
+	 * DISTINCT FROM `sessionId`, deliberately (agent review round 2, M-new). The
+	 * id survives every failure so the run stays nameable, so the strip asks this
+	 * question rather than "is there a session" — otherwise Retry appears on a
+	 * settle-read failure or a dropped transport, where the request was already
+	 * delivered and pressing it would run it twice.
+	 */
+	canRetry: boolean;
 	dismiss: () => void;
 	starting: boolean;
 	/** True once a run has been adopted from the single-flight refusal. */
@@ -512,9 +522,15 @@ export function useConfigRun(): ConfigRunHandle {
 			store.acceptDraft();
 		} catch (caught) {
 			const sessionId = useConfigRunStore.getState().sessionId;
+			/*
+			 * `failUnsent`, not `fail`: THIS is the one failure a Retry may act on. The
+			 * create landed and the prompt did not, so the request is genuinely still
+			 * outstanding — every other failure path has already delivered it (agent
+			 * review round 2, M-new).
+			 */
 			useConfigRunStore
 				.getState()
-				.fail(
+				.failUnsent(
 					userFacingMessage(
 						caught,
 						sessionId
@@ -554,7 +570,13 @@ export function useConfigRun(): ConfigRunHandle {
 	 */
 	const retry = async () => {
 		const state = useConfigRunStore.getState();
-		if (starting || !state.sessionId || !state.topic) return;
+		/*
+		 * GATED ON `unsent`, not on the id being present (agent review round 2,
+		 * M-new). The id survives every failure so the run stays nameable, so
+		 * "there is a session" is not the same question as "the request still needs
+		 * sending" — and answering the second with the first re-ran finished work.
+		 */
+		if (starting || !state.unsent || !state.sessionId || !state.topic) return;
 		setStarting(true);
 		try {
 			await sendMessage(state.sessionId, state.topic);
@@ -567,9 +589,10 @@ export function useConfigRun(): ConfigRunHandle {
 			store.adopt(state.sessionId, state.topic, state.before);
 			settleLatch.current = false;
 		} catch (caught) {
+			// Still unsent: the retry did not deliver it either, so it stays retryable.
 			useConfigRunStore
 				.getState()
-				.fail(
+				.failUnsent(
 					userFacingMessage(
 						caught,
 						"The request could not be sent. It is still in the box.",
@@ -626,6 +649,7 @@ export function useConfigRun(): ConfigRunHandle {
 		start,
 		stop,
 		retry,
+		canRetry: store.unsent && Boolean(store.sessionId),
 		dismiss: store.dismiss,
 		starting,
 		attached,

@@ -75,6 +75,20 @@ export type ConfigRunStore = {
 	/** The row the next send is about, when one is selected on the page. */
 	about: RunTarget | null;
 	error: string | null;
+	/**
+	 * The request was never delivered to the run, so re-sending it is safe.
+	 *
+	 * WHY THIS IS A FLAG RATHER THAN "sessionId is set". The id survives every
+	 * failure (see `fail`), because the run must stay nameable — and that made
+	 * "Retry" appear on failures where the request HAD been delivered: a
+	 * settle-read failure after a run that may have written definitions, a
+	 * dropped transport while the run is still going, a failed Stop. Retrying
+	 * those posts the original request a SECOND time onto a session that already
+	 * has it (agent review round 2, M-new). Only the `sessions.message` catch —
+	 * and the retry's own catch — set this, and only while it is set is there
+	 * anything to send again.
+	 */
+	unsent: boolean;
 	startedAt: number | null;
 	settledAt: number | null;
 	/** Definitions the run has touched so far, as its tool rows named them. */
@@ -107,6 +121,8 @@ export type ConfigRunStore = {
 	) => void;
 	/** A failure that keeps the run's session, so a Retry can reach it again. */
 	fail: (message: string) => void;
+	/** The send itself failed: the request is still unsent and retryable. */
+	failUnsent: (message: string) => void;
 	dismiss: () => void;
 	clearMark: (target: RunTarget) => void;
 };
@@ -125,6 +141,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	draft: "",
 	about: null,
 	error: null,
+	unsent: false,
 	startedAt: null,
 	settledAt: null,
 	touched: [],
@@ -148,6 +165,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			results: [],
 			answer: "",
 			before,
+			unsent: false,
 		}),
 
 	acceptDraft: () => set({ draft: "" }),
@@ -184,23 +202,34 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			sessionId: null,
 			// `before` is spent by the diff it was taken for.
 			before: null,
+			// Nothing to re-send once the run has finished.
+			unsent: false,
 		})),
 
 	fail: (message) =>
 		/*
 		 * THE RUN'S ID SURVIVES A FAILED CALL. The create may already have made a
-		 * real session, and dropping the id left it unreachable: no Stop, no Retry,
-		 * and a live run the operator could not name (review round 1, M2).
-		 * `sessionId` is only ever non-null here when a create did land, because
-		 * `adopt` is the only writer and a failed create never reaches it.
+		 * real session, and dropping the id left it unreachable: no Stop and no way
+		 * to name the run (review round 1, M2). `sessionId` is only ever non-null
+		 * here when a create did land, because `adopt` is the only writer and a
+		 * failed create never reaches it.
+		 *
+		 * `unsent: false` IS THE OTHER HALF, and it is not a formality: these are the
+		 * paths where the request WAS delivered (a settle read that failed, a dropped
+		 * transport, a refused Stop), so re-sending it would run it twice. Only
+		 * `failUnsent` marks a request that never left.
 		 */
-		set({ status: "error", error: message }),
+		set({ status: "error", error: message, unsent: false }),
+
+	failUnsent: (message) =>
+		set({ status: "error", error: message, unsent: true }),
 
 	dismiss: () =>
 		set({
 			status: "idle",
 			sessionId: null,
 			error: null,
+			unsent: false,
 			topic: "",
 			touched: [],
 			results: [],
