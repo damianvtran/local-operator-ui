@@ -867,6 +867,25 @@ equally important**, and the interface must not present them as though they are.
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
   tier a 40-step turn is 40 lines, which is the "every internal step at equal
   weight" failure of § 0.
+- **The answer's own mark is an opt-in setting, default off (#665; revised after
+  #708).** The turn's elected answer (`closesTurn`: the last response cycle's
+  close, never a post-dispose status reply) can hang a vertical rule in the
+  gutter, controlled by the backend key `display.turn_answer_rail` (bool, default
+  false; read fail-closed, so only an explicit `true` draws it and an older backend
+  that does not carry the key draws none). It shipped always-on as a 2px `ink-dim`
+  rule with 6px of padding, and the operator's report (2026-09-30) was that it
+  looked ugly and cramped; the answer is already identified by the turn foot and
+  the bars condensed above it, so the mark is a preference and not chrome. When
+  on, it is a 1px `hairline` (the decorative-rule role: it owes being seen, which
+  the `turn answer rail` PERCEPTIBLE row asserts on `canvas`, and no 3:1 floor)
+  with 12px of inner padding. The negative margin is exactly rule plus padding, so
+  the prose box is where it is with the rail off: no layout shift and no second
+  MEASURE, which is what this section's "one left rail" rule governs. Stated
+  precisely, the rule itself is ink 13px left of the column edge, hanging in the
+  scroller's gutter - a hung mark, not a second edge for the text to resolve
+  against - and it is the one mark on the row that neither the ledger nor the bars
+  share. No card and no ground, as this section forbids. `data-turn-answer` is set
+  from the election alone, in both states.
 - **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
 text in the transcript — code, stdout and diffs share the treatment — opens
   behind the row's own disclosure, and an open block that fills the scroller

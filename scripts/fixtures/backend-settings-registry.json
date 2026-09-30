@@ -1391,6 +1391,36 @@
 			"gated_by": null
 		},
 		{
+			"key": "display.turn_answer_rail",
+			"section": "appearance",
+			"label": "Mark the turn answer",
+			"kind": "bool",
+			"help": "Draw a thin rule beside the answer that closes a turn (desktop app).",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "rule beside the closing answer"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no rule beside the answer"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null
+		},
+		{
 			"key": "tui.sidebar_visible",
 			"section": "appearance",
 			"label": "Session sidebar",
