@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -372,6 +372,18 @@ const TUI_PYTHON = argValue("--tui-python", null);
  * harness runs the scene once per theme.
  */
 const THEME = argValue("--theme", null);
+
+/**
+ * Which slice of `pinned-reorder`'s frame list a launch takes (`--pinned-state`).
+ *
+ * WHY AN ARGUMENT RATHER THAN ONE LONG SCENE: three of the states are about how many
+ * rows the section holds, and the stand-in's fixture is per process - so the pins
+ * those states are made of have to be chosen when the stub is launched, not while the
+ * scene runs. `three` (the default) takes the gesture states, `many` the overflow and
+ * auto-scroll states, `single` the one-pin state. The frame names do not change
+ * between slices, which is what makes the three launches one evidence set.
+ */
+const PINNED_STATE = argValue("--pinned-state", "three");
 /*
  * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
  *
@@ -13543,6 +13555,769 @@ async function scenePinsSearch(cdp) {
 
 const sceneThemes = () =>
 	THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
+
+/**
+ * The Pinned section's manual order, DRIVEN: what the drag handle costs at rest and
+ * under the pointer, what a drag looks like mid-gesture, and what it leaves behind
+ * (issue #697).
+ *
+ * WHY THIS SCENE EXISTS. Issue #693 gave the section an order the reader owns, moved
+ * by a pair of controls and by chords; #697 adds the gesture the operator asked for -
+ * a drag - and every one of its claims is a claim about PIXELS or about a GESTURE,
+ * neither of which a `node --test` file can reach: the grip is revealed by `:hover`
+ * (compositor state, which no dispatched event inside the page can enter), the
+ * indicator exists only between a press and a release, the dragged row's own ground is
+ * a class the browser paints, and "a multi-place drop is ONE write" is a fact about a
+ * commit and a store, not about a class string. `scripts/sidebar-pin-order.test.mjs`
+ * holds the MODEL (which array a drop resolves to, what a no-op drop does, how a slot
+ * is hit-tested); this scene holds what that model looks like on screen.
+ *
+ * WHAT A FRAME HERE PROVES, AND WHAT IT CANNOT.
+ *   - Every gesture goes through `Input.dispatchMouseEvent`, so it enters Chromium's
+ *     own pipeline and the element under it is found the way a hand's would be. It is
+ *     still synthetic: no pressure, no jitter, no trackpad momentum, so no frame says
+ *     "a real hand finds this".
+ *   - `captureSettled` is what makes a frame evidence at all (two consecutive
+ *     identical captures with no toast on screen), so a mid-drag frame is of a HELD
+ *     gesture - which is what a drag is - rather than of a moment that happened to
+ *     freeze.
+ *   - The rows these frames draw are the STAND-IN's (`stub-daemon.mjs`), not a real
+ *     store: `--pins` names the ids pinned at boot, so the section has the three pins a
+ *     reorder needs to be visible. No conversation is created, sent or opened here.
+ *   - A HEADLESS window never renders `:focus-visible` rings or carets, so the frames
+ *     that follow a keyboard move are about focus LOCATION only. This scene takes no
+ *     keyboard step at all: #693's chords are `pins`/`pins-search`'s subject, and this
+ *     change adds no key.
+ *   - The RELAUNCH step is a `Page.reload` against the same `--user-data-dir` profile,
+ *     not a second process: the order is a PERSISTED preference, and the claim is that
+ *     a fresh boot of the renderer rehydrates it (the row-space and `turn-collapse`
+ *     scenes' own restart step). A second process would say the same thing about the
+ *     same bytes and would cost one more app launch per palette.
+ *
+ * ONE LAUNCH PER PALETTE, with widths 240/280/320 driven through the store the panel
+ * already persists (`setSidebarWidth`) - the whole point of the 240 frame is that the
+ * revealed cluster's cost is FELT there first, and a width this scene labelled must be
+ * the width it photographed (`setSidebarWidth` reports the clamped value it applied).
+ *
+ * THE STATE ORDER IS PART OF THE EVIDENCE: the mutating steps run LAST (many pins, then
+ * a single pin), so every frame taken before them is of the panel the stand-in booted
+ * with. The drop itself is a real write to the stub, which is why the one launch per
+ * palette is also the reason two palettes cannot share a stub process.
+ */
+async function scenePinnedReorder(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		facts.visible === false && facts.focused === false,
+		`visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	if (THEME !== null) await verb(cdp, "setTheme", THEME);
+	await parkPointer(cdp);
+	const arrived = await waitForCondition(
+		cdp,
+		'document.querySelectorAll("[data-session-row]").length > 0',
+		20_000,
+	);
+	check(
+		"the stand-in's catalogue reached the panel",
+		arrived.ok === true,
+		JSON.stringify(arrived),
+	);
+	/*
+	 * THE SCENE'S OWN TWO NUMBERS, named rather than inlined.
+	 *
+	 * `PINNED_SETTLE_MS` is longer than the reveal's fade (`duration-base`), so a frame
+	 * taken after a pointer move is of the SETTLED reveal rather than of one caught
+	 * half-painted. `PINNED_MANY_COUNT` is twelve because that is past the point where the
+	 * pinned section's rows overflow the scroller at the default width: the many-pins
+	 * frames are about a section a drop has to be able to reach the bottom of.
+	 */
+	const PINNED_SETTLE_MS = 400;
+	const PINNED_MANY_COUNT = 12;
+	/*
+	 * THE STAND-IN'S FIXTURE, named here because three of the scene's claims are about
+	 * specific ids: the three the stub was launched with (`--pins`), the query that hides
+	 * exactly one of them, and the widths the width-sensitive states are photographed at.
+	 *
+	 * The query is a PREFIX of two of the three titles ("Chat 000", "Chat 005") and of
+	 * neither half of the third ("Chat 010"), which is what makes the filtered frames
+	 * show a HIDDEN pin rather than a shorter section - rule 2's second half.
+	 */
+	const PINNED_IDS = ["p000", "p005", "p010"];
+	const PINNED_QUERY = "Chat 00";
+	const PINNED_WIDTHS = [240, 280, 320];
+	await wait(PINNED_SETTLE_MS);
+
+	/**
+	 * One reading of the pinned section, in the app's own geometry.
+	 *
+	 * Read from the DOM rather than inferred: the order the reader sees, the title box
+	 * each row gives up, which of the row's controls are PAINTED (a revealed control is
+	 * `display: none` at rest, so `getComputedStyle` is the honest answer and a class
+	 * list is not), the indicator's own y, the dragged row's mark, the live region's
+	 * sentence and what the store holds. This is the half-frame the pixels cannot carry:
+	 * a still shows the cluster, the numbers say what it cost.
+	 */
+	const readPinnedPanel = () =>
+		cdp.evaluate(`(() => {
+			const section = document.querySelector('[data-chat-section="pinned"]');
+			const box = (node) => {
+				const r = node.getBoundingClientRect();
+				return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+			};
+			const painted = (node) => {
+				if (!node) return false;
+				const style = getComputedStyle(node);
+				return style.display !== "none" && style.visibility !== "hidden" && node.getBoundingClientRect().width > 0;
+			};
+			const live = document.querySelector('[data-sidebar-pin-order-announcement]');
+			let stored = null;
+			/* A DIAGNOSIS HATCH: the whole persisted view and the store's own key list,
+			   because a null here after a drop that plainly re-ordered the section cannot
+			   be told apart from an absent write without them. */
+			let storedView = null;
+			let storeKeys = null;
+			try {
+				const key = Object.keys(window.localStorage).find((each) => each.startsWith('ui-preferences'));
+			const raw = key === undefined ? null : window.localStorage.getItem(key);
+				/* The view lives UNDER the store's own field, not at its root: reading pins
+			   off the root answered null on a section that plainly held an order (measured on
+			   this scene's first run), which would have made an unwritten drop and a written one
+			   read alike. */
+			const parsed = raw === null ? null : JSON.parse(raw);
+			const state = parsed === null ? null : (parsed.state ?? parsed);
+			storeKeys = {
+				all: Object.keys(window.localStorage),
+				stateKeys:
+					parsed === null
+						? null
+						: Object.keys(parsed.state ?? parsed).filter((key) =>
+								/json|pin|view|sidebar/i.test(key),
+							),
+				rawView:
+					parsed === null
+						? null
+						: JSON.stringify(parsed.state ?? parsed).slice(0, 400),
+			};
+			storedView = state === null ? null : (state.chatSidebarView ?? null);
+			stored = storedView?.pins ?? null;
+			} catch { stored = "unreadable"; }
+			if (!section) return { section: false, order: [], rows: [], indicator: null, dragging: [], announcement: live ? live.textContent : null, storedMiss: stored };
+			const rows = [...section.querySelectorAll("[data-session-row]")];
+			const rowBox = section.querySelector('[data-session-row]');
+			const indicator = section.querySelector('[data-session-pin-indicator]');
+			return {
+				section: true,
+				order: rows.map((node) => node.getAttribute("data-session-row")),
+				rows: rows.map((node) => {
+					const title = node.querySelector("[data-session-title]");
+					return {
+						id: node.getAttribute("data-session-row"),
+						box: box(node),
+						title: title ? box(title) : null,
+						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
+						up: painted(node.querySelector("[data-session-move-up]")),
+						down: painted(node.querySelector("[data-session-move-down]")),
+						pin: painted(node.querySelector("[data-session-pin]")),
+						archive: painted(node.querySelector("[data-session-archive]")),
+						dragging: node.hasAttribute("data-dragging"),
+						tabIndexGrip: node.querySelector("[data-session-pin-grip]") ? node.querySelector("[data-session-pin-grip]").tabIndex : null,
+					};
+				}),
+				rowBox: rowBox ? box(rowBox) : null,
+				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
+				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
+				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
+				announcement: live ? live.textContent : null,
+				stored: stored,
+				storedView: storedView,
+				storeKeys: storeKeys,
+			};
+		})()`);
+	const centreOf = (selector) =>
+		cdp.evaluate(`(() => {
+			const node = document.querySelector(${JSON.stringify(selector)});
+			if (!node) return null;
+			node.scrollIntoView({ block: "center", inline: "nearest" });
+			const r = node.getBoundingClientRect();
+			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height) };
+		})()`);
+
+	/** The title box the panel gives a row, keyed by id - § 3's own column. */
+	const titleWidths = (reading) =>
+		Object.fromEntries(
+			reading.rows.map((row) => [row.id, row.title?.w ?? null]),
+		);
+	const setWidth = async (width) => {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		await wait(PINNED_SETTLE_MS);
+		return applied;
+	};
+	/*
+	 * A REAL pointer over a row, which is the ONLY way to enter `group-hover` - a
+	 * dispatched `mouseover` inside the page proves a handler ran, not that the row
+	 * under the pointer changes.
+	 */
+	/**
+	 * Drive the panel's OWN search box, with the trusted input pipeline (the
+	 * `pins-search` scene's rule).
+	 *
+	 * WHY THE REAL FIELD AND NOT A STORE WRITE: the claim the filtered frames carry is
+	 * that the SECTION draws fewer rows while the stored order keeps the hidden id's
+	 * slot, so the query has to be one the panel itself filtered by. Writing the store
+	 * would photograph a list nobody asked for. Escape clears the field, which is the
+	 * field's own documented way back and the reason no second press is needed.
+	 */
+	const typePinnedQuery = async (query) => {
+		/*
+		 * THE FIELD IS FOCUSED IN THE PAGE, then typed into through the input pipeline
+		 * (the `pins-search` scene's own shape). A POINTER press would be the reader's
+		 * gesture, but this field is not drawn at rest: the panel raises it on a key, so
+		 * there is no box to press until it is there, and a press on a `0x0` box would
+		 * type into nothing. `document.activeElement` is checked rather than assumed,
+		 * because a query that never arrived would photograph the unfiltered list and
+		 * make the claim look satisfied.
+		 */
+		/*
+		 * THE PANEL'S OWN DOOR FIRST: the field is drawn only while the list is filtering
+		 * (`filterShown`), and the control the reader presses to open it carries the same
+		 * accessible name - which is why the CLICK is what raises the field and why the
+		 * wait below is for the input to EXIST rather than for it to become focusable
+		 * (the `pins-search` scene's own sequence, followed here step for step).
+		 */
+		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		const fieldThere = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			10_000,
+		);
+		check(
+			"the panel raises its search field",
+			fieldThere.ok === true,
+			JSON.stringify(fieldThere),
+		);
+		const focused = await cdp.evaluate(`(() => {
+			const field = document.querySelector('input[aria-label="Search chats and agents"]');
+			if (field === null) return false;
+			field.focus();
+			return document.activeElement === field;
+		})()`);
+		check("the search field takes the caret", focused === true, String(focused));
+		await wait(200);
+		if (query === "") {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "rawKeyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+		} else {
+			await cdp.send("Input.insertText", { text: query });
+		}
+		await wait(PINNED_SETTLE_MS);
+	};
+	const hoverRow = async (id) => {
+		const point = await centreOf(
+			`[data-session-row="${id}"][data-chat-row], [data-session-row="${id}"] [data-chat-row]`,
+		);
+		const target = point ?? (await centreOf(`[data-session-row="${id}"]`));
+		await movePointer(cdp, target.x, target.y);
+		await wait(PINNED_SETTLE_MS);
+		return target;
+	};
+	const pressAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+			clickCount: 1,
+		});
+	/*
+	 * A move with the BUTTON HELD (`buttons: 1`), which is what makes it a drag rather
+	 * than a hover: `movePointer` sends `buttons: 0`, and a drag that reported no button
+	 * down would photograph the sizer's own gesture, not the reader's.
+	 */
+	const dragMoveTo = async (x, y) => {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+		});
+	};
+	const releaseAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x,
+			y,
+			button: "left",
+			buttons: 0,
+			clickCount: 1,
+		});
+	/**
+	 * A drag in steps, the way a hand makes one.
+	 *
+	 * The steps matter twice: a single jump from the grip to the target would arm the
+	 * gesture and land it in the same event (so no frame could be taken MID-drag), and
+	 * the site's own hit test walks the row boxes the pointer passes - which is the
+	 * behaviour the indicator is supposed to show.
+	 */
+	const dragGrip = async (id, target, { steps = 8 } = {}) => {
+		await hoverRow(id);
+		const grip = await centreOf(
+			`[data-session-row="${id}"] [data-session-pin-grip]`,
+		);
+		check(
+			`the grip is revealed under the pointer on ${id}`,
+			grip !== null && grip.w > 0 && grip.h > 0,
+			JSON.stringify(grip),
+		);
+		/*
+		 * A ROW TARGET IS RESOLVED AFTER THE HOVER, from the frame the drag measures in.
+		 * The first version of this scene aimed at a box read BEFORE the drag, and the row
+		 * boxes had moved between the two readings - so the pointer crossed no midpoint,
+		 * the hit test answered slot 0, and a drop that should have moved the row by one
+		 * place wrote nothing. The app's own log named it (`slot: 0` for a drag whose
+		 * indicator sat at the next row's edge), which is why the scene now re-reads the
+		 * panel it is about to drag in.
+		 */
+		let targetY = target;
+		if (typeof target === "string") {
+			const fresh = await readPinnedPanel();
+			const targetBox =
+				fresh.rows.find((row) => row.id === target)?.box ?? null;
+			check(
+				`the drag's target row ${target} is on screen`,
+				targetBox !== null,
+				JSON.stringify(fresh.order),
+			);
+			if (targetBox === null) return { grip, x: grip.x, y: target };
+			targetY = targetBox.y + targetBox.h - 2;
+		}
+		await pressAt(grip.x, grip.y);
+		for (let step = 1; step <= steps; step += 1) {
+			const y = Math.round(grip.y + ((targetY - grip.y) * step) / steps);
+			await dragMoveTo(grip.x, y);
+			await wait(40);
+		}
+		return { grip, x: grip.x, y: targetY };
+	};
+
+	/*
+	 * 1. ORDER BEFORE A MOVE - and the same three frames carry the ORIGIN/MAIN HALF's
+	 * reading, because at rest this change draws nothing the previous tree did not: the
+	 * grip, the pair and the indicator are all revealed or absent until a gesture
+	 * starts. `--main-tree` swaps the binary, not the scene.
+	 */
+	/*
+	 * WHICH SLICE OF THE FRAME LIST THIS LAUNCH TAKES (`--pinned-state`), because the
+	 * three states that are about the SECTION'S SIZE cannot share one stand-in: the
+	 * stub's fixture is per process (`--pins`), and the app's own pin presses are
+	 * answered by that fixture rather than by a store the scene can seed. So each
+	 * slice is one launch against a stub booted with the pins its own states are
+	 * about - the gesture states from three pins (the smallest section a reorder is
+	 * visible in), the many-pins and single-pin states from fixtures of their own.
+	 * The frames are named the same way in every slice, so the directory is one set.
+	 */
+	if (PINNED_STATE === "three") {
+		const boot = await readPinnedPanel();
+		check(
+			"the stand-in's three pins are drawn in the catalogue's own order",
+			JSON.stringify(boot.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(boot.order),
+		);
+		check(
+			"no move control is painted at rest",
+			boot.rows.every((row) => row.grip === null && !row.up && !row.down),
+			JSON.stringify(
+				boot.rows.map((row) => ({
+					id: row.id,
+					grip: row.grip !== null,
+					up: row.up,
+				})),
+			),
+		);
+		/*
+		 * THE WIDTH TABLE this slice's frames are read as numbers: what each width's row box
+		 * is, what the title has at rest, and what it gives up under the pointer once the grip
+		 * joins the cluster.
+		 */
+		const widths = {};
+		for (const width of PINNED_WIDTHS) {
+			const applied = await setWidth(width);
+			await parkPointer(cdp);
+			const rest = await readPinnedPanel();
+			const before = await captureSettled(cdp, `order-before-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `order-before-${width}`, ...before }),
+			);
+			/*
+			 * The pointer is put on the SECOND pinned row: the middle one is the row where the
+			 * revealed cluster and the row's own title can both be read, and it is not a row at
+			 * either boundary.
+			 */
+			await hoverRow(PINNED_IDS[1]);
+			const hovered = await readPinnedPanel();
+			const hoverFrame = await captureSettled(cdp, `grip-hover-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `grip-hover-${width}`, ...hoverFrame }),
+			);
+			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
+			check(
+				`${width}: the pointer reveals the grip, the pair and the archive on one row`,
+				hoveredRow.grip !== null &&
+					hoveredRow.up === true &&
+					hoveredRow.down === true &&
+					hoveredRow.archive === true &&
+					hoveredRow.pin === true,
+				JSON.stringify({ width, row: hoveredRow }),
+			);
+			check(
+				`${width}: the grip is out of the Tab ring`,
+				hoveredRow.tabIndexGrip === -1,
+				String(hoveredRow.tabIndexGrip),
+			);
+			check(
+				`${width}: the revealed cluster leaves the rest of the section alone`,
+				hovered.rows
+					.filter((row) => row.id !== PINNED_IDS[1])
+					.every((row) => row.grip === null && !row.up),
+				JSON.stringify(
+					hovered.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
+				),
+			);
+			widths[width] = {
+				applied,
+				panel: applied,
+				rowBox: rest.rowBox,
+				restTitles: titleWidths(rest),
+				hoverTitles: titleWidths(hovered),
+				hoveredCluster: {
+					grip: hoveredRow.grip,
+					up: hoveredRow.up,
+					down: hoveredRow.down,
+					archive: hoveredRow.archive,
+					pin: hoveredRow.pin,
+				},
+			};
+			note(
+				`geometry at ${width}`,
+				JSON.stringify({
+					row: rest.rowBox,
+					restTitle: rest.rows.find((row) => row.id === PINNED_IDS[1])?.title,
+					hoverTitle: hoveredRow.title,
+					grip: hoveredRow.grip,
+				}),
+			);
+		}
+		await setWidth(280);
+
+		/*
+		 * 2. THE DRAG, from the first pinned row to just past the second one's midpoint -
+		 * one place, so the drop is the smallest move the hit test can express.
+		 */
+		const second = (await readPinnedPanel()).rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
+		const grip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const midDrag = await readPinnedPanel();
+		const midFrame = await captureSettled(cdp, "drag-mid");
+		note("frame", JSON.stringify({ label: "drag-mid", ...midFrame }));
+		check(
+			"mid-drag: the dragged row carries the mark and the section draws the indicator",
+			midDrag.dragging.includes(PINNED_IDS[0]) && midDrag.indicator !== null,
+			JSON.stringify({
+				dragging: midDrag.dragging,
+				indicator: midDrag.indicator,
+			}),
+		);
+		check(
+			"mid-drag: nothing has been written yet",
+			JSON.stringify(midDrag.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(midDrag.order),
+		);
+		await releaseAt(grip.x, grip.y);
+		await wait(PINNED_SETTLE_MS);
+		const dropped = await readPinnedPanel();
+		const dropFrame = await captureSettled(cdp, "after-drop");
+		note("frame", JSON.stringify({ label: "after-drop", ...dropFrame }));
+		/*
+		 * THE HIT TEST'S OWN READING, printed because the first run of this scene left the
+		 * drop unwritten and every other reading was consistent with two different causes
+		 * (a slot of zero, or an id the drawn list does not hold): the pointer's target y,
+		 * the section's row boxes as the drop measures them, and the indicator's own y. A
+		 * line drawn at the section's top is slot 0 and says the hit test disagrees with the
+		 * pointer; a line drawn in the gap below the second row says the drop's input was
+		 * right and the fault is somewhere else.
+		 */
+		note(
+			"the drop's own geometry",
+			JSON.stringify({
+				targetY: grip.y,
+				boxes: second
+					? [
+							{ id: PINNED_IDS[1], y: second.box.y, h: second.box.h },
+							{
+								id: PINNED_IDS[2],
+								y: (midDrag.rows.find((row) => row.id === PINNED_IDS[2]) ?? {})
+									.box?.y,
+								h: (midDrag.rows.find((row) => row.id === PINNED_IDS[2]) ?? {})
+									.box?.h,
+							},
+						]
+					: null,
+				indicator: midDrag.indicator,
+				rowBox: midDrag.rowBox,
+				order: midDrag.order,
+			}),
+		);
+		note(
+			"the persisted app preferences after the drop",
+			JSON.stringify({
+				stored: dropped.stored,
+				view: dropped.storedView,
+				keys: dropped.storeKeys,
+			}),
+		);
+		const expectedOrder = [PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]];
+		check(
+			"the drop leaves the row one place down, with the third pin untouched",
+			JSON.stringify(dropped.order) === JSON.stringify(expectedOrder),
+			JSON.stringify(dropped.order),
+		);
+		check(
+			"the dragged row's mark is gone once the gesture ends",
+			dropped.dragging.length === 0 && dropped.indicator === null,
+			JSON.stringify({
+				dragging: dropped.dragging,
+				indicator: dropped.indicator,
+			}),
+		);
+		check(
+			"the live region says where the row went",
+			typeof dropped.announcement === "string" &&
+				/moved .* to position 2 of 3/i.test(dropped.announcement),
+			JSON.stringify(dropped.announcement),
+		);
+		check(
+			"the store holds the dropped order, and ONLY one write was made",
+			JSON.stringify(dropped.stored) === JSON.stringify(dropped.order),
+			JSON.stringify(dropped.stored),
+		);
+
+		/*
+		 * 3. RELAUNCH: a fresh boot of the renderer against the same profile must rehydrate
+		 * the arrangement the drop wrote (rule 6, and the acceptance criterion).
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		const backAgain = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			30_000,
+		);
+		await wait(PINNED_SETTLE_MS);
+		await parkPointer(cdp);
+		const relaunched = await readPinnedPanel();
+		const relaunchFrame = await captureSettled(cdp, "order-relaunch");
+		note("frame", JSON.stringify({ label: "order-relaunch", ...relaunchFrame }));
+		check(
+			"a relaunch comes back with the reader's order, not the catalogue's",
+			backAgain.ok === true &&
+				JSON.stringify(relaunched.order) === JSON.stringify(expectedOrder),
+			JSON.stringify({ arrived: backAgain, order: relaunched.order }),
+		);
+
+		/*
+		 * 4. A DROP UNDER A SEARCH FILTER: the query hides one of the three pins, and the
+		 * moved row steps over the VISIBLE neighbour while the hidden id keeps its stored
+		 * slot (rule 2's second half, which is the one a splice would break).
+		 */
+		await typePinnedQuery(PINNED_QUERY);
+		await wait(PINNED_SETTLE_MS);
+		const filtered = await readPinnedPanel();
+		check(
+			`the query ${JSON.stringify(PINNED_QUERY)} hides the third pin and keeps two`,
+			filtered.order.length === 2 &&
+				filtered.order.includes(PINNED_IDS[0]) &&
+				filtered.order.includes(PINNED_IDS[1]),
+			JSON.stringify(filtered.order),
+		);
+		const filteredFrame = await captureSettled(cdp, "search-filtered");
+		note("frame", JSON.stringify({ label: "search-filtered", ...filteredFrame }));
+		const filteredSecond = filtered.rows.find((row) => row.id === PINNED_IDS[1]);
+		const filteredGrip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const filteredMid = await readPinnedPanel();
+		const filteredMidFrame = await captureSettled(cdp, "search-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-drag-mid", ...filteredMidFrame }),
+		);
+		check(
+			"mid-drag the filtered section draws the indicator and marks the row being moved",
+			filteredMid.indicator !== null &&
+				JSON.stringify(filteredMid.dragging) === JSON.stringify([PINNED_IDS[0]]),
+			JSON.stringify({
+				indicator: filteredMid.indicator,
+				dragging: filteredMid.dragging,
+			}),
+		);
+		await releaseAt(filteredGrip.x, filteredGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const filteredDropped = await readPinnedPanel();
+		const filteredDropFrame = await captureSettled(cdp, "search-after-drop");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-after-drop", ...filteredDropFrame }),
+		);
+		check(
+			"a filtered drop moves among the SHOWN rows and keeps the hidden id's slot",
+			JSON.stringify(filteredDropped.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0]]) &&
+				JSON.stringify(filteredDropped.stored) ===
+					JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]),
+			JSON.stringify({
+				shown: filteredDropped.order,
+				stored: filteredDropped.stored,
+			}),
+		);
+		await typePinnedQuery("");
+		await wait(PINNED_SETTLE_MS);
+		note("pinned-reorder geometry", JSON.stringify(widths));
+	}
+
+
+
+	if (PINNED_STATE === "many") {
+		/*
+		 * MANY PINS: the section holds more rows than the scroller can show, which is the
+		 * state the auto-scroll and a drop past the fold are about. The pins are the
+		 * STAND-IN's (`--pins`), not the app's presses, and the reason is in the stub: its
+		 * pin route answers about the fixture it SERVES, so a scene that pinned rows by
+		 * pressing asked the daemon about rows it does not serve and the section stayed at
+		 * three however many times the mark was pressed (measured, then fixed on both sides).
+		 */
+		await parkPointer(cdp);
+		const many = await readPinnedPanel();
+		const manyFrame = await captureSettled(cdp, "many-pins");
+		note("frame", JSON.stringify({ label: "many-pins", ...manyFrame }));
+		check(
+			`the section holds at least the ${PINNED_MANY_COUNT} pins its frame is about, so its rows overflow the scroller`,
+			many.order.length >= PINNED_MANY_COUNT,
+			JSON.stringify({ pinned: many.order.length }),
+		);
+		/*
+		 * AND THE AUTO-SCROLL, photographed at the visible edge: a drag held inside the
+		 * scroller's bottom zone must scroll the list so a row past the fold is reachable.
+		 */
+		const firstMany = many.rows[0];
+		const scroller = many.panel;
+		const scrolled = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const autoDrag = await dragGrip(firstMany.id, scroller.y + scroller.h - 6, {
+			steps: 12,
+		});
+		await wait(700);
+		const dragged = await readPinnedPanel();
+		const autoFrame = await captureSettled(cdp, "many-pins-drag");
+		note("frame", JSON.stringify({ label: "many-pins-drag", ...autoFrame }));
+		const scrolledAfter = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		check(
+			"a drag held at the scroller's edge scrolls the list it is dragging in",
+			scrolledAfter > scrolled && dragged.indicator !== null,
+			JSON.stringify({ before: scrolled, after: scrolledAfter }),
+		);
+		/* Escape cancels: no write, and the order the drop left stands. */
+		const beforeCancel = dragged.order;
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await releaseAt(autoDrag.x, autoDrag.y);
+		await wait(PINNED_SETTLE_MS);
+		const cancelled = await readPinnedPanel();
+		check(
+			"a cancelled drag writes nothing at all",
+			JSON.stringify(cancelled.order) === JSON.stringify(beforeCancel) &&
+				cancelled.indicator === null,
+			JSON.stringify({ before: beforeCancel, after: cancelled.order }),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "many",
+				pins: many.order.length,
+				scrollerTop: scroller.y,
+				scrollerHeight: scroller.h,
+				scrolledBefore: scrolled,
+				scrolledAfter,
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "single") {
+		/*
+		 * A SINGLE PIN: the state in which both move controls are inapplicable at once, and
+		 * the one the boundary sentence speaks about ("the only pinned chat"). The pin is the
+		 * stand-in's, for the many-pins state's reason.
+		 */
+		await parkPointer(cdp);
+		const single = await readPinnedPanel();
+		const singleFrame = await captureSettled(cdp, "single-pin");
+		note("frame", JSON.stringify({ label: "single-pin", ...singleFrame }));
+		check(
+			"the section is down to one pin, and both move controls are inapplicable",
+			single.order.length === 1,
+			JSON.stringify(single.order),
+		);
+		await hoverRow(single.order[0]);
+		const singleHover = await readPinnedPanel();
+		const singleRow = singleHover.rows[0];
+		const singleHoverFrame = await captureSettled(cdp, "single-pin-hover");
+		note(
+			"frame",
+			JSON.stringify({ label: "single-pin-hover", ...singleHoverFrame }),
+		);
+		check(
+			"the only pin still offers the grip (a drag can leave the section) and draws its two arrows inapplicable",
+			singleRow.grip !== null && singleRow.up === true && singleRow.down === true,
+			JSON.stringify(singleRow),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({ state: "single", pins: single.order.length }),
+		);
+	}
+
+	return [];
+}
 
 async function scenePins(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -31730,6 +32505,11 @@ async function main() {
 			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
 		);
 	}
+	if (SCENE === "pinned-reorder" && BACKEND === null) {
+		throw new Error(
+			"--scene pinned-reorder needs --backend: the section's rows and its reorder both come from a catalogue, and a run with no backend has no pin to drag",
+		);
+	}
 	if (SCENE === "pins-scroll" && BACKEND === null) {
 		throw new Error(
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
@@ -32003,6 +32783,7 @@ async function main() {
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
+			else if (SCENE === "pinned-reorder") await scenePinnedReorder(cdp);
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
