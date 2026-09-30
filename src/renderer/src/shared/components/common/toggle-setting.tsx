@@ -16,8 +16,9 @@
 
 import { Spinner } from "@shared/components/common/spinner";
 import { Switch } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { FC } from "react";
 
 type ToggleSettingProps = {
@@ -69,6 +70,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	isSaving = false,
 }) => {
 	const [isOn, setIsOn] = useState(value);
+	useEffect(() => setIsOn(value), [value]);
 	const fieldId = useId();
 	const labelId = `${fieldId}-label`;
 	const descriptionId = `${fieldId}-description`;
@@ -117,19 +119,15 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 				)}
 			</div>
 
-			{/* Fixed height so swapping the switch for the saving spinner does not
-			    reflow the row. */}
-			<div className="flex h-6 shrink-0 items-center">
-				{isSaving ? (
-					<Spinner size="md" label={`Saving ${label}`} />
-				) : (
-					<Switch
-						checked={isOn}
-						onCheckedChange={handleToggle}
-						aria-labelledby={labelId}
-						aria-describedby={description ? descriptionId : undefined}
-					/>
-				)}
+			<div className={cn("flex h-6 shrink-0 items-center gap-2")}>
+				{isSaving && <Spinner size="md" label={`Saving ${label}`} />}
+				<Switch
+					checked={isOn}
+					onCheckedChange={handleToggle}
+					aria-disabled={isSaving}
+					aria-labelledby={labelId}
+					aria-describedby={description ? descriptionId : undefined}
+				/>
 			</div>
 		</div>
 	);

@@ -14,8 +14,14 @@
 import { Input, Label } from "@shared/components/ui";
 import { useUserStore } from "@shared/store/user-store";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { SearchApiStep } from "./search-api-step";
+
+const CompanionSettingsPanel = lazy(() =>
+	import("@features/companion/companion-settings").then((module) => ({
+		default: module.CompanionSettingsPanel,
+	})),
+);
 
 const NAME_INPUT_ID = "onboarding-extras-name";
 const NAME_HELP_ID = "onboarding-extras-name-help";
@@ -45,6 +51,9 @@ export const ExtrasStep: FC = () => {
 					What agents call you. It stays on this computer.
 				</p>
 			</div>
+			<Suspense fallback={null}>
+				<CompanionSettingsPanel />
+			</Suspense>
 			<section
 				className="flex flex-col gap-3"
 				aria-labelledby="onboarding-extras-search"

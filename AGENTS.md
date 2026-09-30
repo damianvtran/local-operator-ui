@@ -1663,24 +1663,14 @@ the diff base, every changed path with its category, every flag with its reason 
 every job as run or skipped. **A skipped job is a claim, not a pass** — the owner
 justifies each skip before merging, and a skip they cannot justify is a finding.
 
-**A pull request opened from a FORK cannot pass the two `NPX Sanity Check` legs,
-and that is environmental rather than a finding.** The job's `Build and pack` step
-reads four repository secrets — `secrets.GOOGLE_CLIENT_ID`,
-`GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` and `MICROSOFT_TENANT_ID`, wired to
-the `VITE_*` names `electron.vite.config.js` requires — and GitHub withholds
-repository secrets from a `pull_request` run whose head is a fork, so the build
-dies in `replaceBackendConfigPlugin` with `Error: VITE_GOOGLE_CLIENT_ID is not
-set` before anything diff-specific runs. Measured on 2026-09-22: #449
-(`SanaKetabchi/fix/mac-x64-bytecode-arch`, run 35776483172) failed both legs in
-45 s and 1 m 13 s at that step while `Change Scope`, `Lint`, `Type Checking`,
-`Desktop Tests`, `Runtime Dependencies`, `Security Audit` and `Version Bump Guard`
-all passed; the same job passes on a same-repo branch (#451, run 35775784209,
-both legs green). So **green means every job that can run on that head**, and
-those two legs cannot run on a fork head — an outside contributor's PR is read on
-the jobs that can run plus its agent rounds, which is exactly why "green" is not
-a check-list length. This is **not** a licence to ignore a red job that *can* run:
-those two legs are read normally on a same-repo branch, and every other job is read
-normally wherever the head lives.
+**The two `NPX Sanity Check` legs run without repository secrets, including on
+fork pull requests.** Their `Build and pack` step supplies public, nonfunctional
+OAuth fixtures. Both runners build and inspect the actual npm tarball; macOS also
+installs and launches it to require Electron's readiness marker and pinned version.
+These checks do not exercise OAuth, and the CI tarball is not published. Release
+workflows continue to use real credentials and the existing build guards.
+**A red NPX job is a failure on both fork and same-repository heads; do not dismiss
+it as a missing-secret limitation.**
 
 The failure this prevents is measured, not theoretical. The backend repository
 used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions

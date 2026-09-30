@@ -1,0 +1,171 @@
+.companion-play-art,
+.companion-dream {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	pointer-events: none;
+	stroke: #344736;
+	stroke-width: 1.2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.companion-play-seed,
+.companion-play-biscuit {
+	fill: #efbd62;
+}
+.companion-play-berry {
+	fill: #dca287;
+}
+.companion-play-leaf,
+.companion-play-cuff {
+	fill: #789361;
+}
+.companion-play-detail {
+	fill: none;
+	stroke: #fff1cb;
+	stroke-width: 1.5;
+}
+.companion-play-shadow {
+	fill: #26392b;
+	stroke: none;
+	opacity: 0.18;
+}
+.companion-play-mitten {
+	fill: #f3e6c9;
+}
+.companion-play-tentacle {
+	fill: #e7979d;
+	stroke: #ae5e6e;
+}
+[data-chosen] > .companion-play-cuff {
+	fill: #efbd62;
+}
+.companion-play-ball-body {
+	fill: #b3cda2;
+}
+.companion-play-ball-seam {
+	fill: none;
+	stroke: #526d46;
+}
+.companion-play-art[data-phase="playing"] .companion-play-treat {
+	animation: companion-treat-nibble 700ms ease-in-out;
+}
+.companion-play-art[data-phase="finish"] .companion-play-snack {
+	animation: companion-play-fade 240ms ease-out both;
+}
+.companion-play-crumbs {
+	fill: none;
+	stroke: #efbd62;
+	stroke-width: 2;
+	animation: companion-treat-crumbs 700ms ease-out both;
+}
+.companion-play-ball {
+	transition: none;
+	transform-origin: 55px 18px;
+}
+.companion-play-heart {
+	fill: #cce7b8;
+	transform-origin: 80px 61px;
+	animation: companion-play-thanks 1200ms ease-out both;
+}
+.companion-play-shiny {
+	fill: #f8e5a6;
+	stroke: #f8e5a6;
+	opacity: 0.8;
+	animation: companion-play-thanks 1600ms ease-out both;
+}
+.companion-dream {
+	fill: #f3e6c9;
+	opacity: 0;
+	animation: companion-dream-visit 128s ease-in-out infinite;
+}
+.companion-play-dream-mark {
+	fill: none;
+	stroke: #526d46;
+	stroke-width: 2;
+}
+
+@keyframes companion-treat-nibble {
+	0%,
+	100% {
+		transform: translate(0, 0) rotate(0);
+	}
+	32% {
+		transform: translate(-5px, -4px) rotate(-12deg) scale(0.88);
+	}
+	64% {
+		transform: translate(-3px, -2px) rotate(5deg) scale(0.94);
+	}
+}
+@keyframes companion-treat-crumbs {
+	0% {
+		opacity: 0;
+		transform: translateY(-3px);
+	}
+	30% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
+@keyframes companion-play-thanks {
+	from {
+		opacity: 0;
+		transform: translateY(3px) scale(0.9);
+	}
+	25%,
+	75% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(-2px) scale(1);
+	}
+}
+@keyframes companion-play-fade {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+@keyframes companion-dream-visit {
+	0%,
+	91%,
+	100% {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	93%,
+	97% {
+		opacity: 0.9;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.companion-play-art *,
+	.companion-dream {
+		animation: none !important;
+	}
+	.companion-play-heart,
+	.companion-play-shiny {
+		opacity: 1;
+	}
+	.companion-play-crumbs {
+		opacity: 0;
+	}
+	.companion-play-art[data-phase="finish"] .companion-play-snack {
+		opacity: 0;
+	}
+	.companion-dream {
+		opacity: 0;
+	}
+}

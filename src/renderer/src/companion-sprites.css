@@ -1,0 +1,746 @@
+.companion-sprite {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	opacity: 1;
+	visibility: hidden;
+	pointer-events: none;
+	animation: var(--sprite-animation) var(--sprite-duration) steps(1, end)
+		forwards;
+}
+
+.companion-sprite[data-ready] {
+	visibility: visible;
+}
+
+.companion-sprite-motion,
+.companion-sprite-frame {
+	display: block;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	transform-origin: 50% 94%;
+}
+
+.companion-sprite-frame {
+	transform: var(--sprite-registration);
+}
+
+.companion-sprite-sheet {
+	display: block;
+	width: 400%;
+	height: 200%;
+	max-width: none;
+	transform: var(--sprite-cell);
+}
+
+.companion-art-hoodie
+	.companion-sprite:is([data-action="dozing"], [data-action="waking"])
+	.companion-sprite-frame {
+	clip-path: inset(1% 0 0);
+}
+
+.companion-art-pixel .companion-sprite-sheet {
+	image-rendering: pixelated;
+}
+
+.companion-art:has(.companion-sprite) .companion-art-visual {
+	animation: var(--sprite-underlay, none) var(--sprite-duration, 0ms)
+		steps(1, end) forwards;
+}
+
+.companion-art:has(.companion-sprite[data-ready]) .companion-art-visual {
+	opacity: var(--sprite-base-opacity, 0);
+}
+
+.companion-art:has(.companion-sprite) .companion-art-pose,
+.companion-art-inky[data-expression][data-reaction]:has(.companion-sprite)
+	.companion-art-pose {
+	transform: none;
+	animation: var(--sprite-motion, none) var(--sprite-duration, 0ms) ease-in-out
+		both;
+}
+
+.companion-art:has(.companion-sprite[data-action="peekaboo"]) {
+	--sprite-duration: var(--companion-story-duration);
+	--sprite-animation: companion-sprite-peekaboo;
+	--sprite-underlay: companion-sprite-peekaboo-underlay;
+	--sprite-motion: companion-sprite-peek-motion;
+}
+
+@keyframes companion-sprite-peekaboo {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	8% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	15% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	23% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	51% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	68% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	74% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	82% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-peekaboo-underlay {
+	0% {
+		--sprite-base-opacity: 1;
+	}
+	8% {
+		--sprite-base-opacity: 0;
+	}
+	88%,
+	100% {
+		--sprite-base-opacity: 1;
+	}
+}
+
+.companion-art:has(.companion-sprite[data-action="playful"]) {
+	--sprite-duration: var(--companion-story-duration);
+	--sprite-animation: companion-sprite-playful;
+	--sprite-underlay: companion-sprite-playful-underlay;
+	--sprite-motion: companion-sprite-play-motion;
+}
+
+.companion-art:has(.companion-sprite[data-story]) {
+	--sprite-duration: var(--companion-story-duration);
+	--sprite-animation: companion-sprite-story;
+	--sprite-underlay: companion-sprite-playful-underlay;
+	--sprite-motion: none;
+}
+
+.companion-art:has(.companion-sprite[data-story="cuddle"]) {
+	--sprite-animation: companion-sprite-cuddle;
+}
+
+.companion-art:has(.companion-sprite[data-story="juggle"]) {
+	--sprite-animation: companion-sprite-juggle;
+}
+
+.companion-art:has(.companion-sprite[data-story="spin"]) {
+	--sprite-animation: companion-sprite-spin;
+}
+
+@keyframes companion-sprite-spin {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	19% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	24% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	29% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	35% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	66% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	80% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+.companion-art:has(.companion-sprite[data-story="lens"]) {
+	--sprite-animation: companion-sprite-lens;
+}
+
+@keyframes companion-sprite-lens {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	19% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	27% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	41% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	65% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	75% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	82% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+.companion-art:has(.companion-sprite[data-story="paperboat"]) {
+	--sprite-animation: companion-sprite-paperboat;
+}
+
+@keyframes companion-sprite-paperboat {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	23% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	35% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	49% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	65% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	75% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	82% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-juggle {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	16% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	22%,
+	38%,
+	54% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	30%,
+	46%,
+	62% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	70% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	76% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	84% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-playful {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	20% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	25% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	35% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	48% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	55% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	74% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-story {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	20% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	32% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	46% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	58% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	70% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	80% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-cuddle {
+	0% {
+		--sprite-cell: translate(0%, 0%);
+		--sprite-registration: var(--sprite-offset-0);
+		opacity: 0;
+	}
+	10% {
+		--sprite-cell: translate(-25%, 0%);
+		--sprite-registration: var(--sprite-offset-1);
+		opacity: 1;
+	}
+	20% {
+		--sprite-cell: translate(-50%, 0%);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	30% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	42% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	52% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	71% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	80% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-playful-underlay {
+	0% {
+		--sprite-base-opacity: 1;
+	}
+	10% {
+		--sprite-base-opacity: 0;
+	}
+	88%,
+	100% {
+		--sprite-base-opacity: 1;
+	}
+}
+
+.companion-art:has(.companion-sprite[data-action="found"]) {
+	--sprite-duration: var(--companion-story-duration);
+	--sprite-animation: companion-sprite-found;
+	--sprite-underlay: companion-sprite-found-underlay;
+	--sprite-motion: companion-sprite-found-motion;
+}
+
+@keyframes companion-sprite-found {
+	0% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+		opacity: 1;
+	}
+	14% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	30% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	70% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	88%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-found-underlay {
+	0% {
+		--sprite-base-opacity: 0;
+	}
+	88%,
+	100% {
+		--sprite-base-opacity: 1;
+	}
+}
+
+.companion-art:has(.companion-sprite[data-action="waking"]) {
+	--sprite-duration: var(--companion-story-duration);
+	--sprite-animation: companion-sprite-waking;
+	--sprite-underlay: companion-sprite-waking-underlay;
+}
+
+@keyframes companion-sprite-waking {
+	0% {
+		--sprite-cell: translate(-75%, 0%);
+		--sprite-registration: var(--sprite-offset-3);
+		opacity: 1;
+	}
+	20% {
+		--sprite-cell: translate(0%, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+	40% {
+		--sprite-cell: translate(-25%, -50%);
+		--sprite-registration: var(--sprite-offset-5);
+	}
+	65% {
+		--sprite-cell: translate(-50%, -50%);
+		--sprite-registration: var(--sprite-offset-6);
+	}
+	85% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+	}
+	92%,
+	100% {
+		--sprite-cell: translate(-75%, -50%);
+		--sprite-registration: var(--sprite-offset-7);
+		opacity: 0;
+	}
+}
+
+@keyframes companion-sprite-waking-underlay {
+	0% {
+		--sprite-base-opacity: 0;
+	}
+	92%,
+	100% {
+		--sprite-base-opacity: 1;
+	}
+}
+
+.companion-sprite[data-action="peeking"] {
+	--sprite-registration: var(--sprite-offset-4);
+	--sprite-cell: translate(0, -50%);
+	animation: none;
+}
+
+.companion-sprite[data-action="peeking"] .companion-sprite-motion {
+	animation: companion-sprite-peek-hold var(--companion-story-duration)
+		ease-in-out both;
+}
+
+.companion-sprite[data-action="dozing"] {
+	animation: companion-sprite-settle 900ms steps(1, end) forwards,
+		companion-sprite-sleep 22000ms steps(1, end) 900ms infinite;
+}
+
+.companion-sprite[data-action="dozing"] .companion-sprite-motion {
+	animation: companion-sprite-breathe var(--companion-art-sleep-breath)
+		ease-in-out 900ms infinite;
+}
+
+@keyframes companion-sprite-settle {
+	0% {
+		--sprite-cell: translate(0, 0);
+		--sprite-registration: var(--sprite-offset-0);
+	}
+	16% {
+		--sprite-cell: translate(-25%, 0);
+		--sprite-registration: var(--sprite-offset-1);
+	}
+	44% {
+		--sprite-cell: translate(-50%, 0);
+		--sprite-registration: var(--sprite-offset-2);
+	}
+	74%,
+	100% {
+		--sprite-cell: translate(-75%, 0);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+}
+
+@keyframes companion-sprite-sleep {
+	0%,
+	87%,
+	100% {
+		--sprite-cell: translate(-75%, 0);
+		--sprite-registration: var(--sprite-offset-3);
+	}
+	84% {
+		--sprite-cell: translate(0, -50%);
+		--sprite-registration: var(--sprite-offset-4);
+	}
+}
+
+@keyframes companion-sprite-breathe {
+	0%,
+	100% {
+		transform: none;
+	}
+	45% {
+		transform: scale(1.006, 1.025);
+	}
+}
+
+@keyframes companion-sprite-peek-motion {
+	0%,
+	15%,
+	51%,
+	74%,
+	100% {
+		transform: none;
+	}
+	6% {
+		transform: translateY(1px) scale(1.01, 0.985);
+	}
+	23%,
+	44% {
+		transform: translateY(1px) scaleY(0.99);
+	}
+	68% {
+		transform: translateY(-1px) scale(0.99, 1.015);
+	}
+	88% {
+		transform: scale(1.01, 0.985);
+	}
+}
+
+@keyframes companion-sprite-play-motion {
+	0%,
+	10%,
+	35%,
+	74%,
+	100% {
+		transform: none;
+	}
+	17% {
+		transform: translateY(1px) scale(1.02, 0.98);
+	}
+	21% {
+		transform: translateY(-3px) scale(0.99, 1.01);
+	}
+	25% {
+		transform: translateY(1px) scale(1.02, 0.98);
+	}
+	48% {
+		transform: rotate(-1deg);
+	}
+	55% {
+		transform: translateY(1px) scale(1.015, 0.985);
+	}
+	88% {
+		transform: scale(0.99, 1.01);
+	}
+}
+
+@keyframes companion-sprite-found-motion {
+	0%,
+	70%,
+	100% {
+		transform: none;
+	}
+	14% {
+		transform: translateY(1px) scale(1.02, 0.98);
+	}
+	30% {
+		transform: translateY(-3px) scale(0.99, 1.015);
+	}
+	50% {
+		transform: translateY(1px) scale(1.01, 0.99);
+	}
+	88% {
+		transform: scale(1.01, 0.99);
+	}
+}
+
+@keyframes companion-sprite-peek-hold {
+	0%,
+	100% {
+		transform: none;
+	}
+	30% {
+		transform: rotate(-1.5deg);
+	}
+	65% {
+		transform: rotate(1deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.companion-art[data-expression][data-reaction]:has(.companion-sprite)
+		.companion-art-pose {
+		transform: none;
+	}
+	.companion-art[data-expression][data-reaction]:has(.companion-sprite)
+		:is(
+			.companion-art-visual,
+			.companion-art-pose,
+			.companion-sprite,
+			.companion-sprite-motion,
+			.companion-sprite-sheet,
+			.companion-sprite-frame
+		) {
+		animation: none;
+		transition: none;
+	}
+	.companion-sprite[data-ready]:not([data-action="dozing"]) {
+		display: none;
+	}
+	.companion-art:has(.companion-sprite[data-ready]:not([data-action="dozing"]))
+		.companion-art-visual {
+		opacity: 1;
+	}
+	.companion-sprite[data-action="dozing"] .companion-sprite-frame {
+		transform: var(--sprite-offset-3);
+	}
+	.companion-sprite[data-action="dozing"] .companion-sprite-sheet {
+		transform: translate(-75%, 0);
+	}
+}

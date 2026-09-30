@@ -66,7 +66,9 @@ import {
 	type ConsentAttentionPayload,
 } from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
+import { registerCompanionSettings } from "./companion-settings";
 import { consoleCaptureUrlFor } from "./console/capture-url";
+import { DesktopCompanion } from "./desktop-companion";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -436,29 +438,6 @@ function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
-	// Define zoom functions
-	const zoomInHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom + 0.1);
-		}
-	};
-
-	const zoomOutHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom - 0.1);
-		}
-	};
-
-	const actualSizeHandler = () => {
-		if (mainWindow) {
-			mainWindow.webContents.setZoomFactor(1.0);
-		}
-	};
-
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
 		{
@@ -483,6 +462,18 @@ function createApplicationMenu(): void {
 			label: "View",
 			submenu: [
 				{
+					id: "desktop-companion",
+					label: "Desktop companion",
+					type: "checkbox",
+					checked: desktopCompanion?.enabled ?? false,
+					click: (item) => desktopCompanion?.setEnabled(item.checked),
+				},
+				{
+					label: "Companion character",
+					submenu: desktopCompanion?.characterMenu ?? [],
+				},
+				{ type: "separator" as const },
+				{
 					role: "reload",
 					accelerator: "CmdOrCtrl+R",
 				},
@@ -494,17 +485,19 @@ function createApplicationMenu(): void {
 				{
 					label: "Actual Size",
 					accelerator: "CmdOrCtrl+O",
-					click: actualSizeHandler,
+					click: () =>
+						changeWindowZoom(BrowserWindow.getFocusedWindow(), "reset"),
 				},
 				{
 					label: "Zoom In",
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
-					click: zoomInHandler,
+					click: () => changeWindowZoom(BrowserWindow.getFocusedWindow(), "in"),
 				},
 				{
 					label: "Zoom Out",
 					accelerator: "CmdOrCtrl+-",
-					click: zoomOutHandler,
+					click: () =>
+						changeWindowZoom(BrowserWindow.getFocusedWindow(), "out"),
 				},
 				{ type: "separator" as const },
 				{ role: "togglefullscreen" },
@@ -769,6 +762,22 @@ function createWindow(
 			...rendererArgumentFlags(initialSession, openCatalogue, chrome.mode),
 		},
 	});
+	applicationWindows.add(mainWindow);
+	mainWindow.webContents.on("before-input-event", (event, input) => {
+		if (input.type !== "keyDown" || !(input.control || input.meta)) return;
+		const direction =
+			input.key === "+" || input.key === "="
+				? "in"
+				: input.key === "-"
+					? "out"
+					: input.key.toLowerCase() === "o"
+						? "reset"
+						: null;
+		if (direction) {
+			changeWindowZoom(mainWindow, direction);
+			event.preventDefault();
+		}
+	});
 
 	/*
 	 * The live half of the chrome: the palette's colours on every theme change, the
@@ -805,7 +814,12 @@ function createWindow(
 	 * there — the window-all-closed handler is untouched.
 	 */
 	if (process.platform !== "darwin") {
-		mainWindow.on("closed", () => miniView?.dispose());
+		mainWindow.on("closed", () => {
+			miniView?.dispose();
+			disposeCompanionSettings?.();
+			desktopCompanion?.dispose();
+			desktopCompanion = null;
+		});
 	}
 
 	/*
@@ -1236,6 +1250,9 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+let desktopCompanion: DesktopCompanion | null = null;
+let disposeCompanionSettings: (() => void) | null = null;
+const applicationWindows = new WeakSet<BrowserWindow>();
 
 /*
  * The quick-send mini view and its registration (design D6/§G.1). Module scope
@@ -1677,28 +1694,21 @@ function releaseHeldWindowFor(session: string): void {
 	}
 }
 
-// Define zoom functions for before-input-event, ensuring mainWindow is available
-const zoomInFromEvent = () => {
-	if (mainWindow) {
-		const webContents = mainWindow.webContents;
-		const currentZoom = webContents.getZoomFactor();
-		webContents.setZoomFactor(currentZoom + 0.1);
-	}
-};
-
-const zoomOutFromEvent = () => {
-	if (mainWindow) {
-		const webContents = mainWindow.webContents;
-		const currentZoom = webContents.getZoomFactor();
-		webContents.setZoomFactor(currentZoom - 0.1);
-	}
-};
-
-const actualSizeFromEvent = () => {
-	if (mainWindow) {
-		mainWindow.webContents.setZoomFactor(1.0);
-	}
-};
+/** Browser/auth windows have their own content; only zoom an app-owned surface. */
+function changeWindowZoom(
+	window: BrowserWindow | null,
+	direction: "in" | "out" | "reset",
+): void {
+	if (!window || window.isDestroyed()) return;
+	if (desktopCompanion?.changeZoom(window, direction)) return;
+	if (!applicationWindows.has(window)) return;
+	const contents = window.webContents;
+	contents.setZoomFactor(
+		direction === "reset"
+			? 1
+			: contents.getZoomFactor() + (direction === "in" ? 0.1 : -0.1),
+	);
+}
 
 // The quit state lives at the top of this file, beside the installer that can
 // release it (`quitState`; `./quit-state` owns the contract): the handler below
@@ -2083,6 +2093,7 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
+				desktopCompanion?.refresh(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -2092,6 +2103,7 @@ app
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
+				desktopCompanion?.refresh();
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -3267,26 +3279,6 @@ app
 			 */
 			claimParkedConsentAttention(mainWindow);
 
-			// Add before-input-event listener for zoom control
-			if (mainWindow) {
-				mainWindow.webContents.on("before-input-event", (event, input) => {
-					const isCmdOrCtrl = input.control || input.meta; // Ctrl on Win/Linux, Cmd on macOS
-
-					if (isCmdOrCtrl) {
-						if (input.key === "+" || input.key === "=") {
-							zoomInFromEvent();
-							event.preventDefault();
-						} else if (input.key === "-") {
-							zoomOutFromEvent();
-							event.preventDefault();
-						} else if (input.key === "O") {
-							actualSizeFromEvent();
-							event.preventDefault();
-						}
-					}
-				});
-			}
-
 			// Clean up any previous update service
 			if (updateService) {
 				updateService.dispose();
@@ -3299,6 +3291,12 @@ app
 
 			// Clean up update service and mainWindow reference when the window is closed
 			mainWindow.on("closed", () => {
+				// Hidden companion windows must not hold a headless QA process open.
+				if (windowLaunch.mode === "headless") {
+					disposeCompanionSettings?.();
+					desktopCompanion?.dispose();
+					desktopCompanion = null;
+				}
 				if (updateService) {
 					updateService.dispose();
 					updateService = null;
@@ -3313,8 +3311,7 @@ app
 				// session would read `current_session` as a match, skip the switch,
 				// and land the user on whatever the recreated window happened to
 				// rehydrate.
-				if (BrowserWindow.getAllWindows().length === 0)
-					viewerRecord?.noteSession("");
+				viewerRecord?.noteSession("");
 				if (heldForConversation.has(windowId)) {
 					// A held window destroyed before its conversation reported: drop the
 					// fallback timer rather than let it fire against a dead id.
@@ -3692,6 +3689,47 @@ app
 		 * and forget the others.
 		 */
 		setupMainWindowWithUpdateService(launchSession, launchCatalogue);
+		desktopCompanion = new DesktopCompanion({
+			url: new URL("companion.html", rendererUrl).href,
+			preload: join(__dirname, "../preload/companion.js"),
+			preferencesPath: join(app.getPath("userData"), "desktop-companion.json"),
+			skinsDirectory: join(app.getPath("userData"), "companions"),
+			cwd: app.getPath("home"),
+			requestDesktop: (input) => backendService.requestDesktop(input),
+			headless: windowLaunch.mode === "headless",
+			readCatalogue: () =>
+				backendService.requestDesktop({ op: "sessions.list", limit: 500 }),
+			openChat: (sessionId) => {
+				const request: RaiseRequest = {
+					show: windowLaunch.mode === "headless" ? "never" : OPERATOR_SHOW,
+					trigger: "companion-click",
+				};
+				if (sessionId) openSessionInWindow(sessionId, request);
+				else if (mainWindow && !mainWindow.isDestroyed())
+					raiseWindow(mainWindow, request.show, request);
+				else openOwnWindow?.(request);
+			},
+			visibilityChanged: (enabled) => {
+				const item =
+					Menu.getApplicationMenu()?.getMenuItemById("desktop-companion");
+				if (item) item.checked = enabled;
+			},
+			appearanceChanged: createApplicationMenu,
+			settingsChanged: () => {
+				if (desktopCompanion && mainWindow && !mainWindow.isDestroyed())
+					mainWindow.webContents.send(
+						"companion-settings:changed",
+						desktopCompanion.settings,
+					);
+			},
+			report: (message) => logger.info(message),
+		});
+		disposeCompanionSettings = registerCompanionSettings(
+			() => mainWindow,
+			rendererUrl,
+			desktopCompanion,
+		);
+		createApplicationMenu();
 
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
@@ -3706,7 +3744,7 @@ app
 			// would leave a real, invisible window holding whatever was parked — the
 			// queue emptied into a screen nobody can reach. The mode governs the launch;
 			// this is the other direction, and `OPERATOR_SHOW` is the plan that says so.
-			if (BrowserWindow.getAllWindows().length === 0) {
+			if (!mainWindow || mainWindow.isDestroyed()) {
 				/*
 				 * A DOCK CLICK DURING A QUIT GETS A LINE, NOT A WINDOW — the same defect
 				 * as a relaunch during teardown, arriving on the operator's own act: the
@@ -3954,6 +3992,12 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	// Electron closes windows before will-quit. Dispose synchronously so closing
+	// the pet during app shutdown does not persist a user's "hide companion" choice.
+	disposeCompanionSettings?.();
+	const companion = desktopCompanion;
+	desktopCompanion = null;
+	companion?.dispose();
 	/*
 	 * Hold the quit for the browser host's stop, then let the ordinary pass
 	 * through: the stop settles or the budget expires, the hold asks for the quit

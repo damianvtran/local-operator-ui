@@ -54,6 +54,14 @@ export default defineConfig({
 		],
 	},
 	preload: {
+		build: {
+			rollupOptions: {
+				input: {
+					index: resolve(__dirname, "src/preload/index.ts"),
+					companion: resolve(__dirname, "src/preload/companion.ts"),
+				},
+			},
+		},
 		// No bytecode plugin here on purpose -- see the note above. It is absent
 		// rather than an empty spread, so the decision reads as one.
 		plugins: [externalizeDepsPlugin()],
@@ -78,6 +86,7 @@ export default defineConfig({
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),
+			companion: resolve(__dirname, "src/renderer/companion.html"),
 			/*
 			 * The mini view's own document (quick-send design §D.1). It is listed in
 			 * BOTH places for the reason the console capture's block below records:
@@ -100,6 +109,7 @@ export default defineConfig({
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
 					installer: resolve(__dirname, "src/renderer/installer.html"),
+					companion: resolve(__dirname, "src/renderer/companion.html"),
 					/*
 					 * The console's capture view (design 13.2/13.3): a third document, for
 					 * the same reason the installer is one. A renderer that exists to be

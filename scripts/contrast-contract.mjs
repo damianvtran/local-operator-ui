@@ -353,6 +353,20 @@ const KEYCAP_DELTA_E = 2.0;
  */
 const CONTROLS = [
 	{
+		name: "companion keyboard play hint",
+		on: GROUNDS,
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		name: "companion chat frame",
+		on: GROUNDS,
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		name: "primary button",
 		on: GROUNDS,
 		fill: "accent",

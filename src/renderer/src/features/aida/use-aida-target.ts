@@ -26,6 +26,7 @@ import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { NavigateFunction } from "react-router-dom";
+import { resolveAidaSession } from "../../../../shared/chief-of-staff";
 import type {
 	DesktopAidaControlResult,
 	DesktopAidaState,
@@ -102,21 +103,8 @@ export function useAidaControl() {
 export function useAidaResolver() {
 	const control = useAidaControl();
 	return useCallback(
-		async (known: DesktopAidaState | undefined): Promise<string> => {
-			const existing = known?.session_id ?? null;
-			const created = existing ? null : await control("open");
-			const sessionId = existing ?? created?.session_id ?? null;
-			if (!sessionId) {
-				/*
-				 * A 200 whose `open` produced no session id. Unreachable by the
-				 * contract (`open` ensures), and stated as a failure rather than
-				 * navigated on: `/chat/null` would be a pane showing nothing, which
-				 * is the dead end the honest error a toast renders avoids.
-				 */
-				throw new Error("Aida's conversation could not be opened.");
-			}
-			return sessionId;
-		},
+		(known: DesktopAidaState | undefined): Promise<string> =>
+			resolveAidaSession(known, () => control("open")),
 		[control],
 	);
 }

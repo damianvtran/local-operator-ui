@@ -3044,6 +3044,8 @@ export class BackendServiceManager {
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child, reason);
+					if (epoch !== this.startEpoch || generation.exited || generation.stop)
+						break;
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -3141,6 +3143,8 @@ export class BackendServiceManager {
 		reason: SubstitutionReason,
 	): Promise<void> {
 		const identity = await this.ownedDaemonIdentity(child);
+		if (this.process !== child || this.ownedServe?.stop || this.isAppClosing)
+			return;
 		if (!identity) {
 			/*
 			 * Nothing could be established: no record, and the address either did

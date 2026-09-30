@@ -19,6 +19,7 @@
  * sentence per file — is how the two come to disagree about the same state.
  */
 
+import { CHIEF_OF_STAFF_COPY } from "../../../shared/chief-of-staff";
 import type { MiniViewPlatform } from "../../../shared/mini-view";
 import { formatQuickSendDisplay } from "../../../shared/mini-view";
 
@@ -54,9 +55,9 @@ export const MINI_COPY = {
 	dictationStart: "Dictate a message",
 	dictationStop: "Stop dictation",
 	/** The seat could not be resolved. */
-	seatMissing: "This build doesn't have a chief-of-staff seat.",
-	seatOpenFailed: "Couldn't open the chief-of-staff conversation.",
-	seatUnreachable: "Couldn't reach the chief of staff.",
+	seatMissing: CHIEF_OF_STAFF_COPY.missing,
+	seatOpenFailed: CHIEF_OF_STAFF_COPY.openFailed,
+	seatUnreachable: CHIEF_OF_STAFF_COPY.unreachable,
 	/**
 	 * Paired with a pre-admission refusal, so the reader knows the draft was
 	 * not the thing that failed.

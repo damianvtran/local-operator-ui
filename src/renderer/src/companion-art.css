@@ -1,0 +1,1544 @@
+.companion-art {
+	--companion-art-light: #c8fbd7;
+	--companion-art-breath: 4.8s;
+	--companion-art-affection: 1050ms;
+	--companion-art-wriggle: 1.9s;
+	--companion-art-sleep-pose: translateY(5px) rotate(-2deg) scale(1.045, 0.86);
+	--companion-art-sleep-breath: 7.6s;
+	--companion-art-motion: cubic-bezier(0.22, 0.7, 0.3, 1);
+	display: block;
+	position: relative;
+	width: 100%;
+	height: 100%;
+	max-width: 110px;
+	max-height: 110px;
+	padding: 2px;
+	box-sizing: border-box;
+	overflow: clip;
+	pointer-events: none;
+	user-select: none;
+}
+
+.companion-art-hoodie {
+	--companion-art-breath: 5.4s;
+	--companion-art-affection: 1150ms;
+	--companion-art-wriggle: 2s;
+	--companion-art-sleep-pose: translateY(5px) rotate(-9deg) scale(0.96, 0.93);
+	--companion-art-sleep-breath: 8.4s;
+}
+
+.companion-art-pixel {
+	--companion-art-breath: 5.6s;
+	--companion-art-affection: 900ms;
+	--companion-art-wriggle: 1.7s;
+	--companion-art-sleep-pose: translateY(3px) rotate(2deg) scaleY(0.92);
+	--companion-art-sleep-breath: 7s;
+	--companion-art-motion: steps(5, end);
+}
+
+.companion-art-inky {
+	--companion-art-breath: 5.2s;
+	--companion-art-affection: 1200ms;
+	--companion-art-wriggle: 2.2s;
+	--companion-art-sleep-pose: translateY(4px) scale(1.07, 0.85);
+	--companion-art-sleep-breath: 8s;
+}
+
+.companion-art-pose,
+.companion-art-visual {
+	display: block;
+	position: relative;
+	width: 100%;
+	height: 100%;
+	transform-origin: 50% 90%;
+}
+
+.companion-art-pose {
+	transition: transform 240ms var(--companion-art-motion);
+}
+
+.companion-art-visual {
+	animation: companion-art-breathe var(--companion-art-breath)
+		var(--companion-art-motion) infinite;
+}
+
+.companion-art[data-expression="idle"][data-reaction="curious"]
+	.companion-art-pose {
+	transform: translateY(-1px) rotate(var(--companion-art-tilt));
+}
+
+.companion-art[data-reaction="pressed"] .companion-art-pose {
+	transform: translateY(2px) scale(1.045, 0.94);
+	transition-duration: 120ms;
+}
+
+.companion-art[data-reaction="dragging"] .companion-art-pose {
+	transform-origin: 50% 22%;
+	transform: translateY(-2px) rotate(var(--companion-art-lean))
+		scale(0.96, 1.04);
+}
+
+.companion-art[data-reaction="pressed"] .companion-art-visual,
+.companion-art[data-physical] .companion-art-visual {
+	animation: none;
+}
+
+.companion-art[data-reaction="grabbed"] .companion-art-pose {
+	transform-origin: 50% 20%;
+	animation: companion-art-grab 250ms var(--companion-art-motion) forwards;
+}
+
+.companion-art[data-reaction="struggling"] .companion-art-pose {
+	transform-origin: 50% 20%;
+	animation: companion-art-wriggle var(--companion-art-wriggle)
+		var(--companion-art-motion) infinite;
+}
+
+.companion-art[data-reaction="falling"] .companion-art-pose {
+	transform-origin: 50% 50%;
+	transform: translateY(-3px) scale(0.87, 1.1);
+	transition: transform 80ms ease-in;
+}
+
+.companion-art[data-expression="idle"][data-reaction="happy"]
+	.companion-art-pose {
+	animation: companion-art-boop 600ms var(--companion-art-motion);
+}
+
+.companion-art[data-expression="idle"][data-reaction="loved"]
+	.companion-art-pose {
+	animation: companion-art-love var(--companion-art-affection) ease-in-out;
+}
+
+.companion-art[data-expression="idle"][data-reaction="waking"]
+	.companion-art-pose {
+	animation: companion-art-wake 800ms var(--companion-art-motion);
+}
+
+.companion-art[data-expression="idle"][data-reaction="waking"]
+	.companion-art-eyes {
+	animation: companion-art-wake-eyes 800ms ease-in-out;
+}
+
+.companion-art[data-expression="idle"][data-reaction="listening"]
+	.companion-art-pose {
+	transform: translateY(-1px) rotate(-2deg);
+}
+
+.companion-art[data-expression="idle"][data-reaction="listening"]
+	.companion-art-visual {
+	animation-duration: 6.5s;
+}
+
+.companion-art[data-reaction="landing"] .companion-art-pose {
+	animation: companion-art-land 520ms var(--companion-art-motion);
+}
+
+.companion-art[data-sleeping] .companion-art-pose {
+	transform: var(--companion-art-sleep-pose);
+	transition-duration: 650ms;
+}
+
+.companion-art[data-sleeping] .companion-art-visual {
+	animation: companion-art-sleep-breathe var(--companion-art-sleep-breath)
+		var(--companion-art-motion) infinite;
+}
+
+.companion-art-hoodie[data-sleeping] .companion-art-gaze {
+	transform: translateY(4px);
+}
+
+.companion-art-pixel[data-sleeping] .companion-art-face {
+	opacity: 0.72;
+}
+
+.companion-art-leaves {
+	display: none;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	clip-path: inset(0 0 74% 0);
+	transform-origin: 50% 26%;
+}
+
+.companion-art-sprout:is(
+		[data-sleeping],
+		[data-expression="idle"][data-reaction="waking"]
+	)
+	.companion-art-body {
+	clip-path: inset(26% 0 0 0);
+}
+
+.companion-art-sprout:is(
+		[data-sleeping],
+		[data-expression="idle"][data-reaction="waking"]
+	)
+	.companion-art-leaves {
+	display: block;
+}
+
+.companion-art[data-sleeping] .companion-art-leaves {
+	animation: companion-art-leaf-nod 7.6s ease-in-out infinite;
+}
+
+.companion-art[data-expression="idle"][data-reaction="waking"]
+	.companion-art-leaves {
+	animation: companion-art-leaf-wake 800ms ease-out;
+}
+
+.companion-art-sleep-marks,
+.companion-art-whistle,
+.companion-art-hearts,
+.companion-art-glints,
+.companion-art-impact,
+.companion-art-motes {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.companion-art-sleep-marks,
+.companion-art-whistle {
+	fill: none;
+	stroke: var(--companion-art-light);
+	stroke-width: 1.7;
+	stroke-linecap: round;
+}
+
+.companion-art-sleep-marks {
+	stroke-linejoin: round;
+	opacity: 0;
+	transition: opacity 240ms ease;
+}
+
+.companion-art-pixel .companion-art-sleep-marks {
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+}
+
+.companion-art[data-sleeping] .companion-art-sleep-marks {
+	opacity: 0.65;
+}
+
+.companion-art-sleep-drift {
+	opacity: 0;
+}
+
+.companion-art[data-sleeping] .companion-art-sleep-drift {
+	animation: companion-art-sleep-drift var(--companion-art-sleep-breath)
+		ease-out infinite;
+}
+
+.companion-art-motion-source {
+	display: none;
+}
+
+.companion-art-body {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.companion-art-foot,
+.companion-art-sprite {
+	display: none;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.companion-art[data-physical] .companion-art-foot {
+	display: block;
+}
+
+.companion-art-sprout[data-physical] .companion-art-body {
+	clip-path: polygon(
+		0 0,
+		100% 0,
+		100% 83%,
+		76% 83%,
+		57% 87%,
+		43% 87%,
+		24% 83%,
+		0 83%
+	);
+}
+
+.companion-art-sprout .companion-art-foot-left {
+	clip-path: inset(83% 56% 0 22%);
+	transform-origin: 33% 84%;
+}
+
+.companion-art-sprout .companion-art-foot-right {
+	clip-path: inset(83% 22% 0 56%);
+	transform-origin: 67% 84%;
+}
+
+.companion-art-pixel[data-physical] .companion-art-body {
+	clip-path: polygon(
+		0 0,
+		100% 0,
+		100% 100%,
+		68% 100%,
+		68% 85%,
+		66% 85%,
+		66% 82%,
+		34% 82%,
+		34% 85%,
+		32% 85%,
+		32% 100%,
+		0 100%
+	);
+}
+
+.companion-art-pixel .companion-art-foot-left {
+	clip-path: polygon(34% 81%, 50% 81%, 50% 100%, 32% 100%, 32% 85%, 34% 85%);
+	transform-origin: 42% 82%;
+}
+
+.companion-art-pixel .companion-art-foot-right {
+	clip-path: polygon(50% 81%, 66% 81%, 66% 85%, 68% 85%, 68% 100%, 50% 100%);
+	transform-origin: 58% 82%;
+}
+
+.companion-art[data-reaction="grabbed"] .companion-art-foot-left,
+.companion-art[data-reaction="falling"] .companion-art-foot-left {
+	transform: rotate(18deg);
+}
+
+.companion-art[data-reaction="grabbed"] .companion-art-foot-right,
+.companion-art[data-reaction="falling"] .companion-art-foot-right {
+	transform: rotate(-18deg);
+}
+
+.companion-art[data-reaction="dragging"] .companion-art-foot,
+.companion-art[data-reaction="struggling"] .companion-art-foot {
+	animation: companion-art-kick 620ms var(--companion-art-motion) infinite;
+}
+
+.companion-art[data-reaction="struggling"] .companion-art-foot {
+	animation-name: companion-art-flurry;
+	animation-duration: var(--companion-art-wriggle);
+}
+
+.companion-art[data-physical] .companion-art-foot-right {
+	animation-direction: reverse;
+}
+
+.companion-art[data-reaction="struggling"] .companion-art-foot-right {
+	animation-direction: normal;
+	animation-delay: -210ms;
+}
+
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-body,
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-body {
+	visibility: hidden;
+}
+
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-sprite,
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-sprite {
+	display: block;
+	background-image: var(--companion-art-sheet);
+	background-size: 400% 200%;
+	background-position: 66.666667% 0;
+	transform-origin: 50% 95%;
+}
+
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-sprite {
+	clip-path: inset(3% 0 1%);
+}
+
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-face {
+	left: 34%;
+	top: 31%;
+	width: 32%;
+	height: 18%;
+	transform: rotate(-5deg);
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="struggling"]
+	.companion-art-sprite {
+	animation: companion-art-hoodie-kick var(--companion-art-wriggle)
+		steps(1, end) infinite;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="struggling"]
+	.companion-art-face {
+	animation: companion-art-hoodie-look var(--companion-art-wriggle)
+		steps(1, end) infinite;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="falling"]
+	.companion-art-sprite,
+.companion-art-inky[data-motion-ready][data-reaction="falling"]
+	.companion-art-sprite {
+	background-position: 0 100%;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="falling"]
+	.companion-art-face {
+	left: 35%;
+	top: 31%;
+	transform: none;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="landing"]
+	.companion-art-sprite {
+	background-position: 33.333333% 100%;
+	animation: companion-art-hoodie-land 520ms steps(1, end) forwards;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="landing"]
+	.companion-art-face {
+	left: 35%;
+	top: 41%;
+	transform: none;
+	animation: companion-art-hoodie-settle 520ms steps(1, end) forwards;
+}
+
+.companion-art-hoodie[data-motion-ready][data-reaction="landing"]
+	.companion-art-body {
+	visibility: visible;
+	animation: companion-art-hoodie-restore 520ms ease-out forwards;
+}
+
+.companion-art-face {
+	position: absolute;
+	color: var(--companion-art-light);
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	filter: drop-shadow(
+		0 0 2px color-mix(in srgb, var(--companion-art-light) 40%, transparent)
+	);
+}
+
+.companion-art-sprout .companion-art-face {
+	left: 27%;
+	top: 43%;
+	width: 46%;
+	height: 28%;
+}
+
+.companion-art-hoodie .companion-art-face {
+	left: 33%;
+	top: 26%;
+	width: 32%;
+	height: 18%;
+}
+
+.companion-art-inky .companion-art-face {
+	left: 29%;
+	top: 38%;
+	width: 40%;
+	height: 22%;
+}
+
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-sprite {
+	transform: translateY(5%) scale(1.2);
+}
+
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-face {
+	left: 31%;
+	top: 35%;
+	width: 39%;
+	height: 20%;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="struggling"]
+	.companion-art-sprite {
+	animation: companion-art-inky-wriggle var(--companion-art-wriggle)
+		steps(1, end) infinite;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="struggling"]
+	.companion-art-face {
+	animation: companion-art-inky-look var(--companion-art-wriggle) steps(1, end)
+		infinite;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="falling"]
+	.companion-art-face {
+	top: 39%;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="landing"]
+	.companion-art-sprite {
+	background-position: 33.333333% 100%;
+	transform: translateY(11%) scale(1.2);
+	animation: companion-art-inky-land 520ms steps(1, end) forwards;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="landing"]
+	.companion-art-face {
+	top: 53%;
+	animation: companion-art-inky-settle 520ms steps(1, end) forwards;
+}
+
+.companion-art-inky[data-motion-ready][data-reaction="landing"]
+	.companion-art-body {
+	visibility: visible;
+	animation: companion-art-inky-restore 520ms steps(1, end) forwards;
+}
+
+@keyframes companion-art-inky-wriggle {
+	0%,
+	22%,
+	44% {
+		background-position: 33.333333% 0;
+	}
+	11%,
+	33% {
+		background-position: 100% 0;
+	}
+	60%,
+	100% {
+		background-position: 66.666667% 0;
+	}
+}
+
+@keyframes companion-art-inky-look {
+	0%,
+	22%,
+	44% {
+		left: 32%;
+	}
+	11%,
+	33% {
+		left: 28%;
+	}
+	60%,
+	100% {
+		left: 31%;
+	}
+}
+
+@keyframes companion-art-inky-land {
+	0% {
+		background-position: 33.333333% 100%;
+		opacity: 1;
+	}
+	28% {
+		background-position: 66.666667% 100%;
+	}
+	65% {
+		background-position: 100% 100%;
+	}
+	82%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes companion-art-inky-settle {
+	0% {
+		left: 33%;
+		top: 53%;
+		width: 39%;
+		height: 18%;
+	}
+	28%,
+	65% {
+		left: 31%;
+		top: 44%;
+		width: 39%;
+		height: 20%;
+	}
+	82%,
+	100% {
+		left: 29%;
+		top: 38%;
+		width: 40%;
+		height: 22%;
+	}
+}
+
+@keyframes companion-art-inky-restore {
+	0% {
+		opacity: 0;
+	}
+	82%,
+	100% {
+		opacity: 1;
+	}
+}
+
+.companion-art-pixel .companion-art-body,
+.companion-art-pixel .companion-art-foot {
+	image-rendering: pixelated;
+}
+
+.companion-art-pixel .companion-art-face {
+	--companion-art-light: #f5e8b9;
+	left: 34%;
+	top: 29%;
+	width: 31%;
+	height: 25%;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+	filter: none;
+}
+
+.companion-art-gaze {
+	transform-origin: 50% 40%;
+	transform: translate(
+		var(--companion-art-gaze-x, 0px),
+		var(--companion-art-gaze-y, 0px)
+	);
+	transition: transform 180ms cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+
+.companion-art-eyes {
+	transform-origin: 50% 40%;
+}
+
+.companion-art[data-story] .companion-art-eyes {
+	animation: companion-story-return var(--companion-story-duration) linear both;
+}
+
+@keyframes companion-story-return {
+	0%,
+	87% {
+		transform: scaleY(1);
+	}
+	88%,
+	91% {
+		transform: scaleY(0.1);
+	}
+	96%,
+	100% {
+		transform: scaleY(1);
+	}
+}
+
+.companion-art-live-face {
+	transform: translate(var(--face-look-x), var(--face-look-y));
+	transition: transform 220ms ease-out;
+}
+
+.companion-art-eye-left {
+	transform-origin: 27.5px 28.5px;
+	transform: scaleY(var(--face-left-open));
+	transition: transform 180ms ease-out;
+}
+
+.companion-art-eye-right {
+	transform-origin: 72.5px 28.5px;
+	transform: scaleY(var(--face-right-open));
+	transition: transform 180ms ease-out;
+}
+
+.companion-art-live-brows {
+	stroke-width: 2.5;
+	opacity: 0;
+	transition: opacity 180ms ease-out;
+}
+
+.companion-art-live-face[data-brows] .companion-art-live-brows {
+	opacity: 0.45;
+}
+
+.companion-art-brow-left,
+.companion-art-brow-right {
+	transition: transform 180ms ease-out;
+}
+
+.companion-art-brow-left {
+	transform: translateY(var(--face-left-brow));
+}
+
+.companion-art-brow-right {
+	transform: translateY(var(--face-right-brow));
+}
+
+.companion-art-live-mouth {
+	fill: none;
+}
+
+.companion-art-face-arrive {
+	transform-origin: 50px 28px;
+	transform: scaleY(1);
+	transition: transform 180ms ease-out;
+}
+
+.companion-art[data-face-changing] .companion-art-face-arrive {
+	transform: scaleY(0.08);
+	transition-duration: 100ms;
+}
+
+.companion-art-whistle path {
+	animation: companion-art-whistle 1350ms ease-out infinite;
+}
+.companion-art-whistle path + path {
+	animation-delay: 450ms;
+	opacity: 0;
+}
+@keyframes companion-art-whistle {
+	0% {
+		opacity: 0;
+		transform: translate(-2px, 3px);
+	}
+	25% {
+		opacity: 0.8;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(3px, -5px);
+	}
+}
+
+.companion-art-cheeks {
+	stroke-width: 3;
+	opacity: 0.55;
+}
+
+.companion-art-task-eye {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: companion-art-task-blink 7.3s ease-in-out infinite;
+}
+
+.companion-art-task-eye:last-child {
+	animation-delay: 70ms;
+}
+
+.companion-art-task-brows {
+	transform-origin: 50px 16px;
+	animation: companion-art-task-brows 5.8s ease-in-out infinite;
+}
+
+.companion-art:is(
+		[data-expression="working"],
+		[data-expression="attention"],
+		[data-expression="error"]
+	)
+	.companion-art-expression {
+	animation: companion-art-task-look 8.6s ease-in-out infinite;
+}
+
+.companion-art-hearts {
+	fill: var(--companion-art-light);
+	opacity: 0;
+}
+
+.companion-art[data-expression="idle"][data-reaction="loved"]
+	.companion-art-hearts {
+	animation: companion-art-love-hearts var(--companion-art-affection) ease-out;
+}
+
+.companion-art-glints {
+	color: var(--companion-art-light);
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	opacity: 0;
+}
+
+.companion-art-impact {
+	fill: none;
+	stroke: var(--companion-art-light);
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	opacity: 0;
+}
+
+.companion-art[data-reaction="landing"] .companion-art-impact {
+	animation: companion-art-impact 400ms ease-out;
+}
+
+.companion-art[data-celebrating] .companion-art-glints,
+.companion-art[data-expression="idle"][data-reaction="happy"]
+	.companion-art-glints {
+	animation: companion-art-glint 700ms ease-out;
+}
+
+.companion-art-eye-fill,
+.companion-art-progress {
+	fill: currentColor;
+	stroke: none;
+}
+
+.companion-art-progress rect {
+	animation: companion-art-progress 1.2s ease-in-out infinite;
+}
+
+.companion-art-progress rect:nth-child(2) {
+	animation-delay: 160ms;
+}
+
+.companion-art-progress rect:nth-child(3) {
+	animation-delay: 320ms;
+}
+
+.companion-art[data-expression="offline"] .companion-art-visual {
+	animation-duration: 6s;
+}
+
+.companion-art[data-expression="attention"] .companion-art-visual,
+.companion-art[data-expression="error"] .companion-art-visual {
+	animation: none;
+}
+
+@keyframes companion-art-breathe {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-1.5px) scaleY(1.01);
+	}
+}
+
+@keyframes companion-art-boop {
+	0% {
+		transform: translateY(2px) scale(1.045, 0.94);
+	}
+	32% {
+		transform: translateY(-4px) scale(0.975, 1.035) rotate(-2deg);
+	}
+	62% {
+		transform: translateY(1px) scale(1.025, 0.975) rotate(1deg);
+	}
+	100% {
+		transform: none;
+	}
+}
+
+@keyframes companion-art-land {
+	0% {
+		transform: translateY(4px) scale(1.14, 0.8);
+	}
+	26% {
+		transform: translateY(-2px) scale(0.96, 1.045);
+	}
+	58% {
+		transform: translateY(2px) scale(1.035, 0.96);
+	}
+	82% {
+		transform: translateY(1px) scale(1.01, 0.99);
+	}
+	100% {
+		transform: none;
+	}
+}
+
+@keyframes companion-art-grab {
+	0% {
+		transform: translateY(2px) scale(1.07, 0.93);
+	}
+	60% {
+		transform: translateY(-4px) scale(0.91, 1.09) rotate(-4deg);
+	}
+	100% {
+		transform: translateY(-2px) scale(0.96, 1.04);
+	}
+}
+
+@keyframes companion-art-wriggle {
+	0%,
+	22%,
+	44% {
+		transform: translateY(-2px) rotate(-7deg) scale(0.97, 1.03);
+	}
+	11%,
+	33% {
+		transform: translateY(-1px) rotate(7deg) scale(1.02, 0.97);
+	}
+	60%,
+	100% {
+		transform: translateY(-2px) scale(0.96, 1.04);
+	}
+}
+
+@keyframes companion-art-flurry {
+	0%,
+	24%,
+	48% {
+		transform: translateY(1px) rotate(-18deg);
+	}
+	12%,
+	36% {
+		transform: translateY(-3px) rotate(24deg);
+	}
+	60%,
+	100% {
+		transform: none;
+	}
+}
+
+@keyframes companion-art-kick {
+	0%,
+	100% {
+		transform: translateY(1px) rotate(-18deg);
+	}
+	50% {
+		transform: translateY(-3px) rotate(24deg);
+	}
+}
+
+.companion-art-struggle-rest {
+	opacity: 0;
+	animation: companion-art-struggle-rest var(--companion-art-wriggle)
+		steps(1, end) infinite;
+}
+
+.companion-art-struggle-effort,
+.companion-art[data-reaction="struggling"] .companion-art-mouth {
+	animation: companion-art-struggle-effort var(--companion-art-wriggle)
+		steps(1, end) infinite;
+}
+
+@keyframes companion-art-struggle-rest {
+	0%,
+	44% {
+		opacity: 0;
+	}
+	60%,
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes companion-art-struggle-effort {
+	0%,
+	44% {
+		opacity: 1;
+	}
+	60%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes companion-art-hoodie-kick {
+	0%,
+	22%,
+	44% {
+		background-position: 66.666667% 0;
+	}
+	11%,
+	33% {
+		background-position: 100% 0;
+	}
+	60%,
+	100% {
+		background-position: 0 0;
+	}
+}
+
+@keyframes companion-art-hoodie-look {
+	0%,
+	22%,
+	44% {
+		left: 34%;
+		top: 31%;
+		transform: rotate(-5deg);
+	}
+	11%,
+	33% {
+		left: 34%;
+		top: 31%;
+		transform: rotate(5deg);
+	}
+	60%,
+	100% {
+		left: 33%;
+		top: 31%;
+		transform: none;
+	}
+}
+
+@keyframes companion-art-hoodie-land {
+	0% {
+		background-position: 33.333333% 100%;
+		opacity: 1;
+		transform: none;
+	}
+	28% {
+		background-position: 66.666667% 100%;
+	}
+	80% {
+		background-position: 100% 100%;
+		opacity: 1;
+		transform: none;
+		animation-timing-function: ease-out;
+	}
+	100% {
+		background-position: 100% 100%;
+		opacity: 0;
+		transform: translateY(-4px) scale(1.03);
+	}
+}
+
+@keyframes companion-art-hoodie-settle {
+	0% {
+		left: 35%;
+		top: 41%;
+		transform: none;
+	}
+	28% {
+		left: 32%;
+		top: 37%;
+		transform: rotate(-5deg);
+	}
+	80% {
+		left: 34%;
+		top: 33%;
+		transform: none;
+		animation-timing-function: ease-out;
+	}
+	100% {
+		left: 33%;
+		top: 26%;
+		transform: none;
+	}
+}
+
+@keyframes companion-art-hoodie-restore {
+	0%,
+	80% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes companion-art-love {
+	0%,
+	100% {
+		transform: none;
+	}
+	25%,
+	60% {
+		transform: translateY(2px) rotate(-4deg) scale(1.045, 0.955);
+	}
+}
+
+@keyframes companion-art-love-hearts {
+	0% {
+		opacity: 0;
+		transform: translateY(2px) scale(0.95);
+	}
+	25%,
+	65% {
+		opacity: 0.8;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+}
+
+@keyframes companion-art-sleep-breathe {
+	0%,
+	100% {
+		transform: none;
+	}
+	50% {
+		transform: translateY(-1px) scaleY(1.015);
+	}
+}
+
+@keyframes companion-art-leaf-nod {
+	0%,
+	100% {
+		transform: rotate(0deg);
+	}
+	45%,
+	65% {
+		transform: rotate(6deg);
+	}
+}
+
+@keyframes companion-art-leaf-wake {
+	0% {
+		transform: rotate(4deg);
+	}
+	55% {
+		transform: rotate(-3deg);
+	}
+	100% {
+		transform: none;
+	}
+}
+
+@keyframes companion-art-sleep-drift {
+	0%,
+	40%,
+	100% {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	55%,
+	68% {
+		opacity: 0.8;
+	}
+	85% {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+}
+
+@keyframes companion-art-wake {
+	0% {
+		transform: var(--companion-art-sleep-pose);
+	}
+	45% {
+		transform: translateY(-3px) rotate(1deg) scale(0.98, 1.055);
+	}
+	75% {
+		transform: scaleY(1.015);
+	}
+	100% {
+		transform: none;
+	}
+}
+
+@keyframes companion-art-wake-eyes {
+	0%,
+	15% {
+		transform: scaleY(0.2);
+	}
+	40%,
+	100% {
+		transform: scaleY(1);
+	}
+	65% {
+		transform: scaleY(0.2);
+	}
+}
+
+@keyframes companion-art-impact {
+	0% {
+		opacity: 0.9;
+		transform: scaleX(0.6);
+	}
+	100% {
+		opacity: 0;
+		transform: scaleX(1.15);
+	}
+}
+
+@keyframes companion-art-glint {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	25% {
+		opacity: 0.85;
+	}
+	100% {
+		transform: translateY(-3px);
+	}
+}
+
+@keyframes companion-art-task-blink {
+	0%,
+	27%,
+	32%,
+	58%,
+	90%,
+	100% {
+		transform: scaleY(1);
+	}
+	29% {
+		transform: scaleY(0.12);
+	}
+	67%,
+	73% {
+		transform: scaleY(0.85);
+	}
+}
+
+@keyframes companion-art-task-brows {
+	0%,
+	28%,
+	72%,
+	100% {
+		transform: none;
+	}
+	40%,
+	58% {
+		transform: translateY(-2px) rotate(-2deg);
+	}
+}
+
+@keyframes companion-art-task-look {
+	0%,
+	18%,
+	70%,
+	100% {
+		transform: none;
+	}
+	24%,
+	43% {
+		transform: translate(3px, -1px);
+	}
+	49%,
+	62% {
+		transform: translate(-2px, 1px);
+	}
+}
+
+@keyframes companion-art-progress {
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+.companion-art[data-vignette] .companion-art-visual {
+	animation: none;
+}
+
+.companion-art-vignette-rest {
+	animation: companion-art-vignette-rest 2600ms ease-in-out both;
+}
+
+.companion-art-vignette-scene {
+	animation: companion-art-vignette-scene 2600ms ease-in-out both;
+}
+
+.companion-art-vignette-eyes {
+	transform-origin: 50px 29px;
+}
+
+.companion-art[data-vignette][data-reaction="stretching"] .companion-art-pose {
+	animation: companion-art-stretch 2600ms var(--companion-art-motion);
+}
+
+.companion-art[data-reaction="stretching"] .companion-art-vignette-eyes {
+	animation: companion-art-stretch-eyes 2600ms ease-in-out;
+}
+
+.companion-art[data-vignette][data-reaction="yawning"] .companion-art-pose {
+	animation: companion-art-yawn 2600ms ease-in-out;
+}
+
+.companion-art-yawn-mouth {
+	transform-origin: 50px 53px;
+	animation: companion-art-yawn-mouth 2600ms ease-in-out;
+}
+
+.companion-art-sprout[data-vignette][data-reaction="daydream"]
+	.companion-art-pose {
+	animation: companion-art-sneeze 2600ms ease-in-out;
+}
+
+.companion-art-sprout[data-reaction="daydream"] .companion-art-vignette-eyes {
+	animation: companion-art-sneeze-eyes 2600ms ease-in-out;
+}
+
+.companion-art-hoodie[data-reaction="daydream"] .companion-art-peek-left,
+.companion-art-hoodie[data-reaction="daydream"] .companion-art-peek-right {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: companion-art-peek 2600ms ease-in-out;
+}
+
+.companion-art-hoodie[data-reaction="daydream"] .companion-art-peek-right {
+	animation-direction: reverse;
+}
+
+.companion-art-game-ball {
+	animation: companion-art-game 2600ms linear;
+}
+
+.companion-art-paddle-left,
+.companion-art-paddle-right {
+	animation: companion-art-paddle 2600ms ease-in-out;
+}
+
+.companion-art-paddle-right {
+	animation-direction: reverse;
+}
+
+.companion-art-motes {
+	fill: var(--companion-art-light);
+	animation: companion-art-motes 2600ms ease-out both;
+}
+
+.companion-art[data-expression="idle"][data-reaction="starstruck"]
+	.companion-art-pose {
+	animation: companion-art-love 1700ms ease-in-out;
+}
+
+.companion-art[data-expression="idle"][data-reaction="starstruck"]
+	.companion-art-glints {
+	animation: companion-art-glint 1700ms ease-out;
+}
+
+@keyframes companion-art-vignette-rest {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	12%,
+	80% {
+		opacity: 0;
+	}
+}
+
+@keyframes companion-art-vignette-scene {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	12%,
+	80% {
+		opacity: 1;
+	}
+}
+
+@keyframes companion-art-stretch {
+	0%,
+	100% {
+		transform: none;
+	}
+	30%,
+	60% {
+		transform: translateY(-2px) scale(0.97, 1.045);
+	}
+	78% {
+		transform: translateY(1px) scale(1.015, 0.985);
+	}
+}
+
+@keyframes companion-art-stretch-eyes {
+	0%,
+	100% {
+		transform: none;
+	}
+	22% {
+		transform: scaleY(1.1);
+	}
+	40%,
+	58% {
+		transform: scaleY(0.15);
+	}
+	75% {
+		transform: scaleY(1.05);
+	}
+}
+
+@keyframes companion-art-yawn {
+	0%,
+	100% {
+		transform: none;
+	}
+	35%,
+	62% {
+		transform: translateY(1px) rotate(-1.5deg) scaleY(0.98);
+	}
+}
+
+@keyframes companion-art-yawn-mouth {
+	0%,
+	100% {
+		transform: scaleY(0.15);
+	}
+	40%,
+	60% {
+		transform: scaleY(1);
+	}
+}
+
+@keyframes companion-art-sneeze {
+	0%,
+	35%,
+	70%,
+	100% {
+		transform: none;
+	}
+	44% {
+		transform: translateY(-1px) rotate(-2deg);
+	}
+	49% {
+		transform: translateY(2px) rotate(2deg) scale(1.035, 0.95);
+	}
+	58% {
+		transform: translateY(-1px) scale(0.99, 1.015);
+	}
+}
+
+@keyframes companion-art-sneeze-eyes {
+	0%,
+	32%,
+	65%,
+	100% {
+		transform: none;
+	}
+	40% {
+		transform: scaleY(0.85);
+	}
+	47%,
+	54% {
+		transform: scaleY(0.08);
+	}
+}
+
+@keyframes companion-art-peek {
+	0%,
+	100% {
+		transform: scaleY(1);
+	}
+	15%,
+	38% {
+		transform: scaleY(0.12);
+	}
+	55%,
+	78% {
+		transform: scaleY(1);
+	}
+}
+
+@keyframes companion-art-game {
+	0%,
+	100% {
+		transform: none;
+	}
+	22% {
+		transform: translate(-24px, -12px);
+	}
+	48% {
+		transform: translate(24px, 13px);
+	}
+	74% {
+		transform: translate(-24px, 8px);
+	}
+}
+
+@keyframes companion-art-paddle {
+	0%,
+	100% {
+		transform: none;
+	}
+	25% {
+		transform: translateY(-6px);
+	}
+	70% {
+		transform: translateY(15px);
+	}
+}
+
+@keyframes companion-art-motes {
+	0%,
+	18% {
+		opacity: 0;
+		transform: translate(-2px, 2px);
+	}
+	30%,
+	44% {
+		opacity: 0.85;
+		transform: none;
+	}
+	65%,
+	100% {
+		opacity: 0;
+		transform: translate(-8px, -5px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.companion-art[data-expression][data-reaction]
+		:is(
+			.companion-art-pose,
+			.companion-art-body,
+			.companion-art-visual,
+			.companion-art-eyes,
+			.companion-art-gaze,
+			.companion-art-progress rect,
+			.companion-art-glints,
+			.companion-art-impact,
+			.companion-art-hearts,
+			.companion-art-sprite,
+			.companion-art-foot,
+			.companion-art-face,
+			.companion-art-expression,
+			.companion-art-live-face,
+			.companion-art-face-arrive,
+			.companion-art-eye-left,
+			.companion-art-eye-right,
+			.companion-art-brow-left,
+			.companion-art-brow-right,
+			.companion-art-live-mouth,
+			.companion-art-mouth,
+			.companion-art-struggle-rest,
+			.companion-art-struggle-effort,
+			.companion-art-task-eye,
+			.companion-art-task-brows,
+			.companion-art-vignette-rest,
+			.companion-art-vignette-scene,
+			.companion-art-vignette-eyes,
+			.companion-art-yawn-mouth,
+			.companion-art-peek-left,
+			.companion-art-peek-right,
+			.companion-art-game-ball,
+			.companion-art-paddle-left,
+			.companion-art-paddle-right,
+			.companion-art-motes,
+			.companion-art-leaves,
+			.companion-art-sleep-marks,
+			.companion-art-sleep-drift
+		) {
+		animation: none;
+		transition: none;
+		transform: none;
+	}
+
+	.companion-art-vignette-scene,
+	.companion-art-motes,
+	.companion-art-whistle,
+	.companion-art-glints,
+	.companion-art-hearts,
+	.companion-art-impact {
+		display: none;
+	}
+
+	.companion-art[data-expression="idle"][data-reaction="loved"]
+		.companion-art-hearts {
+		display: block;
+		opacity: 0.65;
+	}
+
+	.companion-art[data-sleeping][data-expression][data-reaction]
+		.companion-art-pose {
+		transform: var(--companion-art-sleep-pose);
+	}
+
+	.companion-art-inky[data-motion-ready][data-physical][data-reaction]
+		.companion-art-sprite {
+		transform: translateY(5%) scale(1.2);
+	}
+
+	.companion-art-inky[data-motion-ready][data-reaction="landing"]
+		.companion-art-body {
+		visibility: hidden;
+	}
+
+	.companion-art-inky[data-motion-ready][data-physical][data-reaction="landing"]
+		.companion-art-sprite {
+		transform: translateY(11%) scale(1.2);
+	}
+
+	.companion-art-hoodie[data-motion-ready][data-reaction="landing"]
+		.companion-art-body {
+		visibility: hidden;
+	}
+}
+
+.companion-art[data-paused][data-expression][data-reaction] * {
+	animation-play-state: paused;
+	transition: none;
+}

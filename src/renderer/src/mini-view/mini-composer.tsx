@@ -10,8 +10,8 @@
  * speech-to-text stream owns that file; the mini's dictation seam is
  * `mini-dictation.ts`), none of the app's shell (no router, no feed, no
  * sidebar — the console capture's lesson, §D.1), and no React Query provider:
- * the two reads it needs are imperative `desktopResult` calls, replicated from
- * the canonical flow (`use-aida-target.ts`) rather than re-invented. The store
+ * its reads share the chief-of-staff resolver used by the companion and
+ * the canonical Aida flow. The store
  * it sends through is its own copy in this renderer process, which is the
  * intended shape: admission is receipt-keyed server-side, and the main window
  * reconciles the new message the way it reconciles any other producer (§E.2).
@@ -27,7 +27,6 @@
  * dictation stack across surfaces (§F), not a private one beside it.
  */
 
-import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -57,11 +56,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	ChiefOfStaffUnavailable,
+	resolveChiefOfStaff,
+} from "../../../shared/chief-of-staff";
 import type { DesktopCapabilities } from "../../../shared/desktop-contract";
-import type {
-	DesktopAidaControlResult,
-	DesktopAidaState,
-} from "../../../shared/desktop-control-contract";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
 	type MiniViewDismissReason,
@@ -87,13 +86,6 @@ import { rendererPlatform } from "./renderer-platform";
 
 /** How long the "Sent" flash stays up before the window hides (§E.4). */
 export const SENT_FLASH_MS = 600;
-
-/**
- * The reject code the seat's route answers once the install's switch is off
- * (`desktop_aida.py`'s contract, §E.1 step 4): a 409 whose detail carries this
- * word. Matched by value because no constant crosses the wire for it.
- */
-const AIDA_DISABLED_CODE = "aida_disabled";
 
 export function MiniComposer() {
 	const [text, setText] = useState("");
@@ -189,87 +181,19 @@ export function MiniComposer() {
 	 * that does not advertise it.
 	 */
 	const resolveSeat = useCallback(async (): Promise<string | null> => {
-		let capabilities: DesktopCapabilities | null = null;
 		try {
-			capabilities = await desktopResult<DesktopCapabilities>({
-				op: "capabilities",
-			});
-		} catch {
-			// The transport could not answer: the seat cannot be confirmed, and
-			// the gate's fail-closed default applies.
-			capabilities = null;
-		}
-		if (capabilities === null) {
-			/*
-			 * A FAILED read is not an absent feature (review round 1, U3): the
-			 * transport could not answer, so the sentence is the unreachable one.
-			 * The "doesn't have a seat" sentence below belongs to an ANSWERED
-			 * capability that lacks `aida` and to nothing else (§E.5) — a
-			 * headless or offline machine must not read as a build without the
-			 * seat, which is the different fact a user would act on differently.
-			 */
-			capabilitiesRef.current = null;
-			seatRef.current = null;
-			update((current) =>
-				miniTransitions.seatBlocked(current, MINI_COPY.seatUnreachable),
-			);
-			return null;
-		}
-		/*
-		 * The capability answer is KEPT for the send gate: `features.input_mode`
-		 * rides the same map, so one resolution answers both questions.
-		 */
-		capabilitiesRef.current = capabilities;
-		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
-			seatRef.current = null;
-			update((current) =>
-				miniTransitions.seatBlocked(current, MINI_COPY.seatMissing),
-			);
-			return null;
-		}
-		try {
-			const read = await desktopResult<DesktopAidaState>({ op: "aida.status" });
-			if (!read.enabled) {
-				seatRef.current = null;
-				update((current) =>
-					miniTransitions.seatBlocked(current, AIDA_DISABLED_SENTENCE),
-				);
-				return null;
-			}
-			let sessionId = read.session_id;
-			if (!sessionId) {
-				/*
-				 * `open` is idempotent server-side (the single-session rule is the
-				 * backend's), so a stale null costs one POST and can never create a
-				 * second conversation. The mini calls the op directly rather than
-				 * through `useAidaResolver`: that hook needs a QueryClient this
-				 * document deliberately does not mount.
-				 */
-				const opened = await desktopResult<DesktopAidaControlResult>({
-					op: "aida.control",
-					action: "open",
-				});
-				sessionId = opened.session_id;
-			}
-			if (!sessionId) {
-				seatRef.current = null;
-				update((current) =>
-					miniTransitions.seatBlocked(current, MINI_COPY.seatOpenFailed),
-				);
-				return null;
-			}
+			const { sessionId, capabilities } =
+				await resolveChiefOfStaff(desktopResult);
+			capabilitiesRef.current = capabilities;
 			seatRef.current = sessionId;
 			update((current) => miniTransitions.seatReady(current));
 			return sessionId;
 		} catch (error) {
+			capabilitiesRef.current = null;
 			seatRef.current = null;
-			const code =
-				error !== null && typeof error === "object" && "code" in error
-					? String((error as { code?: unknown }).code)
-					: "";
 			const sentence =
-				code === AIDA_DISABLED_CODE
-					? AIDA_DISABLED_SENTENCE
+				error instanceof ChiefOfStaffUnavailable
+					? error.message
 					: MINI_COPY.seatUnreachable;
 			update((current) => miniTransitions.seatBlocked(current, sentence));
 			return null;

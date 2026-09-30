@@ -13,6 +13,7 @@
  * MINOR-1). The hooks and the route calls live in `use-aida-target.ts`.
  */
 
+import { CHIEF_OF_STAFF_COPY } from "../../../../shared/chief-of-staff";
 import type { DesktopAidaControlResult } from "../../../../shared/desktop-control-contract";
 import { userFacingMessage } from "../../shared/api/local-operator/desktop-api";
 
@@ -136,5 +137,4 @@ export function aidaControlFailureCopy(error: unknown): string {
  * honestly do. One sentence, one place, per the design's own cross-surface
  * rule (§E.5).
  */
-export const AIDA_DISABLED_SENTENCE =
-	"The chief of staff is switched off on this install.";
+export const AIDA_DISABLED_SENTENCE = CHIEF_OF_STAFF_COPY.disabled;

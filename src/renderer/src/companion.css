@@ -1,0 +1,251 @@
+html,
+body,
+#companion {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	background: transparent;
+}
+body {
+	font-family: "Inter", sans-serif;
+	color: var(--lo-ink);
+	user-select: none;
+}
+.companion {
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: flex-end;
+	gap: 8px;
+	padding: 8px;
+	height: 100%;
+}
+.companion-pet {
+	position: relative;
+	width: 110px;
+	height: 110px;
+	flex: none;
+}
+.companion-chat-toggle {
+	position: absolute;
+	right: -2px;
+	bottom: -2px;
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 120ms ease 100ms, visibility 0s linear 220ms;
+}
+.companion-task-toggle {
+	position: absolute;
+	right: -2px;
+	top: -2px;
+}
+.companion-pet:hover .companion-chat-toggle,
+.companion-pet[data-engaged="true"] .companion-chat-toggle {
+	visibility: visible;
+	opacity: 1;
+	transition-delay: 180ms;
+}
+.companion-pet:has(:focus-visible) .companion-chat-toggle {
+	visibility: visible;
+	opacity: 1;
+	transition-delay: 0s;
+}
+.companion[data-play]
+	.companion-art[data-reaction]
+	:is(.companion-art-hearts, .companion-art-glints) {
+	display: none;
+}
+.companion-chat:not([hidden]) {
+	animation: companion-chat-appear 180ms ease-out;
+	transform-origin: bottom right;
+}
+@keyframes companion-chat-appear {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.companion-character {
+	display: block;
+	position: relative;
+	width: 110px;
+	height: 110px;
+	flex-shrink: 0;
+	padding: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 24px;
+	background: transparent;
+	touch-action: none;
+	cursor: grab;
+}
+.companion-character:active {
+	cursor: grabbing;
+}
+.companion-play-hint {
+	display: none;
+	position: absolute;
+	top: -10px;
+	left: 0;
+	padding: 1px 4px;
+	border: 1px solid var(--lo-border-control);
+	border-radius: 6px;
+	background: var(--lo-surface);
+	color: var(--lo-ink);
+	font-size: 12px;
+	line-height: 16px;
+	pointer-events: none;
+}
+.companion-character:focus-visible .companion-play-hint {
+	display: block;
+}
+.companion-custom-art {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	pointer-events: none;
+	transform-origin: 50% 85%;
+	transition: transform 120ms ease;
+}
+.companion-custom-pixel {
+	image-rendering: pixelated;
+}
+.companion-custom-sleeping {
+	animation: companion-custom-sleep 6.4s ease-in-out infinite;
+}
+.companion-custom-sleep {
+	position: absolute;
+	right: 6px;
+	top: 4px;
+	width: 26px;
+	height: 30px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	pointer-events: none;
+}
+@keyframes companion-custom-sleep {
+	0%,
+	100% {
+		transform: translateY(4px) rotate(-6deg) scale(0.97, 0.93);
+	}
+	50% {
+		transform: translateY(3px) rotate(-6deg) scale(0.98, 0.95);
+	}
+}
+.companion-character[data-reaction="pressed"] .companion-custom-art {
+	transform: scaleY(0.96);
+}
+.companion-character[data-reaction="grabbed"] .companion-custom-art,
+.companion-character[data-reaction="dragging"] .companion-custom-art {
+	transform: rotate(-4deg);
+}
+.companion-character[data-reaction="struggling"] .companion-custom-art {
+	animation: companion-custom-wriggle 1.9s ease-in-out infinite;
+}
+.companion-character[data-reaction="falling"] .companion-custom-art {
+	transform: scale(0.94, 1.06);
+}
+.companion-character[data-reaction="landing"] .companion-custom-art {
+	animation: companion-art-land 520ms ease-out;
+}
+@keyframes companion-custom-wriggle {
+	0%,
+	22%,
+	44% {
+		transform: rotate(-4deg);
+	}
+	11%,
+	33% {
+		transform: rotate(4deg);
+	}
+	60%,
+	100% {
+		transform: rotate(-2deg);
+	}
+}
+.companion-character[data-reaction="peekaboo"] .companion-custom-art {
+	animation: companion-custom-peekaboo 4800ms ease-in-out;
+}
+.companion-character[data-reaction="playful"] .companion-custom-art {
+	animation: companion-custom-play 4000ms ease-in-out;
+}
+@keyframes companion-custom-peekaboo {
+	0%,
+	100% {
+		transform: none;
+	}
+	25%,
+	45% {
+		transform: translateY(105%) rotate(-8deg);
+	}
+	58%,
+	66% {
+		transform: translateY(65%) rotate(12deg);
+	}
+	80% {
+		transform: translateY(-4%) rotate(-4deg);
+	}
+}
+@keyframes companion-custom-play {
+	0%,
+	100% {
+		transform: none;
+	}
+	18%,
+	55% {
+		transform: translateY(-8%) rotate(-8deg);
+	}
+	35%,
+	72% {
+		transform: translateY(2%) rotate(8deg) scale(1.04, 0.94);
+	}
+}
+
+.companion-pet[data-notifying] :is(.companion-art-pose, .companion-custom-art) {
+	animation: companion-notice 1400ms ease-in-out;
+}
+@keyframes companion-notice {
+	0%,
+	40%,
+	100% {
+		transform: none;
+	}
+	18% {
+		transform: translateY(-3px) rotate(-3deg);
+	}
+	60% {
+		transform: translateY(-2px) rotate(3deg);
+	}
+	78% {
+		transform: rotate(-1deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.companion-pet[data-notifying]
+		:is(.companion-art-pose, .companion-custom-art) {
+		animation: none;
+	}
+	.companion-chat:not([hidden]) {
+		animation: none;
+	}
+	.companion-chat-toggle {
+		transition: none;
+	}
+	.companion-character[data-reaction] .companion-custom-art {
+		animation: none;
+		transition: none;
+		transform: none;
+	}
+	.companion-character[data-reaction="dozing"] .companion-custom-sleeping {
+		transform: translateY(4px) rotate(-6deg) scale(0.97, 0.93);
+	}
+}
