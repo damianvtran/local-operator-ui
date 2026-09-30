@@ -49,6 +49,7 @@ const {
 	runsOf,
 	snapWindowToRunBoundary,
 	staysVisibleWhileCollapsed,
+	widenTarget,
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
@@ -1166,5 +1167,161 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 	assert.ok(
 		!String(planOn.runs[0].facts.title).toLowerCase().includes("send"),
 		"the bar's sentence names no hidden tool",
+	);
+});
+/* ---------- the window widen, measured in the reader's currency (1b) ---------- */
+
+/*
+ * WHAT THESE PIN. The render window is a RAW row count, but a completed run
+ * folds into one bar, so a raw step over a transcript of finished turns paints
+ * almost nothing new (measured against the operator's real-shape journal: a
+ * 618-row run painted 4..7 rows across window 60..300 - every widen step
+ * invisible, ten gestures of nothing). `widenTarget` picks the next window
+ * size by what the reader SEES. The painted-row count below is computed HERE
+ * from `collapsePlan` on purpose, independent of the shipped `paintedRows`, so
+ * the assertion cannot agree with the code by construction.
+ */
+const SNAP_MAX_EXTRA = 300;
+const paintedAt = (rows, size, { live = false, openRuns } = {}) => {
+	const total = rows.length;
+	const align = snapWindowToRunBoundary(rows, size, SNAP_MAX_EXTRA);
+	const visible = total > align ? rows.slice(total - align) : rows;
+	const plan = collapsePlan(visible, { live, openRuns });
+	return (
+		visible.length -
+		plan.runs.reduce(
+			(sum, run) =>
+				sum +
+				(run.collapses && !openRuns?.has(run.key) ? run.hidden.length : 0),
+			0,
+		)
+	);
+};
+
+/** `turns` finished turns of `toolsPerTurn` calls each: user, tools, answer. */
+const finishedTurns = (turns, toolsPerTurn) => {
+	const rows = [];
+	for (let turn = 0; turn < turns; turn += 1) {
+		rows.push(user(`u${turn}`, { ts: TS + turn * 100_000 }));
+		for (let index = 0; index < toolsPerTurn; index += 1) {
+			rows.push(
+				tool(
+					`t${turn}-${index}`,
+					{ ts: TS + turn * 100_000 + 1_000 + index },
+					"trace",
+				),
+			);
+		}
+		rows.push(answer(`a${turn}`, { ts: TS + turn * 100_000 + 90_000 }));
+	}
+	return rows;
+};
+
+test("widenTarget: a plain +step over finished turns paints fewer than 8 new rows, the target does not", () => {
+	assert.equal(
+		typeof widenTarget,
+		"function",
+		"widenTarget must be exported by the turn-collapse model",
+	);
+	const rows = finishedTurns(30, 24);
+	const window = 60;
+	const base = paintedAt(rows, window);
+	const plain = paintedAt(rows, window + 60);
+	assert.ok(
+		plain - base < 8,
+		`the defect this fixes: a raw +60 paints ${plain - base} new rows (base ${base}, plain ${plain})`,
+	);
+	const target = widenTarget(rows, window, {
+		step: 60,
+		maxRows: window + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+	});
+	assert.ok(target > window + 60, `the target keeps stepping (got ${target})`);
+	assert.ok(
+		paintedAt(rows, target) - base >= 8,
+		`and lands where the reader sees at least 8 new rows (painted ${paintedAt(rows, target)} vs base ${base})`,
+	);
+	assert.ok(
+		target <= window + 12 * 60 && target <= rows.length,
+		"never past maxRows or the transcript",
+	);
+});
+
+test("widenTarget: the operator's one long run lands on a size that paints MORE than the window it left", () => {
+	/* 618 rows in ONE run (the measured shape): the collapse folds every raw
+	 * step, so the only visible growth is the run's own head arriving. The
+	 * bounded search must reach it rather than stop at window + step. */
+	const rows = [
+		user("u1", { ts: TS }),
+		...Array.from({ length: 616 }, (_, index) =>
+			tool(`t${index}`, { ts: TS + 1_000 + index }, "trace"),
+		),
+		answer("a1", { ts: TS + 900_000 }),
+	];
+	assert.equal(rows.length, 618);
+	const before = paintedAt(rows, 60);
+	const target = widenTarget(rows, 60, {
+		step: 60,
+		maxRows: 60 + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+	});
+	assert.ok(target > 120, `it did not stop at a single step (got ${target})`);
+	assert.ok(
+		paintedAt(rows, target) > before,
+		`painted rows grew: ${before} -> ${paintedAt(rows, target)} at window ${target}`,
+	);
+	assert.equal(target, 618, "and it is clamped to the transcript");
+});
+
+test("widenTarget: nothing to collapse behaves as a plain +step, and never overshoots the transcript", () => {
+	const chat = [];
+	for (let turn = 0; turn < 100; turn += 1) {
+		chat.push(user(`cu${turn}`), answer(`ca${turn}`));
+	}
+	const options = {
+		step: 60,
+		maxRows: 60 + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+	};
+	assert.equal(widenTarget(chat, 60, options), 120);
+	assert.equal(widenTarget(chat, 180, options), 200, "clamped to the total");
+	assert.equal(widenTarget(chat, 200, options), 200, "already everything");
+	/*
+	 * A LIVE newest run does not collapse, so its rows all paint and the first
+	 * step is already a visible reveal: a plain +step. (The run is longer than
+	 * the snap's own reach on purpose - a short one would be pulled whole into
+	 * the window by `snapWindowToRunBoundary`, and the case would be about the
+	 * snap rather than about liveness.)
+	 */
+	const running = [
+		user("ru"),
+		...Array.from({ length: 699 }, (_, i) => tool(`rt${i}`, {}, "trace")),
+	];
+	assert.equal(widenTarget(running, 60, { ...options, live: true }), 120);
+});
+
+test("widenTarget: an open run counts as painted, exactly as the render pass does", () => {
+	const rows = finishedTurns(30, 24);
+	const options = {
+		step: 60,
+		maxRows: 60 + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+	};
+	const allOpen = new Set(runsOf(rows).map((run) => run.key));
+	const openTarget = widenTarget(rows, 60, { ...options, openRuns: allOpen });
+	assert.equal(openTarget, 120, "one step is already a visible reveal");
+	assert.ok(
+		paintedAt(rows, openTarget, { openRuns: allOpen }) -
+			paintedAt(rows, 60, { openRuns: allOpen }) >=
+			8,
+		"and the rows it reveals really do paint",
+	);
+	assert.ok(
+		openTarget < widenTarget(rows, 60, options),
+		`an open run reaches the reader sooner than a collapsed one (${openTarget} < ${widenTarget(rows, 60, options)})`,
 	);
 });
