@@ -2693,6 +2693,66 @@ const BRANCH_RECORDS = [
 	"foldOntocef1c9c535MeasureDragNote",
 	"foldOntoe2394f9ff1Note",
 	"foldOntof9dbf8b455MeasureDragNote",
+	/*
+	 * And THIS branch's re-keyed fold record (`foldOnto0738fa7eb3RestoreBoundaryNote`, re-keyed at the
+	 * fold onto `65a3e97b8c` because main already ships a note under the bare name, and registered here
+	 * per agent review round 4, F-r4-2): it states this lane's own reading of that fold, the fold that
+	 * re-laid it kept it byte-exact, and a fold that started from main's copy would drop it first -
+	 * the list's usual reason.
+	 */
+	"foldOnto0738fa7eb3RestoreBoundaryNote",
+	/*
+	 * And THIS branch's own product record (`browserRestoreBoundaryPass`), written by the restore-boundary
+	 * pass: it carries the before/after runs' readings and the stamps' provenance, so a fold that started
+	 * from main's copy would drop it first - the list's usual reason (agent review round 5, Q-3).
+	 */
+	"browserRestoreBoundaryPass",
+	/*
+	 * And this branch's first fold's own record (`foldOnto48b4b90b66Note`): the merge onto
+	 * `origin/main` = `48b4b90b66` resolved this file and states what moved and what did not,
+	 * registered beside the others for the list's usual reason (agent review round 5, Q-3).
+	 */
+	"foldOnto48b4b90b66Note",
+	/*
+	 * And ROUND 2'S own, beside the focus return's records: the re-stamp U8's
+	 * move of `src/` (the pointer close's capture-and-restore) and the suite's
+	 * pins in `scripts/` forced. Registered for the list's usual reason - a fold
+	 * resolved from main's copy would drop it.
+	 */
+	"rowMenuRoundTwoRestampNote",
+	/*
+	 * And ROUND 3'S own, beside it: the re-stamp QA round 3's Q-1 fix forced by
+	 * moving `src/` (the capture-phase read) and the suite's pins in `scripts/`.
+	 * Registered for the list's usual reason - a fold resolved from main's copy
+	 * would drop it.
+	 */
+	"rowMenuRoundThreeRestampNote",
+	/*
+	 * And the FOLD RECORDS the round-2 folds wrote but left unregistered (their
+	 * passes added the records to the manifest without adding the list entries;
+	 * closed here with the round-3 fold's own). Same reason as every entry - a
+	 * fold resolved from main's copy would drop them.
+	 */
+	"foldOnto8712e8684cNote",
+	"foldOnto2e866d5d49Note",
+	/*
+	 * And THIS round-3 fold's own, alongside them.
+	 */
+	"foldOntoefca9e16fcNote",
+	/*
+	 * And THE #697 FOLD'S, whose semantic resolution (the hold extended to the
+	 * strip controls #697 adds) makes it a record worth keeping across a fold -
+	 * same reason as every entry.
+	 */
+	"foldOnto50b9daf8feNote",
+	/*
+	 * And the fold's own re-shoot record, beside it (same reason).
+	 */
+	"pinnedStripReshootNote",
+	/*
+	 * And THE #702 FOLD'S - the fourth fold's record (same reason).
+	 */
+	"foldOnte78e4395ebNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

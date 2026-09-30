@@ -428,6 +428,14 @@ const bridge = {
 	credentialsCalls: 0,
 	radientCalls: 0,
 	holdAccount: false,
+	/*
+	 * Whether this rig's backend advertises the `radient` capability. False is
+	 * an OLDER BACKEND: `useRadientUserQuery`'s feature gate then DISABLES the
+	 * account read, so it never answers and `accountRead` lands on "signed-out"
+	 * with no answer behind it — the state QA round 1 caught rendering the
+	 * sign-in sentence (Q1).
+	 */
+	backendRadient: true,
 };
 
 globalThis.window.api = {
@@ -440,7 +448,7 @@ globalThis.window.api = {
 						result: {
 							desktop_available: true,
 							features: {
-								radient: 1,
+								...(bridge.backendRadient ? { radient: 1 } : {}),
 								auth: 1,
 								commands: 1,
 								session_credential: 1,
@@ -537,6 +545,7 @@ async function mountProbeRig(state) {
 	bridge.credentialsCalls = 0;
 	bridge.radientCalls = 0;
 	bridge.holdAccount = state.holdAccount ?? false;
+	bridge.backendRadient = state.backendRadient ?? true;
 	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
 	const container = containerForRig();
@@ -556,6 +565,7 @@ async function mountControlsRig(state) {
 	bridge.credentialsCalls = 0;
 	bridge.radientCalls = 0;
 	bridge.holdAccount = state.holdAccount ?? false;
+	bridge.backendRadient = state.backendRadient ?? true;
 	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
 	const container = containerForRig();
@@ -905,6 +915,41 @@ test("an outage is told as a failed check, never as a sign-in (design round 1, D
 	);
 });
 
+test("a backend with no Radient feature reads as an unfixable check, never a sign-in (QA round 1, Q1)", async () => {
+	const { container } = await mountControlsRig({
+		account: "signed-out",
+		keys: [],
+		backendRadient: false,
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "could-not-check",
+		"the older backend's silence to classify as an unfixable check",
+	);
+	/*
+	 * THE READ'S OWN CLASS IS INCIDENTAL HERE, and deliberately not asserted:
+	 * the feature gate disables the query, so nothing fetches, and what the
+	 * class reports is whatever the module's recorded-failure store last held —
+	 * `signed-out` on a fresh process, a previous case's recorded class inside a
+	 * full-suite run (measured: `unavailable`). Either way the block is the same
+	 * `could-not-check`, which is the Q1 claim: the arm is reachable in
+	 * integration, not only in unit assertions.
+	 */
+	assert.notEqual(
+		globalThis.__speechProbe.speechBlock,
+		"sign-in",
+		"a backend with no Radient feature never ANSWERED the read; its silence must not become the sign-in sentence (Q1)",
+	);
+	assert.equal(
+		speechButton(container).hasAttribute("disabled"),
+		true,
+		"nothing on this backend can serve the request, so the control stays off",
+	);
+	await openTooltip(
+		speechButton(container).parentElement,
+		"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
+	);
+});
+
 test("the offline sentence follows the server, not the file probe (design round 1, D3)", async () => {
 	const { container, client } = await mountControlsRig({
 		account: "signed-out",
@@ -1039,6 +1084,31 @@ test("the shared copy table classifies every state and names every sentence", ()
 		}),
 		"could-not-check",
 		"a backend that cannot serve Radient will never leave checking: that is not something to wait out",
+	);
+	/*
+	 * THE OLDER BACKEND'S REAL SHAPE (QA round 1, Q1). The feature gate DISABLES
+	 * the read, so React Query reports no data and no error and the class lands
+	 * on "signed-out" with no answer behind it — which the first cut read as a
+	 * sign-in. The unavailable reading is consulted first for exactly this arm,
+	 * and this is the assertion that keeps it reachable.
+	 */
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "signed-out",
+			accountUnavailable: true,
+		}),
+		"could-not-check",
+		"a backend with no Radient feature never ANSWERED the read; its silence must not become the sign-in sentence (Q1)",
+	);
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "refused",
+			accountUnavailable: true,
+		}),
+		"could-not-check",
+		"and the unavailable reading outranks the answer classes: a backend that cannot serve Radient has no answer to give",
 	);
 	for (const answer of ["unavailable", "unknown"]) {
 		assert.equal(
