@@ -2634,7 +2634,7 @@ const BRANCH_RECORDS = [
 	"foldOnto65a3e97b8cNote",
 	/*
 	 * And this branch's own folds' records beside them - `foldOntoa7b4f88a18Note`
-	 * (the name-collision fold), `foldOnto891ad1e983Note`, and the four latest,
+	 * (the name-collision fold), `foldOnto891ad1e983Note`, and the five latest,
 	 * `foldOnto65a3e97b8cMonitorControlsNote` (RE-KEYED at its fold: main's own
 	 * lane folded the same tip and ships a note under the shared name),
 	 * `foldOnto29a9aa985cNote`, `foldOnto32c7bc34c9Note` (registered now; it
@@ -2651,6 +2651,7 @@ const BRANCH_RECORDS = [
 	"foldOnto29a9aa985cNote",
 	"foldOnto32c7bc34c9Note",
 	"foldOnto8ff4dd8a9bNote",
+	"foldOntocef1c9c535Note",
 	/*
 	 * And this LANE's newest top-level record: the setup window's rail states the
 	 * pair the file ships and the surface it re-shot, so a fold resolved from
