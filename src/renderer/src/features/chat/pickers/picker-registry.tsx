@@ -405,7 +405,10 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		 * the list and hands focus back. So an unambiguous Enter completes the id
 		 * and the next Enter runs the command the user already had, which is the
 		 * same path typing `/theme <id>` takes. The LIST is inline; the apply
-		 * path is unchanged.
+		 * path is unchanged - and since #676 that dialog is a CONFIRMATION when
+		 * the argument names a theme (`ThemePicker` omits its grid and presents
+		 * the result line), so the table is never re-presented as a second
+		 * chooser for a choice the inline list already made.
 		 */
 		inline: { source: "theme", nameThenMessage: false, runs: false },
 	},
