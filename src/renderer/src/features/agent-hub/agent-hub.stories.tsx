@@ -40,7 +40,7 @@
  * the values in them are invented.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { configure, expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import "../../styles/index.css";
 import { AgentHubPage } from "./agent-hub-page";
@@ -191,8 +191,24 @@ type BridgeBehaviour = {
 		version: string;
 		members: { role: string; kind: string; count: number }[];
 	}[];
+	/** Never settle the teams read, so the Teams view stays in its loading state. */
+	holdTeams?: boolean;
+	/** Never settle the memberships read: the "we do not know yet" state (M1). */
+	holdMemberships?: boolean;
 	/** Fail the memberships read, so the picker's "could not be read" line shows. */
 	failMemberships?: boolean;
+	/**
+	 * Fail the memberships read only for its first N calls, then answer. The
+	 * "Try again" arm is only a recovery if the second read can succeed.
+	 */
+	failMembershipsTimes?: number;
+	/**
+	 * Hold each memberships answer this long. A mock that answers inside one tick
+	 * never exposes the in-flight state, which is what round 2's U9/Q3 finding is
+	 * about: the retry's hand-off has to be observable, so the story that asserts
+	 * it makes the read take a moment.
+	 */
+	membershipDelayMs?: number;
 	/**
 	 * The backend advertises `radient_org` (agent review round 1, M2).
 	 *
@@ -220,12 +236,17 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		orgAgents = 0,
 		orgRefusal,
 		teams = [],
+		holdTeams = false,
+		holdMemberships = false,
 		failMemberships = false,
+		failMembershipsTimes = 0,
+		membershipDelayMs = 0,
 		orgCapability = true,
 	} = behaviour;
 	ledger.length = 0;
 
 	let listCalls = 0;
+	let membershipCalls = 0;
 	const ok = <T,>(result: T): DesktopResponse => ({
 		status: 200,
 		body: { result },
@@ -292,7 +313,14 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					 * for the unknown op — and the page degrades to the public hub, which is
 					 * the point of the arm.
 					 */
-					if (failMemberships) {
+					if (holdMemberships) return await new Promise(() => {});
+					if (membershipDelayMs) {
+						await new Promise((resolve) =>
+							setTimeout(resolve, membershipDelayMs),
+						);
+					}
+					membershipCalls += 1;
+					if (failMemberships || membershipCalls <= failMembershipsTimes) {
 						return { status: 500, body: { detail: "Memberships failed." } };
 					}
 					return proxy({
@@ -358,6 +386,9 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					});
 				}
 				case "org_teams.list": {
+					// Like `holdList`: a read that never settles is how the loading
+					// state is photographed without a timer.
+					if (holdTeams) return await new Promise(() => {});
 					/*
 					 * The roster is refused with the SAME code the workspace was, because the
 					 * server gates both on the same membership and plan (§4.5) — a fixture that
@@ -428,10 +459,18 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 							request.control?.query?.description,
 					);
 					const shown = filtered ? filteredRecords : records;
+					/*
+					 * THE REQUESTED PAGE IS ECHOED, not hard-coded to 1. It was a
+					 * literal, so every paged read answered "page 1" and the pager
+					 * snapped back to `Page 1 of 3` the moment it advanced - a fixture
+					 * that made the last-page story impossible to write and would have
+					 * hidden a real regression in the paging state.
+					 */
+					const requestedPage = Number(request.control?.query?.page ?? 1);
 					return proxy({
 						msg: "Agents listed successfully",
 						result: {
-							page: 1,
+							page: requestedPage,
 							per_page: 12,
 							// The counts follow the records: a page that shows nothing
 							// while its own line reads "30 agents" is a fixture bug, and
@@ -506,6 +545,124 @@ export default meta;
 
 type Story = StoryObj;
 
+const CHECKING_ORGS = /Checking your organizations/;
+const NOT_IN_ORG = /you are not in one yet/;
+const ORGS_UNAVAILABLE = /organizations are unavailable on this backend/;
+/*
+ * A TEN-SECOND ASYNC BUDGET, NOT TESTING-LIBRARY'S ONE.
+ *
+ * Every state these plays wait on arrives through a stubbed read, and the hub's
+ * retry policy (`retryDesktopQuery`) spends one more attempt on any answer that
+ * carries a status - so an org refusal, which is the read this file stubs with a
+ * 403, is on screen about two round trips after the press rather than one. On a
+ * loaded fleet machine (measured 2026-09-29 at a load average of 45-115) the
+ * default second expires first: `org-plan-lapsed`'s play threw "Unable to find
+ * [data-testid=agent-hub-org-no-access]" and aborted the sweep. The budget is the
+ * rig's own settle order; it changes only how long a genuinely absent state takes
+ * to fail.
+ */
+configure({ asyncUtilTimeout: 10_000 });
+
+const CARD_DETAILS_NAME = /^View details for /;
+
+/**
+ * Switch the scope the way a person does: press the organization's chip.
+ *
+ * The scope used to be a select (trigger, then option); it is a row of visible
+ * chips now, so one press. The chip is found by role and name rather than by
+ * test id so the play reads as the reader's own action.
+ */
+const chooseScope = async (name: string) => {
+	await screen.findByTestId("agent-hub-status");
+	/*
+	 * A LONGER WAIT THAN TESTING-LIBRARY'S SECOND. The scope chips are built from
+	 * `memberships.list`, which starts only after the capabilities answer says the
+	 * org operations exist - two stubbed round trips, and on a loaded fleet machine
+	 * the default 1s has been measured to expire before the chip exists (the play
+	 * threw "Unable to find role=button and name Minerva"). Ten seconds is the same
+	 * order as the rig's own settle budget.
+	 */
+	await userEvent.click(
+		await screen.findByRole("button", { name }, { timeout: 10_000 }),
+	);
+	releaseFocus();
+};
+
+/**
+ * Drop the focus ring the play's own press left behind.
+ *
+ * A programmatic click focuses the control and Chromium draws `:focus-visible`
+ * on it, so every frame that pressed a chip or a tab photographed a ring the
+ * reader never asked for (and the ring is not the claim of any of these frames -
+ * `FocusedSearch` owns that). Blurring makes the frame the resting state.
+ */
+const releaseFocus = () => {
+	if (document.activeElement instanceof HTMLElement) {
+		document.activeElement.blur();
+	}
+};
+
+/**
+ * Hold the rig's shutter until the state this frame claims is on screen.
+ *
+ * WITHOUT THIS THE RIG CAN PHOTOGRAPH A MID-PLAY FRAME. Its "is the story ready"
+ * poll is satisfied by the mounted page — Storybook's own chrome is gone, the
+ * fonts have resolved, the story root has elements — and it then measures the
+ * document and opens the shutter while this story's `play` is still pressing the
+ * scope chip and the Teams tab. Measured 2026-09-29: `agent-hub-page--org-teams`
+ * was photographed as the AGENTS view at the grid's 1444px document height,
+ * because the frame was taken between the scope press and the tab press, while
+ * `org-teams-empty` (same play, different timing) came out right — a race, not a
+ * layout defect.
+ *
+ * The latch the rig already honours is `documentElement.dataset.capturePending`:
+ * the hub's own stories set it on mount and clear it when the selector (and, when
+ * given, the text) the frame claims is in the DOM. The 20s bound is the rig's own
+ * reason for existing in reverse — a play that throws must not hold the shutter
+ * forever and silently ship the state it died in.
+ */
+const holdShutter = (until: string, text?: string) => {
+	document.documentElement.dataset.capturePending = "1";
+	const started = Date.now();
+	const timer = window.setInterval(() => {
+		const found = document.querySelector(until);
+		const matched =
+			Boolean(found) &&
+			(text === undefined || (found?.textContent ?? "").includes(text));
+		if (matched) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+			return;
+		}
+		if (Date.now() - started > 20_000) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+			/*
+			 * THE EXPIRY IS A FAILURE, NOT A SILENT RELEASE (agent review round 2,
+			 * N1). Releasing the latch without a word hands the shutter back mid-play
+			 * and files whatever was on screen at 20s under the frame's name - the
+			 * exact defect this latch exists to prevent. `HubHold` in
+			 * `docs-library.stories.tsx` sets the same marker in the same seat, and
+			 * the rig refuses a frame carrying it.
+			 */
+			document.documentElement.dataset.captureFailed = `hub-shutter-not-reached: ${until}`;
+		}
+	}, 50);
+};
+
+/**
+ * Press the Teams tab, and wait until it is the selected one. */
+const openTeamsTab = async () => {
+	await userEvent.click(await screen.findByTestId("agent-hub-view-teams"));
+	await waitFor(() =>
+		expect(screen.getByTestId("agent-hub-view-teams")).toHaveAttribute(
+			"aria-selected",
+			"true",
+		),
+	);
+	releaseFocus();
+};
+
 /** The populated grid beside the category rail, signed out. */
 export const Grid: Story = {
 	render: () => {
@@ -559,6 +716,7 @@ export const Empty: Story = {
 export const LoadFailed: Story = {
 	render: () => {
 		installBridge({ records: 12, failList: true });
+		holdShutter('[data-testid="agent-hub-error"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -584,6 +742,7 @@ export const LoadFailed: Story = {
 export const EmptyCategory: Story = {
 	render: () => {
 		installBridge({ records: 12, filteredRecords: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -601,6 +760,7 @@ export const EmptyCategory: Story = {
 export const PageChangeKeepsTheGrid: Story = {
 	render: () => {
 		installBridge({ records: 12, holdAfterFirst: true });
+		holdShutter('[data-testid="agent-hub-updating"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -626,6 +786,7 @@ export const PageChangeKeepsTheGrid: Story = {
 export const ViewerStateUnknown: Story = {
 	render: () => {
 		installBridge({ records: 12, signedIn: true, failStatuses: true });
+		holdShutter('[data-testid="agent-hub-status-unknown"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -643,6 +804,7 @@ export const ViewerStateUnknown: Story = {
 export const SearchMiss: Story = {
 	render: () => {
 		installBridge({ records: 12, filteredRecords: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -662,6 +824,7 @@ export const SearchMiss: Story = {
 export const ScopeSwitched: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-search-scope"]', "Description");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -686,6 +849,7 @@ export const ScopeSwitched: Story = {
 export const SortedByName: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-sort"]', "Name (A to Z)");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -711,6 +875,7 @@ export const SortedByName: Story = {
 export const FocusedSearch: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-search"]:focus');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -735,6 +900,40 @@ export const NarrowColumns: Story = {
 	render: () => {
 		installBridge({ records: 12, longCounts: true });
 		return <AgentHubPage />;
+	},
+};
+
+/**
+ * The pager footer, photographed where a captured viewport can hold it.
+ *
+ * Four records keep the grid to one row, so the footer lands inside 900px
+ * (twelve cards push it below the fold of the capture, and the page's scroll is
+ * an INNER column the rig's document scroll does not reach). The list still
+ * reports three pages, so this is page 1 of 3: "Previous" disabled, "Next" live.
+ * It is the frame for the operator's pager report (2026-09-29): the footer runs
+ * the column's width under a hairline, with the position at the start and the two
+ * steps grouped at the end.
+ */
+export const PagerFooter: Story = {
+	render: () => {
+		installBridge({ records: 4 });
+		holdShutter('[data-testid="agent-hub-pager"]');
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-pager");
+	},
+};
+
+/** The same footer at the narrowest supported width, where it used to sit off-centre. */
+export const PagerFooterNarrow: Story = {
+	render: () => {
+		installBridge({ records: 4, longCounts: true });
+		holdShutter('[data-testid="agent-hub-pager"]');
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-pager");
 	},
 };
 
@@ -807,25 +1006,53 @@ const TEAMS = [
  * option — and the shutter is released only once an org badge is on screen, so
  * the frame cannot be of the public hub with an org label pasted on it.
  */
+const ORG_AGENT_COUNT = 6;
+
 export const OrgScopeSelected: Story = {
 	render: () => {
 		installBridge({
 			records: 12,
 			signedIn: true,
 			orgs: ORGS,
-			orgAgents: 6,
+			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
+		holdShutter('[data-testid="agent-org-badge"]', "Minerva");
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
+		await chooseScope("Minerva");
+		/*
+		 * `findAll`, not `find`: every org card carries a badge and the six cards
+		 * mount in ONE React commit (probe-verified: 0 -> 6 inside a single poll
+		 * step, no window with exactly one), so `findByTestId` threw "Found multiple
+		 * elements" and aborted the capture sweep's console play-gate. The claim is
+		 * unchanged - the org-scoped grid is on screen and EVERY card in it names its
+		 * organization - and it is stated as an equality against the rendered cards
+		 * (the fixture's `orgAgents`) rather than as "at least one", so a grid that
+		 * mixed public cards into an org scope fails here.
+		 */
+		/*
+		 * The wait names the FIXTURE's count, not a length read from the same query
+		 * (agent review round 1, m2): comparing the list to a number taken from
+		 * itself could not fail. If the six cards ever stopped mounting in one commit
+		 * this waits them out, and a grid that never reaches six - or mixes public
+		 * cards into an org scope - times out here instead of passing vacuously.
+		 */
+		await waitFor(() =>
+			expect(screen.getAllByTestId("agent-org-badge")).toHaveLength(
+				ORG_AGENT_COUNT,
+			),
 		);
-		await screen.findByTestId("agent-org-badge");
-		await screen.findByTestId("org-teams");
+		expect(
+			screen.getAllByRole("button", { name: CARD_DETAILS_NAME }),
+		).toHaveLength(ORG_AGENT_COUNT);
+		/* The Teams tab already carries its count: the split is legible unopened. */
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-view-teams")).toHaveTextContent(
+				`Teams${TEAMS.length}`,
+			),
+		);
 	},
 };
 
@@ -841,14 +1068,11 @@ export const OrgScopeSelected: Story = {
 export const OrgEmpty: Story = {
 	render: () => {
 		installBridge({ records: 12, signedIn: true, orgs: ORGS, orgAgents: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByText("This organization has no shared agents yet.");
 	},
 };
@@ -871,14 +1095,11 @@ export const OrgPlanLapsed: Story = {
 			orgs: ORGS,
 			orgRefusal: "plan",
 		});
+		holdShutter('[data-testid="agent-hub-org-no-access"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByTestId("agent-hub-org-no-access");
 	},
 };
@@ -900,31 +1121,26 @@ export const OrgAccessRevoked: Story = {
 			orgs: ORGS,
 			orgRefusal: "no_access",
 		});
+		holdShutter('[data-testid="agent-hub-org-no-access"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByTestId("agent-hub-org-no-access");
 	},
 };
 
 /**
- * The org roster, with its pull action, photographed in a viewport that HOLDS it.
+ * The Teams view in an organization: the roster the hub used to bury under the
+ * agent grid and its pager, promoted to a tab that is on screen from the first
+ * paint.
  *
- * The grid above it is deliberately empty of agents, and that is the fixture's
- * one concession: a populated grid (six cards) pushes the roster below the fold
- * of a captured viewport, and the page's scroll container is an INNER column, so
- * neither the capture rig's document scroll nor a `scrollIntoView` in this play
- * reaches it — measured, twice: the frame came back pixel-identical to the grid
- * story's, which is a frame that would have claimed a roster nobody could see.
- * Teams shared with no agents shared is a real state of an organization (§8.4's
- * roster is a separate document family), and it is the one that photographs the
- * claim this story exists for: the list, the count line, the slot summary and the
- * Pull control.
+ * The grid behind it is POPULATED (six org agents), which the old story could not
+ * afford: the roster sat below the fold of a captured viewport and neither the
+ * capture rig nor a `scrollIntoView` reached the page's inner scroll column, so
+ * that frame had to empty the grid to photograph the roster at all. The tab makes
+ * the fixture honest - the agents exist, the reader chose Teams - and the Agents
+ * tab still carries its own count beside it.
  */
 export const OrgTeams: Story = {
 	render: () => {
@@ -932,18 +1148,315 @@ export const OrgTeams: Story = {
 			records: 12,
 			signedIn: true,
 			orgs: ORGS,
-			orgAgents: 0,
+			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
+		holdShutter(
+			'[data-testid="agent-hub-status"]',
+			"2 teams shared with Minerva",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams");
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
+				"2 teams shared with Minerva",
+			),
+		);
+	},
+};
+
+/** An organization that has shared no teams: the Teams view's empty sentence. */
+export const OrgTeamsEmpty: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: [],
+		});
+		holdShutter('[data-testid="org-teams-empty"]');
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-empty");
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
+				"0 teams shared with Minerva",
+			),
+		);
+	},
+};
+
+/** The Teams view while `org_teams.list` is in flight: skeleton, sr-only sentence, no count on the tab. */
+export const OrgTeamsLoading: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			holdTeams: true,
+		});
+		holdShutter('[data-testid="org-teams-loading"]');
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-loading");
+	},
+};
+
+/**
+ * The plan lapsed, read from the Teams view: the roster's own refusal (a warning
+ * with the remedy), beside the Agents tab whose read was refused the same way.
+ */
+export const OrgTeamsPlanLapsed: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgRefusal: "plan",
+		});
+		holdShutter('[data-testid="org-teams-error"]');
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-error");
+	},
+};
+
+/**
+ * Teams in the PUBLIC scope: there is no public team read (teams are shared
+ * inside organizations, §11 O-7), so the view explains that and hands the reader
+ * the organizations they can look inside. No list, and no invented "0 teams".
+ */
+export const TeamsPublicScope: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: TEAMS,
+		});
+		holdShutter('[data-testid="agent-hub-teams-public"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
+		await openTeamsTab();
+		await screen.findByTestId("agent-hub-teams-public");
+	},
+};
+
+/** Teams while signed out: the sentence, and the settings page where the sign-in lives. */
+export const TeamsSignedOut: Story = {
+	render: () => {
+		installBridge({ records: 12 });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Open settings to sign in",
 		);
-		await screen.findByTestId("org-teams-count");
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByRole("button", { name: "Open settings" });
+	},
+};
+
+/**
+ * Public Teams while the viewer's organizations are NOT KNOWN YET (agent review
+ * round 1, M1). The memberships read never settles, and the panel must say it is
+ * checking - not that the viewer has no organization, which is a claim about the
+ * account that a pending read cannot support.
+ */
+export const TeamsPublicLoading: Story = {
+	render: () => {
+		installBridge({ records: 12, signedIn: true, holdMemberships: true });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Checking your organizations",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByText(CHECKING_ORGS);
+	},
+};
+
+/** Public Teams for a viewer whose only organization cannot use org features (no Team plan). */
+export const TeamsPublicNone: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: [ORGS[1]],
+		});
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"not in an organization on the Team plan yet",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByText(NOT_IN_ORG);
+	},
+};
+
+/** Public Teams on a backend that predates the org operations: the sentence defers to the alert above. */
+export const TeamsPublicUnavailable: Story = {
+	render: () => {
+		installBridge({ records: 6, signedIn: true, orgCapability: false });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"does not serve organizations",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-org-unavailable");
+		await openTeamsTab();
+		await screen.findByText(ORGS_UNAVAILABLE);
+	},
+};
+
+/**
+ * Public Teams when `memberships.list` FAILED, and the retry that recovers.
+ *
+ * The first read fails and the second answers (`failMembershipsTimes: 2` covers
+ * the query's own single retry), so pressing "Try again" is a real recovery: the
+ * panel moves to the settled sentence and focus lands on it rather than on
+ * `<body>` (UX round 1, U4). The frame is the failed state, taken before the press.
+ */
+export const TeamsPublicUnreadable: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			failMembershipsTimes: 2,
+		});
+		holdShutter('[data-testid="agent-hub-teams-public"]', "could not be read");
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByRole(
+			"button",
+			{ name: "Try again" },
+			{ timeout: 8_000 },
+		);
+	},
+};
+
+/**
+ * The retry's RECOVERY, and where focus is afterwards (UX round 2, U9; QA round 2,
+ * Q3). The notice's "Try again" is the only control on this panel, and the panel
+ * replaces itself when the read answers - so the hand-off has to be observable on
+ * a fast read, which is why the memberships mock is slowed for this story. The
+ * play presses it and asserts focus lands on the panel: not on `<body>`, which is
+ * where both streams measured it (8/8) while the hand-off was keyed on the
+ * `retrying` transition a fast mock never exposes.
+ */
+export const TeamsPublicRetryRecovers: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			failMembershipsTimes: 2,
+			membershipDelayMs: 400,
+		});
+		/*
+		 * HELD UNTIL THE RECOVERED STATE, which for this fixture is the `orgs` panel:
+		 * the retry's read succeeds, so the viewer has a usable organization and the
+		 * notice offers it. A latch released by the FAILED sentence would open the
+		 * shutter before the play's press, and the frame would be a coin toss between
+		 * the two states.
+		 */
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Choose an organization",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		const retry = await screen.findByRole(
+			"button",
+			{ name: "Try again" },
+			{ timeout: 8_000 },
+		);
+		await userEvent.click(retry);
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-teams-public")).toHaveFocus(),
+		);
+	},
+};
+/**
+ * The last page, reached by keyboard: Next disables under focus, and focus must
+ * land on Previous instead of dropping to `<body>` (UX round 1, U1; QA round 1,
+ * Q2). The play asserts the hand-off itself, so a regression fails the capture
+ * gate rather than only a walk. Four records keep the footer inside the frame.
+ */
+export const PagerLastPage: Story = {
+	render: () => {
+		installBridge({ records: 4 });
+		holdShutter('[data-testid="agent-hub-pager"]', "Page 3 of 3");
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		const next = await screen.findByRole("button", { name: "Next page" });
+		/*
+		 * CLICKS, not key presses: a synthetic `keyboard("{Enter}")` carries no
+		 * default action in a real browser, so the browser never activates the
+		 * button and the page never changes (measured in this very gate). The
+		 * keyboard path itself is driven through trusted input by the UX walk
+		 * (`Input.dispatchKeyEvent`); what this play pins is the FOCUS HAND-OFF,
+		 * which is the same on both - `userEvent.click` focuses the button before
+		 * it presses it, exactly as a keyboard user has it focused.
+		 */
+		await userEvent.click(next);
+		/*
+		 * The label is asserted through the PAGER's text content, not a text
+		 * matcher: "Page 2 of 3" is three text nodes inside one span, and
+		 * `getByText` on the string failed the capture gate.
+		 */
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-pager")).toHaveTextContent(
+				"Page 2 of 3",
+			),
+		);
+		await userEvent.click(next);
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-pager")).toHaveTextContent(
+				"Page 3 of 3",
+			),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: "Previous page" }),
+			).toHaveFocus(),
+		);
 	},
 };
 
