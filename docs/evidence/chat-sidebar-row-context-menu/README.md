@@ -2,9 +2,11 @@
 
 The frames in this set photograph the chat sidebar's row context menu
 (`#694`, design of record: `docs/design/row-context-menu.md`): the menu open at
-the pointer on a normal and a pinned row, the same opened from the keyboard,
-the two withheld-item states, the flyout suppression pair, and the row under
-the pointer with no menu open — the before/after partner of `pointer-open`.
+the pointer on a normal and a pinned row, the pointer moved onto an item, the
+same opened from the keyboard, the two withheld-item states, the flyout
+suppression pair, the archived row behind `Include archived` (its item reads
+`Unarchive conversation`), and the row under the pointer with no menu open —
+the before/after partner of `pointer-open`.
 
 ## What produced these frames
 
@@ -18,11 +20,18 @@ node scripts/capture-evidence.mjs http://localhost:6747 --allow-backend \
   --themes=localOperatorDark,localOperatorLight
 ```
 
+Round 1's two remediation states (`pointer-hover`, `archived-row`) were
+captured with the same command narrowed by `--dirs=pointer-hover,archived-row`,
+so no existing frame was re-taken.
+
 **The story drives the real feature, not a composition over it.** The menu is
 opened through the real trigger: a dispatched `contextmenu` at the row's own
 box (the event the primitive's `handleOpen` anchors from) for the pointer
 states, and a real `ContextMenu` keydown on the row's button for the keyboard
-one. Everything the events land on is the product's — the trigger is the box
+one. The `archived-row` state drives the search block's own controls first —
+the field's `input` event, then a real press on `Include archived` — because
+that is the only list an archived conversation is drawn in. Everything the
+events land on is the product's — the trigger is the box
 `chat-sidebar.tsx` renders, the open state is the sidebar's `openMenuRowId`,
 the hold classes are the sidebar's own conditionals, the item set is drawn from
 the row's real predicates, and each item presses the row's real control. The
@@ -49,13 +58,15 @@ numbers below are what the final frames read.
 | story | what it is |
 | --- | --- |
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
+| `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
 | `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest |
 | `pin-state-unknown` | s3, `pinned === undefined`: one row, and the row draws no pin control |
 | `archive-withheld` | `session_archive` absent: one row (`Pin conversation`), not a disabled one |
+| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |
 | `flyout-dwelled` | the flyout given 1800ms to dwell, then the menu: flyout `absent` |
-| `flyout-alone` | the control for the row above: same hover, same dwell, no menu |
-| `menu-closed` | `pointer-open`'s before/after partner: same scene, same settle, no open |
+| `flyout-alone` | the control: the same row (s2), same hover, same dwell, no menu |
+| `menu-closed` | `pointer-open`'s before/after partner: same scene, same settle, no open — and the open state drops the flyout band itself (see `flyout-dwelled`) |
 
 ## The numbers, and what they settle
 
@@ -67,7 +78,11 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   `anchor point: 12,371` with the panel at `14,370` — `rect.left` and
   `rect.bottom - 1`, exactly what § 3 prescribes, and no code path read the
   ambient event's coordinates. The panel sits 2px right of its anchor because
-  the primitive hard-codes `sideOffset: 2`; it has no caller-facing option.
+  the primitive hard-codes `sideOffset: 2`; it has no caller-facing option. On
+  the keyboard path that placement leaves the panel's outer right edge (286)
+  over the sidebar divider's hairline (x 279) by **7px** — the accepted
+  straddle's smallest case, recorded with the findings that measured it
+  (design round 1, D4).
 - **The hold.** `pointer-open` reads `ground rgb(48, 45, 41) · pair: flex`,
   `pair children: button[pin]:flex:243w24 | button[archive]:flex:215w24` —
   identically to `menu-closed`, the same scene with no menu under the pointer.
@@ -86,6 +101,21 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 - **The flyout.** `flyout-dwelled` (menu opened after the flyout had drawn)
   reads `flyout: absent`, and `flyout-alone` reads `present` in the same scene:
   the modal portal is what removes it, and the pair reads as the measurement.
+- **The pointer's own highlight.** `pointer-hover` reads
+  `focus: menuitem “Archive conversation⌘⇧A”` and
+  `first item: data-highlighted`, in a panel measured 273 × 81 at `142,369` —
+  the state a pointer user meets the moment they move into the menu. The item
+  carries the same `:focus-visible` ring `keyboard-open` draws, and that is
+  measured rather than assumed: the primitive focuses the hovered item, and
+  Blink matches `:focus-visible` for focus the browser did not move itself
+  (probed: the ring draws even after a real click elsewhere and a real pointer
+  re-entry), so the two paths share the ring and differ in what is focused.
+- **The archived row, and the widest panel.** `archived-row` reads
+  `panel: 288x81 at 142,362` — 15px wider than the 273 every other two-item
+  state measures, because `Unarchive conversation` is two characters longer —
+  with `items: 2 — Unarchive conversation⌘⇧A | Pin conversation⌘⇧P` and the row
+  drawn at `255x32 at 12,333` with its archived mark. A widened search (`the
+  field, then Include archived`) is what puts it on screen at all.
 - **The withheld rows** measure `273 × 46` (`pin-state-unknown`) and
   `246 × 46` (`archive-withheld`) — one row each, no item disabled; on the
   archive-withheld row the pair wrapper is not rendered at all (single
@@ -97,7 +127,10 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 - **A real right-button press, or the real OS key event.** The trigger is the
   product's and the events are the product's own event types, but the rig
   cannot originate a right-button press or a `ContextMenu`/`Shift+F10` key
-  from the platform; that is QA's check over CDP against the same build.
+  from the platform; that is QA's check over CDP against the same build — and
+  QA round 1 carried it: real right-clicks opened the menu, and real
+  `Shift+F10` and `ContextMenu` presses both opened it with focus in the first
+  item (round 1's QA report, on the PR).
 - **Latency or motion.** A hidden window has no focus; nothing here is a
   timing measurement, and `prefers-reduced-motion` behaviour is the
   components' (no entrance animation is authored anywhere in this menu).
@@ -112,15 +145,23 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 
 ## Notes
 
+- **Two pairs are byte-identical files, by construction.** `pointer-open` and
+  `flyout-dwelled` are the same file in both themes (dark `md5 163f6d28…`,
+  light `6003ec80…`, 22,294 bytes) — a complete suppression. `menu-closed` and
+  `flyout-alone` are the same file (dark `md5 4f3dba74…`, light `1d79cc13…`,
+  18,352 bytes) — both are “hover settled, no menu, flyout drawn”. Sixteen
+  distinct pictures under twenty names, and the coincidences are the
+  measurement rather than two takes of one shot.
 - **This set supersedes the design round's proposal set**
   (`../chat-sidebar-row-context-menu-proposal/`), which lives on
   `design/row-context-menu-694` as the record of what was proposed — its
   `pointer-open-unheld` control reproduces a defect the shipped hold removes,
   and nothing in this set re-photographs it.
-- **The fold.** The branch carries one merge of `origin/main` (`0044c53422`,
-  #648 over #572) before the implementation commit; the frames were captured
-  over the committed implementation, and the manifest's pass record names the
-  commit they came from.
+- **The fold.** The branch carries four merges of `origin/main` (`0044c53422`,
+  `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3`) before the review rounds; the frames
+  were captured over the committed implementation (the two round-1 remediation
+  states at the commit the manifest's `addedAtHead` names), and the manifest's
+  pass record names the commits they came from.
 - The story renders the app's real `ChatSidebar` over a stubbed transport, so
   no frame touches a live backend; `--allow-backend` is passed because the
   operator's own backend answers on 1111 and the rig refuses a run that could
