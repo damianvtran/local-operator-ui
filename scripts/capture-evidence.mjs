@@ -18,16 +18,17 @@
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
  *
- * The Storybook it reads has to BUILD first, and on the tree as it stands the
- * shipped `.storybook/main.ts` cannot build its preview: it sets
- * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
- * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
- * undefined (reading 'React')` inside the docgen parser before a single frame
- * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
- * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
- * rather than argued: the whole `chat-ask-options` set re-captured under it came
- * back byte-identical to the committed frames, so it changes how the preview is
- * BUILT and nothing about what is photographed (design round 3, D12).
+ * The Storybook it reads has to BUILD first, and the config on `main` now does.
+ * This paragraph used to say the opposite - that the shipped `.storybook/main.ts`
+ * set `reactDocgen: "react-docgen-typescript"`, that the pair threw `Cannot read
+ * properties of undefined (reading 'React')` under TypeScript 7 before a single
+ * frame was taken, and that a capturer must boot with `reactDocgen: false` in
+ * its own checkout until the config moved. It moved: `.storybook/main.ts` sets
+ * `reactDocgen: "react-docgen"` (with the why beside it), and the shipped config
+ * boots this rig unmodified - the log prints `Using tsconfig paths for
+ * react-docgen` and the first frame is taken. A capturer that still follows the
+ * old paragraph is disabling a docgen mode the tree no longer uses, which costs
+ * only the types-driven prop tables `react-docgen` already gives up.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -1388,6 +1389,7 @@ export const STORIES = [
 	["browser-tab-strip--waiting", 1280, 140],
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--failed-while-loading", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
 	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
 	// because only one tab can be active and the active row pays 68px for the cluster
@@ -1460,6 +1462,7 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+	["browser-load-failure--restore-unanswered", 1280, 420],
 
 	/*
 	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
@@ -5165,6 +5168,106 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The board's time window (feat/board-time-window): one frame per rung plus
+	 * the states around it. Each play asserts the visible card set - and the R5
+	 * frame's 12d-old progress line under a 24h window - so a capture whose
+	 * filter regressed FAILS rather than photographing the wrong board.
+	 * `-narrow` is the 800px window floor; `-menu-open` photographs the open
+	 * panel with its check on the current rung.
+	 */
+	["projects-tab--board-window-populated", 1280, 900],
+	["projects-tab--board-window-24-h", 1280, 900],
+	["projects-tab--board-window-30-d", 1280, 900],
+	["projects-tab--board-window-90-d", 1280, 900],
+	["projects-tab--board-window-all", 1280, 900],
+	["projects-tab--board-window-empty", 1280, 900],
+	["projects-tab--board-window-widened", 1280, 900],
+	["projects-tab--board-window-menu-open", 1280, 900],
+	["projects-tab--board-window-narrow", 800, 900],
+	/* The empty window at two more rungs (design round 1, D5): the heading has to
+	 * read the RUNG's phrase, and one frame of the default rung could not show
+	 * that. The hint frame is the control's own dimension said in words (D1),
+	 * opened on focus - the keyboard path - by its play. */
+	["projects-tab--board-window-empty-24-h", 1280, 900],
+	["projects-tab--board-window-empty-90-d", 1280, 900],
+	["projects-tab--board-window-hint", 1280, 900],
+	["projects-tab--board-window-no-projects", 1280, 900],
+	/*
+	 * The operator's title items (2026-09-30): the clipped card title's reveal
+	 * (the play opens it on hover and leaves it open on FOCUS - the keyboard
+	 * path is the state the shutter lands on), and the long-title detail at
+	 * the wide viewport and the 800px floor, whose wrap and edge-riding
+	 * scrollbar are the frame's whole claim.
+	 */
+	["projects-tab--board-title-tooltip", 1280, 900],
+	/*
+	 * The long-title detail, wide and at the 800px floor. `expectSentence`
+	 * scoped to the `h1` is the machine-checked half of the claim: the header
+	 * leads with the TITLE (not the key). The other half - that the title is not
+	 * clipped - is the frame's own subject, read off these pixels by the design
+	 * round (`expect` cannot carry it: that phase runs BEFORE the story-ready
+	 * probe, and a probe that reads a header the story has not mounted yet fails
+	 * for the wrong reason - measured here as `"No Preview"`).
+	 */
+	[
+		"projects-tab--detail-long-title",
+		1280,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	[
+		"projects-tab--detail-long-title-narrow",
+		800,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	/*
 	 * The column reorder: the layer the drag writes. `board-column-order-stored`
 	 * is the reload half (a stored order applied at mount),
 	 * `board-column-keyboard-move` is the accessible half (a focused grip's
@@ -7355,6 +7458,99 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+	/*
+	 * THE ACTION ROW UNDER THE TURN-CLOSING ANSWER (issue #695, design memo (h)).
+	 *
+	 * `rest` is the discoverability claim itself: the row is present with NO
+	 * pointer in the frame, which is the whole difference from the toolbar this
+	 * supersedes. The interaction states are entries rather than stories because
+	 * every one of them is BROWSER state the rig has to produce with real input -
+	 * `hover` moves a real pointer, `tabTo` presses real Tabs until the button
+	 * holds focus, `press` is a real press through the input pipeline - and a
+	 * story that faked any of them in a class would photograph the story.
+	 *
+	 * `hover-answer-no-corner-control` is the pointer parked ON THE ANSWER (the
+	 * region the superseded pattern raised a corner toolbar from) with both
+	 * selectors asserted: the row must be present and no link toolbar may be
+	 * raised. It is the honest half of the before/after comparison - this set
+	 * carries no frame of the dead component, per the memo's ruling: what the
+	 * frame shows is that the live surface raises nothing there.
+	 *
+	 * `copied` asserts the label the press produced (`expectAttribute`) rather
+	 * than trusting the tick to be legible in six themes, and it is the one entry
+	 * whose subject is a TIMER: the button's own reset is 2000 ms and the rig
+	 * presses ~400 ms before the shutter, so the frame is the pressed state and
+	 * not a race the timing decides.
+	 *
+	 * Six themes, by the memo's logic rather than by taste: the two brand
+	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
+	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
+	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			// The action row is what hover must NOT change, and nothing may be raised
+			// over the answer: the link toolbar only exists for a link, and this
+			// fixture has none - so the assertion is that the surface is unchanged.
+			expectPresent: "[data-lo-answer-actions]",
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-answer-no-corner-control",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 400,
+			dir: "hover-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			tabTo: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			dir: "focus-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			press: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: "[data-lo-answer-actions] button",
+				name: "aria-label",
+				equals: "Copied",
+			},
+			dir: "copied",
+		},
+	],
+	["chat-canonical-message-actions--short-answer", 1024, 320],
+	["chat-canonical-message-actions--refused", 1024, 380],
+	["chat-canonical-message-actions--truncated", 1024, 400],
+	["chat-canonical-message-actions--streaming", 1024, 620],
+	["chat-canonical-message-actions--multi-answer", 1024, 640],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
+	["chat-canonical-message-actions--narrow", 420, 620],
 ];
 
 /**
