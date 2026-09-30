@@ -203,6 +203,13 @@ type BridgeBehaviour = {
 	 */
 	failMembershipsTimes?: number;
 	/**
+	 * Hold each memberships answer this long. A mock that answers inside one tick
+	 * never exposes the in-flight state, which is what round 2's U9/Q3 finding is
+	 * about: the retry's hand-off has to be observable, so the story that asserts
+	 * it makes the read take a moment.
+	 */
+	membershipDelayMs?: number;
+	/**
 	 * The backend advertises `radient_org` (agent review round 1, M2).
 	 *
 	 * True by default, because every org story above needs the four operations the
@@ -233,6 +240,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		holdMemberships = false,
 		failMemberships = false,
 		failMembershipsTimes = 0,
+		membershipDelayMs = 0,
 		orgCapability = true,
 	} = behaviour;
 	ledger.length = 0;
@@ -306,6 +314,11 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					 * the point of the arm.
 					 */
 					if (holdMemberships) return await new Promise(() => {});
+					if (membershipDelayMs) {
+						await new Promise((resolve) =>
+							setTimeout(resolve, membershipDelayMs),
+						);
+					}
 					membershipCalls += 1;
 					if (failMemberships || membershipCalls <= failMembershipsTimes) {
 						return { status: 500, body: { detail: "Memberships failed." } };
@@ -616,9 +629,23 @@ const holdShutter = (until: string, text?: string) => {
 		const matched =
 			Boolean(found) &&
 			(text === undefined || (found?.textContent ?? "").includes(text));
-		if (matched || Date.now() - started > 20_000) {
+		if (matched) {
 			window.clearInterval(timer);
 			document.documentElement.removeAttribute("data-capture-pending");
+			return;
+		}
+		if (Date.now() - started > 20_000) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+			/*
+			 * THE EXPIRY IS A FAILURE, NOT A SILENT RELEASE (agent review round 2,
+			 * N1). Releasing the latch without a word hands the shutter back mid-play
+			 * and files whatever was on screen at 20s under the frame's name - the
+			 * exact defect this latch exists to prevent. `HubHold` in
+			 * `docs-library.stories.tsx` sets the same marker in the same seat, and
+			 * the rig refuses a frame carrying it.
+			 */
+			document.documentElement.dataset.captureFailed = `hub-shutter-not-reached: ${until}`;
 		}
 	}, 50);
 };
@@ -1282,7 +1309,7 @@ export const TeamsPublicNone: Story = {
 		});
 		holdShutter(
 			'[data-testid="agent-hub-teams-public"]',
-			"you are not in one yet",
+			"not in an organization on the Team plan yet",
 		);
 		return <AgentHubPage />;
 	},
@@ -1299,7 +1326,7 @@ export const TeamsPublicUnavailable: Story = {
 		installBridge({ records: 6, signedIn: true, orgCapability: false });
 		holdShutter(
 			'[data-testid="agent-hub-teams-public"]',
-			"organizations are unavailable",
+			"does not serve organizations",
 		);
 		return <AgentHubPage />;
 	},
@@ -1340,6 +1367,51 @@ export const TeamsPublicUnreadable: Story = {
 	},
 };
 
+/**
+ * The retry's RECOVERY, and where focus is afterwards (UX round 2, U9; QA round 2,
+ * Q3). The notice's "Try again" is the only control on this panel, and the panel
+ * replaces itself when the read answers - so the hand-off has to be observable on
+ * a fast read, which is why the memberships mock is slowed for this story. The
+ * play presses it and asserts focus lands on the panel: not on `<body>`, which is
+ * where both streams measured it (8/8) while the hand-off was keyed on the
+ * `retrying` transition a fast mock never exposes.
+ */
+export const TeamsPublicRetryRecovers: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			failMembershipsTimes: 2,
+			membershipDelayMs: 400,
+		});
+		/*
+		 * HELD UNTIL THE RECOVERED STATE, which for this fixture is the `orgs` panel:
+		 * the retry's read succeeds, so the viewer has a usable organization and the
+		 * notice offers it. A latch released by the FAILED sentence would open the
+		 * shutter before the play's press, and the frame would be a coin toss between
+		 * the two states.
+		 */
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Choose an organization",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		const retry = await screen.findByRole(
+			"button",
+			{ name: "Try again" },
+			{ timeout: 8_000 },
+		);
+		await userEvent.click(retry);
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-teams-public")).toHaveFocus(),
+		);
+	},
+};
 /**
  * The last page, reached by keyboard: Next disables under focus, and focus must
  * land on Previous instead of dropping to `<body>` (UX round 1, U1; QA round 1,

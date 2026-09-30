@@ -32,7 +32,7 @@ const SENTENCE: Record<PublicTeamsReason, string> = {
 	"signed-out":
 		"The public hub lists agents only. Sign in to Radient to see the teams shared with the organizations you belong to.",
 	unavailable:
-		"The public hub lists agents only, and organizations are unavailable on this backend, so no teams can be listed. The notice above says how to fix that.",
+		"The public hub lists agents only, and this backend does not serve organizations, so there are no teams to list here.",
 	unreadable:
 		"The public hub lists agents only, and your organizations could not be read, so no teams can be listed.",
 	/*
@@ -41,7 +41,7 @@ const SENTENCE: Record<PublicTeamsReason, string> = {
 	 * than "none of your organizations", which is odd with zero of them (UX round
 	 * 1, U8).
 	 */
-	none: "The public hub lists agents only. Teams are shared with members of an organization on the Team plan, and you are not in one yet. An organization owner can add you or activate the plan in the Radient console.",
+	none: "The public hub lists agents only. You are not in an organization on the Team plan yet, and an organization owner can add you or activate the plan in the Radient console.",
 };
 
 /**
@@ -82,11 +82,26 @@ export const PublicTeamsNotice: FC<{
 	const sectionRef = useRef<HTMLElement>(null);
 	const retryButtonRef = useRef<HTMLButtonElement>(null);
 	const retryPressedRef = useRef(false);
+	/*
+	 * KEYED ON THE RENDER AFTER THE PRESS, not on the `retrying` transition (UX
+	 * round 2, U9; QA round 2, Q3). A mock - or a real backend - fast enough to
+	 * answer inside one tick never exposes `retrying: true`, so an effect keyed on
+	 * that transition never ran and "Try again" left focus on `<body>` (measured
+	 * 8/8 by both streams). The press sets the flag, the press's OWN re-render
+	 * (which the query's state change always produces) runs this, and the hand-off
+	 * lands on whichever survives: the button when the read failed again, the panel
+	 * - a labelled region that outlives every reason - when the answer replaced the
+	 * state under the reader.
+	 *
+	 * No dependency array on purpose: the effect is a one-shot gated by the flag,
+	 * and every dependency that would express "the press settled" is exactly the
+	 * signal this revision stopped trusting.
+	 */
 	useEffect(() => {
-		if (!retryPressedRef.current || retrying) return;
+		if (!retryPressedRef.current) return;
 		retryPressedRef.current = false;
 		(retryButtonRef.current ?? sectionRef.current)?.focus();
-	}, [retrying]);
+	});
 
 	return (
 		<section
@@ -102,7 +117,22 @@ export const PublicTeamsNotice: FC<{
 			>
 				Teams are shared inside organizations
 			</h2>
-			<p className="max-w-md text-body-sm text-ink-muted">{SENTENCE[reason]}</p>
+			{/*
+			 * A LIVE REGION, and this is the public scope's ONLY announcement (design
+			 * round 2, D6). In an org scope the page's status line says "Loading teams…"
+			 * and then the count; in the public scope it is deliberately blank (D4), so
+			 * without this the whole view changed under a screen reader in silence -
+			 * including the `unreadable` retry's recovery, which is a CHANGE to a region
+			 * that already exists rather than a mount. The sentence itself carries the
+			 * live role, so the region that changes is the region that speaks - an
+			 * `output` rather than a `p` with `role="status"`, because the element carries
+			 * the role itself and that is the hub's own idiom for it
+			 * (`agent-hub-page.tsx`'s outage region); `block` restores the box an inline
+			 * element does not have.
+			 */}
+			<output className="block max-w-md text-body-sm text-ink-muted">
+				{SENTENCE[reason]}
+			</output>
 			{reason === "orgs" && (
 				<div className="mt-2 flex flex-wrap items-center gap-2">
 					{orgs.map((org) => (

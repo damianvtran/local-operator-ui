@@ -315,6 +315,12 @@ export const AgentHubPage: React.FC = () => {
 	const orgName = activeOrg?.tenant_name || null;
 
 	/*
+	 * Whether a filter is narrowing the list. Declared HERE, above both tab counts,
+	 * because both of them suppress themselves while it is true (UX round 2, U11).
+	 */
+	const hasFilters = selectedCategory !== null || debouncedSearch !== "";
+
+	/*
 	 * THE TEAMS READ RIDES SCOPE ENTRY, not the Teams tab.
 	 *
 	 * Eager on purpose: the tab carries its count ("Teams 2") so the split is
@@ -332,8 +338,19 @@ export const AgentHubPage: React.FC = () => {
 	 * unpaginated roster and reports no total, so no other number exists to show.
 	 */
 	const teamsQuery = useOrgTeamsQuery({ tenantId: orgScopeId });
+	/*
+	 * THE TEAMS COUNT IS SUPPRESSED UNDER THE SAME FILTER AS THE AGENTS ONE (UX
+	 * round 2, U11). It is not a filtered number - `org_teams.list` takes no
+	 * filters - but leaving it up while "Agents" went bare read as an asymmetric
+	 * pair ("Agents   Teams 2") with nothing saying which quiet count meant what.
+	 * Both tabs now say nothing while a search or category is active, and the
+	 * status line carries the filtered figure; the counts come back the moment the
+	 * filter is cleared.
+	 */
 	const teamsCount =
-		orgScopeId && teamsQuery.isSuccess ? teamsQuery.teams.length : null;
+		orgScopeId && teamsQuery.isSuccess && !hasFilters
+			? teamsQuery.teams.length
+			: null;
 
 	/*
 	 * Publishing INTO an organization needs the admin rank or above (§4.4), so the
@@ -481,8 +498,6 @@ export const AgentHubPage: React.FC = () => {
 			return [...new Set([...previous, ...presentCategories])];
 		});
 	}, [presentCategories]);
-
-	const hasFilters = selectedCategory !== null || debouncedSearch !== "";
 
 	const handleClearFilters = () => {
 		setSelectedCategory(null);
@@ -687,6 +702,15 @@ export const AgentHubPage: React.FC = () => {
 				 * reason rather than silence (agent review round 1's M2). It sits above
 				 * the controls row and outside every gate, like the scope row it replaces,
 				 * because the fact is about the BACKEND and not about the records.
+				 *
+				 * AND THAT IS WHY IT BANDS DIFFERENTLY FROM THE REFUSALS (design round 2,
+				 * D7). This notice is PAGE-WIDE: it says the backend cannot serve
+				 * organizations at all, so it sits above the browse bar and pushes the
+				 * strip down (measured y224 in `teams-public-unavailable`). A refusal
+				 * ("that organization needs an active Team plan", a revoked membership) is
+				 * VIEW-SCOPED: it is a property of ONE organization's read, so it renders
+				 * inside the view it belongs to and the strip stays where it always is
+				 * (y119 in `org-teams-plan-lapsed`). Two findings, two bands, on purpose.
 				 */}
 				{orgNotice && (
 					/*
