@@ -5168,6 +5168,106 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The board's time window (feat/board-time-window): one frame per rung plus
+	 * the states around it. Each play asserts the visible card set - and the R5
+	 * frame's 12d-old progress line under a 24h window - so a capture whose
+	 * filter regressed FAILS rather than photographing the wrong board.
+	 * `-narrow` is the 800px window floor; `-menu-open` photographs the open
+	 * panel with its check on the current rung.
+	 */
+	["projects-tab--board-window-populated", 1280, 900],
+	["projects-tab--board-window-24-h", 1280, 900],
+	["projects-tab--board-window-30-d", 1280, 900],
+	["projects-tab--board-window-90-d", 1280, 900],
+	["projects-tab--board-window-all", 1280, 900],
+	["projects-tab--board-window-empty", 1280, 900],
+	["projects-tab--board-window-widened", 1280, 900],
+	["projects-tab--board-window-menu-open", 1280, 900],
+	["projects-tab--board-window-narrow", 800, 900],
+	/* The empty window at two more rungs (design round 1, D5): the heading has to
+	 * read the RUNG's phrase, and one frame of the default rung could not show
+	 * that. The hint frame is the control's own dimension said in words (D1),
+	 * opened on focus - the keyboard path - by its play. */
+	["projects-tab--board-window-empty-24-h", 1280, 900],
+	["projects-tab--board-window-empty-90-d", 1280, 900],
+	["projects-tab--board-window-hint", 1280, 900],
+	["projects-tab--board-window-no-projects", 1280, 900],
+	/*
+	 * The operator's title items (2026-09-30): the clipped card title's reveal
+	 * (the play opens it on hover and leaves it open on FOCUS - the keyboard
+	 * path is the state the shutter lands on), and the long-title detail at
+	 * the wide viewport and the 800px floor, whose wrap and edge-riding
+	 * scrollbar are the frame's whole claim.
+	 */
+	["projects-tab--board-title-tooltip", 1280, 900],
+	/*
+	 * The long-title detail, wide and at the 800px floor. `expectSentence`
+	 * scoped to the `h1` is the machine-checked half of the claim: the header
+	 * leads with the TITLE (not the key). The other half - that the title is not
+	 * clipped - is the frame's own subject, read off these pixels by the design
+	 * round (`expect` cannot carry it: that phase runs BEFORE the story-ready
+	 * probe, and a probe that reads a header the story has not mounted yet fails
+	 * for the wrong reason - measured here as `"No Preview"`).
+	 */
+	[
+		"projects-tab--detail-long-title",
+		1280,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	[
+		"projects-tab--detail-long-title-narrow",
+		800,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	/*
 	 * The column reorder: the layer the drag writes. `board-column-order-stored`
 	 * is the reload half (a stored order applied at mount),
 	 * `board-column-keyboard-move` is the accessible half (a focused grip's
