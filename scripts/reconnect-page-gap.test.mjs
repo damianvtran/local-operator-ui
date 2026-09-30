@@ -1538,3 +1538,190 @@ test("/clear drops the held readings and leaves the live ones alone", async () =
 		"and the composer's readings are unaffected: they come from the live frontend",
 	);
 });
+
+/* ------------------------------------------- the older-page ask, through the hook */
+
+/*
+ * Loader-continuity round 1 (R1-3, R1-6a). The reducer and loader suites
+ * (`transcript-cursor-continuity`, `loader-state-machine`) drive the loader over
+ * a fake reader; these cases drive the SHIPPED hook, because two of the things
+ * they promise live in the hook and nowhere else: the failed row's single writer
+ * (`olderFailed`, written from the outcome of ANY caller) and the meaning of
+ * "the conversation on screen" for a page still in flight (a per-visit epoch,
+ * not the session id).
+ */
+
+/** A pane on a 600-row conversation whose snapshot holds only the newest page. */
+async function pagedPane({ olderRead }) {
+	const plan = longConversation({ awayRows: 0, total: 600 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	// The older-page reads are the case's to script (fail, hold, answer); the
+	// tail reads keep answering as the journal does.
+	globalThis.__gapTail = (request) =>
+		request.beforeId === undefined
+			? transcript.tail(request.limit)
+			: olderRead(request, transcript);
+	let sessionId = SESSION_A;
+	const panel = await mount(() => sessionId);
+	const snapshot = (seq) => {
+		deliver(openFrame(seq, true));
+		deliver(
+			snapshotFrame(seq + 1, {
+				cursor: plan.cursor,
+				entries: transcript.page(plan.cursor, SNAPSHOT_PAGE).entries,
+				liveEvents: [],
+			}),
+		);
+	};
+	snapshot(1);
+	await pump();
+	return {
+		plan,
+		transcript,
+		panel,
+		snapshot,
+		switchTo: async (next) => {
+			sessionId = next;
+			panel.rerender();
+			await pump();
+		},
+	};
+}
+
+const olderReads = () =>
+	requests.filter(
+		(request) =>
+			request.op === "sessions.history" && request.beforeId !== undefined,
+	);
+
+test("olderFailed is written from a failed page whoever asked, and only an applied page clears it", async () => {
+	let fail = true;
+	const { panel } = await pagedPane({
+		olderRead: (request, journal) => {
+			if (fail) throw new Error("history unavailable");
+			return journal.pageBefore(request.beforeId, request.limit);
+		},
+	});
+	assert.equal(
+		panel.handle().olderFailed,
+		false,
+		"a fresh pane has not failed",
+	);
+
+	// Not the scroll pump: the align fetch, the jump walk and the mentioned-files
+	// scan all call this same function, and the row must still reach the reader.
+	const failed = await panel.handle().loadOlderDetailed();
+	await pump();
+	assert.deepEqual(failed, { kind: "failed", reason: "request" });
+	assert.equal(panel.handle().olderFailed, true, "a real failure is painted");
+
+	fail = false;
+	const held = panel.handle().transcript.oldestId;
+	const applied = await panel.handle().loadOlderDetailed();
+	await pump();
+	assert.equal(applied.kind, "applied");
+	assert.notEqual(panel.handle().transcript.oldestId, held, "the cursor moved");
+	assert.equal(
+		panel.handle().olderFailed,
+		false,
+		"an applied page clears the failed row",
+	);
+});
+
+test("olderFailed is cleared by /clear and by a session switch", async () => {
+	const { panel, snapshot, switchTo } = await pagedPane({
+		olderRead: () => {
+			throw new Error("history unavailable");
+		},
+	});
+	await panel.handle().loadOlderDetailed();
+	await pump();
+	assert.equal(panel.handle().olderFailed, true);
+
+	panel.handle().clearView();
+	await pump();
+	assert.equal(
+		panel.handle().olderFailed,
+		false,
+		"/clear discards the rows the failure described",
+	);
+
+	// A failure again (a fresh snapshot gives the pane a cursor to ask from),
+	// then the reader leaves: the failure belongs to the journal it happened on.
+	snapshot(20);
+	await pump();
+	await panel.handle().loadOlderDetailed();
+	await pump();
+	assert.equal(panel.handle().olderFailed, true, "the failure is back");
+	await switchTo(SESSION_B);
+	assert.equal(
+		panel.handle().olderFailed,
+		false,
+		"a failure belongs to the journal it happened on",
+	);
+});
+
+test("a lost race never sets olderFailed, even when the abandoned request then rejects", async () => {
+	let reject;
+	const gate = new Promise((_, fail) => {
+		reject = fail;
+	});
+	const { panel, switchTo } = await pagedPane({
+		olderRead: async () => {
+			await gate;
+		},
+	});
+	const pending = panel.handle().loadOlderDetailed();
+	await settle();
+	await switchTo(SESSION_B);
+	reject(new Error("history unavailable"));
+	await pending;
+	await pump();
+	assert.equal(
+		panel.handle().olderFailed,
+		false,
+		"a request for the conversation the reader left says nothing about this one",
+	);
+});
+
+test("a page still out for A when the reader goes A -> B -> A is dropped, and cannot seed the returning view's cursor", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const { panel, plan, snapshot, switchTo } = await pagedPane({
+		olderRead: async (request, journal) => {
+			await gate;
+			return journal.pageBefore(request.beforeId, request.limit);
+		},
+	});
+	const before = panel.handle().transcript.oldestId;
+	const pending = panel.handle().loadOlderDetailed();
+	await settle();
+	assert.equal(olderReads().length, 1, "the page is out");
+
+	await switchTo(SESSION_B);
+	await switchTo(SESSION_A);
+	// The returning view's transcript starts empty (or from the paint cache);
+	// the old page then lands on it.
+	release();
+	const outcome = await pending;
+	await pump();
+	assert.equal(
+		outcome.kind,
+		"stale",
+		"the page belongs to the previous visit, whatever the session id says",
+	);
+
+	// The returning view's own snapshot is what defines its cursor: it must be
+	// the newest page's first entry, not the deep page the stale ask carried.
+	snapshot(30);
+	await pump();
+	const oldest = panel.handle().transcript.oldestId;
+	assert.equal(
+		oldest,
+		plan.rows[plan.rows.length - SNAPSHOT_PAGE].id,
+		`the cursor comes from the snapshot, not the stale page (was ${before}, now ${oldest})`,
+	);
+});
