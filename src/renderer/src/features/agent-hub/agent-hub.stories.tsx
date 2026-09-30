@@ -446,10 +446,18 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 							request.control?.query?.description,
 					);
 					const shown = filtered ? filteredRecords : records;
+					/*
+					 * THE REQUESTED PAGE IS ECHOED, not hard-coded to 1. It was a
+					 * literal, so every paged read answered "page 1" and the pager
+					 * snapped back to `Page 1 of 3` the moment it advanced - a fixture
+					 * that made the last-page story impossible to write and would have
+					 * hidden a real regression in the paging state.
+					 */
+					const requestedPage = Number(request.control?.query?.page ?? 1);
 					return proxy({
 						msg: "Agents listed successfully",
 						result: {
-							page: 1,
+							page: requestedPage,
 							per_page: 12,
 							// The counts follow the records: a page that shows nothing
 							// while its own line reads "30 agents" is a fixture bug, and
@@ -1346,14 +1354,31 @@ export const PagerLastPage: Story = {
 	},
 	play: async () => {
 		const next = await screen.findByRole("button", { name: "Next page" });
-		next.focus();
-		await userEvent.keyboard("{Enter}");
+		/*
+		 * CLICKS, not key presses: a synthetic `keyboard("{Enter}")` carries no
+		 * default action in a real browser, so the browser never activates the
+		 * button and the page never changes (measured in this very gate). The
+		 * keyboard path itself is driven through trusted input by the UX walk
+		 * (`Input.dispatchKeyEvent`); what this play pins is the FOCUS HAND-OFF,
+		 * which is the same on both - `userEvent.click` focuses the button before
+		 * it presses it, exactly as a keyboard user has it focused.
+		 */
+		await userEvent.click(next);
+		/*
+		 * The label is asserted through the PAGER's text content, not a text
+		 * matcher: "Page 2 of 3" is three text nodes inside one span, and
+		 * `getByText` on the string failed the capture gate.
+		 */
 		await waitFor(() =>
-			expect(screen.getByText("Page 2 of 3")).toBeInTheDocument(),
+			expect(screen.getByTestId("agent-hub-pager")).toHaveTextContent(
+				"Page 2 of 3",
+			),
 		);
-		await userEvent.keyboard("{Enter}");
+		await userEvent.click(next);
 		await waitFor(() =>
-			expect(screen.getByText("Page 3 of 3")).toBeInTheDocument(),
+			expect(screen.getByTestId("agent-hub-pager")).toHaveTextContent(
+				"Page 3 of 3",
+			),
 		);
 		await waitFor(() =>
 			expect(
