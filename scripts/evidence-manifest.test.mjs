@@ -2739,6 +2739,12 @@ const BRANCH_RECORDS = [
 	 * And THIS round-3 fold's own, alongside them.
 	 */
 	"foldOntoefca9e16fcNote",
+	/*
+	 * And THE #697 FOLD'S, whose semantic resolution (the hold extended to the
+	 * strip controls #697 adds) makes it a record worth keeping across a fold -
+	 * same reason as every entry.
+	 */
+	"foldOnto50b9daf8feNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
