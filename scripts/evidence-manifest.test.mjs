@@ -2383,6 +2383,7 @@ const BRANCH_RECORDS = [
 	"foldOnto6f284060IdentityNote",
 	"foldOnto65a3e97b8cIdentityNote",
 	"foldOnto29a9aa985cIdentityNote",
+	"foldOnto32c7bc34c9IdentityNote",
 	/*
 	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
 	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
