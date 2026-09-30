@@ -39,6 +39,7 @@ import { Minus, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+	NO_TEAM_LABEL,
 	formatProjectDay,
 	groupByTeam,
 	projectDisplayName,
@@ -59,7 +60,6 @@ import {
 	timelineTicks,
 	todayUtcMs,
 } from "../timeline-model";
-import { TeamSectionHeader } from "./team-section-header";
 
 /** The pinned name column's width in px — one value for the axis and rows. */
 const NAME_COL_PX = 224;
@@ -211,14 +211,22 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 							 * outgoing one as its own group reaches the top.
 							 */
 							<div key={group.team ?? ""}>
-								<TeamSectionHeader
-									team={group.team}
-									count={group.items.length}
-									className="sticky top-0 z-20"
-									innerClassName="sticky left-0 z-20 shrink-0 bg-canvas px-3"
-									innerStyle={{ width: NAME_COL_PX }}
+								<div
+									className="sticky top-0 z-20 flex items-stretch bg-canvas"
 									data-project-team={group.team ?? ""}
-								/>
+								>
+									<span
+										className="sticky left-0 z-20 flex shrink-0 items-center gap-2 bg-canvas px-3 py-1 text-meta"
+										style={{ width: NAME_COL_PX }}
+									>
+										<span className="truncate text-ink">
+											{group.team ?? NO_TEAM_LABEL}
+										</span>
+										<span className="shrink-0 text-ink-muted">
+											{group.items.length}
+										</span>
+									</span>
+								</div>
 								{group.items.map((item) => (
 									<TimelineRow
 										key={item.project.id}

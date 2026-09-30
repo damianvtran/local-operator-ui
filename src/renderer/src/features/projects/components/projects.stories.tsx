@@ -812,34 +812,87 @@ const poll = async (predicate: () => boolean, what: string) => {
 };
 
 /**
- * The team header's register, read off the live band (issue #703): an `<h3>` the
- * sidebar's section-label way (small caps, medium weight), 32px tall, a hairline
- * under it, and NOTHING operable - no button, no tab stop - because a header is a
- * label and the row-style hover it once resembled is exactly what the reporter
- * read as broken. Each clause can fail on its own: the pre-fix bands were plain
- * `div`s with no heading, no rule, no transform and a different height.
+ * The live colour a role class resolves to, read from a probe in this document.
+ *
+ * The stories run under every palette, so a band's ground has to be compared
+ * against the TOKEN rather than a hex: the probe carries the same class the band
+ * carries, in the same document and theme, so the assertion cannot drift from
+ * the role it names.
  */
-const assertTeamHeaderRegister = (selector: string) => {
+const roleGround = (role: string): string => {
+	const probe = document.createElement("div");
+	probe.className = role;
+	probe.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px";
+	document.body.appendChild(probe);
+	const ground = getComputedStyle(probe).backgroundColor;
+	probe.remove();
+	return ground;
+};
+
+/**
+ * The team band's register, read off the live band (issue #703, RESHAPED on
+ * operator direction): the team's OWN name in an `<h3>`, 32px tall, BORDERLESS,
+ * on the `surface` rung one lightness step above the rows' `canvas` - and not
+ * operable, because a band is a label and the row-style hover it once resembled
+ * is what the reporter read as broken.
+ *
+ * Each clause can fail on its own, and each is the shape the change made:
+ * `main` draws a `canvas` span with a `py-1.5` box and no heading, so the height
+ * clause and the heading clause fail there; the register the first pass shipped
+ * was small caps, which the `text-transform` clause fails; and the ground clause
+ * is the change itself.
+ */
+const assertTeamBand = (selector: string, expectedLabel: string) => {
 	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
-	if (bands.length === 0) throw new Error(`no team header matches ${selector}`);
+	if (bands.length === 0) throw new Error(`no team band matches ${selector}`);
+	const surface = roleGround("bg-surface");
+	const canvas = roleGround("bg-canvas");
+	if (surface === canvas) {
+		throw new Error(
+			"bg-surface and bg-canvas resolve to the same colour in this theme - the band's step is unmeasurable here",
+		);
+	}
 	for (const band of bands) {
 		const label = band.querySelector("h3");
 		if (!label || (label.textContent ?? "").trim() === "") {
-			throw new Error(`${selector}: a team header carries no <h3> label`);
+			throw new Error(`${selector}: a team band carries no <h3> label`);
 		}
-		if (getComputedStyle(label).textTransform !== "uppercase") {
-			throw new Error(`${selector}: the team label is not small caps`);
+		if (getComputedStyle(label).textTransform !== "none") {
+			throw new Error(
+				`${selector}: the team label is transformed, so user data is being re-cased`,
+			);
 		}
 		const height = band.getBoundingClientRect().height;
 		if (Math.abs(height - 32) > 0.6) {
-			throw new Error(`${selector}: a team header is ${height}px tall, not 32`);
+			throw new Error(`${selector}: a team band is ${height}px tall, not 32`);
 		}
-		if (Number.parseFloat(getComputedStyle(band).borderBottomWidth) < 0.5) {
-			throw new Error(`${selector}: a team header lost its hairline`);
+		if (Number.parseFloat(getComputedStyle(band).borderBottomWidth) > 0) {
+			throw new Error(
+				`${selector}: a team band carries a bottom rule; the step is the division`,
+			);
+		}
+		const ground = getComputedStyle(band).backgroundColor;
+		if (ground !== surface) {
+			throw new Error(
+				`${selector}: a team band's ground is ${ground}, not the surface rung (${surface})`,
+			);
+		}
+		if (ground === canvas) {
+			throw new Error(
+				`${selector}: a team band is still on the rows' canvas ground - no division`,
+			);
 		}
 		if (band.querySelector("button, a, [tabindex]") || band.tabIndex >= 0) {
-			throw new Error(`${selector}: a team header became operable`);
+			throw new Error(`${selector}: a team band became operable`);
 		}
+	}
+	const exact = bands.some(
+		(band) => (band.querySelector("h3")?.textContent ?? "") === expectedLabel,
+	);
+	if (!exact) {
+		throw new Error(
+			`${selector}: no band prints the fixture's team name "${expectedLabel}" exactly - a register that re-cases user data fails here`,
+		);
 	}
 };
 
@@ -1086,7 +1139,7 @@ export const ListTeamsSticky: Story = {
 				`fewer than two team headers rendered (${headers.length})`,
 			);
 		}
-		assertTeamHeaderRegister("[data-project-team]");
+		assertTeamBand("[data-project-team]", "platform");
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
@@ -2297,7 +2350,6 @@ export const BoardSticky: Story = {
 				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
-		assertTeamHeaderRegister("[data-board-team]");
 		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
 		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
@@ -3130,7 +3182,6 @@ export const Timeline: Story = {
 				"the timeline row's data-project-name is not the key anymore",
 			);
 		}
-		assertTeamHeaderRegister("[data-project-team]");
 	}),
 };
 
