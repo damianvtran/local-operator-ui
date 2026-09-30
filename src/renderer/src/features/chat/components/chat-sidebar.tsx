@@ -49,6 +49,7 @@ import {
 	CheckCheck,
 	ChevronDown,
 	ChevronRight,
+	ChevronUp,
 	FileText,
 	FolderPlus,
 	LoaderCircle,
@@ -99,6 +100,18 @@ import {
 	relativeTimeSentence,
 	sectionRows,
 } from "../chat-list-sections";
+import {
+	type PinMoveStep,
+	canMovePinnedRow,
+	chatPinMoveChord,
+	chatPinMoveControl,
+	forgetPinnedOrder,
+	movePinnedOrder,
+	orderPinnedRows,
+	pinMoveBoundaryNote,
+	pinMoveNote,
+	pinnedOrder,
+} from "../chat-pin-order";
 import {
 	CHAT_REGION_ENTRY_ATTR,
 	chatRowAct,
@@ -2169,6 +2182,32 @@ export function ChatSidebar({
 		return () => window.clearTimeout(timer);
 	}, [sessions.length]);
 	/*
+	 * THE PINNED ORDER'S OWN LIVE REGION (issue #693).
+	 *
+	 * WHY IT NEEDS ONE AT ALL: a move changes the ORDER of rows a screen reader has
+	 * just been told about, and the two rows swap positions without a word - the same
+	 * silence `project-board.tsx` answers for its columns ("Moved QA column to
+	 * position 2 of 3."). Its sentences are `chat-pin-order.ts`'s, so the phrasing
+	 * and the boundary cases are pinned by tests rather than chosen here.
+	 *
+	 * ITS DWELL IS THE TAIL'S OWN, AND FOR THE TAIL'S OWN REASON: a live region that
+	 * KEEPS its last value says nothing new when the same sentence is the next
+	 * answer, and "already the first pinned chat" is a sentence a reader can produce
+	 * twice in a row by pressing the chord again. Clearing it is what makes the second
+	 * press audible rather than swallowed.
+	 */
+	const [pinMoveAnnouncement, setPinMoveAnnouncement] = useState("");
+	const pinMoveTimerRef = useRef<number | null>(null);
+	const announcePinMove = (sentence: string) => {
+		setPinMoveAnnouncement(sentence);
+		if (pinMoveTimerRef.current !== null)
+			window.clearTimeout(pinMoveTimerRef.current);
+		pinMoveTimerRef.current = window.setTimeout(() => {
+			pinMoveTimerRef.current = null;
+			setPinMoveAnnouncement("");
+		}, 4000);
+	};
+	/*
 	 * THE TAIL PRESS, AND WHAT IT OWES THE READER AFTERWARDS (round 1, U2 + D7).
 	 *
 	 * Two things the control cannot do by itself. THE EXACT LIMIT: the row says how
@@ -2414,6 +2453,98 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * THE PINNED SECTION'S OWN ORDER (issue #693), and the lists it is taken from -
+	 * each one because a different rule needs a different list.
+	 *
+	 *   - `pinned` above is the catalogue's order passed through, which is what rule 1
+	 *     draws before the reader has moved anything;
+	 *   - `orderedPinned` is that list PERMUTED by the view's stored order
+	 *     (`chat-pin-order.ts` carries the rules), and it is the only list the section
+	 *     renders and the only order a move is taken over - "up" has to mean the row
+	 *     ABOVE the one on screen, so the list the reader is looking at is the list the
+	 *     move counts in;
+	 *   - `knownPinnedIds` is what the stored order is materialized against, read
+	 *     lazily inside the move below rather than here, because it is a full pass over
+	 *     the loaded page and only a move needs it.
+	 *
+	 * `pinnedIndex` is the drawn position of each row, which is where the two controls'
+	 * offered/inapplicable state and the announcement's "position N of M" come from -
+	 * one map rather than an `indexOf` per row per render.
+	 */
+	const pinnedCatalogueIds = pinned.map((row) => row.session_id);
+	const orderedPinned = orderPinnedRows(pinned, view.pins);
+	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
+	const pinnedIndex = new Map(
+		pinnedDrawnIds.map((id, index) => [id, index] as const),
+	);
+	/**
+	 * The move a control or the chord performs (issue #693).
+	 *
+	 * ONE FUNCTION FOR BOTH PRESSES, and the chord reaches it the way `chatRowAct`
+	 * reaches the row's acts: it `.click()`s the control, so the keyboard takes the
+	 * control's own path - the repeat-press guard, the boundary answer, the store write
+	 * and the caret correction, none of them restated. `follow` is what tells the two
+	 * presses apart (`event.detail === 0` is a click synthesised from the keyboard): a
+	 * keyboard press takes the caret back to the row, a pointer press must not, because
+	 * the reader's pointer is already where they are looking.
+	 *
+	 * A BOUNDARY IS AN ANSWER, NOT A SILENCE. The control at either end is drawn
+	 * inapplicable (`aria-disabled`, the app's own idiom - a real `disabled` drops the
+	 * control out of the flow a keyboard reader can reach and leaves its why
+	 * unannounceable), and `aria-disabled` does not stop the click, so this handler is
+	 * what makes the press inert. Silence there would read as a broken key, which is
+	 * the failure `project-board.tsx` names for its own grip.
+	 */
+	const movePinnedRow = (
+		sessionId: string,
+		direction: PinMoveStep,
+		follow: boolean,
+	) => {
+		const at = pinnedIndex.get(sessionId);
+		if (at === undefined) return;
+		const label =
+			pinned.find((row) => row.session_id === sessionId)?.title ||
+			"Untitled chat";
+		if (!canMovePinnedRow(pinnedDrawnIds, sessionId, direction)) {
+			announcePinMove(pinMoveBoundaryNote(label, at, pinnedDrawnIds.length));
+			return;
+		}
+		const next = movePinnedOrder(
+			/*
+			 * The full pinned set as this client knows it, which is the list the stored order
+			 * has to remain a permutation of: a pinned chat the search or the page has
+			 * filtered out of the SECTION is still pinned, and its slot must survive the
+			 * move (rule 2). `heldRows` is part of it because a pin this client knows from a
+			 * fact rather than from a catalogue row is still a pin it can address.
+			 */
+			pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+				(row) => row.session_id,
+			),
+			view.pins,
+			pinnedDrawnIds,
+			sessionId,
+			direction,
+		);
+		if (next === null) return;
+		/*
+		 * ONE WRITE, through the setter the view popover uses, so the arrangement lands
+		 * where every other view preference is stored and validated on read
+		 * (`ui-preferences-storage`).
+		 */
+		setChatSidebarView({ ...view, pins: next });
+		/*
+		 * THE CARET AND THE LINE COME BACK THROUGH THE PANEL'S OWN CORRECTION, which is
+		 * `unpin`'s mechanism and not a new one: the rows reorder in place, so the element
+		 * this handler holds is still mounted but no longer where it was - the correction
+		 * finds the row BY ID after the commit and puts the caret on its mark, which is
+		 * inside the row, so `group-focus-within` stays true and the pair stays revealed
+		 * for the next press.
+		 */
+		rememberMovedRow(sessionId, follow, null);
+		const drawn = pinnedOrder(pinnedCatalogueIds, next);
+		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
+	};
+	/*
 	 * THE DRAFTS THAT OUTLIVE THEIR PANE (§C1's `Draft: <first line>` row; UX round
 	 * 2's U8). The rule and its three conditions live in `draft-rows.ts`, because it
 	 * has to be true of the state a RELAUNCH restores as well as of the state a ⌘N
@@ -2481,6 +2612,15 @@ export function ChatSidebar({
 	 * fill means. It is a comparison against the DEFAULT rather than a flag
 	 * written when the panel is used, because the flag can disagree with the
 	 * view the moment a future field joins the model and is not reset with it.
+	 *
+	 * `view.pins` JOINS IT FOR THAT REASON AND NOT BECAUSE THE POPOVER CAN UNDO IT
+	 * (issue #693): the pill means "the reader has arranged this column", and the
+	 * pinned order is an arrangement exactly as the section order beside it is - a
+	 * state no control in the popover produces, which is already true of `loads`, the
+	 * ladder's own click counter. Leaving it out would light the pill for a moved
+	 * SECTION while saying nothing about a moved ROW, which is the same two states in
+	 * two registers. The column is un-arranged by moving the rows back and by
+	 * unpinning, which is what `forgetPinnedOrder` prunes on.
 	 */
 	const viewIsCustom =
 		view.groupBy !== DEFAULT_SIDEBAR_VIEW.groupBy ||
@@ -2488,6 +2628,7 @@ export function ChatSidebar({
 		view.orderBy !== DEFAULT_SIDEBAR_VIEW.orderBy ||
 		view.hidden.length > 0 ||
 		view.loads > 0 ||
+		view.pins.length > 0 ||
 		view.order.some((key, index) => key !== DEFAULT_SIDEBAR_VIEW.order[index]);
 	/*
 	 * §C1's sections over the loaded page (`chat-list-sections.ts` carries the
@@ -3359,8 +3500,172 @@ export function ChatSidebar({
 		 * class list, one more element, nothing measured.
 		 */
 		const bothControls = pinsEnabled && archiveEnabled;
+		/*
+		 * THE MOVE PAIR'S OWN FACTS, read once so the two controls and the press they
+		 * make all read the same ones (issue #693).
+		 *
+		 * `pinnedAt` is the row's drawn position in the section, and it is the term that
+		 * decides whether this row is OFFERED the pair at all: a pinned row drawn inside
+		 * an agent group (`nested`) or by a grouped arrangement is in `matching` but not
+		 * the section, so it has no position and no pair - the section's own order is the
+		 * only order a move can be about.
+		 *
+		 * `up` / `down` are `canMovePinnedRow` over the DRAWN order, which is the same
+		 * predicate `movePinnedRow` takes the move under: a control drawn inapplicable
+		 * and a press that does nothing are one fact, not two that have to agree.
+		 */
+		const pinnedAt = pinnedIndex.get(row.session_id);
+		const up = canMovePinnedRow(pinnedDrawnIds, row.session_id, -1);
+		const down = canMovePinnedRow(pinnedDrawnIds, row.session_id, 1);
+		/**
+		 * The pair's press, and the two guards it shares with the row's other acts.
+		 *
+		 * THE REPEAT-PRESS GUARD RUNS FIRST, and it is not a copy for its own sake: a move
+		 * SWAPS this row with its neighbour, so a repeat press at the same spot lands on
+		 * the row that slid into place - moving a conversation the reader never pointed at,
+		 * and undoing the move they did make. `dropRepeatPress` is the panel's own record
+		 * of the last pointer press and answers the same way it does for the pin and the
+		 * row button. It also runs before the boundary branch, for the pin's own reason: a
+		 * dropped press must change nothing at all, and the boundary sentence is a change.
+		 *
+		 * `event.detail === 0` is the keyboard (a click synthesised from Enter, Space or
+		 * the chord carries no click count), and it is what tells a caret-correcting press
+		 * from a pointer press in `movePinnedRow`.
+		 */
+		const pressPinMove = (
+			event: { detail: number; clientX: number; clientY: number },
+			step: PinMoveStep,
+		) => {
+			if (
+				dropRepeatPress(
+					event.detail === 0 ? null : { x: event.clientX, y: event.clientY },
+					row.session_id,
+				)
+			) {
+				return;
+			}
+			movePinnedRow(row.session_id, step, event.detail === 0);
+		};
 		const controls = (
 			<>
+				{/*
+				 * THE MOVE PAIR: the pinned row's own arrangement control (issue #693).
+				 *
+				 * WHO OFFERS IT, and every term is a decision. `pinsEnabled` because the
+				 * section does not exist without the pin store; `row.pinned === true` because
+				 * "move this row up" means nothing about a row that is not in the section;
+				 * `!nested` and `view.groupBy === "section"` because the pinned rows are ALSO
+				 * drawn inside agent groups and inside the grouped arrangements, where the drawn
+				 * neighbours are some other axis's - a pair there would rearrange the Pinned
+				 * section from a row the reader found in a group. The order this section draws
+				 * is the only order the pair can be about, so it is drawn only where that order
+				 * is on screen.
+				 *
+				 * WHERE IT SITS, AND WHY IT CARRIES NO `order`. The pair is drawn FIRST in
+				 * `controls`, and the flow does the rest: the archive beside it is `order-first`
+				 * (design round 2, D12 - the revealed act takes the inner position, the mark
+				 * keeps the row's right edge), so the revealed cluster reads
+				 * [archive][move up][move down][mark] from the title outwards, with the mark
+				 * still last and the title paying for all three. THE PAIR TAKES NO ORDER CLASS,
+				 * and that is a constraint rather than an omission: `bothControls` is
+				 * `pinsEnabled && archiveEnabled`, so a backend advertising pins WITHOUT the
+				 * archive renders `controls` as direct children of the row's own box - where an
+				 * `order` would sort the pair against the row's button and put the arrows to the
+				 * LEFT of the title. Flow order is the only spelling correct in both shapes.
+				 *
+				 * They are reveal-only - a move is not a state - so they follow the archive's
+				 * rule rather than the mark's: `hidden` at rest, `flex` under the pointer or
+				 * under focus.
+				 *
+				 * INAPPLICABLE AT THE ENDS, AND `aria-disabled` RATHER THAN `disabled` (2026-09-30,
+				 * the manager's brief): a real `disabled` attribute drops a control out of the
+				 * flow a keyboard reader can reach and leaves its why unannounceable - the exact
+				 * trade the drafts' discard act and `older-history-slot.tsx` already refuse - and
+				 * it would also stop the CHORD, which presses this control (`chatPinMoveControl`).
+				 * So the press is refused in the handler instead, which is what makes the boundary
+				 * a sentence rather than a dead key.
+				 *
+				 * NO `data-chat-row` AND `tabIndex={-1}`, on the rule the mark and the archive are
+				 * written under: the arrow ring collects that attribute and focuses what it finds,
+				 * so wearing it would put two more stops in the ring on every pinned row - the
+				 * regression §C4's chord exists to avoid - and the row keeps its
+				 * one-stop-plus-chords model.
+				 */}
+				{row.pinned === true &&
+					!nested &&
+					pinsEnabled &&
+					view.groupBy === "section" &&
+					pinnedAt !== undefined && (
+						<>
+							<button
+								type="button"
+								data-session-move-up
+								tabIndex={-1}
+								aria-disabled={!up}
+								/*
+								 * The action, and the boundary instead of it when the move cannot land - the same
+								 * two strings the press and the live region use, so the pointer's channel cannot
+								 * say something the keyboard's contradicts. A `title` is the whole of the pointer's
+								 * channel here because the control is `tabIndex={-1}` and never focused: there is
+								 * no moment at which a screen reader would read an `aria-describedby` on it, which
+								 * is why this pair carries no `sr-only` why beside it the way the drafts' discard
+								 * act does. The keyboard's channel is the chord's own announcement.
+								 */
+								aria-label={`Move “${label}” up`}
+								title={
+									up
+										? `Move “${label}” up`
+										: pinMoveBoundaryNote(
+												label,
+												pinnedAt,
+												pinnedDrawnIds.length,
+											)
+								}
+								onClick={(event) => pressPinMove(event, -1)}
+								className={cn(
+									"hidden size-6 shrink-0 items-center justify-center rounded-md",
+									"text-ink-dim",
+									"group-hover:flex group-hover:text-ink-muted",
+									"group-focus-within:flex group-focus-within:text-ink-muted",
+									"hover:text-ink!",
+									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									!current && "hover:bg-row-hover",
+								)}
+							>
+								<ChevronUp aria-hidden="true" className="size-4" />
+							</button>
+							<button
+								type="button"
+								data-session-move-down
+								tabIndex={-1}
+								aria-disabled={!down}
+								aria-label={`Move “${label}” down`}
+								title={
+									down
+										? `Move “${label}” down`
+										: pinMoveBoundaryNote(
+												label,
+												pinnedAt,
+												pinnedDrawnIds.length,
+											)
+								}
+								onClick={(event) => pressPinMove(event, 1)}
+								className={cn(
+									"hidden size-6 shrink-0 items-center justify-center rounded-md",
+									"text-ink-dim",
+									"group-hover:flex group-hover:text-ink-muted",
+									"group-focus-within:flex group-focus-within:text-ink-muted",
+									"hover:text-ink!",
+									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									!current && "hover:bg-row-hover",
+								)}
+							>
+								<ChevronDown aria-hidden="true" className="size-4" />
+							</button>
+						</>
+					)}
 				{/*
 				 * The pin, drawn at rest ONLY on a pinned row and revealed on any other row by
 				 * the pointer or by focus inside it. Its box is `size-6` and it takes no space
@@ -3464,6 +3769,20 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
+							/*
+							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
+							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
+							 * top rather than the resurrection of a position the reader unwound - and the
+							 * stored list cannot grow entries for conversations that are no longer in
+							 * the section it orders. Guarded on membership, so the common unpin (of a
+							 * row nobody has moved) writes no preference at all.
+							 */
+							if (pinned && view.pins.includes(row.session_id)) {
+								setChatSidebarView({
+									...view,
+									pins: forgetPinnedOrder(view.pins, row.session_id),
+								});
+							}
 							/*
 							 * THE KEYBOARD'S CARET COMES BACK THROUGH THE CORRECTION ABOVE, not from
 							 * here (UX report round 1, U2). Unpinning takes this control's box out of
@@ -4456,6 +4775,28 @@ export function ChatSidebar({
 		const act = chatRowAct(event);
 		if (act !== null) {
 			const control = chatRowActControl(target, act);
+			if (control !== null) {
+				event.preventDefault();
+				control.click();
+			}
+			return;
+		}
+		/*
+		 * THE MOVE PAIR'S CHORD (issue #693), the block above's shape exactly: find the
+		 * control on this row's box and PRESS it, rather than reimplementing the move
+		 * here - so the keyboard takes the control's own path, the repeat-press guard and
+		 * the boundary sentence included, and the two presses cannot drift. `⌘⇧↑` /
+		 * `⌘⇧↓` (`Ctrl+Shift+↑` / `Ctrl+Shift+↓`) are free across the app and are refused
+		 * by nothing else here: the walk below reads a BARE arrow, and the region walk's
+		 * arrows carry `alt` (`chat-pin-order.ts` names the chords it checked).
+		 *
+		 * A row that offers no pair answers with no control - an unpinned row, or a pinned
+		 * one the grouped arrangement drew - and the press is then left alone rather than
+		 * swallowed, which is the honest answer for a chord with no target on this row.
+		 */
+		const move = chatPinMoveChord(event);
+		if (move !== null) {
+			const control = chatPinMoveControl(target, move);
 			if (control !== null) {
 				event.preventDefault();
 				control.click();
@@ -5619,10 +5960,31 @@ export function ChatSidebar({
 						</section>
 					),
 				)}
+			{/*
+			 * THE PINNED ORDER'S LIVE REGION, mounted with the capability and OUTSIDE the
+			 * section below rather than inside it: the section is drawn only while the panel
+			 * has pinned rows AND is arranging by section, while a move's answer is owed
+			 * wherever a move could be made. The region itself never animates or moves - only
+			 * its text changes, which is what a polite region announces (`tailArrival` above
+			 * is the same shape, for the same reason).
+			 *
+			 * INSIDE `pinsEnabled`, because a backend without the pin store must render the
+			 * panel it always did: the gate's whole claim is that no affordance, no section
+			 * and no region for either exists where there are no pins.
+			 */}
+			{pinsEnabled && (
+				<span
+					className="sr-only"
+					aria-live="polite"
+					data-sidebar-pin-order-announcement
+				>
+					{pinMoveAnnouncement}
+				</span>
+			)}
 			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
 				<section>
 					{sectionLabel("Pinned")}
-					{pinned.map((row) => sessionRow(row))}
+					{orderedPinned.map((row) => sessionRow(row))}
 				</section>
 			)}
 			{view.groupBy === "section" &&
