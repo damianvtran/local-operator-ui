@@ -2881,6 +2881,17 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldFiveNote",
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
+	/*
+	 * And by the TEAM LABELS lane (2026-09-30): its re-stamp is the branch's
+	 * newest top-level record, holding the two stamps this branch's delta moved
+	 * (the whole label read path under `src/` - the new `team-display.ts` and
+	 * its readers - and the three source-anchor tests plus three new cases
+	 * under `scripts/`). Listed for the reason this list exists: a fold that
+	 * started from main's copy would drop it first, and with it the only
+	 * statement of what the re-stamp read. The note spells its pair as bare
+	 * SHAs, so it adds no name to the quoting ledger.
+	 */
+	"teamLabelsRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
