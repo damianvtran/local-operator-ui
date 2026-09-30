@@ -2831,6 +2831,11 @@ const BRANCH_RECORDS = [
 	 * reason.
 	 */
 	"foldOnto742a3a1e94Note",
+	/*
+	 * And the second fold, onto `ee0e1f01e8` (#688's drain lane), for the same
+	 * reason again: main moved under the reviewed head a second time.
+	 */
+	"foldOntoee0e1f01e8Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
