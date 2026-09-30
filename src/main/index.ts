@@ -307,12 +307,36 @@ app.setName("Local Operator");
  *
  * The icon is only set where a tile exists to carry it: on a hidden dock the
  * call would say nothing, and the reason it is here at all is the shipped app.
+ *
+ * AND A NON-HIDDEN LAUNCH ASSERTS THE TILE RATHER THAN ASSUMING IT. The mode
+ * table says a `normal` launch is NOT launcher-bound and its window is a
+ * person's to close, which is only true if the app participates in the Dock —
+ * and measured on the operator's machine (2026-09-30) a `normal` launch can
+ * still come up in the ACCESSORY policy: the auto-update relaunch left pid
+ * 32713 (v0.31.24) with no Dock tile, its menu reading "app not running",
+ * while its own log said `window mode normal is not launcher-bound` and its
+ * window was on screen. The chain that produced it is not the mode resolver —
+ * two byte-identical relaunches came up regular and accessory — so the policy
+ * is asserted here, where the mode is already known, instead of trusted from
+ * whatever the launch context handed the process. The dock-policy show call is
+ * idempotent for an app that is already regular, and it is NOT a window raise:
+ * the dock show/hide pair sets the app's DOCK participation, which is the policy
+ * `windowLaunch.hideDock` already decides — the raise-family ban in
+ * `scripts/window-mode.test.mjs` is about windows (show/focus/maximize), so its
+ * one-line allow for this call is line-narrow and documented there.
+ *
+ * WHAT THIS CANNOT DO, stated where the assertion is: a detach that happens
+ * after startup is not prevented by it. It guarantees the tile EXISTS at
+ * launch; whether the record keeps presenting it is the OS's, and re-asserting
+ * mid-life is deliberately out of scope here (see the PR for the probe
+ * evidence on the one restore path that does work — an activation).
  */
 const image = nativeImage.createFromPath(icon);
 if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
 	} else {
+		app.dock.show();
 		app.dock.setIcon(image);
 	}
 }
