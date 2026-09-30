@@ -498,7 +498,16 @@ export const MoveNotice: FC<{
 	onWait: () => void;
 	onRecheck: () => void;
 	onUndo: () => void;
-	onDismiss: () => void;
+	/**
+	 * Omitted when there is nothing a dismissal could honestly do.
+	 *
+	 * The header's in-flight notice is the case: clearing the record while a
+	 * transfer is still running would put the chip back on the conversation's OLD
+	 * placement, so the notice carries no button rather than one that does nothing
+	 * or lies (UX U4). Every other caller passes it, so the button's presence is
+	 * unchanged everywhere else.
+	 */
+	onDismiss?: () => void;
 	pending: boolean;
 }> = ({
 	receipt,
@@ -575,9 +584,11 @@ export const MoveNotice: FC<{
 					{receipt.undo.verb}
 				</Button>
 			)}
-			<Button size="sm" variant="ghost" onClick={onDismiss}>
-				Dismiss
-			</Button>
+			{onDismiss ? (
+				<Button size="sm" variant="ghost" onClick={onDismiss}>
+					Dismiss
+				</Button>
+			) : null}
 		</output>
 	);
 };
