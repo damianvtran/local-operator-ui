@@ -160,7 +160,21 @@ export function AgentsPage() {
 
 	const [search, setSearch] = useState("");
 	const [scope, setScope] = useState<Scope>("all");
-	const [editDirty, setEditDirty] = useState(false);
+	/*
+	 * WHICH PANE SAID IT WAS DIRTY, rather than a bare boolean.
+	 *
+	 * A lone `editDirty` could only ever be as fresh as the last report, and the
+	 * last report of an unmounted pane is a stale `true`: cancelling a dirty
+	 * create, duplicating from a dirty edit or switching to a tab with nothing
+	 * selected left the docked composer blocked on "Finish or cancel your edit
+	 * first" with no editor open, until a reload (review round 1, M1 / D1).
+	 *
+	 * The pane's identity is the record it is about (`agent:name`, `team:create`),
+	 * so a report from a pane that is no longer the one on screen simply stops
+	 * counting — the flag cannot outlive the record, by construction rather than
+	 * by an effect that remembers to clear it. The panes also withdraw their
+	 * report on unmount, which covers the same window from the other side.
+	 */
 	/**
 	 * A navigation the operator has asked for while an edit is dirty.
 	 *
@@ -171,6 +185,7 @@ export function AgentsPage() {
 	 * fix is the key, and this is the question that goes with it (D1/U1/Q1).
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
+	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
 	const clearMark = useConfigRunStore((state) => state.clearMark);
@@ -221,18 +236,6 @@ export function AgentsPage() {
 	);
 	const rows = teamMode ? teamRows : agentRows;
 	const selected = name ?? null;
-	/*
-	 * The page forgets a dirty report from a pane that is no longer mounted.
-	 * The panes report `false` on unmount as well (see `AgentDetail`), and this is
-	 * the page-side half of the same rule: a stale `true` here locks the composer
-	 * with "Finish or cancel your edit first" while nothing is open, and the only
-	 * way out was a reload (review round 1, M1 / D1).
-	 */
-	useEffect(() => {
-		setEditDirty(false);
-		setPendingNav(null);
-	}, [selected, creating, teamMode]);
-
 	const go = useCallback(
 		(next: NavIntent) => {
 			const search = new URLSearchParams();
@@ -242,10 +245,35 @@ export function AgentsPage() {
 			if (next.create !== null && next.create !== undefined)
 				search.set("create", next.create);
 			if (next.duplicate) search.set("duplicate", next.duplicate);
+			// Any real navigation resolves a pending question, whichever route asked
+			// for it (the guard's own button, a browser Back, a deep link).
+			setPendingNav(null);
 			setParams(search);
 		},
 		[teamMode, setParams],
 	);
+
+	/*
+	 * WHICH PANE SAID IT WAS DIRTY, rather than a bare boolean.
+	 *
+	 * A lone `editDirty` could only ever be as fresh as the last report, and the
+	 * last report of an unmounted pane is a stale `true`: cancelling a dirty
+	 * create, duplicating from a dirty edit or switching to a tab with nothing
+	 * selected left the docked composer blocked on "Finish or cancel your edit
+	 * first" with no editor open, until a reload (review round 1, M1 / D1).
+	 *
+	 * The pane's identity is the record it is about (`agent:name`, `team:create`),
+	 * so a report from a pane that is no longer the one on screen stops counting —
+	 * the flag cannot outlive the record, by construction rather than by an effect
+	 * that remembers to clear it. The panes withdraw their report on unmount too,
+	 * which covers the same window from the other side.
+	 */
+	const paneIdentity = `${teamMode ? "team" : "agent"}:${creating ?? ""}:${selected ?? ""}`;
+	const reportDirty = useCallback(
+		(dirty: boolean) => setDirtyIdentity(dirty ? paneIdentity : null),
+		[paneIdentity],
+	);
+	const editDirty = dirtyIdentity !== null && dirtyIdentity === paneIdentity;
 
 	/**
 	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
@@ -618,7 +646,7 @@ export function AgentsPage() {
 							agents={profiles.data}
 							teams={teams.data}
 							askEnabled={run.enabled}
-							onDirtyChange={setEditDirty}
+							onDirtyChange={reportDirty}
 							onSaved={(savedName) => {
 								void refreshAll();
 								go({ name: savedName });
@@ -645,7 +673,7 @@ export function AgentsPage() {
 							initial={duplicateDetail.data ?? null}
 							takenNames={(profiles.data ?? []).map((row) => row.name)}
 							effortTiers={effortTiers}
-							onDirtyChange={setEditDirty}
+							onDirtyChange={reportDirty}
 							onSaved={(savedName) => {
 								void refreshAll();
 								go({ name: savedName });
@@ -659,7 +687,7 @@ export function AgentsPage() {
 							agents={profiles.data}
 							teams={teams.data}
 							askEnabled={run.enabled}
-							onDirtyChange={setEditDirty}
+							onDirtyChange={reportDirty}
 							onSaved={(savedName) => {
 								void refreshAll();
 								go({ name: savedName });
@@ -682,7 +710,7 @@ export function AgentsPage() {
 							teams={teams.data}
 							effortTiers={effortTiers}
 							askEnabled={run.enabled}
-							onDirtyChange={setEditDirty}
+							onDirtyChange={reportDirty}
 							onSaved={(savedName) => {
 								void refreshAll();
 								go({ name: savedName });
@@ -732,9 +760,10 @@ export function AgentsPage() {
 						<Button
 							variant="danger"
 							onClick={() => {
-								setEditDirty(false);
+								// The pane unmounts on navigation, so its report goes with it;
+								// clearing it here would be a second way to say the same thing.
+								setDirtyIdentity(null);
 								go(pendingNav);
-								setPendingNav(null);
 							}}
 						>
 							Discard changes
