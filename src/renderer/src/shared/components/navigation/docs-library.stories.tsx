@@ -41,7 +41,6 @@ import type {
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
 import { ChatHeader } from "@features/chat/components/chat-header";
-import { MessageInput } from "@features/chat/components/message-input";
 import {
 	deriveMcpServers,
 	deriveRunDetails,
@@ -64,6 +63,7 @@ import type {
 } from "@shared/api/local-operator/wakes-api";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
