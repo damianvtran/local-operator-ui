@@ -1376,7 +1376,8 @@ export const UpdateNotification = ({
 		 * came from: focus stayed inside the band, but the reader's next Tab or Enter
 		 * then operated the OTHER surface's control - a defect in exactly the flow this
 		 * PR added. A SWITCH IS NOT A CLOSE, which is why this compares the two SETS
-		 * and not one boolean: when the detail moves from one surface to the other
+		 * and not one boolean, and why it also requires that nothing remains open
+		 * (U13): when the detail moves from one surface to the other
 		 * (pressing the other band item), nothing is handed back - the press is the
 		 * reader's own and the card it opened has already taken focus.
 		 *
@@ -1396,7 +1397,25 @@ export const UpdateNotification = ({
 		const closed = openDetailsRef.current.filter(
 			(type) => !open.includes(type),
 		);
-		if (closed.length > 0 && typeof document !== "undefined") {
+		/*
+		 * A TRUE CLOSE ONLY: something closed AND nothing is open now (review U13).
+		 * `closed` alone is non-empty on a SWITCH too - the surface that gave way is
+		 * "closed" - and handing focus back then ejected it from the card the press
+		 * had just opened onto the band item of the surface it left (both directions
+		 * reproduced), the exact defect R10/U11 were raised about, in the path they
+		 * did not cover. On a switch the newly opened card's own focus effect has
+		 * already put focus where the reader wants it.
+		 *
+		 * `closed[0]` IS DETERMINISTIC AND ALSO UNREACHABLE AS AN ARBITRARY CHOICE
+		 * (review R15): the store lets one surface hold the detail (`openDetail`
+		 * closes the other), so at most one surface can close per batch; with two it
+		 * would be `NOTICE_SURFACES` order, since both arrays derive from it.
+		 */
+		if (
+			closed.length > 0 &&
+			open.length === 0 &&
+			typeof document !== "undefined"
+		) {
 			document
 				.querySelector<HTMLElement>(
 					`[data-update-indicator-open="${closed[0]}"]`,
@@ -1489,20 +1508,17 @@ export const UpdateNotification = ({
 		 */
 		if (store.offers[type] === null) return;
 		/*
-		 * AND ONE CARD AT A TIME (review R9b). Both channels can report available in
-		 * one check - the whole point of the aggregate - and the two cards are
-		 * `fixed top-4 right-4 z-50` in a single early-return chain, so opening both
-		 * painted one and QUEUED the other: closing the first revealed the second,
-		 * which is a card the reader never asked for. The exclusivity is the band's own
-		 * (`update-quiet-indicator.tsx`'s `pressSurface`): the surface that gives way
-		 * keeps its OFFER, so it comes back as a band item rather than disappearing.
-		 * The last one this check opened therefore holds the card, which is the same
-		 * "show what the press was about" rule the band follows - and both presses that
-		 * reach the aggregate come from a SERVER panel.
+		 * AND ONE CARD AT A TIME (review R9b) - which is now the store's own rule
+		 * (review R14): `openDetail` closes the other surface as it opens this one, so
+		 * this step, the band's press and the settings button's check all inherit it
+		 * rather than each re-stating it. Both channels can report available in one
+		 * check - the whole point of the aggregate - and the two cards are
+		 * `fixed top-4 right-4 z-50` in a single early-return chain, so two open flags
+		 * painted one card and QUEUED the other. The surface that gives way keeps its
+		 * OFFER, so it comes back as a band item rather than disappearing. The last
+		 * one this check opens holds the card - "show what the press was about", the
+		 * band's rule too.
 		 */
-		for (const other of NOTICE_SURFACES) {
-			if (other !== type) store.closeDetail(other);
-		}
 		store.openDetail(type);
 	}, []);
 

@@ -197,7 +197,6 @@ export const UpdateQuietIndicator: FC = () => {
 	const offers = useUpdateNoticeStore((s) => s.offers);
 	const detailOpen = useUpdateNoticeStore((s) => s.detailOpen);
 	const openDetail = useUpdateNoticeStore((s) => s.openDetail);
-	const closeDetail = useUpdateNoticeStore((s) => s.closeDetail);
 
 	const shown = useMemo(() => {
 		const state = { followed, running, offers, detailOpen };
@@ -207,21 +206,16 @@ export const UpdateQuietIndicator: FC = () => {
 	}, [followed, running, offers, detailOpen]);
 
 	/*
-	 * A press SHOWS WHAT IT PRESSED (review U4). The detail is opened for the
-	 * pressed surface and closed for the other one, so the press always changes
-	 * something on screen: with the app card up, pressing the server item used to
-	 * leave the app card exactly where it was while the item vanished from the band.
-	 * The other surface keeps its offer - closing its detail is what puts it back in
-	 * the band - so nothing is dropped by the switch.
+	 * A press SHOWS WHAT IT PRESSED (review U4). The store's `openDetail` closes the
+	 * other surface's detail as it opens this one (review R14), so the press always
+	 * changes something on screen: with the app card up, pressing the server item
+	 * used to leave the app card exactly where it was while the item vanished from
+	 * the band. The other surface keeps its offer - closing its detail is what puts
+	 * it back in the band - so nothing is dropped by the switch.
 	 */
 	const pressSurface = useCallback(
-		(type: UpdateType) => {
-			for (const other of NOTICE_SURFACES) {
-				if (other !== type) closeDetail(other);
-			}
-			openDetail(type);
-		},
-		[closeDetail, openDetail],
+		(type: UpdateType) => openDetail(type),
+		[openDetail],
 	);
 
 	return <UpdateQuietIndicatorView offers={shown} onOpen={pressSurface} />;
