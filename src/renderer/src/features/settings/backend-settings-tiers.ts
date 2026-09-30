@@ -118,6 +118,7 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"display.time_format": "advanced",
 	"display.dock": "advanced",
 	"display.hide_cross_session": "advanced",
+	"display.turn_answer_rail": "advanced",
 	"tui.sidebar_visible": "advanced",
 	"tui.sidebar_position": "advanced",
 	// keymap (3)
