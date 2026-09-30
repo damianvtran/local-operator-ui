@@ -30,7 +30,10 @@
  * sort spec is applied inside `project-list.tsx`. The Board's own window stays
  * an ADDITIONAL narrowing on top of the filters — `boardVisible` — so the
  * board cannot show a row the search excluded, and its count reports matches
- * within the window rather than ignoring it (U5).
+ * within the window rather than ignoring it (U5), in the window's own words
+ * (`3 of 6 in window`, U10); when a search's matches all fall outside the
+ * window, the no-match block offers the window's recovery beside Clear all
+ * (R1).
  */
 
 import {
@@ -187,7 +190,10 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * count's DENOMINATOR; `boardVisible` is the window applied to the search
 	 * and filter set, which is what the board draws and what the count counts.
 	 * Keeping the two separate is what stops `12 of 74` from describing a
-	 * board that shows three cards.
+	 * board that shows three cards. The count also SAYS it is windowed (U10):
+	 * the denominator is the window's population, so the sentence carries the
+	 * word `window` rather than making a reader infer it from the control
+	 * beside it (the two views can report different totals of one store).
 	 */
 	const boardProjects = useMemo(
 		() => boardWindowProjects(projects, boardWindow, nowMs),
@@ -202,16 +208,20 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	/*
 	 * The toolbar's result line, per view: the List and the Timeline report
 	 * against the whole listing; the Board reports against its WINDOW (U5) —
-	 * "3 of 6 projects" is the only sentence true of a board that draws six
-	 * cards at most — and `null` (no query, no facet) renders nothing at all.
+	 * `3 of 6 in window` is the only sentence true of a board that draws six
+	 * cards at most — and `null` renders nothing at all: no query and no facet
+	 * means there is nothing to count, and a read that has not SUCCEEDED means
+	 * the count is not known (R4: `0 of 0 projects` beside a skeleton, or
+	 * beside an alert, is a number nobody has).
 	 */
 	const matchCount =
 		view === "board" ? boardVisible.length : visibleProjects.length;
-	const resultText = !searchActive
-		? null
-		: view === "board"
-			? `${boardVisible.length} of ${boardProjects.length} projects`
-			: `${visibleProjects.length} of ${projects.length} projects`;
+	const resultText =
+		!searchActive || !list.isSuccess
+			? null
+			: view === "board"
+				? `${boardVisible.length} of ${boardProjects.length} in window`
+				: `${visibleProjects.length} of ${projects.length} projects`;
 	const listReady = list.isSuccess && projects.length > 0;
 	/*
 	 * THE EMPTY-STATE PRECEDENCE, stated once (U5): with a search on and zero
@@ -219,6 +229,14 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * included — and only with no search does an empty window get to name
 	 * itself. Loading and failure render first either way: a skeleton or an
 	 * error is not a search result.
+	 *
+	 * ONE CASE THE PRECEDENCE OWES A RECOVERY (R1): on the Board, zero matches
+	 * WITHIN THE WINDOW under a search is not "nothing matches" — the window is
+	 * what hid them (matches exist outside it: `visibleProjects.length > 0`),
+	 * and Clear all cannot reveal them. That state offers the window's own
+	 * action, `Show all time`, beneath Clear all, reusing the empty-window
+	 * block's recovery path verbatim; the no-match block's own comment below
+	 * states the same precedence in the copy's words.
 	 */
 	const noMatch = listReady && searchActive && matchCount === 0;
 	/*
@@ -325,6 +343,19 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		setQuery("");
 		setFilters(NO_FILTERS);
 	};
+	/*
+	 * THE WINDOW'S OWN RECOVERY, one implementation for its two homes (the
+	 * empty-window block and the board's within-window no-match R1): widen to
+	 * `all` — at both states guaranteed to fill, since every exclusion was the
+	 * window's — persist it like any other window change, and hand the caret
+	 * back to the control the press just changed, because the press unmounts
+	 * the button it came from (the `handBackToWindow` effect above).
+	 */
+	const showAllTime = () => {
+		setBoardWindow("all");
+		writeBoardWindow("all");
+		setHandBackToWindow(true);
+	};
 	const moveTo = (project: DesktopProject, status: string) => {
 		update.mutate(
 			{
@@ -404,7 +435,16 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		 * with a scrolled row restate the sum (24 + the row's own 12).
 		 */
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex shrink-0 flex-col gap-8 px-6 pt-6">
+			{/*
+			 * THE VIEW SWITCHER sits under the header rather than inside it: the
+			 * switcher names the VIEW and the search cluster narrows it, two
+			 * questions one row can carry at rest. The row is also the `@container`
+			 * for U7's count shed below (the header block's content width IS the
+			 * row's width); `data-project-search-row` is the rig's handle for
+			 * measuring that row's height, the same way `data-project-count`
+			 * names the count.
+			 */}
+			<div className="@container flex shrink-0 flex-col gap-8 px-6 pt-6">
 				<PageHeader
 					title="Projects"
 					icon={FolderKanban}
@@ -447,7 +487,10 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				 * than squeezing either.
 				 */}
 				<div className="flex shrink-0 flex-col gap-2">
-					<div className="flex flex-wrap items-center gap-3">
+					<div
+						className="flex flex-wrap items-center gap-3"
+						data-project-search-row=""
+					>
 						<ProjectsViewSwitcher
 							value={view}
 							onChange={(next) => {
@@ -464,6 +507,15 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							onClearAll={clearSearchAndFilters}
 							todayMs={todayMs}
 							resultText={resultText}
+							/* The Board's row carries the window control, so its count waits
+							 * for a wider container than the List/Timeline's (U7's measured
+							 * fit boundaries; the control's default is the narrower one). */
+							countRevealClass={
+								view === "board" ? "@[47rem]:inline" : undefined
+							}
+							/* The failed read closes the Filters door (R2); the field stays
+							 * enabled so the query survives the retry. */
+							disabled={list.isError}
 							searchFieldRef={searchFieldRef}
 							trailing={
 								/*
@@ -594,7 +646,15 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * visible and editable above, this block says what happened and what
 					 * to do — and its subline names the pool v1 actually searches (U5/M3)
 					 * so a reader whose word lives in an update is told why it is not
-					 * found, rather than concluding the project does not exist.
+					 * found, rather than concluding the project does not exist — and it
+					 * names the way back (D4/U8): clearing restores the list, and update
+					 * text is the one field a v1 query does not read.
+					 *
+					 * PRECEDENCE, in the copy's own words: this is "within-window zero
+					 * under a search" on the Board — the matches exist, the WINDOW hid
+					 * them — so the window's recovery joins Clear all as the second
+					 * action (R1). On the List and the Timeline the window is not a
+					 * factor and one action is the honest set.
 					 */
 					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 						<p className="text-heading text-ink">
@@ -604,21 +664,31 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						</p>
 						<p className="max-w-140 text-center text-body-sm text-ink-muted">
 							Searches names, descriptions, tags, owners and teams. Update text
-							will be searchable once server search ships.
+							is not searched yet. Clearing the search and filters restores the
+							list.
 						</p>
-						<Button
-							variant="secondary"
-							onClick={() => {
-								clearSearchAndFilters();
-								/* The field itself never unmounts, so the handoff is direct
-								 * rather than the wait-for-commit kind: by the time the click
-								 * handler returns, the node it focuses is the same node the
-								 * next render shows. */
-								searchFieldRef.current?.focus();
-							}}
-						>
-							Clear all
-						</Button>
+						<div className="flex flex-col items-center gap-2">
+							<Button
+								variant="secondary"
+								onClick={() => {
+									clearSearchAndFilters();
+									/* The field itself never unmounts, so the handoff is direct
+									 * rather than the wait-for-commit kind: by the time the click
+									 * handler returns, the node it focuses is the same node the
+									 * next render shows. */
+									searchFieldRef.current?.focus();
+								}}
+							>
+								Clear all
+							</Button>
+							{view === "board" && visibleProjects.length > 0 && (
+								/* The window, not the search, hid the matches: matches exist
+								 * outside it, and this is the action that reveals them. */
+								<Button variant="secondary" onClick={showAllTime}>
+									Show all time
+								</Button>
+							)}
+						</div>
 					</div>
 				)}
 
@@ -672,21 +742,15 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						 * can narrow a non-empty listing to nothing, which is why the heading
 						 * is null there and this branch cannot render. It mirrors the
 						 * store-empty block's idiom class for class - same container, same
-						 * heading and body steps, one secondary action.
+						 * heading and body steps, one secondary action - and shares its
+						 * action with the board's within-window no-match (R1).
 						 */
 						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 							<p className="text-heading text-ink">{boardWindowHeading}</p>
 							<p className="max-w-140 text-center text-body-sm text-ink-muted">
 								Older projects are hidden by the window.
 							</p>
-							<Button
-								variant="secondary"
-								onClick={() => {
-									setBoardWindow("all");
-									writeBoardWindow("all");
-									setHandBackToWindow(true);
-								}}
-							>
+							<Button variant="secondary" onClick={showAllTime}>
 								Show all time
 							</Button>
 						</div>

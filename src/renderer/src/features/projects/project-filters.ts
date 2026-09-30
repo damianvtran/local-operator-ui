@@ -117,10 +117,30 @@ export const FACET_LABELS: Record<FilterFacetKey, string> = {
 };
 
 /**
+ * WHICH FACETS ENUMERATE A FIXED VOCABULARY, set once for both surfaces (D5,
+ * adjudicated): Status, Progress, Target, Estimate, Milestones and Live ALWAYS
+ * render their FULL option set — counts included, zeros included — because the
+ * vocabulary is the model's, and a reader must be able to discover an option
+ * the current data happens to have none of ("Overdue" is a thing one can ask
+ * for even in a week where nothing is). The present-derived facets (Team,
+ * Owner, Tags) stay present-only: their options ARE the data, and an option
+ * with nothing behind it is noise rather than vocabulary. The design note is
+ * amended to this rule; `facetOptions` is the one place it is applied.
+ */
+export const FIXED_VOCABULARY_FACETS: ReadonlySet<FilterFacetKey> = new Set([
+	"status",
+	"progress",
+	"target",
+	"estimate",
+	"milestones",
+	"live",
+]);
+
+/**
  * The token facets' option order. These are FIXED vocabularies, so the option
- * list is the vocabulary filtered to what is present (plus anything selected),
- * never derived from the data's own order — a popover whose Progress section
- * reorders itself as rows change is unreadable.
+ * list is the vocabulary itself in the canonical order (D5), never derived
+ * from the data's own order — a popover whose Progress section reorders
+ * itself as rows change is unreadable.
  */
 const TOKEN_OPTION_ORDER: {
 	progress: ProgressFilterValue[];
@@ -196,15 +216,18 @@ export function isFilterFacetActive(
 	return state[facet].length > 0;
 }
 
-/** Whether any facet is selected — the chips row's and the Filters badge's own condition. */
+/** Whether any facet carries a selection. */
 export function isFilterEmpty(state: FilterState): boolean {
 	return FACET_ORDER.every((facet) => !isFilterFacetActive(state, facet));
 }
 
-/** How many facets carry a selection; the Filters badge shows it. */
-export function activeFacetCount(state: FilterState): number {
-	return FACET_ORDER.filter((facet) => isFilterFacetActive(state, facet))
-		.length;
+/**
+ * How many OPTIONS are selected across every facet; the Filters badge shows
+ * it (U9: counting FACETS read "1" with two options on — `Status · Active +1`
+ * beside a badge of 1 says nothing about which one narrows).
+ */
+export function activeSelectionCount(state: FilterState): number {
+	return FACET_ORDER.reduce((total, facet) => total + state[facet].length, 0);
 }
 
 /** The state with one facet's selection emptied. Others are untouched. */
@@ -385,22 +408,24 @@ function candidateValues(
 	const selected = state[facet] as FilterOptionValue[];
 	switch (facet) {
 		case "status": {
+			/*
+			 * The FULL model vocabulary always (D5), then any status a newer
+			 * backend wrote that this build has never heard of, then any selected
+			 * value the population no longer carries. Known statuses keep the
+			 * model's order; unknown words sort after them (the vocabulary's tail
+			 * is open).
+			 */
 			const present = new Set(population.map((project) => project.status));
-			const known = PROJECT_STATUS_ORDER.filter((status) =>
-				present.has(status),
-			);
 			const unknown = [...present]
-				.filter((status) => !known.includes(status))
+				.filter((status) => !PROJECT_STATUS_ORDER.includes(status))
 				.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 			const extra = selected.filter(
 				(status): status is string =>
 					typeof status === "string" &&
-					!known.includes(status) &&
+					!PROJECT_STATUS_ORDER.includes(status) &&
 					!unknown.includes(status),
 			);
-			// Known statuses keep the model's order; a status this build has
-			// never heard of sorts after them (the vocabulary is open).
-			return [...known, ...unknown, ...extra];
+			return [...PROJECT_STATUS_ORDER, ...unknown, ...extra];
 		}
 		case "team": {
 			const named = new Set<string>();
@@ -451,16 +476,22 @@ function candidateValues(
 		case "estimate":
 		case "milestones":
 		case "live":
-			// The fixed vocabularies: enumerate everything, and the count pass
-			// below drops what nothing matches (unless it is selected).
+			// The fixed vocabularies: enumerate everything; the count pass below
+			// keeps every one of them (D5), zero counts included.
 			return TOKEN_OPTION_ORDER[facet] as FilterOptionValue[];
 	}
 }
 
 /**
  * One facet's section: its options in canonical order, each with the count it
- * would admit and whether it is currently selected. An option that would admit
- * nothing is dropped unless it is selected (see `candidateValues`).
+ * would admit and whether it is currently selected.
+ *
+ * THE ZERO-COUNT RULE (D5, adjudicated, and the one place it lives): a
+ * FIXED-VOCABULARY facet renders every option its model knows, zero counts
+ * included — the vocabulary must not depend on the current data. A
+ * PRESENT-DERIVED facet drops what nothing matches, unless it is selected: a
+ * selected value stays visible (and removable) even when the population no
+ * longer contains it (see `candidateValues`).
  */
 export function facetOptions(
 	facet: FilterFacetKey,
@@ -470,6 +501,7 @@ export function facetOptions(
 	query: string,
 ): ProjectFacetSection {
 	const population = facetPopulation(facet, rows, state, todayMs, query);
+	const fixedVocabulary = FIXED_VOCABULARY_FACETS.has(facet);
 	const options: ProjectFacetOption[] = [];
 	for (const value of candidateValues(facet, population, state)) {
 		const selected = (state[facet] as FilterOptionValue[]).includes(value);
@@ -478,7 +510,7 @@ export function facetOptions(
 				total + (matchesFacetValue(facet, project, value, todayMs) ? 1 : 0),
 			0,
 		);
-		if (count === 0 && !selected) continue;
+		if (!fixedVocabulary && count === 0 && !selected) continue;
 		options.push({
 			value,
 			label: filterOptionLabel(facet, value),

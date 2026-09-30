@@ -54,7 +54,7 @@ import {
 	PopoverTrigger,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import type { FC, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRef, useState } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
@@ -81,7 +81,10 @@ import {
 	type SortSpec,
 	sortProjects,
 } from "../project-sort";
-import { ProjectFiltersPanel } from "./project-filters-panel";
+import {
+	FilterPopoverScroll,
+	ProjectFiltersPanel,
+} from "./project-filters-panel";
 import { ProjectStatusBadge } from "./project-status-badge";
 
 type ProjectListProps = {
@@ -196,6 +199,16 @@ function progressCellText(project: DesktopProject, nowMs: number): string {
  * it draws — a reader hearing "Target, sort descending, descending" has been
  * told twice. Size 10 is measured, not chosen: label 48 + gap 4 + glyph 10 is
  * the 62px that fits the tightest column (Estimate, 64px).
+ *
+ * THE RESTING GLYPH IS PART OF THE CONTRACT (design round 1, D1): a sortable
+ * column that is NOT sorted draws the neutral double chevron, because without
+ * it the strip is visually identical to a plain caption and per-column sorting
+ * is discoverable only by sweeping the pointer across it. This mirrors
+ * `chat/pickers/panels/primitives/data-table.tsx`'s `SortHeaderButton`, whose
+ * shape rule is "a single chevron in the active direction, a neutral double
+ * chevron otherwise", and it is where that file's hover step lands too: the
+ * neutral glyph rests at `text-ink-dim` and steps to `text-ink` with the
+ * button's own hover (the `group` class is the hook for exactly that).
  */
 const SortGlyph: FC<{ direction: SortDirection }> = ({ direction }) =>
 	direction === "asc" ? (
@@ -312,34 +325,44 @@ export const ProjectList: FC<ProjectListProps> = ({
 												onFocus={() => setActiveHeader(index)}
 												onKeyDown={onHeaderKeyDown(index)}
 												className={cn(
-													"flex w-full min-w-0 items-center gap-1 rounded-xs text-left",
+													"group flex w-full min-w-0 items-center gap-1 rounded-xs text-left",
 													"transition-colors duration-fast ease-out-quart",
 													active ? "text-ink" : "hover:text-ink",
 												)}
 											>
 												<span className="truncate">{column.label}</span>
-												{active && <SortGlyph direction={sort.direction} />}
+												{active ? (
+													<SortGlyph direction={sort.direction} />
+												) : (
+													<ChevronsUpDown
+														size={10}
+														className="shrink-0 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink"
+														aria-hidden="true"
+													/>
+												)}
 											</button>
 										</PopoverTrigger>
 										<PopoverContent
 											align="start"
 											aria-label={`${column.label} column`}
-											className="max-h-[min(70vh,32rem)] w-72 overflow-y-auto overscroll-contain p-0"
+											className="w-72 p-0"
 										>
-											<ProjectFiltersPanel
-												projects={allProjects}
-												state={filters}
-												query={query}
-												todayMs={todayMs}
-												onToggle={onToggleFilter}
-												onClearAll={onClearFilters}
-												scope={column.facet}
-												sort={{
-													key: column.sort,
-													spec: sort,
-													onChange: onSortChange,
-												}}
-											/>
+											<FilterPopoverScroll>
+												<ProjectFiltersPanel
+													projects={allProjects}
+													state={filters}
+													query={query}
+													todayMs={todayMs}
+													onToggle={onToggleFilter}
+													onClearAll={onClearFilters}
+													scope={column.facet}
+													sort={{
+														key: column.sort,
+														spec: sort,
+														onChange: onSortChange,
+													}}
+												/>
+											</FilterPopoverScroll>
 										</PopoverContent>
 									</Popover>
 								</th>
