@@ -42,9 +42,18 @@ import { MOCK_KEYCHAIN_SWITCH } from "../../../../scripts/chrome-keychain.mjs";
 
 import { fileURLToPath } from "node:url";
 
-/** The rig's own directory; the checkout it drives is the one it is run from. */
+/**
+ * The rig's own directory, and the checkout it drives: FOUR levels up, because
+ * this file lives at `docs/evidence/chat-device-live/harness/`. It read three
+ * while the rig was written at `docs/evidence/chat-device-live/` and the move
+ * into `harness/` did not lengthen the walk, so `WT` resolved to `docs/` and
+ * every run died on `docs/node_modules/electron`. The round-3 re-shoot (QA Q3-2)
+ * is the first run to take this path; the frames the set shipped were taken
+ * before the move, by the rig at its old depth. Lengthening the walk is what
+ * makes the committed rig runnable again.
+ */
 const RIG = dirname(fileURLToPath(import.meta.url));
-const WT = resolve(RIG, "../../..");
+const WT = resolve(RIG, "../../../..");
 /*
  * RUN ARTIFACTS GO TO SCRATCH, never into the committed tree: `wire.jsonl`,
  * `report.json`, the app's own profile and the two frames are this run's, and a
@@ -313,6 +322,17 @@ async function main() {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		LOCAL_OPERATOR_UI_TELEMETRY: "off",
 		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+		/*
+		 * THE MANAGER STAYS DISABLED, and the day this guard was added is the receipt:
+		 * a run of this rig whose endpoint never started (a stale spawn path in a
+		 * copy) had the app's own Backend Service Manager probe its default port and
+		 * SPAWN a real backend from the operator's Application Support install, which
+		 * then served the operator's real sessions into a rig that promises a fixture
+		 * world. The spawn env is the one place this is interceptable at runtime
+		 * (`src/main/backend/config.ts` reads `process.env`), and with the plane
+		 * answering from `server.mjs` the manager has nothing to do anyway.
+		 */
+		VITE_DISABLE_BACKEND_MANAGER: "true",
 		TERM: "xterm-256color",
 		LANG: "en_US.UTF-8",
 	};
