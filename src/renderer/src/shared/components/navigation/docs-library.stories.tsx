@@ -683,7 +683,7 @@ const AppShell: FC<{
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: rightPane === "run",
-			runPanelWidth,
+			rightSlotWidth: runPanelWidth,
 		});
 		return () => {
 			useUiPreferencesStore.setState({ isRunPanelOpen: false });
@@ -1026,12 +1026,12 @@ const SubagentsScene = () => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: true,
-			runPanelWidth: 480,
+			rightSlotWidth: 480,
 		});
 		return () => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: false,
-				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+				rightSlotWidth: 0,
 			});
 		};
 	}, []);

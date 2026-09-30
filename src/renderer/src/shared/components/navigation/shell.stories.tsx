@@ -20,8 +20,6 @@ import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
-	DEFAULT_CANVAS_WIDTH,
-	DEFAULT_RUN_PANEL_WIDTH,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -749,7 +747,7 @@ export const ChatDockFiles: Story = {
 			 */
 			useUiPreferencesStore.setState({
 				isCanvasOpen: true,
-				canvasWidth: DEFAULT_CANVAS_WIDTH,
+				rightSlotWidth: 0,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isCanvasOpen: false });
@@ -784,7 +782,7 @@ export const ChatDockRunPanel: Story = {
 		useLayoutEffect(() => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
-				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+				rightSlotWidth: 0,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isRunPanelOpen: false });
