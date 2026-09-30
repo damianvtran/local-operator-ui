@@ -2900,6 +2900,13 @@ const BRANCH_RECORDS = [
 	 * copy of the manifest would drop it, and with it the only statement of which
 	 * fixes these frames carry. It spells its identity as bare SHAs too, so it adds
 	 * no name to the quoting ledger.
+	 *
+	 * AND EXTENDED BY THE ROUND-2 REMEDIATION, which re-captured the set whole again
+	 * (58 frames, 29 states, four added - the shared-opener pair and the three-level
+	 * stack), narrowed once to re-take the replaced `scopes-nested` fixture, and
+	 * corrected this note's own 34-finding breakdown (24 + 3 + 7, not 29 + 5). Same
+	 * key, same list entry: the record grows where it stands rather than growing a
+	 * second key a later fold would have to be told about.
 	 */
 	"meshCanvasRedesignRestampNote",
 	"meshCanvasRedesignFoldNote",
