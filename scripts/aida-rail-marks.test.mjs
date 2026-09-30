@@ -702,6 +702,17 @@ const code = (path) =>
 
 const NAV =
 	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx";
+/**
+ * The bordered mark's own other hosts, named here so the claim the test below makes
+ * about them is FALSIFIABLE rather than prose (review round 1, F4): the comment said
+ * they "still wear" the bordered mark while nothing read them. Each is asserted by
+ * matching the `variant="attention"` pass in the file that renders it.
+ */
+const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
+const URL_BAR =
+	"src/renderer/src/features/browser/components/browser-url-bar.tsx";
+const APPROVALS_DOCK =
+	"src/renderer/src/features/browser/components/browser-approvals-dock.tsx";
 const BADGE = "src/renderer/src/shared/components/ui/badge.tsx";
 const MISSED = "src/renderer/src/features/aida/use-aida-missed-messages.ts";
 const WORKING = "src/renderer/src/features/aida/use-aida-working.ts";
@@ -783,6 +794,22 @@ test("the rail draws the quiet register, and the bordered mark is left where the
 		/attention:\s*"border-ink-muted bg-warning-wash text-ink"/,
 		"the attention variant still carries its edge and its wash",
 	);
+	/*
+	 * ...AND SO DO ITS HOSTS. The variant existing is not the same claim as the
+	 * hosts still asking for it: an edit that moved one of these three to
+	 * `attentionQuiet` would leave the primitive pin green and the screen wrong.
+	 */
+	for (const [path, what] of [
+		[HEADER, "the chat header's globe"],
+		[URL_BAR, "the browser route's URL bar"],
+		[APPROVALS_DOCK, "the browser approvals dock"],
+	]) {
+		assert.match(
+			code(path),
+			/variant="attention"/,
+			`${what} still passes the bordered mark`,
+		);
+	}
 });
 
 test("zero draws no mark of either kind, and the name states one only when it is drawn", () => {

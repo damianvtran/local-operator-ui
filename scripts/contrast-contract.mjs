@@ -1128,13 +1128,18 @@ const CONTROLS = [
 		 *
 		 * THE EDGE IS DECLARED AWAY, and the declaration is honest rather than a
 		 * convenience: the mark provably cannot carry one across every palette.
-		 * Its `elevated` fill steps ΔE00 2.02 off `surface` (the rail's own ground,
-		 * so the step the user actually sees) and 2.5 off `surface` in the light
-		 * palette, but 0.47 off `rowSelected` and 0.00 off `rowHover` at worst — so
-		 * on a hovered or current row it merges into the ground entirely, and no
-		 * single role fixes that at both ends (over the four grounds `elevated`
-		 * spans 0.00-11.64, `sunken` 0.44-14.88, the wash family 0.87-2.27 on the
-		 * deep rows). What keeps the count legible is the numeral's own floor above;
+		 * Its `elevated` fill steps ΔE00 3.29 off `surface` in the dark brand
+		 * palette and 2.50 in the light — the ground the user actually sees — and 2.02
+		 * at worst over the fifty-nine (arcade), but it falls to 0.47 off `rowSelected`
+		 * (duskfox) and 0.00 off `rowHover` (arcade): on a hovered or current row it can
+		 * merge into the ground entirely, and no single role fixes that at both ends
+		 * (over the four grounds `elevated` spans 0.00-11.64, `sunken` 0.44-14.88). The
+		 * old mark's own `warningWash` was not exempt either: its per-ground minima span
+		 * 0.87-2.27 across the fifty-nine, and the wash family as a whole runs
+		 * 0.53-25.83 — so a wash does not fix the deep rows either. (Scope note, review
+		 * round 1 F1: the narrower 0.87-2.27 belongs to `warningWash` alone, per ground,
+		 * and to the wash family only when read as its per-(wash, ground) minima,
+		 * 0.53-2.69; the family's whole span is 0.53-25.83.) What keeps the count legible is the numeral's own floor above;
 		 * what keeps it a MARK rather than plain label text is that a quiet row
 		 * draws nothing at all. The step is therefore a cue on the plain grounds and
 		 * absent on the deep ones, which is the same deal the sidebar's count lines
@@ -1143,10 +1148,11 @@ const CONTROLS = [
 		 * on purpose.
 		 *
 		 * NOT AS CONTRASTED AS WHAT IT REPLACES, stated as the two steps the
-		 * operator compared: the old bordered mark's wash stepped ΔE00 5.22 off
-		 * `surface` in the dark palette and 5.44 in the light; this one steps 2.02
-		 * and 2.5. Same ground, roughly half the separation — the "slightly
-		 * contrasted but not as contrasted" the report asked for.
+		 * operator compared — in the brand palettes, which is where that comparison was
+		 * made: the old bordered mark's `warningWash` stepped ΔE00 5.22 off `surface` in
+		 * the dark palette and 5.44 in the light; this one steps 3.29 and 2.50 (2.02 at
+		 * worst over the fifty-nine). Same ground, roughly half the separation — the
+		 * "slightly contrasted but not as contrasted" the report asked for.
 		 */
 		name: "rail approval badge (quiet)",
 		on: ["canvas", "surface", "rowSelected", "rowHover"],

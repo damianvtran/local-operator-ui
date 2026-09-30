@@ -16643,6 +16643,13 @@ async function sceneApprovalBadges(cdp) {
 	 * audit. Same function, both slots.
 	 */
 	const reading = (label, ok, text) => check(label, ok, text, text);
+	/*
+	 * The count staged for the three-digit state below. 128 is the smallest three-digit
+	 * number that is not a round one, so a frame that renders it cannot be mistaken for
+	 * a placeholder or a capped "99+", and it is well past the consent queue's own cap
+	 * of 16 - which is what makes the state one only the seam can produce.
+	 */
+	const THREE_DIGIT_COUNT = 128;
 	const hello = await verb(cdp, "hello");
 	reading(
 		"the renderer reports this run's frames directory",
@@ -16677,15 +16684,35 @@ async function sceneApprovalBadges(cdp) {
 		 */
 		let conversation = null;
 		if (BACKEND) {
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-all-chats"]',
-			});
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-session-row"]',
-			});
-			const live = await verb(cdp, "state");
-			conversation = live.activeSessionId ?? null;
-			note("state (chat, conversation open)", JSON.stringify(live));
+			/*
+			 * THE PRESS IS GUARDED, the way the scene's own newer call sites guard it
+			 * (`Boolean(document.querySelector(...))` at :26152 and `visible(...)` at
+			 * :30728): `[data-tour-tag="chat-all-chats"]` has no home in `src/` at this
+			 * head, so an unguarded press threw `nothing matches ... after 10000ms` and
+			 * took the whole `--backend` half - and every claim after it - down with it
+			 * (QA round 1, Q4). The header half is still the backend's to provide
+			 * (`session_catalogue`); a run whose catalogue renders no such row now says
+			 * so and carries on to the rail half, which is this scene's subject.
+			 */
+			const allChats = await cdp.evaluate(
+				`Boolean(document.querySelector('[data-tour-tag="chat-all-chats"]'))`,
+			);
+			if (allChats) {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="chat-all-chats"]',
+				});
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="chat-session-row"]',
+				});
+				const live = await verb(cdp, "state");
+				conversation = live.activeSessionId ?? null;
+				note("state (chat, conversation open)", JSON.stringify(live));
+			} else {
+				note(
+					"no conversation row",
+					"the catalogue rendered no chat-all-chats row, so the header half is not reachable in this run; the rail half is asserted below",
+				);
+			}
 		} else {
 			note(
 				"no conversation",
@@ -16966,7 +16993,8 @@ async function sceneApprovalBadges(cdp) {
 			"the collapsed rail is 56px and the badge stays inside it",
 			collapsed.railWidth === 56 &&
 				collapsed.railBadge !== null &&
-				collapsed.railBadge.right <= 56 &&
+				collapsed.railEdge !== null &&
+				collapsed.railBadge.right <= collapsed.railEdge - 1 &&
 				collapsed.railBadge.x >= 0,
 			JSON.stringify({ rail: collapsed.railWidth, badge: collapsed.railBadge }),
 		);
@@ -16979,7 +17007,8 @@ async function sceneApprovalBadges(cdp) {
 			"the collapsed row is still a 30px row inside the 56px rail",
 			collapsed.railButton.height === 30 &&
 				collapsed.railButton.x >= 0 &&
-				collapsed.railButton.right <= 56,
+				collapsed.railEdge !== null &&
+				collapsed.railButton.right <= collapsed.railEdge - 1,
 			JSON.stringify(collapsed.railButton),
 		);
 		/*
@@ -17130,17 +17159,21 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify(crowdedCollapsed.railBadgeStyle),
 		);
 		reading(
-			"the numeral is the count family's: 11px, weight 400, muted ink",
+			"the numeral is the count family's: 11px, weight 400, ink-dim on elevated",
 			crowdedCollapsed.railBadgeStyle !== null &&
 				crowdedCollapsed.railBadgeStyle.fontSize === "11px" &&
 				crowdedCollapsed.railBadgeStyle.fontWeight === "400" &&
-				crowdedCollapsed.railBadgeStyle.color.length > 0 &&
-				crowdedCollapsed.railBadgeStyle.backgroundColor !== "rgba(0, 0, 0, 0)",
+				crowdedCollapsed.railBadgeStyle.color ===
+					crowdedCollapsed.railInkDimRgb &&
+				crowdedCollapsed.railBadgeStyle.backgroundColor ===
+					crowdedCollapsed.railElevatedRgb,
 			JSON.stringify({
 				fontSize: crowdedCollapsed.railBadgeStyle?.fontSize ?? null,
 				fontWeight: crowdedCollapsed.railBadgeStyle?.fontWeight ?? null,
 				color: crowdedCollapsed.railBadgeStyle?.color ?? null,
+				inkDim: crowdedCollapsed.railInkDimRgb,
 				background: crowdedCollapsed.railBadgeStyle?.backgroundColor ?? null,
+				elevated: crowdedCollapsed.railElevatedRgb,
 			}),
 		);
 		reading(
@@ -17211,6 +17244,42 @@ async function sceneApprovalBadges(cdp) {
 			);
 			await captureSettled(cdp, `approval-badges-cleared-${suffix}`);
 		}
+
+		/*
+		 * 6. THREE DIGITS, the third state the operator asked to see and the one the
+		 * queue itself cannot reach: the consent queue caps at 16, so no live run draws
+		 * a three-digit count on this mark. It is staged through the armed dev driver's
+		 * `stageLiveConsents` verb - pending REQUESTS published through the store's own
+		 * path, granting and deciding nothing - so the numeral, the mark's geometry and
+		 * the row's accessible name are all the shipped code, on a synthetic input.
+		 * DISCLOSED AS THE SEAM: this is the only state in this scene that a real run
+		 * does not produce, and it is why the verb exists (QA round 1, Q1: the verb had
+		 * no caller, so the README claimed a three-digit frame the instrument could not
+		 * reach).
+		 *
+		 * THE THEME ENDS QUIET AGAIN. The staged snapshot is replaced by a zero-count
+		 * one, because the next theme's first claim is that nothing pending draws
+		 * nothing - made about a quiet rail, not about the leak from this step.
+		 */
+		await verb(cdp, "stageLiveConsents", { count: THREE_DIGIT_COUNT });
+		await waitForBadge(cdp, THREE_DIGIT_COUNT);
+		const threeDigits = await readApprovalBadges(cdp);
+		note("badges (three digits, staged)", JSON.stringify(threeDigits));
+		reading(
+			"a three-digit count renders, uncapped, inside the rail's edge",
+			threeDigits.railBadgeText === String(THREE_DIGIT_COUNT) &&
+				threeDigits.railBadge !== null &&
+				threeDigits.railEdge !== null &&
+				threeDigits.railBadge.right <= threeDigits.railEdge - 1,
+			JSON.stringify({
+				text: threeDigits.railBadgeText,
+				badge: threeDigits.railBadge,
+				railEdge: threeDigits.railEdge,
+			}),
+		);
+		await captureSettled(cdp, `approval-badges-three-digits-${suffix}`);
+		await verb(cdp, "stageLiveConsents", { count: 0 });
+		await waitForBadge(cdp, 0);
 	}
 }
 
@@ -17224,6 +17293,18 @@ async function sceneApprovalBadges(cdp) {
  */
 function readApprovalBadges(cdp) {
 	return cdp.evaluate(`(() => {
+		/*
+		 * The resolved ROLE values, so the paint assertions below compare the mark's
+		 * computed colour against the token it is supposed to wear rather than against
+		 * "some non-empty colour" (review round 1, F3): a regression to text-ink or to a
+		 * transparent background has to FAIL, not pass on a length check.
+		 */
+		const hexToRgb = (hex) => {
+			const c = hex.trim().replace('#', '');
+			if (c.length !== 6) return null;
+			return 'rgb(' + [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(', ') + ')';
+		};
+		const rootStyle = getComputedStyle(document.documentElement);
 		const box = (el) => {
 			if (!el) return null;
 			const r = el.getBoundingClientRect();
@@ -17281,6 +17362,8 @@ function readApprovalBadges(cdp) {
 			),
 			railBadge: box(railBadge),
 			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
+			railInkDimRgb: hexToRgb(rootStyle.getPropertyValue('--lo-ink-dim')),
+			railElevatedRgb: hexToRgb(rootStyle.getPropertyValue('--lo-elevated')),
 			/*
 			 * THE MARK'S OWN PAINT (operator restyle, 2026-09-30), read from the
 			 * computed style rather than from the class string: a class is a claim
