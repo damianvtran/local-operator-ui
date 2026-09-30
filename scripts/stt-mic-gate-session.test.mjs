@@ -74,6 +74,13 @@ const bundle = await build({
 					speechBlock: probe.speechBlock,
 					accountRead: account.accountRead,
 				};
+				/*
+				 * THE FIRST PUBLISH, kept aside before any wait can miss it: the
+				 * cold-mount window design round 2's D6 is about is one render wide,
+				 * and a case that waits for the settled state reads past it. Cleared
+				 * by the case that wants it.
+				 */
+				globalThis.__speechProbeFirst ??= globalThis.__speechProbe;
 				return null;
 			};
 
@@ -429,6 +436,15 @@ const bridge = {
 	radientCalls: 0,
 	holdAccount: false,
 	/*
+	 * The capabilities read's own switches (design round 2, D6).
+	 * `holdCapabilities` never answers the negotiation — the cold-mount window
+	 * held stable, in which the account read is disabled and nothing has asked.
+	 * `capabilitiesFail` answers it with a failure: the check that could not be
+	 * made.
+	 */
+	holdCapabilities: false,
+	capabilitiesFail: false,
+	/*
 	 * Whether this rig's backend advertises the `radient` capability. False is
 	 * an OLDER BACKEND: `useRadientUserQuery`'s feature gate then DISABLES the
 	 * account read, so it never answers and `accountRead` lands on "signed-out"
@@ -442,6 +458,16 @@ globalThis.window.api = {
 	desktop: {
 		request: async (request) => {
 			if (request?.op === "capabilities") {
+				if (bridge.holdCapabilities) {
+					/* A negotiation that never answers: the cold-mount window, held. */
+					return new Promise(() => {});
+				}
+				if (bridge.capabilitiesFail) {
+					return {
+						status: 503,
+						body: { detail: "rig: the capabilities read did not answer" },
+					};
+				}
 				return {
 					status: 200,
 					body: {
@@ -545,6 +571,8 @@ async function mountProbeRig(state) {
 	bridge.credentialsCalls = 0;
 	bridge.radientCalls = 0;
 	bridge.holdAccount = state.holdAccount ?? false;
+	bridge.holdCapabilities = state.holdCapabilities ?? false;
+	bridge.capabilitiesFail = state.capabilitiesFail ?? false;
 	bridge.backendRadient = state.backendRadient ?? true;
 	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
@@ -565,6 +593,8 @@ async function mountControlsRig(state) {
 	bridge.credentialsCalls = 0;
 	bridge.radientCalls = 0;
 	bridge.holdAccount = state.holdAccount ?? false;
+	bridge.holdCapabilities = state.holdCapabilities ?? false;
+	bridge.capabilitiesFail = state.capabilitiesFail ?? false;
 	bridge.backendRadient = state.backendRadient ?? true;
 	healthFails = state.healthFails ?? false;
 	const client = clientForRig();
@@ -691,10 +721,14 @@ test("a legacy key alone still satisfies the capability when no session is store
 test("neither a session nor a key is the disabled state, and its reason is the sign-in one", async () => {
 	await mountProbeRig({ account: "signed-out", keys: [] });
 	// The file probe ANSWERED (an empty list is an answer, not a failure): wait
-	// for that settlement rather than for a sibling query's timing.
+	// for that settlement — and for the block itself, because the capabilities
+	// read's own pending window renders `checking` ahead of this state (design
+	// round 2, D6).
 	await until(
-		() => globalThis.__speechProbe?.isUnavailable === false,
-		"the file probe to settle with an answer",
+		() =>
+			globalThis.__speechProbe?.isUnavailable === false &&
+			globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the file probe to settle with an answer and the block to read the sign-in class",
 	);
 	assert.equal(
 		globalThis.__speechProbe.canUseRadientSpeech,
@@ -715,8 +749,10 @@ test("a dead file probe keeps speech off, and the block still follows the accoun
 		credentialsFail: true,
 	});
 	await until(
-		() => globalThis.__speechProbe?.isUnavailable === true,
-		"the file probe to fail",
+		() =>
+			globalThis.__speechProbe?.isUnavailable === true &&
+			globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the file probe to fail and the block to read the account's answered class",
 	);
 	assert.equal(
 		globalThis.__speechProbe.canUseRadientSpeech,
@@ -852,11 +888,13 @@ test("before anything has answered, the reason is the check itself (UX round 1, 
 	});
 	/*
 	 * The wait targets `checking` rather than "whatever the first published
-	 * block is": there is one render between mount and the read going in
-	 * flight where the query has not fetched yet and the block still reads the
+	 * block is": there used to be one render between mount and the read going
+	 * in flight where the query had not fetched yet and the block read the
 	 * account's SILENCE as its answer (measured: that first publish was
 	 * `sign-in`, and a case that took it failed for a state it was never
-	 * testing). The held read keeps `checking` stable once it starts.
+	 * testing). Design round 2's D6 made that window read `checking` — it is
+	 * the capabilities read's own pending window now — and the held read keeps
+	 * `checking` stable once it starts.
 	 */
 	const block = await until(
 		() =>
@@ -943,6 +981,86 @@ test("a backend with no Radient feature reads as an unfixable check, never a sig
 		speechButton(container).hasAttribute("disabled"),
 		true,
 		"nothing on this backend can serve the request, so the control stays off",
+	);
+	await openTooltip(
+		speechButton(container).parentElement,
+		"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
+	);
+});
+
+test("a pending feature negotiation reads as the check itself, never a sign-in (design round 2, D6)", async () => {
+	/*
+	 * THE COLD-MOUNT WINDOW, HELD STABLE. The account read is DISABLED until
+	 * the capabilities read answers, so on a cold mount nothing has asked — and
+	 * the block used to read that silence as an account answer: `sign-in` for a
+	 * signed-in reader, one render wide (D6's evidence). With the negotiation
+	 * held it never answers, so the window is the whole state.
+	 */
+	globalThis.__speechProbe = undefined;
+	globalThis.__speechProbeFirst = undefined;
+	const { container } = await mountControlsRig({
+		account: "signed-in",
+		keys: [],
+		holdCapabilities: true,
+	});
+	/*
+	 * THE FIRST PUBLISH, not the settled state: the window D6 is about is one
+	 * render wide and a wait reads past it, and the held negotiation keeps it
+	 * the only render there is.
+	 */
+	const first = await until(
+		() => globalThis.__speechProbeFirst,
+		"the probe's first published reading",
+	);
+	assert.notEqual(
+		first.speechBlock,
+		"sign-in",
+		"the first publish of a cold mount must not be a sign-in sentence: nothing has answered yet (D6)",
+	);
+	assert.equal(
+		first.speechBlock,
+		"checking",
+		"the first reason is the check itself",
+	);
+	const block = await until(
+		() =>
+			globalThis.__speechProbe?.speechBlock === "checking" ? "checking" : null,
+		"the held negotiation to keep reading as the check",
+	);
+	assert.equal(block, "checking");
+	assert.equal(
+		speechButton(container).hasAttribute("disabled"),
+		true,
+		"nothing has answered, so the control is off",
+	);
+});
+
+test("a failed feature negotiation reads as a check that could not be made (design round 2, D6)", async () => {
+	/*
+	 * The negotiation ERRORS (`retry: false`; it re-asks on the renegotiation
+	 * cadence): the account read was never enabled, so its silence is not an
+	 * account answer — the sign-in remedy belongs to an ANSWERED read (D1/D6),
+	 * and this window is the check that could not be made.
+	 */
+	const { container } = await mountControlsRig({
+		account: "signed-in",
+		keys: [],
+		capabilitiesFail: true,
+	});
+	await until(
+		() =>
+			globalThis.__speechProbe?.speechBlock === "could-not-check" ? true : null,
+		"the failed negotiation to classify as a check that could not be made",
+	);
+	assert.notEqual(
+		globalThis.__speechProbe.speechBlock,
+		"sign-in",
+		"a negotiation that failed never ANSWERED the account read; its silence must not become the sign-in sentence (D6)",
+	);
+	assert.equal(
+		speechButton(container).hasAttribute("disabled"),
+		true,
+		"nothing on this machine can answer, so the control stays off",
 	);
 	await openTooltip(
 		speechButton(container).parentElement,
@@ -1054,6 +1172,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: false,
 			accountRead: "ready",
 			accountUnavailable: false,
+			capabilitiesState: "answered",
 		}),
 		"offline",
 		"a down server is stated first, whoever the reader is",
@@ -1063,6 +1182,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: false,
 			accountRead: "checking",
 			accountUnavailable: false,
+			capabilitiesState: "answered",
 		}),
 		"offline",
 		"and it outranks an in-flight read, which cannot answer while the server holds it back",
@@ -1072,6 +1192,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: true,
 			accountRead: "checking",
 			accountUnavailable: false,
+			capabilitiesState: "answered",
 		}),
 		"checking",
 		"an in-flight read is the check itself, never the offline sentence (U2)",
@@ -1081,22 +1202,24 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: true,
 			accountRead: "checking",
 			accountUnavailable: true,
+			capabilitiesState: "answered",
 		}),
 		"could-not-check",
-		"a backend that cannot serve Radient will never leave checking: that is not something to wait out",
+		"kept as a totality case: on the older backend the class settles on `signed-out`, not `checking` (QA round 1), but either way the silence is not something to wait out",
 	);
 	/*
 	 * THE OLDER BACKEND'S REAL SHAPE (QA round 1, Q1). The feature gate DISABLES
 	 * the read, so React Query reports no data and no error and the class lands
 	 * on "signed-out" with no answer behind it — which the first cut read as a
-	 * sign-in. The unavailable reading is consulted first for exactly this arm,
-	 * and this is the assertion that keeps it reachable.
+	 * sign-in. The unavailable reading is consulted ahead of the answer classes
+	 * for exactly this arm, and this is the assertion that keeps it reachable.
 	 */
 	assert.equal(
 		radientSpeechBlock({
 			serverOnline: true,
 			accountRead: "signed-out",
 			accountUnavailable: true,
+			capabilitiesState: "answered",
 		}),
 		"could-not-check",
 		"a backend with no Radient feature never ANSWERED the read; its silence must not become the sign-in sentence (Q1)",
@@ -1106,9 +1229,37 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: true,
 			accountRead: "refused",
 			accountUnavailable: true,
+			capabilitiesState: "answered",
 		}),
 		"could-not-check",
 		"and the unavailable reading outranks the answer classes: a backend that cannot serve Radient has no answer to give",
+	);
+	/*
+	 * THE NEGOTIATION'S OWN SILENCE (design round 2, D6). Until the capabilities
+	 * read answers, the account read is DISABLED — nothing has asked — and on a
+	 * fresh process the class lands on `signed-out` with no answer behind it;
+	 * `pending` is that cold-mount window, `error` is the negotiation itself
+	 * failing. Neither may classify as an account answer.
+	 */
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "signed-out",
+			accountUnavailable: false,
+			capabilitiesState: "pending",
+		}),
+		"checking",
+		"before the negotiation answers nothing has asked: the silence reads as the check itself, never a sign-in (D6)",
+	);
+	assert.equal(
+		radientSpeechBlock({
+			serverOnline: true,
+			accountRead: "signed-out",
+			accountUnavailable: false,
+			capabilitiesState: "error",
+		}),
+		"could-not-check",
+		"a negotiation that failed is a check that could not be made, not an account answer (D6)",
 	);
 	for (const answer of ["unavailable", "unknown"]) {
 		assert.equal(
@@ -1116,6 +1267,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 				serverOnline: true,
 				accountRead: answer,
 				accountUnavailable: false,
+				capabilitiesState: "answered",
 			}),
 			"could-not-check",
 			`${answer} is a failed check, not an account problem (D1: signing in cannot fix an outage)`,
@@ -1127,6 +1279,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 				serverOnline: true,
 				accountRead: answer,
 				accountUnavailable: false,
+				capabilitiesState: "answered",
 			}),
 			"sign-in",
 			`${answer} is one of the two states the sign-in sentence is for`,
@@ -1137,6 +1290,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 			serverOnline: true,
 			accountRead: "ready",
 			accountUnavailable: false,
+			capabilitiesState: "answered",
 		}),
 		"could-not-check",
 		"the enabled state's block is never rendered (a surface renders it only on the disabled arm); the ladder stays total",

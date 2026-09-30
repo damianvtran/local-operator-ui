@@ -423,13 +423,17 @@ export type ComposerSendError = {
  * answered, and not because the probe could not be asked. One instance rather
  * than a fresh object, so the default cannot churn an identity; the fail-closed
  * direction is stated once (see `recordingProbe` on the props). The block is
- * the sign-in class because that is what a key-less host read as before the
- * classification existed (issue #674).
+ * the NEUTRAL class rather than the sign-in one (design round 2, D7): a host
+ * that passed no probe has no read behind the block at all, so the copy must
+ * not claim an ANSWER the way the sign-in sentence does — "could not be
+ * checked" is the literal truth about a probe that was never passed, and the
+ * sign-in sentence stays an answered read's alone (the invariant D1 and D6
+ * state).
  */
 const EMPTY_RECORDING_PROBE: {
 	canUseRadientSpeech: boolean;
 	speechBlock: RadientSpeechBlock;
-} = { canUseRadientSpeech: false, speechBlock: "sign-in" };
+} = { canUseRadientSpeech: false, speechBlock: "could-not-check" };
 
 /**
  * Props for the MessageInput component
@@ -886,16 +890,19 @@ export type MessageInputProps = {
 	 * session-first capability), and the class the disabled tooltip states when
 	 * it may not (`speechBlock` — see `@shared/lib/speech-gate` for the ladder:
 	 * `sign-in` only for an ANSWERED "no account" or a refused credential,
-	 * `checking` while the read is in flight, `could-not-check` for an outage,
-	 * `offline` for the server being down; issue #674, design round 1, D1).
+	 * `checking` while the read is in flight (or the feature negotiation ahead
+	 * of it has not answered), `could-not-check` for an outage or a failed
+	 * negotiation, `offline` for the server being down; issue #674, design
+	 * round 1, D1; design round 2, D6 for the negotiation's own window).
 	 *
 	 * The composer cannot ask this itself any more, for the mount reason
 	 * `onCredentialsStored` states: the probe is a react-query read
 	 * (`useRadientCredentialProbe` -> `useCredentials`). The chat reads it in
 	 * `chat-content.tsx` and passes the answer; a host with no such probe leaves
-	 * the default, which reads as "no key" and carries the app's existing
-	 * sentence for that state — the fail-closed direction, matching
-	 * `mentionsEnabled`.
+	 * the default, which reads as "no key" — the fail-closed direction, matching
+	 * `mentionsEnabled` — and carries the neutral `could-not-check` block rather
+	 * than the sign-in sentence, because no read stands behind it (design round
+	 * 2, D7).
 	 */
 	recordingProbe?: {
 		canUseRadientSpeech: boolean;
@@ -1588,7 +1595,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE PROBE IS THE HOST'S READ NOW (see `recordingProbe` on the props): it
 		 * used to be `useRadientCredentialProbe()` here, a react-query read that
 		 * made a provider a mount requirement for every document. The chat reads
-		 * it in `chat-content.tsx`; the absent case reads as "no key".
+		 * it in `chat-content.tsx`; the absent case reads as "no key" and the
+		 * neutral block (design round 2, D7).
 		 *
 		 * AND IT CARRIES THE COPY'S OWN CLASS (issue #674; design round 1, D1):
 		 * `canUseRadientSpeech` is the shared session-first capability and
@@ -1605,7 +1613,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * disabled arm, and `sign-in` is unreachable for a signed-in reader by
 		 * construction now (issue #674; design round 1, D1): only an ANSWERED
 		 * "no account" or a refused credential earns that sentence — neither an
-		 * outage nor an in-flight read does.
+		 * outage, an in-flight read, nor a feature negotiation that has not
+		 * answered (design round 2, D6) does.
 		 */
 		const recordingUnavailableReason = speechUnavailableReason(
 			"recording",
