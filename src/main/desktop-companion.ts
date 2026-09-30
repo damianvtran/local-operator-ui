@@ -71,7 +71,6 @@ export class DesktopCompanion {
 	constructor(private readonly options: CompanionOptions) {
 		this.onDisplayChanged = this.onDisplayChanged.bind(this);
 		this.onAction = this.onAction.bind(this);
-		this.skins = new CompanionSkinLibrary(options.skinsDirectory);
 		this.chat = new CompanionChatService({
 			requestDesktop: options.requestDesktop,
 			cwd: options.cwd,
@@ -84,6 +83,10 @@ export class DesktopCompanion {
 		} catch {
 			this.preferences = companionPreferences(null);
 		}
+		this.skins = new CompanionSkinLibrary(
+			options.skinsDirectory,
+			this.preferences.character,
+		);
 		ipcMain.handle("companion:get-state", (event) =>
 			this.trusted(event) ? this.state : null,
 		);
@@ -98,7 +101,7 @@ export class DesktopCompanion {
 		ipcMain.handle("companion:send", async (event, text: unknown) => {
 			if (!this.trusted(event) || !this.chatOpen || typeof text !== "string")
 				return false;
-			return (await this.chat.send(text)).accepted;
+			return this.chat.send(text);
 		});
 		ipcMain.handle("companion:chat-menu", (event, position: unknown) =>
 			this.trusted(event) ? this.showChatMenu(position) : false,
@@ -165,9 +168,20 @@ export class DesktopCompanion {
 	}
 
 	importCharacter(path: string, replaceId?: string): void {
-		const appearance = this.skins.import(path, replaceId);
-		if (!this.selectCharacter(appearance.id))
-			throw new Error("Companion settings could not be saved.");
+		const previous = this.preferences;
+		try {
+			this.skins.import(path, replaceId, {
+				commit: ({ id }) => {
+					if (!this.selectCharacter(id))
+						throw new Error("Companion settings could not be saved.");
+				},
+				rollback: () =>
+					this.preferences === previous || this.applyPreferences(previous),
+			});
+		} finally {
+			this.options.appearanceChanged();
+			this.publishSettings();
+		}
 	}
 
 	get characterMenu(): MenuItemConstructorOptions[] {
@@ -475,18 +489,10 @@ export class DesktopCompanion {
 			return false;
 		this.cancelDrop();
 		this.finishDrag();
+		const step = direction === "in" ? 0.1 : -0.1;
+		const zoom = Math.round((this.zoomFactor + step) * 10) / 10;
 		this.zoomFactor =
-			direction === "reset"
-				? 1
-				: Math.max(
-						0.8,
-						Math.min(
-							1.6,
-							Math.round(
-								(this.zoomFactor + (direction === "in" ? 0.1 : -0.1)) * 10,
-							) / 10,
-						),
-					);
+			direction === "reset" ? 1 : Math.max(0.8, Math.min(1.6, zoom));
 		this.layoutChat(this.chatOpen);
 		return true;
 	}
@@ -650,7 +656,7 @@ export class DesktopCompanion {
 			});
 	}
 
-	private showChatMenu(position: unknown): Promise<boolean> {
+	private async showChatMenu(position: unknown): Promise<boolean> {
 		const window = this.window;
 		if (
 			!window ||
@@ -659,9 +665,8 @@ export class DesktopCompanion {
 			!this.chat.canChangeConversation ||
 			this.options.headless
 		)
-			return Promise.resolve(false);
-		if (!position || typeof position !== "object")
-			return Promise.resolve(false);
+			return false;
+		if (!position || typeof position !== "object") return false;
 		const { x, y } = position as { x?: unknown; y?: unknown };
 		if (
 			typeof x !== "number" ||
@@ -669,7 +674,7 @@ export class DesktopCompanion {
 			typeof y !== "number" ||
 			!Number.isFinite(y)
 		)
-			return Promise.resolve(false);
+			return false;
 		const bounds = window.getBounds();
 		const zoom = window.webContents.getZoomFactor();
 		return new Promise((resolve) => {
@@ -726,81 +731,97 @@ export class DesktopCompanion {
 
 	private onAction(event: IpcMainEvent, action: unknown, value: unknown): void {
 		if (!this.trusted(event) || !this.window) return;
-		if (action === "hide") this.setEnabled(false);
-		else if (action === "menu") this.showMenu();
-		else if (action === "notifications") this.showNotifications();
-		else if (action === "reduced-motion" && typeof value === "boolean") {
-			this.reducedMotion = value;
-			if (value) this.cancelDrop();
-		} else if (
-			action === "chat-size" &&
-			this.chatOpen &&
-			typeof value === "number" &&
-			Number.isFinite(value)
-		) {
-			const height = Math.max(
-				COMPANION_CHAT_SIZE.height,
-				Math.min(360, Math.ceil(value)),
-			);
-			if (height === this.chatHeight) return;
-			this.chatHeight = height;
-			if (!this.dragOrigin) this.layoutChat(true);
-		} else if (action === "open") this.showChat();
-		else if (action === "open-task")
-			this.options.openChat(this.state.sessionId);
-		else if (action === "collapse-chat") {
-			this.finishDrag();
-			this.layoutChat(false);
-		} else if (action === "expand-chat") {
-			this.finishDrag();
-			this.options.openChat(this.chat.snapshot.sessionId);
-			this.layoutChat(false);
-		} else if (
-			action === "interactive" &&
-			typeof value === "boolean" &&
-			!this.dragOrigin
-		) {
-			this.window.setIgnoreMouseEvents(!value, { forward: true });
-		} else if (action === "drag") {
-			if (value === "start") {
-				this.cancelDrop();
-				const [x, y] = this.window.getPosition();
-				this.dragOrigin = {
-					cursor: screen.getCursorScreenPoint(),
-					position: { x, y },
-					moved: false,
-				};
-				this.window.setIgnoreMouseEvents(false);
-			} else if (value === "move" && this.dragOrigin) {
-				const cursor = screen.getCursorScreenPoint();
-				const dx = cursor.x - this.dragOrigin.cursor.x;
-				const dy = cursor.y - this.dragOrigin.cursor.y;
-				if (Math.hypot(dx, dy) > COMPANION_DRAG_THRESHOLD)
-					this.dragOrigin.moved = true;
-				if (this.dragOrigin.moved)
-					this.move({
-						x: this.dragOrigin.position.x + dx,
-						y: this.dragOrigin.position.y + dy,
-					});
-			} else if (value === "end" || value === "cancel") {
-				const released = value === "end" && this.dragOrigin?.moved;
-				this.save();
-				this.finishDrag();
-				if (released) this.startDrop();
+		switch (action) {
+			case "hide":
+				this.setEnabled(false);
+				break;
+			case "menu":
+				this.showMenu();
+				break;
+			case "notifications":
+				this.showNotifications();
+				break;
+			case "reduced-motion":
+				if (typeof value !== "boolean") return;
+				this.reducedMotion = value;
+				if (value) this.cancelDrop();
+				break;
+			case "chat-size": {
+				if (
+					!this.chatOpen ||
+					typeof value !== "number" ||
+					!Number.isFinite(value)
+				)
+					return;
+				const height = Math.max(
+					COMPANION_CHAT_SIZE.height,
+					Math.min(360, Math.ceil(value)),
+				);
+				if (height === this.chatHeight) return;
+				this.chatHeight = height;
+				if (!this.dragOrigin) this.layoutChat(true);
+				break;
 			}
-		} else if (action === "nudge" && typeof value === "string") {
-			const offsets: Record<string, [number, number]> = {
-				ArrowLeft: [-24, 0],
-				ArrowRight: [24, 0],
-				ArrowUp: [0, -24],
-				ArrowDown: [0, 24],
-			};
-			if (!Object.prototype.hasOwnProperty.call(offsets, value)) return;
-			this.cancelDrop();
-			const offset = offsets[value];
-			const [x, y] = this.window.getPosition();
-			this.move({ x: x + offset[0], y: y + offset[1] });
-			this.save();
+			case "open":
+				this.showChat();
+				break;
+			case "open-task":
+				this.options.openChat(this.state.sessionId);
+				break;
+			case "collapse-chat":
+				this.finishDrag();
+				this.layoutChat(false);
+				break;
+			case "expand-chat":
+				this.finishDrag();
+				this.options.openChat(this.chat.snapshot.sessionId);
+				this.layoutChat(false);
+				break;
+			case "interactive":
+				if (typeof value === "boolean" && !this.dragOrigin)
+					this.window.setIgnoreMouseEvents(!value, { forward: true });
+				break;
+			case "drag":
+				if (value === "start") {
+					this.cancelDrop();
+					const [x, y] = this.window.getPosition();
+					this.dragOrigin = {
+						cursor: screen.getCursorScreenPoint(),
+						position: { x, y },
+						moved: false,
+					};
+					this.window.setIgnoreMouseEvents(false);
+				} else if (value === "move" && this.dragOrigin) {
+					const drag = this.dragOrigin;
+					const cursor = screen.getCursorScreenPoint();
+					const dx = cursor.x - drag.cursor.x;
+					const dy = cursor.y - drag.cursor.y;
+					if (Math.hypot(dx, dy) > COMPANION_DRAG_THRESHOLD) drag.moved = true;
+					if (drag.moved)
+						this.move({ x: drag.position.x + dx, y: drag.position.y + dy });
+				} else if (value === "end" || value === "cancel") {
+					const released = value === "end" && this.dragOrigin?.moved;
+					this.save();
+					this.finishDrag();
+					if (released) this.startDrop();
+				}
+				break;
+			case "nudge": {
+				if (typeof value !== "string") return;
+				const offsets: Record<string, [number, number]> = {
+					ArrowLeft: [-24, 0],
+					ArrowRight: [24, 0],
+					ArrowUp: [0, -24],
+					ArrowDown: [0, 24],
+				};
+				if (!Object.prototype.hasOwnProperty.call(offsets, value)) return;
+				this.cancelDrop();
+				const [dx, dy] = offsets[value];
+				const [x, y] = this.window.getPosition();
+				this.move({ x: x + dx, y: y + dy });
+				this.save();
+				break;
+			}
 		}
 	}
 
