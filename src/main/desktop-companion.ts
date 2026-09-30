@@ -14,7 +14,6 @@ import {
 	COMPANION_DRAG_THRESHOLD,
 	COMPANION_OFFLINE,
 	COMPANION_SIZE,
-	type CompanionActivity,
 	type CompanionPreferences,
 	type CompanionState,
 	clampCompanionPosition,
@@ -538,20 +537,6 @@ export class DesktopCompanion {
 		this.save();
 	}
 
-	play(activity: CompanionActivity): void {
-		if (
-			!this.enabled ||
-			this.disposed ||
-			!this.window ||
-			this.chatOpen ||
-			!["idle", "complete", "offline"].includes(this.state.mood)
-		)
-			return;
-		this.cancelDrop();
-		this.finishDrag();
-		this.window.webContents.send("companion:play", activity);
-	}
-
 	private openNotification(sessionId: string): void {
 		if (
 			!this.enabled ||
@@ -608,17 +593,6 @@ export class DesktopCompanion {
 			{
 				label: "Character",
 				submenu: this.characterMenu,
-			},
-			{
-				label: "Play",
-				enabled:
-					!this.chatOpen &&
-					["idle", "complete", "offline"].includes(this.state.mood),
-				submenu: [
-					{ label: "Offer a treat", click: () => this.play("snack") },
-					{ label: "Keep it up", click: () => this.play("bounce") },
-					{ label: "Guess which hand", click: () => this.play("guess") },
-				],
 			},
 			{ type: "separator" },
 			{ label: "Hide companion", click: () => this.setEnabled(false) },

@@ -112,8 +112,11 @@ function Companion() {
 		const timer = window.setTimeout(() => setChatEngaged(false), 1200);
 		return () => window.clearTimeout(timer);
 	}, [chat.open, chatFocused]);
+	const [motion, setMotion] = useState<CompanionMotion>("rest");
 	const play = useCompanionPlay(
-		!chat.open && ["idle", "complete", "offline"].includes(state.mood),
+		!chat.open &&
+			motion === "rest" &&
+			["idle", "complete", "offline"].includes(state.mood),
 		appearance.id,
 	);
 	const interaction = useCompanionInteraction(
@@ -123,7 +126,6 @@ function Companion() {
 		chatEngaged || play.scene !== null,
 	);
 	const playing = play.scene !== null;
-	useEffect(() => window.companion.onPlay(play.start), [play.start]);
 	useEffect(() => {
 		if (playing)
 			document
@@ -137,7 +139,6 @@ function Companion() {
 	const character = isBuiltinCompanion(appearance.id)
 		? appearance.id
 		: "sprout";
-	const [motion, setMotion] = useState<CompanionMotion>("rest");
 	const reaction =
 		motion !== "rest"
 			? motion
@@ -319,7 +320,8 @@ function Companion() {
 									? "left"
 									: "right",
 							);
-						} else if (gesture === "drag") play.cancel();
+						} else if (gesture === "tap") play.discover();
+						else if (gesture === "drag") play.cancel();
 						if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
 						window.companion.drag("end");
 						event.currentTarget.releasePointerCapture(event.pointerId);
@@ -336,7 +338,10 @@ function Companion() {
 					onClick={(event) => {
 						if (event.detail === 0) {
 							if (play.scene) play.tap();
-							else interaction.tap();
+							else {
+								interaction.tap();
+								play.discover();
+							}
 						}
 					}}
 					onKeyDown={(event) => {

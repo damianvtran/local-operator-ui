@@ -1053,46 +1053,15 @@ test("a single notification opens directly and a hidden companion never opens a 
 	assert.deepEqual(f.opened, ["needs-you"]);
 });
 
-test("play stays in the pet window and a stale menu cannot interrupt work or chat", async (t) => {
+test("the companion menu keeps practical actions without exposing hidden games", (t) => {
 	const f = fixture(t, { headless: false });
-	const window = f.windows[0];
-	const plays = () =>
-		window.messages.filter(([channel]) => channel === "companion:play");
 	f.action("menu");
-	assert.equal(
-		f.menus.at(-1).template.find((item) => item.label === "Play").enabled,
-		true,
-	);
-	f.menus
-		.at(-1)
-		.template.find((item) => item.label === "Play")
-		.submenu[0].click();
-	assert.equal(plays().length, 1, "offline pets can play without a provider");
-	window.messages.length = 0;
-	await f.catalogue("idle");
-	f.action("menu");
-	const menu = f.menus.at(-1).template.find((item) => item.label === "Play");
-	assert.equal(menu.enabled, true);
-	for (const item of menu.submenu) item.click();
 	assert.deepEqual(
-		plays().map(([, kind]) => kind),
-		["snack", "bounce", "guess"],
+		Array.from(f.menus.at(-1).template, (item) => item.label ?? item.type),
+		["Chat", "Open task in app", "Character", "separator", "Hide companion"],
 	);
 	assert.equal(f.chat().open, false);
-	assert.deepEqual(window.presentations, []);
-	f.companion.refresh();
-	await f.catalogue("busy");
-	menu.submenu[0].click();
-	assert.equal(plays().length, 3);
-	f.companion.refresh();
-	await f.catalogue("idle");
-	f.action("open");
-	menu.submenu[0].click();
-	assert.equal(plays().length, 3);
-	f.action("collapse-chat");
-	f.action("hide");
-	menu.submenu[0].click();
-	assert.equal(plays().length, 3);
+	assert.deepEqual(f.windows[0].presentations, []);
 });
 
 test("Inky selection persists and remains protected as a built-in character", (t) => {

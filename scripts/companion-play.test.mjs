@@ -78,6 +78,7 @@ async function fixture(callback, reduced = false) {
 				return play;
 			},
 			start: (kind) => call(() => play.start(kind)),
+			discover: () => call(() => play.discover()),
 			tap: (side) => call(() => play.tap(side)),
 			cancel: () => call(() => play.cancel()),
 			available: async (next) => {
@@ -294,4 +295,81 @@ test("unavailable or hidden companions and unknown activities never start a roun
 		assert.equal(f.play.scene, null);
 		assert.equal(timers.size, 0);
 	});
+});
+
+test("five curious pokes offer a toy without spending the revealing tap", async () => {
+	await fixture(async (f) => {
+		for (const kind of ["snack", "bounce", "guess", "snack"]) {
+			for (let i = 0; i < 4; i++) {
+				await f.discover();
+				assert.equal(f.play.scene, null);
+				await advance(400);
+			}
+			await f.discover();
+			assert.equal(f.play.scene.kind, kind);
+			assert.equal(f.play.scene.phase, "offer");
+			assert.equal(f.play.scene.step, 0);
+			for (let i = 0; i < 8; i++) await f.discover();
+			assert.equal(
+				f.play.scene.kind,
+				kind,
+				"a running game cannot uncover another toy",
+			);
+			await f.cancel();
+			for (let i = 0; i < 6; i++) await f.discover();
+			assert.equal(
+				f.play.scene,
+				null,
+				"leave a quiet moment after a game ends",
+			);
+			await advance(2000);
+		}
+	});
+});
+
+test("casual visits and interrupted poke sequences never accumulate a surprise game", async () => {
+	await fixture(async (f) => {
+		for (const interrupt of [
+			() => advance(1500),
+			() => f.cancel(),
+			() => f.blur(),
+			() => f.escape(),
+			async () => {
+				await f.hidden(true);
+				await f.hidden(false);
+			},
+			async () => {
+				await f.available(false);
+				for (let i = 0; i < 8; i++) await f.discover();
+				await f.available(true);
+			},
+			async () => {
+				await f.character("inky");
+				await f.character("sprout");
+			},
+		]) {
+			for (let i = 0; i < 4; i++) {
+				await f.discover();
+				await advance(200);
+			}
+			assert.equal(f.play.scene, null);
+			await interrupt();
+			await f.discover();
+			assert.equal(f.play.scene, null);
+			await f.cancel();
+		}
+	});
+});
+
+test("hidden games can be discovered with reduced motion and custom characters", async () => {
+	await fixture(async (f) => {
+		await f.character("custom-pet");
+		for (let i = 0; i < 5; i++) {
+			await f.discover();
+			await advance(250);
+		}
+		assert.equal(f.play.scene.kind, "snack");
+		await f.tap();
+		assert.equal(f.play.scene.phase, "playing");
+	}, true);
 });

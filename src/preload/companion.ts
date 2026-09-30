@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { CompanionAppearance } from "../shared/companion-skin";
 import type {
-	CompanionActivity,
 	CompanionBridge,
 	CompanionChatView,
 	CompanionMotion,
@@ -9,14 +8,6 @@ import type {
 } from "../shared/desktop-companion";
 
 const companion: CompanionBridge = {
-	onPlay: (listener) => {
-		const receive = (
-			_event: Electron.IpcRendererEvent,
-			activity: CompanionActivity,
-		) => listener(activity);
-		ipcRenderer.on("companion:play", receive);
-		return () => ipcRenderer.removeListener("companion:play", receive);
-	},
 	onMotion: (listener) => {
 		const receive = (
 			_event: Electron.IpcRendererEvent,

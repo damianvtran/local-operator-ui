@@ -22,6 +22,9 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 	const timer = useRef(0);
 	const reducedMotion = useRef(false);
 	const lastTap = useRef(Number.NEGATIVE_INFINITY);
+	const pokes = useRef({ count: 0, last: Number.NEGATIVE_INFINITY });
+	const nextToy = useRef(0);
+	const discoverAfter = useRef(0);
 	const completed = useRef(0);
 	const sparkled = useRef(false);
 	context.current = { available, characterId };
@@ -35,6 +38,9 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 		setScene(next);
 	}, []);
 	const cancel = useCallback(() => {
+		if (current.current)
+			discoverAfter.current = window.performance.now() + 2000;
+		pokes.current.count = 0;
 		clear();
 		update(null);
 		setAnnouncement("");
@@ -85,6 +91,7 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 			)
 				return;
 			owner.current = context.current.characterId;
+			pokes.current.count = 0;
 			lastTap.current = Number.NEGATIVE_INFINITY;
 			update({
 				kind,
@@ -106,6 +113,17 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 		},
 		[cancel, later, update],
 	);
+	const discover = useCallback(() => {
+		if (!context.current.available || document.hidden || current.current)
+			return;
+		const now = window.performance.now();
+		if (now < discoverAfter.current) return;
+		if (now - pokes.current.last > 1400) pokes.current.count = 0;
+		pokes.current.last = now;
+		if (++pokes.current.count < 5) return;
+		const toys: CompanionActivity[] = ["snack", "bounce", "guess"];
+		start(toys[nextToy.current++ % toys.length]);
+	}, [start]);
 	const tap = useCallback(
 		(side?: "left" | "right") => {
 			const round = current.current;
@@ -196,5 +214,13 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 					? "loved"
 					: "happy";
 
-	return { scene: visible, start, tap, cancel, reaction, announcement };
+	return {
+		scene: visible,
+		discover,
+		start,
+		tap,
+		cancel,
+		reaction,
+		announcement,
+	};
 }
