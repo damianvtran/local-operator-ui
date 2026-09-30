@@ -9272,8 +9272,7 @@ const main = async () => {
 			 */
 			const latch = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
-				expression:
-					'document.documentElement.dataset.captureFailed || ""',
+				expression: 'document.documentElement.dataset.captureFailed || ""',
 			});
 			if (latch.result.value) {
 				throw new Error(
