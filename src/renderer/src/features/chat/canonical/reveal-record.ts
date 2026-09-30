@@ -86,6 +86,15 @@ export const JUMP_SETTLE_FRAMES = LOADER_SETTLE_FRAMES;
  */
 const JUMP_ANCHOR_MAX_FRAMES = JUMP_SETTLE_FRAMES + 2;
 const JUMP_ANCHOR_STABLE_FRAMES = 2;
+/*
+ * How long the landing guard watches the resolved anchor (QA round 6, Q-4).
+ * A later pass - a loader compensation or an align mount computed against a
+ * pre-settle content height - can overwrite the anchor AFTER the settle exits:
+ * measured 1/5 at the short oldest-end, 24 for three frames, then 133 held to
+ * the end. 30 frames (~500 ms at 60 Hz) covers the measured write at +330 ms
+ * with margin and costs one rect read per frame while it runs.
+ */
+const JUMP_LANDING_GUARD_FRAMES = 30;
 const JUMP_ANCHOR_EPSILON_PX = 1;
 
 /*
@@ -264,6 +273,7 @@ async function landOnTop(
 	window.addEventListener("keydown", onKey);
 	try {
 		let stable = 0;
+		let resolved = false;
 		for (let frame = 0; frame < JUMP_ANCHOR_MAX_FRAMES; frame += 1) {
 			await nextFrame();
 			if (yielded || generation !== settleGeneration) break;
@@ -274,11 +284,87 @@ async function landOnTop(
 				JUMP_ANCHOR_INSET_PX;
 			if (Math.abs(drift) <= JUMP_ANCHOR_EPSILON_PX) {
 				stable += 1;
-				if (stable >= JUMP_ANCHOR_STABLE_FRAMES) break;
+				if (stable >= JUMP_ANCHOR_STABLE_FRAMES) {
+					resolved = true;
+					break;
+				}
 				continue;
 			}
 			stable = 0;
 			scrollRegionToTop(region, target, "reversed", JUMP_ANCHOR_INSET_PX);
+		}
+		if (resolved && !yielded && generation === settleGeneration) {
+			/*
+			 * THE LANDING IS THE LAST WRITE (QA round 6, Q-4). The settle
+			 * resolving on a stable anchor does not stop a later pass whose
+			 * write was computed against a stale content height - the loader's
+			 * compensation or an align mount - from landing after it: the
+			 * short oldest-end measured 24 held three frames, then 133 to the
+			 * end, failing the headline contract. The guard watches the anchor
+			 * for a bounded window and re-applies the landing if it moved,
+			 * re-reading the rects so the correction is against the CURRENT
+			 * layout. It is detached (the jump resolves on the settle, its
+			 * latency unchanged), ends early on the reader's own gesture (the
+			 * listeners are re-armed for the window) or a newer settle, and
+			 * stops if the region or the target leaves the document.
+			 */
+			const guardRegion = region;
+			const guardTarget = target;
+			const guardGesture = () => {
+				yielded = true;
+			};
+			guardRegion.addEventListener("wheel", guardGesture, {
+				passive: true,
+				once: true,
+			});
+			guardRegion.addEventListener("pointerdown", guardGesture, {
+				passive: true,
+				once: true,
+			});
+			guardRegion.addEventListener("touchstart", guardGesture, {
+				passive: true,
+				once: true,
+			});
+			window.addEventListener("keydown", onKey);
+			void (async () => {
+				try {
+					for (let frame = 0; frame < JUMP_LANDING_GUARD_FRAMES; frame += 1) {
+						await nextFrame();
+						if (
+							yielded ||
+							generation !== settleGeneration ||
+							!guardRegion.isConnected ||
+							!guardTarget.isConnected
+						) {
+							return;
+						}
+						const drift =
+							guardTarget.getBoundingClientRect().top -
+							guardRegion.getBoundingClientRect().top -
+							guardRegion.clientTop -
+							JUMP_ANCHOR_INSET_PX;
+						if (Math.abs(drift) <= JUMP_ANCHOR_EPSILON_PX) {
+							continue;
+						}
+						scrollRegionToTop(
+							guardRegion,
+							guardTarget,
+							"reversed",
+							JUMP_ANCHOR_INSET_PX,
+						);
+						/* The cue reads on scroll; a correction is one. */
+						const guardView = guardRegion.ownerDocument?.defaultView;
+						if (guardView !== null && guardView !== undefined) {
+							guardRegion.dispatchEvent(new guardView.Event("scroll"));
+						}
+					}
+				} finally {
+					guardRegion.removeEventListener("wheel", guardGesture);
+					guardRegion.removeEventListener("pointerdown", guardGesture);
+					guardRegion.removeEventListener("touchstart", guardGesture);
+					window.removeEventListener("keydown", onKey);
+				}
+			})();
 		}
 	} finally {
 		region.removeEventListener("wheel", yieldToReader);
