@@ -213,9 +213,11 @@ test("the app's own menu is installed before the ready handler awaits anything",
 		install < firstAwait,
 		"the menu must be installed before the first await, or the default menu is reachable meanwhile",
 	);
-	// One call site: a second install would leave the earlier one to be replaced
-	// rather than to be a decision.
-	assert.equal(countIn(mainSources(), "createApplicationMenu();"), 1);
+	// Later rebuilds refresh companion choices through the same guarded menu.
+	assert.equal(
+		ready.slice(0, firstAwait).split("createApplicationMenu();").length - 1,
+		1,
+	);
 });
 
 test("the app registers its own identity for the About panel", () => {
