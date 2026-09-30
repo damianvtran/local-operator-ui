@@ -215,6 +215,28 @@ function mountHook(options = {}) {
 		anchorTop += px;
 		act(() => scroller.dispatchEvent(new window.Event("scroll")));
 	};
+	/** A pointer press ON the scroller: what opens the hook's drag window. */
+	const pointerDown = () =>
+		act(() =>
+			scroller.dispatchEvent(
+				new window.Event("pointerdown", { bubbles: true }),
+			),
+		);
+	/** The `scroll` event such a write emits. */
+	const scrollEvent = () =>
+		act(() => scroller.dispatchEvent(new window.Event("scroll")));
+	/*
+	 * The COMPONENT's own write to the offset, done the way
+	 * `canonical-transcript.tsx`'s press-anchor effect does it: the scroller is
+	 * moved, and the handle is told the offsets around the assignment. With
+	 * `acknowledge: false` it is the shape the code had before the fix, which is
+	 * how the control arm reproduces the mis-attribution MINOR-3 inferred.
+	 */
+	const ownWrite = (delta, { acknowledge = true } = {}) => {
+		const before = scrollTop;
+		scroller.scrollTop = before + delta;
+		if (acknowledge) handle.acknowledgeOwnWrite(before, scrollTop);
+	};
 	const close = () => {
 		for (const id of pendingFrames.keys()) cancelFrame(id);
 		act(() => root.unmount());
@@ -281,6 +303,9 @@ function mountHook(options = {}) {
 		readerInput,
 		growAboveAnchor,
 		viewportMotion,
+		pointerDown,
+		scrollEvent,
+		ownWrite,
 	};
 }
 
@@ -826,6 +851,94 @@ test("the walk is authorised only at the tail, and only after the input has sett
 			hook.mayAutoWalk(),
 			true,
 			"once the input has settled the position is the whole question again",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * A bar press's own correction must not be read as reader input (agent review
+ * round 2, MINOR-3; the review could only infer it from the source).
+ *
+ * THE PRESS OPENS THE DRAG WINDOW. `onPointerDown` on this scroller sets
+ * `dragUntil = Infinity`, so the `scroll` event a programmatic write fires takes
+ * the READER branch of `onScroll` unless the write is acknowledged: it calls
+ * `input(moved > 0 ? "up" : "down", ...)`, which records layout motion as the
+ * reader dragging older-ward and drops the standing hold with it.
+ *
+ * The harness stands in for the browser's own `scroll` event after a programmatic
+ * write - jsdom emits none, so a leftover acknowledgement from an earlier
+ * correction would otherwise absorb the event under test and the arms below
+ * would agree (`drain`).
+ */
+test("an acknowledged own-write is not attributed to the reader (MINOR-3)", () => {
+	const hook = mountHook();
+	try {
+		hook.requestReveal();
+		hook.growAboveAnchor();
+		hook.scrollEvent(); // drain the correction's own acknowledgement
+		assert.equal(hook.scrollTop, -26, "the reader's hold is standing");
+		hook.pointerDown(); // the bar press
+		hook.ownWrite(-30); // the press-anchor write, acknowledged
+		hook.scrollEvent(); // the event that write fires
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-8,
+			"the write is our own motion: the hold survives it and the growth is corrected",
+		);
+	} finally {
+		hook.close();
+	}
+
+	/*
+	 * THE CONTROL: the same flow with the write NOT acknowledged. Without the
+	 * handle the event falls to the reader path, `input("up", true)` runs, the
+	 * hold is dropped, and the same growth is left uncorrected - the defect this
+	 * test exists to keep out.
+	 */
+	const control = mountHook();
+	try {
+		control.requestReveal();
+		control.growAboveAnchor();
+		control.scrollEvent();
+		control.pointerDown();
+		control.ownWrite(-30, { acknowledge: false });
+		control.scrollEvent();
+		control.growAboveAnchor();
+		assert.equal(
+			control.scrollTop,
+			-56,
+			"unacknowledged, the write is read as reader input and the hold is dropped",
+		);
+	} finally {
+		control.close();
+	}
+});
+
+test("a write that changes nothing claims nothing, so the reader's next motion is attributed (MINOR-3)", () => {
+	const hook = mountHook();
+	try {
+		hook.requestReveal();
+		hook.growAboveAnchor();
+		hook.scrollEvent();
+		assert.equal(hook.scrollTop, -26, "the hold is standing");
+		hook.pointerDown();
+		/*
+		 * A clamp at the scroller's range (or a write landing on the number already
+		 * there) produces no offset change, and therefore no `scroll` event to
+		 * consume an acknowledgement. An unguarded `+= 1` would sit pending and
+		 * swallow the reader's NEXT scroll - the same mis-attribution mirrored.
+		 */
+		hook.ownWrite(0);
+		hook.setScrollTop(-56); // the reader's own motion, arriving right after
+		hook.scrollEvent();
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-56,
+			"the reader's motion was attributed to them: no acknowledgement was left pending",
 		);
 	} finally {
 		hook.close();
