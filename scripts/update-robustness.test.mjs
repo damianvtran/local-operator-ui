@@ -9765,6 +9765,27 @@ const driveGlobalUpdate = async ({
 	restartOk = true,
 	runGate = null,
 	/*
+	 * THE SERVE RECORD'S OWN READINGS (2026-09-30, the rollover lane): the
+	 * post-condition verify reads the serving process's record before and after
+	 * the updater - the instance token and the boot version - so a case about
+	 * "the reload landed" / "it did not" scripts them here. One entry per read,
+	 * anything after the queue repeats the last one; the default is the
+	 * unreadable record this fixture's world has always had (no record
+	 * planted), which is exactly "not proven moved".
+	 */
+	serveInstances = [],
+	serveBootVersions = [],
+	/*
+	 * The machine's runtime roster (`GET /v1/desktop/runtimes`) for the
+	 * straggler census, as the CRUDResponse's `result` object
+	 * (`{ runtimes: [...] }`). Null - the default - leaves `requestDesktop`
+	 * absent, so the census falls back to the liveness reading, which is the
+	 * shape every pre-existing case keeps.
+	 */
+	runtimeRoster = null,
+	/* A roster read that cannot be taken, for the fallback's own arm. */
+	fleetUnreadable = false,
+	/*
 	 * The post-restart version poll is stubbed by default: the shipped one waits up
 	 * to 60 s, which no case should pay. `stubWait: false` runs the shipped poll
 	 * against the scripted `/health` reading, which is what the R2-1 case needs - the
@@ -9819,7 +9840,23 @@ const driveGlobalUpdate = async ({
 		starts: 0,
 		autoUpdating: [],
 		holdAtFleetRead: [],
+		/** Every `runtimes.list` the census took, in order (design §5). */
+		runtimeReads: [],
 	};
+	/*
+	 * The serve-record queue: one entry per `servingInstall()` call, and anything
+	 * after the queue repeats the last one - so `["i-before", "i-after"]` means
+	 * "the first read sees the old instance, every later read the new one",
+	 * regardless of how many incidental reads the flow takes.
+	 */
+	const serveQueues = {
+		bootVersions: [...serveBootVersions],
+		instances: [...serveInstances],
+	};
+	const shiftServe = (key, fallback) =>
+		serveQueues[key].length > 1
+			? serveQueues[key].shift()
+			: (serveQueues[key][0] ?? fallback);
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
@@ -9847,7 +9884,8 @@ const driveGlobalUpdate = async ({
 		 */
 		servingInstall: () => ({
 			readings: {
-				bootVersion: null,
+				bootVersion: shiftServe("bootVersions", null),
+				instanceId: shiftServe("instances", null),
 				prefix: "",
 				installKind: "",
 				startedByApp: false,
@@ -9866,7 +9904,26 @@ const driveGlobalUpdate = async ({
 		 * the same read and the same shape the gate sees in the app.
 		 */
 		servingSessionFleet: async () =>
-			service.fleetRosterFromSessions({ result: { sessions: fleet } }),
+			fleetUnreadable
+				? null
+				: service.fleetRosterFromSessions({ result: { sessions: fleet } }),
+		/*
+		 * The roster read, present only when a case gives one: with `runtimeRoster`
+		 * null this stays off the mock entirely and the census falls back the way it
+		 * must on a backend that cannot answer (the catch in
+		 * `UpdateService.readRuntimeCensus` covers the absence).
+		 */
+		...(runtimeRoster
+			? {
+					requestDesktop: async (request) => {
+						calls.runtimeReads.push(request?.op ?? "?");
+						return {
+							status: 200,
+							body: { status: 200, message: "", result: runtimeRoster },
+						};
+					},
+				}
+			: {}),
 		hasOpenSessionStreams: () => false,
 		checkIsAutoUpdating: () => autoUpdating,
 	};
@@ -10098,8 +10155,16 @@ test("an update that lands installs first and restarts the app's own daemon afte
 		assert.deepEqual(completed.payload, {
 			installVersion: "0.56.0",
 			runningVersion: "0.56.0",
+			/*
+			 * THE RESTART ARM'S OWN TWO FIELDS (2026-09-30): `moved` states where the
+			 * daemon ended up (it reports the target, which this fixture's poll
+			 * returns), and the count's source is the liveness fallback on a world
+			 * with no runtime roster to read.
+			 */
+			moved: true,
 			restarted: true,
 			sessionsOnOldBuild: 0,
+			sessionsOnOldBuildSource: "liveness",
 		});
 	} finally {
 		run.dispose();
@@ -16864,20 +16929,31 @@ const syntheticGenerationInstall = (id = "g0001") => {
 	return { root, prefix, script: join(prefix, "bin", "local-operator") };
 };
 
-test("a generation install announces and leaves the app-owned daemon on its build", async () => {
+test("a generation install whose serve did not move is restarted onto the new build", async () => {
 	/*
-	 * The harness installs into per-generation roots behind a `current` pointer, and
-	 * the daemon keeps serving the generation it booted from - the install lands in a
-	 * tree no running process is reading. Restarting it would spend a bounce, and
-	 * whatever is in flight, to buy nothing: the runtime adopts the new build at its
-	 * own next idle. So the press reports the skew and leaves the process alone.
+	 * THE RESTART FALLBACK, WHICH THE POST-CONDITION NOW DECIDES (2026-09-30).
+	 *
+	 * The old rule was a static property of the layout: a generation install never
+	 * restarted the daemon ("a restart would spend a bounce to buy nothing"). That
+	 * was right about the layout and blind about the PROCESS - the updater's cheap
+	 * serve reload is what makes the move happen without a bounce, and on the days
+	 * it does not land (this fixture's world: no record, so no proof) the skeleton
+	 * it leaves is a daemon still serving old code with a completion that says
+	 * nothing was restarted. The rule is a post-condition now: the serving
+	 * process's own record must prove the move, and this case is the arm where it
+	 * does not - so the restart runs, and the payload says so.
+	 *
+	 * /health IS SCRIPTED TO SPEAK THE NEW BUILD while the record proves nothing:
+	 * its version is computed from the metadata on disk when it answers
+	 * (`backend-version-drift.ts`'s trap), so it may never be the proof of a move -
+	 * and this arm would be wrong (silent success over a stale server) if it were.
 	 */
 	const install = syntheticGenerationInstall();
 	const run = await driveGlobalUpdate({
 		before: "0.55.10",
 		after: "0.56.0",
 		target: "0.56.0",
-		daemonReports: "0.55.10",
+		daemonReports: "0.56.0",
 		servingPrefix: install.prefix,
 	});
 	try {
@@ -16889,19 +16965,143 @@ test("a generation install announces and leaves the app-owned daemon on its buil
 		);
 		assert.equal(
 			run.calls.restarts,
-			0,
-			"a generation install may not restart the daemon it started",
+			1,
+			"an unproven move on the app-owned daemon is the restart fallback",
+		);
+		assert.deepEqual(backendPhases(run.sent), ["installing", "restarting"]);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.restarted, true);
+		assert.equal(completed.payload.moved, true);
+		assert.equal(completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			completed.payload.runningVersion,
+			"0.56.0",
+			"the restarted daemon reports the target, and the payload names it",
+		);
+		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a serve the updater reloaded is proven by its own record, and nothing restarts", async () => {
+	/*
+	 * TODAY'S MISBRANCH, AS A CASE (2026-09-30). The updater reloads the serving
+	 * process in place - its record shows a new instance on the target build - and
+	 * the app used to decide from the INSTALL's before/after diff, which a
+	 * concurrent installer can flip under it (`before === after` read as "nothing
+	 * left to install" and KILLED the freshly reloaded serve for a restart plus the
+	 * retire wait). The post-condition replaced the diff: the record proves the
+	 * move, no restart phase is drawn, and the tail is ONE census read.
+	 *
+	 * /health IS SCRIPTED TO SPEAK THE OLD BUILD on purpose: it is the reading this
+	 * verdict may NOT come from (its version is computed from disk metadata and
+	 * reports the newer install while the process serves old code from memory), so
+	 * the case would still pass even if the record and /health disagreed - which is
+	 * exactly what the day the trap was found looked like.
+	 */
+	const install = syntheticGenerationInstall("g0003");
+	const run = await driveGlobalUpdate({
+		before: "0.55.10",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.55.10",
+		servingPrefix: install.prefix,
+		serveInstances: ["i-before", "i-after"],
+		serveBootVersions: [null, "0.56.0"],
+		/*
+		 * The roster the census reads: one runtime on the new build, two on the old,
+		 * one whose build is UNKNOWN (an empty string is not old - the roster
+		 * journal's rule - and the count must skip it).
+		 */
+		runtimeRoster: {
+			runtimes: [
+				{ pid: 1, build_version: "0.56.0" },
+				{ pid: 2, build_version: "0.55.10" },
+				{ pid: 3, build_version: "0.55.10" },
+				{ pid: 4, build_version: "" },
+			],
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(run.calls.restarts, 0, "a proven reload restarts nothing");
+		assert.deepEqual(
+			backendPhases(run.sent),
+			["installing"],
+			"no restarting phase, because no restart ran",
 		);
 		const completed = backendCompletion(run.sent);
 		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.moved, true);
 		assert.equal(completed.payload.restarted, false);
 		assert.equal(completed.payload.installVersion, "0.56.0");
 		assert.equal(
 			completed.payload.runningVersion,
-			"0.55.10",
-			"the server keeps running the build it loaded, and the payload says which",
+			"0.56.0",
+			"the RECORD's build - not /health's stale reading",
+		);
+		assert.equal(
+			completed.payload.sessionsOnOldBuild,
+			2,
+			"two runtimes are still on the old build; the unknown one is not counted",
+		);
+		assert.equal(completed.payload.sessionsOnOldBuildSource, "build");
+		assert.equal(
+			run.calls.runtimeReads.length,
+			1,
+			"the census is ONE roster read, never a wait",
 		);
 		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a pointer flip under the press cannot force a restart, and a dead roster is unmeasured", async () => {
+	/*
+	 * THE RACE, EXACTLY AS THE OPERATOR'S MACHINE PRODUCED IT (2026-09-30): a
+	 * concurrent installer flips `current` before the app's own before-read, so the
+	 * install reads `0.56.0 -> 0.56.0` - "nothing left to install" was the whole
+	 * verdict then, and the press killed the serve the updater had just reloaded.
+	 * Now the record decides: the instance changed, the process boots the target,
+	 * and the completion is a success without a restart.
+	 *
+	 * The census in the SAME case is the one that cannot be measured: no runtime
+	 * roster answers and the fleet read is unreadable, so the count is NULL - not a
+	 * zero, which would draw no line at all, and not a number, which would invent
+	 * one. Null is the numberless sentence's own arm (design §2e).
+	 */
+	const install = syntheticGenerationInstall("g0004");
+	const run = await driveGlobalUpdate({
+		before: "0.56.0",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.55.10",
+		servingPrefix: install.prefix,
+		fleetUnreadable: true,
+		serveInstances: ["i-before", "i-after"],
+		serveBootVersions: [null, "0.56.0"],
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(
+			run.calls.restarts,
+			0,
+			"the already-current readings are not a restart sentence any more",
+		);
+		assert.deepEqual(backendPhases(run.sent), ["installing"]);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.moved, true);
+		assert.equal(completed.payload.restarted, false);
+		assert.equal(
+			completed.payload.sessionsOnOldBuild,
+			null,
+			"no roster and no fleet read is UNMEASURED, never a zero",
+		);
+		assert.equal(completed.payload.sessionsOnOldBuildSource, null);
 	} finally {
 		run.dispose();
 	}
