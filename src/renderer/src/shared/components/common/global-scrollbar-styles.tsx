@@ -3,7 +3,6 @@ import {
 	SCROLLBAR_EASING,
 	SCROLLBAR_FADE_IN_MS,
 	SCROLLBAR_FADE_OUT_MS,
-	SCROLLBAR_HOLD_MS,
 } from "@shared/lib/scrollbar-activity";
 import type { FC } from "react";
 
@@ -29,7 +28,9 @@ import type { FC } from "react";
  * fades in when the reader scrolls or moves toward the bar. The fade is CSS;
  * the module that decides WHEN a scroller is awake is
  * `shared/lib/scrollbar-activity.ts`, and it is the only writer of the
- * attribute these rules key on.
+ * attribute these rules key on. The durations of a reveal and of its departure
+ * live here; the HOLD between them lives in the module, because it is a timer
+ * and not a style.
  */
 const SCROLLBAR_CSS = `
 /*
@@ -106,44 +107,35 @@ const SCROLLBAR_CSS = `
 	transition: --lo-sb ${SCROLLBAR_FADE_IN_MS}ms ${SCROLLBAR_EASING};
 }
 /*
- * THE KEYBOARD BLIP. Keyboard scrolling needs nothing extra — it fires \`scroll\`
- * — but a reader who has TABBED onto a scroller without moving it has no cue
- * that the region scrolls, so focusing one plays the reveal once and lets it
- * fall back to rest. Deliberately an ANIMATION and not a state: an animation
- * that has finished stops applying (there is no fill mode here), so the blip
- * cannot get stuck — which is exactly why \`:focus-within\` is rejected: it
- * matches for as long as focus stays inside, so a transcript or a sidebar would
- * stamp the thumb on screen while the reader typed.
- *
- * The \`:not([active])\` guard is what keeps the driving paths in order: an
- * animation beats a normal declaration, so without it a scroll begun during the
- * blip would be overridden by the blip's falling value.
+ * NO ANIMATION AND NO \`animation\` PROPERTY ANYWHERE IN THIS SHEET, and that is a
+ * rule rather than an omission (review round 1: U2 / U3, measured on the
+ * transcript). The keyboard cue used to be \`animation: lo-sb-blip ...\` on a
+ * focus-visible scroller, and the shorthand takes the element's \`animation-name\`
+ * (and resets \`animation-timeline\`) away from every other consumer. The
+ * transcript's own scroll-linked top fade — \`animation: transcript-top-fade ...\`
+ * with \`animation-timeline: scroll(self)\` — read \`animation-timeline: auto\` and a
+ * 0px fade whenever the log was focus-visible and idle: the 24px top dissolve
+ * popped off and back around every keyboard scroll, and because a finished
+ * animation that no longer applies keeps its name, the original never returned.
+ * The cue is a REVEAL now, driven by the module's \`focusin\` (same attribute, same
+ * hold, same transition), which composes with whatever else the element animates
+ * because it touches only the custom property. Reintroducing \`animation\` here
+ * reintroduces that regression.
  */
-@keyframes lo-sb-blip {
-	from {
-		--lo-sb: 1;
-	}
-	to {
-		--lo-sb: 0;
-	}
-}
-[${SCROLLBAR_ATTRIBUTE}]:focus-visible:not([${SCROLLBAR_ATTRIBUTE}="active"]) {
-	animation: lo-sb-blip ${SCROLLBAR_HOLD_MS}ms ${SCROLLBAR_EASING};
-}
 /*
  * FORCED COLORS: the fade is suppressed and the bar is simply solid. The
  * platform overrides our colour anyway (the memo's forced-colors probe read the
  * thumb's red channel at 0 while the layout stayed 8px), and a high-contrast
  * reader is the last one who should have to move the pointer to discover a bar.
- * The animation is cancelled here too, or it would animate the suppressed value
- * on a tab focus.
+ * \`transition: none\` is stated rather than left implicit: with \`--lo-sb\` pinned
+ * at 1 there is nothing to interpolate, and the line is what keeps a future
+ * change from animating a system-colour bar.
  */
 @media (forced-colors: active) {
 	* {
 		--lo-sb: 1;
 	}
 	[${SCROLLBAR_ATTRIBUTE}] {
-		animation: none;
 		transition: none;
 	}
 }

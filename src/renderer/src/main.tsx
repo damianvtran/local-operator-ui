@@ -47,12 +47,24 @@ installDevDriver();
  * At module scope rather than in the render tree for the same reason as the
  * driver above: the listeners belong to the document, not to a mounted
  * component, and they must cover the first screen — a render-triggered install
- * would miss a scroll that happens before the effect runs. The returned
- * uninstall is discarded on purpose: a launch that wants the scrollbar at rest
- * permanently is a different product decision, and hot reload replaces the
- * module rather than calling it.
+ * would miss a scroll that happens before the effect runs.
+ *
+ * THE UNINSTALL IS KEPT ON `window` RATHER THAN DISCARDED (review round 1, Min4).
+ * A hot reload that REPLACES this module re-runs the line once and the old
+ * listeners belong to a document that outlives the module, so without the handle
+ * the document accumulates a second set of them. The module cannot see the
+ * first set; the global is the only place it can be found from. This is a
+ * development-time ring, not a product decision — a launch still installs once,
+ * and nothing else reads the key.
  */
-installScrollbarActivity();
+declare global {
+	interface Window {
+		/** The outstanding install, so a hot-reloaded entry can take it back off. */
+		__loSbUninstall?: () => void;
+	}
+}
+window.__loSbUninstall?.();
+window.__loSbUninstall = installScrollbarActivity();
 
 document.addEventListener("DOMContentLoaded", () => {
 	/*

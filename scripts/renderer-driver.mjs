@@ -25671,6 +25671,13 @@ const SCROLLER_CENSUS = `(() => {
 		out.push({
 			tag: el.tagName.toLowerCase(),
 			tourTag: el.getAttribute("data-tour-tag"),
+			/*
+			 * The keyboard arm needs to know whether a surface is even reachable by
+			 * Tab: a tabindex of -1 can be focused programmatically but the browser
+			 * will not call that arrival :focus-visible, which is exactly what the
+			 * first version of that arm measured.
+			 */
+			tabIndex: el.tabIndex,
 			cls: String(el.className || "").slice(0, 64),
 			ox: style.overflowX,
 			oy: style.overflowY,
@@ -26006,7 +26013,9 @@ async function scrollbarPerfArm(cdp, { centre, delta }) {
 	} else {
 		const relevant = (listeners.listeners ?? [])
 			.filter((entry) =>
-				["scroll", "pointerover", "pointerdown"].includes(entry.type),
+				["scroll", "pointerover", "pointerdown", "focusin"].includes(
+					entry.type,
+				),
 			)
 			.map((entry) => ({
 				type: entry.type,
@@ -26024,11 +26033,12 @@ async function scrollbarPerfArm(cdp, { centre, delta }) {
 				(entry) => entry.type === type && entry.capture && entry.passive,
 			).length;
 		check(
-			"the module's three listeners are attached: one each, capture phase, passive",
+			"the module's four listeners are attached: one each, capture phase, passive",
 			ours("scroll") === 1 &&
 				ours("pointerover") === 1 &&
-				ours("pointerdown") === 1,
-			`capture+passive counts — scroll ${ours("scroll")}, pointerover ${ours("pointerover")}, pointerdown ${ours("pointerdown")}`,
+				ours("pointerdown") === 1 &&
+				ours("focusin") === 1,
+			`capture+passive counts — scroll ${ours("scroll")}, pointerover ${ours("pointerover")}, pointerdown ${ours("pointerdown")}, focusin ${ours("focusin")}`,
 		);
 		check(
 			"and every scroll listener on the document is capture phase, as the app's own are",
@@ -26039,7 +26049,7 @@ async function scrollbarPerfArm(cdp, { centre, delta }) {
 		);
 		/*
 		 * The inventory is deliberately COMPLETE rather than filtered to the
-		 * module's own three: this page carries a second, non-capture `pointerdown`
+		 * module's own four: this page carries a second, non-capture `pointerdown`
 		 * listener that is not this change's (it is registered from another script
 		 * in the bundle), and a check that only counted the shape the module
 		 * registers would have hidden it. A reader gets to see everything the fade
@@ -26263,6 +26273,368 @@ async function scrollbarHoverAct(
 	};
 }
 
+/*
+ * THE KEYBOARD ARM (review round 1: M1 / Q1 / D1 / U1, and U2/U3 for the
+ * animation half). It runs FIRST on this surface, before any pointer or wheel
+ * has touched the palette, because that is the whole claim: a reader who has
+ * arrived at a scroller without moving it must be shown the bar. The previous
+ * mechanism — a `:focus-visible` animation keyed on the attribute — could not
+ * fire there at all, because the attribute is written BY the pointer and scroll
+ * doors.
+ *
+ * The arrival is driven the way the browser is asked the question: the module
+ * reveals only for a focus the platform calls keyboard-driven (`:focus-visible`),
+ * so this arm first tries a programmatic focus with the keyboard hint, and if the
+ * browser declines to call that keyboard-driven it HUNTS with real Tab presses
+ * over CDP's input pipeline, which is how a reader would arrive. Both outcomes
+ * are recorded: what the arm found, and — when a surface is not reachable by Tab
+ * at all — that fact, by name, instead of a green check that measured nothing.
+ *
+ * The two readings a fixture could only approximate are taken here on the app's
+ * own frame: the element's `animation-name` before and after the reveal (the
+ * non-collision rule — the reveal must take nothing away from another animation),
+ * and the bar's state at +2.6 s, where the old focus-visible animation was still
+ * at ~0.8 and the module's ordinary hold has finished.
+ */
+async function scrollbarFocusArm(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the keyboard arm`,
+		target !== null,
+		target === null
+			? "no scroller with more than 40px of overflow on that axis, inside the viewport"
+			: `${target.tag} ${target.over}px of overflow at ${JSON.stringify(target.rect)}`,
+	);
+	if (target === null) return null;
+	const selector = JSON.stringify(prefer);
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = (file) => stripReading(file, strip, targetRgb);
+
+	// Start from rest: a pointer parked where it hovers nothing, hold waited out.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+
+	const programmatic = await cdp.evaluate(`(() => {
+		const el = ${prefer === null ? "window.__loScrollbarFade" : `document.querySelector(${selector})`};
+		if (el === null || el === undefined) return { found: false };
+		const animationBefore = getComputedStyle(el).animationName;
+		const attributeBefore = el.getAttribute("data-lo-scrollbar");
+		el.focus({ focusVisible: true });
+		return {
+			found: true,
+			tabIndex: el.tabIndex,
+			active: document.activeElement === el,
+			focusVisible: el.matches(":focus-visible"),
+			animationBefore,
+			animationAfter: getComputedStyle(el).animationName,
+			attributeBefore,
+		};
+	})()`);
+
+	/*
+	 * THE REAL KEYBOARD ARRIVAL, when the browser will not call a programmatic
+	 * focus keyboard-driven. `tabindex="-1"` is focusable but not tabbable, and
+	 * Chromium answers `:focus-visible: false` for it - correctly: nobody got
+	 * there by keyboard. So the arm presses Tab, up to a bound, and stops on the
+	 * first element whose nearest scroller is the one under test.
+	 */
+	const HUNT = 30;
+	let hunt = { pressed: 0, reached: null };
+	if (programmatic.found === true && programmatic.focusVisible !== true) {
+		for (let press = 1; press <= HUNT; press++) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "rawKeyDown",
+				key: "Tab",
+				code: "Tab",
+				windowsVirtualKeyCode: 9,
+				nativeVirtualKeyCode: 9,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Tab",
+				code: "Tab",
+				windowsVirtualKeyCode: 9,
+				nativeVirtualKeyCode: 9,
+			});
+			await wait(60);
+			const where = await cdp.evaluate(`(() => {
+				const el = document.activeElement;
+				if (el === null || el === document.body) return { reached: false };
+				let scroller = null;
+				let node = el;
+				while (node !== null) {
+					const style = getComputedStyle(node);
+					if (/^(auto|scroll)$/.test(style.overflowX) || /^(auto|scroll)$/.test(style.overflowY)) {
+						scroller = node;
+						break;
+					}
+					node = node.parentElement;
+				}
+				return {
+					reached: scroller !== null,
+					tag: el.tagName.toLowerCase(),
+					cls: String(el.className || "").slice(0, 40),
+					focusVisible: typeof el.matches === "function" ? el.matches(":focus-visible") : null,
+					scrollerCls: scroller === null ? null : String(scroller.className || "").slice(0, 40),
+					fade: scroller === null ? null : scroller.getAttribute("data-lo-scrollbar"),
+				};
+			})()`);
+			hunt = { pressed: press, reached: where };
+			if (where.reached === true && where.focusVisible === true) break;
+		}
+	}
+	/*
+	 * EITHER ARRIVAL COUNTS, and the arm says which one it was. A programmatic
+	 * focus the browser calls keyboard-driven is the same event the app's own
+	 * focusin door receives; the hunt is simply the honest fallback for a surface
+	 * the browser will not classify that way (a `tabindex="-1"` scroller on a page
+	 * with no tabbable one).
+	 */
+	const keyed =
+		programmatic.focusVisible === true ||
+		(hunt.reached !== null && hunt.reached.reached === true);
+	note(
+		`${label} keyboard arrival`,
+		JSON.stringify({
+			programmatic,
+			hunt: { pressed: hunt.pressed, reached: hunt.reached },
+			keyed,
+		}),
+	);
+	/*
+	 * The modality rule, measured on the app's own frame rather than on a fixture:
+	 * a focus the browser does not call keyboard-driven must not reveal. On this
+	 * route that is the palette's `tabindex="-1"` list, which is the same shape as
+	 * a click into a scroller — and it is why the arm then goes hunting with Tab.
+	 */
+	if (programmatic.focusVisible !== true) {
+		check(
+			`${label}: a focus the browser does not call keyboard-driven reveals nothing`,
+			programmatic.found === true
+				? (await cdp.evaluate(SCROLLBAR_STATE)).fade === null ||
+						(await cdp.evaluate(SCROLLBAR_STATE)).fade === "idle"
+				: true,
+			`programmatic focus landed (tabIndex ${programmatic.tabIndex}) and :focus-visible stayed false; the attribute is ${JSON.stringify(programmatic.attributeBefore)}`,
+		);
+	}
+
+	const subject = keyed ? "keyboard" : "programmatic";
+	const focusAt = Date.now();
+	await wait(400);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-focus-dark`);
+	const awakePixels = await sample(awakeFrame.path);
+	if (keyed) {
+		check(
+			`${label}: tabbing onto a cold scroller reveals it with nothing scrolled`,
+			awakeState.fade === "active" &&
+				Number(awakeState.loSb) === 1 &&
+				awakePixels !== null &&
+				awakePixels.near > 0.3 * awakePixels.sampled,
+			`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb}; scrollTop ${awakeState.scrollTop} scrollLeft ${awakeState.scrollLeft}; ${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour (mean ${JSON.stringify(awakePixels?.mean ?? null)})`,
+		);
+	} else {
+		note(
+			`${label}: the keyboard reveal could not be photographed on this route`,
+			`no element whose nearest scroller is the one under test took focus in ${HUNT} Tab presses (last: ${JSON.stringify(hunt.reached)}) — the backend-less /chat has no tabbable scroller, and the transcript's tab stop needs a session. The behaviour is pinned by the unit suite's cold-focus test; the rendered gap is recorded rather than papered over.`,
+		);
+	}
+	check(
+		`${label}: the reveal animates nothing, so no other animation on the element loses its properties`,
+		programmatic.animationBefore === programmatic.animationAfter,
+		`animation-name ${JSON.stringify(programmatic.animationBefore)} before the focus, ${JSON.stringify(programmatic.animationAfter)} after — the reveal is a transition on --lo-sb, not an animation`,
+	);
+
+	/*
+	 * +2.6 s: past the 2200 ms hold and the 180 ms fade, and well inside the
+	 * ~4050 ms window the focus-visible animation used to hold the bar open.
+	 */
+	await wait(2200);
+	const settledAt = Date.now() - focusAt;
+	const afterState = await cdp.evaluate(SCROLLBAR_STATE);
+	const afterFrame = await capture(cdp, `${label}-focus-after-dark`);
+	const afterPixels = await sample(afterFrame.path);
+	check(
+		`${label}: the bar after a keyboard arrival is at the ordinary hold, with no second fade behind it`,
+		afterState.fade === "idle" &&
+			Number(afterState.loSb) === 0 &&
+			afterPixels !== null &&
+			afterPixels.near < 0.02 * afterPixels.sampled,
+		`at +${settledAt} ms after the ${subject} focus: attribute ${JSON.stringify(afterState.fade)}, --lo-sb ${afterState.loSb}, ${afterPixels?.near ?? "?"} of ${afterPixels?.sampled ?? "?"} strip pixels near the thumb's colour`,
+	);
+
+	// Hand the page back the way the other arms expect to find it.
+	await cdp.evaluate(`(() => {
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+		return true;
+	})()`);
+
+	return {
+		target,
+		programmatic,
+		hunt,
+		keyed,
+		subject,
+		awakeState,
+		afterState,
+		settledAt,
+		awakePixels,
+		afterPixels,
+		frames: { awake: awakeFrame.path, after: afterFrame.path },
+	};
+}
+
+/*
+ * THE THUMB-UNDER-THE-POINTER ARM (review round 1: D3, Q5's second half). The
+ * design's own affordance for a reader who has already found the thumb is the
+ * native `:hover` on the pseudo-element — "solid under the cursor" — and the
+ * question D3 could not answer from a fixture is what happens to that paint once
+ * the hold expires while the pointer is still resting on the thumb: if the thumb
+ * vanishes under the hand, the one state a reader needs while reaching for it is
+ * the one state nobody had photographed.
+ *
+ * The arm hovers the thumb's own band (its geometry is computed from the element:
+ * track length, content, viewport, offset) rather than the strip's midpoint, parks
+ * there for longer than the hold, and reads the same pixels three times: at rest,
+ * on arrival, and past the hold.
+ */
+async function scrollbarThumbPaintArm(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the thumb arm`,
+		target !== null,
+		target === null
+			? "no scroller with overflow on that axis"
+			: JSON.stringify(target.rect),
+	);
+	if (target === null) return null;
+	const selector = `${prefer === null ? "window.__loScrollbarFade" : `document.querySelector(${JSON.stringify(prefer)})`}`;
+	const geometry = await cdp.evaluate(`(() => {
+		const el = ${selector};
+		const rect = el.getBoundingClientRect();
+		const vertical = ${axis === "y"};
+		const track = vertical ? rect.height : rect.width;
+		const viewport = vertical ? el.clientHeight : el.clientWidth;
+		const content = vertical ? el.scrollHeight : el.scrollWidth;
+		const thumb = Math.max(24, track * (viewport / Math.max(1, content)));
+		const offset = vertical ? el.scrollTop : el.scrollLeft;
+		const travel = Math.max(1, content - viewport);
+		const pos = Math.max(0, Math.min(track - thumb, (offset / travel) * (track - thumb)));
+		return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, track, thumb, pos, offset, dpr: devicePixelRatio };
+	})()`);
+	/*
+	 * A third of the way down the thumb, on the bar's own 8 px strip: the same
+	 * place a reader's cursor lands when they reach for it.
+	 */
+	const point =
+		axis === "y"
+			? {
+					x: Math.round(geometry.rect.x + geometry.rect.width - 4),
+					y: Math.round(geometry.rect.y + geometry.pos + geometry.thumb / 3),
+				}
+			: {
+					x: Math.round(geometry.rect.x + geometry.pos + geometry.thumb / 3),
+					y: Math.round(geometry.rect.y + geometry.rect.height - 4),
+				};
+	const dpr = geometry.dpr;
+	/*
+	 * The band is the strip's own box narrowed to where the thumb is, built FROM
+	 * `stripOf` so the frame size and dpr it carries stay with the reading. The
+	 * first version of this arm hand-rolled the box and every read came back
+	 * `sizeMismatch` - the driver refuses a strip whose page it cannot verify,
+	 * which is the check doing its job.
+	 */
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const band =
+		axis === "y"
+			? {
+					...strip,
+					y0: Math.max(
+						strip.y0,
+						Math.round((geometry.rect.y + geometry.pos) * dpr),
+					),
+					y1: Math.min(
+						strip.y1,
+						Math.round((geometry.rect.y + geometry.pos + geometry.thumb) * dpr),
+					),
+				}
+			: {
+					...strip,
+					x0: Math.max(
+						strip.x0,
+						Math.round((geometry.rect.x + geometry.pos) * dpr),
+					),
+					x1: Math.min(
+						strip.x1,
+						Math.round((geometry.rect.x + geometry.pos + geometry.thumb) * dpr),
+					),
+				};
+
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const restingFrame = await capture(cdp, `${label}-thumbrest-dark`);
+	const resting = await stripReading(restingFrame.path, band, targetRgb);
+
+	await movePointer(cdp, point.x, point.y);
+	await wait(400);
+	const hoverFrame = await capture(cdp, `${label}-thumbhover-dark`);
+	const hover = await stripReading(hoverFrame.path, band, targetRgb);
+	check(
+		`${label}: the thumb under the pointer is painted the moment the pointer is on it`,
+		hover !== null && hover.near > 0.3 * hover.sampled,
+		`on the thumb (${JSON.stringify(point)}): ${hover?.near ?? "?"} of ${hover?.sampled ?? "?"} pixels in the thumb's own band are its colour, against ${resting?.near ?? "?"} at rest`,
+	);
+
+	// Past the hold, pointer still parked on the thumb.
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const heldState = await cdp.evaluate(SCROLLBAR_STATE);
+	const heldFrame = await capture(cdp, `${label}-thumbheld-dark`);
+	const held = await stripReading(heldFrame.path, band, targetRgb);
+	note(
+		`${label}: the thumb with the pointer parked on it, past the hold`,
+		JSON.stringify({
+			holdExpired: {
+				fade: heldState.fade,
+				loSb: heldState.loSb,
+			},
+			thumbBand: {
+				onArrival: {
+					near: hover?.near ?? null,
+					sampled: hover?.sampled ?? null,
+				},
+				pastHold: { near: held?.near ?? null, sampled: held?.sampled ?? null },
+				atRest: {
+					near: resting?.near ?? null,
+					sampled: resting?.sampled ?? null,
+				},
+			},
+		}),
+	);
+	await parkPointer(cdp);
+
+	return {
+		target,
+		geometry,
+		point,
+		band,
+		resting,
+		hover,
+		held,
+		heldState,
+		frames: {
+			rest: restingFrame.path,
+			hover: hoverFrame.path,
+			held: heldFrame.path,
+		},
+	};
+}
+
 async function sceneScrollbarFade(cdp) {
 	const facts = await factsOf(cdp);
 	check(
@@ -26291,6 +26663,7 @@ async function sceneScrollbarFade(cdp) {
 				scrollers: census.scrollers.map((one) => ({
 					tag: one.tag,
 					tourTag: one.tourTag,
+					tabIndex: one.tabIndex,
 					ox: one.ox,
 					oy: one.oy,
 					box: `${one.x},${one.y} ${one.w}x${one.h}`,
@@ -26333,6 +26706,13 @@ async function sceneScrollbarFade(cdp) {
 	 */
 	await verb(cdp, "press", "[data-command-palette-trigger]");
 	await wait(700);
+	const focusOne = await scrollbarFocusArm(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical keyboard arm", JSON.stringify(focusOne));
 	/*
 	 * The hold is waited out before the resting frame: a press is a real pointer
 	 * event, and a frame taken inside the hold would photograph an awake bar under
@@ -26348,6 +26728,14 @@ async function sceneScrollbarFade(cdp) {
 		prefer: "#command-palette-results",
 	});
 	note("vertical act", JSON.stringify(actOne));
+
+	const thumbOne = await scrollbarThumbPaintArm(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical thumb arm", JSON.stringify(thumbOne));
 
 	const hoverOne = await scrollbarHoverAct(cdp, {
 		axis: "y",
