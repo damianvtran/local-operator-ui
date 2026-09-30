@@ -550,22 +550,25 @@ test("the detail panes re-seed when the fetched definition changes (R1)", () => 
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
 	/*
-	 * The panes are keyed by the record AND its fetched content. Only the two
-	 * detail panes use a template key (the create panes are keyed by the literal
-	 * `agent:create` / `team:create`), so this is exactly the pair.
+	 * The panes are keyed by the record AND its fetched content.
+	 *
+	 * ASSERTED PER PANE, not by counting template keys on the page: R1 is a claim
+	 * about these two panes, and a count would red for a third template key that
+	 * had nothing to do with R1 (agent review round 4, R4-N1).
 	 */
 	const keys = page.match(/key=\{`(agent|team):[^`]*`\}/g) ?? [];
-	assert.equal(
-		keys.length,
-		2,
-		"the two detail panes must be the template-keyed ones",
-	);
-	for (const key of keys)
+	for (const [pane, prefix] of [
+		["profile", "key={`agent:"],
+		["team", "key={`team:"],
+	]) {
+		const key = keys.find((candidate) => candidate.startsWith(prefix));
+		assert.ok(key, `the ${pane} pane has no content-derived key`);
 		assert.match(
 			key,
 			/contentKey\(/,
-			`a detail pane is not keyed by its content: ${key}`,
+			`${pane} pane key is not content-derived: ${key}`,
 		);
+	}
 });
 
 /*
@@ -599,5 +602,13 @@ test("the replaced-edit notice keeps its wiring, its condition and its scope (R2
 	assert.match(
 		page,
 		/if \(seededPane\.current\.identity !== openIdentity\) \{[\s\S]{0,400}?setLostEdits\(false\);/,
+	);
+	/*
+	 * ...and a pane with NO content yet seeds silently, so a definition that comes
+	 * back after a transient empty read is not announced as a hub update (R4-N2).
+	 */
+	assert.match(
+		page,
+		/if \(openContent === null \|\| seededPane\.current\.content === null\)/,
 	);
 });

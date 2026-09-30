@@ -340,10 +340,17 @@ export function AgentsPage() {
 			setLostEdits(false);
 			return;
 		}
-		if (openContent === null || seededPane.current.content === openContent) {
-			seededPane.current.content = openContent;
+		if (openContent === null || seededPane.current.content === null) {
+			/*
+			 * NOTHING TO COMPARE AGAINST: the pane is unmounted, or its read has not
+			 * landed yet. Seed silently - announcing the first real content as a
+			 * change would put the notice over a pane that was merely empty a moment
+			 * ago (agent review round 4, R4-N2).
+			 */
+			seededPane.current = { identity: openIdentity, content: openContent };
 			return;
 		}
+		if (seededPane.current.content === openContent) return;
 		seededPane.current.content = openContent;
 		if (editDirty) setLostEdits(true);
 	}, [openIdentity, openContent, editDirty]);
@@ -358,8 +365,16 @@ export function AgentsPage() {
 				enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
 			/>
 			{lostEdits && (
-				/* `output` carries the `status` role, which is what this is. */
-				<output className="mb-4 block rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+				/*
+				 * `output` carries the `status` role, which is what this is.
+				 *
+				 * IT WEARS ITS NEIGHBOURS' MEASUREMENTS. The panel above it and the pane
+				 * below it are both `max-w-3xl`, so on a page wider than 48rem an
+				 * uncapped notice stretches past both of them and reads as a third,
+				 * unrelated block; its bottom margin is the panel's own `mb-6` for the
+				 * same reason (design review round 4, R4-M1).
+				 */
+				<output className="mb-6 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
 					The hub updated this definition while you were editing, and the form
 					below now shows the merged version. Edits you had not saved were
 					replaced.
