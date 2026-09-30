@@ -18,6 +18,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { FakeJournal } from "./loader-journal-fixture.mjs";
 
 const ROOT = process.cwd();
 
@@ -26,7 +27,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
-			'export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		].join("\n"),
 		resolveDir: ROOT,
@@ -60,6 +61,7 @@ const {
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
+	applyHistoryPage,
 	applyEvent,
 	EMPTY_TRANSCRIPT,
 	visibleRecords,
@@ -1760,5 +1762,84 @@ test("the facts carry `partial` exactly while the run's head is cut (design D1)"
 	assert.ok(
 		complete.facts.durationS !== null,
 		"and its span, which is the pair the marker is the absence of",
+	);
+});
+
+/* ------- the turn-ending response (issue #665), on the operator's journal ------ */
+
+/**
+ * These four use ONLY the exports that predate the segments change (`runsOf`,
+ * `closingAnswerIds`, `buildRows`, `collapsePlan`, `.hidden`, `.facts`), on
+ * purpose: they must FAIL on the tree before it, for the behaviour and not for a
+ * missing import - the fail-before proof the regressions owe.
+ */
+function operatorRun() {
+	const journal = FakeJournal.operator();
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		{ entries: journal.entries, has_more: false, cursor_missing: false },
+		{ replace: true },
+	);
+	const rows = buildRows(state.records, []);
+	const at = new Map(journal.entries.map((e, i) => [e.id, i]));
+	return {
+		journal,
+		state,
+		rows,
+		at,
+		plan: collapsePlan(rows, { live: false }),
+	};
+}
+
+test("#665: the turn's answer is row 1196, not the post-dispose reply at 1229", () => {
+	const { state, rows, at } = operatorRun();
+	const closing = [...closingAnswerIds(state.records)].map((id) => at.get(id));
+	assert.deepEqual(closing, [1196], "the caption belongs to the real answer");
+	assert.deepEqual(
+		rows.filter((r) => r.closesTurn).map((r) => at.get(r.record.id)),
+		[1196],
+	);
+	assert.equal(at.get(runsOf(rows)[0].closingAnswerId), 1196);
+});
+
+test("#665: the answer is never hidden behind the bar", () => {
+	const { plan, at } = operatorRun();
+	const hidden = new Set(plan.runs[0].hidden.map((r) => at.get(r.record.id)));
+	assert.equal(
+		hidden.has(1196),
+		false,
+		"the answer stays mounted while collapsed",
+	);
+	assert.equal(hidden.has(1229), true, "the follow-up reply condenses");
+});
+
+test("#665: the turn's action count is the turn's own, not the reply's work folded in", () => {
+	const { plan } = operatorRun();
+	assert.equal(
+		plan.runs[0].facts.actions,
+		415,
+		"415 through the answer; 8 more are the follow-up's",
+	);
+});
+
+test("#665: a pinned row between two hidden spans does not sit after a bar that precedes it", () => {
+	const { plan, rows, at } = operatorRun();
+	const order = [];
+	const hidden = new Set(plan.runs[0].hidden.map((r) => r.record.id));
+	// The slots a bar-per-span walk produces, from the model's hidden rows and the
+	// rows that stay: the first hidden row of each contiguous span names its bar.
+	let previousHidden = false;
+	for (const row of rows) {
+		const isHidden = hidden.has(row.record.id);
+		if (isHidden && !previousHidden) order.push(`bar@${at.get(row.record.id)}`);
+		if (!isHidden && row.record.kind === "compaction")
+			order.push(`compaction@${at.get(row.record.id)}`);
+		previousHidden = isHidden;
+	}
+	const bars = plan.runs[0].segments?.length ?? 1;
+	assert.equal(
+		order.filter((o) => o.startsWith("bar")).length,
+		bars,
+		"one bar per contiguous hidden span: the model must emit as many segments as there are spans",
 	);
 });

@@ -1308,6 +1308,13 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 	 * the whole set - the numbers differ, so both levels state their own and
 	 * the suppression must NOT fire. The notice between the two runs is what
 	 * splits them (`foldRuns`: a non-call row breaks a run).
+	 *
+	 * THE SPLITTER IS AN UNPINNED (info) NOTICE, since the segments change: a
+	 * `complete` marker is pinned, so it now ends one bar and opens another
+	 * instead of sitting between two runs of the same bar - which is the reorder
+	 * fix, and is asserted where it belongs (the segments suite). This test is
+	 * about the D3/U6 clause rule inside ONE bar, so its fixture must keep the
+	 * two folds in one.
 	 */
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
@@ -1317,7 +1324,7 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 		}),
 		toolRecord("tool:2"),
 		toolRecord("tool:3"),
-		noticeRecord("notice:1"),
+		noticeRecord("notice:1", { complete: false, level: "info" }),
 		toolRecord("tool:4"),
 		toolRecord("tool:5", {
 			images: [shotImage("tool:5", 0), shotImage("tool:5", 1)],
@@ -1612,5 +1619,154 @@ test("the incident row under the bar takes the block step too (operator report, 
 	assert.ok(
 		!incident.classList.contains(GAP.trace[0]),
 		"the 2px ledger hug is not painted on the incident row beneath the rule",
+	);
+});
+
+/* ------------- segments: several bars in one run (issue #665) ------------- */
+
+/** The order of the transcript's top-level entries: bars and rows by id. */
+const orderOf = (mounted) =>
+	[...mounted.container.querySelectorAll("[data-record-id]")]
+		.filter(
+			(node) =>
+				node.hasAttribute("data-turn-summary") ||
+				node.closest("[data-turn-summary]") === null,
+		)
+		.map((node) =>
+			node.hasAttribute("data-turn-summary")
+				? `bar:${node.getAttribute("data-record-id")}`
+				: node.getAttribute("data-record-id"),
+		);
+const barsOf = (mounted) => [
+	...mounted.container.querySelectorAll("[data-turn-summary]"),
+];
+
+test("a pinned row between two hidden spans stays BETWEEN their bars, before and after a press", async (t) => {
+	/*
+	 * The E8 reorder, as a rendered assertion. One bar at the first hidden row's
+	 * slot used to put the compaction AFTER a bar that preceded it - and moved it
+	 * when the bar opened. Each span is its own bar now, so the order is fixed.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	const expected = [
+		"user:1",
+		"bar:tool:1",
+		"compaction:1",
+		"bar:tool:2",
+		"answer:1",
+	];
+	assert.deepEqual(orderOf(mounted), expected, "collapsed order");
+	assert.equal(barsOf(mounted).length, 2, "two bars in one run");
+	// Pressing the SECOND bar opens only the second span.
+	await click(barsOf(mounted)[1].querySelector("button"));
+	assert.deepEqual(
+		orderOf(mounted).filter((id) => !id.startsWith("tool:")),
+		expected,
+		"opening a bar reorders nothing that stays visible",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "the second span's row is now mounted");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the first span is still condensed",
+	);
+	assert.equal(
+		barsOf(mounted)[0].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+	);
+});
+
+test("one stamp per turn with several bars: the answer's foot keeps it", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	assert.equal(mounted.container.querySelectorAll("time").length, 1);
+	assert.ok(
+		rowBox(mounted, "answer:1").querySelector("time"),
+		"the stamp is on the answer's own foot, since no single bar states the turn",
+	);
+	assert.match(rowBox(mounted, "answer:1").textContent, /Worked/);
+});
+
+test("a post-terminal reply is a follow-up bar AFTER the answer, with the completion mark", async (t) => {
+	/*
+	 * The operator's shape, minimal: the answer, the disposal marker and incident,
+	 * a peer note, then one more short reply with its work. The answer must stay
+	 * mounted with the turn's own foot; the reply's work is a labelled bar below.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+		noticeRecord("marker:1", {
+			ts: TS + 3_000,
+			text: "Stopped with an error",
+			level: "error",
+		}),
+		peerRecord("peer:1", { ts: TS + 4_000 }),
+		toolRecord("tool:2", { ts: TS + 5_000 }),
+		answerRecord("answer:2", {
+			ts: TS + 6_000,
+			settledAt: TS + 6_000,
+			text: "Status note.",
+		}),
+	]);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "the turn's bar and the follow-up's");
+	assert.equal(bars[0].hasAttribute("data-segment-complete"), false);
+	assert.equal(
+		bars[1].getAttribute("data-segment-complete"),
+		"true",
+		"only the follow-up is marked complete",
+	);
+	assert.match(bars[1].textContent, /Peer note/);
+	assert.ok(rowBox(mounted, "answer:1"), "the ANSWER stays mounted");
+	assert.ok(
+		rowBox(mounted, "answer:1").hasAttribute("data-turn-answer") ||
+			rowBox(mounted, "answer:1").querySelector("[data-turn-answer]"),
+		"and wears the answer mark",
+	);
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-answer]").length,
+		1,
+		"the status note does not",
+	);
+	const order = orderOf(mounted);
+	assert.ok(
+		order.indexOf("answer:1") < order.indexOf("marker:1") &&
+			order.indexOf("marker:1") < order.indexOf("bar:peer:1"),
+		`answer, marker, then the follow-up bar: ${order.join(" ")}`,
+	);
+});
+
+test("a reveal names the bar that holds the row: data-segment-ids decides among several", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	const [first, second] = barsOf(mounted);
+	assert.equal(first.getAttribute("data-segment-ids"), "tool:1");
+	assert.equal(second.getAttribute("data-segment-ids"), "tool:2");
+	assert.equal(
+		first.getAttribute("data-run-ids"),
+		second.getAttribute("data-run-ids"),
+		"the run's ids stay whole on every bar (the existing contract)",
 	);
 });
