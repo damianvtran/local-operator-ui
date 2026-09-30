@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/composer-cluster-proof.mjs",
-  "at": "2026-09-30T10:17:32.737Z",
+  "at": "2026-09-30T10:42:36.555Z",
   "cases": [
     {
       "name": "history-empty-recalls",
@@ -38,7 +38,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-empty-recalls.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/history-empty-recalls.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -58,7 +58,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-draft-survives-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/history-draft-survives-arrowup.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"run the migration again please\" (expected \"draft\")"
@@ -105,7 +105,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/history-draft-multiline-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/history-draft-multiline-arrowup.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"run the migration again please\" (expected \"one\\ntwo\")"
@@ -127,7 +127,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-list-opens.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/skill-list-opens.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Skills\")",
@@ -151,7 +151,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-list-empty.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/skill-list-empty.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Skills\")",
@@ -174,7 +174,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-accepted-reassembles.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/skill-accepted-reassembles.png",
       "verdict": "FAIL",
       "mismatches": [
         "draft: \"fix this $res\" (expected \"$research fix this \")"
@@ -196,7 +196,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/skill-send-expands.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/skill-send-expands.png",
       "verdict": "FAIL",
       "mismatches": [
         "the payload is the skill expansion: false (expected true)",
@@ -280,7 +280,7 @@
         "dialogRows": 59
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/theme-qualified-confirms.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/theme-qualified-confirms.png",
       "verdict": "FAIL",
       "mismatches": [
         "no grid behind it: 59 (expected 0)"
@@ -362,7 +362,7 @@
         "dialogRows": 59
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before3/theme-bare-keeps-the-grid.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-before4/theme-bare-keeps-the-grid.png",
       "verdict": "PASS",
       "mismatches": []
     }
