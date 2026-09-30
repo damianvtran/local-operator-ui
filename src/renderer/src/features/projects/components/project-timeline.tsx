@@ -34,8 +34,9 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { Minus, Plus } from "lucide-react";
+import { CalendarOff, Minus, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -59,6 +60,7 @@ import {
 	timelineSpan,
 	timelineTicks,
 	todayUtcMs,
+	undatedCountLabel,
 } from "../timeline-model";
 
 /** The pinned name column's width in px — one value for the axis and rows. */
@@ -150,9 +152,18 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
 					{failedDetails > 0
 						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
-						: pendingDetails > 0
-							? `Loading milestones for ${pendingDetails} project${pendingDetails === 1 ? "" : "s"}…`
-							: `${sections.dated.length} dated · ${sections.undated.length} without dates`}
+						: /*
+							 * THE PENDING CLAUSE IS APPENDED, NOT SWAPPED (design item 1/
+							 * §3): the sentence keeps saying the counts it already gave,
+							 * and the arrival of milestone detail is a clause on the end —
+							 * the old swap read as the toolbar re-indexing live while the
+							 * reader watched.
+							 */
+							`${sections.dated.length} dated · ${sections.undated.length} without dates${
+								pendingDetails > 0
+									? ` · loading milestones for ${pendingDetails}…`
+									: ""
+							}`}
 				</span>
 				<span className="flex shrink-0 items-center gap-1">
 					{failedDetails > 0 && (
@@ -242,40 +253,61 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 						))}
 					</div>
 				</div>
-			) : (
-				<p
-					/*
-					 * 36px, the AXIS's own left edge: the toolbar above is `px-9` and
-					 * the axis's name column starts at the scroller's `px-6` plus the
-					 * sticky label's `px-3`, so a message at `px-3` sat 13px in against
-					 * a 37px axis - the misalignment design round 1 (D2) measured.
-					 */
-					className="px-9 py-6 text-body-sm text-ink-muted"
-				>
-					No dates on any project yet. Set a start date, a target date or a
-					milestone date and it will appear on the timeline.
-				</p>
-			)}
+			) : null}
 
+			{/*
+			 * THE NO-DATES CALLOUT (design §3): one line that replaces the two
+			 * stacked text blocks that used to sit here — the "No dates on any
+			 * project yet" sentence AND the unbounded `No dates (25): a, b, c…`
+			 * run-on — with a disclosure whose panel lists the same names as
+			 * buttons that still open their project. `defaultOpen` when NOTHING is
+			 * dated: there is no chart to look at, so the collapsed state would
+			 * hide the only content the view has. The count is the FILTERED set's
+			 * (U5/M4): the page hands this component the rows the toolbar's search
+			 * and facets leave, so `25 projects without dates` and the rows on
+			 * screen are always the same 25 — the callout and the list can never
+			 * disagree about what exists.
+			 */}
 			{sections.undated.length > 0 && (
-				<div
-					/* The same 36px as the paragraph above and the toolbar (design
-					 * round 1, D2): this list is the axis's other caption. */
-					className="shrink-0 px-9 py-2 text-meta text-ink-muted"
-				>
-					No dates ({sections.undated.length}):{" "}
-					{sections.undated.map((item, index) => (
-						<span key={item.project.id}>
-							{index > 0 && ", "}
-							<button
-								type="button"
-								className="text-ink hover:underline"
-								onClick={() => onOpen(item)}
-							>
-								{projectDisplayName(item.project)}
-							</button>
-						</span>
-					))}
+				<div className="shrink-0 px-9 py-2" data-project-undated-callout="">
+					<Disclosure
+						defaultOpen={sections.dated.length === 0}
+						triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-8 py-0"
+						summary={
+							<span className="flex min-w-0 items-center gap-2 text-meta">
+								<CalendarOff
+									size={14}
+									className="shrink-0 text-ink-dim"
+									aria-hidden="true"
+								/>
+								<span className="truncate text-ink">
+									{undatedCountLabel(sections.undated.length)}
+								</span>
+							</span>
+						}
+					>
+						{sections.dated.length === 0 && (
+							<p className="pb-1 text-meta text-ink-muted">
+								Set a start date, a target date or a milestone date and it will
+								appear on the timeline.
+							</p>
+						)}
+						<ul className="flex max-h-24 flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
+							{sections.undated.map((item) => (
+								<li key={item.project.id}>
+									<button
+										type="button"
+										className="rounded-sm text-meta text-ink hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+										onClick={() => onOpen(item)}
+									>
+										{projectDisplayName(item.project)}
+									</button>
+								</li>
+							))}
+						</ul>
+					</Disclosure>
 				</div>
 			)}
 		</div>
