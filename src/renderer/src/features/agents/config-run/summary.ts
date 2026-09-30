@@ -43,6 +43,15 @@ export type RunToolRow = {
 	phase: string;
 	/** The row's own instant, for ordering the strip's steps. */
 	ts: number;
+	/**
+	 * The transcript's own verdicts on the call, and the reason `writes` needs
+	 * them: an op that WRITES is not the same fact as a write that LANDED. Both
+	 * are optional because the projection is also called by tests and by callers
+	 * that hold only a name and args.
+	 */
+	isError?: boolean;
+	notRunReason?: string | null;
+	neverSent?: boolean;
 };
 
 /**
@@ -60,6 +69,16 @@ export type RunToolRow = {
  * inventory includes `list`/`show`/`search`, so a summary built from every row
  * that NAMES a definition would report a definition the run merely LOOKED UP as
  * "updated, changed nothing". A read paints a step line and nothing else.
+ *
+ * A WRITE IS NOT COUNTED UNTIL IT LANDED, which is the other half of the same
+ * question (review round 1, M4): a refused create (`role 'x' already exists`),
+ * an `update` the backend rejects, or a call the harness never ran is a row
+ * that NAMES a definition and does not change one. Counting those put "Updated
+ * reviewer: its settings changed" on the one surface whose whole job is to say
+ * exactly what changed — and it was false. So `writes` means the registry was
+ * WRITTEN: the op writes, the row settled, and it neither failed nor was
+ * skipped. A pending or failed call leaves the touched set alone, and the row
+ * still paints its step line in the Watch list.
  */
 export function projectRunToolRow(row: RunToolRow): {
 	verb: string;
@@ -71,24 +90,35 @@ export function projectRunToolRow(row: RunToolRow): {
 	const name = typeof row.args?.name === "string" ? row.args.name : null;
 	const kind: "agent" | "team" = row.toolName === "team" ? "team" : "agent";
 	const target = name ? { kind, name } : null;
+	/*
+	 * Landed, not merely attempted. `phase` is the transcript's own compose →
+	 * queued → running → done ladder, and a row that is not `done` may still be
+	 * dictating its arguments or waiting behind a sibling; `notRunReason` is the
+	 * harness's statement that the call will never run, and `isError` is the
+	 * tool's own failure. `neverSent` covers the third absence — a turn that died
+	 * with the call still in flight — where there is no verdict to read.
+	 */
+	const landed =
+		row.phase === "done" && !row.isError && !row.notRunReason && !row.neverSent;
+	const write = (writes: boolean) => ({ writes: writes && landed });
 	switch (op) {
 		case "create":
 			return {
 				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
 				target,
-				writes: true,
+				...write(true),
 			};
 		case "update":
 			return {
 				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
 				target,
-				writes: true,
+				...write(true),
 			};
 		case "install":
 			return {
 				verb: name ? `Installing ${name}` : "Installing an agent",
 				target,
-				writes: true,
+				...write(true),
 			};
 		case "list":
 		case "search":
@@ -96,19 +126,19 @@ export function projectRunToolRow(row: RunToolRow): {
 			return {
 				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
 				target,
-				writes: false,
+				...write(false),
 			};
 		default:
 			/*
-			 * An op this projection cannot read counts as a WRITE: the failure
-			 * direction is to report a change nobody made over hiding one the operator
-			 * will see in the list.
+			 * An op this projection cannot read counts as a WRITE once it has landed:
+			 * the failure direction is to report a change nobody made over hiding one
+			 * the operator will see in the list.
 			 */
 			return {
 				verb:
 					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
 				target,
-				writes: true,
+				...write(true),
 			};
 	}
 }

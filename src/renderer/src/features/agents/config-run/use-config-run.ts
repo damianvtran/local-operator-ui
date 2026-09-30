@@ -77,8 +77,16 @@ export function configRunEnabled(
 	return (
 		desktopFeatureEnabled(capabilities, "agents_config") &&
 		desktopFeatureEnabled(capabilities, "session_interrupt") &&
-		(desktopFeatureEnabled(capabilities, "profile_catalogue") ||
-			desktopFeatureEnabled(capabilities, "team_catalogue"))
+		/*
+		 * BOTH catalogue keys, `&&` rather than `||` (review round 1, m1). The
+		 * settle diff reads `profiles.list` AND `teams.list` unconditionally, so a
+		 * backend advertising only one of them would start runs that could never
+		 * describe their own result — every run would end in "the lists could not be
+		 * read". This function's own docstring, and the design note § 3.9, both say
+		 * all of them; the code said otherwise.
+		 */
+		desktopFeatureEnabled(capabilities, "profile_catalogue") &&
+		desktopFeatureEnabled(capabilities, "team_catalogue")
 	);
 }
 
@@ -109,8 +117,6 @@ export function activeRunIdFromRefusal(error: unknown): string | null {
  * arguments are the call's arguments, and `AgentParams`/`TeamParams` are what
  * produced them), and it reports nothing rather than guessing when they are
  * absent. A strip that said "Updating something" would be worse than one that
- * only shows the elapsed time.
- */
 /** The elapsed time of a run, ticking only while it is live. */
 function useElapsed(startedAt: number | null, live: boolean): number {
 	const [now, setNow] = useState(() => Date.now());
@@ -127,6 +133,49 @@ export function formatElapsed(ms: number): string {
 	if (seconds < 60) return `${seconds}s`;
 	const minutes = Math.floor(seconds / 60);
 	return `${minutes}m ${String(seconds % 60).padStart(2, "0")}s`;
+}
+
+/**
+ * What the run last SAID, from its own transcript.
+ *
+ * The last assistant row rather than the last row: a run that changed nothing
+ * still answers, and its answer is the last thing it wrote (review round 1, U3).
+ * Rows without text (a tool call, a notice) are skipped rather than returned
+ * empty, so a run whose final act was a tool call still shows its sentence.
+ */
+export function lastAssistantText(
+	records: readonly { kind: string; text?: string }[] | undefined,
+): string {
+	for (let index = (records?.length ?? 0) - 1; index >= 0; index -= 1) {
+		const row = records?.[index];
+		if (row?.kind === "assistant" && row.text?.trim()) return row.text.trim();
+	}
+	return "";
+}
+
+/**
+ * Whether the server says a turn is running on this session, or `null` for
+ * "this response did not say".
+ *
+ * TWO SHAPES, both read: `frontend.streaming` is what this app's own stream
+ * reads, and `frontend.snapshot.streaming` is where the runtime's
+ * `FrontendSessionState` keeps the flag (`session/frontend_state.py`). `null`
+ * rather than `false` for an absent field, because the caller must not settle a
+ * run on a response that never answered the question.
+ */
+export function sessionStreamingFromSnapshot(
+	snapshot: unknown,
+): boolean | null {
+	const payload = (snapshot as { payload?: unknown } | null | undefined)
+		?.payload;
+	const frontend = (payload as { frontend?: unknown } | null | undefined)
+		?.frontend;
+	if (!frontend || typeof frontend !== "object") return null;
+	const direct = (frontend as { streaming?: unknown }).streaming;
+	if (typeof direct === "boolean") return direct;
+	const nested = (frontend as { snapshot?: { streaming?: unknown } }).snapshot
+		?.streaming;
+	return typeof nested === "boolean" ? nested : null;
 }
 
 export type ConfigRunHandle = {
@@ -154,8 +203,12 @@ export type ConfigRunHandle = {
 	}[];
 	/** The settled summary. Empty until the run settles. */
 	results: RunResult[];
+	/** What the run answered, so the summary can show it (U3). */
+	answer: string;
 	start: (text: string, about: RunTarget | null) => Promise<void>;
 	stop: () => Promise<void>;
+	/** Re-send a request whose message call failed, on the run it already made. */
+	retry: () => Promise<void>;
 	dismiss: () => void;
 	starting: boolean;
 	/** True once a run has been adopted from the single-flight refusal. */
@@ -175,6 +228,18 @@ export function useConfigRun(): ConfigRunHandle {
 	const stream = useCanonicalSessionStream(
 		store.sessionId ?? undefined,
 		Boolean(store.sessionId),
+	);
+	/*
+	 * THE RUN'S CLOSING SENTENCE, captured while its transcript is still readable.
+	 * `useCanonicalSessionStream` is torn down the moment the run settles (the
+	 * store drops the id), so a summary that wants to show what the run ANSWERED
+	 * has to take it now — and a run that changed nothing has nothing else to
+	 * show (review round 1, U3: "the run answered without changing any agent or
+	 * team" was a claim with no answer under it).
+	 */
+	const answer = useMemo(
+		() => lastAssistantText(stream.transcript?.records),
+		[stream.transcript?.records],
 	);
 	useDesktopWatchLease(store.sessionId ?? undefined, stream.subscriptionId);
 
@@ -199,6 +264,9 @@ export function useConfigRun(): ConfigRunHandle {
 					args: (record.args ?? null) as Record<string, unknown> | null,
 					phase: record.phase,
 					ts: record.ts,
+					isError: record.isError,
+					notRunReason: record.notRunReason,
+					neverSent: record.neverSent,
 				}),
 				ts: record.ts,
 			}));
@@ -229,7 +297,17 @@ export function useConfigRun(): ConfigRunHandle {
 	 * cheap and they are the ground truth the summary claims to describe.
 	 */
 	const settleRun = useCallback(
-		async (status: "done" | "stopped") => {
+		async (status: "done" | "stopped", closing = "") => {
+			/*
+			 * THE LATCH IS SET BEFORE THE FIRST `await`, synchronously. It used to be
+			 * set after the two list reads, while the effect that calls this re-fires
+			 * on every stream change and on this callback's own identity — so a second
+			 * frame during the reads started a second settle: a duplicate pair of list
+			 * reads and a duplicate "Configuration run finished" toast (review round
+			 * 1, m2).
+			 */
+			if (settleLatch.current) return;
+			settleLatch.current = true;
 			const before = store.before as CatalogueSnapshot | null;
 			let results: RunResult[] = [];
 			try {
@@ -264,8 +342,7 @@ export function useConfigRun(): ConfigRunHandle {
 			 * settled means these reads are stale now.
 			 */
 			invalidateAuthoring(client);
-			useConfigRunStore.getState().settle(results, status);
-			settleLatch.current = true;
+			useConfigRunStore.getState().settle(results, status, closing);
 			if (status === "done" && results.length > 0) {
 				const created = results.filter((result) => result.created).length;
 				showSuccessToast(
@@ -302,15 +379,68 @@ export function useConfigRun(): ConfigRunHandle {
 		if (!stream.frontend) return;
 		if (stream.frontend.streaming) return;
 		if (stream.turnsCompleted === 0) return;
-		void settleRun(store.status === "stopping" ? "stopped" : "done");
+		void settleRun(store.status === "stopping" ? "stopped" : "done", answer);
 	}, [
 		live,
+		answer,
 		stream.failure,
 		stream.frontend,
 		stream.turnsCompleted,
 		store.status,
 		settleRun,
 	]);
+
+	/*
+	 * A RUN WHOSE TURN ENDED WHILE THIS PAGE WAS AWAY (QA round 1, Q2).
+	 *
+	 * The effect above settles on a TRANSITION — `streaming` true, then false,
+	 * with a completed round counted — and a fresh mount never sees one: the
+	 * count starts at zero for a new subscription, the journal replay is not a
+	 * `turn_end`, and the store is module-scope, so the run stayed "Working on
+	 * your request" (and Stop stayed "Stopping…") until a reload. It contradicts
+	 * the one promise Scope B makes about leaving the page.
+	 *
+	 * THE RECOVERY ASKS THE SERVER RATHER THAN THE STREAM, because that is where
+	 * the durable truth is: `sessions.get` reports whether a turn is running
+	 * (`frontend.streaming`), and the transcript this hook already reads carries
+	 * the finished answer. A run is over when the server says nothing is running
+	 * AND the run has said something — the second half is what keeps a turn that
+	 * has not started yet (not streaming, nothing said) from settling on arrival.
+	 * The read is polled only while the run is live, and a read that fails leaves
+	 * the live path to settle it as before.
+	 */
+	useEffect(() => {
+		const sessionId = store.sessionId;
+		if (!live || !sessionId) return;
+		let cancelled = false;
+		const probe = async () => {
+			if (cancelled || settleLatch.current) return;
+			try {
+				const snapshot = await desktopResult<unknown>({
+					op: "sessions.get",
+					sessionId,
+				});
+				if (cancelled || settleLatch.current) return;
+				if (sessionStreamingFromSnapshot(snapshot) !== false) return;
+				if (!lastAssistantText(stream.transcript?.records)) return;
+				void settleRun(
+					useConfigRunStore.getState().status === "stopping"
+						? "stopped"
+						: "done",
+					lastAssistantText(stream.transcript?.records),
+				);
+			} catch {
+				// The live path still owns this run; a read that failed is not a verdict.
+			}
+		};
+		const first = setTimeout(() => void probe(), 400);
+		const poll = setInterval(() => void probe(), 4_000);
+		return () => {
+			cancelled = true;
+			clearTimeout(first);
+			clearInterval(poll);
+		};
+	}, [live, store.sessionId, stream.transcript, settleRun]);
 
 	const start = async (text: string, about: RunTarget | null) => {
 		if (starting || !text.trim()) return;
@@ -354,6 +484,12 @@ export function useConfigRun(): ConfigRunHandle {
 					 * choose — the strip says "Already running" and offers Stop.
 					 */
 					setAttached(true);
+					/*
+					 * `adopt` does NOT spend the draft, and this is the path the copy names:
+					 * the strip says the request was not sent and is still in the box, so the
+					 * text has to still be there (review round 1, M2 / QA Q5 — the code even
+					 * said "KEEP the text" while clearing it).
+					 */
 					store.adopt(active, text.trim(), before);
 					return;
 				}
@@ -365,19 +501,78 @@ export function useConfigRun(): ConfigRunHandle {
 			 * mechanism table states: create, then message. `startedAt` is the accepted
 			 * create, so the elapsed clock starts where the work does.
 			 */
-			await desktopResult<{ ok?: boolean }>({
-				op: "sessions.message",
-				sessionId,
-				requestId: crypto.randomUUID(),
-				text: body,
-			});
+			await sendMessage(sessionId, body);
+			/*
+			 * THE DRAFT IS SPENT ONLY NOW — by a send the backend actually took. It
+			 * used to be cleared by `adopt`, before the message call, so every
+			 * failure below it left a sentence promising text that was gone, and the
+			 * single-flight attach path emptied the very box it said still held the
+			 * request (review round 1, M2).
+			 */
+			store.acceptDraft();
+		} catch (caught) {
+			const sessionId = useConfigRunStore.getState().sessionId;
+			useConfigRunStore
+				.getState()
+				.fail(
+					userFacingMessage(
+						caught,
+						sessionId
+							? "The run was set up, but your request could not be sent. It is still in the box — send it again when the backend is reachable."
+							: "The configuration run could not be started. Your request is still here.",
+					),
+				);
+		} finally {
+			setStarting(false);
+		}
+	};
+
+	/**
+	 * Send one prompt to the run's own session, and nothing else.
+	 *
+	 * Extracted so `retry` is the SAME call a first send makes rather than a
+	 * second spelling of it: the design's idempotency rule is that a retry repeats
+	 * the body byte-for-byte or answers 409 (`Prompt`, `desktop_sessions.py`), and
+	 * a copy of the call that drifted by a character would be a different request.
+	 */
+	const sendMessage = async (sessionId: string, text: string) => {
+		await desktopResult<{ ok?: boolean }>({
+			op: "sessions.message",
+			sessionId,
+			requestId: crypto.randomUUID(),
+			text,
+		});
+	};
+
+	/**
+	 * Retry a request whose MESSAGE call failed, on the run that was already made.
+	 *
+	 * The store keeps the session id through that failure precisely so this is
+	 * possible: without it the run was orphaned — the backend held a live run the
+	 * page could neither name, stop nor finish (review round 1, M2 / UX U10, whose
+	 * error strip told the operator to send it again with no Retry and no text).
+	 */
+	const retry = async () => {
+		const state = useConfigRunStore.getState();
+		if (starting || !state.sessionId || !state.topic) return;
+		setStarting(true);
+		try {
+			await sendMessage(state.sessionId, state.topic);
+			store.acceptDraft();
+			/*
+			 * Back to live. `adopt` is the one door that sets `running`, and the run id
+			 * and topic it needs are the ones already in hand — so the retry re-arms
+			 * the same run rather than starting a rival.
+			 */
+			store.adopt(state.sessionId, state.topic, state.before);
+			settleLatch.current = false;
 		} catch (caught) {
 			useConfigRunStore
 				.getState()
 				.fail(
 					userFacingMessage(
 						caught,
-						"The configuration run could not be started. Your request is still here.",
+						"The request could not be sent. It is still in the box.",
 					),
 				);
 		} finally {
@@ -407,7 +602,9 @@ export function useConfigRun(): ConfigRunHandle {
 		? null
 		: capabilities.isLoading
 			? "Connecting to the backend…"
-			: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
+			: capabilities.error
+				? "The backend could not be reached, so the composer is unavailable for now."
+				: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
 
 	return {
 		enabled,
@@ -422,11 +619,13 @@ export function useConfigRun(): ConfigRunHandle {
 		setAbout: store.setAbout,
 		touched: store.touched,
 		results: store.results,
+		answer: store.answer,
 		step,
 		elapsed,
 		activity,
 		start,
 		stop,
+		retry,
 		dismiss: store.dismiss,
 		starting,
 		attached,

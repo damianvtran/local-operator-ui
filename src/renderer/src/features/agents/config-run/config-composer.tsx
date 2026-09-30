@@ -93,7 +93,14 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 	);
 }
 
-function RunStrip({ run }: { run: ConfigRunHandle }) {
+function RunStrip({
+	run,
+	onDismiss,
+}: {
+	run: ConfigRunHandle;
+	/** Wraps `run.dismiss` so the caret lands back in the box (UX U8). */
+	onDismiss?: () => void;
+}) {
 	const [watching, setWatching] = useState(false);
 	const stopRef = useRef<HTMLButtonElement>(null);
 	const live = run.status === "running" || run.status === "stopping";
@@ -108,6 +115,15 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 		if (!live) return;
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key !== "Escape" || event.defaultPrevented) return;
+			/*
+			 * A dismissable layer owns Escape while it is open (review round 1, n1):
+			 * Radix marks the key handled, and the page's discard confirmation is
+			 * exactly the case where "close the dialog" must not also pull focus to
+			 * a button in another card. `defaultPrevented` covers the first, and the
+			 * open-dialog read covers the second.
+			 */
+			if (document.querySelector('[role="alertdialog"], [role="dialog"]'))
+				return;
 			stopRef.current?.focus();
 		};
 		window.addEventListener("keydown", onKey);
@@ -131,7 +147,7 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 
 	return (
 		<div
-			className="rounded-md border border-hairline bg-surface px-3 py-2"
+			className="border-hairline border-b pb-2"
 			data-testid="config-run-strip"
 		>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -180,7 +196,11 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 							{run.status === "stopping" ? "Stopping…" : "Stop"}
 						</Button>
 					) : (
-						<Button variant="ghost" size="sm" onClick={run.dismiss}>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => (onDismiss ? onDismiss() : run.dismiss())}
+						>
 							Dismiss
 						</Button>
 					)}
@@ -201,12 +221,16 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 			 * THE STOPPED CASE SAYS WHAT IT KEPT. Cancellation is not rollback: the
 			 * tools write through as they go, so a stop mid-run leaves whatever it had
 			 * already written, and the honest sentence is the one that says so rather
-			 * than implying the machine was put back.
+			 * than implying the machine was put back — and a stop that happened before
+			 * anything was written says THAT instead (review round 1, UX nit: the kept
+			 * sentence was shown over an empty result list).
 			 */}
 			{run.status === "stopped" ? (
 				<div className="mt-2 space-y-1 border-hairline border-t pt-2 text-body-sm">
 					<p className="text-ink">
-						Stopped. Changes it had already made were kept.
+						{run.results.length > 0
+							? "Stopped. Changes it had already made were kept."
+							: "Stopped. Nothing had been changed yet."}
 					</p>
 					{run.results.length > 0 ? (
 						<ul className="space-y-0.5">
@@ -227,9 +251,28 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 			{run.status === "error" && run.error ? (
 				<div className="mt-2 border-danger-border border-t pt-2">
 					<p className="text-body-sm text-danger">{run.error}</p>
-					<p className="text-meta text-ink-muted">
-						Nothing else was changed by this run.
-					</p>
+					<div className="mt-1 flex items-center gap-2">
+						{/*
+						 * RETRY, WHEN THERE IS SOMETHING TO RETRY ON. The message-call
+						 * failure is the one error the page can act on — the run exists and
+						 * the text is still in the box — so the strip offers the same call
+						 * again rather than telling the operator to send it themselves
+						 * (review round 1, UX U10).
+						 */}
+						{run.sessionId ? (
+							<Button
+								variant="secondary"
+								size="sm"
+								disabled={run.starting}
+								onClick={() => void run.retry()}
+							>
+								{run.starting ? "Sending…" : "Retry"}
+							</Button>
+						) : null}
+						<p className="text-meta text-ink-muted">
+							Nothing else was changed by this run.
+						</p>
+					</div>
 				</div>
 			) : null}
 		</div>
@@ -249,9 +292,25 @@ function RunStrip({ run }: { run: ConfigRunHandle }) {
 function RunSummary({ run }: { run: ConfigRunHandle }) {
 	if (run.results.length === 0) {
 		return (
-			<p className="mt-2 border-hairline border-t pt-2 text-body-sm text-ink-muted">
-				The run answered without changing any agent or team.
-			</p>
+			<div className="mt-2 border-hairline border-t pt-2 text-body-sm">
+				<p className="text-ink-muted">
+					The run answered without changing any agent or team.
+				</p>
+				{/*
+				 * THE ANSWER ITSELF, and the request it answers. "The run answered" is a
+				 * claim the operator cannot check from here otherwise: the zero-touched
+				 * case is DEFINED as "the run answered a question", and the sentence and
+				 * the question were the two things missing (review round 1, UX U3).
+				 */}
+				{run.answer ? (
+					<p className="mt-1 whitespace-pre-wrap text-ink">{run.answer}</p>
+				) : null}
+				{run.topic ? (
+					<p className="mt-1 text-meta text-ink-muted">
+						You asked: {run.topic}
+					</p>
+				) : null}
+			</div>
 		);
 	}
 	return (
@@ -279,6 +338,11 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 					</li>
 				))}
 			</ul>
+			{run.answer ? (
+				<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
+					{run.answer}
+				</p>
+			) : null}
 		</div>
 	);
 }
@@ -297,7 +361,6 @@ export function ConfigComposer({
 	about: { kind: "agent" | "team"; name: string } | null;
 	onClearAbout: () => void;
 }) {
-	const [focused, setFocused] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const live = run.status === "running" || run.status === "stopping";
 	const disabled = !run.enabled || live || Boolean(blockedReason);
@@ -307,16 +370,47 @@ export function ConfigComposer({
 			? "Ask for a new agent or change a team…"
 			: "Configure agents by conversation";
 
+	/*
+	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.
+	 * The detail pane's own button seeds the draft and names the target; the
+	 * operator's next keystroke belongs in this box, and without this the focus
+	 * stayed on `BODY` — a keyboard user had no cue that anything had happened
+	 * (review round 1, D9).
+	 */
+	const aboutKey = about ? `${about.kind}:${about.name}` : null;
+	useEffect(() => {
+		if (!aboutKey) return;
+		const node = textareaRef.current;
+		if (!node || node.disabled) return;
+		node.focus();
+		const end = node.value.length;
+		node.setSelectionRange?.(end, end);
+	}, [aboutKey]);
+
 	const send = () => {
 		const text = run.draft.trim();
 		if (!text || disabled) return;
 		void run.start(text, about);
 	};
 
+	/**
+	 * DISMISS AND CLEAR PUT THE CARET BACK (UX U8). Both retire the control the
+	 * operator just pressed, and focus used to fall to `body` — a keyboard user
+	 * then had no cursor anywhere on the page.
+	 */
+	const dismissAndFocus = () => {
+		run.dismiss();
+		textareaRef.current?.focus();
+	};
+	const clearAboutAndFocus = () => {
+		onClearAbout();
+		textareaRef.current?.focus();
+	};
+
 	return (
 		<div
 			className={cn(
-				"rounded-md border border-hairline bg-surface p-3",
+				"relative rounded-md border border-hairline bg-surface p-3",
 				hero && "shadow-none",
 			)}
 			data-testid="config-composer"
@@ -324,13 +418,31 @@ export function ConfigComposer({
 			<div className="sr-only" id="config-composer-label">
 				Ask for an agent or team change
 			</div>
-			{run.enabled && run.status !== "idle" ? <RunStrip run={run} /> : null}
+			{/*
+			 * THE STRIP FLOATS IN THE DOCKED COMPOSER (design review round 1, D4).
+			 * Inside the flow it pushed the pane it is docked under: measured 629 px
+			 * of detail at rest, 699 while typing and 547 once a run settled — a 152
+			 * px shift of the content the operator was reading, with the summary
+			 * landing flush on the textarea's border. Above the box it covers the
+			 * scroller's last lines instead of moving them, and the pane's height
+			 * stops depending on the run's state. The hero (nothing selected, no pane
+			 * to protect) keeps it in the flow, where a growing card is the point.
+			 */}
+			{run.enabled && run.status !== "idle" ? (
+				hero ? (
+					<RunStrip run={run} onDismiss={dismissAndFocus} />
+				) : (
+					<div className="absolute inset-x-0 bottom-full rounded-t-md border-hairline border bg-canvas p-3">
+						<RunStrip run={run} onDismiss={dismissAndFocus} />
+					</div>
+				)
+			) : null}
 			{about ? (
 				<div className="mb-2 flex items-center gap-2">
 					<Badge variant="accent" data-testid="config-composer-about">
 						About {about.kind} {about.name}
 					</Badge>
-					<Button variant="ghost" size="sm" onClick={onClearAbout}>
+					<Button variant="ghost" size="sm" onClick={clearAboutAndFocus}>
 						Clear
 					</Button>
 				</div>
@@ -346,8 +458,6 @@ export function ConfigComposer({
 				placeholder={placeholder}
 				value={run.draft}
 				disabled={disabled || !run.enabled}
-				onFocus={() => setFocused(true)}
-				onBlur={() => setFocused(false)}
 				onChange={(event) => run.setDraft(event.target.value)}
 				onKeyDown={(event) => {
 					if (event.key === "Enter" && !event.shiftKey) {
@@ -356,13 +466,22 @@ export function ConfigComposer({
 					}
 				}}
 			/>
-			{run.enabled && !about && !live && !focused && !run.draft ? (
+			{/*
+			 * THE CHIPS STAY WHILE THE BOX IS FOCUSED, and they are disabled with it
+			 * (design review round 1, D4/U11 and D9). Unmounting them on focus moved
+			 * every control under the pointer by 70 px — a chip could not be clicked
+			 * once the box was entered — and a chip pressed while the page was
+			 * ``blockedReason`` wrote text into a disabled field behind the operator's
+			 * back.
+			 */}
+			{run.enabled && !about && !live && !run.draft ? (
 				<div className="mt-2 flex flex-wrap gap-1.5">
 					{EXAMPLES.map((example) => (
 						<Button
 							key={example}
 							variant="outline"
 							size="sm"
+							disabled={disabled}
 							onClick={() => {
 								run.setDraft(example);
 								textareaRef.current?.focus();
@@ -379,7 +498,12 @@ export function ConfigComposer({
 					disabled={disabled || !run.draft.trim()}
 					onClick={send}
 				>
-					{run.starting ? "Starting…" : "Ask for this change"}
+					{/*
+					 * ONE VERB FOR ONE ACTION (design review round 1, N2): the detail
+					 * pane's button and this one are the same act, and they used to read
+					 * "Ask for a change" and "Ask for this change".
+					 */}
+					{run.starting ? "Starting…" : "Ask for a change"}
 				</Button>
 				{blockedReason ? (
 					<p className="text-meta text-warning">{blockedReason}</p>

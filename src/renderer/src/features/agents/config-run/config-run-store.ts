@@ -50,6 +50,12 @@ export type RunResult = {
 	changes: RunChange[];
 };
 
+/** A definition the run changed, as a row mark carries it. */
+export type RunMark = RunTarget & {
+	/** A row that APPEARED, so its badge says New rather than Updated (D8). */
+	created: boolean;
+};
+
 export type ConfigRunStore = {
 	sessionId: string | null;
 	status: ConfigRunStatus;
@@ -60,7 +66,10 @@ export type ConfigRunStore = {
 	 *
 	 * A draft that survives a failure is the difference between "the backend was
 	 * down" and "I lost what I typed" (UX brief, must-nots), and the box is
-	 * cleared only by a send that was actually accepted.
+	 * cleared only by a send that was actually accepted — `acceptDraft`, called
+	 * AFTER `sessions.message` resolves, and never by the create alone (review
+	 * round 1, M2: the attach path says "it is still in the box" and then emptied
+	 * it, and a failed message call kept the sentence while dropping the text).
 	 */
 	draft: string;
 	/** The row the next send is about, when one is selected on the page. */
@@ -72,18 +81,31 @@ export type ConfigRunStore = {
 	touched: RunTarget[];
 	/** The settled summary; empty until the run settles. */
 	results: RunResult[];
+	/**
+	 * What the run answered, captured at settle time because the transcript is
+	 * unreadable afterwards. A run that changed nothing has only this to show
+	 * (review round 1, U3).
+	 */
+	answer: string;
 	/** Rows to mark "Updated by a configuration run" until each is opened. */
-	marks: RunTarget[];
+	marks: RunMark[];
 	/** Signature of the catalogues at send time, for the settle-time diff. */
 	before: unknown;
 
 	setDraft: (draft: string) => void;
 	setAbout: (about: RunTarget | null) => void;
-	/** A send was accepted: the run exists. */
+	/** A run exists and is live. Does NOT spend the draft — see `acceptDraft`. */
 	adopt: (sessionId: string, topic: string, before: unknown) => void;
+	/** The send was accepted: now the box is spent. */
+	acceptDraft: () => void;
 	noteTouched: (target: RunTarget) => void;
 	stopping: () => void;
-	settle: (results: RunResult[], status: "done" | "stopped") => void;
+	settle: (
+		results: RunResult[],
+		status: "done" | "stopped",
+		answer: string,
+	) => void;
+	/** A failure that keeps the run's session, so a Retry can reach it again. */
 	fail: (message: string) => void;
 	dismiss: () => void;
 	clearMark: (target: RunTarget) => void;
@@ -107,6 +129,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	settledAt: null,
 	touched: [],
 	results: [],
+	answer: "",
 	marks: [],
 	before: null,
 
@@ -123,11 +146,11 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			settledAt: null,
 			touched: [],
 			results: [],
+			answer: "",
 			before,
-			// The draft is spent by a send that was accepted; a FOLLOW-UP starts
-			// from an empty box rather than from the previous request's text.
-			draft: "",
 		}),
+
+	acceptDraft: () => set({ draft: "" }),
 
 	noteTouched: (target) =>
 		set((state) =>
@@ -141,24 +164,37 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			state.status === "running" ? { status: "stopping" } : state,
 		),
 
-	settle: (results, status) =>
+	settle: (results, status, answer) =>
 		set(() => ({
 			status,
 			settledAt: Date.now(),
 			results,
+			answer,
 			/*
 			 * The marks are the rows the operator has not LOOKED at yet, so a run
 			 * that changed nothing marks nothing — and a create marks too, because
 			 * "a row appeared while I was not looking" is the same question as "a
-			 * row changed while I was not looking".
+			 * row changed while I was not looking". The badge follows the same flag:
+			 * a created row is New, not Updated (review round 1, D8).
 			 */
-			marks: results.map((result) => result.target),
+			marks: results.map((result) => ({
+				...result.target,
+				created: result.created,
+			})),
 			sessionId: null,
 			// `before` is spent by the diff it was taken for.
 			before: null,
 		})),
 
-	fail: (message) => set({ status: "error", error: message, sessionId: null }),
+	fail: (message) =>
+		/*
+		 * THE RUN'S ID SURVIVES A FAILED CALL. The create may already have made a
+		 * real session, and dropping the id left it unreachable: no Stop, no Retry,
+		 * and a live run the operator could not name (review round 1, M2).
+		 * `sessionId` is only ever non-null here when a create did land, because
+		 * `adopt` is the only writer and a failed create never reaches it.
+		 */
+		set({ status: "error", error: message }),
 
 	dismiss: () =>
 		set({
@@ -168,6 +204,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			topic: "",
 			touched: [],
 			results: [],
+			answer: "",
 			marks: [],
 			startedAt: null,
 			settledAt: null,
