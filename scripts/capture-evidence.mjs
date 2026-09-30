@@ -736,6 +736,40 @@ export const STORIES = [
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
+	/*
+	 * THE POLISH PASS'S OWN STATES (operator, 2026-09-30). Two frames answer the
+	 * question a still cannot: the tile is BORDERLESS AT REST and its edge returns
+	 * only while the pointer is on it, with the picture zoomed inside the frame
+	 * that clips it. `images-many-hover` is that state - its RESTING partner is
+	 * the `images-many` frame beside it, byte-identical to the before-hover frame
+	 * because the pre-change tile had no hover treatment at all (measured by the
+	 * design round: with `:hover` matched, every computed property was byte-equal
+	 * to rest). `images-many-hover-reduced-motion` is the same state with
+	 * `prefers-reduced-motion: reduce` emulated, where the ZOOM IS ABSENT (it is
+	 * `motion-safe:` only) and the EDGE IS STILL THERE - the cue that always reads
+	 * is a state, not a movement.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
 	[
 		"chat-trace-fold--image-expanded",
 		1280,
@@ -867,6 +901,46 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--images-many", 1280, 900],
+	/*
+	 * The bar's three proof states for the same pass: the hover (the tile's edge
+	 * and zoom, which a resting still cannot show), the same under
+	 * `prefers-reduced-motion: reduce` (edge only - the pin the design round can
+	 * check against a frame rather than against code), and the NARROW column, where
+	 * the one-row invariant is the claim: at a 640px window the strip is 556px and
+	 * four 117px tiles plus their gutters and the `+N` are 533.6px, 22.4px inside
+	 * it (measured by `condensed-group-media-geometry.mjs`).
+	 */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	["chat-turn-collapse--images", 640, 900, { dir: "images-narrow" }],
+	/*
+	 * The COUNT at the narrowest column, which is the row the whole size decision
+	 * rests on: four 117px tiles, their four 8px gutters and the `+4` control are
+	 * 533.6px of the 556px the strip has at a 640px window (slack 22.4px, and
+	 * 541.4px worst case at `+99`) - measured by
+	 * `condensed-group-media-geometry.mjs`, and framed here so the wrap claim can
+	 * be seen rather than only computed.
+	 */
+	["chat-turn-collapse--images-many", 640, 900, { dir: "images-many-narrow" }],
 	[
 		"chat-turn-collapse--images-many",
 		1280,
