@@ -320,3 +320,45 @@ cannot be delivered through it.
 The scripted child's rows are the story fixtures' own shape
 (`run-details.fixtures.ts`'s `entry()`), and its epoch is taken from the run, so
 the rows' timestamps and the reader's elapsed label describe the same moment.
+
+## The older-history row's own states (`--only=slot`)
+
+The rig can also photograph the row ABOVE the child's oldest loaded message — the
+one that reports history and, when a page ask fails, paints the fault and its
+retry (design round 1, D1 and D5). Four states, one palette, and it is the only
+group that needs a child past the route's own page limit:
+
+```sh
+node scripts/child-reader-scroll-evidence.mjs --arm=after --only=slot --skip-chip \
+  --themes=localOperatorDark --frames \
+  --json=<out>/slot-readings.json --out=<out>
+```
+
+Three things about that command are load-bearing.
+
+- **The child is grown before its first read, and then re-mounted.** The paging
+  cursor comes from the first page the reader applies, and a later tail-type read
+  may only move it to a strictly OLDER instant — which a tail page of a child
+  that has grown since it opened never is, because the child's launch row is its
+  oldest entry. Growing first and reading once (`window.__childScroll.remount()`)
+  is what puts `has_more` true at all; seeding through `batch(n)` leaves the row
+  reading `Start of conversation` over a 121-row child. The driver does this for
+  you.
+- **`/__child/older/hold` and `/older/fail`** are the harness's controls over the
+  OLDER-page ask only (the tail read is never touched, so the child stays
+  readable). `hold` parks the response — that is the loading frame — and a
+  `release` while the mode is `fail` answers every parked ask with the route's
+  failure envelope, which is the failed frame.
+- **`--skip-chip` skips groups G and H**, which pause the page's animations and
+  swap the row under the reader to photograph the follow-the-tail control. Those
+  two wedged this host twice at load ~150 (the driver awaited a page-side promise
+  for ten minutes while the page itself stayed responsive to a second CDP
+  connection); a run that only wants a transcript state should not inherit that
+  risk. The default is unchanged: every other invocation runs both groups.
+
+The row is the scroll content's FIRST child, so it is only on screen at the very
+top of the range — and the wheel does not land there (measured: the row was laid
+out, in the viewport, `opacity: 1`, and clipped 28px above the scroller's top
+edge). The driver places the offset with `drift` (a placement, not a gesture, so
+the pump ignores it) and refuses to shoot a state whose row is not inside the
+scroller's box.
