@@ -171,6 +171,25 @@ const CASES = [
 		],
 	},
 	{
+		name: "skill-list-empty",
+		why: 'A `$` query with NO matches keeps its listbox and says the miss (design round 1, D3): `$zzz` unmounted the list silently where the sibling `/` palette renders "No commands match." in the same place, so the two lists disagreed about how to answer a miss. The before half records the silent unmount (no listbox at all).',
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$zzz" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["list", state.list, "Skills"],
+			["no rows", state.rows.length, 0],
+			[
+				"the miss is stated",
+				String(state.listText).includes("No skills match."),
+				true,
+			],
+		],
+	},
+	{
 		name: "skill-accepted-reassembles",
 		why: "Accepting the row: the token moves to the FRONT with the surviving draft as its request (`fix this $res` → `$research fix this `), staged for send. The click is used here so the before tree — which has no list to click — simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
 		drive: async () => {
@@ -375,6 +394,9 @@ const READ_STATE = `(() => {
 		   misfire if the first one genuinely parked the caret on line 1. */
 		sel: document.querySelector("textarea")?.selectionStart ?? null,
 		list: box ? box.getAttribute("aria-label") : null,
+		/* The listbox's whole text: a no-match query's box holds no options but
+		   does hold the miss (design round 1, D3), which the rows field cannot see. */
+		listText: text(box),
 		rows: options.map((node) => text(node)),
 		active: active ? text(active) : null,
 		sent: text(document.querySelector("[data-sent]")),

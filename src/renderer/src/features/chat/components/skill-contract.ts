@@ -12,9 +12,7 @@ export type SkillKeyIntent =
 	| { kind: "pass" }
 	| { kind: "move"; index: number; moved: boolean }
 	| { kind: "apply"; index: number }
-	| { kind: "close" }
-	/** Enter with the list up but no row to take: claim the key, write nothing. */
-	| { kind: "hold" };
+	| { kind: "close" };
 
 export type SkillKeyInput = {
 	key: string;
@@ -38,7 +36,9 @@ export function skillKeyIntent(input: SkillKeyInput): SkillKeyIntent {
 	if (input.composing) return { kind: "pass" };
 	switch (input.key) {
 		case "ArrowDown": {
-			const index = Math.min(input.active + 1, input.count - 1);
+			// Floored at 0: an open list can now have zero rows (the D3 empty
+			// state), where an unclamped `count - 1` would walk `active` to -1.
+			const index = Math.max(Math.min(input.active + 1, input.count - 1), 0);
 			return { kind: "move", index, moved: index !== input.active };
 		}
 		case "ArrowUp": {
@@ -46,9 +46,18 @@ export function skillKeyIntent(input: SkillKeyInput): SkillKeyIntent {
 			return { kind: "move", index, moved: index !== input.active };
 		}
 		case "Enter":
+			/*
+			 * No row to take: PASS, so the line is sent as written. The old
+			 * answer claimed the key ("the user pressed it to take a row"), which
+			 * was unreachable while an open list always held rows - but a
+			 * no-match query now keeps its listbox up saying the miss (design
+			 * round 1, D3), and claiming Enter there would wedge the very send
+			 * the empty state explains. The sibling's rule for its empty list is
+			 * the same (`slashKeyIntent`: no row, `pass`).
+			 */
 			return input.count > 0 && input.active < input.count
 				? { kind: "apply", index: input.active }
-				: { kind: "hold" };
+				: { kind: "pass" };
 		case "Tab":
 			return input.count > 0 && input.active < input.count
 				? { kind: "apply", index: input.active }
