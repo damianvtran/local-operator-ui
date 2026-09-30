@@ -175,7 +175,11 @@ async function runSeed(seed) {
 		} else if (op === "switchMidFlight") {
 			// The page resolves after the reader moved to another conversation.
 			const home = reader.key;
-			await pump.act({ during: () => (reader.key = "session-b") });
+			await pump.act({
+				during: () => {
+					reader.key = "session-b";
+				},
+			});
 			reader.key = home;
 			if (pump.state.failures !== failuresBefore)
 				problems.push(
@@ -309,7 +313,11 @@ test("I4: a page that resolves after a session switch is stale, not failed", asy
 	const reader = new Reader(m, journal).open();
 	const pump = new Pump(reader);
 	const heldBefore = reader.transcript.records.length;
-	const result = await pump.act({ during: () => (reader.key = "session-b") });
+	const result = await pump.act({
+		during: () => {
+			reader.key = "session-b";
+		},
+	});
 	assert.equal(result.outcome.kind, "stale");
 	assert.equal(pump.state.failures, 0);
 	assert.equal(
@@ -317,4 +325,29 @@ test("I4: a page that resolves after a session switch is stale, not failed", asy
 		heldBefore,
 		"a foreign page must never reach the transcript",
 	);
+});
+
+test("I4: leaving a conversation and coming back does not revive the page that was out for the first visit", async () => {
+	/*
+	 * The loader is keyed by whatever identity the host passes, and the session
+	 * hook passes a per-VISIT one (`<session id>#<epoch>`): a bare session id
+	 * compared equal on return, so the page still out for the first visit was
+	 * treated as current, landed on the returning view's reset transcript and
+	 * seeded its cursor from a deep page (loader-continuity round 1, R1-3). The
+	 * hook-level pin is in `reconnect-page-gap.test.mjs`; this is the loader's half
+	 * of the contract - a different visit's key shares no flight and no verdict.
+	 */
+	const journal = FakeJournal.fromShape();
+	const reader = new Reader(m, journal, { key: "session-a#0" }).open();
+	const first = reader.loadOlder();
+	reader.key = "session-b#1";
+	reader.key = "session-a#2";
+	const second = reader.loadOlder();
+	assert.equal((await first).kind, "stale");
+	assert.notEqual(
+		second,
+		first,
+		"the returning visit is not handed the first visit's promise",
+	);
+	assert.equal((await second).kind, "applied");
 });
