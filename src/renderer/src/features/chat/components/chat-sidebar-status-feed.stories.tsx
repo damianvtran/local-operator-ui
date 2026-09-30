@@ -2834,6 +2834,8 @@ const CELL_DELEG_BOTH = "a10000000009";
 const CELL_DELEG_RUNNING = "a10000000010";
 const CELL_DELEG_QUEUED = "a10000000011";
 const CELL_NULL = "a10000000012";
+const CELL_ZERO_BUSY = "a10000000016";
+const CELL_NULL_IDLE = "a10000000017";
 const CELL_ZERO = "a10000000013";
 const CELL_NESTED = "a10000000015";
 /** The agent the nested cell is filed under. */
@@ -2941,6 +2943,20 @@ const subagentRunningRoster = (): WireRow[] => [
 		undefined,
 		{ subagents_running: null, subagents_queued: null },
 	),
+	// S11b - the OTHER half of the same cell: a REPORTED zero on a working row,
+	// which must render identically to the null above. Both are here because the
+	// acceptance list asks for the pair on a busy row AND on an idle one, and the
+	// two answers have to agree on both rungs (review MINOR 2).
+	wireRow(
+		CELL_ZERO_BUSY,
+		"Scratch notes on the vendor schema",
+		1_760_002_750,
+		BUSY,
+		3,
+		undefined,
+		undefined,
+		{ subagents_running: 0, subagents_queued: 0 },
+	),
 ];
 
 export const SubagentRowsRunning: Story = {
@@ -2954,10 +2970,10 @@ export const SubagentRowsRunning: Story = {
 		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
 		entities = null;
 		roster = subagentRunningRoster();
-		return <Page sidebarWidth={280} readoutRows={7} />;
+		return <Page sidebarWidth={280} readoutRows={8} />;
 	},
 	play: async () => {
-		await catalogueSettled(7);
+		await catalogueSettled(8);
 		await sleep(400);
 	},
 };
@@ -2967,7 +2983,7 @@ export const SubagentRowsRunningMinimum: Story = {
 		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
 		entities = null;
 		roster = subagentRunningRoster();
-		return <Page sidebarWidth={240} readoutRows={7} />;
+		return <Page sidebarWidth={240} readoutRows={8} />;
 	},
 	play: async () => {
 		await catalogueSettled(7);
@@ -3039,7 +3055,8 @@ const subagentRestingRoster = (): WireRow[] => [
 		unseenAt(CELL_FAILED),
 		{ subagents_running: 1, subagents_queued: 0 },
 	),
-	// S11b - a reported zero, same answer on screen as the null cell.
+	// S11c - a reported zero on a RESTING row, the fourth quarter of the compat
+	// cell; S11d below is the same row with counts this build cannot read.
 	wireRow(
 		CELL_ZERO,
 		"Notes on the vendor schema",
@@ -3049,6 +3066,18 @@ const subagentRestingRoster = (): WireRow[] => [
 		undefined,
 		undefined,
 		{ subagents_running: 0, subagents_queued: 0 },
+	),
+	// S11d - `null` on a resting row. Nothing about the mark is a function of the
+	// code, so this pair is what says so in pixels rather than in prose.
+	wireRow(
+		CELL_NULL_IDLE,
+		"Vendor schema, second pass",
+		1_760_002_650,
+		IDLE,
+		2,
+		undefined,
+		undefined,
+		{ subagents_running: null, subagents_queued: null },
 	),
 	// S15 - a nested row: the indicator is a state of the SESSION, so a row filed
 	// under its agent carries it too, at the section's own indent.
@@ -3064,7 +3093,7 @@ const subagentRestingRoster = (): WireRow[] => [
 	),
 ];
 
-const RESTING_ROSTER_ROWS = 7;
+const RESTING_ROSTER_ROWS = 8;
 
 export const SubagentRowsResting: Story = {
 	render: () => {
@@ -3209,9 +3238,40 @@ export const SubagentArchivedRow: Story = {
 	},
 	play: async () => {
 		await catalogueSettled(2);
-		const box = await screen.findByLabelText("Search chats and agents");
+		/*
+		 * THE BAND'S BUTTON AND THE FIELD SHARE ONE ACCESSIBLE NAME, and a
+		 * `findByLabelText` cannot see past that: the search control opens the field
+		 * and the field is itself labelled "Search chats and agents", so the lookup
+		 * matched two elements and the play died before a character was typed - which
+		 * is why the first version of this story photographed the unarchived twin and
+		 * nothing else (QA round 1, Q-1, and design D1 on the same frame).
+		 *
+		 * ROLES separate them, and they are the surface's own: the band control is a
+		 * BUTTON that opens the field, the field is a TEXTBOX. The order is the
+		 * reader's - open the search, type the query, then tick the control the query
+		 * reveals (the checkbox is not rendered until there is a query to scope it
+		 * to).
+		 */
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Search chats and agents" }),
+		);
+		const box = await screen.findByRole("textbox", {
+			name: "Search chats and agents",
+		});
 		await userEvent.type(box, "ledger");
-		await userEvent.click(await screen.findByLabelText("Include archived"));
+		await userEvent.click(
+			await screen.findByRole("checkbox", { name: "Include archived" }),
+		);
+		/*
+		 * AND THE STORY FAILS LOUDLY IF THE ROW NEVER ARRIVES. The capture entry for
+		 * this story carries `expectPresent: '[data-session-archived="true"]'`, so
+		 * the rig refuses to write a frame without an archived row in it - the
+		 * guard that turns this whole class of silent no-op into a failed run rather
+		 * than a picture of the wrong state.
+		 */
+		await until("the archived row", () =>
+			Boolean(document.querySelector('[data-session-archived="true"]')),
+		);
 		await sleep(400);
 	},
 };

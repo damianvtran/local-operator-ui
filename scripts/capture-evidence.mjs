@@ -3107,7 +3107,19 @@ export const STORIES = [
 	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
 	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
 	["chat-sidebar-status-feed--subagent-selected-row", 720, 660],
-	["chat-sidebar-status-feed--subagent-archived-row", 720, 660],
+	/*
+	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
+	 * version typed no query at all - the play's label lookup matched two elements
+	 * and died - so the rig photographed the unarchived twin and wrote the frame
+	 * without complaint. The selector is the row's own archive attribute, so the
+	 * rig now refuses to write these frames unless an archived row is on screen.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-archived-row",
+		720,
+		660,
+		{ expectPresent: '[data-session-archived="true"]' },
+	],
 	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
