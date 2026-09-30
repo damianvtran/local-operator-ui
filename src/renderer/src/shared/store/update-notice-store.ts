@@ -32,6 +32,16 @@
  * that is `"unknown"`, the renderer's own placeholder, which is unorderable and
  * would therefore silence a real update for the whole session. Derived, the
  * notice appears the moment the version read lands, with no re-raise needed.
+ *
+ * ## Why there is no `hydrated` flag
+ *
+ * There was one - written by `onRehydrateStorage`, read by nothing (review R5). A
+ * gate on it would have nothing to gate: the storage factory below is
+ * SYNCHRONOUS (`localStorage`), and zustand's `persist` rehydrates synchronously
+ * against a synchronous storage, so the restored preference is in place before
+ * the first render and there is no frame in which the shipped default could be
+ * read as the user's own choice. If a storage that answers late is ever taken on
+ * here, the flag has to come back WITH the gate that reads it, not before.
  */
 
 import {
@@ -41,7 +51,6 @@ import {
 	segmentCrossed,
 } from "@shared/utils/update-segment";
 import { create } from "zustand";
-import type { StoreApi } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { UpdateType } from "./deferred-updates-store";
 
@@ -82,8 +91,6 @@ type UpdateNoticeState = {
 	offers: Record<UpdateType, QuietOffer | null>;
 	/** Whether the release detail is on screen for a surface (the card). */
 	detailOpen: Record<UpdateType, boolean>;
-	/** Whether the persisted half has been restored yet. */
-	hydrated: boolean;
 
 	setFollowedSegment: (type: UpdateType, segment: FollowedSegment) => void;
 	followedSegment: (type: UpdateType) => FollowedSegment;
@@ -138,7 +145,6 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 			running: perSurface(() => null),
 			offers: perSurface(() => null),
 			detailOpen: perSurface(() => false),
-			hydrated: false,
 
 			setFollowedSegment: (type, segment) =>
 				set((state) => ({ followed: { ...state.followed, [type]: segment } })),
@@ -224,19 +230,6 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 					return isFollowedSegment(value) ? value : DEFAULT_FOLLOWED_SEGMENT;
 				});
 				return { ...current, followed };
-			},
-			onRehydrateStorage: () => (store) => {
-				if (
-					store &&
-					typeof store === "object" &&
-					"setState" in store &&
-					typeof (store as unknown as StoreApi<UpdateNoticeState>).setState ===
-						"function"
-				) {
-					(store as unknown as StoreApi<UpdateNoticeState>).setState({
-						hydrated: true,
-					});
-				}
 			},
 		},
 	),

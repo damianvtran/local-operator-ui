@@ -142,6 +142,8 @@ const CACHE = join(ROOT, "node_modules/.cache/reload-picker-close");
 let nextAnswer = () => Promise.reject(new Error("no answer installed"));
 /** Every toast the shipped component raised, in order. */
 const toasts = [];
+/** The error toasts raised, for the failure that lands after the dialog is gone. */
+const errors = [];
 
 /*
  * THE TWO SEAMS, AND WHY THEY ARE THE ONLY ONES. `desktopResult` is the transfer
@@ -159,6 +161,7 @@ const stubs = {
 	"@shared/utils/toast-manager": `
 		export * from "${resolve("src/renderer/src/shared/utils/toast-manager.ts")}";
 		export const showSuccessToast = (message) => globalThis.__successToast(message);
+		export const showErrorToast = (message) => globalThis.__errorToast(message);
 	`,
 	/*
 	 * `@shared/themes` is the BARREL, and the barrel reaches `theme-provider` and
@@ -227,6 +230,10 @@ globalThis.__successToast = (message) => {
 	toasts.push(message);
 	return "toast-id";
 };
+globalThis.__errorToast = (message) => {
+	errors.push(message);
+	return "toast-id";
+};
 
 const { ReloadPicker, reloadReceipt } = await import(`file://${bundlePath}`);
 const React = await import("react");
@@ -248,9 +255,18 @@ const buttonByText = (text) =>
  * handler, because "the dialog closed" is a fact about the tree and not about a
  * function's return value.
  */
-const pressReload = async ({ cold = false, rows = 3, fail = false } = {}) => {
+/** The last `nextAnswer` made by a case that wants to settle it by hand. */
+const settleAnswer = null;
+
+const pressReload = async ({
+	cold = false,
+	rows = 3,
+	fail = false,
+	title = "March reconciliation",
+} = {}) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	errors.length = 0;
 	let closed = 0;
 	const rebound = [];
 	nextAnswer = async (request) => {
@@ -274,9 +290,21 @@ const pressReload = async ({ cold = false, rows = 3, fail = false } = {}) => {
 	 * "reported closed" is exactly the state the defect produced, so it would pass
 	 * on the bug.
 	 */
+	/*
+	 * THE PANE HANDLE, which every real mount has (a picker is opened by the pane
+	 * it belongs to) and which the receipt now reads the conversation's TITLE from
+	 * (review U8): the toast is the only confirmation this action prints, and a raw
+	 * session id is a string the reader never typed. `frontend` is the authoritative
+	 * reading and `heldFrontend` the copy kept across a reconnect, so the fixture
+	 * carries the pair the hook's own accessor expects.
+	 */
 	const picker = () =>
 		React.createElement(ReloadPicker, {
 			sessionId: "session-1",
+			canonical: {
+				frontend: title === null ? null : { conversation_title: title },
+				heldFrontend: null,
+			},
 			onClose: () => {
 				closed += 1;
 			},
@@ -319,12 +347,21 @@ const pressReload = async ({ cold = false, rows = 3, fail = false } = {}) => {
 
 test("the receipt sentence is one spelling, exported for both readers", () => {
 	assert.equal(
-		reloadReceipt("session-1", false, 3),
-		"Reopened session-1: live owner attached, 3 recent rows.",
+		reloadReceipt("March reconciliation", false, 3),
+		"Reopened March reconciliation: reattached to the running session, 3 recent rows.",
 	);
 	assert.equal(
-		reloadReceipt("session-1", true, 0),
-		"Reopened session-1: cold (no owner running), 0 recent rows.",
+		reloadReceipt("March reconciliation", true, 0),
+		"Reopened March reconciliation: no session was running, so it was reopened from history, 0 recent rows.",
+	);
+	/*
+	 * AND THE COUNT IS PLURALISED (reviews D8, U8). "1 recent rows" is the kind of
+	 * detail that makes a receipt read as machine-written - and the singular is the
+	 * commonest case on a conversation that has just been reopened empty.
+	 */
+	assert.equal(
+		reloadReceipt("March reconciliation", false, 1),
+		"Reopened March reconciliation: reattached to the running session, 1 recent row.",
 	);
 });
 
@@ -335,7 +372,9 @@ test("a successful reload closes the picker, rebinds once, and keeps the receipt
 	assert.deepEqual(run.rebound, ["session-1"], "the stream is rebound once");
 	assert.deepEqual(
 		toasts,
-		["Reopened session-1: live owner attached, 3 recent rows."],
+		[
+			"Reopened March reconciliation: reattached to the running session, 3 recent rows.",
+		],
 		"the receipt survives the dialog as a toast",
 	);
 	/*
@@ -380,4 +419,81 @@ test("a failed reload keeps the dialog and its own reason, and rebinds nothing",
 	await act(async () => {
 		run.root.unmount();
 	});
+});
+
+/*
+ * AND THE ID IS THE FALLBACK (review U8), not the other way round: a pane whose
+ * snapshot never carried a title still has to say WHAT was reopened, and the id is
+ * the only name left. The alternative - not naming it at all - would make the
+ * receipt's subject depend on how much the backend happened to know.
+ */
+test("a conversation with no title is named by its session id", async () => {
+	const run = await pressReload({ title: null });
+	assert.deepEqual(
+		toasts,
+		["Reopened session-1: reattached to the running session, 3 recent rows."],
+		"the id is used when there is no title to prefer",
+	);
+	await act(async () => {
+		run.root.unmount();
+	});
+});
+
+/*
+ * AND A FAILURE THAT LANDS AFTER THE DIALOG IS GONE STILL SPEAKS (review U6).
+ *
+ * The reader pressed Reload and dismissed the dialog while it ran - Escape, or the
+ * owner closing the picker for its own reason - and the reload then failed. The
+ * inline strip is the only carrier the open dialog has, and there is no dialog: the
+ * success path toasts precisely because the dialog it would have reported in is
+ * gone, so the failure must do the same or the two outcomes are asymmetric in the
+ * direction a reader cannot diagnose at all (their reload did nothing, and nothing
+ * said so).
+ */
+test("an in-flight failure after the dialog is gone is raised as a toast", async () => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	errors.length = 0;
+	let fail = null;
+	nextAnswer = () =>
+		new Promise((_resolve, reject) => {
+			fail = () => reject(new Error("the owner is not running"));
+		});
+
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(
+			React.createElement(ReloadPicker, {
+				sessionId: "session-1",
+				canonical: {
+					frontend: { conversation_title: "March reconciliation" },
+					heldFrontend: null,
+				},
+				onClose: () => undefined,
+				rebind: () => undefined,
+			}),
+		);
+	});
+	await act(async () => {
+		buttonByText("Reload").dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.ok(fail, "the request is in flight");
+	await act(async () => {
+		root.unmount();
+	});
+	await act(async () => {
+		fail();
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+	assert.deepEqual(
+		errors,
+		["The conversation could not be reopened: the owner is not running"],
+		"the same sentence the dialog would have printed, said where the reader still is",
+	);
+	assert.deepEqual(toasts, [], "and no success is claimed");
 });

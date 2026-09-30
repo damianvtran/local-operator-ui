@@ -29,14 +29,31 @@
  * That is the same trade the shell's notice bands already document, and it buys
  * the property that matters: nothing can be hidden.
  *
- * ## Zero pixels at rest
+ * ## Zero pixels at rest, but the REGION is always there
  *
- * With nothing waiting the component renders `null` and the band does not exist
- * - no reserved strip, no empty row for a user who never updates mid-session.
+ * With nothing waiting the component draws no band: no reserved strip, no empty
+ * row for a user who never updates mid-session, so the measured property holds -
+ * one colour across the whole frame, both themes (`docs/evidence/update-reload-ux/`).
+ * What is NOT conditional any more is the `<output>` element itself (review R4):
+ * a polite live region is announced when its CONTENT CHANGES, and a region that is
+ * inserted already populated is unreliable in NVDA and VoiceOver - the element is
+ * therefore mounted empty from the start and the button is rendered INTO it, with
+ * `className` applied only while there is something to draw so the empty region
+ * carries no box, no border and no height.
+ *
  * `UpdateQuietIndicatorView` is the drawing half and is what the stories and the
  * evidence frames mount, so a state can be photographed without a running
  * updater; the connected half below only decides whether there is anything to
  * draw.
+ *
+ * ## One card at a time, and a press that shows what it pressed
+ *
+ * A press SWITCHES the detail to the surface it pressed - it closes the other
+ * surface's detail on the way in - because the alternative reads as a dead press:
+ * with the app card up, pressing the server item used to drop the item out of the
+ * band and leave the app card on screen, so the press had no visible effect at all
+ * (review U4). The other surface's offer is not consumed by that: closing its
+ * detail puts it back in the band, which is what `quietOfferShown` already says.
  *
  * ## The bottom-LEFT position is load-bearing
  *
@@ -55,7 +72,7 @@ import {
 	useUpdateNoticeStore,
 } from "@shared/store/update-notice-store";
 import { CircleArrowDown } from "lucide-react";
-import { type FC, useMemo } from "react";
+import { type FC, useCallback, useMemo } from "react";
 
 /** One surface's waiting release, as the indicator draws it. */
 export type QuietIndicatorOffer = {
@@ -67,13 +84,29 @@ export type QuietIndicatorOffer = {
  * The words for a surface, in one place: the visible text and the label read to
  * assistive tech must agree, and the accessible name begins with the visible
  * text (WCAG 2.5.3, "label in name") - a screen reader user who hears "App
- * update 0.31.0 available" and then finds a control reading "App update 0.31.0"
- * is being asked to guess whether they are the same control.
+ * update 0.31.0 available" and then finds a control reading "Application update
+ * 0.31.0 available" is being asked to guess whether they are the same control.
+ *
+ * The WORD "available" IS VISIBLE (reviews D3, U5). It used to live in the
+ * `aria-label` alone, and a 28px status row reading "App update 0.30.1" beside a
+ * circle-down glyph is as easily "you are on 0.30.1" as "0.30.1 is waiting" - a
+ * sighted reader was left to decode the icon, and the string the label-in-name
+ * rule compares against was not on screen at all. The band is 720px wide with
+ * this copy using ~110px of it, so length was never the constraint.
  */
 const SURFACE_COPY: Record<UpdateType, string> = {
-	[UpdateType.UI]: "App update",
+	[UpdateType.UI]: "Application update",
 	[UpdateType.BACKEND]: "Server update",
 };
+
+/**
+ * The visible string for one control, and the head of its accessible name.
+ *
+ * One function for both, so the two cannot drift: the label is this string plus a
+ * sentence, which is what keeps the label-in-name rule true by construction.
+ */
+export const quietOfferText = (offer: QuietIndicatorOffer): string =>
+	`${SURFACE_COPY[offer.type]} ${offer.version} available`;
 
 export const UpdateQuietIndicatorView: FC<{
 	offers: QuietIndicatorOffer[];
@@ -81,7 +114,13 @@ export const UpdateQuietIndicatorView: FC<{
 	/** The rig's hook for a frame; also lets a test scope its query. */
 	className?: string;
 }> = ({ offers, onOpen, className }) => {
-	if (offers.length === 0) return null;
+	/*
+	 * The region is mounted whether or not there is anything in it (review R4), and
+	 * the band's own box only exists while there is: an empty `<output>` with no
+	 * classes paints nothing and takes no height, which is the "zero pixels at rest"
+	 * property the frames measure.
+	 */
+	const quiet = offers.length === 0;
 	return (
 		/*
 		 * `<output>` rather than `<div role="status">`: it IS the status role, and the
@@ -94,17 +133,22 @@ export const UpdateQuietIndicatorView: FC<{
 		 */
 		<output
 			data-update-indicator=""
-			className={cn(
-				"flex h-7 shrink-0 items-center gap-1 border-t border-hairline bg-surface px-2",
-				className,
-			)}
+			data-update-indicator-count={offers.length}
+			className={
+				quiet
+					? undefined
+					: cn(
+							"flex h-7 shrink-0 items-center gap-1 border-t border-hairline bg-surface px-2",
+							className,
+						)
+			}
 		>
 			{offers.map((offer) => (
 				<button
 					key={offer.type}
 					type="button"
 					data-update-indicator-open={offer.type}
-					aria-label={`${SURFACE_COPY[offer.type]} ${offer.version} available. Open release details.`}
+					aria-label={`${quietOfferText(offer)}. Open release details.`}
 					className={cn(
 						"flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta text-accent",
 						"hover:bg-row-hover",
@@ -119,9 +163,7 @@ export const UpdateQuietIndicatorView: FC<{
 					onClick={() => onOpen(offer.type)}
 				>
 					<CircleArrowDown className="size-3.5 shrink-0" aria-hidden="true" />
-					<span className="whitespace-nowrap">
-						{SURFACE_COPY[offer.type]} {offer.version}
-					</span>
+					<span className="whitespace-nowrap">{quietOfferText(offer)}</span>
 				</button>
 			))}
 		</output>
@@ -141,6 +183,7 @@ export const UpdateQuietIndicator: FC = () => {
 	const offers = useUpdateNoticeStore((s) => s.offers);
 	const detailOpen = useUpdateNoticeStore((s) => s.detailOpen);
 	const openDetail = useUpdateNoticeStore((s) => s.openDetail);
+	const closeDetail = useUpdateNoticeStore((s) => s.closeDetail);
 
 	const shown = useMemo(() => {
 		const state = { followed, running, offers, detailOpen };
@@ -149,5 +192,23 @@ export const UpdateQuietIndicator: FC = () => {
 		);
 	}, [followed, running, offers, detailOpen]);
 
-	return <UpdateQuietIndicatorView offers={shown} onOpen={openDetail} />;
+	/*
+	 * A press SHOWS WHAT IT PRESSED (review U4). The detail is opened for the
+	 * pressed surface and closed for the other one, so the press always changes
+	 * something on screen: with the app card up, pressing the server item used to
+	 * leave the app card exactly where it was while the item vanished from the band.
+	 * The other surface keeps its offer - closing its detail is what puts it back in
+	 * the band - so nothing is dropped by the switch.
+	 */
+	const pressSurface = useCallback(
+		(type: UpdateType) => {
+			for (const other of NOTICE_SURFACES) {
+				if (other !== type) closeDetail(other);
+			}
+			openDetail(type);
+		},
+		[closeDetail, openDetail],
+	);
+
+	return <UpdateQuietIndicatorView offers={shown} onOpen={pressSurface} />;
 };

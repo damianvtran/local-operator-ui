@@ -158,6 +158,7 @@ const bundle = await build({
 				useDeferredUpdatesStore,
 			} from "./src/renderer/src/shared/store/deferred-updates-store";
 			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
+			export { CheckForUpdatesButton } from "./src/renderer/src/shared/components/common/check-for-updates-button";
 		`,
 		resolveDir: ROOT,
 	},
@@ -168,6 +169,15 @@ const bundle = await build({
 	// process's own React - the one `createRoot` below is holding. A second bundled
 	// copy would render a tree from a different React and quietly test nothing.
 	external: ["react", "react-dom", "react/jsx-runtime"],
+	/*
+	 * `CheckForUpdatesButton` short-circuits to a "not checked in development mode"
+	 * info sentence when `import.meta.env.DEV` is true, and esbuild leaves
+	 * `import.meta.env` undefined without this define - so the settings control the
+	 * R1 case mounts would answer the wrong branch (or throw) rather than run the
+	 * check under test. The rig is a PRODUCTION build for the same reason the
+	 * Storybook rigs are (`DEV=false`): the check the button runs is the subject.
+	 */
+	define: { "import.meta.env.DEV": "false" },
 	packages: "external",
 	jsx: "automatic",
 	loader: { ".css": "empty" },
@@ -183,6 +193,7 @@ const bundlePath = join(CACHE, "update-indicator-segments.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 
 const {
+	CheckForUpdatesButton,
 	DEFAULT_FOLLOWED_SEGMENT,
 	FollowedSegment,
 	UpdateNotification,
@@ -249,8 +260,34 @@ const installBridge = () => {
 			onUpdateInstallInFlight: register("update-install-in-flight"),
 			onUpdateInstallProgress: register("update-install-progress"),
 			onUpdateInstallSucceeded: register("update-install-succeeded"),
-			checkForUpdates: noop,
-			checkForAllUpdates: noop,
+			/*
+			 * The settings control (`CheckForUpdatesButton`) subscribes to two channels
+			 * `UpdateNotification` does not, and a missing one throws inside its own
+			 * subscription - a case failing for a reason that has nothing to do with the
+			 * wiring under test (the R1 case mounts that control).
+			 */
+			onBackendUpdateDevMode: register("backend-update-dev-mode"),
+			onUpdateNpxAvailable: register("update-npx-available"),
+			getLastInstallAttempt: async () => null,
+			checkForUpdates: async () => {
+				const verdict = checkScript();
+				if (verdict.app === "available") emit("update-available", APP_OFFER);
+				else emit("update-not-available", { version: appVersion });
+				return { updateInfo: {}, cancellationToken: null };
+			},
+			checkForAllUpdates: async () => {
+				const verdict = checkScript();
+				if (verdict.app === "available") emit("update-available", APP_OFFER);
+				else emit("update-not-available", { version: appVersion });
+				if (verdict.server === "available")
+					emit("backend-update-available", SERVER_OFFER);
+				else
+					emit("backend-update-not-available", {
+						version: SERVER_OFFER.latestVersion,
+						runningVersion: SERVER_OFFER.runningVersion,
+					});
+				return verdict;
+			},
 			downloadUpdate: noop,
 			updateBackend: async () => true,
 			quitAndInstall: async () => true,
@@ -265,6 +302,45 @@ const fire = async (channel, payload) => {
 		for (const callback of [...(listeners.get(channel) ?? [])])
 			callback(payload);
 	});
+};
+
+/**
+ * Emit one event WITHOUT `act`, for use from inside a check.
+ *
+ * The bridge's own checks are called from inside a React event handler (a button's
+ * press), which is already inside `act`; nesting another `act` there would be a
+ * second commit boundary inside one interaction. The listeners are called
+ * synchronously, exactly as `webContents.send` delivers them.
+ */
+const emit = (channel, payload) => {
+	for (const callback of [...(listeners.get(channel) ?? [])]) callback(payload);
+};
+
+/**
+ * What an explicit check answers, and the events main emits for that answer.
+ *
+ * A CHECK THE USER PRESSED, AS MAIN REALLY ANSWERS IT: the invoke returns the
+ * verdict, and before it resolves main has sent each channel's own event -
+ * `update-available`/`update-not-available` on the app channel,
+ * `backend-update-available`/`-not-available` on the server's. The offers are
+ * therefore raised where the app raises them, which is what makes these cases
+ * evidence about the wiring rather than about a fixture.
+ */
+let checkScript = () => ({
+	app: "current",
+	server: "current",
+	affirmation: null,
+});
+
+const APP_OFFER = { version: "0.31.0", releaseNotes: "Fixes." };
+const SERVER_OFFER = {
+	latestVersion: "0.55.10",
+	currentVersion: "0.55.9",
+	runningVersion: "0.55.9",
+	releaseNotes: "Server fixes.",
+	canManageUpdate: true,
+	updateCommand: "lop update",
+	updateMethod: "global",
 };
 
 /**
@@ -316,6 +392,15 @@ const indicatorBand = () => document.querySelector("[data-update-indicator]");
 const indicatorButtons = () => [
 	...document.querySelectorAll("[data-update-indicator-open]"),
 ];
+/*
+ * "Nothing waiting" is now asked of the CONTROLS rather than of the region (review
+ * R4): the `<output>` is mounted empty at rest, deliberately, so a case that asked
+ * whether the region exists would be asking the wrong question. The band's own box
+ * is what is conditional - the view's own case above pins that it carries no
+ * classes at rest.
+ */
+const bandIsQuiet = () =>
+	indicatorBand() !== null && indicatorButtons().length === 0;
 
 const cardHeadings = () =>
 	[...document.querySelectorAll("h2")].map((node) => node.textContent ?? "");
@@ -341,6 +426,11 @@ const reset = async () => {
 	useDeferredUpdatesStore.getState().clearDeferredUpdate(UpdateType.BACKEND);
 	document.body.innerHTML = "";
 	clearListeners();
+	checkScript = () => ({
+		app: "current",
+		server: "current",
+		affirmation: null,
+	});
 	installBridge();
 };
 
@@ -358,7 +448,7 @@ test("parseVersionTriple reads the triple and refuses everything else", () => {
 	assert.equal(parseVersionTriple(undefined), null);
 });
 
-test("every release is news on patch, only a minor or major step on minor, only a major on major", () => {
+test("patch is every release, minor starts at the minor position, and 0.x puts the breaking step on the minor", () => {
 	const cases = [
 		// [followed, running, available, expected]
 		[FollowedSegment.PATCH, "0.30.0", "0.30.1", true],
@@ -367,18 +457,70 @@ test("every release is news on patch, only a minor or major step on minor, only 
 		[FollowedSegment.MINOR, "0.30.0", "0.30.1", false],
 		[FollowedSegment.MINOR, "0.30.0", "0.31.0", true],
 		[FollowedSegment.MINOR, "0.30.0", "1.0.0", true],
+		/*
+		 * THE 0.x READING OF THE BREAKING STEP (reviews R7, U7). npm's caret range
+		 * says `^0.31.0` allows `0.31.4` and not `0.32.0`, so on a 0.x product the
+		 * leading non-zero segment is the SECOND one and a minor-position move IS the
+		 * breaking step. "Breaking changes only" was a mute switch for the whole 0.x
+		 * era without this: every release the product can publish was withheld while
+		 * the label read like an ordinary filter.
+		 */
 		[FollowedSegment.MAJOR, "0.30.0", "0.30.1", false],
-		[FollowedSegment.MAJOR, "0.30.0", "0.31.0", false],
+		[FollowedSegment.MAJOR, "0.30.0", "0.31.0", true],
+		[FollowedSegment.MAJOR, "0.31.1", "0.31.2", false],
+		[FollowedSegment.MINOR, "0.31.1", "0.31.2", false],
+		[FollowedSegment.PATCH, "0.31.1", "0.31.2", true],
+		[FollowedSegment.MAJOR, "0.31.0", "0.32.0", true],
+		[FollowedSegment.MINOR, "0.31.0", "0.32.0", true],
+		/* 0.x -> 1.0 moves the FIRST position, so it is a step on every reading. */
 		[FollowedSegment.MAJOR, "0.30.0", "1.0.0", true],
+		[FollowedSegment.MINOR, "0.30.0", "1.0.0", true],
+		[FollowedSegment.PATCH, "0.30.0", "1.0.0", true],
+		/* Past 1.0 the first position is the breaking step again. */
+		[FollowedSegment.MAJOR, "1.2.3", "1.3.0", false],
+		[FollowedSegment.MAJOR, "1.2.3", "2.0.0", true],
+		[FollowedSegment.MINOR, "1.2.3", "1.2.4", false],
+		[FollowedSegment.MINOR, "1.2.3", "1.3.0", true],
+		[FollowedSegment.PATCH, "1.2.3", "1.2.4", true],
 		// A gap larger than one step still crosses the coarser segment.
 		[FollowedSegment.MAJOR, "0.30.0", "2.1.3", true],
-		[FollowedSegment.MINOR, "0.30.0", "1.0.0", true],
 	];
 	for (const [followed, running, available, expected] of cases) {
 		assert.equal(
 			segmentCrossed(followed, running, available),
 			expected,
 			`${followed}: ${running} -> ${available}`,
+		);
+	}
+});
+
+/*
+ * AN OLDER OFFER IS NOT AN ARRIVAL (review R6), on any setting.
+ *
+ * The gate used to ask "is there a difference at this segment", and a difference
+ * is symmetric, so `available` BELOW `running` announced itself. The header's
+ * defence ("the offer only exists when main found a newer version") is a property
+ * of the app channel and not of the server's: there `running` is the daemon's own
+ * reading against a `latestVersion` main compared against the INSTALLED version,
+ * so an offer can sit below the running build. Equal triples are the same case one
+ * step further: nothing arrived.
+ */
+test("an offer at or below the running version is not an arrival", () => {
+	for (const followed of Object.values(FollowedSegment)) {
+		assert.equal(
+			segmentCrossed(followed, "0.30.0", "0.29.9"),
+			false,
+			`${followed}: an older offer is not news`,
+		);
+		assert.equal(
+			segmentCrossed(followed, "1.2.3", "1.2.2"),
+			false,
+			`${followed}: an older PATCH is not news`,
+		);
+		assert.equal(
+			segmentCrossed(followed, "0.30.0", "0.30.0"),
+			false,
+			`${followed}: an equal version is not news`,
 		);
 	}
 });
@@ -531,13 +673,24 @@ test("a stored value the app does not recognise falls back to the default", asyn
 
 /* --------------------------------------------- the drawn indicator (pure) */
 
-test("the indicator draws nothing at rest and one control per surface", () => {
-	assert.equal(
-		renderToStaticMarkup(
-			UpdateQuietIndicatorView({ offers: [], onOpen: () => undefined }),
-		),
-		"",
-		"nothing waiting must cost no pixels",
+test("the indicator draws no band at rest and one control per surface", () => {
+	/*
+	 * THE REGION IS MOUNTED, THE BAND IS NOT (review R4). A polite live region is
+	 * announced when its CONTENT CHANGES and unreliably when it arrives already
+	 * populated, so the element is always there and only its contents and its box
+	 * are conditional - which is what keeps "nothing waiting costs no pixels" true
+	 * while the announcement becomes reliable.
+	 */
+	const atRest = renderToStaticMarkup(
+		UpdateQuietIndicatorView({ offers: [], onOpen: () => undefined }),
+	);
+	assert.match(atRest, /<output/, "the live region is mounted at rest");
+	assert.match(atRest, /data-update-indicator-count="0"/);
+	assert.doesNotMatch(atRest, /<button/, "with nothing to press");
+	assert.doesNotMatch(
+		atRest,
+		/h-7|bg-surface|border-t|px-2/,
+		"and no box, ground or hairline that could paint a pixel",
 	);
 
 	const markup = renderToStaticMarkup(
@@ -550,11 +703,11 @@ test("the indicator draws nothing at rest and one control per surface", () => {
 		}),
 	);
 	assert.match(markup, /<output/, "the band is the status role itself");
-	assert.match(markup, /App update 0\.31\.0/);
-	assert.match(markup, /Server update 0\.55\.10/);
+	assert.match(markup, /Application update 0\.31\.0 available/);
+	assert.match(markup, /Server update 0\.55\.10 available/);
 	assert.match(
 		markup,
-		/aria-label="App update 0\.31\.0 available\. Open release details\."/,
+		/aria-label="Application update 0\.31\.0 available\. Open release details\."/,
 		"the accessible name begins with the visible text (label in name)",
 	);
 	// The interaction is a real button, and the focus ring is an outline rather
@@ -581,8 +734,8 @@ test("an unsolicited release raises the quiet band, and a press opens the card",
 	assert.equal(indicatorButtons().length, 1);
 	assert.match(
 		container.textContent ?? "",
-		/App update 0\.31\.0/,
-		"the band names the version",
+		/Application update 0\.31\.0 available/,
+		"the band states the release is available, not merely its number",
 	);
 	assert.equal(
 		cardHeadings().includes("Update available"),
@@ -601,7 +754,11 @@ test("an unsolicited release raises the quiet band, and a press opens the card",
 		cardHeadings().includes("Update available"),
 		"a press on the indicator opens the card",
 	);
-	assert.equal(indicatorBand(), null, "and the band yields to it");
+	assert.equal(
+		bandIsQuiet(),
+		true,
+		"and the band yields to it - the detail IS the notice",
+	);
 });
 
 test("a release below the followed segment stays quiet", async () => {
@@ -614,8 +771,8 @@ test("a release below the followed segment stays quiet", async () => {
 	await fire("update-available", { version: "0.30.1", releaseNotes: "Patch." });
 
 	assert.equal(
-		indicatorBand(),
-		null,
+		bandIsQuiet(),
+		true,
 		"a patch release is not news to a minor-following surface",
 	);
 	assert.equal(
@@ -632,7 +789,7 @@ test("an explicit check is still loud, even below the followed segment", async (
 		.setFollowedSegment(UpdateType.UI, FollowedSegment.MAJOR);
 	await mount();
 	await fire("update-available", { version: "0.30.1", releaseNotes: "Patch." });
-	assert.equal(indicatorBand(), null, "the app's own news is gated");
+	assert.equal(bandIsQuiet(), true, "the app's own news is gated");
 
 	/*
 	 * What the settings button does after a check it ran: the verdict said the app
@@ -657,8 +814,8 @@ test("a deferred version is not raised at all", async () => {
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
 
 	assert.equal(
-		indicatorBand(),
-		null,
+		bandIsQuiet(),
+		true,
 		"the deferral silences the indicator exactly as it silenced the card",
 	);
 	assert.equal(cardHeadings().includes("Update available"), false);
@@ -680,7 +837,10 @@ test("a server release raises the same band, and its own version", async () => {
 	});
 
 	assert.ok(indicatorBand(), "the server surface is announced the same way");
-	assert.match(container.textContent ?? "", /Server update 0\.55\.10/);
+	assert.match(
+		container.textContent ?? "",
+		/Server update 0\.55\.10 available/,
+	);
 });
 
 test("dismissing the card also takes the band away", async () => {
@@ -701,7 +861,7 @@ test("dismissing the card also takes the band away", async () => {
 	await act(async () => {
 		later.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
 	});
-	assert.equal(indicatorBand(), null, "a waved-away notice is gone");
+	assert.equal(bandIsQuiet(), true, "a waved-away notice is gone");
 	assert.equal(cardHeadings().includes("Update available"), false);
 	assert.equal(
 		useDeferredUpdatesStore.getState().uiDeferredVersion,
@@ -723,4 +883,359 @@ test("nothing is left behind: the file the store writes is the shipped envelope"
 		source,
 		/partialize: \(state\) => \(\{ followed: state\.followed \}\)/,
 	);
+});
+
+/* ------------------------------- the loud step, at every entry point (R1, R2) */
+
+/*
+ * WHY THESE ASSERT THE STORE AND NOT THE CARD. The card renders on
+ * `detailOpen` plus the offer, so a case that looked only for the heading would
+ * pass for a card some OTHER path opened - which is exactly how the wiring went
+ * unpinned in round 1 (review R1: deleting the two `openDetail` lines from
+ * `check-for-updates-button.tsx` left every case green). `detailOpened()` is the
+ * fact the entry point has to move.
+ */
+const detailOpened = () => useUpdateNoticeStore.getState().detailOpen;
+
+/** Mount just the settings control - the R1 case's subject. */
+const mountSettings = async () => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	mountedRoot = root;
+	await act(async () => {
+		root.render(
+			React.createElement(CheckForUpdatesButton, { appVersion: "0.30.0" }),
+		);
+	});
+	await act(async () => {
+		frame();
+	});
+	return container;
+};
+
+/** Press the control whose visible text is exactly `label`. */
+const press = async (label) => {
+	const button = [...document.querySelectorAll("button")].find(
+		(candidate) => (candidate.textContent ?? "").trim() === label,
+	);
+	assert.ok(button, `a control reading "${label}"`);
+	await act(async () => {
+		button.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+	return button;
+};
+
+/** Press the control whose ACCESSIBLE NAME is `label` (an icon-only control). */
+const pressLabelled = async (label) => {
+	/*
+	 * `button[aria-label=...]`, not `[aria-label=...]`: the release card's own
+	 * container is a focus target and carries the same words on no node of its own,
+	 * but a caller may label a wrapper - and `querySelector` would then hand back a
+	 * node with no handler on it, a case that presses nothing and reads as a defect.
+	 */
+	const button = document.querySelector(`button[aria-label="${label}"]`);
+	assert.ok(button, `a control named "${label}"`);
+	await act(async () => {
+		button.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+	return button;
+};
+
+test("R1: the settings check opens the release detail for what it found", async () => {
+	await reset();
+	await mountSettings();
+	checkScript = () => ({
+		app: "available",
+		server: "current",
+		affirmation: null,
+	});
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		true,
+		"a press on Check for updates is answered by the card, whatever the segment",
+	);
+
+	await reset();
+	await mountSettings();
+	checkScript = () => ({
+		app: "current",
+		server: "available",
+		affirmation: null,
+	});
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		true,
+		"and the server channel's own answer opens the server card",
+	);
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		false,
+		"while a channel that found nothing opens nothing",
+	);
+});
+
+test("R2: the failure panel's Check for updates opens the detail", async () => {
+	await reset();
+	await mount();
+	checkScript = () => ({
+		app: "available",
+		server: "current",
+		affirmation: null,
+	});
+	await fire("update-install-failed", {
+		message: "The install did not finish.",
+		remedy: { text: "Free some space, then try again.", url: "https://x.test" },
+		targetVersion: "0.31.0",
+	});
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		true,
+		"the press that supersedes the failure notice must answer with the offer",
+	);
+});
+
+test("R2: installBlocked's Check for updates opens the detail", async () => {
+	await reset();
+	await mount();
+	checkScript = () => ({
+		app: "available",
+		server: "current",
+		affirmation: null,
+	});
+	await fire("update-install-blocked", {
+		message: "The update was not installed.",
+		remedy: { text: "Free some space, then try again." },
+	});
+	await press("Check for updates");
+	assert.equal(detailOpened()[UpdateType.UI], true);
+});
+
+test("R2: the error toast's retry opens the detail", async () => {
+	await reset();
+	await mount();
+	checkScript = () => ({
+		app: "available",
+		server: "current",
+		affirmation: null,
+	});
+	await fire("update-error", "net::ERR_INTERNET_DISCONNECTED");
+	await press("Try again");
+	assert.equal(detailOpened()[UpdateType.UI], true);
+});
+
+test("R2: the by-hand panel's check opens the server detail", async () => {
+	await reset();
+	await mount();
+	checkScript = () => ({
+		app: "current",
+		server: "available",
+		affirmation: null,
+	});
+	await fire("backend-update-manual-required", {
+		latestVersion: "0.55.10",
+		currentVersion: "0.55.9",
+		installVersion: "0.55.10",
+		message: "This server is not one the app can update.",
+		appOwned: false,
+		updateCommand: "pip install -U local-operator",
+	});
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		true,
+		"the check the panel's own copy tells the reader to run reports what it found",
+	);
+});
+
+test("R2: the offer card's own check (the manual arm) keeps the detail up", async () => {
+	await reset();
+	await mount();
+	/*
+	 * THE MANUAL ARM, because it is the only one this card draws a check control
+	 * on (the managed arm answers with `Update server`): the panel is the app's own
+	 * refusal to install a server it does not own, and its closing sentence sends
+	 * the reader to the check. `manual`/`appOwned: false` is what makes that arm.
+	 */
+	await fire("backend-update-available", {
+		...SERVER_OFFER,
+		manual: true,
+		canManageUpdate: false,
+		appOwned: false,
+	});
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	checkScript = () => ({
+		app: "current",
+		server: "available",
+		affirmation: null,
+	});
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		true,
+		"the card the check was pressed from is the card its answer belongs to",
+	);
+	assert.ok(
+		cardHeadings().includes("Server update available"),
+		"and it is still drawn rather than blanked by its own press",
+	);
+});
+
+/* --------------------------------- the card's own exits and hand-back (U1-U4) */
+
+test("U1/U2: Escape closes the press-opened card and hands focus back to the band", async () => {
+	await reset();
+	const container = await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.ok(
+		cardHeadings().includes("Update available"),
+		"the press opens the card",
+	);
+
+	const card = container.querySelector("[data-release-detail]");
+	assert.ok(card, "the detail is the card that carries the close control");
+	assert.equal(
+		document.activeElement === card,
+		true,
+		"focus moves INTO the card on a press-open (review U2)",
+	);
+	/*
+	 * U3 in the same frame: the card IS the answer to the press, so the offer's own
+	 * "A new update is available" toast must not ride in beside it.
+	 */
+	assert.equal(
+		(document.body.textContent ?? "").includes("A new update is available"),
+		false,
+		"the card is the answer, so the toast that says the same thing is suppressed",
+	);
+
+	await act(async () => {
+		card.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+			}),
+		);
+	});
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		false,
+		"Escape is the exit that is not a decision (review U1)",
+	);
+	assert.equal(
+		bandIsQuiet(),
+		false,
+		"and the band's own item comes back, which is also the proof that no deferral was recorded",
+	);
+	assert.equal(
+		document.activeElement?.getAttribute("data-update-indicator-open"),
+		UpdateType.UI,
+		"focus is handed back to the landmark the press came from",
+	);
+});
+
+test("U1: the visible close control is the same exit", async () => {
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	await pressLabelled("Close app update details");
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		false,
+		"the control closes the card",
+	);
+	assert.equal(bandIsQuiet(), false, "and leaves the quiet notice behind");
+});
+
+test("U4: pressing the other surface switches the card rather than doing nothing", async () => {
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await fire("backend-update-available", SERVER_OFFER);
+	assert.equal(indicatorButtons().length, 2, "both surfaces are offered");
+
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.ok(cardHeadings().includes("Update available"));
+
+	const server = indicatorButtons().find(
+		(button) =>
+			button.getAttribute("data-update-indicator-open") === UpdateType.BACKEND,
+	);
+	assert.ok(server, "the other surface's item is still in the band");
+	await act(async () => {
+		server.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.ok(
+		cardHeadings().includes("Server update available"),
+		"the press shows what it pressed instead of leaving the app card up",
+	);
+	assert.equal(
+		indicatorButtons().length,
+		1,
+		"and the surface that gave way keeps its offer in the band",
+	);
+	assert.equal(
+		indicatorButtons()[0].getAttribute("data-update-indicator-open"),
+		UpdateType.UI,
+	);
+});
+
+/* ------------------------------------------- the store cannot outlive the answer */
+
+test("R3: a not-available answer clears the detail with the offer, on both channels", async () => {
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await act(async () => {
+		useUpdateNoticeStore.getState().openDetail(UpdateType.UI);
+	});
+	assert.equal(detailOpened()[UpdateType.UI], true);
+	await fire("update-not-available", { version: "0.31.0" });
+	assert.equal(
+		detailOpened()[UpdateType.UI],
+		false,
+		"the answer to the question closes the card it opened",
+	);
+	assert.equal(cardHeadings().length, 0);
+
+	await reset();
+	await mount();
+	await fire("backend-update-available", SERVER_OFFER);
+	await act(async () => {
+		useUpdateNoticeStore.getState().openDetail(UpdateType.BACKEND);
+	});
+	assert.equal(detailOpened()[UpdateType.BACKEND], true);
+	/*
+	 * NO `runningVersion` IN THIS PAYLOAD, deliberately: a readable one that differs
+	 * from the install is the SKEW notice's own arm, and its panel would put a
+	 * heading on screen for a reason this case is not about.
+	 */
+	await fire("backend-update-not-available", { version: "0.55.10" });
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		false,
+		"a periodic offer must not be able to pop a card the user already answered",
+	);
+	assert.equal(cardHeadings().length, 0);
 });

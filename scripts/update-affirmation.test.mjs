@@ -2561,10 +2561,25 @@ test("the UI offer's defer control closes the box too", () => {
 
 	updater.emit("update-available", { version: "0.25.10" });
 	handle.render();
-	const shown = visible(handle);
-	assert.equal(shown.length, 1, JSON.stringify(shown));
-	assert.equal(shown[0].variant, "info");
-	assert.match(shown[0].text, /0\.25\.10/);
+	/*
+	 * AND THE NEXT OFFER PAINTS NOTHING HERE, by design (review U3, superseding
+	 * this case's original toast assertion). The card the app drew for its own
+	 * periodic news is gone - an unsolicited release is the quiet band now - so the
+	 * offer's redundant `A new update is available: v0.25.10` notice would have been
+	 * the one box left saying what the band says, raised as the answer to a press
+	 * the user had not made yet. What this case still protects is R3-1's own
+	 * invariant, that deferring did not leave the box armed with the old error: the
+	 * slot must be EMPTY, not showing the failure it was told to close.
+	 *
+	 * The offer itself is not lost - it is recorded on the store and pressed from the
+	 * band, which `update-indicator-segments.test.mjs` drives ("a deferred version is
+	 * not raised at all", and the re-armed band).
+	 */
+	assert.equal(
+		visible(handle).length,
+		0,
+		"an unsolicited re-offer raises no box, and certainly not the closed failure",
+	);
 });
 
 test("the by-hand panel replaces the in-flight one without a second message", async () => {

@@ -81,6 +81,53 @@ export const parseVersionTriple = (
 };
 
 /**
+ * Whether `to` is above `from`, lexicographically over the orderable triple.
+ *
+ * The direction, and it is a fix rather than a tidy-up (review R6): the gate used
+ * to ask "is there a difference at this segment", and a difference is symmetric -
+ * so an `available` OLDER than `running` announced itself on every setting.
+ * `PATCH`'s justification for that ("the offer only exists when main found a newer
+ * version") is a property of the app channel, and it is not one the SERVER channel
+ * has: its `running` is the daemon's own reading against a `latestVersion` main
+ * compared against the INSTALLED version, so the pair is not guaranteed ordered.
+ * An offer that is not newer is not an arrival on any surface.
+ */
+const isAbove = (to: VersionTriple, from: VersionTriple): boolean => {
+	if (to[0] !== from[0]) return to[0] > from[0];
+	if (to[1] !== from[1]) return to[1] > from[1];
+	return to[2] > from[2];
+};
+
+/**
+ * Whether this pair moves the BREAKING step, in the sense a caret range means it.
+ *
+ * Before 1.0 the leading non-zero segment is the SECOND one, so that is where the
+ * breaking step lives: npm's own caret range says `^0.31.0` allows `0.31.4` and
+ * not `0.32.0`, and this product's two channels are both 0.x today (app 0.3x,
+ * server 0.5x/0.6x). Treating the first position as the only major step made
+ * "Breaking changes only" a MUTE SWITCH for the whole 0.x era - every release the
+ * product can publish is silently withheld while the label reads like an ordinary
+ * noise filter (reviews R7, U7). `0.x -> 1.0` moves the first position and is a
+ * breaking step on either reading, which is why the two branches meet there.
+ */
+const breakingStep = (from: VersionTriple, to: VersionTriple): boolean =>
+	from[0] === 0 && to[0] === 0 ? from[1] !== to[1] : from[0] !== to[0];
+
+/**
+ * Whether this pair moves the minor position or above.
+ *
+ * Unchanged by the 0.x reading, and the CONSEQUENCE is worth stating rather than
+ * discovering: at 0.x a minor-position move is both the minor step and the
+ * breaking one, so "Minor and major only" and "Breaking changes only" announce
+ * exactly the same releases for as long as the product stays 0.x - and both still
+ * keep their literal promise to skip patches. There is no third granularity to
+ * sell at 0.x, and inventing one (calling a patch-position move a "minor" step)
+ * would make `Skip patch releases` false instead.
+ */
+const minorOrMajorStep = (from: VersionTriple, to: VersionTriple): boolean =>
+	from[0] !== to[0] || from[1] !== to[1];
+
+/**
  * Whether an available version crosses the segment a surface is following.
  *
  * `running` is the version in use, `available` the one on offer, and the answer
@@ -95,11 +142,14 @@ export const parseVersionTriple = (
  * unparseable side as "a difference" - is how a machine whose version reads
  * `unknown` for a frame would be told it is a major release behind.
  *
+ * ORDER IS THE OTHER HALF: an offer at or below the running version is not an
+ * arrival, so it is silent on every setting (`isAbove` above).
+ *
  * A same-triple respelling is also not a crossing, for the reason the module
  * header gives: it is the same version with a different suffix, not an arrival.
- * `PATCH` is therefore "any ORDERABLE difference", which is every release the
- * feed can actually offer - the offer only exists when main found a newer
- * version - and preserves the pre-preference behaviour for the default.
+ * `PATCH` is therefore "any NEWER orderable version", which is every release the
+ * feed can actually offer, and preserves the pre-preference behaviour for the
+ * default.
  */
 export const segmentCrossed = (
 	followed: FollowedSegment,
@@ -109,11 +159,9 @@ export const segmentCrossed = (
 	const from = parseVersionTriple(running);
 	const to = parseVersionTriple(available);
 	if (!from || !to) return false;
-	if (from[0] === to[0] && from[1] === to[1] && from[2] === to[2]) return false;
-	if (followed === FollowedSegment.MAJOR) return from[0] !== to[0];
-	if (followed === FollowedSegment.MINOR) {
-		return from[0] !== to[0] || from[1] !== to[1];
-	}
+	if (!isAbove(to, from)) return false;
+	if (followed === FollowedSegment.MAJOR) return breakingStep(from, to);
+	if (followed === FollowedSegment.MINOR) return minorOrMajorStep(from, to);
 	return true;
 };
 
@@ -132,15 +180,24 @@ export const FOLLOWED_SEGMENT_COPY: Record<
 > = {
 	[FollowedSegment.PATCH]: {
 		label: "Every release",
-		description: "Patch, minor and major versions",
+		description: "Patch, minor and major versions.",
 	},
 	[FollowedSegment.MINOR]: {
 		label: "Minor and major only",
-		description: "Skip patch releases",
+		description: "Skips patch releases.",
 	},
 	[FollowedSegment.MAJOR]: {
-		label: "Major versions only",
-		description: "Skip patch and minor releases",
+		label: "Breaking changes only",
+		/*
+		 * TRUE FOR A 0.x PRODUCT, which the old wording was not: "Skip patch and
+		 * minor releases" reads as a filter over three named steps, and on a 0.x
+		 * product the minor step IS the breaking one - so the old sentence promised a
+		 * choice the product could not honour and the setting looked like a mute
+		 * switch (reviews R7, U7). The consequence is stated instead of the version
+		 * components, the same rule the other two descriptions follow.
+		 */
+		description:
+			"Skips patches and minors. Before 1.0 a new minor is a breaking change.",
 	},
 };
 
