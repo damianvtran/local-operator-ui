@@ -324,9 +324,12 @@ const merged = (file, expression, stubs) => {
 	 * appears in the archive control's own class expression (UX round 3, U6: a pinned row keeps
 	 * that slot so its mark cannot move under the reader's aim), so it is defaulted here rather
 	 * than in each caller. A caller needing the other branch passes `pinned: false`, and the
-	 * spread below lets it win.
+	 * spread below lets it win. `menuOpen` joins the defaults with the row menu (#694): the
+	 * hold clauses (`menuOpen && ...`) are in the boxes' and the controls' own class
+	 * expressions, and the held state is the one where every predicate this helper merges for
+	 * is live.
 	 */
-	const withDefaults = { pinned: true, ...stubs };
+	const withDefaults = { menuOpen: true, pinned: true, ...stubs };
 	const names = Object.keys(withDefaults);
 	// biome-ignore lint/security/noGlobalEval: the evaluated text is this repository's own source, read two assertions above, and the sandbox is a `new Function` over stub predicates.
 	const call = new Function("cn", ...names, `return cn(${expression});`);
