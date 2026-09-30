@@ -8,6 +8,7 @@ import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import { notesForOffer } from "@shared/utils/server-release-notes";
 import {
 	serverUpdateFailureReason,
@@ -1188,6 +1189,31 @@ export const UpdateNotification = ({
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
+	/*
+	 * The unsolicited notice's own state (issue #672). The OFFER stays in this
+	 * component - it is what the card draws - and this store holds the facts the
+	 * other half needs: which surfaces have a release waiting, what each is being
+	 * read against, and whether the detail is open. The indicator is drawn in the
+	 * window's own chrome (`ChatLayout`), so the two halves sit on either side of
+	 * the tree and cannot share component state.
+	 *
+	 * `detailOpen` is what the two offer cards below are gated on: the fixed card
+	 * is now the answer to a question somebody asked - an explicit check from
+	 * Settings, or a press on the indicator - while the app's own periodic news is
+	 * the quiet band. Everything a user deliberately entered (a download in
+	 * flight, the ready-to-install state, a failure, the by-hand panel) is NOT
+	 * gated and reads exactly as it did.
+	 */
+	const detailOpen = useUpdateNoticeStore((state) => state.detailOpen);
+	const noteQuietOffer = useUpdateNoticeStore((state) => state.noteQuietOffer);
+	const clearQuietOffer = useUpdateNoticeStore(
+		(state) => state.clearQuietOffer,
+	);
+	const clearSurface = useUpdateNoticeStore((state) => state.clearSurface);
+	const noteRunningVersion = useUpdateNoticeStore(
+		(state) => state.noteRunningVersion,
+	);
+
 	// Keep a ref to the latest backendUpdateInfo for use in event handlers
 	const backendUpdateInfoRef = useRef<BackendUpdateInfo | null>(null);
 	useEffect(() => {
@@ -1200,6 +1226,22 @@ export const UpdateNotification = ({
 			.then((version) => setAppVersion(version))
 			.catch(() => setAppVersion("unknown"));
 	}, []);
+
+	/*
+	 * The version the app channel is being read AGAINST, for the indicator's
+	 * segment gate.
+	 *
+	 * Pushed here rather than captured where an offer arrives, and that is the
+	 * whole reason the gate is derived at read time (see the store's header): the
+	 * launch check can offer a release before this IPC read answers, and a verdict
+	 * stamped in at that moment would be decided against `"unknown"` - an
+	 * unorderable reading, so a real update would stay silent for the session.
+	 * This effect re-runs when the read lands, and the indicator picks the offer up
+	 * with no re-raise.
+	 */
+	useEffect(() => {
+		noteRunningVersion(UpdateType.UI, appVersion);
+	}, [appVersion, noteRunningVersion]);
 
 	/**
 	 * One verdict for one update-path message, on whichever channel it arrived.
@@ -1632,13 +1674,20 @@ export const UpdateNotification = ({
 			setBackendUpdateInfo(null);
 		}
 		/*
+		 * And the quiet indicator goes with the panel, unconditionally (issue #672).
+		 * A dismissal is a dismissal whether or not there were offer details to clear
+		 * - the failure panel's "Update later" reaches here with none - and a notice
+		 * the user just waved away must not still be sitting in the window's chrome.
+		 */
+		clearSurface(UpdateType.BACKEND);
+		/*
 		 * The box goes with the panel, and the error goes with the box - through the
 		 * same closer the toast's own dismissal uses. Unconditional rather than inside
 		 * the guard: the failure panel's "Update later" reaches here with no offer
 		 * details set, and it is still a dismissal (review R3-1).
 		 */
 		closeSnackbar();
-	}, [closeSnackbar, deferUpdate, backendUpdateInfo]);
+	}, [clearSurface, closeSnackbar, deferUpdate, backendUpdateInfo]);
 
 	/**
 	 * Dismiss a failed server update.
@@ -1660,10 +1709,13 @@ export const UpdateNotification = ({
 			setUpdateAvailable(false);
 			setUpdateDownloaded(false);
 		}
+		// The indicator is the same dismissal, for the same reason as the backend's
+		// (issue #672).
+		clearSurface(UpdateType.UI);
 		// Same reason as the backend deferral above: the box closes with the panel,
 		// and an error cannot outlive it (review R3-1).
 		closeSnackbar();
-	}, [closeSnackbar, deferUpdate, updateInfo]);
+	}, [clearSurface, closeSnackbar, deferUpdate, updateInfo]);
 
 	// Set up event listeners for update events
 	useEffect(() => {
@@ -1678,6 +1730,17 @@ export const UpdateNotification = ({
 					setUpdateAvailable(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
+					/*
+					 * The OFFER is recorded here and its volume is decided at read time
+					 * (`quietOfferShown`): the segment gate needs the version the app is
+					 * running, which on a cold launch has not been read yet, and a verdict
+					 * stamped in now would be a verdict about `"unknown"` (issue #672).
+					 *
+					 * Recorded on the offer's OWN event rather than on a check's, because
+					 * this listener is the only door a UI release comes through - the
+					 * periodic, launch and post-wake checks all arrive here.
+					 */
+					noteQuietOffer(UpdateType.UI, { version: info.version });
 				}
 			},
 		);
@@ -1687,6 +1750,17 @@ export const UpdateNotification = ({
 			window.api.updater.onUpdateNotAvailable(() => {
 				setUpdateAvailable(false);
 				setUpdateInfo(null);
+				/*
+				 * There is nothing to offer, so there is nothing to indicate and nothing
+				 * for a detail to draw - one call, because the two facts must move
+				 * together (the store's `clearSurface`).
+				 *
+				 * THIS EVENT IS ONLY EVER AN ANSWER. The main process swaps this
+				 * channel's forwarder out for a silent check, so a periodic check cannot
+				 * clear a notice out from under the reader (see `checkForUpdates` in
+				 * `update-service.ts`).
+				 */
+				clearSurface(UpdateType.UI);
 			});
 
 		// Frontend update downloaded
@@ -1698,6 +1772,14 @@ export const UpdateNotification = ({
 					setUpdateDownloaded(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
+					/*
+					 * The ready-to-install card takes the announcement over, and it renders
+					 * on its own state rather than on `detailOpen` - that is an in-flight
+					 * state the user entered, not news. So the indicator yields to it:
+					 * leaving the offer set would put the band and the card on screen for
+					 * one release.
+					 */
+					clearQuietOffer(UpdateType.UI);
 				}
 			});
 
@@ -1743,6 +1825,13 @@ export const UpdateNotification = ({
 				setUpdatingBackend(false);
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
+				/*
+				 * The by-hand panel REPLACES this one, so the quiet indicator goes with it
+				 * (issue #672): leaving the offer set would keep a band saying "server
+				 * update 0.55.10" under a panel whose whole point is that this app cannot
+				 * install it and the reader has a command to run instead.
+				 */
+				clearQuietOffer(UpdateType.BACKEND);
 			});
 
 		// The app refused to start an install, or a previous one never finished
@@ -1847,6 +1936,24 @@ export const UpdateNotification = ({
 					setBackendUpdateAvailable(true);
 					setBackendUpdateInfo(enhancedInfo);
 					/*
+					 * The quiet indicator's two inputs (issue #672): what is waiting, and what
+					 * the reader is running against it.
+					 *
+					 * `runningVersion` FIRST and the install second, because they are not the
+					 * same question: the build SERVING this conversation is what the reader is
+					 * using, while `currentVersion` is what is on disk - an adopted daemon
+					 * that trails a landed install is exactly the case where the offer is
+					 * real news for the person reading it. The panel's own sentence makes the
+					 * same distinction (`backendVersionSentence`).
+					 */
+					noteRunningVersion(
+						UpdateType.BACKEND,
+						enhancedInfo.runningVersion ?? enhancedInfo.currentVersion ?? null,
+					);
+					noteQuietOffer(UpdateType.BACKEND, {
+						version: enhancedInfo.latestVersion,
+					});
+					/*
 					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes
 					 * `installFailed` above: the check that just ran found the release again,
 					 * so "this update failed" is no longer the newest thing known and the
@@ -1867,6 +1974,14 @@ export const UpdateNotification = ({
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
 				const currentInfo = backendUpdateInfoRef.current;
+				/*
+				 * The indicator yields to the answer (issue #672). It is cleared
+				 * UNCONDITIONALLY rather than in the branch below, because the branch is
+				 * about the OFFER's own lifetime rule ("at or beyond the offer"): a notice
+				 * for a release the app no longer needs to nag about must go even when the
+				 * offer state itself is left alone.
+				 */
+				clearQuietOffer(UpdateType.BACKEND);
 				setBackendUpdateAvailable((prev) => {
 					// At or beyond the offer, not equal to it: a release that moved on
 					// between the offer and the check is a server the app no longer needs
@@ -1942,6 +2057,8 @@ export const UpdateNotification = ({
 				answerBackendUpdateAttempt();
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
+				// The install landed, so there is no release waiting any more (issue #672).
+				clearSurface(UpdateType.BACKEND);
 				setChecking(false);
 				setUpdatingBackend(false);
 				setBackendUpdatePhase(null);
@@ -2147,10 +2264,14 @@ export const UpdateNotification = ({
 			removeInstallSucceededListener();
 		};
 	}, [
+		autoCheck,
 		announceBackendSkew,
 		answerBackendUpdateAttempt,
-		autoCheck,
 		checkForUpdates,
+		clearQuietOffer,
+		clearSurface,
+		noteQuietOffer,
+		noteRunningVersion,
 		reportUpdateMessage,
 		shouldShowUpdate,
 	]);
@@ -2586,8 +2707,27 @@ export const UpdateNotification = ({
 		);
 	}
 
-	// If an update is available but not downloaded yet
-	if (updateAvailable && !updateDownloaded && updateInfo) {
+	/*
+	 * The app-offer card, now the LOUD half of a two-step notice (issue #672).
+	 *
+	 * It renders only while the detail is OPEN - which is what an explicit check
+	 * from Settings sets, and what a press on the quiet indicator sets - because
+	 * the app's own periodic news is the indicator's job now. This is the branch
+	 * that used to paint over the view several times a day; everything below it
+	 * (a download in flight, the ready-to-install state, the failure panels, the
+	 * install notices) is a state a user entered and is deliberately NOT gated.
+	 *
+	 * The DOWNLOADING half of this branch rides the same flag, and that is safe
+	 * rather than lucky: the only way to start a download is the button inside
+	 * this card, so the detail is open by construction before `downloading` is
+	 * ever true.
+	 */
+	if (
+		updateAvailable &&
+		!updateDownloaded &&
+		updateInfo &&
+		detailOpen[UpdateType.UI]
+	) {
 		return withErrorToast(
 			<UpdateContainer>
 				<h2 className="mb-3 text-heading text-ink">Update available</h2>
@@ -3010,7 +3150,11 @@ export const UpdateNotification = ({
 	}
 
 	// If a backend update is available
-	if (backendUpdateAvailable && backendUpdateInfo) {
+	if (
+		backendUpdateAvailable &&
+		backendUpdateInfo &&
+		detailOpen[UpdateType.BACKEND]
+	) {
 		/*
 		 * THE NOTES THIS OFFER MAY QUOTE, or null. `notesForOffer` owns the
 		 * question (its own module, so it is exercised by a test rather than by a

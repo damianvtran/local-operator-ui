@@ -306,6 +306,13 @@ const bundle = await build({
 			 */
 			export { UpdateErrorAlert } from "./src/renderer/src/shared/components/common/update-error-alert";
 			export { PanelDetails } from "./src/renderer/src/shared/components/common/panel-details";
+			/*
+			 * The notice store, exported from THIS bundle rather than imported on the
+			 * side: the harness drives the same module instance the component reads, or
+			 * it would be opening a detail in a second copy of the store and the card
+			 * would still render nothing.
+			 */
+			export { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -430,6 +437,13 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
  * mid-flight states (a check started but not answered) are exact rather than
  * timing-dependent.
  */
+/**
+ * Opens the release detail for a surface, bound to the shipped store once the
+ * bundle has been imported. Declared here because `updater.emit` (below) needs it
+ * and the bundle's top-level await has not run yet at this point.
+ */
+let openNoticeDetail = () => {};
+
 const updater = {
 	handlers: new Map(),
 	checks: [],
@@ -476,6 +490,25 @@ const updater = {
 		};
 	},
 	emit(event, payload) {
+		/*
+		 * AN OFFER IN THIS FILE STANDS FOR A CHECK THE READER ASKED FOR (issue #672).
+		 *
+		 * The app's own periodic news is a quiet band at the bottom of the window
+		 * now, and the release CARD renders only while the detail is open - which an
+		 * explicit check from Settings, or a press on the band, is what opens. Every
+		 * case below is about the panels: which copy they hand back, which control
+		 * they offer, what a press does. So the channel that carries an offer opens
+		 * the detail first, and the cases keep asserting the surface they are about.
+		 *
+		 * The unsolicited presentation - the band, the segment gate, the deferral -
+		 * is `scripts/update-indicator-segments.test.mjs`'s subject, driven on the
+		 * shipped component in a real DOM. Nothing here is silent about that split:
+		 * a card that no longer appears on its own is the behaviour this change
+		 * ships, and these cases would be asserting the defect if they kept
+		 * expecting it.
+		 */
+		if (event === "update-available") openNoticeDetail("ui");
+		if (event === "backend-update-available") openNoticeDetail("backend");
 		for (const handler of [...(updater.handlers.get(event) ?? [])])
 			handler(payload);
 	},
@@ -547,8 +580,17 @@ const {
 	Button,
 	UpdateContainer,
 	UpdateNotification,
+	useUpdateNoticeStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
+
+/*
+ * Bound here rather than at the declaration, because the store only exists once
+ * the bundle has been imported - see the note beside `openNoticeDetail`.
+ */
+openNoticeDetail = (type) => {
+	useUpdateNoticeStore.getState().openDetail(type);
+};
 
 /*
  * Real timers are left alone. The component schedules one 2s reset of its
