@@ -2841,6 +2841,7 @@ const BRANCH_RECORDS = [
 	 * same reason a third time, which is exactly what this list is for.
 	 */
 	"foldOntobbffb9a8a9Note",
+	/*
 	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
 	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
 	 * adds no name to the quoting ledger.
