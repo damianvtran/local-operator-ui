@@ -1,0 +1,25 @@
+<!doctype html>
+<!--
+  Evidence harness for the turn-answer rail (issue #665; revised after #708).
+
+  Mounts the SHIPPED `CanonicalTranscript` over a synthetic turn — a question, a
+  condensed run of calls, a peer receipt, and the run's elected answer — with
+  the settings query seeded from `?rail=on|off|absent`. The rail is a RENDERER
+  fact (a class on one row, read from a backend key), so a frame of this page is
+  evidence about the class and the geometry, not about a backend: the BEFORE arm
+  is the same page over `origin/main`'s transcript file, which is why the
+  driver's `--tree=before` mode reverts exactly that one file before it starts.
+
+  Not part of the app or the test suite: a capture surface, started by
+  `node scripts/turn-answer-rail-evidence.mjs`.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Turn-answer rail — off by default, subtle when on</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./turn-answer-rail-evidence.tsx"></script>
+	</body>
+</html>
