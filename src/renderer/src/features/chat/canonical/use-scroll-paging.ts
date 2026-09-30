@@ -217,22 +217,23 @@ export type ScrollPagingHandle = {
 	 * reader input (clause A).
 	 *
 	 * WHY A CALLER NEEDS THIS AT ALL. `onScroll` cannot tell a writer from a
-	 * reader: it reads `programmatic.current`, which only this hook's own
-	 * corrections (and now its callers) increment. A write from outside (the
-	 * transcript's press-anchor correction, U1 of #708) carries a `scroll` event
-	 * that the handler takes the reader path for — and a BAR PRESS has
+	 * reader: it reads the offset this module's own corrections (and now its
+	 * callers) leave behind, and treats every other `scroll` as the reader's or
+	 * the browser's. A write from outside (the transcript's press-anchor
+	 * correction, U1 of #708) carries a `scroll` event that the handler takes the
+	 * reader path for — and a BAR PRESS has
 	 * `onPointerDown` on this scroller, so `dragUntil` is open and the handler
 	 * does more than re-read the hold: it calls `input(moved > 0 ? "up" : "down",
 	 * ...)`, recording a correction as the reader dragging older-ward and arming
 	 * a paging demand no gesture asked for (review round 2, MINOR-3).
 	 *
-	 * THE COUNT IS GUARDED BY THE OFFSET ITSELF, and that is not an optimisation.
-	 * A write clamped at either end of the scroller's range (or one that lands on
-	 * the number already there) moves nothing, so no `scroll` event is emitted and
-	 * a blind `+= 1` would sit unconsumed — swallowing the NEXT genuine reader
-	 * scroll, which is the same mis-attribution mirrored. Callers pass the offset
-	 * around the assignment, so the guard cannot be forgotten at a call site: the
-	 * caller writes
+	 * WHAT IS ACKNOWLEDGED IS THE OFFSET, NOT A COUNT (agent review round 3, R3-1),
+	 * so two of our writes coalescing into one frame cannot leave a claim behind
+	 * for the reader's next scroll to be swallowed by. A write clamped at either
+	 * end of the scroller's range (or one that lands on the number already there)
+	 * moves nothing and emits no `scroll` event, so it is not claimed at all.
+	 * Callers pass the offset around the assignment, so neither rule can be
+	 * forgotten at a call site: the caller writes
 	 *
 	 * ```ts
 	 * const before = region.scrollTop;
@@ -316,16 +317,36 @@ export function useScrollPaging({
 		until: number;
 		inputRevision: number;
 	}>({ sample: null, until: 0, inputRevision: 0 });
-	// Writes this hook makes to `scrollTop`. The resulting `scroll` event is our
-	// own motion and must never be attributed to the reader (clause A).
-	const programmatic = useRef(0);
 	/*
-	 * The same acknowledgement, offered to a caller that writes the offset
-	 * itself. See `ScrollPagingHandle.acknowledgeOwnWrite` for why the guard is
-	 * the offset's own change rather than an unconditional increment.
+	 * The offset our own write of `scrollTop` produced, or null. The `scroll`
+	 * event that write fires is our own motion and must never be attributed to
+	 * the reader (clause A).
+	 *
+	 * AN OFFSET, NOT A COUNT (agent review round 3, R3-1). A count is consumed one
+	 * event at a time, so two of our writes coalescing into ONE frame - the hook's
+	 * own `correctAnchor` and the transcript's press-anchor write land in the same
+	 * layout phase - left a residue that swallowed the reader's NEXT genuine
+	 * scroll: MINOR-3 mirrored, and a swallowed scroll is the failure this lane
+	 * exists to remove. The offset cannot leave that residue: the pair's second
+	 * write simply overwrites the first, and the one event the browser emits for
+	 * the pair matches it.
+	 *
+	 * Consumed on the FIRST scroll event to arrive, whether or not the offsets
+	 * match. Our write happens in the layout phase and the browser queues its
+	 * event before any reader input can be processed, so that event IS ours; if
+	 * the offsets disagree (a browser clamp we did not predict) the event is
+	 * treated as the reader's motion rather than silently absorbed, which is the
+	 * honest reading and leaves nothing pending.
+	 */
+	const ownWritePosition = useRef<number | null>(null);
+	/*
+	 * The same acknowledgement, offered to a caller that writes the offset itself
+	 * (the transcript's press-anchor correction). `before` is read for the clamp
+	 * rule: a write the browser leaves at its old value emits no event at all, so
+	 * claiming it would leave the claim pending for the reader's next scroll.
 	 */
 	const acknowledgeOwnWrite = useCallback((before: number, after: number) => {
-		if (after !== before) programmatic.current += 1;
+		if (after !== before) ownWritePosition.current = after;
 	}, []);
 	/*
 	 * The reader's own motion, as the SCROLLER reported it at the last input.
@@ -521,7 +542,6 @@ export function useScrollPaging({
 		}
 		const expired = performance.now() > anchor.current.until;
 		if (drift !== 0) {
-			programmatic.current += 1;
 			/*
 			 * `+=`, and the sign is not the obvious one - it is inverted by
 			 * `column-reverse`.
@@ -541,6 +561,8 @@ export function useScrollPaging({
 			 * => offset +100) so the next reader does not have to re-derive it.
 			 */
 			el.scrollTop += drift;
+			// Acknowledge the offset the write produced, not a count (R3-1).
+			ownWritePosition.current = el.scrollTop;
 		}
 		if (expired) {
 			/*
@@ -999,11 +1021,15 @@ export function useScrollPaging({
 			const fromTail = Math.abs(el.scrollTop);
 			const moved = fromTail - lastFromTail;
 			lastFromTail = fromTail;
-			if (programmatic.current > 0) {
-				// Our own correction. Consume the acknowledgement and attribute
-				// nothing: clause A's second half.
-				programmatic.current -= 1;
-				return;
+			if (ownWritePosition.current !== null) {
+				const ours = Math.abs(el.scrollTop - ownWritePosition.current) <= 1;
+				ownWritePosition.current = null;
+				/*
+				 * Our own correction: attribute nothing (clause A's second half).
+				 * The claim was taken from our own write, so it is spent either
+				 * way - a stale claim is exactly what R3-1 removed.
+				 */
+				if (ours) return;
 			}
 			/*
 			 * Anything else that moved the viewport - the reader's own drag, the
