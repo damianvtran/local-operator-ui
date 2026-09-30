@@ -811,6 +811,38 @@ const poll = async (predicate: () => boolean, what: string) => {
 	throw new Error(`the story's state never arrived: ${what}`);
 };
 
+/**
+ * The team header's register, read off the live band (issue #703): an `<h3>` the
+ * sidebar's section-label way (small caps, medium weight), 32px tall, a hairline
+ * under it, and NOTHING operable - no button, no tab stop - because a header is a
+ * label and the row-style hover it once resembled is exactly what the reporter
+ * read as broken. Each clause can fail on its own: the pre-fix bands were plain
+ * `div`s with no heading, no rule, no transform and a different height.
+ */
+const assertTeamHeaderRegister = (selector: string) => {
+	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
+	if (bands.length === 0) throw new Error(`no team header matches ${selector}`);
+	for (const band of bands) {
+		const label = band.querySelector("h3");
+		if (!label || (label.textContent ?? "").trim() === "") {
+			throw new Error(`${selector}: a team header carries no <h3> label`);
+		}
+		if (getComputedStyle(label).textTransform !== "uppercase") {
+			throw new Error(`${selector}: the team label is not small caps`);
+		}
+		const height = band.getBoundingClientRect().height;
+		if (Math.abs(height - 32) > 0.6) {
+			throw new Error(`${selector}: a team header is ${height}px tall, not 32`);
+		}
+		if (Number.parseFloat(getComputedStyle(band).borderBottomWidth) < 0.5) {
+			throw new Error(`${selector}: a team header lost its hairline`);
+		}
+		if (band.querySelector("button, a, [tabindex]") || band.tabIndex >= 0) {
+			throw new Error(`${selector}: a team header became operable`);
+		}
+	}
+};
+
 /** A story's play: hold the shutter, run the gesture, wait, release. */
 const playOnce = (key: string, gesture: () => Promise<void>) => async () => {
 	if (played.has(key)) return;
@@ -1054,6 +1086,7 @@ export const ListTeamsSticky: Story = {
 				`fewer than two team headers rendered (${headers.length})`,
 			);
 		}
+		assertTeamHeaderRegister("[data-project-team]");
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
@@ -2264,6 +2297,7 @@ export const BoardSticky: Story = {
 				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
+		assertTeamHeaderRegister("[data-board-team]");
 		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
 		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
@@ -3096,6 +3130,7 @@ export const Timeline: Story = {
 				"the timeline row's data-project-name is not the key anymore",
 			);
 		}
+		assertTeamHeaderRegister("[data-project-team]");
 	}),
 };
 
