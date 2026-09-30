@@ -265,7 +265,9 @@ and the mechanism is the second one this section always allowed: Radix focuses
 the content during mount, and a `menuOpenedByKeyboard`-guarded handler on the
 content redirects that first focus to the first `[role="menuitem"]`. One press
 is again enough, which is the model the repo already chose for the same gesture
-(`use-link-subject.ts:441-448`).
+(`use-link-subject.ts:441-448`). On close the paths part again: the keyboard
+path returns the caret to the row's button, and the pointer path returns
+whatever held focus before the open (§ 6; UX round 2's U8).
 
 **Why the container's focus event and not `onOpenAutoFocus`:** that hook is
 real at runtime, but the primitive keeps it out of its public prop types (it
@@ -459,12 +461,18 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
 - **Focus returns to the row's button** on the keyboard path: `onCloseAutoFocus`
   with `preventDefault()` and an explicit focus, the shape the pin's caret
   correction already uses (`chat-sidebar.tsx:3462-3475`).
-- **The pointer path takes no focus**: `onCloseAutoFocus` prevents the default
-  and focuses nothing, matching the pin control's documented split ("the pointer
-  path deliberately does not take focus … because a row revealed by the pointer
-  has no keyboard place to keep"). The panel itself takes focus on open — that is
-  how `Escape` and the arrows work — and that is not the same thing as the row
-  gaining focus.
+- **The pointer path takes no focus of its own, and gives back what the menu
+  took (UX round 2, U8).** `onCloseAutoFocus` prevents the default on both
+  paths; the keyboard path focuses the row's button (above), and the pointer
+  path focuses the element the open captured - because the panel itself takes
+  focus on open (that is how `Escape` and the arrows work, and the shipped
+  `pointer-hover` frame reads `focus: menuitem`), so a close that returned focus
+  to nobody dropped the caret to `<body>`: QA round 2 measured exactly that
+  (composer focused -> right-click -> `Escape` -> `activeElement` is `<body>`,
+  and the next keystroke reached nothing). When the remembered node is gone the
+  row's own button is the deliberate fallback, and with neither the caret is
+  left alone. This is still not the row gaining focus by the pointer's doing:
+  it is the focus the pointer path found, given back.
 - **`Escape`** closes the menu and takes the same path as item activation.
 - **The list's own `keyDown` must not consume keys while the menu is open.**
   The list treats a printable key on a row as type-to-filter
@@ -479,12 +487,14 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
   **no** `aria-haspopup` (`dist/index.mjs:87-88`), so the box gains no role and no
   announcement by itself. The shipped change therefore adds a row-scoped
   `sr-only` clause - "Right-click or press Shift+F10 for its actions", or
-  `Fn+Shift+F10` on macOS - riding the channel this row already uses for
-  its remedies: an `sr-only` span beside the row's button, pointed at by that
-  button's `aria-describedby` (`chat-sidebar.tsx`'s `rowMenuClause` /
-  `rowMenuClauseId`). The platform split is UX round 1's U2: an Apple keyboard
-  has no Menu key and sends F10 as a media key, the same qualifier
-  `chat-regions.ts` carries for F6. The clause is
+  `Shift+F10` with Fn on most Mac keyboards - riding the channel this row
+  already uses for its remedies: an `sr-only` span beside the row's button,
+  pointed at by that button's `aria-describedby` (`chat-sidebar.tsx`'s
+  `rowMenuClause` / `rowMenuClauseId`). The platform split is UX round 1's U2:
+  an Apple keyboard has no Menu key and sends F10 as a media key; UX round 2's
+  U9 rewrote the macOS spelling to hold in BOTH of macOS's function-key modes
+  (`Fn+Shift+F10` alone is exact only while the default media-key mode is on),
+  the same qualifier `chat-regions.ts` carries for F6. The clause is
   withheld with the menu itself, so the fully withdrawn panel has none. It
   names the menu and how to open it, and deliberately not the chords: those
   are printed inside the menu and stay in each item's accessible name, where

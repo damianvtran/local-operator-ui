@@ -299,8 +299,9 @@ test("the keyboard opener synthesises its point and never reads the platform's",
 	 * FOCUS, both edges of it: the keyboard path lands in the FIRST ITEM on open
 	 * (U-D4's minimum - focus visible, so a reader who pressed `Shift+F10` can act
 	 * without first pressing an arrow) and returns the caret to the row's button on
-	 * close; both prevent the primitive's default, and the pointer path takes no
-	 * focus either way (`menuOpenedByKeyboard` is the one splitter).
+	 * close; both prevent the primitive's default, and `menuOpenedByKeyboard` is
+	 * the one splitter. The pointer path takes no focus of its own but GIVES BACK
+	 * WHAT THE MENU TOOK (U8 below).
 	 */
 	const open = between(MENU, "onFocus={(event) => {", "onCloseAutoFocus");
 	assert.ok(
@@ -325,6 +326,34 @@ test("the keyboard opener synthesises its point and never reads the platform's",
 			close.includes("[data-chat-row]") &&
 			close.includes("?.focus()"),
 		"the close-focus path no longer prevents the default and returns the caret to the row's button",
+	);
+	/*
+	 * AND THE POINTER CLOSE GIVES BACK WHAT THE MENU TOOK (UX round 2, U8): the
+	 * primitive moves focus into the panel on open even under the pointer, so the
+	 * close must focus the element the open captured - with the row's button as
+	 * the deliberate fallback when that node is gone - or the caret falls to
+	 * `<body>` and a reader who was typing must click before the next keystroke
+	 * lands (QA round 2's reading).
+	 */
+	const openChange = between(
+		SIDEBAR_CODE,
+		"onOpenChange={(open) => {",
+		"<RowMenuOwner",
+	);
+	assert.ok(
+		openChange.includes("document.activeElement") &&
+			openChange.includes("menuFocusReturnRef.current ="),
+		"the open no longer captures the pre-open focus target the pointer close returns to (U8)",
+	);
+	assert.ok(
+		close.includes("menuFocusReturnRef.current") &&
+			close.includes("isConnected") &&
+			close.includes("[data-chat-row]"),
+		"the pointer close no longer returns the captured focus, falling back to the row's button (U8)",
+	);
+	assert.ok(
+		close.includes("if (!menuOpenedByKeyboard.current) {"),
+		"the pointer close went back to returning without a focus destination (U8)",
 	);
 	/*
 	 * AND THE LIST STANDS DOWN WHILE THE MENU IS OPEN (§6): the panel's keydown
