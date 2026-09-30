@@ -2169,6 +2169,22 @@ export const STORIES = [
 	 * story OPENS it so the frame holds both the summary line and the rows.
 	 */
 	["chat-tool-rows--tool-ops", 1280, 570],
+	/*
+	 * The sessions tool's six ops, one row each (list bare and scoped, info,
+	 * spawn listed and ephemeral, resume, stop, three peek windows, a live
+	 * spawn): the desk half of the sessions lane (sibling
+	 * `damianvtran/local-operator` #1825). Before it a row for any of them
+	 * read `Called sessions <first scalar>` under the generic wrench; now the
+	 * op's verb leads and the discriminator rides first in the object (a
+	 * spawn's visibility, a peek's window). The fold on the frame reads
+	 * `12 sessions`, the noun this lane adds to `KIND_NOUNS`. The BEFORE half
+	 * is the declared set `sessions-ops-baseline/`, the same story captured
+	 * from unmodified `origin/main` - see that set's README. Height paired
+	 * with the story's own `Frame` (470): eleven actions condense into one
+	 * fold, and the story OPENS it so the frame holds the summary line and
+	 * every row beneath it.
+	 */
+	["chat-tool-rows--sessions-ops", 1280, 470],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
