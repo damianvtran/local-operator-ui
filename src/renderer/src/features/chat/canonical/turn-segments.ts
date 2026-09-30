@@ -122,12 +122,24 @@ export function triggerOf(record: TranscriptRecord): TriggerKind | null {
  */
 export type BoundaryKind = "compaction" | "terminal";
 
+/**
+ * A durable COMPLETION MARKER: the notice the transcript paints for a completion
+ * attention record (`Stopped with an error`, `Interrupted`, and the neutral
+ * `closed` / `retired` receipts). The run partition's "a marker closes this run"
+ * test and the working line's "the turn stopped" test read this too, so the three
+ * consumers of "a marker was seen" are one definition rather than three copies of
+ * `kind === "notice" && complete === true`.
+ */
+export function isCompletionMarker(record: TranscriptRecord): boolean {
+	return record.kind === "notice" && record.complete === true;
+}
+
 export function boundaryKindOf(record: TranscriptRecord): BoundaryKind | null {
 	switch (record.kind) {
 		case "compaction":
 			return "compaction";
 		case "notice":
-			return record.complete === true ? "terminal" : null;
+			return isCompletionMarker(record) ? "terminal" : null;
 		case "custom":
 			return record.level === "error" ? "terminal" : null;
 		default:
