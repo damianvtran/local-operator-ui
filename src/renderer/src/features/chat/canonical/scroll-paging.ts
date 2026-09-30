@@ -178,6 +178,73 @@ export const MAX_AUTO_ATTEMPTS = 3;
 export const MAX_CHAIN_FETCH = 4;
 
 /**
+ * Consecutive INVISIBLE reveals one act may chain (loader-continuity 1b).
+ *
+ * THE REVEAL IN THE READER'S CURRENCY. Rule 2 spends one round trip per act,
+ * which is right when the page it buys changes what is on screen and useless
+ * when it does not: a page whose rows all fold into a bar, or an empty page
+ * whose cursor simply moved, answers a gesture with nothing. Measured against
+ * the operator's real-shape journal, a 618-row run painted 4-7 rows across
+ * window 60..300 - TEN gestures of nothing, and the bar's own count and `Took`
+ * clause only arrived after all thirteen pages had been pulled by hand. So an
+ * act whose reveal the reader CANNOT SEE is not answered by it: the round trip
+ * is refunded, the continuation is re-armed, and the counter below bounds the
+ * chain. The first VISIBLE reveal ends it (that is what keeps round 1's runaway
+ * chain closed - the chain stops at the first thing the reader can see).
+ *
+ * Twelve is `JUMP_MAX_PAGES`, the same budget a rail jump walks, and a test
+ * pins the two equal so the reader's chain and a jump cannot disagree.
+ */
+export const MAX_CHAIN_INVISIBLE = 12;
+
+/**
+ * The most round trips ONE ACT may buy, summed over every door that can spend
+ * without fresh input.
+ *
+ * WHY A SUM AND NOT JUST EACH DOOR'S OWN BOUND (QA round 1, Q-4 — measured, not
+ * reasoned). Each door already had a bound: the unscrollable pane's chain
+ * `MAX_CHAIN_FETCH`, the invisible-reveal chain `MAX_CHAIN_INVISIBLE`, rule 6's
+ * owed widen (local, so no round trip). But they are doors on the SAME act, and
+ * an act can walk through more than one: on the tall-run journal one real wheel
+ * notch produced FIFTEEN `sessions.history` asks against a stated bound of
+ * twelve, because the pane's first pages ran the short-content chain and the
+ * reveals that landed kept the invisible chain open behind it. A bound that only
+ * holds per door is not a bound the reader can rely on, and the number they can
+ * rely on is the one this file states: one act, one chain's worth.
+ *
+ * It is `MAX_CHAIN_INVISIBLE` by construction rather than a second number — the
+ * quantity being bounded is the same one (an act's worth of history), and the
+ * tests pin the equality so the two cannot drift apart.
+ *
+ * WIDENS ARE NOT COUNTED. A widen reveals rows the transcript already has; it
+ * costs no round trip, and the local growth path stays bounded by
+ * `MAX_CHAIN_WIDEN`. The align WALK is not counted either: it is a different
+ * actor (the app completing a settled turn's own bar at open, bounded per run by
+ * `ALIGN_WALK_MAX_PAGES`) and it never spends on a reader's act.
+ */
+export const MAX_ACT_ASKS = MAX_CHAIN_INVISIBLE;
+
+/**
+ * Growth below which a reveal is INVISIBLE to the reader, in px.
+ *
+ * A floor rather than a fraction alone: a short window (a narrow side panel)
+ * with a 35% threshold would call two rows of prose a visible reveal. 120px is
+ * about six ordinary transcript rows - more than a mount can be mistaken for,
+ * and far below the ~one-viewport growth a real page produces.
+ */
+export const INVISIBLE_GROWTH_MIN_PX = 120;
+
+/**
+ * Growth below which a reveal is INVISIBLE, as a fraction of the viewport.
+ *
+ * The other half of the same test: what a reader can SEE is a fraction of what
+ * they can see at once, so a tall display needs more than a short one before a
+ * reveal counts. 35% is roughly a third of a screen - clearly less than a
+ * deliberate scroll - and the floor above keeps the small-viewport case honest.
+ */
+export const INVISIBLE_GROWTH_FRACTION = 0.35;
+
+/**
  * Local-window widenings one reveal may chain.
  *
  * Free in the sense that matters here — no round trip — but not free to mount,
@@ -268,6 +335,22 @@ export type PagingState = {
 	failures: number;
 	chainFetch: number;
 	chainWiden: number;
+	/**
+	 * Round trips this ACT has bought, across every door — the reader's own
+	 * demand, the unscrollable pane's short-content chain, and the
+	 * invisible-reveal chain. Bounded by `MAX_ACT_ASKS`; reset when a new act
+	 * opens (`noteInput`), never by a settle.
+	 */
+	actAsks: number;
+	/**
+	 * Consecutive reveals the reader could not SEE, in the current act.
+	 *
+	 * Distinct from `chainFetch`, which counts the pages an act bought: a chain
+	 * of invisible pages is bounded by `MAX_CHAIN_INVISIBLE`, and a VISIBLE
+	 * reveal resets this to zero (a page the reader saw answered their act, so
+	 * the next one is a new question). Reset by any input, like the others.
+	 */
+	chainInvisible: number;
 };
 
 export type PagingInput = {
@@ -324,6 +407,8 @@ export const initialPagingState = (): PagingState => ({
 	failures: 0,
 	chainFetch: 0,
 	chainWiden: 0,
+	chainInvisible: 0,
+	actAsks: 0,
 });
 
 /** The prefetch zone for a viewport of this height. See `ZONE_FRACTION`. */
@@ -368,6 +453,11 @@ export const noteInput = (
 				input.at - state.lastInputAt >= GESTURE_GAP_MS
 					? false
 					: state.actFetchSpent,
+			// A new act starts with its whole ask budget (see `MAX_ACT_ASKS`); a
+			// reversal INSIDE one act keeps what it has spent, exactly as
+			// `actFetchSpent` does above.
+			actAsks:
+				input.at - state.lastInputAt >= GESTURE_GAP_MS ? 0 : state.actAsks,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
@@ -381,6 +471,7 @@ export const noteInput = (
 			turnedAround: state.busy,
 			chainFetch: 0,
 			chainWiden: 0,
+			chainInvisible: 0,
 			lastInputAt: input.at,
 		};
 	}
@@ -411,6 +502,11 @@ export const noteInput = (
 	const base: PagingState = {
 		...state,
 		actFetchSpent: gestureEnded ? false : state.actFetchSpent,
+		/*
+		 * The act's ask budget refills where the act's fetch budget does — a new act
+		 * is a new question, and `MAX_ACT_ASKS` is a fact about the act.
+		 */
+		actAsks: gestureEnded ? 0 : state.actAsks,
 		// The travel record belongs to the latch's own act; a notch that opens a
 		// new act starts a new question, and the release it guards is one per
 		// latch rather than one per reader.
@@ -418,6 +514,7 @@ export const noteInput = (
 		continuation: false,
 		turnedAround: false,
 		chainFetch: 0,
+		chainInvisible: 0,
 		chainWiden: 0,
 		lastInputAt: input.at,
 	};
@@ -433,6 +530,7 @@ export const noteInput = (
 			// An explicit ask is its own act: whatever the previous gesture spent
 			// says nothing about the click the reader just made.
 			actFetchSpent: false,
+			actAsks: 0,
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
@@ -547,6 +645,15 @@ const spend = (
 		actFetchSpent: action === "fetch" ? true : state.actFetchSpent,
 		chainWiden: action === "widen" ? state.chainWiden + 1 : state.chainWiden,
 		chainFetch: action === "fetch" ? state.chainFetch + 1 : state.chainFetch,
+		/*
+		 * The ACT's own ask count, summed across every door (a fetch from the reader's
+		 * demand and one from a chain are the same thing to the backend and to the
+		 * reader's data allowance). A widen is not a round trip and does not count.
+		 */
+		actAsks: action === "fetch" ? state.actAsks + 1 : state.actAsks,
+		// `chainInvisible` is NOT advanced here: it counts what the reader SAW
+		// (a settle), not what was spent. A spend is evidence of nothing.
+		chainInvisible: state.chainInvisible,
 	},
 });
 
@@ -785,7 +892,32 @@ export const decide = (
 		 * through this door and the chain's own counters below still bound
 		 * everything else.
 		 */
-		if (geo.scrollable && !(state.pageWidenOwed && growth === "widen")) {
+		/*
+		 * The second door rule 6 leaves open (loader-continuity 1b): a
+		 * continuation armed by an INVISIBLE reveal. The act's round trip was
+		 * refunded because it bought the reader nothing they could see, so
+		 * refusing the chain here would strand them exactly where the operator
+		 * was - gesture after gesture, no change on screen. `chainInvisible > 0`
+		 * is what distinguishes this continuation from the ordinary one a
+		 * landing mints, and the counter is bounded by `MAX_CHAIN_INVISIBLE`.
+		 *
+		 * `MAX_CHAIN_FETCH` IS DELIBERATELY NOT CONSULTED HERE (agent review round
+		 * 1, R1-5): the invisible chain's own counter is the authority for it, and
+		 * the round-1 chain's bound would refuse a legitimate reveal too early.
+		 * What DOES bound the sum is `asksLeft` below - the act's own budget, which
+		 * every door shares, and which is the reason the asymmetry is safe rather
+		 * than a hole (QA round 1, Q-4: fifteen asks for one notch, measured).
+		 */
+		const asksLeft = state.actAsks < MAX_ACT_ASKS;
+		const invisibleOwed =
+			asksLeft &&
+			state.chainInvisible > 0 &&
+			state.chainInvisible < MAX_CHAIN_INVISIBLE;
+		if (
+			geo.scrollable &&
+			!(state.pageWidenOwed && growth === "widen") &&
+			!invisibleOwed
+		) {
 			return {
 				action: "none",
 				state: { ...state, continuation: false, pageWidenOwed: false },
@@ -794,8 +926,11 @@ export const decide = (
 		const bound =
 			growth === "widen"
 				? state.chainWiden < MAX_CHAIN_WIDEN
-				: state.chainFetch < MAX_CHAIN_FETCH &&
-					state.failures < MAX_AUTO_ATTEMPTS;
+				: invisibleOwed
+					? state.failures < MAX_AUTO_ATTEMPTS
+					: asksLeft &&
+						state.chainFetch < MAX_CHAIN_FETCH &&
+						state.failures < MAX_AUTO_ATTEMPTS;
 		if (bound) {
 			return spend(
 				{ ...state, pageWidenOwed: false, continuation: false },
@@ -838,37 +973,89 @@ export const noteSettled = (
 		 * the two growth paths cannot ping each other.
 		 */
 		hiddenRowsAfter = 0,
-	}: { network?: boolean; hiddenRowsAfter?: number } = {},
-): PagingState => ({
-	...state,
-	busy: false,
-	failures: network ? 0 : state.failures,
-	armed: state.retained,
-	deliberate: state.retained ? state.deliberate : false,
-	retained: false,
-	turnedAround: false,
-	pageWidenOwed: network && hiddenRowsAfter > 0,
+		/**
+		 * How much taller the content got, in px, measured by the DOM half
+		 * between the dispatch and the settle. `null` means "not measured" (a
+		 * local widen, the child reader's own settle) and is treated as VISIBLE:
+		 * the policy must not invent an invisible reveal out of a missing
+		 * measurement.
+		 */
+		growthPx = null,
+		/** The viewport height at the settle, for the fraction in the test. */
+		clientHeight = 0,
+		/**
+		 * Records the page actually added. Zero is an invisible reveal BY
+		 * DEFINITION (design spec 1.3): the cursor moved and the reader saw the
+		 * same screen, so the page cannot be the answer to their act whatever
+		 * the extent says.
+		 */
+		newRecords = null,
+	}: {
+		network?: boolean;
+		hiddenRowsAfter?: number;
+		growthPx?: number | null;
+		clientHeight?: number;
+		newRecords?: number | null;
+	} = {},
+): PagingState => {
 	/*
-	 * Rule 6 needs the CONTINUATION, not just the flag, and this is the half the
-	 * first cut got wrong — measured on the real surface, not reasoned: a page
-	 * that lands while the reader is still pushing retains a demand
-	 * (`state.retained`), and the line below used to refuse the continuation for
-	 * exactly that reason. So the page landed with rows held back, the reader sat
-	 * pinned at the hard top with those rows one widen away, the slot told them to
-	 * scroll up for content a widen would show, and the widen never came until
-	 * their NEXT act re-armed a demand — which is the stuck-then-jiggle report.
-	 *
-	 * A landed page that owes a widen therefore earns the continuation whatever
-	 * the reader was doing while it was in flight. The bound is unchanged where it
-	 * matters: `continuation` is spent by that one widen, the door in `decide`
-	 * closes with it, and a page with nothing hidden (`hiddenRowsAfter === 0`)
-	 * still gets the old rule — so the 200-clamped-notches bound and the round-1
-	 * chain it was written against both stand.
+	 * What the reader saw, in their own currency (see the constants): growth
+	 * under the floor OR under the viewport fraction is invisible, and an empty
+	 * page is invisible by definition.
 	 */
-	continuation:
-		(network && hiddenRowsAfter > 0) ||
-		(!state.retained && !state.turnedAround),
-});
+	const invisible =
+		network &&
+		(newRecords === 0 ||
+			(growthPx !== null &&
+				growthPx <
+					Math.max(
+						INVISIBLE_GROWTH_MIN_PX,
+						INVISIBLE_GROWTH_FRACTION * clientHeight,
+					)));
+	return {
+		...state,
+		busy: false,
+		failures: network ? 0 : state.failures,
+		armed: state.retained,
+		deliberate: state.retained ? state.deliberate : false,
+		retained: false,
+		turnedAround: false,
+		pageWidenOwed: network && hiddenRowsAfter > 0,
+		/*
+		 * Rule 6 needs the CONTINUATION, not just the flag, and this is the half the
+		 * first cut got wrong — measured on the real surface, not reasoned: a page
+		 * that lands while the reader is still pushing retains a demand
+		 * (`state.retained`), and the line below used to refuse the continuation for
+		 * exactly that reason. So the page landed with rows held back, the reader sat
+		 * pinned at the hard top with those rows one widen away, the slot told them to
+		 * scroll up for content a widen would show, and the widen never came until
+		 * their NEXT act re-armed a demand — which is the stuck-then-jiggle report.
+		 *
+		 * A landed page that owes a widen therefore earns the continuation whatever
+		 * the reader was doing while it was in flight. The bound is unchanged where it
+		 * matters: `continuation` is spent by that one widen, the door in `decide`
+		 * closes with it, and a page with nothing hidden (`hiddenRowsAfter === 0`)
+		 * still gets the old rule — so the 200-clamped-notches bound and the round-1
+		 * chain it was written against both stand.
+		 */
+		/*
+		 * THE INVISIBLE-REVEAL CHAIN (loader-continuity 1b, design spec 1.3/R3). See
+		 * `MAX_CHAIN_INVISIBLE`: a reveal the reader cannot see is not an answer, so
+		 * the act's round trip is REFUNDED (`actFetchSpent: false` - the next ask is
+		 * the same act continuing, not a second gesture) and the continuation is
+		 * armed whatever the reader was doing, bounded by the counter. A VISIBLE
+		 * reveal resets the counter to zero, and that reset is what ends the chain.
+		 */
+		actFetchSpent: invisible ? false : state.actFetchSpent,
+		chainInvisible: invisible
+			? Math.min(state.chainInvisible + 1, MAX_CHAIN_INVISIBLE)
+			: 0,
+		continuation:
+			(network && hiddenRowsAfter > 0) ||
+			(invisible && state.chainInvisible + 1 < MAX_CHAIN_INVISIBLE) ||
+			(!state.retained && !state.turnedAround),
+	};
+};
 
 /**
  * A durable page failed. The rows already painted are still correct, so nothing
