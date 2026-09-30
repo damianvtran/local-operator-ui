@@ -25,6 +25,20 @@
  *   the catalog's own order survives inside each section), and a UI that ordered
  *   its Pinned section by pin recency would order one list two ways across two
  *   surfaces. That is why the wire carries no rank or timestamp beside `pinned`.
+ *
+ *   THE PARTITION AND THE READER'S OWN ORDER ARE TWO DECISIONS (issue #693,
+ *   2026-09-30), which is why the second is not taken here. The Pinned section can
+ *   now be arranged by hand, and that arrangement is a DESKTOP-LOCAL view
+ *   preference applied to this function's OUTPUT by `chat-pin-order.ts`: a
+ *   permutation of the rows this half produced, and a preference rather than a
+ *   sort because it names slots instead of ranking rows. Keeping it out of this
+ *   module is not tidiness - this partition is read by the SECTION lists only,
+ *   while the entity lists read the unpartitioned one, so an order applied here
+ *   would be an order the groups do not have: one chat drawn twice on two axes,
+ *   arranged two ways. Recency ordering is still refused for the reason above, and
+ *   it is also why the wire still carries no rank: a rank would be a claim both
+ *   surfaces have to agree about, while a client-side arrangement of one section
+ *   is a preference the terminal never sees.
  * - **No lifting a pinned row out of its agent group.** Sections and groups are
  *   two different axes, and the panel already shows one row in two places on two
  *   axes (a chat appears in `Active chats` AND under its agent when expanded).

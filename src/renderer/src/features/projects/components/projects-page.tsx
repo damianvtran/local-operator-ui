@@ -33,7 +33,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
 	DesktopProject,
@@ -46,7 +46,15 @@ import {
 	useProjectsList,
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
-import { projectStatusMeta, refusalCopy } from "../project-model";
+import {
+	type BoardWindow,
+	boardWindowEmptyHeading,
+	boardWindowProjects,
+	projectStatusMeta,
+	readBoardWindow,
+	refusalCopy,
+	writeBoardWindow,
+} from "../project-model";
 
 /**
  * The loading skeleton's row keys. A literal list rather than `Array.from`:
@@ -54,6 +62,7 @@ import { projectStatusMeta, refusalCopy } from "../project-model";
  * and the skeleton is six identical rows whose only identity is their slot.
  */
 const LOADING_SKELETON_ROWS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
+import { BoardWindowSelect } from "./board-window-select";
 import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
@@ -96,11 +105,55 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * (the same fail-closed rule the list states).
 	 */
 	const [view, setView] = useState<ProjectsView>(() => readProjectsView());
+	/*
+	 * The board's time window, read once at mount like the view above: the
+	 * board's own preference (the List and the Timeline stay whole - their job
+	 * is the sweep of everything). The session holds it after the first read,
+	 * so a locked store cannot unset a choice the reader just made.
+	 */
+	const [boardWindow, setBoardWindow] = useState<BoardWindow>(() =>
+		readBoardWindow(),
+	);
 	const [editing, setEditing] = useState<DesktopProject | null>(null);
 	const [deleting, setDeleting] = useState<DesktopProject | null>(null);
 	/* The caret's hand-back after a status move; see `moveTo` and the hook. */
 	const handOffFocus = useMoveFocusHandoff();
 	const projects = list.data ?? [];
+	/*
+	 * THE WINDOW NARROWS THE BOARD ALONE (design memo §4). `projects` above
+	 * also feeds the List's rows and the timeline's fan-out, so the filtered
+	 * set is a SEPARATE derivation rather than an in-place filter - a shared
+	 * narrowed array would quietly shrink three surfaces from one preference.
+	 * The arithmetic is `updated_at` against the page's one clock, the same
+	 * `nowMs` the age labels read; `all` is the absence of a predicate, and a
+	 * window change writes nothing else (the stored column order and the
+	 * cards' own order are untouched).
+	 */
+	const boardProjects = useMemo(
+		() => boardWindowProjects(projects, boardWindow, nowMs),
+		[projects, boardWindow, nowMs],
+	);
+	/* The empty-window heading; `null` at `all`, where the state is unreachable. */
+	const boardWindowHeading = boardWindowEmptyHeading(boardWindow);
+	/*
+	 * THE RECOVERY HANDS THE CARET BACK (UX round 1, U3). "Show all time"
+	 * unmounts the button the press came from, so focus falls to the body - a
+	 * keyboard reader is dropped at the top of the document with the state they
+	 * just changed behind them. This is `useMoveFocusHandoff`'s shape in this
+	 * same feature (it waits for the commit that mounts the target rather than
+	 * reaching across renders, and retries on the next render), pointed at the
+	 * window control the press just changed.
+	 */
+	const [handBackToWindow, setHandBackToWindow] = useState(false);
+	useEffect(() => {
+		if (!handBackToWindow) return;
+		const node = document.querySelector<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		if (!node) return; // the next render retries
+		node.focus();
+		setHandBackToWindow(false);
+	});
 	const details = useProjectMilestones(
 		view === "timeline" ? projects.map((project) => project.id) : [],
 		enabled,
@@ -170,170 +223,251 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 	if (projectId) {
 		return (
-			<div className="flex h-full min-h-0 flex-col gap-8 p-6">
+			/*
+			 * THE DETAIL'S SCROLL REGION IS THE VIEW, NOT THE COLUMN (operator,
+			 * 2026-09-30): the scroller used to be the 800px column itself, so its
+			 * bar rode the column's edge; the mechanism this matches is chat's
+			 * transcript (`canonical-transcript.tsx`) - one full-width scroller
+			 * whose content is centred inside it. The gutter is reserved on BOTH
+			 * edges for the same reason chat reserves it there: the column is
+			 * `mx-auto`, and a one-sided reservation would centre it 4px left of
+			 * the view (that file's own measurement).
+			 */
+			<div className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable_both-edges]">
 				<ProjectDetailScreen projectKey={projectId} nowMs={nowMs} />
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-8 p-6">
-			<PageHeader
-				title="Projects"
-				icon={FolderKanban}
-				subtitle="Workstreams you and your agents track across sessions."
-			>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="secondary"
-						size="icon"
-						aria-label="Refresh projects"
-						title="Refresh projects"
-						disabled={list.isFetching}
-						onClick={() => void list.refetch()}
-						data-tour-tag="refresh-projects-button"
-					>
-						<RefreshCw />
-					</Button>
-					<Button
-						variant="secondary"
-						onClick={() => setCreateOpen(true)}
-						data-tour-tag="create-project-button"
-					>
-						<Plus />
-						New project
-					</Button>
-				</div>
-			</PageHeader>
+		/*
+		 * THE PAGE'S BODY IS FULL-BLEED AND THE GUTTER MOVED INSIDE THE VIEWS
+		 * (operator, 2026-09-30): the root used to inset everything by 24px, so
+		 * every scroll region's bar rode that inset instead of the view's own
+		 * edge. The reference mechanism is chat's transcript - one full-width
+		 * scroller whose content carries the padding - so here the header keeps
+		 * the old gutter (`px-6 pt-6`), and each view's scroller below spans the
+		 * body carrying its own padding. Strips that are NOT scrollers but align
+		 * with a scrolled row restate the sum (24 + the row's own 12).
+		 */
+		<div className="flex h-full min-h-0 flex-col">
+			<div className="flex shrink-0 flex-col gap-8 px-6 pt-6">
+				<PageHeader
+					title="Projects"
+					icon={FolderKanban}
+					subtitle="Workstreams you and your agents track across sessions."
+				>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="secondary"
+							size="icon"
+							aria-label="Refresh projects"
+							title="Refresh projects"
+							disabled={list.isFetching}
+							onClick={() => void list.refetch()}
+							data-tour-tag="refresh-projects-button"
+						>
+							<RefreshCw />
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() => setCreateOpen(true)}
+							data-tour-tag="create-project-button"
+						>
+							<Plus />
+							New project
+						</Button>
+					</div>
+				</PageHeader>
 
-			{/*
-			 * THE VIEW SWITCHER sits under the header rather than inside it: the
-			 * header's actions are the page's commands (refresh, new), while the
-			 * switcher is a mode of the BODY — and at the app's narrowest window the
-			 * two in one row would squeeze the subtitle to a stub.
-			 */}
-			<div className="flex shrink-0 items-center justify-between gap-3">
-				<ProjectsViewSwitcher
-					value={view}
-					onChange={(next) => {
-						setView(next);
-						writeProjectsView(next);
-					}}
-				/>
+				{/*
+				 * THE VIEW SWITCHER sits under the header rather than inside it: the
+				 * header's actions are the page's commands (refresh, new), while the
+				 * switcher is a mode of the BODY — and at the app's narrowest window the
+				 * two in one row would squeeze the subtitle to a stub.
+				 */}
+				<div className="flex shrink-0 items-center justify-between gap-3">
+					<ProjectsViewSwitcher
+						value={view}
+						onChange={(next) => {
+							setView(next);
+							writeProjectsView(next);
+						}}
+					/>
+					{/*
+					 * The window control is the BOARD's, so it appears only where the
+					 * board does: not in List/Timeline, and not over the store-empty
+					 * state (whose message already sends the reader to create a project
+					 * - a window over nothing has nothing to widen). It is otherwise
+					 * not data-gated, so a loading or failed read still shows the
+					 * reader's stored choice.
+					 */}
+					{view === "board" && !(list.isSuccess && list.data.length === 0) && (
+						<BoardWindowSelect
+							value={boardWindow}
+							onChange={(next) => {
+								setBoardWindow(next);
+								writeBoardWindow(next);
+							}}
+						/>
+					)}
+				</div>
 			</div>
 
-			{list.isLoading && (
-				/*
-				 * THE LOADING STATE WEARS THE LIST'S OWN GEOMETRY (design round 1, D1):
-				 * skeleton rows in the list's column plan over the canvas - the panel
-				 * the spinner sat in retired with the views' (slice 3), and a spinner
-				 * cannot promise the height a row can, so the frame does not jump when
-				 * rows arrive. `<output>` is the semantic status region (the mesh
-				 * page's own rule), and the bars take `elevated` because on canvas the
-				 * skeleton is the raised stand-in for content, not a recessed well.
-				 */
-				<div className="flex min-h-0 flex-1 flex-col">
-					<output className="px-3 py-2 text-meta text-ink-dim">
-						Loading projects…
-					</output>
-					{LOADING_SKELETON_ROWS.map((key) => (
-						<div
-							key={key}
-							className="flex items-center gap-3 px-3 py-2"
-							aria-hidden="true"
+			<div className="mt-8 flex min-h-0 flex-1 flex-col">
+				{list.isLoading && (
+					/*
+					 * THE LOADING STATE WEARS THE LIST'S OWN GEOMETRY (design round 1, D1):
+					 * skeleton rows in the list's column plan over the canvas - the panel
+					 * the spinner sat in retired with the views' (slice 3), and a spinner
+					 * cannot promise the height a row can, so the frame does not jump when
+					 * rows arrive. `<output>` is the semantic status region (the mesh
+					 * page's own rule), and the bars take `elevated` because on canvas the
+					 * skeleton is the raised stand-in for content, not a recessed well.
+					 */
+					<div className="flex min-h-0 flex-1 flex-col">
+						<output className="px-9 py-2 text-meta text-ink-dim">
+							Loading projects…
+						</output>
+						{LOADING_SKELETON_ROWS.map((key) => (
+							<div
+								key={key}
+								className="flex items-center gap-3 px-9 py-2"
+								aria-hidden="true"
+							>
+								<Skeleton className="h-4 min-w-0 flex-1 bg-elevated" />
+								<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
+								<Skeleton className="h-4 w-32 shrink-0 bg-elevated" />
+								<Skeleton className="h-4 w-16 shrink-0 bg-elevated" />
+								<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
+								<Skeleton className="h-4 w-40 shrink-0 bg-elevated" />
+							</div>
+						))}
+					</div>
+				)}
+
+				{list.isError && (
+					/*
+					 * THE FAILURE OFFERS ITS OWN WAY BACK (design round 1, D5): the alert is
+					 * the page's statement, and the recovery the schedules page pairs with
+					 * each of its failure alerts is the same `refetch` this route already
+					 * wires — the header's icon-only refresh was one tooltip away from being
+					 * findable.
+					 */
+					<div className="flex flex-col items-start gap-2 px-6">
+						<Alert variant="danger">
+							{list.error instanceof Error && list.error.message
+								? list.error.message
+								: "The projects could not be read."}
+						</Alert>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void list.refetch()}
 						>
-							<Skeleton className="h-4 min-w-0 flex-1 bg-elevated" />
-							<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
-							<Skeleton className="h-4 w-32 shrink-0 bg-elevated" />
-							<Skeleton className="h-4 w-16 shrink-0 bg-elevated" />
-							<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
-							<Skeleton className="h-4 w-40 shrink-0 bg-elevated" />
+							Try again
+						</Button>
+					</div>
+				)}
+
+				{list.isSuccess && list.data.length === 0 && (
+					/*
+					 * THE EMPTY STATE IS A MESSAGE BLOCK ON THE CANVAS (design round 1, D1):
+					 * the panel retired with the views' - an empty store should not keep a
+					 * framed ground forever while every populated state is borderless. The
+					 * height promise D3 set stays: this container is still the page's one
+					 * body (`flex-1`), so nothing collapses under the message.
+					 */
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+						<p className="text-heading text-ink">No projects yet.</p>
+						<p className="max-w-140 text-center text-body-sm text-ink-muted">
+							Create one here, or ask an agent to create one and link this
+							session.
+						</p>
+						<Button
+							variant="primary"
+							onClick={() => setCreateOpen(true)}
+							data-tour-tag="create-project-empty-button"
+						>
+							<Plus />
+							New project
+						</Button>
+					</div>
+				)}
+
+				{list.isSuccess && list.data.length > 0 && view === "list" && (
+					<ProjectList
+						projects={list.data}
+						nowMs={nowMs}
+						onOpen={(project) => void navigate(`/projects/${project.id}`)}
+					/>
+				)}
+
+				{list.isSuccess &&
+					list.data.length > 0 &&
+					view === "board" &&
+					boardProjects.length > 0 && (
+						<ProjectBoard
+							projects={boardProjects}
+							nowMs={nowMs}
+							onOpen={(project) => void navigate(`/projects/${project.id}`)}
+							onEdit={setEditing}
+							onDelete={setDeleting}
+							onMove={moveTo}
+							movingKeys={
+								update.isPending && update.variables
+									? [update.variables.key]
+									: []
+							}
+						/>
+					)}
+
+				{list.isSuccess &&
+					list.data.length > 0 &&
+					view === "board" &&
+					boardProjects.length === 0 &&
+					boardWindowHeading !== null && (
+						/*
+						 * THE EMPTY WINDOW IS NOT "NO PROJECTS": the store holds rows; the
+						 * window just excludes all of them. So the copy names the window (the
+						 * heading's phrase comes from the ladder itself), the recovery
+						 * widens to `all` - the next rung can be empty too, while at this
+						 * state `all` is guaranteed to fill - and the action persists like
+						 * any other window change. Unreachable at `all` itself: no predicate
+						 * can narrow a non-empty listing to nothing, which is why the heading
+						 * is null there and this branch cannot render. It mirrors the
+						 * store-empty block's idiom class for class - same container, same
+						 * heading and body steps, one secondary action.
+						 */
+						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+							<p className="text-heading text-ink">{boardWindowHeading}</p>
+							<p className="max-w-140 text-center text-body-sm text-ink-muted">
+								Older projects are hidden by the window.
+							</p>
+							<Button
+								variant="secondary"
+								onClick={() => {
+									setBoardWindow("all");
+									writeBoardWindow("all");
+									setHandBackToWindow(true);
+								}}
+							>
+								Show all time
+							</Button>
 						</div>
-					))}
-				</div>
-			)}
+					)}
 
-			{list.isError && (
-				/*
-				 * THE FAILURE OFFERS ITS OWN WAY BACK (design round 1, D5): the alert is
-				 * the page's statement, and the recovery the schedules page pairs with
-				 * each of its failure alerts is the same `refetch` this route already
-				 * wires — the header's icon-only refresh was one tooltip away from being
-				 * findable.
-				 */
-				<div className="flex flex-col items-start gap-2">
-					<Alert variant="danger">
-						{list.error instanceof Error && list.error.message
-							? list.error.message
-							: "The projects could not be read."}
-					</Alert>
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => void list.refetch()}
-					>
-						Try again
-					</Button>
-				</div>
-			)}
-
-			{list.isSuccess && list.data.length === 0 && (
-				/*
-				 * THE EMPTY STATE IS A MESSAGE BLOCK ON THE CANVAS (design round 1, D1):
-				 * the panel retired with the views' - an empty store should not keep a
-				 * framed ground forever while every populated state is borderless. The
-				 * height promise D3 set stays: this container is still the page's one
-				 * body (`flex-1`), so nothing collapses under the message.
-				 */
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-					<p className="text-heading text-ink">No projects yet.</p>
-					<p className="max-w-140 text-center text-body-sm text-ink-muted">
-						Create one here, or ask an agent to create one and link this
-						session.
-					</p>
-					<Button
-						variant="primary"
-						onClick={() => setCreateOpen(true)}
-						data-tour-tag="create-project-empty-button"
-					>
-						<Plus />
-						New project
-					</Button>
-				</div>
-			)}
-
-			{list.isSuccess && list.data.length > 0 && view === "list" && (
-				<ProjectList
-					projects={list.data}
-					nowMs={nowMs}
-					onOpen={(project) => void navigate(`/projects/${project.id}`)}
-				/>
-			)}
-
-			{list.isSuccess && list.data.length > 0 && view === "board" && (
-				<ProjectBoard
-					projects={projects}
-					nowMs={nowMs}
-					onOpen={(project) => void navigate(`/projects/${project.id}`)}
-					onEdit={setEditing}
-					onDelete={setDeleting}
-					onMove={moveTo}
-					movingKeys={
-						update.isPending && update.variables ? [update.variables.key] : []
-					}
-				/>
-			)}
-
-			{list.isSuccess && list.data.length > 0 && view === "timeline" && (
-				<ProjectTimeline
-					items={timelineItems}
-					nowMs={nowMs}
-					onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
-					pendingDetails={pendingDetails}
-					failedDetails={failedDetails}
-					onRetryDetails={retryDetails}
-				/>
-			)}
+				{list.isSuccess && list.data.length > 0 && view === "timeline" && (
+					<ProjectTimeline
+						items={timelineItems}
+						nowMs={nowMs}
+						onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
+						pendingDetails={pendingDetails}
+						failedDetails={failedDetails}
+						onRetryDetails={retryDetails}
+					/>
+				)}
+			</div>
 
 			<ProjectFormDialog
 				open={editing !== null}
