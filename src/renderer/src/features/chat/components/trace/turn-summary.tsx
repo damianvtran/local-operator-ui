@@ -322,15 +322,6 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 									aria-hidden={true}
 									className={cn("size-3.5 shrink-0 text-success")}
 								/>
-								{/*
-								 * The mark's meaning as WORDS, off-screen. It joins the trigger's
-								 * own accessible name (the button has no `aria-label`, so its name
-								 * is its content), which is the one string a screen reader reads
-								 * before the press: "Wake · 2 actions completed". A second live
-								 * region would say the same fact twice, in a surface that already
-								 * has one voice for the list.
-								 */}
-								<span className={cn("sr-only")}>completed</span>
 							</>
 						)}
 						{label !== null && (durationS !== null || actionCount > 0) && (
@@ -372,6 +363,21 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 									{foldMediaClause(mediaCount)}
 								</span>
 							</>
+						)}
+						{completed && (
+							/*
+							 * The mark's meaning as WORDS, off-screen, and LAST in the row
+							 * (QA round 3, QA-3 + agent review R3-2). The trigger has no
+							 * `aria-label`, so its accessible name is its content read in document
+							 * order with the `aria-hidden` subtrees (the dots, the glyph) dropped,
+							 * which is why the position here is the name: `Wake Took 1s 1 action
+							 * completed` - one clause after the facts, not a word wedged between
+							 * the label and its count. It trails the facts for the unlabelled case
+							 * too, where leading with the word read `completed Took 9s 8 actions`
+							 * off the AX tree. A second live region would say the same fact twice,
+							 * in a surface that already has one voice for the list.
+							 */
+							<span className={cn("sr-only")}>completed</span>
 						)}
 						{stampTs !== null && (
 							/*
