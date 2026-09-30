@@ -44,6 +44,7 @@ const bundle = await build({
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
 	ALIGN_WALK_MAX_PAGES,
+	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
 	collapsePlan,
 	isFailedCall,
@@ -1340,5 +1341,106 @@ test("widenTarget: an open run counts as painted, exactly as the render pass doe
 	assert.ok(
 		openTarget < widenTarget(rows, 60, options),
 		`an open run reaches the reader sooner than a collapsed one (${openTarget} < ${widenTarget(rows, 60, options)})`,
+	);
+});
+
+/* ---- the completed-run snap: the open frame the operator asked for (1b/A) ---- */
+
+/*
+ * WHAT THESE PIN. The bar's facts are computed over the MOUNTED window, so a run taller than the snap's
+ * general bound states a partial count with no `Took` at open — the operator's symptom 1 ("the full set of
+ * condensed messages don't load") with no gesture available to fix it, because a reader following the tail
+ * is never widened (1a's guard, correctly). The rule: once the run's own opening row is IN THE STORE (rows
+ * load tail-first and contiguously, so that row's presence is proof the whole run is loaded — and it is
+ * what the completion walk now fetches), the snap may extend all the way to that row, up to a named cap.
+ */
+test("a run proven complete may be snapped to its own opening row, past the general bound", () => {
+	const rows = finishedTurns(30, 24); // 780 rows, 26 per turn
+	// Window 60 lands inside run 27 (rows 702..727), whose opening is 18 rows above the edge.
+	assert.equal(
+		snapWindowToRunBoundary(rows, 60, 300),
+		78,
+		"the general snap covers it: 18 <= the ordinary bound",
+	);
+	// A run taller than the general bound: one long run whose opening is far above the window edge.
+	const tall = [
+		user("tu", { ts: TS }),
+		...Array.from({ length: 500 }, (_, i) =>
+			tool(`tt${i}`, { ts: TS + 1_000 + i }, "trace"),
+		),
+		answer("ta", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		snapWindowToRunBoundary(tall, 60, 300),
+		60,
+		"beyond the ordinary bound the snap refuses (the shipped behaviour)",
+	);
+	const completed = snapWindowToRunBoundary(
+		tall,
+		60,
+		300,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	);
+	assert.ok(
+		completed > 60,
+		`a PROVEN-COMPLETE run must be reachable (got ${completed})`,
+	);
+	assert.equal(
+		snapWindowToRunBoundary(
+			tall,
+			60,
+			300,
+			WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		),
+		completed,
+	);
+	// The completed run's opening row is in the list, and the snapped window therefore shows it.
+	assert.equal(
+		runsOf(tall.slice(tall.length - completed))[0].opensWithUserRow,
+		true,
+		"the snapped window opens on the run's own first row",
+	);
+	assert.equal(completed, tall.length, "and it covers the whole run");
+});
+
+test("the completed-run allowance is capped, and never applies to a head-cut run", () => {
+	assert.equal(WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA, 720);
+	const huge = [
+		...Array.from({ length: 60 }, (_, i) =>
+			tool(`ht${i}`, { ts: TS + i }, "trace"),
+		),
+		// 900 rows of one run AFTER the head-cut request: the enclosing run's extra exceeds the cap.
+		user("hu", { ts: TS + 1_000 }),
+		...Array.from({ length: 900 }, (_, i) =>
+			tool(`hn${i}`, { ts: TS + 2_000 + i }, "trace"),
+		),
+		answer("ha", { ts: TS + 900_000 }),
+	];
+	// Window 60 with total 961: top = 901, inside the head-cut... no: build the cut case explicitly.
+	const cut = [
+		...Array.from({ length: 740 }, (_, i) =>
+			tool(`ct${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ca", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		windowTopRunIsHeadCut(cut, 60),
+		true,
+		"the fixture really is head-cut, or the case proves nothing",
+	);
+	assert.equal(
+		snapWindowToRunBoundary(cut, 60, 300, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA),
+		60,
+		"a head-cut run has no boundary to snap to, however large the allowance",
+	);
+	assert.ok(
+		snapWindowToRunBoundary(
+			huge,
+			60,
+			300,
+			WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		) <=
+			60 + 720,
+		"and the cap holds for a run taller than it",
 	);
 });
