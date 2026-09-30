@@ -114,6 +114,12 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		inkDisabled: "#6E738D",
 
 		hairline: "#3C4056",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
+
+		hairlineStrong: "#41455B",
 		borderControl: "#939AB7",
 
 		accent: "#C6A0F6",
