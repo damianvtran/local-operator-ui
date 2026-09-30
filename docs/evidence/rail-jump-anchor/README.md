@@ -72,7 +72,15 @@ repaint lagging the DOM's landing cannot read a red for a property that holds
 wash's DOM lifetime (`fate`). The wash is re-asserted at the settle resolve
 when the target arrives without one (QA round 2): a late mount commit that
 strips it on a cold far jump gets the wash back at the moment the reader
-arrives, and a fast jump's single wash is left alone. The card step opens a
+arrives, and a fast jump's single wash is left alone. The settled anchor
+itself is guarded for a bounded window after the resolve (QA round 6, Q-4): a
+later write computed against a stale content height found the landing moved
+1/5 at the short oldest-end (24 held three frames, then 133 to the end), so
+the guard re-applies against the CURRENT rects if the anchor moves, re-asks
+the rail for its reading on a correction, and yields to the reader; 6/6
+re-runs after it read offset 24 with `active=n0001`. Every very-top leg also
+prints its per-frame settle trace (`settle frames very-top`), so a recurrence
+is readable frame by frame. The card step opens a
 completion's card, reads it, holds through a settle window and re-reads (the
 frozen-text pin), then closes and reopens.
 

@@ -679,6 +679,80 @@ test("a reader's gesture superseding the settle gets no synthetic re-read (QA ro
 	);
 });
 
+test("a stale write after the settle is corrected by the landing guard (QA round 6)", async () => {
+	/*
+	 * The measured race (short oldest-end, 1/5): the settle resolves on the
+	 * anchor, three frames later a pass computed against a stale content height
+	 * overwrites it 109px short, and nothing corrects it. The guard watches the
+	 * resolved anchor for its bounded window and re-applies against the
+	 * CURRENT rects.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	row.getBoundingClientRect = () => {
+		const top = -1400 - region.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	const anchored = region.scrollTop;
+	assert.equal(anchored, -1525, "the settle resolved on the anchor");
+	/* The stale writer, 109px short of the anchor (133 against 24). */
+	region.scrollTop = anchored + 109;
+	for (let i = 0; i < 12; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	assert.equal(region.scrollTop, -1525, "the guard restored the anchor");
+});
+
+test("a reader's gesture during the guard stops it (QA round 6)", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	row.getBoundingClientRect = () => {
+		const top = -1400 - region.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	/* The reader takes over: the guard must not fight their steering. */
+	region.dispatchEvent(new window.Event("wheel"));
+	region.scrollTop = -1525 + 109;
+	for (let i = 0; i < 12; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	assert.equal(
+		region.scrollTop,
+		-1525 + 109,
+		"the guard left the reader's position alone",
+	);
+});
+
 test("a row behind a bar AND a fold: both open, outermost first", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">
