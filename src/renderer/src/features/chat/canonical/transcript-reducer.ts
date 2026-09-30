@@ -43,6 +43,7 @@ import {
 	preferDiff,
 	preferDiffCounts,
 } from "../components/trace/tool-row-model";
+import { isHarnessChromeText } from "./harness-chrome";
 
 /**
  * One image on a transcript row.
@@ -612,6 +613,22 @@ export type TranscriptState = {
 	clearedAt?: number;
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
+	/**
+	 * The instant (ms; 0 = none) of the journal entry `oldestId` names, STORED
+	 * beside it rather than derived from it.
+	 *
+	 * WHY IT IS STORED. The cursor is a JOURNAL ENTRY id, and the entry is not
+	 * necessarily a record: silent `session_spend.v1` customs never become one,
+	 * and a tool result is keyed `tool:<callId>` rather than by its entry id. The
+	 * cursor used to be compared by looking `oldestId` up among the records, so at
+	 * 7 of the 11 page boundaries of the reported 1233-entry journal the lookup
+	 * failed and a re-applied tail page replaced the cursor with its own first
+	 * entry - the reader was thrown back to the newest page and every later
+	 * "load earlier" asked for rows it already held. A stored instant is the
+	 * comparison a tail-type read needs (`applyHistoryPage`, rule 4) and it has no
+	 * lookup to fail.
+	 */
+	oldestTs: number;
 	hasMore: boolean;
 	/**
 	 * Call id -> the arguments that call was made with, accumulated across every
@@ -658,6 +675,7 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	compactingSince: 0,
 	viewEpoch: 0,
 	oldestId: null,
+	oldestTs: 0,
 	hasMore: false,
 	argsByCall: new Map(),
 };
@@ -1979,10 +1997,11 @@ function bounded(headline: string): string {
  * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
  * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
  * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
- * field on the row's own payload — and that is the whole reason this suppression
- * lives here: a text list copied into TypeScript would be a second decision that
- * could disagree with the TUI's, and the harness's continuation prompt embeds the
- * goal text, so it is a FAMILY of strings rather than one that could be matched.
+ * field on the row's own payload — and that is why it is the PRIMARY read: it
+ * cannot drift with a producer's wording, and its strict `=== true` fails safe.
+ * It is not the whole contract on its own: rows written before it existed carry
+ * nothing to read, and `harness-chrome.ts` mirrors core's own recogniser for the
+ * goal families those rows belong to, applied only after this marker says no.
  */
 const HARNESS_INJECTION_KEY = "harness_injected";
 
@@ -2188,6 +2207,17 @@ function durableRecord(
 		 */
 		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
+		/*
+		 * THE LEGACY FALLBACK: a row written before the marker existed, or sent by
+		 * an owner on an older build, carries no stamp to read — the operator's own
+		 * stored transcript (2026-09-29) still held ten goal-continuation rows that
+		 * painted as the user's own words. Core keeps its recogniser for exactly
+		 * these rows and names it beside the marker (`docs/DESKTOP_API.md`); the
+		 * check is `harness-chrome.ts`, which mirrors its goal legs. It runs only
+		 * after the marker read above said no, so the structural stamp stays the
+		 * primary one.
+		 */
+		if (isHarnessChromeText(text)) return null;
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
 		if (text.startsWith("Harness recovery notice:")) {
@@ -2378,6 +2408,54 @@ export function reanchorAfterCursorMiss(
 	return oldest;
 }
 
+/** Ids the app mints itself; none of them names a journal entry. */
+const NON_ENTRY_ID = /^(?:tool|compaction|local):/;
+
+/**
+ * The deepest cursor this reader still holds that the journal can serve, or null
+ * when it holds none.
+ *
+ * WHY THE TAIL'S OWN FIRST ENTRY IS NOT ENOUGH (`reanchorAfterCursorMiss`,
+ * #634). A `/compact` rewrites the journal and answers a `before_id` it can no
+ * longer find with THE CURRENT TAIL. Re-anchoring to that tail's first entry
+ * sends a reader who is N pages deep back to the page before the tail - a page
+ * they already hold - and every click walks one already-held page forward: the
+ * same stall by another door (reproduced against a real journal: `compact_file`
+ * dropped 5 of its 12 page-boundary cursors). `compact_file` never removes a
+ * MESSAGE entry ("entry ids, order and types are unchanged"), so the oldest
+ * message-like record the reader holds is still a valid `before_id` after the
+ * rewrite, and the page below it is exactly the one they have not seen.
+ *
+ * WHICH RECORD IDS ARE JOURNAL ENTRY IDS - the constraint that makes this a
+ * function and not a `records[0]`. `user`, `assistant`, `custom`, `peer`, `wake`
+ * and `compaction` records are keyed by their entry id. A `tool` record is
+ * `tool:<toolCallId>`, a completion-marker `notice` is keyed by
+ * `details.anchor`, a live compaction line is `compaction:<generation>:...`, and
+ * the app's own echoes are `local:...`: none of those is an entry id, and asking
+ * the backend for one only produces another `cursor_missing`.
+ */
+export function reanchorCandidate(
+	state: Pick<TranscriptState, "records">,
+): string | null {
+	for (const record of state.records) {
+		switch (record.kind) {
+			case "user":
+			case "assistant":
+			case "custom":
+			case "peer":
+			case "wake":
+			case "compaction":
+				break;
+			default:
+				continue;
+		}
+		if (record.kind === "user" && record.local) continue;
+		if (NON_ENTRY_ID.test(record.id)) continue;
+		return record.id;
+	}
+	return null;
+}
+
 /**
  * The load-earlier request's next move, given the page it got back.
  *
@@ -2411,7 +2489,19 @@ export function loadOlderStep(
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
-	options: { replace?: boolean; keepPaging?: boolean } = {},
+	options: {
+		replace?: boolean;
+		keepPaging?: boolean;
+		/**
+		 * The caller's ASSERTION that this page was fetched with
+		 * `before_id = pagedBefore`, i.e. it is a CONTINUATION of the reader's
+		 * walk backwards and not a tail-type read (snapshot, reconcile, refresh).
+		 * Only the caller knows which it is holding - the page itself carries no
+		 * cursor - and the answer decides who owns the cursor (see the cursor
+		 * rules below). Absent means "a tail-type read".
+		 */
+		pagedBefore?: string;
+	} = {},
 ): TranscriptState {
 	/*
 	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
@@ -2577,7 +2667,65 @@ export function applyHistoryPage(
 					entry.payload?.custom_type === "compaction_refused")
 			);
 		});
-	if (!changed && state.hasMore === page.has_more && !retiresPass) return state;
+	/*
+	 * THE PAGING CURSOR, decided BEFORE the no-change early return because moving
+	 * it is itself a change.
+	 *
+	 * `first` is the page's oldest entry - the value the next "load earlier"
+	 * asks from (`before_id` is exclusive). It is a JOURNAL ENTRY, not
+	 * necessarily a record: a silent custom, or a tool result keyed
+	 * `tool:<callId>`, is a perfectly good cursor and no record at all, so
+	 * nothing here may look the cursor up among the records (that lookup is the
+	 * defect this replaces - see `TranscriptState.oldestTs`).
+	 *
+	 * The rules, in order, keyed on what KIND of read the page was:
+	 *  1. `keepPaging`: never move either (the caller's contract; it is checked
+	 *     first, as it always was, and wins over everything below).
+	 *  2. `replace`, or no cursor yet: the page defines the cursor and `hasMore`.
+	 *  3. A CONTINUATION (`pagedBefore`) moves the cursor to `first`
+	 *     UNCONDITIONALLY, even when no record changed: a page of only silent or
+	 *     already-held rows still advances the reader, or the next ask repeats
+	 *     the last one for ever. An EMPTY continuation cannot advance, so it is
+	 *     the end (`hasMore` false) rather than a cursor to ask from again.
+	 *  4. Anything else is a TAIL-TYPE read (a reconnect snapshot, the reconcile
+	 *     walk, a refresh). It answers "what did I miss", not "where do I stop",
+	 *     so it may only move the cursor to a STRICTLY OLDER instant than the
+	 *     stored one (a genuinely wider read), and takes `has_more` only then. A
+	 *     re-applied newest page used to replace the cursor with its own first
+	 *     entry and flip a fully loaded conversation's `hasMore` back to true.
+	 */
+	const first = page.entries[0];
+	const firstTs = first ? Math.round((first.ts ?? 0) * 1000) : 0;
+	let oldestId = base.oldestId;
+	let oldestTs = base.oldestTs;
+	let hasMore = state.hasMore;
+	if (options.keepPaging) {
+		// Unchanged by contract, and checked FIRST as it always was: a tail read's
+		// `has_more` describes the session, not this reader's position (review
+		// round 3, R3-5).
+	} else if (options.replace || state.oldestId === null) {
+		if (first) {
+			oldestId = first.id;
+			oldestTs = firstTs;
+		}
+		hasMore = page.has_more;
+	} else if (options.pagedBefore !== undefined) {
+		if (first) {
+			oldestId = first.id;
+			oldestTs = firstTs;
+			hasMore = page.has_more;
+		} else {
+			hasMore = false;
+		}
+	} else if (first && firstTs > 0 && firstTs < state.oldestTs) {
+		oldestId = first.id;
+		oldestTs = firstTs;
+		hasMore = page.has_more;
+	}
+	const cursorMoved =
+		oldestId !== state.oldestId || oldestTs !== state.oldestTs;
+	if (!changed && !cursorMoved && state.hasMore === hasMore && !retiresPass)
+		return state;
 
 	// Durable rows first, then this page's new rows, in TIME order with ties
 	// broken by the position each already had — so a page that lands out of order
@@ -2599,11 +2747,6 @@ export function applyHistoryPage(
 			new Set(incoming.map((record) => record.id)),
 		),
 	);
-	// The paging cursor is the first entry of the OLDEST page received: a
-	// newer page (the snapshot's tail after a history_delta) must not move it
-	// forward, or the next "load older" request would skip rows.
-	const first = page.entries[0];
-	let oldestId = base.oldestId;
 	if (options.keepPaging) {
 		/*
 		 * A TAIL read answers "what did I miss", never "is there more behind me":
@@ -2614,19 +2757,13 @@ export function applyHistoryPage(
 		 */
 		return { ...state, records, index: withIndex(records), argsByCall };
 	}
-	if (first) {
-		const firstTs = Math.round((first.ts ?? 0) * 1000);
-		const currentOldest = oldestId
-			? base.records[base.index.get(oldestId) ?? -1]
-			: undefined;
-		if (!currentOldest || firstTs <= currentOldest.ts) oldestId = first.id;
-	}
 	return {
 		...state,
 		records,
 		index: withIndex(records),
 		oldestId,
-		hasMore: page.has_more,
+		oldestTs,
+		hasMore,
 		// Retained even on `replace`: a reseed repaints the rows but does not
 		// unlearn which arguments a call was made with, and the reseed is exactly
 		// the path whose own events no longer carry them.
@@ -2845,6 +2982,13 @@ export function applyEvent(
 				 */
 				if (isHarnessInjected(message.provider_payload)) return state;
 				/*
+				 * The legacy fallback — see `durableRecord`'s note on the same check; the
+				 * arms are separate code paths over separate payload shapes, so the
+				 * fallback runs on both.
+				 */
+				const text = messageText(message);
+				if (isHarnessChromeText(text)) return state;
+				/*
 				 * A RESTATING `message_start` FOR A ROW STILL HOLDING ITS PLACE IS NOT
 				 * THE OWNER STATING WHERE IT SITS (agent review round 1, F2).
 				 *
@@ -2865,7 +3009,7 @@ export function applyEvent(
 					// locally-derived time may never lift the row above what is
 					// already painted.
 					ts: keepsHold ? monotonicStamp(state, now) : now,
-					text: messageText(message),
+					text,
 					images: extractImages(
 						message,
 						message.id,

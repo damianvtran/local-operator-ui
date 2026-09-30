@@ -364,6 +364,17 @@ const wakeMessage = z.string().min(1).max(WAKE_MESSAGE_MAX_CHARS);
  */
 const wakeId = z.string().min(1).max(64);
 
+/**
+ * A monitor's per-session handle, `m1`..`m8` on the wire (`^m\d{1,4}$`).
+ *
+ * Lenient for the wakeId's own reason, and it matters more here: the run pane
+ * renders the handle the SESSION minted (`frontend.monitors[].id`), so a pattern
+ * a drawn row could fail would be a control that is drawn and cannot be pressed.
+ * The route declares `^m\d{1,4}$` as its path pattern and refuses a malformed
+ * handle with a 422 before any handler runs, which is where the shape belongs.
+ */
+const monitorId = z.string().min(1).max(64);
+
 const scheduleWrite = z
 	.object({
 		is_active: z.boolean().nullish(),
@@ -2103,6 +2114,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
+	/*
+	 * The monitor surface's one write that has a UI: cancelling a standing watch
+	 * (`DELETE /v1/desktop/monitors/{session_id}/{monitor_id}`). The sibling
+	 * routes - the machine-wide listing and the arm - are deliberately not
+	 * mirrored yet: the pane and the composer's chip read the SESSION's own
+	 * `frontend.monitors` field (the design's §12 row states the desktop contract
+	 * as "the `monitors` field + command routes"), so a listing op would have no
+	 * reader, and the arm op waits for the form that will use it.
+	 */
+	z
+		.object({
+			op: z.literal("monitors.cancel"),
+			sessionId,
+			monitorId,
+		})
+		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
@@ -2991,6 +3018,29 @@ export type DesktopWakeCreateResponse = {
 	 * not made.
 	 */
 	receipt: unknown;
+	index_written: boolean;
+};
+
+/**
+ * The outcome of cancelling (or arming) one monitor, as the route's
+ * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
+ *
+ * Shared by both writes on the wire; this client only sends the cancel today,
+ * so the fields a cancel answers are the load-bearing ones - `monitor_id` names
+ * the row that changed, `remaining` is what the conversation holds after it
+ * (0 removes the index entry, which is also what releases the cleanup reap
+ * guard), and `next_due_at` is always null after a cancel. A refusal is not a
+ * value here: it travels as the error's `detail.message`.
+ */
+export type DesktopMonitorWriteReceipt = {
+	session_id: string;
+	monitor_id: string;
+	name: string;
+	next_due_at: number | null;
+	remaining: number;
+	already_armed: boolean;
+	reactivated: boolean;
+	receipt: string;
 	index_written: boolean;
 };
 
@@ -4997,6 +5047,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "wakes.remove":
 			return {
 				path: `/v1/desktop/wakes/${request.sessionId}/${request.wakeId}`,
+				method: "DELETE",
+			};
+		/*
+		 * The monitor cancel, mapped like its wake sibling. Both segments are
+		 * `encodeURIComponent`ed even though both their schemas already refuse
+		 * separators: the schema is this client's own check, and a redirect or a
+		 * hand-built request must not be able to turn a handle into a path
+		 * fragment (the mesh writes' own rule).
+		 */
+		case "monitors.cancel":
+			return {
+				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
 				method: "DELETE",
 			};
 		case "legacy.jobs.list": {
