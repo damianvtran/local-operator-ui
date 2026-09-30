@@ -28,6 +28,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
+ * Which menu a recents ring belongs to. The two rosters are separate lists of
+ * separate things (an agent name is never a team name), so one ring would rank
+ * rows the other menu cannot offer.
+ */
+export type ProfileRecencyKind = "agent" | "team";
+
+/**
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
@@ -566,6 +573,31 @@ type UiPreferencesState = {
 	 * recent use rather than by first use.
 	 */
 	rememberMention: (cwd: string, path: string) => void;
+
+	/**
+	 * The chat header's identity-menu recents: the profiles this app has
+	 * SWITCHED TO, most recent first, one ring per menu.
+	 *
+	 * WHY GLOBAL RATHER THAN PER CONVERSATION. A recents band exists to make a
+	 * long roster cheap to reach, and the roster is the same in every
+	 * conversation: what a session's own history would describe is the ONE
+	 * profile it is bound to, which the menu already reports as the current row.
+	 * So the ring is app-wide (`localStorage`, via this store's persistence) and
+	 * a fresh install starts with both rings empty.
+	 *
+	 * NAMES, NOT ROWS. The row a name describes is read from the live catalogue
+	 * every open, so a name that no longer resolves is dropped at render rather
+	 * than resurrecting a profile the app can no longer switch to.
+	 */
+	profileRecents: Record<ProfileRecencyKind, string[]>;
+
+	/**
+	 * Record a profile the owner accepted. Bounded at `PROFILE_RECENTS_LIMIT`,
+	 * dropping the oldest, and moved to the front when re-used so the ring is
+	 * ordered by recent use rather than by first use — the same rule
+	 * `rememberMention` states one list over.
+	 */
+	rememberProfile: (kind: ProfileRecencyKind, name: string) => void;
 };
 
 /**
@@ -809,6 +841,20 @@ export const DEFAULT_RUN_PANEL_WIDTH = 420;
  * been working in, and twenty paths is more than any single session's working set.
  */
 export const MENTION_RECENTS_LIMIT = 20;
+
+/**
+ * How many profiles one identity menu remembers.
+ *
+ * Four, and the number is a bound on the BAND rather than on the list: the band is
+ * a shortcut above a roster that is still complete underneath it. It is also what
+ * fits: four of the app's two-line rows plus a band heading (4 x 48 + 28 = 220px,
+ * against the ~247px of rows the panel's ceiling leaves - see
+ * `IDENTITY_MENU_MAX_HEIGHT`), so opening the menu shows the recent band AND the
+ * heading of the full roster below it. A longer ring would scroll the "all" band
+ * out of sight on open, which is a band hiding a list rather than a shortcut to
+ * one.
+ */
+export const PROFILE_RECENTS_LIMIT = 4;
 /** The browser pane's default, and the design's number rather than a fit: see
  * `DEFAULT_BROWSER_PANEL_WIDTH`'s own note for why a page wants 640 where a
  * roster wants 420. */
@@ -965,6 +1011,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
 			isCreateAgentDialogOpen: false,
 			mentionRecents: null,
+			/* Empty on a fresh install, and the menu renders NO recents band (and no
+			 * heading) in that state rather than an empty one - see the menu model. */
+			profileRecents: { agent: [], team: [] },
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -1192,6 +1241,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					return { mentionRecents: { cwd, paths: next } };
 				});
 			},
+
+			rememberProfile: (kind, name) => {
+				set((state) => ({
+					profileRecents: {
+						...state.profileRecents,
+						[kind]: pushProfileRecent(state.profileRecents[kind] ?? [], name),
+					},
+				}));
+			},
 		}),
 		{
 			name: "ui-preferences-storage",
@@ -1228,6 +1286,28 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 		},
 	),
 );
+
+/**
+ * One profile's move to the front of a recents ring: most recent first, no
+ * duplicates, bounded at `PROFILE_RECENTS_LIMIT`.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE EXPRESSION IN THE ACTION, for the reason
+ * `persistedUiPreferences` below is one: the rule is what the band's order means
+ * ("the profile you switched to a moment ago is the first row"), and a rule that
+ * lives inside a `set()` callback can only be exercised by mounting the store. As
+ * a value it is pinned by `scripts/header-identity-menu.test.mjs` - including the
+ * two cases an inline version gets wrong quietly: a name re-used moves rather
+ * than duplicates, and the ring DROPS the oldest rather than growing.
+ */
+export function pushProfileRecent(
+	ring: readonly string[],
+	name: string,
+): string[] {
+	return [name, ...ring.filter((entry) => entry !== name)].slice(
+		0,
+		PROFILE_RECENTS_LIMIT,
+	);
+}
 
 /**
  * The part of the preferences that is written to disk: all of it, minus the two
