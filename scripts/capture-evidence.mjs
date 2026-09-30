@@ -3091,6 +3091,56 @@ export const STORIES = [
 	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
 	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
 	/*
+	 * The rows that OWN subagents while the primary mark says something else
+	 * (the operator's report, 2026-09-29). Same pair of widths and the same
+	 * reason the delegating pair above carries them: the second frame is the
+	 * 240px floor `ui-preferences-store.ts` clamps to, where the longest title is
+	 * truncated hardest and the new mark has the least room beside it.
+	 *
+	 * The roster deliberately includes the delegating arm's own row as its last
+	 * entry - the one state whose primary mark already IS the subagent mark - so
+	 * the frames answer the question a reader will have about it (why is there no
+	 * second glyph there) on the same surface, rather than in prose alone.
+	 */
+	["chat-sidebar-status-feed--subagent-rows-running", 720, 660],
+	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
+	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
+	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
+	/*
+	 * THE OTHER STORY THAT CAN SILENTLY NO-OP (review round 2's MINOR). Its
+	 * subject is a SELECTED row, and "selected" is a prop the story passes rather
+	 * than a state the row reaches on its own - so a story that spelled that prop
+	 * wrong would photograph two resting rows and still look like evidence. The
+	 * guard is the row's own hook: `data-chat-row` is the attribute every harness
+	 * addresses a row by, and `aria-current="page"` is what the current row
+	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
+	 *
+	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
+	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
+	 * the frame claimed the operator's own case and drew two resting rows. The
+	 * story passes the bare id now, and this entry is what keeps that true.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-selected-row",
+		720,
+		660,
+		{ expectPresent: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
+	 * version typed no query at all - the play's label lookup matched two elements
+	 * and died - so the rig photographed the unarchived twin and wrote the frame
+	 * without complaint. The selector is the row's own archive attribute, so the
+	 * rig now refuses to write these frames unless an archived row is on screen.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-archived-row",
+		720,
+		660,
+		{ expectPresent: '[data-session-archived="true"]' },
+	],
+	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
 	 * same pixels and the defect design D2 found (the control 632px above the
