@@ -22,23 +22,24 @@ import { act } from "react";
  *   1. THE SHIPPED PROBE, MOUNTED. The real `useRadientCredentialProbe` runs
  *      against a real `QueryClient`, a real DOM and the shipped transport, and
  *      publishes its reading on every render, so the matrix below asserts the
- *      values the four surfaces actually receive rather than a restatement of
+ *      values the five surfaces actually receive rather than a restatement of
  *      the hook. The bridge's envelopes are the backend's own shapes, copied
  *      from `desktop_radient.py`/the settings-account-gate rig.
- *   2. THE SPEAK-ALOUD SURFACE, MOUNTED. `MessageControls` is rendered with the
- *      same bridge, and the speech control's disabled state and reason are read
- *      from the DOM — the exact thing the report says stays off for a
+ *   2. THE SPEAK-ALOUD SURFACES, MOUNTED. `MessageControls` and the answer
+ *      action row (UX round 2's U6 - the case that found it) are rendered with
+ *      the same bridge, and each speech control's disabled state and reason are
+ *      read from the DOM — the exact thing the report says stays off for a
  *      signed-in user.
  *   3. THE COPY TABLE, CALLED. `@shared/lib/speech-gate` is imported and its
  *      classifier and sentences are CALLED across the whole state matrix, so
- *      the strings the four surfaces render are asserted as values rather than
+ *      the strings the five surfaces render are asserted as values rather than
  *      as regexes over three inline ladders (design round 1, D1/D2/D5).
- *   4. SOURCE PINS for the two surfaces a jsdom mount cannot reach honestly
- *      (a selection toolbar needs a real Range; the canvas editor needs the
- *      canvas context): their enable flags derive from the SHARED capability
- *      and every disabled sentence comes from the shared table. The composer's
- *      own DOM cases live in `credential-composer.test.mjs`, beside its
- *      harness.
+ *   4. SOURCE PINS for every speech surface — the two a jsdom mount cannot
+ *      reach honestly (a selection toolbar needs a real Range; the canvas
+ *      editor needs the canvas context), the composer (its own DOM cases live
+ *      in `credential-composer.test.mjs`, beside its harness) and the answer
+ *      action row (UX round 2, U6): each enable flag derives from the SHARED
+ *      capability and every disabled sentence comes from the shared table.
  *
  * WHAT THIS IS NOT: proof of layout, of the composer's mic in a browser, or of
  * a real Radient round trip. jsdom has no layout engine; the strings and the
@@ -54,6 +55,7 @@ const bundle = await build({
 			import { useRadientCredentialProbe } from "./src/renderer/src/shared/hooks/use-credentials";
 			import { radientUserKeys, useRadientUserQuery } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			import { MessageControls } from "./src/renderer/src/features/chat/components/message-item/message-controls";
+			import { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			import { radientSpeechBlock, speechUnavailableReason } from "./src/renderer/src/shared/lib/speech-gate";
 			import { serverHealthQueryKey } from "./src/renderer/src/shared/hooks/use-connectivity-status";
 
@@ -115,6 +117,28 @@ const bundle = await build({
 							content: "The turn this strip belongs to.",
 							messageId: "m-speech-gate",
 							agentId: "a-speech-gate",
+						}),
+					),
+				);
+				return root;
+			};
+
+			export const mountActionsRow = (container, client) => {
+				const root = createRoot(container);
+				root.render(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						/*
+						 * THE PROBE RIDES BESIDE THE ROW, for the same reason it rides
+						 * beside the strip: a case waits for the reads to have SETTLED
+						 * before reading the tooltip — and for the enabled bit to arrive.
+						 */
+						createElement(Probe),
+						createElement(AnswerActionRow, {
+							bodyText: "The answer this row belongs to.",
+							agentId: "a-speech-gate",
+							speechId: "m-answer-actions",
 						}),
 					),
 				);
@@ -508,6 +532,7 @@ globalThis.window.api = {
 
 const {
 	QueryClient,
+	mountActionsRow,
 	mountControls,
 	mountProbe,
 	radientUserKeys,
@@ -607,6 +632,28 @@ async function mountControlsRig(state) {
 	return { client, container };
 }
 
+/** Mount the answer action row's rig with `state`, returning the container. */
+async function mountRowRig(state) {
+	bridge.account = state.account;
+	bridge.keys = state.keys ?? [];
+	bridge.credentialsFail = state.credentialsFail ?? false;
+	bridge.credentialsCalls = 0;
+	bridge.radientCalls = 0;
+	bridge.holdAccount = state.holdAccount ?? false;
+	bridge.holdCapabilities = state.holdCapabilities ?? false;
+	bridge.capabilitiesFail = state.capabilitiesFail ?? false;
+	bridge.backendRadient = state.backendRadient ?? true;
+	healthFails = state.healthFails ?? false;
+	const client = clientForRig();
+	const container = containerForRig();
+	let root;
+	await act(async () => {
+		root = mountActionsRow(container, client);
+	});
+	roots.push(root);
+	return { client, container };
+}
+
 /*
  * THE TOOLBAR'S SPEECH CONTROL, as the DOM carries it: the disabled bit and the
  * tooltip the reader gets. The tooltip is read by focusing the trigger's span —
@@ -615,6 +662,18 @@ async function mountControlsRig(state) {
  */
 function speechButton(container) {
 	return container.querySelector('button[aria-label="Speak aloud"]');
+}
+
+/*
+ * THE ANSWER ACTION ROW'S SPEECH CONTROL, read the same way from its own DOM:
+ * the row and the strip share the button anatomy, so the row's control is
+ * named through its toolbar — a case that mounted both could not read the
+ * strip's button here by accident.
+ */
+function answerRowSpeakButton(container) {
+	return container.querySelector(
+		'[data-lo-answer-actions] button[aria-label="Speak aloud"]',
+	);
 }
 
 let lastTooltipTrigger = null;
@@ -1097,6 +1156,77 @@ test("the offline sentence follows the server, not the file probe (design round 
 	);
 });
 
+/*
+ * THE ANSWER ACTION ROW (UX round 2, U6), the FIFTH surface: it landed from
+ * #695 after the four were converted and shipped on the file-only gate, so a
+ * signed-in user met the #674 state again on a control that sits under every
+ * settled answer. The cases below read the row the way the strip's cases above
+ * read theirs — the enabled bit for the session-only sign-in, and the two
+ * sentences the row used to carry inline, now owed to the shared table — and
+ * the row's file is in SOURCES below so the copy cannot drift back.
+ */
+test("the answer action row's speak control is enabled for a signed-in user with no key listed (UX round 2, U6)", async () => {
+	const { container } = await mountRowRig({
+		account: "signed-in",
+		keys: [],
+	});
+	const button = await until(
+		() => answerRowSpeakButton(container),
+		"the row's speech control to render",
+	);
+	await until(
+		() => !answerRowSpeakButton(container).hasAttribute("disabled"),
+		"the row's control to become enabled",
+	);
+	assert.equal(button.hasAttribute("disabled"), false);
+});
+
+test("the row's sign-in sentence is the shared one, owed only to a machine that is not signed in (UX round 2, U6)", async () => {
+	const { container } = await mountRowRig({
+		account: "signed-out",
+		keys: [],
+	});
+	await until(
+		() =>
+			globalThis.__speechProbe?.accountRead === "signed-out" &&
+			globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the reads to settle signed-out with the file probe answered",
+	);
+	assert.equal(
+		answerRowSpeakButton(container).hasAttribute("disabled"),
+		true,
+		"no session and no key leaves the row's control off",
+	);
+	await openTooltip(
+		answerRowSpeakButton(container).parentElement,
+		"Sign in to Radient in the settings page to enable speaking aloud",
+	);
+});
+
+test("the row's offline sentence follows the server, not a sentence of its own (UX round 2, U6)", async () => {
+	const { container, client } = await mountRowRig({
+		account: "signed-out",
+		keys: [],
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "sign-in",
+		"the reads to settle on the sign-in state",
+	);
+	healthFails = true;
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: serverHealthQueryKey });
+	});
+	await until(
+		() => globalThis.__speechProbe?.speechBlock === "offline",
+		"the connectivity reading to go offline",
+	);
+	assert.equal(answerRowSpeakButton(container).hasAttribute("disabled"), true);
+	await openTooltip(
+		answerRowSpeakButton(container).parentElement,
+		"Speaking aloud is unavailable while Local Operator is offline",
+	);
+});
+
 test("a recovered Radient read re-asks and the control recovers (UX round 1, U1)", async () => {
 	const { container } = await mountControlsRig({
 		account: "upstream-failed",
@@ -1331,18 +1461,23 @@ test("the shared copy table classifies every state and names every sentence", ()
 });
 
 /*
- * THE SOURCE PINS. The two surfaces a jsdom mount cannot reach honestly, plus
- * the guards that no surface drifts back to the file-only gate or to a copy
- * ladder of its own: each enable flag must derive from the shared capability,
- * each disabled sentence from the shared table (design round 1, D5), and each
- * control must answer to its one name — recording / speaking aloud (D2).
+ * THE SOURCE PINS. The surfaces a jsdom mount cannot reach honestly (a
+ * selection toolbar needs a real Range; the canvas editor needs the canvas
+ * context), plus the guards that no surface drifts back to the file-only gate
+ * or to a copy ladder of its own: each enable flag must derive from the shared
+ * capability, each disabled sentence from the shared table (design round 1,
+ * D5), and each control must answer to its one name - recording / speaking
+ * aloud (D2).
  *
- * THE SPEAK-ALOUD CONTROL AND THE SELECTION TOOLBAR READ THE CAPABILITY
- * THROUGH THE SHARED CONTROL (`speak-control.tsx`, the speak-aloud round): the
- * two surfaces no longer inline the probe or the copy call at all, so pinning
- * `canUseRadientSpeech` in THEIR sources would pin the old duplication back —
- * the pin follows the delegation, and the shared control itself carries the
- * capability/table assertions that used to live on the call sites.
+ * THE SPEAK-AUDIO SURFACES READ THE CAPABILITY THROUGH THE SHARED CONTROL
+ * (`speak-control.tsx`, the speak-aloud round): they no longer inline the
+ * probe or the copy call at all, so pinning `canUseRadientSpeech` in THEIR
+ * sources would pin the old duplication back - the pin follows the delegation
+ * (`reads: "shared-control"`), and the shared control itself carries the
+ * capability/table assertions that used to live on the call sites. The answer
+ * action row joins the set by UX round 2's U6: it reached `main` after the
+ * conversion and shipped outside every guard, which is what the pins are for -
+ * on this branch it, too, delegates to the shared control.
  */
 const SOURCES = {
 	/*
@@ -1369,6 +1504,17 @@ const SOURCES = {
 	"the shared speak control": {
 		path: "src/renderer/src/shared/components/common/speak-control.tsx",
 		reads: "capability",
+	},
+	/*
+	 * The answer action row, added by UX round 2's U6: it landed from #695
+	 * after the four were converted and shipped outside every guard, which is
+	 * what the pins are for. On this branch it delegates to the shared control
+	 * like the selection toolbar, so it pins as `shared-control`; the
+	 * capability/table assertions sit on the control itself.
+	 */
+	"the answer action row": {
+		path: "src/renderer/src/features/chat/canonical/message-actions-row.tsx",
+		reads: "shared-control",
 	},
 };
 

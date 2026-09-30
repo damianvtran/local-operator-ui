@@ -44,12 +44,15 @@
  * cannot drift from what the reader is looking at.
  *
  * `agentId` is the conversation the speech engine synthesises against, and its
- * ABSENCE is what makes Speak unavailable (the model does not offer it) - the
- * same pair `text-selection-controls.tsx` reads. `speechId` keys this row in
- * the speech store (`msg:<id>`), so the button's busy and playing states belong
- * to this answer and cannot be claimed by another. The Speak CONTROL itself -
- * gate, tooltip, labels, press - is `useSpeakControl`, shared with the
- * selection toolbars and the legacy strip so the four surfaces cannot drift.
+ * ABSENCE is what keeps Speak off the row altogether (`answerActionsFor`): a
+ * button whose every press would be a no-op is not offered. `speechId` keys this
+ * row in the speech store (`msg:<id>`), so the button's busy and playing states
+ * belong to this answer and cannot be claimed by another. The Speak CONTROL
+ * itself - gate, tooltip, labels, press - is `useSpeakControl`, shared with the
+ * selection toolbars and the legacy strip so the surfaces cannot drift; its
+ * disabled sentence comes from the one copy table (`@shared/lib/speech-gate`) -
+ * the reading UX round 2's U6 moved this row onto, alongside the surfaces
+ * converted before it.
  */
 
 import {

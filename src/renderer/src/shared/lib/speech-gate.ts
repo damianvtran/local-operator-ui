@@ -4,20 +4,21 @@
  * What a disabled speech control says, and the ONE reading it says it from.
  *
  * WHY THIS MODULE EXISTS (agent review round 1; design review round 1, D1/D2/D5;
- * UX review round 1, U1/U2). Four surfaces disable themselves on the same
+ * UX review round 1, U1/U2). Five surfaces disable themselves on the same
  * reading - the composer's mic, the message strip's speak-aloud control, the
- * selection toolbar's speech control and the canvas editor's mic - and each used
- * to inline its own sentence: three names for the mic ("Start recording" /
- * "audio recording" / "Voice input") and two for the speak control ("Speak
- * aloud" / "text to speech"), so the same control was described differently
- * depending on which arm you were standing on. And the sign-in sentence was the
- * fallback for EVERY arm that did not know the account - in flight, refused,
- * unreachable - so it told a signed-in user to sign in during an outage, a
- * remedy their account could not use.
+ * selection toolbar's speech control, the canvas editor's mic and the answer
+ * action row, last to join (UX round 2, U6) - and each used to inline its own
+ * sentence: three names for the mic ("Start recording" / "audio recording" /
+ * "Voice input") and two for the speak control ("Speak aloud" / "text to
+ * speech"), so the same control was described differently depending on which
+ * arm you were standing on. And the sign-in sentence was the fallback for EVERY
+ * arm that did not know the account - in flight, refused, unreachable - so it
+ * told a signed-in user to sign in during an outage, a remedy their account
+ * could not use.
  *
  * The reading is therefore one classification (`RadientSpeechBlock`) derived
  * from the account read's own classes, and the sentences live here as one table
- * per control, so the four call sites cannot drift apart one string at a time.
+ * per control, so the five call sites cannot drift apart one string at a time.
  *
  * THE SENTENCES, AND WHAT EACH BLOCK MEANS:
  *

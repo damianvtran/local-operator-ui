@@ -44,10 +44,11 @@ export type ActionRowRole = "answer" | "user";
  *
  * The SECOND half of speech's gate - whether a speech credential is configured -
  * is deliberately NOT in this list. It is read by the control itself
- * (`useSpeakControl`, the one hook every speech surface renders through) and
- * paints as a disabled button whose tooltip gives the reason. Collapsing the two
- * here would take the only route by which "sign in to Radient to enable speaking
- * aloud" reaches the reader.
+ * (`useSpeakControl`, the one hook every speech surface renders through, whose
+ * disabled sentence comes from the one copy table in `@shared/lib/speech-gate`)
+ * and paints as a disabled button whose tooltip gives the reason. Collapsing the
+ * two here would take the only route by which the sign-in sentence reaches the
+ * reader.
  *
  * QUOTE IS DELIBERATELY ABSENT. Its trigger is the selection, `canonical-
  * transcript.tsx` enforces one subject per row, and a Quote button here would

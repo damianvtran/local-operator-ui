@@ -205,7 +205,7 @@ export const useRadientCredentialProbe = () => {
 		(hasRadientSession || (hasRadientApiKey && !isUnavailable));
 
 	/**
-	 * Why the control is off, for the tooltip: the one classification all four
+	 * Why the control is off, for the tooltip: the one classification all five
 	 * speech surfaces render from (`@shared/lib/speech-gate`). Always present
 	 * (there is a reason even when the capability holds; a surface renders it
 	 * only on the disabled arm).

@@ -1483,6 +1483,16 @@ const ADJACENT = [
  * set of semantics that passes on average is not a set of semantics.
  */
 const GRAPHICS = [
+	{
+		/*
+		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
+		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
+		 * the pair the checkpoint rail already paints for `complete`.
+		 */
+		name: "turn bar complete mark",
+		on: ["canvas"],
+		fg: "success",
+	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
 		/* Drawn inside the track, which is `sunken`. */
