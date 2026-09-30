@@ -71,7 +71,7 @@ import {
 	quietOfferShown,
 	useUpdateNoticeStore,
 } from "@shared/store/update-notice-store";
-import { CircleArrowDown } from "lucide-react";
+import { CircleArrowDown, X } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
 
 /** One surface's waiting release, as the indicator draws it. */
@@ -100,20 +100,39 @@ const SURFACE_COPY: Record<UpdateType, string> = {
 };
 
 /**
+ * One surface's words WITHOUT the trailing "available": "Server update 0.55.10".
+ *
+ * The subject form, exported because the foot icon's accessible name joins two
+ * of them ("Application update 0.30.1 and server update 0.55.10 available. Show
+ * the update notice.") where one trailing "available" covers both - and the
+ * join may not re-spell the words, or the icon and the band would drift about
+ * what is waiting (design consult §3.5).
+ */
+export const quietOfferSubject = (offer: QuietIndicatorOffer): string =>
+	`${SURFACE_COPY[offer.type]} ${offer.version}`;
+
+/**
  * The visible string for one control, and the head of its accessible name.
  *
  * One function for both, so the two cannot drift: the label is this string plus a
  * sentence, which is what keeps the label-in-name rule true by construction.
  */
 export const quietOfferText = (offer: QuietIndicatorOffer): string =>
-	`${SURFACE_COPY[offer.type]} ${offer.version} available`;
+	`${quietOfferSubject(offer)} available`;
 
 export const UpdateQuietIndicatorView: FC<{
 	offers: QuietIndicatorOffer[];
 	onOpen: (type: UpdateType) => void;
+	/**
+	 * The band's own dismiss (2026-09-30): present since the band became the
+	 * on-demand surface and the foot icon the standing one. It lowers the band
+	 * and keeps the offer - the icon stays, and its next press raises the band
+	 * again.
+	 */
+	onDismiss: () => void;
 	/** The rig's hook for a frame; also lets a test scope its query. */
 	className?: string;
-}> = ({ offers, onOpen, className }) => {
+}> = ({ offers, onOpen, onDismiss, className }) => {
 	/*
 	 * The region is mounted whether or not there is anything in it (review R4), and
 	 * the band's own box only exists while there is: an empty `<output>` with no
@@ -180,6 +199,36 @@ export const UpdateQuietIndicatorView: FC<{
 					<span className="whitespace-nowrap">{quietOfferText(offer)}</span>
 				</button>
 			))}
+			{/*
+			 * THE DISMISS, AS THE LEADING CLUSTER'S LAST CONTROL (design consult).
+			 * The items sit at the leading edge because toasts rank the trailing one
+			 * (`right-4 bottom-4 z-50`, the component header's own record), so a
+			 * dismiss at the window's right edge would be covered by the completion
+			 * toast at exactly the moment it matters. A 24px box matching the items'
+			 * `h-6`; it is drawn only when there is something to dismiss (the quiet
+			 * arm returns no children at all).
+			 */}
+			{!quiet && (
+				<button
+					type="button"
+					data-update-indicator-dismiss=""
+					aria-label="Dismiss update notice"
+					onClick={onDismiss}
+					className={cn(
+						"flex h-6 items-center rounded-md px-1.5 text-ink-muted",
+						"hover:bg-row-hover hover:text-ink",
+						/*
+						 * The band's own focus rule, and its offset-0 exception applies here
+						 * for the same reason as the items': the band's bottom edge IS the
+						 * window's bottom edge, so a stroke at offset 2 would be clipped
+						 * off-window.
+						 */
+						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-0!",
+					)}
+				>
+					<X className="size-3.5 shrink-0" aria-hidden="true" />
+				</button>
+			)}
 		</output>
 	);
 };
@@ -197,6 +246,18 @@ export const UpdateQuietIndicator: FC = () => {
 	const offers = useUpdateNoticeStore((s) => s.offers);
 	const detailOpen = useUpdateNoticeStore((s) => s.detailOpen);
 	const openDetail = useUpdateNoticeStore((s) => s.openDetail);
+	/*
+	 * THE BAND IS ON DEMAND NOW (2026-09-30). The standing notice is the foot icon
+	 * (`update-foot-icon.tsx`), which appears whenever a surface has news; the band
+	 * is raised only by the icon's press and lowered by its own dismiss, and while
+	 * nothing has asked for it the shell draws no band - the property the frames
+	 * measure as "zero pixels at rest" is now true of the whole path, not only of
+	 * the no-offer case. `quietOfferShown` still decides WHICH surfaces are news
+	 * (the same gate the icon reads), and `noticeOpen` decides whether the reader
+	 * asked to see them.
+	 */
+	const noticeOpen = useUpdateNoticeStore((s) => s.noticeOpen);
+	const dismissNotice = useUpdateNoticeStore((s) => s.dismissNotice);
 
 	const shown = useMemo(() => {
 		const state = { followed, running, offers, detailOpen };
@@ -218,5 +279,11 @@ export const UpdateQuietIndicator: FC = () => {
 		[openDetail],
 	);
 
-	return <UpdateQuietIndicatorView offers={shown} onOpen={pressSurface} />;
+	return (
+		<UpdateQuietIndicatorView
+			offers={noticeOpen ? shown : []}
+			onOpen={pressSurface}
+			onDismiss={dismissNotice}
+		/>
+	);
 };
