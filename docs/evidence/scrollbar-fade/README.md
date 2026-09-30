@@ -19,8 +19,15 @@ describes. Its history, all of which is in the tree these frames came from:
   markdown-table widths, and `dad1778e14`/`ace2ffcb7f`, the chat move control),
 - `853b1a207d` — review round 1's remediation (the keyboard cue, the structural
   undo-scope guard, the positive-only caches),
-- `a3836c78a9` — the design note's own reconciliation, and
-- `d9f06c0349` — the transition census extended to the cascading sheets.
+- `a3836c78a9` — the design note's own reconciliation,
+- `d9f06c0349` — the transition census extended to the cascading sheets, and
+- `231c3b130f` — round 2's close-out (one editable-scope test instead of one per
+  walked node, the census's two halves reading the same token families, and the
+  note's falsified markdown-table line). **These frames are the record of
+  `d9f06c0349`, and the close-out is proved not to move a pixel**: it is one
+  O(depth) walk replaced by an equivalent single test, and the scene re-run on
+  `231c3b130f` returns the same **67 checks, 0 FAIL with all seventeen frames
+  byte-identical** to the set below.
 
 **The frames were re-run after every fold and came back byte-identical**, so one
 set describes all of them: none of the trains main carried in changes the two
@@ -227,20 +234,27 @@ rounding error against the scroll it is measuring.
   clientHeight`, is a layout read inside a handler that fires for every element
   the pointer crosses. Recorded as the honest version of a claim that used to say
   the opposite.
-- **Main's new markdown-table wrapper inherits the mechanism, and declares no
-  transition of its own.** `div.lo-md-table-scroll` (`markdown-table.tsx:50`,
-  `markdown.css:406`) arrived with #712 and is a scroller by CSS
+- **Main's markdown-table wrapper inherits the mechanism, and declares no
+  transition or animation of its own.** `div.lo-md-table-scroll`
+  (`markdown-table.tsx:50`, `markdown.css:406`) landed on `main` in #712 and is in
+  this branch as of `ace2ffcb7f` — the note's § 9.10 said "not on `main`" while it
+  was in flight, and review round 2 (D7) is right that the fold falsified that
+  line, so both the note and this list now say where it is. It is a scroller by CSS
   (`overflow-x: auto`) — the census that guards the "a scroller with its own
-  transition list collapses the fade to a pop" risk now reads the cascading sheets
-  as well as the class lists, and its answer at this head is empty. That wrapper
-  is one of the surfaces the note lists as "not on main" (§ 9.10), so it inherits
-  the shared mechanism with no per-surface work; it is not in this set's frames
-  (they need a transcript, a table and a live backend).
+  transition list collapses the fade to a pop" risk reads the cascading sheets as
+  well as the class lists, and its answer at this head is empty. It inherits the
+  shared mechanism with no per-surface work; it is not in this set's frames (they
+  need a transcript, a table and a live backend), and it is also the second
+  instance of the accepted `<pre>` swallow (note § 9.1).
+
 - **A non-overflowing `overflow: auto` ancestor takes the hover for the scroller
   above it.** Every `<pre>` in the transcript is one, so hovering a code block
   does not reveal the transcript's own bar (a wheel still does — the `scroll`
-  event lands on the log). Skipping it would need the same layout read Q7
-  rejects; the note records it as deferred (U5).
+  event lands on the log). `div.lo-md-table-scroll` is the second, more common
+  instance of the same swallow now that tables are ordinary in agent transcripts
+  (measured in round 2: the wrapper resolves, the log stays idle, a wheel reveals
+  the log). Skipping either would need the same layout read Q7 rejects; the note
+  records both as deferred (U5).
 - **The palette's own bottom scrim paints over the last ~24 CSS px of the revealed
   thumb.** It predates this change and the idle state hides nothing; recorded as
   pre-existing (D5), not as a fade defect.
