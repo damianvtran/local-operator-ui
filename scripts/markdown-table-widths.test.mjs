@@ -71,10 +71,23 @@ const PROJECTS_MAP =
 	/const COMPONENTS: Components = \{[\s\S]*?\btable: MarkdownTable,/;
 const THREE_SHAS_LITERAL = /const THREE_SHAS = \[([\s\S]*?)\]\.join\("\\n"\)/;
 const GIANT_TOKEN_LITERAL = /const GIANT_TOKEN = \[([\s\S]*?)\]\.join\("\\n"\)/;
+const THREE_SHAS_LINKED_LITERAL =
+	/const THREE_SHAS_LINKED = \[([\s\S]*?)\]\.join\("\\n"\)/;
+const CODE_IN_CELLS_LITERAL =
+	/const CODE_IN_CELLS = \[([\s\S]*?)\]\.join\("\\n"\)/;
 const QUOTED = /"([^"]+)"/g;
 const SHA_40 = /^[0-9a-f]{40}$/;
 const SHA256_TOKEN = /^sha256:[0-9a-f]+$/;
 const WHITESPACE = /\s/;
+/* A cell that is ONE markdown link, whole, pointing at a GitHub pull request. */
+const MARKDOWN_LINK = /^\[([^\]]+)\]\((https:\/\/github\.com\/[^)]+)\)$/;
+const PULL_LINK = /\/pull\/\d+$/;
+/* A cell that is ONE code span, whole (`value` and nothing around it). */
+const CODE_SPAN = /^`[^`]+`$/;
+/* The user-turn state's two wiring facts, pinned on its own line. */
+const USER_TURN_EXPORT = /export const UserTurn: Story = \{/;
+const USER_TURN_RENDER =
+	/render: \(\) => <Frame records=\{\[user\("u1", OPERATOR_SHAPE\)\]\} \/>/;
 
 /*
  * All rule bodies in `css` whose flattened selector is `selector`.
@@ -126,6 +139,30 @@ const someRule = (css, selector, ...declarations) => {
 	return bodies.some((body) =>
 		declarations.every((declaration) => body.includes(declaration)),
 	);
+};
+
+/*
+ * The source offset of the FIRST real rule whose selector is `selector`.
+ *
+ * A MENTION IS NOT A RULE, and a bare `indexOf` cannot tell them apart: the
+ * file names both selectors inside comments (the wrapper rule's own comment
+ * says "the table's old ones", the cell rule's says "`.lo-markdown code`"),
+ * so the scan repeats `ruleBodies`' test - selector immediately followed by
+ * its own brace - rather than trusting the first textual hit. Without this the
+ * NIT-2 order assertion below could pin the position of a comment.
+ */
+const ruleStart = (css, selector) => {
+	const flat = css.replace(/\s+/g, " ");
+	const wanted = selector.replace(/\s+/g, " ");
+	let from = 0;
+	for (;;) {
+		const at = flat.indexOf(wanted, from);
+		if (at === -1) return -1;
+		const open = flat.indexOf("{", at + wanted.length);
+		if (open === -1) return -1;
+		if (flat.slice(at + wanted.length, open).trim() === "") return at;
+		from = at + wanted.length;
+	}
 };
 
 test("I1: the cell rules make a table cell's min-content its longest word", () => {
@@ -183,6 +220,23 @@ test("I1: the wrapper rule contains, scrolls and carries the margin", () => {
 	assert.ok(
 		someRule(css, ".lo-md-table-scroll > table {", "margin: 0"),
 		"the table inside the wrapper must drop its own margin (the wrapper carries it)",
+	);
+	/*
+	 * NIT-2 (agent review round 1): the child rule TIES `.lo-markdown table` on
+	 * specificity - both are one class plus one type, (0,1,1) - and wins only by
+	 * SOURCE ORDER. Nothing pinned that order, so a reorder inside this
+	 * stylesheet would silently restore the table's `0.75rem 0` margin inside
+	 * the scroll box (putting the bar's space back around the table it was
+	 * moved off) and every other assertion here would still pass. Pin the
+	 * sequence itself, on the rules rather than on their text.
+	 */
+	const childAt = ruleStart(css, ".lo-md-table-scroll > table");
+	const baseAt = ruleStart(css, ".lo-markdown table");
+	assert.ok(childAt !== -1, "no `.lo-md-table-scroll > table` rule found");
+	assert.ok(baseAt !== -1, "no `.lo-markdown table` rule found");
+	assert.ok(
+		childAt > baseAt,
+		"`.lo-md-table-scroll > table` must come AFTER `.lo-markdown table` in source order - the two tie on specificity, so order is the only thing making `margin: 0` win",
 	);
 	/*
 	 * I7's text half: the box keeps filling the measure and stays on auto
@@ -502,4 +556,136 @@ test("the capture registers the edge states, after-half only", () => {
 			`the \`${leaf}\` row went missing`,
 		);
 	}
+	/*
+	 * Round 1's remediation rows: the mixed keyboard state at both rig rungs,
+	 * and the user-turn and code-in-cells states at 1280. AFTER-half only, for
+	 * the same reason the two edge states are: each photographs the fix's own
+	 * behaviour (or, for the user turn, a container the fix reaches) and there
+	 * is nothing before it to pair against.
+	 */
+	for (const row of [
+		'["chat-markdown-tables--three-shas-linked", 1280, 900]',
+		'["chat-markdown-tables--three-shas-linked", 920, 900]',
+		'["chat-markdown-tables--user-turn", 1280, 900]',
+		'["chat-markdown-tables--code-in-cells", 1280, 900]',
+	]) {
+		assert.ok(
+			capture.includes(row),
+			`capture-evidence.mjs is missing the remediation row \`${row}\``,
+		);
+	}
+	for (const leaf of ["three-shas-linked", "user-turn", "code-in-cells"]) {
+		for (const width of [1280, 920]) {
+			assert.ok(
+				!capture.includes(`"chat-markdown-tables-before--${leaf}", ${width}`),
+				`the before half must not carry \`${leaf}\``,
+			);
+		}
+	}
+});
+
+/*
+ * The remediation states' shapes - the two that are new FIXTURES (the user
+ * turn reuses `OPERATOR_SHAPE`, so its pin is the wiring line, not a literal).
+ */
+test("the mixed-case fixture links a three-shas shape rather than replacing it", () => {
+	const story = read(STORY);
+	/*
+	 * `three-shas-linked` must change ONE variable against `THREE_SHAS`: the
+	 * Repo cells become real links. If its chain stopped being the same three
+	 * 40-character columns, the keyboard question the state exists for (UX-1:
+	 * does a link-bearing OVERFLOWING wrapper still scroll?) would no longer be
+	 * asked of the overflowing shape - so both halves are pinned.
+	 */
+	const linked = story.match(THREE_SHAS_LINKED_LITERAL);
+	assert.ok(linked, "no THREE_SHAS_LINKED literal");
+	const rows = [...linked[1].matchAll(QUOTED)].map((match) => match[1]);
+	assert.equal(rows.length, 4, "header + delimiter + two data rows");
+	const cells = (row) =>
+		row
+			.split("|")
+			.slice(1, -1)
+			.map((cell) => cell.trim());
+	assert.equal(cells(rows[0]).length, 4, "one link column + three sha columns");
+	const destinations = new Set();
+	for (const row of rows.slice(2)) {
+		const columns = cells(row);
+		const link = columns[0].match(MARKDOWN_LINK);
+		assert.ok(
+			link,
+			`the Repo cell must be one markdown link, got \`${columns[0]}\``,
+		);
+		assert.match(
+			link[2],
+			PULL_LINK,
+			"the link must point at a pull request, not a bare repo",
+		);
+		destinations.add(link[2]);
+		for (const index of [1, 2, 3]) {
+			assert.match(
+				columns[index],
+				SHA_40,
+				`column ${index + 1} must stay a 40-character sha, got \`${columns[index]}\``,
+			);
+		}
+	}
+	assert.equal(
+		destinations.size,
+		rows.length - 2,
+		"one link per row, distinct destinations",
+	);
+});
+
+test("the code-in-cells fixture carries spans the override has to win against", () => {
+	const story = read(STORY);
+	/*
+	 * `code-in-cells` exists for the `td code, th code` override: `.lo-markdown
+	 * code` declares `word-break: break-word` directly, so a cell that is a code
+	 * span is the only shape where the override is load-bearing. The three
+	 * classes the consult measured are pinned - the reported `#684 (1a)`, a word
+	 * plus a token in ONE span, and a single unbreakable 40-character sha - and
+	 * every value cell must be exactly one span, or the state is asking a
+	 * different question than the one Q3 opened.
+	 */
+	const fixture = story.match(CODE_IN_CELLS_LITERAL);
+	assert.ok(fixture, "no CODE_IN_CELLS literal");
+	const rows = [...fixture[1].matchAll(QUOTED)].map((match) => match[1]);
+	assert.equal(rows.length, 5, "header + delimiter + three data rows");
+	const cells = (row) =>
+		row
+			.split("|")
+			.slice(1, -1)
+			.map((cell) => cell.trim());
+	const spans = rows.slice(2).map((row) => {
+		const value = cells(row)[1];
+		assert.ok(
+			CODE_SPAN.test(value),
+			`the Value cell must be one code span, got \`${value}\``,
+		);
+		return value.slice(1, -1);
+	});
+	assert.ok(
+		spans.some((span) => span.includes(" ")),
+		"one span must carry a space - the word-plus-token class",
+	);
+	assert.ok(
+		spans.some((span) => SHA_40.test(span)),
+		"one span must be a single unbreakable 40-character token",
+	);
+	assert.ok(
+		spans.some((span) => span === "#684 (1a)"),
+		"the reported cell itself must be one of the spans",
+	);
+});
+
+test("the user-turn state carries the reported table in a user record", () => {
+	const story = read(STORY);
+	/*
+	 * The D1 state: the bubble is only photographed if the record is a USER
+	 * record (an assistant answer would render in the 810px measure instead) and
+	 * the text is the REPRODUCED table (a different table would photograph a
+	 * different geometry). Two wiring facts, both on the state's own line.
+	 */
+	assert.match(story, USER_TURN_EXPORT);
+	assert.match(story, USER_TURN_RENDER);
 });

@@ -1186,7 +1186,8 @@ export const STORIES = [
 	 * and a two-row control - plus the fix's two edge states, `three-shas` (three
 	 * sha columns whose min-contents sum past the measure; the wrapper must
 	 * scroll) and `giant-token` (a 263-character digest; the 64ch cell cap wraps
-	 * it instead). Four of the shapes are also captured at 920 wide - the narrow
+	 * it instead), with round 1's three remediation states beside them (named
+	 * below). Five of the shapes are also captured at 920 wide - the narrow
 	 * rung the agent-hub frames use - so the set carries them at a comfort window
 	 * and at a narrow one; both widths resolve the same 810px chat measure, so the
 	 * pair differs in margins rather than in the table's own box (MEASUREMENTS.md
@@ -1202,6 +1203,15 @@ export const STORIES = [
 	 * two edge states are AFTER-only because the before half is the reproduction
 	 * of the report the fix answers, while the containment and ceiling behaviours
 	 * are the fix's own - before the fix there is no wrapper to photograph.
+	 *
+	 * ROUND 1'S REMEDIATION ADDED THREE STATES TO THIS SET: `three-shas-linked`
+	 * (the containment shape with the Repo cells carrying real links - an
+	 * overflowing wrapper that ALSO holds focusable descendants, the mixed case
+	 * the keyboard question was left open on; UX-1), `user-turn` (the reported
+	 * table inside a user bubble - a different container geometry from the 810px
+	 * answer column; D1), and `code-in-cells` (code spans inside cells - the
+	 * `td code` override's live case; Q3). The linked shape is captured at both
+	 * rungs; the other two at 1280 alone.
 	 */
 	["chat-markdown-tables--operator-shape", 1280, 900],
 	["chat-markdown-tables--long-prose", 1280, 900],
@@ -1210,10 +1220,14 @@ export const STORIES = [
 	["chat-markdown-tables--few-rows", 1280, 900],
 	["chat-markdown-tables--three-shas", 1280, 900],
 	["chat-markdown-tables--giant-token", 1280, 900],
+	["chat-markdown-tables--three-shas-linked", 1280, 900],
+	["chat-markdown-tables--user-turn", 1280, 900],
+	["chat-markdown-tables--code-in-cells", 1280, 900],
 	["chat-markdown-tables--operator-shape", 920, 900],
 	["chat-markdown-tables--long-tokens", 920, 900],
 	["chat-markdown-tables--many-columns", 920, 900],
 	["chat-markdown-tables--three-shas", 920, 900],
+	["chat-markdown-tables--three-shas-linked", 920, 900],
 	/*
 	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
 	 * states of `math-currency.stories.tsx` - a cost report whose amounts must

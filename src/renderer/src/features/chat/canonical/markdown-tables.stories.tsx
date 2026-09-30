@@ -33,11 +33,30 @@
  *  - `GiantToken`: a single 263-character unbreakable digest - the CEILING
  *    case: the cell cap makes the token wrap inside its own column rather
  *    than widening the table into a scroll.
+ *  - `ThreeShasLinked`: `ThreeShas`'s shape with the Repo cells carrying real
+ *    links - the MIXED case the keyboard question turns on: an overflowing
+ *    wrapper that ALSO holds focusable descendants. Round 1's U1 asked for it
+ *    because neither committed state discriminates "links suppress the tab
+ *    stop" from "there was nothing to scroll" (agent-hub UX round 1).
+ *  - `UserTurn`: the reported table inside a USER turn - the fit-content
+ *    `max-w-[85%]` bubble, a container geometry the answer-column states
+ *    cannot photograph (round 1's D1).
+ *  - `CodeInCells`: code spans inside cells - the `td code` override's live
+ *    case; no other state puts a `<code>` in a table cell (round 1's Q3).
  *
- * The last two are AFTER-only states (the fix's own capture registers them;
- * the before half has the five reproduction states alone), added at the
- * design consult's request so the containment and ceiling behaviours are
- * photographed rather than only measured.
+ * The last five are AFTER-only states (the fix's own capture registers them;
+ * the before half has the five reproduction states alone): the containment and
+ * ceiling behaviours the design consult asked to be photographed, and the
+ * remediation round's three states above.
+ *
+ * WHAT THE THREE REMEDIATION STATES DELIBERATELY DO NOT COVER. The PROJECTS
+ * surface's update body (`project-markdown.tsx` shares this stylesheet and the
+ * same wrapper module, and the jsdom half of `scripts/markdown-table-widths.test.mjs`
+ * renders it) has no frame here: standing it up needs the projects sheet's own
+ * scaffolding, which round 1's D1 recorded as a deferral rather than a cost
+ * this set should carry. The wrapper instance it renders is the same component
+ * by construction, which is why the deferral is stated in the set's README
+ * rather than re-photographed.
  *
  * WHY THE TRANSCRIPT AND NOT A BARE TABLE. `.lo-markdown` is styled by
  * descendant selectors against react-markdown's output (`markdown.css`), and
@@ -67,6 +86,22 @@ const answer = (id: string, text: string): TranscriptRecord => ({
 	complete: true,
 	stopReason: null,
 	error: false,
+});
+
+/**
+ * A settled user turn carrying its text - the bubble geometry (D1).
+ *
+ * No `provisional`/`local` flags: this is the OWNER's record of a message, the
+ * state `canonical-transcript.tsx` renders as the resting bubble. The flags are
+ * for the app's own optimistic echo, which is the one state this fixture does
+ * not need to be.
+ */
+const user = (id: string, text: string): TranscriptRecord => ({
+	kind: "user",
+	id,
+	ts: TS + 2_000,
+	text,
+	images: [],
 });
 
 /** A transcript state holding one row, as `chat-content.tsx` hands one over. */
@@ -187,6 +222,47 @@ const GIANT_TOKEN = [
 	"| note | short cell beside a 263-char unbreakable token |",
 ].join("\n");
 
+/*
+ * `THREE_SHAS`'s shape with the Repo cells carrying real links - the MIXED
+ * case (round 1's U1).
+ *
+ * WHY THE SHAPES MUST MATCH: the question is whether an OVERFLOWING wrapper
+ * that also contains focusable descendants changes what Tab reaches, so the
+ * link is the ONE variable - the commit chain is `THREE_SHAS`'s own, and the
+ * link text is the plain `local-operator-ui` the other state's Repo column
+ * already carries (a link's text is what the column measures, so the table's
+ * natural width is unchanged and it still overflows the 810px measure).
+ *
+ * The destinations are the lane's own pull requests - real PRs of this
+ * repository, the register the other fixtures use - so the anchors are the
+ * shape an agent's answer tabulating its PRs actually carries, which is the
+ * real-world case U1 named.
+ */
+const THREE_SHAS_LINKED = [
+	"| Repo | Commit | Parent | Grandparent |",
+	"| --- | --- | --- | --- |",
+	"| [local-operator-ui](https://github.com/damianvtran/local-operator-ui/pull/712) | 4d09415b7eedfc9bbaea7eeba75a7e9496699f53 | 195576496863d01078afd731c0613433db0c8b1e | fb565e2b8af1d2aa575fb5f5e5b02ac8e2aa3e9d |",
+	"| [local-operator-ui](https://github.com/damianvtran/local-operator-ui/pull/706) | 195576496863d01078afd731c0613433db0c8b1e | fb565e2b8af1d2aa575fb5f5e5b02ac8e2aa3e9d | 20ccfd451242e72859fb040e9c0c83a89d49c610 |",
+].join("\n");
+
+/*
+ * Code spans inside cells (round 1's Q3).
+ *
+ * The `td code, th code` override exists because `.lo-markdown code` declares
+ * `word-break: break-word` on every span and a direct declaration cannot be
+ * beaten by inheritance - so the override is what makes THIS state's cells
+ * word-whole, and until this fixture the suite pinned it textually only. The
+ * three spans are the classes the consult measured: the reported `#684 (1a)`,
+ * a word plus a token in one span, and a full 40-character sha.
+ */
+const CODE_IN_CELLS = [
+	"| Field | Value | Note |",
+	"| --- | --- | --- |",
+	"| pull request | `#684 (1a)` | the reported cell, as one code span |",
+	"| state | `MERGED 643b5270a8` | a word and a token in one span |",
+	"| merge commit | `4d09415b7eedfc9bbaea7eeba75a7e9496699f53` | one unbreakable 40-character token |",
+].join("\n");
+
 /**
  * The transcript pane, filling the rig's viewport.
  *
@@ -274,4 +350,25 @@ export const ThreeShas: Story = {
 /** A 263-character digest: the cell cap wraps it instead of scrolling. */
 export const GiantToken: Story = {
 	render: () => <Frame records={[answer("a1", GIANT_TOKEN)]} />,
+};
+
+/**
+ * The containment case WITH links: the mixed state U1 asked for.
+ *
+ * Captured at both rig widths like `ThreeShas`, because the keyboard walk the
+ * state exists for runs at 1280 and the margin pair is what the set's other
+ * two-width states carry.
+ */
+export const ThreeShasLinked: Story = {
+	render: () => <Frame records={[answer("a1", THREE_SHAS_LINKED)]} />,
+};
+
+/** The reported table in a user turn: the bubble's own geometry (D1). */
+export const UserTurn: Story = {
+	render: () => <Frame records={[user("u1", OPERATOR_SHAPE)]} />,
+};
+
+/** Code spans in cells: the `td code` override's live case (Q3). */
+export const CodeInCells: Story = {
+	render: () => <Frame records={[answer("a1", CODE_IN_CELLS)]} />,
 };
