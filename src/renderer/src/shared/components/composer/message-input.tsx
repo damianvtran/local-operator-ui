@@ -535,6 +535,17 @@ export type MessageInputProps = {
 	 */
 	deliveryRemediesReachable?: boolean;
 	/**
+	 * The composer's hold while this conversation moves between devices (§2.4): a
+	 * strip that names the reason the runtime cannot admit anything, composed by the
+	 * page that owns the move's own store.
+	 *
+	 * A NODE RATHER THAN A FLAG, for this file's usual reason and this prop's own:
+	 * the hold is about a transfer, which the composer knows nothing about, and a
+	 * boolean here would put a device store inside a component whose job is typing.
+	 * The page composes it from the same store the chip and the notice read.
+	 */
+	deviceHold?: React.ReactNode;
+	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
 	 * goes.
 	 *
@@ -1402,6 +1413,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			awaitingReply = false,
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
+			deviceHold,
 			secretAnswer = false,
 			asideSessionId,
 			asideStreaming = false,
@@ -6437,6 +6449,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * compacted 4px (design round 1, D1).
 				 */}
 				{radientIssueBlock}
+				{/*
+				 * THE MOVE HOLD, outboard of the box and inside the band: §2.4's strip, which
+				 * names why the runtime cannot admit anything while the handoff runs. It sits
+				 * with the other STANDING statements rather than beside the transient alert,
+				 * because it is a state of the conversation and not an outcome of one send.
+				 */}
+				{deviceHold}
 				{composerAlert.message !== undefined && (
 					/*
 					 * ONE SENTENCE, AT MOST TWO CONTROLS. THE WHOLE OF IT.
