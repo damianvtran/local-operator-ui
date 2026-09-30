@@ -6,8 +6,11 @@
  * two meet: `loadedIds` is the record ids this store holds (everything else in
  * the manifest wears the light "unloaded" arm), and `activeId` is the last
  * loaded checkpoint whose row has crossed the reading line - the scroller's top
- * edge - with the two ENDS OF THE SCROLLER resolved by their own arms, because
- * the line rule alone cannot light them (see the ends note below). The position
+ * edge PLUS the top-fade depth, because the jump lands a target at exactly that
+ * inset (design round 1's D1 correction: a line at `top + 1` fails a landing at
+ * `top + INSET` and lights the tick BEFORE the target) - with the two ENDS OF
+ * THE SCROLLER resolved by their own arms, because the line rule alone cannot
+ * light them (see the ends note below). The position
  * read is viewport-based (rects, not scrollTop) so it holds under either scroll
  * direction, and it is rAF-throttled: a scroll frame asks the DOM for the
  * loaded checkpoints' tops (bounded by the mounted window, not by the
@@ -51,6 +54,7 @@
  * component this size could not offer.
  */
 
+import { TRANSCRIPT_TOP_FADE_PX } from "@shared/lib/transcript-fade";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import type { Checkpoint } from "../../../../../shared/desktop-contract";
@@ -122,7 +126,10 @@ export const useActiveCheckpoint = (
 			if (first === null) first = checkpoint.id;
 			last = checkpoint.id;
 			const elementTop = element.getBoundingClientRect().top;
-			if (elementTop <= top + 1 && elementTop > bestTop) {
+			if (
+				elementTop <= top + TRANSCRIPT_TOP_FADE_PX + 1 &&
+				elementTop > bestTop
+			) {
 				bestTop = elementTop;
 				best = checkpoint.id;
 			}
