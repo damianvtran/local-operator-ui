@@ -1,0 +1,78 @@
+  (the list never opened for "/login ope" — recording the state as it stands)
+FAIL login-suggest-on-ope: type "/login ope" and read the list
+  before: draft="/login ope" list=null active=null ran="none"
+  after:  draft="/login ope" list=null phase=null ran="none"
+  list: null (expected "Command arguments")
+  phase: null (expected "Providers")
+  (the list never opened for "/login " — recording the state as it stands)
+FAIL login-space-lists-every-provider: type "/login " and read the list
+  before: draft="/login " list=null active=null ran="none"
+  after:  draft="/login " list=null phase=null ran="none"
+  list: null (expected "Command arguments")
+  phase: null (expected "Providers")
+  (the list never opened for "/login ope" — recording the state as it stands)
+  (no row matching "OpenAI" in the list — nothing to click)
+FAIL login-one-click-runs: click on the "OpenAI" row after typing "/login ope"
+  before: draft="/login ope" list=null active=null ran="none"
+  after:  draft="/login ope" list=null phase=null ran="none"
+  ran: "none" (expected "/login openai")
+  draft: "/login ope" (expected "")
+  (the list never opened for "/logout " — recording the state as it stands)
+FAIL logout-space-lists-stored-accounts: type "/logout " and read the list
+  before: draft="/logout " list=null active=null ran="none"
+  after:  draft="/logout " list=null phase=null ran="none"
+  list: null (expected "Command arguments")
+  phase: null (expected "Accounts")
+  (the list never opened for "/logout anthro" — recording the state as it stands)
+FAIL logout-enter-fills-never-runs: Enter after typing "/logout anthro"
+  before: draft="/logout anthro" list=null active=null ran="none"
+  after:  draft="" list=null phase=null ran="/logout anthro"
+  ran: "/logout anthro" (expected "none")
+  draft: "" (expected "/logout anthropic")
+  (the list never opened for "/logout " — recording the state as it stands)
+  (no row matching "anthropic" in the list — nothing to click)
+FAIL logout-click-completes-never-runs: click on the "anthropic" row after typing "/logout "
+  before: draft="/logout " list=null active=null ran="none"
+  after:  draft="/logout " list=null phase=null ran="none"
+  draft: "/logout " (expected "/logout anthropic")
+  (the list never opened for "/mcp " — recording the state as it stands)
+FAIL mcp-space-lists-the-verbs: type "/mcp " and read the list
+  before: draft="/mcp " list=null active=null ran="none"
+  after:  draft="/mcp " list=null phase=null ran="none"
+  list: null (expected "Command arguments")
+  phase: null (expected "Servers")
+  (the list never opened for "/mcp logout " — recording the state as it stands)
+FAIL mcp-logout-lists-signed-in-servers: type "/mcp logout " and read the list
+  before: draft="/mcp logout " list=null active=null ran="none"
+  after:  draft="/mcp logout " list=null phase=null ran="none"
+  list: null (expected "Command arguments")
+  phase: null (expected "Servers")
+  (the list never opened for "/mcp logout gith" — recording the state as it stands)
+FAIL mcp-logout-enter-fills-never-runs: Enter after typing "/mcp logout gith"
+  before: draft="/mcp logout gith" list=null active=null ran="none"
+  after:  draft="/mcp logout gith" list=null phase=null ran="/mcp logout gith"
+  ran: "/mcp logout gith" (expected "none")
+  draft: "/mcp logout gith" (expected "/mcp logout github")
+  (the list never opened for "/mcp remove " — recording the state as it stands)
+  (no row matching "remove github" in the list — nothing to click)
+FAIL mcp-remove-click-completes-never-runs: click on the "remove github" row after typing "/mcp remove "
+  before: draft="/mcp remove " list=null active=null ran="none"
+  after:  draft="/mcp remove " list=null phase=null ran="none"
+  draft: "/mcp remove " (expected "/mcp remove github")
+  (the list never opened for "/login ope" — recording the state as it stands)
+FAIL login-enter-fills-the-top-match: Enter after typing "/login ope"
+  before: draft="/login ope" list=null active=null ran="none"
+  after:  draft="" list=null phase=null ran="/login ope"
+  ran: "/login ope" (expected "none")
+  draft: "" (expected "/login openai")
+  (the list never opened for "/login ope" — recording the state as it stands)
+FAIL login-second-enter-runs: Enter, then Enter, after typing "/login ope"
+  before: draft="/login ope" list=null active=null ran="none"
+  after:  draft="" list=null phase=null ran="/login ope"
+  ran: "/login ope" (expected "/login openai")
+  (the list never opened for "/logout anthropic" — recording the state as it stands)
+PASS logout-typed-full-then-enter-submits: Enter, then Enter, after typing "/logout anthropic"
+  before: draft="/logout anthropic" list=null active=null ran="none"
+  after:  draft="" list=null phase=null ran="/logout anthropic"
+
+1/13 gestures behaved as the rule requires; record: /Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers-baseline/result.json
