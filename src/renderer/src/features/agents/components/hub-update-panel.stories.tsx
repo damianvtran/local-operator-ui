@@ -320,6 +320,42 @@ export const KeptMineAndEditorReseeded: Story = {
 	},
 };
 
+/**
+ * A hub update lands while the person has typed something they have not saved.
+ * The re-seed still wins - the merge is authoritative (R1) - but the page SAYS
+ * the in-flight edits were replaced instead of dropping them silently (agent
+ * review round 2, R2-5). The editor below must show the MERGED text AND the
+ * sentence must be on screen; either one alone is half the fix.
+ */
+export const UpdateUnderAnOpenEditor: Story = {
+	render: render({
+		item: {
+			kind: "agent",
+			name: "coder",
+			state: "available",
+			classification: "remote-only",
+		},
+	}),
+	play: async () => {
+		await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+		const box = (await screen.findByLabelText(
+			"Instructions",
+		)) as HTMLTextAreaElement;
+		await userEvent.clear(box);
+		await userEvent.type(box, "Half a sentence I had not saved.");
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Update from the hub" }),
+		);
+		await screen.findByText(/Edits you had not saved were replaced/);
+		await waitFor(() => {
+			const merged = screen.getByLabelText(
+				"Instructions",
+			) as HTMLTextAreaElement;
+			expect(merged.value).toContain("Cite them.");
+		});
+	},
+};
+
 /** A press that ends without a change says why, in one sentence beside the buttons. */
 export const StillNotReady: Story = {
 	render: render({

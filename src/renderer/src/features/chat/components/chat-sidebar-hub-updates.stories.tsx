@@ -43,6 +43,8 @@ type WireItem = {
 	error_class?: string | null;
 	last_error?: string | null;
 	last_applied_at?: string | null;
+	/** Org-linked rows carry the tenant the credential is resolved for (U11's shape). */
+	tenant_id?: string | null;
 };
 
 type Scenario = {
@@ -55,6 +57,12 @@ type Scenario = {
 	applyRefused?: boolean;
 	/** Answer `apply`/`retry` with this outcome and leave the item listed (the "still not on the hub" arm). */
 	applyOutcome?: { outcome: string; error_class?: string };
+	/**
+	 * What a `hub.retry` alone answers, mirroring the backend: a retry that answers
+	 * `would-merge` proved the update computes, so the stale failure is retired and
+	 * the row offers the UPDATE on the next press (UX round 2, U10).
+	 */
+	retryOutcome?: { outcome: string; error_class?: string };
 	uptodate?: number;
 	/** A backend that predates the plane: `hub_updates` absent from the capabilities. */
 	noCapability?: boolean;
@@ -138,8 +146,43 @@ const installBridge = (scenario: Scenario) => {
 				});
 			case "hub.updates":
 				return ok(snapshot());
-			case "hub.apply":
 			case "hub.retry": {
+				const retry = scenario.retryOutcome ?? scenario.applyOutcome;
+				if (retry) {
+					if (retry.outcome === "would-merge")
+						items = items.map((item) =>
+							item.kind === request.kind && item.name === request.name
+								? { ...item, state: "available", error_class: null }
+								: item,
+						);
+					return ok({
+						reports: [
+							{
+								kind: request.kind,
+								name: request.name,
+								applied: false,
+								...retry,
+							},
+						],
+						status: snapshot(),
+					});
+				}
+				items = items.filter(
+					(item) => !(item.kind === request.kind && item.name === request.name),
+				);
+				return ok({
+					reports: [
+						{
+							kind: request.kind,
+							name: request.name,
+							outcome: "merged",
+							applied: true,
+						},
+					],
+					status: snapshot(),
+				});
+			}
+			case "hub.apply": {
 				if (scenario.holdApply) return await new Promise(() => {});
 				if (scenario.applyRefused)
 					return {
@@ -526,14 +569,22 @@ export const NeedsReview: Story = {
  */
 export const SignedOut: Story = {
 	render: () => {
+		/*
+		 * THE ORG-LINKED ROW'S REAL SHAPE (UX round 2, U11): `oscar` is linked to a
+		 * tenant the local session has no credential for, so the check says
+		 * `unavailable / no-credential` and the store keeps the item at
+		 * `up-to-date` with that class. It is the only shape in which the sign-in
+		 * sentence is reachable at all - the previous fixture used an `available`
+		 * item, which the backend never produces for this case.
+		 */
 		installBridge({
 			credential: "none",
 			items: [
 				{
 					kind: "agent",
-					name: "coder",
-					state: "available",
-					classification: "remote-only",
+					name: "oscar",
+					state: "up-to-date",
+					tenant_id: "acme-team",
 					error_class: "no-credential",
 				},
 			],
@@ -548,6 +599,9 @@ export const SignedOut: Story = {
 		expect(
 			screen.getAllByText("Sign in to Radient to get hub updates").length,
 		).toBe(1);
+		// The row is up to date: the sentence is the ONLY affordance, and no mark
+		// is drawn (a `no-credential` item is never a row mark - design B6.2.4).
+		expect(screen.queryByTestId("hub-mark-agent-oscar")).toBeNull();
 	},
 };
 
@@ -660,6 +714,66 @@ export const LongName: Story = {
 	},
 };
 
+/**
+ * The 2-waiting state at 279px (design round 2, D17): the heading row carrying
+ * "Update all (2)" AND the ⟳ check control, at the narrowest sidebar the app
+ * draws. The measured boxes said it fits; this is the frame that shows it.
+ */
+export const TwoWaitingNarrow: Story = {
+	render: () => {
+		installBridge({
+			autoAgents: false,
+			items: [
+				{
+					kind: "agent",
+					name: "coder",
+					state: "available",
+					classification: "remote-only",
+				},
+				{
+					kind: "agent",
+					name: "reviewer",
+					state: "available",
+					classification: "remote-only",
+				},
+			],
+		});
+		return <Page width={279} />;
+	},
+	play: async () => {
+		await screen.findByTestId("hub-update-all-agent");
+		expect(screen.getByTestId("hub-check-now")).toBeTruthy();
+	},
+};
+
+/**
+ * The MANUAL item's tooltip sentence (design round 2, D17): auto-update off, so
+ * the sentence is the plain offer and the action, not "it will update
+ * automatically". Focused, because the tooltip opens on focus and not on hover.
+ */
+export const MarkFocusedManual: Story = {
+	render: () => {
+		installBridge({
+			autoAgents: false,
+			items: [
+				{
+					kind: "agent",
+					name: "coder",
+					state: "available",
+					classification: "remote-only",
+				},
+			],
+		});
+		return <Page />;
+	},
+	play: async () => {
+		(await screen.findByTestId("hub-mark-agent-coder")).focus();
+		await screen.findByText(
+			/A newer version is on the hub\. Click to update\./,
+		);
+	},
+};
+
 /** Keyboard focus on a mark opens the sidebar's own tooltip, naming the action (design D3). */
 export const MarkFocused: Story = {
 	render: () => {
@@ -695,12 +809,17 @@ export const CheckNow: Story = {
 	},
 };
 
-/** Manual mode, retry after the hub restored the item: a sentence, not a silent second press (UX U2). */
+/**
+ * Manual mode, retry after the hub restored the item: the retry answers in a
+ * sentence, the ROW then offers the update, and the next press applies it
+ * (UX round 2, U10 - "press it again to update" used to be unperformable: every
+ * press was another retry and the item was unreachable).
+ */
 export const RetryReadyToUpdate: Story = {
 	render: () => {
 		installBridge({
 			autoAgents: false,
-			applyOutcome: { outcome: "would-merge" },
+			retryOutcome: { outcome: "would-merge" },
 			items: [
 				{
 					kind: "agent",
@@ -713,8 +832,18 @@ export const RetryReadyToUpdate: Story = {
 		return <Page />;
 	},
 	play: async () => {
-		await userEvent.click(await screen.findByTestId("hub-mark-agent-coder"));
+		const mark = await screen.findByTestId("hub-mark-agent-coder");
+		expect(mark.getAttribute("data-hub-mark")).toBe("failed");
+		await userEvent.click(mark);
 		await screen.findByText(/It is ready to update/);
+		// The row is now an OFFER: pressing again updates, which is what the
+		// sentence tells the person to do.
+		const again = await screen.findByTestId("hub-mark-agent-coder");
+		expect(again.getAttribute("data-hub-mark")).toBe("available");
+		await userEvent.click(again);
+		await waitFor(() => {
+			expect(screen.queryByTestId("hub-mark-agent-coder")).toBeNull();
+		});
 	},
 };
 

@@ -137,10 +137,15 @@ export function hubItemIndex(
 	return index;
 }
 
-/** The B6.4 copy table, verbatim. */
+/**
+ * The B6.4 copy table. One line is re-worded from the design's draft
+ * (`provider-error`: "your model" named neither the merging model nor the
+ * configured one, and "retry" appeared twice in five words - design round 2,
+ * D16); every other sentence is B6.4 verbatim.
+ */
 export const HUB_ERROR_SENTENCE: Record<string, string> = {
 	"provider-error":
-		"Couldn't reach your model to merge this. Will retry; or retry now.",
+		"Couldn't reach the model that merges this. It retries on its own; press Retry to try now.",
 	"model-unavailable":
 		"No model available for merging. Check Settings › Agent Hub.",
 	"prompt-too-long": "This one is too large to merge automatically.",
