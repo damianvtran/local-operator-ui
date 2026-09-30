@@ -15,7 +15,7 @@
  * to prevent. Nothing here re-renders React and no theme value passes through
  * it: a theme switch repaints the thumb through the CSS `var()` alone.
  *
- * WHAT IT MUST NEVER DO (perf lane constraint, v0.31.24 stutter audit). Both
+ * WHAT IT MUST NEVER DO (perf lane constraint, v0.31.24 stutter audit). ALL its
  * document listeners are strictly OBSERVATIONAL: passive, capture-phase, and
  * they never read or write scroll state — no `scrollTop`, no `scroll-behavior`,
  * no `scrollTo`, no `preventDefault`. That is not boilerplate here: the
@@ -25,11 +25,25 @@
  * The only value this module reads is `overflow` from computed style, and the
  * only thing it writes is `data-lo-scrollbar`.
  *
- * COST DISCIPLINE. Every element's computed style is resolved at most ONCE (the
- * `WeakMap`s below); the ancestor walk happens once per distinct event target,
- * not once per event; the qualifying-event path is a map write plus a timer
- * arming that only happens when no timer is outstanding. A read that scales
- * with event count is the thing this file is written to avoid.
+ * THE KEYBOARD CUE IS A REVEAL LIKE ANY OTHER (review round 1: M1 / Q1 / D1 /
+ * U1). A reader who has TABBED onto a scroller has not scrolled it and has not
+ * pointed at it, so neither of the original two doors fires for them. The
+ * stylesheet's own `:focus-visible` animation could not cover that case either,
+ * because it keyed on an attribute the OTHER two doors write — so it played for
+ * the readers who had already been shown the bar and never for the one who had
+ * not. `focusin` is the third door, and it drives the same attribute and the
+ * same hold the wheel does. That is also why the stylesheet carries no
+ * `animation` at all any more: an animation on the scroller takes
+ * `animation-name` (and resets `animation-timeline`) away from anything else
+ * animating that element — U2 measured the transcript's own scroll-linked top
+ * fade popping for exactly that reason — while a custom property composes.
+ *
+ * COST DISCIPLINE. Every element's computed style is resolved at most ONCE for
+ * a POSITIVE answer (the `WeakMap`s below, and see `isScroller` for why the
+ * negatives are not kept); the ancestor walk happens once per distinct event
+ * target, not once per event; the qualifying-event path is a map write plus a
+ * timer arming that only happens when no timer is outstanding. A read that
+ * scales with event count is the thing this file is written to avoid.
  */
 
 /** How long a reveal is held after the last qualifying event. */
@@ -49,6 +63,13 @@ export const SCROLLBAR_EASING = "cubic-bezier(0.4, 0, 0.6, 1)";
 export const SCROLLBAR_ATTRIBUTE = "data-lo-scrollbar";
 export const SCROLLBAR_ACTIVE = "active";
 export const SCROLLBAR_IDLE = "idle";
+/**
+ * The marker on the root of a subtree whose attribute mutations an undo stack
+ * is watching (the canvas wysiwyg editor's root). It is what the exclusion
+ * below is keyed on — see `insideEditableRegion` for why the `contenteditable`
+ * test alone is not enough.
+ */
+export const UNDO_SCOPE_ATTRIBUTE = "data-undo-scope";
 
 /** The timers this module needs, injectable so tests carry no real ones. */
 export interface ScrollbarActivityClock {
@@ -100,29 +121,75 @@ const elementOverflows = (element: Element): boolean => {
 };
 
 /**
- * The contenteditable exclusion, and WHY IT IS AN EXCLUSION RATHER THAN AN
- * ALLOWANCE. The canvas wysiwyg editor's undo manager observes attribute
- * mutations in its own subtree and treats every attribute but `data-highlight`
- * as a content change (`shared/lib/undo-manager.ts`, `handleMutation`), so an
- * attribute write inside a contenteditable region would manufacture undo steps
- * out of a scrollbar's fade.
+ * The exclusion, and WHY IT IS A WALK RATHER THAN ONE INHERITED PROPERTY. The
+ * canvas editor's undo manager observes attribute mutations in its own subtree
+ * and treats every attribute but `data-highlight` as a content change
+ * (`shared/lib/undo-manager.ts`, `handleMutation`), so an attribute write
+ * anywhere inside that subtree manufactures undo steps out of a scrollbar's
+ * fade. The first version of this guard tested `isContentEditable` alone, which
+ * is the wrong question twice over (review round 1, M2 / Q3 — reproduced as
+ * history 1 -> 3 with the repo's own manager):
  *
- * `isContentEditable` is inherited DOWN the tree, which is exactly the shape
- * this needs: the editor's own scroll container is an ANCESTOR of the editable
- * element (`wysiwyg-markdown-editor.tsx`, the `overflow-y-auto` wrapper), so it
- * resolves `false` here and still fades normally, while the editable element
- * and everything inside it is skipped. A scroller nested inside the document
- * body does not fade; that is the accepted cost of never writing inside a
- * document the user's undo stack is watching (design note § 9.4).
+ * - the manager's scope is the element it was CONNECTED to (`editorRef`, the
+ *   `contentEditable={!reviewState}` root), not wherever editability happens to
+ *   be inherited from, and in review state that root is not editable at all;
+ * - the diff bodies injected into it carry `contenteditable="false"` and hold
+ *   scroller `pre` elements, and an inherited test calls those "not editable",
+ *   which is exactly backwards — `false` means "this part of the document is not
+ *   yours to edit", not "this part is outside the document".
+ *
+ * So the test is structural, on the way up: the element is inside a watched
+ * subtree when ANY node from it to the root is editable (`isContentEditable` —
+ * the live-editing shape), carries an explicit `contenteditable` attribute of
+ * any value (the `false` shape, and the root's own), or carries the
+ * `data-undo-scope` marker the editor root puts there. The marker is what makes
+ * this independent of React's rendering of `contentEditable={false}` and of the
+ * review-state flip; the two attribute tests are what keep it working on the
+ * subtree shapes that existed before it.
+ *
+ * The editor's own scroll container is an ANCESTOR of all of this (the
+ * `overflow-y-auto` wrapper), so it is outside the scope and still fades
+ * normally; a scroller nested inside the document body does not fade, which is
+ * the accepted cost of never writing inside a document the user's undo stack is
+ * watching (design note § 9.4).
+ *
+ * NO CACHE, DELIBERATELY. Unlike the scroller test this is a walk of attribute
+ * reads with no style resolution behind it, and its answer is state-dependent
+ * in the other direction (a subtree becomes watched when the editor mounts, and
+ * the root's editability flips with the review button), so a memo here would be
+ * a stale answer waiting to happen.
  */
-const insideEditableRegion = (element: Element): boolean =>
-	(element as HTMLElement).isContentEditable === true;
+const EDITABLE_ATTRIBUTE = "contenteditable";
+const insideEditableRegion = (element: Element): boolean => {
+	let node: Element | null = element;
+	while (node !== null) {
+		if ((node as HTMLElement).isContentEditable === true) return true;
+		if (node.getAttribute(EDITABLE_ATTRIBUTE) !== null) return true;
+		if (node.getAttribute(UNDO_SCOPE_ATTRIBUTE) !== null) return true;
+		node = node.parentElement;
+	}
+	return false;
+};
 
-/** The element a `scroll` handler's target is, or null when it is not one. */
+/**
+ * The element an event target is, or null when it is not one. `nodeType === 1`
+ * and not "has a numeric nodeType": a `scroll` that reaches a document-level
+ * capture listener with the DOCUMENT as its target (nodeType 9, which happens
+ * the moment anything lets the viewport itself scroll) would otherwise be
+ * passed to `getComputedStyle`, which throws inside the listener (review round
+ * 1, Min2 / Q4).
+ */
 const asElement = (target: EventTarget | null): Element | null =>
-	target !== null && typeof (target as Element).nodeType === "number"
+	target !== null && (target as Element).nodeType === 1
 		? (target as Element)
 		: null;
+
+/**
+ * `:focus-visible` — the browser's own answer to "did this focus arrive from
+ * the keyboard". A click into a scroller does not make it focus-visible, so the
+ * pointer-driven reader gets no blip from a click (measured: U2's control run).
+ */
+const FOCUS_VISIBLE = ":focus-visible";
 
 /**
  * Install the scrollbar activity tracking. Returns the uninstall function, so a
@@ -144,7 +211,9 @@ export function installScrollbarActivity(
 	const expiries = new Map<Element, number>();
 	/*
 	 * Both caches are `WeakMap`s keyed by an element the app already holds, so
-	 * they cost nothing to keep and can never retain a detached node.
+	 * they cost nothing to keep and can never retain a detached node. Both keep
+	 * POSITIVE answers only — see `isScroller` and `scrollerFor` for why a cached
+	 * negative is a defect rather than a saving.
 	 */
 	const scrollerAnswers = new WeakMap<Element, boolean>();
 	const nearestScroller = new WeakMap<Element, Element | null>();
@@ -155,7 +224,17 @@ export function installScrollbarActivity(
 		const cached = scrollerAnswers.get(element);
 		if (cached !== undefined) return cached;
 		const answer = (options.isScroller ?? elementOverflows)(element);
-		scrollerAnswers.set(element, answer);
+		/*
+		 * ONLY THE POSITIVES ARE KEPT, and that is a correctness rule rather than a
+		 * cost one (review round 1, M3 / Q2, reproduced in the real renderer).
+		 * `overflow` is state-dependent on live surfaces — the transcript flips
+		 * between `overflow-hidden` and `overflow-auto`, a detail part flips with
+		 * `max-h-64 overflow-y-auto` on expand — so a cached `false` outlives the
+		 * state that produced it and the element can never reveal again, hover or
+		 * scroll, for the rest of the session. A `true` cannot go stale that way:
+		 * an element that is a scroller stays one, and the walk below stops on it.
+		 */
+		if (answer) scrollerAnswers.set(element, answer);
 		return answer;
 	};
 
@@ -168,13 +247,17 @@ export function installScrollbarActivity(
 	 * Resolved once per distinct target because `pointerover` fires for every
 	 * element the pointer crosses: without the memo the same card would walk its
 	 * ancestors on every hover.
+	 *
+	 * The walk STOPS at an undo-observed subtree rather than jumping over it. An
+	 * inner scroller that is inside the editor must not reveal the editor's own
+	 * container instead — the write is what must not happen, not merely the
+	 * outermost choice of target.
 	 */
 	const scrollerFor = (target: EventTarget | null): Element | null => {
 		const start = asElement(target);
 		if (start === null) return null;
-		if (nearestScroller.has(start)) {
-			return nearestScroller.get(start) ?? null;
-		}
+		const cached = nearestScroller.get(start);
+		if (cached !== undefined) return cached;
 		let found: Element | null = null;
 		let node: Element | null = start;
 		while (node !== null) {
@@ -185,7 +268,15 @@ export function installScrollbarActivity(
 			}
 			node = node.parentElement;
 		}
-		nearestScroller.set(start, found);
+		/*
+		 * ONLY THE POSITIVES ARE KEPT, for the reason `isScroller` gives: a cached
+		 * "nothing scroller-shaped above this element" is a statement about the tree
+		 * at one moment, and the tree moves — a collapsed panel expands, a route
+		 * renders, a `max-h-64 overflow-y-auto` detail part grows, and the walk's
+		 * negative answer would then outlive it for every element the pointer
+		 * crosses afterwards (review round 1, M3 / Q2: the same defect one level up).
+		 */
+		if (found !== null) nearestScroller.set(start, found);
 		return found;
 	};
 
@@ -258,8 +349,13 @@ export function installScrollbarActivity(
 	const onScroll = (event: Event): void => {
 		const element = asElement(event.target);
 		if (element === null) return;
-		if (insideEditableRegion(element)) return;
+		/*
+		 * The scroller test runs first because it is the cached one; the scope walk
+		 * behind it is a handful of attribute reads and only runs for elements that
+		 * are actually scrollers, which is a small set even on a scroll.
+		 */
 		if (!isScroller(element)) return;
+		if (insideEditableRegion(element)) return;
 		reveal(element);
 	};
 
@@ -276,6 +372,32 @@ export function installScrollbarActivity(
 		reveal(scrollerFor(event.target));
 	};
 
+	/**
+	 * The keyboard door: focus arriving on (or inside) a scroller reveals it for
+	 * the ordinary hold, cold or not.
+	 *
+	 * KEYBOARD ONLY, by the browser's own definition of it. `:focus-visible` is
+	 * the platform's answer to "was this focus keyboard-driven", so a click that
+	 * focuses a scroller does not blip it while a Tab does; a host that cannot
+	 * answer the question at all fails OPEN (the cue matters more than a stray
+	 * reveal), and that choice is spelled out rather than implied.
+	 *
+	 * Nothing is written when the focused element is not inside a scroller, and
+	 * the scope guard is the same one the other doors use — the editor is
+	 * keyboard-reachable, and tabbing into it must not manufacture undo steps
+	 * either.
+	 */
+	const onFocusIn = (event: Event): void => {
+		const start = asElement(event.target);
+		if (start === null) return;
+		if (insideEditableRegion(start)) return;
+		const keyboardDriven =
+			typeof (start as Element).matches !== "function" ||
+			(start as Element).matches(FOCUS_VISIBLE);
+		if (!keyboardDriven) return;
+		reveal(scrollerFor(start));
+	};
+
 	/*
 	 * `{capture: true, passive: true}`: capture because a scroll event does not
 	 * bubble and no other handler should be able to keep this one from seeing it;
@@ -289,11 +411,13 @@ export function installScrollbarActivity(
 	doc.addEventListener("scroll", onScroll, listenerOptions);
 	doc.addEventListener("pointerover", onPointerOver, listenerOptions);
 	doc.addEventListener("pointerdown", onPointerDown, listenerOptions);
+	doc.addEventListener("focusin", onFocusIn, listenerOptions);
 
 	return () => {
 		doc.removeEventListener("scroll", onScroll, listenerOptions);
 		doc.removeEventListener("pointerover", onPointerOver, listenerOptions);
 		doc.removeEventListener("pointerdown", onPointerDown, listenerOptions);
+		doc.removeEventListener("focusin", onFocusIn, listenerOptions);
 		if (timer !== null) {
 			clock.clearTimer(timer);
 			timer = null;

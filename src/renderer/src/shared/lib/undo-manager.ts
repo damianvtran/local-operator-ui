@@ -22,6 +22,23 @@ type HistoryState = {
 	};
 };
 
+/**
+ * ATTRIBUTES THAT ARE NOT CONTENT, kept in one place so the list cannot drift
+ * from the code that writes them.
+ *
+ * `data-highlight` is the find-and-replace highlighter's — it decorates a match
+ * without changing the document.
+ *
+ * `data-lo-scrollbar` is the scrollbar fade's activity marker. The module that
+ * writes it skips every subtree carrying `data-undo-scope` (the editor root it is
+ * connected to), so on today's shapes a write cannot land in here at all — this
+ * entry is the second lock on that door, because an attribute write is a cheap
+ * thing to miss and the price of missing it is a fabricated undo step inside the
+ * reader's own file (design note § 9.4; review round 1, M2 / Q3 reproduced the
+ * failure with this class and the write landing in a diff body).
+ */
+const NON_CONTENT_ATTRIBUTES = new Set(["data-highlight", "data-lo-scrollbar"]);
+
 export class UndoManager {
 	private history: HistoryState[] = [];
 	private pointer = -1;
@@ -467,7 +484,10 @@ export class UndoManager {
 				mutation.type === "childList" ||
 				mutation.type === "characterData" ||
 				(mutation.type === "attributes" &&
-					mutation.attributeName !== "data-highlight"),
+					!(
+						mutation.attributeName !== null &&
+						NON_CONTENT_ATTRIBUTES.has(mutation.attributeName)
+					)),
 		);
 
 		if (hasContentChanges) {
