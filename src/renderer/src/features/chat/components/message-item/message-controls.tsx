@@ -61,7 +61,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 
 	const canEnableSpeechFeature = canUseRadientSpeech;
 
-	// The sentence for a disabled control comes from the one copy table the four
+	// The sentence for a disabled control comes from the one copy table the five
 	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
 	// unreachable for a signed-in reader by construction: only an ANSWERED "no
 	// account" or a refused credential earns it (issue #674; design round 1,

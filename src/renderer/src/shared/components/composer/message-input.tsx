@@ -1629,7 +1629,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const canEnableRecordingFeature = canUseRadientSpeech;
 
 		/*
-		 * The reason the control is off, from the one copy table the four speech
+		 * The reason the control is off, from the one copy table the five speech
 		 * surfaces share (`@shared/lib/speech-gate`). It is rendered only on the
 		 * disabled arm, and `sign-in` is unreachable for a signed-in reader by
 		 * construction now (issue #674; design round 1, D1): only an ANSWERED
