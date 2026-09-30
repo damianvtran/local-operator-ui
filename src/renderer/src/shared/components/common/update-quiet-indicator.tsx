@@ -157,8 +157,22 @@ export const UpdateQuietIndicatorView: FC<{
 						 * band, but the rule is the branding contract's and not a property of
 						 * this row - a ring drawn as a shadow is clipped by the first
 						 * `overflow: hidden` ancestor a caller adds.
+						 *
+						 * OFFSET 0, AND THE `!` THAT MAKES IT TRUE (design D5, review U12's
+						 * sibling). The app's focus rule is UNLAYERED
+						 * (`html :focus-visible { outline-offset: 2px }`, `styles/index.css`),
+						 * so it outranks every utility and a bare `outline-offset-0` here
+						 * would be silently ignored - which is what the plain
+						 * `outline-offset-1` used to be. `!` is the same escape the Button
+						 * sizes already use. It is not cosmetic: the band is `h-7` (28px) with
+						 * a 24px control centred in it, so only ~2px of slack sits below the
+						 * control and the band's bottom edge IS the window's bottom edge
+						 * (`chat-layout.tsx`, the shell's `overflow: hidden` column). At
+						 * offset 2 the 2px stroke hangs 4px below the control and the bottom
+						 * stroke was clipped off-window; at 0 the stroke lands inside the
+						 * row's own slack.
 						 */
-						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
+						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-0!",
 					)}
 					onClick={() => onOpen(offer.type)}
 				>

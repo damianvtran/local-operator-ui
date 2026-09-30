@@ -255,9 +255,6 @@ const buttonByText = (text) =>
  * handler, because "the dialog closed" is a fact about the tree and not about a
  * function's return value.
  */
-/** The last `nextAnswer` made by a case that wants to settle it by hand. */
-const settleAnswer = null;
-
 const pressReload = async ({
 	cold = false,
 	rows = 3,

@@ -1201,6 +1201,208 @@ test("U4: pressing the other surface switches the card rather than doing nothing
 	);
 });
 
+/* ------------------------------------- the aggressive check's own loud step (R9) */
+
+/**
+ * The by-hand panel, which is one of the two routes that call the AGGREGATE
+ * check (`checkForAllUpdates`) - the other is the server offer card's own
+ * control. Its copy tells the reader to run the check, so it is the honest way
+ * into the path whose verdict lines these cases are about.
+ */
+const fireManualRequiredPanel = () =>
+	fire("backend-update-manual-required", {
+		latestVersion: "0.55.10",
+		currentVersion: "0.55.9",
+		installVersion: "0.55.10",
+		message: "This server is not one the app can update.",
+		appOwned: false,
+		updateCommand: "pip install -U local-operator",
+	});
+
+test("R9: a verdict does not open a card for an offer the app is not holding", async () => {
+	await reset();
+	await mount();
+	/*
+	 * THE USER ALREADY ANSWERED THIS RELEASE with "Update later": a deferral is
+	 * recorded and the surface is cleared, which is the state every later check's
+	 * verdict is read in - and the verdict still says `available`, because the
+	 * deferral lives on THIS side and main's check knows nothing about it.
+	 */
+	await fire("backend-update-available", SERVER_OFFER);
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.ok(
+		cardHeadings().includes("Server update available"),
+		"the offer's card is up for the press",
+	);
+	await press("Update later");
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		false,
+		"the dismissal closes the card it was on",
+	);
+	assert.equal(bandIsQuiet(), true, "and takes the band's item with it");
+
+	/*
+	 * Now the by-hand panel arrives and the reader presses its check. The check's
+	 * own `backend-update-available` event is the one that would re-record an
+	 * offer, and the deferral is what stops it - so the surface holds no offer
+	 * while the verdict reads `available`.
+	 */
+	await fireManualRequiredPanel();
+	checkScript = () => ({
+		app: "current",
+		server: "available",
+		affirmation: null,
+	});
+	assert.equal(
+		useUpdateNoticeStore.getState().offers[UpdateType.BACKEND],
+		null,
+		"the premise: the surface holds no offer for the deferred release",
+	);
+	await press("Check for updates");
+	assert.equal(
+		detailOpened()[UpdateType.BACKEND],
+		false,
+		"a verdict is not licence to open a card for a surface holding no offer",
+	);
+});
+
+test("R9: a check that finds both channels opens one card and leaves the other in the band", async () => {
+	await reset();
+	await mount();
+	/*
+	 * THE SERVER OFFER CARD'S OWN CHECK, which is the other route into the
+	 * aggregate (the by-hand panel is the first). A card rather than a panel is
+	 * deliberate here: the by-hand panel is ABOVE both offer cards in the same
+	 * early-return chain, so a case that left it up could not observe what paints.
+	 */
+	await fire("backend-update-available", {
+		...SERVER_OFFER,
+		manual: true,
+		canManageUpdate: false,
+		appOwned: false,
+	});
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.ok(
+		cardHeadings().includes("Server update available"),
+		"the press opens the card whose check control this case drives",
+	);
+
+	checkScript = () => ({
+		app: "available",
+		server: "available",
+		affirmation: null,
+	});
+	await press("Check for updates");
+	const open = detailOpened();
+	/*
+	 * ONE CARD, NOT TWO QUEUED BEHIND EACH OTHER. Both cards are
+	 * `fixed top-4 right-4 z-50` in one early-return chain, so opening both showed
+	 * one and QUEUED the other: closing the first revealed the second, which is a
+	 * card the reader never asked for.
+	 */
+	assert.equal(
+		[open[UpdateType.UI], open[UpdateType.BACKEND]].filter(Boolean).length,
+		1,
+		"exactly one surface holds the detail",
+	);
+	assert.equal(
+		cardHeadings().filter((heading) => heading.includes("available")).length,
+		1,
+		"and exactly one card paints",
+	);
+	assert.equal(
+		indicatorButtons().length,
+		1,
+		"the surface that gave way keeps its offer in the band",
+	);
+	assert.equal(
+		indicatorButtons()[0].getAttribute("data-update-indicator-open"),
+		open[UpdateType.UI] ? UpdateType.BACKEND : UpdateType.UI,
+		"and the item in the band is the surface whose card is NOT up",
+	);
+});
+
+test("R10/U11: the hand-back returns to the surface the press came from, not the first item", async () => {
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await fire("backend-update-available", SERVER_OFFER);
+	assert.equal(indicatorButtons().length, 2, "both surfaces are offered");
+
+	const server = indicatorButtons().find(
+		(button) =>
+			button.getAttribute("data-update-indicator-open") === UpdateType.BACKEND,
+	);
+	assert.ok(server, "the server's item is in the band");
+	await act(async () => {
+		server.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.ok(cardHeadings().includes("Server update available"));
+
+	const card = document.querySelector("[data-release-detail]");
+	assert.ok(card, "the press opens a card");
+	await act(async () => {
+		card.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	assert.equal(
+		document.activeElement?.getAttribute("data-update-indicator-open"),
+		UpdateType.BACKEND,
+		"focus returns to the SERVER item, the landmark the press came from",
+	);
+});
+
+test("U12: the close control is not inside the card's scrolling box", async () => {
+	await reset();
+	const container = await mount();
+	await fire("backend-update-available", SERVER_OFFER);
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	const card = container.querySelector("[data-release-detail]");
+	assert.ok(card, "the server card is up");
+	assert.doesNotMatch(
+		(card.className ?? "").toString(),
+		/overflow-y-auto/,
+		"the card itself no longer scrolls, so nothing positioned against it can travel",
+	);
+	const scroller = card.querySelector("[data-release-detail-scroll]");
+	assert.ok(scroller, "the scrolling box is its own element");
+	assert.match(
+		(scroller.className ?? "").toString(),
+		/overflow-y-auto/,
+		"and it is the one that scrolls",
+	);
+	const close = card.querySelector(
+		'button[aria-label="Close server update details"]',
+	);
+	assert.ok(close, "the card carries its visible exit");
+	/*
+	 * STRUCTURAL, because jsdom lays nothing out: an abspos child of a scroll
+	 * container scrolls WITH it, so "outside the scroller" is the property that
+	 * keeps the exit reachable however far the notes are scrolled - measured in a
+	 * real browser as `beforeY 24 (visible) -> afterY -20 (NOT visible)` before the
+	 * split (review U12).
+	 */
+	assert.equal(
+		scroller.contains(close),
+		false,
+		"so the exit cannot scroll out of reach with the release notes",
+	);
+});
+
 /* ------------------------------------------- the store cannot outlive the answer */
 
 test("R3: a not-available answer clears the detail with the offer, on both channels", async () => {
