@@ -4566,6 +4566,23 @@ export function useCanonicalSessionStream(
 	// closed over, so an in-flight page can tell whether it is still wanted.
 	const sessionRef = useRef(sessionId);
 	sessionRef.current = sessionId;
+	/*
+	 * A per-VIEW generation of the conversation on screen: bumped every time
+	 * `sessionId` changes, so leaving A and coming back to A is a NEW view.
+	 *
+	 * WHY THE BARE ID IS NOT ENOUGH (loader-continuity round 1, R1-3). A page still
+	 * out for A when the reader goes A -> B -> A compared equal to the returning
+	 * view by id, so it was treated as current: it landed on A's freshly reset
+	 * transcript (`oldestId` null), where the reducer's first-page rule seeded the
+	 * cursor from that deep page, and the rows between it and the tail were never
+	 * fetched - the dead-zone class this loader exists to close, by a narrow race.
+	 * Comparing the epoch makes "the same conversation" mean "the same visit to it".
+	 * Written in render, like `sessionRef`, so it is already correct in the first
+	 * frame of the new view and idempotent under a repeated render.
+	 */
+	const epochRef = useRef({ id: sessionId, epoch: 0 });
+	if (epochRef.current.id !== sessionId)
+		epochRef.current = { id: sessionId, epoch: epochRef.current.epoch + 1 };
 
 	/*
 	 * The older-page loader. One per mounted hook, and NOT keyed to a session: it
@@ -4590,7 +4607,13 @@ export function useCanonicalSessionStream(
 		// longer on screen, and `applyHistoryPage` would happily splice it into the
 		// new one (clause H); the loader checks `isCurrent` before it applies.
 		const requested = sessionId;
-		const outcome = await loader.load(requested, {
+		const epoch = epochRef.current.epoch;
+		const stillHere = () => epochRef.current.epoch === epoch;
+		// Single-flight is per VIEW for the same reason `isCurrent` is: a page left
+		// out for a previous visit to this conversation resolves `stale`, and handing
+		// that promise to the returning reader would answer their ask with a dropped
+		// page instead of one for the transcript they are looking at.
+		const outcome = await loader.load(`${requested}#${epoch}`, {
 			getTranscript: () => viewRef.current.transcript,
 			readPage: (beforeId) =>
 				desktopResult<DesktopHistoryPage>({
@@ -4599,7 +4622,7 @@ export function useCanonicalSessionStream(
 					beforeId,
 					limit: 100,
 				}),
-			isCurrent: () => sessionRef.current === requested,
+			isCurrent: stillHere,
 			commit: (update) =>
 				commitView((current) => {
 					const transcript = update(current.transcript);
@@ -4613,7 +4636,7 @@ export function useCanonicalSessionStream(
 			 * ("Loading earlier messages" with no request out and no way to retry).
 			 */
 			setLoading: (loading) => {
-				if (sessionRef.current !== requested) return;
+				if (!stillHere()) return;
 				commitView((current) =>
 					current.loadingOlder === loading
 						? current
@@ -4627,7 +4650,7 @@ export function useCanonicalSessionStream(
 		 * slot, and any applied page clears it. `stale` and `nothing-to-load` touch
 		 * nothing - they say nothing about the health of the journal on screen.
 		 */
-		if (sessionRef.current === requested) {
+		if (stillHere()) {
 			if (outcome.kind === "failed")
 				commitView((current) =>
 					current.olderFailed ? current : { ...current, olderFailed: true },

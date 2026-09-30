@@ -2395,7 +2395,10 @@ export function reanchorAfterCursorMiss(
 	return oldest;
 }
 
-/*
+/** Ids the app mints itself; none of them names a journal entry. */
+const NON_ENTRY_ID = /^(?:tool|compaction|local):/;
+
+/**
  * The deepest cursor this reader still holds that the journal can serve, or null
  * when it holds none.
  *
@@ -2418,9 +2421,6 @@ export function reanchorAfterCursorMiss(
  * the app's own echoes are `local:...`: none of those is an entry id, and asking
  * the backend for one only produces another `cursor_missing`.
  */
-/** Ids the app mints itself; none of them names a journal entry. */
-const NON_ENTRY_ID = /^(?:tool|compaction|local):/;
-
 export function reanchorCandidate(
 	state: Pick<TranscriptState, "records">,
 ): string | null {

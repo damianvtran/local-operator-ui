@@ -100,6 +100,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../../canonical/canonical-transcript";
+import type { LoadOlderOutcome } from "../../canonical/load-older";
 import { TAIL_EPS_PX } from "../../canonical/scroll-paging";
 import {
 	EMPTY_TRANSCRIPT,
@@ -483,6 +484,17 @@ export const RunChildReader = ({
 		: fetched.transcript;
 	const loadingOlder = usingPreview ? false : fetched.loadingOlder;
 	const loadOlder = usingPreview ? async () => false : fetched.loadOlder;
+	/*
+	 * The outcome-aware ask and the failed-row flag, passed exactly as the parent
+	 * pane passes its own (`chat-content.tsx`). Without them the transcript's slot
+	 * can never read "failed" here, and a child page that throws is counted against
+	 * the pump's automatic budget with nothing on screen to say so (round 1, R1-2).
+	 * A preview has nothing to load, so it reports `nothing-to-load` and never fails.
+	 */
+	const loadOlderDetailed = usingPreview
+		? async (): Promise<LoadOlderOutcome> => ({ kind: "nothing-to-load" })
+		: fetched.loadOlderDetailed;
+	const olderFailed = usingPreview ? false : fetched.olderFailed;
 
 	/*
 	 * The launch turn, reconciled (`§5.1`). Applied to the READER's own record
@@ -967,6 +979,8 @@ export const RunChildReader = ({
 							workingLine={workingLine}
 							loadingOlder={loadingOlder}
 							onLoadOlder={loadOlder}
+							onLoadOlderOutcome={loadOlderDetailed}
+							olderFailed={olderFailed}
 							containerRef={containerRef}
 							/*
 							 * The pane is 420px by default and the reader is its own column, so the
