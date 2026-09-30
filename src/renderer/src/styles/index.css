@@ -1155,6 +1155,32 @@ html .Mui-focusVisible {
 }
 
 /*
+ * The device chip's ring is drawn INSIDE its own box, and the reason is that its
+ * box is exactly as tall as the clip that contains it.
+ *
+ * The chip sits in the chat header's title block, which is `h-5` (20px, the
+ * block's own line height) with `overflow-clip` - and `clip` is there on purpose:
+ * an outline is ink overflow, so an ancestor's clip trims it exactly as it trims
+ * an outset shadow (the rule above records that). With the global 2px/2px outset
+ * ring the chip therefore wore two 2px BARS down its left and right edges with the
+ * top and bottom segments cut away - measured on the design round's own frames as
+ * 308 changed pixels on every pick, identical in both brand themes and in
+ * dracula, and stable for as long as the pane lived (design review round 1, D2).
+ *
+ * Moving the ring inside the box is the remedy that keeps both facts: focus is
+ * still drawn as a FULL ring (the design's grammar - hover is a colour step, focus
+ * is a ring), and the ancestor's clip has nothing left to trim. The selector is
+ * the attribute the control already carries for its own rigs, so this cannot
+ * reach a control that has not been looked at.
+ *
+ * Unlayered, like the rule above and for the same reason: a utility in Tailwind's
+ * `utilities` layer loses to this block whatever its specificity.
+ */
+html [data-device-chip]:focus-visible {
+	outline-offset: -2px;
+}
+
+/*
  * `outline-none` is deliberately NOT reversed here.
  *
  * The tempting fix for Tailwind v4's `outline-none` (which pins
