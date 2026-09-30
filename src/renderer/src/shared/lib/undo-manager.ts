@@ -34,7 +34,7 @@ type HistoryState = {
  * connected to), so on today's shapes a write cannot land in here at all — this
  * entry is the second lock on that door, because an attribute write is a cheap
  * thing to miss and the price of missing it is a fabricated undo step inside the
- * reader's own file (design note § 9.4; review round 1, M2 / Q3 reproduced the
+ * reader's own file (design note § 9.8; review round 1, M2 / Q3 reproduced the
  * failure with this class and the write landing in a diff body).
  */
 const NON_CONTENT_ATTRIBUTES = new Set(["data-highlight", "data-lo-scrollbar"]);

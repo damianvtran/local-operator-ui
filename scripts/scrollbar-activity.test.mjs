@@ -421,7 +421,7 @@ test("a keyboard arrival on a cold scroller reveals it, and a pointer's focus do
 /*
  * THE SCOPE GUARD, ON BOTH PATHS AND ON BOTH SHAPES (review round 1: M2 / Q3,
  * Min1). The first version tested one inherited property and covered neither the
- * review-state shape the note § 9.4 is about (the editor root stops being
+ * review-state shape the note § 9.8 is about (the editor root stops being
  * editable while the manager stays connected, and the diff bodies injected into
  * it carry `contenteditable="false"`) nor the `scroll` door at all.
  */
@@ -777,7 +777,19 @@ test("no shipped scroller carries a transition or animation list of its own", ()
 				for (const block of sheet.matchAll(/\{([^{}]*)\}/g)) {
 					const body = block[1];
 					if (!/overflow(?:-x|-y)?:\s*(?:auto|scroll)/.test(body)) continue;
-					if (/transition/.test(body)) hits.push(`${path}: a rule block`);
+					/*
+					 * The same two token families the `.tsx` half flags, so the halves
+					 * cannot drift apart while the test's own name promises both (review
+					 * round 2, R2-2): a `transition` list and an `animation` /
+					 * `@keyframes` on the scroller both take the fade's place.
+					 */
+					if (
+						/transition/.test(body) ||
+						/animation/.test(body) ||
+						/keyframes/.test(body)
+					) {
+						hits.push(`${path}: a rule block`);
+					}
 				}
 				continue;
 			}

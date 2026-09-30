@@ -154,7 +154,7 @@ this document's decision and are the ones to implement.
 | --- | --- | --- | --- |
 | **idle** (after the hold) | 0 | no thumb at all; the bar still occupies its 8 px, so nothing moves | timer expiry |
 | **pointer in the container** | 1 for the hold | thumb fades in over 120 ms and leaves when the hold expires — a *stationary* pointer produces no further qualifying event, so § 2.3 governs, not the pointer's presence (design review round 1, D2; the earlier wording promised it "stays while the pointer is inside", which is not what ships) | `pointerover` resolving to a scroller |
-| **pointer in the 8 px strip / on the thumb** | 1 for the hold | the same, and while the pointer is **directly on the thumb** the pseudo-element's native `:hover` keeps it painted even after `--lo-sb` reaches 0 (measured on the palette's thumb: 3041 of 3216 pixels in the thumb's own band painted at rest+hold, `--lo-sb` 0 at that moment) | `pointerover` (memo probe 10: the strip's target is the scroller) |
+| **pointer in the 8 px strip / on the thumb** | 1 for the hold | the same, and while the pointer is **directly on the thumb** the pseudo-element's native `:hover` keeps it painted even after `--lo-sb` reaches 0 (measured on the palette's thumb: 3041 of 3216 pixels in the thumb's own band painted **past the hold**, `--lo-sb` 0 at that moment) | `pointerover` (memo probe 10: the strip's target is the scroller) |
 | **active scrolling** (wheel, trackpad momentum, thumb drag, touch, keyboard) | 1, timer re-armed | revealed, and *kept* revealed for the hold after the last event | `scroll` (capture, passive) |
 | **keyboard arrival (no scroll)** | 1 for the hold | a `Tab` onto a scroller reveals it for the ordinary hold, cold — nothing needs to have been scrolled or hovered first (§ 3). A focus the browser does not call keyboard-driven (`:focus-visible`) reveals nothing | `focusin` in the module, gated on `:focus-visible` |
 | **keyboard scrolling** | 1, timer re-armed | exactly like the wheel, through the same hold | `scroll` |
@@ -242,7 +242,12 @@ at* a scroller without moving it. `:focus-within` is rejected.**
 - **Measured on the app's own frame** (the scene's keyboard arm, run cold before
   any pointer or wheel touches the palette): `active`, `--lo-sb: 1`, 3193 of 5888
   strip pixels in the thumb's colour with nothing scrolled, `animation-name`
-  unchanged across the focus, and back to `idle` / 0 pixels at +2.7 s.
+  unchanged across the focus, and back to `idle` / 0 pixels at +2.7 s. The
+  arrival there is produced by `focus({ focusVisible: true })`: the palette's list
+  is `tabIndex: -1` and a backend-less route has no tabbable scroller, so no real
+  `Tab` can land on it in that scene — the shipped path is the same `focusin` +
+  `:focus-visible` event pair, and the UX round walked it with real `Tab` presses
+  on a live transcript (`active` at +131 ms, `idle` at +2333 ms, fade-out 183 ms).
 - **`:focus-within` is rejected** because it is permanent while focus stays
   inside the container — the memo's probe 5 kept matching it at 3 s, i.e. that
   variant never returned to idle. A transcript, a sidebar
@@ -361,7 +366,7 @@ inventory that claim rests on.
 | Spreadsheet preview chrome (grid internals unconfirmed, § 9.6) | `chat/components/canvas/spreadsheet-preview.tsx:1048` |
 | Freshness bar region | `chat/components/canvas/document-freshness-bar.tsx:134`, `:165` |
 | Markdown fenced code / display math | `chat/components/markdown.css:125`, `:322` |
-| **Markdown tables in chat and project detail** — `div.lo-md-table-scroll`, `overflow-x: auto`, `overscroll-behavior-x: contain`, shared by both markdown component maps | lands via the in-flight `fix/markdown-table-widths`; **inherits by default, no migration** |
+| **Markdown tables in chat and project detail** — `div.lo-md-table-scroll`, `overflow-x: auto`, `overscroll-behavior-x: contain`, shared by both markdown component maps | landed on `main` in #712 and is in this branch as of `ace2ffcb7f`; **inherits by default, no migration** |
 | Two pinned project columns + the board's both-axis scroller | `projects/components/project-board.tsx:609`, `:757` |
 | Project list / timeline / detail | `project-list.tsx:145`, `project-timeline.tsx:195`, `project-detail.tsx:304,307` (audit list) |
 | Agents sidebar / pages / settings | `agents/components/agents-sidebar.tsx:501`, `agents-page.tsx:503,578`, `agent-settings.tsx:66` |
@@ -443,7 +448,7 @@ inventory). This document does not restate those numbers as its own.
    active and the hidden one at rest; verify both directions in the reduced-motion
    pass.
 6. **The `data-lo-scrollbar` write is an attribute write on a live DOM node** —
-   which is exactly what the wysiwyg editor's undo manager watches (§ 9.4).
+   which is exactly what the wysiwyg editor's undo manager watches (§ 9.8).
 
 ---
 
@@ -502,10 +507,12 @@ inventory). This document does not restate those numbers as its own.
    the curve in § 2.1 are mine; if the operator watches the first build and
    calls the hold short or the fade slow, they are one exported constant each and
    the only thing that moves is that line.
-10. **The markdown tables' wrapper is not on `main`.** `div.lo-md-table-scroll`
-    lands via `fix/markdown-table-widths`; this note treats it as a horizontal
-    scroller that inherits the mechanism with no migration. Verify the live
-    surface at implementation review rather than trusting this line.
+10. **The markdown tables' wrapper — resolved, it is on `main`.** `div.lo-md-table-scroll`
+    landed in #712 (`0db7dcb416`, an ancestor of `main`) and is in this branch as
+    of `ace2ffcb7f`, where `d9f06c0349` extended the transition census to the
+    cascading sheets precisely because that wrapper is a scroller declared in
+    `markdown.css` rather than by a class list. It inherits the mechanism with no
+    migration, and its own rule declares no transition (the census's assertion).
 
 ---
 
@@ -525,6 +532,13 @@ inventory). This document does not restate those numbers as its own.
   code does not reveal the transcript's own bar (a wheel still does: the `scroll`
   event lands on the log). Skipping it needs the same `scrollWidth`/`scrollHeight`
   read Q7 above rejects, so it is deferred and recorded rather than half-fixed.
+  `div.lo-md-table-scroll` is a **second instance of the same accepted swallow** —
+  a table narrower than its pane scrolls nothing, resolves as the innermost
+  scroller under the pointer, and takes the hover from the transcript until the
+  reader wheels or moves off it (measured in round 2: the wrapper `active`, the
+  log `idle`; a wheel over it reveals the log normally). With tables now ordinary
+  in agent transcripts this is the more common shape of the two; it inherits the
+  same deferral for the same reason.
 - **The thumb under the pointer (D3, measured).** The design's "solid under the
   cursor" holds past the hold: with the pointer parked on the thumb and the state
   at `idle`/`--lo-sb: 0`, 3041 of 3216 pixels in the thumb's own band are still
@@ -539,7 +553,7 @@ inventory). This document does not restate those numbers as its own.
   `scripts/contrast-contract.mjs` still has no scrollbar row (§ 9.3). Both are
   changes to documents and gates this PR does not own; they are `deferred —` in
   the PR thread rather than silently half-done here.
-- **The undo manager's second lock.** The scope guard is structural (§ 9.4), and
+- **The undo manager's second lock.** The scope guard is structural (§ 9.8), and
   in addition `undo-manager.ts` now ignores `data-lo-scrollbar` the way it
   already ignored `data-highlight` — the guard prevents the write, this makes the
   write harmless if a future shape defeats the guard. The editor root carries
