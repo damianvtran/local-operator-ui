@@ -7504,6 +7504,24 @@ export const STORIES = [
 	 * the field yet.
 	 */
 	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - the same
+	 * stack with the declared ring inside it - so the staircase's full pitch is on disk
+	 * too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],

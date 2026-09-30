@@ -64,7 +64,7 @@ import {
 	meshGeometry,
 	zoomAbout,
 } from "./mesh-positions";
-import { openingDeviceIds, prefixGroups } from "./mesh-scope";
+import { openingLevels, prefixGroups, scopeStacks } from "./mesh-scope";
 import { MeshScopeLayer } from "./mesh-scope-layer";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
@@ -188,11 +188,12 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 
 	/*
 	 * THE BOUNDARIES COME FIRST, because a boundary's label is now part of the GEOMETRY: a
-	 * row that OPENS an enclosure reserves the label's band above itself (design review
-	 * round 1, D2; `SCOPE_OPEN_GAP` in `mesh-positions.ts`), so the layout is a function of
-	 * the slots AND of which of them open a group. `openingDeviceIds` is that seam -
-	 * computed from the same groups the layer draws, so the reserved band and the drawn
-	 * label cannot point at two different rows.
+	 * row that OPENS an enclosure stack reserves the stack's whole band above itself
+	 * (design review round 1, D2; round 2's NEST + STAGGER; `scopeOpenGap` in
+	 * `mesh-positions.ts`), so the layout is a function of the slots AND of how many levels
+	 * each of them opens. `scopeStacks` is that seam - computed from the same groups the
+	 * layer draws, so the reserved band and the drawn labels cannot point at two different
+	 * rows.
 	 *
 	 * `mesh-scope.ts` owns the three tiers and the six things it refuses to draw; this memo
 	 * only keeps the arithmetic off the render path - a pan writes a style, it does not
@@ -204,13 +205,22 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		[graph.devices, graph.selfDeviceId],
 	);
 	/*
+	 * The stacks are keyed on the same pair, so poll-to-poll they are reference-stable
+	 * for the geometry memo below, and the layer draws the SAME objects the layout priced
+	 * - one grouping, two readers.
+	 */
+	const stacks = useMemo(
+		() => scopeStacks(scopes, slots.devices),
+		[scopes, slots],
+	);
+	/*
 	 * The geometry is keyed on the SLOT MAP, which is reference-stable across a poll
 	 * that changed nothing (see `useMeshSlots`), so a poll cannot re-solve the
 	 * layout and cannot move a node.
 	 */
 	const geometry = useMemo(
-		() => meshGeometry(slots, openingDeviceIds(scopes, slots.devices)),
-		[slots, scopes],
+		() => meshGeometry(slots, openingLevels(stacks)),
+		[slots, stacks],
 	);
 
 	/*
@@ -857,7 +867,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				 * THE BOUNDARIES GO UNDER THE EDGES, so a membership line crosses the frame of an
 				 * enclosure rather than being clipped by it.
 				 */}
-				<MeshScopeLayer groups={scopes} geometry={geometry} />
+				<MeshScopeLayer stacks={stacks} geometry={geometry} />
 				<MeshEdgeLayer
 					edges={graph.edges}
 					geometry={geometry}

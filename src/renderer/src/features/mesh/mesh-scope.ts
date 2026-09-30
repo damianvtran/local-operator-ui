@@ -281,23 +281,49 @@ export function declaredScope(device: MeshDevice): string {
 }
 
 /**
- * The TOPMOST member of each enclosure, by device id: the rows a scope label sits above.
+ * One row's enclosures, as a single stack: every group whose TOPMOST member is the
+ * same device, ordered OUTERMOST-FIRST.
  *
- * `meshGeometry` reserves the label's band above exactly these rows (see
- * `SCOPE_OPEN_GAP`), so this is the seam between "which groups exist" (this file's
- * arithmetic) and "where the label goes" (the layout's): the label anchors to the top
- * edge of an enclosure, and that edge belongs to the group's highest row. The ordering
- * read here is the SLOT, which is the same order the canvas draws - the geometry maps a
- * slot to `y` monotonically, so "lowest slot" and "topmost box" agree by construction
- * rather than by a second measurement. A group whose members left the slot map
- * contributes nothing, which is the same "a frame computed from nothing" rule the
- * layer states for an empty group.
+ * WHY A STACK RATHER THAN A SET (agent review round 2, M4). A device sits in one
+ * group per non-duplicated prefix, and a peer that publishes both a LAN address and a
+ * tunnel address sits in TWO groups whose topmost member it is. The set this replaced
+ * returned the device once for both, so both enclosures' top edges landed on the same
+ * anchor and their labels overprinted at one point - the reviewer's own repro measured
+ * both labels at (428, 140). The design ruling that answers it is NEST + STAGGER: the
+ * shared opener's groups draw as nested frames - each level 26 px higher and 4 px
+ * wider than the one inside it - so the labels keep their `bottom-full left-1 mb-0.5`
+ * anchors and the frames' own offsets do the staggering.
+ *
+ * THE ORDER is the ruling's: larger bottom first (a group reaching further down the
+ * column wraps around the shorter shape), then the tier's gravity - `declared`,
+ * `shared`, `probable` - then the prefix. "Outermost" means the frame drawn with the
+ * HIGHEST top edge, which is the first element of `groups`.
+ *
+ * The ordering read here is the SLOT, which is the same order the canvas draws - the
+ * geometry maps a slot to `y` monotonically, so "lowest slot" and "topmost box" agree
+ * by construction rather than by a second measurement. A group whose members left the
+ * slot map contributes nothing, which is the same "a frame computed from nothing" rule
+ * the layer states for an empty group.
  */
-export function openingDeviceIds(
+export type ScopeStack = {
+	/** The opener: the group's topmost member, the row the hierarchy hangs off. */
+	deviceId: string;
+	/** The enclosures this row opens, outermost-first (see the ordering above). */
+	groups: PrefixGroup[];
+};
+
+/** How the tiers nest when two groups share their bottom: the ruling's gravity order. */
+const TIER_GRAVITY: Record<PrefixGroup["tier"], number> = {
+	declared: 0,
+	shared: 1,
+	probable: 2,
+};
+
+export function scopeStacks(
 	groups: readonly PrefixGroup[],
 	deviceSlots: SlotMap,
-): ReadonlySet<string> {
-	const ids = new Set<string>();
+): ScopeStack[] {
+	const byOpener = new Map<string, { slot: number; groups: PrefixGroup[] }>();
 	for (const group of groups) {
 		let top: { id: string; slot: number } | null = null;
 		for (const id of group.deviceIds) {
@@ -305,9 +331,41 @@ export function openingDeviceIds(
 			if (slot === undefined) continue;
 			if (top === null || slot < top.slot) top = { id, slot };
 		}
-		if (top !== null) ids.add(top.id);
+		if (top === null) continue;
+		const entry = byOpener.get(top.id);
+		if (entry === undefined)
+			byOpener.set(top.id, { slot: top.slot, groups: [group] });
+		else entry.groups.push(group);
 	}
-	return ids;
+	const bottomOf = (group: PrefixGroup) => {
+		let bottom = -1;
+		for (const id of group.deviceIds) {
+			const slot = deviceSlots.get(id);
+			if (slot !== undefined && slot > bottom) bottom = slot;
+		}
+		return bottom;
+	};
+	return [...byOpener.entries()]
+		.sort((a, b) => a[1].slot - b[1].slot)
+		.map(([deviceId, entry]) => ({
+			deviceId,
+			groups: entry.groups.sort(
+				(a, b) =>
+					bottomOf(b) - bottomOf(a) ||
+					TIER_GRAVITY[a.tier] - TIER_GRAVITY[b.tier] ||
+					a.prefix.localeCompare(b.prefix),
+			),
+		}));
+}
+
+/**
+ * The number of enclosures each row opens, keyed by opener device id: what the layout
+ * reserves per row (`meshGeometry`'s per-row band, `scopeOpenGap`).
+ */
+export function openingLevels(
+	stacks: readonly ScopeStack[],
+): Map<string, number> {
+	return new Map(stacks.map((stack) => [stack.deviceId, stack.groups.length]));
 }
 
 /** The label above an enclosure: the prefix and the tier's own words. */
