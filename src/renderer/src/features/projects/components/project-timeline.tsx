@@ -42,6 +42,7 @@ import {
 	NO_TEAM_LABEL,
 	formatProjectDay,
 	groupByTeam,
+	projectDisplayName,
 	projectTeamName,
 } from "../project-model";
 import {
@@ -259,7 +260,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 								className="text-ink hover:underline"
 								onClick={() => onOpen(item)}
 							>
-								{item.project.name}
+								{projectDisplayName(item.project)}
 							</button>
 						</span>
 					))}
@@ -332,7 +333,9 @@ const TimelineRow: FC<{
 				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-canvas px-3"
 				style={{ width: NAME_COL_PX, height: ROW_PX }}
 			>
-				<span className="truncate text-body-sm text-ink">{project.name}</span>
+				<span className="truncate text-body-sm text-ink">
+					{projectDisplayName(project)}
+				</span>
 			</span>
 			<span
 				className="relative block"
