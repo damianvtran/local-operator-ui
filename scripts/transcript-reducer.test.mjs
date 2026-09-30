@@ -5763,6 +5763,146 @@ test("a frame with a usable id still coalesces with its durable entry (the #671 
 	assert.equal(state.records[0].text, "Hi. ");
 });
 
+test("an id-less end settles the session's last open assistant, writing no text (#671 fallback)", () => {
+	/*
+	 * The bounded fallback agreed with the condense/continuity lane
+	 * (2026-09-29): an id-less end cannot name its record, so it ends the LAST
+	 * open assistant row — settle semantics only. The frame's own text is NOT
+	 * written (the record keeps its accumulated text), the earlier stream
+	 * stays open, and nothing is counted as refused.
+	 */
+	const refused = streamDiagnostics.idlessFrameRefused;
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "First answer.",
+			message: assistant("a1", ""),
+		},
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("a2", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Second ", message: assistant("a2", "") },
+		4,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			// No id at all, and a full assembled text the fallback must not adopt.
+			message: assistant(undefined, "FRAME-TEXT-THAT-NEVER-RAN"),
+		},
+		5,
+	);
+	const a1 = state.records.find((record) => record.id === "a1");
+	const a2 = state.records.find((record) => record.id === "a2");
+	assert.equal(a2.streaming, false, "the last open row settled");
+	assert.equal(a2.complete, true, "an answer that ended is complete");
+	assert.equal(typeof a2.settledAt, "number", "the settle instant is stamped");
+	assert.equal(a2.text, "Second ", "the frame's text was not written");
+	assert.equal(a1.streaming, true, "the earlier stream is untouched");
+	assert.equal(a1.text, "First answer.", "two records never merge text");
+	assert.equal(
+		state.records.length,
+		2,
+		"no third row appeared for the unnamed frame",
+	);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused,
+		"a settled end is not a refusal",
+	);
+});
+
+test("an id-less end with no open assistant stays a counted refusal", () => {
+	// Nothing open: there is no record to end, so the frame keeps the old
+	// behaviour — dropped and counted.
+	const emptyRefused = streamDiagnostics.idlessFrameRefused;
+	const afterEmpty = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_end", message: assistant("", "Anything.") },
+		1,
+	);
+	assert.equal(afterEmpty.records.length, 0);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		emptyRefused + 1,
+		"an empty transcript counted the refusal",
+	);
+	// A settled row is not open either: one named end first, then the id-less
+	// end — refused, and the settled row's text is untouched.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("m1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("m1", "Done.") },
+		3,
+	);
+	const settledRefused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("", "Later text.") },
+		4,
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(
+		state.records[0].text,
+		"Done.",
+		"no text merge onto a settled row",
+	);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		settledRefused + 1,
+		"the second id-less end was counted too",
+	);
+});
+
+test("an id-less end for a user message settles nothing", () => {
+	// The fallback is for the ASSISTANT end the producer emits; an unnamed end
+	// of any other role must not end a turn it does not belong to.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "Still writing.",
+			message: assistant("a1", ""),
+		},
+		2,
+	);
+	const refused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: user("", "Typed.") },
+		3,
+	);
+	const a1 = state.records.find((record) => record.id === "a1");
+	assert.equal(a1.streaming, true, "the assistant row is still open");
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 1,
+		"the user end was refused",
+	);
+});
+
 test("a row the seed painted carries the snapshot's cursor; an older replay is refused", () => {
 	let state = applyLiveSeed(
 		EMPTY_TRANSCRIPT,

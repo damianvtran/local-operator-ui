@@ -2721,7 +2721,11 @@ export const streamDiagnostics = {
 	 * arrive without an id" by data rather than by the absence of the splice,
 	 * and it counts BOTH shapes the guard refuses — the empty string and the
 	 * non-string it always refused — because both are the same fact: the frame
-	 * cannot name the record it belongs to. The durable door's own refusal (a
+	 * cannot name the record it belongs to. `message_end` is an exception within
+	 * the exception: an id-less end still ends the session's LAST open assistant
+	 * row (the bounded fallback agreed with the condense/continuity lane,
+	 * 2026-09-29), so a counted refusal there means one thing only — no open
+	 * assistant record existed to settle. The durable door's own refusal (a
 	 * `history_delta` row with no id, dropped before it can be painted under
 	 * "") is not counted here: it is a row, not a live frame.
 	 */
@@ -3156,9 +3160,71 @@ export function applyEvent(
 		}
 		case "message_end": {
 			const messageId = liveMessageId(message);
-			if (message === undefined || messageId === null) {
+			if (message === undefined) {
 				streamDiagnostics.idlessFrameRefused += 1;
 				return state;
+			}
+			if (messageId === null) {
+				/*
+				 * THE BOUNDED FALLBACK, agreed with the condense/continuity lane
+				 * (2026-09-29): an end that cannot NAME its record still ends the
+				 * turn this viewer is watching.
+				 *
+				 * WHY IT EXISTS: refusing every id-less end left a turn whose only end
+				 * is id-less streaming for ever — and a turn that never settles never
+				 * condenses, while the NEXT user row then reads as a steer and two
+				 * turns merge silently. Settling is the one fact an unnamed end can
+				 * still deliver.
+				 *
+				 * WHICH RECORD IT ENDS IS UNKNOWABLE, so the target is bounded to the
+				 * session's LAST open assistant record in arrival order (this state is
+				 * per-session; nothing on the frame carries a turn id to match on) —
+				 * the record an end arriving now most plausibly ends. NOTHING of the
+				 * frame's text is written: the record settles with its own accumulated
+				 * text, which is what keeps #671's no-fuse/no-double contract — two
+				 * distinct records can still never become one.
+				 *
+				 * The frame's `tool_calls` IS consulted for the completion mark — the
+				 * same rule the named path states — so a tool-call-only turn stays
+				 * unmarked here too; the record's own `truncated` is kept, since
+				 * settling is not the frame's assembled whole and clearing the caveat
+				 * would claim a wholeness this path did not verify. The frame's outcome
+				 * fields (`stop_reason`/`is_error`) are NOT adopted: an unnamed frame's
+				 * outcome cannot be attributed to a record it cannot name.
+				 *
+				 * With no open assistant record there is nothing to end, and the frame
+				 * stays a counted refusal.
+				 */
+				if (message.role !== "assistant") {
+					streamDiagnostics.idlessFrameRefused += 1;
+					return state;
+				}
+				let target:
+					| Extract<TranscriptRecord, { kind: "assistant" }>
+					| undefined;
+				for (let i = state.records.length - 1; i >= 0; i -= 1) {
+					const candidate = state.records[i];
+					if (candidate.kind === "assistant" && candidate.streaming) {
+						target = candidate;
+						break;
+					}
+				}
+				if (target === undefined) {
+					streamDiagnostics.idlessFrameRefused += 1;
+					return state;
+				}
+				const frameToolCalls = Array.isArray(message.tool_calls)
+					? message.tool_calls
+					: [];
+				const settled: TranscriptRecord = {
+					...target,
+					streaming: false,
+					settledAt: target.settledAt ?? now,
+					...(target.text || frameToolCalls.length === 0
+						? { complete: true }
+						: {}),
+				};
+				return upsert(state, settled);
 			}
 			if (message.role !== "assistant") return state;
 			const position = state.index.get(messageId);
