@@ -161,13 +161,29 @@ const install = (scenario: Scenario) => {
 	(api as { desktop: unknown }).desktop = { request: bridge };
 };
 
+/**
+ * The page's width, in px, as a URL param (`&pageWidth=1400`).
+ *
+ * 1000 is the width these stories were written at: narrower than the pane's own
+ * `max-w-3xl` cap, which is why the panel, the notice and the pane all measure the
+ * same there and a cap that went missing would not show. Rendering the SAME story
+ * wider is what makes the cap measurable, and it is how `R4-M1` was closed rather
+ * than argued (the probe records the three boxes' widths side by side).
+ */
+const pageWidth = () => {
+	const asked = Number(
+		new URLSearchParams(window.location.search).get("pageWidth"),
+	);
+	return Number.isFinite(asked) && asked > 0 ? asked : 1000;
+};
+
 const Detail = () => {
 	const navigate = useNavigate();
 	useEffect(() => {
 		navigate("/agents?kind=agent&name=coder", { replace: true });
 	}, [navigate]);
 	return (
-		<div className="h-screen w-[1000px]">
+		<div className="h-screen" style={{ width: pageWidth() }}>
 			<AgentsPage />
 		</div>
 	);
@@ -316,8 +332,15 @@ export const KeptMineAndEditorReseeded: Story = {
 		/*
 		 * THE MERGED TEXT, WHERE A READER SEES IT. The agents-config redesign moved
 		 * the fields behind Edit and renders the definition as prose until then, so
-		 * the re-seeded pane is asserted in read mode - the remount is what R1 is
-		 * about, and the text on screen is what proves it happened.
+		 * the merged text is asserted in read mode.
+		 *
+		 * THIS ASSERTION IS THE WEAKER HALF OF THE PAIR, and saying so is the point
+		 * (agent review round 4, R4-M2): a CLEAN pane re-seeds from its own prop, so
+		 * the text appearing here does not prove the page's content key did the
+		 * work. The discriminating half is `update-under-an-open-editor`, where the
+		 * pane is in EDIT mode and read-mode merged text can only appear if the
+		 * remount happened; the source pin in `scripts/hub-updates.test.mjs` carries
+		 * R1 statically for both panes.
 		 */
 		await waitFor(() => expect(screen.getByText(/Cite them\./)).toBeTruthy());
 	},
