@@ -464,13 +464,13 @@ export const STORIES = [
 	[
 		"provider-sign-in-onboarding--panel-waiting-legacy-backend",
 		1280,
-		620,
+		780,
 		{ dir: "panel-waiting-first-click-released-backend" },
 	],
 	[
 		"provider-sign-in-onboarding--panel-waiting-current-backend",
 		1280,
-		620,
+		780,
 		{ dir: "panel-waiting-url-on-start-reply" },
 	],
 	["provider-sign-in-onboarding--panel-device-code", 1280, 620],
@@ -484,7 +484,7 @@ export const STORIES = [
 	[
 		"provider-sign-in-onboarding--panel-paste-required-no-url",
 		1280,
-		620,
+		780,
 		/*
 		 * The spinner this row exists to catch is a DIFFERENT image from the paste
 		 * body, so a hash comparison alone cannot tell them apart from the other
@@ -522,7 +522,7 @@ export const STORIES = [
 	[
 		"provider-sign-in-onboarding--panel-cancelled-superseded",
 		1280,
-		620,
+		780,
 		{ expectPresent: '[data-sign-in-state="unfinished"]' },
 	],
 	[
@@ -547,25 +547,25 @@ export const STORIES = [
 	[
 		"provider-sign-in-onboarding--panel-succeeded-with-default",
 		1280,
-		620,
+		780,
 		{ expectPresent: '[data-sign-in-state="succeeded"]' },
 	],
 	[
 		"provider-sign-in-onboarding--panel-expired",
 		1280,
-		620,
+		780,
 		{ expectPresent: '[data-sign-in-state="unfinished"]' },
 	],
 	[
 		"provider-sign-in-onboarding--panel-gone-404",
 		1280,
-		620,
+		780,
 		{ expectPresent: '[data-sign-in-state="unfinished"]' },
 	],
 	[
 		"provider-sign-in-onboarding--panel-failed",
 		1280,
-		620,
+		780,
 		{ expectPresent: '[data-sign-in-state="unfinished"]' },
 	],
 	["provider-sign-in-onboarding--panel-api-key", 1280, 620],
@@ -4090,7 +4090,7 @@ export const STORIES = [
 	[
 		"chat-model-picker--registry-only-opus",
 		900,
-		620,
+		780,
 		{ dir: "after-registry-only-opus" },
 	],
 	[
@@ -4102,13 +4102,13 @@ export const STORIES = [
 	[
 		"chat-model-picker--provider-listing-opus",
 		900,
-		620,
+		780,
 		{ dir: "after-provider-listing-opus" },
 	],
 	[
 		"chat-model-picker--live-listing-failed",
 		900,
-		620,
+		780,
 		{ dir: "after-live-listing-failed" },
 	],
 	/* The explicit current-model machine-default action and its refused write. */
@@ -7262,6 +7262,70 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+
+	/*
+	 * PROPOSAL SET - `#694`'s row context menu, captured for the DESIGN round.
+	 *
+	 * This surface is not the implementation and cannot be: `chat-sidebar.tsx`
+	 * has no context menu at this head. The stories drive the proposed
+	 * COMPOSITION with the real primitive over the real sidebar, and each frame
+	 * carries a readout of the numbers it is read for. When the implementation
+	 * lands, this set is superseded by the PR's own evidence and this block, its
+	 * stories and its frames come out together - the surface id is the proposal
+	 * marker, so nothing here can be mistaken for a shipped state.
+	 *
+	 * THE HOVER IS PART OF THE MEASUREMENT, not decoration. The row's reveal and
+	 * its hover ground are `:hover`/`group-hover` today, and the menu's own
+	 * portal is MODAL, so opening it takes `pointer-events` off the page - which
+	 * is precisely the pair this set exists to photograph: the row under a real
+	 * pointer before the menu opens, and what is left of it at the shutter.
+	 * `delayMs` in the story opens the menu 250ms in, i.e. before the flyout's
+	 * own 400ms dwell, so the clean frames carry no flyout; the one state that
+	 * wants the flyout waits 1800ms instead.
+	 */
+	[
+		"chat-sidebar-row-context-menu-proposal--pointer-open",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu-proposal--pointer-open-unheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu-proposal--pinned-row",
+		780,
+		520,
+		{ hover: '[data-session-row="s1"]', hoverSettleMs: 1200 },
+	],
+	["chat-sidebar-row-context-menu-proposal--keyboard-open", 780, 520],
+	[
+		"chat-sidebar-row-context-menu-proposal--archive-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu-proposal--pin-state-unknown",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu-proposal--flyout-alone",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu-proposal--flyout-dwelled",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
 ];
 
 /**
