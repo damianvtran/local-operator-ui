@@ -187,6 +187,12 @@ const credentialList = [{ key: "LOP_SECRET_ABCDEFGH", source: "command" }];
  * `after` hook so one case's transport cannot leak into the next.
  */
 let transportOverride = null;
+/*
+ * The server-down switch for the offline case: when true, the `/health` fetch
+ * rejects, which is how the connectivity gate (and the app's banner) learns
+ * the server is offline. Reset by the case that sets it.
+ */
+let healthFails = false;
 
 /** A response the way the mocked bridge builds one, for an override to return. */
 const transportSays = (status, result) => ({
@@ -281,6 +287,9 @@ const answer = (request) => {
 const nodeFetch = globalThis.fetch.bind(globalThis);
 
 globalThis.fetch = async (url, init) => {
+	if (healthFails && String(url).includes("/health")) {
+		throw new Error("rig: the server is down");
+	}
 	let request = {};
 	try {
 		request = JSON.parse(init?.body ?? "{}");
@@ -5307,24 +5316,30 @@ async function until(predicate, what, timeoutMs = 20_000) {
  * the primitive keeps a previously opened panel mounted while the next opens,
  * so the first `[role=tooltip]` can be the previous case's sentence. `prefix`
  * asks for the enabled arm, whose text carries the binding after the prefix.
+ *
+ * THE DISPATCH HAPPENS ONCE AND THE POLL IS PLAIN. Re-dispatching inside an
+ * `act` every attempt — the first shape — made these reads hostage to fleet
+ * load: on 2026-09-29 (load average 95+) one act-wrapped dispatch measured
+ * minutes, and the loop could outlast any bound. The panel opens once and
+ * stays while the focus does; a re-dispatch every 30 attempts is the only
+ * retry there is.
  */
 async function openMicTooltip(expected, { prefix = false } = {}) {
 	const trigger = micButton().parentElement;
 	const seen = new Set();
-	for (let attempt = 0; attempt < 80; attempt += 1) {
-		await act(async () => {
+	for (let attempt = 0; attempt < 200; attempt += 1) {
+		if (attempt % 30 === 0) {
 			trigger.dispatchEvent(
 				new window.FocusEvent("focusin", { bubbles: true, cancelable: true }),
 			);
-		});
+		}
+		// eslint-disable-next-line no-await-in-loop
+		await new Promise((resolve) => realSetTimeout(resolve, 100));
 		for (const panel of window.document.querySelectorAll('[role="tooltip"]')) {
 			const text = (panel.textContent ?? "").trim();
 			seen.add(text);
 			if (prefix ? text.startsWith(expected) : text === expected) return text;
 		}
-		await act(async () => {
-			await new Promise((resolve) => realSetTimeout(resolve, 50));
-		});
 	}
 	throw new Error(
 		`no tooltip read "${expected}"; sentences seen: ${JSON.stringify([...seen])}`,
@@ -5404,19 +5419,15 @@ test("neither a session nor a key: the sign-in sentence, and only for that machi
 			"the mic to settle off",
 		);
 		await openMicTooltip(
-			"Sign in to Radient in the settings page to enable audio recording",
+			"Sign in to Radient in the settings page to enable recording",
 		);
 	} finally {
 		transportOverride = null;
 	}
 });
 
-test("a probe that cannot answer reads offline, not sign-in", async () => {
-	transportOverride = micTransport({
-		account: "signed-out",
-		keys: [],
-		credentialsFail: true,
-	});
+test("the offline sentence is for the server being down, not for a failed probe", async () => {
+	transportOverride = micTransport({ account: "signed-out", keys: [] });
 	try {
 		await mountMicMachine();
 		await until(() => micButton(), "the dictation control to render");
@@ -5424,10 +5435,22 @@ test("a probe that cannot answer reads offline, not sign-in", async () => {
 			() => micButton().hasAttribute("disabled"),
 			"the mic to settle off",
 		);
+		/*
+		 * Take the server down the way the app learns it: the health read answers
+		 * offline, and the connectivity gate's reading is what the offline
+		 * sentence states. A failed credentials probe is NOT that state (design
+		 * round 1, D1/D3) — the sign-in case above is the answer for a machine
+		 * whose probe merely could not ask.
+		 */
+		healthFails = true;
+		await act(async () => {
+			await client.invalidateQueries({ queryKey: ["server-health"] });
+		});
 		await openMicTooltip(
-			"Voice input is unavailable while Local Operator is offline",
+			"Recording is unavailable while Local Operator is offline",
 		);
 	} finally {
+		healthFails = false;
 		transportOverride = null;
 	}
 });

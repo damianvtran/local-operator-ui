@@ -21,6 +21,7 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { normalizePath } from "@shared/utils/path-utils";
@@ -252,10 +253,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	 * counts, not only the legacy key. This surface used to gate on the raw key
 	 * list and `!isLoading`, so — unlike the composer — it folded "could not
 	 * ask" into the sign-in sentence and told a signed-in user to sign in. The
-	 * shared probe answers both questions once; the copy below distinguishes
-	 * offline from not-signed-in.
+	 * shared probe answers both questions once, and the shared copy table
+	 * (`@shared/lib/speech-gate`) states the reason for a disabled control —
+	 * offline, checking, or the account's own answer (issue #674).
 	 */
-	const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 	const canEnableRecordingFeature = canUseRadientSpeech;
 
 	const shortcutText = useMemo(() => {
@@ -919,9 +921,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								<Tooltip
 									content={
 										!canEnableRecordingFeature
-											? isUnavailable
-												? "Voice input is unavailable while Local Operator is offline"
-												: "Sign in to Radient in the settings page to enable audio recording"
+											? speechUnavailableReason("recording", speechBlock)
 											: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 									}
 								>

@@ -29,6 +29,7 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -1494,19 +1495,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * nothing left here to keep.
 		 */
 
-		const { canUseRadientSpeech, isUnavailable } = useRadientCredentialProbe();
+		const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 		const canEnableRecordingFeature = canUseRadientSpeech;
 
-		// The probe cannot tell "no key" apart from "could not ask", so the
-		// offline case is named separately rather than sending the user to the
-		// settings page to fix an account that is not broken. And the sign-in
-		// sentence is owed only to a reader who is NOT signed in: a live Radient
-		// session enables the control by itself (issue #674), so this arm is
-		// reached only when the session read answered "no" and no key is listed
-		// — never for the signed-in user the old gate misdirected.
-		const recordingUnavailableReason = isUnavailable
-			? "Voice input is unavailable while Local Operator is offline"
-			: "Sign in to Radient in the settings page to enable audio recording";
+		/*
+		 * The reason the control is off, from the one copy table the four speech
+		 * surfaces share (`@shared/lib/speech-gate`). It is rendered only on the
+		 * disabled arm, and `sign-in` is unreachable for a signed-in reader by
+		 * construction now (issue #674; design round 1, D1): only an ANSWERED
+		 * "no account" or a refused credential earns that sentence — neither an
+		 * outage nor an in-flight read does.
+		 */
+		const recordingUnavailableReason = speechUnavailableReason(
+			"recording",
+			speechBlock,
+		);
 
 		/*
 		 * Whether the empty-chat prompt belongs in the band.
