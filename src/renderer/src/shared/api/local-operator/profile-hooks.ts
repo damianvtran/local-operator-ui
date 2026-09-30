@@ -1,5 +1,9 @@
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
@@ -43,6 +47,98 @@ export type ReusableTeam = {
 	project?: string;
 };
 export type ChatTarget = { kind: "agent" | "team"; name: string };
+
+/**
+ * One definition's detail, refreshed by the authoring frame AND by a
+ * configuration run's own settle.
+ *
+ * WHAT IS TRUE HERE, stated without the overclaim the first version carried
+ * (agent review round 1, m4): the frame's invalidation of `["desktop", kind]`
+ * as a PREFIX already reaches this hook's key, and the subscription that does
+ * that lives in `useProfiles`/`useTeams` — which run it whether or not their own
+ * query is `enabled`. So the detail does NOT depend on the subscription below to
+ * be refreshed; the list's effect is what refreshes it in practice, and the
+ * 14 s symptom the design consult reported is not explained by a missing
+ * subscription.
+ *
+ * WHY IT STAYS ANYWAY. `useAuthoringRefresh` is a no-op while the revision has
+ * not moved, and the cost of the duplicate is one already-scheduled
+ * invalidation (`invalidateQueries` on an unmounted-or-fresh key does no
+ * request). What it buys is that this hook is CORRECT ON ITS OWN: a caller that
+ * reads a detail without mounting the list query — a future pane, a story, a
+ * test — still follows the frame, rather than silently relying on a sibling
+ * component being on screen. The gap it closes is real for that caller and
+ * merely redundant for the page.
+ */
+export function useProfileDetail(name: string | null, enabled: boolean) {
+	useAuthoringRefresh("profiles");
+	return useQuery<ReusableProfile>({
+		queryKey: ["desktop", "profile", name],
+		enabled: enabled && Boolean(name),
+		queryFn: () =>
+			desktopResult<ReusableProfile>({
+				op: "profiles.get",
+				name: name ?? "",
+			}),
+		/*
+		 * NOT retried: a `profiles.get` refusal is about the row (a name that is not
+		 * in the catalogue, a 404 after a delete elsewhere) and asking again is the
+		 * same question — the page answers it with the pane's own error sentence and
+		 * a retry the user presses.
+		 */
+		retry: false,
+	});
+}
+
+export function useTeamDetail(name: string | null, enabled: boolean) {
+	useAuthoringRefresh("teams");
+	return useQuery<ReusableTeam>({
+		queryKey: ["desktop", "team", name],
+		enabled: enabled && Boolean(name),
+		queryFn: () =>
+			desktopResult<ReusableTeam>({ op: "teams.get", name: name ?? "" }),
+		retry: false,
+	});
+}
+
+/**
+ * Mark the catalogues (and every open detail) stale, unconditionally.
+ *
+ * CALLED WHERE A CHANGE IS KNOWN TO HAVE HAPPENED RATHER THAN OBSERVED. The
+ * `authoring` frame is the ordinary path — and it is capability-gated in both
+ * directions, so on a backend without the feed, or through a socket that went
+ * down while the machine slept, no frame arrives and the run's results would
+ * sit invisible on the very page that asked for them. A run that has SETTLED
+ * does not need the frame to know its writes are on disk.
+ *
+ * The singular keys are named as well as the lists, for the reason
+ * `useAuthoringRefresh` states: a `prefix` match on the list key does not reach
+ * `["desktop","profile",name]`.
+ */
+export function invalidateAuthoring(queryClient: QueryClient): void {
+	for (const key of [
+		["desktop", "profiles"],
+		["desktop", "teams"],
+		["desktop", "profile"],
+		["desktop", "team"],
+	] as const) {
+		void queryClient.invalidateQueries({ queryKey: [...key] });
+	}
+}
+
+export function useProfiles(enabled: boolean) {
+	useAuthoringRefresh("profiles");
+	return useQuery({
+		queryKey: ["desktop", "profiles"],
+		enabled,
+		queryFn: () =>
+			desktopResult<{ profiles: ReusableProfile[] }>({
+				op: "profiles.list",
+			}).then((result) => result.profiles),
+		retry: retryDesktopQuery,
+		staleTime: 10_000,
+	});
+}
 
 /**
  * Refresh one authoring list, and its detail entry, when the backend publishes
@@ -103,19 +199,6 @@ function useAuthoringRefresh(kind: "profiles" | "teams") {
 	}, [authoringRevision, authoringReconnectRevision, kind, queryClient]);
 }
 
-export function useProfiles(enabled: boolean) {
-	useAuthoringRefresh("profiles");
-	return useQuery({
-		queryKey: ["desktop", "profiles"],
-		enabled,
-		queryFn: () =>
-			desktopResult<{ profiles: ReusableProfile[] }>({
-				op: "profiles.list",
-			}).then((result) => result.profiles),
-		retry: retryDesktopQuery,
-		staleTime: 10_000,
-	});
-}
 export function useTeams(enabled: boolean) {
 	useAuthoringRefresh("teams");
 	return useQuery({
