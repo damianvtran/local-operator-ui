@@ -2815,7 +2815,21 @@ export function ChatSidebar({
 			announcePinMove("Move cancelled.");
 			return;
 		}
-		dropPinnedRow(live.id, live.slot);
+		/*
+		 * THE SLOT THE READER SAW. The drop lands where the INDICATOR was drawn, and that
+		 * number is the one the last move published into the gesture - not a fresh hit
+		 * test taken in the release's own tick. Measured on this scene's first three runs:
+		 * a re-measure at the release answered 0 for a drag the indicator had drawn at the
+		 * second row's bottom edge, because the boxes it read at that instant were not the
+		 * ones the line had been placed against (the auto-scroll loop re-places the line
+		 * every frame against boxes the release's tick can no longer see). The re-measure
+		 * survives as the fallback for a gesture that never published a slot at all.
+		 */
+		dropPinnedRow(
+			live.id,
+			pinDrag?.slot ??
+				pinDragSlot(pinDragRowBoxes(), live.id, pinDragYRef.current),
+		);
 	};
 	/* Escape cancels, the one drag state with no pointer of its own (the board's rule). */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
@@ -2827,6 +2841,30 @@ export function ChatSidebar({
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [pinDrag !== null]);
+	/*
+	 * THE GESTURE'S OTHER END, listened for on the WINDOW as well as on the grip.
+	 *
+	 * WHY BOTH: the grip's own `onPointerUp` is the reader's release and the door this
+	 * lands on in the app; the window listener is what keeps a gesture from being left
+	 * ARMED when the browser takes the pointer away - a `pointercancel` delivered
+	 * anywhere (a capture the compositor drops, a context menu raised over another
+	 * surface) settles the drag with no write rather than leaving the dragged row's mark
+	 * and the indicator drawn for the rest of the session. `settlePinDrag` clears
+	 * `pinDragRef` FIRST, so the two doors cannot double-write: whichever arrives second
+	 * finds the gesture already gone.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
+	useEffect(() => {
+		if (pinDrag === null) return;
+		const end = () => settlePinDrag(true);
+		const cancel = () => settlePinDrag(false);
+		window.addEventListener("pointerup", end);
+		window.addEventListener("pointercancel", cancel);
+		return () => {
+			window.removeEventListener("pointerup", end);
+			window.removeEventListener("pointercancel", cancel);
+		};
 	}, [pinDrag !== null]);
 	/* The auto-scroll loop follows the gesture, not the render (the board's rule). */
 	useEffect(
