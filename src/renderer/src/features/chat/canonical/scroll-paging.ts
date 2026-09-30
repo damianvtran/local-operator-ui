@@ -68,7 +68,9 @@
  *    demand has been spent at the hard top only a DELIBERATE act re-arms it —
  *    clicking the affordance, or a keystroke that means "start of
  *    conversation". This is the clause that stops a resting finger from
- *    walking the whole conversation into memory.
+ *    walking the whole conversation into memory. (The affordance is a control
+ *    only while the slot is `idle` or `failed`; while it is `windowed` the row
+ *    is a statement and the keystroke — Home — is the deliberate route.)
  * 5. LOCAL GROWTH BEFORE NETWORK GROWTH. Rows already fetched but not mounted
  *    (the render window) are free to reveal; a durable page is a round trip.
  *    Revealing both for one gesture would show the reader two reveals stacked,
