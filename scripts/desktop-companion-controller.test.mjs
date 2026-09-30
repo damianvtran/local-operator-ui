@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import {
+import fs, {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -31,6 +32,7 @@ const bundle = buildSync({
 
 const UNAVAILABLE_CHARACTER = /no longer available/;
 const SAVE_FAILED = /could not be saved/;
+const IMPORT_FAILED = /Could not save/;
 
 const ok = (result) => ({ status: 200, body: { result } });
 
@@ -261,6 +263,8 @@ function fixture(t, { headless = true, preferences = {} } = {}) {
 	};
 	return {
 		companion,
+		preferencesPath,
+		libraryPath: join(directory, "skins"),
 		windows,
 		menus,
 		handlers,
@@ -1314,6 +1318,114 @@ test("custom artwork can be replaced and removed through the shared character me
 		false,
 	);
 });
+
+for (const replacement of ["new", "same", "existing", "full library"]) {
+	test(`failed preference save preserves artwork when replacing with ${replacement} artwork`, async (t) => {
+		const f = fixture(t);
+		const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
+		t.after(() => rmSync(source, { recursive: true, force: true }));
+		const image = await sharp({
+			create: { width: 2, height: 2, channels: 4, background: "red" },
+		})
+			.png()
+			.toBuffer();
+		const originalPath = join(source, "original.png");
+		const replacementPath = join(source, "replacement.png");
+		writeFileSync(originalPath, image);
+		writeFileSync(replacementPath, image);
+		f.companion.importCharacter(originalPath);
+		const original = f.companion.appearance;
+		if (replacement === "existing")
+			f.companion.importCharacter(replacementPath);
+		if (replacement === "full library") {
+			for (let i = 1; i < 64; i++) {
+				const path = join(source, `pet-${i}.png`);
+				writeFileSync(path, image);
+				f.companion.importCharacter(path);
+			}
+		}
+		f.companion.selectCharacter(original.id);
+		const choices = f.companion.characters;
+		const files = readdirSync(f.libraryPath);
+		const saved = readFileSync(join(f.libraryPath, `${original.id}.json`));
+		f.blockPreferenceWrites();
+		const path = replacement === "same" ? originalPath : replacementPath;
+		assert.throws(
+			() => f.companion.importCharacter(path, original.id),
+			SAVE_FAILED,
+		);
+		assert.equal(f.preferences().character, original.id);
+		assert.deepEqual(f.companion.appearance, original);
+		assert.deepEqual(f.companion.characters, choices);
+		assert.deepEqual(readdirSync(f.libraryPath), files);
+		assert.deepEqual(
+			readFileSync(join(f.libraryPath, `${original.id}.json`)),
+			saved,
+		);
+		assert.deepEqual(
+			structuredClone(f.companion.settings.characters).map(({ id, name }) => ({
+				id,
+				name,
+			})),
+			structuredClone(choices),
+		);
+		f.unblockPreferenceWrites();
+		f.companion.importCharacter(path, original.id);
+		assert.equal(f.preferences().character, f.companion.appearance.id);
+		assert.equal(
+			f.companion.characters.length,
+			choices.length - (replacement === "existing" ? 1 : 0),
+		);
+	});
+}
+
+for (const rollbackFails of [false, true]) {
+	test(`failed old-artwork removal keeps a valid selection when preference rollback ${rollbackFails ? "fails" : "succeeds"}`, async (t) => {
+		const f = fixture(t);
+		const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
+		t.after(() => rmSync(source, { recursive: true, force: true }));
+		const image = await sharp({
+			create: { width: 2, height: 2, channels: 4, background: "red" },
+		})
+			.png()
+			.toBuffer();
+		const originalPath = join(source, "original.png");
+		const replacementPath = join(source, "replacement.png");
+		writeFileSync(originalPath, image);
+		writeFileSync(replacementPath, image);
+		f.companion.importCharacter(originalPath);
+		const original = f.companion.appearance;
+		const stored = join(f.libraryPath, `${original.id}.json`);
+		const unlink = fs.unlinkSync;
+		t.mock.method(fs, "unlinkSync", (path) => {
+			if (path === stored) {
+				if (rollbackFails) f.blockPreferenceWrites();
+				throw new Error("Fixture cannot remove original artwork");
+			}
+			return unlink(path);
+		});
+		assert.throws(
+			() => f.companion.importCharacter(replacementPath, original.id),
+			IMPORT_FAILED,
+		);
+		const selected = f.companion.appearance;
+		assert.equal(f.preferences().character, selected.id);
+		assert.equal(
+			JSON.parse(
+				readFileSync(join(f.libraryPath, `${selected.id}.json`), "utf8"),
+			).name,
+			selected.name,
+		);
+		assert.equal(JSON.parse(readFileSync(stored, "utf8")).name, original.name);
+		if (rollbackFails) {
+			assert.notEqual(selected.id, original.id);
+			assert.equal(f.companion.characters.length, 6);
+		} else {
+			assert.deepEqual(selected, original);
+			assert.equal(f.companion.characters.length, 5);
+		}
+	});
+}
 
 test("hiding retains the renderer but stops polling, rejects IPC and defeats a late ready event", async (t) => {
 	const f = fixture(t, { headless: false });

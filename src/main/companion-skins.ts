@@ -550,7 +550,11 @@ export class CompanionSkinLibrary {
 		return true;
 	}
 
-	import(manifestPath: string, replaceId?: string): CompanionAppearance {
+	import(
+		manifestPath: string,
+		replaceId?: string,
+		commit?: (appearance: CompanionAppearance) => () => boolean,
+	): CompanionAppearance {
 		if (replaceId !== undefined && !this.packs.has(replaceId)) {
 			throw new Error("Choose a custom companion to replace.");
 		}
@@ -610,29 +614,62 @@ export class CompanionSkinLibrary {
 			throw error;
 		}
 		const id = identifier(pack);
-		const exists = this.packs.has(id);
-		if (!exists && !replaceId && this.packs.size >= MAX_PACKS) {
+		const previous = this.packs.get(id);
+		if (!previous && !replaceId && this.packs.size >= MAX_PACKS) {
 			throw new Error("The companion library is full (64 custom companions).");
 		}
+		const cached = this.cached;
+		const imported = appearance(id, pack);
+		const path = join(this.directory, `${id}.json`);
+		let rollback: (() => boolean) | undefined;
 		try {
-			mkdirSync(this.directory, { recursive: true, mode: 0o700 });
-			writeJson(join(this.directory, `${id}.json`), pack);
+			try {
+				mkdirSync(this.directory, { recursive: true, mode: 0o700 });
+				writeJson(path, pack);
+				this.packs.set(id, packMetadata(this.directory, id, pack.name));
+			} catch {
+				throw new Error(
+					"Could not save this companion to the app's companion library.",
+				);
+			}
+			this.cached = { id, pack };
+			// Save the selection while both packs exist, before removing the old artwork.
+			rollback = commit?.(imported);
 			if (replaceId && replaceId !== id) {
 				try {
 					this.remove(replaceId);
-				} catch (error) {
-					if (!exists) unlinkSync(join(this.directory, `${id}.json`));
-					throw error;
+				} catch {
+					throw new Error(
+						"Could not save this companion to the app's companion library.",
+					);
 				}
 			}
-		} catch {
-			throw new Error(
-				"Could not save this companion to the app's companion library.",
-			);
+		} catch (error) {
+			let restored = true;
+			try {
+				restored = rollback?.() ?? true;
+			} catch {
+				restored = false;
+			}
+			// If selection rollback fails, its saved ID still needs the imported file.
+			if (restored) {
+				if (previous) this.packs.set(id, previous);
+				else {
+					try {
+						unlinkSync(path);
+						this.packs.delete(id);
+					} catch (cleanupError) {
+						if ((cleanupError as NodeJS.ErrnoException).code === "ENOENT")
+							this.packs.delete(id);
+						// Keep a file that cannot be removed available for manual cleanup.
+					}
+				}
+				this.cached = cached;
+			}
+			this.writeIndex();
+			throw error;
 		}
-		this.packs.set(id, packMetadata(this.directory, id, pack.name));
-		this.cached = { id, pack };
 		this.writeIndex();
-		return appearance(id, pack);
+		return imported;
 	}
 }

@@ -165,9 +165,17 @@ export class DesktopCompanion {
 	}
 
 	importCharacter(path: string, replaceId?: string): void {
-		const appearance = this.skins.import(path, replaceId);
-		if (!this.selectCharacter(appearance.id))
-			throw new Error("Companion settings could not be saved.");
+		const previous = this.preferences;
+		try {
+			this.skins.import(path, replaceId, ({ id }) => {
+				if (!this.selectCharacter(id))
+					throw new Error("Companion settings could not be saved.");
+				return () => this.applyPreferences(previous);
+			});
+		} finally {
+			this.options.appearanceChanged();
+			this.publishSettings();
+		}
 	}
 
 	get characterMenu(): MenuItemConstructorOptions[] {
