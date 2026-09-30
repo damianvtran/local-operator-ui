@@ -949,6 +949,116 @@ export const ScopesDeclared: Story = {
 };
 
 /**
+ * TWO ENCLOSURES SHARING THEIR TOPMOST DEVICE (agent review round 2, M4): the frame the
+ * collision case never had.
+ *
+ * `build-box` publishes a tunnel address (`10.88.0.5`) AND a LAN one (`192.168.1.40`),
+ * so it sits in TWO groups - the dashed probable one with `lab-a` and the solid shared
+ * one with `lab-b` - and it is TOPMOST in both. Before the nesting rule both frames'
+ * tops landed on one anchor and their labels overprinted at one point (the reviewer's
+ * repro measured both at (428, 140) - no frame showed it). This frame is where the
+ * staircase can be checked: two rings 26 px apart, the shared frame (reaching further
+ * down, to `lab-b`) the outer one, labels one pitch apart and never on top of each
+ * other.
+ */
+export const ScopesSharedTop: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "build-box",
+							endpoints: ["10.88.0.5:4097", "192.168.1.40:4097"],
+						}),
+						member(DEVICE_THIRD, {
+							name: "lab-a",
+							endpoints: ["10.88.0.6:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "lab-b",
+							endpoints: ["192.168.1.41:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "build-box", session_count: 3 }),
+					peer(DEVICE_THIRD, { name: "lab-a", session_count: 1 }),
+					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 0 }),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * THREE LEVELS ON ONE OPENER (the design ruling's "n = 3 if cheap"): the same stack plus
+ * the operator's own word.
+ *
+ * `build-box` also carries a declared `scope`, so its row opens THREE enclosures - the
+ * declared ring inside (it reaches only `build-box` itself), the probable one around
+ * it, the shared one outermost - and the staircase is drawn at its full pitch: labels
+ * 26 px apart, each frame 4 px wider than the one inside it, the layout clearing 84 px
+ * above the row. The order here is a CONSEQUENCE of the ruling's bottom rule rather
+ * than a special case: `lab-b` (the shared group's far member) reaches furthest down,
+ * so the solid frame is outermost and the operator's declared ring is innermost. The
+ * declared tier stays a styling proof: no backend sends the field yet (see
+ * `ScopesDeclared`).
+ */
+export const ScopesNested: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "build-box",
+							endpoints: ["10.88.0.5:4097", "192.168.1.40:4097"],
+							scope: "sim-lab",
+						}),
+						member(DEVICE_THIRD, {
+							name: "lab-a",
+							endpoints: ["10.88.0.6:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "lab-b",
+							endpoints: ["192.168.1.41:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "build-box", session_count: 3 }),
+					peer(DEVICE_THIRD, { name: "lab-a", session_count: 1 }),
+					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 0 }),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
  * A chip in the air over a VALID target: the transient state, mid-drag.
  *
  * THE GESTURE IS DRIVEN BY THE RIG, NOT BY THIS STORY, and that is a measurement rather

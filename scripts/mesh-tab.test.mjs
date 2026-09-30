@@ -113,8 +113,12 @@ const {
 	ROW_GAP,
 	PAD,
 	SCOPE_OPEN_GAP,
-	SCOPE_TOP_CLEARANCE,
-	openingDeviceIds,
+	SCOPE_LEVEL_STEP,
+	SCOPE_LEVEL_INSET,
+	scopeOpenGap,
+	scopeTopClearance,
+	scopeStacks,
+	openingLevels,
 	deviceReach,
 	reachWords,
 	reachSentence,
@@ -904,7 +908,7 @@ test("fit centres the world in the viewport and never leaves the scale range", (
 	);
 });
 
-test("a row that opens a scope enclosure reserves the label band (D2/U3)", () => {
+test("a row that opens a scope stack reserves the whole stack's band (D2/U3, round 2)", () => {
 	/*
 	 * THE LABEL'S ROOM IS RESERVED BY THE LAYOUT (design review round 1, D2; UX U3),
 	 * because the scope layer cannot draw over the node above it (DOM order: scope ->
@@ -913,6 +917,11 @@ test("a row that opens a scope enclosure reserves the label band (D2/U3)", () =>
 	 * behind the node above on both palettes; and at 1024x768 the topmost label ran
 	 * 4.4 px of a 13.9 px box behind the CANVAS'S own top edge, which no row gap can
 	 * fix - hence the top clearance below.
+	 *
+	 * ROUND 2 PRICED THE STACK (agent review M4): one row can open SEVERAL nested
+	 * levels, and the band is per level - `SCOPE_OPEN_GAP` at one, `SCOPE_LEVEL_STEP`
+	 * more for each level above it - so two enclosures sharing an opener no longer
+	 * overprint their labels on one anchor.
 	 */
 	const slots = {
 		networks: new Map([["n1", 0]]),
@@ -931,7 +940,7 @@ test("a row that opens a scope enclosure reserves the label band (D2/U3)", () =>
 		ROW_GAP,
 		"without a group the pitch is the plain grid, which is what the fit table rebuilds",
 	);
-	const scoped = meshGeometry(slots, new Set(["d1"]));
+	const scoped = meshGeometry(slots, new Map([["d1", 1]]));
 	assert.equal(
 		gap(scoped, "d0", "d1"),
 		SCOPE_OPEN_GAP,
@@ -947,28 +956,254 @@ test("a row that opens a scope enclosure reserves the label band (D2/U3)", () =>
 		SCOPE_OPEN_GAP - ROW_GAP,
 		"the world grows by exactly the reservation, so the fit still contains what the label needs",
 	);
-	const top = meshGeometry(slots, new Set(["d0"]));
+	const stacked = meshGeometry(slots, new Map([["d1", 2]]));
+	assert.equal(
+		gap(stacked, "d0", "d1"),
+		scopeOpenGap(2),
+		"two levels clear one label's band per level (58 = 32 + 26)",
+	);
+	assert.equal(
+		scopeOpenGap(2) - scopeOpenGap(1),
+		SCOPE_LEVEL_STEP,
+		"and the pitch the frames' staircase draws on is the same number the layout reserves",
+	);
+	assert.equal(
+		stacked.bounds.height - plain.bounds.height,
+		scopeOpenGap(2) - ROW_GAP,
+		"the world grows by the stack's own reservation, not one label's",
+	);
+	const top = meshGeometry(slots, new Map([["d0", 1]]));
 	assert.equal(
 		top.devices.get("d0").y,
-		PAD + SCOPE_TOP_CLEARANCE,
+		PAD + scopeTopClearance(1),
 		"a column whose FIRST row opens one reserves the strip at the world's top edge, where the narrow frame measured the label cut by the canvas itself",
 	);
-	assert.deepEqual(
+	assert.equal(
+		scopeTopClearance(1),
+		16,
+		"16 world px - the old 8 plus the fit floor's 8, which is 6.4 screen px at k = 0.8 (round-2 M3)",
+	);
+	assert.equal(
+		scopeTopClearance(2),
+		42,
+		"and a two-level stack's is 42 (58 - 24 + 8)",
+	);
+	const topStacked = meshGeometry(slots, new Map([["d0", 2]]));
+	assert.equal(
+		topStacked.devices.get("d0").y,
+		PAD + scopeTopClearance(2),
+		"the top clearance scales with the stack too, so every level's label stays inside the world",
+	);
+	const stacks = scopeStacks(
 		[
-			...openingDeviceIds(
-				[
-					{
-						prefix: "10.88.0",
-						tier: "probable",
-						words: "same prefix",
-						deviceIds: ["d2", "d1"],
-					},
-				],
-				slots.devices,
-			),
+			{
+				prefix: "10.88.0",
+				tier: "probable",
+				words: "same prefix",
+				deviceIds: ["d2", "d1"],
+			},
 		],
+		slots.devices,
+	);
+	assert.deepEqual(
+		stacks.map((stack) => stack.deviceId),
 		["d1"],
 		"and the opener is the group's topmost member, read off the same slot order the canvas draws",
+	);
+	assert.equal(openingLevels(stacks).get("d1"), 1, "one group, one level");
+});
+
+test("two enclosures that share their opener draw as one ordered stack (M4)", () => {
+	/*
+	 * THE COLLISION THE ROUND-2 REVIEW REPRODUCED: a peer publishing a LAN address and a
+	 * tunnel address sits in two groups, and when it is topmost in both their frames' tops
+	 * coincided - both labels anchored at (428, 140) in the reviewer's repro. The design
+	 * ruling's answer is NEST + STAGGER, and the ORDER is its first half: a group reaching
+	 * further down the column wraps the shorter one (larger bottom first), the tier's
+	 * gravity breaks a tie, and the prefix breaks that. `scopeStacks` is the one grouping
+	 * the layout and the layer both read, so this pins the order the frames draw in.
+	 */
+	const slots = {
+		networks: new Map([["n1", 0]]),
+		devices: new Map([
+			["d1", 0],
+			["d2", 1],
+			["d3", 2],
+			["d4", 3],
+		]),
+	};
+	const repro = [
+		{
+			prefix: "10.88.0",
+			tier: "probable",
+			words: "same prefix",
+			deviceIds: ["d1", "d2"],
+		},
+		{
+			prefix: "192.168.1",
+			tier: "shared",
+			words: "shared with this device",
+			deviceIds: ["d1", "d3"],
+		},
+	];
+	const stacks = scopeStacks(repro, slots.devices);
+	assert.equal(
+		stacks.length,
+		1,
+		"both groups open at d1: ONE stack, not two frames on one anchor",
+	);
+	assert.equal(stacks[0].deviceId, "d1");
+	assert.deepEqual(
+		stacks[0].groups.map((group) => group.prefix),
+		["192.168.1", "10.88.0"],
+		"outermost first: the group reaching d3 wraps the one reaching d2",
+	);
+	assert.equal(
+		openingLevels(stacks).get("d1"),
+		2,
+		"and the row it hangs off opens two levels, which the layout prices as 58 px",
+	);
+	/*
+	 * EQUAL BOTTOMS FALL TO THE TIER'S GRAVITY: with every group reaching the same
+	 * member, the ruling's order is `declared`, `shared`, `probable` - the authored
+	 * claim wraps the computed ones - and the prefix breaks a same-tier tie.
+	 */
+	const tied = scopeStacks(
+		[
+			{
+				prefix: "10.88.0",
+				tier: "probable",
+				words: "same prefix",
+				deviceIds: ["d1", "d3"],
+			},
+			{
+				prefix: "sim-lab",
+				tier: "declared",
+				words: "declared",
+				deviceIds: ["d1", "d3"],
+			},
+			{
+				prefix: "10.44.0",
+				tier: "shared",
+				words: "shared with this device",
+				deviceIds: ["d1", "d3"],
+			},
+		],
+		slots.devices,
+	);
+	assert.deepEqual(
+		tied[0].groups.map((group) => group.tier),
+		["declared", "shared", "probable"],
+		"equal bottoms fall to `declared`, `shared`, `probable`",
+	);
+	const two = scopeStacks(
+		[
+			...repro,
+			{
+				prefix: "10.0.0",
+				tier: "probable",
+				words: "same prefix",
+				deviceIds: ["d3", "d4"],
+			},
+		],
+		slots.devices,
+	);
+	assert.deepEqual(
+		two.map((stack) => stack.deviceId),
+		["d1", "d3"],
+		"and stacks sit in row order, so the layer draws them top to bottom",
+	);
+});
+
+test("the layer draws the stack as nested rings, and the label anchor is unchanged (M4)", () => {
+	const layer = source("src/renderer/src/features/mesh/mesh-scope-layer.tsx");
+	assert.match(
+		layer,
+		/SCOPE_LEVEL_STEP \* outward/,
+		"each outer level sits a step higher - the staircase the ruling draws",
+	);
+	assert.match(
+		layer,
+		/SCOPE_LEVEL_INSET \* outward/,
+		"and stands inset wider the same way, so a parent frame is a ring rather than a repeat",
+	);
+	assert.match(
+		layer,
+		/inner \+ SCOPE_LEVEL_INSET/,
+		"the bottom edge rings outward by the same inset unless its own members reach further",
+	);
+	assert.match(
+		layer,
+		/height: bottoms\[level\] - top,/,
+		"and the height is measured between the two solved edges",
+	);
+	assert.match(
+		layer,
+		/bottom-full left-1 mb-0\.5/,
+		"the label anchor is UNCHANGED: the frames' offsets do the staggering, not a second placement rule",
+	);
+	assert.match(
+		layer,
+		/data-mesh-scope-level=\{level\}/,
+		"each level is addressable, so a rig can measure the staircase rather than count ink rows",
+	);
+	const canvas = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
+	assert.match(
+		canvas,
+		/<MeshScopeLayer stacks=\{stacks\} geometry=\{geometry\} \/>/,
+		"the canvas hands the layer the same stacks the layout priced - one grouping, two readers",
+	);
+	assert.match(
+		canvas,
+		/meshGeometry\(slots, openingLevels\(stacks\)\)/,
+		"and the levels the layout reserves come off those stacks",
+	);
+});
+
+test("the floor-bound fit is TOP-ALIGNED, so the label band stays on screen (M3)", () => {
+	/*
+	 * THE SECOND CAUSE OF THE CLIPPED LABEL, in the transform rather than the layout: at
+	 * the floor the world is taller than the viewport, and CENTRING it cuts it at both
+	 * edges - the reviewed `scopes-narrow` frame measured the topmost label's glyph rows
+	 * sliced flat at the canvas's own top edge while the overflow it paid for fell on the
+	 * blank bottom margin. The fix aligns the overflow to the BOTTOM, where the pan and
+	 * the blank pad already reach it.
+	 */
+	const viewport = { width: 1284, height: 691.3 };
+	const boundsFor = (count) =>
+		meshGeometry({
+			networks: new Map([["n1", 0]]),
+			devices: new Map(
+				Array.from({ length: count }, (_, index) => [`d${index}`, index]),
+			),
+		}).bounds;
+	const nine = boundsFor(9);
+	const fit = fitTransform(nine, viewport);
+	assert.equal(fit.k, MIN_FIT_SCALE, "nine devices sit at the floor");
+	assert.ok(
+		nine.height * fit.k > viewport.height,
+		"and at the floor the world is taller than the viewport",
+	);
+	assert.equal(
+		fit.ty,
+		0,
+		"so the world's top edge - where the reserved label band sits - stays on screen",
+	);
+	assert.equal(
+		fit.tx,
+		(viewport.width - nine.width * fit.k) / 2,
+		"the horizontal centring is unchanged: a wide world still pans to its overflow",
+	);
+	const six = boundsFor(6);
+	const roomy = fitTransform(six, viewport);
+	assert.ok(
+		six.height * roomy.k <= viewport.height,
+		"a world the fit CAN contain",
+	);
+	assert.equal(
+		roomy.ty,
+		(viewport.height - six.height * roomy.k) / 2,
+		"still centres vertically",
 	);
 });
 
