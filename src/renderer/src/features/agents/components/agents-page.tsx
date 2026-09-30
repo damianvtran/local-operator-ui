@@ -654,7 +654,18 @@ export function AgentsPage() {
 	 *
 	 * `dirtyRef` is written during render, not in an effect: the remount clears the
 	 * child's own report in an effect, effects run children-first, and reading the
-	 * state here would therefore already see `false` and lose the fact.
+	 * state here would therefore already see `false` and lose the fact. (A ref write
+	 * during render is a concurrent-mode smell; it is deliberate here and this
+	 * comment is the reason, so it stays until the flow is restructured - agent
+	 * review round 3, N3.)
+	 *
+	 * THE NOTICE BELONGS TO THE DEFINITION IT DESCRIBES, so it is scoped three ways
+	 * (agent review round 3, N1): the comparison is on the fetched CONTENT alone
+	 * (never the name-prefixed key, which moves on a plain navigation to a
+	 * different agent), a change of IDENTITY re-seeds and clears the notice instead
+	 * of comparing at all, and `saved()` clears it too. Without those, switching
+	 * from a dirty editor to an agent already in the query cache read as a hub
+	 * update and stood over the wrong definition.
 	 */
 	const [lostEdits, setLostEdits] = useState(false);
 	const [editorDirty, setEditorDirty] = useState(false);
@@ -664,25 +675,32 @@ export function AgentsPage() {
 		(dirty: boolean) => setEditorDirty(dirty),
 		[],
 	);
-	const seededKey = useRef<string | null>(null);
-	const detailKey = detail.data
-		? teamMode
-			? `${name}:${contentKey(detail.data)}`
-			: `${name}:${(detail.data as ReusableProfile).source}:${contentKey(detail.data)}`
-		: null;
+	/* Which definition is open, and what its fetched content is (the two halves of N1). */
+	const identity = `${teamMode ? "team" : "agent"}:${name ?? ""}`;
+	const seededContent = useRef<string | null>(null);
+	const seededIdentity = useRef(identity);
+	const content = detail.data ? contentKey(detail.data) : null;
 	useEffect(() => {
-		if (detailKey === null) {
-			seededKey.current = null;
+		if (seededIdentity.current !== identity) {
+			// A different definition: adopt it as the seeded one and drop any notice,
+			// rather than comparing against the previous definition's content.
+			seededIdentity.current = identity;
+			seededContent.current = content;
+			setLostEdits(false);
 			return;
 		}
-		if (seededKey.current === null) {
-			seededKey.current = detailKey;
+		if (content === null) {
+			seededContent.current = null;
 			return;
 		}
-		if (seededKey.current === detailKey) return;
-		seededKey.current = detailKey;
+		if (seededContent.current === null) {
+			seededContent.current = content;
+			return;
+		}
+		if (seededContent.current === content) return;
+		seededContent.current = content;
 		if (dirtyRef.current) setLostEdits(true);
-	}, [detailKey]);
+	}, [identity, content]);
 	const saved = async (savedName: string) => {
 		setLostEdits(false);
 		await queryClient.invalidateQueries({ queryKey: ["desktop"] });
