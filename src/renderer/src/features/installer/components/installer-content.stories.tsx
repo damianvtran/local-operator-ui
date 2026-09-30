@@ -39,10 +39,22 @@ import { InstallPanel } from "./installer-panel";
  * the same component the window uses, with the same props, given the state
  * directly. Nothing here is a mock of the panel; the mock would be the bridge.
  *
- * The five states are the five a user can be left in: the mounted entry, nothing
- * announced yet (indeterminate), the long download (phase 3), the failure (the
- * sentence, the captured line under it, and the Retry), and the moment after
- * success.
+ * The eight states are the eight a user can be left in: the mounted entry, the
+ * first phase with nothing behind it (the cold run's opening minutes), the long
+ * download (phase 3), the last phase with its smoke probe running, the failure a
+ * THROWN error leaves behind when it happens before the first milestone (no
+ * phase to name), the failure in both of its other compositions (a recognised
+ * cause and the unrecognised one the code calls the common case), and the moment
+ * after success.
+ *
+ * WHY THERE IS NO `Indeterminate` STORY BESIDE `Default`. There was one, and it
+ * was byte-identical to `Default` in all twelve themes - measured across the
+ * whole frame, 0 differing pixels (review 6) - because `phase: null` IS the state
+ * an absent bridge leaves the entry in. So the pair proved something the frames did
+ * not need a second row to say (the props path and the mount path agree) and one of
+ * the eight declared states documented no state of its own. `Default` is the one
+ * that is kept, because it is the app's own entry rather than a hand-built props
+ * object, and the measurement above is what the second row was worth.
  */
 const meta: Meta = {
 	title: "Installer/InstallerContent",
@@ -74,8 +86,8 @@ type Story = StoryObj;
  * The window as the entry renders it, off the live bridge.
  *
  * In Storybook there is no main process, so this is also what a user sees in the
- * seconds before anything has been announced: every step waiting, the bar
- * indeterminate, and nothing claiming a fraction.
+ * seconds before anything has been announced: every step waiting, the rail's own
+ * head mark turning, and nothing claiming a fraction.
  */
 export const Default: Story = {};
 
@@ -92,11 +104,21 @@ const panel = (
 
 const noop = () => {};
 
-/** Nothing announced yet: the honest indeterminate state, no step claimed. */
-export const Indeterminate: Story = {
+/**
+ * The first phase, with nothing finished behind it.
+ *
+ * WHY THIS IS A FRAME AND NOT A COROLLARY OF `MidInstall`. This is the state the
+ * window sits in for the first minutes of a COLD first run - `python` is the
+ * runtime copy, and on a machine that has never had one it is the only phase
+ * whose work is entirely in front of the user. A panel whose progress affordance
+ * is a fill reads NOTHING here (this is the measured first-run frame of the
+ * previous round: an empty track for 2m37s, design D4/UX U9), so the state the
+ * whole design is judged on had no frame at all until this one.
+ */
+export const FirstStage: Story = {
 	render: () =>
 		panel({
-			phase: null,
+			phase: "python",
 			installed: false,
 			failure: null,
 			onCancel: noop,
@@ -180,6 +202,64 @@ export const FailureFallback: Story = {
 					"ERROR: Could not find a version that satisfies the requirement local-operator (from versions: none)",
 				exitCode: 1,
 			},
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * The failure that happens BEFORE the first milestone: no phase to name.
+ *
+ * WHY THIS STATE IS A FRAME. `reportInstallFailure` sends the last phase the run
+ * announced, which starts `null`, so a thrown failure in the window between the
+ * panel mounting and the first marker arriving is a real and validated payload
+ * (`isInstallProgressPayload` accepts `failure.phase === null`, and
+ * `installFailureSentence(null)` is written for it). The panel rendered it as a
+ * liveness mark turning above four hollow rings and a block saying setup had
+ * stopped - the one failure composition where the screen contradicted itself, and
+ * the one no frame showed (review P1). The rail here is deliberately empty of
+ * marks: nothing was announced, so nothing is claimed, and the head mark is
+ * absent because the run is over rather than working.
+ */
+export const FailureBeforePhase: Story = {
+	render: () =>
+		panel({
+			phase: null,
+			installed: false,
+			failure: {
+				phase: null,
+				reason: installFailureSentence(null),
+				/*
+				 * A LINE THE SCRIPT REALLY PRINTS BEFORE ITS FIRST MARKER, not a plausible
+				 * one: `macos-install-script.sh` checks the bundled interpreter for its venv
+				 * module and exits with this line well before the first `|LO1:` marker, so a
+				 * failure here leaves `lastPhase` at its initial `null` and this is the
+				 * captured text the panel's machine line would carry.
+				 */
+				detail:
+					"ERROR: Python venv module not available in the Python installation",
+				exitCode: 1,
+			},
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * The last phase, which is the one that can still fail after a successful pip.
+ *
+ * It is also the phase with the longest RUNWAY of any in the panel - the smoke
+ * probe starts the installed server and waits on `/health` - and it was never
+ * photographed, so the composition of a full rail with one step still running
+ * was undocumented (see `installer-panel.tsx` on why `installed` is sent on the
+ * far side of that probe rather than at the end of the script).
+ */
+export const Verifying: Story = {
+	render: () =>
+		panel({
+			phase: "verify",
+			installed: false,
+			failure: null,
 			onCancel: noop,
 			onRetry: noop,
 		}),
