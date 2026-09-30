@@ -1114,8 +1114,13 @@ test("the shared copy table classifies every state and names every sentence", ()
  * control must answer to its one name — recording / speaking aloud (D2).
  */
 const SOURCES = {
+	/*
+	 * The composer's own file moved in #572's lift, and the probe it takes is the
+	 * HOST's read (`recordingProbe`) — the pin follows the file (and
+	 * `shared-composer.test.mjs` pins the chat that feeds it).
+	 */
 	"the composer mic":
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	"the speak-aloud control":
 		"src/renderer/src/features/chat/components/message-item/message-controls.tsx",
 	"the selection toolbar":
