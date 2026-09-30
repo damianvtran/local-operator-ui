@@ -450,7 +450,10 @@ export class CompanionSkinLibrary {
 	private readonly packs = new Map<string, IndexedPack>();
 	private cached: { id: string; pack: StoredPack } | null = null;
 
-	constructor(private readonly directory: string) {
+	constructor(
+		private readonly directory: string,
+		preferredId?: string,
+	) {
 		let names: string[];
 		try {
 			names = readdirSync(directory)
@@ -458,6 +461,12 @@ export class CompanionSkinLibrary {
 				.sort();
 		} catch {
 			return;
+		}
+		const preferredName = `${preferredId}.json`;
+		const preferredIndex = names.indexOf(preferredName);
+		if (preferredIndex > 0) {
+			names.splice(preferredIndex, 1);
+			names.unshift(preferredName);
 		}
 		const index = readIndex(directory);
 		const entries = names.slice(0, MAX_PACKS);
@@ -553,7 +562,10 @@ export class CompanionSkinLibrary {
 	import(
 		manifestPath: string,
 		replaceId?: string,
-		commit?: (appearance: CompanionAppearance) => () => boolean,
+		selection?: {
+			commit(appearance: CompanionAppearance): void;
+			rollback(): boolean;
+		},
 	): CompanionAppearance {
 		if (replaceId !== undefined && !this.packs.has(replaceId)) {
 			throw new Error("Choose a custom companion to replace.");
@@ -621,7 +633,6 @@ export class CompanionSkinLibrary {
 		const cached = this.cached;
 		const imported = appearance(id, pack);
 		const path = join(this.directory, `${id}.json`);
-		let rollback: (() => boolean) | undefined;
 		try {
 			try {
 				mkdirSync(this.directory, { recursive: true, mode: 0o700 });
@@ -634,7 +645,7 @@ export class CompanionSkinLibrary {
 			}
 			this.cached = { id, pack };
 			// Save the selection while both packs exist, before removing the old artwork.
-			rollback = commit?.(imported);
+			selection?.commit(imported);
 			if (replaceId && replaceId !== id) {
 				try {
 					this.remove(replaceId);
@@ -647,7 +658,7 @@ export class CompanionSkinLibrary {
 		} catch (error) {
 			let restored = true;
 			try {
-				restored = rollback?.() ?? true;
+				restored = selection?.rollback() ?? true;
 			} catch {
 				restored = false;
 			}

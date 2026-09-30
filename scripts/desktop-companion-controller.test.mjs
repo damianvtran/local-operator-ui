@@ -1379,52 +1379,74 @@ for (const replacement of ["new", "same", "existing", "full library"]) {
 	});
 }
 
-for (const rollbackFails of [false, true]) {
-	test(`failed old-artwork removal keeps a valid selection when preference rollback ${rollbackFails ? "fails" : "succeeds"}`, async (t) => {
-		const f = fixture(t);
-		const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
-		t.after(() => rmSync(source, { recursive: true, force: true }));
-		const image = await sharp({
-			create: { width: 2, height: 2, channels: 4, background: "red" },
-		})
-			.png()
-			.toBuffer();
-		const originalPath = join(source, "original.png");
-		const replacementPath = join(source, "replacement.png");
-		writeFileSync(originalPath, image);
-		writeFileSync(replacementPath, image);
-		f.companion.importCharacter(originalPath);
-		const original = f.companion.appearance;
-		const stored = join(f.libraryPath, `${original.id}.json`);
-		const unlink = fs.unlinkSync;
-		t.mock.method(fs, "unlinkSync", (path) => {
-			if (path === stored) {
-				if (rollbackFails) f.blockPreferenceWrites();
-				throw new Error("Fixture cannot remove original artwork");
+for (const failure of ["old-artwork removal", "appearance publish"]) {
+	for (const rollbackFails of [false, true]) {
+		test(`failed ${failure} keeps a valid selection when preference rollback ${rollbackFails ? "fails" : "succeeds"}`, async (t) => {
+			const f = fixture(t);
+			const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
+			t.after(() => rmSync(source, { recursive: true, force: true }));
+			const image = await sharp({
+				create: { width: 2, height: 2, channels: 4, background: "red" },
+			})
+				.png()
+				.toBuffer();
+			const originalPath = join(source, "original.png");
+			const replacementPath = join(source, "replacement.png");
+			writeFileSync(originalPath, image);
+			writeFileSync(replacementPath, image);
+			f.companion.importCharacter(originalPath);
+			const original = f.companion.appearance;
+			const stored = join(f.libraryPath, `${original.id}.json`);
+			const publishError = new Error("Fixture cannot publish appearance");
+			if (failure === "old-artwork removal") {
+				const unlink = fs.unlinkSync;
+				t.mock.method(fs, "unlinkSync", (path) => {
+					if (path === stored) {
+						if (rollbackFails) f.blockPreferenceWrites();
+						throw new Error("Fixture cannot remove original artwork");
+					}
+					return unlink(path);
+				});
+			} else {
+				const contents = f.windows[0].webContents;
+				const send = contents.send;
+				let failed = false;
+				t.mock.method(contents, "send", (channel, ...args) => {
+					if (!failed && channel === "companion:appearance") {
+						failed = true;
+						if (rollbackFails) f.blockPreferenceWrites();
+						throw publishError;
+					}
+					return send(channel, ...args);
+				});
 			}
-			return unlink(path);
+			assert.throws(
+				() => f.companion.importCharacter(replacementPath, original.id),
+				failure === "old-artwork removal"
+					? IMPORT_FAILED
+					: (error) => error === publishError,
+			);
+			const selected = f.companion.appearance;
+			assert.equal(f.preferences().character, selected.id);
+			assert.equal(
+				JSON.parse(
+					readFileSync(join(f.libraryPath, `${selected.id}.json`), "utf8"),
+				).name,
+				selected.name,
+			);
+			assert.equal(
+				JSON.parse(readFileSync(stored, "utf8")).name,
+				original.name,
+			);
+			if (rollbackFails) {
+				assert.notEqual(selected.id, original.id);
+				assert.equal(f.companion.characters.length, 6);
+			} else {
+				assert.deepEqual(selected, original);
+				assert.equal(f.companion.characters.length, 5);
+			}
 		});
-		assert.throws(
-			() => f.companion.importCharacter(replacementPath, original.id),
-			IMPORT_FAILED,
-		);
-		const selected = f.companion.appearance;
-		assert.equal(f.preferences().character, selected.id);
-		assert.equal(
-			JSON.parse(
-				readFileSync(join(f.libraryPath, `${selected.id}.json`), "utf8"),
-			).name,
-			selected.name,
-		);
-		assert.equal(JSON.parse(readFileSync(stored, "utf8")).name, original.name);
-		if (rollbackFails) {
-			assert.notEqual(selected.id, original.id);
-			assert.equal(f.companion.characters.length, 6);
-		} else {
-			assert.deepEqual(selected, original);
-			assert.equal(f.companion.characters.length, 5);
-		}
-	});
+	}
 }
 
 test("hiding retains the renderer but stops polling, rejects IPC and defeats a late ready event", async (t) => {

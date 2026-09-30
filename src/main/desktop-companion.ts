@@ -71,7 +71,6 @@ export class DesktopCompanion {
 	constructor(private readonly options: CompanionOptions) {
 		this.onDisplayChanged = this.onDisplayChanged.bind(this);
 		this.onAction = this.onAction.bind(this);
-		this.skins = new CompanionSkinLibrary(options.skinsDirectory);
 		this.chat = new CompanionChatService({
 			requestDesktop: options.requestDesktop,
 			cwd: options.cwd,
@@ -84,6 +83,10 @@ export class DesktopCompanion {
 		} catch {
 			this.preferences = companionPreferences(null);
 		}
+		this.skins = new CompanionSkinLibrary(
+			options.skinsDirectory,
+			this.preferences.character,
+		);
 		ipcMain.handle("companion:get-state", (event) =>
 			this.trusted(event) ? this.state : null,
 		);
@@ -167,10 +170,13 @@ export class DesktopCompanion {
 	importCharacter(path: string, replaceId?: string): void {
 		const previous = this.preferences;
 		try {
-			this.skins.import(path, replaceId, ({ id }) => {
-				if (!this.selectCharacter(id))
-					throw new Error("Companion settings could not be saved.");
-				return () => this.applyPreferences(previous);
+			this.skins.import(path, replaceId, {
+				commit: ({ id }) => {
+					if (!this.selectCharacter(id))
+						throw new Error("Companion settings could not be saved.");
+				},
+				rollback: () =>
+					this.preferences === previous || this.applyPreferences(previous),
 			});
 		} finally {
 			this.options.appearanceChanged();
