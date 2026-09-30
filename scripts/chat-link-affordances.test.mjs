@@ -1559,8 +1559,8 @@ test("above the read ceiling the strip loses the canvas and says why", async () 
 	);
 	assert.deepEqual(
 		labels,
-		["Copy path", "Open", "Open folder", "Quote"],
-		"the canvas action must be gone when the press would refuse it",
+		["Copy path", "Open", "Open folder", "Quote", "Speak aloud"],
+		"the canvas action must be gone when the press would refuse it, and the strip's Speak (the speak-aloud round) keeps its place after Quote",
 	);
 	assert.match(
 		strip.textContent,
@@ -1807,6 +1807,8 @@ test("the strip offers both opens, and each press does its own thing", async () 
 		"Open in default app",
 		"Open folder",
 		"Quote",
+		/* The speak-aloud round's control rides after Quote, where the model put it. */
+		"Speak aloud",
 	]);
 	const button = (label) =>
 		frame.document.querySelector(

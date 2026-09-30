@@ -50,5 +50,15 @@ export const MessageContainer: FC<MessageContainerProps> = ({
 		);
 	}
 
-	return <div className={cn("relative w-full", className)}>{children}</div>;
+	/*
+	 * `group` is load-bearing: the action row that rides the answer's foot line
+	 * fades at rest and is revealed by hovering or focusing anywhere in the
+	 * TURN (`message-actions-row.tsx`), and this container is the box that spans
+	 * the answer and its foot. Nothing inside reacted to it before the reveal
+	 * landed, so adding it here moved nothing; it is on the agent branch only,
+	 * because a user turn's reveal hangs off its own column's group.
+	 */
+	return (
+		<div className={cn("group relative w-full", className)}>{children}</div>
+	);
 };
