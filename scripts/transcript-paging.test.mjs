@@ -37,6 +37,7 @@ const {
 	ANCHOR_EPSILON_PX,
 	INVISIBLE_GROWTH_MIN_PX,
 	INVISIBLE_GROWTH_FRACTION,
+	MAX_ACT_ASKS,
 	MAX_CHAIN_INVISIBLE,
 	GESTURE_GAP_MS,
 	HARD_TOP_PX,
@@ -1646,6 +1647,46 @@ test("the first VISIBLE reveal ends the chain and buys nothing further", () => {
 		"none",
 		"a scrollable transcript gets one reveal per act",
 	);
+});
+
+test("ONE ACT cannot buy more round trips by walking through more than one door (QA round 1, Q-4)", () => {
+	/*
+	 * THE DEFECT THIS BOUNDS, MEASURED RATHER THAN REASONED: on the tall-run journal
+	 * one real wheel notch produced thirteen `sessions.history` asks (QA measured
+	 * fifteen on their fixture) against a stated bound of twelve. Every door was
+	 * inside its OWN bound — the unscrollable pane's short-content chain, the
+	 * invisible-reveal chain — and the act was not, because it walked through both.
+	 * `MAX_ACT_ASKS` is the sum, and the fixture that walks through both doors is an
+	 * unscrollable pane whose reveals keep landing invisible.
+	 */
+	assert.equal(MAX_ACT_ASKS, MAX_CHAIN_INVISIBLE);
+	let state = wheelUp(initialPagingState(), 0);
+	let pages = 0;
+	for (let i = 0; i < 60; i++) {
+		const decision = decide(
+			state,
+			geo({ scrollable: false }),
+			SETTLE_MS + 1 + i,
+		);
+		if (decision.action !== "fetch") break;
+		pages += 1;
+		state = settled(decision.state, { growthPx: 10, clientHeight: 800 });
+	}
+	assert.equal(
+		pages,
+		MAX_ACT_ASKS,
+		`the act spends its whole budget and not one ask more (asked ${pages})`,
+	);
+	/*
+	 * And the budget REFILLS for the reader's next act: the bound is about one
+	 * gesture, not about a reader's session (rule 2's own shape).
+	 */
+	const next = decide(
+		wheelUp(state, SETTLE_MS * 4),
+		geo({ scrollable: false }),
+		SETTLE_MS * 5,
+	);
+	assert.equal(next.action, "fetch", "a fresh act asks again");
 });
 
 test("the invisible chain is bounded at MAX_CHAIN_INVISIBLE for a scrollable reader", () => {

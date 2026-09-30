@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
+			'export { useScrollPaging } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,7 +28,7 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, SETTLE_MS } = await import(
+const { useScrollPaging, SETTLE_MS, MAX_ACT_ASKS } = await import(
 	new URL(`file://${bundlePath}`).href
 );
 const { createRoot } = await import("react-dom/client");
@@ -236,6 +236,17 @@ function mountHook(options = {}) {
 		},
 		setScrollHeight: (value) => {
 			scrollHeight = value;
+		},
+		/**
+		 * Move the anchored row — CONTENT ARRIVING ABOVE THE READER, which is the
+		 * only thing the reveal's growth is measured from now (agent review round
+		 * 1, R1-3: the scroller's whole `scrollHeight` also grows when a live turn
+		 * streams BELOW a tail-following reader, and that was being credited to the
+		 * reveal). `setScrollHeight` alone is therefore "the extent changed, the
+		 * reader's own row did not move" — the invisible case.
+		 */
+		setRowTop: (value) => {
+			anchorTop = value;
 		},
 		get slotState() {
 			return handle?.slotState;
@@ -576,9 +587,16 @@ test("an invisible landing is followed by another ask without input", async () =
 			hook.asked > 1,
 			`an invisible reveal must chain (asked ${hook.asked})`,
 		);
-		assert.ok(
-			hook.asked <= 12,
-			`and the chain must stop (asked ${hook.asked})`,
+		/*
+		 * THE RENDERER PATH AT ITS BOUND (QA round 1, Q-4 asked for exactly this:
+		 * the policy's own test cannot see the hook's door accounting). `MAX_ACT_ASKS`
+		 * is the sum one act may buy across every door; a hook that spent one ask
+		 * past it would fail here.
+		 */
+		assert.equal(
+			hook.asked,
+			MAX_ACT_ASKS,
+			`the chain spends the act's whole budget and stops (asked ${hook.asked})`,
 		);
 	} finally {
 		hook.close();
@@ -595,6 +613,40 @@ test("an invisible landing is followed by another ask without input", async () =
  * rather than deleted because a fix that refunds on EVERY settle would pass the
  * invisible case and silently break rule 2 for a visible one.
  */
+/*
+ * AGENT REVIEW ROUND 1, R1-3 — DISCRIMINATING, not a contract pin: before this
+ * round the reveal's growth was the scroller's WHOLE `scrollHeight` delta, so a
+ * live turn streaming BELOW a tail-following reader read as a visible reveal,
+ * ended the chain and left the act's round trip spent. The measurement is now the
+ * held row's own displacement (`sampleAnchor`/`measureHeld`), and this is that
+ * exact state: the extent grows, the reader's row does not move.
+ */
+test("growth BELOW the reader's own row does not answer the act (R1-3)", async () => {
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.asked, 1, "one act, one round trip");
+		// A turn streams in BELOW the reader: the extent grows and the held row
+		// stays exactly where it was.
+		hook.setScrollHeight(2400);
+		let last = -1;
+		for (let round = 0; round < 30 && hook.asked !== last; round += 1) {
+			last = hook.asked;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.asked > 1,
+			`the reader saw nothing of it, so the act is not answered (asked ${hook.asked})`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
 test("a visible landing answers the act: the chain stops there (contract pin)", async () => {
 	const hook = askable();
 	try {
@@ -603,9 +655,12 @@ test("a visible landing answers the act: the chain stops there (contract pin)", 
 		hook.readerInput();
 		hook.flushFrames(4);
 		assert.equal(hook.asked, 1, "one act, one round trip");
-		// The page lands and DOES move the extent: the reader can see it, so the
-		// next reveal needs a gesture of their own (rule 2 for a scrollable pane).
+		// The page lands and DOES move the content above the reader: the held row
+		// is pushed down by the rows that arrived over it, which is what "the reader
+		// saw it" means (and the extent grows with it). The next reveal therefore
+		// needs a gesture of their own (rule 2 for a scrollable pane).
 		hook.setScrollHeight(2400);
+		hook.setRowTop(120 + 400);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		hook.flushFrames(12);
 		assert.equal(

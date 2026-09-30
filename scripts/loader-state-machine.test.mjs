@@ -797,6 +797,36 @@ test("the invisible-reveal chain shares the same bound as a rail jump", () => {
 	);
 });
 
+test("one act's bounds are the same number, wherever they are stated", () => {
+	/*
+	 * The four bounds that must not disagree, asserted in the one suite that bundles
+	 * BOTH modules (agent review round 1, R1-4: `WIDEN_MAX_STEPS` claimed to be "the
+	 * bound the reveal chain already uses" and was pinned by nothing).
+	 *
+	 *   - `JUMP_MAX_PAGES` and `ALIGN_WALK_MAX_PAGES` — a rail jump and the
+	 *     open-time walk (already pinned above);
+	 *   - `MAX_CHAIN_INVISIBLE` — the invisible-reveal chain;
+	 *   - `WIDEN_MAX_STEPS` — the widen's own search;
+	 *   - `MAX_ACT_ASKS` — the SUM one act may buy across every door (QA round 1,
+	 *     Q-4: fifteen asks for one notch against a stated bound of twelve).
+	 */
+	assert.equal(
+		paging.MAX_ACT_ASKS,
+		paging.MAX_CHAIN_INVISIBLE,
+		"the act's ask budget is the chain's bound, not a second number",
+	);
+	assert.equal(
+		model.WIDEN_MAX_STEPS,
+		paging.MAX_CHAIN_WIDEN,
+		"the widen's search and the reveal chain's own widen bound agree",
+	);
+	assert.equal(
+		model.WIDEN_MAX_STEPS,
+		paging.MAX_CHAIN_INVISIBLE,
+		"and they are all one act's worth of travel",
+	);
+});
+
 test("the completion walk walks a head-cut run to its head, in one open", async () => {
 	const journal = FakeJournal.fromShape(shape.kinds);
 	const reader = new Reader(m, journal).open();
@@ -807,20 +837,24 @@ test("the completion walk walks a head-cut run to its head, in one open", async 
 	 * component's 60 so the case does not silently stop exercising the cut the
 	 * day the fixture's tail page gains a few rows.
 	 */
-	const WINDOW = 30;
 	const rows = model.buildRows(reader.transcript.records, []);
+	/*
+	 * THE TRIGGER IS THE BAR (round 1's retarget): a condensed run whose opening
+	 * user row is not in the store. The fixture opens on exactly that - a cut run's
+	 * tail that still closes with its answer, so the bar paints a partial count.
+	 */
 	assert.ok(
-		model.windowTopRunIsHeadCut(rows, WINDOW),
-		"the fixture opens with a cut run's tail - otherwise this case proves nothing",
+		model.alignWalkRunKey(rows, { live: false }) !== null,
+		"the fixture opens with a condensed, head-cut bar - otherwise this case proves nothing",
 	);
 	let pages = 0;
 	let spent = 0;
 	let halted = false;
 	for (let i = 0; i < 40; i += 1) {
-		const cut = model.windowTopRunIsHeadCut(
-			model.buildRows(reader.transcript.records, []),
-			WINDOW,
-		);
+		const cut =
+			model.alignWalkRunKey(model.buildRows(reader.transcript.records, []), {
+				live: false,
+			}) !== null;
 		const decision = model.alignWalkDecision(spent, {
 			hasMore: reader.transcript.hasMore,
 			loadingOlder: false,
