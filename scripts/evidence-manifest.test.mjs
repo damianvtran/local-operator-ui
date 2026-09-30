@@ -2847,6 +2847,11 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto20ccfd4512Note",
 	/*
+	 * And the fifth fold, onto `fb565e2b8a` (#690's composer cluster) - the
+	 * merge prerequisite of round 2, and the same reason once more.
+	 */
+	"foldOntofb565e2b8aNote",
+	/*
 	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
 	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
 	 * adds no name to the quoting ledger.
