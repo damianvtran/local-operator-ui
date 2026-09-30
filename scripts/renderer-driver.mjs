@@ -13652,7 +13652,15 @@ async function scenePinnedReorder(cdp) {
 	 */
 	const PINNED_IDS = ["p000", "p005", "p010"];
 	const PINNED_QUERY = "Chat 00";
-	const PINNED_WIDTHS = [240, 280, 320];
+	/*
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
+	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
+	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
+	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
+	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * the README called 280 "the default", which is not a width the app opens at.
+	 */
+	const PINNED_WIDTHS = [240, 260, 280, 320];
 	await wait(PINNED_SETTLE_MS);
 
 	/**
@@ -13728,6 +13736,12 @@ async function scenePinnedReorder(cdp) {
 						   COMMENT: it lives inside a template literal, and one would end the
 						   string early - measured, twice on this file. */
 						ground: getComputedStyle(node).backgroundColor,
+						/* THE HELD ROW'S NON-FILL CUE (round 2, D7 and U6): a 1px INSET ring
+						   drawn as a box-shadow, so the computed shadow is the honest reading
+						   of "is this row marked as held" - and a merely hovered row carries
+						   none, which is the whole discrimination the round-2 fix is about.
+						   NO BACKTICKS IN THIS COMMENT: it lives inside a template literal. */
+						ring: getComputedStyle(node).boxShadow,
 						current:
 							node.querySelector("[data-chat-row][aria-current='page']") !== null,
 						title: title ? box(title) : null,
@@ -14042,13 +14056,17 @@ async function scenePinnedReorder(cdp) {
 			);
 			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
 			/*
-			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2): the grip is drawn above a
-			 * 279px panel and shed at or below it, because at the 240 clamp the revealed
-			 * cluster left the title 40px of the row's 208. The PAIR STAYS at every width -
-			 * it is WCAG 2.5.7's single-pointer alternative - so the check is two claims,
-			 * one per band, rather than one claim with an exception.
+			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2, rounded to the measured edge
+			 * in round 2): the grip is DRAWN at a 279px panel and above and shed at 278 and
+			 * below - QA measured 277/278 shed and 279/280 drawn, which is what the shipped
+			 * `@max-[263px]/chatsidebar:hidden!` decides once the panel's own `p-2` is taken
+			 * off (the container query reads a content box 16px narrower than the panel) -
+			 * because at the 240 clamp the revealed cluster left the title 40px of the row's
+			 * 208. The PAIR STAYS at every width - it is WCAG 2.5.7's single-pointer
+			 * alternative - so the check is two claims, one per band, rather than one claim
+			 * with an exception.
 			 */
-			const gripExpected = width > 279;
+			const gripExpected = width >= 279;
 			check(
 				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
 				(hoveredRow.grip !== null) === gripExpected &&
@@ -14149,6 +14167,23 @@ async function scenePinnedReorder(cdp) {
 			"mid-drag: the dragged row's ground is a step the hover does not paint",
 			midGround !== null && hoverGround !== null && midGround !== hoverGround,
 			JSON.stringify({ dragged: midGround, hovered: hoverGround }),
+		);
+		/*
+		 * AND THE HELD STATE CARRIES A RING AS WELL (round 2, D7 and U6): the ground alone
+		 * cannot say "held" in the current-row case, so the non-fill cue is what every held
+		 * row has, and the row under the pointer has none of it.
+		 */
+		const midRing =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ring ?? null;
+		const hoveredRing =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[1])?.ring ?? null;
+		check(
+			"mid-drag: the held row wears an inset ring and an unheld row wears none",
+			typeof midRing === "string" &&
+				midRing.includes("inset") &&
+				hoveredRing !== null &&
+				!String(hoveredRing).includes("inset"),
+			JSON.stringify({ held: midRing, other: hoveredRing }),
 		);
 		await releaseAt(grip.x, grip.y);
 		await wait(PINNED_SETTLE_MS);
@@ -14380,6 +14415,184 @@ async function scenePinnedReorder(cdp) {
 		);
 		await typePinnedQuery("");
 		await wait(PINNED_SETTLE_MS);
+
+		/*
+		 * 5. THE HELD CURRENT ROW (round 2, design D7 and UX round 2, U6), and it is the
+		 * state the first pass could not photograph.
+		 *
+		 * WHY IT IS ORDINARY AND NOT AN EDGE CASE: the pointer has to land on another row
+		 * for a drop to move anything, so "the conversation the reader is in is the one
+		 * being dragged" is the normal shape of the gesture - and it is where the first
+		 * attempt at the held cue broke, because it gave that row the HOVER fill, which is
+		 * exactly what the row under the pointer already paints. Two rows, one reading.
+		 *
+		 * THE ROUTE STATE IS REACHED THROUGH THE ROW'S OWN DOOR: the button inside the row
+		 * carries `data-chat-row`, and Enter on it is the sidebar's own way into a
+		 * conversation (UX round 2 walked it and read `aria-current=page` off the row). A
+		 * `.click()` from the evaluate hatch would be a page-level event the row hears
+		 * only if React happens to be listening; a real key on the focused button is the
+		 * reader's gesture, which is the standard this file's other gestures are held to.
+		 */
+		await hoverRow(PINNED_IDS[0]);
+		const door = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]`,
+		);
+		const focusedDoor = await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector('[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]');
+				if (el === null) return false;
+				el.focus();
+				return document.activeElement === el;
+			})()`,
+		);
+		const routeOf = () =>
+			cdp.evaluate(
+				`(() => ({ hash: location.hash, toasts: [...document.querySelectorAll('[data-sonner-toast]')].map((node) => node.textContent) }))()`,
+			);
+		/*
+		 * `keyDown` AND NOT `rawKeyDown`: a raw press delivers the key to the page without
+		 * running the browser's own default action, and the default action is what turns
+		 * Enter on a focused BUTTON into the click that opens the row (measured on this
+		 * scene's first run: the raw form left the route at `#/chat` and no row current,
+		 * while the pointer's press on the same element opened it).
+		 */
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				text: type === "keyDown" ? "\r" : undefined,
+				unmodifiedText: type === "keyDown" ? "\r" : undefined,
+				windowsVirtualKeyCode: 13,
+			});
+		}
+		await wait(PINNED_SETTLE_MS);
+		const afterEnter = await readPinnedPanel();
+		note(
+			"the row's own door, by keyboard",
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				route: await routeOf(),
+				rows: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+		/*
+		 * AND THE POINTER'S OWN DOOR, when the keyboard's did not take: the row's button is
+		 * the same element, and a real press is the gesture a reader makes. Both are tried
+		 * and the reading says which one the stand-in answered - a check that failed on the
+		 * keyboard alone would report the fixture rather than the app.
+		 */
+		let opened = afterEnter;
+		if (opened.rows.find((row) => row.id === PINNED_IDS[0])?.current !== true) {
+			await pressAt(door.x, door.y);
+			await releaseAt(door.x, door.y);
+			await wait(PINNED_SETTLE_MS);
+			opened = await readPinnedPanel();
+			note(
+				"the row's own door, by pointer",
+				JSON.stringify({
+					route: await routeOf(),
+					rows: opened.rows.map((row) => ({
+						id: row.id,
+						current: row.current,
+					})),
+				}),
+			);
+		}
+		check(
+			"the row's own door makes it the current one (a route the stand-in can hold)",
+			opened.rows.find((row) => row.id === PINNED_IDS[0])?.current === true,
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				afterEnter: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+				afterPointer: opened.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+
+		/*
+		 * THE DRAG, WITH THE POINTER PARKED OVER ANOTHER ROW - the mid-gesture position
+		 * this pass exists for.
+		 */
+		const currentRow = opened.rows.find((row) => row.id === PINNED_IDS[0]);
+		const otherRow = opened.rows.find((row) => row.id === PINNED_IDS[1]);
+		await hoverRow(PINNED_IDS[0]);
+		const currentGrip = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed on the current row too",
+			currentGrip !== null && currentGrip.w > 0,
+			JSON.stringify(currentGrip),
+		);
+		await pressAt(currentGrip.x, currentGrip.y);
+		for (let step = 1; step <= 6; step += 1) {
+			const y = Math.round(
+				currentGrip.y +
+					((otherRow.box.y + otherRow.box.h / 2 - currentGrip.y) * step) / 6,
+			);
+			await dragMoveTo(currentGrip.x, y);
+			await wait(40);
+		}
+		const currentMid = await readPinnedPanel();
+		const currentMidFrame = await captureSettled(cdp, "current-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "current-drag-mid", ...currentMidFrame }),
+		);
+		const heldRow = currentMid.rows.find((row) => row.id === PINNED_IDS[0]);
+		const targetRow = currentMid.rows.find((row) => row.id === PINNED_IDS[1]);
+		/*
+		 * THE TWO CLAIMS ROUND 2 FILED, EACH MEASURED RATHER THAN READ OFF A FRAME: the held
+		 * row keeps the SELECTED fill (so "you are here" survives the gesture) while the row
+		 * under the pointer paints the hover fill, and the two are told apart by the held
+		 * row's ring - a non-fill cue no hover state paints.
+		 */
+		check(
+			"the held current row keeps its own fill and is not painted as hovered",
+			heldRow?.dragging === true &&
+				heldRow.current === true &&
+				heldRow.ground !== targetRow?.ground &&
+				heldRow.ground === currentRow?.ground,
+			JSON.stringify({
+				held: { ground: heldRow?.ground, ring: heldRow?.ring },
+				target: { ground: targetRow?.ground, ring: targetRow?.ring },
+				restingCurrent: currentRow?.ground,
+			}),
+		);
+		check(
+			"the held row is marked by an inset ring the hovered row does not paint",
+			typeof heldRow?.ring === "string" &&
+				heldRow.ring.includes("inset") &&
+				targetRow?.ring === "none",
+			JSON.stringify({ held: heldRow?.ring, target: targetRow?.ring }),
+		);
+		await sendEscape(cdp);
+		await releaseAt(currentGrip.x, currentGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const currentCancelled = await readPinnedPanel();
+		check(
+			"cancelling the current-row drag writes nothing and leaves the order alone",
+			JSON.stringify(currentCancelled.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]) &&
+				currentCancelled.dragging.length === 0,
+			JSON.stringify({
+				order: currentCancelled.order,
+				dragging: currentCancelled.dragging,
+				announcement: currentCancelled.announcement,
+			}),
+		);
+
 		note(
 			"pinned-reorder geometry",
 			JSON.stringify({
@@ -14390,6 +14603,23 @@ async function scenePinnedReorder(cdp) {
 					slot0Line: {
 						indicatorY: topDrag.indicator?.y ?? null,
 						sectionTop: topDrag.sectionBox.y,
+					},
+				},
+				round2: {
+					heldCurrent: {
+						ground: heldRow?.ground ?? null,
+						ring: heldRow?.ring ?? null,
+						restingGround: currentRow?.ground ?? null,
+					},
+					heldPlain: {
+						ground: midGround,
+						ring:
+							midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ring ??
+							null,
+					},
+					hoveredTarget: {
+						ground: targetRow?.ground ?? null,
+						ring: targetRow?.ring ?? null,
 					},
 				},
 			}),
@@ -14591,8 +14821,20 @@ async function scenePinnedReorder(cdp) {
 			JSON.stringify(afterChord),
 		);
 		/* The bare arrow continues the walk from that row: the next stop is a row in the
-		   SAME section, never the panel's first stocdp.evaluate('(() => {\n\t\t\tconst el = document.activeElement;\n\t\t\treturn { tag: el?.tagName ?? null, chatRow: el?.hasAttribute?.("data-chat-row") ?? false, text: el?.getAttribute?.("aria-label") ?? null };\n\t\t})()')"aria-label") ?? null };
-		})()`);
+		   SAME section, never the panel's first stop. `afterArrow` reads the caret again
+		   just before the arrow, so the check's own detail names the row the walk started
+		   from and the one it landed on (Q1). */
+		const afterArrow = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
 		await chord("ArrowDown", false);
 		const walked = await cdp.evaluate(
 			`(() => {
