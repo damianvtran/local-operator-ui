@@ -4,8 +4,11 @@ Issue #695, and the design memo's (a)–(h) rulings. The reporter's habit —
 "copy response" under the reply, ChatGPT-shaped — met a surface that had no
 control there at all: every per-message action lived in a hover-only toolbar at
 the turn's top-right (`components/message-item/message-controls.tsx`, reachable
-only from two story files and superseded here), and the desktop UI ships no
-`/copy` slash command, so a reader who missed it had no second route.
+only from two story files and superseded here). The desktop UI does ship `/copy`,
+which this README claimed otherwise until design round 1's D2 — but it is a
+PICKER: it opens a destination chooser and copies a whole record from it, so it is
+a route to the text rather than an affordance under the answer the reader is
+looking at.
 
 This set is the change's own evidence, and its pair under
 [`../chat-canonical-message-actions-before/`](../chat-canonical-message-actions-before/)
@@ -29,6 +32,7 @@ the state IS the pointer.
 | `streaming/` | a settled turn beside an in-flight one | the row on the settled answer, and NONE on the in-flight turn's rows |
 | `multi-answer/` | two settled answers in one turn | exactly one row, on the closing answer |
 | `bar-suppressed/` | a turn folded into its bar | the actions still on the line, the bar keeping its numbers and stamp |
+| `one-call-turn/` | the minimum action count: one call, settled | where the caption would sit if the line could carry it beside the actions — it cannot, and the bar above states `1 action` instead (D1) |
 | `narrow/` | 420px, `isSmallView` | one line, buttons intact, no wrap, focus reachable |
 
 Six themes, chosen by the memo's logic rather than by taste: `localOperatorLight`
@@ -83,17 +87,49 @@ so those turns gain the actions' 28px line plus its 4px margin. That is the stat
 `bar-suppressed/` photographs; it is called out here rather than averaged into
 the 10.6px above.
 
-## One thing this set cannot show, stated rather than implied
+## The caption beside the actions: why no frame shows it (design round 1, D1)
 
 The memo's sketch puts the actions on the same line as `Worked for 1m 12s · 8
-actions`. In the shipped product that composition is rare, and the frames say so
-honestly: the caption spans are gated on `foot.actions > 0` (a turn with no tool
-rows has no numbers to state — `rest/` and `short-answer/` are exactly that
-turn), and a turn WITH tool rows folds its run into the bar, which takes the
-numbers and the stamp and suppresses the caption (`bar-suppressed/`). What the
-frames show is the two shapes the app actually paints: **actions + stamp** on a
-turn that does not fold, and **actions alone** on a turn that does. The design
-round should judge the row against those, not against the sketch.
+actions`. The app cannot paint that composition, and the reason is structural
+rather than rare — a chain worth stating in full, because "the sketch's shape is
+missing" is otherwise indistinguishable from "nobody captured it":
+
+1. The caption's own gate is `foot.actions > 0` (`canonical-transcript.tsx`),
+   and `foot.actions` counts a turn's **tool rows**. A turn with no calls has no
+   numbers to state, so the caption is absent by that gate — `rest/` and
+   `short-answer/` are exactly those turns, and they paint **actions + stamp**.
+2. A turn WITH a call always gives its run something to hide. `planRun`
+   (`turn-collapse-model.ts`) builds `hidden` from every row between the opening
+   user row and the closing answer that is not pinned, and
+   `staysVisibleWhileCollapsed` is `true` for `compaction`, a complete `notice`
+   and an error `custom` — **never for a `tool` row**. `collapses` is
+   `hidden.length > 0 && … && !live`, so one call is enough.
+3. A collapsed run withholds the caption AND the stamp from the closing line:
+   `suppressClosingLine` reaches the row as `closingLineSuppressed`, the caller
+   hands `foot: null` for those turns, and the bar states the numbers and the
+   stamp instead (`TurnSummary`).
+
+So the two halves of the line that do exist are **actions + stamp** (no calls)
+and **actions alone** (calls, bar above). `one-call-turn/` is the tightest
+rendering of the second: one call is the smallest count that makes the turn
+foldable, and the frame shows the bar reading `1 action` while the closing line
+carries the row with no caption beside it. `hover-answer-no-corner-control/` and
+`bar-suppressed/` are the same fact seen from the other two angles. The design
+round should judge the row against those frames, not against the sketch.
+
+## The Speak arm this set does not photograph (design round 1, D3)
+
+The frames show Speak **disabled**, with its reason in the tooltip: the story
+renders `frontend={null}`, and the button's gate is the Radix credential probe
+(`useRadientCredentialProbe`) — a react-query read against the local API that a
+static fixture cannot satisfy. Photographing the ENABLED arm would mean stubbing
+that provider inside the story, which is new machinery in the render path the
+frames are supposed to be evidence about, so the enabled arm is asserted instead
+and this is where it is recorded: `scripts/message-actions.test.mjs` mounts the
+real row with the probe answering "configured", asserts the button is enabled,
+and asserts the press reaches the speech store keyed by THIS answer with the
+visible text. The busy/playing swap is asserted there too (`Stop`, same node,
+focus kept). Nothing in this set claims otherwise.
 
 ## How they were taken
 
@@ -127,6 +163,12 @@ came back byte-identical except the `streaming/` working line's animated mark �
 19 pixels in a 4x12 box, against 16 pixels in the same box between two captures of
 the SAME tree, so the difference is the mark's phase rather than the tree. The
 committed frames are the ones this set shipped and they describe the folded tree.
+
+**Thirteen states, 78 frames.** `one-call-turn/` was added in round 1 (D1) and its
+six frames were taken on the fixed tree; the other twelve states were re-checked
+against it rather than re-taken — a re-capture of `rest/` after the round's
+component change (the Speak/Stop swap in `message-actions-row.tsx`) came back
+**byte-identical**, which is the claim that the change moves nothing at rest.
 
 ## What this set is NOT
 

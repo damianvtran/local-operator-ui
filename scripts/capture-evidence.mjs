@@ -7441,6 +7441,13 @@ export const STORIES = [
 	["chat-canonical-message-actions--streaming", 1024, 620],
 	["chat-canonical-message-actions--multi-answer", 1024, 640],
 	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
 	["chat-canonical-message-actions--narrow", 420, 620],
 ];
 

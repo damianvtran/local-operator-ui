@@ -2,11 +2,11 @@
 
 The BEFORE half of the pair whose AFTER half is
 [`../chat-canonical-message-actions/`](../chat-canonical-message-actions/). The
-same eight resting states, on the tree before any line of the change existed: the
+same nine resting states, on the tree before any line of the change existed: the
 answer is there, the caption is there, and **the closing line carries no
 control at all**.
 
-**Why a supplementary set rather than eight rows in the sweep.** These eight
+**Why a supplementary set rather than nine rows in the sweep.** These nine
 stories cannot be re-taken from a later head: `AssistantRow` has changed, so the
 only tree that paints them is the pre-change one. A declaration is what keeps
 `capture-evidence.mjs`'s sweep from deleting frames it cannot produce (they are
@@ -35,9 +35,15 @@ node scripts/capture-evidence.mjs http://127.0.0.1:6077 \
   --allow-backend --theme-settle-ms=180000
 ```
 
-48 frames: eight states in six themes. `--allow-backend` for the same reason the
+54 frames: nine states in six themes. `--allow-backend` for the same reason the
 after run takes it (the operator's live daemon must not be stopped, and these
 fixtures never contact it).
+
+**`one-call-turn/` was added in round 1** (design round 1, D1) and is the only
+state here taken after the fold: it photographs the minimum-action turn — one
+call, so the bar reading `1 action` — on the pre-change tree, where the closing
+line under that bar carries nothing. Its after counterpart is the frame the D1
+note in the after set's README argues from.
 
 **Re-taken once, on the fold, and why.** Five of the eight states (`streaming`,
 `multi-answer`, `short-answer`, `refused`, `truncated`) were re-shot on the folded
