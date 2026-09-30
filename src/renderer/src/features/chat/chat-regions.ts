@@ -242,11 +242,39 @@ export const chatRowAct = (event: {
 /**
  * `⌘⇧P` on macOS, `Ctrl+Shift+P` elsewhere — one spelling, so the cap a row
  * prints and the handler that answers it cannot drift.
+ *
+ * THIS IS THE HANDLER'S SPELLING, not a rendered one. `KeyboardShortcut` splits
+ * its `shortcut` prop on `+` and renders one `<kbd>` per part, so the macOS
+ * form above - `⌘⇧P`, no separators - would render as ONE cap three glyphs
+ * wide if it were ever fed to the component. It is not: the row prints its
+ * chords through the accompanied sibling below.
  */
 export const chatRowActCap = (act: ChatRowAct, isMac: boolean): string => {
 	const key = act === "pin" ? "P" : "A";
 	return isMac ? `⌘⇧${key}` : `Ctrl+Shift+${key}`;
 };
+
+/**
+ * The same chord as `+`-joined prop text for `KeyboardShortcut`, which splits
+ * on `+` (`keyboard-shortcut.tsx`; `palette-shortcut.ts` records the same
+ * constraint from the palette's side, "the same gesture as `KeyboardShortcut`
+ * prop text, which splits on `+`").
+ *
+ * A SIBLING rather than a replacement, because the two consumers genuinely want
+ * two shapes: the handler matches an event whose macOS `key` is `p`, so its
+ * string is `⌘⇧P`; the renderer's separator IS the `+`, so its string is
+ * `⌘+⇧+P`. Deriving one from the other at the call site (a `.split("")`-style
+ * splice) would be a second parsing rule for a third consumer to learn, and the
+ * sidebar's own rows already spell their chords in exactly this shape
+ * (`sidebar-navigation.tsx`). The non-mac form carries its separators already,
+ * so it is `chatRowActCap`'s own string.
+ *
+ * `joined` at the call site suppresses the printed `+`; it does NOT change this
+ * string ("the prop still splits on `+`" - the note in `keyboard-shortcut.tsx`
+ * says so).
+ */
+export const chatRowActCapJoined = (act: ChatRowAct, isMac: boolean): string =>
+	isMac ? `⌘+⇧+${act === "pin" ? "P" : "A"}` : chatRowActCap(act, isMac);
 
 /** The attribute each row act's control carries, so the chord can find it. */
 export const CHAT_ROW_ACT_ATTR: Record<ChatRowAct, string> = {
