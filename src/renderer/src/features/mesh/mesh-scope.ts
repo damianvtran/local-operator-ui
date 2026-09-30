@@ -55,6 +55,7 @@
  */
 
 import type { MeshDevice } from "./mesh-graph";
+import type { SlotMap } from "./mesh-positions";
 
 /** The three tiers that are drawn. Everything else is not drawn. */
 export type ScopeTier = "shared" | "probable" | "declared";
@@ -277,6 +278,36 @@ export function declaredScope(device: MeshDevice): string {
 		if (scope) return scope;
 	}
 	return "";
+}
+
+/**
+ * The TOPMOST member of each enclosure, by device id: the rows a scope label sits above.
+ *
+ * `meshGeometry` reserves the label's band above exactly these rows (see
+ * `SCOPE_OPEN_GAP`), so this is the seam between "which groups exist" (this file's
+ * arithmetic) and "where the label goes" (the layout's): the label anchors to the top
+ * edge of an enclosure, and that edge belongs to the group's highest row. The ordering
+ * read here is the SLOT, which is the same order the canvas draws - the geometry maps a
+ * slot to `y` monotonically, so "lowest slot" and "topmost box" agree by construction
+ * rather than by a second measurement. A group whose members left the slot map
+ * contributes nothing, which is the same "a frame computed from nothing" rule the
+ * layer states for an empty group.
+ */
+export function openingDeviceIds(
+	groups: readonly PrefixGroup[],
+	deviceSlots: SlotMap,
+): ReadonlySet<string> {
+	const ids = new Set<string>();
+	for (const group of groups) {
+		let top: { id: string; slot: number } | null = null;
+		for (const id of group.deviceIds) {
+			const slot = deviceSlots.get(id);
+			if (slot === undefined) continue;
+			if (top === null || slot < top.slot) top = { id, slot };
+		}
+		if (top !== null) ids.add(top.id);
+	}
+	return ids;
 }
 
 /** The label above an enclosure: the prefix and the tier's own words. */

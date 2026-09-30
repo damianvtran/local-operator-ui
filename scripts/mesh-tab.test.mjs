@@ -111,6 +111,10 @@ const {
 	DEVICE_HEIGHT,
 	MIN_FIT_SCALE,
 	ROW_GAP,
+	PAD,
+	SCOPE_OPEN_GAP,
+	SCOPE_TOP_CLEARANCE,
+	openingDeviceIds,
 	deviceReach,
 	reachWords,
 	reachSentence,
@@ -594,7 +598,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	const graph = meshGraph({ topology, peers });
 	assert.equal(
 		meshSummary(graph),
-		"2 networks · 3 devices · 1 no answer · this device is device …aaaaaa",
+		"2 networks · 3 devices · 1 reached · 1 no answer · this device is device …aaaaaa",
 		"counted by REACH (mesh redesign, D3), so an unanswered device is not filed as a failure it never was",
 	);
 	/*
@@ -607,7 +611,41 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 		}),
 		peers: peerList({}),
 	});
-	assert.equal(meshSummary(bare), "1 network · 1 device");
+	assert.equal(
+		meshSummary(bare),
+		"1 network · 1 device · 1 reached",
+		"every device is in exactly one class, so the counts add up to the count they follow",
+	);
+	/*
+	 * A CENSUS, NOT A SELECTION (agent review round 1, U4). The sentence used to read
+	 * `2 no answer · 1 not asked · 1 suspected` over six devices: the suspect device was
+	 * counted TWICE and `unknown` was counted nowhere, so the counts read as a breakdown
+	 * and did not add up. The suspect fact is the overlay it is now (`N of them
+	 * suspected`), and every reach class is enumerated.
+	 */
+	const census = meshGraph({
+		topology: networkTopology({
+			self_device_id: DEVICE_A,
+			networks: [
+				network(NET_ONE, [
+					member(DEVICE_A),
+					member(DEVICE_B, {
+						suspect: true,
+						reachable: false,
+						reason: "no route to it",
+					}),
+					member(DEVICE_C, { reachable: false, reason: "no route to it" }),
+					member(DEVICE_D, { reachable: false }),
+				]),
+			],
+		}),
+		peers: peerList({}),
+	});
+	assert.equal(
+		meshSummary(census),
+		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is device …aaaaaa",
+		"the suspect fact is a qualifier on the census, and `unknown` is named so the six counts can be added up",
+	);
 });
 
 test("a stat line never claims a heartbeat the wire did not send", () => {
@@ -823,10 +861,19 @@ test("the taller node costs one device of `k = 1`, and the fit stops at legibili
 	);
 	/*
 	 * THE COST, stated where a future reader will find it: the `k = 1` guarantee moves from
-	 * <= 6 devices (72 px node) to <= 5 (96 px node). Six was already a shrink at 0.90344;
-	 * nine used to land at 0.61156, where the 12 px meta renders at 7.34 px - below the 10 px
-	 * floor `design-qa`'s `tiny-text` check fails on.
+	 * <= 6 devices (72 px node) to <= 5 (96 px node). Six was already a shrink at 0.90344,
+	 * and SEVEN is where the floor first binds - seven's own raw fit is 0.77941, which the
+	 * round-1 review re-derived after this comment and the PR's cost table both said nine
+	 * (agent review round 1, m2: the jump from six to nine hid the rows between). Nine's
+	 * raw fit would have been 0.61156, where the 12 px meta renders at 7.34 px - below the
+	 * 10 px floor `design-qa`'s `tiny-text` check fails on.
 	 */
+	for (const count of [7, 8])
+		assert.equal(
+			fitFor(count),
+			MIN_FIT_SCALE,
+			`${count} devices are already at the floor (seven's raw fit is 0.77941), not past it`,
+		);
 	assert.equal(
 		fitFor(9),
 		MIN_FIT_SCALE,
@@ -854,6 +901,74 @@ test("fit centres the world in the viewport and never leaves the scale range", (
 	assert.ok(
 		tiny.k > 0.25,
 		"which is a different floor from the user's own zoom: a reader may still zoom out to 0.25 by hand",
+	);
+});
+
+test("a row that opens a scope enclosure reserves the label band (D2/U3)", () => {
+	/*
+	 * THE LABEL'S ROOM IS RESERVED BY THE LAYOUT (design review round 1, D2; UX U3),
+	 * because the scope layer cannot draw over the node above it (DOM order: scope ->
+	 * edges -> nodes). What was measured without it: `ROW_GAP - SCOPE_ENCLOSURE_PAD`
+	 * = 6 px of clear space for a 19.4 px band, so 13.4 px of the label rendered
+	 * behind the node above on both palettes; and at 1024x768 the topmost label ran
+	 * 4.4 px of a 13.9 px box behind the CANVAS'S own top edge, which no row gap can
+	 * fix - hence the top clearance below.
+	 */
+	const slots = {
+		networks: new Map([["n1", 0]]),
+		devices: new Map([
+			["d0", 0],
+			["d1", 1],
+			["d2", 2],
+		]),
+	};
+	const plain = meshGeometry(slots);
+	const gap = (geometry, upper, lower) =>
+		geometry.devices.get(lower).y -
+		(geometry.devices.get(upper).y + DEVICE_HEIGHT);
+	assert.equal(
+		gap(plain, "d0", "d1"),
+		ROW_GAP,
+		"without a group the pitch is the plain grid, which is what the fit table rebuilds",
+	);
+	const scoped = meshGeometry(slots, new Set(["d1"]));
+	assert.equal(
+		gap(scoped, "d0", "d1"),
+		SCOPE_OPEN_GAP,
+		"a row that opens an enclosure clears the pad, the band and its clearance",
+	);
+	assert.equal(
+		gap(scoped, "d1", "d2"),
+		ROW_GAP,
+		"and its neighbour keeps the ordinary gap",
+	);
+	assert.equal(
+		scoped.bounds.height - plain.bounds.height,
+		SCOPE_OPEN_GAP - ROW_GAP,
+		"the world grows by exactly the reservation, so the fit still contains what the label needs",
+	);
+	const top = meshGeometry(slots, new Set(["d0"]));
+	assert.equal(
+		top.devices.get("d0").y,
+		PAD + SCOPE_TOP_CLEARANCE,
+		"a column whose FIRST row opens one reserves the strip at the world's top edge, where the narrow frame measured the label cut by the canvas itself",
+	);
+	assert.deepEqual(
+		[
+			...openingDeviceIds(
+				[
+					{
+						prefix: "10.88.0",
+						tier: "probable",
+						words: "same prefix",
+						deviceIds: ["d2", "d1"],
+					},
+				],
+				slots.devices,
+			),
+		],
+		["d1"],
+		"and the opener is the group's topmost member, read off the same slot order the canvas draws",
 	);
 });
 
@@ -1818,23 +1933,28 @@ test("the wait ceiling is carried from the click to the wire, and the pin fails 
 	);
 });
 
-test("the chip's spoken fact and its stripe read the same reachability (U13)", () => {
+test("the chip's spoken fact reads the reach model, and its stripe the same reachability (U13/Q1)", () => {
 	/*
 	 * U9 ONE LAYER UP (agent review round 3, U13). The stripe and `resolveDrop` were reconciled onto
 	 * the owner DEVICE's reachability, while the chip's `title` and `aria-label` still asked the
 	 * session ROW's copy - so in the mismatch a screen reader announced "on this device" beside a
 	 * stripe saying the drop will be refused. The name is the version that is read aloud, so it
 	 * cannot be the stale one.
+	 *
+	 * AND THE SENTENCE TAKES THE REACH MODEL'S WORD (agent review round 1, Q1). It still said
+	 * `unreachable` for a not-attempted device - the word every drawn surface had just stopped
+	 * saying, on the one surface that is READ ALOUD - so the fact now takes `reachWords(ownerReach)`
+	 * and the second vocabulary for one state is gone from this file.
 	 */
 	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
 	assert.match(
 		node,
-		/export function chipFact\(\s*session: MeshSessionRow,\s*ownerLabel: string,\s*ownerReachable: boolean,\s*\)/,
-		"`chipFact` takes the device's own fact",
+		/export function chipFact\(\s*session: MeshSessionRow,\s*ownerLabel: string,\s*ownerReach: DeviceReach,\s*\)/,
+		"`chipFact` takes the device's own reach",
 	);
 	assert.match(
 		node,
-		/if \(!ownerReachable\) \{/,
+		/if \(ownerReach !== "reached" && ownerReach !== "self"\) \{/,
 		"and decides on it rather than on `session.reachable`",
 	);
 	assert.doesNotMatch(
@@ -1842,9 +1962,22 @@ test("the chip's spoken fact and its stripe read the same reachability (U13)", (
 		/if \(!session\.reachable\) \{/,
 		"the row's copy is gone from the sentence",
 	);
-	assert.match(node, /chipFact\(session, ownerLabel, ownerReachable\)/);
+	assert.match(
+		node,
+		/const words = reachWords\(ownerReach\)/,
+		"the word is the reach model's, not `unreachable`",
+	);
+	assert.doesNotMatch(
+		node,
+		/`unreachable\$\{/,
+		"and the chip stops saying a word no drawn surface says",
+	);
+	assert.match(node, /chipFact\(session, ownerLabel, ownerReach\)/);
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
-	assert.match(card, /chipFact\(session, device\.label, device\.reachable\)/);
+	assert.match(
+		card,
+		/chipFact\(session, device\.label, deviceReach\(device\)\)/,
+	);
 });
 
 test("the renderer sizes its deadline from the REQUEST, and its give-up carries the move's code (F1)", () => {
@@ -2249,8 +2382,13 @@ test("the chip row fits by construction, so both chips and the control are hitta
 	);
 	assert.match(
 		node,
-		/w-full max-w-32 truncate/,
-		"and its button fills that share",
+		/min-h-6 w-full max-w-32 items-center/,
+		"and its button fills that share at the band's own 24 px target height (U7)",
+	);
+	assert.match(
+		node,
+		/min-w-0 flex-1 truncate \[direction:rtl\]/,
+		"with the truncation on the one span that can still ellipsise, because the button had to become a flex row to reach 24 px (U7)",
 	);
 	assert.match(
 		node,
@@ -2384,6 +2522,34 @@ test("a drag's release does not open the panel, and Escape cancels a drag (U1/U5
 		2,
 		"both cancels - the Escape key and the browser's own pointercancel - suppress the echo",
 	);
+});
+
+test("Escape closes the panel, and hands focus back to the node that opened it (U5)", () => {
+	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	/*
+	 * The panel had no keyboard exit: measured, `Escape` with focus on its own `Close`
+	 * left it open, while the canvas beside it already owns `Escape` for a drag-cancel -
+	 * so a keyboard reader had to Tab back out. The listener is on the window (the panel
+	 * spans its own controls and the canvas), and the two guards are what keep the key
+	 * from being stolen from a surface that already means it.
+	 */
+	assert.match(card, /if \(event\.key !== "Escape"\) return;/);
+	assert.match(
+		card,
+		/if \(event\.defaultPrevented\) return;/,
+		"a drag-cancelled Escape (the canvas preventDefaults it) is not also a panel close",
+	);
+	assert.match(
+		card,
+		/\[role="menu"\],\[role="dialog"\]/,
+		"and an Escape inside a menu or dialog belongs to that overlay",
+	);
+	assert.match(
+		card,
+		/querySelector<HTMLElement>\(`\[data-mesh-device-open="\$\{device\.id\}"\]`\)/,
+		"focus goes back to the opener BEFORE the close, while it is still mounted",
+	);
+	assert.match(card, /window\.addEventListener\("keydown", onKeyDown\)/);
 });
 
 /* ------------------------------------------------------- review round 2 (R2-1) */
@@ -2596,11 +2762,35 @@ test("the scope layer draws three tiers, and refuses a duplicate address", () =>
 		"the self device is the reference rather than a member: it carries the ring, and boxing the reference point draws a boundary around the comparison",
 	);
 	/*
-	 * THE DUPLICATE-ADDRESS REFUSAL. Two devices publishing one address cannot both hold
-	 * it, so the address is dropped and the shared tier's ONLY evidence disappears with it:
-	 * the solid boundary is absent rather than drawn over a config that was copied.
+	 * THE DUPLICATE-ADDRESS REFUSAL, ONE TIER AT A TIME. Two devices publishing one
+	 * address cannot both hold it, so the address is dropped and the tier's ONLY evidence
+	 * disappears with it.
+	 *
+	 * THE PROBABLE PAIR IS THE CASE THE OLD FIXTURE DID NOT RUN (agent review round 1,
+	 * m3): its override moved C OFF the WireGuard prefix, so `10.88.0.4` was claimed by
+	 * nobody and the tier was absent merely because B was left alone - the claim "an
+	 * address carried by two devices contributes to no group" was asserted, not exercised.
+	 * B and C now both publish the peer's WireGuard address.
 	 */
-	const doubled = prefixGroups(
+	const doubledProbable = prefixGroups(
+		build({
+			b: { endpoints: addresses.wireguardPeer },
+			c: { endpoints: addresses.wireguardPeer },
+		}).devices,
+		DEVICE_A,
+	);
+	assert.equal(
+		doubledProbable.filter((group) => group.tier === "probable").length,
+		0,
+		"an address carried by two devices contributes to no group",
+	);
+	assert.equal(
+		doubledProbable.filter((group) => group.tier === "shared").length,
+		1,
+		"and the refusal is per-ADDRESS: the LAN group beside the duplicate is untouched",
+	);
+	/* The shared tier's own evidence: this device and C both publish the LAN peer's address. */
+	const doubledShared = prefixGroups(
 		build({
 			self: { endpoints: addresses.lanPeer },
 			c: { endpoints: addresses.lanPeer },
@@ -2608,13 +2798,9 @@ test("the scope layer draws three tiers, and refuses a duplicate address", () =>
 		DEVICE_A,
 	);
 	assert.equal(
-		doubled.filter((group) => group.tier === "shared").length,
+		doubledShared.filter((group) => group.tier === "shared").length,
 		0,
-		"an address carried by two devices contributes to no group",
-	);
-	assert.ok(
-		doubled.every((group) => group.tier !== "probable"),
-		"and neither does the probable tier: `10.88.0.4` was claimed twice, so those two agree on nothing the app may draw",
+		"the address this device and C both claim supports no boundary",
 	);
 	/*
 	 * THE DECLARED TIER, built now and rendered never: the backend has no scope field, so

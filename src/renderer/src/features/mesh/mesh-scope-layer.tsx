@@ -9,8 +9,12 @@
  *     `--color-control` - a boundary whose removal loses information, because it is the
  *     only visual difference between a verified grouping and a probable one.
  *   - **`probable`** (two peers agree, this device knows nothing about it): a DASHED
- *     enclosure in the decorative `--color-hairline`, correctly quieter than the verified
- *     one, because its evidence is arithmetic on two published values.
+ *     enclosure in the decorative `--color-hairline-strong` - NOT `hairline`, which this
+ *     change rejected as too faint even for the GROUND (1.18:1 on the light brand
+ *     palette): leaving the semantic tier on it drew the boundary with a weaker role
+ *     than the decoration beside it (design review round 1, D3). The dash pattern and
+ *     the label remain the channels that carry the tier; the ink is no longer fainter
+ *     than the texture.
  *   - **`declared`** (the operator authored it): solid, with the declared WORD in the
  *     label. A declared boundary must not look like an inferred one, so the difference is
  *     carried twice: by the word and by the tier's own ink.
@@ -32,18 +36,22 @@
 
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
-import { DEVICE_HEIGHT, type MeshGeometry, NODE_WIDTH } from "./mesh-positions";
+import {
+	DEVICE_HEIGHT,
+	type MeshGeometry,
+	NODE_WIDTH,
+	SCOPE_ENCLOSURE_PAD,
+} from "./mesh-positions";
 import { type PrefixGroup, prefixWords } from "./mesh-scope";
 
-/**
- * How far the enclosure stands off the boxes it wraps.
- *
- * 10 px rather than the graph's own `ROW_GAP`: this is not a gap between things, it is a
- * frame AROUND things, and a frame that touched its contents would read as a third edge
- * of the node rather than as a grouping. Measured on the frame: 8-12 px reads as
- * "around", 4 px reads as "attached to".
+/*
+ * THE ENCLOSURE'S STANDOFF AND ITS LABEL'S BAND LIVE IN `mesh-positions.ts`
+ * (`SCOPE_ENCLOSURE_PAD`, `SCOPE_LABEL_BAND`, `SCOPE_OPEN_GAP`), because the layout must
+ * reserve the room the label needs above a row that opens an enclosure - a number this
+ * file reads is a number this file must not own alone (design review round 1, D2: the
+ * old local `ENCLOSURE_PAD` and the old "room to spare" comment here shipped a label
+ * 13.4 px behind the node above).
  */
-const ENCLOSURE_PAD = 10;
 
 type MeshScopeLayerProps = {
 	groups: readonly PrefixGroup[];
@@ -83,20 +91,29 @@ export const MeshScopeLayer: FC<MeshScopeLayerProps> = ({
 						 * same one a revoked membership already uses on the edge layer.
 						 */
 						group.tier === "probable"
-							? "border border-dashed border-hairline"
+							? "border border-dashed border-hairline-strong"
 							: "border border-control",
 					)}
 					style={{
-						left: left - ENCLOSURE_PAD,
-						top: top - ENCLOSURE_PAD,
-						width: right + NODE_WIDTH - left + ENCLOSURE_PAD * 2,
-						height: bottom + DEVICE_HEIGHT - top + ENCLOSURE_PAD * 2,
+						left: left - SCOPE_ENCLOSURE_PAD,
+						top: top - SCOPE_ENCLOSURE_PAD,
+						width: right + NODE_WIDTH - left + SCOPE_ENCLOSURE_PAD * 2,
+						height: bottom + DEVICE_HEIGHT - top + SCOPE_ENCLOSURE_PAD * 2,
 					}}
 				>
 					{/*
-					 * THE LABEL SITS ABOVE THE ENCLOSURE rather than inside it: a label inside the
-					 * frame would compete with the node it is next to for the same line, and the
-					 * frame's top edge is the one place in this layout with room to spare.
+					 * THE LABEL SITS ABOVE THE ENCLOSURE, in a band the LAYOUT now reserves for it
+					 * (design review round 1, D2; UX U3). The comment here used to claim "the frame's
+					 * top edge is the one place in this layout with room to spare", and the frames
+					 * refused it: the band is `SCOPE_LABEL_BAND` + the pad, while the clear space
+					 * above a row measured `ROW_GAP - SCOPE_ENCLOSURE_PAD` = 6 px, so 13.4 px of the
+					 * label rendered behind the node above - which paints over this layer (DOM order
+					 * scope -> edges -> nodes), and the layer is `aria-hidden`, so the label is the
+					 * only place the tier's words reach anyone. The room comes from
+					 * `mesh-positions.ts`: a row that opens an enclosure clears `SCOPE_OPEN_GAP`
+					 * above itself, and the column's first such row clears `SCOPE_TOP_CLEARANCE` at
+					 * the world's top edge, where the 1024x768 frame measured the label cut by the
+					 * canvas's own top edge (4.4 px of a 13.9 px box).
 					 */}
 					<span
 						data-mesh-scope-label=""

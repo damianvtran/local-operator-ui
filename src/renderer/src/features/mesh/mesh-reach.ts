@@ -83,9 +83,15 @@ export type ActivitySource = "published" | "derived" | "none";
  * BOTH ARE THE RELAY'S OWN WORDS, carried through `resume.peer_reason_words`, which
  * strips a `stage: ` prefix and keeps the sentence behind it (and which never
  * returns empty - an empty reason glosses to "it did not answer", a sentence this
- * list deliberately does not contain). Pinned by name in `scripts/mesh-tab.test.mjs`
- * the way `MOVE_OP_DEADLINE_S` is pinned against the backend's published bounds: a
- * rename upstream has to fail a test here rather than quietly reclassify a peer.
+ * list deliberately does not contain). Pinned by name in `scripts/mesh-tab.test.mjs`,
+ * the way `MOVE_OP_DEADLINE_S` is pinned against the backend's published bounds -
+ * WITH ONE DIFFERENCE THE OLD PARALLEL HID (agent review round 1, m4): these
+ * sentences exist only HERE (the constant, the stories, the test literals), because
+ * nothing in this repo reads the relay, so the pin holds THIS copy to its producer's
+ * text and editing this copy fails it - while a rename upstream reclassifies
+ * `not asked` to `no answer` silently. That silence is the debt's real edge; it is
+ * the safe direction (the fallback blames the device least, never the reverse), and
+ * the fix is the wire's `reach` field rather than a stronger string match.
  *
  *   - `relay.NOT_ATTEMPTED_REASON` - "not_attempted: the listing budget ran out
  *     before this member was probed" - glossed to the sentence below, which is what

@@ -64,7 +64,7 @@ import {
 	meshGeometry,
 	zoomAbout,
 } from "./mesh-positions";
-import { prefixGroups } from "./mesh-scope";
+import { openingDeviceIds, prefixGroups } from "./mesh-scope";
 import { MeshScopeLayer } from "./mesh-scope-layer";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
@@ -187,13 +187,12 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const lastViewport = useRef<{ width: number; height: number } | null>(null);
 
 	/*
-	 * The geometry is keyed on the SLOT MAP, which is reference-stable across a poll
-	 * that changed nothing (see `useMeshSlots`), so a poll cannot re-solve the
-	 * layout and cannot move a node.
-	 */
-	const geometry = useMemo(() => meshGeometry(slots), [slots]);
-	/*
-	 * THE BOUNDARIES, from the addresses this device and its peers publish.
+	 * THE BOUNDARIES COME FIRST, because a boundary's label is now part of the GEOMETRY: a
+	 * row that OPENS an enclosure reserves the label's band above itself (design review
+	 * round 1, D2; `SCOPE_OPEN_GAP` in `mesh-positions.ts`), so the layout is a function of
+	 * the slots AND of which of them open a group. `openingDeviceIds` is that seam -
+	 * computed from the same groups the layer draws, so the reserved band and the drawn
+	 * label cannot point at two different rows.
 	 *
 	 * `mesh-scope.ts` owns the three tiers and the six things it refuses to draw; this memo
 	 * only keeps the arithmetic off the render path - a pan writes a style, it does not
@@ -203,6 +202,15 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const scopes = useMemo(
 		() => prefixGroups(graph.devices, graph.selfDeviceId),
 		[graph.devices, graph.selfDeviceId],
+	);
+	/*
+	 * The geometry is keyed on the SLOT MAP, which is reference-stable across a poll
+	 * that changed nothing (see `useMeshSlots`), so a poll cannot re-solve the
+	 * layout and cannot move a node.
+	 */
+	const geometry = useMemo(
+		() => meshGeometry(slots, openingDeviceIds(scopes, slots.devices)),
+		[slots, scopes],
 	);
 
 	/*
