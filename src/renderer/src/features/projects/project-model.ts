@@ -74,6 +74,18 @@ const PROJECT_STATUS_META: Record<string, ChipMeta> = {
 	archived: { label: "Archived", variant: "outline" },
 };
 
+/**
+ * The status vocabulary in the pipeline's own order — Planning through
+ * Archived, the order the table above is declared in.
+ *
+ * Exported because MORE THAN ONE surface has to agree on it: the Filters
+ * popover renders its Status options in this order, and the List's Status sort
+ * orders rows by it (`project-sort.ts`). A second hand-written list is how
+ * "archived before active" reaches a sort that looks alphabetical and a
+ * popover that disagrees with it — both defects the design names.
+ */
+export const PROJECT_STATUS_ORDER: string[] = Object.keys(PROJECT_STATUS_META);
+
 export function projectStatusMeta(status: string): ChipMeta {
 	return (
 		PROJECT_STATUS_META[status] ?? {
