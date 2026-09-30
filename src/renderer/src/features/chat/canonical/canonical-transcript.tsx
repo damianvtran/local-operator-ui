@@ -185,10 +185,12 @@ import {
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
+	alignWalkRunKey,
+	alignWalkStateFor,
+	initialAlignWalkState,
 	collapsePlan,
 	snapWindowToRunBoundary,
 	widenTarget,
-	windowTopRunIsHeadCut,
 } from "./turn-collapse-model";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -2179,11 +2181,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// belongs to the previous transcript.
 	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
-	/* Durable pages this conversation's open has walked aligning the window's
-	 * top edge onto a loaded run boundary, and whether the walk must stop. See
-	 * the alignment effect below. One ref rather than two: the two facts are
-	 * reset together and read together. */
-	const alignWalk = useRef({ spent: 0, halted: false });
+	/* The completion walk's budget, KEYED BY THE RUN it is walking (1b/B): the
+	 * run under the window's top edge owns the pages spent on it, so a
+	 * conversation that outlives its first walk can still complete the bars of
+	 * turns that settle later. See `alignWalkStateFor` and the effect below. */
+	const alignWalk = useRef(initialAlignWalkState());
 	/* The settle announcement's own memory — see the effect beside the collapse
 	 * plan. `keys` are the bars already stated (or absorbed silently, when they
 	 * were window-entered rather than settled); `rowIds` are every row the
@@ -2195,7 +2197,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
-		alignWalk.current = { spent: 0, halted: false };
+		alignWalk.current = initialAlignWalkState();
 		announcedPlan.current = null;
 	}
 	/*
@@ -2627,21 +2629,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * rest of it on a session change — the reader's next act re-arms everything.
 	 */
 	useEffect(() => {
-		const decision = alignWalkDecision(alignWalk.current.spent, {
+		/*
+		 * WHOSE WALK THIS IS (1b/B). The run under the window's top edge owns the
+		 * budget, and moving to a different head-cut run starts a fresh one — that
+		 * is what lets a later settled turn complete its own bar in a long-lived
+		 * conversation. The same run keeps its spent budget, so no run is walked
+		 * twice for the same content.
+		 */
+		const state = alignWalkStateFor(
+			alignWalk.current,
+			alignWalkRunKey(rows, alignSize),
+		);
+		const decision = alignWalkDecision(state.spent, {
 			hasMore: Boolean(transcript.hasMore),
 			loadingOlder,
-			headCut: windowTopRunIsHeadCut(rows, alignSize),
+			headCut: state.key !== null,
 			mayWalk: mayAutoWalk(),
-			halted: alignWalk.current.halted,
+			halted: state.halted,
 		});
-		alignWalk.current.spent = decision.spent;
+		alignWalk.current = { ...state, spent: decision.spent };
 		if (!decision.fetch) return;
 		void walkLoadOlder().then((applied) => {
 			// A walk page that did not apply halts the walk. `applied` is the
 			// boolean form of the SAME single-flight ask the reader's own pump
 			// uses (`createOlderLoader`), so the walk and a gesture can never be
 			// waiting on two pages at once.
-			if (!applied) alignWalk.current.halted = true;
+			if (!applied) alignWalk.current = { ...alignWalk.current, halted: true };
 		});
 	}, [
 		rows,
