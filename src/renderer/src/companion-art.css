@@ -187,15 +187,27 @@
 	animation: companion-art-leaf-wake 800ms ease-out;
 }
 
-.companion-art-sleep-marks {
+.companion-art-sleep-marks,
+.companion-art-whistle,
+.companion-art-hearts,
+.companion-art-glints,
+.companion-art-impact,
+.companion-art-motes {
 	position: absolute;
 	inset: 0;
 	width: 100%;
 	height: 100%;
+}
+
+.companion-art-sleep-marks,
+.companion-art-whistle {
 	fill: none;
 	stroke: var(--companion-art-light);
 	stroke-width: 1.7;
 	stroke-linecap: round;
+}
+
+.companion-art-sleep-marks {
 	stroke-linejoin: round;
 	opacity: 0;
 	transition: opacity 240ms ease;
@@ -322,17 +334,22 @@
 	animation-delay: -210ms;
 }
 
-.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-body {
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-body,
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-body {
 	visibility: hidden;
 }
 
-.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-sprite {
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-sprite,
+.companion-art-inky[data-motion-ready][data-physical] .companion-art-sprite {
 	display: block;
-	clip-path: inset(3% 0 1%);
 	background-image: var(--companion-art-sheet);
 	background-size: 400% 200%;
 	background-position: 66.666667% 0;
 	transform-origin: 50% 95%;
+}
+
+.companion-art-hoodie[data-motion-ready][data-physical] .companion-art-sprite {
+	clip-path: inset(3% 0 1%);
 }
 
 .companion-art-hoodie[data-motion-ready][data-physical] .companion-art-face {
@@ -356,6 +373,8 @@
 }
 
 .companion-art-hoodie[data-motion-ready][data-reaction="falling"]
+	.companion-art-sprite,
+.companion-art-inky[data-motion-ready][data-reaction="falling"]
 	.companion-art-sprite {
 	background-position: 0 100%;
 }
@@ -421,16 +440,7 @@
 	height: 22%;
 }
 
-.companion-art-inky[data-motion-ready][data-physical] .companion-art-body {
-	visibility: hidden;
-}
-
 .companion-art-inky[data-motion-ready][data-physical] .companion-art-sprite {
-	display: block;
-	background-image: var(--companion-art-sheet);
-	background-size: 400% 200%;
-	background-position: 66.666667% 0;
-	transform-origin: 50% 95%;
 	transform: translateY(5%) scale(1.2);
 }
 
@@ -451,11 +461,6 @@
 	.companion-art-face {
 	animation: companion-art-inky-look var(--companion-art-wriggle) steps(1, end)
 		infinite;
-}
-
-.companion-art-inky[data-motion-ready][data-reaction="falling"]
-	.companion-art-sprite {
-	background-position: 0 100%;
 }
 
 .companion-art-inky[data-motion-ready][data-reaction="falling"]
@@ -667,16 +672,6 @@
 	transition-duration: 100ms;
 }
 
-.companion-art-whistle {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	fill: none;
-	stroke: var(--companion-art-light);
-	stroke-width: 1.7;
-	stroke-linecap: round;
-}
 .companion-art-whistle path {
 	animation: companion-art-whistle 1350ms ease-out infinite;
 }
@@ -728,10 +723,6 @@
 }
 
 .companion-art-hearts {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
 	fill: var(--companion-art-light);
 	opacity: 0;
 }
@@ -742,10 +733,6 @@
 }
 
 .companion-art-glints {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
 	color: var(--companion-art-light);
 	fill: none;
 	stroke: currentColor;
@@ -755,10 +742,6 @@
 }
 
 .companion-art-impact {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
 	fill: none;
 	stroke: var(--companion-art-light);
 	stroke-width: 1.5;
@@ -1282,10 +1265,6 @@
 }
 
 .companion-art-motes {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
 	fill: var(--companion-art-light);
 	animation: companion-art-motes 2600ms ease-out both;
 }

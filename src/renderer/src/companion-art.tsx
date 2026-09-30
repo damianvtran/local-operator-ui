@@ -265,7 +265,6 @@ const faceBeats: FaceBeat[] = [
 		name: "proud",
 		eyes: ["round", "round"],
 		mouth: "slight smile",
-		openness: [1, 1],
 		attentive: true,
 		cheeks: true,
 		duration: 3800,
@@ -325,7 +324,6 @@ const faceBeats: FaceBeat[] = [
 		name: "quiet",
 		eyes: ["round", "round"],
 		mouth: "none",
-		openness: [1, 1],
 		duration: 4600,
 		attentive: true,
 	},
@@ -333,7 +331,6 @@ const faceBeats: FaceBeat[] = [
 		name: "neutral",
 		eyes: ["round", "round"],
 		mouth: "flat",
-		openness: [1, 1],
 		duration: 4000,
 		attentive: true,
 	},
@@ -341,7 +338,6 @@ const faceBeats: FaceBeat[] = [
 		name: "little smile",
 		eyes: ["round", "round"],
 		mouth: "slight smile",
-		openness: [1, 1],
 		duration: 4400,
 		attentive: true,
 	},
@@ -592,6 +588,39 @@ function useFaceAnimation(
 	return { beat: faceBeats[index], index, paused, changing };
 }
 
+const faceEyePaths: Partial<Record<EyeShape, [string, string]>> = {
+	line: ["M17 29h21", "M17 29h21"],
+	caret: ["M16 32l11-16 11 16", "M16 32v-6h5v-5h4v-5h5v5h4v5h5v6"],
+	arch: ["M16 31q11-22 22 0", "M16 31v-7h5v-5h12v5h5v7"],
+	closed: ["M17 25q10 14 21 0", "M17 25v5h5v4h11v-4h5v-5"],
+	squeeze: ["M18 17l14 11-14 10", "M18 17h5v5h5v6h-5v5h-5"],
+	heart: [
+		"M27 40 15 27C5 15 21 7 27 18C33 7 49 15 39 27Z",
+		"M27 40h-5v-5h-5v-5h-5V18h5v-5h7v5h6v-5h7v5h5v12h-5v5h-5v5Z",
+	],
+	star: [
+		"M27 10l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1Z",
+		"M24 10h6v10h11v6h-6v6h3v8h-6v-5H22v5h-6v-8h3v-6h-6v-6h11Z",
+	],
+};
+
+const mouthPaths: Record<MouthShape, [string, string]> = {
+	none: ["", ""],
+	flat: ["M43 55h14", "M43 55h14"],
+	"slight smile": ["M41 53q9 5 18 0", "M41 53v2h18v-2"],
+	"slight frown": ["M42 56q8-5 16 0", "M42 56v-2h16v2"],
+	whistle: ["M51 51a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M48 51h7v8h-7Z"],
+	tongue: ["M39 51q11 5 22 0", "M39 51v2h22v-2"],
+	"side tongue": ["M37 52q13 12 27-3", "M37 52v5h13v-3h9v-5h5"],
+	puff: ["M45 53q5-5 10 0q-5 5-10 0Z", "M46 51h8v4h-8Z"],
+	bite: ["M38 53q9 10 21 0m-10 3v-5h7v5Z", "M38 53v5h11v-7h7v7h3v-5"],
+	smile: ["M39 51q11 13 22 0", "M39 51v4h5v3h12v-3h5v-4"],
+	grin: ["M35 48h30q-2 17-15 17T35 48Z", "M35 49h30v8h-5v6H40v-6h-5Z"],
+	cat: ["M35 50q7 14 15 3q8 11 15-3", "M35 50v6h10v-4h10v4h10v-6"],
+	oh: ["M45 56a5 7 0 1 0 10 0a5 7 0 1 0-10 0", "M45 49h10v14H45Z"],
+	pout: ["M40 59q10-13 20 0", "M40 59v-5h5v-4h10v4h5v5"],
+};
+
 function FaceEye({
 	shape,
 	pixels,
@@ -611,22 +640,8 @@ function FaceEye({
 				/>
 			</>
 		);
-	const paths: Partial<Record<EyeShape, [string, string]>> = {
-		line: ["M17 29h21", "M17 29h21"],
-		caret: ["M16 32l11-16 11 16", "M16 32v-6h5v-5h4v-5h5v5h4v5h5v6"],
-		arch: ["M16 31q11-22 22 0", "M16 31v-7h5v-5h12v5h5v7"],
-		closed: ["M17 25q10 14 21 0", "M17 25v5h5v4h11v-4h5v-5"],
-		squeeze: ["M18 17l14 11-14 10", "M18 17h5v5h5v6h-5v5h-5"],
-		heart: [
-			"M27 40 15 27C5 15 21 7 27 18C33 7 49 15 39 27Z",
-			"M27 40h-5v-5h-5v-5h-5V18h5v-5h7v5h6v-5h7v5h5v12h-5v5h-5v5Z",
-		],
-		star: [
-			"M27 10l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1Z",
-			"M24 10h6v10h11v6h-6v6h3v8h-6v-5H22v5h-6v-8h3v-6h-6v-6h11Z",
-		],
-	};
-	const path = paths[shape];
+
+	const path = faceEyePaths[shape];
 	if (path)
 		return (
 			<path
@@ -664,22 +679,7 @@ function LivelyFace({
 	const openness = beat.openness ?? [1, 1];
 	const brows = beat.brows ?? [0, 0];
 	const look = beat.glance ?? [0, 0];
-	const mouths: Record<MouthShape, [string, string]> = {
-		none: ["", ""],
-		flat: ["M43 55h14", "M43 55h14"],
-		"slight smile": ["M41 53q9 5 18 0", "M41 53v2h18v-2"],
-		"slight frown": ["M42 56q8-5 16 0", "M42 56v-2h16v2"],
-		whistle: ["M51 51a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M48 51h7v8h-7Z"],
-		tongue: ["M39 51q11 5 22 0", "M39 51v2h22v-2"],
-		"side tongue": ["M37 52q13 12 27-3", "M37 52v5h13v-3h9v-5h5"],
-		puff: ["M45 53q5-5 10 0q-5 5-10 0Z", "M46 51h8v4h-8Z"],
-		bite: ["M38 53q9 10 21 0m-10 3v-5h7v5Z", "M38 53v5h11v-7h7v7h3v-5"],
-		smile: ["M39 51q11 13 22 0", "M39 51v4h5v3h12v-3h5v-4"],
-		grin: ["M35 48h30q-2 17-15 17T35 48Z", "M35 49h30v8h-5v6H40v-6h-5Z"],
-		cat: ["M35 50q7 14 15 3q8 11 15-3", "M35 50v6h10v-4h10v4h10v-6"],
-		oh: ["M45 56a5 7 0 1 0 10 0a5 7 0 1 0-10 0", "M45 49h10v14H45Z"],
-		pout: ["M40 59q10-13 20 0", "M40 59v-5h5v-4h10v4h5v5"],
-	};
+
 	const style = {
 		"--face-look-x": `${look[0] * glance}px`,
 		"--face-look-y": `${look[1] * glance}px`,
@@ -721,7 +721,7 @@ function LivelyFace({
 				<g className={cn("companion-art-live-mouth")}>
 					<path
 						className={cn(beat.mouth === "grin" && "companion-art-eye-fill")}
-						d={mouths[beat.mouth][pixels ? 1 : 0]}
+						d={mouthPaths[beat.mouth][pixels ? 1 : 0]}
 					/>
 					{(beat.mouth === "tongue" || beat.mouth === "side tongue") && (
 						<path
@@ -784,23 +784,21 @@ function Eyes({ mood, pixels, reaction }: ExpressionProps) {
 				d="M27 9l4 9 10 1-7 7 2 11-9-5-9 5 2-11-7-7 10-1Zm46 0 4 9 10 1-7 7 2 11-9-5-9 5 2-11-7-7 10-1Z"
 			/>
 		);
-	if (expression === "loved")
+	if (
+		expression === "loved" ||
+		expression === "happy" ||
+		expression === "found"
+	) {
+		const shape = expression === "loved" ? "heart" : "caret";
 		return (
 			<>
-				<FaceEye shape="heart" pixels={pixels} />
+				<FaceEye shape={shape} pixels={pixels} />
 				<g transform="translate(45 0)">
-					<FaceEye shape="heart" pixels={pixels} />
+					<FaceEye shape={shape} pixels={pixels} />
 				</g>
-				<path className={cn("companion-art-cheeks")} d="M17 44h7m52 0h7" />
-			</>
-		);
-	if (expression === "happy" || expression === "found") {
-		return (
-			<>
-				<FaceEye shape="caret" pixels={pixels} />
-				<g transform="translate(45 0)">
-					<FaceEye shape="caret" pixels={pixels} />
-				</g>
+				{expression === "loved" && (
+					<path className={cn("companion-art-cheeks")} d="M17 44h7m52 0h7" />
+				)}
 			</>
 		);
 	}
