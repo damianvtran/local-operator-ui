@@ -2468,7 +2468,72 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedBarFoldElevenNote",
 	/*
-	 * And by THIS branch, whose records the merge of `origin/main` = `65a3e97b8c` had to keep: its
+	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
+	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
+	 * binding this file once held - the install path is not something the evidence
+	 * sweep renders, so it moved BOTH trees without
+	 * taking a frame, and the reader is owed the reason no still was owed. It is REPAIRED
+	 * in the same commit to name the SHAs its pass read rather than the tree pair, which
+	 * is the shape this file now enforces. `src/` moved for the install decision and the
+	 * scripts' environment build; `scripts/` for the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
+	/*
+	 * And the agent-review remediation's own record rides beside it
+	 * (`installProvisioningRemediationRestampNote`): the round moved both trees with no
+	 * frame - the launcher probe and its verdict cache, the failure-cause split, the three
+	 * scripts' TLS notes, and the suites that pin them - so a fold that started from
+	 * main's copy would drop the only statement of that.
+	 */
+	"installProvisioningRemediationRestampNote",
+	/*
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
+	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
+	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto0738fa7eb3InstallProvisioningNote",
+	/*
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
+	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
+	 * verified, this file conflicted alone, and a conflicting head produces no
+	 * pull-request runs - so the fold is repeated, and its record is registered for the
+	 * list's usual reason.
+	 */
+	"foldOnto49491865caInstallProvisioningNote",
+	/*
+	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
+	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
+	 * bundle - while this branch was being reviewed; the two evidence files conflicted
+	 * alone, resolved as unions the same way, and the test file merged additively.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
+	/*
+	 * And the SIXTH fold's own, beside them (`foldOnto65a3e97b8cNote`): main moved through
+	 * #554's condensed group images and the #653/#655/#668 trains while the session was
+	 * disposed; both evidence files conflicted, no name collided, and the resolution is the
+	 * usual union. Registered for the list's usual reason: a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"foldOnto65a3e97b8cNote",
+	/*
+	 * And by THIS branch, whose records the merge of `origin/main` = `29a9aa985c` had to keep: its
 	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
 	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
 	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
@@ -2477,8 +2542,8 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto49491865caMeasureDragNote",
 	"foldOnto5ba0d0dc8aMeasureDragNote",
-	"foldOnto65a3e97b8cNote",
-	"foldOnto6f28406010Note",
+	"foldOnto65a3e97b8cMeasureDragNote",
+	"foldOnto6f28406010MeasureDragNote",
 	"foldOnto8a03152c61MeasureDragNote",
 	"foldOntoa7b4f88a18Note",
 	"foldOntoe2394f9ff1Note",
