@@ -2753,6 +2753,14 @@ const BRANCH_RECORDS = [
 	 * And THE #702 FOLD'S - the fourth fold's record (same reason).
 	 */
 	"foldOnte78e4395ebNote",
+	/*
+	 * And the trace-sessions lane's own record: the desk half of the sessions
+	 * glyph/label mapping (sibling `damianvtran/local-operator` #1825), whose
+	 * two new frames and its declared `sessions-ops-baseline/` set are exactly
+	 * what a fold resolved from main's copy would drop first - the list's
+	 * usual reason.
+	 */
+	"traceSessionsGlyphRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
