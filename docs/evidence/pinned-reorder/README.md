@@ -1,147 +1,143 @@
-# Pinned chats can be reordered - rendered evidence
+# Pinned chats can be reordered — rendered evidence
 
-Frames and readings for issue #697: the Pinned section's desktop-local manual order
-(issue #693) becomes directly manipulable - a **drag handle** on the pinned row's hover
-strip reorders the section, with an insertion line between rows, alongside the move pair
-and the `⌘⇧↑`/`⌘⇧↓` chords #693 shipped.
+Frames for issue #693 (a desktop-local manual order for the `Pinned chats` section,
+driven by a move pair, drag-and-drop and keyboard chords) and its round-1 remediation
+(PR #697). Every frame here is a **headless** launch of the built renderer against the
+repository's own stand-in daemon, captured as PNG at a 2760x1800 device-pixel surface
+(1380x900 at DPR 2), one launch per slice and palette.
 
-This directory is the `pinned-reorder` scene's output (`scripts/renderer-driver.mjs`),
-three state **slices** x two palettes, one headless launch each. The numbers behind the
-frames are in `measurements/`.
-
-## What each frame is for
+Thirty-four frames across **17 states** and two palettes:
 
 | Frame | State | The claim it carries |
 | --- | --- | --- |
 | `order-before-240/280/320` | three pins, catalogue order, pointer parked | nothing at rest: no grip, no pair, no indicator is painted; the section is the catalogue's own order passed through (rule 1) |
-| `grip-hover-240/280/320` | pointer on the middle pinned row | the reveal: grip + move pair + archive appear on ONE row and no other; the title pays for them, and the numbers are in §"The numbers" |
-| `drag-mid` | pointer down on the grip, moved one place | the dragged row carries `data-dragging`'s ground step and the section draws the insertion line in the gap the row would land in - nothing has been written yet |
+| `grip-hover-240/280/320` | pointer on the middle pinned row | the reveal. At 280 and 320: grip + move pair + archive appear on ONE row and no other. At **240 the grip is SHED** (design round 1, D2) and the pair stays — see §"The numbers" |
+| `drag-mid` | pointer down on the grip, moved one place | the dragged row carries `data-dragging`'s ground step — a step the hover does NOT paint (measured, below) — and the section draws the insertion line in the gap the row would land in; nothing has been written yet |
+| `drag-top` | a drag held ABOVE the first pinned row (design round 1, D5b) | slot 0's line: drawn at the first row's own top edge, under the `Pinned chats` heading, with the last row held |
 | `after-drop` | released one place down | the order is `p005, p000, p010`; the mark and the line are gone; the live region says where the row went |
 | `order-relaunch` | `Page.reload` on the same profile | the same manual order comes back - the acceptance criterion |
 | `search-filtered` | the panel's own search field, query `Chat 00` | the section draws two of the three pins; the third is hidden, not forgotten |
 | `search-drag-mid`, `search-after-drop` | a drop under that filter | the move crosses the SHOWN neighbour while the hidden id keeps its stored slot (the stored order stays a permutation of the full list) |
-| `many-pins`, `many-pins-drag` | fifteen pins | the section overflows the scroller; a drag held at the scroller's edge scrolls it (722.5px of scroll, measured) and the line stays inside the section |
-| `single-pin`, `single-pin-hover` | one pin | the one state where both move controls are inapplicable at once, and the state the boundary sentence speaks about; the grip is still offered (a drag can leave the section) |
+| `many-pins`, `many-pins-drag` | fifteen pins, at 280 | the section overflows the scroller; a drag held at the scroller's edge scrolls it (722.5px of scroll, measured) and the line stays inside the section |
+| `single-pin`, `single-pin-hover` | one pin, at 280 | the state where both move controls are inapplicable at once AND the grip is not offered at all (design round 1, D3: with one row there is no second slot a drop could land on). Shot at 280 so the absence is attributable to the count rule, not to the width shed |
 
-Every frame in the set is a **headless** launch (`--window-mode` resolves to `headless`
-for a rig-shaped launch, and the scene asserts `visible=false focused=false` before its
-first capture).
+The `keys` **slice** produces no frames: it is a readings-only launch (the keyboard walk
+after a chord, and the live region's mutation count), and its readings are quoted below.
 
 ## The numbers
 
 Measured on the shipped DOM at the three panel settings, on a pinned row of a three-pin
-section (`measurements/pinned-reorder-geometry-<theme>.json`):
+section (`measurements/pinned-reorder-geometry-<theme>.json`; both palettes read the same):
 
 | Panel | Row box | Title at rest | Title under the pointer | Revealed cluster |
 | --- | --- | --- | --- | --- |
-| **240** (clamp min) | 208 | **126** | **40** | grip + up + down + archive = 136px |
-| **280** (default) | 248 | **166** | **80** | the same 136px |
-| **320** | 288 | **206** | **120** | the same 136px |
+| **240** (clamp min) | 208 | **126** | **68** | archive + up + down + mark = **108** (the grip is shed) |
+| **280** (default) | 248 | **166** | **80** | the same **108** + the grip = **136** |
+| **320** | 288 | **206** | **120** | **136** |
 
-So the handle costs the title **28px** (its 24px box plus the cluster's 4px gap) at every
-width, and **nothing at rest** - it is reveal-only, like the pair it sits beside. At the
-240 clamp that leaves 40px of title, about five characters, which is the number
-`docs/design/sidebar-row-space.md` §3 records for a designer to weigh (a shed for the
-handle alone, the handle drawn only where the row already truncates, or the moves left to
-the chords).
+So the handle costs the title **28px** (its 24px box plus the cluster's 4px gap) where it
+is drawn, and **nothing at rest** - it is reveal-only, like the pair it sits beside. At
+the 240 clamp it is not drawn at all (round 1), which is why that column reads 68 rather
+than the 40 the first pass measured with the grip in the cluster;
+`docs/design/sidebar-row-space.md` §3 and §8 carry the rule, the 263-vs-279 arithmetic
+and the load-bearing `!`.
 
-The gesture's own readings, from the same run:
+**The dragged row's ground, measured rather than judged (round 1, D1/U1).** The rig reads
+the computed `background-color` of the dragged row and of a merely hovered one in the
+same launch:
+
+| Palette | Dragged row | Merely hovered row |
+| --- | --- | --- |
+| `localOperatorDark` | `rgb(55, 47, 36)` = `#372F24` (`--lo-row-selected`) | `rgb(48, 45, 41)` = `#302D29` (`--lo-row-hover`) |
+| `localOperatorLight` | `rgb(235, 231, 216)` = `#EBE7D8` (`--lo-row-selected`) | `rgb(237, 236, 231)` = `#EDECE7` (`--lo-row-hover`) |
+
+Before the fix both rows painted the hover step: the captured pointer keeps `:hover` on
+the row, and the hover variant outranked the drag's ground. A dragged row that is ALSO
+the current one takes the panel's other row role (`rowDraggingCurrent`), because the
+selected step is that row's resting fill; the class merge that decides it is asserted in
+`scripts/sidebar-pin-order.test.mjs`. **No frame shows that state** — see "cannot show".
+
+The gesture's own readings, from the same runs:
 
 - `drag-mid`: `dragging: ["p000"]`, the indicator drawn inside the section's coordinates,
-  and `stored: []` - **nothing has been written mid-gesture**.
+  and `stored: []` — **nothing has been written mid-gesture**.
+- `drag-top`: the indicator's y is **498**, the first pinned row's own top edge, against
+  the section box's **474** (the heading sits between them).
 - `after-drop`: order `["p005","p000","p010"]`, and the persisted view holds
-  `"pins": ["p005","p000","p010"]` - **one write, at the drop**.
+  `"pins": ["p005","p000","p010"]` — **one write, at the drop**.
 - `search-after-drop`: the shown order is `["p005","p000"]` and the stored order is
-  `["p005","p000","p010"]` - the hidden id keeps its slot.
-- `many-pins-drag`: `scrollTop` 0 -> 722.5 while the drag is held at the scroller's edge,
-  and the Escape that follows leaves the order untouched (`stored` unchanged).
-- `single-pin`: one row in the section, both move controls `aria-disabled`, the grip
-  still offered.
+  `["p005","p000","p010"]` — the hidden id keeps its slot.
+- `many-pins-drag`: `scrollTop` 0 → 722.5 while the drag is held at the scroller's edge.
+- The **scrolled drop** (round 1, R3): a second drag at that scrolled list, released —
+  `scrollTop` 722.5 → **722.5** with the order moving `p000` from first to last, so the
+  post-commit correction no longer shifts a scrolled list by a row.
+- `single-pin`: one row in the section, both move controls `aria-disabled`, **no grip**.
+- `keys` (readings only): after `⌘⇧↑` the caret is on the **moved row's own button**
+  (`tag BUTTON`, `data-chat-row`, not the pin mark), and a bare `↓` walks on to another
+  row in the same list rather than to the panel's first stop; the live region produced
+  **15 mutations** on the way to the boundary and **4** across two repeat presses inside
+  its dwell (so a repeated boundary sentence is announced again).
 
 ## How these frames were taken
 
-`scripts/renderer-driver.mjs`, scene **`pinned-reorder`**, against the repository's own
-stand-in (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`, extended with a
-`--pins` flag that is inert without it). One launch per palette per **slice**, because the
-stub's fixture is per process and the many-pins / single-pin states are about how many
-pins the section holds:
+Four launches, one slice each, plus a second set for the other palette — eight in total.
+Each launch is the built renderer (`pnpm build`) with `VITE_LOCAL_OPERATOR_API_URL`
+pointed at an isolated stand-in daemon on loopback, `--window-mode=headless`, a scratch
+HOME/config/user-data-dir, `--use-mock-keychain`, and every inherited `CMUX_*`/`LOP_*`
+unset. The scene asserts `visible=false focused=false` before its first capture.
 
 ```sh
-cd <worktree>
-set -a; . ~/local-operator-ui/.env; set +a
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18336 pnpm build
-
-# per slice: three | many | single, and per palette
-node docs/evidence/sidebar-row-space/harness/stub-daemon.mjs \
-  --port 18336 --records "$SCRATCH/records-three-dark" --catalogue 120 \
-  --pins p000,p005,p010 > "$SCRATCH/stub-three-dark.log" 2>&1 &
-LOCAL_OPERATOR_DESKTOP_TOKEN=<any non-empty bearer: the stub checks none> \
-  node scripts/renderer-driver.mjs \
-    --scene pinned-reorder --pinned-state three \
-    --backend http://127.0.0.1:18336 --backend-records "$SCRATCH/records-three-dark" \
-    --seed-onboarding-complete --theme localOperatorDark \
-    --out "$SCRATCH/frames-three-dark" --window-size 1380x900
-# … then --theme localOperatorLight, then --pinned-state many
-#     (--pins p000..p014) and --pinned-state single (--pins p000)
+# per slice: three | many | single | keys, and per palette (localOperatorDark, localOperatorLight)
+node docs/evidence/sidebar-row-space/harness/stub-daemon.mjs --port 18345 \
+  --records <scratch>/records --catalogue 120 --pins p000,p005,p010 &
+node scripts/renderer-driver.mjs --scene pinned-reorder --pinned-state three \
+  --backend http://127.0.0.1:18345 --backend-records <scratch>/records \
+  --seed-onboarding-complete --theme localOperatorDark \
+  --out <scratch>/three-dark --window-size 1380x900
 ```
 
-The frames land as `<out>/<label>.png`; each label's committed directory here holds one
-file per palette. `measurements/` holds the per-palette geometry JSON the scene printed.
+`--pinned-state many` launches the same stub with fifteen pins (`--pins p000…p014`),
+`single` with one (`--pins p000`), and `keys` with the three the walk needs. All four
+slices run at a **280px panel** where the grip matters (the scene sets it: the panel's
+260 default is below the shed's break), which is why the many and single frames differ
+in width from the first pass's.
 
-- **The stub is a responder, not a backend** - no store, no turns, no transcript. Its
-  pin route mutates the rows it SERVES; the rig's first version had it mutating the
-  six-row fixture while `--catalogue` served the large one, so a press the app answered
-  about a row it never asked about looked like a control that did nothing. Both sides
-  were fixed before this set was taken.
-- **The three slices are one set**: frame names do not change between them, so
-  `docs/evidence/pinned-reorder/<label>/<theme>.png` is complete only with all three
-  launches per palette.
-- **`captureSettled` is what makes a frame evidence at all**: each capture is retried
-  until two consecutive frames are byte-identical with no toast on screen.
-- The RELAUNCH step is a `Page.reload` against the same `--user-data-dir` profile, not a
-  second process: the order is a PERSISTED preference, and the claim is that a fresh boot
-  of the renderer rehydrates it (the `turn-collapse` and row-space scenes' own restart
-  step). A second process would say the same thing about the same bytes.
-- Every rig was reaped by exact pid; the stub's records and logs live outside the repo.
+## Round 1's re-shoot, and how it compares to the set before it
 
-## The fold, and what it did to these frames (origin/main `9dd18ab318`)
+Every frame in this directory was re-shot on the round-1 tree, so each one is a picture
+of what ships. Against the previously committed set (the fold's, `9dd18ab318`), **5 of
+34 are byte-identical** and the rest fall into two groups, both measured with a raw-RGBA
+comparison (`sharp`, every channel, with the bounding box of what moved):
 
-The branch was folded onto main (`#691`'s subagent row marks, `#684`'s loader
-continuity, `#648`'s board bands) and this set was **re-shot on the folded tree**, so
-every committed frame is a picture of the tree the change lands on. That was not taken
-on trust: before replacing anything, the pre-fold frames were compared pixel by pixel
-against the new ones (`sharp`, raw RGBA, every channel, bounding box of what moved).
+**This round's intended changes.** `grip-hover-240` (the grip is gone: the shed),
+`drag-mid` and `search-drag-mid` (the dragged row's ground), `drag-top` (new), and the
+`many-*`/`single-*` frames (those slices are now shot at 280 rather than at the 260
+default, so the panel and everything right of it moved).
 
-| Verdict | Pairs |
-| --- | --- |
-| **byte-identical** | **23 of 32** |
-| differs only in the composer's caret, a **2x33px** strip at device y 1597-1629 | 7 |
-| differs in the chat column's rotating empty-state tip sentence and that caret | 2 (`after-drop`, both palettes) |
-
-**The differing pixels never touch the sidebar.** The leftmost differing device x across
-every pair is **858**; the sidebar's own pixels end at **560** (a 280px panel at
-`deviceScaleFactor: 2`). `order-relaunch` - the discriminating frame - is byte-identical
-in both palettes, and so are all three `order-before` widths, `drag-mid` and the
-search-filtered trio.
-
-Both classes of difference are the app's own, not the fold's, and the set proves it
-about itself: the caret strip is the between-run difference the `sidebar-row-space`
-README already names, and the tip line **rotates within a single launch** - hashing that
-line across this set's own committed frames gives five distinct values at one width, and
-the same five groupings appear in the pre-fold set. `#691`'s mark is separately disposed
-of by the scene itself, which counts `[data-subagent-mark]` inside the pinned section and
-asserts **zero**: the stand-in's rows carry no subagent counts, so the folded-in mark has
-nothing to draw here (and a fixture that grew one would fail that check rather than
-quietly move a frame).
+**Run-to-run non-determinism outside the sidebar's content.** The composer's caret strip
+(device x 858-939, y 1597-1629 — 66px, the strip the fold's own report names), the pan
+phase of a long title, and the rotating empty-state sentence; the search states differ
+from their predecessors only by such strips (12-60px) now that the scene parks the list's
+scroll before them. The dropped-order frames also carry a LIST SCROLL OFFSET, because the
+drag that precedes them brings rows into view and the offset depends on where the pointer
+crossed; the rows and the order are the same.
 
 ## What these frames cannot show
 
-- **A real hand**: every gesture goes through `Input.dispatchMouseEvent`, so it enters
-  Chromium's own pipeline and the element under it is found the way a hand's would be -
-  but there is no pressure, no jitter and no trackpad momentum, so no frame says "a real
-  hand finds this".
-- **Focus rings**: a headless window is never shown, so `:focus-visible` never paints.
-- **The pan** (§5 of the row-space design): the 240 hover frame shows a 40px title; what a
-  reader sees beyond it is the pan's own subject, photographed by the row-space set.
-- **Scrollbars**: macOS overlay scrollbars take no width, so the frames are of the full
-  row box.
+- **A dragged row that is also the current one.** The `current` state is the ROUTE's, and
+  against the committed stub neither door opens a conversation: the large catalogue's ids
+  (`p000`) are not the contract's shape, so `/chat/p000` is read as a legacy agent link
+  (measured: `#/chat/p005`, no `aria-current`), and the six-conversation fixture's
+  twelve-hex ids reach a stub that cannot open a session (measured: the route stays at
+  `#/chat` and a refusal toast appears). The mechanism is asserted at the merge level
+  instead; a rendered frame needs a daemon that can open a session (QA's own rig).
+- **Focus-visible rings.** A headless window never paints them, which is the same limit
+  the earlier sets record.
+- **The 2px line at the last slot** sits at the section box's own foot (`top =
+  section.bottom`), which is why the line's "inside the section" claim reads "inside the
+  section's box, at its foot for the last slot" (QA round 1, Q4 — acknowledged, not
+  changed).
+- **`many-pins-drag`'s held row** scrolled out of view at that scale, so the frame shows
+  the line and not the held item (design N1); **`search-after-drop`** shows the reveal on
+  the row the moved row swapped with, not on the moved row itself, so the landing is
+  marked by the live region rather than by the pixels (design N2).
