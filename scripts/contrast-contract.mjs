@@ -2260,7 +2260,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the mention chip's fill is now measured against `elevated`.
 		 */
 		what: "composer box ground",
-		file: "src/renderer/src/features/chat/components/message-input.tsx",
+		file: "src/renderer/src/shared/components/composer/message-input.tsx",
 		must: '"mx-auto flex w-full flex-col bg-elevated"',
 		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
 	},
