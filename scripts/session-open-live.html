@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  Real-backend open harness: the shipped `ChatPage` against a live, isolated
+  `local-operator serve`, reached through the app's own development desktop
+  proxy. `scripts/session-open-live.vite.mjs` serves it and
+  `scripts/session-open-live.mjs` drives it. Nothing here is committed evidence;
+  the driver prints numbers and writes frames where it is told to.
+
+  The store is persisted, so the previous run's active session is cleared before
+  the module graph loads (the same reason as `session-switch.html`).
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Session open — real backend harness</title>
+		<script>
+			localStorage.clear();
+			localStorage.setItem(
+				"chat-sidebar-disclosures",
+				JSON.stringify({ previous: true }),
+			);
+		</script>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module" src="./session-open-live.tsx"></script>
+	</body>
+</html>

@@ -38,6 +38,7 @@
  * report was about.
  */
 
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -54,7 +55,7 @@ import {
 	deriveMcpServers,
 	deriveRunDetails,
 } from "./run-detail-model";
-import { mcpGrantInFlight } from "./run-detail-model";
+import { CANCELLED_BEFORE_START, mcpGrantInFlight } from "./run-detail-model";
 import * as fixtures from "./run-details.fixtures";
 import { RunPanel } from "./run-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
@@ -196,10 +197,7 @@ const RunPane = ({
 			side="left"
 			label="Resize run details"
 		/>
-		<div
-			style={{ minWidth: width, width }}
-			className="relative h-full overflow-hidden border-l border-hairline"
-		>
+		<PaneSlot width={width} minWidth={width}>
 			<RunPanel
 				details={details}
 				mcpServers={deriveMcpServers(mcpServers, mcpErrors, mcpOperations)}
@@ -217,7 +215,7 @@ const RunPane = ({
 				onReaderChildChange={onReaderChildChange}
 				onClose={onClose}
 			/>
-		</div>
+		</PaneSlot>
 	</>
 );
 
@@ -1280,6 +1278,120 @@ export const WakesFloor320: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The Monitors section with one watch: a session watching something and nothing
+ * else.
+ *
+ * The state the feature exists for — a standing READ-ONLY check that reports only
+ * what changed, so between deliveries the transcript says nothing and this pane is
+ * the only place the watch exists. The pane draws one section and the composer's
+ * row above it draws one chip.
+ */
+export const MonitorsOnly: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsOnly())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Three health states on one list, published out of due order.
+ *
+ * The section's ordering claim (the wire arrives `m2`, `m3`, `m1` and the rows
+ * read `m1`, `m2`, `m3`) and the health ink's whole vocabulary in one frame: a
+ * live watch, one mid-ladder (`3 failed`), and one the ladder parked (its slot
+ * reads `disabled` and its tail the reason the counters carry). The disabled row
+ * sorts last because it has no due slot — the soonest-first rule's own edge.
+ */
+export const monitorsHealth: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Nine monitors: one past `MONITOR_ROW_CAP`, so the section truncates and its
+ * marker is in frame.
+ *
+ * The marker is a STATEMENT, not a control — nothing in this pane can put a shed
+ * monitor back — which is why it wears the disabled disclosure the plan's shed
+ * count wears rather than the roster's `Show N more`.
+ */
+export const monitorsMany: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsMany())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * One watch whose description is longer than the row can show.
+ *
+ * The truncation claim: the description is the one unbounded, authored string on
+ * a monitor row, so it clamps at two lines while the whole text stays readable on
+ * hover and in the accessible name. The pair is `monitorsOnly` above, whose
+ * description fits.
+ */
+export const MonitorLongDescription: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorLongDescription())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Wakes and watches together, which is what a session doing both looks like.
+ *
+ * Two sections in one scroll region and two standing-fact chips on the row above
+ * them, the wakes first — the TUI band's own order ("wake rows first, then a
+ * monitor section"), which the chips follow for the same reason.
+ */
+export const monitorsAndWakes: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsAndWakes())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same section at the pane's 320px floor.
+ *
+ * The health story's list in the narrowest column the pane can be dragged to: a
+ * due label, an interval and a `last check` instant are the longest first line
+ * the section draws, and the health tail is the clause that has to yield rather
+ * than push the row wide.
+ */
+export const monitorsFloor320: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			width={320}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
 /**
  * The trigger's activity blip: the pane is CLOSED and a child is running, so the
  * dot is drawn in `info` (`docs/composer-activity-chips.md` § 5).
@@ -1426,8 +1538,83 @@ export const ReaderLive: Story = {
 };
 
 /**
- * The same child settled: the outcome block carries the final text, the settled
- * clock, and no pulse.
+ * The foot at the pane's 320px floor, carrying the longest label a live child's
+ * line can be MINTED with (design round 1, D3).
+ *
+ * `running mcp__linear_create_issue` is the shape `tool_activity` falls back to
+ * when the model stated no intent — the tool name as CALLED, which the relay has
+ * no display layer to shorten (`intent.py:310-327`) and which `§ 5.8` records as
+ * the one divergence from the parent's own foot. At the floor the label box
+ * leaves ≈179 px ≈ 24 characters, so this is the frame in which the label has to
+ * truncate INSIDE the row rather than wrapping or pushing the clock's reserved
+ * slot off the rail. The row's other arm — a model-authored INTENT — is unbounded
+ * and can exceed the default pane's ≈38-40 characters, and no frame carries that
+ * case; it is a known gap rather than a claim (round 2, D2-1).
+ *
+ * Read with `reader-live`: the same child, the same page, one arm of the relay's
+ * vocabulary apart — a stated intent there, the named-tool fallback here.
+ */
+export const ReaderLiveFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						progress: "running mcp__linear_create_issue",
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			/* The pane's own floor, the width the truncation above is about. */
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A running child that has reported NO activity yet: the relay's own default
+ * word, `thinking`, on the foot (`docs/run-sidebar.md` § 5.8).
+ *
+ * The state between a child's first beat and its first progress string — and the
+ * one the line must still answer for, because "nothing to report yet" is exactly
+ * when a reader looks at the foot and asks what it is doing. It is the pair's
+ * other half: `reader-live` carries a real activity string, this carries the
+ * fallback, and a frame with neither would let a line that only ever renders a
+ * wire string pass as complete. The page holds prose and no tool row, which is
+ * the shape that produces the state — a tool row would have reported
+ * `running ...`.
+ */
+export const ReaderNoActivity: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild({ progress: undefined })],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage()}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same child settled: the settled clock, no pulse, and a quiet foot.
+ *
+ * The row still carries a `result_text` — that is what the wire sends for a
+ * settled child — and NOTHING paints it here, which is the rule this story now
+ * documents: the reader shows the child's own conversation, whose last row IS the
+ * result, and a block at the foot repeating it would be a second, clipped copy
+ * under the page that just made it (`run-child-reader.tsx`'s header docstring).
+ * `reader-result-inline` is the same state with the result LONG enough that the
+ * old block would have taken the pane over.
  */
 export const ReaderSettled: Story = {
 	render: () => (
@@ -1453,7 +1640,7 @@ export const ReaderSettled: Story = {
 	decorators: [withCanvasClosed],
 };
 
-/** A failure: the verbatim exception in the outcome block, `danger` on the icon. */
+/** A failure: the verbatim exception at the foot, `danger` on the icon. */
 export const ReaderFailed: Story = {
 	render: () => (
 		<ChatColumn
@@ -1473,6 +1660,214 @@ export const ReaderFailed: Story = {
 			openPanel={true}
 			readerChildId="job-reader"
 			previewPage={fixtures.childPage({ includeTool: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A settled child whose result is INLINE: the conversation's last message, and a
+ * foot with nothing on it.
+ *
+ * This is the defect's own frame, and the pair it belongs to is
+ * `reader-result-preview`: the same child with the same long result, once with
+ * the conversation on disk and once without. Here the whole result is the page's
+ * last row and the foot is empty, which is the state a reader recovers by
+ * scrolling. The row's own `result_text` is the wire's CLIPPED prefix of exactly
+ * that text, which is what the foot used to paint under the conversation that
+ * already held it — a duplicate that was also a fragment, and unbounded, so a
+ * result this long displaced the page entirely.
+ */
+export const ReaderResultInline: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.CLIPPED_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ finalResult: fixtures.LONG_RESULT })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same result, with no conversation to read: a BOUNDED preview and the copy
+ * that says what it is.
+ *
+ * The child's session directory is gone (`§ 10.1`'s terminal absence) and the
+ * clipped wire copy is the only text left, so the foot keeps it — but as a
+ * preview rather than as the result: the label says so, the paragraph scrolls
+ * inside a `max-h-40` box instead of pushing the page, and the line under it
+ * states that a full copy exists somewhere this reader cannot reach. Before the
+ * change this frame was the takeover in its worst form: an unbounded block over a
+ * body that had nothing to push back with.
+ */
+export const ReaderResultPreview: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.CLIPPED_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The third branch of the preview's own rule: a value the WIRE LEFT WHOLE.
+ *
+ * The two frames beside this one are about a value the wire CUT. This is the one
+ * where it did not: the child's session directory is gone, so the foot still
+ * carries the wire's copy — there is nothing else to read — but the label drops
+ * to a plain `Result` and the shortening sentence is NOT printed, because the
+ * runtime's clip marks what it cuts and this value carries no mark. It is the
+ * branch where the honesty rule could silently invert (a `Result preview` over a
+ * whole value, or a `Result` over a prefix), so until this frame existed its only
+ * evidence was the markup test's — design round 2's D2 and QA round 2's Q2, both
+ * of which asked for exactly this pair of pixels.
+ */
+export const ReaderResultWhole: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.WHOLE_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The one state the preview must NOT be painted in: a child cancelled while
+ * PARKED, whose `result_text` is the runtime's state stamp rather than an
+ * outcome.
+ *
+ * `harness/jobs.py`'s `cancel()` stamps `CANCELLED_BEFORE_START` on a job whose
+ * runner was never entered (`:1166-1167`, gated on `started_at is None`), so the
+ * row's `result_text` is 27 characters of state and not a page of output. Read
+ * as a result it produced the worst four lines in the pane: the body's own
+ * absence line, then a `Result preview` label over the stamp, then a claim that
+ * the copy had been SHORTENED — over a value the wire's 2_000-character bound
+ * never touched — repeating the absence. The TUI spends this value as the page
+ * title's state word instead (`subagent_view.py:3371-3391`), and so does this
+ * pane now: the stamp is the row's state word and the foot paints NOTHING.
+ *
+ * A frame is the only evidence for it, because the fix is the absence of a
+ * block: the reader's model test asserts the markup, and this is the same claim
+ * as pixels. The clock is deliberately absent — a job cancelled before its
+ * runner was entered has no `start_time`, and the row omits the duration rather
+ * than inventing one (`job_elapsed:414-417`) — so the state word is the only
+ * thing the chrome row carries about what happened, which is where the TUI puts
+ * it too.
+ */
+export const ReaderCancelledBeforeStart: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "cancelled",
+						settledSecondsAgo: 96,
+						/*
+						 * A job whose runner was never entered has NO launch time, and this
+						 * fixture then carries `start_time: 0` — the value the runtime sends
+						 * for that state, and the reason the row omits the duration rather
+						 * than inventing `0s` (`job_elapsed:414-417`).
+						 */
+						startedSecondsAgo: undefined,
+						progress: undefined,
+						result: CANCELLED_BEFORE_START,
+						sessionId: null,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * `reader-result-preview` at the pane's own FLOOR (design round 1, D4).
+ *
+ * The set carries a floor frame for every other READER surface it declares
+ * (`reader-childless-floor`, `reader-descendants-floor`,
+ * `reader-deep-children-floor`, and the breadcrumb's own `reader-deep-floor`),
+ * because the pane's 320px minimum is a width the app promises and a row's shed
+ * rules only bite there. The two surfaces this change ADDED shipped at 1280x900
+ * only, and the preview is the one that has to survive the floor: it is the
+ * only content in its state, and its box is at the `max-h-40` cap in both —
+ * measured off the rendered DOM, 395x160 at the 420px pane against 295x160 at the
+ * floor, with `scrollHeight` 831 against 1,065 because the same copy needs more
+ * lines in the narrower column. (The honesty line under it is TWO lines at both
+ * widths, 34.8px, rather than the three the finding predicted — which is what
+ * the frame is for.)
+ *
+ * The rig declares 800x700 for it, the same size as the three floor frames
+ * above and for their reason: the pane at its floor plus the chat column's own.
+ *
+ * Read with `reader-result-preview`: the same tree, the same result, the same
+ * label. What changes at the floor is where the lines break, and how much of the
+ * copy the box's fixed 160px holds (19% of it at 420px, 15% at the floor).
+ */
+export const ReaderResultPreviewFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.CLIPPED_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+			/* The pane's own floor, which is the width this frame is about. */
+			width={320}
 		/>
 	),
 	decorators: [withCanvasClosed],

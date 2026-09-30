@@ -3,10 +3,10 @@ import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tou
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
+import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
-import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
@@ -39,12 +39,8 @@ import {
 	CirclePlus,
 	Contrast,
 	CreditCard,
-	Database,
 	ExternalLink,
-	History,
 	Info,
-	List,
-	MessagesSquare,
 	Plug,
 	Settings,
 	SlidersHorizontal,
@@ -275,6 +271,7 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	const laneLeadingColumn = useLaneLeadingColumn("elevated");
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -879,9 +876,17 @@ export const SettingsPage: FC = () => {
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-canvas">
 			{/*
-			 * The rail's edge lives here rather than on the nav, because only the
-			 * container knows which way the layout is running: the same hairline has
-			 * to be a right edge beside the content and a bottom edge above it.
+			 * No edge on this wrapper any more. The rail took `elevated` (see
+			 * `settings-sidebar`'s ground note), so the boundary beside the content
+			 * is the tone step it makes against `canvas` — and a drawn line over a
+			 * tone step is the redundant second mark the operator reported as
+			 * stopping partway up the window: "either make it extend all the way up
+			 * or remove the right border". It is removed rather than extended,
+			 * because extending would have the shell's lane paint a fence for a
+			 * boundary that already reads (the pass that took the dock's own
+			 * leading rule, #564, removed exactly this kind of mark) while the
+			 * lateral boundaries here — sidebar|rail and rail|content — are both
+			 * tone steps the rail's rung supplies.
 			 *
 			 * Two widths, and the `min-[1040px]:` step is paired with the
 			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
@@ -895,7 +900,24 @@ export const SettingsPage: FC = () => {
 			 * to render whole, so anything between 48 and 220 buys a few pixels of
 			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55">
+			<div
+				/*
+				 * The shell puts this rail's ground behind the window's top strip: the
+				 * rail is a leading column standing on `elevated`, and nothing a route
+				 * renders can reach y0 itself (the column is inside two clipped
+				 * ancestors), so the lane above the shell's columns paints this
+				 * column's own ground across its width — without the hand-over the lane
+				 * would paint the CONTENT ground across the rail (the operator's report
+				 * of 2026-09-26, and again of 2026-09-27).
+				 *
+				 * The width is NOT restated there: the shell measures this element, which
+				 * is what keeps the two-width rule below (48px under 1040, 220 at and
+				 * above it) a single decision, and the ground is named once, here —
+				 * `chat-layout.tsx` states the contract.
+				 */
+				ref={laneLeadingColumn}
+				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
+			>
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
@@ -1120,6 +1142,7 @@ export const SettingsPage: FC = () => {
 							    two things, and `Cpu` is the Model select's own glyph a few
 							    rows below it. One picture, one meaning. */}
 							<SettingsSection
+								id="model-settings"
 								title="Model settings"
 								icon={SlidersHorizontal}
 								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."
@@ -1159,61 +1182,6 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SystemPrompt />
-
-							<SettingsSection
-								title="History settings"
-								icon={History}
-								description="Configure how much conversation history is retained and displayed. These are tools to help balance cost and performance by controlling the amount of data used by the agents."
-							>
-								<div className="flex flex-col gap-4">
-									<SliderSetting
-										value={config.values.conversation_length}
-										label="Maximum conversation history"
-										description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run. Recommended: 100"
-										min={10}
-										max={500}
-										step={10}
-										unit="msgs"
-										// `MessagesSquare`, not `History`: the section heading is
-										// the history, this slider is a count of messages. Its two
-										// siblings keep `List` and `Database`, so the label column
-										// stays even.
-										icon={MessagesSquare}
-										isSaving={savingField === "conversation_length"}
-										onChange={(value) =>
-											handleUpdateField("conversation_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.detail_length}
-										label="Detail view length"
-										description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages. Recommended: 15"
-										min={10}
-										max={500}
-										step={5}
-										unit="msgs"
-										icon={List}
-										isSaving={savingField === "detail_length"}
-										onChange={(value) =>
-											handleUpdateField("detail_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.max_learnings_history}
-										label="Maximum learnings history"
-										description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization. This setting controls the maximum number of learning items to retain. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run. Recommended: 50"
-										min={10}
-										max={200}
-										step={10}
-										unit="notes"
-										icon={Database}
-										isSaving={savingField === "max_learnings_history"}
-										onChange={(value) =>
-											handleUpdateField("max_learnings_history", value)
-										}
-									/>
-								</div>
-							</SettingsSection>
 
 							<SettingsSection
 								title="Configuration information"
@@ -1284,10 +1252,38 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
+						{/*
+						 * The provider grid is the same component onboarding uses: one
+						 * place for a provider's sign-in methods, states and stored
+						 * credentials. `/provider`, `/login` and `/logout` land here.
+						 */}
+						<SettingsSection
+							title="Model providers"
+							icon={Plug}
+							description="Sign in to the services your agents think with. New chats use your default model."
+							sectionRef={sectionRefs.providers}
+						>
+							<ProviderGrid
+								initialProviderId={providerFromQuery}
+								onChangeModel={() => handleSelectSection("general")}
+							/>
+						</SettingsSection>
+
+						{/*
+						 * MCP management replaced the Google OIDC cards: the section
+						 * negotiates the `mcp` capability itself and reads the active
+						 * canonical session, so it renders unconditionally here.
+						 */}
+						<McpManagementSection
+							sessionId={activeSessionId ?? undefined}
+							sectionRef={sectionRefs.integrations}
+							highlightServer={mcpTarget}
+						/>
+
 						<SettingsSection
 							title="Radient account"
 							titleComponent={<RadientSectionTitle />}
-							description="Manage your Radient account, Radient Pass details, and credits."
+							description="Your Radient account, Radient Pass details and credits. To use Radient models, sign in under Model providers."
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
 						>
@@ -1314,20 +1310,6 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
-						{/*
-						 * The provider grid is the same component onboarding uses: one
-						 * place for a provider's sign-in methods, states and stored
-						 * credentials. `/provider`, `/login` and `/logout` land here.
-						 */}
-						<SettingsSection
-							title="Providers"
-							icon={Plug}
-							description="Model providers, how you sign in to each, and which are connected."
-							sectionRef={sectionRefs.providers}
-						>
-							<ProviderGrid initialProviderId={providerFromQuery} />
-						</SettingsSection>
-
 						<SettingsSection
 							title="Backend settings"
 							icon={Settings}
@@ -1339,17 +1321,6 @@ export const SettingsPage: FC = () => {
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
-
-						{/*
-						 * MCP management replaced the Google OIDC cards: the section
-						 * negotiates the `mcp` capability itself and reads the active
-						 * canonical session, so it renders unconditionally here.
-						 */}
-						<McpManagementSection
-							sessionId={activeSessionId ?? undefined}
-							sectionRef={sectionRefs.integrations}
-							highlightServer={mcpTarget}
-						/>
 
 						<div ref={sectionRefs.updates}>
 							<AppUpdatesSection />

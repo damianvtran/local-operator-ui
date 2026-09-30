@@ -442,6 +442,15 @@ async function mount({
 	isLoading = false,
 	currentJobId,
 	/*
+	 * The SECRET-GATE arm, as a prop: the page passes `true` exactly while a
+	 * `secret` ask waits (`chat-content.tsx` reads it off the pending gate), and
+	 * the composer must then refuse the credential — no keystrokes, no draft, no
+	 * recall entry, nothing on the answer wire from this box. Mounted here the
+	 * way the other refusal arms are, because this is the only place that mounts
+	 * the shipped component without a page deciding them.
+	 */
+	secretAnswer = false,
+	/*
 	 * The composer's note seam (`onSlashNote`), recorded the way `onSendMessage` is.
 	 * Every OTHER outcome that rewrites the box narrates itself through it — a staged
 	 * line, a list that owns the key — and the locked run's own sentence goes the same
@@ -456,6 +465,13 @@ async function mount({
 	 * passes it.
 	 */
 	paneHasSession = false,
+	/*
+	 * Whether a post-paint failure's `Send again` / `Edit` controls are on screen in
+	 * this pane's transcript (UX round 1, U3). The real host computes it once
+	 * (`ChatContent`'s `undeliveredOnScreen`); here it is a prop so the two states
+	 * - a line on screen and an ordinary draft - are both reachable.
+	 */
+	deliveryRemediesReachable = false,
 	/*
 	 * The command catalogue this mount sees, defaulting to the runtime's own. A case
 	 * that passes `[]` is a host whose list query has not arrived: the composer's
@@ -564,7 +580,9 @@ async function mount({
 					conversationId,
 					sessionStatus,
 					unavailable,
+					secretAnswer,
 					currentJobId,
+					deliveryRemediesReachable,
 					onSendMessage: async (...args) => {
 						sent.push(args);
 						return onSendMessage ? onSendMessage(...args) : true;
@@ -2162,6 +2180,48 @@ test("the notice is tied to the field, sits ABOVE the composer box in the band's
 });
 
 /*
+ * THE WAY BACK TO A FAILED MESSAGE'S CONTROLS (UX round 1, U3). The controls
+ * live in the transcript ABOVE the box, which precedes the composer in DOM
+ * order: a keyboard reader in the box reaches them with Shift+Tab and nothing on
+ * screen says so. The hint is attached the way the mention notice is - a
+ * described-by element that exists only while the line it speaks about is on
+ * screen - so an ordinary draft is not described by an empty element and the
+ * sentence cannot outlive the row.
+ */
+test("the composer names the failed row's controls only while the row is on screen", async () => {
+	const idle = await mount({ conversationId: "conv-delivery-hint-idle" });
+	assert.equal(
+		idle.textarea().getAttribute("aria-describedby"),
+		null,
+		"an ordinary draft is not described by the delivery hint",
+	);
+	assert.equal(
+		window.document.getElementById("composer-delivery-remedies-hint"),
+		null,
+		"nor is the element rendered while there is no line to point at",
+	);
+	const frame = await mount({
+		conversationId: "conv-delivery-hint",
+		deliveryRemediesReachable: true,
+	});
+	assert.ok(
+		(frame.textarea().getAttribute("aria-describedby") ?? "").includes(
+			"composer-delivery-remedies-hint",
+		),
+		"while a delivery row exists the box names the hint",
+	);
+	const hint = window.document.getElementById(
+		"composer-delivery-remedies-hint",
+	);
+	assert.ok(hint, "and the hint element is in the document");
+	assert.match(
+		hint.textContent ?? "",
+		/Shift\+Tab/,
+		"its sentence says the one thing the round measured as missing: how to reach them",
+	);
+});
+
+/*
  * THE DISCLOSURE IS RETIRED BY AN EDIT, AND IS NEVER PERSISTED WITH TEXT IT DOES
  * NOT DESCRIBE (UX round 3, U12; code review round 3, MINOR 1).
  *
@@ -2868,113 +2928,75 @@ test("the popup's anchoring wrapper carries the composer's shared measure, not t
 });
 
 /*
- * THE CENTRING BAND'S SENTENCE IS MIRRORED BELOW THE GROUP (UX round 4, U16).
+ * THE EMPTY CHAT DOCKS THE COMPOSER, SO THE SENTENCE NEEDS NO MIRROR (§G2).
  *
- * On an empty chat the band claims the column and centres its group, so a line
- * added anywhere in it moves the whole group by HALF the line — the composer the
- * operator is typing in included. Measured on the app at 1380 with real
- * keystrokes: `textarea.y` 402.25 idle -> 416.00 armed, toggling twice while one
- * command is typed (`/cred` 416.00, `/crede` 402.25, `/credential` 416.00),
- * where live `origin/main` holds 402.25 through all eleven keystrokes.
+ * The band used to centre one group - greeting, composer and chips - on an empty
+ * chat, so a line added above the box moved the whole group by HALF the line
+ * (measured at 1380: `textarea.y` 402.25 idle -> 416.00 armed), and an invisible
+ * mirror of the sentence below the group paid it back (UX round 4, U16). The same
+ * centring moved the composer on the first send (y393 -> y774 at 1380x900). The
+ * band now docks the composer at its foot in every state and centres only the
+ * splash above it, so a line above the box grows the band upward and the splash
+ * yields: nothing needs cancelling.
  *
- * The device is a hidden MIRROR of the sentence at the end of the group: the
- * group grows by the line on both sides of the box, so the centring shift
- * cancels for everything between the two lines. Both halves must measure the
- * same height, which is why they share one class list — asserted below, because
- * the mechanism is arithmetic and two class lists would be two definitions of
- * that height. Deleting the mirror (the mutation this exists for) fails the
- * first assertion; rendering it on a populated pane fails the last.
- *
- * jsdom has no layout engine, so this pins the STRUCTURE; the live y-values are
- * the design record §7.5's and the PR's.
+ * jsdom has no layout engine, so this pins the STRUCTURE the arithmetic rests on:
+ * the form is inside the band's foot, the foot is the band's LAST child (so the
+ * band's bottom anchor is the box's), the splash precedes it, and no aria-hidden
+ * copy of the sentence exists on either pane. The live y-values are the driver's
+ * `first-send` scene's.
  */
-const mirrorOf = () =>
+const hiddenCopyOf = () =>
 	[...window.document.querySelectorAll("output")].find(
 		(el) => el.getAttribute("aria-hidden") === "true",
 	) ?? null;
 
-const classTokens = (el) =>
-	new Set((el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean));
-
-test("on the band that centres the composer, the sentence is mirrored below the group", async () => {
-	const centred = await mount({
-		conversationId: "conv-centred",
+test("on an empty chat the composer is docked at the band's foot, and the sentence is not mirrored", async () => {
+	const empty = await mount({
+		conversationId: "conv-docked",
 		messages: [],
 	});
-	const idleMirror = mirrorOf();
-	assert.ok(
-		idleMirror,
-		"the centring band renders its mirror node in every state",
+	const band = window.document.querySelector("[data-lo-composer-band]");
+	const foot = window.document.querySelector("[data-lo-composer-foot]");
+	const splash = window.document.querySelector("[data-lo-composer-splash]");
+	assert.ok(band && foot && splash, "the band carries a splash and a foot");
+	assert.equal(
+		band.lastElementChild,
+		foot,
+		"the foot is the band's last child, so the band's bottom anchor is the composer's",
 	);
 	assert.ok(
-		idleMirror.className.includes("hidden"),
-		"and `hidden` while there is no sentence, so the idle composer reserves nothing and stays `origin/main`'s geometry to the pixel",
+		splash.compareDocumentPosition(foot) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"the splash (greeting, chips, tip) sits above the docked composer",
 	);
-	assert.equal(idleMirror.textContent, "");
+	assert.ok(foot.contains(empty.box()), "the composer box is inside the foot");
+	assert.ok(
+		!band.className.split(/\s+/).includes("justify-center"),
+		"the band itself centres nothing: centring it is what moved the composer on the first send",
+	);
 
-	await openCapture(centred);
-	await type(centred, "sk-live-CANARY-4417");
+	await openCapture(empty);
+	await type(empty, "[redacted]");
 	const notice = window.document.getElementById("composer-credential-notice");
 	assert.ok(
 		(notice.textContent ?? "").length > 0,
-		"the sentence is up, which is the state the mirror is for",
-	);
-	const mirror = mirrorOf();
-	assert.ok(
-		mirror,
-		"the centring band mirrors the sentence: without it the group grows by one line and the composer moves by half of it (UX round 4, U16)",
+		"the sentence is up, which is the state the mirror used to exist for",
 	);
 	assert.equal(
-		mirror.textContent,
-		notice.textContent,
-		"the mirror carries the same sentence, which is what makes its height the sentence's height",
-	);
-	assert.equal(
-		mirror.id,
-		"",
-		"the mirror is not the element `aria-describedby` names",
-	);
-	assert.ok(
-		mirror.classList.contains("invisible"),
-		"it is invisible: it is the same sentence twice, and the sentence is already painted above the box",
-	);
-	const noticeTokens = classTokens(notice);
-	const mirrorTokens = classTokens(mirror);
-	mirrorTokens.delete("invisible");
-	assert.deepEqual(
-		[...mirrorTokens].sort(),
-		[...noticeTokens].sort(),
-		"and it carries the sentence's OWN class list, so the two lines cannot measure different heights (one `credentialNoticeLine`, two consumers)",
-	);
-	/*
-	 * Below the BOX, and that is the arithmetic: the line above the box is what
-	 * grows the group, the line below it is what cancels the centring shift for
-	 * everything between them.
-	 */
-	assert.ok(
-		centred.box().compareDocumentPosition(mirror) &
-			window.Node.DOCUMENT_POSITION_FOLLOWING,
-		"the mirror is below the composer box in the group",
+		hiddenCopyOf(),
+		null,
+		"no aria-hidden copy of the sentence: the docked box does not move when a line arrives above it",
 	);
 
-	/*
-	 * AND NOT ON A POPULATED PANE, where the band is bottom-anchored: there a
-	 * mirrored line below the box would grow the band downward and push the typed
-	 * line up by the line's full height, which is the defect U14/D1 removed.
-	 */
-	const populated = await mount({ conversationId: "conv-centred-populated" });
+	const populated = await mount({ conversationId: "conv-docked-populated" });
 	await openCapture(populated);
-	await type(populated, "sk-live-CANARY-4417");
-	assert.ok(
-		window.document.getElementById("composer-credential-notice").textContent
-			.length > 0,
-		"the same state on a populated pane does raise the sentence",
-	);
+	await type(populated, "[redacted]");
 	assert.equal(
-		mirrorOf(),
-		null,
-		"and renders no mirror: the sentence stays in the flow, where the transcript above yields instead",
+		window.document.querySelector("[data-lo-composer-band]").lastElementChild,
+		window.document.querySelector("[data-lo-composer-foot]"),
+		"a populated pane docks the composer the same way, which is why the first send cannot move it",
 	);
+	assert.equal(hiddenCopyOf(), null);
 });
 
 /*
@@ -5004,5 +5026,180 @@ test("a fresh hold after the notice's own remedy raises its own sentence", async
 		ran.length,
 		0,
 		"the re-armed press is still held, not dispatched",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The secret gate: the credential does not come through this box      */
+/* ------------------------------------------------------------------ */
+
+test("a secret gate refuses the composer the way an unavailable one is refused, and points at the dock's field", async () => {
+	/*
+	 * THE SECRET ASK'S COMPOSER CLOSURE. While a `secret` ask waits, the answer
+	 * is the dock's masked field (`trace/question-dock.tsx`) and this box must
+	 * not be the credential's way in: a value typed here would be painted in
+	 * clear, written through the persisted draft store on every keystroke, and
+	 * — before this change — sent as the question's answer. Those are the three
+	 * exposures the operator's request names, and this state closes the first
+	 * two at the keystroke and the third at the door.
+	 *
+	 * The SHAPE of the refusal is the base's own, deliberately: `readOnly` (never
+	 * `disabled` — the focus loss the unavailable arm records), `aria-disabled`,
+	 * and the term inside the one predicate every writer and submitter already
+	 * answers to. What is NEW is what the state CLAIMS: the placeholder names
+	 * the card above, because "Agent is busy" over a parked question is false
+	 * about the state and "This conversation is gone" is false about the pane.
+	 *
+	 * The half this file cannot prove, stated rather than implied: that a real
+	 * browser's read-only field fires no `input` event (the rig MODELS that
+	 * refusal in its own `key` helper, which is what makes the no-draft
+	 * assertion below meaningful only in the rig's model), and that the implicit
+	 * Enter submission from a live field reaches the form. Both are engine
+	 * facts; QA drives the engine, and `composer-refusal.test.mjs` pins the
+	 * source halves.
+	 */
+	const frame = await mount({ secretAnswer: true });
+	const field = frame.textarea();
+	assert.equal(field.readOnly, true);
+	assert.equal(
+		field.disabled,
+		false,
+		"`disabled` on the composer is the focus loss this base removed",
+	);
+	assert.equal(field.getAttribute("aria-disabled"), "true");
+	assert.equal(
+		field.placeholder,
+		"Answer the secret request above",
+		"the empty refusal says where the answer goes",
+	);
+	assert.equal(
+		field.getAttribute("aria-describedby"),
+		null,
+		"an empty refused box is described by nothing: the placeholder carries the short form",
+	);
+	assert.equal(
+		document.getElementById("composer-secret-closure-notice"),
+		null,
+		"and the draft-case sentence exists only when there is a draft it can serve",
+	);
+	assert.equal(
+		frame.button().disabled,
+		true,
+		"the Send control carries the refusal",
+	);
+
+	/* Typing takes nothing: the rig applies the browser's own read-only refusal. */
+	await type(frame, "ghp_not_a_real_token");
+	assert.equal(frame.value(), "", "a refused box takes no keystrokes");
+	assert.equal(frame.draft(), undefined, "and no draft reaches the store");
+
+	/* Enter takes nothing (the keydown guard), and the form seam refuses a
+	   submit that a press or a script reaches without a keydown. */
+	await enter(frame);
+	const form = frame.box().closest("form");
+	assert.ok(form, "the composer is a form");
+	await act(async () => {
+		form.requestSubmit();
+	});
+	await settle();
+	assert.equal(frame.sent.length, 0, "nothing reaches the page's send door");
+	assert.equal(
+		calls.filter((call) => call.request?.op === "sessions.answer").length,
+		0,
+		"and nothing reaches the answer op",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[
+			frame.conversationId
+		]?.submittedMessages?.length ?? 0,
+		0,
+		"no recall entry is written from the refused path",
+	);
+});
+
+test("a draft written before the question survives it, and is never sent as its answer", async () => {
+	/*
+	 * THE STATE ORDERING THAT MATTERS: a gate can arrive while the box already
+	 * holds the user's own text. Both ways to get that wrong are pinned here —
+	 * clearing the box (destroying words nothing about this feature owns) and
+	 * sending it (the pre-change behaviour: ANY send while a gate was pending
+	 * became the gate's answer, so a draft someone wrote before the question
+	 * was asked would have been posted as the credential). The draft is HELD,
+	 * the press is REFUSED, and neither the draft nor the recall log moves.
+	 */
+	const conversationId = "conv-secret-held-draft";
+	const before = await mount({ conversationId });
+	await type(before, "draft written before the question");
+	assert.equal(before.draft(), "draft written before the question");
+
+	const frame = await mount({
+		conversationId,
+		keepWorld: true,
+		remount: true,
+		secretAnswer: true,
+	});
+	assert.equal(
+		frame.value(),
+		"draft written before the question",
+		"the draft is adopted into the refused box, not cleared",
+	);
+	await enter(frame);
+	await settle();
+	assert.equal(
+		frame.sent.length,
+		0,
+		"the held draft is not sent as the question's answer",
+	);
+	assert.equal(
+		calls.filter((call) => call.request?.op === "sessions.answer").length,
+		0,
+	);
+	assert.equal(
+		frame.value(),
+		"draft written before the question",
+		"a refused press does not clear the user's words",
+	);
+	assert.equal(
+		frame.draft(),
+		"draft written before the question",
+		"on disk either",
+	);
+});
+
+test("the closed box with a draft carries a visible reason (UX round 1, U2)", async () => {
+	/*
+	 * The closure's explanation was a PLACEHOLDER, and a placeholder paints only
+	 * while the box is empty - so the reader most likely to need the reason (a box
+	 * already holding their words) saw a dimmed box and no words at all. The
+	 * sentence now renders in the composer's own register above the box, and the
+	 * field is DESCRIBED by it while it renders (`aria-describedby`, the same
+	 * wiring the missing-session notice uses for its pane sentence).
+	 */
+	const conversationId = "conv-secret-closure-sentence";
+	const before = await mount({ conversationId });
+	await type(before, "half-written note from before the question");
+	assert.equal(before.draft(), "half-written note from before the question");
+
+	const frame = await mount({
+		conversationId,
+		keepWorld: true,
+		remount: true,
+		secretAnswer: true,
+	});
+	assert.equal(
+		frame.value(),
+		"half-written note from before the question",
+		"the draft is adopted into the refused box",
+	);
+	const notice = document.getElementById("composer-secret-closure-notice");
+	assert.ok(notice, "the closed box with a draft renders its explanation");
+	assert.equal(
+		notice.textContent,
+		"Answer the secret request above — this box is paused until it is answered, and your draft is kept.",
+	);
+	assert.match(
+		frame.textarea().getAttribute("aria-describedby") ?? "",
+		/composer-secret-closure-notice/,
+		"and the field is described by it",
 	);
 });

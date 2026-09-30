@@ -1,4 +1,4 @@
-import localOperatorIcon from "@assets/icon.png";
+import { BrandMark } from "@shared/components/common/brand-mark";
 import type { FC } from "react";
 
 type CollapsibleAppLogoProps = {
@@ -26,6 +26,13 @@ type CollapsibleAppLogoProps = {
  * `text-heading` it was. A 32px mark beside a 16px semibold wordmark made the
  * header the heaviest thing on a rail whose job is to be quiet, and it sat two
  * steps above the 13px destinations underneath it.
+ *
+ * THE MARK IS THE BUBBLED ICON, painted in an ink role (`BrandMark`). Design
+ * round 1's N2 had swapped the packaged icon for the bare line glyph because the
+ * icon's near-white disc was the brightest object in a dark column; the operator
+ * preferred the bubble (2026-09-24), so the disc is back but its fill is `ink`
+ * rather than a fixed white, and the figure is a hole showing the column's own
+ * ground. Same component in the brand row, the 56px strip and the empty state.
  */
 export const CollapsibleAppLogo: FC<CollapsibleAppLogoProps> = ({
 	expanded,
@@ -33,11 +40,9 @@ export const CollapsibleAppLogo: FC<CollapsibleAppLogoProps> = ({
 	<div className="flex min-w-0 items-center gap-2">
 		{/* Named only when collapsed: expanded, the wordmark beside it already
 		    says "Local Operator", and an alt text would announce it twice. */}
-		<img
-			src={localOperatorIcon}
-			alt={expanded ? "" : "Local Operator"}
-			loading="eager"
-			className="size-6 shrink-0"
+		<BrandMark
+			className="size-6"
+			label={expanded ? undefined : "Local Operator"}
 		/>
 		{expanded && (
 			<span className="truncate font-semibold text-body text-ink">

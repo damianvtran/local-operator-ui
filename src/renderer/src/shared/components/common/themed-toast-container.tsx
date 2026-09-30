@@ -70,12 +70,19 @@ const TOAST_THEME: CSSProperties = {
  * ThemedToastContainer component
  *
  * A wrapper around sonner's Toaster that applies theme-aware styling and includes a close button.
+ *
+ * THE APP'S ONE CONTAINER, mounted by `main.tsx` (bottom-right, standard styling).
+ * `position` and `style` existed for a second container - the chat sidebar's own toast
+ * lane, design D11 of `docs/design/sidebar-row-space.md` - and are gone with it
+ * (2026-09-27, the lane's supersession entry in that document): the sidebar's
+ * messages are ordinary sonner toasts again, and nothing mounts a second container.
  */
-// Undefined preserves Sonner's production lifetime. Evidence stories can hold
-// their one real refusal without replaying mutations or altering error cooldowns.
 export const ThemedToastContainer: FC<Pick<ToasterProps, "duration">> = ({
 	duration,
 }) => (
+	/* `duration` undefined preserves Sonner's production lifetime. Evidence stories
+	   can hold their one real refusal without replaying mutations or altering error
+	   cooldowns. */
 	<Toaster
 		duration={duration}
 		position="bottom-right"

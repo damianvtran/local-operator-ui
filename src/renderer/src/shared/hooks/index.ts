@@ -33,6 +33,7 @@ export {
 	useConversationMessages,
 } from "./use-conversation-messages";
 export { credentialsQueryKey, useCredentials } from "./use-credentials";
+export { useHomeDirectory } from "./use-home-directory";
 export { useInitializeModels } from "./use-initialize-models";
 export { useJobPolling } from "./use-job-polling";
 export { useMessageInput } from "./use-message-input";

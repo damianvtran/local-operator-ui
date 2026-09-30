@@ -353,8 +353,175 @@ export function readServeRecords(dir: string): {
 }
 
 /**
- * Signal-0 liveness, the same rule as `registry.py::pid_alive`.
+ * The records in this set that NAME `address` with a pid that is not proven
+ * dead.
  *
+ * ONE predicate for the three callers that must not end up describing different
+ * machines: `discoverDaemons`'s own `blocksSpawn` verdict, and the record gate
+ * `backend-service.ts` applies to each address it might spawn on - both the
+ * boolean it decides on and the records it names the holder from.
+ */
+function recordsHolding(
+	files: RecordFile[],
+	address: string | null,
+	now: number,
+): ServeRecord[] {
+	if (!address) return [];
+	/*
+	 * BOTH SIDES ARE FOLDED BEFORE THEY ARE COMPARED (review round 1, R1-4).
+	 * `recordAddress` folds the record's host spelling; this folds the one the CALLER
+	 * named, because a caller may name `http://localhost:1111` for the listener its own
+	 * record calls `127.0.0.1` - the CSP and the app's local-host list both accept that
+	 * spelling - and an exact comparison against the raw string answered "no record"
+	 * for it. A caller that already normalised (the spawn gate does, through
+	 * `spawnAddresses`) passes an address this leaves alone, so the fold is idempotent
+	 * rather than a second opinion.
+	 */
+	const wanted = normaliseAddress(address) ?? address;
+	const records: ServeRecord[] = [];
+	for (const entry of files) {
+		if (!entry.record) continue;
+		if (recordAddress(entry.record) !== wanted) continue;
+		if (recordPidLiveness(entry.record, now) === "dead") continue;
+		records.push(entry.record);
+	}
+	return records;
+}
+
+/**
+ * Whether a serve record in this app's own root NAMES this address with a pid
+ * that is not proven dead.
+ *
+ * WHY THE ADDRESS AND NOT THE ROOT, which is the whole of the 2026-09-23
+ * incident. This question used to be asked of the record directory as a whole -
+ * "is there a daemon anywhere in this root" - so a record for a daemon on an
+ * address this app was not using forbade the spawn onto the address it WAS
+ * using. The app then had neither a daemon of its own nor a way to get one, and
+ * quit. A record answers a question about ONE address (`recordAddress`), which
+ * is also the question the spawn gate is asking, so the two are asked of each
+ * other here.
+ *
+ * An unreadable record DIRECTORY still answers yes for every address: that is not
+ * a fact about an address but the absence of any facts at all, and spawning on a
+ * guess is the failure this module exists to remove.
+ */
+export function addressHoldsLiveRecord(
+	address: string | null,
+	options: { env?: NodeJS.ProcessEnv; now?: () => number } = {},
+): boolean {
+	const { unreadable, records } = addressHolders(address, options);
+	return unreadable || records.length > 0;
+}
+
+/**
+ * The root-wide form of the same question: any record at all, or one that will not
+ * even parse.
+ *
+ * Kept ONLY for a caller that named no address (see the `blocksSpawn` site): with
+ * nothing to scope to there is no address this verdict can call free, so it keeps
+ * the conservative meaning it had before the scoping. An unparseable record is
+ * included here and not in `recordsHolding`, because a file that cannot be read
+ * cannot be attributed to an address at all.
+ */
+function anyRecordHoldsSomething(files: RecordFile[], now: number): boolean {
+	return files.some(
+		(entry) => !entry.record || recordPidLiveness(entry.record, now) !== "dead",
+	);
+}
+
+/**
+ * What this app's own registry says holds `address`: every record that NAMES it
+ * with a pid that is not proven dead, and whether the record directory could be
+ * read at all.
+ *
+ * The records themselves rather than a boolean, because the caller that refuses a
+ * spawn has to be able to NAME the holder it refused for - pid, install, and when
+ * it started - and a pid-shaped boolean would send it back to the directory to
+ * find out what it had just decided against. `unreadable` is carried beside them
+ * rather than folded in: it is an answer about every address rather than about
+ * this one, and a report has to be able to tell those apart.
+ */
+export function addressHolders(
+	address: string | null,
+	options: { env?: NodeJS.ProcessEnv; now?: () => number } = {},
+): { unreadable: boolean; records: ServeRecord[] } {
+	if (!address) return { unreadable: false, records: [] };
+	const { files, problem } = readServeRecords(
+		serveRunDir(options.env ?? process.env),
+	);
+	return {
+		unreadable: problem === "unreadable",
+		records: recordsHolding(files, address, (options.now ?? Date.now)()),
+	};
+}
+
+/**
+ * The pids listening on `port` on this machine, read from the socket itself.
+ *
+ * WHY THIS IS ASKED AT ALL, and why only when nothing else can answer. The spawn
+ * gate reports WHAT is holding an address, and the occupant's own `/health` is
+ * the first and best source - it names its pid, version and install. But the
+ * occupant that stops this app starting a daemon is often one that cannot answer
+ * within the probe budget at all (a daemon mid-turn, a wedged one, one still
+ * importing), and the operator's question - "what is on my port" - then has no
+ * answer from the source the gate prefers. The kernel still knows, so the pid is
+ * read from its table and the report SAYS that is where it came from
+ * (`AddressOccupant.pidSource` in `backend-service.ts`) rather than passing a
+ * socket fact off as the daemon's own word.
+ *
+ * The query is the operator's own - `lsof -nP -iTCP:<port> -sTCP:LISTEN` - so a
+ * report and a human's check of the same port cannot describe different
+ * listeners. `-t` is ours: it prints the pids alone, and parsing a table to
+ * recover them is a second opinion about the same output. Fails CLOSED to an
+ * empty list, because a missing `lsof`, a permission refusal or a machine
+ * without one leaves the report with an address and no pid - which is still
+ * true, where a guess would not be.
+ */
+export function listenerPidsOn(port: number): number[] {
+	if (!Number.isInteger(port) || port <= 0 || port > 65535) return [];
+	try {
+		const out = execFileSync(
+			"lsof",
+			["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+			{ encoding: "utf8", timeout: 2_000 },
+		);
+		const pids = new Set<number>();
+		for (const line of out.split("\n")) {
+			const pid = Number.parseInt(line.trim(), 10);
+			if (Number.isInteger(pid) && pid > 0) pids.add(pid);
+		}
+		return [...pids];
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * The record this app's own root holds for `pid`, when one is readable.
+ *
+ * Diagnosis only, and never an admission: a holder that also has a record on this
+ * machine has a `started_at`, and "something took your address" is a different
+ * sentence when the something is one of your own daemons from an earlier run. A
+ * malformed, absent or mismatched file is simply no record, because the caller is
+ * naming what it found and not deciding what to do about it.
+ */
+export function readRecordForPid(
+	pid: number,
+	env: NodeJS.ProcessEnv = process.env,
+): ServeRecord | null {
+	if (!Number.isInteger(pid) || pid <= 0) return null;
+	const file = join(serveRunDir(env), `${pid}.json`);
+	try {
+		const entry = parseRecord(JSON.parse(fs.readFileSync(file, "utf8")), file);
+		return entry.record && entry.record.pid === pid ? entry.record : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Signal-0 liveness, the same rule as `registry.py::pid_alive`.
+
  * `ESRCH` is the only answer that means gone. `EPERM` means alive but not
  * ours, which for "is this daemon there" is alive.
  *
@@ -459,8 +626,60 @@ export function classifyRecord(
 
 /** `http://host:port`, with an IPv6 literal bracketed so it is dialable. */
 export function recordAddress(record: ServeRecord): string {
-	const host = record.host.includes(":") ? `[${record.host}]` : record.host;
-	return `http://${host}:${record.port}`;
+	return addressOf("http:", canonicalHost(record.host), record.port);
+}
+
+/**
+ * One host spelling for the loopback names that mean the same listener (review
+ * round 1, R1-4).
+ *
+ * WHY THIS EXISTS. `normaliseAddress` compares a configuration's address against a
+ * record's, and it kept the host as written - so a configuration naming `localhost`
+ * never matched the record its own daemon had written for `127.0.0.1`, the record
+ * gate silently fell through to the occupancy probe for an address this app's own
+ * registry already described, and the app was back to the `[Errno 48]` orphan loop
+ * the record arm exists to prevent. The fold belongs HERE rather than inside that
+ * comparison because the same string is what tags a discovery candidate `configured`
+ * (`discoverDaemons`), and two spellings of one listener must not be two facts about
+ * a machine - `backend-service.ts` already names this hazard ("the record's spelling
+ * of the same listener (`localhost` for `127.0.0.1`, say) is a second place for the
+ * two to disagree").
+ *
+ * `localhost` and `127.0.0.1` are folded together, which is the direction the app's
+ * own records are written in. IPv6 loopback is NOT folded into the IPv4 one - a
+ * daemon bound to `::1` alone is not reachable at `127.0.0.1`, so calling them one
+ * address would be a lie - but its own two spellings are folded: the URL parser
+ * hands `[::1]` back bracketed and normalises the fully expanded form to it, while a
+ * serve record stores the host bare, so both sides meet on `::1`.
+ */
+function canonicalHost(host: string): string {
+	const bare =
+		host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+	/*
+	 * ONE TRAILING DOT IS THE FULLY QUALIFIED SPELLING OF THE SAME NAME (agent round
+	 * 2, N1): `localhost.` is `localhost` to a resolver, and `new URL` keeps the dot,
+	 * so before this the fold had exactly one spelling of one listener that compared
+	 * unequal to its own record. The dot is dropped for the COMPARISON only - a name
+	 * that is not loopback keeps the spelling it arrived with, so this cannot
+	 * silently rewrite a host a record is keyed on.
+	 */
+	const unqualified = bare.endsWith(".") ? bare.slice(0, -1) : bare;
+	const lower = unqualified.toLowerCase();
+	if (lower === "localhost") return "127.0.0.1";
+	if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return "::1";
+	return bare;
+}
+
+/**
+ * `scheme//host:port`, with the IPv6 host bracketed as the URL form requires.
+ *
+ * The scheme is a parameter rather than a constant because `recordAddress` is always
+ * a serve record on local `http` while `normaliseAddress` normalises what a
+ * configuration or a probe handed it, and dropping the scheme there would report a
+ * remote `https` daemon as a local `http` one.
+ */
+function addressOf(scheme: string, host: string, port: number): string {
+	return `${scheme}//${host.includes(":") ? `[${host}]` : host}:${port}`;
 }
 
 /**
@@ -833,15 +1052,28 @@ export async function discoverDaemons(
 		wedged,
 		noRecordsAtAll: files.length === 0,
 		// A dead PID is positive evidence; timeout, malformed JSON or a stopped
-		// heartbeat is not. Do not spawn over a busy or temporarily unreadable daemon.
-		// The liveness question is asked the way `registry.py::scan` asks it, so a
+		// heartbeat is not. Do not spawn over an address a record says is held. The
+		// liveness question is asked the way `registry.py::scan` asks it, so a
 		// zombie record is dead here too and cannot block spawning forever.
+		//
+		// SCOPED TO THE CONFIGURED ADDRESS (2026-09-23). It used to be scoped to the
+		// ROOT - any record anywhere in this config root with a non-dead pid - which
+		// forbade the spawn onto the address this app was actually configured for
+		// because something else in the root had a live record. `addressHoldsLiveRecord`
+		// is the same predicate for the addresses this app may also spawn on, so the
+		// per-address gate in `backend-service.ts` and this verdict cannot disagree.
+		// A caller that names NO address gets the old root-wide answer instead
+		// (`anyRecordHoldsSomething`): there is then no address this verdict can call
+		// free, and answering "free" on no evidence is the direction this module never
+		// takes. The unparseable record lives in that arm for the same reason - it
+		// cannot be attributed to an address at all - and what it used to stand for, a
+		// daemon holding a port and not answering, is now asked directly of the port by
+		// the spawn gate's own occupancy probe.
 		blocksSpawn:
 			problem === "unreadable" ||
-			files.some(
-				(entry) =>
-					!entry.record || recordPidLiveness(entry.record, now()) !== "dead",
-			),
+			(configuredAddress === null
+				? anyRecordHoldsSomething(files, now())
+				: recordsHolding(files, configuredAddress, now()).length > 0),
 	};
 	for (const rejection of rejected) {
 		log(
@@ -856,18 +1088,31 @@ export async function discoverDaemons(
 	return result;
 }
 
-/** `http://127.0.0.1:1111`, normalised so address comparisons are exact. */
+/**
+ * `http://127.0.0.1:1111`, normalised so address comparisons are exact - the scheme
+ * implied, the port defaulted, the trailing path dropped, and the host folded to one
+ * spelling for one listener (`canonicalHost`).
+ */
 export function normaliseAddress(
 	url: string | null | undefined,
 ): string | null {
 	if (!url) return null;
 	try {
 		const parsed = new URL(url);
-		const host = parsed.hostname.includes(":")
-			? `[${parsed.hostname}]`
-			: parsed.hostname;
+		/*
+		 * A SCHEMELESS `host:port` IS NOT AN ADDRESS (agent round 2, N2). `new URL`
+		 * reads `localhost:1111` as scheme `localhost:` with an empty host and the
+		 * default port, and the first version of this function returned that - as
+		 * `localhost://:80` - looking like an address the record comparison could
+		 * trust. No hostname means no address: refuse rather than invent one.
+		 */
+		if (!parsed.hostname) return null;
 		const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
-		return `${parsed.protocol}//${host}:${port}`;
+		return addressOf(
+			parsed.protocol,
+			canonicalHost(parsed.hostname),
+			Number(port),
+		);
 	} catch {
 		return null;
 	}

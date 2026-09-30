@@ -1,3 +1,7 @@
+import {
+	builtinOfferDismissed,
+	builtinOfferSignature,
+} from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
@@ -12,57 +16,61 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
-import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
-import {
-	HOVER_INTENT_MS,
-	ResizableDivider,
-} from "@shared/components/common/resizable-divider";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@shared/components/ui/dropdown-menu";
 import { Label } from "@shared/components/ui/label";
-import { Tooltip } from "@shared/components/ui/tooltip";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@shared/components/ui/popover";
+import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
+	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
+	LEGACY_CATALOGUE_PAGE,
+	catalogueScopeKey,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
+	dismissToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
 	Archive,
 	ArchiveRestore,
-	ArrowUpDown,
 	Bot,
 	CheckCheck,
 	ChevronDown,
 	ChevronRight,
-	ChevronUp,
-	List,
+	FileText,
+	FolderPlus,
 	LoaderCircle,
+	type LucideIcon,
 	MessageSquarePlus,
 	MoreHorizontal,
 	Pin,
 	Plus,
+	Search,
+	SlidersHorizontal,
+	Trash2,
+	UserPlus,
 	Users,
 	X,
 } from "lucide-react";
 import {
 	type KeyboardEvent,
-	type MouseEvent as ReactMouseEvent,
+	type FocusEvent as ReactFocusEvent,
 	type ReactNode,
-	type PointerEvent as ReactPointerEvent,
 	type Ref,
+	createElement,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -71,17 +79,31 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
-import { archiveOfferedText, offerArchiveUndo } from "../archive-undo";
+import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
 	type ArchivePressRecord,
 	archivePressExpired,
 	archivePressOutcome,
 } from "../chat-archive-press";
 import {
+	answeredArchiveRows,
 	archiveControlLabel,
 	archivedSearchWidened,
 	visibleRows,
 } from "../chat-archived";
+import {
+	CHAT_LIST_SECTION_LABEL,
+	type ChatListSection,
+	isRunningRow,
+	relativeTime,
+	relativeTimeSentence,
+	sectionRows,
+} from "../chat-list-sections";
+import {
+	CHAT_REGION_ENTRY_ATTR,
+	chatRowAct,
+	chatRowActControl,
+} from "../chat-regions";
 import {
 	type ArchiveView,
 	chatCountAnnouncement,
@@ -92,19 +114,46 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
+import {
+	DEFAULT_SIDEBAR_VIEW,
+	SIDEBAR_SECTION_ROWS,
+	type SidebarSectionKey,
+	groupRows,
+	isEntitySection,
+	isSectionShown,
+	pageLimit,
+	pageMoreLabel,
+	pageOrder,
+	pageRows,
+	parseSidebarView,
+	shownSections,
+} from "../chat-sidebar-view";
+import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
+import {
+	discardDraftLabel,
+	discardSuccessorIndex,
+	untargetedDraftRows,
+} from "../draft-rows";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
 	unreadMarkKind,
 } from "../mark-all-read";
-import { newChatShortcutCap } from "../new-chat-shortcut";
+import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
-	type SidebarRegionName,
-	hideRegion,
-	resolveSidebarSplit,
-} from "../sidebar-split";
+	catalogueTailView,
+	catalogueTotalSentence,
+	groupBadgeCount,
+	groupBadgeLabel,
+	groupChatsView,
+	scopeCensusTotal,
+	tailArrivalAnnouncement,
+	tailExtendDue,
+} from "../sidebar-scope-paging";
+import { ChatRowTitle } from "./chat-row-title";
+import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -175,54 +224,64 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
 const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
 
 /**
- * WHERE THE ROW'S PER-ROW CONTROLS SHED, and why they shed at all.
+ * The receipt announcement's own toast id, and it is STABLE ON PURPOSE.
  *
- * The panel carries TWO reserved 24px slots per row - the pin's and the archive
- * control's - and the row's own 4px gap between them: 56px off every title, on
- * every row, whether or not the pointer is anywhere near it. That is a price this
- * panel has already refused once: the per-row BROWSER control was deleted on
- * 2026-09-18 for exactly this reason - it "cost every title its 28px for a control
- * used rarely" - and two of them is twice that.
- *
- * The pair is kept from the panel's DEFAULT width up, where the title still has
- * room, and shed below it. The threshold is where the title stops being readable
- * rather than where the arithmetic gets tight: the sidebar's own clamp is
- * 240/288/360 with 280 as the default (`chat-layout.tsx`), and the header row is
- * 17px narrower than the panel, so the query is on the ROW's width.
- *
- * `263` AND NOT `280`, for two reasons that are both about what a container query
- * actually measures. A size query evaluates the container's CONTENT box, and this
- * container is the panel root, which carries `p-2`: the content box is the panel
- * minus its own 16px, so the shed threshold for a 280px panel is 264. And the
- * comparison is INCLUSIVE in the direction that matters (`@max-[N]` compiles to
- * `not (min-width: N)`), so the bound sits one pixel under 264 rather than on it -
- * at 264 the pair is still drawn. Measured, and the measurement is a BAND rather
- * than a width (design round 2, D15): the pair is shed from the 240 clamp minimum
- * up to 278 - 39 of the 121 selectable widths - and holds from 279. The frames
- * show its two ends (280 and 240), which is what the rule turns on; the band's own
- * extent is the container query's, read off the arithmetic above rather than
- * photographed at every width in it.
- *
- * Measured at both widths on a row that carries a status and on one that also
- * carries an unread mark. THIS COMMENT USED TO CLAIM THE MARK COSTS TITLE WIDTH,
- * AND IT DOES NOT (design round 2, D14; four lanes quoted the wrong premise before
- * it was measured): the unread mark is drawn INSIDE the row's reserved LEADING
- * status slot (`ChatSessionStatus`, `flex size-4 shrink-0`), so the title span
- * starts at the same x on a marked row and a bare one and measures the SAME width -
- * 180px and 180px at the 280 default, 168px and 168px at the 240 clamp minimum. See
- * `docs/design/session-archive-delete.md` and
- * `docs/evidence/session-archive/README.md` for the numbers and the frames: the
- * marked row is in the pair frames precisely so the equal widths are visible rather
- * than asserted.
+ * A toast is a claim about the state it was raised in, and this one is the only
+ * sentence in the panel the app itself can falsify: the reader presses the row it
+ * names, the receipt lands on the next tick, the mark clears - and the sentence kept
+ * telling them to press for the rest of its life (UX round 2, U4). The archive's own id
+ * above already made that rule AND the shape that keeps it true across a remount: ONE
+ * id any instance can dismiss. A per-instance handle cannot keep it - the id lived in
+ * a ref, so a route change off `/chat` and back re-mounted the panel with a fresh ref
+ * while the sentence stood in the app-level container, and nothing left in the app
+ * could retire it (agent review round 3, MINOR 1; UX round 3, U7). With one id the
+ * dismissing branch needs no handle at all, and a new budget's sentence REPLACES the
+ * standing one instead of stacking a second copy of the same fact.
  */
-const ROW_CONTROLS_PAIR_SHED = "@max-[263px]/chatsidebar:hidden";
+const READ_ACK_TOAST_ID = "read-ack";
 /**
- * The other half of the same decision: the one shared control is drawn ONLY in the
- * band the pair is shed in, so the row never carries both at once and never carries
- * neither. Same container, inverted, which is what makes the pair and the shared
- * control one rule rather than two.
+ * The sentence a withheld discard carries - ONE copy, read by both channels: the
+ * `title` (pointer) and the `sr-only` element the control points at while it is
+ * inapplicable (design round 2's D7, UX round 2's U6: a title on a `disabled`
+ * control was the pointer-only channel engines are least reliable about, and it
+ * reached no keyboard reader at all).
  */
-const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
+const SENDING_DISCARD_WHY =
+	"Sending - this draft can be discarded when the send settles";
+/** The sr-only why's id, keyed so each row's control points at its own. */
+const draftWhyId = (key: string) => `draft-discard-why-${key}`;
+/** The disabled Clear all's own why, same two-channel rule. */
+const CLEAR_ALL_WHY =
+	"Drafts are sending - they can be cleared when the sends settle";
+const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
+
+/*
+ * WHERE THE ROW'S PER-ROW CONTROLS SHED: NOWHERE, AND THE RULE THAT REPLACED IT.
+ *
+ * This file used to carry two container-query constants here -
+ * `ROW_CONTROLS_PAIR_SHED` and `ROW_CONTROLS_SHARED_SHOWN` - which swapped the
+ * pin/archive pair for one 24px shared menu below a 279px panel, plus the
+ * `@container/chatsidebar` declaration on the panel root that existed only to be
+ * measured by them (design D9, in `docs/design/sidebar-row-space.md`).
+ *
+ * The shed's own reason was entirely a REST cost - "56px off every title, on every
+ * row, at rest, whether or not the pointer is anywhere near it" - and that cost is
+ * now zero, because the acts are absent from the layout until the pointer or the
+ * keyboard is in the row. What the shed still bought at 240 was a smaller HOVER
+ * cost (one 24px trigger instead of the pair), and that is real - but it was paid
+ * for with two clicks on every act at the width where the acts are hardest to hit,
+ * it would still have needed the pinned mark hoisted out of the shed wrapper to fix
+ * the 240 defect the designer measured (a pinned row at the clamp minimum drew NO
+ * pin at all: the mark lived inside the wrapper the query hid), and it left two
+ * behaviours to verify instead of one. So the rule is one rule at every width.
+ *
+ * THE REVERSAL IS ONE CLASS, and it is worth naming rather than rediscovering: the
+ * pair wrapper below states its whole class list in one place, so re-shedding is a
+ * `@max-[263px]/chatsidebar:hidden` appended there plus the shared control it would
+ * stand in for - and the frames of that behaviour are already committed
+ * (`docs/evidence/session-archive/row-controls-shared*`). It is a change to make on
+ * evidence that the 240 hover is too busy, not in advance.
+ */
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -483,7 +542,7 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * name, where a leading " · " would be read as a separator that is already
  * implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent";
+const SILENT_REMEDY = "/stop if it stays silent.";
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -494,6 +553,20 @@ const SILENT_REMEDY = "/stop if it stays silent";
  * unique in the document by construction.
  */
 const silentRemedyId = (sessionId: string) => `chat-row-remedy-${sessionId}`;
+
+/**
+ * The id of a row's receipt clause, WHEN that row renders one.
+ *
+ * A SECOND id rather than one shared with the remedy above, because the two are
+ * about two different facts and a row can carry either, both, or neither: the
+ * remedy is the session's state and the clause is the app's own attempt to
+ * receipt it. `aria-describedby` takes a list, so a row that has both has both
+ * announced, in the order it states them.
+ *
+ * Derived from the session id for `silentRemedyId`'s reason: the rows are built
+ * by a plain render function, where a hook cannot run.
+ */
+const readAckClauseId = (sessionId: string) => `chat-row-read-ack-${sessionId}`;
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -562,13 +635,39 @@ const builtinOfferSentence = (
  * the reader) exactly where they were.
  */
 function focusRowAfterRemoval(pressed: HTMLElement): () => void {
-	const rows = Array.from(
-		document.querySelectorAll<HTMLElement>("[data-chat-row]"),
+	const listRows = Array.from(
+		document.querySelectorAll<HTMLElement>(
+			'[data-sidebar-region="chats"] [data-chat-row]',
+		),
 	);
+	/*
+	 * WHICH ROW WAS PRESSED, read from the row the control sits in rather than from the control's own
+	 * parent: the archive control and the row's button are SIBLINGS inside a pair wrapper, so
+	 * `pressed.parentElement?.querySelector("[data-chat-row]")` answered nothing and the successor
+	 * rule below fell through to `live[0]` - the LIST'S FIRST conversation, on every route, where the
+	 * row that took the pressed row's place was a different element (MEASURED by UX round 2:
+	 * `indexTheHandOffComputes: -1` against `trueIndexFromClosest: 1`, across four routes - mouse and
+	 * `⌘⇧A`, at the list's head and from a scrolled position - every one landing on the first row).
+	 * The scope below was already right; without this line the rule it feeds never ran.
+	 */
 	const rowButton =
-		pressed.parentElement?.querySelector<HTMLElement>("[data-chat-row]") ??
-		null;
-	const index = rowButton ? rows.indexOf(rowButton) : -1;
+		pressed
+			.closest<HTMLElement>("[data-session-row]")
+			?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
+	/*
+	 * WHICH ORDER THE SUCCESSOR IS READ FROM, because the region alone is not enough: inside the list
+	 * it is the list's own region - that is the order the reader sees, and the region the caret
+	 * belongs in (UX round 2, U1). A press whose row is NOT one of the list's rows keeps the PANEL's
+	 * order, so that press still hands the caret to its neighbour instead of sending it down to the
+	 * list's first row, which is what a region-only query with an unresolved index does. The entity
+	 * region's nested rows carry the same archive control, which is why this case is written rather
+	 * than assumed away.
+	 */
+	const rows =
+		rowButton !== null && listRows.includes(rowButton)
+			? listRows
+			: Array.from(document.querySelectorAll<HTMLElement>("[data-chat-row]"));
+	const index = rowButton === null ? -1 : rows.indexOf(rowButton);
 	return () => {
 		const live = rows
 			.map((element, position) => ({ element, position }))
@@ -576,9 +675,42 @@ function focusRowAfterRemoval(pressed: HTMLElement): () => void {
 		const successor =
 			live.find(({ position }) => position > index)?.element ??
 			live.filter(({ position }) => position < index).at(-1)?.element;
-		successor?.focus();
+		/*
+		 * `preventScroll`, because the hold above is the only thing that may move the reader and this
+		 * callback is not the hold: a plain `focus()` scrolls its element into view itself, and the
+		 * successor is chosen from DOCUMENT order - so it can be a node of the ENTITY region, which in
+		 * the one-scroll panel shares the reader's own scroller. MEASURED on the merged panel (QA
+		 * round 2, Q2's clauses): an ACCEPTED archive moved the reader's `scrollTop` `20 -> 4`, took a
+		 * surviving row's top with it by 16px, and left the arrival's own yield clause red for a
+		 * scroll the app had no business writing. `focus()` says where the caret is; where the reader
+		 * is standing is the reader's - the division `holdFocusedRow` states for its own correction.
+		 *
+		 * WHICH node takes the caret is SCOPED TO THE CHATS REGION AND RESOLVED FROM THE PRESSED ROW
+		 * (UX round 2, U1 and U2). The scope is load-bearing for the same reason it is at the
+		 * pile-clearing hand-off below: the one-scroll change put both regions in ONE document order, so
+		 * the document's first `[data-chat-row]` is the ENTITY region's `Agents` disclosure - and that is
+		 * where the caret landed, MEASURED (`region=entities`, `aria-expanded=true`, roughly 500px above
+		 * the row that was pressed), identically from the first row and through the `⌘⇧A` chord; the next
+		 * `↓` then walked the panel from its top instead of the list from where the reader was. The index
+		 * is what makes the successor RULE run: with it resolved, the caret goes to the row that took the
+		 * pressed row's place (the next live row, or the last one before it when the pressed row was the
+		 * list's last), and the clause that records this leg's closure asserts that row by id - so the
+		 * claim and the reading are the same statement rather than a region that both satisfy.
+		 */
+		successor?.focus({ preventScroll: true });
 	};
 }
+
+/**
+ * How far the row's flyout is kept from the window's edges, in px.
+ *
+ * Named rather than inlined because the number is a measured one: at the list's last
+ * row the flyout's un-padded box was 806..868.2 against an 868px viewport, i.e. flush
+ * with the window's bottom edge and painting over the composer's attachment control
+ * (design round 1, D4). Radix's `collisionPadding` is the clamp; 8px is the design
+ * contract's own step, and it leaves the flyout wholly inside the window.
+ */
+const FLYOUT_COLLISION_PADDING = 8;
 
 export function ChatSidebar({
 	selectedConversation,
@@ -615,10 +747,38 @@ export function ChatSidebar({
 	 * main published (design § 5.2, § 11.1).
 	 */
 	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE RIGHT NOW (agent review round 2,
+	 * R11), and why this needs two terms. The strip lives in the conversation pane,
+	 * so it is mounted on the chat routes only, while this sidebar is mounted on
+	 * every route - a stand-down keyed to the copy condition alone
+	 * (`serverHealth?.online === false`) therefore made every NON-chat route go
+	 * silent about a dead server with no second voice to take over. `stripPresent`
+	 * is the strip's own publication (`chat-status-presence.ts`), so the gate is
+	 * "the strip is on screen AND unreachability is the reason", which can only be
+	 * true where a voice remains; where the strip is not mounted this stays false
+	 * and the sidebar keeps speaking. The three sites below read THIS const, so
+	 * the paragraphs and the foot line cannot drift about when to stand down.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
 			: null;
+	/*
+	 * THE BANNER'S OWN CONDITION, read once through the banner's own predicate
+	 * (design round 1's D3; QA round 1's Q-1): the gate's withdrawn notice has
+	 * carried it since D3, and the capability-error paragraph below stands down to
+	 * it too - QA's successor walk, where the strip is deliberately silent for the
+	 * cause and the pane's own refusal sentence had no other stand-down left, so
+	 * one incident was stated twice within a screen.
+	 */
+	const coveredByCompatibilityBanner = compatibilityBannerShown(
+		capabilities.data,
+		pairingCause,
+	);
 	/*
 	 * Losing the backend mid-session must not look like an empty catalogue, and
 	 * neither must losing the GATE. Once the sidebar has been ready we keep its
@@ -644,6 +804,71 @@ export function ChatSidebar({
 	 * advertise nothing.
 	 */
 	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
+	/*
+	 * Whether this backend can SCOPE, PAGE and COUNT the catalogue
+	 * (`session_catalogue_page` - the request's `scope_kind`/`scope_name`/`cursor`/
+	 * `with_counts`, the answer's `next_cursor`/`counts`).
+	 *
+	 * FALSE IS TODAY, EXACTLY, AND THAT IS THE POINT OF A SEPARATE KEY. Every group
+	 * below expands client-side over the rows the panel holds, the badge counts
+	 * those rows, and the panel makes the one unscoped `limit=500` read it has
+	 * always made - so an older daemon renders byte-identically to the app that
+	 * never heard of paging, and the withdrawn pair is comparable rather than merely
+	 * similar. Gate the PAGE SIZE and every paging call on this one boolean at the
+	 * call site rather than reading it inside each decision, so "is this backend
+	 * pageable" has one answer in this component.
+	 */
+	const pageable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_page",
+	);
+	/*
+	 * PUBLISHED, so an UNNAMED catalogue read sizes itself the same way this panel does
+	 * (round 3, QA's Q-1): `chat-page.tsx` refreshes the catalogue when the open
+	 * conversation's marker moves and names no size, and the store's default was the
+	 * legacy `limit=500` read on every daemon. The store holds the flag rather than reading
+	 * the capability itself, because it is the module every desktop suite bundles - see
+	 * `cataloguePageDefault`.
+	 */
+	const setCataloguePageable = useCanonicalSessionsStore(
+		(store) => store.setCataloguePageable,
+	);
+	useEffect(() => {
+		setCataloguePageable(pageable);
+	}, [pageable, setCataloguePageable]);
+	/*
+	 * The paged catalogue's own state, subscribed HERE rather than in the group
+	 * renderer because a subscription is a hook and the group is a plain function
+	 * called from the render body - the same reason `sessions` above is a hook.
+	 */
+	const catalogueScopes = useCanonicalSessionsStore((s) => s.scopes);
+	const catalogueHead = useCanonicalSessionsStore((s) => s.head);
+	const catalogueCounts = useCanonicalSessionsStore((s) => s.counts);
+	const fetchScopePage = useCanonicalSessionsStore((s) => s.fetchScopePage);
+	const clearCatalogueScope = useCanonicalSessionsStore((s) => s.clearScope);
+	const fetchCatalogueTail = useCanonicalSessionsStore(
+		(s) => s.fetchCatalogueTail,
+	);
+	/*
+	 * THE FLAT LIST'S REFUSED RETRY, and where focus goes after a press (round 4, U14).
+	 *
+	 * Its Retry is the one control in this panel whose press can fail IDENTICALLY: the
+	 * request goes out again, the same refusal comes back, and the elements the reader was
+	 * on are repainted from scratch - `<body>` was where focus ended up, with no new
+	 * announcement, which is the same defect family as U2 on the group's Show more.
+	 *
+	 * The ref is a PENDING PRESS rather than a target, because the button that was pressed
+	 * is unmounted while the answer is in flight: the effect below resolves the NEW button
+	 * by the class this file gives it, once the state has settled back to a refusal, and
+	 * focuses that. The re-announcement comes free from the live region the refusal already
+	 * lives in: the text walks sentence -> "Loading more chats…" -> sentence, and a change
+	 * is what a polite region announces.
+	 */
+	const tailRefusalRetryRef = useRef<HTMLButtonElement | null>(null);
+	const tailRetryPendingRef = useRef<{
+		deadline: number;
+		cursor: string | null;
+	} | null>(null);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
@@ -676,19 +901,8 @@ export function ChatSidebar({
 		storeFailed: Boolean(error),
 		// The banner's own condition, read through the same predicate it uses, so
 		// the two cannot drift into stating one condition twice (design round 1, D3).
-		coveredByCompatibilityBanner: compatibilityBannerShown(
-			capabilities.data,
-			pairingCause,
-		),
+		coveredByCompatibilityBanner,
 	});
-	/*
-	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
-	 * on purpose: it is the same `navigator.platform` read `chat-header.tsx` and
-	 * `sidebar-navigation.tsx` make, and the boolean it produces is what the cap
-	 * helper takes (`newChatShortcutCap`, aligned with the palette's
-	 * `paletteShortcutCaps` rather than taking the platform string itself).
-	 */
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
@@ -706,12 +920,80 @@ export function ChatSidebar({
 	);
 	/*
 	 * Which of the agents section's two states is on screen. Named once because
-	 * the section below reads it three times and they have to agree: the empty
-	 * state is also what makes the batch's control a primary button rather than
-	 * the quiet row. See the section itself for why one reading matters (QA round
-	 * 1, Q1).
+	 * the section below reads it in more than one place and they have to agree:
+	 * the empty state is also what makes the batch's control a primary button
+	 * rather than the quiet row. See the section itself for why one reading
+	 * matters (QA round 1, Q1).
 	 */
 	const agentsEmpty = !profiles.isLoading && ownAgents.length === 0;
+	/*
+	 * THE BUILT-INS OFFER'S OWN STATE, one screen up from the section that draws
+	 * it, because two of these facts are also what the batch below reports into.
+	 *
+	 * The dismissal is keyed on the offer's SIGNATURE rather than stored as a
+	 * boolean (`features/agents/builtin-offer.ts` derives it and holds the
+	 * read-side guard): dismissing is a statement about the CURRENT state — the
+	 * precedent `chat-status.ts` states for the connection strip's pill — so a
+	 * catalogue that gains a built-in re-arms the offer, while the same
+	 * catalogue stays dismissed across restarts. Read through the module rather
+	 * than trusted from the store, because `localStorage` is not the setter's
+	 * path out (`parseSidebarView`'s rule, one field over).
+	 */
+	const dismissedBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissedBuiltinOfferSignature,
+	);
+	const dismissBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissBuiltinOffer,
+	);
+	const offerSignature = builtinOfferSignature(availableBuiltins);
+	const offerDismissed = builtinOfferDismissed(
+		dismissedBuiltinOffer,
+		offerSignature,
+	);
+	/*
+	 * The two readings the section's JSX takes from the facts above:
+	 *
+	 *  - `builtinOfferOnScreen` — the empty state, something to offer, and not
+	 *    already dismissed: the condition the dismiss control rides, with the
+	 *    batch's busy flag on top of it.
+	 *  - `emptyBlockDismissed` — the same offer, dismissed: the whole empty-state
+	 *    block leaves the section, which is what the reader's press asked for.
+	 */
+	const builtinOfferOnScreen =
+		agentsEmpty && availableBuiltins.length > 0 && !offerDismissed;
+	const emptyBlockDismissed =
+		agentsEmpty && availableBuiltins.length > 0 && offerDismissed;
+	/*
+	 * Whether the batch below is mid-flight or still holding its summary up.
+	 * Reported by `InstallBuiltinAgents` rather than derived here, because THAT
+	 * component owns the two states — and the dismiss control must not exist
+	 * while this is true, so a press can never take the progress or the summary
+	 * off screen (the protection QA round 1's Q1 and UX round 2's U11 are about).
+	 */
+	const [agentsOfferBusy, setAgentsOfferBusy] = useState(false);
+	/*
+	 * WHERE THE CARET GOES WHEN THE READER DISMISSES THE OFFER: the create row,
+	 * because it is the control that SURVIVES the dismissal — a focused element
+	 * that unmounts drops focus to `<body>` and the next Tab would restart at
+	 * the top of the window (U10's rule, one surface over: `install-builtin-agents.tsx`
+	 * hands focus back to the action that survives `Done`). The flag is set at
+	 * the PRESS rather than inferred from the block leaving, because the block
+	 * can also leave for reasons nobody pressed, and the move is only owed to
+	 * the reader who asked for it.
+	 */
+	const offerDismissedByPressRef = useRef(false);
+	const createAgentRowRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * Read AFTER the re-render that hides the block — the commit that unmounts
+	 * the pressed control — which is the shape and the reason U10's focus move
+	 * has: the reader sees one commit leave, and the caret is already where the
+	 * next Tab or type should start.
+	 */
+	useEffect(() => {
+		if (!offerDismissedByPressRef.current || builtinOfferOnScreen) return;
+		offerDismissedByPressRef.current = false;
+		createAgentRowRef.current?.focus();
+	}, [builtinOfferOnScreen]);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
@@ -726,9 +1008,126 @@ export function ChatSidebar({
 	const livenessUnread = statusUnavailable.includes("liveness");
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
+	const openDraft = useCanonicalSessionsStore((s) => s.openDraft);
+	const discardDraft = useCanonicalSessionsStore((s) => s.discardDraft);
+	const discardDrafts = useCanonicalSessionsStore((s) => s.discardDrafts);
+	/**
+	 * The other half of a draft's identity: the composer's own words.
+	 *
+	 * A draft ROW carries who the conversation is addressed to and which request ids
+	 * its send will use; the text the user typed lives in `conversation-input-store`,
+	 * keyed by the same pane identity. The `Draft:` rows read both, because a row that
+	 * listed a draft without its first line would name nothing the reader could
+	 * recognise (UX round 2, U8).
+	 */
+	const inputByConversation = useConversationInputStore(
+		(s) => s.inputByConversation,
+	);
 	const markAllRead = useCanonicalSessionsStore((s) => s.markAllRead);
+	/*
+	 * THE PER-ROW RECEIPT'S OWN STATE, and the announcement it owes the reader.
+	 *
+	 * The loop that writes it lives in the transcript (`useCompletionView`) because
+	 * that is where the rendered result is; THIS is the surface that can draw it,
+	 * because the mark the operator is waiting on is on a row. One record names one
+	 * conversation - a receipt waits on one at a time - and the rows ask it whether
+	 * it is theirs (`readAckCopy`, in `../read-ack-notice.ts` with the words).
+	 */
+	const readAckNotice = useCanonicalSessionsStore((s) => s.readAckNotice);
+	/**
+	 * The last notice this window has announced.
+	 *
+	 * SEEDED WITH WHATEVER IS ALREADY PUBLISHED, so a remount does not re-announce a
+	 * receipt the reader has been told about: the panel is remounted by the region
+	 * controls, and a toast reappearing for an old refusal is worse than the
+	 * silence this change exists to remove. Keyed on the notice's own revision
+	 * rather than on its kind, because a SECOND budget for the same conversation is
+	 * a new event (`ReadAckNotice.revision` states why it moves).
+	 */
+	const announcedReadAck = useRef(
+		readAckNotice
+			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
+			: null,
+	);
+	useEffect(() => {
+		const key = readAckNotice
+			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
+			: null;
+		const changed = announcedReadAck.current !== key;
+		announcedReadAck.current = key;
+		/*
+		 * ONE ARM ANNOUNCES ITSELF AND THE OTHER TWO DO NOT. `unsettled` is the state
+		 * the reader is owed a sentence about - the app has stopped retrying promptly
+		 * and the mark is still there - and it is the arm the bulk path already says
+		 * in this register. `pending` is an in-flight cue, and `offscreen` is a remedy
+		 * whose move is to look at the row's own clause: a toast for either would be
+		 * noise where the reader has the fact already, and the register holds the bulk
+		 * receipt and the archive offers too.
+		 */
+		if (readAckNotice?.kind !== "unsettled") {
+			// The fact the sentence stated has gone (the receipt landed, the loop was
+			// torn down, another kind replaced it), so the sentence goes with it. By the
+			// STABLE id rather than a handle: this instance may not be the one that
+			// raised it, and dismissing an id nothing is using is a no-op either way.
+			dismissToast(READ_ACK_TOAST_ID);
+			return;
+		}
+		// The same statement seen again is not a second event; a NEW one replaces the
+		// sentence on screen rather than stacking a second copy of the same fact.
+		if (!changed) return;
+		/*
+		 * A LONGER LIFE THAN SONNER'S DEFAULT, and it is the refusal's own number
+		 * (design round 1, D3). This arm is a sentence plus a remedy the reader has to
+		 * read before acting - the same shape as the archive failure's, which is why it
+		 * takes that message's number (`ARCHIVE_FAILURE_TOAST_MS`, whose one home is
+		 * `archive-undo.ts`): at the default, a two-line sentence was being read in four
+		 * seconds, and the reader who pressed the row it names spent that time
+		 * watching a fact that had just stopped being true.
+		 */
+		showWarningToast(readAckNoticeSentence(readAckNotice), {
+			id: READ_ACK_TOAST_ID,
+			duration: ARCHIVE_FAILURE_TOAST_MS,
+		});
+	}, [readAckNotice]);
 	const [query, setQuery] = useState("");
-	const [all, setAll] = useState(false);
+	/*
+	 * THE LIST FILTER IS NOT A SECOND SEARCH AT REST (design round 1, D1). The
+	 * sidebar's one visible search is the `Search ⌘K` row above (the palette), and
+	 * a bordered `Search chats and agents` field under it was the second search the
+	 * round photographed. The filter is KEPT - it is the only surface that can
+	 * widen to archived conversations (`Include archived`), so removing it would
+	 * strand every archived chat outside the app - but it is drawn only while it
+	 * is in use: typing while the list has focus opens it with that character, and
+	 * Escape on an empty field closes it again. Type-to-filter is the idiom a
+	 * Finder column and a VS Code tree already teach.
+	 */
+	const [filterOpen, setFilterOpen] = useState(false);
+	const filterShown = filterOpen || query.length > 0;
+	/*
+	 * The clock the relative times are read against, ticking once a minute: the
+	 * column's finest unit is a minute (`4m`), so a faster tick repaints nothing,
+	 * and a slower one lets `now` sit on a row for two minutes.
+	 */
+	const [listNow, setListNow] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = window.setInterval(() => setListNow(Date.now()), 60_000);
+		return () => window.clearInterval(timer);
+	}, []);
+	/*
+	 * THE COLUMN'S VIEW, from the preferences store (`chat-sidebar-view.ts`
+	 * carries the model and the rules). Read through `parseSidebarView` HERE
+	 * rather than trusted from the store: `localStorage` is not the setter's
+	 * path out, so the module is the one place a tampered value is rejected
+	 * and the one place a future field arrives with an answer.
+	 */
+	const chatSidebarView = useUiPreferencesStore(
+		(state) => state.chatSidebarView,
+	);
+	const setChatSidebarView = useUiPreferencesStore(
+		(state) => state.setChatSidebarView,
+	);
+	const [viewOpen, setViewOpen] = useState(false);
+	const [createOpen, setCreateOpen] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
 		try {
 			return JSON.parse(
@@ -806,7 +1205,12 @@ export function ChatSidebar({
 			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
 		};
 	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: this runs after every render and clears itself; the guard IS the state it waits on
+	/*
+	 * This runs after every render and clears itself; the guard IS the state it waits on. (The
+	 * `useExhaustiveDependencies` suppression that stood here became unused once the band's own height
+	 * was derived for the yield - that whole calculation has since gone with the lane - and Biome
+	 * reports an unused suppression as an error, so the reason stays and the directive goes.)
+	 */
 	useEffect(() => {
 		const moved = movedRef.current;
 		const list = listPanelRef.current;
@@ -829,14 +1233,39 @@ export function ChatSidebar({
 			else if (rowBox.bottom > listBox.bottom)
 				list.scrollTop += rowBox.bottom - listBox.bottom;
 			/*
-			 * `preventScroll`, which is the whole reason the correction above survives: a
-			 * plain `focus()` scrolls the element into view itself - measured as the region
-			 * snapping to 0 and the row landing 202 px above the line it was pressed on.
-			 * The correction is this effect's; focus only says where the caret is.
+			 * AND WHICH CONTROL TAKES THE CARET BACK DEPENDS ON WHERE THE ROW WENT (UX report
+			 * round 1, U2; measured 2026-09-21 by the `row-space` scene's keyboard walk, which is
+			 * the check this line exists for).
+			 *
+			 * The mark is the right target after a PIN: the row lands in `Pinned chats`, its pin
+			 * is drawn there, and focusing it keeps the cluster revealed. It is the WRONG target
+			 * after an UNPIN - the mark's box has left the layout (`hidden` until the pointer or
+			 * the keyboard is inside the row), and a `display: none` element cannot hold focus,
+			 * so this call did nothing at all: the caret fell to `document.body`,
+			 * `group-focus-within` went false and the acts the reader was reaching for vanished
+			 * with it (the reading was `aria-pressed "false"`, `pairDisplay "none"`,
+			 * `focusInsideRow false`, `activeTag "BODY"`). The row's own button is drawn in BOTH
+			 * states, so that is where focus goes when the mark is not drawn.
+			 *
+			 * THE TEST IS THE MARK'S OWN BOX, not its presence: the pin element is in the DOM
+			 * either way, and its computed `display` is its own value even inside a hidden
+			 * ancestor - the same lesson the scene's geometry reader records for the same reason
+			 * (only a box with pixels in it is drawn). The row also re-renders under a DIFFERENT
+			 * section parent when it moves, so the hand-back cannot be done at the press on the
+			 * old element: the row it belongs to is a new node by this point, which is why the
+			 * correction is the mechanism and a `focus()` in the handler is not.
+			 *
+			 * `preventScroll`, which is the whole reason the correction above survives: a plain
+			 * `focus()` scrolls the element into view itself - measured as the region snapping
+			 * to 0 and the row landing 202 px above the line it was pressed on. The correction
+			 * is this effect's; focus only says where the caret is.
 			 */
-			row
-				.querySelector<HTMLElement>("[data-session-pin]")
-				?.focus({ preventScroll: true });
+			const pin = row.querySelector<HTMLElement>("[data-session-pin]");
+			const target =
+				pin !== null && pin.getBoundingClientRect().width > 0
+					? pin
+					: row.querySelector<HTMLElement>("[data-chat-row]");
+			target?.focus({ preventScroll: true });
 		} else if (moved.anchorId !== null) {
 			const anchor = list.querySelector<HTMLElement>(
 				`[data-session-row="${moved.anchorId}"]`,
@@ -890,16 +1319,6 @@ export function ChatSidebar({
 	const PIN_PRESS_SLOP_PX = 6;
 
 	/**
-	 * How far a pointer may travel on a boundary control before the click it would
-	 * produce is treated as a drag rather than as a press.
-	 *
-	 * It is NOT `PIN_PRESS_SLOP_PX` beside it: that one is about the reflex of
-	 * pressing a row twice, and this one is about a 28px control sitting on a 10px
-	 * drag band. Four pixels is above the jitter of a click that was meant as a
-	 * click and below the travel of a gesture that was meant as a drag.
-	 */
-	const CONTROL_PRESS_SLOP_PX = 4;
-	/**
 	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
 	 *
 	 * Called by the pin's own handler before it does anything, and it records the press it is
@@ -942,6 +1361,49 @@ export function ChatSidebar({
 		return false;
 	};
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
+	/*
+	 * Whether the ENTITY groups are drawn from their own scoped pages.
+	 *
+	 * FALSE WHILE A QUERY IS IN FORCE, for the same reason the command palette
+	 * reads the whole catalogue: a search is a question about the STORE, and its
+	 * answer (`sessions.search`) is already store-wide. A group drawn under a query
+	 * therefore reads the search answer - which is what `children` filters - and
+	 * there is nothing for a scope page to add to it. Letting a query through here
+	 * would also make typing fetch every group the query forces open, which is the
+	 * fetch storm this change exists to remove. The whole paging machinery below is
+	 * gated on this one boolean rather than on `pageable` at each call site, so
+	 * "searching" cannot be honoured in one place and forgotten in another.
+	 */
+	const groupPaging = pageable && query.trim().length === 0;
+	/*
+	 * THE PANEL'S OWN TOTAL, on the paged path (round 1, R2 - the fix U1 and D2 also
+	 * name). `sessions.length` is what the client HOLDS - the head page plus whatever
+	 * the reader has extended - and `counts.total` is what the daemon counted, so the
+	 * sentence says how many of the catalogue are on screen rather than implying a
+	 * cap. Null off the paged path, where the withdrawn sentence is the true one.
+	 */
+	/*
+	 * WHAT A SEARCH HIT THE CLIENT DOES NOT HOLD IS BOUND TO, when a loaded group
+	 * can say (round 1, Q2). The wire's search answer carries no binding, so a hit
+	 * outside the client's rows used to draw without the caption a held row has -
+	 * two different-looking rows for one conversation. A loaded scope's id list IS
+	 * the client's own knowledge of a binding, so it is the source used here; a hit
+	 * no loaded scope names stays captionless rather than guessing.
+	 */
+	const bindingOfHit = useCallback(
+		(id: string): CanonicalSessionRow["binding"] => {
+			for (const [key, scope] of Object.entries(catalogueScopes)) {
+				if (!scope.ids.includes(id)) continue;
+				const [kind, ...rest] = key.split(":");
+				const scopeName = rest.join(":");
+				return kind === "agent"
+					? { agent: scopeName, team: null }
+					: { agent: null, team: scopeName };
+			}
+			return undefined;
+		},
+		[catalogueScopes],
+	);
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
 			...current,
@@ -1023,13 +1485,30 @@ export function ChatSidebar({
 	 * focus then would steal the cursor from wherever they actually are. `<body>`
 	 * is the signature of the unmount-drop and of nothing else here.
 	 */
-	const activeHeadingRef = useRef<HTMLButtonElement | null>(null);
 	const controlWasShown = useRef(markAllReadShown);
 	useEffect(() => {
 		if (controlWasShown.current && !markAllReadShown) {
 			const active = document.activeElement;
 			if (active === null || active === document.body) {
-				activeHeadingRef.current?.focus();
+				/*
+				 * The list's first row, which is where the control sat in the ring: the
+				 * section labels are not controls any more (§C1, U22), so the row the
+				 * control preceded is the adjacent stop.
+				 *
+				 * SCOPED TO THE CHATS REGION, and the scope is load-bearing: the one-scroll
+				 * change bound BOTH region refs to the merged scroller (`bindPanelRef`), so
+				 * an unscoped query answered with the ENTITY region's first stop - the
+				 * `Agents` disclosure, the first `[data-chat-row]` in the merged flow - and
+				 * focus landed on a group header instead of the row the control preceded
+				 * (`scripts/mark-all-read-control.test.mjs`, "clearing the last mark hands
+				 * focus to the list"). The region marker is the same partition the R3 work
+				 * put on this list for the rigs; the app reads it here for the same reason.
+				 */
+				listPanelRef.current
+					?.querySelector<HTMLElement>(
+						'[data-sidebar-region="chats"] [data-chat-row]',
+					)
+					?.focus();
 			}
 		}
 		controlWasShown.current = markAllReadShown;
@@ -1127,10 +1606,34 @@ export function ChatSidebar({
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
 	}, [expanded]);
+	/*
+	 * THE HEAD REFRESH, and the ONE place this panel's page size is decided.
+	 *
+	 * ONE PLACE, because the page size and the census flag are the same decision: a
+	 * daemon that cannot page is asked for the whole catalogue in one unscoped
+	 * `limit=500` read - the request this app has always made - and a daemon that
+	 * can page is asked for 50 rows and the census. Two call sites deciding that
+	 * separately is how one of them would keep asking for 500 against a paged
+	 * backend, and the amplification this change exists to remove would survive in
+	 * exactly one of the four triggers, which is the hardest kind to notice.
+	 *
+	 * A `useCallback` rather than a bare function so the effect below can depend on
+	 * it without re-running on every render: `fetchSessions` is a store action and
+	 * `pageable` is a capability answer, so this identity changes only when the
+	 * answer does.
+	 */
+	const refreshCatalogue = useCallback(
+		() =>
+			fetchSessions(
+				pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE,
+				pageable,
+			),
+		[fetchSessions, pageable],
+	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
 	useEffect(() => {
 		if (!ready) return;
-		void fetchSessions();
+		void refreshCatalogue();
 		if (!feed.available) {
 			/*
 			 * No feed: an older backend, or a browser-dev renderer with no relay.
@@ -1139,7 +1642,7 @@ export function ChatSidebar({
 			 * identical rather than merely similar.
 			 */
 			const timer = window.setInterval(() => {
-				if (document.visibilityState === "visible") void fetchSessions();
+				if (document.visibilityState === "visible") void refreshCatalogue();
 			}, LEGACY_CATALOGUE_POLL_MS);
 			return () => window.clearInterval(timer);
 		}
@@ -1151,25 +1654,90 @@ export function ChatSidebar({
 		 *   `document.visibilityState` was itself a hole — a background window stops
 		 *   polling and so stops noticing — and since the event is the mechanism
 		 *   here, this only has to be drift insurance. Making it visibility-gated
-		 *   would reintroduce the same hole for a smaller gain.
+		 *   would reintroduce the same hole for a smaller gain. It asks for the HEAD
+		 *   PAGE ONLY and never for the rows the client already holds: a poll that
+		 *   re-read every loaded page is the multi-second read this change removes,
+		 *   and a loaded group is deliberately not re-fetched by it either.
 		 * - a refetch on window focus, which is the one moment a stale catalogue is
 		 *   about to be looked at.
 		 */
 		const timer = window.setInterval(() => {
-			void fetchSessions();
+			void refreshCatalogue();
 		}, CATALOGUE_SAFETY_POLL_MS);
-		const onFocus = () => void fetchSessions();
+		const onFocus = () => void refreshCatalogue();
 		window.addEventListener("focus", onFocus);
 		return () => {
 			window.clearInterval(timer);
 			window.removeEventListener("focus", onFocus);
 		};
-		// `feed.catalogueRevision` is a DEPENDENCY so each invalidation re-runs this
-		// effect body once — exactly one refetch per `catalogue` frame, with the
-		// safety timer restarted from the event rather than from a clock. It is
-		// deliberately not READ in the body: the revision's only job is to be the
-		// trigger, which is what the suppression on the hook itself covers.
-	}, [ready, fetchSessions, feed.available, feed.catalogueRevision]);
+		// `feed.catalogueRevision` and `feed.activityRevision` are DEPENDENCIES so each
+		// invalidation re-runs this effect body once — exactly one refetch per
+		// `catalogue` frame and per completion edge, with the safety timer restarted
+		// from the event rather than from a clock. Neither is READ in the body: their
+		// only job is to be the trigger, which is what the suppression on the hook
+		// itself covers. The second trigger exists because a completion that moves no
+		// order key publishes no `catalogue` frame while still advancing the clock
+		// the bins read (see `activityRevision` in `use-desktop-feed.ts`).
+	}, [
+		ready,
+		refreshCatalogue,
+		feed.available,
+		feed.catalogueRevision,
+		feed.activityRevision,
+	]);
+	/*
+	 * A GROUP'S OWN READ, on the expansion that asks for it.
+	 *
+	 * ONE FETCH PER OPEN GROUP, issued when its row is expanded and not before:
+	 * "pinned and active first, a team's or an agent's chats fetched when its
+	 * collapsed row is EXPANDED" is the whole point of the change, because a group
+	 * is the only thing on this panel that can name 434 conversations the head page
+	 * does not carry.
+	 *
+	 * THE TWO TRANSITIONS DO TWO THINGS. Opening fetches from the scope's first
+	 * page when there is no page in hand. Closing DISCARDS what was loaded, so the
+	 * next expansion is a fresh read from the scope's top - which is also the
+	 * design's own remedy for the cursor's accepted imperfection (a row whose tier
+	 * moved between two page reads can be skipped in that expansion, and
+	 * re-expanding is what recovers it).
+	 *
+	 * IT READS `expanded` AND NOT `isOpen`, and the difference is load-bearing: a
+	 * QUERY forces every group the search touches open (`open = query || isOpen`),
+	 * so an effect keyed on the drawn state would issue one scope read per group a
+	 * keystroke happens to match. `expanded` holds only the disclosures the reader
+	 * opened by hand, which is the intent this fetches on.
+	 */
+	useEffect(() => {
+		if (!ready || !groupPaging) return;
+		for (const [key, open] of Object.entries(expanded)) {
+			const kind = key.startsWith("team:")
+				? "team"
+				: key.startsWith("agent:")
+					? "agent"
+					: null;
+			if (kind === null) continue;
+			/*
+			 * `slice`, never `split(":")`: a display name is whatever the operator
+			 * called the team, and `team:op:dev` is a legal one - splitting would read
+			 * the scope's name as `op` and fetch a team that does not exist.
+			 */
+			const name = key.slice(kind.length + 1);
+			if (name.length === 0) continue;
+			if (open) {
+				if (catalogueScopes[key] === undefined)
+					void fetchScopePage(kind, name, null);
+				continue;
+			}
+			if (catalogueScopes[key] !== undefined) clearCatalogueScope(kind, name);
+		}
+	}, [
+		expanded,
+		ready,
+		groupPaging,
+		catalogueScopes,
+		fetchScopePage,
+		clearCatalogueScope,
+	]);
 	// Search is the backend's (`sessions.search`, negotiated as `session_search`),
 	// not a filter over titles: a conversation is remembered by what was SAID in
 	// it, and the sidebar only holds titles. The backend's answer is used only
@@ -1223,8 +1791,20 @@ export function ChatSidebar({
 	const widened = archivedSearchWidened(includeArchived, query, archiveEnabled);
 	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
-	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
-	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
+	/*
+	 * THE TOASTS THEMSELVES LIVE OUTSIDE THIS PANEL NOW (operator request, 2026-09-27):
+	 * the archive offer and refusal and the discard offer are raised by an always-mounted
+	 * surface (`undo-toasts.tsx`, beside the global container in `main.tsx`), because the
+	 * acts that produce them are reachable while this panel is not even mounted - the
+	 * column collapses to a 56px strip without it, and the chat pane's header menu, a
+	 * typed `/archive` and the composer's own Clear all stay reachable. What the panel
+	 * still owns is the ONE piece of state those messages need from it: the key a discard
+	 * staged in the pane's place (`stagedByDiscard`), written by the two discard handlers
+	 * below and read by the offer's Undo press one surface over.
+	 */
+	const setStagedByDiscard = useCanonicalSessionsStore(
+		(s) => s.setStagedByDiscard,
+	);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -1232,11 +1812,18 @@ export function ChatSidebar({
 	 * The pure search module takes plain booleans: the stamp that orders a fact
 	 * against an answer is the store's business (`applySearchAnswer`), and a row
 	 * only needs what to draw.
+	 *
+	 * ANSWERED FACTS ONLY (design round 8, D27): this map is what the ROW draws and what the
+	 * search join drops hits by, so both are decisions about what a LIST holds - and a list
+	 * may not lose a conversation on a press, only on the daemon's sentence. A fact still in
+	 * flight is the press's INTENT, and the row is told about it nowhere: what the press costs
+	 * is exactly that the pressed row stays drawn for the round trip (the store's own note
+	 * states the trade, and design D28 records the register that should pay it).
 	 */
 	const archiveFactValues = useMemo(() => {
 		const values: Record<string, boolean> = {};
 		for (const [id, fact] of Object.entries(archiveFacts))
-			values[id] = fact.archived;
+			if (fact.answered) values[id] = fact.archived;
 		return values;
 	}, [archiveFacts]);
 	const archiveView = useMemo<ArchiveView>(
@@ -1295,9 +1882,13 @@ export function ChatSidebar({
 	 * filter is off (that is what the control promises), and the archived rows
 	 * rejoin every list for as long as the query lasts.
 	 */
+	const answeredForMembership = useMemo(
+		() => answeredArchiveRows(sessions, archiveFacts),
+		[sessions, archiveFacts],
+	);
 	const listed = useMemo(
-		() => visibleRows(sessions, archiveEnabled && !widened),
-		[sessions, archiveEnabled, widened],
+		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
+		[answeredForMembership, archiveEnabled, widened],
 	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
@@ -1347,8 +1938,9 @@ export function ChatSidebar({
 				hits,
 				pinFactValues,
 				archiveView,
+				bindingOfHit,
 			),
-		[listed, heldRows, query, hits, pinFactValues, archiveView],
+		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -1360,11 +1952,431 @@ export function ChatSidebar({
 	 */
 	const clipped =
 		hits !== null && searchAnswerIsClipped(hits.length, search.data?.limit);
+	/*
+	 * THE PANEL'S OWN TOTAL, from the rows it DRAWS (round 2, R2-2 = D9 = F3; U10 for the
+	 * search wording). `matching` is the same array the `All chats` badge counts, so the
+	 * sentence and the badge can no longer disagree - which they did: the sentence counted
+	 * rows HELD, including archived ones this panel fetches and does not draw, and printed
+	 * `Showing 51 of 755` beside the panel's own `All chats 49`.
+	 *
+	 * AND IT IS TOLD WHEN THE COUNT IS A FLOOR (round 3, R3-1 = U13). While the search
+	 * answer is clipped the badge already says `100+` and the row says "At least 100 chats
+	 * match this search", so a bare `Showing 100 of 757 chats matching your search` beside
+	 * them stated an exact number this file knows to be a floor.
+	 */
+	const totalSentence = catalogueTotalSentence({
+		pageable,
+		shown: matching.length,
+		total: catalogueCounts?.total ?? null,
+		searching: query.trim().length > 0,
+		clipped,
+	});
 	const children = (kind: ChatTarget["kind"], name: string) =>
 		matching.filter((row) =>
 			kind === "team"
 				? row.binding?.team === name
 				: !row.binding?.team && row.binding?.agent === name,
+		);
+	/*
+	 * The rows ONE GROUP draws, on the paged path.
+	 *
+	 * THE ORDER IS THE SCOPE'S, and it cannot be re-derived: the wire carries no
+	 * rank, so a group ordered by filtering `matching` would be ordered by whatever
+	 * order the head's page and the group's pages happen to have concatenated in -
+	 * and the group's own first page is by definition NOT the head's rows for that
+	 * binding. `scopes[key].ids` is the server's order for this scope, which is the
+	 * only ordering authority there is (`chat-sections.ts` states the same rule for
+	 * the sections).
+	 *
+	 * The rows are looked up in `matching` rather than in `sessions`, so the search
+	 * narrowing, the archive partition and the tombstone rules all still apply to a
+	 * group exactly as they do to a section: the id list decides ORDER and
+	 * MEMBERSHIP, and the panel's one filtered list decides what may be DRAWN.
+	 *
+	 * `groupPaging === false` returns `children`, so an older daemon's group - and
+	 * any group under a query - is the filter of the one list the panel holds:
+	 * today's render, unchanged.
+	 */
+	const scopeRows = (kind: ChatTarget["kind"], name: string) => {
+		if (!groupPaging) return children(kind, name);
+		const ids = catalogueScopes[catalogueScopeKey(kind, name)]?.ids;
+		if (ids === undefined) return [];
+		const byId = new Map(matching.map((row) => [row.session_id, row]));
+		const rows: CanonicalSessionRow[] = [];
+		for (const id of ids) {
+			const row = byId.get(id);
+			if (row !== undefined) rows.push(row);
+		}
+		return rows;
+	};
+	/*
+	 * WHETHER THE TAIL MAY EXTEND AT ALL, on this arrangement.
+	 *
+	 * #505 wrote this as `groupPaging && (all || isOpen("previous"))`, because on
+	 * main's list the head's rows are partitioned into `Active chats` and
+	 * `Previous chats` and `Previous chats` is a collapsed disclosure: a
+	 * commit-time extension running with it closed would page the ENTIRE catalogue
+	 * fifty rows at a time, since a short region is exactly what the extension
+	 * reads as "at the bottom".
+	 *
+	 * NEITHER CLAUSE HAS AN ANALOGUE HERE, and the gate they carried has not been
+	 * dropped: this redesign draws every section it has rows for (there is no
+	 * collapse on the section list, only on the entity groups) and its own page
+	 * ladder is what holds rows back. So the capability and the query are the whole
+	 * of this predicate, and the "do not page unasked" rule moved to where the rows
+	 * are actually withheld - `ladderHoldsRowsRef`, read by `extendCatalogueTail`.
+	 */
+	const tailVisible = groupPaging;
+	/*
+	 * THE EXTENSION ITSELF, measured from the region's own geometry.
+	 *
+	 * The measurement rather than an `IntersectionObserver`, because the file
+	 * already measures geometry in this region's `onScroll` handler and a second
+	 * mechanism would be a second source of truth for one question. `tailExtendDue`
+	 * carries the decision and its reasons; this only supplies the numbers.
+	 *
+	 * A REGION THAT IS NOT MOUNTED IS NOT MEASURED, and is not treated as "at the
+	 * bottom": the commit effect below asks again once it exists.
+	 */
+	/*
+	 * THE CURSOR A TAIL READ REFUSED, and why the panel has to remember it (round 4, U14).
+	 *
+	 * `tailExtendDue` already says a failed page is never retried by a scroll - "the reader
+	 * asked once" - but the HEAD's answers do not carry the tail's error: the 30 s poll
+	 * (and every catalogue frame) replaces the head, the error clears with it, the commit
+	 * effect re-measures, and the tail's cursor page was asked for AGAIN without the reader
+	 * asking. With a backend that keeps refusing, that is a flapping refusal - and the
+	 * control the reader pressed is unmounted under them each time it flaps, which is how
+	 * the press ends on `<body>`.
+	 *
+	 * Remembering WHICH cursor failed is what makes the refusal sticky across head answers.
+	 * Only the reader's own Retry clears it.
+	 */
+	const tailRefusedCursorRef = useRef<string | null>(null);
+	/*
+	 * WHETHER THE LADDER IS STILL HOLDING ROWS BACK, read by the extension effect.
+	 *
+	 * It is a REF rather than the value itself because of where the two have to
+	 * live: the tail's block (this one) is four hundred lines above the page it
+	 * would have to read, and moving either across the other is a larger edit to a
+	 * seven-thousand-line component than the question is worth. The assignment sits
+	 * where `page` is computed and this is only ever read from an effect, after the
+	 * render that wrote it.
+	 *
+	 * WHY IT GATES THE EXTENSION. The head is fetched fifty rows at a time and the
+	 * ladder draws ten of them; on a tall window a ten-row list does not fill its
+	 * region, so `tailExtendDue` is true from the first commit and the scroll
+	 * extension would page the whole catalogue under a reader who had asked for
+	 * ten rows and has two rungs left to spend. #505's own note names this failure
+	 * for a collapsed section; the ladder is the same failure in another dress.
+	 */
+	const ladderHoldsRowsRef = useRef(false);
+	/*
+	 * AND THE REFUSAL ITSELF IS HELD, not only the cursor (round 4, U14). A head answer
+	 * replaces the tail's error with its own win: the 30 s poll lands, `catalogueHead.error`
+	 * goes back to null, and the sentence and its Retry vanish from a panel whose reader was
+	 * just told the page failed - the refusal has to survive the answers that are not about
+	 * it. Held against the cursor it belongs to, so a successful page (whose cursor has
+	 * moved on) clears it without anyone having to remember to.
+	 */
+	const [tailRefusal, setTailRefusal] = useState<{
+		cursor: string;
+		sentence: string;
+	} | null>(null);
+	const extendCatalogueTail = useCallback(() => {
+		if (!tailVisible) return;
+		/*
+		 * THE LADDER OUTRANKS THE SCROLL. While the panel is drawing fewer rows than it
+		 * holds - a rung unspent, or a section the reader has switched off - the reader
+		 * has a way to ask for more that they have not used, and the region being short
+		 * is the ladder's own doing rather than evidence that the list wants filling.
+		 */
+		if (ladderHoldsRowsRef.current) return;
+		if (
+			catalogueHead.tailCursor !== null &&
+			catalogueHead.tailCursor === tailRefusedCursorRef.current
+		)
+			return;
+		const box = listPanelRef.current;
+		if (box === null) return;
+		if (
+			!tailExtendDue({
+				pageable: tailVisible,
+				nextCursor: catalogueHead.tailCursor,
+				loading: catalogueHead.loading,
+				error: catalogueHead.error,
+				scrollTop: box.scrollTop,
+				clientHeight: box.clientHeight,
+				scrollHeight: box.scrollHeight,
+			})
+		)
+			return;
+		tailPendingRef.current = true;
+		void fetchCatalogueTail();
+	}, [tailVisible, catalogueHead, fetchCatalogueTail]);
+	useEffect(() => {
+		if (catalogueHead.error !== null && catalogueHead.tailCursor !== null) {
+			tailRefusedCursorRef.current = catalogueHead.tailCursor;
+			setTailRefusal({
+				cursor: catalogueHead.tailCursor,
+				sentence: catalogueHead.error,
+			});
+		}
+	}, [catalogueHead.error, catalogueHead.tailCursor]);
+	/*
+	 * THE SAME QUESTION ON COMMIT, not only on a scroll.
+	 *
+	 * A region whose content is not taller than its box emits no scroll event at
+	 * all, so the scroll handler alone would leave the rows past the head page
+	 * unreachable on a tall window - the case `tailExtendDue`'s own comment names.
+	 * Asked here, the tail fills until the list overflows and the reader's scrolling
+	 * takes over. It converges for the same reason: one page at a time, and the end
+	 * of the catalogue is a cursor of null.
+	 *
+	 * `sessions.length` is a dependency rather than `catalogueHead` alone, because
+	 * an extension can add rows whose count the cursor's own answer does not
+	 * change - a page whose last row is the catalogue's last row returns no cursor
+	 * AND rows, and the region then has to be re-measured.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `sessions.length` is a trigger, not a read — the effect re-measures the region after rows render, which is what the tail fills against.
+	useLayoutEffect(() => {
+		extendCatalogueTail();
+	}, [extendCatalogueTail, sessions.length]);
+	/*
+	 * THE FLAT LIST SAYS WHEN ITS TAIL LANDS (round 1, U7).
+	 *
+	 * The extension is driven by scroll position and draws nothing of its own in the
+	 * steady state, so rows appear under a reader with nothing announced - and a
+	 * screen reader's user, who cannot see the list grow, is told nothing at all.
+	 * One polite line names the event; it is cleared after a moment because a live
+	 * region that keeps its last value says nothing new the next time the same
+	 * number of rows arrive.
+	 *
+	 * `tailPendingRef` is what makes this the EXTENSION's arrival rather than any
+	 * growth: a head answer that carries more rows than the last one is not a tail
+	 * arriving, and announcing it as one would be a second false sentence.
+	 */
+	const tailPendingRef = useRef(false);
+	const [tailArrival, setTailArrival] = useState<string | null>(null);
+	const previousRowCountRef = useRef(sessions.length);
+	useEffect(() => {
+		const before = previousRowCountRef.current;
+		previousRowCountRef.current = sessions.length;
+		if (!tailPendingRef.current || sessions.length <= before) return;
+		tailPendingRef.current = false;
+		setTailArrival(tailArrivalAnnouncement(sessions.length - before));
+		const timer = window.setTimeout(() => setTailArrival(null), 4000);
+		return () => window.clearTimeout(timer);
+	}, [sessions.length]);
+	/*
+	 * THE TAIL PRESS, AND WHAT IT OWES THE READER AFTERWARDS (round 1, U2 + D7).
+	 *
+	 * Two things the control cannot do by itself. THE EXACT LIMIT: the row says how
+	 * many chats the press will add, so the fetch asks for that many rather than for
+	 * a page and throwing the rest away - `min(page, remaining)`, which is the same
+	 * number the label prints because both come from one decision. AND THE FOCUS:
+	 * the control unmounts when the last page lands (its cursor is gone), which used
+	 * to drop focus to `<body>` - a keyboard reader was returned to the top of the
+	 * document by the press that was supposed to bring them more rows. The row the
+	 * press added is where they were going, so that is where focus goes; the group's
+	 * own name button is the fallback, and `<body>` never is.
+	 */
+	const tailFocusRef = useRef<{
+		key: string;
+		name: string;
+		at: number;
+	} | null>(null);
+	const pressShowMore = useCallback(
+		(
+			kind: "team" | "agent",
+			name: string,
+			key: string,
+			held: number,
+			addCount: number,
+		) => {
+			tailFocusRef.current = { key, name, at: held };
+			tailPendingRef.current = false;
+			void fetchScopePage(
+				kind,
+				name,
+				catalogueScopes[key]?.nextCursor ?? null,
+				addCount,
+			);
+		},
+		[catalogueScopes, fetchScopePage],
+	);
+	useEffect(() => {
+		const pending = tailFocusRef.current;
+		if (pending === null) return;
+		const ids = catalogueScopes[pending.key]?.ids;
+		if (ids === undefined || ids.length <= pending.at) return;
+		tailFocusRef.current = null;
+		const added = ids[pending.at];
+		/*
+		 * THE ROW IS LOOKED FOR IN BOTH REGIONS (round 2, U2 = F1). The group's rows are drawn
+		 * in the ENTITY region and the flat list's in the chats region, so a lookup inside
+		 * `listPanelRef` alone missed every group row: `target` was null, `target?.focus()`
+		 * was a no-op, and the press dropped focus to `<body>` - exactly what the comment
+		 * above promised not to do, measured on every press by both streams.
+		 */
+		const roots = [entityPanelRef.current, listPanelRef.current];
+		const row =
+			added === undefined
+				? null
+				: (roots
+						.map(
+							(root) =>
+								root?.querySelector<HTMLElement>(
+									`[data-session-row="${CSS.escape(added)}"]`,
+								) ?? null,
+						)
+						.find((el) => el !== null) ?? null);
+		/*
+		 * AND THE GROUP IS FOUND BY ITS DISCLOSURE'S LABEL, not by the text of its name
+		 * button (round 2, U2): that button's content is the name CONCATENATED with the badge
+		 * (`minervadev49`), so a text match could never resolve - which is why the fallback the
+		 * round-1 comment described did not exist in practice. The disclosure carries
+		 * `Expand <name> chats` / `Collapse <name> chats`, the label the control's own
+		 * consumers already use, so this matches the same element the press does.
+		 */
+		const entityRoot = entityPanelRef.current;
+		const groupRow =
+			entityRoot === null
+				? null
+				: ([...entityRoot.querySelectorAll<HTMLElement>("[data-entity]")].find(
+						(group) =>
+							group.querySelector(
+								`[data-disclosure][aria-label="Expand ${pending.name} chats"], [data-disclosure][aria-label="Collapse ${pending.name} chats"]`,
+							) !== null,
+					) ?? null);
+		/*
+		 * THE FALLBACK IS THE GROUP'S DISCLOSURE, which exists whether or not the group has
+		 * rows - so it resolves at exhaustion too, where the press unmounts the control it was
+		 * made on. `<body>` is therefore unreachable from this effect: if neither the added row
+		 * nor the group's own disclosure can be found, focus is left where it was rather than
+		 * thrown at the document.
+		 */
+		const target =
+			row?.querySelector<HTMLElement>("[data-chat-row]") ??
+			row ??
+			groupRow?.querySelector<HTMLElement>("[data-disclosure]") ??
+			null;
+		target?.focus();
+	}, [catalogueScopes]);
+	/*
+	 * The tail's drawn state (`catalogueTailView` carries the rules): nothing while
+	 * the extension is silently on its way, the wait register while a page is in
+	 * flight, and one sentence plus a retry when a page did not arrive.
+	 *
+	 * THERE IS NO STEADY-STATE BUTTON, deliberately: the extension is driven by the
+	 * region's own scroll position, and a control at the bottom of the list would be
+	 * replaced mid-press by the rows its own press fetched. The exception is the
+	 * FAILED page, where nothing would ask again on its own.
+	 */
+	const tailState = catalogueTailView({
+		pageable: tailVisible,
+		nextCursor: tailVisible ? catalogueHead.tailCursor : null,
+		loading: catalogueHead.loading,
+		/*
+		 * THE STORE'S ERROR, OR THE ONE HELD FOR THIS CURSOR (U14): the second term is what
+		 * keeps a refusal on screen across the head answers that are not about it. It cannot
+		 * outlive the page it belongs to - a successful extension moves the cursor, and the
+		 * held refusal stops applying the moment it does.
+		 */
+		error:
+			catalogueHead.error ??
+			(tailRefusal !== null && catalogueHead.tailCursor === tailRefusal.cursor
+				? tailRefusal.sentence
+				: null),
+	});
+	useEffect(() => {
+		const press = tailRetryPendingRef.current;
+		if (press === null) return;
+		/*
+		 * THE PRESS IS SETTLED BY AN OUTCOME, NOT BY A TICK (round 4, U14). The first version
+		 * cleared the pending press on the first non-loading state, and the 30 s poll's own
+		 * head answer is a non-loading state: it arrives, clears the tail's refusal, renders
+		 * no control, and the effect read that as "it worked" - so when the press's refusal
+		 * DID come back a moment later, there was no pending press left to put the reader
+		 * back on. The press stays pending until the tail is REFUSED again or EXHAUSTED
+		 * (which is the only state that means the rows arrived), with a deadline so a press
+		 * that neither fails nor finishes cannot pin focus for ever.
+		 */
+		/*
+		 * THE OUTCOME IS READ FROM THE STORE'S OWN BITS, not from the drawn state: the tail's
+		 * steady state and its exhaustion both draw nothing (`kind === "none"`), so the first
+		 * version of this effect treated "your page is on its way" as "done" and handed focus
+		 * to a row a tick before the refusal arrived - which is why the reader still ended up
+		 * away from the control they had pressed.
+		 */
+		if (tailState.kind === "error") {
+			tailRetryPendingRef.current = null;
+			tailRefusalRetryRef.current?.focus();
+			return;
+		}
+		/*
+		 * THE PRESS'S PAGE ARRIVED when the cursor it was asked against is no longer the
+		 * cursor in hand - advanced (more to come) or null (the tail is complete). Focus goes
+		 * to the list's last row, which is where a reader who asked for more rows wants to be.
+		 */
+		if (catalogueHead.tailCursor !== press.cursor) {
+			tailRetryPendingRef.current = null;
+			const region = listPanelRef.current;
+			const rows = region?.querySelectorAll<HTMLElement>("[data-session-row]");
+			const last =
+				rows === undefined || rows.length === 0 ? null : rows[rows.length - 1];
+			(last?.querySelector<HTMLElement>("[data-chat-row]") ?? last)?.focus();
+			return;
+		}
+		// Still on its way, and the deadline is the only thing that ends the wait.
+		if (Date.now() > press.deadline) tailRetryPendingRef.current = null;
+	}, [tailState.kind, catalogueHead.tailCursor]);
+	const catalogueTail =
+		tailState.kind === "none" ? null : (
+			/*
+			 * THE FLAT LIST'S REFUSAL WEARS THE SAME TREATMENT AS THE GROUP'S (round 2,
+			 * D10 = U9): this was the THIRD unchanged site, still one `<p>` with the Retry
+			 * inline after the sentence and no clamp, so a long backend sentence moved the
+			 * control the reader was aiming at. The sentence is clamped, the Retry is on its
+			 * own line, and the loading register shares the same wrapper so the swap from
+			 * "Loading more chats…" to a sentence is announced.
+			 */
+			<div className="py-1" aria-live="polite">
+				<p className="line-clamp-2 text-meta text-ink-dim">
+					{tailState.kind === "loading"
+						? "Loading more chats…"
+						: tailState.sentence}
+				</p>
+				{tailState.kind === "error" && (
+					<p className="pt-1">
+						<button
+							ref={tailRefusalRetryRef}
+							type="button"
+							className="text-meta text-ink-dim underline hover:text-ink"
+							onClick={() => {
+								/*
+								 * THE PRESS IS REMEMBERED BEFORE IT GOES (U14): the control this handler
+								 * belongs to does not survive the re-read, so the only way to put the
+								 * reader back on it is to say, in advance, that a press is outstanding.
+								 * The deadline is generous - a page of this list measures in seconds on
+								 * the store this change exists for - and its only job is to stop a press
+								 * that neither fails nor finishes from owning focus for ever.
+								 */
+								tailRetryPendingRef.current = {
+									deadline: Date.now() + 20_000,
+									cursor: catalogueHead.tailCursor,
+								};
+								// The reader's own press is the one thing that clears a refusal.
+								tailRefusedCursorRef.current = null;
+								setTailRefusal(null);
+								void fetchCatalogueTail();
+							}}
+						>
+							Retry
+						</button>
+					</p>
+				)}
+			</div>
 		);
 	/*
 	 * The pinned partition, applied to the FILTERED list and to nothing else: the
@@ -1382,9 +2394,228 @@ export function ChatSidebar({
 	 */
 	const pinned = pinnedRows(matching, pinsEnabled);
 	const rest = unpinnedRows(matching, pinsEnabled);
+	/*
+	 * THE PAGE, and it is where the operator's three invariants live
+	 * (`chat-sidebar-view.ts` carries the rules and the reasons):
+	 *
+	 *   - `pageOrder` lifts the ACTIVE rows - a live turn, a turn stopped on the
+	 *     reader, a wedged one - above the rest by a stable partition, so the
+	 *     recency below them is the catalogue's own and never inverted;
+	 *   - `pageRows` cuts the page at the ladder's current rung and LIFTS the
+	 *     viewed conversation in when it sits past the end, so "you are here"
+	 *     is not something a page size can take away;
+	 *   - a search bypasses the limit entirely, because the backend answers over
+	 *     an index of every conversation and the page is not allowed to act as a
+	 *     filter over that answer.
+	 *
+	 * The ORDER of the two calls is the contract: the page is cut from the
+	 * ordered list, never the other way round, so the active rows occupy the
+	 * page's head rather than being appended to it.
+	 */
+	const view = parseSidebarView(chatSidebarView);
+	/*
+	 * THE DRAFTS THAT OUTLIVE THEIR PANE (§C1's `Draft: <first line>` row; UX round
+	 * 2's U8). The rule and its three conditions live in `draft-rows.ts`, because it
+	 * has to be true of the state a RELAUNCH restores as well as of the state a ⌘N
+	 * leaves behind - and a rule written inline here is reachable by no suite this
+	 * repository has.
+	 *
+	 * HIDDEN WHILE A QUERY IS ACTIVE, on the list's own rule rather than a new one:
+	 * a search answers "which conversations match these words", a draft has no
+	 * conversation to match, and a row that could never match would sit above every
+	 * result at the exact moment the reader is looking for one. Esc clears the field,
+	 * so the way back is the same key that put them there.
+	 */
+	const listedSessionIds = useMemo(
+		() => new Set(matching.map((row) => row.session_id)),
+		[matching],
+	);
+	const draftRows = useMemo(
+		() => untargetedDraftRows(drafts, inputByConversation, listedSessionIds),
+		[drafts, inputByConversation, listedSessionIds],
+	);
+	/*
+	 * THE ROWS `Clear all` MAY ACT ON: the listed rows minus the ones whose send hop
+	 * is live (UX round 1's U2 - the store refuses those keys too, and the two
+	 * lists have to agree or the count in the offer would promise more than moved).
+	 * A failed claim is not pending and is clearable.
+	 */
+	const clearableDraftRows = draftRows.filter((row) => !row.pending);
+	const page = pageRows(pageOrder(rest, view.orderBy), {
+		limit: pageLimit(view.loads),
+		currentId: selectedConversation,
+		searching: query.trim().length > 0,
+	});
+	const liftedRow = page.lifted ? page.rows[0] : null;
+	const pagedRows = page.lifted ? page.rows.slice(1) : page.rows;
+	/*
+	 * The two facts the foot needs, and the ref the extension reads - all three
+	 * measured from the page rather than from `matching`, because `pageRows` works
+	 * over the UNPINNED rows (`rest`) and a rung is spent against what the ladder
+	 * draws.
+	 *
+	 * `ladderStep` is the size of the page the NEXT press asks for. On the paged
+	 * path with nothing held past the rung it is the label's only true number: the
+	 * rows a press reveals are the rung's, whatever the daemon has behind its
+	 * cursor.
+	 */
+	ladderHoldsRowsRef.current = page.remaining > 0 || view.hidden.length > 0;
+	const ladderStep = pageLimit(view.loads + 1) - pageLimit(view.loads);
+	const tailMore = groupPaging && catalogueHead.tailCursor !== null;
+	/*
+	 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS
+	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
+	 * thing - more chats - and which of them happens is a fact about the daemon
+	 * (five hundred rows asked for, fifty arrived) rather than a choice the reader
+	 * should have to make. `rest` rather than `pagedRows`, because the rung counts
+	 * the rows the page is taken over and a lifted row is drawn outside it.
+	 */
+	const pressPageMore = () => {
+		const next = view.loads + 1;
+		setChatSidebarView({ ...view, loads: next });
+		if (!groupPaging) return;
+		if (pageLimit(next) > rest.length) void fetchCatalogueTail();
+	};
+	/*
+	 * WHETHER ANYTHING IS VIEWER-SET, which is what the band's middle button's
+	 * fill means. It is a comparison against the DEFAULT rather than a flag
+	 * written when the panel is used, because the flag can disagree with the
+	 * view the moment a future field joins the model and is not reset with it.
+	 */
+	const viewIsCustom =
+		view.groupBy !== DEFAULT_SIDEBAR_VIEW.groupBy ||
+		view.basis !== DEFAULT_SIDEBAR_VIEW.basis ||
+		view.orderBy !== DEFAULT_SIDEBAR_VIEW.orderBy ||
+		view.hidden.length > 0 ||
+		view.loads > 0 ||
+		view.order.some((key, index) => key !== DEFAULT_SIDEBAR_VIEW.order[index]);
+	/*
+	 * §C1's sections over the loaded page (`chat-list-sections.ts` carries the
+	 * rules), the sections the popover has switched OFF removed, and the rest in
+	 * the reader's own order - `shownSections` is that order, and it is the same
+	 * one the region boundary's arrows write to. The basis is the view's, so the
+	 * bins, the row labels and the popover's counts below all read one clock.
+	 */
+	const sectioned = sectionRows(pagedRows, listNow, view.basis);
+	const drawnSections = shownSections(view).filter(
+		(key): key is ChatListSection => key !== "pinned" && !isEntitySection(key),
+	);
+	const pinnedShown = isSectionShown(view, "pinned");
+	/*
+	 * §C1's sections over the unpinned rows (`chat-list-sections.ts` carries the
+	 * rules), and the first one that has rows - the header the bulk read receipt
+	 * sits on.
+	 */
+	const firstSection =
+		drawnSections.find((key) => sectioned[key].length > 0) ?? null;
+	/*
+	 * The counts the view popover prints beside each section's switch, so the
+	 * panel says what it is switching OFF. Zero draws nothing (the panel's own
+	 * rule), and the `Pinned`/`Agents`/`Teams` counts come from the same sources
+	 * their sections render from, rather than from a second read.
+	 */
+	const viewCounts: Partial<Record<SidebarSectionKey, number>> = {
+		pinned: pinned.length,
+		running: sectioned.running.length,
+		today: sectioned.today.length,
+		week: sectioned.week.length,
+		older: sectioned.older.length,
+		agents: ownAgents.length,
+		teams: teams.data?.length ?? 0,
+	};
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
+	/*
+	 * The row's TEAM alone — `bindingName` falls through to the agent, and the
+	 * agent-opened slot's decision turns on the difference (see the rule's own
+	 * `team`): a workstream with no team draws nothing, so the string the rule
+	 * reads and the string the row draws have to be THIS one and not the
+	 * fall-through.
+	 */
+	const teamName = (row: CanonicalSessionRow) => row.binding?.team ?? "";
+	/*
+	 * Who opened a conversation, when an AGENT did rather than the operator.
+	 *
+	 * Read from the PRESENCE of `opened_by`, never from the members inside it: the
+	 * wire documents that a requesting side may be entirely unknown while the fact
+	 * that an agent opened the row is certain (`SessionOpenedBy` in
+	 * `desktop-session-contract.ts`), and the fact kept its own claims for exactly
+	 * that reason — on 2026-09-18 an agent-opened session sat in this list
+	 * indistinguishable from a chat the operator had opened himself.
+	 *
+	 * Three callers of one fact, and the SPLIT between them is the design round 1
+	 * remediation (D1, D2), re-cut when the slot's claim became the TEAM (operator
+	 * ask, 2026-09-25):
+	 *
+	 *   - `agentOpenedRow` is the presence test the rule takes, because presence is
+	 *     the fact (`SessionOpenedBy` may hold three nulls).
+	 *   - the ROW draws the TEAM the workstream serves (`· <team>`), or nothing
+	 *     when it serves none — the decision and its why live in
+	 *     `rowTrailingStatement`, which is also where the removal of the constant
+	 *     marker is recorded. The drawn team is user-authored text, so it wears the
+	 *     binding slot's bounded, truncating treatment rather than a literal's.
+	 *   - `openedBySentence` names the agent, and feeds the two channels where a
+	 *     name costs no pixels and the fact must survive: the row's flyout
+	 *     (`rowTooltip`) and the row's screen-reader sentence.
+	 *
+	 * WHY THE SENTENCE IS WHERE THE FACT LIVES — and it is measured rather than
+	 * preferred. At the panel's default 280px the row is 263px wide, and the NAMED
+	 * form (`· opened by coder`) measured 117px, its whole 45% cap, which was the
+	 * binding slot's and had been measured for a 45px string. That left the title
+	 * 77px of its 228px: the marker drew wider than the label beside it and the
+	 * conversation's own name, the thing the row exists to show, was a stub. The
+	 * name is the only variable part, so the drawn form dropped it (design round
+	 * 1, D1, for that round's form of the claim). The slot's claim has since
+	 * changed and its string is now the team — bounded the same way the binding
+	 * slot is, so it truncates inside its cap rather than starving the title —
+	 * and the sentence keeps the half no bounded slot can hold: the requester's
+	 * name, and the fact the row is not one of the operator's own.
+	 *
+	 * WHAT THAT TRADES AWAY, named rather than implied: the agent's name is not in
+	 * the row's pixels (it is one dwell away in the row's flyout, it is in the
+	 * accessible name, and in the panel's `Agents` section it is on the entity row
+	 * the conversation is filed under), and on a team-less workstream the pixels
+	 * carry no provenance at all — the flyout and the `sr-only` sentence are the
+	 * channels there, the arrangement a marked or unstarted agent-opened row
+	 * already used. What the pixels keep is the half a reader acts on: the team
+	 * the workstream serves.
+	 *
+	 * The label is deliberately not drawn either: it is a conversation NAME
+	 * ("Harden lop secret against agent credential leaks"), it is arbitrarily long,
+	 * and the trailing slot is the one place on this row where a long string costs
+	 * the title its width.
+	 *
+	 * `.trim()` wherever a member is read, because an empty agent name is a name the
+	 * backend could not resolve rather than an identity: `opened by ` with nothing
+	 * after it would be the claim with its answer missing. The wire's `session` is
+	 * not rendered — an opaque id names nothing a reader of this row can act on —
+	 * and stays typed for whichever surface can use it.
+	 */
+	const agentOpenedRow = (row: CanonicalSessionRow) => row.opened_by != null;
+	const openedBySentence = (row: CanonicalSessionRow) => {
+		const agent = row.opened_by?.agent?.trim();
+		return `opened by ${agent || "an agent"}`;
+	};
+	const openedByNote = (row: CanonicalSessionRow) => {
+		if (!row.opened_by) return "";
+		const label = row.opened_by.label?.trim();
+		return `, ${openedBySentence(row)}${label ? ` in “${label}”` : ""}`;
+	};
+	/*
+	 * The binding clause, and the ONE case it is dropped: when the attribution in
+	 * the same sentence names the same agent, `… (coder): Recent, opened by coder in
+	 * “…”` reads as a stutter on exactly the row the marker was added for (review
+	 * round 1's n3, and the design round's NIT). Nothing is lost by dropping it —
+	 * the clause that follows still carries the name — so the flyout stays at least
+	 * as wide as the pixels, which is the property the row's own comment claims.
+	 */
+	const bindingClause = (row: CanonicalSessionRow) => {
+		const name = bindingName(row);
+		if (!name) return "";
+		if (row.opened_by?.agent?.trim() === name) return "";
+		return ` (${name})`;
+	};
 	/*
 	 * The two states the box can be in while it has no answer, and why they are
 	 * states rather than silence.
@@ -1433,6 +2664,7 @@ export function ChatSidebar({
 			search.data.sessions,
 			pinFactValues,
 			archiveView,
+			bindingOfHit,
 		);
 	}, [
 		answered,
@@ -1441,6 +2673,7 @@ export function ChatSidebar({
 		heldRows,
 		pinFactValues,
 		archiveView,
+		bindingOfHit,
 		query,
 	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
@@ -1509,25 +2742,26 @@ export function ChatSidebar({
 	 *    the header's badge carries approvals only;
 	 *  - it was the only surface reporting ANOTHER conversation's pending browser approvals
 	 *    without opening the browser: the header's badge counts this conversation only, so
-	 *    it is null for a foreign request and nothing in the sidebar reports one now (QA
-	 *    round 1 rendered exactly that against a foreign `request_access`);
+	 *    it is null for a foreign request. That capability came back on 2026-09-23, on the
+	 *    APP RAIL rather than per row (`sidebar-navigation.tsx`'s Browser item counts every
+	 *    live request in the projection, unattributed ones included) - so what went with
+	 *    the mark is the per-row statement, not the app-wide one;
 	 *  - it was the only thing that NORMALISED the pane's lens on the way in. The pane's
 	 *    scope is one sticky preference (`ui-preferences-store.ts:452`, read at
-	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation, and
-	 *    the header's Globe is unmounted while the pane is open (`chat-header.tsx:161`) so
-	 *    it cannot be pressed to re-scope: with the pane last left on `All tabs`, that is
-	 *    where the header's Globe reopens it and the in-pane switch is the only way back.
-	 *    The toggle and its `aria-expanded` cue went the same way.
+	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation. With
+	 *    the pane last left on `All tabs`, that is where it stays: the in-pane switch is
+	 *    the way back. (The header's Globe USED to be unmounted while the pane was open,
+	 *    which made that switch the only way back at all; since 2026-09-23 the trigger
+	 *    stays mounted as a toggle with its `aria-expanded` cue, so the pane can be closed
+	 *    from the bar again - but nothing normalises the LENS, and that half is still
+	 *    open.)
 	 *
-	 * One surface outside this component still reports another conversation's approvals:
-	 * `src/main/browser/consent-notifier.ts` raises a native "Site approval needed" banner
-	 * naming the count and the oldest origin, focus-gated and naming no conversation. It is
-	 * unobservable in this repo's headless rigs (native banners are suppressed there), so
-	 * that is a record of what the code does rather than a measurement. A one-line fix
-	 * exists if the lens is wanted back - keep the header's Globe mounted so it toggles and
-	 * normalises the scope - and it is deliberately NOT taken here: the control's
-	 * focus-return and spacing rules are pinned by tests and are not this change's to
-	 * alter.
+	 * One surface outside this component still reports another conversation's approvals
+	 * without the rail: `src/main/browser/consent-notifier.ts` raises a native "Site
+	 * approval needed" banner naming the count and the oldest origin, focus-gated and
+	 * naming no conversation. It is unobservable in this repo's headless rigs (native
+	 * banners are suppressed there), so that is a record of what the code does rather than
+	 * a measurement.
 	 */
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
@@ -1535,6 +2769,8 @@ export function ChatSidebar({
 			unstarted: unstarted.has(row.session_id),
 			nested,
 			binding: bindingName(row),
+			team: teamName(row),
+			agentOpened: agentOpenedRow(row),
 		});
 		const pinned = row.pinned === true;
 		/** The row's own name, used by the archive control's accessible name and tooltip
@@ -1563,6 +2799,15 @@ export function ChatSidebar({
 		 * chances for the row to point at a sentence it is not rendering.
 		 */
 		const silent = row.status?.code === "wedged";
+		/**
+		 * WHAT THE RECEIPT IS DOING FOR THIS ROW, if it has anything to say - read once
+		 * for the reason `silent` is: it decides the flyout's tail, the
+		 * `aria-describedby` below and the sentence that id names, and three copies of
+		 * the question would be three chances for the row to point at a sentence it is
+		 * not rendering. Both strings come back together (`readAckCopy`), in the two
+		 * registers the two channels need.
+		 */
+		const readAck = readAckCopy(readAckNotice, row.session_id);
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
@@ -1573,35 +2818,30 @@ export function ChatSidebar({
 		 * `scripts/chat-sidebar-selection.test.mjs` resolves both expressions through the
 		 * shipped `cn` rather than looking for a class name.
 		 *
-		 * THE WRAPPER, THE SLOT AND THE `group` HOOK, stated together because this is the
-		 * seam the fold welded: the slot the next paragraph describes as reserved is now
-		 * FILLED, by this branch's 24px pin control (mounted only when the backend
-		 * advertises `session_pins`, revealed on hover or focus inside the row, and
-		 * reserving its box at rest so the reveal cannot reflow the row), and the
-		 * `group` class the wrapper carried is back for exactly the reason its removal
-		 * gave — something inside READS it now (`group-hover`/`group-focus-within` on
-		 * that control), and a hook an element reads is the only kind worth carrying.
-		 * The wrapper keeps its other job unchanged, and carries
-		 * `data-session-row`, the hook the pins harness and this file's CURRENT table
-		 * address the row by. The `w-full` -> `min-w-0 grow` note on the button below is
-		 * main's and still holds: a full-width button sharing a flex row with a sibling
-		 * is a row that overflows.
+		 * THE WRAPPER AND THE `group` HOOK. The wrapper carries `data-session-row`, the
+		 * hook the pins harness and this file's CURRENT table address the row by, and it
+		 * carries `group` for exactly the reason it exists: something inside READS it now
+		 * (`group-hover`/`group-focus-within` on the two acts), and a hook an element
+		 * reads is the only kind worth carrying. The `w-full` -> `min-w-0 grow` note on
+		 * the button below is main's and still holds: a full-width button sharing a flex
+		 * row with a sibling is a row that overflows.
 		 *
-		 * THE ARCHIVE'S SECOND SLOT, added beside the pin's by this branch: the same
-		 * box (`size-6 shrink-0`), the same reveal (`opacity` and `pointer-events` only,
-		 * so the reveal cannot reflow the row), the same `group` hook, mounted only when
-		 * the backend advertises `session_archive`. While both capabilities are present
-		 * the two controls hold two slots RESERVED SIDE BY SIDE rather than sharing one
-		 * 24px box: two controls in one box occlude each other's reveal, so only the top
-		 * one could ever be pressed, and an overlapping reveal hides the title of the
-		 * row the pointer is on. Below the panel's default width the pair sheds to a
-		 * single shared control (`ROW_ACTIONS_SHED`), the band where two slots leave the
-		 * title about twenty characters wide.
+		 * THE TWO ACTS: the pair costs the title 56px UNDER THE POINTER and NOTHING at
+		 * rest, which is the change `docs/design/sidebar-row-space.md` specifies and the
+		 * third paragraph below is the rule. The pin's mark is the exception and it is a
+		 * STATE rather than an act, so it is drawn at rest on a pinned row at every width
+		 * - including the 240 clamp minimum, where the shipped build drew no pin at all
+		 * because the mark lived inside the wrapper the old container query hid (design
+		 * D1/D4). The acts are shown and hidden with `display`, not with `opacity`:
+		 * `display: none` cannot receive a press at all, so "a hidden control is inert"
+		 * stops being a rule someone has to remember and becomes a fact about layout
+		 * (D3).
 		 *
-		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with it
-		 * `title` and `aria-current` — three committed harnesses select on those and the
-		 * arrow-key traversal walks the attribute. The pin control deliberately does NOT
-		 * carry it: Tab reaches that control and the arrow-key traversal does not.
+		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with
+		 * it `aria-current` - three committed harnesses select on those and the arrow-key
+		 * traversal walks the attribute. (`title` was on that list; it is off it now,
+		 * with the flyout above in its place - see D7.) The two acts deliberately do NOT
+		 * carry `data-chat-row`: Tab reaches them and the arrow-key traversal does not.
 		 *
 		 * WHY THE FOLD KEPT BOTH HALVES: main's row body is the shipped one (its unread
 		 * tail reads `unreadMarkKind`, the predicate the glyph, the accessible name and
@@ -1609,6 +2849,61 @@ export function ChatSidebar({
 		 * the press guard on the row's own `onClick` — both sides' intents, neither
 		 * restated from the other.
 		 */
+		/*
+		 * THE FLYOUT, which replaces the row's native `title` (design D7).
+		 *
+		 * WHY THE NATIVE ATTRIBUTE GOES: it is the same pointer channel as the tooltip
+		 * below it and a SECOND one - a browser tooltip arriving a second after the app's
+		 * own is the bug this avoids - and it cannot carry a wrapped title, a leading
+		 * fact or the row's status at a legible width. One pointer surface, not two.
+		 *
+		 * WHAT IT CARRIES is everything the string carried, so nothing is lost with it:
+		 * the full title on its own line (untruncated and free to wrap inside the
+		 * primitive's `max-w-64`), the binding, then the row's status label and its tail
+		 * flags - `, not sent yet`, `, unread`, `, archived` - and the silent remedy.
+		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+		 * in "…"`) to the status line, and this is the channel that keeps it whole: the
+		 * row's pixels name only the TEAM the workstream serves (`· <team>`; nothing on
+		 * a team-less one — see `rowTrailingStatement`), so the requesting agent's NAME
+		 * and the requesting conversation's name live here and in the `sr-only`
+		 * sentence, on every agent-opened row, whatever the slot drew. The binding
+		 * beside the title is dropped when the attribution names the same agent
+		 * (`bindingClause`, the stutter review round 1's n3 found).
+		 * The `sr-only` sentence the row already renders stays where it is: that is the
+		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
+		 * it does not move into a tooltip.
+		 *
+		 * IT IS NOT ONLY AN OVERFLOW AFFORDANCE. A row whose title fits gets it too: it
+		 * is a replacement for the native tooltip, so the facts live on every row. And
+		 * for a reader whose system asks for reduced motion it is the WHOLE of the
+		 * channel - the pan is suppressed there, and the flyout is complete on its own.
+		 */
+		const rowTooltip = (
+			<>
+				<span className="block">
+					{row.title || "Untitled chat"}
+					{bindingClause(row)}
+				</span>
+				<span className="block">
+					{row.status?.label ??
+						(synthesized.has(row.session_id)
+							? "found by search, beyond the chats listed here"
+							: "Recent")}
+					{silent ? ` · ${SILENT_REMEDY}` : ""}
+					{openedByNote(row)}
+					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
+					{unreadMarkKind(row) !== null ? ", unread" : ""}
+					{archived ? ", archived" : ""}
+					{/*
+					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
+					 * them: the flags are what the row IS and this is what the app is DOING
+					 * about the mark on it, so it reads as the actionable last word - the slot
+					 * `SILENT_REMEDY` occupies one fact up.
+					 */}
+					{readAck ? ` · ${readAck.clause}` : ""}
+				</span>
+			</>
+		);
 		const rowButton = (
 			<button
 				type="button"
@@ -1648,44 +2943,57 @@ export function ChatSidebar({
 					// it lives in the reserved status slot instead (see `Status`).
 				)}
 				aria-current={current ? "page" : undefined}
-				/* The tooltip carries the row's binding and its own state — the facts the
-				   row may not be drawing — and deliberately NOT the search mark's words,
-				   which the row announces itself through the `sr-only` span beside it:
-				   both channels saying "matched in conversation" would be one fact
-				   announced twice (review round 4, R23). Stated as the rule the
-				   expression below implements: the tooltip completes the set minus the
-				   MARK'S words, which is the only statement it withholds. The binding
-				   and ", not sent yet" are appended in every case, so on a row that
-				   draws one of those the tooltip repeats it rather than omitting it
-				   (review round 6, R33). The ", unread" tail is read from the SAME
-				   predicate the glyph, the accessible name and the bulk count read
-				   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
-				   busy or gated row's tooltip claim a mark its own spinner and gate were
-				   nowhere drawing — the reported defect, in the channel a reader reaches
-				   by hovering, and the row that most needs the tooltip to be true. */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
 				/*
-				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
-				 * this is the keyboard's, and it is the one a person using the `sr-only` name
-				 * beside the mark can actually reach — Chromium does not present a `title` on
-				 * focus, so before this the advice existed for hover alone. It points at the
-				 * clause rather than carrying it in the NAME, which is the design's call: the
-				 * name stays the state's sentence, and a description is announced after it, on
-				 * focus, on the rows that carry one.
+				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2), and this is the KEYBOARD's:
+				 * it is the one a person using the `sr-only` name beside the mark can
+				 * actually reach. It points at the clause rather than carrying it in the
+				 * NAME, which is the design's call: the name stays the state's sentence,
+				 * and a description is announced after it, on focus, on the rows that
+				 * carry one.
 				 *
-				 * THAT REQUIRES THE TARGET TO SIT OUTSIDE THIS BUTTON — the association alone
-				 * does not keep a sentence out of the name, and the first version of this
-				 * shipped it as a child of the button, where name-from-content collected it
-				 * too (round 2's MAJOR 2). See the span below the `</button>` for the
-				 * measurement; what this attribute needs to be true is that its target renders
-				 * and renders outside the named element.
+				 * THAT REQUIRES THE TARGET TO SIT OUTSIDE THIS BUTTON — the association
+				 * alone does not keep a sentence out of the name, and the first version of
+				 * this shipped it as a child of the button, where name-from-content
+				 * collected it too (round 2's MAJOR 2). See the span below the `</button>`
+				 * for the measurement; what this attribute needs to be true is that its
+				 * target renders and renders outside the named element.
 				 *
 				 * `undefined` on every other code, and on a row with no status at all — an
 				 * `aria-describedby` naming an element nobody rendered resolves to no
 				 * description at all, which is a worse outcome than not pointing (the same
 				 * rule `setting-control.tsx` states for its own help sentence).
+				 *
+				 * WHY THE KEY IS PASSED RATHER THAN SET TO `undefined` (agent review round 1, R2;
+				 * attribution corrected in round 2, R2-5). The override this guards against was
+				 * real once: the trigger USED to be this button, so Radix's `Slot.mergeProps`
+				 * spread this element's props over the trigger's, and a key present with the value
+				 * `undefined` clobbered the primitive's own `aria-describedby` on every
+				 * non-silent row. The trigger is the row's WRAPPER now (`withFlyout` above), so the
+				 * slot child is that div and nothing here can override anything - the ANCHOR MOVE is
+				 * what closed R2, not this spelling. It is kept as defence: the two channels coexist
+				 * by construction, this one whenever the row has a remedy and the primitive's
+				 * whenever it does not, and moving the trigger back onto the button would
+				 * reintroduce the clobber silently.
+				 *
+				 * THE FLYOUT ABOVE CARRIES THE SAME CLAUSE, deliberately, and the two do
+				 * not duplicate each other's channel: the tooltip is the POINTER's, this is
+				 * focus's, and neither is presented where the other is. What the flyout
+				 * withholds is the search mark's words, which the row announces itself
+				 * through the `sr-only` span beside it — both channels saying "matched in
+				 * conversation" would be one fact announced twice (review round 4, R23).
+				 * The ", unread" tail is read from the SAME predicate the glyph, the
+				 * accessible name and the bulk count read (`unreadMarkKind`).
 				 */
-				aria-describedby={silent ? silentRemedyId(row.session_id) : undefined}
+				{...(silent || readAck
+					? {
+							"aria-describedby": [
+								silent ? silentRemedyId(row.session_id) : null,
+								readAck ? readAckClauseId(row.session_id) : null,
+							]
+								.filter(Boolean)
+								.join(" "),
+						}
+					: {})}
 				onClick={(event) => {
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
@@ -1745,33 +3053,55 @@ export function ChatSidebar({
 			    What matters at this call site: the number of statements is capped
 			    rather than negotiated by the flex algorithm, no floor is needed
 			    because at most one statement can ever be drawn, and TWO elements
-			    truncate — the title, and the binding slot inside its own 45% cap,
-			    which is that cap doing the work a floor used to. The two literal
-			    statements below cannot truncate anything: they are fixed strings
-			    with no width to run out of. */}
-				<span
-					/*
-					 * The title's own anchor, inert outside a driver run: the reserved slot's
-					 * cost is a claim about TITLE width, and the only honest way to state it is
-					 * to measure the element the title is drawn in rather than to subtract
-					 * control widths from a row box (`renderer-driver.mjs`'s `session-archive`
-					 * scene reads it at both panel widths, on a row that carries a status and
-					 * on one that carries an unread mark).
-					 */
-					data-session-title
-					className="min-w-0 flex-1 truncate"
-				>
-					{row.title || "Untitled chat"}
-				</span>
+			    truncate — the title, and the bounded slot (the team or the binding)
+			    inside its own 45% cap, which is that cap doing the work a floor used
+			    to. The TWO literal statements below (`· Not sent yet`, `· in
+			    conversation`) cannot truncate anything: they are fixed strings with
+			    no width to run out of. The team is a name the user wrote, and it
+			    replaced the constant `· agent-opened` (operator ask, 2026-09-25):
+			    it left the literal family and joined the bounded one. */}
+				{/*
+				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
+				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
+				 * row-space and session-archive scenes measure - the row's horizontal budget
+				 * is a claim about TITLE width, and subtracting control widths from a row box
+				 * is not a measurement of it), and the text box inside it that the pan
+				 * translates and the mask is drawn against. The marquee, its dwell, the edge
+				 * fade and the reduced-motion off switch are all that module's, with the
+				 * reasoning for each.
+				 */}
+				<ChatRowTitle text={row.title || "Untitled chat"} />
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
 			    has something more important to say (the paragraph above) says that
-			    instead. The row's `title` carries the binding in every case, so the
+			    instead. The row's flyout carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
+				{trailing === "team" && (
+					/* THE TEAM THE WORKSTREAM SERVES — what replaced the constant
+					   `· agent-opened` (operator ask, 2026-09-25; `rowTrailingStatement`
+					   records the policy and its why). Drawn with the SAME bounded,
+					   truncating treatment as the binding slot below: the team is
+					   user-authored text whose field accepts 64 characters, so it needs
+					   the cap and the clip that slot measured (review round 4, R21), not
+					   the fixed-literal treatment the marker had.
+
+					   NOT `aria-hidden`, deliberately: the marker could hide its constant
+					   words behind the `sr-only` sentence, but the team is a drawn name and
+					   the accessible name must never be narrower than the pixels — a reader
+					   who cannot see the row hears the team with the rest of the row's
+					   sentence. The attribution sentence still renders where the marker's
+					   did (the `sr-only` block at the end of this group), so a row the
+					   marker used to speak for still says ", opened by coder" — and a
+					   marked or unstarted one reads exactly as before. */
+					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						· {teamName(row)}
+					</span>
+				)}
 				{trailing === "binding" && (
-					/* Bounded, unlike the two literals below. `bindingName` is a
-					   user-authored agent or team name and the agent-name field
+					/* Bounded, like the team slot above and unlike the two literals
+					   below. `bindingName` is a user-authored agent or team name and the
+					   agent-name field
 					   accepts 64 characters, so `shrink-0` with no `truncate` left an
 					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
 					   which restored round 4's D18 at roughly 35 characters and
@@ -1779,8 +3109,8 @@ export function ChatSidebar({
 					   own input limit, with no dragging involved (review round 4,
 					   R21). The cap is a share of the row rather than a fixed width so
 					   it scales with the panel, and `truncate` clips inside it. The
-					   other two are literals and stay `shrink-0`: they cannot grow,
-					   so they cannot starve anything. */
+					   two literals are `shrink-0`: they cannot grow, so they cannot
+					   starve anything. */
 					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 						· {bindingName(row)}
 					</span>
@@ -1807,6 +3137,51 @@ export function ChatSidebar({
 							· in conversation
 						</span>
 						<span className="sr-only">, matched in conversation</span>
+					</>
+				)}
+				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
+				    agent-opened claim's: the team slot above, and the silent team-less
+				    one. It is what keeps ", opened by coder" reachable from the row itself
+				    now that the pixels draw the team or nothing, and it renders even when
+				    nothing is drawn — the channel that still states an anonymous agent
+				    opened the row. It is NOT rendered on the rows the two higher claims
+				    draw (`· in conversation`, `· Not sent yet`): those rows render their own
+				    sentences and never carried this one: what a marked row says is the
+				    mark's own `sr-only` sentence, and a `not_sent` row says its plain
+				    words — neither states an attribution today, and neither gains one
+				    here, which is what keeps the accessible name byte-for-byte as it was
+				    before this change on every row whose visible slot did not move
+				    (review n1's arrangement). */}
+				{agentOpenedRow(row) &&
+					(trailing === "team" || trailing === "none") && (
+						<span className="sr-only">, {openedBySentence(row)}</span>
+					)}
+				{/*
+				 * THE RELATIVE TIME (§C1): right-aligned `text-mono-sm` in `ink-dim`, the
+				 * row's last element. It is NOT one of `rowTrailingStatement`'s
+				 * statements - that slot is for why a row is on screen, and this is a
+				 * fact every resting row carries - so it sits after it and never
+				 * competes for it. A RUNNING row prints none (its time is "now", which
+				 * the spinner already says), and it gives way to the per-row acts under
+				 * the pointer (`group-hover:hidden`) so revealing Pin/Archive costs the
+				 * title nothing.
+				 *
+				 * The visible `2h` is `aria-hidden` and the sentence (`2 hours ago`) is
+				 * read after the title, so the row's name stays `state — title` with the
+				 * time as its tail (U21).
+				 */}
+				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
+					<>
+						<span
+							aria-hidden="true"
+							data-session-time
+							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-hover:hidden"
+						>
+							{relativeTime(row, listNow, view.basis)}
+						</span>
+						<span className="sr-only">
+							, {relativeTimeSentence(row, listNow, view.basis)}
+						</span>
 					</>
 				)}
 			</button>
@@ -1859,16 +3234,122 @@ export function ChatSidebar({
 				{SILENT_REMEDY}
 			</span>
 		) : null;
+		/*
+		 * THE RECEIPT'S OWN SENTENCE, and it is HERE rather than in the flyout alone
+		 * for the reason the remedy above states at length: the flyout is the
+		 * pointer's channel, a reader who reaches the row by keyboard hears nothing
+		 * from it, and `title` is not presented on focus. It is the SAME string the
+		 * flyout carries (one home, `../read-ack-notice.ts`), and it is the one arm of
+		 * the receipt that a screen reader can be told about at all: the toast's lane
+		 * is `aria-live` and this is the per-row association, so a reader who is
+		 * walking the list hears which row is waiting rather than only that something
+		 * happened somewhere.
+		 *
+		 * OUTSIDE the button, like the remedy, because a button takes its accessible
+		 * name from its contents (round 2's MAJOR 2: the clause was collected into the
+		 * name as well as into the description).
+		 */
+		const readAckRemedy = readAck ? (
+			<span id={readAckClauseId(row.session_id)} className="sr-only">
+				{readAck.description}
+			</span>
+		) : null;
 
+		/*
+		 * THE FLYOUT'S TRIGGER IS THE ROW'S OWN BOX, and the blur guard is the other half of
+		 * the same decision.
+		 *
+		 * Radix measures `side="right"` from the TRIGGER, and the row's `<button>` is not the
+		 * row: it shrinks by exactly 56px when the acts are revealed, so a flyout anchored to
+		 * it began at 428 + 6 = 434 at the default width - 50px INSIDE the row, over its own
+		 * pin (432..456) and its own archive control (460..484), at every width measured
+		 * (240/278/279/280/360) and for as long as the pointer rested on the control it was
+		 * covering (design round 1, D1; UX U1; QA Q-1 - three independent rounds found it).
+		 * Anchored to the box that does NOT shrink, the flyout's left edge is the row's right
+		 * edge plus the primitive's own 6px `sideOffset`: 490 at the 280 panel, against a row
+		 * that ends at 484 and a panel whose outer edge is x 500. It clears the acts by 6px,
+		 * it is the arithmetic the old comment always claimed, and it no longer depends on
+		 * which state the row is in.
+		 *
+		 * ONE ROW AT A TIME, THE ROW UNDER THE POINTER, ON THE APP'S OWN DWELL.
+		 * `delayDuration` is `TOOLTIP_DELAY_MS` (400ms, the constant the title's pan waits out
+		 * too, imported rather than restated): a pointer sweeping the list opens nothing. A
+		 * flyout that is open describes exactly the row the pointer is inside - it opens for
+		 * the row's whole box INCLUDING the acts, it CLOSES when the pointer leaves the row,
+		 * and it closes when focus leaves the row (the `onBlur` below keeps it open while
+		 * focus moves between the row's own controls). Radix closes any other open tooltip
+		 * when one opens, so two rows are never described at once.
+		 *
+		 * `disableHoverableContent` IS THE CLOSE RULE, and it is load-bearing rather than
+		 * tidy: by default Radix does NOT close on `pointerleave` - it clears the open timer
+		 * and waits to see whether the pointer enters the CONTENT - so a panel that cannot
+		 * take the pointer (every panel here is `pointer-events: none`) stayed painted after
+		 * the pointer had gone, still describing a row it was no longer over (design round 1,
+		 * D2: measured still drawn 2.5s after the pointer left, and one committed frame
+		 * carried another row's flyout).
+		 *
+		 * THE BLUR GUARD, why the handler is shared: Radix's trigger closes on any blur that
+		 * reaches it and React's `onBlur` bubbles, so moving focus from the row's button to
+		 * its pin would take the flyout down and bring it back after a fresh dwell.
+		 * `preventDefault` is the documented way to stop a composed Radix handler from
+		 * running: the child's handler runs first and the primitive checks the flag before
+		 * closing.
+		 *
+		 * EVERY ROW GETS ONE, INCLUDING A ROW WHOSE TITLE FITS: it is the replacement for the
+		 * native `title` (see `rowTooltip`), and under reduced motion it is the whole of the
+		 * channel.
+		 *
+		 * `collisionPadding` KEEPS IT INSIDE THE WINDOW (design round 1, D4): at the list's
+		 * last row the un-padded box measured 806..868.2 against an 868px viewport - flush
+		 * with the window's bottom edge - and 8px is the primitive's own clamp, so it stays
+		 * wholly on screen there. Where a clamped flyout still reaches over the composer's
+		 * left edge, the trade is stated in spec §6: it cannot take a press, and the
+		 * alternative is covering the list and the acts.
+		 *
+		 * ONE HELPER, BOTH ROW SHAPES: the withdrawn path (neither per-row capability
+		 * advertised) renders main's own box rather than this branch's, and the placement and
+		 * close arguments above are about the ROW, not about the controls - a row with no
+		 * per-row acts still has a clipped title to explain and a status to name
+		 * (`chat-sidebar.tsx`'s own note on the withdrawn shape says it draws "the
+		 * conversation button inside it, and nothing else", which is a claim about the acts).
+		 */
+		/*
+		 * ONE HELPER, BOTH ROW SHAPES. The withdrawn path (neither per-row capability
+		 * advertised) renders main's own box rather than this branch's, and the placement
+		 * and close arguments above are about the ROW, not about the controls: a row with
+		 * no per-row acts still has a clipped title to explain and a status to name.
+		 */
+		const keepFlyoutWhileFocusStaysInRow = (
+			event: ReactFocusEvent<HTMLElement>,
+		) => {
+			const next = event.relatedTarget as Node | null;
+			if (next && event.currentTarget.contains(next)) {
+				event.preventDefault();
+			}
+		};
+		const withFlyout = (box: ReactNode, key: string) => (
+			<Tooltip
+				key={key}
+				content={rowTooltip}
+				side="right"
+				align="start"
+				disableHoverableContent
+				collisionPadding={FLYOUT_COLLISION_PADDING}
+			>
+				{box}
+			</Tooltip>
+		);
 		if (!pinsEnabled && !archiveEnabled) {
-			return (
+			return withFlyout(
 				<div
-					key={row.session_id}
+					onBlur={keepFlyoutWhileFocusStaysInRow}
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
 					{silentRemedy}
-				</div>
+					{readAckRemedy}
+				</div>,
+				row.session_id,
 			);
 		}
 		/*
@@ -1881,18 +3362,21 @@ export function ChatSidebar({
 		const controls = (
 			<>
 				{/*
-				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
-				 * AT REST whenever the capability is present, so the reveal cannot reflow
-				 * the row: a row that reflows under the pointer is worse than no affordance
-				 * (the rule the entity row's own reveal is written under). Only `opacity`
-				 * moves here - nothing lifts, scales or translates on hover - and the whole
-				 * control is absent, not disabled, when the backend advertises no pin store
-				 * (`pinsEnabled`).
+				 * The pin, drawn at rest ONLY on a pinned row and revealed on any other row by
+				 * the pointer or by focus inside it. Its box is `size-6` and it takes no space
+				 * at all until it is drawn: `display: none` at rest on an unpinned row, so the
+				 * title has the whole row (`docs/design/sidebar-row-space.md`, D3), while a
+				 * pinned row is `flex` at every width because the mark is the STATE. That is
+				 * also the fix for the 240 defect the designer measured: the mark used to live
+				 * inside a `@container` query's wrapper and read `0x0` at the clamp minimum, so
+				 * a pinned row there drew no pin at all (D1). Nothing lifts, scales or
+				 * translates on hover, and the whole control is absent, not disabled, when the
+				 * backend advertises no pin store (`pinsEnabled`).
 				 *
-				 * 24px and `shrink-0`, matching the entity row's manage control beside it,
-				 * which is this panel's established shape for a row's secondary action: Tab
-				 * reaches it and the arrow-key traversal does not, because `data-chat-row`
-				 * is deliberately absent from it.
+				 * `shrink-0`, matching the entity row's manage control beside it, which is this
+				 * panel's established shape for a row's secondary action: Tab reaches it and the
+				 * arrow-key traversal does not, because `data-chat-row` is deliberately absent
+				 * from it.
 				 *
 				 * THE STATE MUST READ WITHOUT HOVERING, or the user cannot find what is
 				 * pinned: a pinned row's glyph is `text-ink` and FILLED (the `fill` idiom
@@ -1924,6 +3408,17 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-session-pin
+						/*
+						 * OUT OF THE TAB RING, AND STILL OPERABLE (§C4, U2). The reveal above is
+						 * `group-focus-within`, which is what made this control a Tab stop AND the
+						 * only way a keyboard reader could reach it; capping the row at one stop
+						 * would therefore trade a stop-count for an accessibility regression. The
+						 * chord is the replacement (`⌘⇧P` / `Ctrl+Shift+P`, `chat-regions.ts`), and
+						 * it presses THIS control rather than reimplementing its write - so the
+						 * repeat-press guard, the move correction and the `aria-pressed` state all
+						 * arrive unchanged.
+						 */
+						tabIndex={-1}
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
 					   the pressed state is `aria-pressed`'s to report. */
@@ -1969,32 +3464,48 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
+							/*
+							 * THE KEYBOARD'S CARET COMES BACK THROUGH THE CORRECTION ABOVE, not from
+							 * here (UX report round 1, U2). Unpinning takes this control's box out of
+							 * the layout and re-renders the row under a different section parent, so
+							 * the element this handler holds is gone by the time the row has moved -
+							 * a `focus()` on it cannot survive, and one on the NEW element cannot run
+							 * until the render that creates it. `rememberMovedRow(..., true, ...)`
+							 * already arms exactly that: the follow correction runs after the commit,
+							 * finds the row by id, and puts the caret on the mark when the mark is
+							 * drawn and on the row's own button when it is not. The pointer path
+							 * deliberately does not take focus (`follow` is false for it), because a
+							 * row revealed by the pointer has no keyboard place to keep.
+							 */
 						}}
 						className={cn(
-							"flex size-6 shrink-0 items-center justify-center rounded-md",
-							"transition-opacity duration-base ease-out-quart",
-							// The duration governs the transition INTO the current state, so
-							// the unpinned value is the fade-OUT and the revealed value the
-							// fade-IN: quick to appear, gentler to leave. The reveal is
-							// `opacity` alone - the box, the glyph's size and the row's
-							// height are the same in both states, which is what makes the
-							// reserved slot unable to reflow the row.
+							"size-6 shrink-0 items-center justify-center rounded-md",
+							/*
+							 * THE TWO STATE'S DISPLAY VALUES, and the base is `hidden` rather than `flex`
+							 * on purpose: `hidden` and `flex` are two display utilities of equal
+							 * specificity, so a class list carrying both would be decided by the
+							 * stylesheet's own order. Base `hidden` with the variant ADDING `flex` is the
+							 * shape the retired shared control was written in (and the one
+							 * `chat-sidebar-archive.test.mjs` pinned after the cascade bug that shipped
+							 * the first time it was got wrong): the variant only ever raises the control
+							 * into the layout, never competes with the rest state.
+							 */
 							pinned
-								? // Visible, because a pinned glyph is the STATE and hiding it would
-									// be worse than the hazard. Its repeat-press hazard is handled by
-									// the press guard, not by taking the control away.
-									"text-ink"
+								? // Visible, because a pinned glyph is the STATE and hiding it would be
+									// worse than the hazard. Its repeat-press hazard is handled by the
+									// press guard, not by taking the control away.
+									"flex text-ink"
 								: cn(
-										"text-ink-dim opacity-0",
+										"hidden text-ink-dim",
 										/*
-										 * HIDDEN IS ALSO INERT: an affordance the reader cannot see must
-										 * not be the thing a press lands on (QA round 1, U3). The row
-										 * behind it is the hover target - `group-hover` reveals the
-										 * control, and the same two states make it operable - so the
-										 * transition from inert to operable is the reveal itself.
+										 * HIDDEN IS ALSO INERT, and here that is a property rather than a rule: an
+										 * element that is not displayed cannot receive a press at all, so the
+										 * `pointer-events-none` pairing that used to carry this comes off (QA round
+										 * 1, U3 - the property it was written for is now stronger). The row behind
+										 * it is the hover target: `group-hover`/`group-focus-within` reveal the
+										 * control, and the same two states are what make it operable.
 										 */
-										"pointer-events-none",
-										"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:duration-fast",
+										"group-hover:flex group-hover:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted",
 										"hover:text-ink!",
 									),
 							// Colour step only, and only while this row is NOT the current
@@ -2028,16 +3539,21 @@ export function ChatSidebar({
 				 * `[data-chat-row]` and this button deliberately does not carry the
 				 * attribute - the rule the entity row's own two controls are written under.
 				 *
-				 * RESERVED AT REST, REVEALED BY OPACITY ONLY. It is `size-6 shrink-0` and
-				 * present in the layout whenever the capability is, so the reveal cannot
-				 * reflow the row under the pointer; only `opacity`, `pointer-events` and
-				 * colour move, which keeps this inside the design contract's rule that
-				 * nothing lifts, scales or translates on hover. `group-focus-within` is what
-				 * makes it reachable by keyboard: pressing Tab into the row's button reveals
-				 * it, and the next Tab lands on it.
+				 * ABSENT FROM THE LAYOUT AT REST, REVEALED BY `display` (design D3). The control
+				 * is `hidden` until the pointer or the keyboard is inside the row, and the two
+				 * group states ADD `flex` - so the reveal does reflow the row by exactly this
+				 * control's width, which is the whole point: a reserved box cost every title
+				 * 56px at rest, on every row, whether or not the pointer was near it. What does
+				 * NOT move is the row's own box, and the title is what pays (the pan exists to
+				 * give it back - see `chat-row-title.tsx`). `display` is not one of the
+				 * properties `docs/branding.md` § 5 lets animate, and nothing lifts, scales or
+				 * translates here. `group-focus-within` is what makes it reachable by keyboard:
+				 * pressing Tab into the row's button reveals it, and the next Tab lands on it.
 				 *
-				 * HIDDEN IS ALSO INERT: `pointer-events-none` while invisible, because an
-				 * affordance the reader cannot see must not be the thing a press lands on.
+				 * HIDDEN IS ALSO INERT, and here that is a property rather than a rule: an
+				 * element that is not displayed cannot receive a press at all, which is why the
+				 * `pointer-events-none` pairing the reserved version carried is gone rather than
+				 * restated (`chat-sidebar-archive.test.mjs` asserts its absence).
 				 *
 				 * THE STATE MUST READ WITHOUT HOVERING, or a reader cannot tell an archived
 				 * row from a live one: an archived row carries the leading marker AND this
@@ -2048,6 +3564,9 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-session-archive
+						/* Out of the Tab ring for the pin's reason: one stop per row, and the
+						   row's acts on `⌘⇧A` / `Ctrl+Shift+A` (`chat-regions.ts`). */
+						tabIndex={-1}
 						aria-label={archiveControlLabel(label, archived)}
 						/*
 						 * The action, never the state: "Archive \u201cX\u201d" is what pressing
@@ -2093,36 +3612,70 @@ export function ChatSidebar({
 							).then((accepted) => {
 								/*
 								 * A REFUSED PRESS MOVES NOTHING, focus included: the row is still
-								 * there and the reader is still on the control they pressed, with the
-								 * store's refusal sentence in the panel's register at its root.
+								 * there and the reader is still on the control they pressed, with
+								 * the store's refusal sentence as an ordinary toast in the app's one
+								 * container (design D11's supersession entry of 2026-09-27: the
+								 * sidebar lane that replaced the root register was itself retired,
+								 * and the register is not kept beside it).
+								 *
+								 * AND AN ACCEPTED ONE NEEDS NOTHING FROM THIS HANDLER EITHER: the Undo
+								 * offer this press stands is written by the STORE, in the same update
+								 * that settles the write (design round 8, D27's second clause). It used
+								 * to be raised here, a microtask later, which put the accepted departure
+								 * and the band that answers it in two commits - and the commit between
+								 * them is the one whose extent dips below the reader's position. ONE ACT,
+								 * ONE REGISTER (UX round 1, U2) survives the move rather than being
+								 * traded for it: every surface's accepted archive raises the same offer,
+								 * from the one place that knows the write was accepted.
 								 */
 								if (!accepted) return;
 								restoreFocus();
-								/*
-								 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving takes the row AND its
-								 * control out of the list, which is exactly the situation the offer
-								 * exists for - so the row's press offers the same Undo the typed
-								 * `/archive` does, rather than the same act reporting differently
-								 * depending on which surface asked for it. Unarchiving offers none: the
-								 * row comes back into the list, which is its own visible trace.
-								 */
-								if (archived) return;
-								offerArchiveUndo({
-									sessionId: row.session_id,
-									title: row.title ?? undefined,
-									archived: true,
-								});
 							});
 						}}
 						className={cn(
-							"flex size-6 shrink-0 items-center justify-center rounded-md",
-							"text-ink-dim opacity-0 pointer-events-none",
-							// The duration governs the transition INTO the current state, so the
-							// resting value is the fade-out and the revealed one the fade-in:
-							// quick to appear, gentler to leave.
-							"transition-opacity duration-base ease-out-quart",
-							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
-							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							/*
+							 * THE ARCHIVE CONTROL IS ABSENT FROM THE LAYOUT AT REST, not transparent in
+							 * it (design D3): base `hidden`, revealed by `flex` under the pointer or under
+							 * focus inside the row. `display: none` replaces the old `opacity-0` +
+							 * `pointer-events-none` pairing, and on the property that pairing was written
+							 * for it is strictly stronger - an element that is not displayed cannot
+							 * receive a press at all, so "a hidden control is inert" stops being a rule
+							 * someone has to remember. The base is `hidden` rather than `flex` because
+							 * both are display utilities of equal specificity: a base `flex` beside the
+							 * variant's own would be decided by the stylesheet's order rather than by
+							 * the pointer.
+							 *
+							 * WHAT IS KEPT FROM THE OLD REVEAL, because losing it would be a regression
+							 * rather than a simplification: the pointer's own control reads at full ink,
+							 * and there is nothing to transition - `display` is not one of the properties
+							 * `docs/branding.md` § 5 lets animate, and the app's motion vocabulary has no
+							 * entrance to spend here.
+							 */
+							/*
+							 * NO SLOT IS RESERVED, ON ANY ROW (manager, pass 8 - the operator's own
+							 * constraint: "the pinned rows can show up taking up the space only for the
+							 * pin, not adding additional empty space for the archive button"). Reserving
+							 * the archive's slot on a pinned row bought the mark's stationarity and paid
+							 * for it with the space the row exists to save - measured `56/56 at every
+							 * width`, i.e. a pinned row costing exactly what an unpinned one does, which
+							 * is the thing this whole change set out to stop.
+							 *
+							 * THE STATIONARITY COMES FROM THE ORDER INSTEAD. The archive's box is drawn
+							 * FIRST in the pair and the mark LAST, so the mark owns the row's right-hand
+							 * edge in flow: revealing the archive takes its 28px out of the TITLE, to the
+							 * mark's left, and the mark does not move - while at rest the pair is `hidden`
+							 * and the row costs the pin alone. Measured after the change: mark identical
+							 * before and under the pointer, `elementFromPoint` at its centre still the
+							 * mark itself, and the resting pair `display: none`.
+							 */
+							cn(
+								"hidden size-6 shrink-0 items-center justify-center rounded-md",
+								/* ORDER FIRST: the mark owns the row's right edge (see the comment below). */
+								"order-first",
+								"text-ink-dim",
+								"group-hover:flex group-hover:text-ink-muted",
+								"group-focus-within:flex group-focus-within:text-ink-muted",
+							),
 							/*
 							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
 							 * D22). The row box and both controls now declare the same
@@ -2160,111 +3713,13 @@ export function ChatSidebar({
 				)}
 			</>
 		);
-		/*
-		 * THE SHARED CONTROL, mounted only while a pair could be drawn at all and shown
-		 * only below the panel's default width (`NARROW_SHOWS_THE_SHARED_CONTROL`): one
-		 * reserved 24px slot holding both acts as menu items. It exists because the pair
-		 * is a width COST and its 56px is not payable at the clamp minimum - not because
-		 * either act is less wanted there.
-		 *
-		 * A MENU RATHER THAN A SECOND GLYPH. One 24px box cannot carry two controls (the
-		 * rule the pair exists for), so the narrow band would otherwise lose an act: a
-		 * single button can only invert one of the two flags. The two items name their
-		 * acts in words, which is what keeps the control legible where the row has no
-		 * room to spell a tooltip.
-		 *
-		 * NO PRESS GUARD, unlike the two row controls: both items are two clicks from the
-		 * list (open, then choose), so the reflex the guards protect against - the second
-		 * click of a double-click landing on whatever row slid into the gap - cannot reach
-		 * a menu item. A guard here would be a rule with no gesture behind it.
-		 */
-		const sharedActions = (
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<button
-						type="button"
-						data-session-actions
-						aria-label={`Actions for ${label}`}
-						className={cn(
-							// THE BASE IS `hidden` AND THE QUERY ADDS `flex`, IN THAT ORDER
-							// SPECIFICALLY. Both are display utilities, so a base `flex` beside
-							// the variant's own would be two display rules of equal weight and the
-							// cascade - not the container - would decide: measured, the control
-							// drew at every width. A base `hidden` cannot lose to a variant that
-							// only ever ADDS `flex` when the container matches.
-							"hidden size-6 shrink-0 items-center justify-center rounded-md",
-							ROW_CONTROLS_SHARED_SHOWN,
-							/*
-							 * AND THE SAME REVEAL MODEL AS THE PAIR (design round 2, D10). This
-							 * control used to be drawn at rest in the row's own text ink - measured
-							 * 12.84:1 dark / 15.23:1 light - and to DIM when the pointer arrived
-							 * (7.49:1 / 7.95:1), while the pair beside it reveals from `opacity-0`.
-							 * That is backwards on the one width where the title has least room:
-							 * every row wore a title-weight glyph, and hovering the row made the
-							 * affordance fainter rather than clearer.
-							 *
-							 * So it is reserved at rest and revealed by the pointer or by focus,
-							 * exactly as the pin and archive controls are: only `opacity` and
-							 * `pointer-events` move, the box stays 24px, and nothing reflows.
-							 *
-							 * `data-[state=open]` is the third way in and it is not decoration:
-							 * Radix keeps focus on the trigger while its menu is up, but the menu
-							 * is a PORTAL - a pointer that opens it and leaves the row must not
-							 * undraw the control the menu belongs to.
-							 */
-							"text-ink-dim opacity-0 pointer-events-none",
-							"transition-opacity duration-base ease-out-quart",
-							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
-							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
-							"data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto",
-							"hover:text-ink!",
-							// The ROW's own state, never a ground - see the two controls above.
-							!current && "hover:bg-row-hover",
-						)}
-					>
-						<MoreHorizontal aria-hidden="true" className="size-4" />
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem
-						onSelect={() =>
-							void setSessionPin(row.session_id, !pinned, {
-								title: row.title ?? undefined,
-								updated_at: row.updated_at ?? undefined,
-							})
-						}
-					>
-						<Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} />
-						<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onSelect={() =>
-							void setSessionArchived(
-								row.session_id,
-								!archived,
-								row.title ?? undefined,
-							)
-						}
-					>
-						{archived ? (
-							<ArchiveRestore aria-hidden="true" />
-						) : (
-							<Archive aria-hidden="true" />
-						)}
-						<span>
-							{archived ? "Unarchive conversation" : "Archive conversation"}
-						</span>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		);
 
-		return (
+		return withFlyout(
 			<div
-				key={row.session_id}
 				/* The row's own box, and the hook the current-row ground is asserted
 				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
 				data-session-row={row.session_id}
+				onBlur={keepFlyoutWhileFocusStaysInRow}
 				className={cn(
 					// Carried while EITHER per-row control is mounted, because both reveal
 					// themselves through `group-hover`/`group-focus-within` on it, and absent
@@ -2305,52 +3760,76 @@ export function ChatSidebar({
 			>
 				{rowButton}
 				{silentRemedy}
+				{readAckRemedy}
 				{/*
-				 * THE PAIR, OR THE ONE CONTROL THAT STANDS IN FOR IT WHEN THE PANEL IS AT
-				 * ITS NARROWEST. Both controls are siblings of the row's button, never
-				 * children, and both reveal on the pointer or on focus inside the row - the
-				 * pin and the archive control are two independent affordances, so the row
-				 * carries them as a pair of reserved 24px slots rather than sharing one
-				 * (two controls in one box occlude each other's reveal, and an overlapping
-				 * reveal hides the title of the row the pointer is on).
+				 * THE PAIR. Both acts are siblings of the row's button, never children, and both
+				 * are absent from the layout until the pointer or the keyboard is inside the row
+				 * (`display`, not `opacity`): at rest a row's title has the whole row, and the two
+				 * acts take 56px of it under the pointer, which is what the title's pan exists to
+				 * answer (`docs/design/sidebar-row-space.md`, D2 and D3).
 				 *
-				 * THE PAIR COSTS THE TITLE 28px PER CONTROL (24 + the row's own 4px gap),
-				 * which is the price this panel has already refused once: the per-row
-				 * BROWSER control was deleted on 2026-09-18 because it "cost every title
-				 * its 28px for a control used rarely". Two reserved slots are 56px off
-				 * every title, on every row, and at the 240px clamp minimum that leaves a
-				 * bare row about eight characters. A row that carries an unread mark is
-				 * NOT worse off than a bare one, which this comment used to claim and
-				 * which the measurement refutes (design round 2, D14): the mark is drawn
-				 * inside the row's reserved LEADING status slot, so the title measures the
-				 * same width either way (180px at 280, 168px at 240, marked or not).
-				 * Measured; the numbers and the frames that carry them are in
-				 * `docs/design/session-archive-delete.md`.
+				 * THE WRAPPER IS ALWAYS A FLEX BOX, AND WHAT SHUTS IT IS THE ROW'S OWN STATE:
+				 * `hidden` while the row is unpinned, because then NEITHER control is drawn at
+				 * rest; `flex` on a pinned row, because the mark inside it is a STATE and must
+				 * read without hovering. That is what fixes the 240 defect the designer measured
+				 * (a pinned row at the clamp minimum drew no pin at all, because the mark lived
+				 * inside the wrapper the old container query hid). The switch is on the WRAPPER
+				 * as well as on each control so the 4px row gap is not paid by a box that draws
+				 * nothing: a reserved-but-empty wrapper would still cost the title its gap.
 				 *
-				 * SO THE PAIR IS CARRIED ONLY FROM THE PANEL'S DEFAULT WIDTH UP, and below
-				 * it ONE shared control opens both acts as menu items: the same two acts,
-				 * one slot, no act lost. The switch is a container query on the panel
-				 * (`@container/chatsidebar`), the idiom this file already uses to shed the
-				 * mark-all-read label and the directory chip.
+				 * THE REVERSAL, if the 240 hover turns out to be too busy for a pair, is one
+				 * class here plus the shared control it would stand in for - see the note where
+				 * the two shed constants used to live at the top of this file.
 				 */}
 				{bothControls ? (
 					<div
 						data-session-control-pair
-						className={cn("flex items-center gap-1", ROW_CONTROLS_PAIR_SHED)}
+						className={cn(
+							"items-center gap-1",
+							pinned
+								? "flex"
+								: "hidden group-hover:flex group-focus-within:flex",
+						)}
 					>
 						{controls}
 					</div>
 				) : (
 					controls
 				)}
-				{bothControls && sharedActions}
-			</div>
+			</div>,
+			row.session_id,
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
-		const rows = children(kind, name);
-		const key = `${kind}:${name}`;
+		const rows = scopeRows(kind, name);
+		const key = catalogueScopeKey(kind, name);
 		const open = Boolean(query) || isOpen(key);
+		/*
+		 * THE GROUP'S BADGE AND ITS SENTENCES, both from the module rather than from a
+		 * condition here (`sidebar-scope-paging.ts` carries the rules and their
+		 * reasons). The badge reads the CENSUS when the daemon sent one, so a group
+		 * holding 434 conversations stops advertising the 283 a page happened to
+		 * carry; the view is what makes "No chats yet" unreachable while the census
+		 * says otherwise, which is the operator's own screenshot.
+		 */
+		const badge = groupBadgeCount({
+			pageable: groupPaging,
+			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
+			held: rows.length,
+			searching: Boolean(query.trim()),
+		});
+		const view = groupChatsView({
+			pageable: groupPaging,
+			scope: catalogueScopes[key],
+			/*
+			 * THE SCOPE'S OWN LIST, not the rows drawn (round 2, R2-3): the press's arithmetic
+			 * and its focus index both count the rows this group HOLDS, and a row the search
+			 * filtered out or that the panel does not draw is still one of them. Falling back
+			 * to the drawn rows is the withdrawn path, where there is no scope at all.
+			 */
+			held: catalogueScopes[key]?.ids.length ?? rows.length,
+			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
+		});
 		if (
 			query &&
 			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
@@ -2449,10 +3928,32 @@ export function ChatSidebar({
 					    still lets an absent or two-digit count shift everything left
 					    of it, which moved the glyph across 14px between rows and made
 					    the reveal jitter as the pointer ran down the list. */}
-						<span className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim">
-							{rows.length || ""}
+						<span
+							/*
+							 * THE BADGE SAYS WHAT IT COUNTS (round 1, D1 + D5). The panel draws two
+							 * kinds of number in one 12px column - a SECTION heading's count of the rows
+							 * it is drawing, and a group's badge, which is this scope's census - and they
+							 * look alike. `title` is what a pointer user gets; the `sr-only` span below is
+							 * what a screen reader gets, because this digit sits inside buttons whose own
+							 * `aria-label`s replace their children and it was otherwise announced nowhere
+							 * at all.
+							 */
+							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
+							className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim"
+						>
+							{badge || ""}
 						</span>
 					</button>
+					{/*
+					 * THE CENSUS, ANNOUNCED (round 1, D5), and INSIDE THE ROW rather than after
+					 * it: a sibling element between this row and the group's body is a sibling the
+					 * disclosure's own consumers walk past - the evidence rig reads the body as the
+					 * row's next element, and an `sr-only` span (absolutely positioned, out of flow)
+					 * is text in the row rather than a new thing between the row and its children.
+					 */}
+					{badge > 0 && (
+						<span className="sr-only">{groupBadgeLabel(badge)}</span>
+					)}
 					<button
 						type="button"
 						// Stepped down from `ink` so the row's own action outranks it.
@@ -2473,9 +3974,168 @@ export function ChatSidebar({
 				{open && (
 					<div>
 						{rows.map((row) => sessionRow(row, true))}
-						{!rows.length && (
-							<p className="py-1 pl-7 text-meta text-ink-dim">No chats yet</p>
-						)}
+						{/*
+						 * THE GROUP'S OWN SENTENCE.
+						 *
+						 * It is drawn from `view.sentence` and never chosen here, because the
+						 * sentence and the condition that selects it are ONE claim: the whole
+						 * defect this closes was a group with 434 chats drawing "No chats yet"
+						 * because the only question asked was whether the page it happened to
+						 * hold was empty. See `sidebar-scope-paging.ts` for the precedence and
+						 * for the invariant that can never render that sentence.
+						 *
+						 * `aria-live="polite"` on the loading register only: the panel already
+						 * announces `Loading agents…` that way, and a reader who expanded a group
+						 * is owed the fact that something is on its way. The other sentences are
+						 * answers rather than transitions, and an answer that appears as the
+						 * reader arrives is already where they are looking.
+						 */}
+						{/*
+						 * THE SENTENCE'S OWN REGION, MOUNTED IN EVERY STATE (round 2, R2-5), and
+						 * the ONE treatment all three refusal sites wear (round 2, D10 = U9):
+						 * clamped to two lines so a long backend sentence cannot move the control,
+						 * the transport's own detail in `title`, and the Retry on its OWN line so its
+						 * position does not depend on the message's length.
+						 *
+						 * WHY THE REGION CANNOT ARRIVE WITH ITS TEXT: the swap from "Loading chats…"
+						 * to the settled sentence happens in ONE commit, so a region that mounts with
+						 * the new text has no change to announce - the outcome of a press was silent.
+						 * `sr-only` while there is nothing to say keeps it in the tree and out of the
+						 * layout.
+						 */}
+						<div
+							aria-live="polite"
+							className={
+								view.state !== "rows" && view.sentence !== null
+									? "py-1 pl-7"
+									: "sr-only"
+							}
+						>
+							{view.state !== "rows" && view.sentence !== null && (
+								<p
+									className="line-clamp-2 text-meta text-ink-dim"
+									title={view.sentence}
+								>
+									{view.sentence}
+								</p>
+							)}
+							{/*
+							 * AND THE REGION'S RETRY ONLY WHEN THIS IS THE FAILED FIRST PAGE
+							 * (round 3, R3-2). In the rows-plus-failed-extension state the panel
+							 * draws its own Retry below - the one that re-reads from the CURSOR -
+							 * and this second copy sat inside the `sr-only` region, one Tab away
+							 * and performing a different action (a first-page re-read). A control
+							 * a reader can reach without seeing it, doing something else, is worse
+							 * than no control: the region carries the sentence's announcement and
+							 * the rows state draws the control.
+							 */}
+							{view.state !== "rows" && view.retry && (
+								<p className="pt-1">
+									<button
+										type="button"
+										className="text-meta text-ink-dim underline hover:text-ink"
+										onClick={() => void fetchScopePage(kind, name, null)}
+									>
+										Retry
+									</button>
+								</p>
+							)}
+						</div>
+						{/*
+						 * THE GROUP'S TAIL, and why it is an EXPLICIT row rather than a
+						 * sentinel (ruling 2 / design §5.4). The entity region is shared by every
+						 * expanded group, so a sentinel near the fold would fire for whichever
+						 * groups happen to sit there - the load would become a function of scroll
+						 * position rather than of intent, and several groups would extend at once,
+						 * which is the amplification this change exists to remove, reintroduced
+						 * inside one container. An explicit row is deterministic and is the
+						 * operator's own stated fallback ("load them a page at a time").
+						 *
+						 * Its three states are the extension's whole life: the press, the wait,
+						 * and the refusal. The refusal KEEPS the rows above it - they are not a
+						 * claim the failure retracts - and offers the press again, which is the
+						 * only remedy for a page that did not arrive.
+						 */}
+						{view.state === "rows" &&
+							(catalogueScopes[key]?.loading ? (
+								<p
+									className="py-1 pl-7 text-meta text-ink-dim"
+									aria-live="polite"
+								>
+									Loading more…
+								</p>
+							) : view.retry ? (
+								/*
+								 * THE REFUSAL'S SHAPE IS FIXED RATHER THAN MEASURED (round 1, D4). The
+								 * sentence is clamped to two lines so a long daemon string cannot push the
+								 * control down the panel - the position the reader is aiming at must not
+								 * depend on how long the message turned out to be - and the transport's
+								 * own text rides in `title`, where a reader who wants the detail can get
+								 * it without the panel shouting it. The store's sentence is what is drawn.
+								 */
+								<>
+									<p
+										className="line-clamp-2 py-1 pl-7 text-meta text-ink-dim"
+										aria-live="polite"
+									>
+										{view.sentence}
+									</p>
+									<p className="py-1 pl-7">
+										<button
+											type="button"
+											className="text-meta text-ink-dim underline hover:text-ink"
+											onClick={() =>
+												pressShowMore(
+													kind,
+													name,
+													key,
+													catalogueScopes[key]?.ids.length ?? rows.length,
+													view.addCount,
+												)
+											}
+										>
+											Retry
+										</button>
+									</p>
+								</>
+							) : view.more ? (
+								<button
+									type="button"
+									/*
+									 * A DRIVER ANCHOR, on the convention `data-chat-section` and
+									 * `data-session-delete` already follow: the label is a copy string, so a
+									 * scene that reached this control by its text would be asserting a copy
+									 * edit, and the tail's own press is what the evidence frame has to make.
+									 *
+									 * `data-chat-row` IS THE KEYBOARD PATH (round 1, U2). The control sits at
+									 * the end of the group's own rows, so reaching it by Tab means passing
+									 * every one of them - but the region's arrow-key traversal walks
+									 * `[data-chat-row]` elements and focuses them, so joining that set puts the
+									 * press one ArrowDown from the group's last row.
+									 */
+									data-scope-more={key}
+									data-chat-row
+									aria-label={`Show ${view.addCount} more chats in ${name}`}
+									title={`Show ${view.addCount} more chats in ${name}`}
+									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
+									onClick={() =>
+										pressShowMore(
+											kind,
+											name,
+											key,
+											catalogueScopes[key]?.ids.length ?? rows.length,
+											view.addCount,
+										)
+									}
+								>
+									{/*
+									 * WHAT THE PRESS WILL ADD, not the page size (round 1, D7): with 45
+									 * still to come beside a 70 badge, `Show 25 more` was a page size
+									 * dressed as a remainder.
+									 */}
+									{`Show ${view.addCount} more`}
+								</button>
+							) : null)}
 					</div>
 				)}
 			</div>
@@ -2560,6 +4220,7 @@ export function ChatSidebar({
 		label: string,
 		initial: boolean,
 		count?: number,
+		glyph?: LucideIcon,
 		action?: ReactNode,
 		toggleRef?: Ref<HTMLButtonElement>,
 	) => (
@@ -2597,6 +4258,20 @@ export function ChatSidebar({
 				) : (
 					<ChevronRight className="size-3.5" />
 				)}
+				{/*
+				 * THE SECTION'S OWN GLYPH (operator, 2026-09-25: "improve the design of
+				 * the team/agent collapsibles to be more modern"). A muted leading mark
+				 * is how the reference's group headers read - `BOT Agents` rather than a
+				 * bare word - and it earns its pixel by being the only thing that
+				 * distinguishes two sections whose labels are otherwise the same shape.
+				 * `aria-hidden`, because the label beside it already names the section.
+				 */}
+				{glyph
+					? createElement(glyph, {
+							"aria-hidden": true,
+							className: "size-3.5 shrink-0 text-ink-dim",
+						})
+					: null}
 				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
@@ -2605,25 +4280,279 @@ export function ChatSidebar({
 			{action}
 		</div>
 	);
+	/*
+	 * A SECTION LABEL of the one list (§C1): `RUNNING`, `TODAY`, `THIS WEEK`,
+	 * `OLDER`, and `PINNED` when the capability is on.
+	 *
+	 * TEXT, NOT A CONTROL, and that is the U22 fix rather than a simplification:
+	 * the old headings were disclosure buttons, so a click meant for a row a few
+	 * pixels lower collapsed the section under it. A label is `text-meta` at 500 in
+	 * `ink-dim`, set in capitals by CSS (the source keeps sentence case, so a screen
+	 * reader says "This week" rather than spelling it), and it is not in the arrow
+	 * ring. `action` is the one header control the list carries - `Mark all N read`
+	 * - as a sibling, never nested.
+	 *
+	 * 24px tall with 8px above it: §B6's "8px between a section's rows and its next
+	 * label (24px label block)". The FIRST label drops the 8px (`first:mt-0` on the
+	 * section), so the list's top edge is the destinations' 16px step and nothing
+	 * more.
+	 */
+	/*
+	 * HOW FAR A COLLAPSIBLE SECTION MAY EXPAND (operator, 2026-09-25: "we can just
+	 * limit how far a collapsible section can expand").
+	 *
+	 * The cap is a ROW COUNT and never a height, which is the whole point: a
+	 * height cap needs a scrollbar to reach what it clipped (the two nested
+	 * scrollers this replaces), while a count cap costs a click and clips nothing.
+	 * `Show N more` raises THAT section's own cap by one step, so a reader who
+	 * wants the eleventh agent does not also open the eleventh team.
+	 *
+	 * The state is per window and not persisted: it is a question about the moment
+	 * ("which of my agents are in this list, again?") rather than a preference,
+	 * and a remembered cap would leave a reader who expanded it once in June with
+	 * a permanently longer column every launch afterwards.
+	 */
+	const [sectionCaps, setSectionCaps] = useState<Record<string, number>>({});
+	const cappedRows = (key: string, rows: ReactNode[]) => {
+		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
+		const hidden = rows.length - cap;
+		return (
+			<>
+				{rows.slice(0, cap)}
+				{hidden > 0 && (
+					<button
+						type="button"
+						data-sidebar-section-more={key}
+						onClick={() =>
+							setSectionCaps((previous) => ({
+								...previous,
+								[key]:
+									(previous[key] ?? SIDEBAR_SECTION_ROWS) +
+									SIDEBAR_SECTION_ROWS,
+							}))
+						}
+						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+					>
+						{hidden === 1 ? "Show 1 more" : `Show ${hidden} more`}
+					</button>
+				)}
+			</>
+		);
+	};
+	const sectionLabel = (label: string, action?: ReactNode) => (
+		<div className="flex h-6 items-center gap-1 px-2">
+			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
+				{label}
+			</h3>
+			{action}
+		</div>
+	);
+	/*
+	 * THE LIST'S ONE TAB STOP (§C4 and UX-BASELINE U6; the U2 walk's 70 presses).
+	 *
+	 * WHAT WAS WRONG. Every row's button was an ordinary tab stop AND both of the
+	 * row's acts beside it were too — they are revealed by `group-focus-within`, and
+	 * a reveal that only a pointer could reach would not have been keyboard
+	 * access at all. Twenty conversations therefore charged the reader sixty
+	 * presses to walk from the list's top to the header, and the arrow traversal
+	 * that already existed was a hundred more to reach the other end.
+	 *
+	 * WHAT THIS IS. One stop for the whole panel, and it belongs to the row the
+	 * reader is ON. The browser is not told where the stop is by React — the rows
+	 * carry no `tabIndex` prop — because the stop is a property of the WALK rather
+	 * than of any row: it moves on every arrow press, it moves when focus lands on
+	 * a row for any other reason (a click, a `/` search result, the move
+	 * correction after a pin), and it has to survive rows mounting, unmounting and
+	 * re-filing under a different section parent. So one function owns it
+	 * (`applyRowStop`), three things call it, and a layout effect re-asserts it
+	 * after every commit — a row that just mounted is `tabIndex` 0 by default, and
+	 * the assertion is what stops the set from ever containing two members.
+	 *
+	 * The rows are collected by `[data-chat-row]`, the same query the arrow walk
+	 * below uses, so the walk and the ring cannot disagree about what a row is.
+	 */
+	const rowStopRef = useRef<HTMLElement | null>(null);
+	const applyRowStop = (stop: HTMLElement | null) => {
+		const nav = navRef.current;
+		if (nav === null) return;
+		/*
+		 * AND THE RING EXCLUDES WHAT THE CARET CANNOT REACH (agent review round 2's
+		 * R7): the same rule the arrow walk applies below, so a `disabled` row can
+		 * neither hold the stop nor keep `tabIndex` 0 - `focus()` on it is a no-op,
+		 * and a stop nobody can focus is the dead stop that finding measured.
+		 */
+		const allRows = [...nav.querySelectorAll<HTMLElement>("[data-chat-row]")];
+		const rows = allRows.filter(
+			(row) => !(row as { disabled?: boolean }).disabled,
+		);
+		if (rows.length === 0) return;
+		/*
+		 * A departed stop hands the ring to the first row rather than leaving it
+		 * empty: the pin's own move correction focuses a row that is a NEW node (the
+		 * row re-files under a different section), and the node the reader was on is
+		 * gone by then. Falling to the first row and then following focus would flicker
+		 * the stop; following focus without the fallback would leave the ring empty for
+		 * the commit in which the row moved. The fallback is what the layout effect
+		 * applies, and focus then corrects it — the same order the pin's correction runs
+		 * in.
+		 */
+		const target = stop !== null && rows.includes(stop) ? stop : rows[0];
+		rowStopRef.current = target;
+		for (const row of allRows) {
+			row.tabIndex = rows.includes(row) && row === target ? 0 : -1;
+			/*
+			 * AND IT IS THE REGION'S DOOR TOO. `F6` into the sidebar should land on the
+			 * row the reader was on, not on the panel's box: the stop is exactly "the row
+			 * this reader is on", so saying it twice in two attributes is how the walk and
+			 * the ring start disagreeing. `[data-region-entry]` is what `enterChatRegion`
+			 * reads, and the roving stop is the only thing that writes it here.
+			 */
+			row.toggleAttribute(
+				CHAT_REGION_ENTRY_ATTR,
+				rows.includes(row) && row === target,
+			);
+		}
+	};
+	useLayoutEffect(() => {
+		applyRowStop(rowStopRef.current);
+	});
+	/*
+	 * FOCUS IS WHAT MOVES THE STOP. `onFocus` on the panel rather than `onFocus` on
+	 * each row, because the rows are rendered by four different call sites (the
+	 * list's sections, the entity disclosure's children, the agents region and the
+	 * mark-all-read control) and a prop threaded through all of them is four places
+	 * to forget. It is a React `onFocus` rather than a native capture listener for
+	 * the reason `onBlur` on the row's own box is: React's synthetic focus event
+	 * bubbles from the focused element, which is where the answer is.
+	 */
+	const onRowFocus = (event: ReactFocusEvent<HTMLElement>) => {
+		const row = (event.target as HTMLElement).closest?.("[data-chat-row]");
+		/*
+		 * Only a row inside THIS panel moves the stop. Focus arriving on a control
+		 * that is not a row - the search field, the foot's menu, a section's `Show
+		 * more` - leaves it where it was, so Tab back into the list returns to the row
+		 * the reader left rather than to the top.
+		 */
+		if (row !== null && row !== undefined && navRef.current?.contains(row))
+			applyRowStop(row as HTMLElement);
+	};
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const target = event.target as HTMLElement;
+		/*
+		 * THE ROW ACTS' CHORD (§C4, U2). Both controls left the Tab ring below, and
+		 * this is what keeps them operable without a pointer. `chatRowActControl`
+		 * finds the control from the row's own box, which is where the acts live (a
+		 * nested button is invalid HTML and unfocusable, so they are siblings of the
+		 * row's button and never children of it).
+		 *
+		 * A `.click()` rather than the handler's own body: both controls carry the
+		 * guards that make a repeat press safe - the pin's `dropRepeatPress` and the
+		 * archive's `archivePressOutcome`, which read `event.detail === 0` as "this
+		 * came from the keyboard and always acts on the focused row" - and a press the
+		 * keyboard makes must take the same path as a press Enter makes on the control
+		 * itself, guards included. Calling the handlers directly is how the two paths
+		 * drift.
+		 */
+		const act = chatRowAct(event);
+		if (act !== null) {
+			const control = chatRowActControl(target, act);
+			if (control !== null) {
+				event.preventDefault();
+				control.click();
+			}
+			return;
+		}
 		if (target.tagName === "INPUT") {
+			/*
+			 * THE FIELD'S OWN ENTRY INTO THE LIST IS SCOPED TO THE CHATS REGION (UX round 2, U2), and the
+			 * two presses below are the ones the finding names. `event.currentTarget` is the PANEL, so an
+			 * unscoped query answers with the ENTITY region's first `[data-chat-row]` - measured, the
+			 * `Agents` disclosure - and a reader who pressed ↓ to enter the list walked the group rows
+			 * (Agents, then Teams, then Mark all N read) before reaching the first conversation. The list
+			 * this field's own notice calls "the results" is the conversations, so the query asks for the
+			 * region they are in: the same partition the archive's hand-off and the pile-clearing hand-off
+			 * are written under, and the arrow walk's own ring stays the panel's document order, which is
+			 * what makes the region the caret starts in decide the whole path.
+			 */
+			const firstRowInList = () =>
+				event.currentTarget.querySelector<HTMLElement>(
+					'[data-sidebar-region="chats"] [data-chat-row]',
+				);
+			/*
+			 * ↓ ENTERS THE RESULTS, which is the command palette's own model applied
+			 * to the one other list in this column (U15). Without it the field was a
+			 * trap for a keyboard user: the list below it was reachable only by Tab,
+			 * and the field's own notice said nothing about how to get there.
+			 */
+			if (event.key === "ArrowDown") {
+				const first = firstRowInList();
+				if (first) {
+					event.preventDefault();
+					first.focus();
+					applyRowStop(first);
+				}
+				return;
+			}
 			if (event.key === "Escape") {
 				setQuery("");
-				target.blur();
+				setFilterOpen(false);
+				/*
+				 * THE CLEARED FIELD HANDS FOCUS TO THE LIST rather than blurring. Blurring
+				 * parked `document.activeElement` on `<body>`, so the key that emptied the
+				 * field also dropped the user's place - the next Tab started from the top of
+				 * the document and the arrow walk below was unreachable without a pointer
+				 * (U5's "focus lost to `body`", read on this control).
+				 */
+				const first = firstRowInList();
+				if (first) {
+					first.focus();
+					applyRowStop(first);
+				} else target.blur();
 			}
+			return;
+		}
+		/*
+		 * TYPE-TO-FILTER. A printable key pressed while a row has focus opens the
+		 * list's filter with that character in it - the field is not drawn at rest
+		 * (design round 1, D1: it was the second search control), so typing is how
+		 * a keyboard reader reaches it. A modified key is somebody's chord, not a
+		 * character, and passes through untouched.
+		 */
+		if (
+			event.key.length === 1 &&
+			event.key !== " " &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			target.hasAttribute("data-chat-row")
+		) {
+			event.preventDefault();
+			setFilterOpen(true);
+			setQuery((current) => current + event.key);
+			window.requestAnimationFrame(() => searchRef.current?.focus());
 			return;
 		}
 		// Arrow navigation was a one-way trip: nothing returned focus to the
 		// search field, so a keyboard user who entered the list was stranded there.
 		if (event.key === "Escape") {
 			event.preventDefault();
-			searchRef.current?.focus();
+			if (filterShown) searchRef.current?.focus();
 			return;
 		}
+		/*
+		 * AND THE WALK SKIPS WHAT CANNOT TAKE THE CARET (agent review round 2's R7,
+		 * remediation). A `disabled` control cannot: `focus()` on it is a no-op, so the
+		 * step landed on nothing and the walk dead-stopped at the boundary, and
+		 * `applyRowStop` recorded a stop the reader could not see. The app measured
+		 * exactly this once already (`integration-focus.ts`'s `canTakeFocus`: "`focus()`
+		 * did nothing"), and the predicate is the whole of the rule - a candidate the
+		 * caret cannot reach is not a stop. The two draft acts no longer render
+		 * `disabled` at all (they carry `aria-disabled` + a refused press, below), so
+		 * this filter protects the class rather than only today's controls.
+		 */
 		const rows = [
 			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
-		];
+		].filter((row) => !(row as { disabled?: boolean }).disabled);
 		const index = rows.indexOf(target);
 		const next =
 			event.key === "ArrowDown"
@@ -2637,7 +4566,16 @@ export function ChatSidebar({
 							: -1;
 		if (next >= 0) {
 			event.preventDefault();
-			rows[next]?.focus();
+			const moved = rows[next];
+			moved?.focus();
+			/*
+			 * The stop moves WITH the walk rather than on the next commit. Focus can
+			 * already sit on a `tabIndex` -1 element and stay there, but the reader's next
+			 * `Shift+Tab` asks the browser for the preceding stop — and if the walk left the
+			 * ring where it started, that press returns to the row they left instead of the
+			 * one they are on.
+			 */
+			if (moved !== undefined) applyRowStop(moved);
 			return;
 		}
 		const group = target.closest("[data-entity]");
@@ -2683,263 +4621,62 @@ export function ChatSidebar({
 	 * row as still inside and follow it (U5). The record is three-valued rather
 	 * than a boolean so a row that was PARTLY on screen when the change landed is
 	 * still followed; `sidebar-focus-hold.ts` carries both arguments.
+	 *
+	 * AND IT CARRIES THE BOX THE ROW WAS MEASURED IN (QA round 4's Q-9, design round
+	 * 7's D24), which is the one input this effect could not supply on its own: the
+	 * band's arrival takes its height off the list's own box while every row keeps
+	 * its offset (the yield below), so a cursor row near the clip's lower edge reads
+	 * as having left the panel when nothing moved it - and the correction would
+	 * write `scrollTop` to fetch it back, moving a reader who is mid-list. The
+	 * record is REFRESHED instead when the container's clip box is not the one it
+	 * was measured against, which is done inside `holdFocusedRow` before any write
+	 * rather than by a second effect here: a later effect runs AFTER this one, so
+	 * its refresh would have nothing left to prevent (the order design round 7's
+	 * D24 names).
 	 */
 	const entityPanelRef = useRef<HTMLDivElement | null>(null);
 	const entitySlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
 		visibility: "outside",
+		clipHeight: 0,
 	});
 	const listSlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
 		visibility: "outside",
+		clipHeight: 0,
 	});
+	/*
+	 * One node, two refs: the merged scroller answers to BOTH names the split
+	 * left behind (see the assembly's comment). Stable identity so React does
+	 * not detach and reattach it every render.
+	 */
+	const bindPanelRef = useCallback((node: HTMLDivElement | null) => {
+		entityPanelRef.current = node;
+		listPanelRef.current = node;
+	}, []);
+
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
 	});
 
 	/*
-	 * ---- The split ----------------------------------------------------------
-	 *
-	 * Which of the two regions are on screen, how tall the chats list is, which
-	 * edge the boundary sits on, and whether it may be dragged at all. The
-	 * DECISION is `resolveSidebarSplit`'s, in `features/chat/sidebar-split.ts`,
-	 * so it is drivable without a browser; this component owns the two
-	 * MEASUREMENTS that decision takes and the nodes it draws.
-	 *
-	 * `useLayoutEffect` rather than `useEffect`, for the reason
-	 * `chat-content.tsx` gives for the same choice one component over: the
-	 * numbers feed the rendering of the commit that produced them, so a passive
-	 * effect would paint one frame of a panel sized from a guess and correct it
-	 * after the browser had already shown it.
+	 * ONE SCROLLER (operator report, 2026-09-26): the two-region split - its
+	 * persisted height, the drag, the collapse and the region swap - is removed.
+	 * This component no longer resolves or measures a split; the assembly below
+	 * renders one flow, and `showList` (the catalogue gate's answer) is the one
+	 * flag that survives, gating the chats LIST's content exactly as before.
 	 */
 	const navRef = useRef<HTMLElement | null>(null);
-	const splitRef = useRef<HTMLDivElement | null>(null);
-	/*
-	 * The two children of the split container that are NOT regions.
-	 *
-	 * They exist so `capacity` can mean what every number below treats it as: the
-	 * box the two regions share. The boundary carries its own `mt-2` and the pin
-	 * failure line is a paragraph, both inside the same flex container, so a
-	 * container-height capacity silently charged their space to the region that
-	 * is not sized - which is how a 72px floor measured 64px and 8px more when a
-	 * pin failed (review round 1, m-1; design D5; UX U3).
-	 */
-	const bandRef = useRef<HTMLDivElement | null>(null);
 	const pinRef = useRef<HTMLParagraphElement | null>(null);
-	const [splitCapacity, setSplitCapacity] = useState(0);
-	const [splitPanelHeight, setSplitPanelHeight] = useState(0);
-	const [drawnListHeight, setDrawnListHeight] = useState(0);
-	const chatSidebarRegions = useUiPreferencesStore((s) => s.chatSidebarRegions);
-	const chatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.chatSidebarListHeight,
-	);
-	const chatSidebarOrder = useUiPreferencesStore((s) => s.chatSidebarOrder);
-	const setChatSidebarRegions = useUiPreferencesStore(
-		(s) => s.setChatSidebarRegions,
-	);
-	const setChatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.setChatSidebarListHeight,
-	);
-	const restoreDefaultChatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.restoreDefaultChatSidebarListHeight,
-	);
-	const setChatSidebarOrder = useUiPreferencesStore(
-		(s) => s.setChatSidebarOrder,
-	);
 	/*
-	 * The persisted values are passed as they were READ rather than as a
-	 * pre-validated copy: `localStorage` is not the setter's path out, so the
-	 * module is the one place a tampered value is rejected, and validating here
-	 * as well would be a second opinion about the same blob.
+	 * `showList` is the catalogue gate's own answer, and the chats list's
+	 * content is still gated on it: a withdrawn gate keeps the last-known
+	 * ENTITY rows mounted and renders no list content at all.
 	 */
-	const split = resolveSidebarSplit({
-		regions: chatSidebarRegions,
-		listHeight: chatSidebarListHeight,
-		order: chatSidebarOrder,
-		showList,
-		query: Boolean(query),
-		capacity: splitCapacity,
-		drawnListHeight,
-		panelContentHeight: splitPanelHeight,
-	});
-	const observedRef = useRef<Element[]>([]);
-	const splitObserverRef = useRef<ResizeObserver | null>(null);
-	/*
-	 * No dependency list, for the reason the `holdFocusedRow` effect above has
-	 * none: the measurement is cheap and must follow nodes that mount and
-	 * unmount, which a dependency list can only spell as a list of booleans the
-	 * body does not itself read. The OBSERVER, which is the expensive half, is
-	 * rebuilt only when the set of measured nodes changes - a `ResizeObserver`
-	 * left on a detached node would report its last height for ever.
-	 */
-	useLayoutEffect(() => {
-		const nav = navRef.current;
-		const container = splitRef.current;
-		if (!nav || !container) return;
-		const measure = () => {
-			/*
-			 * The box the two regions share, measured from the container rather
-			 * than summed from the regions: the container's height is fixed by
-			 * the panel, so it does not move while a drag moves the boundary -
-			 * which is the property the divider's live range needs, and the
-			 * reason a derived sum would be circular in a window too short to
-			 * host both floors.
-			 *
-			 * The container's height MINUS the children that are not regions: the
-			 * boundary's own band (its `h-0` box plus the `mt-2` that separates it
-			 * from the region above) and the pin failure line when one renders.
-			 * Measured from the DOM rather than named as constants, so a class
-			 * change moves the arithmetic with it, and summed with the margins
-			 * because a margin is main-axis space in a flex column.
-			 */
-			const reservations = (node: HTMLElement | null) => {
-				if (!node) return 0;
-				const style = getComputedStyle(node);
-				const margin =
-					Number.parseFloat(style.marginTop || "0") +
-					Number.parseFloat(style.marginBottom || "0");
-				return node.offsetHeight + (Number.isFinite(margin) ? margin : 0);
-			};
-			const capacity =
-				container.getBoundingClientRect().height -
-				reservations(bandRef.current) -
-				reservations(pinRef.current);
-			/*
-			 * The panel's own content box, which is what the shipped
-			 * `max-h-[45%]` resolved against before the regions moved into this
-			 * container. `p-2` is 8px on each side, and the nav's class list is
-			 * pinned byte-for-byte by `scripts/contrast-contract.mjs`, so the 16
-			 * cannot drift without that gate failing.
-			 */
-			const panelHeight = nav.clientHeight - 16;
-			/*
-			 * Sub-pixel changes are ignored, the way `chat-content.tsx` ignores
-			 * them for its own measurement: without that, a fractional layout
-			 * would have this panel re-rendering against its own measurement.
-			 */
-			setSplitCapacity((current) =>
-				Math.abs(current - capacity) < 1 ? current : capacity,
-			);
-			setSplitPanelHeight((current) =>
-				Math.abs(current - panelHeight) < 1 ? current : panelHeight,
-			);
-			const list = listPanelRef.current;
-			const drawn = list ? list.getBoundingClientRect().height : 0;
-			setDrawnListHeight((current) =>
-				Math.abs(current - drawn) < 1 ? current : drawn,
-			);
-		};
-		measure();
-		const nodes: Element[] = [nav, container];
-		if (listPanelRef.current) nodes.push(listPanelRef.current);
-		/*
-		 * Observed too, because their own heights move the capacity: the band is
-		 * fixed but the pin line appears and disappears, and its appearing is a
-		 * layout change the regions' own resizes would not report.
-		 */
-		if (bandRef.current) nodes.push(bandRef.current);
-		if (pinRef.current) nodes.push(pinRef.current);
-		const observed = observedRef.current;
-		const sameShape =
-			observed.length === nodes.length &&
-			observed.every((node, index) => node === nodes[index]);
-		if (!sameShape) {
-			splitObserverRef.current?.disconnect();
-			const observer = new ResizeObserver(measure);
-			for (const node of nodes) observer.observe(node);
-			splitObserverRef.current = observer;
-			observedRef.current = nodes;
-		}
-	});
-	/*
-	 * The observer outlives the layout effects above on purpose, so its teardown
-	 * is its own: a component that unmounts with a live `ResizeObserver` leaves
-	 * a callback wired to a detached node.
-	 */
-	useEffect(
-		() => () => {
-			splitObserverRef.current?.disconnect();
-			splitObserverRef.current = null;
-			observedRef.current = [];
-		},
-		[],
-	);
-	/*
-	 * A drag WRITES, and only when the boundary can honour what the drag
-	 * produced: with the range collapsed (`resizable` false) the separator
-	 * reports the drawn height and this refuses, so a gesture the panel cannot
-	 * express does not destroy a preference the user set in a window that could.
-	 * That is `chat-content.tsx`'s `runPanelResizable` contract, unchanged.
-	 */
-	const handleListHeightChange = (height: number) => {
-		if (!split.divider?.resizable) return;
-		setChatSidebarListHeight(height);
-	};
-	/*
-	 * The reset is the boundary's double-click AND its Enter, and it stores
-	 * `null`: the auto rule is renderable in every window, so unlike a stored
-	 * pixel height it needs no clamp on its way in.
-	 */
-	const topRegion: SidebarRegionName =
-		split.order === "entities-first" ? "entities" : "chats";
-	const bottomRegion: SidebarRegionName =
-		split.order === "entities-first" ? "chats" : "entities";
-	/*
-	 * The two regions' names in the controls' own register. "the chats list"
-	 * rather than "chats" because the control is named for what it does to a
-	 * region, and the list region's own row is the one that says "All chats".
-	 */
-	const hideLabel = (region: SidebarRegionName) =>
-		region === "entities" ? "Hide agents and teams" : "Hide the chats list";
-	/*
-	 * One label for both channels: the row's visible text IS this string, and its
-	 * accessible name is the same string (plus the count where there is one). A
-	 * terse visible version beside an action-shaped accessible one was the shipped
-	 * state and it named the row after the panel's own heading (design round 1,
-	 * D3) - so there is one string, and it says what pressing it does.
-	 */
-	const showLabel = (region: SidebarRegionName) =>
-		region === "entities" ? "Show agents and teams" : "Show the chats list";
-	/*
-	 * The chats list is the region the ORDER control moves, and its name states
-	 * the outcome rather than the mechanism: `Move the chats list to the top`
-	 * is what the panel will look like, and it is what a screen reader reads.
-	 */
-	const orderLabel =
-		split.order === "entities-first"
-			? "Move the chats list to the top"
-			: "Move the chats list to the bottom";
-	/*
-	 * `showList` is the catalogue gate's own answer, and the list region is
-	 * still gated on it: a withdrawn gate keeps the last-known ENTITY rows
-	 * mounted and renders no list region at all, which is the DOM the gate's
-	 * frames photograph. `split.listVisible` says the user has not hidden it -
-	 * the two are different questions, and the assembly below needs both.
-	 */
-	const listShown = split.listVisible && showList;
-	const bothVisible = split.entityVisible && listShown;
-	/*
-	 * Which end of the column a hidden region's restore row sits at: where the
-	 * region itself was, so the row is at the top when the hidden region was
-	 * the one drawn first. The row expanding downward at the top and upward at
-	 * the bottom is what the chevron on it points at.
-	 */
-	const restoreAtTop =
-		split.restore !== null &&
-		(split.order === "entities-first") === (split.restore === "entities");
-	/*
-	 * The RULE between the regions is the lower one's own `border-t`, so the
-	 * region above the boundary never carries it. With the default order that
-	 * is the list region's shipped `border-t border-hairline`, which is the
-	 * boundary's whole resting appearance.
-	 */
-	const entityHasRuleAbove = bothVisible && split.order === "chats-first";
-	const listHasRuleAbove = bothVisible
-		? split.order === "entities-first"
-		: restoreAtTop;
+	const listShown = showList;
 
 	const entityRegion = (
 		/*
@@ -2973,44 +4710,68 @@ export function ChatSidebar({
 			 * travels with it.
 			 */
 			key="entities"
-			ref={entityPanelRef}
-			onScroll={() =>
-				refreshFocusedInside(entityPanelRef.current, entitySlotRef)
-			}
 			id={ENTITY_REGION_ID}
 			data-sidebar-region="entities"
 			/*
-			 * The padding and the rule are the LOWER region's, so this container
-			 * keeps its `p-1` and no rule until the order puts it below the boundary
-			 * - and then it takes the 8px lead the list region's `pt-2` has always
-			 * given the side below a rule, which is what keeps the 10px band inside
-			 * padding rather than over a row's pixels.
+			 * The outer scroller in the assembly carries the containing block
+			 * (`relative`) and the clip for every row in BOTH regions now: with a
+			 * pane `static`, a long chats list made the nav report its own
+			 * overflow once (measured 890/576), and the merged scroller is the
+			 * one pane that can contain it.
 			 */
-			className={cn(
-				"min-h-0 flex-1 space-y-4 overflow-y-auto [overflow-anchor:none]",
-				entityHasRuleAbove ? "border-t border-hairline px-1 pt-2 pb-1" : "p-1",
-			)}
+			className={cn("relative space-y-4")}
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
 					Connecting to chats…
 				</p>
 			)}
-			{capabilities.error && (
-				<div role="alert" className="space-y-1 text-body-sm text-danger">
-					<p>
-						{capabilities.error.message}
-						{stale ? " Showing the last chats loaded." : ""}
-					</p>
-					<button
-						type="button"
-						className="underline"
-						onClick={() => void capabilities.refetch()}
-					>
-						Retry
-					</button>
-				</div>
-			)}
+			{/*
+			 * THE LIST-PANE PARAGRAPH STANDS DOWN WHILE THE SERVER IS UNREACHABLE (§F2).
+			 *
+			 * A lost server used to be stated twice on one screen, the way it was on the
+			 * foot line below before that fix: the pane's status strip ("Can't reach the
+			 * Local Operator server. Sending will wait." + Retry) and this list-pane
+			 * paragraph with a Retry of its own - one fact, two root causes, two Retries,
+			 * which is the contradiction §F2 exists to end. §F2 asks for the sidebar's
+			 * list-pane paragraph to be deleted; what is KEPT for the other case is a
+			 * caption rather than a second voice, because a REACHABLE server that failed
+			 * or withdrew this list's own read is a fact about the LIST, which the strip
+			 * does not state, and the refetch is its only remedy. The gate is the SAME
+			 * `stripSpeaksConnection` the other two sites and the foot line read,
+			 * deliberately, so the three cannot drift about when the strip owns the
+			 * screen - and, since R11, it carries the strip's own PRESENCE beside the
+			 * copy condition, so a route the strip is not mounted on keeps this voice.
+			 *
+			 * AND THE BANNER'S OWN CONDITION BESIDE IT (QA round 1's Q-1): the strip is
+			 * silent for the four causes the banner carries, and in those states this
+			 * paragraph was the second statement of one incident - measured in the
+			 * successor walk, where a replacement that refuses this app's credential
+			 * rendered this sentence under the banner's successor sentence.
+			 *
+			 * NO `role="alert"` HERE EITHER: the strip owns the one live region for
+			 * connection state (branding § 9's one register for the status slot), and a
+			 * second live region about one fact is the defect this exists to remove. The
+			 * word is the foot's own "Retry refresh" - the strip's one "Retry" is
+			 * re-negotiation, and a screen cannot offer two verbs for one re-read.
+			 */}
+			{capabilities.error &&
+				!stripSpeaksConnection &&
+				!coveredByCompatibilityBanner && (
+					<div className="space-y-1 text-meta text-ink-muted">
+						<p>
+							{capabilities.error.message}
+							{stale ? " Showing the last chats loaded." : ""}
+						</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry refresh
+						</button>
+					</div>
+				)}
 			{/*
 			    The sentence is the gate's, not this file's (see the module): which half of
 			    the gate closed, whether the store's own read has already failed (the D9 rule
@@ -3019,16 +4780,23 @@ export function ChatSidebar({
 			    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
 			    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
 			    cadence, and this is the same control the error branch above offers.
+
+			    THE SAME STAND-DOWN as the paragraph above, and for the same reason: a
+			    withdrawn gate is read off the SAME stale answer a just-killed server
+			    leaves behind, so without this gate the block would speak over the strip
+			    that has taken the screen's one connection voice. `stripSpeaksConnection`
+			    carries R11's presence term too, so the stand-down holds only where that
+			    strip is genuinely on screen.
 			 */}
-			{notice && (
-				<div role="alert" className="space-y-1 text-body-sm text-warning">
+			{notice && !stripSpeaksConnection && (
+				<div className="space-y-1 text-meta text-ink-muted">
 					<p>{notice}</p>
 					<button
 						type="button"
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry
+						Retry refresh
 					</button>
 				</div>
 			)}
@@ -3040,128 +4808,254 @@ export function ChatSidebar({
 			    because it does not evaluate alpha). These rows are also the only way to
 			    reach a conversation, so dimming them says "unavailable" about the one
 			    thing that still works. Design round 1, D1. */}
+			{/*
+			 * NO `space-y-4` ON THE WRAPPER ANY MORE, and it is not a tidy-up: the
+			 * rhythm between two entity sections is CONDITIONAL on whether the one above
+			 * it draws rows (the teams section below carries the two values and the
+			 * measurement), and a parent `space-y-*` would set a `margin-top` on the
+			 * same element the child's class does - two declarations of one property,
+			 * settled by stylesheet order rather than by the decision.
+			 */}
 			{showList && (
-				<div className="space-y-4 pb-2">
-					<section>
-						{heading("agents", "Agents", true)}
-						{(query || isOpen("agents", true)) && (
-							<>
-								{profiles.isLoading && (
-									<p aria-live="polite" className="text-meta text-ink-dim">
-										Loading agents…
-									</p>
-								)}
-								{/*
-								    A user with no agents of their own gets the shortcut as the
-								    next step rather than as a quiet line: on a fresh install this
-								    section previously showed six rows the user had not installed
-								    and no way to tell them from their own. `profiles.data` being
-								    empty is the degenerate case of the same state — nothing to
-								    list, and nothing to install either, so only the create row
-								    remains.
-								*/}
-								{/*
-								 * ONE element across both states, and the batch's own control is the
-								 * same child at the same index in each, because the two states differ
-								 * in a way the batch itself causes.
-								 *
-								 * The completion summary is owned by `InstallBuiltinAgents`, and the
-								 * batch's last act is to invalidate `profiles`: the six installs land
-								 * as the user's own agents, `ownAgents` stops being empty, and this
-								 * block used to swap a `div` for a fragment in place. React unmounts
-								 * a subtree whose element type changes, so the summary was destroyed
-								 * ~89ms after it was painted: on the built app against the real
-								 * backend the section went straight from the shortcut to the six-row
-								 * list, and `"6 installed. Done"` was caught in the DOM once by a
-								 * MutationObserver and never seen again. The collision arm's "5
-								 * installed, 1 skipped. Skipped 1: you already have an agent called
-								 * `coder`." is the sentence a user actually needs, and it was
-								 * unreadable by construction (QA round 1, Q1).
-								 *
-								 * So the state lives somewhere that does not move: the outer element
-								 * is the empty state's padded box in one case and `display: contents`
-								 * in the other, which contributes no box at all, so the rows and the
-								 * batch's control lay out exactly as they did as bare children; the
-								 * variable content sits in its own `contents` child so the batch is
-								 * at index 1 either way. Same treatment as the live region in
-								 * `install-builtin-agents.tsx`, for the same reason (U11): what the
-								 * user has to be able to read cannot be the thing that gets
-								 * replaced. DO NOT split this back into one call site per branch.
-								 */}
-								<div
-									className={cn(
-										agentsEmpty ? "flex flex-col gap-2 px-3 py-2" : "contents",
+				<div className="pb-2">
+					{/*
+					 * THE ENTITY ROWS ARE THE POPOVER'S SWITCHES TOO.
+					 *
+					 * `isSectionShown` is the ONE spelling of "this section is drawn",
+					 * and it is the same call the chat sections' own gate makes a few
+					 * hundred lines below (`drawnSections`). Before this the two entity
+					 * rows were drawn unconditionally, so unchecking `Agents` in the view
+					 * popover wrote `view.hidden` - the panel's tick went out and its own
+					 * "1 section hidden" sentence appeared - while the region below kept
+					 * drawing the row: the operator's 2026-09-27 report, and the strongest
+					 * form of it, because both halves of one frame disagreed.
+					 *
+					 * IT IS NOT EXTENDED TO THE DISCLOSURE. The row's own chevron stays
+					 * (`expanded`, `localStorage['chat-sidebar-disclosures']`) and keeps
+					 * governing the row's CHILDREN: "the section is drawn" and "the
+					 * section's children are drawn" are two axes, and the popover's switch
+					 * speaks only to the first. Reading the disclosure here instead would
+					 * leave the panel's tick, its "hidden" sentence and the region's
+					 * presence governed by a per-window record the store cannot see.
+					 */}
+					{isSectionShown(view, "agents") && (
+						<section>
+							{heading("agents", "Agents", true, undefined, Bot)}
+							{(query || isOpen("agents", true)) && (
+								<>
+									{profiles.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-dim">
+											Loading agents…
+										</p>
 									)}
-									data-testid={agentsEmpty ? "agents-sidebar-empty" : undefined}
-								>
-									<div className="contents">
-										{agentsEmpty ? (
-											<>
-												<p className="text-body-sm text-ink">No agents yet</p>
-												{/*
-												 * The offer is CONDITIONAL on there being something to offer, and it
-												 * names what that is.
-												 *
-												 * It used to render unconditionally: on a backend with no packaged
-												 * profiles the section still said "Built-in agents are ready to
-												 * install" while offering nothing that installs one — the same
-												 * paragraph, pixel-identical, in a state whose whole point is that
-												 * there is nothing to install (design round 1, D3). And what it
-												 * promised was a list of activities rather than the roles on offer,
-												 * including a "research" role that is not among the packaged
-												 * profiles, with no count at all until the batch had started (UX
-												 * round 1, U6). Derived from the rows the backend sent, because
-												 * the catalogue is the authority on what can be installed and a
-												 * hand-written list can disagree with it.
-												 */}
-												{availableBuiltins.length > 0 && (
-													<p className="text-meta text-ink-muted">
-														{builtinOfferSentence(availableBuiltins)}
-													</p>
+									{/*
+									    A user with no agents of their own gets the shortcut as the
+									    next step rather than as a quiet line: on a fresh install this
+									    section previously showed six rows the user had not installed
+									    and no way to tell them from their own. `profiles.data` being
+									    empty is the degenerate case of the same state — nothing to
+									    list, and nothing to install either, so only the create row
+									    remains.
+									*/}
+									{/*
+									 * ONE element across both states, and the batch's own control is the
+									 * same child at the same index in each, because the two states differ
+									 * in a way the batch itself causes.
+									 *
+									 * The completion summary is owned by `InstallBuiltinAgents`, and the
+									 * batch's last act is to invalidate `profiles`: the six installs land
+									 * as the user's own agents, `ownAgents` stops being empty, and this
+									 * block used to swap a `div` for a fragment in place. React unmounts
+									 * a subtree whose element type changes, so the summary was destroyed
+									 * ~89ms after it was painted: on the built app against the real
+									 * backend the section went straight from the shortcut to the six-row
+									 * list, and `"6 installed. Done"` was caught in the DOM once by a
+									 * MutationObserver and never seen again. The collision arm's "5
+									 * installed, 1 skipped. Skipped 1: you already have an agent called
+									 * `coder`." is the sentence a user actually needs, and it was
+									 * unreadable by construction (QA round 1, Q1).
+									 *
+									 * So the state lives somewhere that does not move: the outer element
+									 * is the empty state's padded box in one case and `display: contents`
+									 * in the other, which contributes no box at all, so the rows and the
+									 * batch's control lay out exactly as they did as bare children; the
+									 * variable content sits in its own `contents` child so the batch is
+									 * at index 1 either way. Same treatment as the live region in
+									 * `install-builtin-agents.tsx`, for the same reason (U11): what the
+									 * user has to be able to read cannot be the thing that gets
+									 * replaced. DO NOT split this back into one call site per branch.
+									 *
+									 * AND A DISMISSED OFFER RENDERS NO BOX AT ALL. The reader's own
+									 * statement that they do not want this offer takes the whole empty
+									 * block with it, and the section is down to its heading and the
+									 * create row below. That state cannot collide with the batch this
+									 * element exists to keep alive: the dismiss control is absent
+									 * whenever the batch owns the section (its `onBusyChange` report),
+									 * so by the time a dismissal can be pressed there is no progress
+									 * and no summary on screen for it to destroy — and the swap this
+									 * comment is about is never raced by a dismissal.
+									 */}
+									{!emptyBlockDismissed && (
+										<div
+											className={cn(
+												agentsEmpty
+													? "flex flex-col gap-2 px-3 py-2"
+													: "contents",
+											)}
+											data-testid={
+												agentsEmpty ? "agents-sidebar-empty" : undefined
+											}
+										>
+											<div className="contents">
+												{agentsEmpty ? (
+													<>
+														{/*
+														 * The dismiss control rides the "No agents yet" line's row, at its
+														 * end: that line is what the offer is FOR — the empty section — and
+														 * the row is the block's first line wherever the block starts.
+														 * `items-center` sits the glyph's centre on the paragraph's own
+														 * centre rather than a line-height below it.
+														 *
+														 * IT EXISTS ONLY WHILE THERE IS AN OFFER TO DISMISS AND THE BATCH IS
+														 * SHOWING NOTHING: `builtinOfferOnScreen` requires the empty state
+														 * and a non-empty, undismissed catalogue, and `agentsOfferBusy` is
+														 * the batch's own report — while it is true the control does not
+														 * exist, so a press can never take the progress or the summary off
+														 * screen (QA round 1's Q1 and UX round 2's U11 are the work this
+														 * protects). The control takes the sidebar's own icon-sm ghost step
+														 * (28px square, 14px glyph, the accessible name carrying the
+														 * sentence a bare glyph cannot), the same step the chats search's
+														 * clear control below takes.
+														 */}
+														<div className="flex items-center justify-between gap-2">
+															<p className="text-body-sm text-ink">
+																No agents yet
+															</p>
+															{builtinOfferOnScreen && !agentsOfferBusy && (
+																<Button
+																	variant="ghost"
+																	size="icon-sm"
+																	data-testid="agents-offer-dismiss"
+																	aria-label="Dismiss built-in agents suggestion"
+																	onClick={() => {
+																		offerDismissedByPressRef.current = true;
+																		dismissBuiltinOffer(offerSignature);
+																	}}
+																>
+																	<X aria-hidden="true" />
+																</Button>
+															)}
+														</div>
+														{/*
+														 * The offer is CONDITIONAL on there being something to offer, and it
+														 * names what that is.
+														 *
+														 * It used to render unconditionally: on a backend with no packaged
+														 * profiles the section still said "Built-in agents are ready to
+														 * install" while offering nothing that installs one — the same
+														 * paragraph, pixel-identical, in a state whose whole point is that
+														 * there is nothing to install (design round 1, D3). And what it
+														 * promised was a list of activities rather than the roles on offer,
+														 * including a "research" role that is not among the packaged
+														 * profiles, with no count at all until the batch had started (UX
+														 * round 1, U6). Derived from the rows the backend sent, because
+														 * the catalogue is the authority on what can be installed and a
+														 * hand-written list can disagree with it.
+														 */}
+														{availableBuiltins.length > 0 && (
+															<p className="text-meta text-ink-muted">
+																{builtinOfferSentence(availableBuiltins)}
+															</p>
+														)}
+													</>
+												) : (
+													cappedRows(
+														"agents",
+														ownAgents.map((profile) =>
+															entity("agent", profile.name),
+														),
+													)
 												)}
-											</>
-										) : (
-											ownAgents.map((profile) => entity("agent", profile.name))
+											</div>
+											{/* Renders nothing once every built-in is installed. */}
+											<InstallBuiltinAgents
+												builtins={availableBuiltins}
+												presentation={agentsEmpty ? "primary" : "row"}
+												onBusyChange={setAgentsOfferBusy}
+											/>
+										</div>
+									)}
+									<button
+										ref={createAgentRowRef}
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=agent")}
+									>
+										<Plus className="size-4" />
+										Create agent
+									</button>
+								</>
+							)}
+						</section>
+					)}
+					{/*
+					 * THE GAP BETWEEN THE TWO SECTIONS IS CONDITIONAL, and it is not a smaller
+					 * constant. Measured at 360px: the 16px between these sections is SHARED
+					 * - an open `Agents` above needs a section rhythm's 16px between the two,
+					 * and a shorter constant would tighten that case unasked - while a
+					 * collapsed section hands the heading below it the list's own 8px step,
+					 * because a section that draws no rows has nothing for a section rhythm to
+					 * separate. Operator report, 2026-09-27, asked twice: "shrink the gap
+					 * between agents and teams headers when agents is collapsed, there's an
+					 * extra gap wasting space there."
+					 *
+					 * `mt-4` and `mt-2` are the design's own two steps - the 16px section tier
+					 * and the 8px a label takes when the section above draws no rows to
+					 * separate - stated inline because this is the one site that takes the
+					 * conditional, and a query force-opens the section, which is the same
+					 * condition the rows' own gate reads.
+					 *
+					 * AND THE CONDITION'S OTHER HALF IS THE VIEW GATE ITSELF (design round
+					 * 1, D1): `Agents` switched off in the popover leaves NO section above
+					 * Teams, and without `isSectionShown(view, "agents")` this margin still
+					 * took the 16px tier for a section that is not drawn - a hidden first
+					 * block keeping the between-sections lead (first ink y=72 against the
+					 * first block's y=57, the same gap in all twelve themes). A hidden first
+					 * section hands its slot over here the way a hidden chats section does in
+					 * the list below: nothing drawn above, nothing to separate.
+					 */}
+					{isSectionShown(view, "teams") && (
+						<section
+							className={cn(
+								isSectionShown(view, "agents") &&
+									(query || isOpen("agents", true) ? "mt-4" : "mt-2"),
+							)}
+						>
+							{heading("teams", "Teams", true, undefined, Users)}
+							{(query || isOpen("teams", true)) && (
+								<>
+									{teams.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-dim">
+											Loading teams…
+										</p>
+									)}
+									{teams.data &&
+										cappedRows(
+											"teams",
+											teams.data.map((team) => entity("team", team.name)),
 										)}
-									</div>
-									{/* Renders nothing once every built-in is installed. */}
-									<InstallBuiltinAgents
-										builtins={availableBuiltins}
-										presentation={agentsEmpty ? "primary" : "row"}
-									/>
-								</div>
-								<button
-									type="button"
-									className={cn(rowStyle, "w-full text-ink-muted")}
-									onClick={() => navigate("/agents?create=agent")}
-								>
-									<Plus className="size-4" />
-									Create agent
-								</button>
-							</>
-						)}
-					</section>
-					<section>
-						{heading("teams", "Teams", true)}
-						{(query || isOpen("teams", true)) && (
-							<>
-								{teams.isLoading && (
-									<p aria-live="polite" className="text-meta text-ink-dim">
-										Loading teams…
-									</p>
-								)}
-								{teams.data?.map((team) => entity("team", team.name))}
-								<button
-									type="button"
-									className={cn(rowStyle, "w-full text-ink-muted")}
-									onClick={() => navigate("/agents?create=team")}
-								>
-									<Plus className="size-4" />
-									Create team
-								</button>
-							</>
-						)}
-					</section>
+									<button
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=team")}
+									>
+										<Plus className="size-4" />
+										Create team
+									</button>
+								</>
+							)}
+						</section>
+					)}
 				</div>
 			)}
 		</div>
@@ -3176,93 +5070,6 @@ export function ChatSidebar({
 	 * sentence is the durable half. `warning` and not `danger`: the list is
 	 * intact and only this row's pin did not move.
 	 */
-	/*
-	 * THE ARCHIVE REGISTER: the refusal and the Undo offer, drawn BESIDE THE PIN'S
-	 * FAILURE LINE at the panel's root rather than inside a region (agent review
-	 * round 4, R4-1 - a fold-introduced defect).
-	 *
-	 * WHY AT ROOT IS THE POINT, and why it has to be written down: the register used
-	 * to be a direct child of the `<nav>` (unconditional), and re-applying it from
-	 * main's structure put it inside the ENTITY region - which this assembly drops in
-	 * `chats-only`, the mode where the user is looking at the rows they just acted
-	 * on. Measured at `3e650f5f0`: drawn in `bothVisible` and `entities-only`, absent
-	 * in `chats-only`, so a refused archive drew no sentence and no Retry there, and a
-	 * successful one drew no Undo. It now draws wherever the pin's own failure line
-	 * draws, which is every mode, and the static test asserts exactly that by reading
-	 * the JSX ancestry rather than the text next to it (that adjacency assertion is
-	 * what let this through).
-	 *
-	 * The refusal gets NO `role="alert"`, so it cannot compete with the catalogue
-	 * alert about a different failure: what announces it is the row coming back with
-	 * its control in the state the user left it, and this sentence is the durable
-	 * half; it is `warning` rather than `danger` because the list is intact and only
-	 * this row's state did not move.
-	 *
-	 * The Undo offer is the offer the module has always made - one sentence and one
-	 * press - drawn where the act happened. The toast lane was the wrong home for two
-	 * measured reasons: its box sat over the composer's Send control in both palettes
-	 * (x 1307..1339, y 803..835, inside the toast's own x 1001..1360.5, y
-	 * 789..842.5), so an offer to take an archive back could be pressed into sending
-	 * a message; and an archive is performed from THIS panel, so the offer belongs to
-	 * this panel's register rather than to a lane floating over the pane the user did
-	 * not act in.
-	 *
-	 * The offer line is `text-ink`, NOT `text-ink-muted` (design round 3, D20): the
-	 * register's other line is `text-warning`, and this one is the only line in the
-	 * panel carrying a LIVE ACTION; at muted ink (7.86:1 / 8.21:1) it read as metadata
-	 * beside it.
-	 *
-	 * `data-session-archive-undo` and `data-session-archive-failure` are the driver
-	 * scenes' anchors, the convention `data-session-delete` and `data-chat-row`
-	 * follow: both sentences name a conversation, so a scene selecting them by text
-	 * would assert a copy edit rather than a state.
-	 *
-	 * The press goes to the store rather than to a closure handed over by whichever
-	 * surface offered it (`archive-undo.ts` says why): every surface offers the same
-	 * act, so the press is one line here too.
-	 */
-	const archiveRegister = (
-		<>
-			{archiveUndo && (
-				<p data-session-archive-undo className="pb-2 text-meta text-ink">
-					{archiveOfferedText(archiveUndo.title)}{" "}
-					<button
-						type="button"
-						className="underline"
-						onClick={() =>
-							void setSessionArchived(
-								archiveUndo.sessionId,
-								!archiveUndo.archived,
-								archiveUndo.title,
-							)
-						}
-					>
-						Undo
-					</button>
-				</p>
-			)}
-			{archiveFailure && (
-				<p data-session-archive-failure className="pb-2 text-meta text-warning">
-					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
-					{archiveFailure.title}”.
-					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}
-					<button
-						type="button"
-						className="underline"
-						onClick={() =>
-							void setSessionArchived(
-								archiveFailure.sessionId,
-								archiveFailure.archived,
-								archiveFailure.title,
-							)
-						}
-					>
-						Retry
-					</button>
-				</p>
-			)}
-		</>
-	);
 
 	const pinFailureLine = pinFailure ? (
 		/*
@@ -3288,6 +5095,13 @@ export function ChatSidebar({
 
 	const listRegion = (
 		/*
+		 * THE LIST'S OWN REGION MARKER LIVES HERE (round 1, R3). It used to be on the
+		 * merged scroller, which made every rig scoping `[data-sidebar-region="chats"]`
+		 * read the whole sidebar body - the entity sections included - rather than the
+		 * list. The scroller carries `scroller` now and this node carries `chats`, so a
+		 * rig's scope names the list and only the list; the scroller answers for the
+		 * scroll, the clip and the gutter.
+		 *
 		 *  The global partition is NAVIGATION, not a peer of the entity lists.
 		 * Sharing one scroll flow pushed Previous below the fold at 16+ sessions
 		 * and its disclosure became easy to miss, so it is pinned below the
@@ -3342,31 +5156,7 @@ export function ChatSidebar({
 		 */
 		<div
 			key="chats"
-			ref={listPanelRef}
-			onScroll={() => refreshFocusedInside(listPanelRef.current, listSlotRef)}
-			id={CHAT_REGION_ID}
 			data-sidebar-region="chats"
-			style={
-				split.listMax === null
-					? undefined
-					: {
-							/*
-							 * The cap the split module computed: the shipped 45% of the
-							 * panel's own content box in the auto state, and the stored
-							 * height clamped to what this panel can give it when the user
-							 * has chosen one. A stored value is never rewritten, so a
-							 * window that can honour it draws it again.
-							 */
-							maxHeight: split.listMax,
-							/*
-							 * `auto` measures itself, so only a CHOSEN height is forced: the
-							 * region is a definite box of that size, not a box that happens
-							 * to be that big around its content - which is what makes the
-							 * stored number the number the user dragged the boundary to.
-							 */
-							height: split.listFixed ? split.listMax : undefined,
-						}
-			}
 			/*
 			 * The pointer's path, which is the half a coordinate test cannot see: a
 			 * reader who moves away from the point they pressed and comes back has made
@@ -3412,233 +5202,525 @@ export function ChatSidebar({
 				lastPinPress.current = null;
 				lastArchivePress.current = null;
 			}}
-			className={cn(
-				"space-y-4 overflow-y-auto [overflow-anchor:none]",
-				/*
-				 * Two shapes, and which one is drawn is the difference between a split
-				 * and a collapse: with both regions on screen this container is the
-				 * SIZED one, so it is `shrink-0` with the cap the module handed it;
-				 * alone, it is the one that fills the column and its `flex-1` is the
-				 * mirror of the entity region's.
-				 */
-				bothVisible ? "max-h-[45%] shrink-0" : "min-h-0 flex-1",
-				listHasRuleAbove ? "border-t border-hairline pt-2" : "",
-			)}
+			className={cn("relative space-y-4")}
 		>
-			<section>
-				<button
-					type="button"
-					data-chat-row
-					/* The driver's way into the list (see `chat-session-row`): the
-					   sections above it are entity lists, and this is the control that
-					   widens the list to every conversation. */
-					data-tour-tag="chat-all-chats"
-					className={cn(rowStyle, "w-full", all && rowCurrent)}
-					aria-pressed={all}
-					onClick={() => setAll((value) => !value)}
-				>
-					<List className="size-4" />
-					<span className="flex-1 text-left">All chats</span>
-					{/* The three global counts read as one set, so this must honour
-				    the active filter exactly as Active/Previous do. A zero badge
-				    beside the "No chats yet" sentence just repeats it. */}
-					{matching.length > 0 && countBadge(matching.length)}
-				</button>
-				{/* Sits inside the All chats section so it holds the same place
-			    — under the toggle, above whatever the toggle reveals — in
-			    both the flat list and the Active/Previous split. Deliberately
-			    a plain `rowStyle` row and not a `heading()`: a chevron would
-			    promise something to expand. Disabled tracks `ready` because
-			    staging a draft needs the session catalogue that gate covers.
-
-			    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
-			    an omission. It used to wear `border-control` as this system's
-			    "outline control" idiom, which reads as a control at rest — but
-			    that edge was also the one thing that stepped the row out of
-			    line with the All chats row directly above it. The app is
-			    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
-			    own `h-8` box and pushes the icon and the label in by 1px on
-			    each side, and no other row in this block has a boundary at all.
-			    The operator asked for the two rows to line up and for the BORDER
-			    to go - "the pill" is this file's description of what the border
-			    produced, not the operator's words. Removing the edge is what does
-			    both, and the measurement is in docs/evidence/new-chat-row (the
-			    icon's left inset goes from 5px, the border plus `rowStyle`'s
-			    `px-1`, to 4px).
-
-			    What still marks the row as the ACTION here is everything the
-			    rows around it do NOT have: the `MessageSquarePlus` glyph
-			    rather than `Plus`, which means "open a creation form" twice
-			    over in this panel (Create agent, Create team) while this
-			    stages a chat, and which matches the glyph the entity rows
-			    reveal for the same outcome; the `mb-1` margin that separates
-			    it from the Active/Previous split below; `rowStyle`'s
-			    `hover:bg-row-hover` colour step; and the `rowCurrent`
-			    ground (recessed from the panel, and hover-proof) while
-			    an untargeted draft is staged.
-
-			    `border-control` is therefore RETIRED on this row by the
-			    operator's own instruction, not merely unused: re-adding it puts
-			    the row back 1px out of alignment with the row above, so it is
-			    not a free tidy-up for a later reader. */}
-				<button
-					type="button"
-					// REACHABLE now, and this is the state that makes it live: a gate that
-					// withdraws without an error leaves `showList` true (the last-known
-					// rows stay mounted) while `ready` is false, so this row renders
-					// disabled and refuses to stage a draft against an absent catalogue.
-					// Before the withdrawn case was handled, the only way here was a
-					// capability error, and react-query keeps the last good `data`
-					// across a failed refetch (`retry: false`, no reset) - so `ready`
-					// stayed true there and this was defensive rather than reachable.
-					//
-					// Kept and now load-bearing, because the pairing is what makes
-					// decoupling `showList` from `ready` safe: staging a draft needs the
-					// session catalogue, so a not-ready render must disable rather than
-					// stage against nothing. Only a focusable row is a stop in the arrow
-					// ring - `keyDown` moves by calling `.focus()` on the next
-					// `[data-chat-row]` and a disabled button silently refuses it - so the
-					// attribute has to drop out in exactly the states the button is
-					// disabled, or a keyboard user strands here.
-					data-chat-row={ready || undefined}
-					className={cn(
-						rowStyle,
-						"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
-						// Marked current on the same terms as an entity row: an
-						// untargeted draft is the one THIS row stages. A draft
-						// carrying a target belongs to its entity row, which is
-						// already highlighting itself, and two rows claiming the
-						// same draft would misreport where the user is.
-						Boolean(activeDraftKey) && !draft?.target && rowCurrent,
-					)}
-					aria-current={activeDraftKey && !draft?.target ? "page" : undefined}
-					disabled={!ready}
-					onClick={() => onStageDraft(undefined, true)}
-				>
-					<MessageSquarePlus className="size-4" />
-					<span className="flex-1 text-left">New chat</span>
-					{/*
-					 * The chord this row is the visible half of, as caps — the same
-					 * `KeyboardShortcut` the inline editor's footer prints, so the two
-					 * spellings of "a shortcut" in this app cannot diverge.
-					 *
-					 * It is the TRAILING element, where the All chats row above carries
-					 * its count: both rows end in the column that says what the row will
-					 * give you, and the label's own `flex-1` is what holds it there.
-					 *
-					 * NOTHING IS PASSED WHILE THE ROW IS CURRENT, and that is the point
-					 * rather than an omission: a cap has no fill and no edge of its own
-					 * (`keyboard-shortcut.tsx` carries the measurement that retired the
-					 * `bg-sunken` fill), so the marks it used to need on this one row —
-					 * the `capEdge` outline, which existed because the cap and the row
-					 * were both `sunken` — have nothing left to separate. The row's own
-					 * `rowCurrent` ground carries the state on the ROW's box, not on the
-					 * caps, and the chord is drawn the same way
-					 * on every ground it lands on, which is what makes it one idiom rather
-					 * than one idiom plus an exception.
-					 *
-					 * Platform: `isMac` above, derived from `navigator.platform` the way
-					 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
-					 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
-					 * use. The read is synchronous (the capability hook's answer is async,
-					 * and a row that painted `⌘N` before it arrived would flash the wrong cap
-					 * on Windows), and the cap is asserted in
-					 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
-					 *
-					 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
-					 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
-					 * attribute would announce the same chord twice.
-					 */}
-					<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
-				</button>
-			</section>
 			{/*
-			 * The `All chats` and `New chat` rows first, then Pinned chats.
+			 * ONE LIST, SECTIONED BY WHAT A READER ASKS OF IT (§C1; design round 1, D1).
 			 *
-			 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
-			 * that those two rows are NAVIGATION rather than chats: navigation names
-			 * the list, so it precedes the sections that fill it. Above them, the
-			 * section sat over the control that names the list it belongs to.
+			 * It was four list concepts: an `All chats` toggle that flattened the list, a
+			 * `New chat` row wedged under it, then `Active chats` and `Previous chats` -
+			 * the catalogue's own `active` partition, which in the AFTER frames held ten
+			 * rows with completion ticks and drew the one chat that was actually RUNNING
+			 * as its last row. Now: `Pinned` (when the capability is on), then RUNNING,
+			 * TODAY, THIS WEEK and OLDER. The partition and the times are
+			 * `chat-list-sections.ts`'s, where a test can reach them; the order inside
+			 * each section is still the catalogue's (bucketing is `filter`, never `sort`).
 			 *
-			 * It sits directly above the `Active chats` heading in the split view and
-			 * directly above the flat list in `All chats` mode - the same place on
-			 * both, which is what keeps pins from vanishing for anyone using the flat
-			 * list (there is no `Active chats` anchor there to sit above at all).
-			 *
-			 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
-			 * TUI's own rule (an empty section contributes no header).
+			 * THE LABELS ARE NOT CONTROLS (U22: "clicking a header collapses the list by
+			 * accident"). A label is 12px `ink-dim` text at 500 and nothing happens when
+			 * it is pressed; the one action a header carries is `Mark all N read`, on
+			 * the first section that has rows.
 			 */}
-			{pinned.length > 0 && (
-				<section>
-					{heading("pinned", "Pinned chats", true, pinned.length)}
-					{(query || isOpen("pinned", true)) &&
-						pinned.map((row) => sessionRow(row))}
+			{/*
+			 * INVARIANT 1, DRAWN: the conversation the reader is IN, when the page
+			 * put it past its own end. It is drawn as its own one-row section at the
+			 * head of the list rather than silently appended to the page - the label
+			 * says WHY a row appears above the sections that should contain it, and
+			 * the reader can see where they are without paging to position 300.
+			 */}
+			{liftedRow && (
+				<section data-chat-section="current">
+					{sectionLabel("Current chat")}
+					{sessionRow(liftedRow)}
 				</section>
 			)}
-			{all ? (
-				<section>{rest.map((row) => sessionRow(row))}</section>
-			) : (
-				<>
-					<section>
-						{heading(
-							"active",
-							"Active chats",
-							true,
+			{/*
+			 * THE DRAFT ROWS, at the head of the list and with NO section heading of
+			 * their own.
+			 *
+			 * The row's own words are §C1's `Draft: <first line>`, which says what the
+			 * row is; a `DRAFTS` label above a stack of `Draft: …` rows would be the
+			 * list's one stutter, and this list's section labels exist to say WHY a
+			 * group of conversations is grouped (RUNNING, TODAY), not to repeat a word
+			 * every row already carries.
+			 *
+			 * ABOVE `Current chat`, deliberately: a draft is the only thing in this panel
+			 * whose whole content would otherwise be unreachable, because a session row
+			 * can always be found again from the catalogue and a session-less draft
+			 * cannot (U8).
+			 *
+			 * `data-chat-row` puts the row in the panel's one roving walk, so ↑/↓ reaches
+			 * it exactly as it reaches a conversation (§C4, U2).
+			 */}
+			{draftRows.length > 0 && !query.trim() && (
+				/*
+				 * ONE SECTION, not bare children: the scroller's `space-y-4` is
+				 * the SECTION rhythm (16px between groups), and a draft row rendered
+				 * as a direct child inherited it - two drafts sat 16px apart while
+				 * adjacent chat rows inside a section sit flush, which is the
+				 * operator's 2026-09-26 report ("too much space between drafts ... not
+				 * consistent with the spacing between other chats"). A `<section>`
+				 * gives the drafts their own group: flush between themselves, one
+				 * section step from the groups around them, exactly like the chats
+				 * list's own sections.
+				 */
+				<section data-chat-section="drafts">
+					{draftRows.map((row) => {
+						/*
+						 * ONE STATE, READ ONCE, for the reason the session rows spell out
+						 * (review round 1, A7): the wrapper and the button both paint the
+						 * current ground, and two copies of the predicate are two chances
+						 * for them to disagree.
+						 */
+						const current = row.key === activeDraftKey;
+						return (
 							/*
-							 * The count is the section's own rows: `rest` is `matching` minus the pinned
-							 * ones, and a pinned chat that is running is drawn in the section ABOVE
-							 * this one, so counting `matching` here would put a number beside a group
-							 * that does not hold that many rows. With no pin store `rest` IS
-							 * `matching`, so this is main's own count in the state main ships.
+							 * A WRAPPER PLUS A BUTTON, the shape the session rows settled on
+							 * for a reason that applies word for word: a nested button is invalid
+							 * HTML and unfocusable, so the discard act is the row button's
+							 * SIBLING - and the box is what carries `group`, the state the
+							 * act's reveal reads.
 							 */
-							rest.filter((row) => row.active).length,
+							<div
+								key={row.key}
+								className={cn(
+									rowBoxStyle,
+									"group",
+									/*
+									 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
+									 * (design round 2, D13, measured on the session rows):
+									 * `rowStyle`'s own `hover:bg-row-hover` fires only while the
+									 * pointer is over the BUTTON, so moving onto the act beside it
+									 * dropped the ground under a pointer that never left the row.
+									 * A PLAIN `hover:`, never `group-hover:` - the box carries
+									 * `group`, and `group-hover:` compiles to a DESCENDANT rule
+									 * that can never match its own carrier.
+									 */
+									!current && "hover:bg-row-hover",
+									current && rowCurrent,
+								)}
+							>
+								<button
+									type="button"
+									data-chat-row
+									data-draft-row={row.key}
+									aria-label={`Open ${row.label}`}
+									title={row.label}
+									onClick={() => {
+										openDraft(row.key);
+										navigate("/chat");
+									}}
+									className={cn(
+										rowStyle,
+										"min-w-0 flex-1 text-left",
+										current && rowCurrent,
+									)}
+								>
+									<FileText
+										className="size-4 shrink-0 text-ink-dim"
+										aria-hidden="true"
+									/>
+									<span className="min-w-0 flex-1 truncate">{row.label}</span>
+								</button>
+								{/*
+								 * THE WHY, WHERE BOTH CHANNELS CAN READ IT (design round 2's D7, UX
+								 * round 2's U6). A `title` on a `disabled` control is the pointer-only
+								 * channel engines are least reliable about, and it reaches no keyboard
+								 * reader at all - so the sentence also exists as an `sr-only` element the
+								 * control points at with `aria-describedby` while it is inapplicable.
+								 * It lives OUTSIDE the button because `aria-label` owns the button's
+								 * name; nothing reads this span as the act's label.
+								 */}
+								<span id={draftWhyId(row.key)} className="sr-only">
+									{SENDING_DISCARD_WHY}
+								</span>
+								{/*
+								 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
+								 * deletion on hover"). Revealed by the row's hover or focus, the
+								 * session acts' own pair - and IN the Tab ring, unlike those two:
+								 * their chord (⌘⇧P / ⌘⇧A) is what let them leave it, and a draft
+								 * has no chord. At rest the act is `hidden`, so it costs the ring
+								 * nothing until its row has focus; from there the next Tab lands
+								 * on it, which is the flow the session acts' own block describes.
+								 */}
+								<button
+									type="button"
+									data-draft-discard={row.key}
+									/*
+									 * INAPPLICABLE WHILE THE ROW'S SEND HOP IS LIVE (UX round 1's U2): a
+									 * press here used to remove the row while the request went on to land
+									 * in an unread chat - a discard followed by a silent send. The
+									 * store's own semantics are unchanged (a deliberate discard still
+									 * outranks the abandoned request - its record pins that), so the
+									 * withholding is the ACT's, here and in the batch below.
+									 *
+									 * AND IT STAYS FOCUSABLE (agent review round 2's R7, design round 2's
+									 * D7): a real `disabled` attribute drops the control out of the Tab
+									 * ring and out of the arrow walk - `focus()` on it is a no-op, so a
+									 * walk step onto it dead-stopped - and it leaves the why
+									 * unannounceable. `aria-disabled` + a refused press is the app's own
+									 * idiom for exactly this (`older-history-slot.tsx`: a disabled button
+									 * cannot hold focus, and the keyboard reader is the one most likely
+									 * to be on the control; `session-status-strip.tsx` the same).
+									 */
+									aria-disabled={row.pending}
+									aria-describedby={
+										row.pending ? draftWhyId(row.key) : undefined
+									}
+									aria-label={discardDraftLabel(row.label)}
+									title={
+										row.pending
+											? SENDING_DISCARD_WHY
+											: discardDraftLabel(row.label)
+									}
+									onClick={(event) => {
+										/*
+										 * THE REFUSED PRESS, before anything else (R7/D7): `aria-disabled`
+										 * does not stop the click, so the handler is what makes it inert -
+										 * no write, no caret move, no offer.
+										 */
+										if (row.pending) {
+											event.preventDefault();
+											return;
+										}
+										/*
+										 * THEN THE REPEAT-PRESS GUARD, the panel's own record
+										 * (`dropRepeatPress`): the row unmounts under the second click
+										 * of a double-click, and the row that slides up can carry its
+										 * act into the same spot. A dropped press writes nothing and
+										 * moves no caret.
+										 */
+										if (
+											dropRepeatPress(
+												event.detail === 0
+													? null
+													: { x: event.clientX, y: event.clientY },
+												row.key,
+											)
+										)
+											return;
+										/*
+										 * AND THE CARET LANDS SOMEWHERE, the archive's own
+										 * no-dead-cursor rule: the node the reader was on is about to
+										 * unmount. The successor is read BY KEY before the write
+										 * (`discardSuccessorIndex` carries the measured why: the old
+										 * version indexed the discard BUTTON among `[data-draft-row]`
+										 * elements, so it always landed on the first row), and the
+										 * frame callback hands focus to the row occupying that
+										 * position - the row that slid up into the gap, or the first
+										 * row of the panel when this was last.
+										 */
+										const keys = [
+											...(navRef.current?.querySelectorAll(
+												"[data-draft-row]",
+											) ?? []),
+										].map((el) => el.getAttribute("data-draft-row") ?? "");
+										const at = discardSuccessorIndex(keys, row.key);
+										discardDraft(row.key);
+										/*
+										 * A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE
+										 * (UX round 1's U1, remediation): `discardDraft` clears
+										 * `activeDraftKey`, and the chat page's residue arm has no
+										 * composer - discarding the open draft used to leave a bare
+										 * `New chat` surface. `onStageDraft(undefined, true)` is
+										 * exactly the two steps the New chat row performs (stage a
+										 * fresh draft, stay on `/chat`), and it runs only when the
+										 * pane really was on this key.
+										 */
+										if (activeDraftKey === row.key) {
+											onStageDraft(undefined, true);
+											/*
+											 * THE FRESH KEY IS REMEMBERED FOR THE OFFER'S OWN PRESS (UX
+											 * round 2's U7): the snapshot restores THIS key's draft on an
+											 * Undo, and the offer's handler re-opens it only when the pane
+											 * still shows the freshly staged draft - the stored key is what
+											 * makes "the pane sits on the staged key" a fact rather than a
+											 * guess. Every discard writes it (null when the pane was not
+											 * taken), so an offer never re-opens a pane the reader has
+											 * since moved.
+											 */
+											setStagedByDiscard(
+												useCanonicalSessionsStore.getState().activeDraftKey,
+											);
+										} else {
+											setStagedByDiscard(null);
+										}
+										requestAnimationFrame(() => {
+											const rows = [
+												...(navRef.current?.querySelectorAll<HTMLElement>(
+													"[data-draft-row]",
+												) ?? []),
+											];
+											const next =
+												rows[Math.min(Math.max(at, 0), rows.length - 1)] ??
+												navRef.current?.querySelector<HTMLElement>(
+													"[data-chat-row]",
+												);
+											next?.focus();
+										});
+									}}
+									className={cn(
+										"size-6 shrink-0 items-center justify-center rounded-md",
+										"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
+										"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
+										/*
+										 * COLOUR, NEVER OPACITY (design round 2's D5; branding.md §6): an
+										 * opacity-faded control fades its own background too, so the same
+										 * button lands on a different colour over each ground - measured at
+										 * 1.89:1 / 2.13:1, BELOW the disabled role the palette ships for
+										 * exactly this. The hover step is stilled explicitly, because the
+										 * measured disabled read darkened under the pointer.
+										 */
+										"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+										"aria-disabled:hover:text-ink-disabled!",
+									)}
+								>
+									<Trash2 className="size-4" aria-hidden="true" />
+								</button>
+							</div>
+						);
+					})}
+					{/*
+					 * THE CLEAR-ALL (operator, same message: "also a subtle clear all
+					 * UX"). It clears EXACTLY the rows this section lists - the keys
+					 * `untargetedDraftRows` produced, never a targeted/agent draft that is
+					 * not on screen here - through ONE store write (`discardDrafts`), and
+					 * it is a `data-chat-row` of its own so the arrow walk reaches it from
+					 * the rows above; clearing must not strand the caret, so focus moves
+					 * to the row that takes its place. Hidden with the section, which is
+					 * the only state that has nothing to clear.
+					 */}
+					<div className="flex justify-end pt-1">
+						<button
+							type="button"
+							data-chat-row
+							data-drafts-clear-all
 							/*
-							 * The bulk read receipt sits with the group the operator
-							 * pointed at — the one whose rows carry the completion
-							 * checkmarks — while the set it clears is the STORE's, so
-							 * the visible column of marks and the count its label names
-							 * are the same fact. It is deliberately not duplicated
-							 * beside "Previous chats": one gesture, one control. The
-							 * flat "All chats" view has none — recorded on the pull
-							 * request as deferred rather than papered over, because a
-							 * second control site is a second design decision.
+							 * NOTHING CLEARABLE IS THE ONE INAPPLICABLE STATE (UX round 1's U2;
+							 * `aria-disabled` rather than `disabled` since agent review round 2's
+							 * R7): every listed row is mid-hop, so the press would move nothing.
+							 * With at least one settled row the batch clears exactly those (the
+							 * store keeps its own semantics for the keys it is given) and the
+							 * offer prints the count that moved. It stays FOCUSABLE while
+							 * inapplicable - an arrow-walk step must land on something, and the
+							 * why below must be reachable - and the press is what refuses (the
+							 * app's own idiom, `older-history-slot.tsx`).
 							 */
-							markAllReadControl,
-							/*
-							 * The disclosure the reader is handed when clearing the last
-							 * mark unmounts the control under their cursor.
-							 */
-							activeHeadingRef,
-						)}
-						{(query || isOpen("active", true)) &&
-							/*
-							 * The empty sentence reads the WHOLE filtered set, not `rest`:
-							 * a running chat that is pinned is drawn in the section above,
-							 * and "Nothing running right now."` beside it would be a claim
-							 * the panel itself contradicts. The rows are `rest`'s, so the
-							 * section still holds none of the pinned ones.
-							 */
-							(matching.some((row) => row.active) ? (
-								rest.filter((row) => row.active).map((row) => sessionRow(row))
-							) : (
+							aria-disabled={clearableDraftRows.length === 0}
+							aria-describedby={
+								clearableDraftRows.length === 0 ? CLEAR_ALL_WHY_ID : undefined
+							}
+							aria-label="Clear all drafts"
+							title={
+								clearableDraftRows.length === 0
+									? CLEAR_ALL_WHY
+									: "Clear all drafts"
+							}
+							onClick={(event) => {
+								/*
+								 * THE REFUSED PRESS (R7/D7): nothing to clear means the press is
+								 * inert - no write, no caret move, no offer.
+								 */
+								if (clearableDraftRows.length === 0) {
+									event.preventDefault();
+									return;
+								}
+								const button = event.currentTarget;
+								if (
+									dropRepeatPress(
+										event.detail === 0
+											? null
+											: { x: event.clientX, y: event.clientY },
+										// Its own identity in the panel's one press record: the
+										// hazard is the same one the rows guard against - the
+										// control unmounts under the second click of a
+										// double-click and a chat row takes its place.
+										"drafts:clear-all",
+									)
+								)
+									return;
+								const at = [
+									...(navRef.current?.querySelectorAll("[data-chat-row]") ??
+										[]),
+								].indexOf(button);
+								const clearing = clearableDraftRows.map((row) => row.key);
+								discardDrafts(clearing);
+								/*
+								 * THE SAME NO-DEAD-PANE RULE THE PER-ROW ACT CARRIES (UX
+								 * round 1's U1): when the batch took the pane's own draft, a
+								 * fresh one is staged so the composer never disappears - and
+								 * the fresh key is remembered for the offer's own press (U7),
+								 * exactly as the per-row act remembers it.
+								 */
+								if (
+									activeDraftKey !== null &&
+									clearing.includes(activeDraftKey)
+								) {
+									onStageDraft(undefined, true);
+									setStagedByDiscard(
+										useCanonicalSessionsStore.getState().activeDraftKey,
+									);
+								} else {
+									setStagedByDiscard(null);
+								}
+								requestAnimationFrame(() => {
+									const rows = [
+										...(navRef.current?.querySelectorAll<HTMLElement>(
+											"[data-chat-row]",
+										) ?? []),
+									];
+									rows[Math.min(Math.max(at, 0), rows.length - 1)]?.focus();
+								});
+							}}
+							className={cn(
+								"flex h-7 items-center rounded-md px-2 text-body-sm",
+								"text-ink-dim transition-colors duration-fast ease-out-quart",
+								"hover:bg-row-hover hover:text-ink",
+								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+								/* Colour, never opacity - the trash's own D5 note is the full one. */
+								"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+								"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+							)}
+						>
+							Clear all
+						</button>
+						{/* The why the control points at while inapplicable (D7/U6): the trash's sibling, above. */}
+						<span id={CLEAR_ALL_WHY_ID} className="sr-only">
+							{CLEAR_ALL_WHY}
+						</span>
+					</div>
+				</section>
+			)}
+			{/*
+			 * THE GROUPING ALTERNATIVES (the view popover's `Group by`). `section` is
+			 * the arrangement below; `agent` and `flat` replace it, and they draw
+			 * over the SAME page, so switching the grouping cannot change which rows
+			 * are loaded - only how they are arranged.
+			 */}
+			{/*
+			 * THE PINNED ROWS RIDE IN THE GROUPED LIST, and this is `groupBy`'s half of
+			 * the same rule the section arrangement keeps: a grouping changes the
+			 * ARRANGEMENT, never which conversations are drawn. The `Pinned` section is
+			 * only drawn under `section` (the block below), so grouping by agent or
+			 * flattening and handing `pagedRows` alone to `groupRows` silently dropped
+			 * every pinned chat - a layout preference acting as a filter, which is the
+			 * failure `groupRows`'s own "an ungrouped chat is a real group" note rejects
+			 * one axis over. `pinned` leads because a pin is the reader's own "keep this
+			 * at the top", and `unpinnedRows` has already removed these rows from the
+			 * page, so no conversation is drawn twice (operator's view-settings audit,
+			 * 2026-09-27: "Group by ... each must actually regroup the list").
+			 */}
+			{view.groupBy !== "section" &&
+				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
+					(entry) => (
+						<section key={entry.key} data-chat-section={entry.key}>
+							{entry.label ? sectionLabel(entry.label) : null}
+							{entry.rows.map((row) => sessionRow(row))}
+						</section>
+					),
+				)}
+			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
+				<section>
+					{sectionLabel("Pinned")}
+					{pinned.map((row) => sessionRow(row))}
+				</section>
+			)}
+			{view.groupBy === "section" &&
+				drawnSections.map((key) => {
+					const rows = sectioned[key];
+					if (key === "running" && rows.length === 0 && livenessUnread) {
+						/*
+						 * The one empty section that still says something: the daemon could not
+						 * read which chats are running, so an absent RUNNING section would be a
+						 * claim that nothing is - the D2 rule `canonical-chat.test.mjs` pins.
+						 */
+						return (
+							<section key={key}>
+								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
 										? "The daemon could not read which chats are running, so this list may be incomplete."
 										: "Nothing running right now."}
 								</p>
-							))}
-					</section>
-					<section>
-						{heading(
-							"previous",
-							"Previous chats",
-							false,
-							rest.filter((row) => !row.active).length,
-						)}
-						{(query || isOpen("previous")) &&
-							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
-					</section>
-				</>
+							</section>
+						);
+					}
+					// An empty section contributes no label: the TUI's own rule, and the one
+					// `Pinned` already follows.
+					if (rows.length === 0) return null;
+					return (
+						<section key={key} data-chat-section={key}>
+							{sectionLabel(
+								CHAT_LIST_SECTION_LABEL[key],
+								/*
+								 * The bulk read receipt sits on the FIRST section that has rows - the
+								 * one the eye lands on - while the set it clears is the STORE's, so
+								 * the count its label names is the same fact wherever it is drawn.
+								 * One gesture, one control, never on a row.
+								 */
+								key === firstSection ? markAllReadControl : undefined,
+							)}
+							{rows.map((row) => sessionRow(row))}
+						</section>
+					);
+				})}
+			{/*
+			 * THE PAGE'S FOOT (`data-sidebar-page-more`), and it is the operator's
+			 * contract: "show the latest 10 ... and then have a 'Load 10 more', starts
+			 * with 10, then 25, then 50, and then user can click to load more". The
+			 * label names the NEXT rung rather than the ladder, and it is bounded by
+			 * what is actually left, so it cannot offer fifteen rows when four are
+			 * unloaded.
+			 *
+			 * IT IS NOT DRAWN WHILE SEARCHING, because the page is not: a query lifts
+			 * the limit entirely (`pageRows`), so there is nothing left to load and a
+			 * control that said otherwise would be a button with no effect.
+			 *
+			 * ON THE PAGED PATH IT IS THE TAIL'S OWN PRESS (#505 reconciliation). The
+			 * rung above the rows held is reached by following the HEAD'S CURSOR
+			 * (`fetchCatalogueTail`), never by re-slicing rows the client already has:
+			 * the head is a fifty-row page, so a ladder that only sliced would stop at
+			 * fifty while the daemon held four hundred more. `tailMore` is the daemon's
+			 * own answer that more exist; `ladderStep` is the size of the page the press
+			 * asks for, which is what keeps the label honest when the count of what is
+			 * left is a number only the daemon has.
+			 *
+			 * A MUTED ROW rather than a primary button - the operator's reference
+			 * prints `Show N more sessions` as quiet text at the group's foot, and the
+			 * column's ink budget is spent on the rows themselves.
+			 */}
+			{!query.trim() && (page.remaining > 0 || tailMore) && (
+				<button
+					type="button"
+					data-sidebar-page-more
+					onClick={pressPageMore}
+					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+				>
+					{pageMoreLabel(
+						view.loads,
+						page.remaining > 0 ? page.remaining : ladderStep,
+					)}
+				</button>
+			)}
+			{/*
+			 * THE TAIL, AT THE FOOT OF THE LIST IT EXTENDS (#505).
+			 *
+			 * `catalogueTail` is the extension's own register: the wait sentence while a
+			 * page is on its way, and the refusal with the one Retry this foot may carry.
+			 * It draws NOTHING in the steady state (`catalogueTailView` says why), so it is
+			 * never a second control beside the ladder below - the ladder is the press, and
+			 * this is what the press has to say when it does not succeed.
+			 *
+			 * THE ANNOUNCEMENT IS OUTSIDE THE SWAP (round 2, R2-5): the region stays mounted
+			 * while the tail goes from loading to settled, because a live region that is
+			 * replaced by an empty one announces nothing - and the rows arriving are the
+			 * whole of what this control does.
+			 */}
+			{catalogueTail}
+			{tailArrival !== null && (
+				<span className="sr-only" aria-live="polite">
+					{tailArrival}
+				</span>
 			)}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
 		    holds no chats at all, so it must not appear beside rows. The
@@ -3647,12 +5729,41 @@ export function ChatSidebar({
 		    rendered as a row of its own (review round 2, R13 — this gate
 		    asked only about `sessions`, and a query was the other half of
 		    the claim). */}
-			{!sessions.length && !matching.length && !loading && !query.trim() && (
-				<p className="text-meta text-ink-muted">
-					No chats yet. Choose an agent, team or New chat.
-				</p>
+			{!sessions.length &&
+				!matching.length &&
+				!loading &&
+				!query.trim() &&
+				// AND THE CENSUS, where one arrived (design §5.5): a cold-start
+				// sentence must not appear beside a store the daemon has just counted.
+				// A head page that stopped short of the rows leaves `sessions` empty
+				// while `counts.total` is 757, and the sentence would then tell the
+				// reader their store holds no chats at all - the same false statement
+				// as the group's, one register wider.
+				(catalogueCounts === null || catalogueCounts.total === 0) && (
+					<p className="text-meta text-ink-muted">
+						No chats yet. Choose an agent, team or New chat.
+					</p>
+				)}
+			{/*
+			 * THE TRUNCATION SENTENCE IS THE WITHDRAWN PATH'S, and the gate is the
+			 * CAPABILITY rather than the query (round 1, U4 + Q1). It used to read
+			 * `truncated && !groupPaging`, and `groupPaging` is false whenever a search is
+			 * in force - so on a PAGING backend with a query active the panel told the
+			 * reader about a 500-row cap that is not why their list stops, while the
+			 * client's own request asked for a fifty-row head page. Both of the
+			 * sentence's clauses are true exactly when the daemon cannot page.
+			 *
+			 * THE PAGED PATH DRAWS ITS OWN TOTAL INSTEAD: `<Showing N of M chats>` from
+			 * the census (`catalogueTotalSentence`), which is the statement that is true
+			 * here - the panel holds the head page plus whatever the reader has extended,
+			 * of a catalogue somebody has counted. The group's badge says what a GROUP
+			 * holds; this says how many are ON SCREEN, which is the pair the operator's
+			 * original confusion turned on.
+			 */}
+			{totalSentence !== null && (
+				<p className="text-meta text-ink-muted">{totalSentence}</p>
 			)}
-			{truncated && (
+			{truncated && !pageable && (
 				<p className="text-meta text-ink-muted">
 					Showing up to 500 chats. Older chats remain available in the terminal.
 				</p>
@@ -3675,453 +5786,314 @@ export function ChatSidebar({
 		    (design review round 1, D9): the catalogue fetch fails exactly
 		    when the backend is down, so the two statements about one
 		    backend would otherwise stack — a quiet `ink-dim` line directly
-		    under a `role="alert" text-danger` block about the same thing. */}
-			{feed.available && !feed.connected && !error && (
-				<p
-					className={cn(
-						"text-meta",
-						sessions.some((row) => row.active)
-							? "text-ink-dim"
-							: "text-warning",
-					)}
-				>
-					Not connected to the backend — showing the last known state.
-				</p>
-			)}
-		</div>
-	);
+		    under a `role="alert" text-danger` block about the same thing.
 
-	/*
-	 * The boundary, and the controls that live on it.
-	 *
-	 * It is drawn only while BOTH regions are: with one hidden there is no
-	 * boundary to drag, and the restore row is the way back. The wrapper is
-	 * `h-0`, so the boundary itself contributes no layout, and it carries the
-	 * `mt-2` the list region used to hold as its own margin - the margin has to
-	 * sit above the boundary so the boundary's line lands ON the lower region's
-	 * rule rather than 8px above it.
-	 *
-	 * The cluster is a SIBLING of the separator rather than a child: the
-	 * separator's band starts a drag on `mousedown`, so a control inside it
-	 * would have to stop that event from reaching its own parent. As siblings
-	 * the two can never share a target, and a press on a control cannot also
-	 * start a drag - one structural fact instead of a `stopPropagation` that a
-	 * later edit can drop.
-	 *
-	 * It takes the panel's own ground (`bg-surface`, the declaration the sticky
-	 * group heading in this file already uses for something that floats over
-	 * rows) rather than the rail's groundless shape: these buttons sit across
-	 * the boundary, so without a ground their hover wash would paint over a row.
-	 */
-	/*
-	 * ---- The boundary's controls, and the intent behind them -----------------
-	 *
-	 * THE REVEAL IS INTENT-GATED, which is S4's contract rather than a taste call.
-	 * The boundary is 10px of hit band on a line the pointer crosses every time it
-	 * moves between the two halves of the panel, and a plate of three glyph buttons
-	 * that appears on the way past is exactly the clutter the operator's request
-	 * owns up to not wanting. `HOVER_INTENT_MS` is the SEPARATOR's own constant,
-	 * imported rather than copied: its state line and this plate are one affordance
-	 * arriving together, and two delays that happen to agree today are two numbers a
-	 * later change can disagree (review round 1, M-1 - the shipped build revealed
-	 * the plate after 120ms of CSS while the line waited 200ms, and the PR body
-	 * claimed the delay was already there).
-	 *
-	 * FOCUS DOES NOT WAIT. A keyboard arrival is a decision rather than a crossing,
-	 * so `focus` reveals the plate at once - and, before this change, focus was the
-	 * ONLY path that did, because the CSS reveal was on `group-hover` alone.
-	 */
-	const [clusterRevealed, setClusterRevealed] = useState(false);
-	const intentTimer = useRef<number | null>(null);
-	const armCluster = () => {
-		if (intentTimer.current !== null) return;
-		intentTimer.current = window.setTimeout(() => {
-			intentTimer.current = null;
-			setClusterRevealed(true);
-		}, HOVER_INTENT_MS);
-	};
-	const disarmCluster = () => {
-		if (intentTimer.current !== null) {
-			window.clearTimeout(intentTimer.current);
-			intentTimer.current = null;
-		}
-		setClusterRevealed(false);
-	};
-	useEffect(
-		() => () => {
-			if (intentTimer.current !== null)
-				window.clearTimeout(intentTimer.current);
-		},
-		[],
-	);
-	/*
-	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL.
-	 *
-	 * The plate sits on the boundary, so the two gestures a user can make there are
-	 * one pixel apart: reach for the divider and land on a button. Travel past a
-	 * few pixels therefore cancels the control's click - the panel neither
-	 * collapses nor reorders under a gesture that was asking for something else, and
-	 * the pixel the gesture started on is free to be a drag instead (UX round 1, U1,
-	 * whose second limb the trailing-end placement answers and whose first this
-	 * answers). The record is a REF because the click that has to be cancelled is
-	 * the one already in flight.
-	 */
-	const controlPressRef = useRef<{
-		x: number;
-		y: number;
-		moved: boolean;
-	} | null>(null);
-	const armControlPress = (event: ReactPointerEvent) => {
-		controlPressRef.current = {
-			x: event.clientX,
-			y: event.clientY,
-			moved: false,
-		};
-	};
-	/*
-	 * `pointercancel` is the one release that cannot produce a click, so the record
-	 * it left is cleared here rather than left for the next activation to consume.
-	 * `pointerup` deliberately does NOT clear it: the click is dispatched after the
-	 * release, and clearing there would erase the `moved` flag before the handler
-	 * that exists to read it (agent review round 2, m-2).
-	 */
-	useEffect(() => {
-		const travel = (event: PointerEvent) => {
-			const press = controlPressRef.current;
-			if (press === null || press.moved) return;
-			if (
-				Math.hypot(event.clientX - press.x, event.clientY - press.y) >
-				CONTROL_PRESS_SLOP_PX
-			) {
-				press.moved = true;
-			}
-		};
-		const cancel = () => {
-			controlPressRef.current = null;
-		};
-		window.addEventListener("pointermove", travel, true);
-		window.addEventListener("pointercancel", cancel, true);
-		return () => {
-			window.removeEventListener("pointermove", travel, true);
-			window.removeEventListener("pointercancel", cancel, true);
-		};
-	}, []);
-	/*
-	 * THE SWAP MUST NOT COST THE USER THEIR PLACE IN A LIST.
-	 *
-	 * The two regions are keyed, so React MOVES the nodes rather than re-filling
-	 * them in place - which is what review round 1 (U2) asked for and what the
-	 * driven scene now checks by node identity. It is not sufficient on its own:
-	 * a scroller that is moved in the DOM is re-attached, and Chromium resets its
-	 * `scrollTop` when it is, measured here as `24 -> 0` on a region that still
-	 * overflowed on both sides of the swap. So the positions are carried across by
-	 * The positions are carried across by hand: saved in the order control's
-	 * `onClick` (a click is the only moment both nodes are known good and the
-	 * reorder has not rendered yet) and restored in the layout effect below.
-	 */
-	const savedScrollRef = useRef<Map<Element, number>>(new Map());
-	const saveRegionScroll = () => {
-		const saved = new Map<Element, number>();
-		for (const node of [entityPanelRef.current, listPanelRef.current]) {
-			if (node) saved.set(node, node.scrollTop);
-		}
-		savedScrollRef.current = saved;
-	};
-	/*
-	 * No dependency list, deliberately: the map is a ONE-SHOT by construction -
-	 * `saveRegionScroll` fills it and this empties it on the next commit - so the
-	 * effect is a no-op on every render that is not the render immediately after a
-	 * swap. Listing `split.order` would be the cheaper-looking spelling and is the
-	 * wrong one: the effect does not read the order, it reads a map the press wrote,
-	 * and the lint rule that says so is right.
-	 */
-	useLayoutEffect(() => {
-		const saved = savedScrollRef.current;
-		if (saved.size === 0) return;
-		savedScrollRef.current = new Map();
-		for (const [node, top] of saved) node.scrollTop = top;
-	});
-	/*
-	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL, and only a POINTER press can
-	 * move: a keyboard activation produces a `click` whose `detail` is 0, so it is
-	 * never weighed against a record a pointer left behind. That distinction is the
-	 * fix for two things at once - the record cannot swallow a later Enter/Space on
-	 * a focused control, and it does not have to be cleared on `pointerup`, which
-	 * would erase it BEFORE the click it exists to cancel (the click is dispatched
-	 * after the release; clearing there is the tidier-looking spelling and is
-	 * wrong). `pointercancel` is the one release that cannot produce a click, so it
-	 * clears the record outright.
-	 */
-	const clusterAction =
-		(act: () => void) =>
-		(event: ReactMouseEvent): void => {
-			const press = controlPressRef.current;
-			controlPressRef.current = null;
-			if (event.detail > 0 && press?.moved) return;
-			act();
-		};
-	/*
-	 * WHAT THE SEPARATOR ANNOUNCES WHEN THE WINDOW IS SHORT.
-	 *
-	 * A stored height is clamped for the render and kept for the window that can
-	 * honour it, and the clamp is otherwise invisible: the entity region is at its
-	 * floor, the panel looks deliberate, and nothing says the user's own number is
-	 * 900 rather than the 352 on screen (design round 1, D5). The name is where it
-	 * is cheapest to say, on the control the user would reach for next.
-	 */
-	const resizeLabel =
-		split.divider !== null &&
-		split.listHeight !== null &&
-		Math.round(split.divider.value) !== Math.round(split.listHeight)
-			? `Resize the chats list - showing ${Math.round(
-					split.divider.value,
-				)} of ${Math.round(split.listHeight)} pixels in this window`
-			: "Resize the chats list";
+			    `feed.reported` is what keeps it off the FIRST paint (round 1, Q3):
+			    `connected` is false until the transport says otherwise, so a line
+			    gated on it alone claimed a disconnection during the few
+			    milliseconds before the app had heard anything at all — and the
+			    next frame contradicted it.
 
-	const boundary = split.divider ? (
-		<div
-			data-sidebar-split
-			ref={bandRef}
-			onPointerEnter={armCluster}
-			onPointerLeave={disarmCluster}
-			className="group relative mt-2 h-0 shrink-0"
-		>
+			   AND IT IS THE FOURTH SITE TO STAND DOWN TO THE STRIP (design round
+			   3, D30): the caption's connection half restated the strip's own
+			   sentence one row apart, so it reads `stripSpeaksConnection` like the
+			   two paragraphs above it and the foot line — the list half's fact is
+			   still stated by the rows themselves, and off /chat, where the strip
+			   is not mounted, this caption is the voice again. */}
 			{/*
-			 * A HOVER-ONLY strip, declared before the separator so the drag band wins
-			 * every pixel it and this share. It exists because the reveal surface and
-			 * the drag surface are not the same size: the separator's band is the
-			 * 10px the design pins, and finding a 10px band is the affordance's whole
-			 * cost (UX round 1, U4). This adds nothing to the drag and nothing at
-			 * rest - it is transparent, aria-hidden, and its events are read by the
-			 * wrapper's own enter/leave.
-			 *
-			 * Its height is bounded by the region padding it sits in, and the binding
-			 * side is BELOW: the lower region's own 8px `pt-2` (the list region when it
-			 * is the second one, the entity region when the order puts it below), so
-			 * −8/+8 is the exact bound and 16 is not an approximation of it. Above the
-			 * line there is the band's own 8px `mt-2` of dead space and then the upper
-			 * region's `p-1`, which is the tighter of the two sides but not the one
-			 * that fixes the number - a strip wider than 16 would reach 1px into a row
-			 * on the padding side (agent review round 2, NIT-3).
+			 * The pinned spelling below is the same expression round 1 settled on
+			 * (`feed.available && feed.reported && !feed.connected`): the transport
+			 * must have SPOKEN, so the caption cannot flash on the first frame, and
+			 * it must not be CONNECTED. The two clauses that follow are the D9 alert
+			 * suppression and D30's stand-down to the strip.
 			 */}
-			<div aria-hidden="true" className="absolute inset-x-0 -top-2 h-4" />
-			<ResizableDivider
-				orientation="horizontal"
-				side={split.side}
-				sidebarWidth={split.divider.value}
-				onSidebarWidthChange={handleListHeightChange}
-				minWidth={split.divider.min}
-				maxWidth={split.divider.max}
-				onDoubleClick={restoreDefaultChatSidebarListHeight}
-				label={resizeLabel}
-				/*
-				 * The APG register, passed explicitly: this separator's value, name and
-				 * bounds are all the chats list's, so Home/End are that region's extremes
-				 * rather than the axis's - which in the default order (`side="top"`) they
-				 * otherwise invert. Passed rather than defaulted so the three
-				 * `side="left"` panels in `chat-content.tsx` keep the behaviour they
-				 * ship; their divergence from the pattern is deferred on the pull
-				 * request rather than changed here (design round 2, D8).
-				 */
-				homeEnd="value"
-			/>
-			<div
-				data-sidebar-cluster
-				data-sidebar-cluster-revealed={clusterRevealed ? "" : undefined}
-				onPointerDown={armControlPress}
-				onFocus={() => setClusterRevealed(true)}
-				onBlur={(event) => {
-					if (
-						!event.currentTarget.contains(event.relatedTarget as Node | null)
-					) {
-						disarmCluster();
-					}
-				}}
-				className={cn(
-					/*
-					 * AT THE TRAILING END rather than across the middle, and that is a
-					 * hit-testing decision rather than a taste one: centred, the plate
-					 * owned 36% of the band's width, so a press at the most natural
-					 * grab point - the panel's centre - collapsed a region, and a drag
-					 * from that same pixel did nothing at all (UX round 1, U1). Here the
-					 * whole centre of the band is the separator. `right-2` keeps the
-					 * plate clear of the scrollbar's own column.
-					 *
-					 * FOCUS IS NOT THE POINTER'S GUEST, so the `focus-within` terms are
-					 * unconditional rather than part of the revealed branch: a plate
-					 * button can hold focus while the pointer has left the band, and
-					 * hiding a focused control is how the toggle `sidebar-navigation.tsx`
-					 * copies stays usable - a keyboard user must never be able to hold
-					 * focus on something that is `opacity-0` (agent review round 2, m-1).
-					 */
-					"absolute top-0 right-2 z-[13] flex -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
-					"transition-opacity duration-fast ease-out-quart",
-					"focus-within:pointer-events-auto focus-within:opacity-100",
-					clusterRevealed
-						? "pointer-events-auto opacity-100"
-						: "pointer-events-none opacity-0",
+			{feed.available &&
+				feed.reported &&
+				!feed.connected &&
+				!error &&
+				!stripSpeaksConnection && (
+					<p
+						className={cn(
+							"text-meta",
+							sessions.some((row) => row.active)
+								? "text-ink-dim"
+								: "text-warning",
+						)}
+					>
+						Not connected to the backend — showing the last known state.
+					</p>
 				)}
-			>
-				<Tooltip content={hideLabel(topRegion)}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-hide={topRegion}
-						aria-label={hideLabel(topRegion)}
-						aria-expanded
-						aria-controls={
-							topRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
-						}
-						onClick={clusterAction(() =>
-							setChatSidebarRegions(hideRegion(chatSidebarRegions, topRegion)),
-						)}
-					>
-						<ChevronUp aria-hidden="true" />
-					</Button>
-				</Tooltip>
-				<Tooltip content={hideLabel(bottomRegion)}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-hide={bottomRegion}
-						aria-label={hideLabel(bottomRegion)}
-						aria-expanded
-						aria-controls={
-							bottomRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
-						}
-						onClick={clusterAction(() =>
-							setChatSidebarRegions(
-								hideRegion(chatSidebarRegions, bottomRegion),
-							),
-						)}
-					>
-						<ChevronDown aria-hidden="true" />
-					</Button>
-				</Tooltip>
-				<Tooltip content={orderLabel}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-order
-						aria-label={orderLabel}
-						onClick={clusterAction(() => {
-							saveRegionScroll();
-							setChatSidebarOrder(
-								split.order === "entities-first"
-									? "chats-first"
-									: "entities-first",
-							);
-						})}
-					>
-						<ArrowUpDown aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</div>
 		</div>
-	) : null;
+	);
+
 	/*
-	 * The way back, and it is not optional: the control that COLLAPSED a region
-	 * lives on the boundary, and with one region hidden there is no boundary
-	 * left - so the affordance that hid it cannot be the only one that restores
-	 * it. The row is one control, 28px on the heading ramp, and it names what is
-	 * hidden rather than offering a second action: while the chats list is
-	 * hidden the primary `New chat` row is one press further away and `⌘N` still
-	 * works, and a `MessageSquarePlus` here would make the collapsed state two
-	 * controls instead of one.
+	 * THE SPLIT'S AFFORDANCES ARE GONE (operator report, 2026-09-26): the
+	 * draggable boundary, the collapse cluster and the region swap are not drawn
+	 * anywhere any more, because there is one region to draw them on. Each
+	 * behaviour is recorded here rather than silently dropped: a drag has
+	 * nothing to size with one region; collapsing one of two regions is not a
+	 * state; the swap's memory is moot with the order fixed. Arrangement still
+	 * lives where the operator put it - on the SECTIONS themselves (their
+	 * disclosures and their row-count caps). `features/chat/sidebar-split.ts`,
+	 * its tests and `docs/design/sidebar-sections.md` remain the record of the
+	 * removed feature; nothing in this file reads the split any more.
 	 */
-	const restoreRow = split.restore ? (
-		<button
-			type="button"
-			data-sidebar-restore={split.restore}
-			/*
-			 * THE VISIBLE LABEL IS THE ACTION, and it has to be, because the row sits
-			 * under the panel's own `<h2>` reading "Chats": a row that says "Chats"
-			 * two rows below a heading that says "Chats" leaves the reader to work out
-			 * which one is missing, and in form it is a twin of the panel's group
-			 * headings rather than a control (design round 1, D3). The count stays, so
-			 * the collapsed state still says how many chats there are; the accessible
-			 * name carries it in words for the same reason.
-			 */
-			aria-label={
-				split.restore === "chats" && matching.length > 0
-					? `${showLabel(split.restore)}, ${matching.length} chats`
-					: showLabel(split.restore)
-			}
-			/*
-			 * The `⌘N` clause is the one hint this row carries, and it exists because
-			 * collapsing the chats list removes the app's only visible way to start a
-			 * conversation: `New chat` lives in the region that is gone, and the
-			 * operator's own constraint - no new controls on this row - rules out
-			 * putting one back (design round 1, D7). A title is not chrome, and it
-			 * names the keyboard path for a sighted user who is looking at the way
-			 * back. The entities row carries no such clause: its own region is the one
-			 * holding `New chat` whenever this row renders.
-			 */
-			title={
-				split.restore === "chats"
-					? "Show the chats list - ⌘N starts a new chat"
-					: undefined
-			}
-			className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
-			onClick={() => setChatSidebarRegions("both")}
-		>
-			{/*
-			 * The chevron points where the region will come back: downward for a
-			 * row at the top of the column, upward for one at the bottom, which
-			 * is the same direction the region itself expands in.
-			 */}
-			{restoreAtTop ? (
-				<ChevronDown className="size-3.5" aria-hidden="true" />
-			) : (
-				<ChevronUp className="size-3.5" aria-hidden="true" />
-			)}
-			<span className="min-w-0 flex-1 truncate text-left">
-				{showLabel(split.restore)}
-			</span>
-			{/*
-			 * The list region's own count, from the same predicate its `All
-			 * chats` row uses, so the collapsed state tells the truth about how
-			 * many chats there are instead of hiding the panel's main signal.
-			 * The entity region has no count today, so its row carries none.
-			 */}
-			{split.restore === "chats" &&
-				matching.length > 0 &&
-				countBadge(matching.length)}
-		</button>
-	) : null;
+
 	return (
 		<nav
 			ref={navRef}
 			aria-label="Chats"
-			/* The container the per-row controls shed against (`ROW_CONTROLS_PAIR_SHED`),
-			   named so the query cannot be answered by an ancestor's width. */
-			className="@container/chatsidebar flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			/*
+			 * THE SIDEBAR IS THE FIRST REGION OF THE KEYBOARD WALK (§C4). `tabIndex={-1}`
+			 * is what makes it a DOOR rather than a stop: the panel is entered by `F6`
+			 * when it has no row to land on (a filtered list with no match, an empty
+			 * catalogue), and it is deliberately not in the Tab ring, where a stop on a
+			 * container whose children are all stops is one press that does nothing.
+			 *
+			 * `onFocus` rather than a capture listener on the panel element: React's
+			 * synthetic focus event bubbles, so this one attribute reaches every row the
+			 * four render sites draw, and the roving stop follows focus wherever it lands.
+			 */
+			data-chat-region="sidebar"
+			tabIndex={-1}
+			onFocus={onRowFocus}
+			/*
+			 * `relative` IS THE PANEL'S OWN ANCHOR for anything absolutely positioned inside it.
+			 * The archive lane that used to hang off it - a band at the column's foot, sized by the
+			 * card it held - is gone with the operator's own request (2026-09-27: the messages are
+			 * ordinary sonner toasts again, raised by `undo-toasts.tsx` into the global container),
+			 * and the lane, its measurements and its supersession are recorded in
+			 * `docs/design/sidebar-row-space.md` §10. The container declaration the old per-row shed
+			 * measured against is gone with the shed: this panel no longer changes what it draws by
+			 * width.
+			 */
+			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
-			{/* The header once carried a 16px `Plus` for the same action the "New
-		    chat" row below now names in words. Two controls firing one action at
-		    two sizes in one panel reads as an accident, and the small one was the
-		    reported defect — it was the only entry point and users did not find
-		    it. The named row replaces it rather than joining it. */}
-			<div className="flex h-8 items-center px-1">
-				<h2 className="text-body-sm font-medium">Chats</h2>
-			</div>
-			{/* The field carries its own clear control rather than relying on
+			{/*
+			 * ONE PROVIDER FOR THE WHOLE PANEL, and it is load-bearing rather than tidy:
+			 * every row's flyout is a Radix `Tooltip.Root`, and the primitive's wrapper
+			 * self-provides when nothing above it did - which would give each row its own
+			 * provider, and with it its own 400ms delay and no shared
+			 * `skipDelayDuration`, so sweeping from one row to the next would re-wait on
+			 * every one. Sharing it is what makes the panel's hover read as one surface.
+			 */}
+			<TooltipProvider>
+				{/*
+				 * THE BAND: the segment that divides the destinations above from the
+				 * agents/teams/chats below, and the column's one control surface for the
+				 * list's arrangement.
+				 *
+				 * THE OPERATOR'S DIRECTION (2026-09-25), quoted because it is the reason
+				 * this row exists: "It might also be worthwhile to have a segment diving
+				 * the nav from the agents/teams/chats that has view options and buttons to
+				 * create teams/agents similar to creating workspaces in dsh" ... "Make sure
+				 * the buttons are subtle and probably icon-only with tooltips on hover and
+				 * clicking pops out comprehensive options for customizing the view."
+				 *
+				 * NO TEXT LABEL, and that is the one place this deliberately differs from
+				 * the reference. dsh's row prints `Workspaces`; a label here would be the
+				 * `Chats` heading this panel removed on design round 1's D1 - 32px of
+				 * chrome naming the same thing the first section label below it names,
+				 * over a column that holds TWO kinds of section (agents and teams as well
+				 * as chats, which no single noun covers). What is left is what the operator
+				 * actually asked for: the three buttons, at the trailing edge, over a row
+				 * that divides one block of the column from the next.
+				 *
+				 * ICON-ONLY WITH TOOLTIPS, so each control carries an `aria-label` of its
+				 * own rather than relying on the tooltip: Radix's tooltip adds
+				 * `aria-describedby` and only while open, which is not a name.
+				 */}
+				{/*
+				 * THE BAND IS THE LIST'S CONTROL SURFACE, SO IT TAKES THE LIST'S OWN
+				 * GATE. `showList` is the catalogue's answer, the same value that decides
+				 * whether the two regions are drawn at all - and a band drawn without them
+				 * is three controls over nothing: `Search` would open a field whose list is
+				 * not mounted and `View options` would switch sections nothing is drawing.
+				 * The rule is the one the withdrawn gate already states for the boundary
+				 * ("no catalogue means no regions to split"), applied to the row above
+				 * them. Observed in the no-backend `states` frame, 2026-09-25.
+				 */}
+				{showList && (
+					<div
+						data-sidebar-band
+						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
+					>
+						<Tooltip content="Search chats and agents">
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								data-sidebar-search
+								aria-label="Search chats and agents"
+								onClick={() => {
+									/*
+									 * The field is drawn only while filtering (`filterOpen`), so this
+									 * control is what OPENS it - the same state the list's own typing
+									 * and Escape's ladder already move, rather than a second search
+									 * surface. The focus lands on the next frame because the input
+									 * is `hidden` until this state commits.
+									 */
+									setFilterOpen(true);
+									window.requestAnimationFrame(() =>
+										searchRef.current?.focus(),
+									);
+								}}
+							>
+								<Search aria-hidden="true" />
+							</Button>
+						</Tooltip>
+						<Popover open={viewOpen} onOpenChange={setViewOpen}>
+							<Tooltip content="View options">
+								<PopoverTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										data-sidebar-view-options
+										aria-label="View options"
+										aria-expanded={viewOpen}
+										/*
+										 * THE FILLED PILL THE REFERENCE DRAWS (dsh's middle button fills
+										 * when a view option is active), and the condition is the view's
+										 * own difference from the default rather than the panel being
+										 * open: a button that lit up merely because it was clicked would
+										 * say "configured" about a panel the reader then closed
+										 * unchanged.
+										 */
+										className={cn(
+											viewIsCustom &&
+												"bg-row-selected text-ink hover:bg-row-selected",
+										)}
+									>
+										<SlidersHorizontal aria-hidden="true" />
+									</Button>
+								</PopoverTrigger>
+							</Tooltip>
+							<PopoverContent
+								align="end"
+								/*
+								 * THE PANEL SCROLLS INSIDE THE WINDOW, WITH A VISIBLE BOTTOM EDGE (design
+								 * direction D2, 2026-09-28; the inset is D1 of round 1). The Time basis
+								 * group pushed this panel past an 800x600 window: measured in the
+								 * `popover-open-short` capture, the panel ran off the bottom edge and the
+								 * Teams row, and the hidden-sections sentence below it, were unreachable.
+								 * `--radix-popover-content-available-height` is Radix's own measurement
+								 * of the space it has before the viewport edge, so the cap follows the
+								 * window rather than a guessed `max-h`; `overflow-y: auto` then keeps
+								 * every group reachable by scrolling the panel itself.
+								 *
+								 * THE INSET RESERVES HALF A ROW BELOW THE PANEL. A capped box that ends
+								 * flush with the window edge hides that it is capped at all - macOS's
+								 * overlay scrollbars are invisible at rest, and a row cut by the window
+								 * edge reads as the end of the list - which is round 1's D1. Sixteen
+								 * pixels keeps the panel's own bottom edge (and rounded corner) in
+								 * view, so the fold reads as the panel's edge rather than the window's.
+								 *
+								 * WHAT RENDERS ABOVE THE FOLD IS THE NEXT SECTION'S TOP PADDING, not a
+								 * sliver of its content: round 2 (D4) measured zero content pixels above
+								 * the fold in six themes, and the cut would have to land 8-12px lower to
+								 * cross the glyphs. The content-sliver cue is consciously not taken -
+								 * what this inset buys is the panel's own visible edge, and a frame
+								 * that shows it without a scrollbar has no other cue to give.
+								 *
+								 * AND THE CAP BINDS AT THE APP'S DEFAULT SIZE TOO, not only at the floor
+								 * (round 1's Q-1: at 1380x900 the view trigger sits under the nav rail, so
+								 * the available height is 518 against 598 of content). The panel scrolls
+								 * there exactly as it does at 600 - only a window tall enough that the
+								 * available space clears the content never scrolls.
+								 */
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
+								data-sidebar-view-panel
+							>
+								<ChatSidebarViewMenu
+									view={view}
+									counts={viewCounts}
+									onView={setChatSidebarView}
+								/>
+							</PopoverContent>
+						</Popover>
+						<Popover open={createOpen} onOpenChange={setCreateOpen}>
+							<Tooltip content="New agent or team">
+								<PopoverTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										data-sidebar-create
+										aria-label="New agent or team"
+										aria-expanded={createOpen}
+									>
+										<FolderPlus aria-hidden="true" />
+									</Button>
+								</PopoverTrigger>
+							</Tooltip>
+							<PopoverContent
+								align="end"
+								className="w-44 p-1"
+								data-sidebar-create-panel
+							>
+								{/*
+								 * THE TWO EXISTING FLOWS, and they are navigations rather than
+								 * dialogs because the authoring surfaces ARE pages: `
+								 * /agents?create=agent` is what the Agents row's own `Create agent`
+								 * control and the command palette both open. A second, modal
+								 * authoring form here would be a second way to create a profile, and
+								 * the one thing the authoring routes guarantee is that it is the
+								 * same form, the same validation and the same save.
+								 */}
+								<button
+									type="button"
+									data-sidebar-create-agent
+									onClick={() => {
+										setCreateOpen(false);
+										navigate("/agents?create=agent");
+									}}
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+								>
+									<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
+									<span className="min-w-0 flex-1 truncate">New agent</span>
+								</button>
+								<button
+									type="button"
+									data-sidebar-create-team
+									onClick={() => {
+										setCreateOpen(false);
+										navigate("/agents?create=team");
+									}}
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+								>
+									<Users aria-hidden="true" className="size-3.5 shrink-0" />
+									<span className="min-w-0 flex-1 truncate">New team</span>
+								</button>
+							</PopoverContent>
+						</Popover>
+					</div>
+				)}
+				{/* The field carries its own clear control rather than relying on
 		    Escape, which also blurs: a pointer user who wants to widen the filter
 		    back out had to select the text and delete it, and there was nothing on
 		    screen saying the field could be emptied at all. `pr-9` keeps the query
 		    clear of the control — the same reserved-column idiom the settings
 		    search uses on the left for its leading glyph. */}
-			<div className="relative my-2">
-				<input
-					ref={searchRef}
-					aria-label="Search chats and agents"
-					placeholder="Search chats and agents"
-					className="h-8 w-full rounded-md border border-control bg-surface pr-9 pl-2 text-body-sm"
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-				/>
-				{/* Rendered only while a filter is applied: a clear control beside an
+				{/*
+				 * DRAWN ONLY WHILE FILTERING (see `filterOpen`): the column's one search at
+				 * rest is the palette's `Search ⌘K` row, and this field is the list's own
+				 * narrowing, opened by typing into the list. On the column's ground, not in
+				 * an outlined box (§B3: the sidebar is separated by ground alone) - the
+				 * field reads as a field by its caret and its placeholder, and its focus
+				 * ring is the one boundary it draws.
+				 */}
+				<div className={cn("relative mb-2", !filterShown && "hidden")}>
+					<input
+						ref={searchRef}
+						aria-label="Search chats and agents"
+						placeholder="Filter chats and agents"
+						className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						onBlur={() => {
+							if (!query) setFilterOpen(false);
+						}}
+					/>
+					{/* Rendered only while a filter is applied: a clear control beside an
 			    empty field is a control that does nothing.
 
 			    The ring is pulled INSIDE the control's own box, against the shared
@@ -4134,94 +6106,96 @@ export function ChatSidebar({
 			    clear of the 14px glyph, and cannot leave the field in any palette.
 			    `!` because the size step's offset is itself important and this is
 			    an override of it rather than a second convention. */}
-				{query && (
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
-						onClick={() => clearSearch(searchRef.current, setQuery)}
-						aria-label="Clear search"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				)}
-			</div>
-			{/*
-			 * INCLUDE ARCHIVED, and its own render rule is the same one the clear
-			 * control above follows: it is drawn only while a query exists.
-			 *
-			 * Not decoration - the rule is what keeps the panel free of new chrome at
-			 * rest, which is the constraint this half of the feature is under. The
-			 * brief rules out an `Archived chats` section, and a permanently visible
-			 * toggle would be that section's control sitting in a block that is
-			 * otherwise about the query: with an empty box there is nothing to scope
-			 * the widened search to, so the control would be a switch for a search that
-			 * is not happening.
-			 *
-			 * A CHECKBOX with a label rather than a pressed button: the question is
-			 * binary and it widens the CURRENT SEARCH rather than selecting a thing, so
-			 * it reads as "what this search looks at" - which is also why the label is
-			 * the whole control and there is no icon.
-			 *
-			 * FAIL-CLOSED: absent `session_archive` this is not rendered at all, and
-			 * with it rendered off the panel is the panel it always was (`visibleRows`
-			 * keeps the archived rows out of every list either way, so the control can
-			 * only ever reveal them inside one query).
-			 */}
-			{archiveEnabled && query.trim() && (
-				<div className="flex items-center gap-2 pb-2">
-					<Checkbox
-						id={INCLUDE_ARCHIVED_ID}
-						checked={includeArchived}
-						onCheckedChange={(checked) => setIncludeArchived(checked === true)}
-					/>
-					<Label
-						htmlFor={INCLUDE_ARCHIVED_ID}
-						className="text-meta text-ink-muted"
-					>
-						Include archived
-					</Label>
+					{query && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+							onClick={() => clearSearch(searchRef.current, setQuery)}
+							aria-label="Clear search"
+						>
+							<X aria-hidden="true" />
+						</Button>
+					)}
 				</div>
-			)}
-			{/* Says what the search actually LOOKED AT, and only while a query is
+				{/*
+				 * INCLUDE ARCHIVED, and its own render rule is the same one the clear
+				 * control above follows: it is drawn only while a query exists.
+				 *
+				 * Not decoration - the rule is what keeps the panel free of new chrome at
+				 * rest, which is the constraint this half of the feature is under. The
+				 * brief rules out an `Archived chats` section, and a permanently visible
+				 * toggle would be that section's control sitting in a block that is
+				 * otherwise about the query: with an empty box there is nothing to scope
+				 * the widened search to, so the control would be a switch for a search that
+				 * is not happening.
+				 *
+				 * A CHECKBOX with a label rather than a pressed button: the question is
+				 * binary and it widens the CURRENT SEARCH rather than selecting a thing, so
+				 * it reads as "what this search looks at" - which is also why the label is
+				 * the whole control and there is no icon.
+				 *
+				 * FAIL-CLOSED: absent `session_archive` this is not rendered at all, and
+				 * with it rendered off the panel is the panel it always was (`visibleRows`
+				 * keeps the archived rows out of every list either way, so the control can
+				 * only ever reveal them inside one query).
+				 */}
+				{archiveEnabled && query.trim() && (
+					<div className="flex items-center gap-2 pb-2">
+						<Checkbox
+							id={INCLUDE_ARCHIVED_ID}
+							checked={includeArchived}
+							onCheckedChange={(checked) =>
+								setIncludeArchived(checked === true)
+							}
+						/>
+						<Label
+							htmlFor={INCLUDE_ARCHIVED_ID}
+							className="text-meta text-ink-muted"
+						>
+							Include archived
+						</Label>
+					</div>
+				)}
+				{/* Says what the search actually LOOKED AT, and only while a query is
 		    active, because that is the moment the claim is true and relevant.
 		    Both cases are degradations the user cannot see otherwise: the list
 		    still narrows, it just narrows by less than the box promises, and a
 		    search that quietly stops looking inside conversations is
 		    indistinguishable from one that found nothing there. */}
-			{/* A box past the op's own bound is refused before the request is made, so
+				{/* A box past the op's own bound is refused before the request is made, so
 		    it must not be rendered as a backend problem with a Retry: retrying
 		    re-sends the same characters and is refused identically (QA round 1,
 		    Q1). It takes precedence over the names-only notice below, which
 		    describes the same narrowing for a different cause and offers a remedy
 		    (update the app) that cannot help THIS box — shorten the query and that
 		    notice returns for the reason it was written for. */}
-			{overLong && ready && (
-				<p className="pb-2 text-meta text-ink-muted">
-					Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
-					This one is longer, so only chat names are being searched.
-				</p>
-			)}
-			{query && ready && !searchSupported && !overLong && (
-				<p className="pb-2 text-meta text-ink-muted">
-					Searching chat names only. Update Local Operator to search inside
-					conversations.
-				</p>
-			)}
-			{query && searchSupported && search.isError && (
-				<p className="pb-2 text-meta text-ink-muted">
-					Conversation search is unavailable, so these are name matches.{" "}
-					<Button
-						variant="link"
-						size="sm"
-						type="button"
-						onClick={() => void search.refetch()}
-					>
-						Retry
-					</Button>
-				</p>
-			)}
-			{/* The two states of "there is no answer for what you typed yet", and the
+				{overLong && ready && (
+					<p className="pb-2 text-meta text-ink-muted">
+						Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
+						This one is longer, so only chat names are being searched.
+					</p>
+				)}
+				{query && ready && !searchSupported && !overLong && (
+					<p className="pb-2 text-meta text-ink-muted">
+						Searching chat names only. Update Local Operator to search inside
+						conversations.
+					</p>
+				)}
+				{query && searchSupported && search.isError && (
+					<p className="pb-2 text-meta text-ink-muted">
+						Conversation search is unavailable, so these are name matches.{" "}
+						<Button
+							variant="link"
+							size="sm"
+							type="button"
+							onClick={() => void search.refetch()}
+						>
+							Retry
+						</Button>
+					</p>
+				)}
+				{/* The two states of "there is no answer for what you typed yet", and the
 		    empty result once there is. All three sit here, beside the notices,
 		    rather than inside the scrolling list: they are statements about the
 		    SEARCH, and every other line that says something about the search
@@ -4244,87 +6218,117 @@ export function ChatSidebar({
 		    was showing, and without this line that reads as a bug (review round
 		    1, R2) — naming the state is the honest answer, not filling it with
 		    the previous question's hits (review round 2, R10). */}
-			{query.trim() && showList && !matching.length && answered && (
-				<p className="pb-2 text-meta text-ink-muted">
-					Nothing in your chats matches “{query.trim()}”.
-				</p>
-			)}
-			{awaiting &&
-				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length) && (
+				{query.trim() && showList && !matching.length && answered && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Searching conversations…
+						Nothing in your chats matches “{query.trim()}”.
 					</p>
 				)}
-			{/* Mounted at all times and filled later: a live region added to the
+				{awaiting &&
+					lostRowsToStaleAnswer(
+						previous?.rows.length ?? 0,
+						matching.length,
+					) && (
+						<p className="pb-2 text-meta text-ink-muted">
+							Searching conversations…
+						</p>
+					)}
+				{/* Mounted at all times and filled later: a live region added to the
 		    tree WITH its text already inside is frequently not announced at
 		    all, because the region has to exist before the change for the
 		    change to be the event (design round 2, D15). `sr-only`, so the
 		    announcement mirrors the visible sentence without a second visible
 		    copy of it. */}
-			<p aria-live="polite" className="sr-only">
-				{awaiting &&
-				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
-					? "Searching conversations."
-					: query.trim() && showList && !matching.length && answered
-						? `Nothing in your chats matches ${query.trim()}.`
-						: ""}
-			</p>
-			<div ref={splitRef} className="flex min-h-0 flex-1 flex-col">
-				{bothVisible ? (
-					/*
-					 * The pin failure line sits above the BOUNDARY in both
-					 * orders, which is where it has always sat: below it, it
-					 * would push the lower region's rule off the boundary's own
-					 * line and leave the band straddling nothing.
-					 */
-					<>
-						{split.order === "entities-first" ? entityRegion : listRegion}
-						{pinFailureLine}
-						{archiveRegister}
-						{boundary}
-						{split.order === "entities-first" ? listRegion : entityRegion}
-					</>
-				) : listShown ? (
-					<>
-						{restoreAtTop && restoreRow}
-						{pinFailureLine}
-						{archiveRegister}
-						{listRegion}
-						{!restoreAtTop && restoreRow}
-					</>
-				) : (
-					/*
-					 * The entity region alone, which is the withdrawn-gate DOM as well as a
-					 * collapsed chats list. The pin failure line sits AFTER the region here
-					 * rather than before it, because that is where it has always sat: it
-					 * belongs to the list region's side of the column, so it follows the
-					 * region above it and precedes the region below.
-					 */
-					<>
-						{restoreAtTop && restoreRow}
-						{entityRegion}
-						{pinFailureLine}
-						{archiveRegister}
-						{!restoreAtTop && restoreRow}
-					</>
-				)}
-			</div>
-			{(error || profiles.error || teams.error) && (
-				<div role="alert" className="pt-2 text-meta text-danger">
-					<p>{error || profiles.error?.message || teams.error?.message}</p>
-					<button
-						type="button"
-						className="mt-1 underline"
-						onClick={() => {
-							void fetchSessions();
-							void profiles.refetch();
-							void teams.refetch();
-						}}
-					>
-						Retry refresh
-					</button>
+				<p aria-live="polite" className="sr-only">
+					{awaiting &&
+					lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
+						? "Searching conversations."
+						: query.trim() && showList && !matching.length && answered
+							? `Nothing in your chats matches ${query.trim()}.`
+							: ""}
+				</p>
+				{/* ONE SCROLLER, ONE FLOW (operator report, 2026-09-26): the entity
+				    sections and the chats list are children of this one box, in that
+				    order; nothing scrolls inside it or around it, and a section that
+				    grows is still bounded by its own row-count cap (`Show N more`)
+				    rather than by a scroller. The twin ref lets every consumer that
+				    used to name one of the two regions (the two focus slots, the
+				    walk's roots, the scroll handlers) keep working against this node.
+				    `docs/design/sidebar-sections.md` and `sidebar-split.ts` remain
+				    the record of the removed split.
+
+				    THE MARKER IS `scroller`, NOT `chats` (round 1, R3): while this
+				    node carried the `chats` name, every rig that scoped
+				    `[data-sidebar-region="chats"]` to mean "the chats list" read the
+				    whole sidebar body, entity sections included - and the cap rule a
+				    rig wrote for the list capped the entities too. The list's own
+				    node carries `chats` (see the list region below); this node
+				    answers for the scroll, the clip and the gutter. */}
+				<div
+					ref={bindPanelRef}
+					id={CHAT_REGION_ID}
+					tabIndex={-1}
+					data-sidebar-region="scroller"
+					onScroll={() => {
+						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
+						refreshFocusedInside(listPanelRef.current, listSlotRef);
+						extendCatalogueTail();
+					}}
+					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
+				>
+					{entityRegion}
+					{pinFailureLine}
+					{listShown && listRegion}
 				</div>
-			)}
+				{/*
+				 * THE FOOT LINE STANDS DOWN WHILE THE SERVER IS UNREACHABLE (§F2).
+				 *
+				 * A lost server used to be stated twice on one screen: the pane's status
+				 * strip ("Can't reach the Local Operator server" + Retry) and this foot's
+				 * red alert ("did not answer this request" + Retry refresh) - two root
+				 * causes, two Retries, one fact, which is the contradiction §F2 exists to
+				 * end. The strip is the one voice for connection state, so while the
+				 * health probe says the server is not reachable this line says nothing.
+				 *
+				 * It is KEPT for the other case, and demoted: a reachable server that
+				 * refused or failed this list's own read is a fact about the LIST, which
+				 * the strip does not state, and the refresh is its only remedy. It is a
+				 * caption now - `ink-muted`, no `role="alert"` - per branding § 9's one
+				 * register for the status slot; the strip owns the one live alert.
+				 *
+				 * AND THE STAND-DOWN REQUIRES THE STRIP TO BE ON SCREEN (R11): this
+				 * sidebar renders on every route while the strip renders only in the
+				 * conversation pane, so a lost server on /settings and its siblings has
+				 * no strip to hand the voice to and this line keeps it.
+				 *
+				 * AND IT YIELDS TO THE COMPATIBILITY BANNER (QA round 2, Q-3). In the
+				 * states the strip is silent for - the four pairing causes the banner
+				 * carries - this line was the second statement of one incident: measured
+				 * in the successor walk, where the banner's sentence stood alone in the
+				 * pane and this foot line still said "did not answer this request" with
+				 * its own `Retry refresh` beneath it (44 of 51 samples, including the
+				 * last). The banner is the one voice for those causes everywhere the
+				 * sidebar is drawn, and `coveredByCompatibilityBanner` is the same
+				 * predicate the capability paragraph above reads.
+				 */}
+				{(error || profiles.error || teams.error) &&
+					!stripSpeaksConnection &&
+					!coveredByCompatibilityBanner && (
+						<div className="pt-2 text-meta text-ink-muted">
+							<p>{error || profiles.error?.message || teams.error?.message}</p>
+							<button
+								type="button"
+								className="mt-1 underline"
+								onClick={() => {
+									void refreshCatalogue();
+									void profiles.refetch();
+									void teams.refetch();
+								}}
+							>
+								Retry refresh
+							</button>
+						</div>
+					)}
+			</TooltipProvider>
 		</nav>
 	);
 }

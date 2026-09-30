@@ -11,13 +11,17 @@ import { persist } from "zustand/middleware";
 /**
  * Onboarding steps enum
  */
+/*
+ * Three steps (design audit section 5): connect, confirm the default model,
+ * optional extras. The retired values (`user_profile`, `search_api`,
+ * `create_agent`, `congratulations`) are not members any more; a persisted
+ * store that still holds one is sent back to the first step by the modal's
+ * own "unknown step" guard, which is the migration.
+ */
 export enum OnboardingStep {
 	CONNECT_PROVIDER = "connect_provider",
-	USER_PROFILE = "user_profile",
-	SEARCH_API = "search_api",
 	DEFAULT_MODEL = "default_model",
-	CREATE_AGENT = "create_agent",
-	CONGRATULATIONS = "congratulations",
+	EXTRAS = "extras",
 }
 
 /**
@@ -84,6 +88,13 @@ export const useOnboardingStore = create<OnboardingState>()(
 				set({
 					isModalComplete: true,
 					isModalActive: false, // Modal is no longer active once completed
+					/*
+					 * The walkthrough tour no longer starts itself after setup. It used
+					 * to open as a second modal the instant this one closed (UX U9),
+					 * which is two dialogs in a row before the first chat. It stays
+					 * one click away in Settings > Application tour.
+					 */
+					isTourComplete: true,
 				});
 			},
 

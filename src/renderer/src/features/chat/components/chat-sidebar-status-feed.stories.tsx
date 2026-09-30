@@ -73,6 +73,21 @@ type WireRow = {
 	 * seed them at the source rather than paint them into the store.
 	 */
 	attention?: Record<string, unknown>;
+	/**
+	 * The record's own two readings, which `sessions.list` projects onto the row:
+	 * how many subagents the session owns that are running, and how many are
+	 * waiting for capacity.
+	 *
+	 * `null` is "this build does not report", and it is a different answer from
+	 * `0` - a runtime older than the fields omits them or sends `null`, and a
+	 * fixture that folded either into `0` would photograph "no subagents" about a
+	 * session nobody could ask. The renderer draws neither number: they reach the
+	 * screen inside `status.label` (`delegating` is the code that carries them), so
+	 * a row renders the same with and without them, which is what makes them
+	 * honest WIRE fields rather than fixture decoration.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 };
 
 /** One row in `sessions.list`'s own wire field names, as the backend sends it. */
@@ -464,7 +479,7 @@ const Readout: FC<{ rows?: number; tooltips?: boolean }> = ({
 	 * only state in which the container has a viewport to hold or to drag - makes
 	 * the caption taller than the app, and `capture-evidence.mjs` grows the frame to
 	 * the content: the taller the caption, the taller the frame, the taller the
-	 * `max-h-[45%]` panel inside it, and the SMALLER the overflow the story exists
+	 * `max-h-[60%]` panel inside it, and the SMALLER the overflow the story exists
 	 * to produce. Bounding the caption is what stops that column deciding, for the
 	 * frame, how much of the list is off screen.
 	 *
@@ -1046,6 +1061,105 @@ export const CompletionReordered: Story = {
 		roster = resortAfter();
 		deliver(catalogueFrame(2, 73));
 		await sleep(300);
+		releaseShutter();
+	},
+};
+
+/* ---------------------------------------- a completion that moves the TIME BIN */
+
+/** `mtime` fixtures for the bin story are relative to the capture's own clock. */
+const binNowSeconds = () => Math.floor(Date.now() / 1000);
+
+/**
+ * The three rows the bin story starts from, in the order the backend sends
+ * them: a TODAY row, the SUBJECT five days back (THIS WEEK, "5d") and one old
+ * row - so all three time sections are on screen and the move is visible
+ * against its neighbours.
+ */
+const binBefore = (): WireRow[] => {
+	const now = binNowSeconds();
+	return [
+		wireRow(QUARTERLY, "Quarterly revenue model", now - 3_600, IDLE, 1),
+		wireRow(MIGRATE, "Migrate the deploy script", now - 5 * 86_400, IDLE, 1),
+		wireRow(AUDIT, "Audit the vendor list", now - 20 * 86_400, IDLE, 1),
+	];
+};
+
+/**
+ * The same three rows as the next `sessions.list` answers AFTER the turn: the
+ * subject's activity clock is now, and every other field is byte-identical, so
+ * this story isolates the BIN the way `CompletionReordered` isolates POSITION.
+ */
+const binAfter = (): WireRow[] => {
+	const now = binNowSeconds();
+	return [
+		wireRow(QUARTERLY, "Quarterly revenue model", now - 3_600, IDLE, 1),
+		wireRow(MIGRATE, "Migrate the deploy script", now - 60, IDLE, 1),
+		wireRow(AUDIT, "Audit the vendor list", now - 20 * 86_400, IDLE, 1),
+	];
+};
+
+/**
+ * THE TIME BINS UNDER A COMPLETION (2026-09-28): the operator's own report, as
+ * a feed story.
+ *
+ * The report: "even if I've asked an older session something today, once it
+ * completes I can't see it within the today bin". The bins and the row labels
+ * read the transcript's ACTIVITY clock (`updated_at`, the wire's `mtime`), and
+ * a finished turn advances that clock - but no frame carries it: only a
+ * `sessions.list` read does. The backend publishes a `catalogue` invalidation
+ * when a completion moves the row's ORDER KEY, which covers the common case;
+ * it CANNOT fire for one that moves no key (the subject already in its
+ * completion band with the busy band missed), and there the row sat in its old
+ * bin until the 30 s safety poll - measured live, 26.3 s after the completion,
+ * on the installed runtime (this directory's README carries the readings).
+ *
+ * So the frames a finished turn ALWAYS publishes - the status edge and the
+ * attention mark - are the ones this story delivers, and NO `catalogue` frame
+ * is delivered at all: the next `sessions.list` answer is arranged BEFORE the
+ * frames, the order the real system runs in. On this branch the sidebar
+ * re-reads on the completion's own frames and the row lands under TODAY "now";
+ * on the tree this branch was cut from the same frames leave it under THIS WEEK
+ * "5d" until the poll - that half is what the live readings measure, since a
+ * still cannot carry a latency.
+ */
+export const CompletionMovesBin: Story = {
+	render: () => {
+		roster = binBefore();
+		return <Page />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(3);
+		// The turn as the feed reports it: busy first, then the completion and its
+		// mark. Neither is a `catalogue` frame, which is the point of the story.
+		deliver(statusFrame(MIGRATE, BUSY, 4, 91));
+		await sleep(200);
+		roster = binAfter();
+		deliver(statusFrame(MIGRATE, COMPLETE, 5, 92));
+		deliver(attentionFrame(MIGRATE, true, 93));
+		// Settle on the refile where the branch produces one, without failing the
+		// capture where it does not: the base tree's frame is the defect state.
+		//
+		// BY THE FILE'S OWN ROW CONVENTION (design round 1, D2; corrected round 2,
+		// R2-1): rows carry `[data-chat-row]` - a marker, not an id - and the
+		// subject is found by its TEXT, the shape `scrollToRow` / `focusRow` use. The
+		// first form of this lookup matched on a native `title`, which no session row
+		// has carried since the row-space change (design D7), so it could never
+		// break early and would not have noticed a regressed refile - the one thing
+		// this story exists to observe.
+		const sectionOfSubject = () =>
+			[...document.querySelectorAll("[data-chat-row]")]
+				.find((row) =>
+					(row.textContent ?? "").trim().includes("Migrate the deploy script"),
+				)
+				?.closest("[data-chat-section]")
+				?.getAttribute("data-chat-section") ?? null;
+		for (let waited = 0; waited < 2_000; waited += 50) {
+			if (sectionOfSubject() === "today") break;
+			await sleep(50);
+		}
+		await sleep(200);
 		releaseShutter();
 	},
 };
@@ -2565,6 +2679,116 @@ export const MarkAllReadEmpty: Story = {
 	},
 	play: async () => {
 		await waitFor(() => !useCanonicalSessionsStore.getState().loading);
+		await sleep(300);
+	},
+};
+
+/*
+ * ------------------------------------------------------------ the delegating
+ *                                                                        row
+ *
+ * THE ARM'S OWN SURFACE, which the `Neighbours` matrix cannot draw. That story
+ * is a column of glyph-and-label pairs, so it answers "which mark" and nothing
+ * about a ROW: a truncated title, the trailing statement's slot, the mark
+ * column's fixed position, or the sidebar's own 240px clamp. The arm is about a
+ * row, so the row has to be photographed (design round 1, D4).
+ *
+ * TWO WIDTHS, ONE ROSTER. The width is the component's own parameter here as it
+ * is in `chat-layout.tsx`'s clamps, and `DelegatingRowMinimum`'s 240px is
+ * `ui-preferences-store.ts`'s `Math.min(360, Math.max(240, width))` floor - the
+ * one width at which the longest title on screen is truncated hardest, which is
+ * the state a reader could mistake for the mark having moved.
+ *
+ * WHAT IS DELIBERATELY NEIGHBOURED, and why each one is here rather than in a
+ * separate frame: `busy` sits directly under a delegating row because those two
+ * wear the SAME `accent` in the SAME 16px slot and the arc against the three
+ * nodes is the whole difference between them; the unread completion sits between
+ * them because its check is `success`, the ink `accent` collapses onto in some
+ * palettes (design D2); and an `attached` row is the rung a delegating row is
+ * placed BELOW, so the two must be distinguishable at a glance in one picture.
+ */
+const DELEGATING = {
+	code: "delegating",
+	label: "2 subagents running · 1 queued",
+};
+const DELEGATING_QUEUED = { code: "delegating", label: "2 subagents queued" };
+const OPEN = { code: "attached", label: "Open" };
+
+/** The sessions this pair of stories draws: one per row of the roster below. */
+const LEDGER = "6f7081a2b3c4";
+const VENDOR = "7081a2b3c4d5";
+const SPINNER = "81a2b3c4d5e6";
+const FINISHED = "92b3c4d5e6f7";
+const OPENED = "a3c4d5e6f708";
+
+/**
+ * The roster BOTH widths draw, built in one place.
+ *
+ * The pair is a comparison, so the only thing allowed to differ between the two
+ * frames is the viewport; a second copy of this array would be free to drift and
+ * the pair would stop answering anything.
+ *
+ * The counts ride the wire rows as `sessions.list` sends them, because a fixture
+ * that omitted a field the backend now publishes would be photographic of a wire
+ * the app cannot receive - but they are not what draws the count: it reaches the
+ * screen inside `status.label`, which is why the rows would render identically
+ * without them. Two delegating rows rather than one, because the label's own
+ * spellings differ by what is running versus queued and both are the state.
+ */
+const delegatingRoster = (): WireRow[] => [
+	wireRow(
+		LEDGER,
+		"Reconcile the supplier ledger against the quarterly revenue model",
+		1_760_003_600,
+		DELEGATING,
+		6,
+		{ agent: null, team: null },
+		undefined,
+		{ subagents_running: 2, subagents_queued: 1 },
+	),
+	wireRow(
+		VENDOR,
+		"Audit the vendor list",
+		1_760_003_500,
+		DELEGATING_QUEUED,
+		3,
+		{ agent: "quarterly-revenue-auditor", team: null },
+		undefined,
+		{ subagents_running: 0, subagents_queued: 2 },
+	),
+	wireRow(SPINNER, "Migrate the deploy script", 1_760_003_400, BUSY, 4),
+	wireRow(
+		FINISHED,
+		"Quarterly revenue model",
+		1_760_003_300,
+		COMPLETE,
+		2,
+		undefined,
+		unseenAt(FINISHED),
+	),
+	wireRow(OPENED, "Draft the migration runbook", 1_760_003_200, OPEN, 1),
+];
+
+export const DelegatingRowDefault: Story = {
+	render: () => {
+		fixtures();
+		roster = delegatingRoster();
+		return <Page sidebarWidth={280} />;
+	},
+	play: async () => {
+		await catalogueSettled(5);
+		await sleep(300);
+	},
+};
+
+export const DelegatingRowMinimum: Story = {
+	render: () => {
+		fixtures();
+		roster = delegatingRoster();
+		return <Page sidebarWidth={240} />;
+	},
+	play: async () => {
+		await catalogueSettled(5);
 		await sleep(300);
 	},
 };

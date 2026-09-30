@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { Zap } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useState } from "react";
 import type {
 	CanonicalFrontendState,
@@ -29,6 +30,7 @@ import {
 	bandReadings,
 	effortDisplay,
 	effortState,
+	fastModeState,
 	modelIdentity,
 	reconcileEffort,
 } from "./session-model";
@@ -84,8 +86,11 @@ import {
  * buttons.
  *
  * WHICH LINE they occupy is a container query on `@container/chatcol`, not a
- * viewport breakpoint: above 750px of column (`CHAT_MEASURE`'s own threshold)
- * the cluster is inline and pushed right by its `ml-auto`; below it the cluster
+ * viewport breakpoint: above 750px of column (`CHAT_ROW_INLINE_PX`, the
+ * composer row's own threshold - which the 2026-09-26 restore put back in
+ * step with `CHAT_MEASURE`'s own 750, after the redesign had narrowed that to
+ * 688) the cluster is inline and pushed right by
+ * its `ml-auto`; below it the cluster
  * takes the row's first line in full and the controls keep the second, which is
  * the shape these readings had when they had a row of their own. So the narrow
  * case continues rather than being replaced, and no reading needs a compact
@@ -181,6 +186,37 @@ export type SessionStatusStripProps = {
 	 * `frontend` that came off the canonical stream: a draft pane has no session.
 	 */
 	onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+	/**
+	 * These readings are the last ones the session reported, held across a
+	 * transient stream gap; see `CanonicalSessionView["heldFrontend"]`.
+	 *
+	 * TOLD, never inferred, and for the reason `draft` is told: a strip handed the
+	 * held snapshot and a strip handed a live one receive the same `frontend`
+	 * shape, and which one it is is a fact only the handle holds. Inferring it
+	 * here — from a `status` this component never receives, or from a null
+	 * `frontend` — would be this component deciding what "held" means.
+	 *
+	 * IT MARKS, IT DOES NOT HIDE. Every reading still renders, because the whole
+	 * point of holding them is that the reader keeps the model, the effort, the
+	 * context window and the spend they were last told instead of watching four
+	 * blanks come and go. What this buys is that none of them is presented as
+	 * current: each carries `LAST_READING_NOTE` in its accessible sentence and in
+	 * its tooltip, and the cluster is marked in the DOM so a frame or a probe can
+	 * ask the question without reading the copy.
+	 */
+	held?: boolean;
+	/**
+	 * These readings are not merely absent - they were PAINTED and then dropped,
+	 * because the stream spent its retry budget while holding them (task-17, U4).
+	 *
+	 * Told, never inferred, for the reason `held` is told: "no `frontend`" is
+	 * true both here and for a pane that never received a page, and only the
+	 * first is a state where a reader has just watched four values disappear.
+	 * The pane owns the distinction (it remembers which sessions have painted
+	 * readings); all this flag asks is whether to leave ONE sentence where the
+	 * strip was - `READINGS_DROPPED_NOTE` - instead of rendering nothing.
+	 */
+	readingsDropped?: boolean;
 	className?: string;
 };
 
@@ -301,6 +337,73 @@ function useActiveSeconds(banked: number, startedAt: number | null): number {
 }
 
 /**
+ * What a reading says when it is drawn from the HELD snapshot rather than from
+ * a live stream.
+ *
+ * WHY IT IS NOT THE WORD "RECONNECTING". The transcript already paints that word
+ * for this whole state, and a second copy of it here would be the same claim
+ * twice — the strip's job is the other half: saying WHICH readings those are,
+ * i.e. that this value is the last one the session reported and nothing has
+ * refreshed it since. The reconnect itself stays the pane's statement, which is
+ * what R2 requires.
+ *
+ * AND WHERE THAT STATEMENT IS, exactly, is why this component needs a mark of
+ * its own rather than leaning on it. The transcript's line sits immediately above
+ * the composer for a conversation SHORTER than its viewport, and is scrolled out
+ * of sight for a longer one: design round 1 measured it 4,808px above the reading
+ * position and hit-tested it in 0 of 713 held samples. The earlier revision of
+ * this comment said "four lines above the composer", which is the short case
+ * stated as the general one — the case the operator is least likely to be
+ * mid-work in.
+ *
+ * THE SMALLEST MARK THAT READS CORRECTLY, and the reason it is a clause rather
+ * than a badge: the cluster is four readings inside the composer's button row,
+ * and any visible badge would cost geometry in a row that already has a
+ * measured 750px wrap rule and a 56px floor for the model name (design round
+ * 1.5, D9). A clause carried in each reading's accessible sentence and its
+ * tooltip costs no layout at all, reaches both a screen reader and a pointer,
+ * and lives in the same place as every other qualification this component
+ * makes about a value (see `modelReason`, `costTooltip`, `contextTooltipLines`).
+ */
+export const LAST_READING_NOTE = "Last reading from before the reconnect.";
+
+/**
+ * The sentence that stands where the readings were, when the stream spent its
+ * retry budget and the held readings were dropped (task-17, U4).
+ *
+ * WHY IT EXISTS: the terminal arms clear `heldFrontend` on purpose (`the one
+ * thing still claiming to describe a live stream`), but the strip then vanished
+ * with no word of its own - the failure notice speaks for the STREAM, and the
+ * reader who was watching `20.3%/1M` and `$0.515` saw them go with nothing
+ * saying the READINGS had been let go. It is a sentence in this module rather
+ * than in the pane for the same reason `LAST_READING_NOTE` is: the register
+ * belongs to the readings, whichever state they are in.
+ *
+ * "Dropped" rather than "gone" or "unavailable": it states what the app did
+ * (it stopped holding them), not what the numbers became - nothing measured
+ * them again, so anything stronger would be a claim nobody observed (R21).
+ */
+export const READINGS_DROPPED_NOTE =
+	"Readings dropped when the connection was lost.";
+
+/**
+ * The fast badge's sentence, carried by the model chip's ONE tooltip.
+ *
+ * WHY IT IS NOT A TOOLTIP OF THE BOLT'S OWN (operator request, 2026-09-29:
+ * "Tooltip content 'Fast mode on'"): the badge lives INSIDE the chip's button,
+ * and a second Radix tooltip trigger nested in a first is a second interactive
+ * affordance inside the button — the defect `org-origin-badge.tsx` already
+ * records for this class. It is also measurably wrong here: Radix opens a
+ * trigger on `pointermove`, which BUBBLES, so hovering the bolt would open the
+ * chip's panel AND the bolt's, two panels for one pointer. The sentence
+ * therefore rides the chip's existing panel as its own line whenever the badge
+ * shows, and the chip's aria-label carries a lowercased clause of the same
+ * fact — one trigger, one panel, both registers truthful. Exported so the
+ * rendered-markup test can pin the exact string (`composer-readings.test.mjs`).
+ */
+export const FAST_MODE_ON_NOTE = "Fast mode on";
+
+/**
  * One reading, as a button when it can be opened and a label when it cannot.
  *
  * The two forms are one component so a reading that loses its picker (a model
@@ -325,22 +428,70 @@ const Reading: FC<{
 	 * here (§ 6).
 	 */
 	readout?: boolean;
+	/**
+	 * This reading is drawn from the held snapshot; see
+	 * `SessionStatusStripProps["held"]`.
+	 *
+	 * PER READING rather than once for the cluster, even though every reading in
+	 * a held strip is held: the two readings that come off `sessions.preview` on
+	 * a DRAFT (the unresolved model, and the resolution itself) are NOT read from
+	 * the canonical stream and would be mislabelled by a rule stated for the
+	 * cluster. Five of the seven readings are the session's, and each says so.
+	 */
+	held?: boolean;
 	children: ReactNode;
 	className?: string;
-}> = ({ tooltip, label, onOpen, readout = false, children, className }) =>
-	onOpen ? (
-		<Tooltip content={tooltip}>
+}> = ({
+	tooltip,
+	label,
+	onOpen,
+	readout = false,
+	held = false,
+	children,
+	className,
+}) => {
+	/*
+	 * The mark, in both registers this component speaks: the accessible name,
+	 * which is the whole reading for a screen reader, and the tooltip body, which
+	 * is where a pointer reader gets it. `aria-label` alone would leave the
+	 * qualification behind a hover for everyone else, and a tooltip alone would
+	 * leave a screen reader hearing a value with no provenance.
+	 */
+	/*
+	 * THE ACCESSIBLE NAME IS THE READING'S OWN, held or not (design round 1, D4).
+	 * The provenance clause used to be appended here, which put the same sentence
+	 * in four accessible names and made a picked-but-unconfirmed reading announce
+	 * two qualifications in one breath (UX round 1, U2). The CLUSTER states it
+	 * once now -- see the group name in the strip below -- and the tooltip keeps
+	 * the clause per reading, so a pointer reader and a screen reader are both
+	 * told, each once.
+	 */
+	const spoken = label;
+	const body = held ? (
+		// Nested rather than flattened into `TooltipLines`: the call sites own
+		// their own lines (some set `mono`, some build theirs from a model), and a
+		// component that rewrote them would be a second authority for copy it does
+		// not have. The extra column level is the tooltip's own `gap-0.5`.
+		<span className="flex flex-col gap-0.5">
+			{tooltip}
+			<span className="text-ink-muted">{LAST_READING_NOTE}</span>
+		</span>
+	) : (
+		tooltip
+	);
+	return onOpen ? (
+		<Tooltip content={body}>
 			<button
 				type="button"
 				onClick={onOpen}
-				aria-label={label}
+				aria-label={spoken}
 				className={cn(READING_BUTTON, className)}
 			>
 				{children}
 			</button>
 		</Tooltip>
 	) : readout ? (
-		<Tooltip content={tooltip}>
+		<Tooltip content={body}>
 			<span
 				/* The tab stop is deliberate: it keeps the tooltip reachable from the
 				   keyboard (see the prop's own note). The rule's remedy - dropping it -
@@ -348,14 +499,14 @@ const Reading: FC<{
 				   unavailable action. */
 				/* biome-ignore lint/a11y/noNoninteractiveTabindex: a focusable readout is the honest form for a reading that can never open */
 				tabIndex={0}
-				aria-label={label}
+				aria-label={spoken}
 				className={cn(READING_LABEL, className)}
 			>
 				{children}
 			</span>
 		</Tooltip>
 	) : (
-		<Tooltip content={tooltip}>
+		<Tooltip content={body}>
 			{/*
 			 * A real `button` with `aria-disabled`, following the read-only
 			 * working-directory chip rather than inventing a second idiom for the
@@ -375,13 +526,14 @@ const Reading: FC<{
 			<button
 				type="button"
 				aria-disabled="true"
-				aria-label={label}
+				aria-label={spoken}
 				className={cn(READING_LABEL, className)}
 			>
 				{children}
 			</button>
 		</Tooltip>
 	);
+};
 
 /** A tooltip body of several lines: the first at reading weight, rest as meta. */
 /**
@@ -436,10 +588,28 @@ const TooltipLines: FC<{ lines: string[]; mono?: boolean }> = ({
 function contextBreakdownLine(
 	status: ContextReading["status"],
 	openable: boolean,
+	held = false,
 ): string {
 	// Nothing to open says so FIRST: the three lines below all name a control, and
 	// naming one that cannot open is the D3 defect in the context reading.
 	if (!openable) return COMMANDS_OFF;
+	/*
+	 * WHILE HELD THE LINE MAY NOT SAY "NOW" (design round 1, D3). The strip's own
+	 * mark already says these are the readings from before the reconnect, and
+	 * "Measured now" in the same utterance contradicts it - the panel would be
+	 * asserting the value is current and stale at once. Only the clause that
+	 * would be FALSE is dropped; the rest of the sentence, and every live
+	 * string, are byte-identical.
+	 *
+	 * Both held forms carry a terminal stop, which the live forms do not: new
+	 * copy gets the stop, and the live copy stays untouched rather than being
+	 * re-punctuated under cover of this change.
+	 */
+	if (held) {
+		if (status === "measured" || status === "estimate")
+			return "Click for the full breakdown, which estimates your next request.";
+		return "Click for the full breakdown.";
+	}
 	if (status === "measured")
 		return "Measured now; click for the full breakdown, which estimates your next request";
 	if (status === "estimate")
@@ -572,8 +742,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	effortEntities,
 	pendingModel = null,
 	draft = false,
+	held = false,
 	onOpenDraftPicker,
 	draftResolution,
+	readingsDropped = false,
 	className,
 }) => {
 	/*
@@ -583,7 +755,33 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * nothing without a snapshot, which is honest about a session that has not
 	 * reported.
 	 */
-	if (!frontend && !(draft && draftResolution)) return null;
+	if (!frontend && !(draft && draftResolution)) {
+		/*
+		 * THE READINGS THAT WERE DROPPED STILL SAY SO (task-17, U4). Every other
+		 * empty pane stays silent - a session that has not reported yet has
+		 * nothing to explain - but a pane whose readings were dropped at a spent
+		 * budget was showing values a moment ago, and their disappearance is a
+		 * fact this slot can state in the strip's own register. The `!draft`
+		 * guard is structural rather than a second condition: a draft has no
+		 * stream, so it can never have dropped one.
+		 */
+		if (readingsDropped && !draft) {
+			return (
+				<p
+					data-lo-readings-dropped={true}
+					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is neither a form result nor a control. The file's group role carries the same suppression for the same reason. */
+					role="status"
+					className={cn(
+						"order-2 -mx-1.5 min-w-0 text-meta text-ink-dim",
+						className,
+					)}
+				>
+					{READINGS_DROPPED_NOTE}
+				</p>
+			);
+		}
+		return null;
+	}
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
@@ -623,6 +821,18 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const readings = bandReadings(frontend, pendingModel);
 	const model = readings.identity;
 	const identity = modelIdentity(model);
+	/*
+	 * THE FAST BADGE'S ONE CONDITION, read off the SAME spec the label prints
+	 * (`readings.identity` above), so the bolt can never contradict the name it
+	 * sits beside — the badge qualifies the model the chip is naming, including
+	 * the pending paint's window, where the pick's spec reports no tier and the
+	 * badge correctly hides until the owner's frame lands. The tri-state comes
+	 * from `fastModeState` so this chip and the `/fast` row's slot share ONE
+	 * rule — the chip passes the spec it names (this one, pending window
+	 * included), the row the spec in force; outside an unconfirmed switch those
+	 * are the same fields (operator report, 2026-09-29).
+	 */
+	const fastOn = fastModeState(model) === "on";
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	/*
 	 * The four readings that come off the snapshot, asked for a pane that has no
@@ -720,8 +930,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * rather than a compacted spelling. A draft, a live session and a
 				 * restored one all take this rule; only the contents vary (R15).
 				 *
-				 * 750 is `CHAT_MEASURE`'s own number, so the app has one "wide column"
-				 * threshold rather than two that agree by accident, and it is keyed on
+				 * 750 is `CHAT_ROW_INLINE_PX` - the composer ROW's own measurement, as the
+				 * number in `chat-measure.ts` states - so the app has one "wide column"
+				 * threshold for the composer band rather than two that agree by accident,
+				 * and it is keyed on
 				 * `@container/chatcol` rather than the viewport: with the canvas open at
 				 * a 1380px window the column is at its 220px floor while `md:` is still
 				 * comfortably active (see `chat-measure.ts`).
@@ -740,24 +952,80 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * evenly and float this cluster mid-row, which is the layout
 				 * `justify-between` produced.
 				 *
-				 * The DOM position is first (the row renders this before the left group)
-				 * so that the wrapped order and the tab order agree; `order-2` above the
-				 * threshold restores the visual order [attach][chip] [readings]
+				 * The DOM position is first (the row renders this before the left group),
+				 * and `order-2` puts it in the visual order [attach][chip] [readings]
 				 * [mic][send] without a second render tree (UX round 1, U4).
 				 *
-				 * `flex-nowrap` above the threshold is the other half of the yield order
-				 * (design round 1.5, D9): the row already refuses to wrap, and a
-				 * still-wrapping cluster would spend the name's 56px floor's worth of
-				 * slack on a second internal line instead of letting the name truncate.
+				 * THE TWO CLASSES THAT MADE THIS CONDITIONAL ON THE COLUMN'S WIDTH ARE
+				 * GONE (design round 2, D21). `basis-full` took the row's first line below
+				 * 750px of column and `@min-[750px]:basis-auto` gave it back above - the
+				 * two halves of a two-line control row that §G1 forbids ("one control row,
+				 * 32px, always one line, at every width"). With the row never wrapping the
+				 * cluster is always inline, so both are inert.
+				 *
+				 * `flex-nowrap` stays and is now unconditional: it is the other half of the
+				 * yield order (design round 1.5, D9) - the row refuses to wrap, so a
+				 * still-wrapping cluster would spend the name's slack on a second internal
+				 * line instead of letting the name truncate.
 				 */
-				"basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+				"order-2 flex-nowrap",
 				className,
 			)}
 			data-lo-session-strip={true}
 			// The QA/E2E hook for "this strip is a draft", so a frame or a probe can
-			// ask the question without reading the copy (R22).
+			// ask the question without reading the copy (R22). The held flag gets the
+			// same treatment for the same reason: a frame that has to grep
+			// `LAST_READING_NOTE` out of a tooltip is a frame asserting on copy that
+			// the designer is free to reword.
+			//
+			// CLUSTER SCOPE, matching the word below and the group name beside it
+			// (design round 1, D5). `held` is a property of the whole cluster -- every
+			// reading in a held strip comes off the same snapshot -- so the DOM fact
+			// is stated once, here. The per-reading `held` prop scopes only that
+			// reading's TOOLTIP clause, and the two are deliberately different
+			// questions rather than one stated twice.
 			data-lo-session-strip-draft={draft ? true : undefined}
+			data-lo-session-strip-held={held ? true : undefined}
+			/*
+			 * THE GROUP NAME IS WHERE THE STRIP SAYS IT IN WORDS (design round 1,
+			 * D1+D4). A visible mark is not optional: measured, the transcript's
+			 * "Reconnecting" line sits thousands of pixels above the readings and
+			 * hit-tested none of 713 held samples, so held and live bands were the
+			 * same glyphs in the same inks. The word is the mark; this label is the
+			 * same statement for a screen reader, announced once on entering the
+			 * group rather than four times over.
+			 */
+			/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group`, and it is the wrong one here - it would add form-section semantics and its own default box and margin to a row that is deliberately borderless and measured to the pixel (see the wrap rule above). What this role buys is a LABELLING SCOPE for the held statement, not a form boundary, and there is no form. */
+			role="group"
+			aria-label={held ? `Session readings. ${LAST_READING_NOTE}` : undefined}
 		>
+			{/*
+			 * THE VISIBLE MARK, FIRST IN THE CLUSTER (design round 1, D1). A word
+			 * rather than a tint: the readings already sit on `ink-muted`/`ink-dim`,
+			 * so a further shade would spend a contrast floor to say something the
+			 * reader still has to decode. It is the cluster's first item so the eye
+			 * meets the qualification before the values it qualifies.
+			 *
+			 * `text-meta` and `ink-dim` are the strip's own register -- this is
+			 * metadata about the readings, not a reading.
+			 *
+			 * BELOW 750px OF COLUMN IT IS HIDDEN, AND THAT IS STATED RATHER THAN
+			 * DISCOVERED: measured, the narrow row has ~23px free and the cluster
+			 * already wraps to its own line there, so a word would push the
+			 * controls onto a third line -- the exact defect design round 1.5's D9
+			 * fixed. The statement is not lost at that width: the group name above
+			 * carries it to assistive technology and the tooltips carry it to a
+			 * pointer. It is NOT carried by the pane's own "Reconnecting" line --
+			 * that line is above the composer for a short transcript and scrolled
+			 * away for a long one, which is the same measurement this mark exists
+			 * for (0 of 713 held samples, 4,808px above the reading position), and
+			 * an earlier revision of this comment claimed otherwise.
+			 */}
+			{held && (
+				<span className="shrink-0 text-meta text-ink-dim @max-[750px]/chatcol:hidden">
+					Last reading
+				</span>
+			)}
 			{identity && (
 				<Reading
 					// Pending is a state of a chip that CAN open; `modelReason` answers
@@ -766,8 +1034,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// draft has no session to confirm a switch against.
 					label={
 						pending
-							? `Model: ${identity.selector}. Switching; waiting for the session to confirm it.`
-							: `Model: ${identity.selector}. ${modelReason(draft, Boolean(openModel))}`
+							? `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. Switching; waiting for the session to confirm it.`
+							: `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. ${modelReason(draft, Boolean(openModel))}`
 					}
 					tooltip={
 						<TooltipLines
@@ -777,19 +1045,27 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 											identity.selector,
 											"Switching the model; waiting for the session to confirm it",
 										]
-									: [identity.selector, modelReason(draft, Boolean(openModel))]
+									: [
+											identity.selector,
+											...(fastOn ? [FAST_MODE_ON_NOTE] : []),
+											modelReason(draft, Boolean(openModel)),
+										]
 							}
 						/>
 					}
 					onOpen={openModel}
+					held={held}
 					// The one item with unbounded length, so it is the one that
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
 					//
-					// `min-w-14` (56px) is the floor: about eight monospace glyphs, so a
-					// truncated name still names something rather than becoming an
-					// ellipsis with no subject. It cannot force a wrap at 750px, where
-					// the row's arithmetic leaves 56px of slack for exactly this item.
+					// `min-w-14` (56px) is the floor: about eight monospace glyphs
+					// when the badge is absent, 24px of name (the bolt's 14px and the
+					// 6px gap come off the same floor) when it shows — still a name
+					// rather than an ellipsis with no subject, and
+					// `LongModelName`'s fast-on frame is the picture. It cannot
+					// force a wrap at 750px, where the row's arithmetic leaves 56px
+					// of slack for exactly this item.
 					//
 					// `text-ink-dim` while pending: a colour step, never opacity (the
 					// branding contract's rule for a control that is not yet live), so a
@@ -804,6 +1080,23 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						pending && "text-ink-dim",
 					)}
 				>
+					{/*
+					 * THE FAST BADGE (operator's mock, 2026-09-29): the bolt, immediately
+					 * before the name it qualifies. A MARK, not a second control — the
+					 * chip's tooltip and `aria-label` both state the fact from
+					 * `FAST_MODE_ON_NOTE` above (its note says why the badge carries no
+					 * trigger of its own), and `shrink-0` keeps it whole when the name
+					 * truncates at the narrow end. Hidden when the dial is off OR the
+					 * model reports no fast tier — the one condition `fastOn` reads.
+					 */}
+					{fastOn && (
+						<Zap
+							aria-hidden="true"
+							className="size-3.5 shrink-0"
+							fill="currentColor"
+							stroke="none"
+						/>
+					)}
 					<span className="truncate">{identity.name}</span>
 					{/*
 					 * The pending state's non-hover cue (UX U3).
@@ -960,6 +1253,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// "Effort is not adjustable on this model" -- true, but a worse way
 					// to learn it than never offering the control.
 					onOpen={openEffort}
+					held={held}
 				>
 					{/*
 					 * The level is a machine-reported value, not prose, so it is
@@ -975,10 +1269,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					draft
 						? DRAFT_CONTEXT_LABEL
 						: reading.status === "no-reading"
-							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch))}`
+							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held)}`
 							: `Context: ${reading.spelling}${
 									reading.status === "estimate" ? ", estimated" : ""
-								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch))}`
+								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch), held)}`
 				}
 				tooltip={
 					<TooltipLines
@@ -1001,6 +1295,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 										contextBreakdownLine(
 											reading.status,
 											Boolean(sessionDispatch),
+											held,
 										),
 									]
 						}
@@ -1011,6 +1306,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						? () => sessionDispatch({ name: "context", args: "" })
 						: undefined
 				}
+				held={held}
 			>
 				<ContextWheel reading={reading} />
 				{/*
@@ -1046,6 +1342,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// Announced as a button, it told a screen-reader user the spend
 					// figure was an unavailable action (UX round 1, U5).
 					readout
+					held={held}
 				>
 					{/* A cost has no picker of its own: `/usage` is a different
 					    question (this account's billing) and opening it from a session
@@ -1098,6 +1395,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// A readout rather than a disabled button for the same reason the
 					// cost is one — there is no picker for it to be unavailable FOR.
 					readout
+					held={held}
 					className="@min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
 				>
 					{/*

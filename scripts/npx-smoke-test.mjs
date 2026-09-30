@@ -34,6 +34,7 @@ import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const READY_MARKER = "LOCAL_OPERATOR_UI_READY";
 const BYTECODE_ERROR = "cachedDataRejected";
@@ -84,13 +85,24 @@ console.log(`Running npx smoke test against ${tarballPath}`);
 
 const child = spawn("npx", ["--yes", localTarball], {
 	cwd: scratch,
-	env: {
+	/*
+	 * `withTelemetryOff` because THIS job is the one that boots the app in CI:
+	 * a hosted runner launches the packed tarball on macOS, that build carries
+	 * the live PostHog project key in both of its processes, and the renderer's
+	 * copy is inlined at build time — so every run of this job arrived in the
+	 * product's own analytics as a user, and as a session replay beside it. The
+	 * sibling notification table deliberately leaves this script unguarded (a
+	 * released build has no session to park on a gate), which is exactly why this
+	 * decision needs its own table rather than that one's rows. See
+	 * `telemetry-off.mjs`.
+	 */
+	env: withTelemetryOff({
 		...process.env,
 		LOCAL_OPERATOR_UI_SMOKE_TEST: "true",
 		npm_config_cache: join(scratch, "npm-cache"),
 		// Electron refuses to boot without a display on Linux runners.
 		...(process.platform === "linux" ? { DISPLAY: process.env.DISPLAY } : {}),
-	},
+	}),
 	stdio: ["ignore", "pipe", "pipe"],
 	// Own the whole tree. npx spawns the bin wrapper, which spawns Electron,
 	// which spawns helpers; killing only the direct child is precisely the

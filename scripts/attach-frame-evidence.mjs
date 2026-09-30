@@ -70,6 +70,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
 const argValue = (name, fallback = null) => {
@@ -262,38 +263,45 @@ const baseEnv = {};
 for (const [name, value] of Object.entries(process.env)) {
 	if (inherited.has(name)) baseEnv[name] = value;
 }
-const childEnv = (
-	configDir,
-	apiUrl,
-	{ manager = false, logDir = null } = {},
-) => ({
-	...baseEnv,
-	HOME: ROOT,
-	LOCAL_OPERATOR_CONFIG_DIR: configDir,
-	/*
-	 * Where this child writes its logs, when it is the app. Named rather than left
-	 * to the app's default, which is the operator's real log directory however this
-	 * HOME is set: `logger.ts` composes it from Electron's `home`. A boot that
-	 * passes no `logDir` (the seeders and the stub daemon) never writes there
-	 * anyway. The caller keys it on the boot's own profile name, so a boot's log
-	 * stays attributable to that boot.
-	 */
-	LOCAL_OPERATOR_LOG_DIR: logDir ?? join(ROOT, "logs"),
-	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-	LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-	LOCAL_OPERATOR_NO_TERMINAL_TITLE: "1",
-	VITE_LOCAL_OPERATOR_API_URL: apiUrl,
-	/*
-	 * Off unless a scene is specifically about the spawn path.
-	 *
-	 * `attached` and `flap` attach to a daemon that is already there, and the app
-	 * must not start one of its own on the operator's machine while they do it.
-	 * `unattachable` is the exception and says so at its own call site: the state
-	 * that scene is about is produced by the spawn gate, and a gate that is never
-	 * reached produces nothing.
-	 */
-	VITE_DISABLE_BACKEND_MANAGER: manager ? "false" : "true",
-});
+/*
+ * `withTelemetryOff` INSIDE the builder, and the allowlist above is why it has
+ * to be here rather than at a call site: this rig inherits eleven names and
+ * nothing else, so an operator's `export LOCAL_OPERATOR_UI_TELEMETRY=off` never
+ * reaches the app this boots. Every boot of the real app in this file goes
+ * through this function, so the switch lands on all of them; the app's build
+ * carries the live PostHog project key in both processes, and the renderer's
+ * copy is inlined at build time, which is why the launch environment is the only
+ * place it can be switched off. See `telemetry-off.mjs`.
+ */
+const childEnv = (configDir, apiUrl, { manager = false, logDir = null } = {}) =>
+	withTelemetryOff({
+		...baseEnv,
+		HOME: ROOT,
+		LOCAL_OPERATOR_CONFIG_DIR: configDir,
+		/*
+		 * Where this child writes its logs, when it is the app. Named rather than left
+		 * to the app's default, which is the operator's real log directory however this
+		 * HOME is set: `logger.ts` composes it from Electron's `home`. A boot that
+		 * passes no `logDir` (the seeders and the stub daemon) never writes there
+		 * anyway. The caller keys it on the boot's own profile name, so a boot's log
+		 * stays attributable to that boot.
+		 */
+		LOCAL_OPERATOR_LOG_DIR: logDir ?? join(ROOT, "logs"),
+		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+		LOCAL_OPERATOR_NO_TERMINAL_TITLE: "1",
+		VITE_LOCAL_OPERATOR_API_URL: apiUrl,
+		/*
+		 * Off unless a scene is specifically about the spawn path.
+		 *
+		 * `attached` and `flap` attach to a daemon that is already there, and the app
+		 * must not start one of its own on the operator's machine while they do it.
+		 * `unattachable` is the exception and says so at its own call site: the state
+		 * that scene is about is produced by the spawn gate, and a gate that is never
+		 * reached produces nothing.
+		 */
+		VITE_DISABLE_BACKEND_MANAGER: manager ? "false" : "true",
+	});
 
 const children = [];
 /** Every profile this run booted, so the teardown can read each one's own log. */

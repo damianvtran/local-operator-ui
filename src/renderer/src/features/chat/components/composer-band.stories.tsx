@@ -22,7 +22,7 @@ import { MessageInput } from "./message-input";
  * WHY THE COLUMN IS THE VIEWPORT at the wide sizes and a fixed width at the
  * narrow one. With the canvas and the run panel shut - the default layout -
  * the chat column IS the window less its chrome, so a 1380px viewport gives
- * the band's shared measure (`CHAT_MEASURE`, capped at 900px) the width it has
+ * the band's shared measure (`CHAT_MEASURE`, capped at 810px) the width it has
  * in the app. With the canvas OPEN the column collapses to 550px inside an
  * 830px window — the narrowest window whose chat column is still 550px, not the
  * app's own minimum (800x600, where the column is 300px and the whole prompt is
@@ -192,9 +192,17 @@ type BandProps = {
 	isSmallView?: boolean;
 	pool?: readonly string[];
 	draft?: string;
+	/** Nothing connected: the connect card replaces the chips (design section 6). */
+	noProvider?: boolean;
 };
 
-const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
+const composerBand = ({
+	story,
+	isSmallView,
+	pool,
+	draft,
+	noProvider,
+}: BandProps) => {
 	const conversation = conversationFor(story);
 	const input = (
 		<MessageInput
@@ -203,6 +211,7 @@ const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
 			conversationId={conversation}
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
+			noProvider={noProvider ?? false}
 			onSendMessage={async () => true}
 		/>
 	);
@@ -285,6 +294,34 @@ export const EmptyChat: Story = {
 	render: () => (
 		<Column label="empty chat / opening sample: the pool's first four + the tip row">
 			{composerBand({ story: "empty-chat" })}
+		</Column>
+	),
+};
+
+/**
+ * The empty chat with NO model provider connected: the connect card takes the
+ * chips' slot, the tips are withheld, and the placeholder says what to do.
+ */
+export const EmptyChatNoProvider: Story = {
+	render: () => (
+		<Column label="empty chat, no provider connected: the connect card replaces the chips">
+			{composerBand({ story: "empty-chat-no-provider", noProvider: true })}
+		</Column>
+	),
+};
+
+/** The same state in the small view, where the band shows the status line. */
+export const EmptyChatNoProviderSmall: Story = {
+	render: () => (
+		<Column
+			label="small view, no provider: the composer's status line"
+			width={480}
+		>
+			{composerBand({
+				story: "empty-chat-no-provider-small",
+				noProvider: true,
+				isSmallView: true,
+			})}
 		</Column>
 	),
 };

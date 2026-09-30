@@ -44,6 +44,12 @@ const snapshot = (
 		capabilityStatus: null,
 		unanswered: 0,
 		lastTransportAt: null,
+		/*
+		 * Null unless a story names one: an address substitution is a fact about a
+		 * LAUNCH, and every story but the two that say so is the ordinary case where
+		 * the app is on the address it was configured for.
+		 */
+		addressSubstitution: null,
 		detail:
 			"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 		updatedAt: Date.now(),
@@ -140,8 +146,25 @@ const Bridge = ({
 						: { status: 404, body: { message: "not stubbed in this story" } },
 			}
 		: undefined;
+	/*
+	 * WITH NO BRIDGE THE HOOK PROBES OVER HTTP ITSELF, so the fixture must pin that
+	 * probe or the frame is a property of the machine that shot it (design round 2,
+	 * D8b). `useConnectivityStatus` falls back to `fetch(<configured>/health)` when there
+	 * is no bridge, and the answer varies with whatever the host happens to be running:
+	 * a daemon that answers reads as online (no banner - the branch this file
+	 * photographs), a failed probe paints the contract's sentence. Round 1 captured one
+	 * of each across two runs and shipped the first, which left the committed identity a
+	 * fact about the host and the readback beside it quoting two passes' hashes.
+	 */
+	if (status === null) pinAnsweringProbe();
 	useLayoutEffect(() => {
 		return () => {
+			/*
+			 * The module-level singleton, read AT CLEANUP rather than captured per
+			 * render: `pinAnsweringProbe` is idempotent, and a value captured here
+			 * would unpin a stub some later render installed.
+			 */
+			unpinAnsweringProbe();
 			const bridge = window.api as unknown as {
 				backend?: unknown;
 				desktop?: unknown;
@@ -151,6 +174,43 @@ const Bridge = ({
 		};
 	}, []);
 	return <>{children}</>;
+};
+
+/**
+ * Pin the browser host's own probe to an answer, so the frame is the tree's and not
+ * the machine's.
+ *
+ * THE BRANCH IT PINS, and the reason (design round 2, D8b): the stub answers, so the
+ * no-bridge state renders NOTHING - the claim this set's `no-bridge` entry has always
+ * carried, and the reason its frame is byte-identical to `attached` and `degraded`. The
+ * other branch is real and is not photographed: with a probe that FAILS the band paints
+ * `serverBannerCopy(null)`'s sentence, and whether a browser-hosted app should announce
+ * the absent bridge at all stays design round 1's D12 product question - a fixture that
+ * flipped with the host was implicitly answering it, which is the trap this closes.
+ *
+ * Module-level rather than a per-render closure: the decorator renders more than once,
+ * and a stub installed per render would wrap the previous stub, leaving the original
+ * `fetch` unreachable by the time a cleanup ran.
+ */
+/** Undo the pinned probe, if this page pinned one. */
+const unpinAnsweringProbe = () => {
+	unpinProbe?.();
+};
+
+let unpinProbe: (() => void) | null = null;
+const pinAnsweringProbe = () => {
+	if (unpinProbe) return unpinProbe;
+	const original = globalThis.fetch;
+	globalThis.fetch = (async () =>
+		new Response(JSON.stringify({ status: "ok" }), {
+			status: 200,
+			headers: { "Content-Type": "application/json" },
+		})) as typeof fetch;
+	unpinProbe = () => {
+		globalThis.fetch = original;
+		unpinProbe = null;
+	};
+	return unpinProbe;
 };
 
 const withBridge =
@@ -192,18 +252,16 @@ type Story = StoryObj<typeof ConnectivityBanner>;
 /**
  * No desktop bridge at all: the weaker answer a browser host gets.
  *
- * Measured, and asserted as measured (design round 2, D12): this state renders
- * NO BANNER. `useConnectivityStatus` reads `serverHealth?.online ?? true`, and an
- * absent bridge leaves the health query with no answer, so the fallback is
- * "online" and `hasConnectivityIssue` is false.
+ * Measured, and asserted as measured (design round 2, D12): with no bridge
+ * `useConnectivityStatus` reads `serverHealth?.online ?? true`, and an absent bridge
+ * leaves the health query to the hook's own probe - which this fixture PINS to an
+ * answer (`pinAnsweringProbe`, and the WHY there), so the state it photographs is the
+ * one this entry always claimed: a browser host whose probe answers renders NO BANNER,
+ * and the empty frame is the measurement.
  *
- * The play used to wait for "Not connected to a Local Operator server." - the
- * sentence the contract carries for exactly this state (`serverBannerCopy(null)`)
- * and which no surface can reach while the gate above reads an absent bridge as
- * online - so the play failed and the pair captured as the no-banner ground,
- * byte-identical to `attached`. Asserting the absence is what the state actually
- * supports today; whether a browser-hosted app should announce the absent bridge
- * is a product question for the design round.
+ * The play asserts all three offline sentences are ABSENT, including the contract's own
+ * for this state, so a frame that ever captured the other branch fails here instead of
+ * being committed as this one.
  */
 export const NoBridge: Story = {
 	decorators: [withBridge(null)],
@@ -214,6 +272,9 @@ export const NoBridge: Story = {
 			);
 			expect(document.body.textContent ?? "").not.toContain(
 				"The Local Operator server stopped",
+			);
+			expect(document.body.textContent ?? "").not.toContain(
+				"Not connected to a Local Operator server",
 			);
 		});
 	},
@@ -399,9 +460,18 @@ export const Wedged: Story = {
  * can read describes that address).
  *
  * This is the copy the operator's report asks for: it names the address, the pid
- * when the daemon published one, and the path into the state, and it says what
- * was NOT done about it. The daemon is serving throughout - nothing here may
- * render as "offline".
+ * when the daemon published one, and the path into the state, it says what was NOT
+ * done about it, and - since design round 1 (D3) - it names the act that ends the
+ * holder, which is the whole of what an operator in this state can do. The daemon is
+ * serving throughout - nothing here may render as "offline".
+ *
+ * AND THE `detail` IS THE SHIPPED SENTENCE, not a paraphrase of it (design round 1,
+ * D2). It is the output of `describeSpawnRefusal` in
+ * `src/main/backend/backend-service.ts` for an occupancy record of the shape this
+ * fixture's `pid`/`version`/`installKind` describe, and
+ * `scripts/connectivity-banner-copy.test.mjs` compares the two - so a copy change in
+ * main cannot leave this fixture (and the committed frames shot from it) documenting
+ * a sentence the app no longer sends.
  */
 export const Unattachable: Story = {
 	decorators: [
@@ -417,11 +487,150 @@ export const Unattachable: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"This app was not given the key to that server, so it did not start a second one. It keeps probing for a server it can open.",
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with lop services reclaim 42411 (lop services status lists what is running). It keeps probing for a server it can open.",
 			}),
 		),
 	],
 	play: waitForCopy(/It keeps probing for a server it can open/),
+};
+
+/**
+ * BOTH addresses this app may serve on are held - the state the app used to quit in,
+ * and the one design round 1 (D2) found had no frame anywhere in the tree.
+ *
+ * WHY THIS IS THE SHAPE THAT MATTERS rather than a second copy of the one above: with
+ * two holders the class clause was repeated per address, which is what made the band
+ * 106 CSS px against the 68 the one-holder sentence cost, on a band that takes its
+ * height out of the shell. The sentence here states the class ONCE and lists the
+ * addresses it covers (`HOLDER_CLASS` in main), and both holders are of the same kind
+ * because that is the case the shorter sentence exists for - a reader can see, in the
+ * frame, that the claim appears once.
+ *
+ * The `detail` is `describeSpawnRefusal`'s output for two daemon records, pinned by
+ * `scripts/connectivity-banner-copy.test.mjs` for the reason `Unattachable` gives.
+ */
+export const BothAddressesHeld: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "wedged",
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 0,
+				detail:
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) and http://127.0.0.1:8080 (pid 53501, local-operator, v0.55.5) are running Local Operator daemons this app has no key for. Nothing was started over them. Stop them from the installs that own them with lop services reclaim <pid> (lop services status lists what is running). It keeps probing for a server it can open.",
+			}),
+		),
+	],
+	play: waitForCopy(
+		/are running Local Operator daemons this app has no key for/,
+	),
+};
+
+/**
+ * ATTACHED, but on the fallback address: the configured address is held, so the app
+ * started its own daemon on the other address the renderer trusts (design round 1,
+ * D1).
+ *
+ * WHY THIS STATE NEEDS A FRAME AT ALL. Measured by the design round: the "attached on
+ * 8080" and "attached on 1111" frames of the whole surface were BYTE-IDENTICAL
+ * (sha256 f4d4b7b3..., 63,386 bytes each), so an operator serving on the fallback saw
+ * an app that said nothing about it - and nothing rendered the return when the
+ * address freed either. The `holder` clause is main's own (`describeHolders`), pinned
+ * by `scripts/connectivity-banner-copy.test.mjs`; the sentence around it is the copy
+ * table's.
+ */
+export const ServingOnFallback: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				url: "http://127.0.0.1:8080",
+				pid: 4242,
+				version: "0.54.47",
+				addressSubstitution: {
+					kind: "substituted",
+					configured: "http://127.0.0.1:1111",
+					serving: "http://127.0.0.1:8080",
+					holder:
+						"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for",
+					/*
+					 * THE ACT COMES FROM MAIN, with the pid (agent round 2, R2-4; design round 2,
+					 * D9). This band used to spell the act itself as `lop services reclaim <pid>`
+					 * while the `unattachable` frame one state over printed the holder's real pid
+					 * for the same single holder - one act, two spellings, and the runnable one
+					 * was next door. The literal is `reclaimClause`'s output for the occupancy the
+					 * `holder` above describes, pinned by `scripts/connectivity-banner-copy.test.mjs`.
+					 */
+					reclaim:
+						"Stop it from the install that owns it with lop services reclaim 42411 (lop services status lists what is running).",
+				},
+			}),
+		),
+	],
+	play: waitForCopy(/not the address this app is configured for/),
+};
+
+/**
+ * THE SAME STATE, ONE LAUNCH LATER: the app adopted the daemon on the fallback
+ * address instead of starting one (agent round 2, R2-1a).
+ *
+ * WHY IT NEEDS ITS OWN FRAME. The second launch of this incident re-attaches to the
+ * daemon the first one left on 8080 - that is the observation suite's own case - and
+ * no spawn gate runs, so there is no holder to name and no act to offer. Before this
+ * round that launch carried no substitution at all, which made the app silently on
+ * another address: byte-for-byte the invisibility the fallback band exists to remove.
+ *
+ * What is left is the two facts that are true: the address it is on, the address it
+ * is configured for, and that it did not start the daemon it is using.
+ */
+export const AttachedElsewhere: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				url: "http://127.0.0.1:8080",
+				pid: 4242,
+				version: "0.54.47",
+				addressSubstitution: {
+					kind: "substituted",
+					configured: "http://127.0.0.1:1111",
+					serving: "http://127.0.0.1:8080",
+					holder: null,
+					reclaim: null,
+				},
+			}),
+		),
+	],
+	play: waitForCopy(/The daemon this app is using was already running/),
+};
+
+/**
+ * The transition OUT of the state above: the configured address freed, and the app is
+ * on it again (design round 1, D1, "make the transition visible").
+ *
+ * It is a state of its own rather than the fallback band simply going away, which is
+ * what silence would make it: the operator who was working on 8080 sees the app say it
+ * is back on the address it was told to use. This is the one band here that is
+ * dismissible, and `serverBannerCopy` is what marks it so.
+ */
+export const ReturnedToConfigured: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				url: "http://127.0.0.1:1111",
+				addressSubstitution: {
+					kind: "returned",
+					configured: "http://127.0.0.1:1111",
+					serving: "http://127.0.0.1:8080",
+				},
+			}),
+		),
+	],
+	play: waitForCopy(/the address this app is configured for/),
 };
 
 /**

@@ -23,8 +23,6 @@ type ScrollToBottomButtonProps = {
 	 */
 	className?: string;
 
-	bottomDistance?: number;
-
 	/**
 	 * True when messages arrived while the reader was scrolled up. The
 	 * button grows a label so the reader learns there is something new
@@ -45,7 +43,6 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	visible,
 	onClick,
 	className,
-	bottomDistance = 160,
 	hasNewActivity = false,
 }) => {
 	const handleClick = useCallback(() => {
@@ -54,13 +51,29 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<div
+			/*
+			 * ANCHORED TO THE COMPOSER'S TOP EDGE, which is the whole of D15 (chat
+			 * redesign §G5). It used to be placed by a `bottom` DISTANCE from whatever
+			 * ancestor happened to be positioned - 160px, or 120 in the small view - and
+			 * that number is the defect: a composer whose height is a function of its
+			 * content (a staged attachment, a reply preview, eight lines of prose) is
+			 * taller than the constant as soon as it grows, so the disc landed ON the
+			 * attachment row and on the control row in the frames the round measured.
+			 *
+			 * `bottom-full` puts the wrapper's bottom edge on its container's TOP edge,
+			 * so the disc is above the panel at every height, with no measurement and no
+			 * constant to drift; `mb-3` is §G5's 12px step. The container is the
+			 * composer's own anchoring wrapper (`message-input.tsx`, the `relative`
+			 * element the popups anchor to as well), so the composer is the floor and
+			 * the disc can never be inside it.
+			 */
+			data-lo-scroll-to-bottom=""
 			className={cn(
-				"pointer-events-none absolute inset-x-0 z-40 flex items-center justify-center",
+				"pointer-events-none absolute right-3 bottom-full z-40 mb-3 flex items-center justify-end",
 				"transition-opacity duration-base ease-out-quart",
 				visible ? "opacity-100" : "opacity-0",
 				className,
 			)}
-			style={{ bottom: bottomDistance }}
 			aria-hidden={!visible}
 		>
 			<Button

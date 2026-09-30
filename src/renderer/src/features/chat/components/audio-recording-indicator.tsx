@@ -13,6 +13,16 @@ const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
 
 /*
+ * THE WAVEFORM'S BOX, in the strip below the field (see the render). Bounded
+ * rather than `flex-1`: the treatment is an affordance ANCHORED to the composer,
+ * not a second surface - a full-width waveform is what the washed panel this
+ * replaced already was, and the width it would take is the width the draft
+ * above it is read against. `h-6` is `MAX_BAR_HEIGHT`'s own size, so a loud
+ * frame cannot be clipped by the canvas it is drawn into.
+ */
+const WAVEFORM_CLASS = "block h-6 w-28 shrink-0 text-accent";
+
+/*
  * The recording pulse, kept in-component: `styles/**` is shared infrastructure
  * and this animation is composer chrome.
  *
@@ -237,14 +247,37 @@ export const AudioRecordingIndicator = ({
 	}
 
 	return (
-		<div className="flex flex-1 items-center justify-center gap-4 rounded-md border border-accent/20 bg-accent-wash px-4 py-2 text-accent [min-height:50px]">
+		/*
+		 * RECORDING IS A STATE OF THE COMPOSER, NOT A SCREEN THE COMPOSER
+		 * BECOMES. The old treatment replaced the field with a bordered,
+		 * full-width `bg-accent-wash` panel (this component took `flex-1` inside
+		 * the box), so the draft the user was mid-thought in VANISHED at the
+		 * press - the operator's report, and the thing the composer's field now
+		 * stays mounted to prevent.
+		 *
+		 * What is left is the state's WHOLE visual, and it is deliberately
+		 * small: one line, anchored to the field's leading edge, no border, no
+		 * wash, no minimum height a text row would not have had anyway. The
+		 * controls live in the row below (`Confirm recording`/`Cancel recording`),
+		 * where the interrupt-slot geometry already reserves their boxes; this
+		 * strip is a status line and carries no control.
+		 *
+		 * The dot keeps its pulsing ring (its own comment above records what each
+		 * half is for under `prefers-reduced-motion`), and the word is still the
+		 * affordance's name: a state a screen reader user gets through the
+		 * field's `aria-describedby` is a state that must read the same here.
+		 */
+		<div
+			data-recording-indicator=""
+			className="mt-1 flex items-center gap-2 px-2 text-accent [min-height:1.5rem]"
+		>
 			<style>{PULSE_KEYFRAMES}</style>
 			<span className="relative block size-2 shrink-0" aria-hidden="true">
 				<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
 				<span className="block size-2 rounded-full bg-accent" />
 			</span>
 			<span className="font-medium text-body-sm text-accent">Recording</span>
-			<canvas ref={canvasRef} className="block h-6 flex-1 text-accent" />
+			<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
 		</div>
 	);
 };

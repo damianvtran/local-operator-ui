@@ -44,7 +44,7 @@ graph LR
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Fifty-nine `ThemePalette` objects, 33 roles each, every value a literal
+  truth. Fifty-nine `ThemePalette` objects, 36 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -131,6 +131,23 @@ they are where a keycap on a selected row, a chip label and a reading button on 
 own hover are actually read, and neither was measured before the legibility pass —
 which is how `ink-dim` came to sit at 3.91:1 on a selected row in `cyberpunk` with
 every gate green.
+
+**The user message block's fill is a role of its own.** `message-surface` is the
+block's own surface — not a fifth ground and not a state: the fill **is** the block's
+boundary (the border D10 retired was "the third and loudest mark on the quietest object
+in the transcript"), so it carries a findability floor of its own — **ΔE00 4.0 off the
+canvas** it is drawn on, with a **≥ 2.5 `L*`** step — authored as the first clearing step along
+`surface` toward `elevated`, or `surface` itself where that already clears the floor. It
+is not `surface` because that role is the app's shared panel ground, bounded by the
+ladder (2.5–5.0 `L*`) and moving every card and panel with it: on the palettes where its
+step lands low (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight` 2.10 ΔE00) the block's
+only boundary was a fill a reader cannot see — the operator's report that "the contrast
+between the user message background and the chat background is quite poor on some
+themes". 4.0 sits at or below the step the same column's composer carries
+(`elevated`/`canvas`, 4.17 at its fleet worst) on all but one of the 59 palettes -
+`catppuccinFrappe`'s block steps 4.26 against its composer's 4.23, 0.03 over and
+below any perceptual step - so the block reads as the quietest object on the
+screen, that single exception stated rather than rounded away.
 
 There are **two state roles, and each is a rung of the panel's own ladder**: `rowHover`,
 the fill of the row under the pointer, and `rowSelected`, the fill of the row the
@@ -297,15 +314,16 @@ placeholders) → `ink-disabled`.
 
 | Role | Register | Standard floor | This system's floor |
 |---|---|---|---|
-| `ink` | body, names, headings | 4.5:1 (AA) | **7:1 on all six grounds; 8:1 on `canvas`** |
+| `ink` | body, names, headings | 4.5:1 (AA) | **7:1 on all eight grounds; 8:1 on `canvas`** |
 | `ink-muted` | secondary: descriptions, 13px rows, chip labels | 4.5:1 | **5.5:1** |
 | `ink-dim` | captions, metadata, placeholders, keycaps, 11–13px | 4.5:1 | **5.0:1** |
 | `ink-disabled` | disabled controls | exempt (SC 1.4.3) | no floor — **capped at 0.8 × `ink-dim`** |
 
-The **six grounds** are the four elevation steps plus the two that carry text as a
-*state*: `accent-wash` (selection/hover tint, callouts, chips, find-match) and
-`rowSelected` (the current row in the sidebar and the settings rail; `rowHover`,
-the row under the pointer, is the seventh and carries the same floors). SC 1.4.3 asks
+The **eight measured grounds** are the four elevation steps plus the four that
+carry text as a *state* or a surface: `accent-wash` (selection/hover tint,
+callouts, chips, find-match), `rowSelected` (the current row in the sidebar and
+the settings rail), `rowHover` (the row under the pointer), and `message-surface`
+(the user message block's own fill). SC 1.4.3 asks
 4.5:1 of every ink and nothing more, and the reason this system asks more is that
 4.5:1 at 11px is not 4.5:1 at 14px: a contrast ratio is luminance-only and says
 nothing about stroke weight, size, or the thin-hairline register metadata is
@@ -363,6 +381,22 @@ old light theme ended up bounding every input in the app at **1.25:1** — the
 control's only edge, effectively invisible. If you are adding a boundary, ask
 whether removing it entirely would lose information. If yes, it is structural
 and must clear 3:1. If no, delete it rather than reaching for `hairline`.
+
+**The composer is an object that leaves the flow.** Its ground is `elevated` on
+`canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
+draws **no border at rest**: the step is what separates it, and the accent ring
+is reserved for `:focus-visible`. Where it sits over scrolled content, the
+transcript gets a 24px fade mask to `canvas` at the pane's top edge and a
+matching mask above the composer — not the shared shadow, which this section
+reserves for objects that float (menus, popovers, dialogs).
+
+Why the step rather than an edge, recorded because the two look interchangeable:
+the five reference composers at this size get their separation from a lightness
+step, and this app's own `border-control` is the accent on the brand palette, so
+a bordered composer was the loudest thing on the screen at rest — a ring around
+an empty box, while the transcript sat at `canvas` with nothing pointing at it.
+The accent is spent on what the user acts on (the send control's fill) and on
+focus, not on the frame of an empty field.
 
 ### Accent
 
@@ -465,11 +499,11 @@ the weakest pair anywhere in the system is sage at 8.4.
 |---|---|
 | dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
 | `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
-| `ink` on each of the six grounds | 7:1 |
+| `ink` on each of the eight grounds | 7:1 |
 | `ink` on `canvas` | 8:1 |
-| `ink-muted`, `ink-dim` on each of the six grounds | 5.5:1 / 5.0:1 |
-| `ink-disabled` against `ink-dim`, on each of the six grounds | ≤ 0.8 × |
-| `accent` and each semantic colour as text on all six grounds | 4.5:1 |
+| `ink-muted`, `ink-dim` on each of the eight grounds | 5.5:1 / 5.0:1 |
+| `ink-disabled` against `ink-dim`, on each of the eight grounds | ≤ 0.8 × |
+| `accent` and each semantic colour as text on all six tone grounds | 4.5:1 |
 | `accent-alt` as text on `canvas`, `surface` and `sunken` | 4.5:1 |
 | `accent-alt` as text on a row's state ground (the trace row's hover ground, `elevated`) | 4.5:1 |
 | `accent-alt` against `accent` | ΔE00 15 |
@@ -484,6 +518,8 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
 | Any adjacent ground pair | ΔE00 2.0 |
+| The user message block's fill (`message-surface`) off the canvas it is drawn on | ΔE00 4.0, and a ≥ 2.5 `L*` step |
+| `ink` / `ink-muted` / `ink-dim` on the user message block's fill | 7:1 / 5.5:1 / 5.0:1 |
 | The palette/picker active row (`sunken`) against the dialog's `elevated` | ΔE00 3.0, and a ≥ 2 `L*` step |
 | `accent-wash` against every ground it is painted on | ΔE00 2.0 |
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
@@ -577,10 +613,22 @@ Those need a human and a screenshot.
 The site's display steps are deliberately absent. A desktop app has no hero, and
 a 60px headline in a tool is a marketing device applied to a working surface.
 
-**Monospace is machine voice.** Paths, code, counts, timestamps, trace labels,
-identifiers. It is what lets a tool trace read as machine output without needing
-a box drawn around it — which is most of how the trace redesign buys its
+**Monospace is machine voice.** Paths, code, counts, timestamps, identifiers — and
+the OBJECT of a trace line, not its verb. A trace line is a sentence about the
+machine, not a machine's own line (Zed `Read file` + mono path; Claude Code bold
+`Read` + mono filename; Cursor `Explored 1 file` in sans; Warp sets the whole
+line in mono and is the one that reads as a terminal, which § 0 names as the
+failure mode). It is what lets a tool trace read as machine output without
+needing a box drawn around it — which is most of how the trace redesign buys its
 quietness. Monospace for emphasis, or for prose, is forbidden.
+
+The split also decides where the trace's identity ink goes: the glyph keeps it,
+the verb does not. The verb is a word in the reader's language and belongs at
+text weight in `ink-muted`; the accent-coloured mono name column was the loudest
+ink on the row, which is the failure this rule exists to stop. Keeping the glyph
+on its identity colour is deliberate — it is 14px, and it is the only thing
+separating a read from a write at a glance — so an edit that moves the glyph to
+`ink-muted` to "quiet the row" has misread which half was loud.
 
 ---
 
@@ -616,21 +664,52 @@ isolation.**
   tooltip, badge, skeleton. A 32px-tall control cannot carry more: 10px eats a
   third of its height and reads as a lozenge, and every desktop tool that feels
   precise sits at 4–6.
-- **10px, panels and callouts.** Things that sit over or beside content and are
-  read as one block: menu, popover, select panel, alert.
-- **14px, frames.** Cards and dialogs — the containers other things sit inside.
+- **10px, panels, frames and cards.** Things that sit over or beside content
+  and are read as one block — menu, popover, select panel, alert — and, at the
+  same tier, the app's in-flow surfaces: a view's own frame (board, list,
+  timeline, schedules) and a panel-scale card (the agent-hub card).
+- **14px, dialogs.** The one frame that leaves the flow and carries the
+  system's shadow; the radius stays with it.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
-- **16px (`frame`)** is for the two objects that span their whole column: the
-  composer and the message bubble.
+- **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
+  spans its whole column and is the one object the user acts on.
+- **10px (`panel`)** is the user's message block. A bubble at the composer's
+  radius makes the user's turn read as consumer messaging, and it is the
+  composer's whole column-width shape that the 16 is for. (Cursor 3 ≈ 6, VS
+  Code/Raycast ≈ 8–12 behind their bubbles.)
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
+- **A card's boundary is its ground, not an edge.** A card, a frame and the
+  well under a board's cards separate by their step on the four grounds (§ 2);
+  a hairline on a repeating card is the extra mark this system deletes, the
+  way `message-surface`'s border was retired. A card nested inside a well
+  takes 6 — the tabs track's own 10/6 pair (the board card in its sunken
+  column). A card in a STATE keeps its edge, because the state is the
+  information (the overdue board card's `warning-border`).
 - `rounded-full` stays reserved for avatars, status dots and pill badges.
 
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
 longer than 240ms, and only something entering the screen earns that.
 
+- **A disclosure does not animate its fold, and the reason is mechanical rather
+  than aesthetic.** The shared `Disclosure`
+  (`src/renderer/src/shared/components/ui/disclosure.tsx`) renders its children
+  only while it is open (`isOpen && children`), so there is nothing for a height
+  transition to interpolate. Making the fold animate means keeping children
+  mounted for every caller — including every tool row in the transcript — and an
+  unmounted body is exactly what keeps a forty-row turn cheap to scroll. The
+  chevron still swaps (`ChevronRight` ⇄ `ChevronDown`) rather than rotating, and
+  the swap is what tells the reader the fold opened. 180ms is therefore named but
+  unspent here; it stays in the ramp for entrances.
+- **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
+  spinner that must run until the machine stops cannot be capped at 240ms. One
+  such element per surface, `opacity` or `background-position` only, never a
+  layout property, and under reduced motion the app's existing `0.01ms` cap
+  applies to it like everything else: the contract is that the element is
+  **visible** with the animation never running, which the cap honours because the
+  keyframes carry no `opacity: 0` start.
 - Transition `color`, `background-color`, `border-color`, `opacity`, and
   `transform` only for entrances.
 - **Nothing lifts, scales, or translates on hover.** Hover is a colour step.
@@ -706,10 +785,17 @@ the one place the prop legitimately appears.
 ## 6. Focus, disabled, and the two rules people break
 
 **Focus ring is `outline`, never `box-shadow`.** An outline honours
-`border-radius: inherit` and is not clipped by an ancestor's `overflow: hidden`.
-This app is mostly scroll containers, so a box-shadow ring silently disappears
-in exactly the places keyboard users need it. `:focus-visible` only — a mouse
-user clicking a button should not get a ring.
+`border-radius: inherit`, but it is NOT exempt from clipping: an outline is ink
+overflow, and an ancestor's `overflow: hidden` (or `overflow-clip`) cuts it
+exactly as it cuts an outset shadow. This file claimed otherwise until design
+round 1's D3 of the inline-rename work — a premise `styles/index.css` had
+already corrected, and the wrong premise is how a clipped ring (the pencil's,
+in the header's one-line clip band) went unchecked. Choose outline because it
+follows `border-radius` without a shadow layer, and give a ring that must sit
+near a clipped ancestor a non-clipped wrapper. This app is mostly scroll
+containers, so a box-shadow ring silently disappears in exactly the places
+keyboard users need it. `:focus-visible` only — a mouse user clicking a button
+should not get a ring.
 
 **Disabled changes colour, never opacity.** An opacity-faded control fades its
 own background too, so the same disabled button lands on a different colour over
@@ -748,6 +834,35 @@ equally important**, and the interface must not present them as though they are.
 
 - A completed action is **one line**. Not a card, not a bordered panel, not a
   header with an icon tile.
+- **Above one line per action there is an aggregation tier.** A run of three or
+  more consecutive actions folds into one summary line in the user's terms —
+  the counts by class, or by kind when no sentence can phrase them (`Explored 4
+  files, 1 search`, `3 shell · 1 python`). It is **condensed by default**: it
+  opens on the reader's own press and on nothing else, so a collapsed run still
+  answers "what is it doing right now?" by naming the call in flight (`Running
+  pnpm vitest run`) beside its counts and its wall-clock span. It condenses
+  itself once and only when its section ends — finished sections condense; the
+  live section and anything the reader opened obey the reader, and nothing
+  condenses while a call in it is still running, nor while the turn waits on
+  the reader's own gate (an approval or question parks the turn; a parked turn
+  is unsettled, so nothing condenses). A finished turn also carries
+  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`) — EXCEPT a
+  turn that has condensed to its own summary bar: there the foot stands down
+  and the bar IS the line (its own stamp replaces the foot's, one stamp per
+  turn), so the agent-output tier reads as two levels — the turn's single bar,
+  then the runs' folds inside it once opened. The fold is a
+  VIEW: it hides rows and never reorders them, so the placement rule a few lines
+  down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
+  tier a 40-step turn is 40 lines, which is the "every internal step at equal
+  weight" failure of § 0.
+- **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
+text in the transcript — code, stdout and diffs share the treatment — opens
+  behind the row's own disclosure, and an open block that fills the scroller
+  pushes its own row off-screen. Measured on the AFTER set: at 1380x900 the
+  transcript is 692 and 320 is 46% of it, which is right; at 800x600 it is
+  **360**, so a flat 320 would take 89% of the reader's window for one detail.
+  The `vh` half is what honours both. The block's own scroll and the `N more
+  lines` footer stay, so nothing is unreachable at the short end.
 - A trace line names the action in the **user's** terms and the object in
   monospace: "Read `invoices/march.csv`", not "Executing Code".
 - Prefer one disclosure idiom app-wide. Two competing expand/collapse patterns
@@ -789,14 +904,31 @@ equally important**, and the interface must not present them as though they are.
   **If a reading measure is ever wanted back on agent output, it must narrow
   the whole row content box — prose and the ledger together, i.e. the shared
   `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
-  Narrowing prose by itself re-creates the two rails this rule removes. The
-  cost of not having one is recorded rather than hidden: 98.1 `ch` at the body
-  step — an INHERITED figure, quoted as the arithmetic that argued the original
-  removal rather than re-derived here; the same column carries 131 real
-  characters on an 832.6px line — which is the ceiling and not a slope, because
-  the content measure is capped at 900px and so reads the same at 1920 as at
-  1024. The `ch`/character distinction is not pedantry: it is a 2.6× difference
-  in what the number describes.
+  Narrowing prose by itself re-creates the two rails this rule removes.
+  **The operator restored the pre-redesign measure on 2026-09-26 (PR #534): the
+  measure is 900px again, on their own report against the 640px redesign** —
+  whether a wide conversation reads better than a narrow one here is the
+  operator's call on their own product, and this document records the override
+  rather than arguing it. **A follow-up narrowed it one step, to 810px (exactly
+  10%), on the operator's "narrow the constraint a bit, maybe by around 10%";
+  the step's own measurement lives beside the value in `styles/index.css` and
+  in `docs/evidence/chat-measure/`.** The 640 measurement is KEPT, because it is what an
+  override of the override would need: measured at the body step (14px SFNS, a
+  700-character sample), 640 carries 101 characters per line on average and 104
+  at worst, against 146/146 at 900; the board's own worst reference is 108
+  (Cursor 3) and the chat-first products sit at 62–87; 680 lands exactly on the
+  board's worst case and 760 is past it; and 640 is the widest column that fits
+  at 800x600 with the collapsed 56px sidebar and 24px gutters. Reinstating 640
+  means re-reading that measurement against the frames of the day, not
+  re-arguing it from memory. What does NOT change is the rule this number
+  serves: the cap is on the shared row content box — prose, the ledger, the
+  user block and the composer together (`CHAT_MEASURE`) — never `max-width` on
+  `.lo-markdown` alone.
+  Cost, recorded, under the 640 measure (the trade a future narrowing re-opens):
+  101 characters is still wider than Claude.ai (76) and Zed (87), which carry
+  no tables or diffs in the answer. If fresh AFTER frames at that measure ever
+  show the table wrapping badly, the token moves to 680 and nothing else
+  changes.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.

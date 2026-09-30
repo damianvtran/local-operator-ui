@@ -1,0 +1,101 @@
+[build] current: assets 2026-09-26T06:34:02.963Z >= sources 2026-09-26T06:33:31.558Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/root/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/chat-redesign
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-89532
+  frames        /Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-89532/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/chat-redesign/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the daemon answered a turn, so the run is attached before the kill
+[note] state while attached
+        {"activeSessionId":"1ea86bca05c8","sessionCount":8}
+[note] frame
+        {"label":"connection-1380x900-attached","path":"/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3/connection-1380x900-attached.png","bytes":220789,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":4,"stable":true,"toastFree":true,"toastWaitMs":4}
+[PASS] the run-owned daemon was signalled (SIGTERM to the pid its own record names)
+[PASS] the daemon's listener is gone: /health refuses after the kill
+[note] the daemon (pid 52837) was SIGKILLed after its graceful shutdown did not drain
+        listener closed first; the pid was still there 10309ms later
+[PASS] the pane's strip states the root cause once the daemon is gone
+[note] live regions while the daemon is gone
+        [{"role":"alert","text":"Can't reach the Local Operator server. Sending will wait.The daemon's process is gone.Retry","controls":["Retry","Dismiss"],"box":{"x":284,"y":76,"w":1072,"h":53}}]
+[note] Retry controls while the daemon is gone
+        [{"name":"Retry","disabled":false,"x":1288,"y":102}]
+[PASS] ONE live region states the connection (U3b)
+[PASS] no OTHER live region stands beside the strip
+[PASS] exactly ONE Retry control is on screen for that one root cause
+[note] frame
+        {"label":"connection-1380x900-server-gone","path":"/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3/connection-1380x900-server-gone.png","bytes":245429,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":0}
+[PASS] a send that failed while offline puts §F3's state on the message
+[note] the message's own state (§F3)
+        {"text":"Not deliveredSend againEdit","controls":["Send again","Edit"],"box":{"x":500,"y":733,"w":640,"h":17}}
+[note] the composer's return and its notice
+        {"text":"did that reach you?","notice":null}
+[PASS] the failure attaches to the message: `Not delivered · Send again · Edit` (§F3)
+[PASS] the failed message is handed back to the composer, with no second notice while the strip speaks (§F2's single voice; the held gate is gone by design)
+[PASS] the failed send adds no second connection voice
+[PASS] still exactly one Retry control
+[note] frame
+        {"label":"connection-1380x900-held-message","path":"/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3/connection-1380x900-held-message.png","bytes":254415,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] the revived daemon answers /health at --backend
+[note] serve records re-linked after the revive
+        1
+[PASS] the strip clears once a daemon answers again
+[note] the composer's notice cleared after the reconnect
+        cleared after 0ms
+[note] state after the reconnect
+        {"body":"*::-webkit-scrollbar { width: 8px; height: 8px; } *::-webkit-scrollbar-thumb { background-color: var(--color-control); border-radius: 4px; } *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background-color: transparent; } Local OperatorNew chat⌘NSearch⌘KAgentsSchedulesBrowserAgent hubAgentsNo agents yetSix built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed.Install all built-in agentsCreate agentTeamsCreate teamTodayMark all 8 readUnseen completion, unreadHello from the mock providernow, just nowNot marked read. Click the chat to try again.Unseen completion, unreadHello from the mock provider1h, 1 hour agoUnseen completion, unreadHello from the mock provider1h, 1 hour agoUnseen completion, unreadHello from the mock provider1h, 1 hour agoUnseen completion, unreadHello from the mock provider1h, 1 hour agoUnseen interruption, unreadrig turn [bash:45]37m, 37 minutes agoUnseen interruption, unreadrig turn [bash:45]38m, 38 minutes agoUnseen interruption, unreadrig turn [bash:45]39m, 39 minutes agoShowing 8 of 8 chatsAccount unavailableHello from the mock providerStart of conversationSay hello before the daemon drops.Hello from the mock provider!2:34 AMsession mcp unavailable: MCP server 'linear' is unavailable: its tools are gone for now. Reason: /mcp login linear to authorizesession mcp unavailable: MCP server 'cloudflare' is unavailable: its tools are gone for now. Reason: /mcp login cloudflare to authorizesession mcp unavailable: MCP server 'minerva-qa' is unavailable: its tools are gone for now. Reason: /mcp login minerva-qa to authorizesession mcp unavailable: MCP server 'gitlab' is unavailable: its tools are gone for now. Reason: /mcp login gitlab to authorizesession mcp unavailable: MCP server 'hubspot' is unavailable: its tools are gone for now. Reason: /mcp login hubspot to authorizesession mcp unavailable: MCP server 'launchdarkly' is unavailable: its tools are gone for now. Reason: /mcp login launchdarkly to authorizesession mcp unavailable: MCP server 'datadog' is unavailable: its tools are gone for now. Reason: /mcp login datadog to authorizesession mcp unavailable: MCP server 'notion' is unavailable: its tools are gone for now. Reason: /mcp login notion to authorizedid that reach you?Not deliveredSend againEditdid that reach you?mock-model$—0sWorking directory:~","undelivered":"Not deliveredSend againEdit","notice":null,"stripRegions":[]}
+[PASS] the reconnect resolved the claim: the composer stops stating the failure (U5b)
+[PASS] the message's fate is stated on the message, not left blank (§F3)
+[note] frame
+        {"label":"connection-1380x900-reconnected","path":"/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3/connection-1380x900-reconnected.png","bytes":435950,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[note] revived daemon stopped
+        pid 90885 SIGKILLed
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] [attention] 1ea86bca05c8 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at k5e (file:///Users/damian/local-operator-ui-worktrees/chat-redesign/out/renderer/assets/index-wwUAHOux.js:762:97217)
+    at async $t (file:///Users/damian/local-operator-ui-worktrees/chat-redesign/out/renderer/assets/index-wwUAHOux.js:762:98352)
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+[PASS] no process from this run outlived its boot
+
+frames: connection-1380x900-attached.png, connection-1380x900-held-message.png, connection-1380x900-reconnected.png, connection-1380x900-server-gone.png
+frames directory: /Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/drop3
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-89532/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

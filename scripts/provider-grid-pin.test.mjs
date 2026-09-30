@@ -20,6 +20,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -49,6 +50,26 @@ const bundle = await build({
 						QueryClientProvider,
 						{ client },
 						createElement(ProviderGrid, {}),
+					),
+				);
+
+			/*
+			 * The onboarding shape, with its "More providers" disclosure forced OPEN.
+			 * focusGroup is what defaultOpen reads, and Disclosure MOUNTS its content
+			 * on open (shared/components/ui/disclosure.tsx), so without it the blocks
+			 * behind the trigger are not in the markup at all and every assertion
+			 * about them would pass vacuously. (No backticks in this string: it is a
+			 * template literal, and one would end it.)
+			 */
+			export const renderProviderGridFeatured = (client) =>
+				renderToStaticMarkup(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(ProviderGrid, {
+							featuredOnly: true,
+							focusGroup: "local",
+						}),
 					),
 				);
 		`,
@@ -118,6 +139,7 @@ const {
 	QueryClient,
 	desktopKeys,
 	renderProviderGrid,
+	renderProviderGridFeatured,
 	recommendedProvider,
 	showsRecommendedCue,
 	visibleProviders,
@@ -187,11 +209,53 @@ const ids = (rows) => rows.map((provider) => provider.id);
 
 /** The markup the grid paints for one census, without a DOM and without a fetch. */
 function render(rows) {
+	return paint(rows, renderProviderGrid);
+}
+
+/**
+ * The same census in the onboarding shape, with its "More providers" disclosure
+ * forced OPEN.
+ *
+ * `focusGroup` is what `defaultOpen` reads, and `Disclosure` MOUNTS its content
+ * on open (`shared/components/ui/disclosure.tsx`), so a closed trigger leaves the
+ * blocks behind it out of the markup entirely -- and every assertion about them
+ * would then pass vacuously. Sharing `paint` rather than a second seeder is the
+ * point: a second copy of the capability seeding is how one of them silently
+ * stops matching the grid's own gate.
+ */
+function renderFeatured(rows) {
+	return paint(rows, renderProviderGridFeatured);
+}
+
+/** One seeded client, painted by whichever shape the case is about. */
+function paint(rows, shape) {
 	const client = new QueryClient({
-		defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY } },
+		defaultOptions: {
+			queries: {
+				staleTime: Number.POSITIVE_INFINITY,
+				/*
+				 * The grid now observes the (disabled) verdict query, which a static
+				 * render leaves with no observer and so schedules for removal after
+				 * the default five minutes -- a live timer that held this file open
+				 * for 300 s after its last assertion (measured).
+				 */
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
 	});
 	client.setQueryData(desktopKeys.providers, rows);
-	return renderProviderGrid(client);
+	/*
+	 * The grid holds its card list until the Radient login verdict can answer
+	 * (`provider-grid.tsx`, the verdict's mount gate), and that read is gated on
+	 * the capability answer. A static render never fetches, so the answer is
+	 * seeded: a paired runtime WITHOUT `tunnel`, which issues no verdict read and
+	 * leaves every chip to the census -- the premise every case here is about.
+	 */
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: {},
+	});
+	return shape(client);
 }
 
 test("the unfiltered list is registry order with the recommendation pinned first", () => {
@@ -281,20 +345,91 @@ test("the signed-in census renders no cue anywhere", () => {
 	const html = render(census({ has_credential: true, configured: true }));
 	assert.doesNotMatch(html, /Recommended/);
 	assert.doesNotMatch(html, /Nothing to paste/);
+	/*
+	 * A signed-in row now leads the page in the "Connected" block (design audit
+	 * D3: Radient "Signed in" was card 15 of 18, below the fold). So it renders
+	 * BEFORE the rows still to add -- and it is no longer a row to add at all.
+	 */
+	assert.match(html, />Connected</);
 	assert.equal(
-		html.indexOf('data-provider-id="openai"') <
-			html.indexOf('data-provider-id="radient"'),
+		html.indexOf('data-provider-id="radient"') <
+			html.indexOf('data-provider-id="openai"'),
 		true,
 	);
+	assert.equal(html.split('data-provider-id="radient"').length - 1, 1);
 });
 
-test("only the provider step takes the grid measure, and both measures are clamped", () => {
-	assert.equal(STEP_PANEL_WIDTH[OnboardingStep.CONNECT_PROVIDER], "grid");
-	// One entry: every other step falls through to the form measure. A step added
-	// later that wanted the grid's width has to say so here, in a red test.
-	assert.deepEqual(Object.keys(STEP_PANEL_WIDTH), [
-		OnboardingStep.CONNECT_PROVIDER,
-	]);
+/**
+ * The number of rows a static render paints for one provider.
+ *
+ * `data-provider-id` is on the row itself, one per row, so this counts ROWS
+ * rather than mentions: a string that repeats elsewhere in the markup cannot
+ * move it.
+ */
+const rowCount = (html, id) =>
+	html.split(`data-provider-id="${id}"`).length - 1;
+
+test("the shortcut rows are not repeated behind 'More providers'", () => {
+	/*
+	 * The step's contract ("four featured rows ... with the rest behind 'More
+	 * providers'", `connect-provider-step.tsx`) against what the disclosure
+	 * painted: `addRowsByGroup` excludes only CONNECTED rows, so on a first-run
+	 * census the four suggested rows came back a second time inside their own
+	 * groups -- Radient twice, each copy carrying the "Recommended" cue and the
+	 * accent primary, which is the two-accent-primaries-in-one-dialog shape design
+	 * round 1 removed (D2). Measured on the shipped census: 22 rows for 18
+	 * providers.
+	 */
+	const local = {
+		...row("ollama", "Ollama", ["local", "self-hosted"], []),
+		local: true,
+		credential_optional: true,
+	};
+	const html = renderFeatured([...census(), local]);
+	for (const id of ["radient", "openai", "anthropic"]) {
+		assert.equal(rowCount(html, id), 1, `${id} is painted exactly once`);
+	}
+	// The non-featured row is still there, in its own group: the exclusion must
+	// remove the repeats without emptying the disclosure.
+	assert.equal(rowCount(html, "ollama"), 1);
+	assert.match(html, /Run models on this computer/);
+	assert.match(html, /aria-label="Search providers"/);
+});
+
+test("a 'More providers' trigger with nothing behind it is not rendered", () => {
+	/*
+	 * A census that is only the shortcut rows has no "rest", and an open panel
+	 * whose whole content is a search field over an empty list is the shape that
+	 * reads as broken.
+	 *
+	 * TWO CASES REACH THIS RULE, and the second is why it is stated in terms of
+	 * the rest rather than of the census size (code round 1, P3): a short census
+	 * (the four-row screen, where scanning costs less than typing), and a LARGE
+	 * census whose every non-featured row is already connected -- a returning
+	 * user's fifteen-row list. In the second the rule hides no row: all of them
+	 * are on screen, in the Connected block, and `addRowsByGroup` has already
+	 * excluded them, so a trigger here would open onto nothing rather than onto
+	 * something. That is the difference from the threshold gate this field used to
+	 * carry, which hid rows a reader was looking for.
+	 */
+	const html = renderFeatured(census());
+	assert.equal(html.split("More providers").length - 1, 0);
+	assert.doesNotMatch(html, /Search providers/);
+	// And the rows themselves still paint: the trigger is the only thing gone.
+	for (const id of ["radient", "openai", "anthropic"]) {
+		assert.equal(rowCount(html, id), 1);
+	}
+});
+
+test("every step takes the same panel measure, and it is clamped", () => {
+	/*
+	 * Design round 1's D6: step 1 used to ask for a wider measure than steps 2 and
+	 * 3, so pressing Continue narrowed the dialog by about 200px and the title, the
+	 * step indicator and the close button all jumped inward mid-flow. An EMPTY map
+	 * is the fix stated as a rule: every step resolves to the one measure, so a step
+	 * added later cannot quietly widen the frame that holds the others.
+	 */
+	assert.deepEqual(Object.keys(STEP_PANEL_WIDTH), []);
 	/*
 	 * Design round 1's D1: the panel is `w-full` and this frame used to clamp
 	 * only its height, so a measure wider than the viewport painted its own
@@ -308,6 +443,253 @@ test("only the provider step takes the grid measure, and both measures are clamp
 			`the ${shape} measure must be clamped against the viewport`,
 		);
 	}
-	assert.match(ONBOARDING_PANEL_WIDTHS.grid, /min\(60rem/);
-	assert.match(ONBOARDING_PANEL_WIDTHS.form, /min\(35rem/);
+	assert.match(ONBOARDING_PANEL_WIDTHS.single, /min\(40rem/);
+	assert.equal(Object.keys(ONBOARDING_PANEL_WIDTHS).length, 1);
+});
+
+/*
+ * ---------------------------------------------------------------- round 4 pins
+ *
+ * The Connected row's panel, its claim and the panel's own words, pinned by SHAPE.
+ * These four are one decision each, and the state they live in -- an open Connected
+ * row whose verdict is a refusal -- had no rendered evidence at all until the story
+ * beside them was added (review round 4 R4-M2). A shape pin is what fails when the
+ * decision is reverted; the pixels are the frames' business.
+ */
+/**
+ * The claim line's `className` expression, sliced out of the grid's source.
+ *
+ * A pin on the WHOLE expression rather than a window around a keyword: the previous
+ * version's forty-character distance check passed for a rewrite that reintroduced the
+ * bug it was written for (review round 5, R5-m2).
+ */
+const claimInk = (source) => {
+	const start = source.indexOf("className={`truncate text-meta");
+	assert.ok(
+		start >= 0,
+		"the claim's own className expression must exist for this pin to mean anything",
+	);
+	const end = source.indexOf("}`}", start);
+	assert.ok(end > start, "and it must be closed");
+	return source.slice(start, end);
+};
+
+const stripComments = (path) =>
+	readFileSync(path, "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+const GRID_SOURCE = "src/renderer/src/features/providers/provider-grid.tsx";
+const DETAIL_SOURCE = "src/renderer/src/features/providers/provider-detail.tsx";
+
+test("an open Connected row can be closed where it stands: the item toggles, and Escape works", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * U15/R4-M1: the only open/close toggle in this grid lived in `addRow`, so a
+	 * Connected row's panel could not be dismissed in place -- Escape did nothing and
+	 * the only exit was navigating away and back, from a state this PR's own
+	 * "Sign-in expired -- run /login <provider>" advice reaches.
+	 */
+	assert.match(
+		grid,
+		/onSelect=\{\(\) => toggle\(provider\.id\)\}/,
+		"the Connected row's item must toggle the panel it opened",
+	);
+	assert.match(
+		grid,
+		/open\s*\n?\s*\?\s*"Close"/,
+		'and say "Close" while the panel is open, as every add row does',
+	);
+	assert.match(
+		grid,
+		/if \(event\.key !== "Escape" \|\| event\.defaultPrevented\) return;/,
+		"Escape must close the open panel, without stealing it from an open menu",
+	);
+});
+
+test("the sign-out confirm hands focus back to the row's own control", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * U18/Q2: the confirm replaced the row's control, so when it closed focus fell to
+	 * `<body>` -- a keyboard user dropped at the top of the page they had just
+	 * changed. Both exits carry the row's place back.
+	 */
+	const signOut = grid.slice(grid.indexOf("const signOut = async"));
+	assert.match(
+		signOut.slice(0, 1200),
+		/setFocusRow\(provider\.id\)/,
+		"the sign-out arm must return focus to the row",
+	);
+	assert.match(
+		grid,
+		/setConfirmSignOut\(null\);\s*\n\s*setFocusRow\(provider\.id\);/,
+		'the "Keep" arm must return focus to the row too',
+	);
+});
+
+test("the row's claim carries its tone, and the panel does not repeat the claim", () => {
+	const grid = stripComments(GRID_SOURCE);
+	const detail = stripComments(DETAIL_SOURCE);
+	/*
+	 * D14/R4-m3/U16: the row's claim was one ink for every verdict -- so a dead
+	 * sign-in looked like a healthy one while the tone survived only in the panel's
+	 * badge -- and the panel then printed the same sentence 40 px below the row that
+	 * already said it.
+	 */
+	assert.match(
+		grid,
+		/data-claim-tone=\{readiness\?\.tone\}/,
+		"the claim must publish the tone a rig (and this pin) can read",
+	);
+	assert.match(
+		grid,
+		/readiness\?\.tone === "attention"[\s\S]{0,80}?"text-warning"/,
+		"a refusal must not be painted in the row's ordinary ink",
+	);
+	/*
+	 * AND NOTHING ELSE TAKES AN INK. The first version of this line painted
+	 * `text-success` for every other verdict, and `loginClaim` answers `working` for
+	 * every provider that is not Radient -- so all 18 healthy rows went green, which
+	 * moved 3.9% of the `providers-connected` frame's pixels against a sibling capture
+	 * of the pre-round-4 tree. The refusal is the only tone that says something here.
+	 */
+	/*
+	 * THE WHOLE EXPRESSION, not a window beside it. The first version of this pin
+	 * matched `"text-success"` within forty characters of an unrelated anchor, so a
+	 * behaviourally identical rewrite of the very line D14 warns about passed the suite
+	 * (review round 5, R5-m2). This slices the className expression out of the source
+	 * and asserts what it may and may not contain.
+	 */
+	const ink = claimInk(grid);
+	assert.match(
+		ink,
+		/attention[\s\S]*?"text-warning"/,
+		"a refusal must not be painted in the row's ordinary ink",
+	);
+	assert.match(
+		ink,
+		/"text-ink-muted"/,
+		"every other verdict stays in the row's ordinary register",
+	);
+	assert.doesNotMatch(
+		ink,
+		/text-success/,
+		"and nothing on this line may spend the success ink: `loginClaim` answers `working` for every provider that is not Radient, so a success ink here paints every healthy row green (the regression this round's evidence caught)",
+	);
+	assert.doesNotMatch(
+		detail,
+		/<Badge variant=\{readiness\.tone\}/,
+		"the panel must not restate the row's claim as a badge",
+	);
+	assert.match(
+		detail,
+		/readiness\?\.group === "Needs sign-in"/,
+		"the panel must state a refusal it can see, where its controls are",
+	);
+	assert.match(
+		grid,
+		/readiness=\{readiness\}/,
+		"the row's verdict must be handed to the panel, so the pair cannot disagree (Q4-2)",
+	);
+});
+
+test("an open panel is visible on the control that opened it, and focus has somewhere to land", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * D1: every add row shows a bordered "Close" in this slot while its panel is open,
+	 * and the Connected row -- whose only control is the overflow menu -- said nothing:
+	 * the state was in `aria-expanded` alone, which a sighted user cannot read. D1 also
+	 * asked for a frame of that state; the swept story `panel-refused-verdict` is it.
+	 */
+	const trigger = grid.slice(
+		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}") - 900,
+		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}"),
+	);
+	assert.match(
+		trigger,
+		/aria-expanded=\{open\}/,
+		"the overflow trigger must publish whether its panel is open",
+	);
+	assert.match(
+		trigger,
+		/*
+		 * The FILL and the INK are one state: the ink on `borderControl` is what
+		 * this pair is measured at in `contrast-contract.mjs`'s GRAPHICS row, so a
+		 * later hand that keeps the fill and drops the step fails here (design
+		 * round 6, D1 -- the state shipped once with `text-ink-muted` on it).
+		 */
+		/className=\{\s*open \? "bg-control text-on-accent" : undefined,?\s*\}/,
+		"and show it: the fill is the colour step a hover takes, held while open",
+	);
+	/*
+	 * U20: the focus pass restores the user's place to "the row's own control", and the
+	 * destructive arm had nowhere to land because the row the user just signed out of is
+	 * an ADD row -- which never registered its control, and the settings surface has no
+	 * search field for the old fallback. Both halves are pinned: the registration, and
+	 * the container as the last resort.
+	 */
+	const addRow = grid.slice(
+		grid.indexOf("const addRow ="),
+		grid.indexOf("const connectedRow ="),
+	);
+	assert.match(
+		addRow,
+		/rowButtons\.current\.set\(provider\.id, element\)/,
+		"an add row must register its own control, or a sign-out drops focus on <body>",
+	);
+	/*
+	 * AND EVERY CANDIDATE HAS TO STILL BE IN THE DOCUMENT. The destructive arm sets this
+	 * intent in the same tick as the refetch that moves the row out of the Connected
+	 * list, so the registered element is the OLD row's control -- unmounted, truthy, and
+	 * `focus()` on it does nothing. That is why the fallbacks alone still left focus on
+	 * `<body>` (review round 6, minor; UX round 5, U20).
+	 */
+	assert.match(
+		grid,
+		/live\(rowButtons\.current\.get\(focusRow\)\) \?\?[\s\S]{0,200}?live\(gridRef\.current\)/,
+		"the focus chain must skip detached targets, and the grid is the last resort",
+	);
+	assert.match(
+		grid,
+		/element\?\.isConnected \? element : null/,
+		"which is what `live` decides",
+	);
+	assert.match(
+		grid,
+		/await queryClient\.invalidateQueries\(\{\s*queryKey: desktopKeys\.providers,?\s*\}\);/,
+		"and the refetch is awaited, so the row has moved before the intent is read",
+	);
+	assert.match(
+		grid,
+		/ref=\{gridRef\}\s*\n?\s*tabIndex=\{-1\}/,
+		"which requires the container to be focusable",
+	);
+});
+
+test("the settled view's verdict reaches the API-key route too, and its sentence keeps its register", () => {
+	const detail = stripComments(DETAIL_SOURCE);
+	/*
+	 * Review round 6's two minors: Radient offers an API key as well as a browser sign-in,
+	 * so the key route's settled view can render under a credential the provider has
+	 * stopped accepting -- it must take the same verdict object the flow's success view
+	 * takes, or U19's contradiction survives one route over. And the fallback sentence has
+	 * to follow the verdict's REGISTER: the refusal sentence was printed for the neutral
+	 * arm, which made a claim the verdict did not.
+	 */
+	const verdicts = detail.match(/verdict=\{readiness\}/g) ?? [];
+	assert.equal(
+		verdicts.length,
+		2,
+		`both settled views must take the surface's verdict: ${verdicts.length}`,
+	);
+	assert.match(
+		detail,
+		/verdict\.tone === "attention"[\s\S]{0,220}?no longer accepting the sign-in stored on this machine/,
+		"the refusal register says the provider stopped accepting it",
+	);
+	assert.match(
+		detail,
+		/This app could not confirm the sign-in stored on this machine for \$\{brand\}/,
+		"and the neutral register says the app could not confirm it",
+	);
 });

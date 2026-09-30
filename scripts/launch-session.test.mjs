@@ -33,7 +33,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { OPEN_SESSION_FLAG, OPEN_CATALOGUE_FLAG, readLaunchTarget, readOpenSessionArgv } from "./src/shared/open-session";
-			export { mergePersistedSession, useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { launchDraftSeed, mergePersistedSession, useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -89,6 +89,7 @@ const {
 	OPEN_CATALOGUE_FLAG,
 	readLaunchTarget,
 	readOpenSessionArgv,
+	launchDraftSeed,
 	mergePersistedSession,
 	useCanonicalSessionsStore,
 } = module_;
@@ -321,5 +322,68 @@ test("the initial render already reflects a catalogue launch", () => {
 			},
 		),
 		null,
+	);
+});
+
+test("a launch with nothing to restore lands on a draft, not on no conversation", () => {
+	/*
+	 * §H / U1 / U23: the "Start a chat" intermediate screen is deleted, so a cold
+	 * start has to BE a new conversation rather than the absence of one - and it has
+	 * to be that on the first painted frame, which is why the decision lives in the
+	 * hydration merge and not in an effect.
+	 */
+	const empty = {
+		activeSessionId: null,
+		activeDraftKey: null,
+		drafts: {},
+	};
+	const seeded = launchDraftSeed(empty);
+	assert.ok(seeded, "a launch with nothing active must seed a draft");
+	assert.match(seeded.activeDraftKey, /^draft:/);
+	/*
+	 * The row is the shape `stageDraft` writes: a pane that reads it cannot tell a
+	 * launched draft from a pressed one, and both request ids are present because the
+	 * send path sends them on the wire.
+	 */
+	const row = seeded.drafts[seeded.activeDraftKey];
+	assert.equal(row.key, seeded.activeDraftKey);
+	assert.ok(row.createRequestId && row.admissionRequestId);
+	assert.equal(row.target, undefined, "and it names no agent or team");
+
+	/*
+	 * EVERYTHING ELSE IS LEFT ALONE. A restored conversation, a restored draft and a
+	 * launch that asked for the catalogue each keep what they had - the seed is a
+	 * no-op in all three, which is the half that keeps "opens the last conversation"
+	 * working.
+	 */
+	assert.equal(
+		launchDraftSeed({ ...empty, activeSessionId: "session:1" }),
+		null,
+		"a restored conversation must not be replaced by a draft",
+	);
+	assert.equal(
+		launchDraftSeed({ ...empty, activeDraftKey: "draft:kept" }),
+		null,
+		"a restored draft must not be replaced by another",
+	);
+	/*
+	 * And through the merge the catalogue arm still wins: it returns before the seed,
+	 * so a window main opened for a digest lands on the list.
+	 */
+	const merged = withLaunchArgument(null, () =>
+		mergePersistedSession(
+			{ activeSessionId: null, activeDraftKey: null, drafts: {} },
+			{
+				...useCanonicalSessionsStore.getState(),
+				activeSessionId: null,
+				activeDraftKey: null,
+				drafts: {},
+			},
+		),
+	);
+	assert.match(
+		merged.activeDraftKey ?? "",
+		/^draft:/,
+		"a plain launch with no persisted state seeds the draft through the merge",
 	);
 });

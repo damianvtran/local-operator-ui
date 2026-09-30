@@ -1,10 +1,18 @@
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import {
+	Navigate,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 
+import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
@@ -12,15 +20,19 @@ import { useCommandPaletteShortcut } from "@features/command-palette/use-command
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { noteConsentAttention } from "@shared/browser-consent-attention";
+import {
+	consentClickTarget,
+	noteConsentAttention,
+} from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
-import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
-import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
+import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
@@ -29,6 +41,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -58,9 +71,25 @@ const SchedulesPage = lazy(() =>
 		default: m.SchedulesPage,
 	})),
 );
+const ProjectsPage = lazy(() =>
+	import("@features/projects/components/projects-page").then((m) => ({
+		default: m.ProjectsPage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
+	})),
+);
+/*
+ * The Mesh tab. Lazy like every other page, and ROUTED ONLY WHEN the backend
+ * advertises `features.peers` (see the gate below): a machine in no network never
+ * loads its chunk at all, which is the half of "ships dark" a chunk boundary can
+ * carry.
+ */
+const MeshPage = lazy(() =>
+	import("@features/mesh/mesh-page").then((m) => ({
+		default: m.MeshPage,
 	})),
 );
 const SettingsPage = lazy(() =>
@@ -87,6 +116,22 @@ const BrowserWebauthnPrompt = lazy(() =>
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	/*
+	 * The window chrome's live half: which sides the OS put its controls on, and the
+	 * full-screen fact. Mounted once, here, because it writes attributes on the
+	 * document element and two mounts would be two subscribers for one fact. It
+	 * renders nothing.
+	 */
+	useWindowChrome();
+	const { pathname } = useLocation();
+	/*
+	 * The routes that already own a 40px row at the window's top: the chat surface
+	 * draws the lane above both its columns, and the browser pane brings its own
+	 * toolbar. Every other route gets the drag band instead (see the band's note).
+	 */
+	const routeHasOwnChromeRow =
+		pathname.startsWith("/chat") || pathname.startsWith("/browser");
+
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
 	const {
@@ -97,6 +142,7 @@ const App: FC = () => {
 	const {
 		isCommandPaletteOpen,
 		isCreateAgentDialogOpen,
+		isSidebarCollapsed,
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
@@ -147,6 +193,31 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	/*
+	 * The Mesh tab's gate, read as the TRI-STATE and not as the boolean.
+	 *
+	 * `desktopFeatureEnabled` is this function's `=== "enabled"` projection, so the two
+	 * agree about what may mount - and that agreement is the point of reading the
+	 * tri-state at the site that decides it: `unpaired` (this app holds no credential
+	 * for the daemon), `below-version` (the daemon predates `peers`) and `unknown` (no
+	 * answer yet) are three different reasons a route is absent, and collapsing them
+	 * before the decision is how a surface comes to guess a cause it cannot see. The
+	 * route is mounted for `enabled` ONLY, which is `session_pins`' rule rather than a
+	 * convenience: a reserved destination that renders for a feature the user does not
+	 * have advertises something that cannot work, and a mesh the user has not joined
+	 * must leave this app's chrome exactly as it found it.
+	 *
+	 * THE ROUTE STAYS ON THE CAPABILITY AND THE RAIL ROW DOES NOT - a deliberate split,
+	 * not an oversight (review round 1, R1-1). MEMBERSHIP gates the row, because a rail
+	 * item is an invitation and one for a mesh the user is not in is a dead end. The
+	 * route stays mounted for every daemon that can serve it, for two reasons: a user who
+	 * leaves their last network WHILE ON THIS PAGE must not be ejected out from under
+	 * their pointer by a poll (they get the empty state, which is the honest answer, and
+	 * the row disappears on the next render), and mounting it on membership would make
+	 * the empty and the relay-unavailable states unreachable - the two states this tab
+	 * most needs to be able to say.
+	 */
+	const meshState = desktopFeatureState(capabilities.data, "peers");
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -211,6 +282,12 @@ const App: FC = () => {
 	 * 12.3): the click lands the conversation AND the pane that shows it. */
 	const setConsolePaneOpen = useUiPreferencesStore(
 		(state) => state.setConsolePaneOpen,
+	);
+	/* The browser pane's slot claim, the same shape as the console's above and for the
+	 * same reason: a consent banner's click lands the conversation that asked AND the
+	 * pane whose tray shows the request. */
+	const setBrowserPaneOpen = useUiPreferencesStore(
+		(state) => state.setBrowserPaneOpen,
 	);
 	const setConsoleActiveSurface = useUiPreferencesStore(
 		(state) => state.setConsoleActiveSurface,
@@ -303,19 +380,56 @@ const App: FC = () => {
 	// click has to reach them wherever they are — and the browser surface's own
 	// subscriber is unmounted on every other route, which is precisely the case the
 	// banner exists for (review round 1, R8). The shell therefore owns the two halves
-	// that only the shell can do: remember which request was named, and bring the
-	// browser route forward.
+	// that only the shell can do: remember which request was named, and land the user
+	// on it.
 	//
-	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
+	// WHERE IT LANDS is `consentClickTarget`'s rule and not this effect's (see that
+	// function: the asking conversation when it is one the app can show, the browser
+	// route otherwise), so the shell does the two things only it can — remember which
+	// request was named, and navigate.
+	//
+	// The pane and not just the conversation: the named request has to be VISIBLE
+	// when the window comes up, and the pane's tray is the surface that shows it
+	// (`browser-surface.tsx` selects the named entry). `setActiveSession` is the same
+	// one call the notification path makes, for the same reason: the store's own paint
+	// cache and the stream's snapshot answer the questions a validating round trip
+	// would, and a conversation that turns out not to exist lands on the transcript's
+	// named state.
+	//
+	// THE RAISE IS NOT THIS EFFECT'S. Navigating a route is renderer work; no window is
 	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
-	// module that decides whether a window comes forward (design 11.4).
+	// module that decides whether a window comes forward (design 11.4). The raise THIS
+	// click makes happens in main, where the click actually arrives (`consent-click.ts`,
+	// trigger `banner-click`), so this half is only ever "remember which request was
+	// named, and land on it" — the change that made the click come forward at all did
+	// not put a window call in the renderer.
+	useConsentAttentionLifetime();
+	/*
+	 * The held sends a reader has walked away from are settled once at launch
+	 * (`draft-resolution.ts` carries the why); the hook is idempotent per
+	 * process.
+	 */
+	useHeldDraftResolution();
+
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
+			// Read through `getState()` rather than a selector: this listener must not be
+			// re-registered every time the session list changes.
+			const target = consentClickTarget(
+				payload.requesterSessionId,
+				useCanonicalSessionsStore.getState().sessions,
+			);
 			noteConsentAttention(payload.entryId);
-			navigate("/browser");
+			if (target.kind === "browser") {
+				navigate("/browser");
+				return;
+			}
+			setActiveSession(target.sessionId);
+			setBrowserPaneOpen(true);
+			navigate("/chat");
 		});
 		return () => unsubscribe?.();
-	}, [navigate]);
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
@@ -415,7 +529,22 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className="relative flex h-screen flex-col overflow-hidden">
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				/*
+				 * THE CHROME GATES MOVED TO `<html>` (this PR), and this element keeps only
+				 * the fact the CSS cannot get anywhere else. They used to live here as
+				 * `data-titlebar-platform`, computed from `navigator.platform` - which could
+				 * not express the native-frame fallback (it knows the OS, not the mode),
+				 * could not know where a Linux WM put its buttons, and did not exist until
+				 * React mounted. `main.tsx` writes `data-chrome-platform|mode|fullscreen` on
+				 * the document element before the first render, from main's own fact
+				 * (`--lo-window-chrome`), and `useWindowChrome` keeps the live ones current.
+				 * Root-level also lets the attribute rules reach PORTALED elements, which the
+				 * sidebar's overlay sheet is.
+				 */
+				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
+			>
 				{/*
 				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
 				 * container is a COLUMN for exactly that reason (D9).
@@ -449,10 +578,23 @@ const App: FC = () => {
 				 * `docs/evidence/band-occlusion/`; the rig that takes them is
 				 * `scripts/band-occlusion-evidence.mjs`.
 				 */}
-				<ConnectivityBanner />
-
-				<BackendCompatibilityBanner />
-
+				{/*
+				 * THE SHELL ROOT HAS NO STATUS SURFACE ANY MORE (§F2, D3).
+				 *
+				 * A connectivity band and a compatibility band used to mount here, above
+				 * the window's own region: they took their height out of the shell at the
+				 * top of the screen, over the sidebar rail and under the traffic lights,
+				 * and each carried its own Retry for the same fact. §F2 moves both into
+				 * the conversation pane - `chat-content.tsx` mounts the strip and the
+				 * compatibility band under its top row - so the chrome above the app
+				 * belongs to the window and nothing else, and one live region states the
+				 * connection instead of two.
+				 *
+				 * The region below keeps `flex-1 min-h-0 overflow-hidden`, which was
+				 * written for the case where a band above it took height; with no band it
+				 * is simply the shell's body, and the rule still holds for any surface a
+				 * pane adds inside it.
+				 */}
 				{/*
 				 * The app itself, in the space the bands leave. `flex-1 min-h-0` rather
 				 * than `h-screen`: this element's height is the window MINUS whatever the
@@ -485,6 +627,11 @@ const App: FC = () => {
 
 					<OnboardingModal open={isOnboardingActive} />
 
+					{/* The one "connect a model provider" dialog every surface opens
+					    through `useConnectProviderStore` (empty chat, composer line,
+					    the no-provider notice, the palette). Mounted once, here. */}
+					<ConnectProviderDialog />
+
 					<UpdateNotification />
 
 					{/*
@@ -512,34 +659,80 @@ const App: FC = () => {
 						onAgentCreated={handleAgentCreated}
 					/>
 
-					<SidebarNavigation />
-
-					<main className="flex grow flex-col overflow-hidden">
-						<Suspense
-							fallback={
-								<div className="flex grow items-center justify-center">
-									<Spinner size="lg" label="Loading page" />
-								</div>
-							}
-						>
-							<Routes>
-								<Route path="/" element={<Navigate to="/chat" replace />} />
-								<Route path="/chat" element={<ChatPage />} />
-								<Route path="/chat/:agentId" element={<ChatPage />} />
-								<Route path="/agents" element={<AgentsPage />} />
-								<Route path="/agents/:agentId" element={<AgentsPage />} />
-								<Route path="/settings" element={<SettingsPage />} />
-								<Route path="/agent-hub" element={<AgentHubPage />} />
-								<Route
-									path="/agent-hub/:agentId"
-									element={<AgentDetailsPage />}
-								/>
-								<Route path="/schedules" element={<SchedulesPage />} />
-								<Route path="/browser" element={<BrowserPage />} />
-								<Route path="*" element={<Navigate to="/chat" replace />} />
-							</Routes>
-						</Suspense>
-					</main>
+					<ChatLayout
+						sidebar={<SidebarNavigation />}
+						content={
+							<main className="flex grow flex-col overflow-hidden">
+								{/*
+								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
+								 *
+								 * Settings, agents, agent hub and schedules have no 40px toolbar row of
+								 * their own. On Windows and Linux - where the OS draws its caption
+								 * buttons INTO the client area and nothing is drawn above the columns -
+								 * the band is the drag surface a frameless window needs and the caption
+								 * clearance the page's heading needs. The rules in `styles/index.css`
+								 * gate it to exactly those two platforms with the buttons NOT leading,
+								 * in the SELECTORS rather than by cascade order, so which of the band
+								 * and the lane is drawn cannot change when either rule moves.
+								 *
+								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
+								 * `ChatLayout` already draws the 32px lane above BOTH columns there -
+								 * the same drag surface and the same clearance - and a band on top of
+								 * it was a SECOND inset that put the settings rail and its content
+								 * 32px below the chat header ("for sub-views like the settings page,
+								 * the sidebar and view doesn't go all the way to the top",
+								 * 2026-09-26). The element stays in the tree, rendered as nothing
+								 * there, so "where the OS draws" is decided in one place - the
+								 * `data-chrome-*` attributes on the document element, the same ones
+								 * the lane is gated on - rather than by a second JS platform read
+								 * that could drift from it.
+								 *
+								 * `/chat` is excluded because `ChatLayout` already draws the lane above
+								 * both of its columns.
+								 * `/browser` is excluded because the browser pane brings its own 40px
+								 * toolbar, which is the row the controls sit over on that route.
+								 */}
+								{routeHasOwnChromeRow ? null : (
+									<div data-chrome-route-band="" />
+								)}
+								<Suspense
+									fallback={
+										<div className="flex grow items-center justify-center">
+											<Spinner size="lg" label="Loading page" />
+										</div>
+									}
+								>
+									<Routes>
+										<Route path="/" element={<Navigate to="/chat" replace />} />
+										<Route path="/chat" element={<ChatPage />} />
+										<Route path="/chat/:agentId" element={<ChatPage />} />
+										<Route path="/agents" element={<AgentsPage />} />
+										<Route path="/agents/:agentId" element={<AgentsPage />} />
+										<Route path="/settings" element={<SettingsPage />} />
+										<Route path="/agent-hub" element={<AgentHubPage />} />
+										<Route
+											path="/agent-hub/:agentId"
+											element={<AgentDetailsPage />}
+										/>
+										<Route path="/schedules" element={<SchedulesPage />} />
+										<Route path="/projects" element={<ProjectsPage />} />
+										<Route
+											path="/projects/:projectId"
+											element={<ProjectsPage />}
+										/>
+										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.peers`: without it `/mesh` falls through
+										    to the catch-all like any unknown path, rather than rendering a tab
+										    for a feature this backend does not have. */}
+										{meshState === "enabled" && (
+											<Route path="/mesh" element={<MeshPage />} />
+										)}
+										<Route path="*" element={<Navigate to="/chat" replace />} />
+									</Routes>
+								</Suspense>
+							</main>
+						}
+					/>
 				</div>
 			</div>
 		</OnboardingProvider>

@@ -63,6 +63,35 @@ script's environment, and the renderer built against the same URL, like every
 other `--backend` scene. Its two runs and their readings are committed as
 `docs/evidence/authoring-refresh/`.
 
+**`--scene project-detail` (`--project <key>` names the row) is the live half of
+the Projects tab's detail page.** It needs `--backend` — the isolated daemon the
+lane owns, hosted the way the note below requires — and a seeded project:
+`--project` names the row's key, and the scene fails loudly when the row (or its
+linked session) is absent rather than photographing an empty page. It exercises
+the two acts a Storybook state cannot: a message typed into the quick-send strip,
+admitted through the chat's own `admitChatDraft`, and read back from the
+daemon's `history` route — and the start-session picker creating a session,
+auto-linking it, and landing on that session's chat with a PRE-FILLED, unsent
+prompt. Its six frames per palette are committed under
+`docs/evidence/project-detail-live/`, whose README carries the seed script and
+the full command.
+
+**`--scene sessionless-slash` (issue #625) types five commands — `/help`,
+`/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press
+`--scene new-chat` proves), one theme per launch like every stateful scene.
+`--slash-expect open` (the default) asserts each mounts its picker on the
+sessionless pane; `--slash-expect refused` asserts the dispatcher's refusal
+sentence instead, so the base tree's half of a before/after pair runs the SAME
+bytes as the head's. Under `open` the scene then sends a turn, waits for the
+mock provider's answer, and asserts `/theme` on that live conversation still
+presents the picker — the session-ful path the change must not move. It needs
+`--backend`, the daemon's serve record (`--backend-records`), and
+`--seed-onboarding-complete`, like every `--backend` scene. Its frames are
+committed under `docs/evidence/sessionless-slash/`, the base tree's under
+`sessionless-slash-baseline/`.**
+
+**`--scene mini-view` photographs the Quick send composer — the second renderer document a global hotkey summons (design §I.3).** Since the dev-driver exerciser (M-B1) the scene drives the app's OWN mini window: an armed launch in `headless` mode creates it (`headlessExerciserAllowed` in `src/main/dev-driver.ts`), registration stays normal-only (`hotkeysAllowed`), and it is never shown — presentation still runs through `presentMiniView`, which a headless plan refuses. The scene finds that window, sends the real `mini-view:summoned` channel into it from MAIN (a headless run has no OS chord to press), drives the composer through CDP's own input pipeline, and captures each state from MAIN's `capturePage` on the hidden window, with the console rig's rule applied (the first capture of a hidden window can come back blank, so every capture retries) and a settle poll before every capture (the stills used to be taken mid-transition, so their colours were a phase of a 120 ms fade — design round 1, D6). A run where the window is absent refuses by name rather than photographing a hand-built substitute: a substitute cannot pass the desktop plane's frame gate (`desktop-ipc.ts`), which is exactly why the live send needed the app's own window. The draft is typed through CDP's `Input.insertText`, the mic frame is driven by a fake `getUserMedia`/`MediaRecorder` installed before boot, and the run closes with every window of the app surveyed (`none visible`), an asserted absence of any `cannot use desktop controls` refusal in the app log, and the hidden window's renderer memory, which is risk K6's number. **With `--backend` (plus `--backend-records`, which the app needs anyway to admit the daemon) the whole send path is real**: the message goes to the chief-of-staff conversation and is read back from the daemon's own `/v1/desktop/sessions/<id>/history` route. Two harness aids make the transient stills possible, both disclosed here and in the run output, neither in shipped code: the run's own daemon process is SIGSTOPped by exact pid — from the linked serve record, loopback-only and never 1111, guarded like `--scene connection-drop`'s kill — for the `sending` frame and SIGCONTinued in a `finally` before the same request completes (so the `sent` frame is that request's real admission), and the composer's own 600 ms flash timer (`SENT_FLASH_MS`, read from its declaration) is stretched in the page for the `sent` frame. Without `--backend` the send's end is the transport refusal (`error` — the fail-closed state with the draft kept) and no sending/sent frames are taken. It cannot prove a real OS chord reaching the registrar, focus returning to the previous app, the microphone permission prompt, or the OS-level conflicts macOS does not report (QA round 1, Q2) — those are human steps and platform facts, and the PR says so beside the frames.
+
 **`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
 Absent (the default) the app is aimed at a port the script verified dead, so a
 scene captures an app that cannot reach a backend and every frame is publishable
@@ -86,6 +115,37 @@ as a missing composer rather than a refused fetch; the app's own log carries
 `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
 Content Security Policy`, and `--scene mentions` names the port in its refusal
 (QA round 3, Q-6). Run the rig's proxy on `8080` or `1111`.
+
+**AND THE DAEMON MUST BE TOLD ITS HOSTING, which the flags do not do on a fresh
+config root** (QA round 1, Q3 — it cost that lane its whole first pass, and this
+one its first scene set).
+
+```sh
+local-operator serve --host 127.0.0.1 --port <port> --hosting test --model mock-model
+```
+
+writes no hosting into a freshly created config root, so every turn dies in the
+daemon — `local_operator.session_factory.HostingNotConfiguredError: Hosting
+platform is not configured.` → `POST /v1/desktop/sessions/<id>/messages → 503`.
+Inside the app the ONLY symptom is a message that reaches the transcript and is
+never answered, which reads exactly like a UI defect: `--scene first-send`
+reports `answered: false`, and the composer's readings never resolve a model.
+Two lanes have now spent a round photographing it. Write the values the flags
+imply BEFORE the daemon starts:
+
+```sh
+mkdir -p "$CONFIG_DIR"
+cat >"$CONFIG_DIR/config.yml" <<'YAML'
+values:
+  hosting: test
+  model_name: mock-model
+YAML
+```
+
+With that file, the same tree reports `first-send` 14 PASS / 0 FAIL at 1380x900
+and 800x600 (`answered: true`) and `question-dock` 13 PASS / 0 FAIL. Without it,
+the turn-bearing scenes are silently un-runnable, and a FAIL line in their log is
+about the harness rather than about the app.
 
 **The run refuses before its first boot if the tree is not on the Electron this
 branch pins** (`package.json` `optionalDependencies.electron`, the version
@@ -130,8 +190,12 @@ Off means the process is indistinguishable from the app as it was:
 
 - main registers no `dev-driver-*` channel at all, so a call is refused by
   Electron itself (`No handler registered for 'dev-driver-capture'`);
-- the window carries no `additionalArguments` entry, so the preload exposes no
-  `window.__loDevDriver` — not a disabled object, nothing;
+- the window carries no dev-driver `additionalArguments` entry, so the preload
+exposes no `window.__loDevDriver` — not a disabled object, nothing. (The window
+DOES carry the telemetry decision, which is written on every window, armed or
+not — a different entry, in the same argv `slot`; `rendererArgumentFlags` in
+`src/main/index.ts` is what unions them, and `AGENTS.md`'s "An agent-driven run
+sends no telemetry either" is where that switch is documented);
 - the renderer's install module returns immediately.
 
 `node scripts/renderer-driver.mjs --gate-check` measures that on four real boots
@@ -268,7 +332,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
 | `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
-| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to |
+| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to. **That staging is not enough with no backend, measured 2026-09-24:** the chat route draws its refusal surface when no backend answers, so neither the pane row (`[data-tour-tag="pane-row"]`) nor the chat column mounts and the canvas never does - a scene that measures the chat pane's geometry needs `--backend` (see the `floors` scene below) |
 | `call("queries")` | Every query the app is holding, as the screen's own gate reads it: key, `status`, `fetchStatus`, the derived `isLoading`, the error's own sentence, `dataUpdatedAt`, `failureCount` and the observer count — keys and the error's sentence, never data. The full-page spinner is the same pixels whichever query holds it, so this is the reading that says WHICH one was holding a route |
 | `call("queryFetches", { arm: true })` | Arms the fetch trap: `Query.prototype.fetch` is patched so every fetch the app starts is recorded with the stack of whoever started it, and arming fetches a key of its own through the patched path and reports `validated` only if that fetch lands in the log. A page-side wrapper over `window.api` cannot do this — `window.api` is a `contextBridge` object and ignores property assignment silently, which is how an earlier version of the settings-gate scene printed `0 reads from 0 caller(s)` beside an `armed true` note |
 | `call("queryFetches", { key })` | The recorded fetch call sites, deduplicated by stack, with counts and the span each covered (`key` filters by key substring; the probe's own key is excluded and counted as `probeRecords`) |
@@ -314,6 +378,79 @@ rule:
   six-step wizard is a modal over the window. It asserts both halves of the
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
+- **`floors`** — §I's pane floors, measured rather than argued: the chat column's
+  480px floor, the canvas docking at `min(560, available - 480)`, and the overlay it
+  falls back to where the row cannot give the pane its own 400px floor. It is run at
+  the widths that straddle both bands (`--window-size 1380x900`, `1024x673`,
+  `960x673`, `800x600`), and it **requires `--backend`**: the chat pane does not mount
+  without one (see `openCanvasDocument` above), so the scene names the gap in a note
+  instead of passing on a reading it could not take. It captures the frame BEFORE it
+  reads the boxes, because the canvas's wrapper carries `transition-[width]` and a
+  reading taken mid-transition describes a layout that was never on screen - measured:
+  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
+
+
+- **`route-tops`** — the top of every route the shell draws: `/chat` as the control
+  (a route the change it was written for does not touch) and `/settings`,
+  `/settings?section=integrations`, `/agents`, `/agents/<any id>` (the saved-agent
+  route, which draws its own 280px roster through a different component),
+  `/agent-hub`, `/schedules`, `/projects` and `/browser`, each photographed and read
+  back as numbers. `/projects` and `/browser` joined the sweep for review round 1's
+  M1 (the operator-named must-not-move routes the first sweep left out); neither
+  draws a leading column, so their reading is the floor half of the band claim
+  rather than a hand-over. It
+  exists because the sub-view inset report (2026-09-26, "for sub-views like the
+  settings page, the sidebar and view doesn't go all the way to the top") was a
+  claim about ONE y coordinate per route — where a column's first box begins — and
+  that number is what a reviewer can check: on a macOS integrated window the lane
+  ends at 32 and every route's first box must start there (measured at y 62.86
+  before the fix, 32 after, with the app sidebar's row at 32 in both).
+
+  **TWO CLAIMS, BECAUSE THE REPORT CAME TWICE (2026-09-27, "Same issue with agents
+  and teams").** The second is the same y as a GROUND rather than as a box: the
+  lane's `surface` band is a mirror of the columns' grounds, so a route's own
+  leading column — the settings rail, the agents list pane — needs the band to run
+  past its right edge, or the content ground is painted over its width and the
+  column's panel starts below the strip. The scene reads the lane's RESOLVED
+  gradient (its stop and its first colour) and the route's leading column, and
+  asserts the stop reaches the column's right edge in the `surface` role; where a
+  route draws no such column the stop must be exactly the app sidebar's own width.
+  The column is DERIVED from the layout (a full-height surface column at the
+  route's left edge) rather than looked up by the marker the fix adds, because a
+  rig that asks for a handle the broken tree does not have passes by having nothing
+  to check — measured on the base tree, where that shape reported every route as
+  having no leading column. The readings on the tree this was written for: the band
+  stopped at 260 against a rail ending at 479 and a list pane ending at 516 (both
+  FAIL), and reaches 479/516/540 after.
+
+  **Requires `--backend`** for the settings, agents, projects, hub and schedules
+  surfaces to render at all, and is run twice per tree (`--window-size 1380x900` and
+  `800x600`, `--run-label` keeping the two sets of frame names apart).
+
+- **`hit-zones`** — the window drag region against the overlays painted over it,
+  and the audit that goes with it: every control of every overlay the scene can
+  open is sampled at five points through a page-side re-implementation of the
+  rect walk Chromium runs for `app-region` (drag unions, no-drag subtracts), so a
+  swallowed click is separated from a dead handler — the operator's report of
+  2026-09-26 ("the X button at the top of the analytics also seems to be
+  unclickable") is reproduced as a region reading rather than a click attempt. It
+  cross-checks against Electron's own `[draggable-regions]` debugger lines, and
+  asserts the non-chat route band's shape PER PLATFORM since #535: stood down
+  where the shell's lane is drawn (macOS and leading layouts), the caption height
+  `env(titlebar-area-height)` where it is not. **Requires `--backend`** (the
+  machine panels open through a slash command the backend's catalogue resolves),
+  and only macOS is exercised here — the caption-trailing branch is written for
+  the Windows/Linux runners that render it. The evidence set is
+  `docs/evidence/hit-zones/`, force-tracked run logs included.
+
+- **`sidebar-sections`** — RETIRED with the split's removal (agent review
+  round 1, R2; QA's Q3). It walked the sidebar's draggable boundary, its two
+  collapse controls, the persisted height a relaunch had to restore and the
+  bubbled brand mark, and the merged panel draws none of the split's furniture -
+  one scroller, no boundary, no collapse - so the scene could only throw at its
+  own preconditions. `sidebar-split.ts` and `docs/design/sidebar-sections.md`
+  remain the feature's record, and the frames it took remain the record of the
+  trees they were taken on.
 
 - **`canvas-freshness`** — the canvas document kept current with the file on
   disk. The scene writes the file ITSELF, from outside the app, which is the only
@@ -352,13 +489,28 @@ rule:
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
   verified dead, and the run asserts the app holds no connection to the URL the
-  renderer was built with — but the app's own telemetry still leaves the machine:
-  `us.i.posthog.com` and `us-assets.i.posthog.com` hold ESTABLISHED connections
-  during a driver run, and `capture_exceptions` is enabled in both processes.
-  There is no telemetry-disable switch in the app today, so this is a stated
-  limit rather than a redirected path: a run through this harness is not
-  "offline", and adding a first-class switch is a product decision rather than
-  something this script can do from outside.
+  renderer was built with — and since the telemetry switch landed it sends no
+  product telemetry either: `renderer-driver.mjs` hands its child
+  `LOCAL_OPERATOR_UI_TELEMETRY=off` (`scripts/telemetry-off.mjs`), and an off
+  launch constructs no PostHog client in either process, so no
+  `us.i.posthog.com` / `us-assets.i.posthog.com` connection is made for its pids
+  and `capture_exceptions` captures nothing. Measured both ways on one machine:
+  the same boot with the switch in place holds no connection to either host,
+  and without it holds ESTABLISHED connections to both (commands and output on
+  the pull request that added the switch). What that does NOT make this run is
+  "offline": the isolation is the operator's state — profile, config dir, log
+  directory, backend URL — and the app is free to reach whatever else it
+  reaches.
+
+- **Abandoned scratch trees are reaped at the start of every run.** `--clean` is
+  opt-out, so a tree survives whenever its run does not ask for it - and always when a
+  run is killed or crashes. Measured on the operator's machine, 2026-09-24: **244**
+  `lo-renderer-driver-*` trees in the shared temp directory, 2-4 MB each, ~700 MB, with
+  free space down to ~3 GiB and builds in a neighbouring session failing on it. A run
+  now sweeps trees whose pid is gone **and** which are older than 30 minutes, never
+  touching one a live pid owns and never touching an unparseable name, and prints what
+  it removed. The age is the second guard on purpose: pid numbers are reused, and this
+  fleet runs ~25 sessions at once where two driver runs overlapping is ordinary.
 
 ## What it can prove
 
@@ -458,4 +610,6 @@ rule:
 `docs/evidence/renderer-driver/` holds the pair above with a README naming the
 command that produced them. They are live-app frames, not Storybook captures, so
 the Storybook sweep (`pnpm check-evidence`, which walks `.webp`) does not cover
-them — the same position as the other committed live-app PNG sets.
+them — the same position as the other committed live-app PNG sets, and the reason
+`docs/evidence/project-detail-live/` (the `project-detail` scene's frames, six per
+palette) is declared in the manifest's `supplementary` list with `frames: 0`.

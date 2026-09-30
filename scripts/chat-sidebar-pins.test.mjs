@@ -46,6 +46,18 @@ import { build } from "esbuild";
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
+/**
+ * Comments stripped, so a rule can never be satisfied by prose about the rule.
+ *
+ * The distinction became load-bearing with the row's acts: the class names the reveal
+ * used to be written with (`pointer-events-none`, `opacity-0`) are named in the comment
+ * that records why they came off, so a test reading the raw file would find them and
+ * believe them.
+ */
+const code = (relative) =>
+	read(relative)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 /*
  * `packages: "external"` keeps bare specifiers bare, so the bundle is written to
@@ -384,7 +396,19 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * backend without the pin store must not render a heading over rows it cannot
 	 * be asked about.
 	 */
-	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
+	/*
+	 * THE VIEW'S OWN SWITCH JOINS THE GATE (the sidebar view popover, 2026-09-25):
+	 * the section is drawn when the reader has not hidden it AND there is
+	 * something to draw. It is an `&&` chain rather than a nested branch so the
+	 * capability gate is still the branch AROUND THE WHOLE SECTION - which is what
+	 * this assertion exists for, and a `pinnedShown` that swallowed it would leave
+	 * a heading over rows a backend cannot be asked about.
+	 */
+	assert.match(
+		source,
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		"the pinned section is no longer gated by the pin capability",
+	);
 });
 
 test("a repeat press is dropped only when it lands on a DIFFERENT conversation", () => {
@@ -460,22 +484,29 @@ test("a keyboard press cannot disarm the parked-pointer guard", () => {
 	);
 });
 
-test("a hidden reveal is inert, and the reveal is what makes it operable", () => {
-	const source = read(SIDEBAR);
+test("a hidden reveal is absent from the layout, and the reveal is what makes it operable", () => {
+	const source = code(SIDEBAR);
 	const at = source.indexOf("data-session-pin\n");
 	const block = source.slice(at, at + 4200);
 	/*
 	 * An affordance the reader cannot see must not be the thing a press lands on (QA round 1,
-	 * U3) - and the same two states that reveal it are what make it operable, so the control
-	 * is never visible-but-inert and never invisible-but-live. The pinned glyph is the STATE
-	 * rather than a reveal, so it is visible and operable unconditionally, and its
-	 * repeat-press hazard is the guard's job.
+	 * U3), and this is now a property of LAYOUT rather than a pairing someone has to keep in
+	 * step: the unpinned control is `display: none`, and an element that is not displayed
+	 * cannot receive a press at all (design D3). The `pointer-events-none` pairing that used to
+	 * carry this is gone with the `opacity` reveal it belonged to, which is why the assertion
+	 * below asks for the display switch instead of for the class that used to prevent the
+	 * press. The pinned glyph is the STATE rather than a reveal, so it is displayed and
+	 * operable unconditionally, and its repeat-press hazard is the guard's job.
 	 */
 	assert.ok(
-		block.includes("pointer-events-none") &&
-			block.includes("group-hover:pointer-events-auto") &&
-			block.includes("group-focus-within:pointer-events-auto"),
-		"the hidden reveal must be inert and become operable with the reveal",
+		block.includes("hidden") &&
+			block.includes("group-hover:flex") &&
+			block.includes("group-focus-within:flex"),
+		"the reveal must be a display switch: hidden at rest, flex under the pointer or focus",
+	);
+	assert.ok(
+		!block.includes("pointer-events-none"),
+		"`display: none` is what makes the hidden control inert now; a pointer-events pairing left beside it would be a second, weaker rule",
 	);
 	/*
 	 * Read as CLASS TOKENS rather than as a whitespace-exact substring (review round 3, NIT 3):
@@ -490,12 +521,94 @@ test("a hidden reveal is inert, and the reveal is what makes it operable", () =>
 			? ""
 			: block.slice(branchStart, block.indexOf(": cn(", branchStart));
 	assert.ok(
-		!pinnedBranch.includes("pointer-events-none"),
-		"the pinned glyph must not be made inert",
+		!pinnedBranch.includes("hidden"),
+		"the pinned glyph must be DISPLAYED at rest at every width - it is the state",
+	);
+	assert.ok(
+		pinnedBranch.includes("flex"),
+		"the pinned branch must state the display it is drawn with",
 	);
 	assert.ok(
 		/"(?:[^"]*\s)?text-ink(?:\s[^"]*)?"/.test(pinnedBranch),
 		"the pinned branch carries the visible ink role",
+	);
+});
+
+test("the unpinned reveal is a display switch and cannot reflow the row it is not in", () => {
+	const source = code(SIDEBAR);
+	// The JSX attribute (newline-terminated), never the effect's selector - see the
+	// note on the count above.
+	const anchor = source.indexOf("data-session-pin\n");
+	const open = source.indexOf("cn(", anchor);
+	const classes = source.slice(open + "cn(".length, source.indexOf(")}", open));
+	const values = [...classes.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map(
+		(match) => match[1] ?? match[2] ?? match[3],
+	);
+	const tokens = values.flatMap((value) => value.split(/\s+/));
+	assert.ok(
+		tokens.includes("size-6") && tokens.includes("shrink-0"),
+		`the control's own box is declared on the control itself: ${classes}`,
+	);
+	/*
+	 * THE REVEAL MOVES DISPLAY AND NOTHING ELSE, and the two halves of that are both
+	 * deliberate (design D3):
+	 *
+	 *  - the base is `hidden` rather than `flex`, because `hidden` and `flex` are two display
+	 *    utilities of EQUAL SPECIFICITY - a class list carrying both is decided by the
+	 *    stylesheet's order rather than by the pointer, which is the cascade bug this
+	 *    repository already shipped once.
+	 *  - nothing lifts, scales or translates on hover, and there is no `width` transition:
+	 *    the box is not reserved at rest at all, so the row has nothing to reflow around, and
+	 *    the old rule that protected that reservation ("the reveal is `opacity` and
+	 *    `pointer-events` only, so the reveal cannot reflow the row") is superseded rather
+	 *    than broken - what moves is the title's clip, at the moment the controls exist.
+	 */
+	assert.ok(
+		tokens.includes("hidden"),
+		`the unpinned control must be out of the layout at rest: ${classes}`,
+	);
+	for (const forbidden of [
+		"opacity-0",
+		"w-0",
+		"scale-100",
+		"translate-x-0",
+		"rotate-0",
+		"transition-opacity",
+	]) {
+		assert.ok(
+			!tokens.includes(forbidden),
+			`the pin's reveal declares no \`${forbidden}\`: ${classes}`,
+		);
+	}
+	assert.ok(
+		!tokens.some((token) => /^(scale|translate|rotate)-/.test(token)),
+		`the reveal scales, translates or rotates: ${classes}`,
+	);
+	assert.ok(
+		tokens.includes("group-hover:flex") &&
+			tokens.includes("group-focus-within:flex"),
+		`the reveal is a group-hover/group-focus-within display step: ${classes}`,
+	);
+	/*
+	 * AND THE REST HALF STATES `hidden` AND NOT `flex`, which is the cascade rule read
+	 * off the branch rather than off the whole class list: the PINNED branch legitimately
+	 * declares `flex` (the mark is the state, D4), so the assertion is about the unpinned
+	 * one - the element's base plus the inner `cn` that is its rest state.
+	 */
+	const rest = classes.slice(classes.indexOf(": cn("));
+	const restTokens = rest
+		? [...rest.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)]
+				.map((match) => match[1] ?? match[2] ?? match[3])
+				.flatMap((value) => value.split(/\s+/))
+		: [];
+	assert.equal(
+		restTokens.filter((token) => token === "flex").length,
+		0,
+		`the rest state must not state \`flex\` beside the variant's own: ${classes}`,
+	);
+	assert.ok(
+		restTokens.includes("hidden"),
+		`the rest state must be out of the layout: ${classes}`,
 	);
 });
 
@@ -513,56 +626,54 @@ test("a press on a conversation the store does not hold carries the row it acted
 		"the press must carry the row's seed so a store that does not hold it can",
 	);
 });
-test("the reveal is opacity on a reserved box, so it cannot reflow the row", () => {
+test("the pinned mark is drawn at rest at every width, and is not inside a display switch (design D1/D4)", () => {
 	const source = read(SIDEBAR);
-	// The JSX attribute (newline-terminated), never the effect's selector - see the
-	// note on the count above.
-	const anchor = source.indexOf("data-session-pin\n");
-	const open = source.indexOf("cn(", anchor);
-	const classes = source.slice(open + "cn(".length, source.indexOf(")}", open));
-	const values = [...classes.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map(
-		(match) => match[1] ?? match[2] ?? match[3],
-	);
-	const tokens = values.flatMap((value) => value.split(/\s+/));
-	assert.ok(
-		tokens.includes("size-6") && tokens.includes("shrink-0"),
-		`the slot's box is declared on the control itself: ${classes}`,
-	);
 	/*
-	 * The reveal moves OPACITY and nothing else. A `hidden`/`w-0` reveal, or
-	 * anything that lifts, scales or translates on hover, would either take the
-	 * slot out of the layout (so the row reflows under the pointer, which is worse
-	 * than no affordance) or spend a motion the branding contract does not have.
+	 * THE DEFECT THIS EXISTS FOR, measured rather than argued: at the 240px clamp minimum
+	 * a PINNED row carried no pin at all - the mark lived inside the wrapper the old
+	 * container query hid, so its box read `0x0` and nothing was painted, in both
+	 * palettes (`docs/evidence/sidebar-row-space/rest-240/*.png`). The panel states as a
+	 * rule that a pin's state must read without hovering; at its narrowest width the
+	 * shipped build broke it.
+	 *
+	 * THE FIX IS STRUCTURAL: the mark is DISPLAYED in the pinned branch (`flex`, never
+	 * `hidden`), and the wrapper it lives in is `flex` whenever the row is pinned. The
+	 * driver asserts the drawn box at all three widths, which is the half a source read
+	 * cannot carry; this is the cheap half, and it fails loudly if either the control or
+	 * the wrapper ever becomes a display switch again.
 	 */
-	for (const forbidden of [
-		"hidden",
-		"w-0",
-		"scale-100",
-		"translate-x-0",
-		"rotate-0",
-	]) {
-		assert.ok(
-			!tokens.includes(forbidden),
-			`the pin's reveal declares no \`${forbidden}\`: ${classes}`,
-		);
-	}
-	assert.ok(
-		!tokens.some((token) => /^(scale|translate|rotate)-/.test(token)),
-		`the reveal scales, translates or rotates: ${classes}`,
+	const at = source.indexOf("data-session-pin\n");
+	/*
+	 * THE WINDOW IS 5200 RATHER THAN 4200 (UX round 2, U2), and the reason is prose
+	 * rather than structure: the control now carries a block comment explaining why
+	 * it left the Tab ring, which sits between the attribute this search anchors on
+	 * and the `pinned` ternary this reads. A window that no longer REACHES the
+	 * branch fails the `notEqual` below rather than passing quietly, so widening it
+	 * cannot hide a control that stopped being drawn - it only has to reach the
+	 * branch the assertions are about.
+	 */
+	const block = source.slice(at, at + 5200);
+	const branchMatch = /\n\s*pinned\n/.exec(block);
+	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
+	const pinnedBranchText = block.slice(
+		branchMatch.index,
+		block.indexOf(": cn(", branchMatch.index),
 	);
 	assert.ok(
-		tokens.includes("group-hover:opacity-100") &&
-			tokens.includes("group-focus-within:opacity-100"),
-		`the reveal is a group-hover/group-focus-within opacity step: ${classes}`,
-	);
-	assert.equal(
-		tokens.filter((token) => token === "opacity-0").length,
-		1,
-		`the control has exactly one rest state to fade out of: ${classes}`,
+		pinnedBranchText.includes("flex"),
+		`the pinned mark must be displayed: ${pinnedBranchText}`,
 	);
 	assert.ok(
-		!tokens.includes("opacity-100"),
-		`the revealed value is not the rest value: ${classes}`,
+		!pinnedBranchText.includes("hidden"),
+		`the pinned mark must never be display-switched away: ${pinnedBranchText}`,
+	);
+	const pairWrapper = code(SIDEBAR).slice(
+		code(SIDEBAR).indexOf("data-session-control-pair"),
+	);
+	assert.match(
+		pairWrapper.slice(0, 400),
+		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		"the pair wrapper must be displayed on a pinned row and revealed on an unpinned one",
 	);
 });
 
@@ -637,6 +748,15 @@ export const desktopResult = request => globalThis.__pinRequest(request);`,
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: ROOT,
@@ -974,4 +1094,83 @@ test("the next press retires the previous failure", async () => {
 	globalThis.__pinRequest = async () => ({ session_id: PINNED, pinned: true });
 	await store.getState().setSessionPin(PINNED, true);
 	assert.equal(store.getState().pinFailure, null);
+});
+
+/*
+ * THE PINNED SET IS THE HEAD ANSWER'S TO SETTLE, and a SCOPE answer is not a head
+ * answer (paged catalogue, design §4.2).
+ *
+ * Why this is a test rather than a comment: the settle rule rests on the list
+ * route APPENDING every pinned conversation below the page's newest rows, so
+ * absence from a newer page means "the conversation is unpinned or gone". That
+ * argument holds for the unscoped head - the route applies it there - and it does
+ * NOT hold for a page that was asked about ONE team. A scope answer that settled
+ * the facts wholesale would erase a pin made on any conversation outside that
+ * team: its glyph, its Pinned-section membership and its `heldRows` row would all
+ * vanish at the moment an unrelated group was expanded.
+ */
+test("a scope page neither settles nor hides a pin made outside it", async () => {
+	const LISTED = "1a2b3c4d5e6f";
+	const TEAM_ROW = "9f8e7d6c5b4a";
+	const HEAD_ROW = "aaaaaaaaaaaa";
+	store.setState({
+		sessions: [],
+		scopes: {},
+		counts: null,
+		head: {
+			tailIds: [],
+			nextCursor: null,
+			complete: false,
+			loading: false,
+			error: null,
+			at: 0,
+		},
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+		forgotten: {},
+		archiveFacts: {},
+	});
+	globalThis.__pinRequest = async (request) => {
+		if (request.op !== "sessions.list")
+			return { session_id: LISTED, pinned: true };
+		if (request.scope_kind === "team")
+			return {
+				sessions: [
+					{ id: TEAM_ROW, name: "A team chat", mtime: 1, pinned: false },
+				],
+				truncated: false,
+				next_cursor: null,
+			};
+		return {
+			sessions: [
+				{ id: HEAD_ROW, name: "Only the head", mtime: 2, pinned: false },
+			],
+			truncated: true,
+			next_cursor: "p2",
+		};
+	};
+
+	await store.getState().fetchSessions(50, true);
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.equal(
+		await store.getState().setSessionPin(LISTED, true, {
+			title: "Outside the page",
+		}),
+		true,
+	);
+	const before = store.getState().pinFacts[LISTED];
+
+	// A re-read of the team, whose rows have nothing to do with that pin.
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.deepEqual(
+		store.getState().pinFacts[LISTED],
+		before,
+		"a scope answer is silent about the pinned set, and silence is not a claim",
+	);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === LISTED),
+		true,
+		"and the row the press inserted is still in the store",
+	);
 });

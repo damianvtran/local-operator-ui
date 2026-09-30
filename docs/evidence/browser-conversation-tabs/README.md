@@ -8,9 +8,15 @@ rather than swept:
   title, which is the floor the fix is about. Extracted with `git show
   origin/main:docs/evidence/browser-tab-strip/<story>/localOperatorDark.webp`; the same
   stories' frames in this tree are re-taken at all twelve palettes under
-  `docs/evidence/browser-tab-strip/`.
+  `docs/evidence/browser-tab-strip/`. The two committed here are
+  `before-strip-story/worst-case/localOperatorDark.webp` and
+  `before-strip-story/worst-case-widest/localOperatorDark.webp` (renamed in place on
+  2026-09-25 from `worst-case*.webp`, because the evidence gate reads a frame's expected
+  ground from its filename and the file name must be the palette).
 - `after-strip-story/` — the same two stories on this branch, same fixtures, same
-  viewports, same palette, so the pair differs only by the change.
+  viewports, same palette, so the pair differs only by the change:
+  `after-strip-story/worst-case/localOperatorDark.webp` and
+  `after-strip-story/worst-case-widest/localOperatorDark.webp`.
 - `live/` — the proof run's own frames (`scripts/browser-chrome-proof.mjs`, the frame
   names the run prints), which are observations of the running app rather than stories:
   the pooled strip with twenty tabs from six conversations plus the unattributed run,
@@ -79,7 +85,7 @@ still deliberately has no daemon reachable (that is the "scratch backend port is
 check at the top of its own transcript), but the banner is a property of WHEN IN THE RUN a
 frame is taken, not of the harness: the app's own check fails a moment after boot, so a
 frame taken earlier in the same run carries no banner at all. Measured on this head with
-`sharp`: `browser-composition/03-surface-populated.webp`'s top-left is the app's own ground
+`sharp`: `browser-composition/03-surface-populated/localOperatorDark.webp`'s top-left is the app's own ground
 `(14,12,8)`, uniform through device y 248 (CSS 124), and this set's own
 `live/19-strip-pooled-20-over-6.png` measures `(15,12,8)` — both from runs whose later
 frames carry the band. An earlier revision of this paragraph said "so no frame it takes is

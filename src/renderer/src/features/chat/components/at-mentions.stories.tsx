@@ -135,11 +135,13 @@ const asListingKey = (dir: string): string =>
  * photograph a decision nobody made, and the whole point of the gate is that the
  * DECISION is what has to be right.
  *
- * `WITHOUT_MENTIONS` is not a hypothetical. It is every install that exists: the
- * expansion is `local_operator/references.py`, which no release tag through
- * v0.56.8 carries, and the harness half that adds it (PR #1220) publishes no
- * capability key at all yet — so the key is what the composer reads, and its
- * ABSENCE is the case a user on today's release would meet.
+ * `WITHOUT_MENTIONS` is the SKEW case, not a hypothetical: a backend older than
+ * the capability that lights the affordance up. The harness advertises
+ * `references` from `local_operator/server/routes/capabilities.py` whenever
+ * `at_references_enabled()` is true, so a current backend is the `withMentions`
+ * answer below; an install that has not taken that backend yet — or one whose
+ * `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off, which omits the key rather
+ * than advertising `0` — is this one, and its ABSENCE is what the composer reads.
  */
 const HARNESS: Record<string, DesktopCapabilities> = {
 	// A backend that expands a mention, and says so.
@@ -149,25 +151,113 @@ const HARNESS: Record<string, DesktopCapabilities> = {
 		desktop_auth: "bearer",
 		features: { references: 1, commands: 1, session_catalogue: 1 },
 	},
-	// Every backend that exists today: no `references` key, so no affordance.
+	// A backend that cannot carry one: no `references` key, so no affordance.
 	withoutMentions: {
 		desktop_contract: 1,
 		desktop_available: true,
 		desktop_auth: "bearer",
 		features: { commands: 1, session_catalogue: 1 },
 	},
+	/*
+	 * A backend that carries BOTH references and the Projects store: the harness
+	 * the `picker-with-projects` frame is photographed against. The other two
+	 * entries deliberately lack the `projects` key, so their frames are also the
+	 * BEFORE half of the section pair — a popup with no projects section renders
+	 * exactly the surface this app shipped before, headers included (there are
+	 * none), which is what makes the comparison fair rather than two states of
+	 * the new code.
+	 */
+	withProjects: {
+		desktop_contract: 1,
+		desktop_available: true,
+		desktop_auth: "bearer",
+		features: { references: 1, commands: 1, session_catalogue: 1, projects: 1 },
+	},
 };
+
+/**
+ * The store the projects section lists, in the store's own order (status rank,
+ * then most recently updated). The names are the shapes the frames have to
+ * answer — one the user would type by name, one that reaches the section
+ * through the `project:` namespace, and one whose description is long enough to
+ * truncate the middle column.
+ */
+const PROJECTS = [
+	{
+		name: "payments-migration",
+		description: "Cut the payments API over to the new service",
+	},
+	{
+		name: "q4-hardening",
+		description: "Error budgets, retries and the load shed",
+	},
+	{
+		name: "docs-pass",
+		description:
+			"Rewrite the guides against the new CLI, including the ones the old CLI never had",
+	},
+];
+
+/**
+ * A FULL FIRST PAGE of projects: enough rows that the window holds only the
+ * first section's header, which is the case QA round 2's Q-3 was measured on
+ * (twelve projects and a Files section under a 271px cap left 25.6px of the
+ * eighth project row drawn). Names are short and distinct so the frame's own
+ * reading is about the region's edge, not about wrapping.
+ */
+const MANY_PROJECTS = [
+	"payments-migration",
+	"q4-hardening",
+	"docs-pass",
+	"billing-export",
+	"auth-audit",
+	"rate-limits",
+	"mobile-sync",
+	"search-relevance",
+	"offline-cache",
+	"webhooks-v2",
+	"data-retention",
+	"onboarding-flow",
+].map((name, index) => ({
+	name,
+	description: `Workstream ${index + 1} of the quarter`,
+}));
+
+/**
+ * WHICH HARNESS THE BRIDGE ANSWERS FOR, set by the story that is mounting.
+ *
+ * The bridge is installed at module scope (before any story renders) and
+ * re-installed by each play, but the CAPABILITIES answer has to be the story's
+ * own from the very first byte: the composer's projects gate reads it from a
+ * query that fires at mount, and a story whose harness was swapped after mount
+ * would be photographed against the previous story's answer. The render sets
+ * this before React mounts the composer - the same before-mount ordering the
+ * module-scope install exists for - and the request handler reads it at request
+ * time, so both the module-scope install and a story's re-install answer the
+ * same way.
+ */
+let activeHarness: (typeof HARNESS)[string] = HARNESS.withMentions;
+
+/**
+ * WHICH PROJECT LIST THE BRIDGE ANSWERS WITH, set the same way and for the same
+ * reason as `activeHarness`: the story that is mounting decides, before React
+ * mounts, what `projects.list` will answer — a story whose list was swapped
+ * after mount would be photographed against the previous story's answer.
+ */
+let activeProjects: typeof PROJECTS = PROJECTS;
 
 /**
  * The desktop bridge, installed at module scope for the reason
  * `./story-electron-shim` states for `window.electron`: the composer reaches the
  * bridge from an effect on mount, and Storybook's preview mocks `window.api`
- * rather than these channels. Three channels are replaced - the two listing ones
- * and `capabilities`, whose answer the mention gate reads - and every other op is
- * a 5xx, so a story that starts depending on another one says so loudly instead
+ * rather than these channels. Four channels are replaced - the two listing ones,
+ * `capabilities`, whose answer the mention gate reads, and `projects.list`, which
+ * only a harness advertising `projects` ever reaches - and every other op is a
+ * 5xx, so a story that starts depending on another one says so loudly instead
  * of rendering a surface with quietly missing data.
  */
 const installFixtureBridge = (harness: (typeof HARNESS)[string]) => {
+	activeHarness = harness;
 	const api = (window.api ?? {}) as Record<string, unknown>;
 	api.listDirectory = async (dir: string) => {
 		// `boom/` is a directory that cannot be read: the error row is a state the
@@ -194,13 +284,31 @@ const installFixtureBridge = (harness: (typeof HARNESS)[string]) => {
 			};
 		});
 	api.desktop = {
-		request: async (request: { op: string }) =>
-			request.op === "capabilities"
-				? {
-						status: 200,
-						body: { result: harness },
-					}
-				: { status: 501, body: { detail: "this story has no backend" } },
+		request: async (request: { op: string }) => {
+			if (request.op === "capabilities") {
+				return {
+					status: 200,
+					body: { result: activeHarness },
+				};
+			}
+			/*
+			 * The projects section's read, answered only by the harness that advertises
+			 * the feature — so a story photographed against `withMentions` (which lacks
+			 * the key, and is what a current release of this app actually ships
+			 * against) keeps the byte-identical file-only popup, and the 501 arm is what
+			 * a project-less backend would answer anyway. The list op never fires there:
+			 * the picker's own gate checks `desktopFeatureEnabled` before it dials.
+			 */
+			if (request.op === "projects.list") {
+				return "projects" in activeHarness.features
+					? { status: 200, body: { result: { projects: activeProjects } } }
+					: {
+							status: 501,
+							body: { detail: "this story has no projects store" },
+						};
+			}
+			return { status: 501, body: { detail: "this story has no backend" } };
+		},
 	};
 	window.api = api as typeof window.api;
 };
@@ -282,6 +390,12 @@ type DraftStory = {
 	 * today, and the gate's own state.
 	 */
 	harness?: keyof typeof HARNESS;
+	/**
+	 * The projects store's answer, when the state's point is the LIST's size
+	 * rather than one project's row (the heavy first page, QA round 2's Q-3).
+	 * Omitted, the story answers the three-project fixture.
+	 */
+	projects?: typeof PROJECTS;
 	/** Where the caret is left, when the state is about the caret. */
 	moveCaretTo?: (box: HTMLTextAreaElement) => void;
 	/** True once the state the frame is OF exists on screen. */
@@ -427,50 +541,61 @@ type Story = StoryObj;
 /** One state, rendered and driven: the frame and its play cannot describe
  *  different drafts, because there is one object. */
 const stateStory = (state: DraftStory): Story => ({
-	render: () => (
-		<Column label={state.label} width={state.width} story={state.story}>
-			{/*
-			 * The pool is passed so the frame carries the band the app's empty chat
-			 * shows — tip row, suggestion chips and all — because the design's third
-			 * prediction is about the SPLASH that the stack claims, and a story without
-			 * suggestions has no splash to measure. Its fourth is about the row budget,
-			 * and the splash is most of what the picker's anchor has to fit under.
-			 */}
-			<MessageInput
-				isLoading={false}
-				messages={EMPTY}
-				conversationId={storyColumn(state.story)}
-				cwd="/Users/you/project"
-				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-				isSmallView={state.smallView ?? false}
-				/*
-				 * THE GATE, evaluated by the SHIPPED function rather than handed in as a
-				 * boolean: the story feeds it the fixture's capability answer, so the frame
-				 * is evidence about the decision the app makes and not about a prop a story
-				 * chose. `desktop-hooks.ts`'s `references` is the key, and the
-				 * `withoutMentions` harness below is what every release carries today.
-				 */
-				mentionsEnabled={desktopFeatureEnabled(
-					HARNESS[state.harness ?? "withMentions"],
-					"references",
-				)}
-				/*
-				 * The other half of the gate, from the same fixture answer: the composer's
-				 * sentence may only be said when the BACKEND is the reason the affordance is
-				 * absent, so the story derives the unsupported fact the way `chat-page.tsx`
-				 * does — an answer that arrived (the fixture bridge always answers) and says
-				 * the harness is available without the key.
-				 */
-				mentionsUnsupported={
-					!desktopFeatureEnabled(
+	render: () => {
+		/*
+		 * The story's OWN harness, installed before React mounts the composer (the
+		 * before-mount rule this file's bridge note states): the capabilities answer
+		 * the projects gate reads has to be this story's from the first byte, not
+		 * whichever harness the previous story left active.
+		 */
+		installFixtureBridge(HARNESS[state.harness ?? "withMentions"]);
+		activeProjects = state.projects ?? PROJECTS;
+		return (
+			<Column label={state.label} width={state.width} story={state.story}>
+				{/*
+				 * The pool is passed so the frame carries the band the app's empty chat
+				 * shows — tip row, suggestion chips and all — because the design's third
+				 * prediction is about the SPLASH that the stack claims, and a story without
+				 * suggestions has no splash to measure. Its fourth is about the row budget,
+				 * and the splash is most of what the picker's anchor has to fit under.
+				 */}
+				<MessageInput
+					isLoading={false}
+					messages={EMPTY}
+					conversationId={storyColumn(state.story)}
+					cwd="/Users/you/project"
+					initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+					isSmallView={state.smallView ?? false}
+					/*
+					 * THE GATE, evaluated by the SHIPPED function rather than handed in as a
+					 * boolean: the story feeds it the fixture's capability answer, so the frame
+					 * is evidence about the decision the app makes and not about a prop a story
+					 * chose. `desktop-hooks.ts`'s `references` is the key; `withMentions` is a
+					 * current backend, and `withoutMentions` is the skew state — a backend older
+					 * than the key, or one whose expansion kill switch is off.
+					 */
+					mentionsEnabled={desktopFeatureEnabled(
 						HARNESS[state.harness ?? "withMentions"],
 						"references",
-					)
-				}
-				onSendMessage={async () => true}
-			/>
-		</Column>
-	),
+					)}
+					/*
+					 * The other half of the gate, from the same fixture answer: the composer's
+					 * sentence may only be said when the BACKEND is the reason the affordance is
+					 * absent, so the story derives the unsupported fact the way `chat-page.tsx`
+					 * does — an answer that arrived (the fixture bridge always answers) and says
+					 * the harness is available without the key.
+					 */
+					mentionsUnsupported={
+						!desktopFeatureEnabled(
+							HARNESS[state.harness ?? "withMentions"],
+							"references",
+						)
+					}
+					onSendMessage={async () => true}
+				/>
+			</Column>
+		);
+	},
 	play: draftPlay(state),
 });
 
@@ -661,6 +786,66 @@ export const PickerOpen: Story = stateStory({
 });
 
 /**
+ * The projects section, over the directory listing: the AFTER half of the
+ * `@`-popup pair, and the frame the section rules exist for.
+ *
+ * TWO SECTIONS, ONE LIST: `Projects` then `Files`, each drawn as a
+ * non-selectable row only when the projection carries both. The project rows
+ * write the namespaced `@project:<name>` token (their middle column is the
+ * description, where a file row's is its parent), and the file half below is
+ * the SAME listing `picker-open` photographs — the pair's claim is that the
+ * section is an addition above the listing, not a re-render of it. The BEFORE
+ * half is `picker-open` itself: its harness carries no `projects` key, which is
+ * what a current release of this app ships against, and the same code renders
+ * no headers there — the file-only popup is byte-identical to the surface this
+ * app shipped before the section existed.
+ *
+ * The settled predicate waits for BOTH a project row and a header: a frame
+ * taken at `rowCount() > 0` alone could be the listing before the store's
+ * answer arrived, wearing this state's name.
+ */
+export const PickerWithProjects: Story = stateStory({
+	story: "picker-with-projects",
+	harness: "withProjects",
+	label:
+		"a bare @ with a projects store: a Projects section over the Files listing",
+	draft: "@",
+	settled: () => {
+		const text = document.body.textContent ?? "";
+		return (
+			rowCount() > 0 &&
+			text.includes("payments-migration") &&
+			text.includes("Projects")
+		);
+	},
+});
+
+/**
+ * A FULL FIRST PAGE: twelve projects over the same listing, so the window's
+ * content holds ONE header (the Projects section's) and not the Files one —
+ * the case the previous cap arithmetic got wrong, measured on the built app
+ * (region resting on 25.6px of the eighth project row; QA round 2's Q-3). The
+ * frame's claim is its bottom edge: a whole row's, with the count below saying
+ * how many of the listing's rows are drawn.
+ */
+export const PickerHeavyProjects: Story = stateStory({
+	story: "picker-heavy-projects",
+	harness: "withProjects",
+	projects: MANY_PROJECTS,
+	label:
+		"a bare @ with a full first page of projects: one header in the window, a whole row at its edge",
+	draft: "@",
+	settled: () => {
+		const text = document.body.textContent ?? "";
+		return (
+			rowCount() >= 12 &&
+			text.includes("onboarding-flow") &&
+			text.includes("Projects")
+		);
+	},
+});
+
+/**
  * Drilled one level: the header names the directory and the rows carry a parent
  * column, which is what keeps a deep path readable.
  */
@@ -791,27 +976,31 @@ export const PickerManyRows: Story = stateStory({
 /**
  * A HARNESS THAT DOES NOT EXPAND A MENTION: no list, no chip, plain text.
  *
- * THE STATE EVERY RELEASE CARRIES TODAY. The expansion is
- * `local_operator/references.py`, which no tag through v0.56.8 has, and the
- * harness half that adds it is PR #1220 — in review, and publishing no capability
- * key at all yet. So the composer reads `desktop-hooks.ts`'s `references` key and
- * withholds the whole affordance when it is absent, because the alternative is a
- * picker whose pick writes a chip claiming a reference the model never receives.
+ * THE SKEW STATE: a backend older than the capability that lights the affordance
+ * up, or a current one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off.
+ * The harness advertises `references` from
+ * `local_operator/server/routes/capabilities.py` whenever expansion is on, so a
+ * current backend is the other fixture; this is what a user meets until their
+ * backend is updated. The composer reads that key and withholds the whole
+ * affordance when it is absent, because the alternative is a picker whose pick
+ * writes a chip claiming a reference the model never receives.
  *
  * The draft carries BOTH facts in one frame on purpose: a token that would be a
  * chip if the harness could expand it, and a bare `@` at the caret that would open
  * the list. Read off the frame: neither happens, the text is exactly what will be
- * sent, and the ONE SENTENCE the caret's `@` brings on says why (UX round 2,
- * U12). That sentence is the whole of this state's answer to "I typed `@` and
- * nothing happened": it names the backend as the reason, promises no update, and
- * costs the composer no geometry because it stands in the list's own
- * `absolute bottom-full` slot.
+ * sent, and the sentence the caret's `@` brings on says why and names the way out
+ * (UX round 2, U12). That sentence is the whole of this state's answer to "I typed
+ * `@` and nothing happened": it names the backend as the reason and offers the
+ * update, which is the cause a user can act on — the state's other cause is the
+ * `LOCAL_OPERATOR_AT_REFERENCES` kill switch, which no update clears and no
+ * composer sentence should try to describe. It costs the composer no geometry,
+ * because it stands in the list's own `absolute bottom-full` slot.
  */
 export const HarnessCannotExpand: Story = stateStory({
 	story: "no-references",
 	harness: "withoutMentions",
 	label:
-		"a harness that cannot expand a mention: no list, no chip, one sentence saying why, the path sent as written",
+		"a harness that cannot expand a mention: no list, no chip, one notice saying why and naming the update, the path sent as written",
 	draft: "look at @src/app.py then fix @",
 	settled: () =>
 		chipCount() === 0 &&

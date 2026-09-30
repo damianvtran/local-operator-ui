@@ -1,6 +1,6 @@
 {
-  "backend": "http://127.0.0.1:1131",
-  "out": "/tmp/interrupt-live-proof",
+  "backend": "http://127.0.0.1:8080",
+  "out": "/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/interrupt5",
   "steps": [
     {
       "step": "bridge",
@@ -21,13 +21,13 @@
     },
     {
       "step": "capabilities",
-      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":2,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"lifecycle\":1,\"completion_ack\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1}}"
+      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":2,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_catalogue_page\":1,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"session_draft_warm\":1,\"lifecycle\":1,\"completion_ack\":1,\"completion_ack_bulk\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"mcp_catalog\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"subagent_trajectory\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1,\"session_pins\":1,\"session_archive\":1,\"session_delete\":1,\"tunnel\":1,\"references\":1}}"
     },
     {
       "step": "dictation.live",
       "present": true,
       "disabled": false,
-      "waitedMs": 3
+      "waitedMs": 1
     },
     {
       "step": "dictation.live",
@@ -36,7 +36,7 @@
       "dictation": {
         "present": true,
         "disabled": false,
-        "waitedMs": 3
+        "waitedMs": 1
       }
     },
     {
@@ -58,39 +58,51 @@
       "boxes": [
         {
           "label": "Start recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Stop",
-          "x": 1271,
-          "w": 32,
-          "centre": 1287
+          "x": 977,
+          "w": 77,
+          "centre": 1016
+        },
+        {
+          "label": "stop-slot",
+          "x": 977,
+          "w": 111,
+          "centre": 1033
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ]
     },
     {
       "step": "turn1.pressed",
-      "x": 1287,
-      "y": 819,
+      "x": 1015.9453125,
+      "y": 852,
       "rect": {
-        "w": 32,
+        "w": 77,
         "h": 32,
-        "top": 803,
-        "left": 1271
+        "top": 836,
+        "left": 977
+      },
+      "slotRect": {
+        "w": 111,
+        "h": 32,
+        "top": 836,
+        "left": 977
       },
       "target": "button[aria-label=\"Stop\"]",
       "attempts": [
         {
-          "x": 1287,
-          "y": 819,
+          "x": 1016,
+          "y": 852,
           "owner": "button[aria-label=\"Stop\"]",
           "hit": true
         }
@@ -106,38 +118,38 @@
       "boxes": [
         {
           "label": "Start recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "reserved-slot",
-          "x": 1271,
-          "w": 32,
-          "centre": 1287
+          "x": 977,
+          "w": 111,
+          "centre": 1033
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "at": {
-        "sinceFlipMs": 74
+        "sinceFlipMs": 222
       },
       "graceMs": 500
     },
     {
       "step": "slot.repress",
       "point": {
-        "x": 1287,
-        "y": 819
+        "x": 1015.9453125,
+        "y": 852
       },
       "owner": "div|not-reserved",
       "at": {
-        "beforeSinceFlipMs": 161,
-        "afterSinceFlipMs": 170
+        "beforeSinceFlipMs": 296,
+        "afterSinceFlipMs": 297
       },
       "after": {
         "recording": false,
@@ -153,15 +165,15 @@
       "boxes": [
         {
           "label": "Start recording",
-          "x": 1271,
+          "x": 1056,
           "w": 32,
-          "centre": 1287
+          "centre": 1072
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ]
     },
@@ -172,48 +184,60 @@
       "running": [
         {
           "label": "Start recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Stop",
-          "x": 1271,
-          "w": 32,
-          "centre": 1287
+          "x": 977,
+          "w": 77,
+          "centre": 1016
+        },
+        {
+          "label": "stop-slot",
+          "x": 977,
+          "w": 111,
+          "centre": 1033
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "grace": [
         {
           "label": "Start recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "reserved-slot",
-          "x": 1271,
-          "w": 32,
-          "centre": 1287
+          "x": 977,
+          "w": 111,
+          "centre": 1033
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "stop": {
-        "w": 32,
+        "w": 77,
         "h": 32,
-        "top": 803,
-        "left": 1271
+        "top": 836,
+        "left": 977
+      },
+      "stopSlot": {
+        "label": "stop-slot",
+        "x": 977,
+        "w": 111,
+        "centre": 1033
       }
     },
     {
@@ -223,13 +247,13 @@
       "graceMs": 500,
       "press": {
         "point": {
-          "x": 1287,
-          "y": 819
+          "x": 1015.9453125,
+          "y": 852
         },
         "owner": "div|not-reserved",
         "at": {
-          "beforeSinceFlipMs": 161,
-          "afterSinceFlipMs": 170
+          "beforeSinceFlipMs": 296,
+          "afterSinceFlipMs": 297
         },
         "after": {
           "recording": false,
@@ -242,19 +266,19 @@
       "boxes": [
         {
           "label": "Start recording",
-          "x": 1271,
+          "x": 1056,
           "w": 32,
-          "centre": 1287
+          "centre": 1072
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "at": {
-        "sinceFlipMs": 1776
+        "sinceFlipMs": 1901
       }
     },
     {
@@ -265,48 +289,48 @@
       "settled": [
         {
           "label": "Start recording",
-          "x": 1271,
+          "x": 1056,
           "w": 32,
-          "centre": 1287
+          "centre": 1072
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "grace": [
         {
           "label": "Start recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "reserved-slot",
-          "x": 1271,
-          "w": 32,
-          "centre": 1287
+          "x": 977,
+          "w": 111,
+          "centre": 1033
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "rowGap": 4,
       "at": {
-        "sinceFlipMs": 1776
+        "sinceFlipMs": 1901
       }
     },
     {
       "step": "slot.micPoint",
-      "x": 1287,
-      "y": 819,
+      "x": 1072,
+      "y": 852,
       "rect": {
-        "left": 1271,
+        "left": 1056,
         "w": 32
       },
       "owner": "Start recording",
@@ -317,10 +341,10 @@
       "ok": true,
       "what": "the point the dictation control now occupies is not owned by a live dictation control",
       "point": {
-        "x": 1287,
-        "y": 819,
+        "x": 1072,
+        "y": 852,
         "rect": {
-          "left": 1271,
+          "left": 1056,
           "w": 32
         },
         "owner": "Start recording",
@@ -328,27 +352,33 @@
       },
       "settled": {
         "label": "Start recording",
-        "x": 1271,
+        "x": 1056,
         "w": 32,
-        "centre": 1287
+        "centre": 1072
       }
     },
     {
       "step": "slot.livePress",
       "aim": {
-        "x": 1287,
-        "y": 819,
+        "x": 1072,
+        "y": 852,
         "rect": {
           "w": 32,
           "h": 32,
-          "top": 803,
-          "left": 1271
+          "top": 836,
+          "left": 1056
+        },
+        "slotRect": {
+          "w": 32,
+          "h": 32,
+          "top": 836,
+          "left": 1056
         },
         "target": "button[aria-label=\"Start recording\"]",
         "attempts": [
           {
-            "x": 1287,
-            "y": 819,
+            "x": 1072,
+            "y": 852,
             "owner": "button[aria-label=\"Start recording\"]",
             "hit": true
           }
@@ -371,19 +401,25 @@
     {
       "step": "slot.recordingCancelled",
       "aim": {
-        "x": 1287,
-        "y": 819,
+        "x": 993.4921875,
+        "y": 852,
         "rect": {
           "w": 32,
           "h": 32,
-          "top": 803,
-          "left": 1271
+          "top": 836,
+          "left": 977
+        },
+        "slotRect": {
+          "w": 32,
+          "h": 32,
+          "top": 836,
+          "left": 977
         },
         "target": "button[aria-label=\"Cancel recording\"]",
         "attempts": [
           {
-            "x": 1287,
-            "y": 819,
+            "x": 993,
+            "y": 852,
             "owner": "button[aria-label=\"Cancel recording\"]",
             "hit": true
           }
@@ -397,19 +433,25 @@
     {
       "step": "inFlight.start",
       "aim": {
-        "x": 1287,
-        "y": 819,
+        "x": 1072,
+        "y": 852,
         "rect": {
           "w": 32,
           "h": 32,
-          "top": 803,
-          "left": 1271
+          "top": 836,
+          "left": 1056
+        },
+        "slotRect": {
+          "w": 32,
+          "h": 32,
+          "top": 836,
+          "left": 1056
         },
         "target": "button[aria-label=\"Start recording\"]",
         "attempts": [
           {
-            "x": 1287,
-            "y": 819,
+            "x": 1072,
+            "y": 852,
             "owner": "button[aria-label=\"Start recording\"]",
             "hit": true
           }
@@ -438,19 +480,25 @@
     },
     {
       "step": "inFlight.pressed",
-      "x": 1323,
-      "y": 819,
+      "x": 1051.9453125,
+      "y": 852,
       "rect": {
-        "w": 32,
+        "w": 77,
         "h": 32,
-        "top": 803,
-        "left": 1307
+        "top": 836,
+        "left": 1013
+      },
+      "slotRect": {
+        "w": 111,
+        "h": 32,
+        "top": 836,
+        "left": 1013
       },
       "target": "button[aria-label=\"Stop\"]",
       "attempts": [
         {
-          "x": 1323,
-          "y": 819,
+          "x": 1052,
+          "y": 852,
           "owner": "button[aria-label=\"Stop\"]",
           "hit": true
         }
@@ -461,25 +509,25 @@
       "boxes": [
         {
           "label": "Confirm recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Cancel recording",
-          "x": 1271,
+          "x": 977,
           "w": 32,
-          "centre": 1287
+          "centre": 993
         },
         {
           "label": "reserved-slot",
-          "x": 1307,
-          "w": 32,
-          "centre": 1323
+          "x": 1013,
+          "w": 111,
+          "centre": 1069
         }
       ],
       "at": {
-        "sinceFlipMs": 205
+        "sinceFlipMs": 247
       },
       "graceMs": 500
     },
@@ -488,25 +536,25 @@
       "boxes": [
         {
           "label": "Confirm recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Cancel recording",
-          "x": 1271,
+          "x": 977,
           "w": 32,
-          "centre": 1287
+          "centre": 993
         },
         {
           "label": "reserved-slot",
-          "x": 1307,
-          "w": 32,
-          "centre": 1323
+          "x": 1013,
+          "w": 111,
+          "centre": 1069
         }
       ],
       "at": {
-        "sinceFlipMs": 1226
+        "sinceFlipMs": 1247
       }
     },
     {
@@ -516,66 +564,72 @@
       "held": [
         {
           "label": "Confirm recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Cancel recording",
-          "x": 1271,
+          "x": 977,
           "w": 32,
-          "centre": 1287
+          "centre": 993
         },
         {
           "label": "reserved-slot",
-          "x": 1307,
-          "w": 32,
-          "centre": 1323
+          "x": 1013,
+          "w": 111,
+          "centre": 1069
         }
       ],
       "afterWindow": [
         {
           "label": "Confirm recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Cancel recording",
-          "x": 1271,
+          "x": 977,
           "w": 32,
-          "centre": 1287
+          "centre": 993
         },
         {
           "label": "reserved-slot",
-          "x": 1307,
-          "w": 32,
-          "centre": 1323
+          "x": 1013,
+          "w": 111,
+          "centre": 1069
         }
       ],
       "stop": {
-        "w": 32,
+        "w": 77,
         "h": 32,
-        "top": 803,
-        "left": 1307
+        "top": 836,
+        "left": 1013
       }
     },
     {
       "step": "inFlight.recordingEnded",
       "aim": {
-        "x": 1287,
-        "y": 819,
+        "x": 993.4921875,
+        "y": 852,
         "rect": {
           "w": 32,
           "h": 32,
-          "top": 803,
-          "left": 1271
+          "top": 836,
+          "left": 977
+        },
+        "slotRect": {
+          "w": 32,
+          "h": 32,
+          "top": 836,
+          "left": 977
         },
         "target": "button[aria-label=\"Cancel recording\"]",
         "attempts": [
           {
-            "x": 1287,
-            "y": 819,
+            "x": 993,
+            "y": 852,
             "owner": "button[aria-label=\"Cancel recording\"]",
             "hit": true
           }
@@ -584,22 +638,22 @@
       "boxes": [
         {
           "label": "Start recording",
-          "x": 1271,
+          "x": 1056,
           "w": 32,
-          "centre": 1287
+          "centre": 1072
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "after": {
         "recording": false,
         "mic": true
       },
-      "takesBack": "Cancel recording"
+      "takesBack": null
     },
     {
       "step": "inFlight.collapsesWithTheRecording",
@@ -608,35 +662,35 @@
       "ended": [
         {
           "label": "Start recording",
-          "x": 1271,
+          "x": 1056,
           "w": 32,
-          "centre": 1287
+          "centre": 1072
         },
         {
           "label": "Send message",
-          "x": 1307,
+          "x": 1092,
           "w": 32,
-          "centre": 1323
+          "centre": 1108
         }
       ],
       "held": [
         {
           "label": "Confirm recording",
-          "x": 1235,
+          "x": 941,
           "w": 32,
-          "centre": 1251
+          "centre": 957
         },
         {
           "label": "Cancel recording",
-          "x": 1271,
+          "x": 977,
           "w": 32,
-          "centre": 1287
+          "centre": 993
         },
         {
           "label": "reserved-slot",
-          "x": 1307,
-          "w": 32,
-          "centre": 1323
+          "x": 1013,
+          "w": 111,
+          "centre": 1069
         }
       ]
     },
@@ -655,6 +709,12 @@
       "present": true
     },
     {
+      "step": "turn2.running",
+      "tail": [
+        "Ransleep 45interrupted0.2s"
+      ]
+    },
+    {
       "step": "turn2.settled",
       "streaming": false,
       "outcome": "aborted"
@@ -662,6 +722,26 @@
     {
       "step": "turn2.controlAfter",
       "present": false
+    },
+    {
+      "step": "turn2.transcript",
+      "stoppedLine": "Stopped·Retry",
+      "stoppedRetry": "Retry",
+      "tail": [
+        "Ransleep 45interrupted0.2s"
+      ]
+    },
+    {
+      "step": "turn2.readsAsStopped",
+      "ok": true,
+      "what": "an Esc-stopped turn did not read as Stopped: §G3's line is absent from the transcript, or the killed call's ledger row still says failed (UX round 2, U15)",
+      "transcript": {
+        "stoppedLine": "Stopped·Retry",
+        "stoppedRetry": "Retry",
+        "tail": [
+          "Ransleep 45interrupted0.2s"
+        ]
+      }
     },
     {
       "step": "session.survived",
@@ -741,164 +821,146 @@
     },
     {
       "step": "settle.timeline",
-      "changes": 70,
-      "sampledMs": 15976,
+      "changes": 74,
+      "sampledMs": 10687,
       "samples": [
         {
-          "t": 5554,
+          "t": 5529,
           "stop": false,
           "slot": false,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 11533,
+          "t": 5636,
           "stop": true,
           "slot": false,
-          "placeholder": "Waiting for the agent"
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 11688,
+          "t": 5661,
           "stop": true,
           "slot": false,
-          "placeholder": "Answer the question above"
+          "placeholder": "Type your own answer…"
         },
         {
-          "t": 11846,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Waiting for the agent"
-        },
-        {
-          "t": 11879,
+          "t": 5970,
           "stop": false,
           "slot": true,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 12380,
+          "t": 6469,
           "stop": false,
           "slot": false,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 14400,
+          "t": 8605,
           "stop": false,
           "slot": true,
           "placeholder": null
         },
         {
-          "t": 15103,
+          "t": 9733,
           "stop": false,
           "slot": false,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 15939,
-          "stop": false,
-          "slot": true,
-          "placeholder": null
-        },
-        {
-          "t": 17164,
-          "stop": true,
-          "slot": false,
-          "placeholder": null
-        },
-        {
-          "t": 17298,
+          "t": 10560,
           "stop": false,
           "slot": true,
           "placeholder": null
         },
         {
-          "t": 18626,
-          "stop": false,
-          "slot": false,
-          "placeholder": "Ask me for help"
-        },
-        {
-          "t": 19586,
+          "t": 11817,
           "stop": true,
           "slot": false,
-          "placeholder": "Waiting for the agent"
+          "placeholder": null
         },
         {
-          "t": 19605,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Answer the question above"
-        },
-        {
-          "t": 19648,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Waiting for the agent"
-        },
-        {
-          "t": 19666,
+          "t": 12043,
           "stop": false,
           "slot": true,
-          "placeholder": "Ask me for help"
+          "placeholder": null
         },
         {
-          "t": 20073,
+          "t": 13387,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask anything. @ adds files, / runs commands"
+        },
+        {
+          "t": 14352,
           "stop": true,
           "slot": false,
-          "placeholder": "Waiting for the agent"
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 20098,
+          "t": 14360,
           "stop": true,
           "slot": false,
-          "placeholder": "Answer the question above"
+          "placeholder": "Type your own answer…"
         },
         {
-          "t": 20146,
+          "t": 14573,
           "stop": true,
           "slot": false,
-          "placeholder": "Waiting for the agent"
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 20166,
+          "t": 14585,
           "stop": false,
           "slot": true,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 20666,
-          "stop": false,
-          "slot": false,
-          "placeholder": "Ask me for help"
-        },
-        {
-          "t": 20789,
+          "t": 14936,
           "stop": true,
           "slot": false,
-          "placeholder": "Waiting for the agent"
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 20806,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Answer the question above"
-        },
-        {
-          "t": 20998,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Waiting for the agent"
-        },
-        {
-          "t": 21030,
+          "t": 14976,
           "stop": false,
           "slot": true,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 21530,
+          "t": 15478,
           "stop": false,
           "slot": false,
-          "placeholder": "Ask me for help"
+          "placeholder": "Ask anything. @ adds files, / runs commands"
+        },
+        {
+          "t": 15585,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
+        },
+        {
+          "t": 15603,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Type your own answer…"
+        },
+        {
+          "t": 15709,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
+        },
+        {
+          "t": 15717,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask anything. @ adds files, / runs commands"
+        },
+        {
+          "t": 16216,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask anything. @ adds files, / runs commands"
         }
       ]
     },
@@ -908,170 +970,152 @@
       "what": "the settle observer saw too little of the run to attribute anything with it",
       "timeline": {
         "step": "settle.timeline",
-        "changes": 70,
-        "sampledMs": 15976,
+        "changes": 74,
+        "sampledMs": 10687,
         "samples": [
           {
-            "t": 5554,
+            "t": 5529,
             "stop": false,
             "slot": false,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 11533,
+            "t": 5636,
             "stop": true,
             "slot": false,
-            "placeholder": "Waiting for the agent"
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 11688,
+            "t": 5661,
             "stop": true,
             "slot": false,
-            "placeholder": "Answer the question above"
+            "placeholder": "Type your own answer…"
           },
           {
-            "t": 11846,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Waiting for the agent"
-          },
-          {
-            "t": 11879,
+            "t": 5970,
             "stop": false,
             "slot": true,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 12380,
+            "t": 6469,
             "stop": false,
             "slot": false,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 14400,
+            "t": 8605,
             "stop": false,
             "slot": true,
             "placeholder": null
           },
           {
-            "t": 15103,
+            "t": 9733,
             "stop": false,
             "slot": false,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 15939,
-            "stop": false,
-            "slot": true,
-            "placeholder": null
-          },
-          {
-            "t": 17164,
-            "stop": true,
-            "slot": false,
-            "placeholder": null
-          },
-          {
-            "t": 17298,
+            "t": 10560,
             "stop": false,
             "slot": true,
             "placeholder": null
           },
           {
-            "t": 18626,
-            "stop": false,
-            "slot": false,
-            "placeholder": "Ask me for help"
-          },
-          {
-            "t": 19586,
+            "t": 11817,
             "stop": true,
             "slot": false,
-            "placeholder": "Waiting for the agent"
+            "placeholder": null
           },
           {
-            "t": 19605,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Answer the question above"
-          },
-          {
-            "t": 19648,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Waiting for the agent"
-          },
-          {
-            "t": 19666,
+            "t": 12043,
             "stop": false,
             "slot": true,
-            "placeholder": "Ask me for help"
+            "placeholder": null
           },
           {
-            "t": 20073,
+            "t": 13387,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask anything. @ adds files, / runs commands"
+          },
+          {
+            "t": 14352,
             "stop": true,
             "slot": false,
-            "placeholder": "Waiting for the agent"
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 20098,
+            "t": 14360,
             "stop": true,
             "slot": false,
-            "placeholder": "Answer the question above"
+            "placeholder": "Type your own answer…"
           },
           {
-            "t": 20146,
+            "t": 14573,
             "stop": true,
             "slot": false,
-            "placeholder": "Waiting for the agent"
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 20166,
+            "t": 14585,
             "stop": false,
             "slot": true,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 20666,
-            "stop": false,
-            "slot": false,
-            "placeholder": "Ask me for help"
-          },
-          {
-            "t": 20789,
+            "t": 14936,
             "stop": true,
             "slot": false,
-            "placeholder": "Waiting for the agent"
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 20806,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Answer the question above"
-          },
-          {
-            "t": 20998,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Waiting for the agent"
-          },
-          {
-            "t": 21030,
+            "t": 14976,
             "stop": false,
             "slot": true,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 21530,
+            "t": 15478,
             "stop": false,
             "slot": false,
-            "placeholder": "Ask me for help"
+            "placeholder": "Ask anything. @ adds files, / runs commands"
+          },
+          {
+            "t": 15585,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
+          },
+          {
+            "t": 15603,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Type your own answer…"
+          },
+          {
+            "t": 15709,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
+          },
+          {
+            "t": 15717,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask anything. @ adds files, / runs commands"
+          },
+          {
+            "t": 16216,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask anything. @ adds files, / runs commands"
           }
         ]
       }
     }
   ],
-  "session": "16b49b6e1e92",
+  "session": "e441895b5019",
   "claims": [],
-  "viewport": "{\"w\":1380,\"h\":868,\"dpr\":2}"
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}"
 }

@@ -18,6 +18,7 @@
  * a value-level cycle out of a type-only dependency. Anything with the same
  * shape satisfies it, and the component's own rows are assignable to it.
  */
+import type { FastModeState } from "../session-status/session-model";
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
 import { slashContext } from "./slash-token";
@@ -32,7 +33,8 @@ import { slashContext } from "./slash-token";
  */
 export type RoutableRow =
 	| { kind: "command"; label: string }
-	| { kind: "argument"; row: { value: string; alert?: boolean } };
+	| { kind: "argument"; row: { value: string; alert?: boolean } }
+	| { kind: "action"; row: { id: string; disabled: boolean } };
 
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type SlashKeyIntent =
@@ -80,6 +82,14 @@ export type SlashKeyInput = {
 	nameThenMessage: boolean;
 	runs: boolean;
 	chosenByHand: boolean;
+	/**
+	 * The active ARGUMENT list's own whole-token test, when its rows are flag
+	 * spellings (`slashRunAllowed`'s `selectsFlag`). Threaded through the router
+	 * rather than read from a set here: this module decides the SHAPE of the
+	 * decision and the source decides the vocabulary, which is the same split the
+	 * destination table and this contract already use for every other rule.
+	 */
+	selectsFlag?: (query: string) => boolean;
 };
 
 /**
@@ -88,6 +98,62 @@ export type SlashKeyInput = {
  * One function so the router and the footer cannot disagree: the footer TELLS
  * the user that Enter will run, and the risk being managed is that it says so on
  * a key that only completes (round 1 UX U2).
+ *
+ * AN EMPTY QUERY IS NEVER UNAMBIGUOUS — BUT ONLY ON A FLAG LIST, and the scoping
+ * is a correction round 1 asked for (R1-4).
+ *
+ * THIS IS A DELIBERATE DESKTOP DEVIATION from `_picker_choice_is_unambiguous`
+ * (`editor.py:7731-7765`) rather than a port of it, recorded here so nobody
+ * "restores parity". The terminal's single-survivor arm fires on an empty query —
+ * its `_picker_query()` answers `""` once the space is typed, and `"" == name` is
+ * false but `len(rows) <= 1` is true — so `/rename ` + Enter there RUNS the
+ * highlighted `--refresh` row. That is survivable in a terminal, where the row is
+ * printed under the cursor and the command's other form is a report. In the
+ * desktop the SAME keystroke is the documented way to open `/rename`'s form, so
+ * inheriting the arm would replace "open the naming dialog" with "re-read the
+ * conversation and name it again" — an irreversible act the user did not ask for,
+ * on the key that has always opened the form (the operator's own report).
+ *
+ * WHY IT IS NO LONGER APPLIED TO EVERY LIST. The first version applied it to all
+ * of them, and the agent review measured what that cost: on a one-row `/model`
+ * account it turned `true` into `false` with no test on either side, i.e. a
+ * behaviour change to an unrelated command shipped as a side effect of a `/rename`
+ * fix. Now that `selectsFlag` carries the whole flag decision, this arm's only
+ * remaining subject is the empty query, and the empty query that MATTERS is the
+ * flag list's (`/rename ` must not run a refresh). A catalogue list keeps the
+ * behaviour it has always had — the extra Enter it would have cost `/model` is
+ * not this change's to spend, and the general rule is still the honest one where
+ * it applies: an empty query is not EVIDENCE about which row is meant.
+ *
+ * `chosenByHand` still outranks this, on purpose: an arrow press is a choice the
+ * user made, so a user who moved onto the only row has named it however empty the
+ * query is.
+ *
+ * `selectsFlag` IS A THIRD, STRICTER ARM, and it exists because of what the two
+ * rules above could not see. This gate's single-survivor arm answers "could my
+ * query mean only this row?" with the subsequence MATCHER, which is right for a
+ * list of THINGS: `/logout oer` reaching openrouter is a nuisance, and the row is
+ * a provider the user can put back. A FLAG list is the opposite case — its row is
+ * one action, its spellings are the whole list, and the action here is
+ * irreversible (a refresh spends a provider call and releases the user's own
+ * name) — so "the matcher could reach the row" is not evidence that the user
+ * named the flag. `-fresh`, `fresh` and `ref` all reach `--refresh` by
+ * subsequence, and the first version of this feature consequently RAN a refresh
+ * over a one-word title that the base tree had set: measured on the built app by
+ * the QA pass (`/rename fresh`, `ref`, `refr`, `re`, `es`, `resh`, `refreh`, `r`
+ * all sent `--refresh`), and the same class the UX and design rounds independently
+ * reported for `-fresh`.
+ *
+ * So when a caller supplies `selectsFlag`, it REPLACES the matcher arms outright:
+ * the row's whole vocabulary test decides, and `chosenByHand` does NOT bypass it.
+ * That last part is deliberate and is the difference between this and every other
+ * gate in this module. `chosenByHand` exists because an arrow press is a choice;
+ * for a flag row it is a choice among SPELLINGS OF ONE ACT, so arrowing onto it
+ * says "this is the row I mean" and still does not say the act was meant. A user
+ * who arrows onto the row and presses Enter on a half-typed `ref` gets the
+ * COMPLETION (the buffer holds `--refresh `, which is the flag in full), and the
+ * next Enter runs it — the same two-Enter path `/compact` and `/logout` already
+ * have, arrived at for the same reason.
  */
 export function slashRunAllowed(input: {
 	argumentQuery: string;
@@ -95,7 +161,20 @@ export function slashRunAllowed(input: {
 	total: number;
 	destructive: boolean;
 	chosenByHand: boolean;
+	/**
+	 * The source's own whole-token vocabulary test, when this list's rows are
+	 * FLAG SPELLINGS rather than things. Supplied by the caller that knows the
+	 * source (`flagTokenSelects` bound to the active inline list); absent for
+	 * every catalogue list, which keeps its matcher behaviour exactly.
+	 *
+	 * ITS PRESENCE IS ALSO WHAT SCOPES THE EMPTY-QUERY ARM: a flag list refuses an
+	 * empty query inside `flagTokenSelects` (a flag is a whole token, and `""` is
+	 * not one), so this function does not need to, and the catalogue lists keep the
+	 * behaviour they have always had (review R1-4).
+	 */
+	selectsFlag?: (query: string) => boolean;
 }): boolean {
+	if (input.selectsFlag) return input.selectsFlag(input.argumentQuery);
 	return isUnambiguous(
 		input.argumentQuery,
 		input.value,
@@ -254,6 +333,46 @@ export function slashDestructive(
 }
 
 /**
+ * The right-edge slot a COMMAND row shows, or `null` for no slot at all.
+ *
+ * WHAT IT REPLACED. A `value?` placeholder used to sit on every command whose
+ * registry row declared anything but `none` for `arguments`, and the operator
+ * report is what that reads like: `/fast` trailed a literal "value?" — parser
+ * jargon rendered in a control's clothing, describing what the parser ACCEPTS
+ * rather than anything the user needs to see. It is gone from the CLASS (every
+ * optional and parameterless command), not renamed for one of them.
+ *
+ * What remains, in order:
+ *
+ *  - `/fast`'s live dial — `currently on`/`currently off`, off the spec in
+ *    force (`fastModeState`, `session-model.ts`): the row states the session's
+ *    own dial, which is the one fact a user reads before flipping it. The
+ *    words are qualified because a bare `on`/`off` beside the row's own
+ *    "Enter runs /fast." footer reads as the RESULT of pressing it rather
+ *    than as the state it starts from (design D1 / UX U1): the slot states
+ *    possession, not outcome. `null` when the model reports no fast tier,
+ *    because a model without the dial has no state to state.
+ *  - `needs a value` on a REQUIRED command — the one case where the user must
+ *    supply something before the command can run.
+ *
+ * `fastState` arrives on the row only for the destination below (the hook
+ * attaches it there), but the destination is read here as well so a stray
+ * state on another row could never paint a slot the row did not earn.
+ */
+export function commandRowSlot(
+	command: {
+		arguments: "none" | "optional" | "required";
+		destination: string;
+	},
+	fastState: FastModeState | undefined,
+): string | null {
+	if (command.destination === "session.fast" && fastState != null)
+		return fastState === "on" ? "currently on" : "currently off";
+	if (command.arguments === "required") return "needs a value";
+	return null;
+}
+
+/**
  * The minimum a DESTINATION entry must say for a pick to be routed.
  *
  * Structural for the same reason `RoutableRow` is: the real type
@@ -267,6 +386,16 @@ export function slashDestructive(
  * not an argument list), so a POINTER pick of one RUNS it — which is what
  * `pointerPickRuns`'s `kind !== "picker"` arm already does for the other two
  * kinds, and what a pick of `Analytics` must do.
+ *
+ * `aside` owes the same empty answer, for the same reason and with one more of
+ * its own: `/btw` opens a PANEL rather than a list of arguments, so a pick of it
+ * must run the command (`openAsidePanel`/`askAside` is the only way the panel ever
+ * appears), and there is nothing a pick could usefully complete into.
+ *
+ * `aida` owes the same empty answer one more time: her row carries no argument
+ * list (its trailing text is a MESSAGE — `consumes_prompt` on the catalogue row
+ * is what has a pick STAGE it rather than run it, and that gate is not this
+ * type's), and there is nothing a pick could complete into either.
  */
 export type PickDestination =
 	| {
@@ -274,6 +403,8 @@ export type PickDestination =
 			inline?: { source: string; nameThenMessage: boolean; runs: boolean };
 	  }
 	| { kind: "machine-panel" }
+	| { kind: "aside" }
+	| { kind: "aida" }
 	| { kind: "navigate" }
 	| { kind: "direct" };
 
@@ -492,6 +623,17 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
+			if (row.kind === "action") {
+				/*
+				 * Direct action rows are never completed into composer text. Enter acts
+				 * once; Tab remains the safe, non-mutating completion key.
+				 */
+				return {
+					kind: "apply",
+					index: input.active,
+					run: input.key === "Enter" && !row.row.disabled,
+				};
+			}
 			if (row.kind === "command") {
 				/*
 				 * Tab is the completion key in BOTH phases: it takes the highlighted
@@ -550,6 +692,24 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 			// for exactly this reason.
 			if (input.key === "Tab")
 				return { kind: "apply", index: input.active, run: false };
+			/*
+			 * A FLAG row is the one LIST whose Enter runs on a whole-token vocabulary
+			 * test rather than on the matcher's reach (`slashRunAllowed`'s
+			 * `selectsFlag`), and it is handed on before the row is even looked at so
+			 * the decision cannot come out `true` from an arm the caller meant to
+			 * replace. The row is still the index the marker is on — a flag list has
+			 * one spelling of the act, so the row cannot disagree with the vocabulary
+			 * about WHAT acts; only about whether this token names it.
+			 *
+			 * A partial spelling therefore TAKES THE COMPLETION arm: `ref` + Enter
+			 * writes `--refresh ` and leaves the list open for the second Enter, the
+			 * path `/compact` and `/logout` already have. THAT is what closes the
+			 * data-loss case the UX, design and QA rounds each found — the first
+			 * version fell through to the matcher's single-survivor arm and ran a
+			 * refresh over a one-word title like `fresh` or `-fresh`.
+			 */
+			if (input.selectsFlag && !input.selectsFlag(input.argumentQuery))
+				return { kind: "apply", index: input.active, run: false };
 			// `/logout` is destructive IN THE DESKTOP TOO: `session.credential`
 			// resolves to `LogoutPicker`, whose rows revoke stored credentials.
 			// The `alert` arm is defence for a row that paints a destructive
@@ -570,6 +730,7 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 						total: input.matches.length,
 						destructive,
 						chosenByHand: input.chosenByHand,
+						selectsFlag: input.selectsFlag,
 					}),
 			};
 		}
@@ -592,9 +753,9 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
  * literal `"command"` while the shipped component keyed on the label.
  */
 export function rowId(row: RoutableRow): string {
-	return row.kind === "command"
-		? `cmd-${row.label}`
-		: `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
+	if (row.kind === "command") return `cmd-${row.label}`;
+	if (row.kind === "action") return `act-${row.row.id}`;
+	return `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
 }
 
 /**
@@ -1055,7 +1216,9 @@ export type ClickFooterInput = {
 	 * destination table this module deliberately does not import.
 	 */
 	runs: boolean;
-	/** The active row's value, and whether there is an active row at all. */
+	/** Direct actions have their own truthful click sentence rather than a command claim. */
+	actionClickText?: string;
+	/** The active row's value when the default command grammar describes it. */
 	value: string;
 	matched: boolean;
 	/**
@@ -1109,9 +1272,13 @@ export function clickFooter(input: ClickFooterInput): string | null {
 			: `Click completes /${input.label}.`;
 	}
 	if (input.nameThenMessage) return "Click chooses this name.";
+	if (input.actionClickText) return input.actionClickText;
 	if (!input.runs) return "Click completes this value.";
-	const command = input.command ? `/${input.command} ` : "";
-	return `Click runs ${command}${input.value}.`.trim();
+	const command = input.command ? `/${input.command}` : "";
+	if (!command) return "Click runs the command.";
+	const value = input.value ? ` ${input.value}` : "";
+	// Build from non-empty parts so an empty value never leaves a blank slot.
+	return `Click runs ${command}${value}.`;
 }
 
 /**

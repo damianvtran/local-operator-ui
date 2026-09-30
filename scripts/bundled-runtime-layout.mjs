@@ -60,11 +60,10 @@ export function pythonAbi(version = PYTHON_VERSION) {
 
 export const PYTHON_ABI = pythonAbi();
 
-/** The minor alone (`12`), which is what CPython's versioned console scripts use:
- * `bin/2to3-3.12` carries the whole `<major>.<minor>` while `bin/idle3.12` and
- * `bin/pydoc3.12` carry the minor after the tool's own name. Measured against the
- * staged 3.12.14 tree; a single token for both spellings silently prunes nothing,
- * and `idle3.12` is the file this caught. */
+/** The minor alone (`14`), which is what CPython's versioned console scripts use:
+ * `bin/idle3.14` and `bin/pydoc3.14` carry the minor after the tool's own name.
+ * Measured against the staged 3.14.7 tree; a single token for both spellings
+ * silently prunes nothing, and `idle3.14` is the file this caught. */
 export const PYTHON_MINOR = PYTHON_VERSION.split(".")[1];
 
 /** The Tcl/Tk version this build ships (`9.0`).
@@ -160,19 +159,48 @@ export const SEED_STDLIB_DIR = SEED_STDLIB_MARKER.split("/")
 /** The `uv` release this app bundles. Pinned here and nowhere else. */
 export const UV_VERSION = LAYOUT.uv.version;
 
-/** `uv`'s own resource namespace under `Resources` (`package.json`'s
- * `extraResources` maps into it for the platforms that ship one).
+/** `uv`'s own resource namespace under `Resources`, which `package.json`'s
+ * `extraResources` maps into for every platform this app ships.
  *
  * WHICH PLATFORMS SHIP ONE, stated because the packaging lists and the staging
  * step have to agree or a build ships binaries its own machine cannot run (review
- * R1-3): `scripts/setup-python-resource.sh` stages the two `*-apple-darwin`
- * triples, `publish.yml` runs that step in `build-macos` only, and `package.json`
- * therefore names uv in `build.mac` alone. Windows and Linux keep the pip path
- * they had. `uvBinaryName` still answers for every platform, because that map is
- * the FILENAME convention rather than a claim that one is staged - a platform
- * that later stages a uv names it through this one definition.
- * `extraResources` maps into it for every platform). */
+ * R1-3): all three ship one now. `scripts/setup-python-resource.sh` stages the
+ * `*-apple-darwin` triples on macOS and the `*-unknown-linux-gnu` ones on Linux,
+ * `scripts/setup-python-resource.ps1` stages the `*-pc-windows-msvc` ones on
+ * Windows, and `publish.yml` runs the matching stager in each build job. The
+ * `releaseTriples`/`archiveExtension`/`archiveMember` keys in the definition are
+ * the release assets those stagers download - they are read rather than spelled in the
+ * scripts, because a triple spelled twice is a triple that can disagree, and a
+ * stager that downloads the wrong asset is a build that ships a binary the
+ * artifact's machine cannot execute. */
 export const UV_NAMESPACE = LAYOUT.uv.namespace;
+
+/** The uv release's asset triple per platform and architecture
+ * (`x86_64-unknown-linux-gnu` and friends). */
+export const UV_RELEASE_TRIPLES = LAYOUT.uv.releaseTriples;
+
+/** The archive suffix the pinned release publishes per platform: `tar.gz` for
+ * the Unix triples, `zip` for the Windows ones. */
+export const UV_ARCHIVE_EXTENSION = LAYOUT.uv.archiveExtension;
+
+/**
+ * The path of the `uv` binary inside a downloaded release archive, for a
+ * platform and a release triple.
+ *
+ * The archives are NOT one shape: the `tar.gz` releases nest the binary under
+ * `uv-<triple>/`, while the Windows `zip` is flat (`uv.exe` at the archive
+ * root). A stager that assumes one shape extracts nothing on the other platform
+ * and fails with an ENOENT naming the archive rather than the assumption, so the
+ * shape is declared once here and expanded per caller.
+ */
+export function uvArchiveMember(platform, triple) {
+	const template = LAYOUT.uv.archiveMember[platform];
+	if (!template)
+		throw new Error(
+			`No uv archive member is declared for platform "${platform}"; src/shared/bundled-runtime-layout.json names ${Object.keys(LAYOUT.uv.archiveMember).join(", ")}`,
+		);
+	return template.replaceAll("{triple}", triple);
+}
 
 /**
  * `lipo`'s name for each architecture this layout names.

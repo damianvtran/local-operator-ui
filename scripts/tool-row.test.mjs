@@ -27,6 +27,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
+			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -50,14 +51,17 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
-	TOOL_NAME_COL_MIN,
 	preferDiff,
+	preferDiffCounts,
 	outputFallbackLine,
 	requestDesktopMedia,
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
-	toolNameColumn,
+	toolIcon,
+	toolOp,
+	toolRowLabel,
+	toolVerb,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -85,7 +89,29 @@ test("the summary is the identity arguments, not the payload", () => {
 		"core Bug",
 	);
 	// Non-scalars are dropped rather than stringified into `[object Object]`.
-	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "add");
+	assert.equal(summaryFromArgs("todo", { items: ["a"] }), "todo");
+	// The OPERATION SELECTOR is not an object once a verb table reads it: `op`
+	// is the word the row's verb is about to say, and `{items:["a"], op:"add"}`
+	// used to resolve to `add` - which is how the row came to read `Updated
+	// todos add` and, for `agent`, `Delegated list` (operator report,
+	// 2026-09-27). For a tool with no op table the scalars are untouched.
+	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "todo");
+	assert.equal(summaryFromArgs("agent", { op: "list" }), "agent");
+	assert.equal(
+		summaryFromArgs("agent", { op: "show", name: "designer" }),
+		"designer",
+	);
+	assert.equal(
+		summaryFromArgs("browser", { action: "type", text: "hi" }),
+		"type hi",
+	);
+	assert.equal(
+		summaryFromArgs("mcp__linear_create_issue", {
+			action: "list",
+			team: "core",
+		}),
+		"list core",
+	);
 	// Nothing usable at all: the tool's own name, never an empty row.
 	assert.equal(summaryFromArgs("eval", {}), "eval");
 	assert.equal(summaryFromArgs("eval", null), "eval");
@@ -178,13 +204,341 @@ test("a diff counter is a positive integer or it is unknown", () => {
 	assert.equal(diffCount(1.5), 0);
 });
 
-test("the name column grows to the longest visible name, within its bounds", () => {
-	// A transcript of short names does not pay for a tool it never called.
-	assert.equal(toolNameColumn(["bash", "read"]), 8);
-	assert.equal(toolNameColumn([]), 8);
-	assert.equal(toolNameColumn(["list_variables"]), 14);
-	// And a pathological name cannot push the summary off the row.
-	assert.equal(toolNameColumn(["a".repeat(60)]), 24);
+test("a row opens with a verb in the user's terms, never the wire name (D5)", () => {
+	/*
+	 * §E1's row is a sentence: `Ran pnpm vitest`, `Read src/chat.tsx`. The first
+	 * column used to print `bash`, `read`, `web_search` - an identifier in the
+	 * sans face - in a fixed-width column that left a hole after a short name.
+	 */
+	assert.deepEqual(toolVerb("bash"), {
+		settled: "Ran",
+		running: "Running",
+		named: true,
+	});
+	assert.equal(toolVerb("read").settled, "Read");
+	assert.equal(toolVerb("edit").settled, "Edited");
+	assert.equal(toolVerb("write").settled, "Wrote");
+	assert.equal(toolVerb("web_search").settled, "Searched the web");
+	assert.equal(toolVerb("web_fetch").settled, "Fetched");
+	// The name is model-controlled; a provider echoing `Bash` keeps the verb.
+	assert.equal(toolVerb("Bash").settled, "Ran");
+	// A tool the table does not know takes a generic verb and says so, so the
+	// row keeps the tool's own name at the head of its object.
+	assert.deepEqual(toolVerb("mcp__linear_create_issue"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
+});
+
+test("a meta tool's row names its operation, never the family's one word (operator report, 2026-09-27)", () => {
+	/*
+	 * `agent`, `team` and `hub` are one tool each that does many jobs, and their
+	 * name-only verbs said `Delegated` for all of them: the operator's
+	 * screenshot showed `Delegated list` and `Delegated designer` for profile
+	 * READS that delegated nothing. The verb is chosen from the arguments'
+	 * operation (`toolOp`), and the object never echoes the selector back
+	 * (`summaryFromArgs` drops it for the tools whose verb table reads it).
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The two rows the operator reported, as labels.
+	assert.deepEqual(row("agent", { op: "list" }), {
+		verb: "Listed agents",
+		object: "",
+	});
+	assert.deepEqual(row("agent", { op: "show", name: "designer" }), {
+		verb: "Viewed agent",
+		object: "designer",
+	});
+	// A write op beside them, so the table is asserted in both directions.
+	assert.equal(
+		row("agent", { op: "create", name: "docs-writer" }).verb,
+		"Created agent",
+	);
+	assert.deepEqual(row("team", { op: "list" }), {
+		verb: "Listed teams",
+		object: "",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9860"] }), {
+		verb: "Peeked at",
+		object: "",
+	});
+	// The object's own precedence is untouched: `hub send` still leads with the
+	// message it carries, not the target.
+	assert.deepEqual(row("hub", { op: "send", to: ["9860"], message: "ping" }), {
+		verb: "Messaged",
+		object: "ping",
+	});
+	// `task` is the call that IS delegation, and it keeps the word.
+	assert.equal(row("task", { agent: "designer" }).verb, "Delegated");
+	// An operation this build does not know takes the GENERIC verb, and the
+	// selector token does not leak into the object - a claim the table cannot
+	// make is not made.
+	assert.deepEqual(row("agent", { op: "frobnicate" }), {
+		verb: "Called",
+		object: "agent",
+	});
+	assert.deepEqual(row("agent", null), { verb: "Called", object: "agent" });
+	// A COMPOSING row (no arguments in hand yet) takes the same generic verb,
+	// never the old family word: nothing is delegated at that moment.
+	assert.deepEqual(toolRowLabel("agent", "composing · 22 B", null, true), {
+		verb: "Calling",
+		object: "agent composing · 22 B",
+	});
+});
+
+test("the builtins the row table once missed name their call, and their operation when it matters", () => {
+	// The unmapped half of the audit (operator report, 2026-09-27): every tool
+	// the running build can emit has a word. A static one where the name says it
+	// all; an operation's where one name spans materially different calls.
+	assert.equal(toolVerb("web_read").settled, "Read");
+	assert.equal(toolVerb("wait").settled, "Waited for jobs");
+	assert.equal(toolVerb("team_delete").settled, "Deleted team");
+	assert.equal(toolVerb("project_delete").settled, "Deleted project");
+
+	const opRow = (name, op) => toolVerb(name, op);
+	assert.equal(opRow("secret", "retrieve").settled, "Retrieved secret");
+	assert.equal(opRow("secret", "delete").settled, "Deleted secret");
+	assert.equal(opRow("project", "link").settled, "Linked session to");
+	assert.equal(opRow("project", "milestone").settled, "Updated milestone");
+	assert.equal(opRow("todo", "view").settled, "Read todos");
+	assert.equal(opRow("todo", "done").settled, "Updated todos");
+	assert.equal(opRow("wake", "list").settled, "Listed wakes");
+	assert.equal(opRow("jobs", "cancel").settled, "Cancelled job");
+	assert.equal(opRow("network", "status").settled, "Checked network status");
+	assert.equal(opRow("network", "join").settled, "Joined network");
+	assert.equal(opRow("console", "create").settled, "Opened console");
+	assert.equal(opRow("console", "keys").settled, "Sent keys");
+	assert.equal(opRow("lsp", "definitions").settled, "Found definition");
+	assert.equal(opRow("lsp", "rename_preview").settled, "Previewed rename");
+	// The running half is the present participle, as everywhere else.
+	assert.equal(opRow("agent", "sync").running, "Syncing agents");
+	assert.equal(opRow("hub", "resume").running, "Resuming");
+	// And an op-aware tool with no known op is generic, never a neighbouring
+	// claim - the same discipline an unknown NAME takes.
+	assert.deepEqual(toolVerb("secret"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
+});
+
+test("the project family names every operation, and the milestone flag decides add or remove (operator report follow-up, 2026-09-27)", () => {
+	/*
+	 * The second report: a project VIEW rendered `Called project
+	 * ui-update-account-robustness` under the generic wrench. `project` has
+	 * seven ops in the running build's schema (`project_tool.py`: list, show,
+	 * create, update, link, unlink, milestone) and NO `remove` op - the removal
+	 * is the `milestone` op's `remove` flag, which is why the row's token is
+	 * composed from the flag as well as the op.
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The row the operator's screenshot showed.
+	assert.deepEqual(
+		row("project", { op: "show", name: "ui-update-account-robustness" }),
+		{
+			verb: "Viewed project",
+			object: "ui-update-account-robustness",
+		},
+	);
+	// A listing has no subject, and the selector never echoes into the object.
+	assert.deepEqual(row("project", { op: "list" }), {
+		verb: "Listed projects",
+		object: "",
+	});
+	// The milestone op goes both ways; the row says which.
+	assert.deepEqual(row("project", { op: "milestone", milestone: "ship-v2" }), {
+		verb: "Updated milestone",
+		object: "ship-v2",
+	});
+	assert.deepEqual(
+		row("project", { op: "milestone", milestone: "ship-v2", remove: true }),
+		{ verb: "Removed milestone", object: "ship-v2" },
+	);
+	// Every op the installed build accepts names its call: `Called` is what a
+	// row says when it does NOT know, and none of these are that. The four
+	// meta tools whose ops the tables key on are all covered EXHAUSTIVELY here
+	// (review round 1, R1-2): a typo or a dropped entry in any of them used to
+	// fall to `Called` with nothing failing.
+	for (const [tool, ops] of Object.entries({
+		agent: [
+			"list",
+			"show",
+			"search",
+			"install",
+			"reset",
+			"create",
+			"update",
+			"sync",
+		],
+		team: ["list", "show", "create", "update"],
+		hub: ["list", "peek", "send", "ask", "steer", "pause", "cancel", "resume"],
+		project: [
+			"list",
+			"show",
+			"create",
+			"update",
+			"link",
+			"unlink",
+			"milestone",
+		],
+	})) {
+		for (const op of ops) {
+			assert.notEqual(
+				toolVerb(tool, op).settled,
+				"Called",
+				`${tool} op \`${op}\` must name its operation`,
+			);
+		}
+	}
+	// The remove flag's SPELLINGS are the full set the tool itself accepts, not
+	// only the bare boolean: pydantic 2.13.5 coerces `true`, `1` and - any case -
+	// `"true" | "yes" | "y" | "t" | "on" | "1"` to True before the milestone op
+	// runs, and `"yes"` removes in the wild (review round 2, QA Q1a), so every
+	// one of them must compose the removal and must not read as an update.
+	for (const spelling of [
+		true,
+		1,
+		"true",
+		"TRUE",
+		"Yes",
+		"y",
+		"T",
+		"on",
+		"1",
+	]) {
+		assert.deepEqual(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}),
+			{ verb: "Removed milestone", object: "ship-v2" },
+			`remove: ${JSON.stringify(spelling)} removes`,
+		);
+	}
+	// The falsy set keeps the update verb, and so do spellings the tool REJECTS:
+	// `" true "` (with whitespace) is a validation error, not a spelling - the
+	// comparison lowercases but never trims - and `2` is no boolean at all.
+	// Neither removed anything, which is the one thing the row must not claim.
+	for (const spelling of [
+		false,
+		0,
+		"false",
+		"FALSE",
+		"No",
+		"off",
+		"n",
+		"F",
+		"0",
+		" true ",
+		2,
+	]) {
+		assert.equal(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}).verb,
+			"Updated milestone",
+			`remove: ${JSON.stringify(spelling)} updates`,
+		);
+	}
+	// The separate delete tool, whose name alone could not say it.
+	assert.deepEqual(
+		row("project_delete", { name: "ui-update-account-robustness" }),
+		{ verb: "Deleted project", object: "ui-update-account-robustness" },
+	);
+	// The count noun for hub's peek steps (design round 1, D1): `Peeked at 3`
+	// cannot say what 3 counts; jobs' peek carries no such count and keeps its
+	// scalar.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 3 }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 1 }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("jobs", { op: "peek", job_id: "9360", since: "1h" }), {
+		verb: "Peeked at",
+		object: "9360 1h",
+	});
+	// The wait timeout spells its unit (design round 1, D5): two bare numbers
+	// beside each other read as two ids.
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 3_600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 1h",
+	});
+	// The tools' lax ints accept the STRING spellings of the same counts and
+	// execute them (`"3"` arrives 16 times in 36 h of transcripts - review
+	// round 2, QA Q1b), so the renderers coerce numeric strings and keep the
+	// unit; a non-numeric string is not a number and stays untouched.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "3" }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "1" }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: "600000" }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "many" }), {
+		verb: "Peeked at",
+		object: "many",
+	});
+});
+
+test("toolOp reads the three selector spellings, in their order, and never invents one", () => {
+	// `op` is the meta tools' own word, `network` spells it `action` and
+	// `console` `method`. Pinned directly because the extraction is what every
+	// op-aware label stands on (review round 1, R1-2).
+	assert.equal(toolOp({ op: "send" }), "send");
+	assert.equal(toolOp({ action: "status" }), "status");
+	assert.equal(toolOp({ method: "create" }), "create");
+	// Model-written, so trimmed and case-folded.
+	assert.equal(toolOp({ action: "  STATUS " }), "status");
+	assert.equal(toolOp({ method: "Keys" }), "keys");
+	// `op` wins where several appear; a selector that is not a non-empty string
+	// is skipped rather than coerced.
+	assert.equal(
+		toolOp({ op: "send", action: "status", method: "create" }),
+		"send",
+	);
+	assert.equal(toolOp({ action: "status", method: "create" }), "status");
+	assert.equal(toolOp({ op: "  ", action: "status" }), "status");
+	assert.equal(toolOp({ op: 7, action: "status" }), "status");
+	// Nothing selectable is nothing - the generic verb's territory, never a
+	// guessed token.
+	assert.equal(toolOp(null), "");
+	assert.equal(toolOp({}), "");
+	assert.equal(toolOp({ command: "pnpm test" }), "");
+});
+
+test("the project pair carries its glyphs, and the two fallbacks stay distinct", () => {
+	// A project row under the generic wrench is indistinguishable from a tool
+	// nobody knows (operator report follow-up, 2026-09-27). The pair mirrors
+	// the TUI's own marks (sibling branch `feat/tui-project-line-15c4`, commit
+	// `4ce339597`; review round 1, D2/D4 - the first cut took FolderKanban
+	// alone, which is a folder-family mark the sibling's rationale retired):
+	// `Columns3` for the workstream, `Trash2` for the irreversible removal.
+	assert.equal(toolIcon("project").displayName, "Columns3");
+	// Case-insensitive, because a tool name is model-controlled.
+	assert.equal(toolIcon("Project").displayName, "Columns3");
+	assert.equal(toolIcon("project_delete").displayName, "Trash2");
+	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
+	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
 });
 
 /* ------------------------------------------------------- the media relay */
@@ -598,13 +952,21 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 	for (const view of [0, 1]) {
 		const trace = px(GAP.trace[view]);
 		const item = px(GAP.item[view]);
-		const mark = px(GAP.mark[view]);
 		const turn = px(GAP.turn[view]);
 		assert.equal(trace, 2, "a run's rows sit a hairline apart");
 		assert.ok(
-			trace < item && item < mark && mark <= turn,
-			`tiers must widen: trace ${trace} < item ${item} < mark ${mark} <= turn ${turn}`,
+			trace < item && item <= turn,
+			`tiers must widen: trace ${trace} < item ${item} <= turn ${turn}`,
 		);
+		/*
+		 * There is no third tier between these two any more. The `mark` tier existed
+		 * to raise a row whose caption says its own text is not whole (design round 1,
+		 * D1), and §D1 sets every gap INSIDE a turn to 12px — so `item` is 12px and the
+		 * raise became a second name for the same class string. Its own assertion was
+		 * `mark >= item * 1.5`, which is unreachable at 12 against 12: a tier nobody can
+		 * see and no test can reach is what silently becomes a drift later.
+		 */
+		assert.equal(item, 12, "§D1: inside a turn, 12px");
 		/*
 		 * D1 (design review round 1) is a RATIO requirement, not a preference: the
 		 * caption lives INSIDE the row it describes, 4px from its own chunk, so the gap
@@ -615,8 +977,8 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 		 * — is invisible in a diff and reads as a note on somebody else's answer.
 		 */
 		assert.ok(
-			mark >= 12 && mark >= item * 1.5,
-			`the marked row's gap must clear the caption's own margin (mark ${mark}, item ${item})`,
+			item >= 12,
+			`the marked row's gap must clear the caption's own margin (item ${item})`,
 		);
 		// The hierarchy the tightening had to preserve: a turn boundary is an
 		// order of magnitude airier than an adjacent pair inside a run, so the
@@ -652,8 +1014,8 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.deepEqual(
 		marked.map((row) => row.gap),
-		["first", "turn", "mark"],
-		"the marked row separates from the answer above it",
+		["first", "turn", "item"],
+		"the marked row separates from the answer above it by the in-turn step",
 	);
 	// The D1 case that was worst before the tier existed: a marked row directly
 	// under a tool row used to inherit the 2px hairline.
@@ -663,7 +1025,7 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.equal(
 		afterTool[1].gap,
-		"mark",
+		"item",
 		"a marked row under a ledger row does not take the hairline",
 	);
 	// And an UNMARKED row is untouched, including the small view's narrower item.
@@ -692,7 +1054,32 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	/*
+	 * D11 DELETES THE AVATAR AND ITS GUTTER, so there is no longer a flag to consume:
+	 * the assertion is that the row model carries none at all (a re-added flag would
+	 * be the avatar coming back through the model rather than through the markup) and
+	 * that the container which used to draw it renders neither a glyph nor the 40px
+	 * indent that justified it.
+	 */
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
+	const container = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-container.tsx",
+		"utf8",
+	);
+	// Asked of the CODE, not the words: this file's own comment explains what the
+	// `pl-10` indent used to cost, and a token check that read comments would fail
+	// on the explanation of the deletion rather than on a re-introduction.
+	assert.ok(
+		!/from "\.\/message-avatar"/.test(container),
+		"message-container.tsx imports no avatar (D11)",
+	);
+	assert.ok(
+		!/"pl-10"|AGENT_GUTTER/.test(container),
+		"message-container.tsx carries no 40px gutter (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
 	// airier than an adjacent pair inside a run.
@@ -754,7 +1141,10 @@ test("a streaming record cannot swallow the avatar or a gap tier", () => {
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// And it cannot break trace adjacency between two ledger rows either.
 	const run = buildRows(
@@ -793,7 +1183,7 @@ test("no reading measure survives on either surface, by property not by name", (
 	// takes no reading cap, and the user bubble keeps one" — on the reading that
 	// the bubble's narrower box is what makes a turn an aside, and that widening
 	// it was the unrequested half of the earlier change. The report above
-	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
+	// reversed that call: the aside is the CARD's own `max-w-[85%]` (§D2) inside
 	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
 	// no cap there either, so it shares the tool rows' edges.
 	//
@@ -897,7 +1287,7 @@ test("no reading measure survives on either surface, by property not by name", (
 		const file = source(path);
 		assert.deepEqual(
 			[...new Set(file.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])].sort(),
-			["max-w-[75%]", "max-w-[92%]"],
+			["max-w-[85%]", "max-w-[92%]"],
 			`${path}: the only arbitrary-value widths are the card's two steps`,
 		);
 		// The BODY wrapper - the div inside the card that holds the quote chip and
@@ -2065,7 +2455,8 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, COMPACTING_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";\n' +
+			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -2076,13 +2467,15 @@ const workingLineBundle = await build({
 const {
 	deriveWorkingLine,
 	ADMITTED_SEND_ACTIVITY,
+	STARTING_SESSION_ACTIVITY,
 	COMPACTING_ACTIVITY,
-	admittedSendFor,
+	sendUnsettledForSession,
 	ownerAnswered,
 	turnStopped,
 	stoppedAfterAdmission,
 	workingLineClaimed,
 	workingLineInputFor,
+	visibleRecords,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2091,7 +2484,13 @@ test("frame-only stopped outcomes retire only the send they follow", () => {
 	// The real refusal frame may contain no completion_attention transcript
 	// entry at all. The pane synthesizes its visible incident from this record;
 	// a fixture containing only a raw notice cannot cover that production path.
-	for (const kind of ["error", "interrupted"]) {
+	// The v2 neutral closure (2026-09-29) retires the wait too: the runtime was
+	// disposed, and a fence-less spinner beside a "Completed — runtime
+	// retired/disposed" receipt is the Q4 contradiction this gate exists for.
+	// The retire-for-build kind joins for the same reason: the drain is leaving
+	// and the turn was cut, so a spinner beside "Retired for an update …" would
+	// be that contradiction again.
+	for (const kind of ["error", "interrupted", "closed", "retired"]) {
 		const attention = { anchor_id: "completion-new", kind, unseen: true };
 		assert.equal(stoppedAfterAdmission(attention, null), true);
 		assert.equal(stoppedAfterAdmission(attention, "completion-old"), true);
@@ -2151,9 +2550,10 @@ const noticeRow = (id) => ({
 });
 /*
  * A durable completion marker, which the reducer writes on a `notice` for
- * exactly two outcomes - "Stopped with an error" and "Interrupted" - and never
- * for its own renderer notes. The `complete` field is the marker; the text is
- * copied from `transcript-reducer.ts` only so a reader can see what it is.
+ * exactly three outcomes — "Stopped with an error", "Interrupted", and the v2
+ * neutral closure "Completed — runtime retired/disposed" — and never for its
+ * own renderer notes. The `complete` field is the marker; the text is copied
+ * from `transcript-reducer.ts` only so a reader can see what it is.
  */
 const incidentRow = (id, level = "error") => ({
 	kind: "notice",
@@ -2296,46 +2696,143 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	);
 });
 
-/* ------------------------------------------- which send is "admitted" */
+/* ---------------------------------- which send is "unsettled" (the box's claim) */
 
 /*
- * The one rule that decides whether the rung appears at all (`chat-page.tsx`).
+ * The rule that decides whether the composer says the message is still going
+ * out (`sendUnsettledForSession`), asserted over the draft rows it reads, with
+ * no store and no React - the way `draftIdentityFor` is.
  *
- * It is a derivation over the store's draft row, so it is asserted here the way
- * `draftIdentityFor` and `panelIdentityFor` are: swapping it for the composer's
- * local `admitting` state, or dropping the `sessionId` conjunct, restores the
- * operator's dead-air report while every other test stays green. The row's own
- * lifetime is pinned against the real store in `canonical-chat.test.mjs`.
+ * The old rule at this site was `admittedSendFor(sessionId, row)`, and two of
+ * its three terms are gone. The session-id conjunct was the dead-air window
+ * itself: before `sessions.create` answers there is no session id, so the claim
+ * was false for the whole create hop - the row is now painted at the press
+ * (see `pendingSendForView` in `use-canonical-session`), and the pane's claim
+ * comes from the registry instead. `admissionAttempted` was the receipt's
+ * latch: it is written after the create hop, so requiring it withheld the box's
+ * sentence for exactly the window this reader gained.
+ *
+ * What is left is the row's own `pending`, read by whichever name this
+ * conversation's send can have under: the session id (a row the create
+ * patched), a `send:<id>` key (the live path), and the DRAFT key (a remounted
+ * boom whose create is still in flight). Its lifetime - written at the press,
+ * cleared by the failure arms - is pinned against the real store in
+ * `canonical-chat.test.mjs`.
  */
-test("a send is admitted only when the request was actually issued", () => {
+test("a send is unsettled while its row is pending, under any of its names", () => {
 	const row = {
+		key: "send:111111111111",
 		pending: true,
 		admissionAttempted: true,
 		admissionRequestId: ECHO,
 	};
-	assert.deepEqual(admittedSendFor("111111111111", row), { requestId: ECHO });
+	assert.equal(
+		sendUnsettledForSession({ "send:111111111111": row }, "111111111111"),
+		true,
+	);
 
-	// Before admission there is nothing to wait on: the composer still holds
-	// the user's text, and the store has not issued a request it cannot take
-	// back. On that hop the pane is legitimately empty.
+	// The create hop: pending and NOT yet attempted. This is the window the old
+	// `admissionAttempted` conjunct went silent in, and the sentence a remounted
+	// composer must still find when its create is in flight.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionAttempted: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"draft:d1",
+		),
+		true,
 	);
-	// A settled or failed send: the request is no longer in flight.
+	// The same row found by the session the create patched onto it.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, pending: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					sessionId: "111111111111",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"111111111111",
+		),
+		true,
 	);
-	// No session yet: the New-chat hop, where the create has not returned and
-	// the owner has no conversation to answer on.
-	assert.equal(admittedSendFor(undefined, row), null);
-	// A row with no identity cannot anchor a clear, so it cannot carry a rung.
+
+	// A settled or failed send: the request is no longer in flight, and the row's
+	// own sentence (or the transcript's) says what happened instead.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionRequestId: undefined }),
-		null,
+		sendUnsettledForSession(
+			{ "send:111111111111": { ...row, pending: false } },
+			"111111111111",
+		),
+		false,
 	);
-	assert.equal(admittedSendFor("111111111111", undefined), null);
+	// Nothing of this conversation's in flight at all.
+	assert.equal(sendUnsettledForSession({}, "111111111111"), false);
+	assert.equal(sendUnsettledForSession({}, undefined), false);
+});
+
+/* ---------------------------------------------- the create hop's own label */
+
+test("the wait line reads `starting the session` until the session exists", () => {
+	const before = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: true,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(before, {
+		activity: STARTING_SESSION_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+
+	// The create answered: same wait, same clock, the other label. The PHASES are
+	// equal, which is the whole clock rule - a second phase would restart the
+	// elapsed number at the create's answer.
+	const after = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: false,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(after, {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+	assert.equal(before.phase, after.phase);
+
+	// A caller that knows neither fact derives EXACTLY what it always did,
+	// including the absent anchor: no `startedAt` key, so every deep comparison
+	// in the suites that predate this label keeps its old shape.
+	assert.deepEqual(
+		deriveWorkingLine({
+			waiting: false,
+			compacting: false,
+			starting: true,
+			startingAfterId: ECHO,
+			gate: false,
+			unavailable: false,
+			records: [],
+		}),
+		{ activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" },
+	);
 });
 
 test("the anchored clear is the transcript's own predicate, swept", () => {
@@ -2500,6 +2997,47 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 		),
 		false,
 	);
+});
+
+test("a running send is absent from the working line once filtered", () => {
+	/*
+	 * The desktop working line reads RECORDS, not mounted cards (unlike the TUI's
+	 * card-derived line), so the transcript feeds it the FILTERED list - without
+	 * that, a pane hiding cross-session traffic would still say `running send`
+	 * beside rows that no longer include it. Both directions are pinned: the
+	 * unfiltered list names the card (the leak the seam removes), the filtered
+	 * one falls to the ladder's generic arm.
+	 */
+	const pane = (records) =>
+		workingLineInputFor({
+			waiting: true,
+			compacting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records,
+		});
+	const records = [
+		userRow("u1", "go"),
+		{ ...runningToolRow("t1"), toolName: "send" },
+	];
+	assert.deepEqual(deriveWorkingLine(pane(records)), {
+		activity: "running send",
+		phase: "running",
+		startedAt: 1,
+	});
+	const shown = visibleRecords(records, true);
+	assert.deepEqual(
+		deriveWorkingLine(pane(shown)),
+		{
+			activity: "thinking",
+			phase: "thinking",
+		},
+		"the hidden card is not named; the rung falls to its generic arm",
+	);
+	// And the default hands back the bare reference, so nothing about the line
+	// changes with the option off.
+	assert.equal(visibleRecords(records, false), records);
 });
 
 test("a notice's body is partitioned between its row and its disclosure", () => {
@@ -2706,7 +3244,6 @@ const renderRow = (toolName, outcome, over = {}) =>
 			summary: `${toolName} arg`,
 			outcome,
 			durationS: outcome === "running" ? null : 0.4,
-			nameColumn: TOOL_NAME_COL_MIN,
 			...over,
 		}),
 	);
@@ -2751,17 +3288,23 @@ const glyphAndName = (markup) => {
 	return { glyph: spans[glyphIndex], name: spans[nameIndex] };
 };
 
-test("a tool's category is the TUI's own map, looked up case-insensitively", () => {
-	// `_TOOL_CATEGORY` (tool_card.py:218-238), category for category. The axis is
-	// what the call did to the machine, so what is asserted is the SET each tool
-	// lands in and not the spelling of the table.
+test("a tool's category is the ledger's own map, looked up case-insensitively", () => {
+	// `_TOOL_CATEGORY` (tool_card.py:218-238) is the BASE of the map; the entries
+	// the trace-label change added for names the TUI does not carry (`web_read`,
+	// `lsp`, `console`, `team`, `wait`, `jobs`, `secret`, `network`,
+	// `team_delete`) are UI-side decisions stated as such in the source, not
+	// parity claims (review round 1, R1-5). The axis is what the call did to the
+	// machine, so what is asserted is the SET each tool lands in and not the
+	// spelling of the table.
 	for (const name of [
 		"read",
 		"glob",
 		"grep",
 		"web_fetch",
+		"web_read",
 		"web_search",
 		"browser",
+		"lsp",
 		"list_variables",
 		"read_variable",
 	]) {
@@ -2770,10 +3313,28 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	for (const name of ["write", "edit"]) {
 		assert.equal(toolCategory(name), "mutate", `${name} mutates`);
 	}
-	for (const name of ["bash", "eval"]) {
+	// `console` is the app's own terminal in a frame, which is why it takes the
+	// exec ink the TUI gives `bash`/`eval` rather than the wrench's neutral.
+	for (const name of ["bash", "eval", "console"]) {
 		assert.equal(toolCategory(name), "exec", `${name} executes`);
 	}
-	for (const name of ["task", "agent", "hub", "todo", "send", "wake", "ask"]) {
+	for (const name of [
+		"task",
+		"agent",
+		"team",
+		"hub",
+		"todo",
+		"send",
+		"wake",
+		"ask",
+		"wait",
+		"jobs",
+		"secret",
+		"network",
+		"project",
+		"team_delete",
+		"project_delete",
+	]) {
 		assert.equal(toolCategory(name), "meta", `${name} is meta`);
 	}
 
@@ -2791,7 +3352,6 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 		"mcp__linear_create_issue",
 		"mcp__",
 		"peer",
-		"team",
 		"a_builtin_that_does_not_exist_yet",
 		"",
 	]) {
@@ -2829,7 +3389,7 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	}
 });
 
-test("the glyph and the name take ONE ink, and it is the category's", () => {
+test("the glyph takes identity ink, the name takes state ink, and they agree on state", () => {
 	// [tool name, outcome, the ink both spans must carry]. The first five are the
 	// categories; the rest are liveness outranking identity, which is the rule
 	// that must not be lost now that identity has colour again.
@@ -2843,7 +3403,11 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 		["bash", "success", "text-ink-muted"],
 		["eval", "success", "text-ink-muted"],
 		["task", "success", "text-accent-alt"],
+		["team", "success", "text-accent-alt"],
 		["hub", "success", "text-accent-alt"],
+		["secret", "success", "text-accent-alt"],
+		["console", "success", "text-ink-muted"],
+		["lsp", "success", "text-info"],
 		// Unclassified, and a receipt whose name is not a tool: the neutral.
 		["mcp__linear_create_issue", "success", "text-ink-muted"],
 		["peer", "receipt", "text-ink-muted"],
@@ -2874,6 +3438,24 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 		["task", "interrupted", "text-accent-alt"],
 	];
 
+	/*
+	 * THE NAME'S INK IS THE ROW'S STATE AND NOTHING ELSE (§E1, D8).
+	 *
+	 * The pair used to share one expression, on the rule that identity and state
+	 * must not be painted differently inside one row. D8 is the counter-example
+	 * that rule could not survive: a settled `read` row drew its VERB in `info`,
+	 * so the loudest ink on a settled ledger was the tool's name - the part of the
+	 * row that says the least - while the result beside it was grey. The glyph
+	 * keeps identity (its SHAPE is what carries the tool anyway), the verb is
+	 * quiet, and the two still agree wherever the row has something to say about
+	 * what is HAPPENING: a running row is accent in both spans, a failed one
+	 * `danger` in both. That is the part of the old rule that was load-bearing.
+	 */
+	const stateOnly = {
+		running: "text-accent",
+		error: "text-danger",
+		"not-run": "text-danger",
+	};
 	for (const [toolName, outcome, expected] of CASES) {
 		const markup = renderRow(toolName, outcome);
 		const { glyph, name } = glyphAndName(markup);
@@ -2884,12 +3466,27 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 			[expected],
 			`${toolName}/${outcome}: the tool glyph's ink — got ${glyphInk.join(" ")} on ${glyph}`,
 		);
+		const expectedName = stateOnly[outcome] ?? "text-ink-muted";
 		assert.deepEqual(
 			nameInk,
-			glyphInk,
-			`${toolName}/${outcome}: the name and the glyph disagree — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			[expectedName],
+			`${toolName}/${outcome}: the name reads state only — got ${nameInk.join(" ")} where ${expectedName} was expected`,
 		);
+		if (stateOnly[outcome]) {
+			assert.deepEqual(
+				nameInk,
+				glyphInk,
+				`${toolName}/${outcome}: state must read the same on both spans — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			);
+		}
 	}
+	// And the case D8 is about, stated as itself: a settled read row's VERB is not
+	// the category ink its glyph carries.
+	const readRow = glyphAndName(renderRow("read", "success"));
+	assert.ok(
+		!inkOf(readRow.name).includes("text-info"),
+		"a settled read row must not draw its verb in the category ink (D8)",
+	);
 
 	// The command SUMMARY stays uncoloured, which is the operator's own wording
 	// from the report that started all of this ("the tool call preview does not
@@ -2951,10 +3548,126 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
 	// span, both naming the same function, so a future edit cannot colour one and
 	// leave the other. Matched with the call's own trailing comma, because the
 	// doc comments above name the expression too and prose is not a call site.
-	const calls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
+	// ONE expression per span, and they are different expressions now: the glyph
+	// derives identity-from-state, the name derives state alone. Both are named
+	// functions called at exactly one site, so a future edit cannot colour one span
+	// inline and leave the other behind — which is what this matched before the two
+	// inks separated.
+	const glyphCalls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
 	assert.equal(
-		calls.length,
-		2,
-		`the glyph and the name read one expression each — got ${calls.length}`,
+		glyphCalls.length,
+		1,
+		`the glyph reads the one identity/state expression — got ${glyphCalls.length}`,
 	);
+	const nameCalls = source.match(/nameInk\(outcome\),/g) ?? [];
+	assert.equal(
+		nameCalls.length,
+		1,
+		`the name reads the one state expression — got ${nameCalls.length}`,
+	);
+	// The state-only function must not reach for the category map: that is the
+	// whole point of it, and a token appearing inside its body would restore D8's
+	// defect through a second call path.
+	const nameInkBody = source.slice(
+		source.indexOf("const nameInk"),
+		source.indexOf("const DiffCounters"),
+	);
+	for (const token of ["CATEGORY_INK", "text-info", "text-accent-alt"]) {
+		assert.ok(
+			!nameInkBody.includes(token),
+			`the state-only ink must not consult ${token}`,
+		);
+	}
+});
+
+test("a row whose first label read is in flight shows no stand-in yet", () => {
+	/*
+	 * The first frame of a mid-turn join. Every seeded row starts without its
+	 * arguments, and the stand-in would put the call's RESULT in the command's
+	 * column — the operator's `bash  … {"text": 200, "solo_cpu": 0.08…` rows.
+	 * While the read that finds the arguments is pending the column is empty;
+	 * once it settles (`labelPending` false) the stand-in is exactly what it was.
+	 */
+	const output = '{"text": 200, "solo_cpu": 0.08, "fanout": 4}';
+	assert.equal(outputFallbackLine(output, true), null);
+	assert.equal(
+		outputFallbackLine(output, false),
+		'… {"text": 200, "solo_cpu": 0.08, "fanout": 4}',
+	);
+	assert.equal(
+		outputFallbackLine(output),
+		outputFallbackLine(output, false),
+		"the default is the settled rule, so every other caller is unchanged",
+	);
+});
+
+test("the mark's state reaches a reader who cannot see it, and only while it stands", () => {
+	/*
+	 * UX round 4, U7. The late-hold glyph is `aria-hidden` — it is a glyph, and
+	 * "…" is not a word — so before this the cell said NOTHING to assistive tech
+	 * for the whole hold: 49.9 s on a wedged owner and 25.0 s on the refusing
+	 * route, where a sighted reader gets the cue at 2.0 s. The word rides in the
+	 * SAME branch as the mark, which is what bounds it to the state that
+	 * justifies it: the pre-threshold blank carries no word (nothing is being
+	 * announced on a row that is merely waiting), and the release takes the word
+	 * away with the glyph, so no stale "pending" outlives the hold.
+	 *
+	 * WHAT IT IS NOT, stated so a later round does not change it by accident: it
+	 * is not a live region. The mark's arrival is ONE event for a whole hold
+	 * batch — 26 rows in the reported conversation, in the same frame — so
+	 * `aria-live` here would announce 26 times at the threshold. The row's
+	 * existing idiom for a mark that says something is exactly this: a static
+	 * `sr-only` word beside it, read when the reader reaches the row.
+	 */
+	const blank = renderRow("bash", "success", { summaryHold: false });
+	const marked = renderRow("bash", "success", { summaryHold: true });
+	assert.match(
+		marked,
+		/<span class="sr-only">pending<\/span>/,
+		"the marked cell spells its state out for assistive tech",
+	);
+	assert.equal(
+		blank.includes(">pending<"),
+		false,
+		"and the blank cell says nothing: the word exists only while the mark stands",
+	);
+	assert.equal(
+		/aria-live/.test(marked),
+		false,
+		"and it is not a live region: a hold batch is one event across every held row, so a live region would announce once per row at the threshold",
+	);
+	// The glyph stays decorative: the word is a SIBLING of the hidden span, not
+	// inside it, or `aria-hidden` would hide the word with the glyph.
+	const hidden = marked.slice(marked.indexOf('aria-hidden="true"'));
+	const hiddenContent = hidden.slice(0, hidden.indexOf("</span>"));
+	assert.equal(
+		hiddenContent.includes("pending"),
+		false,
+		`the word is not inside the hidden span — got ${hiddenContent}`,
+	);
+});
+
+test("a result with no details keeps the counts the row already had", () => {
+	/*
+	 * The sequence from the report, reduced to the rule: the durable row said
+	 * `+91 -19`, then the seed's end for the same call arrived with `details:
+	 * null` because `_bound_live_result_in_place` stripped it. "Said nothing"
+	 * keeps the counts; a stated `details` object wins, zero included.
+	 */
+	const had = { added: 91, removed: 19 };
+	assert.deepEqual(preferDiffCounts(null, had), had);
+	assert.deepEqual(preferDiffCounts(undefined, had), had);
+	assert.deepEqual(preferDiffCounts(null, null), { added: 0, removed: 0 });
+	assert.deepEqual(preferDiffCounts({ added: 3, removed: 0 }, had), {
+		added: 3,
+		removed: 0,
+	});
+	// A stated object with no counts is the producer saying "none", not silence:
+	// `{}` is the `details` every non-diff tool reports.
+	assert.deepEqual(preferDiffCounts({}, had), { added: 0, removed: 0 });
+	// Malformed counts read as unknown, as `diffCount` always did.
+	assert.deepEqual(preferDiffCounts({ added: -1, removed: "7" }, had), {
+		added: 0,
+		removed: 0,
+	});
 });

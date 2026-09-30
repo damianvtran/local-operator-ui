@@ -598,6 +598,15 @@ async function loadMainProcess() {
 					export const consoleInterpreter = () => "/fixture/python";
 					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
 					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					/*
+					 * The launcher-usability verdict this fixture does not exercise: this
+					 * file measures the spawn ENVIRONMENT, and a real answer would make
+					 * the run depend on whether the machine has a global install (which
+					 * is why CI and a developer's box could differ here). The negative
+					 * answer is the one a machine with none gives, so the branch taken is
+					 * the same everywhere.
+					 */
+					export const probeGlobalLauncher = async () => ({ usable: false, interpreter: null, reason: "this fixture does not run a global launcher" });
 					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
 				`,
 								}),
@@ -630,6 +639,23 @@ async function loadMainProcess() {
 											autoInstallOnAppQuit: false,
 											logger: null,
 										};
+										/*
+										 * electron-updater re-exports this from builder-util-runtime, and
+										 * the service constructs one per download. A fixture-sized
+										 * mirror of its interface, like the autoUpdater above it - it
+										 * exists so the module imports resolve when update-service is
+										 * bundled here.
+										 */
+										export class CancellationToken {
+											constructor() { this.cancelled = false; this.handlers = []; }
+											onCancel(handler) { if (this.cancelled) handler(); else this.handlers.push(handler); }
+											onCancelRequested(handler) { this.onCancel(handler); return { dispose: () => {} }; }
+											cancel() {
+												if (this.cancelled) return;
+												this.cancelled = true;
+												for (const handler of this.handlers.splice(0)) handler();
+											}
+										}
 									`);
 								}
 								return fixture(`
@@ -2229,12 +2255,19 @@ const SPAWN_SITES = [
 		"src/main/backend/owned-serve-launch.ts",
 		"spawn",
 		1,
-		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. `ownedServeLaunch` has exactly one caller - `backend-service.ts`, which hands it the environment `backendSpawnEnv()` built, asserted by the row above - so this site never decides the environment it runs a probe under",
+		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. It has two callers, and BOTH hand it a guarded environment: `ownedServeLaunch`, whose one caller - `backend-service.ts` - passes the environment `backendSpawnEnv()` built (asserted by the row above), and `probeGlobalLauncher`, whose caller hands `withPythonBytecodeCache(process.env, appDataPath)` because the launcher's interpreter imports `local_operator` too. The site itself never decides the environment it runs a probe under, which is what keeps those two guards the visible ones",
 	),
 	runsCommand(
 		"src/main/backend/discovery.ts",
 		"execFileSync",
 		1,
+		/"lsof"/,
+		"reads WHICH pid holds a listening socket (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`) when an occupant never answered `/health` and so cannot name itself; `lsof` is that tool and starts no interpreter. The port is an integer this app parsed out of its own configured address, never a caller-supplied string",
+	),
+	runsCommand(
+		"src/main/backend/discovery.ts",
+		"execFileSync",
+		2,
 		/"\/bin\/ps"/,
 		"reads one pid's PROCESS STATE (`ps -o state= -p <pid>`) to tell a zombie from a live daemon, which signal 0 cannot; `/bin/ps` is that tool and starts no interpreter",
 	),
@@ -2665,6 +2698,13 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		index: 2,
 		env: /env:\s*pythonChildEnv\(\)/,
 		why: "the same zombie fixture, in the suite",
+	},
+	{
+		file: "scripts/daemon-observation.test.mjs",
+		name: "spawnSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "resolving the interpreter its console-script fixtures name, so the launcher the decision runs is a real interpreter behind a real shebang rather than a script standing in for one",
 	},
 	{
 		file: "scripts/evidence-run-guard.test.mjs",
@@ -3502,6 +3542,100 @@ test("closing the window mid-run asks the same question Cancel does", async () =
 			undefined,
 			"declining the question leaves the install running",
 		);
+	});
+});
+
+test("a declined quit confirmation releases the app's quit state; a proceeding one does not", async () => {
+	/*
+	 * ROUND-1 FINDING F-1, on the shipped installer. This dialog is the ONE
+	 * cancellation a running quit has — `app.quit()` stops when a window refuses
+	 * its close — so its declined answer has to RELEASE the app's quit state, or
+	 * every later second launch and Dock click is refused for the process's life
+	 * although the app is serving (the F-1 defect). The accepted answer exits the
+	 * process and must NOT release it: a quit that PROCEEDS keeps claiming the
+	 * process, because the release belongs to the cancellation, not to the
+	 * question. The state object itself is driven in `scripts/window-mode.test.mjs`
+	 * (begin/cancel/answer, plus the source pins over this wiring); here the
+	 * callback the app hands in is a spy, so the assertion is about WHICH answer
+	 * calls it — the half a source pin cannot prove.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		// Declined: "Keep setting up". The quit aborts; the release fires once.
+		resetInstallerFixture(0);
+		const released = [];
+		const installer = new BackendInstaller({
+			onQuitCancelled: () => released.push(true),
+		});
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.install("never");
+		await waitForSpawn();
+
+		const window = globalThis.__loWindows.at(-1);
+		const closeHandler = window?.handlers.close?.at(-1);
+		assert.equal(
+			typeof closeHandler,
+			"function",
+			"the setup window no longer listens for its own close",
+		);
+		closeHandler({ preventDefault: () => {} });
+		await waitFor(
+			() => released.length === 1,
+			"the declined answer to release the app's quit state",
+		);
+		assert.equal(
+			released.length,
+			1,
+			"a cancelled quit lets go of the state exactly once",
+		);
+		assert.equal(
+			globalThis.__loExitCode,
+			undefined,
+			"and the app keeps running, which is what the release is for",
+		);
+
+		// Accepted: "Quit without setup". The app leaves; the state is NOT
+		// released — a quit that proceeds must keep claiming the process. The
+		// FIRST dialog in this flow is the non-darwin consent prompt (only its
+		// cancel, `response === 1`, leaves), so the accepted answer is armed only
+		// after the spawn — once the close question is the next dialog read.
+		resetInstallerFixture(0);
+		const releasedOnAccept = [];
+		const leaving = new BackendInstaller({
+			onQuitCancelled: () => releasedOnAccept.push(true),
+		});
+		leaving.pythonPath = join(PATHS.home, "external-python");
+		void leaving.install("never");
+		await waitForSpawn();
+		globalThis.__loDialogResponse = 1;
+		const kills = [];
+		const realKill = process.kill;
+		process.kill = (pid, signal) => {
+			kills.push([pid, signal]);
+			return true;
+		};
+		try {
+			globalThis.__loWindows.at(-1).handlers.close.at(-1)({
+				preventDefault: () => {},
+			});
+			await waitFor(
+				() => globalThis.__loExitCode !== undefined,
+				"the accepted answer to leave the app",
+			);
+		} finally {
+			process.kill = realKill;
+		}
+		assert.deepEqual(
+			releasedOnAccept,
+			[],
+			"a quit that proceeds is never released: only the cancellation releases the state",
+		);
+		assert.equal(
+			globalThis.__loExitCode,
+			1,
+			"and the app leaves on the accepted answer, as it promised",
+		);
+		assert.equal(kills.length, 1, "with the install child killed first");
 	});
 });
 

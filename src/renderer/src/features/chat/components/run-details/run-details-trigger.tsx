@@ -278,7 +278,19 @@ export const RunDetailsTrigger = ({
 				 * collision.
 				 */
 				className={cn(
-					"relative hover:bg-elevated hover:text-ink",
+					/* THE FIRST CONTROL THE ROW SHEDS (agent review round 2, Q-1). It is the
+					 * most expendable of the cluster's controls for the same reason its own
+					 * gate already hides it while the canvas is open: everything it reports
+					 * is IN the transcript below it (the run's rows, its children, its jobs),
+					 * so losing the door loses no fact. It is also the only control whose
+					 * width the scene cannot measure - the driver's stub daemon has no run -
+					 * which is exactly why it carries the HIGHEST threshold of the three: at
+					 * 22.5rem (360px) it is gone well before the row has to pay for the browser
+					 * trigger and the title's floor, whatever a live run would have added - one
+					 * step (40px) above the canvas's own 320px threshold, which is what each
+					 * control in that cluster costs.
+					 */
+					"relative hidden @[22.5rem]/chathdr:inline-flex hover:bg-elevated hover:text-ink",
 					isRunPanelOpen &&
 						"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent",
 				)}

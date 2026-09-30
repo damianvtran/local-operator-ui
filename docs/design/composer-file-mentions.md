@@ -26,32 +26,50 @@ tree except where a frame's own head is named.
 **Docs only.** Nothing here changes product source. The coder implements; this
 document is the direction.
 
-**The backend half is in review, not landed**: `damianvtran/local-operator#1220`
-(`feat/at-references`, head `af70c1b0d` when this was written). The grammar and
-the limits quoted in § 1 come from that branch, and the UI half must not assume
-it has merged.
+**The backend half has landed** (`damianvtran/local-operator#1220`,
+`feat/at-references`). The grammar and the limits quoted in § 1 come from it. The
+UI half was built against the branch and shipped dark, as the direction below
+required; it is dark no longer — see the next paragraph.
 
-**And the UI half therefore ships DARK.** The expansion is harness state, it is
-released in no tag through `v0.56.8`, and the half that adds it publishes no
-capability of its own — the whole feature is two Python modules with no server
-surface at all. So the composer reads a capability key (`references`, in
+**The UI half shipped DARK, and the key that lights it up now exists.** The
+expansion is harness state with no server surface of its own, so the composer
+reads a capability key (`references`, in
 `local_operator/server/routes/capabilities.py`) and offers the picker and the
-chips only when the connected harness advertises it. On every install that exists
-today the key is absent, the affordance is withheld, and `@path` stays plain text
-— which is what the harness does with it. The key is what the harness half has to
-add for this feature to appear, and that dependency is stated on the PR rather
-than assumed here.
+chips only when the connected harness advertises it; on a harness that does not,
+the affordance is withheld and `@path` stays plain text, which is what such a
+harness does with it. That key is now published — whenever
+`at_references_enabled()` is true, i.e. unless the operator has set
+`LOCAL_OPERATOR_AT_REFERENCES=0` — so a current backend lights the whole feature
+up with no change on this side, which is exactly what the dark ship was for. The
+key is the ONE capability a current backend may omit, because the kill switch is
+read per call: a process told not to expand advertises nothing rather than
+advertising `0`, and a client cannot tell that case from an older backend. It
+must not try — both mean "send the draft as typed and offer nothing".
 
-**The withheld state says why, in one sentence (UX round 2, U12).** Nothing is a
-worse answer than silence here — a user who types `@` and sees nothing has no path
-to "this install's backend is older" — so a mention-shaped token under the caret
-brings the picker's own one-row notice up with `This backend cannot carry file
-references.` It is the state's answer, not an advertisement: it makes no promise
-(a newer harness is not something the user can install their way into — the key
-does not exist yet), it never carries the `@` it is refusing, and it costs the
-composer no geometry because it stands in the list's own `absolute bottom-full`
-slot. `Nothing to insert` and this sentence are the two places the picker states a
-key's state rather than a row's.
+**The withheld state says why, and names the way out (UX round 2, U12; the
+remedy added when the key landed).** Nothing is a worse answer than silence here
+— a user who types `@` and sees nothing has no path to "this install's backend
+is older" — so a mention-shaped token under the caret brings the picker's own
+one-row notice up with `This backend cannot carry file references. Update the
+backend and try again.` It never carries the `@` it is refusing, and it costs
+the composer no geometry because it stands in the list's own `absolute
+bottom-full` slot, growing upward over the transcript as the list does; no row
+of the composer moves. It is still ONE line at the app's default column width,
+which the re-captured frame shows at 1380px, and it is a `block` in a full-width
+shell, so a narrower column wraps it inside that shell rather than widening or
+clipping it. `Nothing to insert` and this sentence are the two places the picker
+states a key's state rather than a row's.
+
+**The remedy clause is a REVERSAL, and the reversal is the point.** The sentence
+was written as one clause that promised nothing, deliberately: the `references`
+key was one no harness advertised, so "update the backend" would have had
+nothing behind it, and `scripts/at-mentions.test.mjs` asserted `!/update/i` to
+hold that. Now that a released harness publishes the key, that promise is one a
+newer backend keeps, and a sentence that names the backend as the reason while
+offering no way out of the state is the dead end the sibling gate in the same
+band already refuses (`MOVE_UNAVAILABLE_REASON`, on the read-only
+working-directory chip). The test asserts the remedy is NAMED rather than
+comparing the string, so the wording stays editable and the rule does not.
 
 ---
 

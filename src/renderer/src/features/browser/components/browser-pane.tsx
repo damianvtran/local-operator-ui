@@ -111,23 +111,44 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 
 	return (
 		<div
-			// `bg-surface`, the same ground the canvas and run panes take, so the three
-			// occupants of this slot read as one slot with three modes.
-			className={cn("flex h-full flex-col bg-surface")}
+			/*
+			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
+			 * (`canvas/index.tsx`): this slot is a drawer over the work plane, so it
+			 * stands on `elevated` — one rung above the chrome — rather than on the
+			 * conversation's `canvas`, which made this pane's body and the transcript one
+			 * plane. The lane's stop above the slot moves with it (`chat-layout.tsx`),
+			 * because a pane-only change leaves this tone meeting the lane at y32.
+			 */
+			className={cn("flex h-full flex-col bg-elevated")}
 			data-tour-tag="browser-pane"
 		>
 			{/*
-			 * The pane's header: 40px and `bg-sunken`, the size and ground the slot's
-			 * other two panes state for their own bar (`canvas/index.tsx:502`,
-			 * `run-details/run-panel.tsx:583-587`), so a user switching between the
-			 * three does not see the bar move. No rule under it: the strip below is
-			 * already `sunken` with its own `border-control` bottom edge, which is the
-			 * one boundary this region needs (measured in the frames — a second rule
-			 * between two bars of the same ground read as a seam).
+			 * The pane's header: 40px, the slot's own height, so a user switching between
+			 * the occupants does not see the bar move. NO GROUND OF ITS OWN (`bg-sunken`
+			 * until the canvas chrome pass): the bar is transparent so the pane reads as
+			 * one surface, and the strip below keeps its own `border-control` bottom edge
+			 * as the one boundary this region needs (measured in the frames — a second
+			 * rule between two bars of the same ground read as a seam).
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
+					/*
+					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
+					 * Electron draws the caption buttons into the client area's top-right 40px,
+					 * and a pane's toolbar is the row that reaches the window's right edge while
+					 * that pane is open - so its trailing control has to end before them.
+					 *
+					 * PADDING here where the chat header uses a spacer, and the difference is the
+					 * row rather than the rule: this row is a single `justify-between` line whose
+					 * last child IS the control that must clear the buttons, so reserving the
+					 * width at the end is the same thing as moving it left. The header cannot use
+					 * padding because its action cluster is `ml-auto` inside a row that can wrap,
+					 * and padding there would spend the buttons' width on the wrapped line too.
+					 * `max(0.5rem, ...)` keeps the row's own 8px at rest, which is where
+					 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch).
+					 */
+					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]",
 				)}
 				data-tour-tag="browser-pane-header"
 			>

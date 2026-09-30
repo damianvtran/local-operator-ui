@@ -36,16 +36,21 @@ export const shouldReinitialiseComposer = (
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+// The chip objects this module writes back when a refusal hands a payload over
+// are minted here rather than carried from the send, exactly as the composer's
+// own restore writes them (`message-input.tsx`'s `addAttachment(conversationId,
+// { id: uuidv4(), path })`): only the PATHS are the payload - the store records
+// paths and the guard compares paths - so an id is an identity for the row, not
+// part of what was sent.
 // The one filename rule, rather than a second copy of it: the sentence this
 // module builds names a file, and every other surface that names one goes
 // through here. A RELATIVE specifier across the same boundary, because the
 // `@features` alias is a tsconfig path that some of the suites bundling this
 // module by hand do not declare - and a unit of the renderer should not become
 // unbundleable by a test just because it needed a filename.
-import { getFileName } from "../../features/chat/utils/get-file-name";
-import { isStoreWriteRefusal } from "../store/canonical-sessions-store";
 import {
 	type Attachment,
+	type Reply,
 	useConversationInputStore,
 } from "../store/conversation-input-store";
 
@@ -63,10 +68,119 @@ import {
  * the composer offers "Restore message" from it, and a resend replays the
  * same request id, so nothing can duplicate on the owner.
  */
-export const SEND_HELD = "held";
+/*
+ * `undefined` is "no send happened" (a slash command, a gate answer) and a
+ * boolean is what the composer's own Send answers: `false` when the payload was
+ * NOT accepted, `true` when it settled. The third member this union used to carry
+ * is gone with the held claim: a failure is always the payload coming back to the
+ * composer, which the STORE does now, so the hook has nothing left to distinguish.
+ */
 
-/** What a submit reported back to the composer. See `SEND_HELD`. */
-export type SendOutcome = undefined | boolean | typeof SEND_HELD;
+/**
+ * An accepted send that went OFF THE RECORD rather than into the conversation.
+ *
+ * The aside destination (`/btw`, and a composer send while the panel is
+ * attached) is the one accepted outcome whose text must neither be restored on
+ * failure nor written to the per-conversation history log.
+ *
+ * NOT RECORDED, because the aside's whole promise is that it leaves no trace:
+ * `submittedMessages` is persisted to `localStorage`
+ * (`conversation-input-store.ts`) and loaded back by Up-arrow as though the
+ * question had been sent to the thread, which is exactly what
+ * `aside-store.ts`'s own header refuses for anything durable ("a store that
+ * wrote to `localStorage` would be the one place an off-record exchange outlived
+ * its session"). The `/btw <question>` door never touched that log either, so
+ * which door the user came through must not decide whether the question outlives
+ * the app.
+ *
+ * NOT RESTORED on failure, and that is a decision rather than an omission. Its
+ * difference from `false`: a `false` outcome means nothing reached the owner, so
+ * the box is where the text belongs. Here the ask WAS registered — the panel is
+ * painting the question and its stream entry exists — so the failure is
+ * unknowable to this composer, and the refusal is stated on the
+ * panel that owns the exchange, with the question still painted above it. A
+ * restore writes only into an EMPTY box (`restoreSubmittedText`), so whether the
+ * text came back would depend on whether the user had started typing again — a
+ * race with no visible rule, and one that would silently lose the half of it the
+ * user cared about.
+ *
+ * WHAT IT DOES DO is retire the BOX: the text leaves at the PRESS, not at the
+ * answer, which is what keeps the follow-up that replaced it out of the question
+ * already asked.
+ *
+ * AND IT CARRIES THE ASK'S OWN ANSWER, which is the one thing a string could not
+ * say. The box retiring at the press is the whole point (review round 1, F1), so
+ * this outcome is composed before the POST has answered and cannot know whether
+ * the ask will be answered or refused — while the composer's PAYLOAD (the staged
+ * reply chips and the credential map) must be retired on success and KEPT on
+ * failure, exactly as a refused send keeps it (review round 2, F6). The ask's
+ * own promise is therefore handed over inside this outcome, and the composer
+ * settles the payload on it rather than on the press.
+ *
+ * NESTED RATHER THAN RETURNED, deliberately: `useMessageInput` AWAITS what
+ * `onSubmit` returns, so returning the ask's promise would hold the box's clear
+ * and the composer's `admitting` state for the whole POST — the defect F1 names.
+ * A plain object settles the await in the press's own microtask, and the promise
+ * inside it is read afterwards, when it has something to say.
+ */
+export type OffRecordAsk = {
+	/** The ask itself: resolved when it is answered, rejected when it is refused. */
+	offRecord: Promise<unknown>;
+};
+
+/** What a submit reported back to the composer. See `OffRecordAsk`. */
+export type SendOutcome = undefined | boolean | OffRecordAsk;
+
+/**
+ * Whether an accepted submit went off the record, and which ask it was.
+ *
+ * A guard rather than a comparison, because the outcome is an object now: the
+ * four failures this tree has already been bitten by are all comparisons against
+ * a value that changed shape (`recordsSubmittedMessage` treating an object as
+ * "an ordinary accepted send" would write an off-record question to the
+ * persisted log — the F2 defect, back through a different door).
+ */
+export const isOffRecordAsk = (outcome: SendOutcome): outcome is OffRecordAsk =>
+	typeof outcome === "object" && outcome !== null;
+
+/**
+ * Settle the composer's payload on an off-record ask's own answer.
+ *
+ * AN ASK THAT IS ANSWERED CONSUMED WHAT IT CARRIED, and a REFUSED one did not
+ * (review round 2, F6). The staged reply chips and the credential map are retired
+ * by an accepted send because the text went out with them; an aside ask that the
+ * owner refused put nothing anywhere — the panel keeps the question and states
+ * the refusal under it — so the refusal rule applies instead and the payload
+ * stays, exactly as it does after a `false` outcome. `retire` is the composer's
+ * own retirement (`message-input.tsx`), so this module owns the decision and the
+ * composer owns what the decision does.
+ *
+ * Exported and pure so the rule is assertable, which is the whole reason it is a
+ * function at all: the call site is a React component a node test cannot mount,
+ * and the failure arm is the one that has to be pinned (the success arm is what
+ * the press did before this change, so only a test can tell the two apart).
+ */
+export function settleOffRecordPayload(
+	outcome: OffRecordAsk,
+	retire: () => void,
+): void {
+	void outcome.offRecord.then(retire, () => {});
+}
+
+/**
+ * Whether an accepted submit is written to the per-conversation history log.
+ *
+ * Exported and pure so the off-record rule is pinned by a test rather than
+ * argued from its call site — the shape `clearSubmittedText` below uses for the
+ * text transitions, and for the same reason (a rule stated in one place and
+ * bypassed in another is what review UX-1's U2 was).
+ *
+ * The two failure answers are not recorded either, and for their own documented
+ * reasons: `false` put the text back in the box, so the log would hold a message
+ * that was never sent. The off-record ask is not recorded either, which is the
+ */
+export const recordsSubmittedMessage = (outcome: SendOutcome): boolean =>
+	outcome !== false && !isOffRecordAsk(outcome);
 
 /**
  * Which text a composer transition may write over what the user has typed.
@@ -84,272 +198,160 @@ export const clearSubmittedText = (
 	submitted: string,
 ): string => (current === submitted ? "" : current);
 
-/** Put a refused send's text back, but only into an EMPTY composer. */
-export const restoreSubmittedText = (
-	current: string,
+/**
+ * WHETHER A SEND'S SETTLE MAY RETIRE THE PERSISTED DRAFT (QA round 1, Q-2).
+ *
+ * The settle runs seconds after the echo, and every write since - keystrokes,
+ * a landing transcript - lives in the SAME persisted register (`handleChange`
+ * pushes each one). The unconditional clear wiped that newer copy while the
+ * box kept it on screen, and the next landing then appended against the
+ * emptied register and REPLACED the visible text ("send -> dictate -> dictate",
+ * measured in 3 of 4 QA runs). A settle that finds the register already empty,
+ * or still holding exactly the payload it sent, retires it; anything else is
+ * the user's and not this send's to clear.
+ *
+ * Pure and exported so the rule is asserted at node level (the shape
+ * `shouldReinitialiseComposer` takes in the same file).
+ */
+export const retireDraftApplies = (
+	persisted: string,
 	submitted: string,
-): string => (current === "" ? submitted : current);
+): boolean => persisted === "" || persisted === submitted;
 
 /**
- * Put a refused send's ATTACHMENTS back, on the same rule as its text.
+ * The boundary between a draft and a transcript that lands on it (design round
+ * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
+ * on the exact landing path this change re-publishes, and the joined word
+ * shipped as the sent message; the baseline records show it carried, which is
+ * why it is fixed HERE rather than deferred - this PR is the path's owner now.
  *
- * The chip row a restored draft shows and the payload its next Send carries are
- * the same list, so an attachment the restored draft does not re-adopt is a file
- * the user believes they are sending and are not - the silent partial send of
- * round 7's R17. Restoring the PATHS is enough for that payload to come back
- * whole: the send re-encodes images from them (`encodeImageAttachments` in
- * `chat-page.tsx`).
- *
- * The rule is `restoreSubmittedText`'s, and it is the same rule for the same
- * reason: only into an EMPTY slot. A composer that already holds chips is
- * holding files the user just picked, and overwriting those is loss - on the
- * named-session arm that is exactly the state (`conversationId` never changes,
- * so the chips were never cleared and there is nothing to restore). Empty answer
- * means "adopt nothing", never "clear what is there".
- *
- * Exported and pure so the composer's own adoption can be pinned by a test
- * rather than argued from its call site, exactly as the two transitions above
- * are (`clearSubmittedText`'s own note).
+ * One space is added when the two sides would otherwise touch: the draft is
+ * non-empty and does not end in whitespace, and the transcript does not begin
+ * with it. Nothing changes when either side already had a boundary, so a draft
+ * ending in a space and a transcript starting with one both join exactly as
+ * before.
  */
-export const restoreSubmittedAttachments = (
-	current: readonly Attachment[],
-	submitted: readonly string[] | undefined,
-): readonly string[] =>
-	current.length === 0 && submitted ? submitted : EMPTY_PATHS;
-
-/**
- * One instance, so the rule's negative answer is a stable value rather than a
- * fresh array on every render - the composer adopts on a render-synchronous
- * effect and an identity that changes per call is a re-run waiting to happen.
- */
-const EMPTY_PATHS: readonly string[] = [];
-
-/** The half of a refused payload a composer's own content kept out of the box. */
-export type RefusedPayloadHalf = "text" | "files";
-
-/** What one adoption of a refused payload does, and what it could not do. */
-export type RefusedPayloadAdoption = {
-	/** What the box holds once this adoption has run. */
-	text: string;
-	/** The chip paths to write to the composer's own row; empty when it took none. */
-	paths: readonly string[];
-	/**
-	 * The owed files the draft is NOT carrying once this adoption has run.
-	 *
-	 * Owed paths that this adoption did not write AND that the composer's row does
-	 * not already hold. Empty does not mean "this call restored every file" - see
-	 * the decision below, where the named-session arm holds the file already - it
-	 * means "the draft carries every file the refusal owed", which is the only
-	 * question the sentence about them is allowed to answer.
-	 */
-	missingFiles: readonly string[];
-	/** The owed half this composer's own content kept out, or null when none was. */
-	withheld: RefusedPayloadHalf | null;
+export const joinTranscript = (draft: string, text: string): string => {
+	if (!draft) return text;
+	if (/\s$/.test(draft) || /^\s/.test(text)) return draft + text;
+	return `${draft} ${text}`;
 };
 
-/**
- * ONE decision for BOTH halves of a refused payload, so they cannot part in
- * silence.
+/*
+ * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
  *
- * The store answers "does this refusal owe the composer a payload" once
- * (`owesRefusedPayload`), and every field of that payload is written in one
- * pre-request update - so the text and the attachments arrive together and are
- * ONE thing. The composer used to undo that at its own call site: it gated the
- * chip write on the TEXT rule's outcome, so on the arm where the two rules
- * disagree it dropped the user's file with nothing said, and a later edit to
- * `restoreSubmittedText`'s empty-slot rule would silently have changed which
- * refusals restore files (code review round 8, MINOR-2). Both halves are
- * therefore decided here, by one call, from one payload.
- *
- * The pair is NOT adopted all-or-nothing - each half goes in through its own
- * empty-slot rule above, and a half whose slot already holds the user's own
- * content is left out, because overwriting that is loss. What changes is that
- * the composer is TOLD when the halves disagree: `withheld` names the owed half
- * the composer's own content kept out, and the composer says so (round 8's
- * MINOR-2 was precisely "a restored draft showing one half of the refused
- * payload without the other, and nothing on screen saying which").
- *
- * A "half" is owed only when the payload really carried it: an attachment-only
- * refusal owes no text, and a text-only refusal owes no files. That is why an
- * empty list is not a withheld half - there would be nothing to say.
- *
- * A HALF IS HELD ONLY WHEN THE DRAFT IS NOT CARRYING IT, which is not the same
- * question as "did this call write it" (UX round 5's U17, QA round 4's Q8). On a
- * NAMED session the composer is never remounted and its
- * chip row is never cleared, so the row already holds the very file the refused
- * send carried: the empty-slot rule above adopts nothing, and the first version
- * of this decision read that as "the file was withheld", printing a sentence
- * that told the user to attach a file that was on screen one line below it and
- * already in the next payload (`images: 1` on the wire). The rule the sentence
- * needs is about the DRAFT, not about this function's write, so the owed paths
- * are compared against what the row holds afterwards.
+ * Two of these are new copy (the `noProvider` line is main's, folded in
+ * unchanged) and one is deleted, and the deletion is the point: `Waiting for the agent` was the running-turn sentence, and it was the app
+ * narrating a fact the transcript's own working line states three inches above -
+ * while saying nothing about the two things a reader actually needs there, that
+ * typing steers the running turn and that Esc stops it. §G3 replaces it with the
+ * sentence that teaches both, and the affordance line in `idle` does the same job
+ * for the two grammars the box accepts (`@` and `/`), which nothing on screen
+ * mentioned before.
  */
-export const adoptRefusedPayload = (
-	box: string,
-	/**
-	 * The composer's own chip row, or `null` when it has none to write to (a
-	 * composer with no conversation reads no attachments at all).
-	 *
-	 * The distinction is load-bearing rather than tidiness: with no row, a
-	 * returned path is not adopted anywhere, and the files half counts as HELD -
-	 * a sentence claiming the file came back would be false, and saying nothing
-	 * would leave a restored text with no mention of the file it arrived with.
-	 */
-	chips: readonly Attachment[] | null,
-	refusal: {
-		text: string | undefined;
-		attachments: readonly string[] | undefined;
-	},
-): RefusedPayloadAdoption => {
-	const owedText = refusal.text ?? "";
-	const text = restoreSubmittedText(box, owedText);
-	const paths =
-		chips === null
-			? EMPTY_PATHS
-			: restoreSubmittedAttachments(chips, refusal.attachments);
-	const owedFiles = (refusal.attachments?.length ?? 0) > 0;
-	const textOwed = owedText !== "";
-	// What the draft carries ONCE THIS ADOPTION HAS RUN: what it wrote, plus what
-	// the row already held - the named-session arm above, where the chip the
-	// refusal names is the chip the composer never lost.
-	const carried = new Set([
-		...(chips ?? []).map((chip) => chip.path),
-		...paths,
-	]);
-	const missingFiles = (refusal.attachments ?? EMPTY_PATHS).filter(
-		(path) => !carried.has(path),
-	);
-	// Held, not merely unchanged: the half was owed and the adoption took it
-	// nowhere, which happens exactly when the slot held the user's own content -
-	// or, for the files, when this composer has no slot to offer at all, or when
-	// the slot had to keep the user's own chips out of the way of the owed one.
-	const textHeld = textOwed && text === box;
-	const filesHeld = owedFiles && missingFiles.length > 0;
+export const COMPOSER_PLACEHOLDER = {
+	unavailable: "This conversation is gone",
+	busy: "Agent is busy",
+	answer: "Type your own answer…",
 	/*
-	 * Only a SPLIT is news. Both halves owed and exactly one held back is the
-	 * state a user can misread as "the refused message came back" while it came
-	 * back in part; a half held on its own is the ordinary empty-slot rule doing
-	 * its job, and one half withheld beside another that was never owed is not a
-	 * pair at all.
+	 * A SECRET ASK'S OWN SENTENCE, and it is not `answer`'s: the ordinary
+	 * answer arm invites typing into this box, which is exactly what a secret
+	 * question refuses (`message-input.tsx`'s `secretAnswer` term). So this one
+	 * points at the dock's masked field instead — the only surface the value
+	 * may pass through — and it is read BEFORE `inputDisabled`'s, because "Agent
+	 * is busy" would be false about the state: the agent is waiting, not busy.
 	 */
-	const withheld =
-		textOwed && owedFiles && textHeld !== filesHeld
-			? textHeld
-				? "text"
-				: "files"
-			: null;
-	return { text, paths, missingFiles, withheld };
-};
-
-/**
- * The sentence for a split adoption, or null when there was nothing to say.
- *
- * It names the half the user is NOT getting back and the half they are, and
- * names the files by the same helper every other surface uses - "the file came
- * back" is only checkable against a name. Past tense on purpose: the sentence
- * records what the adoption DID, so removing the restored chip afterwards does
- * not turn it into a lie.
- *
- * `owed` and `missing` are both needed because the two arms name different
- * lists: the text arm names the files that came BACK (every owed one), and the
- * files arm names the ones the draft is not carrying. Naming the owed list in
- * the files arm told the user to re-attach a file that was already in the row
- * and in the payload (round 4, Q8/U17) - the same lie, one sentence over.
- *
- * "No free slot" was the first version's reason, and it is gone (round 4, D14):
- * it was the region's only machine noun, it described the row's internal shape
- * rather than the user's situation, and the helper's other arm already says the
- * ordinary thing in ordinary words. The files arm now names the reason the app
- * does teach: the composer is holding files the user picked.
- */
-export const refusedSplitNotice = (
-	withheld: RefusedPayloadHalf | null,
-	owed: readonly string[] | undefined,
-	missing: readonly string[] | undefined,
-): string | null => {
-	if (withheld === null) return null;
-	// The two arms name different lists: the text arm names the files that came
-	// BACK (every owed one), and the files arm names the ones the draft is not
-	// carrying. `?? owed` so a caller that passes only the owed list still gets a
-	// sentence rather than a trailing blank.
-	const named = withheld === "text" ? owed : (missing ?? owed);
-	const names = (named ?? []).map(getFileName);
-	const one = names.length === 1;
-	const list = names.join(", ");
-	if (withheld === "text")
-		return `The ${one ? "file" : "files"} ${list} from your refused message ${one ? "is" : "are"} attached again; its text was left out because the box already holds text you typed.`;
-	return `The text of your refused message was restored, but not its ${one ? "file" : "files"} ${list} — the composer already holds files you picked, so attach ${one ? "it" : "them"} again if you still need ${one ? "it" : "them"}.`;
-};
-
-/**
- * The composer's restore control, as ONE string with two consumers.
- *
- * The held claim's sentence NAMES this control ("Choose Restore message ..."),
- * which is what makes the store sentence's own "send it again" performable while
- * the payload is out of the box (UX round 1, U1) — so the words exist here rather
- * than at the button, and the button interpolates the same constant. A second copy
- * at either site is how the sentence and the control come to name different
- * things. Exported from this module rather than from the composer so the suites
- * that bundle this module by hand (and not the composer's own tree) can pin the
- * pair.
- */
-export const RESTORE_LABEL = "Restore message";
-
-/**
- * The known fact a STORE refusal licenses, in the register the claim keeps it in.
- *
- * A store that could not write KNOWS the request was not admitted (`store_busy`
- * aside — contention is retryable), so "nothing was saved" is a fact and not a
- * guess, and the copy painted in the transcript is this app's own rather than the
- * agent's. The other register — "whether it reached the agent is not knowable" —
- * is written for a lost response and is FALSE here (UX round 1, U4).
- */
-export const STORE_CLAIM_KNOWN_FACT =
-	"Nothing was saved, and the copy above is this app's own rather than the agent's.";
-
-/**
- * What a held claim says, decided by the CLAIM's own verdict.
- *
- * @param heldClaimCode - the code of the failure that LEFT this payload held
- *   (`ChatDraft.heldClaimCode`), never the code of the refusal that happens to be
- *   on screen. The two are different the moment the operator follows the app's
- *   own advice: `Restore message`, drop the file, Enter, and the unchanged-payload
- *   guard is what answers — and that refusal's code (`UNCONFIRMED_SEND_CODE`) is
- *   not a store write refusal, so reading the live code here silently reverted the
- *   claim to the lost-response register one screen after the app said "Nothing was
- *   saved", taking the disk off the screen with it (UX round 2, U10).
- * @param copyOnScreen - whether a copy of the held payload is painted in the
- *   transcript above (`heldCopyOnScreen`). The shared sentence POINTS at that copy,
- *   so the clause is dropped rather than asserted when the caller cannot answer.
- *   It has no effect on the store register, which does not point at anything.
- */
-export const heldClaimCopy = (
-	heldClaimCode: string | undefined,
-	copyOnScreen: boolean,
-): string => {
+	secretAnswer: "Answer the secret request above",
 	/*
-	 * THE REMEDY LEADS, AND IT IS A COMPLETE SENTENCE OF ITS OWN.
-	 *
-	 * Both observers of the narrow-window defect asked for this and for the same
-	 * reason: the claim is the only prose on this screen that says what to DO, so
-	 * the clause that does it has to be the first thing read. It was last, and at
-	 * the app's own minimum window the backend's own sentence then ate the whole
-	 * capped window — the remedy clause was the part cut off, and what remained
-	 * ended on a full stop, so nothing read as truncated either (QA round 1's Q-1,
-	 * design round 2's D5, agent review round 2's M1, UX round 2's U11). The line
-	 * is now pinned outside the cap as well (see the composer's own note); the
-	 * order is what makes it survive if a later edit puts it back under one.
-	 *
-	 * The fact's own wording is deliberate and reviewed (design round 2, D2): the
-	 * retention reassurance stays "this app's own rather than the agent's", because
-	 * whether the copy above is the operator's word or the agent's is the question
-	 * the transcript echo raises.
+	 * The exit is named beside the verb for the reason the `@` list's own line
+	 * names its ("Nothing to insert · Esc closes").
 	 */
-	if (isStoreWriteRefusal(heldClaimCode))
-		return `Choose ${RESTORE_LABEL} to put it back in the composer. ${STORE_CLAIM_KNOWN_FACT}`;
-	return copyOnScreen
-		? "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
-		: "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.";
+	aside: "Ask off the record — Esc closes the aside",
+	sending: "Sending your message",
+	/**
+	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
+	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
+	 * ladder, "Esc during a recording cancels the recording and never the turn" -
+	 * so the mid-turn sentence below ("Esc stops") would be a promise about the
+	 * wrong thing. Read before every other reading, because none of them can be
+	 * true at once with a live take the user started: the recording owns the
+	 * press until it ends.
+	 */
+	recording: "Recording. Enter confirms · Esc cancels",
+	waiting: "Steer the agent. Enter sends now · Esc stops",
+	/**
+	 * Nothing connected: the invitation would be a lie, and this is the one
+	 * sentence that names the action instead (design audit section 6).
+	 */
+	noProvider: "Connect a provider to start chatting",
+	idle: "Ask anything. @ adds files, / runs commands",
+} as const;
+
+/**
+ * The one sentence the box's placeholder slot carries, first match wins.
+ *
+ * The READ of the order: a conversation this machine does not have outranks every
+ * other reading (`isInputDisabled` is true for one, so the gone-state sentence has
+ * to be asked first or a reader of a missing conversation is told `Agent is busy`
+ * about a turn nobody is running - design round 2, D3); then a gate that takes a
+ * SECRET, whose sentence names the dock's field because the box refuses input for
+ * it and pointing is all this slot can usefully do; then the box's own refusal;
+ * then a gate that is waiting to be answered; then an attached aside; then THIS
+ * pane's send; then the agent; then the invitation.
+ *
+ * THE ASIDE TERM SITS AFTER THE REFUSALS AND AFTER THE GATE, and both sides
+ * of that position are load-bearing. After the refusals, because a box that takes
+ * no keystrokes must not be invited to take one: "Ask off the record" over a
+ * read-only composer is a promise nothing can keep. After `awaitingAnswer`,
+ * because while a question card is unanswered the press does NOT reach the aside
+ * - the gate branch outranks it in `chat-page.tsx`, since a parked gate must
+ * stay answerable from the box that is about to send the aside text (the card's
+ * buttons are the pointer path; the composer's yes/no/ordinal path is the
+ * keyboard one) while the aside keeps its exchange on screen - and the surface
+ * whose whole job is naming the destination cannot name the wrong one.
+ *
+ * AHEAD OF BOTH SEND-STATE SENTENCES, for the same reason: while the panel is
+ * attached the next Enter goes to the aside whatever the conversation is doing,
+ * so the box names where the press goes rather than what an earlier send is
+ * doing - the transcript's working line already says that.
+ */
+export const composerPlaceholder = (state: {
+	/** The conversation is not on this machine. */
+	unavailable: boolean;
+	/** `isLoading && currentJobId` - the box is refused, with its own sentence. */
+	inputDisabled: boolean;
+	/** A pending `ask` gate is waiting for an answer in this pane. */
+	awaitingAnswer: boolean;
+	/**
+	 * A pending `ask` gate that takes a SECRET, whose answer goes in the dock's
+	 * masked field instead of this box (see `message-input.tsx`'s
+	 * `secretAnswer`). Read before `inputDisabled`: see the sentence's own note.
+	 */
+	secretAnswer: boolean;
+	/** The `/btw` aside is attached, so the press asks it rather than the thread. */
+	asideAttached: boolean;
+	/** A send this pane issued has not settled. */
+	sendingUnsettled: boolean;
+	/** A send has been issued and the agent has not painted anything yet. */
+	awaitingReply: boolean;
+	/**
+	 * No model provider is connected. LAST of the readings, because it is the
+	 * only one that is not about this turn: a send in flight, a pending question
+	 * or a refused box are all things the user is doing right now, and telling
+	 * them to connect a provider while the agent is answering above the box
+	 * would be the composer arguing with the transcript.
+	 */
+	noProvider?: boolean;
+}): string => {
+	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
+	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
+	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
+	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
+	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
+	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
+	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
+	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;
+	return COMPOSER_PLACEHOLDER.idle;
 };
 
 /**
@@ -357,6 +359,80 @@ export const heldClaimCopy = (
  *
  * A named function rather than an inline `() => 0` default, so the identity is
  * stable across renders — the hook carries `draftUnredacted` in a `useCallback`
+ * dependency list, and a fresh closure per render would rebuild the keystroke
+ * handler on every keystroke.
+ */
+
+/** One instance, for the reason `EMPTY_PATHS` gives above. */
+const EMPTY_REPLIES: readonly Reply[] = [];
+
+/** One instance, for the same reason. */
+const EMPTY_CHIPS: readonly Attachment[] = [];
+
+/**
+ * The two halves of a draft a composer STAGES beside its own text.
+ *
+ * The box holds the words; this holds what travels WITH them - the files
+ * (`conversation-input-store`'s `attachments`) and the quotes (`replies`). One
+ * payload in three registers, which is what makes it wrong for any of them to
+ * leave the composer on a different trigger: `buildSendPayload` turns the
+ * replies into the payload's prefix and the send encodes images from the file
+ * paths, so what is on screen and what is on the wire are the same list. */
+export type StagedPayload = {
+	replies: readonly Reply[];
+	attachments: readonly Attachment[];
+};
+
+/**
+ * The staged halves a conversation is holding RIGHT NOW.
+ *
+ * Read at submit rather than subscribed to, because the question is "what did
+ * THIS send carry" and the answer has to be frozen at the press: a chip the user
+ * attaches while the request is in flight is their next payload, not this one.
+ *
+ * AND THE SNAPSHOT IS WHAT THE CLEAR USES, which is the other half of that
+ * sentence: `clearStagedPayload` removes exactly the ENTRIES in here - by id,
+ * through the store's own removers - so the chips a press froze are the blast
+ * radius of the clear and a file attached during the flight is outside it. The
+ * two halves cannot disagree, because one answer serves both questions.
+ */
+export const stagedPayloadOf = (conversationId: string): StagedPayload => {
+	const row =
+		useConversationInputStore.getState().inputByConversation[conversationId];
+	return {
+		replies: row?.replies ?? EMPTY_REPLIES,
+		attachments: row?.attachments ?? EMPTY_CHIPS,
+	};
+};
+
+/**
+ * Retire exactly the entries in a snapshot, through the store's own removers.
+ *
+ * RESTORED BY THE FOLD (`origin/main` = `f9d92ac1e`), and it is main's own helper:
+ * the aside's settlement is the one caller that has to clear the staged halves
+ * WITHOUT recording them as in flight, because an off-record ask that is ANSWERED
+ * consumed them and one that is REFUSED keeps them (see `settleOffRecordPayload`).
+ * `inFlight` is a statement about a message on the wire, so the ask's halves cannot
+ * go through it - which is why `clearOnce` (this branch's single store update, for
+ * the sends that are on the wire) and this function both exist rather than one of
+ * them standing in for the other.
+ */
+export const clearStagedPayload = (
+	conversationId: string,
+	staged: StagedPayload,
+): void => {
+	const store = useConversationInputStore.getState();
+	for (const reply of staged.replies)
+		store.removeReply(conversationId, reply.id);
+	for (const attachment of staged.attachments)
+		store.removeAttachment(conversationId, attachment.id);
+};
+
+/**
+ * The disclosure a caller with no capture to report hands over: nothing.
+ *
+ * A named function rather than an inline `() => 0` default, so the identity is
+ * stable across renders - the hook carries `draftUnredacted` in a `useCallback`
  * dependency list, and a fresh closure per render would rebuild the keystroke
  * handler on every keystroke.
  */
@@ -451,6 +527,10 @@ export const useMessageInput = ({
 	);
 	const resetCurrentHistoryIndex = useConversationInputStore(
 		(s) => s.resetCurrentHistoryIndex,
+	);
+	const beginInFlight = useConversationInputStore((s) => s.beginInFlight);
+	const adoptReturnedText = useConversationInputStore(
+		(s) => s.adoptReturnedText,
 	);
 
 	// Hydration state
@@ -575,6 +655,111 @@ export const useMessageInput = ({
 		if (storedDraft && !inputValue) setInputValue(storedDraft);
 	}, [storedDraft, hydrated, conversationId, inputValue]);
 
+	/*
+	 * THE STORE IS THE AUTHOR OF THE BOX'S TEXT, AND THIS IS THE ONLY CHANNEL THAT
+	 * SAYS SO.
+	 *
+	 * Two writers, one value. This hook holds the text being TYPED INTO (its own
+	 * state, which is what makes a keystroke cheap); the row holds the text the app
+	 * owns - what the return path hands back, what the migration moves, what `Clear`
+	 * empties and what the delivery reconciliation clears. Before this, a store
+	 * write reached the box only through `pendingText`, adopted on mount and on
+	 * arrival, so everything else the store did to the text was invisible: Clear
+	 * emptied the row and left the words on screen (they then glued onto the next
+	 * message and went out as one bubble), a late delivery's silent clear emptied
+	 * the row and left the words, and the returned payload of a send that failed
+	 * while this composer was remounted could not correct an already-mounted box.
+	 * All four are the same defect: the store had no way to say "I wrote the box"
+	 * (review round 1, B2/M1/Q-1/U3).
+	 *
+	 * `textRevision` is that sentence, and a counter rather than a value because a
+	 * value cannot carry it: a keystroke writes the same string back, and a masked
+	 * capture deliberately does not write at all.
+	 *
+	 * The MOUNT's first read is not a write: the initialiser above has already
+	 * seeded the box from this same row, and re-setting it would move the caret to
+	 * the end of a draft the user has just started editing. What IS handled on the
+	 * first read is a payload waiting to be adopted (`pendingText`), because the row
+	 * keeps the returned text there rather than in `currentInput` while the merge
+	 * waits for a composer that can take it.
+	 */
+	const pendingReturn = useConversationInputStore((s) =>
+		conversationId
+			? s.inputByConversation[conversationId]?.pendingText
+			: undefined,
+	);
+	/*
+	 * Read as a NUMBER, with the row's own absence of one meaning zero: a row no store
+	 * write has touched yet and a row whose writer has not been written are the same
+	 * thing here, and `undefined` cannot serve as the "not primed" marker below
+	 * without making the FIRST real store write look like the mount read.
+	 */
+	const textRevision = useConversationInputStore((s) =>
+		conversationId
+			? (s.inputByConversation[conversationId]?.textRevision ?? 0)
+			: 0,
+	);
+	const storeText = useConversationInputStore((s) =>
+		conversationId
+			? s.inputByConversation[conversationId]?.currentInput
+			: undefined,
+	);
+	/** `null` until the mount read has been taken: see the effect below. */
+	const seenTextRevision = useRef<number | null>(null);
+	useEffect(() => {
+		if (!hydrated || !conversationId) return;
+		/*
+		 * A composer that has not taken charge of this conversation must not adopt
+		 * another one's payload; `initializedRef` is the same gate the initialiser
+		 * uses.
+		 */
+		if (initializedRef.current !== conversationId) return;
+		const previousRevision = seenTextRevision.current;
+		seenTextRevision.current = textRevision;
+		const first = previousRevision === null;
+		/*
+		 * THE RETURNED MESSAGE COMES HOME FIRST, on the mount read as well as on a
+		 * later one: the row keeps returned text OUT of `currentInput` until a
+		 * composer can take it (`pendingText`), so the initialiser above cannot have
+		 * seeded it and this is the only thing that ever puts it in the box.
+		 */
+		if (pendingReturn !== undefined) {
+			/*
+			 * The masked capture keeps the box: adopting into it would put a returned
+			 * message inside a secret the user is composing. The capture's own write at
+			 * its end is what puts the merged value back.
+			 */
+			if (draftHeld) return;
+			const merged = adoptReturnedText(conversationId);
+			if (merged === null) return;
+			lastPushedRef.current = merged;
+			setInputValue(merged);
+			return;
+		}
+		/*
+		 * Everything ELSE the store wrote is mirrored verbatim - an emptied box above
+		 * all - and only when the revision says the store is the author of the change.
+		 * The mount's own read is not a change: the initialiser has already seeded the
+		 * box from this same row, and re-setting it would move the caret to the end of
+		 * a draft the user has just started editing.
+		 */
+		if (first || textRevision === previousRevision) return;
+		if (draftHeld) return;
+		const boxed = storeText ?? "";
+		if (boxed === inputValue) return;
+		lastPushedRef.current = boxed;
+		setInputValue(boxed);
+	}, [
+		textRevision,
+		storeText,
+		pendingReturn,
+		hydrated,
+		conversationId,
+		draftHeld,
+		inputValue,
+		adoptReturnedText,
+	]);
+
 	// Handle input change: always reset history navigation and update draft
 	const handleChange = useCallback(
 		(value: string) => {
@@ -601,12 +786,117 @@ export const useMessageInput = ({
 	);
 
 	const submittingRef = useRef(false);
+	/*
+	 * THE TRANSCRIPT'S OWN WRITE, AND THE WINDOW IT MUST RESPECT.
+	 *
+	 * A dictation lands in the box from OUTSIDE the keystroke channel, asynchronously,
+	 * and it can land in the one window where the box and the row are both mid-send:
+	 * between the press and the clear that retires the sent text. Two defects live in
+	 * that window, and they are the reason this pair exists rather than a plain write:
+	 *
+	 *   - the clear runs AFTER the transcript's write but computes from a value
+	 *     captured before it, so it either discards the fresh text or resurrects the
+	 *     sent message beside it (`setNewMessage(newMessage + newText)` reads the
+	 *     pre-press closure - both outcomes were reachable);
+	 *   - the transcript is simply lost when the clear lands second.
+	 *
+	 * So a transcript that arrives while `sendClearPendingRef` is set waits in
+	 * `pendingTranscriptRef`, and `clearOnce` - the ONE function that retires a sent
+	 * payload from this box - composes the clear and the transcript into a single
+	 * write. The waiting text is attached to the SEND's clear and to nothing else, so
+	 * it cannot outlive it.
+	 */
+	const pendingTranscriptRef = useRef("");
+	const sendClearPendingRef = useRef(false);
+
+	/**
+	 * Append `text` to the draft through the same writer a keystroke uses, so the
+	 * row and the box move together. Kept separate from `appendTranscriptText`
+	 * because `clearOnce` needs the raw append without the waiting rule.
+	 */
+	const appendToDraft = useCallback(
+		(text: string) => {
+			if (!conversationId || !text) return;
+			if (draftHeld) {
+				// The masked capture owns the box: append to it without touching the row,
+				// exactly as a keystroke inside the capture does (§6). The capture's own
+				// write at its end is what reconciles the merged value.
+				setInputValue((current) => joinTranscript(current, text));
+				return;
+			}
+			handleChange(joinTranscript(getCurrentInput(conversationId), text));
+		},
+		[conversationId, draftHeld, getCurrentInput, handleChange],
+	);
+
+	/**
+	 * The transcription path's writer: a transcript either joins the box now or
+	 * waits for the send's own clear - never both, and never against a stale copy
+	 * of the box (see the refs above for the window and its two defects).
+	 */
+	const appendTranscriptText = useCallback(
+		(text: string) => {
+			if (!text) return;
+			if (sendClearPendingRef.current) {
+				pendingTranscriptRef.current += text;
+				return;
+			}
+			appendToDraft(text);
+		},
+		[appendToDraft],
+	);
+	/*
+	 * A SEND THIS COMPOSER MADE IS STILL UNACKNOWLEDGED, which is a state the
+	 * composer owes the user a sentence about (the placeholder in
+	 * `message-input.tsx`): the box is emptied at the echo, so between the press
+	 * and the settle the composer can be showing an empty field with no statement
+	 * at all about the message that has just left it.
+	 *
+	 * Owned here as well as read from the store, deliberately: this one is a fact
+	 * about THIS composer's press - true from the press, false once the submit
+	 * settles whichever way it settled, and available on the arms where no store
+	 * row ever exists (a slash command, a gate answer, a legacy send) - while the
+	 * row is the half that survives the identity flip and is fed in beside it
+	 * (`chat-page`'s `admitting` is neither: it is a `useState` of the panel the
+	 * flip replaces, which is what review round 2's R2-1 found).
+	 */
+	const [sendInFlight, setSendInFlight] = useState(false);
 	// Admission, not the keypress, retires a draft. A refused send hands its text
 	// back to the box; an UNCONFIRMED one leaves its text with the claim that
 	// carries the retry, so nothing the user typed is lost either way.
 	const handleSubmit = useCallback(async () => {
-		if (!inputValue.trim() || !conversationId || submittingRef.current) return;
+		if (!inputValue.trim() || !conversationId) return;
+		/*
+		 * A SECOND PRESS IS REPORTED, NOT SWALLOWED.
+		 *
+		 * This guard used to `return` and say nothing, so a user who pressed Enter
+		 * again while their last message was still going out got no acknowledgement at
+		 * all - indistinguishable from a dead key, and the one place the composer's own
+		 * "still sending" sentence was supposed to appear (review round 1, U6: the line
+		 * never showed on a second press, because the press never reached the sentence).
+		 *
+		 * The press is therefore handed on like any other, and the PANE's send lock
+		 * answers it: that lock is the single gate on "a send is already out", it is
+		 * where the sentence lives, and its refusal returns `false` - which this
+		 * function reads as "the payload stays in the box", exactly as it does for every
+		 * other refusal. If the lock no longer holds the send (the microtask between the
+		 * pane's own `finally` and this one) the press is admitted as a normal send
+		 * instead, which is why this is a delegation rather than a second path.
+		 *
+		 * `submittingRef` still guards THIS hook's own re-entry, and the send-in-flight
+		 * flag still describes the real send: the second call does not take ownership of
+		 * either.
+		 */
+		const alreadySubmitting = submittingRef.current;
 		submittingRef.current = true;
+		if (!alreadySubmitting) {
+			setSendInFlight(true);
+			// The press opens the window a transcript must respect, and the clear
+			// below (or the refusal arm) closes it. A DELEGATED second press opens
+			// nothing: it owns no clear, and a flag it raised would strand the next
+			// transcript with no writer left to collect it.
+			sendClearPendingRef.current = true;
+		}
 		/*
 		 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
 		 *
@@ -634,27 +924,112 @@ export const useMessageInput = ({
 		 * state (U3). The `clearOnce()` after the await below is the fallback for
 		 * every send that never echoes at all - a slash command, a gate answer, the
 		 * legacy model path - and it is what a harness holding ONE mounted composer
-		 * observes on the buffered path (round 7, F1). Both triggers clear only the
-		 * text this submit is carrying, once per submit.
+		 * observes on the buffered path (round 7, F1). Both triggers clear once per
+		 * submit, and neither of them clears anything but the payload this submit is
+		 * carrying.
 		 *
 		 * The payload is still captured ONCE and threaded through every consumer
 		 * below. Re-reading `inputValue` after a clear yields "", which would
 		 * submit an empty message and make the store's unchanged-payload guard
 		 * compare every retry against "" and refuse it. One value, one meaning.
+		 *
+		 * THE OTHER HALVES OF THAT PAYLOAD MOVE ON THE SAME TRIGGER, which is the
+		 * second half of this rule and the reason `clearOnce` is where both happen.
+		 * The chip row and the staged quotes used to leave only when the send's
+		 * promise SETTLED, while the text left at the echo - so the whole in-flight
+		 * window showed the user's message with its attachment in the transcript AND
+		 * the chip for that attachment in the composer. One file apparently sent
+		 * twice, on a send that appears to have half-happened. Captured here beside
+		 * the text, so all three registers are recognisably ONE payload, and taken
+		 * by the one call above, so no later edit can put them on two clocks (see
+		 * `clearStagedPayload`).
 		 */
 		const submitted = inputValue;
 		/*
+		 * Frozen at the press, like the text: a chip the user attaches while the
+		 * request is in flight belongs to their NEXT message, and a refusal must not
+		 * hand it back as though it had been sent.
+		 */
+		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
+		/*
 		 * One clear per submit, whichever of its two triggers gets there first,
-		 * and only over the text this submit is actually carrying: an echo that
+		 * and only over the payload this submit is actually carrying: an echo that
 		 * lands late - or on a composer that has since been remounted - must not
-		 * clear something the user has typed in the meantime.
+		 * clear something the user has typed or attached in the meantime.
+		 *
+		 * BOTH HALVES LEAVE HERE, in this one call. The text is the box's and the
+		 * chips are the store row's, but they are one payload and they leave on one
+		 * clock - which is the defect this trigger exists for, not two clearers that
+		 * agree today (see `clearStagedPayload`).
 		 */
 		let cleared = false;
-		const clearOnce = () => {
-			if (cleared) return;
+		/*
+		 * Set only for an OFF-RECORD ask, whose staged halves are not the press's to
+		 * take: an answered ask consumed them and a refused one did not (review round
+		 * 2, F6), so they are settled on the ask's own answer below and `clearOnce`
+		 * takes the text alone. Without this the post-await `clearOnce()` - the one
+		 * trigger an ask ever reaches, since it paints no echo - would retire a staged
+		 * reply at the press, and a refusal would leave the user without the quote
+		 * the panel's refusal sentence invites them to send again.
+		 */
+		let stagedSettledByAsk = false;
+		/*
+		 * Declared OUTSIDE the try because the box's own retirement is decided after
+		 * it, from the outcome: see `recordsSubmittedMessage` for the one accepted
+		 * outcome that is deliberately not written to the history log.
+		 */
+		let outcome: SendOutcome;
+		/*
+		 * One clear per submit, whichever of its two triggers gets there first, and
+		 * only over the payload this submit is actually carrying: an echo that lands
+		 * late - or on a composer that has since been remounted - must not clear
+		 * something the user has typed or attached in the meantime.
+		 *
+		 * ONE STORE UPDATE TAKES ALL THREE REGISTERS, which is why the chips and the
+		 * quotes are cleared here beside the text rather than by three separate
+		 * callers that agree today: they are one payload, they leave on one clock,
+		 * and `inFlight` is the record of what left (see `beginInFlight`).
+		 */
+		const clearOnce = (record = false) => {
+			if (cleared && !record) return;
 			cleared = true;
-			if (initializedRef.current !== conversationId) return;
+			/*
+			 * THE TRANSCRIPT'S WAIT ENDS HERE, composed into this one clear.
+			 * The two writes must land as one: the clear decides what of the sent
+			 * text survives (usually nothing), and the transcript was captured
+			 * WHILE that was still undecided. Written separately they can take
+			 * each other's work back; written together, the box ends up holding
+			 * exactly the transcript beside whatever the clear kept.
+			 */
+			const pendingTranscript = pendingTranscriptRef.current;
+			if (pendingTranscript) pendingTranscriptRef.current = "";
+			sendClearPendingRef.current = false;
+			if (initializedRef.current !== conversationId) {
+				// This composer never took charge of the row, so it has nothing to
+				// clear - but the row is still the transcript's home and the next
+				// mount paints from it.
+				if (pendingTranscript) appendToDraft(pendingTranscript);
+				return;
+			}
 			setInputValue((current) => clearSubmittedText(current, submitted));
+			if (conversationId)
+				beginInFlight(
+					conversationId,
+					{
+						text: submitted,
+						attachments: stagedSettledByAsk ? [] : (staged?.attachments ?? []),
+						replies: stagedSettledByAsk ? [] : (staged?.replies ?? []),
+						/*
+						 * A value typed into a MASKED capture never reaches disk (§6):
+						 * the record carries the flag and `partialize` blanks the text,
+						 * so a restart in that window restores the files and the quotes
+						 * without a credential that was never stored.
+						 */
+						volatileText: draftHeld,
+					},
+					record,
+				);
+			if (pendingTranscript) appendToDraft(pendingTranscript);
 		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
@@ -662,44 +1037,105 @@ export const useMessageInput = ({
 		 * it, or a refusal is about to put it back.
 		 */
 		const retireDraft = () => {
+			/*
+			 * ONLY THE COPY THE SEND ACTUALLY RETIRED (QA round 1, Q-2; the rule and
+			 * its reasoning live on `retireDraftApplies`). A register holding
+			 * something newer than this send - typed or dictated since the press -
+			 * is the user's, and clearing it both lost the persisted copy and made
+			 * the next landing REPLACE the box's visible text.
+			 */
+			if (
+				conversationId &&
+				!retireDraftApplies(getCurrentInput(conversationId), submitted)
+			)
+				return;
 			lastPushedRef.current = "";
 			setCurrentInput(conversationId, "");
 			resetCurrentHistoryIndex(conversationId);
 			draftMessageRef.current = "";
 		};
 		try {
-			const outcome = await onSubmit?.(submitted, clearOnce);
+			/*
+			 * The echo trigger RECORDS and the post-await fallback does not, and the
+			 * difference is the whole of the quit-mid-flight fix: the payload is held
+			 * as in flight only while its outcome is unknown. A `clearOnce()` after
+			 * the await runs for a send that has already settled - a slash command, a
+			 * gate answer, an accepted message with no echo - and recording there
+			 * would leave a durable "unconfirmed" record over a message the owner
+			 * took, which a restart would then hand back to the user as unsent.
+			 */
+			outcome = await onSubmit?.(submitted, () => clearOnce(true));
 			if (outcome === false) {
-				// A refusal is the ONE outcome that returns the text to the user's
-				// editing: nothing was admitted, so the composer is where it belongs -
-				// but only into an EMPTY box, since the user may have typed the next
-				// message while this one was in flight and that text is theirs.
-				if (initializedRef.current === conversationId)
-					setInputValue((current) => restoreSubmittedText(current, submitted));
-				return;
-			}
-			if (outcome === SEND_HELD) {
 				/*
-				 * The message may be on the owner and its echo is still painted, so the
-				 * text must not come back to the box - nor be adopted into it on a later
-				 * mount, which is what retiring the persisted draft here prevents. The
-				 * retry lives on the store's claim (`Restore message`), whose
-				 * resend replays the same request id.
+				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK, and since
+				 * S4 the store's work is the ROW's: a post-paint failure keeps the
+				 * message in the conversation, with the class's sentence and remedies on
+				 * it, and deliberately does NOT hand the payload back to the composer.
+				 *
+				 * So: no local restore, no `retireDraft` (it would wipe a box the user
+				 * may have typed into since - the box was already emptied at the press,
+				 * which is where the text left for the transcript), and no
+				 * `addSubmittedMessage`. A restore performed HERE would only work while
+				 * this component stays mounted, and on the New-chat path the identity
+				 * flip unmounts it mid-send (UX round 3, U14) - which is also why a
+				 * second home was the wrong shape for this fact to begin with.
+				 *
+				 * AND THE TRANSCRIPT'S WINDOW ENDS HERE TOO: this refusal keeps the
+				 * text in the box and runs no clear, so a transcript that arrived
+				 * meanwhile would otherwise wait for a writer that never comes.
 				 */
-				retireDraft();
+				sendClearPendingRef.current = false;
+				const strandedTranscript = pendingTranscriptRef.current;
+				if (strandedTranscript) {
+					pendingTranscriptRef.current = "";
+					appendToDraft(strandedTranscript);
+				}
 				return;
 			}
 		} finally {
-			submittingRef.current = false;
+			/*
+			 * Only the call that owns the send clears its state: a delegated second
+			 * press settles the moment the pane refuses it, and clearing here would take
+			 * the wait down while the first send is still going out - which is the fact
+			 * the sentence it just raised is about.
+			 */
+			if (!alreadySubmitting) {
+				submittingRef.current = false;
+				/*
+				 * The wait ends with the submit, whichever way it ended. Deliberately not
+				 * with the echo: between the echo and the settle the message IS on screen
+				 * and the send is still unconfirmed, which is the window the composer's
+				 * sentence is about.
+				 */
+				setSendInFlight(false);
+			}
 		}
 
 		/*
 		 * Nothing echoed and nothing is being held: an accepted send with no echo at
 		 * all - a slash command, a gate answer, the legacy model path - still has to
 		 * retire the box. When the echo did clear it, this is a no-op.
+		 *
+		 * An off-record ask retires its TEXT here like any accepted send (the box is
+		 * handed back at the press, F1) and its staged halves on the ask's answer,
+		 * by the same identity rule the echo's clear uses - so a quote staged while
+		 * the aside was answering is the user's next payload, not this ask's.
 		 */
+		if (isOffRecordAsk(outcome)) {
+			stagedSettledByAsk = true;
+			if (conversationId && staged)
+				settleOffRecordPayload(outcome, () =>
+					clearStagedPayload(conversationId, staged),
+				);
+		}
 		clearOnce();
-		addSubmittedMessage(conversationId, submitted);
+		/*
+		 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
+		 * ask retires the box exactly like any other accepted send, but leaves no
+		 * entry for Up-arrow to recall and nothing on disk. See `OffRecordAsk`.
+		 */
+		if (recordsSubmittedMessage(outcome))
+			addSubmittedMessage(conversationId, submitted);
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		retireDraft();
@@ -717,6 +1153,16 @@ export const useMessageInput = ({
 		setCurrentInput,
 		resetCurrentHistoryIndex,
 		scrollToBottom,
+		beginInFlight,
+		draftHeld,
+		/*
+		 * The transcript's flush rides this submit's clear (see `clearOnce`),
+		 * and `retireDraft` reads this register to decide what its settle may
+		 * retire (QA round 1, Q-2) - so both are dependencies of this callback
+		 * in the literal sense the lint gate enforces.
+		 */
+		appendToDraft,
+		getCurrentInput,
 	]);
 
 	// Cursor position helpers
@@ -812,5 +1258,19 @@ export const useMessageInput = ({
 		handleKeyDown,
 		handleSubmit,
 		textareaRef,
+		/*
+		 * The transcription path's writer, and the ONLY way a transcript reaches
+		 * this box: it either joins the draft now or waits for the send's own
+		 * clear, so it can never race the clear that is retiring the sent text
+		 * (see the refs at the top of this hook).
+		 */
+		appendTranscriptText,
+		/*
+		 * A send this composer made has not settled yet. Exposed because it is
+		 * the composer's own press, and the placeholder that states it is the
+		 * composer's to render (see the state's declaration above for why it is
+		 * not read from the transcript).
+		 */
+		sendInFlight,
 	};
 };

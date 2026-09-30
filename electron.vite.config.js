@@ -87,6 +87,16 @@ export default defineConfig({
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),
 			companion: resolve(__dirname, "src/renderer/companion.html"),
+			/*
+			 * The mini view's own document (quick-send design §D.1). It is listed in
+			 * BOTH places for the reason the console capture's block below records:
+			 * this list serves the document in development (`pnpm dev` is a
+			 * `normal` launch, so the hotkey must work there — §C.4), and
+			 * `rollupOptions.input` is what the BUILD emits. Declaring only one
+			 * shipped a 404 at the first use; the two lists are asserted to agree
+			 * for this document by a case in `scripts/console-host.test.mjs`.
+			 */
+			mini: resolve(__dirname, "src/renderer/mini.html"),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -119,6 +129,15 @@ export default defineConfig({
 						__dirname,
 						"src/renderer/console-capture.html",
 					),
+					/*
+					 * The mini view's document (quick-send design §D.1), never a route inside
+					 * the app's shell: a hotkey-summoned window must mount the composer and
+					 * nothing that boots the session store, the feed subscription or the
+					 * sidebar, so this is a fourth document for the console capture's own
+					 * reason. It is also in the renderer's `input` above, so the dev server
+					 * serves it — both halves are load-bearing and a test pins them.
+					 */
+					mini: resolve(__dirname, "src/renderer/mini.html"),
 				},
 			},
 		},

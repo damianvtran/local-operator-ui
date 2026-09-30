@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+/** The regexes this file's fixture resolvers use, hoisted (see the same note in the paged suite). */
+const DESKTOP_API_IMPORT_RE = /@shared\/api\/local-operator\/desktop-api/;
+const DESKTOP_HOOKS_IMPORT_RE = /@shared\/api\/local-operator\/desktop-hooks/;
+const QUERY_CLIENT_IMPORT_RE = /@shared\/api\/query-client/;
+const REACT_MODULE_RE = /^react$/;
+const USE_DESKTOP_FEED_IMPORT_RE = /shared\/hooks\/use-desktop-feed\.ts$/;
+const ANY_MODULE_RE = /.*/;
+
 import { build } from "esbuild";
+const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
 
 /*
  * The `session_status` frame's arrival path, and the guard that stops the two
@@ -100,10 +109,10 @@ const storeBundle = await build({
 		{
 			name: "session-status-fixture",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_API_IMPORT_RE }, () => ({
+					path: "transport",
+					namespace: "session-status-fixture",
+				}));
 				/*
 				 * The hook's other two dependencies, and ONLY where the hook asks for
 				 * them: the filter keys off the importer, because `react` is also what
@@ -113,28 +122,41 @@ const storeBundle = await build({
 				 * `useEffect` records its effect instead of running it, so the test owns
 				 * the commit - the same seam `completion-view-ack.test.mjs` uses.
 				 */
-				builder.onResolve({ filter: /^react$/ }, (args) =>
-					/shared\/hooks\/use-desktop-feed\.ts$/.test(args.importer)
+				builder.onResolve({ filter: REACT_MODULE_RE }, (args) =>
+					USE_DESKTOP_FEED_IMPORT_RE.test(args.importer)
 						? { path: "react-hooks", namespace: "session-status-fixture" }
 						: undefined,
 				);
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
-					() => ({ path: "capabilities", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_HOOKS_IMPORT_RE }, () => ({
+					path: "capabilities",
+					namespace: "session-status-fixture",
+				}));
+				builder.onResolve({ filter: QUERY_CLIENT_IMPORT_RE }, () => ({
+					path: "query-client",
+					namespace: "session-status-fixture",
+				}));
 				// Only `desktopResult` is faked - it is the network. The error
 				// classes are re-exported from the real module, because the store's
 				// error-copy rules depend on their actual behaviour.
 				builder.onLoad(
-					{ filter: /.*/, namespace: "session-status-fixture" },
+					{ filter: ANY_MODULE_RE, namespace: "session-status-fixture" },
 					(args) => ({
 						contents: {
 							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 							)}
 export const desktopResult = request => globalThis.__statusRequest(request);`,
+							/*
+							 * `desktopKeys` and the query cache join this stub because the store now
+							 * reads the CATALOGUE capability out of that cache to size an unnamed
+							 * read (QA's Q-1). `null` is the fail-closed answer, so this suite keeps
+							 * the request it has always made and its assertions stay about the feed.
+							 */
 							capabilities: `export const desktopFeatureEnabled = () => true;
+export const desktopKeys = { capabilities: ["desktop", "capabilities"] };
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
+							"query-client":
+								"export const queryClient = { getQueryData: () => null };",
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
 export function useRef(initial) { return { current: initial }; }
 export function useState(initial) { let current = typeof initial === "function" ? initial() : initial; return [current, (value) => { current = typeof value === "function" ? value(current) : value; globalThis.__stateSets.push(current); }]; }`,
@@ -146,17 +168,29 @@ export function useState(initial) { let current = typeof initial === "function" 
 				// The store's contract with the transcript hook is three no-op calls,
 				// and this file is not testing the echo. Same stub the neighbouring
 				// store tests use.
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-canonical-session/ },
-					() => ({ path: "echo", namespace: "echo-fixture" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => undefined;
-export const retractPendingUser = () => undefined;
-export const discardPendingEchoes = () => undefined;`,
-					loader: "js",
-					resolveDir: process.cwd(),
+				builder.onResolve({ filter: ECHO_HOOK_IMPORT_RE }, () => ({
+					path: "echo",
+					namespace: "echo-fixture",
 				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
+					() => ({
+						contents: `export const echoPendingUser = () => undefined;
+export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
+export const discardPendingEchoes = () => undefined;`,
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
 			},
 		},
 	],
@@ -599,6 +633,78 @@ test("the hook hands the store the pair, not the frame payload", () => {
 	assert.deepEqual(row().status, { code: "complete", label: "Complete" });
 	assert.equal(row().status_revision, 3);
 	assert.equal(row().status_epoch, EPOCH);
+	/*
+	 * And the same frame for the state the sidebar's newest arm draws, because
+	 * `delegating`'s label is a SENTENCE carrying counts ("2 subagents running ·
+	 * 1 queued") where every other code's is a token - which is exactly the shape
+	 * that tempts a payload with a count field of its own. The assertion above is
+	 * what forbids that: the pair stays a pair at any label, so the count has
+	 * nowhere to live except INSIDE the label, and therefore moves on the code's
+	 * own clock instead of on a slower projection that could contradict the glyph
+	 * beside it.
+	 */
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 8,
+		type: "session_status",
+		session_id: SESSION,
+		payload: {
+			code: "delegating",
+			label: "2 subagents running · 1 queued",
+			revision: 4,
+		},
+	});
+	assert.deepEqual(Object.keys(row().status), ["code", "label"]);
+	assert.deepEqual(row().status, {
+		code: "delegating",
+		label: "2 subagents running · 1 queued",
+	});
+	assert.equal(row().status_revision, 4);
+});
+
+/*
+ * The two keys the `delegating` state reports on, at the store's own boundary.
+ *
+ * `desktop-session-contract.ts` declares them on the wire row, and this is the
+ * half a declaration cannot establish: that the client's list path actually
+ * CARRIES them. The store's row is what every reader downstream sees - a count
+ * dropped here is invisible in this repo and silently renders as "this build
+ * does not report" in the mobile daemon, which reads the record rather than the
+ * label.
+ *
+ * `null` is the reading under test as much as `2` is. A queued count of `null`
+ * means the runtime did not answer, and it must not arrive as `0`: the sidebar
+ * and the phone would both then state "no subagents" about a session nobody
+ * could ask.
+ */
+test("the subagent counts ride the list response and keep a null as null", async () => {
+	seeded();
+	const rows = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running · 1 queued" },
+			status_revision: 6,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: 1,
+		}),
+	]);
+	const reported = rows.find((item) => item.session_id === SESSION);
+	assert.equal(reported.status.code, "delegating");
+	assert.equal(reported.subagents_running, 2);
+	assert.equal(reported.subagents_queued, 1);
+
+	const silent = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running" },
+			status_revision: 7,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: null,
+		}),
+	]);
+	const unknown = silent.find((item) => item.session_id === SESSION);
+	assert.equal(unknown.subagents_queued, null);
+	assert.notEqual(unknown.subagents_queued, 0);
 });
 
 /*
@@ -642,7 +748,13 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	for (const effect of globalThis.__effects) effect();
 
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [true]);
+	/*
+	 * TWO values, not one, and the second is round 1's Q3 fix: `setReported(true)`
+	 * publishes the fact that the transport has spoken at all, which is what keeps
+	 * the sidebar's "Not connected to the backend" line off the first paint. The
+	 * `connected` value is the one that was already here.
+	 */
+	assert.deepEqual(globalThis.__stateSets, [true, true]);
 	globalThis.__stateSets.length = 0;
 
 	// The transport was live, dropped, then came back. A repeated connected
@@ -650,10 +762,121 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	globalThis.__feedState({ connected: false });
 	globalThis.__feedState({ connected: true });
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [false, 1, true, true]);
+	assert.deepEqual(globalThis.__stateSets, [
+		true,
+		false,
+		1,
+		true,
+		true,
+		true,
+		true,
+	]);
 	// The initial connection did not publish an authoring recovery generation;
 	// one false-to-true transition after that connection published exactly one,
 	// while the repeated connected state only republishes the live transport state.
+});
+
+/*
+ * THE COMPLETION'S OWN TRIGGER, and why it is not the catalogue frame's job.
+ *
+ * A finished turn advances the transcript's activity clock, and the bins and the
+ * row label read that clock - but only a LIST read carries it. The backend
+ * publishes a `catalogue` invalidation when the completion moves the row's order
+ * key, and that covers the common case; it CANNOT fire for a completion that
+ * moves no key (the subject already in its completion band, busy band missed),
+ * and there the row sat in its old bin until the 30 s safety poll (measured live:
+ * 26.3 s after the completion, on the installed runtime). So the two frames a
+ * finished turn ALWAYS publishes - the status edge and the completion mark -
+ * each publish this counter too, and the sidebar's effect keyed on it re-reads
+ * the catalogue.
+ *
+ * An acknowledgement is not an edge here: clearing a receipt writes no
+ * transcript byte, so no row's time moved and there is nothing to re-read.
+ */
+test("a completion's own frames publish the activity revision the sidebar refetches on", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames = () => {
+		throw new Error("the hook never subscribed");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: (onFrame) => {
+						globalThis.__frames = onFrame;
+						return () => {};
+					},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	assert.equal(connection.available, true);
+	for (const effect of globalThis.__effects) effect();
+	// Before any frame the counter is zero - the sidebar's effect reads no edge.
+	assert.equal(connection.activityRevision, 0);
+
+	// The status edge a completion always carries.
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 9,
+		type: "session_status",
+		session_id: SESSION,
+		payload: { code: "complete", label: "Complete", revision: 5 },
+	});
+	assert.deepEqual(globalThis.__stateSets, [1]);
+
+	// The completion mark, which is the only frame an adverse completion publishes.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 10,
+		type: "attention",
+		session_id: SESSION,
+		payload: {
+			conversation_id: `session/${SESSION}`,
+			completion_token: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			anchor_id: "row-1",
+			kind: "complete",
+			unseen: true,
+			revision: [1, 1],
+		},
+	});
+	assert.deepEqual(globalThis.__stateSets, [2]);
+
+	// A receipt being CLEARED is not an activity edge: nothing was written.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 11,
+		type: "attention",
+		session_id: SESSION,
+		payload: {
+			conversation_id: `session/${SESSION}`,
+			completion_token: null,
+			anchor_id: null,
+			kind: null,
+			unseen: false,
+			revision: [2, 2],
+		},
+	});
+	assert.deepEqual(globalThis.__stateSets, []);
+
+	// And the catalogue frame's own revision is a separate trigger, unchanged.
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 12,
+		type: "catalogue",
+		payload: { revision: 7 },
+	});
+	assert.deepEqual(globalThis.__stateSets, [7]);
 });
 
 test("the catalogue frame publishes the revision the sidebar refetches on", () => {
@@ -704,4 +927,67 @@ test("the catalogue frame publishes the revision the sidebar refetches on", () =
 		payload: {},
 	});
 	assert.deepEqual(globalThis.__stateSets, [7]);
+});
+
+/*
+ * A FRAME FOR A ROW THE CLIENT DOES NOT HOLD (paged catalogue, design §4.4).
+ *
+ * `applySessionStatus` drops a frame whose id the store does not carry, and under
+ * paged membership that is the TAIL: a conversation past the head page is not held
+ * until its group is expanded or the flat list is extended. The row that arrives
+ * later therefore shows the status the PAGE computed, which can be older than a
+ * frame this client already received and discarded.
+ *
+ * THAT IS AN ACCEPTED FAILURE MODE, and this test exists to pin it as one rather
+ * than to celebrate it: the bound is one row, one poll cycle, and only for rows
+ * that are not loaded - and the alternative (a `pendingStatus` map consulted by
+ * `heldStatusOver`) is state for a value nothing is drawing yet. A future change
+ * that adds it will fail here, which is exactly when somebody should have to
+ * decide whether the row is visible before it is loaded.
+ */
+test("a frame for a row that is not loaded is dropped, and the page's own value stands", async () => {
+	seeded({
+		status: { code: "busy", label: "Working" },
+		status_revision: 4,
+		status_epoch: EPOCH,
+	});
+	// A frame for a conversation this client does not list: the tail, before its
+	// page has arrived.
+	await store
+		.getState()
+		.applySessionStatus(
+			OTHER,
+			{ code: "complete", label: "Complete" },
+			9,
+			EPOCH,
+		);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === OTHER),
+		false,
+		"a frame never inserts a row: membership is the list's, never the feed's",
+	);
+
+	// The page arrives later and carries the status IT computed at its own moment.
+	await list([
+		wire(),
+		wire({
+			id: OTHER,
+			name: "A tail chat",
+			mtime: 1_760_000_100,
+			status: { code: "approval", label: "Approval needed" },
+			status_revision: 3,
+			status_epoch: EPOCH,
+		}),
+	]);
+	assert.deepEqual(
+		store.getState().sessions.find((row) => row.session_id === OTHER)?.status,
+		{ code: "approval", label: "Approval needed" },
+		"the page's own reading is what the row draws, even though a newer frame was thrown away",
+	);
+	assert.equal(
+		store.getState().sessions.find((row) => row.session_id === OTHER)
+			?.status_revision,
+		3,
+		"and its stamp is the page's, which is how the next frame supersedes it",
+	);
 });

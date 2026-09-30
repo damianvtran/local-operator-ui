@@ -176,6 +176,40 @@ violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
 the release if a delivered bundle does not carry exactly the runtime its
 architecture needs, or carries a legacy alias beside it.
 
+**Every Mach-O the bundle contains must carry that bundle's own architecture.**
+macOS 26 Tahoe was the last macOS for Intel-based Macs, macOS 27 is
+Apple-silicon-only, and from macOS 28 Apple removes Rosetta for apps entirely:
+Apple's page for the transition says the user "might be notified that support is
+ending for Intel-based apps, and that the app or a component used by the app will
+not work with a future release of macOS (macOS 28)", and that "Starting with
+macOS 28, the next major macOS release, Rosetta functionality will be available
+only for certain older, unmaintained games that rely on Intel-based frameworks"
+(<https://support.apple.com/en-us/102527>, published 2026-09-21). The dialog an
+operator reported on a macOS 27 host words the same thing as "This version of
+\"Local Operator\" includes a component that will not open in macOS 28, the next
+major release" — the reporter's wording, not the page's, which carries no such
+sentence. Either way a component that carries ONLY a foreign architecture is not
+merely extra download weight, it is a component that cannot open there. The
+pre-#138 builds are the historical case: universal artifacts copied BOTH bundled
+interpreters in, so half of every 94 MB interpreter tree was unrunnable on either
+machine. `app-native-components` (`nativeComponentsCheck` in
+`scripts/verify-macos-artifacts.mjs`) is the check that holds the whole bundle to
+that rule: it reads the bundle's own architecture from the Electron Framework,
+requires it to be exactly one, and then requires EVERY Mach-O under the bundle -
+dylibs and `.node` bundles as much as executables, since the notice names
+components rather than executables - to carry that architecture among its slices.
+A universal component (arm64 + x86_64) passes, a foreign-only one fails, and a
+component whose header cannot be read fails too, because "we could not ask" is
+not "it is native". "Every Mach-O" means every spelling of one, fat included:
+the shared `machOMagics` list in `src/shared/bundled-runtime-layout.json` carries
+both the 32-bit and the 64-bit fat magics (`cafebabe`/`cafebabf` and their
+byte-swapped `CIGAM` twins), so a component written either way is recognised by
+the walk and read by the slice reader rather than skipped - a shape outside the
+list would be a component the sweep neither counted nor judged. The per-tree
+checks above (`bundledPythonCheck`, `privatePythonSeedCheck`,
+`bundledUvToolCheck`) each hold one NAMED thing to an architecture; this is the
+sweep that catches the component under a name nobody enumerated.
+
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
 first run. Measured on this host (three cold runs each, same interpreter and
@@ -189,13 +223,33 @@ self-upgrade). End to end through the shipped script: uv 31-34.5 s against pip
 pip 15.9-33.8 s against uv 0.65-1.57 s. The seconds are this box's; the ratio is
 link- and load-dependent.
 
-The `uv` binary ships as a sealed resource, pinned to an exact release and staged
-by `pnpm setup-python` from its publisher's signed and notarized build; the app
+The `uv` binary ships as a resource of every platform's artifact, pinned to an
+exact release and staged from the publisher's own signed builds with the
+published sha256 verified before anything is unpacked; `afterPack` prunes it per
+architecture, so each packed app keeps only the tree its machine can run. The app
 hands its path down as `LOCAL_OPERATOR_UV_BIN` (`src/main/backend/uv-tool.ts`)
 and the scripts fall back to the pip path exactly as they ran before when it is
-absent or unrunnable. **macOS only**, because that is where it is staged and
-tested: `build.win` and `build.linux` name no uv at all, since a macOS Mach-O in
-one of those artifacts is dead weight with a misleading name.
+absent or unrunnable - a fallback exercised on every pull request by
+`install-scripts-check.yml`, on all three platforms.
+
+- **macOS**: `pnpm setup-python` (`scripts/setup-python-resource.sh`) stages the
+two `*-apple-darwin` releases beside the interpreter seeds, and `build-macos`
+runs it; `bundledUvToolCheck` (`scripts/verify-macos-artifacts.mjs`) asserts what
+the shipped app carries.
+- **Linux**: the same script detects its platform and stages the two
+`*-unknown-linux-gnu` releases, skipping the interpreter seeds Linux does not
+ship; `build-linux` runs it as its own step. The requirement is a system Python
+3.12+ on the user's machine, exactly as it was when every Linux install used pip.
+- **Windows**: `pnpm setup-python:win` (`scripts/setup-python-resource.ps1`)
+stages the two `*-pc-windows-msvc` releases. The Windows release is a `.zip`
+whose member layout differs from the tar releases (`uv.exe` at the archive root),
+which is why it has its own stager - reading the same
+`src/shared/bundled-runtime-layout.json` the app and the pack hooks read, so a
+triple or a version cannot drift between them.
+- **Both non-macOS build jobs verify the artifact**: `build-windows` and
+`build-linux` run `scripts/verify-bundled-uv.mjs` against the unpacked app, so a
+staging regression fails the release instead of silently reverting every install
+to pip while the build stays green.
 
 **The mode is repaired at runtime, not only at build time.** A ZIP drops modes and
 `codesign`'s seal does not cover them, so a uv that arrived by update can be
@@ -213,7 +267,7 @@ usable.
 **Execute bits under the seed: the executables must carry one, libraries need
 not.** Upstream ships loadable libraries at 0644 (`lib/itcl4.3.8/*`,
 `lib/thread3.0.6/*`, Tcl/Tk 9.0 in the `20260901` build) and at 0755
-(`lib/libpython3.12.dylib`), and it ships Python SOURCE files at 0755 as well. The
+(`lib/libpython3.14.dylib`), and it ships Python SOURCE files at 0755 as well. The
 gate asserts both directions it can assert functionally: no file that is not a
 Mach-O may carry an execute bit (the prune clears those), every Mach-O whose
 `filetype` is `MH_EXECUTE` must carry one, and `bin/python3` - the file a managed
@@ -286,6 +340,40 @@ of the two concurrent per-arch packaging tasks finished first — an x64 build,
 emulated, for ARM64 users. Making the Windows feed architecture-aware is the
 precondition for dropping the union installer, not a packaging tweak.
 
+### Linux: the AppImage carries its update information, and ships its `.zsync`
+
+The AppImage is updated in place by AppImageUpdate (and by launchers built on
+it). Two things make that work, and both are produced at build time from one
+script, `scripts/appimage-update-info.mjs`:
+
+- **The update information is embedded before the build.** "Prepare the AppImage
+toolset with embedded update information" (in `publish.yml`'s `build-linux` job)
+runs `appimage-update-info.mjs prepare-toolset`: it downloads the pinned
+`appimage-12.0.1.7z` AppImage toolset (sha256 verified against the pin
+`app-builder-lib` 26.16.1 declares for it), unpacks it, and writes the update
+information string into `runtime-x64`'s `.upd_info` ELF section. The step then
+exports `APPIMAGE_TOOLS_PATH` to the job, which is what makes electron-builder
+build from THAT toolset instead of downloading its own copy — the runtime is
+prepended verbatim into the AppImage, so the built artifact carries the string
+by construction.
+- **The `.zsync` is written and the chain asserted after the build.** "Write the
+AppImage zsync and assert its update information" runs `finalize`: it asserts
+the built AppImage's `.upd_info`, runs `zsyncmake` to write
+`<file>.AppImage.zsync` beside it, checks the zsync's headers (`Filename`,
+`Length`, `SHA-1`, `URL`) against the file, and checks `latest-linux.yml`'s
+entry for the AppImage against the file's real sha512/size. The Linux upload
+glob carries `dist/*.AppImage.zsync` to the release.
+
+**Do not edit a built AppImage.** electron-builder appends an embedded blockmap
+and writes `latest-linux.yml` (sha512, size, blockMapSize) from the bytes as it
+builds them; a post-build edit — an in-place section write, an appimagetool
+repack — invalidates the blockmap and/or the yml, and the release then describes
+bytes nobody downloads. That is why the string goes into the toolset's runtime
+BEFORE packaging: electron-builder computes every hash afterwards, over the
+final file. The full argument, the section's offsets for the pinned runtime
+(`.upd_info` at 0x02ae68, size 0x400) and the rejected alternatives are in the
+script's header.
+
 ## Auto-Updates
 
 Local Operator UI supports automatic updates using [electron-updater](https://www.electron.build/auto-update.html).
@@ -302,6 +390,12 @@ The update configuration is defined in the `publish` section of the build config
 ```
 
 This configuration publishes updates to GitHub Releases, which users can automatically download and install.
+
+On Linux the channel file is `latest-linux.yml` and the updatable artifact is
+the AppImage: it carries AppImageUpdate's update information in its runtime's
+`.upd_info` section and ships its `.zsync` beside it on the release (see
+*Linux: the AppImage carries its update information* above for how both are
+built).
 
 ## Troubleshooting
 

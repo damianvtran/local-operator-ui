@@ -219,6 +219,155 @@ export const NoticeLengths: Story = {
 };
 
 /**
+ * The v2 neutral closure: a disposal that caught a zero-work run must read as a
+ * receipt on the desktop, never "Stopped with an error".
+ *
+ * The record is a `completion_attention` entry with `kind: "closed"` (core
+ * change: "render post-completion disposals neutrally"), painted here by the
+ * production reducer from the persisted payload shape — `type: "custom"` with
+ * details under `payload`, exactly as the frozen 664a transcript carries it —
+ * so the frame judges the row the app is actually given. The fixture shows the
+ * ORDERING the change is about (a delivered answer, then the receipt): the
+ * user and assistant rows use the `content: [{ text }]` block shape the reducer
+ * reads (design round 1, D1 — a `message:` field painted nothing, so the frame
+ * showed a receipt with nothing above it). What to look for: an info-ink
+ * receipt reading "Completed — runtime retired/disposed", carrying the
+ * `complete` marker that also retires the working line's wait, because a
+ * runtime that has been disposed is not still working.
+ */
+export const ClosedOutcomeNotice: Story = {
+	render: () => (
+		<Frame
+			records={
+				applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "u-closed",
+							ts: 1_760_000_000,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "carry the release" }],
+							},
+						},
+						{
+							id: "a-closed",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "The release is carried — the tag is pushed and the notes are up.",
+									},
+								],
+								stop_reason: "stop",
+							},
+						},
+						{
+							id: "marker-closed-23fc",
+							ts: 1_760_000_060,
+							type: "custom",
+							payload: {
+								custom_type: "completion_attention",
+								details: {
+									conversation_id: "session/23fc556c3799",
+									token: "t2",
+									anchor: "completion-23fc556c3799-0000-4000-8000-0000000000ab",
+									kind: "closed",
+									cause: "disposed",
+									reason: "",
+									notify: false,
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records
+			}
+		/>
+	),
+};
+
+/**
+ * The retire-for-build row (2026-09-29; core kind `retired`): a bound-expired
+ * build drain cut a live turn, so the desktop reads "Retired for an update — a
+ * turn was in flight and was cut; its earlier output is kept" in WARNING ink —
+ * truthful, never danger.
+ *
+ * Same production path and fixture shape as the closure above; the one
+ * difference that matters visually is the tier (`warning` — never the
+ * closure's `info` whisper and never the failure's `error`) and the copy,
+ * byte-identical to the core's `harness/rows.py::RETIRED_NOTICE_TEXT`. What to
+ * look for: a triangle-alert glyph, same muted trace ink as the info rows;
+ * the tier is carried by the glyph shape, not a tint (design round 2, D4 —
+ * this docblock previously promised "amber ink" the row has never worn, and
+ * a red anywhere would be the failure framing this arm exists to remove). No
+ * action button, and the same `complete` marker retiring the working-line
+ * wait — the runtime is leaving, so nothing is still in flight beside it.
+ */
+export const RetiredOutcomeNotice: Story = {
+	render: () => (
+		<Frame
+			records={
+				applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "u-retired",
+							ts: 1_760_000_000,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "verify the migration before I sign off" }],
+							},
+						},
+						{
+							id: "a-retired",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "Halfway through the check — the row counts agree so far; the backfill is next.",
+									},
+								],
+								stop_reason: "stop",
+							},
+						},
+						{
+							id: "marker-retired-7e79",
+							ts: 1_760_000_060,
+							type: "custom",
+							payload: {
+								custom_type: "completion_attention",
+								details: {
+									conversation_id: "session/7e797aaaf6e7",
+									token: "t3",
+									anchor: "completion-7e797aaaf6e7-0000-4000-8000-0000000000cd",
+									kind: "retired",
+									cause: "runtime-retired",
+									reason:
+										"the runtime retired so the next engage would run a newer build",
+									notify: true,
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records
+			}
+		/>
+	),
+};
+
+/**
  * Session incidents, and the other harness statements, on their own rows.
  *
  * The operator's report: a turn dies, and the row that explains why reads only
@@ -437,6 +586,67 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 function incidentTranscript(): TranscriptRecord[] {
 	return applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: HISTORY,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+}
+
+/**
+ * The provider-account failures the chat's own row can now answer with an
+ * ACTION: the runtime's incident for a Radient account out of credits, the one
+ * for a refused Radient credential, and an anthropic quota row as the
+ * non-Radient control.
+ *
+ * WHY A STORY BESIDE THE BIG SET. `session-incidents` carries the classifier's
+ * whole vocabulary at a size where the action sits among seventeen rows; these
+ * three are the reported case at a readable height. Their texts are GENERATED
+ * by the runtime's own formatter (`local_operator/incidents.py::
+ * format_incident_message`, called on the same raws the client relays), so the
+ * frames show the sentences the harness really writes rather than ones this
+ * file invented - and they cover all three classes the affordance distinguishes:
+ * a Radient quota failure (the provider surface, Radient preselected), a Radient
+ * credential failure ("Sign in to Radient"), and a non-Radient quota failure
+ * (the same action, without an account assumed).
+ */
+export const ProviderAccountActions: Story = {
+	render: () => <Frame records={providerAccountTranscript()} height={380} />,
+};
+
+/** The three persisted payloads, quoted from the formatter's own output. */
+const PROVIDER_HISTORY: DesktopHistoryPage["entries"] = [
+	custom(
+		"9d1f8c0a2f1e4b6f8a3d5c7e9b0a1f2d",
+		1789113544.47,
+		"session_incident",
+		{
+			text: "[session incident (radient/auto)] billing: HTTP 402: insufficient credits\nsuggested action: The provider account cannot pay for this request: report it and wait for the user.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "HTTP 402: insufficient credits",
+		},
+	),
+	custom(
+		"0c2b4d6f8a0e2c4g6i8k0m2o4q6s8u0w",
+		1789113545.47,
+		"session_incident",
+		{
+			text: "[session incident (radient/auto)] auth: 401 Unauthorized: Sign in to Radient to access your account\nsuggested action: Credentials were rejected: tell the user which provider and suggest `local-operator login <provider>`. Do not retry the identical request.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "401 Unauthorized: Sign in to Radient to access your account",
+		},
+	),
+	custom(
+		"1e3g5i7k9m1o3q5s7u9w1y3a5c7e9g1i",
+		1789113546.47,
+		"session_incident",
+		{
+			text: "[session incident (anthropic/claude-opus-5)] rate-limit: HTTP 429: rate limit or quota exceeded\nsuggested action: Back off and retry later; if it persists, tell the user which provider hit the limit — they may need to switch model or top up quota.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "HTTP 429: rate limit or quota exceeded",
+		},
+	),
+];
+
+/** The rows the production reducer makes of the three payloads above. */
+function providerAccountTranscript(): TranscriptRecord[] {
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: PROVIDER_HISTORY,
 		has_more: false,
 		cursor_missing: false,
 	}).records;

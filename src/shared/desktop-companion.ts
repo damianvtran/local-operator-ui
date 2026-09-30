@@ -106,7 +106,7 @@ export function companionStateFromCatalogue(body: unknown): CompanionState {
 			state = { mood: "attention", label: "Paused", sessionId: id };
 			kind = code;
 			rank = notificationPriority[kind];
-		} else if (code === "busy") {
+		} else if (code === "busy" || code === "delegating") {
 			state = { mood: "working", label: "Working", sessionId: id };
 			rank = 3;
 		} else if (code === "complete" && unseen) {

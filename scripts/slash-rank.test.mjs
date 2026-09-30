@@ -188,4 +188,84 @@ test("Enter runs a row only when the choice is unambiguous", () => {
 	assert.equal(isUnambiguous("oer", "openrouter", 1, true, false), false);
 	// Several survivors: complete, then let the second Enter run it.
 	assert.equal(isUnambiguous("o", "openrouter", 4, false, false), false);
+	/*
+	 * The leading-dash arm, taken over with `/rename`'s flag row. A FLAG row is
+	 * spelled with its dashes while the same action has a bare spelling the
+	 * command honours (`editor.py:7731-7765`), so either spelling is the user
+	 * naming the action rather than accepting a guess — and without it a user
+	 * who typed the bare `refresh`, which the row itself uses as an ALIAS, would
+	 * be charged a second Enter on the one row their word could mean.
+	 *
+	 * A PREFIX is not "named in full" on either spelling, which is the half that
+	 * keeps `ref`/`--ref` as completions rather than runs.
+	 */
+	assert.equal(isUnambiguous("--refresh", "--refresh", 1, false, false), true);
+	assert.equal(isUnambiguous("refresh", "--refresh", 1, false, false), true);
+	assert.equal(isUnambiguous("REFRESH", "--refresh", 1, false, false), true);
+	// ... and the reverse shape, for the terminal rows that spell the bare form
+	// as the row's own name (`--clear` has `clear` as its action).
+	assert.equal(isUnambiguous("--clear", "clear", 1, false, false), true);
+	// A PREFIX of either spelling is not "named in full", so it does NOT run on
+	// the typed-name arm — shown with TWO rows, because on a one-row list the
+	// single-survivor arm legitimately fires (a word only one row can mean is
+	// evidence about which row is meant, which the empty query is not).
+	assert.equal(isUnambiguous("ref", "--refresh", 2, false, false), false);
+	assert.equal(isUnambiguous("--ref", "--refresh", 2, false, false), false);
+	assert.equal(isUnambiguous("electron", "--refresh", 2, false, false), false);
+	// ... while the full spelling runs even on a many-row list.
+	assert.equal(isUnambiguous("--refresh", "--refresh", 5, false, false), true);
+});
+
+test("the typed word finds the --refresh row, bare or dashed", () => {
+	/*
+	 * The operator's FIRST defect: the list did not suggest as the user typed
+	 * `-`, `--`, `r`, `re`, `ref`. The assertion is on the row SET the popup would
+	 * show for each typed argument — `matchChoices`'s output, which is the exact
+	 * array `slash-commands.tsx` renders and the router indexes.
+	 *
+	 * `matchChoices` scores against `name` AND `aliases` but always DISPLAYS
+	 * `name`, so `refresh` reaching the `--refresh` row is the intended behaviour
+	 * and not a mis-label: the alias buys rank, the row teaches the flag spelling.
+	 * Pinned because that split is the thing a reader is most likely to "fix"
+	 * into displaying the alias.
+	 */
+	const ROWS = [
+		{ value: "--refresh", name: "--refresh", aliases: ["refresh"] },
+	];
+	for (const typed of ["-", "--", "r", "re", "ref", "refr", "refresh"]) {
+		const matches = matchChoices(typed, ROWS);
+		assert.equal(
+			matches.length,
+			1,
+			`typing ${JSON.stringify(typed)} must offer the --refresh row`,
+		);
+		// The DISPLAY name is the row's own `name`, never the alias that matched:
+		// the alias buys rank, and the row goes on teaching the flag spelling.
+		assert.equal(matches[0].name, "--refresh", `displayed for ${typed}`);
+		assert.equal(matches[0].choice, ROWS[0]);
+	}
+	// The empty query is the whole list, which is how the list opens at all.
+	assert.deepEqual(matchChoices("", ROWS), [
+		{ name: "--refresh", choice: ROWS[0] },
+	]);
+	// A word the row cannot mean offers nothing, so the list closes rather than
+	// showing an unrelated row under the typed query.
+	assert.deepEqual(matchChoices("zzz", ROWS), []);
+	/*
+	 * The alias's whole job is RANK, and this is the measurement: `refresh` is an
+	 * EXACT hit on the alias. Without it the row still appears — `refresh` is a
+	 * subsequence of `--refresh` — it just ranks as a near-miss, which is what the
+	 * second assertion shows by scoring the same query against a row that carries
+	 * no alias.
+	 */
+	assert.equal(
+		matchChoices("refresh", ROWS)[0].name,
+		"--refresh",
+		"the alias is scored but never displayed",
+	);
+	assert.equal(
+		matchChoices("refresh", ROWS).length,
+		matchChoices("refresh", [{ value: "--refresh", name: "--refresh" }]).length,
+		"the alias changes rank, not reachability",
+	);
 });

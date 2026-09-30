@@ -443,7 +443,76 @@ export function installDevDriver(): string[] {
 				browserPaneOpen: preferences.isBrowserPaneOpen,
 				browserPanelWidth: preferences.browserPanelWidth,
 				activeSessionId: sessions.activeSessionId,
+				/*
+				 * WHERE THE ROW LIVES, for the scenes that come back to a conversation
+				 * (UX round 2, U5): the active draft's key, and - per draft key - only
+				 * presence booleans, never the text. A return that derives
+				 * `send:<sessionId>` while the row sits under `draft:<uuid>` is invisible
+				 * in the DOM (the pane simply renders nothing) and has to be readable
+				 * here.
+				 */
+				activeDraftKey: sessions.activeDraftKey,
+				drafts: Object.fromEntries(
+					Object.entries(sessions.drafts).map(([key, draft]) => [
+						key,
+						{
+							sessionId: draft.sessionId ?? null,
+							error: draft.error !== undefined,
+							undelivered: draft.undelivered !== undefined,
+							submitted: draft.submittedText !== undefined,
+							admissionAttempted: draft.admissionAttempted === true,
+						},
+					]),
+				),
 				sessionCount: sessions.sessions.length,
+				/*
+				 * THE PAGED CATALOGUE'S OWN FACTS, reported rather than inferred.
+				 *
+				 * A scene that photographs a group's page has to be able to say WHAT the
+				 * store holds for that group - how many ids its scope carries, whether a
+				 * page is in flight, and where its cursor points - because "the panel drew
+				 * 25 rows" and "the group's page reached the store" are different claims
+				 * and only the second one is about the feature. Additive and optional:
+				 * every field is present on a daemon that predates paging, as an empty map
+				 * and nulls.
+				 */
+				scopes: Object.fromEntries(
+					Object.entries(sessions.scopes).map(([key, scope]) => [
+						key,
+						{
+							ids: scope.ids.length,
+							nextCursor: scope.nextCursor,
+							loading: scope.loading,
+							error: scope.error,
+						},
+					]),
+				),
+				countsTotal: sessions.counts?.total ?? null,
+				/*
+				 * THE ARCHIVE MESSAGES' OWN FACTS, because a scene cannot read an in-place toast update
+				 * off the DOM (agent review round 2, R2-2).
+				 *
+				 * Both messages are drawn under ONE id, so the message that replaces another is an
+				 * UPDATE of the mounted element: the pixels, the text and the element itself are
+				 * identical whether the answer re-asserted the message or the previous one simply
+				 * stayed up. A check that says "the retry re-asserted the refusal" therefore needs a
+				 * fact only the new answer can move, and these are the two the store holds:
+				 * `archiveAttempts` is its write counter - each `setSessionArchived` takes the next
+				 * stamp, which is what makes a second press distinguishable from the first - and
+				 * `archiveFailure` is the refusal it is currently carrying.
+				 *
+				 * Read as a pair with the DOM: the attempt must have ADVANCED across the press and
+				 * the refusal must name the conversation the scene pressed, while the painted toast
+				 * is what proves the surface drew it (and where it landed). Neither half is
+				 * sufficient alone and the driver's checks say so.
+				 */
+				archiveAttempts: sessions.answerSeq,
+				archiveFailure: sessions.archiveFailure
+					? {
+							sessionId: sessions.archiveFailure.sessionId,
+							archived: sessions.archiveFailure.archived,
+						}
+					: null,
 				/*
 				 * The wizard's own dialog carries this attribute
 				 * (`features/onboarding/components/onboarding-dialog.tsx`). Not

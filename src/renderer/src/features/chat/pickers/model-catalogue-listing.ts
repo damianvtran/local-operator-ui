@@ -13,8 +13,10 @@
  * The distinction is real on the wire: `DesktopModelCatalogue.errors` is a
  * partial-failure map keyed by provider, and an answer that carries it still
  * carries `models`. So a partial failure is a NOTE (`notice`, drawn above the
- * list) and only a query that threw is `loadError` (drawn in place of the
- * list).
+ * list), and so is a total one once the caller has rows to draw - the registry
+ * document the dialog opened on (see the `isError` branch below, review round 1
+ * R1-1) - while `loadError` (drawn in place of the list) is reserved for a read
+ * that has nothing behind it at all.
  *
  * Not in `destination-pickers.tsx` because that file imports React and the
  * whole picker surface, and a rule this easy to get wrong is worth asserting on
@@ -48,12 +50,47 @@ export function catalogueListing(
 	data: DesktopModelCatalogue | undefined,
 	query: { isError: boolean; error: unknown },
 	errorText: (error: unknown) => string,
+	/**
+	 * Whether the document handed in above really is the shipped REGISTRY's.
+	 *
+	 * The caller knows: it draws `live.data ?? registry.data`, so this is true
+	 * exactly when the live query has no data of its own. It is a parameter rather
+	 * than something read here because only the caller can see both queries, and
+	 * the sentence below is a claim about provenance (round 2, code review R2-1).
+	 */
+	drawnFromRegistry: boolean,
 ): {
 	loadError: string | null;
 	notice: string | null;
 	noticeDetail: string | null;
 } {
 	if (query.isError) {
+		/*
+		 * A FAILED READ IS ONLY A WALL OF ERROR TEXT WHEN THERE IS NOTHING TO DRAW.
+		 *
+		 * This is the rule design D4 established for the partial failure, applied to
+		 * the total one, and it is what keeps the automatic listing from undoing the
+		 * dialog's first paint (review round 1, R1-1; UX U3 is the same defect read
+		 * from the user's side). `keepPreviousData` carries the previous key's rows
+		 * only while the new key is PENDING - a query that settles as `error` has no
+		 * data at all - so a live listing that failed used to take the painted
+		 * registry rows with it, on every open, with no click behind the read.
+		 *
+		 * The caller therefore hands this the document the picker should DRAW (the
+		 * live answer when there is one, the registry's own otherwise). Rows in hand
+		 * mean a NOTE naming what the user can do, and the failure's own words stay
+		 * in the tooltip where the developer-facing sentence belongs; no rows at all
+		 * means the query's failure IS the body, which is the state this branch was
+		 * written for.
+		 */
+		const rows = data?.models ?? [];
+		if (rows.length > 0) {
+			return {
+				loadError: null,
+				notice: providerListingNotice(drawnFromRegistry),
+				noticeDetail: errorText(query.error),
+			};
+		}
 		return {
 			loadError: errorText(query.error),
 			notice: null,
@@ -69,3 +106,33 @@ export function catalogueListing(
 		noticeDetail: failed.join(", "),
 	};
 }
+
+/**
+ * What the dialog says when the provider listing failed and it still has rows.
+ *
+ * It names the STATE of the rows and something the user can DO about it, because
+ * the alternative the operator saw was a red line of transport copy with every
+ * row deleted and only the control that had just failed left to press (UX U3).
+ * Sentence case, monospace for machine voice only; the button it names is the
+ * one beside the list.
+ *
+ * WHY THE PROVENANCE IS A PARAMETER AND NOT A CONSTANT (round 2, code review
+ * R2-1). The first version said "the rows below are the shipped models"
+ * unconditionally, and that sentence is FALSE in the state round 2 found: on a
+ * SAME-KEY refetch failure react-query keeps `data`, so the failed cadence tick
+ * - or the failed click that asked for the provider listing - draws the previous
+ * LIVE answer, provider rows, under a claim about the registry. A failed FIRST
+ * live read is the other way round: there is no live data, the document drawn is
+ * the registry's, and the original sentence is exactly true. Both are real, so
+ * the sentence has to follow the document rather than the failure.
+ *
+ * The label it quotes is written out HERE rather than imported from the control,
+ * which is the constraint this note lives under: the button's label is its own
+ * concern and the picker has no accessible handle on it from this module, so a
+ * rename of that control has to come back through this string - see the `\u00a0`
+ * below, which keeps the quoted phrase on one line the way the button renders it.
+ */
+export const providerListingNotice = (drawnFromRegistry: boolean): string =>
+	`The provider listing failed. The rows below are ${
+		drawnFromRegistry ? "the shipped models" : "the last listing that answered"
+	}; Refresh\u00a0from\u00a0providers tries again.`;

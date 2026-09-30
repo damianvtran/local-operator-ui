@@ -31,7 +31,10 @@ import "./session-switch.css";
  * than of the product. */
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -150,8 +153,21 @@ type Run = {
 	target: string;
 	/** Click dispatched. */
 	clickAt: number;
-	/** The `sessions.get` for the target settled. */
+	/**
+	 * The `sessions.get` for the target settled, or `null` when none settled
+	 * before the run ended - either none was issued (the click path spends none
+	 * since the stream became the validation) or it was still IN FLIGHT at paint,
+	 * which `getInFlightAtPaint` says.
+	 */
 	getSettledAt: number | null;
+	/** A target `sessions.get` was still unanswered when the run ended. */
+	getInFlightAtPaint: boolean;
+	/**
+	 * The composer would ADMIT a send to the target: the view is on it and the
+	 * store's validation window for it is closed (`validatingSessionId`), which is
+	 * the gate `admitChatDraft` refuses on.
+	 */
+	sendableAt: number | null;
 	/** The stream subscription for the target opened, and snapshotted. */
 	streamSubscribedAt: number | null;
 	streamOpenedAt: number | null;
@@ -177,9 +193,17 @@ type Probe = {
 	settle: (id: string) => Promise<void>;
 	switchTo: (id: string, label: string) => Promise<Run>;
 	snapshot: () => unknown;
+	/**
+	 * The sidebar row for a fixture id, resolved by the one lookup every arm
+	 * drives (`rowFor` above). The capture driver re-spelled this in two places
+	 * with the design the redesign changed (`[data-chat-row][title^=…]`), so its
+	 * runs died at "no sidebar row for the capture target" — one resolver, here.
+	 */
+	rowFor: (id: string) => HTMLElement | null;
 	view: () => {
 		activeSessionId: string | null;
-		errorState: string | null;
+		validating: string | null;
+		incomingListed: boolean;
 		selectedRow: string | null;
 		errorShown: boolean;
 		transcriptHasContent: boolean;
@@ -197,6 +221,8 @@ type Probe = {
 		content: boolean;
 		rowInView: boolean;
 		composerAlert: string | null;
+		composerText: string | null;
+		composerPlaceholder: string | null;
 		sentMessages: number;
 	};
 	/** The route the router is on, as `/chat/<id>` or `/chat`. */
@@ -378,7 +404,7 @@ type RecordStats = {
 		shown: boolean;
 		surfaces: number;
 		error: string | null;
-		navigation: string | null;
+		validating: string | null;
 	}>;
 };
 type RecordHandle = {
@@ -445,14 +471,52 @@ const composerAlert = () => {
  * chat LIST - a remedy that cannot re-open a chat - beside the panel's own copy
  * of the same words.
  */
+/*
+ * The failure a switch to a gone conversation produces now: the stream's 404
+ * lands the pane on the missing-session notice (`MISSING_SESSION_NOTICE_ID`, the
+ * same id the composer's `aria-describedby` names). It used to be the guard
+ * read's "Unknown session" rollback banner, which no longer exists - a sampler
+ * still looking for that text would read "never shown" on every frame and call
+ * it a finding.
+ */
+const goneShown = () =>
+	document.getElementById(MISSING_SESSION_NOTICE_ID) !== null;
 const errorSurfaces = () =>
-	Array.from(document.querySelectorAll('[role="alert"]')).filter((surface) =>
-		(surface.textContent ?? "").includes("Unknown session"),
-	).length;
+	document.querySelectorAll(`#${MISSING_SESSION_NOTICE_ID}`).length;
+/*
+ * Found by the row's TITLE, which is what a user clicks - the clip box
+ * (`[data-session-title]`) that carries the name at rest.
+ *
+ * This matched `[data-chat-row][title^=<name>]`, and #430 (the row that pans its
+ * title) took the `title` attribute off the row, so the match moved to the
+ * button's own text. The chat redesign then made that text the wrong shape in
+ * both directions: a leading status word ("Recent") and the relative time
+ * AFTER the title ("now, just now", "2h, 2 hours ago"), so the `endsWith` this
+ * used stopped matching every row - measured on this harness after the
+ * redesign, the fixture's fourth row read "RecentWorkspace session 4now, just
+ * now" and the lookup returned null for all 24, which is why every arm died at
+ * "no sidebar row". The title element is the stable anchor the redesign left
+ * in place (it is what the renderer driver's own measure verb addresses), so
+ * the lookup scopes to it and compares exactly - which also keeps "Workspace
+ * session 1" from matching "Workspace session 10".
+ *
+ * `data-session-row` is NOT the substitute here, and it is worth saying because
+ * it looks like the better one: the sidebar sets it only on the row shape that
+ * carries per-row pin/archive controls, and this rig's scripted owner
+ * advertises neither (`features: { session_catalogue, canonical_stream }`), so
+ * on this fixture's own rows the attribute does not exist at all.
+ */
 const rowFor = (id: string) => {
-	const title = sessions.find((row) => row.id === id)?.name ?? "";
-	return document.querySelector<HTMLButtonElement>(
-		`[data-chat-row][title^=${JSON.stringify(title)}]`,
+	const title = sessions.find((row) => row.id === id)?.name;
+	if (!title) return null;
+	return (
+		Array.from(
+			document.querySelectorAll<HTMLButtonElement>("[data-chat-row]"),
+		).find(
+			(row) =>
+				(row.querySelector("[data-session-title]")?.textContent ?? "") ===
+				title,
+		) ?? null
 	);
 };
 
@@ -595,11 +659,15 @@ const bridge = installSwitchBridge({
  * which file called `openSession`. So each frame keeps its function name and the
  * basename of its file, with the dev-server path dropped.
  */
+/*
+ * The frame string's own shape, at module scope: the linter's
+ * `useTopLevelRegex` reads a regex built inside a call as a per-call cost, and
+ * this one runs per recorded call on a page that records every one.
+ */
+const SHORT_FRAME_PATTERN =
+	/^(?<fn>[^(]*?)\s*\(?(?:[^()]*\/)?(?<file>[^/()]+):(?<line>\d+):(?<col>\d+)\)?$/;
 const shortFrame = (frame: string) => {
-	const match =
-		/^(?<fn>[^(]*?)\s*\(?(?:[^()]*\/)?(?<file>[^/()]+):(?<line>\d+):(?<col>\d+)\)?$/.exec(
-			frame.trim(),
-		);
+	const match = SHORT_FRAME_PATTERN.exec(frame.trim());
 	const groups = match?.groups;
 	if (!groups) return frame.trim().slice(0, 120);
 	const fn = groups.fn?.trim() ? `${groups.fn.trim()} ` : "";
@@ -972,6 +1040,8 @@ const api: Probe = {
 				target: id,
 				clickAt: performance.now(),
 				getSettledAt: null,
+				getInFlightAtPaint: false,
+				sendableAt: null,
 				streamSubscribedAt: null,
 				streamOpenedAt: null,
 				streamSnapshotAt: null,
@@ -992,6 +1062,13 @@ const api: Probe = {
 					previous.activeSessionId !== id
 				)
 					run.committedAt = performance.now();
+				if (
+					run.committedAt !== null &&
+					run.sendableAt === null &&
+					state.activeSessionId === id &&
+					state.validatingSessionId !== id
+				)
+					run.sendableAt = performance.now();
 			});
 			// The transcript's own commit mark, from the shipped component
 			// (`useLayoutEffect` in canonical-transcript.tsx) rather than a
@@ -1032,7 +1109,9 @@ const api: Probe = {
 					if (transcriptHasContent()) run.transcriptPaintedAt = time;
 				}
 				const done =
-					run.committedAt !== null && run.transcriptPaintedAt !== null;
+					run.committedAt !== null &&
+					run.transcriptPaintedAt !== null &&
+					run.sendableAt !== null;
 				if (done || time > deadline) {
 					finish(!done);
 					return;
@@ -1049,7 +1128,16 @@ const api: Probe = {
 					run.requests.push(request.op);
 					if (request.op === "sessions.get" && request.sessionId === id) {
 						run.targetRequests += 1;
-						run.getSettledAt ??= request.settledAt;
+						/*
+						 * `settledAt` is 0 while a request is IN FLIGHT (the log records it
+						 * at the start; see `BridgeLog`), and this run ends at paint - so a
+						 * read still unanswered then used to be taken as settled at t=0 and
+						 * reported as `0 - clickAt`, the negative "click -> sessions.get
+						 * settled" medians (-1432 ms at 200 steps) in the desktop load
+						 * diagnosis. An unsettled read is reported as what it is instead.
+						 */
+						if (request.settledAt > 0) run.getSettledAt ??= request.settledAt;
+						else run.getInFlightAtPaint = true;
 					}
 				}
 				const subscription = bridge.log.streams
@@ -1097,6 +1185,12 @@ const api: Probe = {
 		latency: bridge.log.latency,
 		hasRow: (id: string) => rowFor(id) !== null,
 	}),
+	/**
+	 * The row itself, for callers that have to ACT on it: the capture driver
+	 * scrolls it into view and clicks it. Same resolver `hasRow` reads, so a
+	 * change to how a row is found cannot reach one and miss the other.
+	 */
+	rowFor,
 	/*
 	 * What the user can actually see, read from the document rather than from
 	 * the store alone.
@@ -1108,24 +1202,28 @@ const api: Probe = {
 	view: () => ({
 		activeSessionId: useCanonicalSessionsStore.getState().activeSessionId,
 		/*
-		 * The NAVIGATION failure, which is the one a switch can produce. It was
-		 * the shared `error` field until the split, and reading the shared one
-		 * here would report a switch failure that the catalogue's own poll had
-		 * already erased - the exact confusion this harness was rewritten to
-		 * stop making.
+		 * Whether the store still holds the session's validation window open.
+		 *
+		 * This field used to be `navigationError`, which the guard read's rollback
+		 * wrote and which no longer exists: reading it returned `undefined`, and
+		 * `undefined !== null` made the "recorded in the store" verdict a constant
+		 * true (agent review round 1, F4). The window is the fact the stream's 404
+		 * now settles, so it is what the arm reads.
 		 */
-		errorState: useCanonicalSessionsStore.getState().navigationError,
+		validating: useCanonicalSessionsStore.getState().validatingSessionId,
+		/** Whether the timed target is still in the catalogue (`forgetSession` removes it). */
+		incomingListed: useCanonicalSessionsStore
+			.getState()
+			.sessions.some((row) => row.session_id === INCOMING),
 		selectedRow:
 			document
 				.querySelector('[data-chat-row][aria-current="page"]')
 				?.textContent?.trim() ?? null,
 		/*
-		 * Read from the SCREEN, not the store: `errorState` can be cleared by the
-		 * sidebar's five-second catalogue poll, which sets `error: null` when it
-		 * starts, so a state read alone cannot say whether the sentence was ever
-		 * shown.
+		 * Read from the SCREEN, not the store: the store's tombstone proves the
+		 * state, not that the notice reached a frame.
 		 */
-		errorShown: document.body.innerText.includes("Unknown session"),
+		errorShown: goneShown(),
 		transcriptHasContent: transcriptHasContent(),
 		/** The pre-change state: the outgoing view, held, with its affordance. */
 		outgoing: OUTGOING,
@@ -1151,14 +1249,19 @@ const api: Probe = {
 		content: transcriptHasContent(),
 		rowInView: rowInView(rowFor(INCOMING)),
 		/**
-		 * The refusal, and the fact that nothing left the app.
+		 * The composer's row and its box, for the states a PRESS leaves behind.
 		 *
-		 * The read window's refusal is a claim about two things at once: the
-		 * sentence is on screen where the composer can be read, and no message
-		 * reached the transport. The requests are the bridge's own log, so this is
-		 * the transport's answer rather than the absence of a render.
+		 * The transport half is a claim about two things at once: what the composer
+		 * says (the alert's sentence, or nothing), and whether anything reached the
+		 * wire. The requests are the bridge's own log, so it is the transport's
+		 * answer rather than the absence of a render - a HELD press has the words in
+		 * the box, no alert, and zero messages, which is the state #464 replaced the
+		 * refusal with.
 		 */
 		composerAlert: composerAlert(),
+		composerText: document.querySelector("textarea")?.value ?? null,
+		composerPlaceholder:
+			document.querySelector("textarea")?.placeholder ?? null,
 		sentMessages: bridge.log.requests.filter(
 			(request) => request.op === "sessions.message",
 		).length,
@@ -1369,7 +1472,7 @@ const api: Probe = {
 		const tick = () => {
 			const state = useCanonicalSessionsStore.getState();
 			const t = Math.round(performance.now() * 10) / 10;
-			const shown = document.body.innerText.includes("Unknown session");
+			const shown = goneShown();
 			const surfaces = errorSurfaces();
 			stats.frames += 1;
 			if (shown) {
@@ -1379,7 +1482,13 @@ const api: Probe = {
 			}
 			stats.shownAtEnd = shown;
 			stats.maxSurfaces = Math.max(stats.maxSurfaces, surfaces);
-			if (state.navigationError !== null) stats.recorded = true;
+			// The store's half: the window closed AND the id was tombstoned, the
+			// two writes `confirmSessionMissing` makes, observed per frame.
+			if (
+				state.validatingSessionId === null &&
+				!state.sessions.some((row) => row.session_id === INCOMING)
+			)
+				stats.recorded = true;
 			if (
 				shown !== previous.shown ||
 				state.activeSessionId !== previous.active
@@ -1390,7 +1499,7 @@ const api: Probe = {
 					shown,
 					surfaces,
 					error: state.error,
-					navigation: state.navigationError,
+					validating: state.validatingSessionId,
 				});
 				previous = { active: state.activeSessionId, shown };
 			}
@@ -1440,21 +1549,35 @@ probe.__lopSwitch = api;
  * outside a `<Routes>` gave `useParams` nothing, so that effect could never run
  * and the page under test was one effect short of the shipped one.
  */
-const probePath = () => window.location.hash.replace(/^#/, "") || "/chat";
+/* The address bar's fragment marker; see `SHORT_FRAME_PATTERN` for why it lives here. */
+const HASH_PREFIX = /^#/;
+const probePath = () =>
+	window.location.hash.replace(HASH_PREFIX, "") || "/chat";
 
 const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
 		{/*
-		 * No `SidebarNavigation`. The shell story renders it; here it paints the
-		 * product's splash mark at viewport size (a browser has no desktop bridge
-		 * to tell it otherwise) and pushes the chat column off the right edge.
-		 * The rail is app chrome beside the subject, and the switch is the chat
-		 * column's, so the frame is the chat column: same box the app gives it,
-		 * minus the rail that sits to its left.
+		 * THE ONE SIDEBAR, MOUNTED THE WAY THE APP MOUNTS IT — and this replaced a
+		 * bare `<main>` when the chat redesign moved the conversation list out of
+		 * the chat route and into the shell.
+		 *
+		 * The list (`chat-sidebar.tsx`'s sections and its rows) used to be
+		 * `ChatPage`'s own second column, so a frame that mounted the page painted
+		 * the rows the arms click. After the move the rows live in
+		 * `SidebarNavigation`, which the shell draws beside the route; a harness
+		 * that kept mounting the page alone painted no `[data-chat-row]` at all and
+		 * every `switchTo` threw "no sidebar row" before the phase table could be
+		 * produced. `ChatLayout` + `SidebarNavigation` is the app's own arrangement
+		 * (`app.tsx`), so the click this page drives is the click the app receives.
 		 */}
-		<main className="flex min-w-0 grow flex-col overflow-hidden">
-			{children}
-		</main>
+		<ChatLayout
+			sidebar={<SidebarNavigation />}
+			content={
+				<main className="flex min-w-0 grow flex-col overflow-hidden">
+					{children}
+				</main>
+			}
+		/>
 	</div>
 );
 
@@ -1510,6 +1633,39 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 );
 
 /*
+ * REVEAL EVERY FIXTURE ROW BEFORE `ready`, THROUGH THE LIST'S OWN CONTROL.
+ *
+ * The list is paged (the operator's ladder: 10 rows, then 25, then 50) and the
+ * fixture's INCOMING session is the LAST of 24, so a boot that did not ask for
+ * more drew ten rows and `rowFor(INCOMING)` found none - `switchTo` threw "no
+ * sidebar row" before a single phase could be read. The reveal presses
+ * `[data-sidebar-page-more]`, the control a reader presses for the same reason,
+ * so the rows are drawn by the product's own ladder rather than by a fixture
+ * that seeded `loads` directly - a fixture whose list state the product could
+ * not have reached would invalidate every run that starts from it.
+ *
+ * The press is FIXTURE SETUP and never a measured switch: it happens before
+ * `ready`, and the driver times nothing until `ready` is true. It also waits for
+ * the list's first read to land (a `[data-sidebar-page-more]` that does not
+ * exist yet is simply retried), and returns false rather than lying when the
+ * row never appears - `ready` stays false and the driver reports "never became
+ * ready" instead of a run whose every click would throw.
+ */
+const revealFixtureRows = async (): Promise<boolean> => {
+	const deadline = performance.now() + 10_000;
+	while (performance.now() < deadline) {
+		if (rowFor(INCOMING) !== null) return true;
+		const more = document.querySelector<HTMLButtonElement>(
+			"[data-sidebar-page-more]",
+		);
+		if (more !== null) more.click();
+		await new Promise((resolve) => setTimeout(resolve, 40));
+	}
+	console.error("the incoming row never appeared in the sidebar");
+	return false;
+};
+
+/*
  * The boot is not a measured switch: it is "the app is open on a session",
  * which is the state every measured switch starts from. It goes through the
  * store's own action rather than a click because no row has been painted yet
@@ -1520,6 +1676,7 @@ void useCanonicalSessionsStore
 	.getState()
 	.openSession(OUTGOING)
 	.then(() => api.settle(OUTGOING))
-	.then(() => {
-		api.ready = true;
+	.then(() => revealFixtureRows())
+	.then((revealed) => {
+		if (revealed) api.ready = true;
 	});

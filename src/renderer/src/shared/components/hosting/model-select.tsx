@@ -7,6 +7,7 @@
 
 import { Tooltip } from "@shared/components/ui";
 import { useModels } from "@shared/hooks";
+import { useModelsStore } from "@shared/store/models-store";
 import { Cpu, Star } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -163,7 +164,21 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	// Get available models for the selected hosting provider
+	/*
+	 * The list is DERIVED FROM THE STORE, so it is recomputed when the store fills.
+	 *
+	 * `getModelsForHostingProvider` reads the store imperatively, so a memo keyed on
+	 * `hostingId` alone runs once -- on the first render, when the store is still
+	 * empty -- and never again. The effect was the first-run path on every backend
+	 * without the suggested-defaults fields: step 2's Model field sat empty and
+	 * disabled behind "No models available for selected provider." while the same
+	 * catalogue was listed a remount later (QA round 2 R2-Q3, the same class of bug
+	 * the round-1 fix removed from `HostingSelect`). Subscribing to the two store
+	 * fields the getter reads makes the memo follow them.
+	 */
+	const storeModels = useModelsStore((state) => state.models);
+	const storeInitialized = useModelsStore((state) => state.isInitialized);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the getter reads the store imperatively, so these two are genuine inputs
 	const availableModels = useMemo(() => {
 		if (!hostingId) {
 			return [];
@@ -173,7 +188,12 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		const models = getModelsForHostingProvider(hostingId);
 
 		return models;
-	}, [hostingId]);
+		/*
+		 * The two store fields are the getter's real inputs: it reads the store
+		 * imperatively, so nothing else re-runs this when the catalogue arrives.
+		 * Biome cannot see through the getter and calls them surplus.
+		 */
+	}, [hostingId, storeModels, storeInitialized]);
 
 	// Force refresh models when hosting provider changes
 	const { refreshModels, isLoading: isModelsLoading } = useModels();

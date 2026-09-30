@@ -1,39 +1,127 @@
-// One decision, one spelling: the row the reader is ON is painted by the
-// sidebar's own role string rather than by a second copy of it here. A copy is
-// what drifted twice (design rounds 3 and 4, D17/D19) and both drifts landed at
-// an ELEMENT while the copied string above it stayed verbatim — so this rail
-// imports the role exactly as the settings rail does.
+import { aidaControlFailureCopy } from "@features/aida/aida-control";
+import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
+import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
+import { useAidaWorking } from "@features/aida/use-aida-working";
+import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
+import { sidebarToggleCap } from "@features/chat/chat-sidebar-layout";
+import { ChatSidebar } from "@features/chat/components/chat-sidebar";
+/*
+ * One decision, one spelling: the row the reader is ON is painted by the
+ * sidebar's own role string rather than by a second copy of it here. A copy is
+ * what drifted twice (design rounds 3 and 4, D17/D19) and both drifts landed at
+ * an ELEMENT while the copied string above it stayed verbatim - so this column
+ * imports the role exactly as the settings rail does, on its own import line,
+ * which is the shape `chat-sidebar-selection.test.mjs` reads for.
+ */
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
+import { openConversation } from "@features/chat/open-conversation";
 import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
+	switcherShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import { useMeshMembership } from "@features/mesh/mesh-store";
+import {
+	desktopFeatureEnabled,
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Button, Tooltip } from "@shared/components/ui";
+import { Badge, Button, Tooltip } from "@shared/components/ui";
+import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
+import {
+	CATALOGUE_HEAD_PAGE,
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	ChevronsUp,
+	FolderKanban,
 	Globe,
-	MessageSquare,
+	LoaderCircle,
+	MessageSquarePlus,
+	Network,
 	Search,
 	Settings,
 	Store,
+	X,
 } from "lucide-react";
-import type { FC } from "react";
+import { useCallback, useEffect } from "react";
+import type { FC, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
-/**
- * Props for the SidebarNavigation component
- * No props needed as we use React Router hooks internally
+/*
+ * THE ONE SIDEBAR.
+ *
+ * What this was: a 220px icon rail of destinations, drawn on EVERY route by
+ * `app.tsx`, with the chat route drawing a second 280px list pane beside it.
+ * That is 500px of chrome at 1380 and at 1024 alike, with the rail mostly empty
+ * and the list pane's own top half carrying an agents/teams tree - so the chats
+ * started below the fold's midpoint and the pane had two scrollbars (the
+ * baseline's `geometry.json` records `nav 220, list 280, chat 880/524`).
+ *
+ * What this is: ONE column of 260px, mounted once in `app.tsx` inside
+ * `chat-layout.tsx`, holding - top to bottom - the brand row, the primary
+ * action, the destinations, the chat list as its body, and the account at the
+ * foot. The body is `chat-sidebar.tsx`'s two SECTIONS - Agents + Teams above,
+ * the chats list below - with the draggable, persisted boundary between them
+ * (`sidebar-split.ts`), both drawn by default: the operator's call on the
+ * preview was that both sections stay visible and relatively sizable, with the
+ * navigation links in this same column. A 56px icon strip is what the column
+ * collapses to.
+ *
+ * WHY THE DESTINATIONS STAY IN THIS FILE while the list moved in beside them:
+ * the list's own component (`chat-sidebar.tsx`) reads the router, the
+ * canonical-sessions store and the desktop capability hooks and is already
+ * self-sufficient - it is rendered here rather than re-implemented - and the
+ * destinations are the same table this file has always owned, on the same
+ * routes and in the same order, so a tour step or a bookmark that names one
+ * still lands where it always did.
+ *
+ * ## Why the ground is `surface`
+ *
+ * HISTORY, because the first half of this was a real fix and its finding still
+ * holds. The rail was `surface` - a step *above* the `canvas` page - and on the
+ * agents and settings routes it sat directly against another `surface` list
+ * panel with no boundary between them, so the two merged into one 480px slab.
+ * It was moved to `sunken` for that reason. THE ROW-STATE REFINEMENT PUT IT
+ * BACK, because `sunken` broke something this column owns: the rows in it are
+ * ROW STATES (`rowCurrent` for the destination you are on, `row-hover` for the
+ * row under the pointer), and both roles are authored as a step of the palette's
+ * own `surface` (`docs/design/row-states-refinement.md` § 4), so a column whose
+ * ground is a rung *below* `surface` paints those states into that rung rather
+ * than out of the panel they were measured against. MEASURED on the fleet: the
+ * current row's fill landed ΔE00 0.44 off the column on `alucard` - 7 of the 59
+ * palettes under the file's own 2.0 field floor. So the rule is the invariant:
+ * **a surface that paints the row states wears `surface`.**
+ *
+ * THE BOUNDARY IS NOW THE PANE'S, and it is drawn there rather than here: this
+ * column is `surface` and the chat pane beside it is `canvas`, a step apart with
+ * no line needed, and the right pane keeps its leading `hairline`. The rule the
+ * old rail needed - a drawn line between two `surface` panels - no longer has
+ * two panels to separate on this screen.
+ *
+ * ## Density
+ *
+ * 260px docked (user-resizable 220-320), 56px collapsed, and the thresholds live
+ * in `chat-sidebar-layout.ts` where they can be asserted. Every row here is
+ * 30px: 16px glyph, 13px label, 8px of padding.
  */
+
 type SidebarNavigationProps = Record<string, never>;
 
 type NavItem = {
@@ -42,131 +130,325 @@ type NavItem = {
 	path: string;
 	isActive: boolean;
 	tourTag: string;
+	/**
+	 * How many things are waiting on the user and are not this column's to count,
+	 * one field for the two rows that carry one: browser approvals across every
+	 * conversation (operator ask, 2026-09-23) and her unread completion receipts
+	 * (operator ask, 2026-09-28). Zero draws nothing at all - a badge reading `0`
+	 * would be a mark that says nothing is being asked, which is the honest
+	 * rendering of an item with no badge.
+	 */
+	attention?: number;
+	/**
+	 * The badge's own handle, one per ROW that draws one: the approvals badge and
+	 * the missed-messages badge are different controls made of one primitive, so
+	 * the tag cannot be spelled beside the primitive - both would answer to one
+	 * address (`nav-browser-badge` / `nav-aida-badge`).
+	 */
+	attentionTag?: string;
+	/**
+	 * WHAT THE NUMBER IS, in the control's name (see the name-carries-the-number
+	 * rule at `renderNavItem`): the row's own sentence for its count, because
+	 * "waiting" is what an approval does and a completion receipt is a missed
+	 * message. Set beside `attention` on every row that draws a badge; a row
+	 * without one would draw a badge its name could not state.
+	 */
+	attentionName?: (count: number) => string;
+	/**
+	 * Whether the row's thing is working RIGHT NOW - a turn in flight, the user's
+	 * or a proactive wake's. It draws the app's busy mark (the sidebar's spinning
+	 * `LoaderCircle`, the same accent ink and `motion-safe:animate-spin`) in the
+	 * same trailing slot as a badge, and the two cannot coexist on one row: a busy
+	 * row draws no unread mark (the store's one predicate), so the slot shows one
+	 * fact at a time (operator ask, 2026-09-28).
+	 */
+	working?: boolean;
+	/**
+	 * WHAT THE WORKING MARK IS, in the control's name, the same
+	 * name-carries-the-mark rule `attentionName` follows: the row's own sentence
+	 * for its state, because a spinner is a visual convenience over "a turn is in
+	 * flight" and the name has to state it (`Aida, working`).
+	 */
+	workingName?: string;
+	/**
+	 * What a press does, when it is not "navigate to `path`".
+	 *
+	 * Aida's row is the one that needs it: her conversation is RESOLVED — through
+	 * the desktop route, ensuring her session on first use — rather than known as
+	 * a route, so there is no `path` that could name it up front
+	 * (`use-aida-target.ts` owns the resolution, and both this row and the
+	 * composer's `/aida` read it from there). The row still carries `path:
+	 * "/chat"`: it is the route the view lands on once the id resolves, and the
+	 * row's own key in the list.
+	 */
+	onSelect?: () => void;
 };
 
-/*
- * The sidebar was a permanent MUI `Drawer`, which is a flex child with a fixed
- * width and nothing modal about it — so it is now a plain `<nav>`, not a
- * `Sheet`. `Sheet` is for a panel that leaves the flow and takes a scrim with
- * it, and this one does neither.
+/**
+ * THE STRIP KEEPS THE FEED ALIVE (the collapsed-rail requirement).
  *
- * The old paper carried `boxShadow: 0 4px 20px rgba(0,0,0,0.2)` and a 1px right
- * border. Both are gone: elevation in this system is a ground step, and a
- * shadow on an in-flow panel is exactly what the branding contract reserves for
- * objects that leave the flow.
+ * `useDesktopFeed` is not only a status reporter: its subscription is what
+ * MERGES `attention` and `session_status` frames into the sessions store, and
+ * its consumer for the CATALOGUE was `ChatSidebar` - which the strip does not
+ * render ("THE LIST IS NOT DRAWN HERE"). (Authoring lists mount the hook
+ * wherever they render - the chat header, the agents page - so this is not the
+ * app's only feed listener; those merges are revision-guarded and idempotent.
+ * What IS exclusive is keeper-versus-list: an either/or in this column.) So
+ * with the rail collapsed nothing kept the CATALOGUE current: her marks, both
+ * sourced from the store, went stale until the rail expanded again, while the
+ * browser row's approvals badge (fed by the browser bridge's own projection)
+ * stayed live at every width. Measured on the marks rig: the expanded run
+ * painted a receipt within seconds, and the strip run never did - 30 s of
+ * polling at 50 ms - with no other catalogue-side consumer in the tree.
  *
- * ## Why the rail is `surface`, and what bounds it
+ * FIVE THINGS HERE, each one a thing the list did that the strip otherwise
+ * lost with it (review round 1, F1/F2):
  *
- * HISTORY, because the first half of this was a real fix and its finding still
- * holds. The rail was `surface` — a step *above* the `canvas` page — which is
- * backwards for a permanent rail and produced a visible defect: on the agents
- * and settings routes this rail sits directly against another `surface` list
- * panel with no boundary between them, so the two merged into one 480px slab
- * and the app looked like it had one enormous sidebar. It was moved to `sunken`
- * for that reason, and on `sunken` the app read as three planes left to right:
- *
- *   sunken app rail  ->  surface list panel  ->  canvas working surface
- *
- * THE ROW-STATE REFINEMENT PUT IT BACK, because `sunken` broke something this
- * rail owns. THE ROWS IN THIS LIST ARE ROW STATES: the destination you are on
- * carries `rowCurrent` and the rows around it take `hover:bg-row-hover`, and
- * both roles are authored as a step of the palette's own `surface`
- * (`docs/design/row-states-refinement.md` § 4). A rail whose ground is a rung
- * *below* `surface` therefore paints those states INTO that rung rather than
- * out of the panel they were authored against, and the panel is the reference
- * both roles are measured from. MEASURED, on the fleet: the current row's fill
- * landed **ΔE00 0.44** off this rail on `alucard` — 7 of the 59 palettes under
- * the file's own 2.0 field floor — and on 13 of the 59 the row under the
- * pointer read at least as far off this rail as the row the reader is ON, where
- * the shipped values did that on 2. That is the defect recorded in the
- * row-state block below, reintroduced by the ground rather than by the mark,
- * and the operator's original screenshot is the same sentence.
- *
- * So the rule is now the one the direction states, and it is an invariant the
- * app holds rather than a value a palette can be re-solved for: **a surface
- * that paints the row states wears `surface`**. Re-asserting the roles against
- * `sunken` was measured and refused — on the light fleet the largest ink-legal
- * fill can reach ΔE00 1.73-2.81 against `canvas` and clearing `sunken` forces
- * `alucard`'s selection down to a 2.36 `L*` step, under the pair's own floors.
- *
- * The boundary the tonal step used to carry is DRAWN instead — `border-r
- * border-hairline`, the same construction the agents panel beside it uses
- * (`features/agents/components/agents-sidebar.tsx`), so a rail that is `surface`
- * and a list that is `surface` are two panels rather than one slab. The rule is
- * doing real work on the light fleet, where `surface` and `canvas` are closest:
- * this rail's pair with the content beside it measures ΔE00 2.32 on
- * `localOperatorLight` and 2.60 on `alucard` — the two tightest of the four rail
- * palettes the evidence set renders, though NOT the fleet's tightest pairs
- * (`sage` 2.05, `catppuccinMacchiato` 2.08 and `oneLight` 2.10 are, and none of
- * the three carries a rail frame) — and on those it is the only boundary there is.
- *
- * The chat route is the same rule one plane to the right: its list panel is
- * `surface` and the column it opens is `canvas`, so the pair never repeats the
- * merge described above — and neither of those two columns paints a row state,
- * which is why neither of them has to be `surface`.
- *
- * ## Density
- *
- * 220px expanded, 48px collapsed. 48 is the VS Code activity-bar width and it
- * is what a 32px square button plus the list's own 8px inset comes to — the
- * previous 68px was a 36px button floating in 32px of air, which read as an
- * unfinished panel rather than as an icon rail.
- *
- * Rows are 32px with 16px marks and 13px labels, matching the settings rail
- * exactly. The two are visible in the same viewport, so anything they disagree
- * about reads as a mistake.
- *
- * ## Why the expanded width does NOT shrink on a narrow window
- *
- * On the settings screen this rail and the settings jump list are both on
- * screen, and at 220px each they took roughly half a 900px window before any
- * setting was drawn. The settings rail is what gives: below 1040px it becomes
- * a 48px icon rail, which takes a 900px window from 49% chrome to 30%.
- *
- * This rail was narrowed to 180px alongside it and the change was reverted,
- * because 180 clips the wordmark: "Local Operator" measures 100px and the
- * header leaves it 92px once the 20px inset that aligns the mark with the nav
- * marks, the 8px right padding and the 32px collapse control are taken out.
- * The first width that clears it with any margin is 200px, and 20px of content
- * is not worth putting the product's own name 12px from an ellipsis on the one
- * piece of chrome that is on screen everywhere. Global navigation is also the
- * wrong thing to shrink first: the user can already collapse this rail to 48px
- * and that choice is remembered.
+ * - the subscription itself (mounting the hook);
+ * - the PAGEABILITY PUBLISH: the store sizes every UNNAMED catalogue read from
+ *   this flag (`cataloguePageDefault`), and its only publisher was the list -
+ *   so a launch (or a sub-1024px window) that STARTS collapsed read the legacy
+ *   500-row page the paging work exists to remove;
+ * - the mount read, gated on the catalogue capability (`ready`) exactly as the
+ *   list gates it, because a frame can only merge into a row that exists;
+ * - the INVALIDATION trigger: `feed.catalogueRevision` advances when the
+ *   backend says the catalogue changed (a row added, renamed or archived
+ *   elsewhere, or a frame missed), and re-running the read is how the strip
+ *   reconciles that without waiting for an expand;
+ * - nothing else. The list's feed-less safety poll is deliberately NOT
+ *   mirrored: without a feed the marks do not move either - they arrive on
+ *   this same subscription - so the poll would re-read a catalogue whose
+ *   changes the strip cannot paint anyway. The reduced case belongs to the
+ *   docked list, not to a second poll in a 56px column.
  */
-const RAIL_WIDTH = { expanded: "w-55", collapsed: "w-12" } as const;
+const StripFeedKeeper: FC = () => {
+	const feed = useDesktopFeed();
+	const capabilities = useDesktopCapabilities();
+	const setCataloguePageable = useCanonicalSessionsStore(
+		(store) => store.setCataloguePageable,
+	);
+	const fetchSessions = useCanonicalSessionsStore(
+		(store) => store.fetchSessions,
+	);
+	const pageable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_page",
+	);
+	useEffect(() => {
+		setCataloguePageable(pageable);
+	}, [pageable, setCataloguePageable]);
+	/*
+	 * The gate, spelled as the list spells it: the desktop plane available AND
+	 * the backend advertising `session_catalogue` v2. Below it no read is sent -
+	 * the same answer the list gives, not a second opinion.
+	 */
+	const ready =
+		desktopFeatureState(capabilities.data, "session_catalogue", 2) ===
+		"enabled";
+	const refreshCatalogue = useCallback(
+		() =>
+			fetchSessions(
+				pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE,
+				pageable,
+			),
+		[fetchSessions, pageable],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
+	useEffect(() => {
+		if (!ready) return;
+		void refreshCatalogue();
+	}, [ready, refreshCatalogue, feed.catalogueRevision]);
+	return null;
+};
+
+/** A destination row: 30px, one line, 13px, and never a second line. */
+const DESTINATION_ROW =
+	"flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-body-sm transition-colors duration-fast ease-out-quart";
 
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { isSidebarCollapsed, toggleSidebar } = useUiPreferencesStore();
+	const { expanded, mode, onCollapse } = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
-
-	const expanded = !isSidebarCollapsed;
+	/*
+	 * The catalogue capability, the gate the New chat row is disabled on - the
+	 * same bit `app.tsx`'s ⌘N binding reads, so the row and the chord refuse in
+	 * exactly the same states.
+	 */
+	const capabilities = useDesktopCapabilities();
+	/*
+	 * The open conversation, SUBSCRIBED rather than read once: the list marks the
+	 * row the user is in, and a `getState()` read during render would freeze that
+	 * mark at whatever was open when this component last re-rendered.
+	 */
+	const activeSessionId = useCanonicalSessionsStore(
+		(state) => state.activeSessionId,
+	);
+	/*
+	 * The column is on EVERY route, so its Browser item answers the question no
+	 * per-conversation badge can: is an agent anywhere in this app blocked on me?
+	 * The count is the projection's own live set, unattributed requests included -
+	 * see `useAppWideApprovals` for why that one deliberately disagrees with the
+	 * chat header's count.
+	 */
+	const browserApprovals = useAppWideApprovals();
+	/*
+	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
+	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
+	 * every install, "including on a machine in no network", because it answers "what can
+	 * this backend do" - so on the key alone every mesh-capable install would get a rail
+	 * item, including a device that is in no mesh, and this is the one piece of chrome
+	 * that is on screen everywhere. Membership is the catalogue's own emptiness; see
+	 * `useMeshMembership` for why that read is safe on a machine that has never joined a
+	 * network, and for why an UNKNOWN answer mounts nothing.
+	 *
+	 * The route itself stays on the capability, deliberately: see the note at the route
+	 * in `app.tsx` for why leaving your last network must not eject you from the tab.
+	 */
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshMembership = useMeshMembership(meshPaired);
+	/*
+	 * Whether this backend serves the Projects surface at all.
+	 *
+	 * FAIL-CLOSED MEANS NO ROW, the pins gate's rule: below the `projects`
+	 * version (or on a plane this app holds no credential for) the column renders
+	 * byte-for-byte the one that never heard of Projects — no row, no disabled
+	 * row, nothing to click into a 404. The route itself repeats the gate for a
+	 * URL typed by hand; see `projects-page.tsx`.
+	 */
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
+	/*
+	 * AIDA'S ROW, and its TWO gates, which are two different facts.
+	 *
+	 * `features.aida` is the CAPABILITY: below it the backend predates the
+	 * surface and the UI must not call her route at all (`design.md` § 3.4) —
+	 * fail-closed, like Projects above.
+	 *
+	 * `enabled` is the INSTALL's own switch (R17/R18: `aida.enabled` /
+	 * `LOCAL_OPERATOR_NO_AIDA`). A harness-only install carries the endpoint and
+	 * answers `enabled: false` — a row there would open a conversation nothing
+	 * ever creates and whose every press answers `409 aida_disabled`, exactly the
+	 * dead control fail-closed means to omit. So the row waits for the read's own
+	 * `enabled === true`: absent, not-yet-answered and switched-off all render the
+	 * column that never heard of her, and the read is why the row can POP IN a
+	 * moment late on a normal install — the price of never showing it where it
+	 * must not be.
+	 */
+	const aidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aida = useAidaTarget(aidaEnabled);
+	const aidaVisible = aidaEnabled && aida.data?.enabled === true;
+	/*
+	 * HER DISPLAY NAME (rename slice, in flight): the desktop read's `name`,
+	 * falling back to the shipped default for every backend that predates the
+	 * field - absent, null and an older payload all render "Aida" rather than an
+	 * empty row. The COMMAND KEY is not affected: `/aida` stays stable whatever
+	 * she is called (`use-aida-target.ts` owns the pair).
+	 */
+	const aidaName = aida.data?.name ?? "Aida";
+	const openAida = useAidaOpener();
+	/*
+	 * HER BADGE'S NUMBER (operator ask, 2026-09-28): unread completion receipts
+	 * for HER conversation - "missed messages" in the operator's words, and the
+	 * browser row's approvals badge was the model. `use-aida-missed-messages.ts`
+	 * owns the count's two narrowings and the store subscription that keeps it
+	 * live: the feed raises it when she completes a turn, and viewing her
+	 * conversation receipts it away.
+	 */
+	const aidaMissed = useAidaMissedMessages(aida.data?.session_id);
+	/*
+	 * HER WORKING MARK (operator ask, 2026-09-28): the state the chat sidebar
+	 * draws for her row - a turn in flight, the user's or a proactive wake's -
+	 * read from her catalogue row's status so it is true while her conversation is
+	 * CLOSED, which is exactly when a wake runs. `use-aida-working.ts` owns the
+	 * one code that counts as working and the subscription that keeps it live.
+	 */
+	const aidaWorking = useAidaWorking(aida.data?.session_id);
+	/*
+	 * Her press: resolve her conversation (ensuring it on first use, through the
+	 * one module the composer's `/aida` also reads) and move the view onto it. The
+	 * failure sentence is the module's own — a 409 for a mid-session disable, or
+	 * the transport's words — and it lands on the toast lane because this row owns
+	 * no other surface to say it on.
+	 */
+	const selectAida = () => {
+		void openAida(navigate, aida.data).catch((error) =>
+			showErrorToast(aidaControlFailureCopy(error)),
+		);
+	};
 
 	const navItems: NavItem[] = [
-		{
-			icon: MessageSquare,
-			label: "Chat",
-			path: "/chat",
-			isActive: currentView === "chat",
-			tourTag: "nav-item-chat",
-		},
+		/*
+		 * AIDA SITS ABOVE AGENTS (R3): she is the operator's chief of staff, and the
+		 * row is the first destination in the column when the backend offers her.
+		 * The row itself is the ordinary destination row — 30px, one line, the
+		 * same `renderNavItem` every neighbour uses — with one difference: its
+		 * press resolves rather than navigates (`onSelect`), because her id is not
+		 * known until the desktop route answers. Collapsed, it is the same
+		 * icon-only row with its tooltip (`renderNavRow`), which is why nothing here
+		 * has a second rendering.
+		 */
+		...(aidaVisible
+			? [
+					{
+						icon: ChevronsUp,
+						label: aidaName,
+						path: "/chat",
+						isActive:
+							currentView === "chat" &&
+							Boolean(aida.data?.session_id) &&
+							activeSessionId === aida.data?.session_id,
+						tourTag: "nav-item-aida",
+						onSelect: selectAida,
+						/*
+						 * Her count (operator ask, 2026-09-28): the missed-messages badge,
+						 * the same primitive as the Browser row's approvals pill - zero
+						 * draws nothing. `use-aida-missed-messages.ts` says what one receipt
+						 * counts; `renderNavItem` the name/badge rules these three fields
+						 * inherit.
+						 */
+						attention: aidaMissed,
+						attentionTag: "nav-aida-badge",
+						attentionName: (count: number) =>
+							`${aidaName}, ${count} missed message${count === 1 ? "" : "s"}`,
+						/*
+						 * Her working mark: the same two facts the badge carries, for the state
+						 * that is true while she is mid-turn (see `use-aida-working.ts`), with
+						 * the row's own sentence for the name.
+						 */
+						working: aidaWorking,
+						workingName: `${aidaName}, working`,
+					},
+				]
+			: []),
 		{
 			icon: Bot,
-			label: "My agents",
+			label: "Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
 			tourTag: "nav-item-agents",
 		},
-		{
-			icon: Store,
-			label: "Agent hub",
-			path: "/agent-hub",
-			isActive: currentView === "agent-hub",
-			tourTag: "nav-item-agent-hub",
-		},
+		/*
+		 * Projects sits beside Agents — the two are the "things I own" pair — but
+		 * only on a backend that carries the surface; see `projectsEnabled` above.
+		 */
+		...(projectsEnabled
+			? [
+					{
+						icon: FolderKanban,
+						label: "Projects",
+						path: "/projects",
+						isActive: currentView === "projects",
+						tourTag: "nav-item-projects",
+					},
+				]
+			: []),
 		{
 			icon: CalendarDays,
 			label: "Schedules",
@@ -183,269 +465,591 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			path: "/browser",
 			isActive: currentView === "browser",
 			tourTag: "nav-item-browser",
+			attention: browserApprovals,
+			/*
+			 * This row's badge words and handle, beside the count they serve (see
+			 * `NavItem.attentionTag` / `attentionName`): the name states the count
+			 * whenever the badge is drawn, in BOTH widths.
+			 */
+			attentionTag: "nav-browser-badge",
+			attentionName: (count) => `Browser, ${count} waiting`,
 		},
 		{
-			icon: Settings,
-			label: "Settings",
-			path: "/settings",
-			isActive: currentView === "settings",
-			tourTag: "nav-item-settings",
+			icon: Store,
+			label: "Agent hub",
+			path: "/agent-hub",
+			isActive: currentView === "agent-hub",
+			tourTag: "nav-item-agent-hub",
 		},
+		/*
+		 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
+		 * user is not in would be a dead end on the one piece of chrome that is on screen
+		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
+		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
+		 * chat surface.
+		 */
+		...(meshMembership === "member"
+			? [
+					{
+						icon: Network,
+						label: "Mesh",
+						path: "/mesh",
+						isActive: currentView === "mesh",
+						tourTag: "nav-item-mesh",
+					},
+				]
+			: []),
 	];
+
+	/*
+	 * THE BODY. The list brings its own actions - its `New chat` row stages an
+	 * untargeted draft, its rows open conversations - and it is handed the two
+	 * callbacks its existing API asks for rather than reading the store itself.
+	 * `openConversation` is the same function the route's own switcher uses, so a
+	 * click here and a click inside the pane are one code path with one set of
+	 * rules about the URL.
+	 *
+	 * The route's own `setRouteError(null)` half of that path stays with the
+	 * route: `chat-page.tsx` clears its sentence when the draft key or the route
+	 * identity moves, and a switch from this column moves both.
+	 */
+	const listBody: ReactNode = (
+		<ChatSidebar
+			selectedConversation={activeSessionId ?? undefined}
+			onSelectConversation={(id: string) => void openConversation(navigate, id)}
+			onStageDraft={(target?: ChatTarget, fresh?: boolean) => {
+				useCanonicalSessionsStore.getState().stageDraft(target, fresh);
+				navigate("/chat");
+			}}
+		/>
+	);
 
 	const renderNavItem = (item: NavItem) => {
 		/*
-		 * The tour clicks these by `[data-tour-tag="nav-item-chat"]`, so the tag
-		 * has to stay on the button itself. Putting it on a wrapper would leave
-		 * the tour dispatching a click at a div and silently doing nothing.
+		 * The tour clicks these by `[data-tour-tag="nav-item-agents"]` and its
+		 * siblings, so the tag has to stay on the button itself. Putting it on a
+		 * wrapper would leave the tour dispatching a click at a div and silently
+		 * doing nothing.
 		 */
-		const button = (
-			<button
-				type="button"
-				onClick={() => navigate(item.path)}
-				data-tour-tag={item.tourTag}
-				aria-current={item.isActive ? "page" : undefined}
-				/* Collapsed there is no text in the row, and the tooltip cannot
-				   supply the name: Radix's `Trigger` adds `aria-describedby`, and
-				   only while open. */
-				aria-label={expanded ? undefined : item.label}
+		const attention = item.attention ?? 0;
+		/*
+		 * THE NAME CARRIES THE MARK (operator ask, 2026-09-23): a badge is a visual
+		 * convenience over a fact the control has to STATE, and a screen reader that
+		 * found only the word "Browser" would be told there was nothing to answer
+		 * while an agent sat blocked on a prompt. Set in BOTH widths so the name does
+		 * not change with the column's width - and only when a mark is drawn, so a
+		 * quiet column keeps the plain label it has always had. The words are the
+		 * ROW's own (`attentionName` / `workingName`): an approval waits, a completion
+		 * receipt is a missed message, a turn in flight is working - one fact, one
+		 * sentence, per row. The working mark wins the name where both might obtain;
+		 * on her row they cannot, because a busy code draws no unread mark.
+		 */
+		const attentionLabel =
+			attention > 0 && item.attentionName
+				? item.attentionName(attention)
+				: item.label;
+		const markLabel =
+			item.working && item.workingName ? item.workingName : attentionLabel;
+		const rowState = item.isActive
+			? rowCurrent
+			: "text-ink-muted hover:bg-row-hover hover:text-ink";
+		return (
+			<li
+				key={item.path}
 				className={cn(
-					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
-					expanded ? "justify-start gap-2 px-3" : "justify-center",
-					/*
-					 * THE DESTINATION YOU ARE ON IS A ROW STATE, not the wash. It was
-					 * `bg-accent-wash`, and on 6 of the 41 dark themes the wash is a
-					 * WEAKER mark than the hover beside it — `obsidian` 2.02 against
-					 * 3.42 is this rail, in the screenshot the operator reported — so
-					 * the row he was on was quieter than the row he was merely pointing
-					 * at. `rowCurrent` brings the role's ground and its `font-medium`
-					 * (the 2px accent bar was removed with the refinement round — the
-					 * fill carries the ranking now); the wash stays the transient idiom
-					 * (pointer hover, and a keyboard-focused option in a list that is
-					 * open).
-					 *
-					 * THIS ROW IS WHY THE RAIL IS `surface`, and the ground note above
-					 * is the measurement: the roles are steps of the panel, so the panel
-					 * they are painted on has to BE the panel. The first round of this
-					 * branch painted this row on the rail's own `sunken` and the fill
-					 * landed ΔE00 0.44 from its backdrop on `alucard`.
-					 *
-					 * The mark is still the accent, and the label still stays `ink`:
-					 * tinting ground, mark and text is three signals for one fact, and
-					 * it leaves the destination you are already on as the loudest text
-					 * on the rail.
-					 */
-					item.isActive
-						? rowCurrent
-						: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					"flex h-[30px] w-full items-center rounded-md",
+					"transition-colors duration-fast ease-out-quart",
+					rowState,
 				)}
 			>
-				<item.icon
-					size={16}
-					aria-hidden="true"
-					className={cn("shrink-0", item.isActive && "text-accent")}
-				/>
-				{expanded && <span className="truncate">{item.label}</span>}
-			</button>
-		);
-
-		/* Collapsed, the tooltip is the only name the row shows on screen; the
-		   accessible name is the button's own `aria-label`. */
-		return expanded ? (
-			<li key={item.path}>{button}</li>
-		) : (
-			<li key={item.path}>
-				<Tooltip content={item.label} side="right">
-					{button}
-				</Tooltip>
+				<button
+					type="button"
+					onClick={() =>
+						item.onSelect ? item.onSelect() : navigate(item.path)
+					}
+					data-tour-tag={item.tourTag}
+					aria-current={item.isActive ? "page" : undefined}
+					/* Collapsed there is no text in the row, and the tooltip cannot
+					   supply the name: Radix's `Trigger` adds `aria-describedby`, and
+					   only while open. */
+					aria-label={
+						expanded && markLabel === item.label ? undefined : markLabel
+					}
+					className={cn(
+						"flex h-full min-w-0 flex-1 items-center gap-2 rounded-md",
+						expanded ? "px-2" : "justify-center px-0",
+					)}
+				>
+					<item.icon
+						size={16}
+						aria-hidden="true"
+						className={cn("shrink-0", item.isActive && "text-accent")}
+					/>
+					{expanded && <span className="truncate">{item.label}</span>}
+					{attention > 0 && (
+						/*
+						 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1). In flow at
+						 * the row's trailing edge rather than absolutely positioned: the row is
+						 * 30px with a 13px label, so the trailing edge IS its top-right at any
+						 * size a badge would use, and a 16px badge inside a 30px row moves
+						 * neither the label's start nor the row's height.
+						 */
+						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+							<Badge
+								variant="attention"
+								shape="pill"
+								size="count"
+								data-tour-tag={item.attentionTag}
+							>
+								{attention}
+							</Badge>
+						</span>
+					)}
+					{item.working && (
+						/*
+						 * THE BUSY MARK, at rail scale: the sidebar row's own working glyph -
+						 * `LoaderCircle`, the accent ink, and `motion-safe:animate-spin`, so a
+						 * reduced-motion user keeps the STATIC glyph this app already renders
+						 * for the state rather than a second animation. Same trailing slot as
+						 * the badge, in flow for the same reason (a 16px mark inside a 30px
+						 * row moves neither the label's start nor the row's height); the two
+						 * cannot coexist, because a busy row draws no unread mark.
+						 */
+						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+							<LoaderCircle
+								size={16}
+								aria-hidden="true"
+								className="text-accent motion-safe:animate-spin"
+							/>
+						</span>
+					)}
+				</button>
 			</li>
 		);
 	};
 
-	const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
+	/*
+	 * Collapsed, the tooltip is the only name a row shows on screen; the
+	 * accessible name is the button's own `aria-label`. Wrapping the `<li>` keeps
+	 * one DOM shape in both widths, so the rows MOVED between the two renders
+	 * rather than being rebuilt in a second layout.
+	 */
+	const renderNavRow = (item: NavItem) =>
+		expanded ? (
+			renderNavItem(item)
+		) : (
+			<li key={item.path}>
+				<Tooltip content={item.label} side="right">
+					{renderNavItem(item)}
+				</Tooltip>
+			</li>
+		);
 
 	/*
-	 * The palette's own door, at the foot of the rail above the account row.
-	 *
-	 * ## Why the foot and not the head of the list
-	 *
-	 * The list above it is DESTINATIONS, and every row in it is one — the active
-	 * row carries `aria-current="page"` and the accent wash that says "you are
-	 * here". Search is not a place, so putting it in that list would have made it
-	 * a seventh tab that lights up when nothing is selected, and would have pushed
-	 * Chat out of the first position it holds as the app's default view. At the
-	 * foot it sits beside the one other control the rail carries, on the same 32px
-	 * row and the same 8px inset, so the rail still reads as two groups: where you
-	 * can go, and what you can do.
-	 *
-	 * ## Why a visible chord
-	 *
-	 * The gesture is what makes this surface fast, and a user who never learns it
-	 * uses the palette once. The chord is written on the row (the app's key cap, the
-	 * same one the palette's own footer prints) rather than in a tooltip, so the rail
-	 * teaches Cmd+K without being asked. It used to be plain monospace HERE and caps
-	 * there, on the argument that a cap is `bg-sunken` while this rail was `sunken`
-	 * too, so the cap would be a key with no key around it — true of that cap, and
-	 * the reason the cap lost its fill rather than keeping two spellings of one
-	 * thing (`docs/command-palette.md` records the single idiom). The rail's ground
-	 * moved to `surface` with the row-state refinement and the argument does not
-	 * come back: the cap is FILL-LESS by its own construction
-	 * (`shared/components/common/keyboard-shortcut.tsx`, `CAP` — no fill, no
-	 * border), so it needs no ground of its own on either one.
-	 *
-	 * The macOS spelling rides a real platform check rather than a guess: off
-	 * macOS the same row reads Ctrl+K.
+	 * THE ONE TOGGLE, and its glyph follows WHERE the sidebar is drawn (design
+	 * round 1, D3). Docked, it collapses to the strip: `‹`. In the sheet it
+	 * closes the sheet: `×`, because the sheet is a layer that goes away rather
+	 * than a column that narrows. In the strip it expands: `›` (the dock at
+	 * >=1024, the sheet below - the shell decides which, `chat-layout.tsx`). The
+	 * sheet used to draw the docked `‹` beside the dialog primitive's own `×`,
+	 * one over the other in a single focus-ringed box.
 	 */
+	const toggleLabel =
+		mode === "overlay"
+			? "Close sidebar"
+			: expanded
+				? "Collapse sidebar"
+				: "Expand sidebar";
+	const ToggleGlyph =
+		mode === "overlay" ? X : expanded ? ChevronLeft : ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	const searchLabel = `Search (${paletteShortcutLabel(isMac)})`;
+	const catalogueReady = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
+	);
+	const activeDraftKey = useCanonicalSessionsStore(
+		(state) => state.activeDraftKey,
+	);
+	const drafts = useCanonicalSessionsStore((state) => state.drafts);
+	/*
+	 * An untargeted draft is the one THIS row stages, so it is the row marked
+	 * current while one is up - the same terms the list's old `New chat` row
+	 * used. A draft with a target belongs to its agent's row.
+	 */
+	const untargetedDraft =
+		Boolean(activeDraftKey) &&
+		!(activeDraftKey ? drafts[activeDraftKey] : undefined)?.target;
+	const stageNewChat = () => {
+		useCanonicalSessionsStore.getState().stageDraft(undefined, true);
+		navigate("/chat");
+	};
 
-	const searchRow = expanded ? (
-		<button
-			type="button"
-			data-command-palette-trigger=""
-			onClick={openCommandPalette}
-			className={cn(
-				"flex h-8 w-full items-center gap-2 rounded-sm px-3 text-body-sm text-ink-muted",
-				"transition-colors duration-fast ease-out-quart",
-				"hover:bg-row-hover hover:text-ink",
-			)}
-		>
-			<Search size={16} aria-hidden="true" className="shrink-0" />
-			<span className="truncate">Search</span>
-			{/*
-			 * Decorative: the accessible name above already carries the chord, so the
-			 * caps are hidden from a screen reader rather than announced beside it.
-			 *
-			 * The app's own key cap, on the rail's own ground — `surface` since the
-			 * row-state refinement re-grounded the rail, `sunken` when this row was
-			 * written. That is only possible because a cap has no fill of its own: the
-			 * `bg-sunken` this component used to paint would vanish into this row
-			 * exactly as the comment above says, which is why this row was monospace
-			 * text for a round while the panel's footer drew caps. One idiom, one
-			 * geometry, one ink — and the cap is still fill-less on the new ground
-			 * rather than assumed to be, which the evidence README records as a DOM
-			 * readback beside the rail's frames. The ink is a step up from the row's
-			 * label, so the chord reads as a chord rather than as fine print (design
-			 * round 1, D6).
-			 */}
-			<span aria-hidden="true" className="ml-auto">
-				<KeyboardShortcut shortcut={paletteShortcutCaps(isMac)} />
-			</span>
-		</button>
-	) : (
-		<Tooltip content={searchLabel} side="right">
+	/*
+	 * THE PRIMARY ACTIONS, two 30px rows at the top of the column (§C1.2; design
+	 * round 1, D1): `New chat ⌘N`, then `Search ⌘K`.
+	 *
+	 * New chat moved HERE from the list's own header, where it sat under a second
+	 * search field, a disclosure and an `All chats` row - the placement the design
+	 * round named as the biggest reason the shell read as two panels welded
+	 * together. Search stays the command palette's door: the one visible search in
+	 * the column. The list's own filter is type-to-filter now (`chat-sidebar.tsx`),
+	 * so there is no second search control at rest.
+	 *
+	 * THE CHORD IS WRITTEN ON THE ROW, as caps with no separator between them
+	 * (N1: `⌘K`, not `⌘ + K`) - the app's `KeyboardShortcut` spells a chord as
+	 * `+`-joined caps and prints the `+`, so the rows pass the caps as one string
+	 * and split nothing. The accessible name carries the chord in words.
+	 *
+	 * DISABLED ON THE CATALOGUE GATE, the same bit `app.tsx`'s ⌘N reads: staging a
+	 * draft needs the session catalogue, and a row that staged one against an
+	 * absent catalogue would be the shortcut claiming a capability the app has
+	 * just said it does not have.
+	 */
+	const newChatLabel = `New chat (${newChatShortcutCap(isMac).replace("+", "")})`;
+	/*
+	 * BOTH DOORS IN THE NAME (design/UX round 2, U3): this row is where the app
+	 * teaches the search chord, and since #659 there are two of them —
+	 * `Cmd/Ctrl+K` for the everything palette and `Cmd/Ctrl+P` for the
+	 * conversation switcher. The visible cap stays K: one cap is the row's
+	 * budget, and two caps beside "Search" would read as a combined chord. The
+	 * second door rides in the accessible name and (for the strip, which draws
+	 * its name as a tooltip) in the tooltip, so a reader who never met the tour
+	 * can still find it.
+	 */
+	const searchLabel = `Search (${paletteShortcutLabel(isMac)}) — chats (${switcherShortcutLabel(isMac)})`;
+	const searchTitle = `Search everything (${paletteShortcutLabel(isMac)}) · your chats (${switcherShortcutLabel(isMac)})`;
+	const primaryRow = (
+		icon: LucideIcon,
+		label: string,
+		caps: string,
+		props: {
+			onClick: () => void;
+			ariaLabel: string;
+			current?: boolean;
+			disabled?: boolean;
+			attrs?: Record<string, string>;
+		},
+	) => {
+		const Icon = icon;
+		return (
 			<button
 				type="button"
-				data-command-palette-trigger=""
-				onClick={openCommandPalette}
-				aria-label={searchLabel}
+				{...props.attrs}
+				onClick={props.onClick}
+				disabled={props.disabled}
+				aria-label={props.ariaLabel}
+				aria-current={props.current ? "page" : undefined}
 				className={cn(
-					"flex h-8 w-full items-center justify-center rounded-sm text-ink-muted",
-					"transition-colors duration-fast ease-out-quart",
-					"hover:bg-row-hover hover:text-ink",
+					DESTINATION_ROW,
+					props.current
+						? rowCurrent
+						: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					"disabled:text-ink-disabled disabled:hover:bg-transparent",
 				)}
 			>
-				<Search size={16} aria-hidden="true" />
+				<Icon size={16} aria-hidden="true" className="shrink-0" />
+				<span className="truncate">{label}</span>
+				{/*
+				 * Decorative: the accessible name above already carries the chord, so the
+				 * caps are hidden from a screen reader rather than announced beside it.
+				 */}
+				<span aria-hidden="true" className="ml-auto">
+					<KeyboardShortcut shortcut={caps} joined />
+				</span>
 			</button>
-		</Tooltip>
+		);
+	};
+	const newChatRow = primaryRow(
+		MessageSquarePlus,
+		"New chat",
+		newChatShortcutCap(isMac),
+		{
+			onClick: stageNewChat,
+			ariaLabel: newChatLabel,
+			current: untargetedDraft,
+			disabled: !catalogueReady,
+			/*
+			 * THE TOUR'S CHAT ANCHOR: the one sidebar's body IS the chat list, so the
+			 * onboarding step that clicks its way back to a conversation needs a control
+			 * that lands on `/chat`, and this row is the one that does.
+			 */
+			attrs: { "data-tour-tag": "nav-item-chat", "data-new-chat-row": "" },
+		},
+	);
+	const searchRowExpanded = primaryRow(
+		Search,
+		"Search",
+		paletteShortcutCaps(isMac),
+		{
+			onClick: openCommandPalette,
+			ariaLabel: searchLabel,
+			/* The title is what teaches the second door to a mouse reader; the cap
+			 * above can only carry one chord. */
+			attrs: { "data-command-palette-trigger": "", title: searchTitle },
+		},
 	);
 
 	/*
-	 * The collapse control lives in the header, revealed when the rail is
-	 * pointed at or contains focus.
+	 * A strip control: 32px, one glyph, the name in a tooltip and in
+	 * `aria-label`. The strip's first group is expand + New chat + Search (§J2/§C3,
+	 * design round 1, D11): with only the destinations in it, New chat was
+	 * reachable from a narrow window by ⌘N alone.
+	 */
+	const stripButton = (
+		icon: LucideIcon,
+		label: string,
+		props: {
+			onClick: () => void;
+			disabled?: boolean;
+			attrs?: Record<string, string | boolean>;
+		},
+	) => {
+		const Icon = icon;
+		return (
+			<Tooltip content={label} side="right">
+				<button
+					type="button"
+					{...props.attrs}
+					onClick={props.onClick}
+					disabled={props.disabled}
+					aria-label={label}
+					className={cn(
+						"flex size-8 items-center justify-center rounded-sm text-ink-muted",
+						"transition-colors duration-fast ease-out-quart",
+						"hover:bg-row-hover hover:text-ink",
+						"disabled:text-ink-disabled disabled:hover:bg-transparent",
+					)}
+				>
+					<Icon size={16} aria-hidden="true" />
+				</button>
+			</Tooltip>
+		);
+	};
+
+	/*
+	 * The collapse/close control in the brand row, revealed when the column is
+	 * pointed at or contains focus - Linear, Notion and Slack all put it in the
+	 * header and reveal it on hover. In the SHEET it is always drawn: it is the
+	 * sheet's one visible close, and a close that appears only on hover in a layer
+	 * the user just opened is a close they have to hunt for.
 	 *
-	 * It used to have a full-width row of its own at the foot of the rail, above
-	 * a hairline drawn only so the chevron would not read as a sixth nav item —
-	 * about 40px of permanent chrome and one border, to hold a control that is
-	 * used a few times a week. Linear, Notion and Slack all put it in the header
-	 * and all reveal it on hover; collapsed, it takes the logo's place, because
-	 * a 48px rail has room for exactly one thing.
+	 * `pointer-events-none` gates the mouse only; focus is unaffected, so the
+	 * button keeps its place in the tab order and reveals itself with
+	 * `group-focus-within/sidebar` when a keyboard reaches it.
 	 *
-	 * `pointer-events-none` gates the mouse only. Focus is unaffected by it, so
-	 * the button keeps its place in the tab order and reveals itself with
-	 * `group-focus-within` when a keyboard reaches it — the same idiom the agent
-	 * rows and the editable fields use.
+	 * `aria-keyshortcuts` names the chord the shell answers (`chat-layout.tsx`):
+	 * this control and that handler are the two halves of one gesture.
 	 */
 	const collapseToggle = (
 		<div
 			className={cn(
-				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-				"group-hover:pointer-events-auto group-hover:opacity-100",
-				"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+				mode !== "overlay" &&
+					cn(
+						"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+						"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
+						"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
+					),
 			)}
 		>
 			<Tooltip content={toggleLabel} side="right">
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					onClick={toggleSidebar}
+					onClick={onCollapse}
 					aria-label={toggleLabel}
-					aria-expanded={expanded}
+					aria-expanded={mode === "overlay" ? undefined : expanded}
+					aria-keyshortcuts={sidebarToggleCap(isMac)}
 				>
-					{expanded ? (
-						<ChevronLeft aria-hidden="true" />
-					) : (
-						<ChevronRight aria-hidden="true" />
-					)}
+					<ToggleGlyph aria-hidden="true" />
 				</Button>
 			</Tooltip>
 		</div>
 	);
 
-	return (
-		<nav
-			className={cn(
-				/* `border-r border-hairline` carries the boundary the `sunken` step used
-				   to: the rail and the list panel beside it are both `surface` now, and the
-				   rule is the same construction `agents-sidebar.tsx` uses between two
-				   `surface` panels. The ground note above says why the rail wears
-				   `surface` at all (`rowCurrent` is painted on it). */
-				"group flex shrink-0 flex-col overflow-x-hidden border-hairline border-r bg-surface transition-[width] duration-base ease-out-quart",
-				expanded ? RAIL_WIDTH.expanded : RAIL_WIDTH.collapsed,
-			)}
-		>
-			{/*
-			 * A 48px header, square with the collapsed rail. `px-5` is not
-			 * arbitrary: the list's 8px inset plus a row's 12px padding puts every
-			 * nav mark 20px from the rail's edge, and the logo has to start on that
-			 * same line or the rail reads as two columns that nearly agree.
-			 */}
-			<div
+	/*
+	 * The two affordances Settings keeps, and the reason it left the destination
+	 * group: it is a route the user visits once and then returns from, so a
+	 * permanent row spent a destination's width on it while the account row in
+	 * the same foot already opens onto the same place. The gear is the one press;
+	 * the account menu is the one that also carries Sign out. The tour's
+	 * `navigate-settings` step attaches to this button, which is why it carries
+	 * the tag rather than the menu item.
+	 */
+	const settingsGear = (
+		<Tooltip content="Settings" side="top">
+			<button
+				type="button"
+				data-tour-tag="nav-item-settings"
+				onClick={() => navigate("/settings")}
+				aria-current={currentView === "settings" ? "page" : undefined}
+				aria-label="Settings"
 				className={cn(
-					"flex h-12 shrink-0 items-center",
-					expanded ? "justify-between pr-2 pl-5" : "justify-center",
+					"flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
+					"transition-colors duration-fast ease-out-quart",
+					"hover:bg-row-hover hover:text-ink",
+					currentView === "settings" && "text-ink",
 				)}
 			>
-				{/* Collapsed, the mark and the expand control occupy one slot and
-				    cross-fade; stacking them keeps the header from resizing. */}
-				{expanded ? (
-					<>
-						<CollapsibleAppLogo expanded />
-						{collapseToggle}
-					</>
-				) : (
-					<div className="relative flex size-8 items-center justify-center">
-						<div className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0">
-							<CollapsibleAppLogo expanded={false} />
-						</div>
-						<div className="absolute inset-0 flex items-center justify-center">
-							{collapseToggle}
-						</div>
-					</div>
-				)}
+				<Settings size={16} aria-hidden="true" />
+			</button>
+		</Tooltip>
+	);
+
+	if (!expanded) {
+		/*
+		 * The 56px strip. 48 would be the VS Code activity bar's width and what the
+		 * old rail collapsed to; 56 is 48 plus 8, so a 16px glyph keeps an 8px step
+		 * on each side and a 28px hit target fits.
+		 *
+		 * THE LIST IS NOT DRAWN HERE. A 56px column cannot show a conversation
+		 * title. The strip is: the brand, then the first group - expand, New chat,
+		 * Search (§J2; design round 1, D11: it used to hold no New chat and no
+		 * visible expand, so a narrow window reached New chat by ⌘N alone) - then
+		 * the destinations, then the foot.
+		 */
+		return (
+			<div
+				data-sidebar-strip=""
+				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
+			>
+				<StripFeedKeeper />
+				<div className="flex h-10 shrink-0 items-center justify-center">
+					<CollapsibleAppLogo expanded={false} />
+				</div>
+				<ul className="flex flex-col items-center gap-1">
+					<li>
+						{stripButton(ChevronRight, toggleLabel, {
+							onClick: onCollapse,
+							attrs: {
+								"aria-expanded": false,
+								"aria-keyshortcuts": sidebarToggleCap(isMac),
+							},
+						})}
+					</li>
+					<li>
+						{stripButton(MessageSquarePlus, newChatLabel, {
+							onClick: stageNewChat,
+							disabled: !catalogueReady,
+							attrs: { "data-tour-tag": "nav-item-chat" },
+						})}
+					</li>
+					<li>
+						{stripButton(Search, searchLabel, {
+							onClick: openCommandPalette,
+							attrs: { "data-command-palette-trigger": "" },
+						})}
+					</li>
+				</ul>
+				<ul className="mt-4 flex flex-col items-center gap-1">
+					{navItems.map(renderNavRow)}
+				</ul>
+				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{settingsGear}
+					<UserProfileSidebar expanded={false} />
+				</div>
+			</div>
+		);
+	}
+
+	/*
+	 * `group/sidebar`, NAMED, and that is a fix rather than a style. Tailwind's
+	 * bare `group-hover:` matches ANY hovered ancestor `.group`, and since the
+	 * merge this column is an ancestor of every conversation row, whose own
+	 * `group` reveals its Pin and Archive acts - so an unnamed group here revealed
+	 * the acts on EVERY row whenever the pointer was anywhere in the sidebar.
+	 */
+	return (
+		/*
+		 * `overflow-hidden`, NOT `overflow-x-hidden`, and the difference is a
+		 * scrollbar the operator caught in a screenshot: setting ONE axis of
+		 * `overflow` turns the other axis from `visible` into `auto` (CSS 2.1
+		 * §11.1.1), so `overflow-x-hidden` alone made THIS div a vertical scroller -
+		 * a third scrollbar on the column, wrapping the two the sections below the
+		 * boundary carry, with a wheel event having no unambiguous target and the
+		 * brand row, `New chat` and the destinations able to be scrolled away from
+		 * under the pointer. The column never scrolls: the two panes below the
+		 * boundary each scroll themselves, and anything that would not fit here is
+		 * clipped rather than scrolled.
+		 *
+		 * `data-sidebar-shell` is the handle the driver's `sidebar-sections` scene
+		 * measures this contract on (`scrollHeight === clientHeight`, and a wheel
+		 * over either pane leaving the chrome where it was).
+		 */
+		<div
+			data-sidebar-shell=""
+			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+		>
+			{/*
+			 * The brand row, 40px, square with the top row beside it.
+			 *
+			 * 40 is the app's existing toolbar step (the chat header, every pane
+			 * toolbar, this row) and it is what puts the brand and the conversation
+			 * title on ONE line once the chrome lane is shell-level. `pl-4`: the
+			 * column's 8px inset plus a row's 8px padding puts every row's mark 16px
+			 * from this column's edge, and the logo starts on that same line.
+			 */}
+			<div className="flex h-10 shrink-0 items-center gap-1 pr-2 pl-4">
+				<CollapsibleAppLogo expanded />
+				<span className="ml-auto">{collapseToggle}</span>
 			</div>
 
-			<ul className="flex flex-col gap-1 p-2">{navItems.map(renderNavItem)}</ul>
-
-			{/* `mt-auto` rather than `justify-between` on the nav: the account row is
-			    the only thing at the foot now, and space is what separates it from the
-			    list — the hairline it used to need went with the toggle. The search row
-			    shares that foot, one gap above the account, because both are controls
-			    rather than destinations. */}
-			<div className="mt-auto flex flex-col gap-1 p-2">
-				{searchRow}
-				<UserProfileSidebar expanded={expanded} />
+			{/*
+			 * §C1.2 then §C1.3: the two primary rows 8px apart, then the destinations
+			 * group. `pb-2` is the group's bottom step; the body below adds the rest of
+			 * §B6's 16px between the destinations and the list's first label.
+			 */}
+			<div className="flex shrink-0 flex-col gap-2 px-2 pb-2">
+				<div className="flex flex-col gap-0.5">
+					{newChatRow}
+					{searchRowExpanded}
+				</div>
+				{/*
+				 * THE DESTINATIONS GROUP, four 30px rows: the same routes in the same
+				 * order the old rail carried, minus Chat (which is the list itself) and
+				 * minus Settings (which the foot owns).
+				 */}
+				<ul className="flex flex-col gap-0.5">{navItems.map(renderNavRow)}</ul>
 			</div>
-		</nav>
+
+			{/*
+			 * THE BODY: the one chat list, one scroll region.
+			 *
+			 * WHAT THE SPACE UNDER THE DESTINATIONS IS, measured rather than assumed
+			 * (operator report, 2026-09-27: "there's a bunch of extra space" between the
+			 * bottom-most nav row and the band). Three 8px steps were stacking on this
+			 * boundary - the group's own `pb-2`, the `mt-2` that used to sit here, and
+			 * the panel's top inset - and the rendered gap was 24px where the tier the
+			 * design names between the destinations and the list below them is 16px
+			 * (§B6). This column owns one of the three steps and the panel owns another,
+			 * so the `mt-2` is the one that goes: the tier now reads the group's 8px
+			 * bottom step against the panel's own 8px inset, and the band sits 16px
+			 * under the last destination.
+			 *
+			 * DO NOT PUT IT BACK without taking 8px out of the panel too: this boundary
+			 * is ONE tier, and three declarations of it were two more than the design
+			 * ever asked for.
+			 */}
+			<div className="flex min-h-0 flex-1 flex-col">{listBody}</div>
+
+			{/*
+			 * THE FOOT: the account row, whose own menu carries Settings and Sign
+			 * out, and the gear that goes straight to Settings.
+			 *
+			 * `pb-2` is the column's own bottom pad, and it is the same step the
+			 * strip's foot carries - the operator's report of 2026-09-26 was that
+			 * this row sat flush against the window's bottom edge with "no
+			 * padding against the bottom of the screen". `min-h-10` keeps the
+			 * foot at its 40px row height and lets the padding extend the box to
+			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
+			 * leave a 32px content box and a 40px row overflowing it).
+			 */}
+			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
+				<UserProfileSidebar expanded />
+				{settingsGear}
+			</div>
+		</div>
 	);
 };
+
+export type { SidebarNavigationProps };

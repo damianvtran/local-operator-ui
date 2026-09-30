@@ -33,7 +33,95 @@ const IDENTITY_ARGS = new Set([
 	"name",
 	"target",
 	"message",
+	/*
+	 * The project tool's milestone op names its subject in `milestone` (the
+	 * milestone's name), beside the flag that decides add-or-remove; without it
+	 * the identity scan falls through to every scalar and the `remove` boolean
+	 * leaks into the object (`Removed milestone ship-v2 true`).
+	 */
+	"milestone",
 ]);
+
+/**
+ * The string spellings of True its own validator accepts, case-insensitively.
+ *
+ * Measured against the running build's pydantic (2.13.5) via the tool's own
+ * params class: `true`, `1`, and - any case, with no surrounding whitespace -
+ * `"true" | "yes" | "y" | "t" | "on" | "1"` all reach the op as True; a
+ * padded `" true "` is a validation ERROR rather than a spelling, which is why
+ * the caller lowercases without trimming. The falsy spellings need no set:
+ * "not truthy" is exactly what the row composes as the update, and that is
+ * also what a rejected spelling gets, for lack of anything the branches can
+ * claim about a call the tool refused.
+ */
+const TRUTHY_FLAG_SPELLINGS = new Set(["true", "yes", "y", "t", "on", "1"]);
+
+/**
+ * The arguments whose BARE scalar reads wrong, and how the object renders them.
+ *
+ * The fallback scan below is the TUI's "every scalar" rule, and for most names
+ * a scalar IS the object. Two do not survive alone, both measured in the trace
+ * label's design round 1: `hub.peek`'s `steps` prints `3` with no unit - "3"
+ * could be a step index, a message count or a byte size (D1) - and `wait`'s
+ * timeout prints as a second bare number beside the job id (`9360 600000`
+ * reads as two ids; the second is ten minutes in milliseconds, D5). Both
+ * arguments arrive as numeric STRINGS in the wild too (`16` calls with a
+ * string `steps` in 36 h of transcripts; the tools' lax ints accept them), so
+ * `numberFrom` feeds the renderers either spelling - a string the tools only
+ * reject is left to the scalar axis untouched (review round 2, QA Q1b).
+ * Keyed by tool AND argument because the meaning is the ARGUMENT's: a `steps`
+ * on some other tool would not be steps, and `jobs.peek` carries no such
+ * count, so it keeps its scalar.
+ *
+ * Applied only in the fallback scan: when identity arguments gave the object,
+ * the call's subject is already named and these renderers are not the subject.
+ */
+const ARG_RENDERINGS: Record<
+	string,
+	Record<string, (value: unknown) => string>
+> = {
+	hub: {
+		steps: (value) => {
+			const n = numberFrom(value);
+			return n !== null && Number.isInteger(n) && n >= 0
+				? `${n} ${n === 1 ? "step" : "steps"}`
+				: "";
+		},
+	},
+	wait: {
+		/*
+		 * Spelled in the same vocabulary as a row's own duration
+		 * (`formatDuration`, seconds in), because a span is a span; the separator
+		 * is the renderer's - an id and a SPAN joined by a bare space read as two
+		 * ids (D5).
+		 */
+		wait_ms: (value) => {
+			const n = numberFrom(value);
+			return n !== null && n > 0 ? `· ${formatDuration(n / 1000)}` : "";
+		},
+	},
+};
+
+/**
+ * The number a renderer can format, from either spelling the tool accepts.
+ *
+ * The tools' pydantic fields are lax, so `"3"` and `"600000"` execute exactly
+ * like their numbers - recorded in the wild for `hub.peek` (`16` calls with a
+ * string `steps` in 36 h of transcripts, review round 2 QA Q1b). A renderer
+ * that demanded `typeof value === "number"` let those spellings fall through
+ * to the bare scalar and relit D1/D5's ambiguity for every one of them. This
+ * is the one coercion both renderers share; non-numeric strings (and anything
+ * that is not a finite number) answer null, so the scalar axis keeps them
+ * untouched rather than guessing a unit for them.
+ */
+function numberFrom(value: unknown): number | null {
+	if (typeof value === "number") return Number.isFinite(value) ? value : null;
+	if (typeof value === "string" && value !== "") {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
 
 /** The minted prefix every MCP tool name carries. */
 const MCP_PREFIX = "mcp__";
@@ -133,12 +221,32 @@ export function summaryFromArgs(
 	const name = toolName.trim();
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
-	let parts = Object.entries(args)
+	/*
+	 * The operation selector is not an object, once a verb table reads it.
+	 *
+	 * `agent({op:"list"})` carries ONE scalar and it is the word the VERB is
+	 * about to say; before the verb was op-aware it was the only thing the row
+	 * had, and passing it through is how the row came to read `Delegated list`
+	 * (operator report, 2026-09-27). For the tools whose verb table is keyed by
+	 * an operation (`TOOL_OP_VERBS`) the selector key is dropped from BOTH
+	 * scans, so the object is the call's subject or nothing - never an echo of
+	 * the verb beside it. `network` spells it `action` and `console` `method`,
+	 * which is why three keys are dropped rather than one; a tool with no op
+	 * table keeps every scalar it sent, MCP tools included, because for those
+	 * the fallback's first two scalars are still the only identity the row has.
+	 */
+	const entries = isOpSelectable(name)
+		? Object.entries(args).filter(([key]) => !OP_ARG_KEYS.has(key))
+		: Object.entries(args);
+	let parts = entries
 		.filter(([key]) => IDENTITY_ARGS.has(key))
 		.map(([, value]) => scalarText(value))
 		.filter(Boolean);
 	if (parts.length === 0) {
-		parts = Object.values(args).map(scalarText).filter(Boolean);
+		const renderings = ARG_RENDERINGS[name.toLowerCase()];
+		parts = entries
+			.map(([key, value]) => renderings?.[key]?.(value) || scalarText(value))
+			.filter(Boolean);
 	}
 	return parts.slice(0, 2).join(" ") || name;
 }
@@ -254,9 +362,21 @@ const STAND_IN_MARK = "… ";
  * `null` means the result had nothing to offer and the row should stay empty:
  * "no stand-in exists" is a different claim from "the stand-in is a blank",
  * and the caller renders the two differently (an empty slot against a mark).
+ *
+ * `labelPending` is the row's first label read still being in flight (see
+ * `CanonicalSessionView.labelPending`): the arguments are a `/history` read
+ * away, so the result is held back and the column stays empty while that first
+ * request is outstanding — never longer than `LABEL_HOLD_MAX_MS`. On the first
+ * frame of a mid-turn join nearly every seeded row is in this state, and a
+ * column of result lines (`… {"text": 200, "solo_cpu": 0.08…`) reads as the
+ * commands that ran. Once the read settles the caller passes `false` and the
+ * stand-in returns for the calls that really have no arguments to find.
  */
-export function outputFallbackLine(output: string | null): string | null {
-	if (!output) return null;
+export function outputFallbackLine(
+	output: string | null,
+	labelPending = false,
+): string | null {
+	if (!output || labelPending) return null;
 	for (const line of output.split("\n")) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
@@ -382,6 +502,19 @@ export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
  * ledger is scanned for: reading is safe, mutating is not, and executing is the
  * one you re-read before trusting.
  *
+ * PARITY IS NOT THE RULE HERE, and review round 1 (R1-5) is why this says so:
+ * the table's base is the TUI's own, and the entries the trace-label change
+ * added beyond it — `web_read`, `lsp`, `console`, `team`, `wait`, `jobs`,
+ * `secret`, `network`, `team_delete` — are UI-side decisions for names the
+ * TUI's table does not carry at all (checked against the installed 0.63.8 /
+ * 0.63.9 and local-operator `origin/main`), each a category someone chose on
+ * purpose. `project`/`project_delete` mirror the sibling TUI branch
+ * `feat/tui-project-line-15c4` (`4ce339597`), as the glyphs do. The GLYPH
+ * table keeps the stricter contract — no icon where the TUI has no mark — so a
+ * shape can be scanned across surfaces; the two axes apply different rules
+ * deliberately, and a future reader should not "restore parity" on one of them
+ * by copying the other.
+ *
  * Looked up case-insensitively because `toolName` is MODEL-controlled: a
  * provider that echoes `Bash` back has to land in `exec` beside `bash`, exactly
  * as `toolIcon` already reasons about its own table.
@@ -389,30 +522,40 @@ export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
  * Anything unlisted — an `mcp__*` call, or a builtin this table has not
  * classified — is `plain`, the neutral the name column has always used. A tool
  * nobody has filed is QUIET, never guessed into a category it does not belong
- * to. The TUI states the same rule and it is the rule a new tool follows: add
- * an entry here when the category is a decision someone has made, and otherwise
- * leave it plain.
+ * to: add an entry here when the category is a decision someone has made, and
+ * otherwise leave it plain.
  */
 const CATEGORIES: Record<string, ToolCategory> = {
 	read: "read",
 	glob: "read",
 	grep: "read",
 	web_fetch: "read",
+	web_read: "read",
 	web_search: "read",
 	browser: "read",
+	lsp: "read",
 	list_variables: "read",
 	read_variable: "read",
 	write: "mutate",
 	edit: "mutate",
 	bash: "exec",
 	eval: "exec",
+	console: "exec",
 	task: "meta",
 	agent: "meta",
+	team: "meta",
 	hub: "meta",
 	todo: "meta",
 	send: "meta",
 	wake: "meta",
 	ask: "meta",
+	wait: "meta",
+	jobs: "meta",
+	secret: "meta",
+	network: "meta",
+	project: "meta",
+	team_delete: "meta",
+	project_delete: "meta",
 };
 
 /**
@@ -439,22 +582,364 @@ export function toolCategory(toolName: string): ToolCategory {
 }
 
 /**
- * The shared name column's floor and ceiling, in characters.
+ * The VERB a ledger row opens with, in the user's terms (chat redesign §E1;
+ * design round 1, D5).
  *
- * `TOOL_NAME_COL = 8` and `TOOL_NAME_COL_MAX = 24` (transcript.py:242-243).
- * The column is shared across every visible row so names stack into one edge
- * and the summaries beside them start on one rail; it GROWS to the longest
- * visible name rather than being fixed, because a transcript of `read`/`edit`
- * calls should not pay 24 characters of gutter for a tool it never called.
+ * The row used to print the tool's WIRE NAME in its first column - `read`,
+ * `web_search`, `bash` - in a fixed-width column shared by every row, so a
+ * snake_case identifier sat in the sans face looking like code in the wrong
+ * font, and a short name left a hole before the object. §E1's row is a
+ * sentence: `Ran pnpm vitest run`, `Read src/chat.tsx`, `Searched the web
+ * sidebar sections` - the verb in sans, the object in mono right after it.
+ *
+ * `settled` is the past tense a finished row prints (failed rows too: "Ran",
+ * with `failed` on the trailing edge, reads as what happened); `running` is the
+ * present participle a live row prints. The glyph beside the verb still carries
+ * the tool's identity (`tool-glyphs.ts`), so the verb can be plain English.
+ *
+ * `named` is false for a tool this table does not know - an MCP call, or a
+ * builtin added after this table - where a generic verb (`Called`) says
+ * nothing about WHICH call it was, so the row keeps the tool's display name as
+ * the head of its object (`Called create_issue title=...`) rather than losing
+ * the identity the old column carried.
  */
-export const TOOL_NAME_COL_MIN = 8;
-export const TOOL_NAME_COL_MAX = 24;
+export type ToolVerb = { settled: string; running: string; named: boolean };
 
-/** The shared column width for a set of visible tool names. */
-export function toolNameColumn(names: readonly string[]): number {
-	let longest = 0;
-	for (const name of names) longest = Math.max(longest, name.length);
-	return Math.min(TOOL_NAME_COL_MAX, Math.max(TOOL_NAME_COL_MIN, longest));
+/**
+ * The operation a call SELECTED, when its arguments name one.
+ *
+ * A meta tool with an `op` (or `action`, or `method`) is one tool that does
+ * many jobs, and its name alone cannot say which: `agent` reads a profile just
+ * as readily as it authors one. The row said `Delegated` for all of them,
+ * which is the operator's report of 2026-09-27 - `Delegated list` for a profile
+ * LISTING, and the same three reads counted as three delegated tasks in the
+ * action group's summary - and it is wrong in both directions: nothing was
+ * delegated, and the reader cannot tell an install from a search.
+ *
+ * The token is a NORMALISED lookup key, never copy: the verb tables below
+ * decide what each one says, and an op this build does not know keeps the
+ * tool's generic verb rather than being guessed into a neighbouring claim.
+ * Lowercased and trimmed because the arguments are model-written.
+ */
+export function toolOp(
+	args: Record<string, unknown> | null | undefined,
+): string {
+	if (!args) return "";
+	for (const key of OP_ARG_KEYS) {
+		const value = args[key];
+		if (typeof value === "string" && value.trim()) {
+			const token = value.trim().toLowerCase();
+			/*
+			 * `project`'s milestone op removes the named milestone when its `remove`
+			 * flag is set (`project_tool.py`, ``milestone: remove the named
+			 * milestone``), and `Updated milestone` would be a false claim for a
+			 * removal - the same species as `Delegated list`. The flag composes the
+			 * token, so the verb table can say which way the call went; the flag is
+			 * the tool's own vocabulary, not a guess.
+			 *
+			 * The spellings are the FULL set the tool itself accepts, not only the
+			 * bare boolean: pydantic 2.13.5 coerces `true`, `1`, and - any case -
+			 * `"true"`, `"yes"`, `"y"`, `"t"`, `"on"`, `"1"` to True before the op
+			 * runs (measured against the generation's own interpreter; the flag
+			 * half of review round 2 QA Q1 - `"yes"` REMOVES in the wild), so each
+			 * of those spellings must compose the removal token. `false`, `0` and
+			 * every falsy string stay updates, as they run.
+			 *
+			 * There is deliberately no trim: pydantic REJECTS `" true "` (and
+			 * `"true "`, `" true"`) while accepting the untrimmed spellings, so a
+			 * padded value never removed anything and must not claim one. It falls
+			 * to the update token like any other spelling outside the set - a
+			 * rejected call's row is a display guess neither branch can settle
+			 * (QA noted it; nothing composes a removal on a guess).
+			 */
+			const remove = args.remove;
+			const removes =
+				remove === true ||
+				remove === 1 ||
+				(typeof remove === "string" &&
+					TRUTHY_FLAG_SPELLINGS.has(remove.toLowerCase()));
+			if (token === "milestone" && removes) {
+				return "milestone-remove";
+			}
+			return token;
+		}
+	}
+	return "";
+}
+
+/**
+ * The three spellings the harness uses for "which operation".
+ *
+ * `op` is what the meta tools' own schemas call it (`agent`, `team`, `hub`,
+ * `secret`, `project`, `todo`, `wake`, `jobs`), the network tool spells it
+ * `action` (its CLI's own word), and the console tool `method`. One list rather
+ * than three parameters, because the extraction is the same question however
+ * the schema spells the key.
+ */
+const OP_ARG_KEYS: ReadonlySet<string> = new Set(["op", "action", "method"]);
+
+/**
+ * Whether the operation token is the SELECTOR for this tool - i.e. the row's
+ * verb is about to say it, so `summaryFromArgs` must not also echo it
+ * (`agent({op:"list"})` reads `Listed list` otherwise).
+ */
+const isOpSelectable = (toolName: string): boolean =>
+	Object.prototype.hasOwnProperty.call(
+		TOOL_OP_VERBS,
+		toolName.trim().toLowerCase(),
+	);
+
+const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
+	bash: { settled: "Ran", running: "Running" },
+	eval: { settled: "Ran Python", running: "Running Python" },
+	read: { settled: "Read", running: "Reading" },
+	write: { settled: "Wrote", running: "Writing" },
+	edit: { settled: "Edited", running: "Editing" },
+	glob: { settled: "Listed", running: "Listing" },
+	grep: { settled: "Searched", running: "Searching" },
+	web_search: { settled: "Searched the web", running: "Searching the web" },
+	web_fetch: { settled: "Fetched", running: "Fetching" },
+	web_read: { settled: "Read", running: "Reading" },
+	browser: { settled: "Browsed", running: "Browsing" },
+	list_variables: { settled: "Listed variables", running: "Listing variables" },
+	read_variable: { settled: "Read variable", running: "Reading variable" },
+	ask: { settled: "Asked", running: "Asking" },
+	send: { settled: "Sent", running: "Sending" },
+	wait: { settled: "Waited for jobs", running: "Waiting for jobs" },
+	team_delete: { settled: "Deleted team", running: "Deleting team" },
+	project_delete: { settled: "Deleted project", running: "Deleting project" },
+	peer: { settled: "Received", running: "Receiving" },
+	/*
+	 * `task` keeps `Delegated` and it is the only entry that earns it: `task`
+	 * launches a subagent, which IS delegation. `agent`/`team`/`hub` used to sit
+	 * beside it and every one of their calls was counted as a task handed off -
+	 * the operator's report of 2026-09-27, where three agent-profile READS
+	 * painted `Delegated` and folded into `delegated 3 tasks`. They live in
+	 * `TOOL_OP_VERBS` below now, where the operation picks the word.
+	 */
+	task: { settled: "Delegated", running: "Delegating" },
+};
+
+/**
+ * The verbs a tool uses when its ARGUMENTS name the operation, keyed by tool
+ * and then by `toolOp`'s normalised token.
+ *
+ * A meta tool is one tool that does many jobs - `agent` reads a profile, finds
+ * one by meaning, authors one, resets one - and the name alone cannot say
+ * which. The static table above said `Delegated` for all eight ops, which is
+ * wrong in both directions: it claims a hand-off that never happened and it
+ * hides what the call actually was. These tables say it per op, in the same
+ * short past/present style as the static ones.
+ *
+ * ONLY operations whose claims differ materially appear. A tool that is honest
+ * with one word for every op stays in `TOOL_VERBS` - and a tool NOT in this
+ * table keeps its `action`/`method` argument in the object column, so adding a
+ * name here is also the switch that stops `summaryFromArgs` echoing the
+ * selector.
+ *
+ * The vocabulary is read from the HARNESS, not invented: the keys are the
+ * `Literal[...]` sets of the running build's own tool schemas (`agent_tool`,
+ * `team_tool`, `secret_tool`, `project_tool`, and `hub`/`jobs`/`wake`/`network`/
+ * `console`/`lsp` in the builtin tool module), so a row can only say an
+ * operation the tool itself accepts.
+ */
+const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
+	agent: {
+		list: { settled: "Listed agents", running: "Listing agents" },
+		show: { settled: "Viewed agent", running: "Viewing agent" },
+		search: { settled: "Searched agents", running: "Searching agents" },
+		install: { settled: "Installed agent", running: "Installing agent" },
+		reset: { settled: "Reset agent", running: "Resetting agent" },
+		create: { settled: "Created agent", running: "Creating agent" },
+		update: { settled: "Updated agent", running: "Updating agent" },
+		sync: { settled: "Synced agents", running: "Syncing agents" },
+	},
+	team: {
+		list: { settled: "Listed teams", running: "Listing teams" },
+		show: { settled: "Viewed team", running: "Viewing team" },
+		create: { settled: "Created team", running: "Creating team" },
+		update: { settled: "Updated team", running: "Updating team" },
+	},
+	hub: {
+		list: { settled: "Listed subagents", running: "Listing subagents" },
+		peek: { settled: "Peeked at", running: "Peeking at" },
+		send: { settled: "Messaged", running: "Messaging" },
+		ask: { settled: "Asked", running: "Asking" },
+		steer: { settled: "Steered", running: "Steering" },
+		pause: { settled: "Paused", running: "Pausing" },
+		cancel: { settled: "Cancelled", running: "Cancelling" },
+		resume: { settled: "Resumed", running: "Resuming" },
+	},
+	secret: {
+		store: { settled: "Stored secret", running: "Storing secret" },
+		retrieve: { settled: "Retrieved secret", running: "Retrieving secret" },
+		list: { settled: "Listed secrets", running: "Listing secrets" },
+		describe: { settled: "Described secret", running: "Describing secret" },
+		update: { settled: "Updated secret", running: "Updating secret" },
+		delete: { settled: "Deleted secret", running: "Deleting secret" },
+	},
+	project: {
+		list: { settled: "Listed projects", running: "Listing projects" },
+		show: { settled: "Viewed project", running: "Viewing project" },
+		create: { settled: "Created project", running: "Creating project" },
+		update: { settled: "Updated project", running: "Updating project" },
+		// `link`/`unlink` act on the session named in the object, so the verb
+		// carries the direction - `Linked session to myproject` reads as the
+		// sentence it is, where a bare `Linked myproject` would not.
+		link: { settled: "Linked session to", running: "Linking session to" },
+		unlink: {
+			settled: "Unlinked session from",
+			running: "Unlinking session from",
+		},
+		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+		// The remove flag's own verb, composed by `toolOp`: the milestone op
+		// UPDATES when the flag is off and REMOVES when it is on, and the row
+		// says which (operator report follow-up, 2026-09-27: a removal must not
+		// read as an update any more than a read may read as a delegation).
+		"milestone-remove": {
+			settled: "Removed milestone",
+			running: "Removing milestone",
+		},
+	},
+	todo: {
+		// `view` is a read; every other op changes the list, which is the claim
+		// the five share.
+		view: { settled: "Read todos", running: "Reading todos" },
+		init: { settled: "Updated todos", running: "Updating todos" },
+		add: { settled: "Updated todos", running: "Updating todos" },
+		done: { settled: "Updated todos", running: "Updating todos" },
+		block: { settled: "Updated todos", running: "Updating todos" },
+		drop: { settled: "Updated todos", running: "Updating todos" },
+	},
+	wake: {
+		create: { settled: "Scheduled", running: "Scheduling" },
+		list: { settled: "Listed wakes", running: "Listing wakes" },
+		cancel: { settled: "Cancelled wake", running: "Cancelling wake" },
+	},
+	jobs: {
+		list: { settled: "Listed jobs", running: "Listing jobs" },
+		peek: { settled: "Peeked at", running: "Peeking at" },
+		cancel: { settled: "Cancelled job", running: "Cancelling job" },
+	},
+	network: {
+		// The reads first, each naming its own subject because the object column
+		// is empty for a call that addresses the whole device or network.
+		status: {
+			settled: "Checked network status",
+			running: "Checking network status",
+		},
+		ls: { settled: "Listed networks", running: "Listing networks" },
+		show: { settled: "Viewed network", running: "Viewing network" },
+		peers: {
+			settled: "Listed network peers",
+			running: "Listing network peers",
+		},
+		log: { settled: "Read network log", running: "Reading network log" },
+		doctor: { settled: "Diagnosed network", running: "Diagnosing network" },
+		// Then the trust-changing six, in the CLI's own vocabulary: `init`
+		// creates, `invite` mints a token, `member_rm` removes a device,
+		// `disconnect` leaves, `panic` rotates every member's secret.
+		init: { settled: "Created network", running: "Creating network" },
+		invite: { settled: "Invited device", running: "Inviting device" },
+		join: { settled: "Joined network", running: "Joining network" },
+		member_rm: { settled: "Removed device", running: "Removing device" },
+		disconnect: { settled: "Left network", running: "Leaving network" },
+		panic: { settled: "Raised panic", running: "Raising panic" },
+	},
+	console: {
+		// `console` is the pane's own noun (its aria labels read "Close
+		// console", "New console"), so the rows use it too.
+		list: { settled: "Listed consoles", running: "Listing consoles" },
+		create: { settled: "Opened console", running: "Opening console" },
+		status: { settled: "Checked console", running: "Checking console" },
+		read: { settled: "Read console", running: "Reading console" },
+		screenshot: { settled: "Captured console", running: "Capturing console" },
+		input: { settled: "Typed in console", running: "Typing in console" },
+		keys: { settled: "Sent keys", running: "Sending keys" },
+		resize: { settled: "Resized console", running: "Resizing console" },
+		// The switch toggles both ways; `secured` would be a one-way claim, and
+		// `input` is the pane's own word for it ("Secure input").
+		secure: {
+			settled: "Updated secure input",
+			running: "Updating secure input",
+		},
+		close: { settled: "Closed console", running: "Closing console" },
+	},
+	lsp: {
+		// Every lsp action is read-only (`tools/lsp.py`: `rename_preview`
+		// computes the edits a rename WOULD make), so all four are reads.
+		definitions: { settled: "Found definition", running: "Finding definition" },
+		references: { settled: "Found references", running: "Finding references" },
+		symbols: { settled: "Listed symbols", running: "Listing symbols" },
+		rename_preview: {
+			settled: "Previewed rename",
+			running: "Previewing rename",
+		},
+	},
+};
+
+/**
+ * The verb for a tool name, and for its operation when the tool has an op
+ * tier. Case-insensitive for the reason `toolIcon` is: the name is
+ * model-controlled, and a provider that echoes `Bash` must not fall to the
+ * generic verb.
+ *
+ * An op-aware tool with NO known operation - a composing call, a row whose
+ * arguments the transcript did not keep, or an op newer than this table - takes
+ * the GENERIC verb and keeps its name at the head of the object, exactly like a
+ * tool the table has never heard of. That is the honest direction: `Called
+ * agent foo` claims only that the call happened, while any op-specific verb
+ * would be a guess about what it did.
+ */
+export function toolVerb(toolName: string, op?: string | null): ToolVerb {
+	const name = toolName.trim().toLowerCase();
+	const token = (op ?? "").trim().toLowerCase();
+	const byOp = token ? TOOL_OP_VERBS[name]?.[token] : undefined;
+	if (byOp) return { ...byOp, named: true };
+	const known = TOOL_VERBS[name];
+	if (known) return { ...known, named: true };
+	return { settled: "Called", running: "Calling", named: false };
+}
+
+export type ToolRowLabel = {
+	/** The verb column: `Ran` settled, `Running` live. */
+	verb: string;
+	/** The object column, with the bare-name stutter dropped. */
+	object: string;
+};
+
+/**
+ * The row's two label columns, from the row's own inputs.
+ *
+ * ONE composition serves two surfaces: `ToolRow` paints it, and the trace
+ * fold's condensed header names the call it is running with it, so a collapsed
+ * group says `Running pnpm vitest run` in exactly the words the expanded row
+ * shows — the fold is not allowed to approximate a label the row already owns
+ * (`trace-fold-model.ts`'s `foldLive`).
+ *
+ * `summary` is the caller's resolved summary text (`summaryFromArgs`, the
+ * composing/queued words); `summaryFallback` is the stand-in the transcript
+ * offers when the summary is only the tool's bare name (the output's first
+ * line). The fold passes NO fallback: it names a call that has not finished, so
+ * the output stand-in cannot exist yet and an empty object is the honest one.
+ */
+export function toolRowLabel(
+	toolName: string,
+	summary: string,
+	summaryFallback: string | null,
+	running: boolean,
+	op = "",
+): ToolRowLabel {
+	const verb = toolVerb(toolName, op);
+	const bare = isBareToolName(summary, toolName)
+		? (summaryFallback ?? "")
+		: summary;
+	return {
+		verb: running ? verb.running : verb.settled,
+		object: verb.named
+			? bare
+			: [displayName(toolName), bare].filter(Boolean).join(" "),
+	};
 }
 
 /* ----------------------------------------------------------- diff body */
@@ -590,6 +1075,47 @@ export function preferDiff(
 	if (next === null) return previous;
 	if (sameDiff(next, previous)) return previous;
 	return next;
+}
+
+/**
+ * The `+N` / `-M` counters a result reports, under `preferDiff`'s rule.
+ *
+ * The counters and the diff body come from one `details` object, and a frame the
+ * live-event budget stripped carries NEITHER. Only the body used to be guarded,
+ * so a conversation opened mid-turn showed an `edit` row with no counts whose
+ * expansion still held the diff: the snapshot applies its durable page first
+ * (the row gets `details = {added: 91, removed: 19, diff}`), then `applyLiveSeed`
+ * re-applies the seed's `tool_execution_end` for the same call with
+ * `details: null` — `_bound_live_result_in_place` (session/frontend_state.py)
+ * drops `details` once it costs more than a quarter of the row's share, and with
+ * 100 retained ends the share is 560 characters, so the limit is 140 and nearly
+ * every edit in a busy turn loses it. Reading counts out of `null` wrote 0/0 over
+ * the durable counts while `preferDiff` kept the body beside them.
+ *
+ * So: a frame with NO `details` object says nothing about the counts and keeps
+ * `previous`; a frame WITH one is the producer's statement and wins, including a
+ * statement of zero (the same "absent vs stated" split `preferDiff` makes). Kept
+ * here beside `preferDiff` so the two guards on one `details` object are one
+ * rule in one file and cannot drift apart again.
+ *
+ * Counts follow `diffCount` (the TUI's `_diff_counts`): only a positive integer
+ * counts, anything else is zero.
+ */
+export function preferDiffCounts(
+	details: unknown,
+	previous: { added: number; removed: number } | null,
+): { added: number; removed: number } {
+	if (!details || typeof details !== "object") {
+		return {
+			added: previous?.added ?? 0,
+			removed: previous?.removed ?? 0,
+		};
+	}
+	const source = details as Record<string, unknown>;
+	return {
+		added: diffCount(source.added),
+		removed: diffCount(source.removed),
+	};
 }
 
 /**

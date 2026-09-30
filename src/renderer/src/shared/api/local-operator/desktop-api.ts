@@ -13,7 +13,8 @@ import {
 	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
-	desktopRequestDeadlineMs,
+	desktopRequestDeadlineDetail,
+	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
@@ -27,28 +28,13 @@ export type {
 	ProviderMethod,
 } from "../../../../../shared/desktop-contract";
 
-/**
- * How long the renderer waits for ANY desktop control before calling it dead.
- *
- * Deliberately longer than the main process's own `fetch` deadline for the same
- * op — `desktopRequestDeadlineMs` plus this margin, rather than the 30 s literal
- * that used to sit here against main's flat 20 s. The invariant is the thing
- * worth keeping: the renderer's bound only covers the case main can never
- * report (the IPC round trip itself never settling), so a backend that answers
- * slowly is still reported by the layer that actually knows the HTTP status.
- * Splitting it per op is what keeps that true now that main's deadline is not
- * one number: a flat 30 s against a 90 s ledger-read budget would have made the
- * renderer the layer that gives up first, and its copy cannot name the reason.
- *
- * It does NOT cover `desktopMedia`, whose transport allows 120s for speech and
- * agent-ZIP transfers; that path is bounded separately and is not routed here.
+/*
+ * The renderer's own deadline for one op: the transport's deadline plus the margin
+ * that covers an IPC round trip main can never report. DEFINED in the shared
+ * contract (see `desktopRequestTimeoutMs` there for why), and re-exported from here
+ * because this is where its callers import it from.
  */
-const DESKTOP_DEADLINE_MARGIN_MS = 5000;
-
-/** The renderer's own deadline for one op, derived from the transport's. */
-export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
-	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
-}
+export { desktopRequestTimeoutMs };
 
 export async function desktopRequest(
 	request: DesktopRequest,
@@ -71,10 +57,7 @@ export async function desktopRequest(
 			// `isLoading` permanently, which is what issue 89 saw as a Settings
 			// spinner that never resolves. Bound it here, once, so every desktop
 			// control fails honestly instead of hanging.
-			return await withDeadline(
-				window.api.desktop.request(request),
-				request.op,
-			);
+			return await withDeadline(window.api.desktop.request(request), request);
 		} catch (cause) {
 			if (cause instanceof DesktopControlError) throw cause;
 			/*
@@ -132,29 +115,47 @@ export async function desktopRequest(
  * pending IPC promise is left to settle or not on its own; there is no way to
  * cancel an `invoke`, and abandoning it is exactly the point.
  *
- * The deadline it waits out is the op's own, because both sides now size it per
- * op: a ledger read that legitimately takes 40 s is not a stalled control, and a
- * renderer that gave up at 30 s would reject the request main was still going to
- * answer.
+ * THE WHOLE REQUEST, NOT ITS OP, and the difference is a move killed 25 s after
+ * it was sent (agent review round 1, F1). `desktopRequestDeadlineMs` sizes the
+ * transfer from its own request -- 155 s offload, 425 s copy, 725 s for the wait
+ * remedy -- and reads the shape, so a caller that hands it the op string gets the
+ * 20 s control budget for the one op the contract documents as legitimately
+ * taking minutes. The op form stays for a caller that only has an op (a story, a
+ * test); this one has the request in hand.
+ *
+ * THE GIVE-UP CARRIES ITS CODE, and that is the second half of the same defect:
+ * `deadline_exceeded` is one of the move's own unconfirmed codes, and the mesh
+ * surface reads it to say "the request was sent, the outcome is unknown" instead
+ * of rendering a refusal nobody made. A bare `DesktopControlError(null, …)` has
+ * no code, so `meshRefusal` falls to `move_refused` with `unconfirmed: false` and
+ * the surface claims a sent move changed nothing -- the inversion the unconfirmed
+ * arm exists to prevent. `desktopRequestDeadlineDetail` is where that code and
+ * its sentence are authored (`MESH_REFUSAL` vocabulary, one authority per fact).
  */
 function withDeadline(
 	pending: Promise<DesktopResponse>,
-	op: DesktopRequest["op"],
+	request: DesktopRequest,
 ): Promise<DesktopResponse> {
+	/*
+	 * THE TIMEOUT, NOT THE DEADLINE, and the name says so (agent review round 2, NIT).
+	 * `desktopRequestTimeoutMs` is `desktopRequestDeadlineMs + DESKTOP_DEADLINE_MARGIN_MS`
+	 * (155 s offload becomes 160 s), and this value feeds BOTH the timer and the sentence
+	 * the give-up carries - so "the app waits up to 160 seconds" is what the process
+	 * actually did. Named `deadlineMs` it read as the smaller number while holding the
+	 * larger one, which is how the round-2 reading of line 145 concluded the copy and the
+	 * timer disagreed by the margin; they are the same value.
+	 */
+	const timeoutMs = desktopRequestTimeoutMs(request);
 	let timer: ReturnType<typeof setTimeout>;
 	return Promise.race([
 		pending,
 		new Promise<never>((_, reject) => {
-			timer = setTimeout(
-				() =>
-					reject(
-						new DesktopControlError(
-							null,
-							"Desktop controls could not reach the backend process.",
-						),
-					),
-				desktopRequestTimeoutMs(op),
-			);
+			timer = setTimeout(() => {
+				const detail = desktopRequestDeadlineDetail(request.op, timeoutMs);
+				reject(
+					new DesktopControlError(null, detail.message, undefined, detail.code),
+				);
+			}, timeoutMs);
 		}),
 	]).finally(() => clearTimeout(timer));
 }
@@ -192,18 +193,29 @@ export class DesktopControlError extends Error {
 	readonly cause?: unknown;
 	/** Vetted backend rejection category, distinct from connectivity status. */
 	readonly code?: string;
+	/**
+	 * How long the backend asked this app to wait before repeating the request,
+	 * when its answer carried `detail.retry_after_ms` (today only the typed
+	 * `runtime_busy` refusal; see `RUNTIME_BUSY_CODE`). Read from the BODY rather
+	 * than the `Retry-After` header because main's relay forwards the body and
+	 * not the headers, and the backend states the two together with the body
+	 * field the more precise of them.
+	 */
+	readonly retryAfterMs?: number;
 
 	constructor(
 		status: number | null,
 		message: string,
 		cause?: unknown,
 		code?: string,
+		retryAfterMs?: number,
 	) {
 		super(message);
 		this.name = "DesktopControlError";
 		this.status = status;
 		this.cause = cause;
 		this.code = code;
+		this.retryAfterMs = retryAfterMs;
 	}
 }
 
@@ -310,7 +322,9 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
 	const envelope = response.body as {
 		result?: T;
-		detail?: string | { code?: string; message?: string };
+		detail?:
+			| string
+			| { code?: string; message?: string; retry_after_ms?: number };
 	} | null;
 	if (response.status < 200 || response.status >= 300) {
 		const detail =
@@ -339,6 +353,11 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 					? envelope.detail?.code
 					: undefined,
 			),
+			typeof envelope?.detail === "object" &&
+				typeof envelope.detail?.retry_after_ms === "number" &&
+				Number.isFinite(envelope.detail.retry_after_ms)
+				? envelope.detail.retry_after_ms
+				: undefined,
 		);
 	}
 	return envelope?.result as T;

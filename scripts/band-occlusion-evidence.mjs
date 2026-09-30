@@ -71,6 +71,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
 const argValue = (name, fallback = null) => {
@@ -329,6 +330,13 @@ const env = withNotificationsOff({
 	 */
 	VITE_DISABLE_BACKEND_MANAGER: "true",
 });
+/*
+ * `withTelemetryOff`: this rig boots the BUILT app, whose two processes carry
+ * the live PostHog project key, and the renderer's copy is inlined at build
+ * time — so a photographed run is otherwise a product user and a session
+ * replay. See `telemetry-off.mjs`.
+ */
+withTelemetryOff(env);
 for (const key of Object.keys(env)) {
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 }

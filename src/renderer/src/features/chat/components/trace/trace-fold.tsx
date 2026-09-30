@@ -1,0 +1,441 @@
+/**
+ * The aggregation tier's line (§E2, amendment A3).
+ *
+ * A run of three or more consecutive actions in one turn folds under ONE summary
+ * line, so a forty-call turn stops being forty lines and starts being a sentence
+ * a reader can act on: `Explored 4 files, 1 search`, `3 shell · 1 python`.
+ *
+ * ## What this component owns, and what it does not
+ *
+ * The copy, the counts, the run's span and the live clause are `trace-fold-model.ts`,
+ * which is pure and unit-tested. This file owns the row, the disclosure, and the
+ * two things a pure model cannot own: WHAT a reader's own press may change, and
+ * WHEN a finished section condenses.
+ *
+ * ## Condensed by default, and the one event that condenses
+ *
+ * The fold opens on NOTHING but the reader's own press: a group must not arrive
+ * open (operator report, 2026-09-26 - groups auto-opened for the newest turn and
+ * then never closed, "which defeats the purpose"). It closes on exactly ONE
+ * event, encoded below where it cannot be mistaken for a timer: the moment the
+ * fold's section stops being the live one, and only while nothing inside it is
+ * still running.
+ *
+ * ## What the condensed header says
+ *
+ * Three facts, in the order a reader needs them while the group is collapsed:
+ * what is running RIGHT NOW (the in-flight call's own label - the operator's
+ * sharpest point: `wait` holds a turn for minutes and a bare count hides it),
+ * what the run has done (the counts by class or kind), and how long it has been
+ * going (the run's wall-clock span, ticking while it runs). The running clause
+ * is dropped while the fold is OPEN: the live row is right there, and two
+ * elements for one fact is the redundancy this transcript keeps removing.
+ *
+ * ## The disclosure is the app's own
+ *
+ * `Disclosure` rather than a fold of its own, for the reason the design system
+ * gives: a tool row, a section header and this line are the same gesture (a
+ * leading chevron, one row height, a full-row ground), and a second folding
+ * implementation beside the first is how one of them ends up with a different
+ * hover, a different chevron or a different hit area. It is also what keeps the
+ * fold's row at the ledger's own 24px pitch, so folding a run moves nothing
+ * below it by more than the rows it hides. The one thing this change asks of
+ * the primitive is its CONTROLLED mode: the condense belongs to the app as well
+ * as the reader, and a second open-state owner beside the disclosure's own is
+ * exactly how the two end up disagreeing about whether the fold is open.
+ *
+ * WHAT THE SHARED PRIMITIVE STILL DOES NOT GIVE THIS LINE, stated rather than
+ * quietly skipped: §B7's named 180ms transition. `Disclosure` UNMOUNTS its
+ * children (`isOpen && children`), so the fold appears and disappears rather
+ * than growing and shrinking — and making it animate means keeping children
+ * mounted for every caller, including every tool row in the transcript, where
+ * an unmounted body is what keeps a forty-row turn cheap to scroll. That is a
+ * change to a shared primitive with a real regression surface, so it is not
+ * this commit's: the two states are legible in the frames, and the transition
+ * is named as deferred on the PR rather than half-done here.
+ *
+ * ## The fold never reorders anything
+ *
+ * Folding hides rows; each keeps its record id and its position, and the fold
+ * itself is keyed by its FIRST row's id, so it cannot claim a place ahead of the
+ * action that opens it. That is branding §7's placement rule, and the transcript
+ * order guard (`applyLiveSeed`/`withTimeOrder`) depends on it.
+ */
+
+import { Disclosure } from "@shared/components/ui/disclosure";
+import { cn } from "@shared/lib/utils";
+import { type ReactNode, useEffect, useState } from "react";
+import { foldMediaClause } from "../../canonical/trace-fold-model";
+import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
+import { formatSettledDuration } from "./tool-row-model";
+
+/**
+ * The ledger's own row height, and the reason it is spelled here rather than
+ * imported: `tool-row.tsx` keeps its copy private on purpose (a consumer that
+ * captured it by name could keep a stale pitch after the row moved), and
+ * `scripts/tool-row.test.mjs` asserts the two stay equal.
+ */
+const ROW_HEIGHT = "min-h-5 py-0";
+
+/** The fold's clock ticks at 1Hz, the interval the row's own clock uses. */
+const FOLD_CLOCK_MS = 1000;
+
+export type TraceFoldProps = {
+	/** §E2's generated copy: `Explored 4 files, 1 search`, `3 shell · 1 python`. */
+	summary: string;
+	actionCount: number;
+	/**
+	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
+	 * an older row restored from history carries durations but no stamps, and the
+	 * header then renders NOTHING rather than a `0s` claim nothing supports.
+	 */
+	span: FoldSpan | null;
+	/**
+	 * The call being watched (`foldLive`), or null when no call is EXECUTING.
+	 *
+	 * It names the header while the fold is collapsed. It is NOT the fold's
+	 * settle predicate on its own: the close is gated on `!sectionLive &&
+	 * live === null`, and a composing or queued call is unsettled yet unnamed -
+	 * those phases cannot coexist with `!sectionLive`, so the section guard is
+	 * what holds them, and the call executing as the section ends is the race
+	 * this value closes by itself (UX round 2, U2 narrowed it from "unsettled").
+	 */
+	live: FoldLive | null;
+	/**
+	 * The fold's section is the live one: the newest turn, while that turn is in
+	 * flight. While this is true nothing the app does may touch an open fold; the
+	 * condense fires on the transition out of it.
+	 */
+	sectionLive: boolean;
+	/** The fold's own margin: the gap tier its first row arrived with (D8). */
+	className?: string;
+	/**
+	 * Media the run produced, drawn UNDER the condensed header.
+	 *
+	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
+	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * reader had to expand the group to see the artifact, which is the cost
+	 * condensing exists to remove. This is the fold's own copy of the principle
+	 * #537 applied to metadata — the condensed state carries the facts the rows
+	 * would have carried.
+	 *
+	 * Render it ONLY while condensed, and that is what the prop asks of its
+	 * caller rather than something this component can check: open, the rows draw
+	 * their own media (`TranscriptRow`'s `media`) and a strip here as well would
+	 * put one picture on screen twice. The caller composes it
+	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
+	 * rather than this file importing it, because the fold is a trace-tier
+	 * component and the transcript is what knows a record's images; the fold
+	 * hands the node its own toggle, so the strip's `+N more images` slot can
+	 * open this fold instead of being a dead end (UX round 1, U1).
+	 */
+	condensedMedia?: (expand: () => void) => ReactNode;
+	/**
+	 * How many pictures `condensedMedia` stands for, for the header's own clause.
+	 *
+	 * A number beside the node rather than something read out of it, because the
+	 * node is opaque here (the caller builds it) and because the COUNT is the part
+	 * a 64px tile cannot carry: the strip is a presence cue, so the reader has to
+	 * be told the number in text - legible at any tile size, reachable without a
+	 * pointer, and the same fact the strip's accessible name already states
+	 * (design review round 1, D3). Zero or absent adds no clause at all, which is
+	 * what keeps a run with no pictures byte-identical.
+	 */
+	mediaCount?: number;
+	/**
+	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
+	 * because a collapsed fold UNMOUNTS its rows, so a reader (or a future
+	 * affordance) cannot find a row by its `data-record-id` until the fold
+	 * that holds it is opened - this is how it finds that fold.
+	 */
+	recordIds: readonly string[];
+	children: ReactNode;
+};
+
+/**
+ * Ms now, ticking once a second while `active`.
+ *
+ * A local copy of the row's clock idiom (`tool-row.tsx`'s `useRunningElapsed`)
+ * rather than an export of it: the row's hook answers "how long has ONE call
+ * been running" from its start, while this answers "what time is it" for the
+ * fold's span - `foldSpan` owns the arithmetic and this owns only the tick. It
+ * shares the row's interval because the fold's number is whole seconds or tenths
+ * (`formatSettledDuration`), so a faster clock would repaint without a change.
+ */
+function useNowMs(active: boolean): number {
+	const [nowMs, setNowMs] = useState(() => Date.now());
+	useEffect(() => {
+		if (!active) return;
+		const read = () => setNowMs(Date.now());
+		read();
+		const timer = window.setInterval(read, FOLD_CLOCK_MS);
+		return () => window.clearInterval(timer);
+	}, [active]);
+	return nowMs;
+}
+
+export const TraceFold = ({
+	summary,
+	actionCount,
+	span,
+	live,
+	sectionLive,
+	className,
+	condensedMedia,
+	mediaCount = 0,
+	recordIds,
+	children,
+}: TraceFoldProps) => {
+	/*
+	 * THE CONDENSE RULE, in one place, because this is exactly the rule someone
+	 * will later "simplify" into a bug:
+	 *
+	 *   finished sections condense; the live section and anything the reader has
+	 *   open obey the reader.
+	 *
+	 * The fold opens on the reader's own press and on nothing else, and it closes
+	 * on ONE event: the moment its section stops being the live one. Two guards
+	 * keep that event honest:
+	 *
+	 * - it never fires while the section is STILL live, so a fold the reader
+	 *   opened mid-watch is never closed underneath them while they watch it;
+	 * - it never fires while a call in the run has not settled: the close reads
+	 *   `live === null` (nothing EXECUTING) AND the section having ended, so a
+	 *   call composing or queued - unsettled but unnamed - cannot slip past it
+	 *   while `!sectionLive`, because the turn working through such a call is
+	 *   exactly what `sectionLive` reports. The call executing as the section
+	 *   ends is the race the `live` half closes on its own (UX round 2, U2).
+	 *
+	 * `armed` is what makes this an EVENT rather than a state: it is set while the
+	 * section is live and cleared when the condense fires once, so a fold restored
+	 * already-finished - or one the reader opens AFTER its section ended, like the
+	 * failed-row jump does - stays open. Only the transition out of a live section
+	 * condenses. Do not turn this into a timer, a hover rule, or a
+	 * "close it if nobody is looking" heuristic: the section's own end is the only
+	 * event the reader has agreed to.
+	 */
+	const [open, setOpen] = useState(false);
+	const [armed, setArmed] = useState(sectionLive);
+	useEffect(() => {
+		if (sectionLive) {
+			setArmed(true);
+			return;
+		}
+		if (armed && live === null) {
+			setArmed(false);
+			setOpen(false);
+		}
+	}, [sectionLive, armed, live]);
+
+	/*
+	 * The run's clock. `span.running` ticks it against now; a settled span freezes
+	 * at its last completion, and a span that cannot date itself renders nothing
+	 * (`formatSettledDuration(null)` is the empty string).
+	 */
+	const nowMs = useNowMs(span?.running === true);
+	const spanS =
+		span === null
+			? null
+			: Math.max(
+					0,
+					((span.running ? nowMs : (span.endedAtMs ?? nowMs)) -
+						span.startedAtMs) /
+						1000,
+				);
+	const durationText = spanS === null ? "" : formatSettledDuration(spanS);
+
+	return (
+		<div className={className} data-fold-ids={recordIds.join(" ")}>
+			<Disclosure
+				/*
+				 * CONTROLLED, because the app closes this fold as well as the reader
+				 * (`open`/`onOpenChange` above): the alternative is the reader's state
+				 * and the app's state disagreeing about whether the fold is open.
+				 */
+				open={open}
+				onOpenChange={setOpen}
+				/*
+				 * The summary is the aggregate line, so the chevron is what carries "there are
+				 * rows in here" — the count alone would read as a statement of fact rather
+				 * than as a control.
+				 */
+				rowClassName={ROW_HEIGHT}
+				triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
+				summary={
+					<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
+						{/*
+						 * Sans, because this is a SENTENCE about the turn rather than an
+						 * identifier (§B4): the counts are words. The object's monospace column
+						 * belongs to the individual rows inside the fold.
+						 *
+						 * FOUR FLEX ITEMS AND THE GAP THAT SPACES THEM, not one truncating
+						 * sentence: the header's `·` separators take their breathing room from
+						 * this row's `gap-2`, exactly as the summary/failure/clock did before the
+						 * live clause existed (§E2).
+						 *
+						 * TRUNCATION PRIORITY, WHILE A CALL IS IN FLIGHT: the NAME is the only
+						 * element that truncates. The first cut left the clause and the summary
+						 * both on `min-w-0 truncate`, and flex shrank them in proportion - so a
+						 * realistic long command took the counts down with it (`3 shell ·…`,
+						 * `1 python` lost) while the failure chip and clock survived on
+						 * `shrink-0` (design round 1, D1, measured on a long-name probe). The
+						 * counts and the clock are the facts a condensed group exists to carry,
+						 * so the summary takes `shrink-0` while the clause is present: the clause
+						 * is the one element with slack (`min-w-0 truncate`, and it can shrink to
+						 * nothing), so every overflow goes to the name first. With no clause -
+						 * a settled header - the summary truncates as it always has.
+						 */}
+						{live !== null && !open && (
+							<>
+								{/*
+								 * THE IN-FLIGHT CALL, in the row's own words and its own
+								 * typography: the verb the row paints while running (`Running`,
+								 * `Reading`, `Calling`) at the row's own liveness ink, then the
+								 * object in the machine voice the row gives it. Dropped while the
+								 * fold is open - the live row is on screen then, and one fact does
+								 * not need two elements. `data-fold-live` is the handle the
+								 * behaviour suite drives (`scripts/trace-fold-behaviour.test.mjs`).
+								 */}
+								<span
+									data-fold-live=""
+									className={cn("min-w-0 truncate")}
+									/*
+									 * The name is the only element here that truncates, so the full text
+									 * would otherwise be reachable only by expanding the fold; the tooltip
+									 * keeps it one hover away (design round 1, D1).
+									 */
+									title={`${live.verb} ${live.object}`}
+								>
+									<span className={cn("text-accent")}>{live.verb}</span>{" "}
+									<span className={cn("font-mono text-mono-sm text-ink-muted")}>
+										{live.object}
+									</span>
+								</span>
+								{/*
+								 * The `·` the header joins its facts with, after the live clause as
+								 * after every other. It is a flex child rather than text inside the
+								 * clause: nested one level in, it lost the row's `gap-2` and printed
+								 * as `Running pnpm vitest run·3 shell` - caught in the first frame of
+								 * `docs/evidence/chat-trace-fold/` and confirmed by measuring the
+								 * rendered rects (clause 52-213, dot 213-217: zero gap).
+								 */}
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+							</>
+						)}
+						<span
+							className={cn(
+								"min-w-0 truncate text-body-sm text-ink-muted",
+								live !== null && !open && "shrink-0",
+							)}
+							title={`${actionCount} actions`}
+						>
+							{/*
+							 * What the run has done, by class or by kind (`foldSummary`).
+							 */}
+							<span>{summary}</span>
+						</span>
+						{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
+						 * fold's `· N failed` chip is retired — a completed run's
+						 * failure count is noise at a glance, and the rows (red,
+						 * behind the fold) carry the state. */}
+						{/*
+						 * How many pictures the run produced, as the count the strip cannot
+						 * carry at 64px - and the reason this clause is here at all is the
+						 * inversion the design round found: the strip's accessible name
+						 * stated the count while the visible header said nothing, so a
+						 * sighted reader got strictly less than a screen-reader user
+						 * (design review round 1, D3). It costs no height: it joins the
+						 * facts the header already prints.
+						 *
+						 * IT DOES COST WIDTH, and that is written down here rather than found
+						 * again later: this span is `shrink-0`, so while a call is in flight
+						 * the clause is paid for out of the live clause - the row's only
+						 * truncating element - and `Running git push origin
+						 * feat/condensed-group-images` loses its tail to `…group-…` (design
+						 * review round 2, D5, measured on the long-name pair). It stands for
+						 * now because both ways to give the characters back change what this
+						 * surface's committed frames show - withholding the clause while
+						 * live, or shortening it to `· 1 img` - and the frames are the
+						 * evidence a reviewer reads, so that is a change taken with a
+						 * capture of `image-live` and `long-name` in both palettes rather
+						 * than folded into a comment round. No reader is left without the
+						 * count in the meantime: the strip renders in this same condensed
+						 * window and states it itself - countable while the pictures fit,
+						 * `+N more` past the cap.
+						 */}
+						{foldMediaClause(mediaCount) !== null && (
+							<>
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+								<span className={cn("shrink-0 text-ink-muted text-meta")}>
+									{foldMediaClause(mediaCount)}
+								</span>
+							</>
+						)}
+						{/*
+						 * The run's own clock, as the sentence's last fact (`3 shell · 1
+						 * python · 1 failed · 15s`), matching the foot line's register. It is
+						 * the WALL-CLOCK SPAN (first start to last completion), rendered in the
+						 * rows' own settled format so it can never print a bare `0s` for a run
+						 * of fast calls - and omitted entirely when no stamps exist, because
+						 * "we do not know" is a different statement from "no time passed".
+						 */}
+						{durationText !== "" && (
+							<>
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+								<span
+									data-fold-span=""
+									className={cn(
+										"shrink-0 font-mono text-ink-dim text-mono-sm tabular-nums",
+									)}
+								>
+									{durationText}
+								</span>
+							</>
+						)}
+					</span>
+				}
+			>
+				{/*
+				 * ONE CHILD, SO THE BODY'S OWN `gap-2` NEVER SITS BETWEEN ROWS (operator
+				 * report, 2026-09-26: "the spacing of the actions under the actions
+				 * dropdown ... 2px space between them"). `Disclosure`'s body is
+				 * `mt-1 flex flex-col gap-2 pb-1` - an 8px step meant for a stack of
+				 * mixed disclosed content - and a run of ledger rows is not that stack:
+				 * its rhythm is `transcript-rows.ts`'s `trace` tier, 2px, which each row
+				 * already carries as its own top margin. Passing the rows as ONE child
+				 * keeps the body's padding (4px above the group) and takes its gap out
+				 * of the run, so a folded run measures exactly what the same run measures
+				 * unfolded: `N x 20px + (N-1) x 2px`. Same step as `TraceGroup`'s
+				 * `gap-0.5`, so the two ways of composing a block agree.
+				 */}
+				<div className={cn("flex flex-col")}>{children}</div>
+			</Disclosure>
+			{/*
+			 * The run's pictures, while the rows that would draw them are unmounted.
+			 *
+			 * OUTSIDE the disclosure and below it, so the header keeps its own 24px
+			 * pitch and the strip is what the reader gains rather than something the
+			 * header now has to trade against. Only while condensed: open, every row
+			 * draws its own media and rendering both would show one picture twice.
+			 * The fold's own toggle is handed to the node so its count slot can open
+			 * the fold (`FoldMedia`'s `onRevealMore`).
+			 */}
+			{!open && condensedMedia && condensedMedia(() => setOpen(true))}
+		</div>
+	);
+};

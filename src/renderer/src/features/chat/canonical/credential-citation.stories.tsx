@@ -10,8 +10,8 @@
  *   $LOP_SECRET_4CE3Y48G; its value cannot be read]
  *
  * Two seconds earlier the same reference had been a chip in the composer, and
- * the transcript is where the reader meets it again — so the three stories here
- * are the three shapes that claim has to hold for:
+ * the transcript is where the reader meets it again — so the stories here are
+ * the shapes that claim has to hold for:
  *
  *  - `CitationMidSentence`, the reported frame: one citation inside a sentence,
  *    which must stay INSIDE its paragraph rather than breaking the line;
@@ -26,6 +26,14 @@
  *    answered, where the app says so instead of claiming an outcome, and its
  *    NARROW rung (`CitationUnconfirmedNarrow`), where a long label has to clamp
  *    rather than run out of its own bubble.
+ *
+ *  - `CitationMultiline`, `PlainMultiline` and `AgentMultiline`, the second
+ *    report's three shapes (2026-09-25): a reader's message whose fields were
+ *    each typed on their own line — WITH citations (the reported state),
+ *    WITHOUT them, and an agent-side answer as the control that must not move.
+ *    The first two keep their lines; the third keeps CommonMark's collapse,
+ *    because an agent's answer is a markdown document and only the reader's
+ *    own turn is drawn as their words.
  *
  * WHAT THESE FRAMES DO NOT CLAIM: that anything about the STORED message
  * changed. It did not — the citation is still what the model receives and what
@@ -43,6 +51,7 @@ import { useRef } from "react";
 import {
 	type CredentialPayload,
 	credentialCitation,
+	credentialMarker,
 	describeUnstored,
 } from "../components/credential-capture";
 import { CanonicalTranscript } from "./canonical-transcript";
@@ -56,6 +65,22 @@ const record = (id: string, text: string): TranscriptRecord => ({
 	ts: TS,
 	text,
 	images: [],
+});
+
+/**
+ * An agent-side row, for the one control this set carries (`AgentMultiline`).
+ * Shaped like `notification-feed-states.stories.tsx`'s assistant helper: a
+ * settled, complete answer with no stop reason — the ordinary case.
+ */
+const answer = (id: string, text: string): TranscriptRecord => ({
+	kind: "assistant",
+	id,
+	ts: TS,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: null,
+	error: false,
 });
 
 /** A transcript state holding one row, as `chat-content.tsx` hands one over. */
@@ -133,6 +158,86 @@ const SENT_IN_FENCE = record(
 		"```",
 		"",
 		"Where did the key name come from?",
+	].join("\n"),
+);
+
+/*
+ * THE SECOND REPORT'S SHAPES (2026-09-25). A message sent with each field on
+ * its own line read back as ONE line — `Prod: Email: … Password: …` — because
+ * a single newline inside a paragraph is a markdown SOFT break, and nothing on
+ * this path turned it into a line the browser keeps. The fix is render-only
+ * and rides the citation pipelines (`markdown-renderer.tsx`'s comment at the
+ * four citation arrays), so these frames are the claim that the reader's own
+ * lines survive the send.
+ *
+ * SYNTHETIC VALUES, deliberately: the operator's own message names real
+ * addresses and two real store keys, and these fixtures are committed pictures
+ * of a state, so they carry `example.com` addresses and keys the composer
+ * could have minted. The SHAPE is the operator's: the fields on their own
+ * lines, a trailing space after each citation and a blank line between the two
+ * blocks (the stored text keeps all three — that is what "the text does not
+ * change" means here).
+ */
+const PROD_PAYLOAD: CredentialPayload = {
+	index: 1,
+	key: "LOP_SECRET_PRODKEY01",
+	value: "p".repeat(19),
+	marker: credentialMarker(1, "p".repeat(19)),
+};
+const DEV_PAYLOAD: CredentialPayload = {
+	index: 2,
+	key: "LOP_SECRET_DEVKEY0002",
+	value: "d".repeat(19),
+	marker: credentialMarker(2, "d".repeat(19)),
+};
+const PROD_CITATION = credentialCitation(PROD_PAYLOAD);
+const DEV_CITATION = credentialCitation(DEV_PAYLOAD);
+
+const SENT_MULTILINE = record(
+	"u1",
+	[
+		"Can you add these credentials to lop secrets and appropriately describe them for e2e testing with the Minerva platform, UI logins:",
+		"",
+		"Prod:",
+		"Email: ops@example.com",
+		`Password: ${PROD_CITATION} `,
+		"",
+		"Dev:",
+		"Email: opsdev@example.com",
+		`Password: ${DEV_CITATION} `,
+	].join("\n"),
+);
+
+/*
+ * THE SAME SURFACE WITHOUT CITATIONS, so the frame set answers the SCOPE
+ * question rather than the citation question: the transform belongs to the
+ * reader's own turn, not to messages that happen to carry chips — this text
+ * collapsed exactly the same way before the fix. (Every line starts with a
+ * word rather than a list marker, so the paragraph keeps its soft breaks
+ * rather than parsing as a list.)
+ */
+const SENT_PLAIN_MULTILINE = record(
+	"u1",
+	[
+		"Deploy checklist for tonight:",
+		"run the migrations first",
+		"then restart the workers",
+	].join("\n"),
+);
+
+/*
+ * THE CONTROL, and it must NOT move: an agent's answer is a markdown document,
+ * so a single newline in one keeps CommonMark's soft-break collapse — the fix
+ * rides the user-turn pipelines only (`markdown-renderer.tsx` says which and
+ * why). Its before and after frames are byte-identical by construction, which
+ * is exactly the claim.
+ */
+const ANSWER_MULTILINE = answer(
+	"a1",
+	[
+		"Here is the plan:",
+		"run the migrations first",
+		"then restart the workers",
 	].join("\n"),
 );
 
@@ -235,4 +340,32 @@ export const CitationUnconfirmedNarrow: Story = {
 /** The citation quoted inside a fenced block, left exactly as the text. */
 export const CitationInCodeFence: Story = {
 	render: () => <Frame records={[SENT_IN_FENCE]} />,
+};
+
+/**
+ * THE REPORTED STATE OF 2026-09-25: the operator's own shape — each field on
+ * its own line, both citations chipped — which read back as one collapsed line
+ * before the soft-break transform. The frame is the claim that the reader's
+ * lines survive the send.
+ */
+export const CitationMultiline: Story = {
+	render: () => <Frame records={[SENT_MULTILINE]} />,
+};
+
+/**
+ * The same surface with NO citations, so the scope is visible: the transform
+ * belongs to the reader's own turn, not to messages that happen to carry
+ * chips. This text collapsed identically before the fix.
+ */
+export const PlainMultiline: Story = {
+	render: () => <Frame records={[SENT_PLAIN_MULTILINE]} />,
+};
+
+/**
+ * The control: an agent-side answer with single newlines, unchanged by this
+ * change — CommonMark's soft-break collapse is its contract. Its before and
+ * after frames are identical on purpose.
+ */
+export const AgentMultiline: Story = {
+	render: () => <Frame records={[ANSWER_MULTILINE]} />,
 };

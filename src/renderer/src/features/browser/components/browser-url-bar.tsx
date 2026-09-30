@@ -1,4 +1,10 @@
-import { Badge, Button, Input, Tooltip } from "@shared/components/ui";
+import {
+	Badge,
+	Button,
+	Input,
+	Tooltip,
+	countLabel,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	ArrowLeft,
@@ -194,8 +200,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	return (
+		/* The bar's ground is the PANE's (`canvas/index.tsx`): it is the first row of
+		   the drawer's body, so it wears the drawer's rung and is continuous with the
+		   content area below it, with the strip's own rule the only line above. */
 		<div
-			className="flex items-center gap-1 border-control border-b bg-canvas px-2 py-1"
+			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
 			<Tooltip content="Back">
@@ -358,10 +367,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						<Badge
 							variant="attention"
 							shape="pill"
-							className="h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas"
+							size="count"
+							className="ring-2 ring-canvas"
 							data-tour-tag="browser-approvals-badge"
 						>
-							{waitingCount}
+							{countLabel(waitingCount)}
 						</Badge>
 					</span>
 				)}

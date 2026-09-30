@@ -3,6 +3,512 @@
 @import "./themes.generated.css";
 
 /*
+ * ============================================================================
+ * WINDOW CHROME
+ * ============================================================================
+ *
+ * There is NO window-wide title bar on any platform. The top 40px of every column
+ * is already a toolbar row - the sidebar's brand row, the conversation title, each
+ * pane's toolbar - and that row IS the chrome. The OS's own controls take a CORNER
+ * of it (macOS: AppKit's traffic lights, which Electron leaves over the renderer)
+ * or the whole trailing end of its first row (Windows and Linux: Electron's WCO
+ * caption buttons, which the overlay enables and which are drawn into the client
+ * area), and the column that owns that corner reserves it.
+ *
+ * EVERY RULE HERE IS GATED ON `data-chrome-mode`, `data-chrome-platform`,
+ * `data-chrome-leading`, `data-chrome-trailing` and `data-chrome-fullscreen`, which
+ * `main.tsx` writes onto the DOCUMENT ELEMENT before the first render from main's
+ * own fact (`--lo-window-chrome`) and which `useWindowChrome` keeps current. Two
+ * reasons the root element rather than the shell div, and both were defects under
+ * the previous `data-titlebar-platform`-on-the-shell spelling: the attribute rules
+ * could not reach a PORTALED element (the sidebar's overlay sheet is portaled to
+ * `body`, and had to re-read `navigator.platform` for itself), and `App` could not
+ * know the chrome MODE at all - it only knew the OS - so the native-frame fallback
+ * had no way to switch the lane and the insets off.
+ *
+ * THE THREE CUSTOM PROPERTIES ARE THE ONLY PLACE `env()` IS READ. Every component
+ * reads these instead, which is what lets a rig simulate any platform's geometry on
+ * a mac host by overriding them on `:root` (a mac host has no WCO rect to measure).
+ * `data-chrome-mode="native"` leaves all three at 0, so the app lays out exactly as
+ * it did before this work.
+ */
+:root {
+	/* The fallback for a document main did not create a renderer for, and for
+	   `data-chrome-mode="native"`. A lane drawn under a native title bar is 32px of
+	   nothing, so the default is the safe direction. */
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * WINDOWS IS 0 AND LINUX IS ONLY SOMETIMES NOT, which is the part that looks like a
+ * mistake. `env(titlebar-area-height)` is 40 on BOTH platforms - it is the height of
+ * the WCO area, not a band above the content - so applying it as a top inset on
+ * Windows would push every page's first row 40px down, away from the buttons the
+ * user expects to sit level with it. On Windows the controls are always trailing,
+ * so the reservation is `--chrome-inset-end` and the strip stays 0. On Linux the
+ * buttons are the WM's to place: trailing (GNOME, KDE by default) gives the same
+ * answer as Windows, while a LEADING layout overhangs the sidebar's own column and
+ * needs a lane of the buttons' height, which is where the env value belongs.
+ *
+ * `data-chrome-leading`/`-trailing` exist because CSS cannot branch on "is this
+ * length greater than zero". `useWindowChrome` derives both from the live WCO rect.
+ */
+[data-chrome-mode="integrated"][data-chrome-leading="true"] {
+	--chrome-strip-h: env(titlebar-area-height, 0px);
+	--chrome-inset-start: env(titlebar-area-x, 0px);
+}
+
+[data-chrome-mode="integrated"][data-chrome-trailing="true"] {
+	/*
+	 * The buttons' width, from the other side of the WCO rect: the rect's own width
+	 * is the area LEFT of the buttons when they trail. `max(0px, ...)` because a
+	 * leading layout reports a rect that already starts at 0 and the subtraction
+	 * would otherwise go negative.
+	 */
+	--chrome-inset-end: max(
+		0px,
+		calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))
+	);
+}
+
+/*
+ * macOS: the lane is a CONSTANT rather than an env() value, because macOS
+ * deliberately does not enable WCO (it would add no pixels, and it would hand the
+ * renderer a geometry main already reproduces from its own full-screen events).
+ *
+ * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
+ * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
+ * window capture reads the drawn circles at centre 16.00. The derivation and the
+ * instrument note are on `src/main/titlebar-options.ts`, beside the
+ * `trafficLightPosition` decision they explain.
+ *
+ * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
+ * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
+ * BESIDE the lights; this shell puts the lane above every column instead, so no
+ * column's first row is beside them and the inset's only consumer left is a banner,
+ * which is a first child of the shell and therefore paints under the lights.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="mac"] {
+	--chrome-strip-h: 32px;
+	--chrome-inset-start: 80px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * Full screen: the lane collapses to 0 and both insets fall with it. Driven by
+ * main's `enter-full-screen`/`leave-full-screen`, because full screen is not
+ * something the renderer can observe - on macOS the lights come back on the
+ * slide-down title bar, and on Linux the WCO rect goes empty and Blink REMOVES the
+ * four `titlebar-area-*` env vars, so the fallbacks above already resolve to 0.
+ */
+[data-chrome-mode="integrated"][data-chrome-fullscreen="true"] {
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * THE DRAG VOCABULARY IS #477's, UNCHANGED, AND ITS GATE IS THE ONLY THING THAT
+ * MOVED. `data-titlebar-drag` on an empty surface, with interactive descendants
+ * opting back out so clicks still land; the no-drag list is kept byte-identical
+ * because it was derived rather than guessed (a button inside a drag region is not
+ * clickable, and the list is every control type the app actually renders in a
+ * header). What changed is the gate: `[data-titlebar-platform="mac"]` became
+ * `[data-chrome-mode="integrated"]`, so Windows and Linux get the drag surfaces too
+ * - without which a frameless window has no way to be moved at all except by its
+ * OS-drawn edges.
+ *
+ * NO CUSTOM CONTEXT MENU ON ANY DRAG SURFACE. Right-click on a drag region raises
+ * the system menu on Windows and Linux, which is the behaviour a frameless window
+ * needs (it is where Alt+Space's menu and Move/Size live); preventing it to draw our
+ * own would take that away. The docs say the same thing, and
+ * `scripts/titlebar-options.test.mjs` scans for an `onContextMenu` in any file that
+ * renders a drag region.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-drag] {
+	-webkit-app-region: drag;
+}
+
+[data-chrome-mode="integrated"]
+	[data-titlebar-drag]
+	:is(
+		button,
+		a,
+		input,
+		textarea,
+		select,
+		[role="button"],
+		[role="menuitem"],
+		[contenteditable="true"],
+		[data-titlebar-no-drag]
+	) {
+	-webkit-app-region: no-drag;
+}
+
+/*
+ * AND THE SAME OPT-OUT, STANDING ON ITS OWN - because the region a control is
+ * swallowed by does not have to be an ancestor's.
+ *
+ * The rule above is scoped to descendants of a drag row, which is where #477 put
+ * the vocabulary. The mechanism is not scoped: Chromium builds the window's
+ * draggable region from ELEMENT RECTS, in layout order, and that walk never sees
+ * the top layer (`LocalFrameView::CollectDraggableRegions`). A dialog painted over
+ * the chrome strip therefore does not stop being inside the strip's rect - the
+ * overlay's own `no-drag` rect is the only thing that subtracts it - and a control
+ * inside a surface that skipped this is swallowed as a window drag. The user sees a
+ * button that does nothing, and a swallowed event is indistinguishable from a dead
+ * handler, which is what made the Analytics panel's `×` report read as "unclickable".
+ *
+ * The subtraction is per SURFACE rather than per control, and deliberately: the
+ * value inherits, so one marker on a dialog/a sheet/a popover/a menu carves out
+ * everything that surface covers (`dropdown-menu.tsx`, `select.tsx` and the rest
+ * carry it). That is also how the trade-off reads - a modal owns what it covers -
+ * and it leaves the lane BESIDE the overlay draggable, which is what a frameless
+ * window needs while one is up. What this is not for: the scrim. Clicking the strip
+ * while a modal is up still drags the window, which is the behaviour the strip has
+ * always had.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-no-drag] {
+	-webkit-app-region: no-drag;
+}
+
+/*
+ * THE LANE IS INVISIBLE WHERE THE OS IS NOT DRAWING OVER THE APP, and it has to be
+ * invisible rather than unrendered: `chat-layout.tsx` renders it once for every
+ * platform so the drag vocabulary, the inset and the two first rows' alignment are
+ * all decided in one place. On macOS it is always up; on Linux it exists only when
+ * the WM puts the buttons leading, which is the one case where they overhang the
+ * sidebar's own column.
+ *
+ * It is `display: none` rather than `height: 0` so it is out of the flow entirely: a
+ * zero-height drag region still swallows a press along the window's top edge, which
+ * on Windows is where the OS frame lives.
+ */
+[data-titlebar-lane] {
+	display: none;
+}
+
+[data-chrome-mode="integrated"][data-chrome-platform="mac"]
+	[data-titlebar-lane],
+[data-chrome-mode="integrated"][data-chrome-leading="true"]
+	[data-titlebar-lane] {
+	display: block;
+	height: var(--chrome-strip-h);
+}
+
+/*
+ * THE TRAILING RESERVATION, AS ONE UTILITY.
+ *
+ * It is a SPACER at the end of a 40px row's first line rather than padding on the
+ * row, and that is load-bearing at narrow widths: below 620px the chat header's
+ * action cluster drops to a SECOND line, which sits below the controls and needs no
+ * reservation at all. Padding on the row would waste the buttons' width on line 2.
+ *
+ * Exactly one element wears it at a time - the chat header when no pane is open, the
+ * open pane's toolbar otherwise - because the right slot is exclusive in the store
+ * (`claimRightSlot`), so the two never both need it and neither has to know which
+ * case it is in.
+ */
+@utility chrome-reserve-trailing {
+	width: var(--chrome-inset-end);
+	flex: none;
+}
+
+/*
+ * THE NON-CHAT ROUTES' DRAG BAND, AND WHERE THE LANE ALREADY STANDS IN FOR IT.
+ *
+ * Settings, agents, agent hub and schedules have no 40px toolbar row of their own, so
+ * on Windows and Linux - where the OS draws its caption buttons INTO the client area
+ * and no lane is drawn above the columns - the page would otherwise sit under the
+ * buttons and a frameless window would have no drag surface above it at all. There
+ * the band is the caption's own height (40), which is both the drag handle and the
+ * clearance: `env(titlebar-area-height)` is the WCO area's height, and spending it as
+ * a top inset is correct HERE because the buttons sit inside the client area's top
+ * 40px rather than above it.
+ *
+ * macOS AND A LEADING LINUX LAYOUT ARE NOT IN ITS GATE, and that is the fix rather
+ * than an omission. On both, `[data-titlebar-lane]` is already drawn above every
+ * column - it IS the drag surface and the clearance - so a band on top of it was a
+ * SECOND inset: on macOS the settings rail and its content began 32px below the chat
+ * header (measured y 62.86 against 32; the operator's report of 2026-09-26, "for
+ * sub-views like the settings page, the sidebar and view doesn't go all the way to
+ * the top").
+ *
+ * THE COMPLEMENT IS WRITTEN IN THE SELECTORS, NOT IN THE ORDER OF THE BLOCKS. Each
+ * arm below carries `:not([data-chrome-leading="true"])`, so no document state can
+ * match this rule and the leading rule together and moving either block cannot
+ * change which one wins; a later review (round 1, R1) measured the opposite shape:
+ * with the negative condition absent, a leading layout matched both rules and
+ * `display: none` won only by being later in the file, so a reorder re-introduced the
+ * double inset with the suite green. `:not(...=true)` rather than `...=false` is
+ * deliberate: a document whose `leading` has not been written yet matches the
+ * negative test, so a win/linux window keeps its drag surface and its caption
+ * clearance in that state instead of losing both (`useWindowChrome` writes the
+ * attribute in a layout effect, before the first paint). Do not re-add the strip
+ * height here: under a lane it is 32px of nothing on every non-chat route.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="win"]:not(
+		[data-chrome-leading="true"]
+	)
+	[data-chrome-route-band],
+[data-chrome-mode="integrated"][data-chrome-platform="linux"]:not(
+		[data-chrome-leading="true"]
+	)
+	[data-chrome-route-band] {
+	display: block;
+	height: env(titlebar-area-height, 0px);
+	-webkit-app-region: drag;
+}
+
+/*
+ * THE EXPLICIT HALF OF THE COMPLEMENT, for the state where it is not implied: a
+ * leading layout draws no band, `display: none` rather than height 0, for the reason
+ * the lane's own rule gives (a zero-height drag region still swallows a press along
+ * the window's top edge). With the negative condition on the block rule this can no
+ * longer be the only thing standing between a leading layout and a double inset - it
+ * is the readable statement of the same fact, and it is what a reader checks first.
+ */
+[data-chrome-mode="integrated"][data-chrome-leading="true"]
+	[data-chrome-route-band] {
+	display: none;
+}
+
+/*
+ * BANNERS, AT BOTH ENDS. A banner is a first child of the shell and is therefore
+ * the surface the controls sit over while one is up - above the lane, and above
+ * every column's first row. #462's mac-only rule generalised: the copy and its
+ * action button are inset past the controls, and the corner keeps painting `canvas`
+ * so the lights (mac) and the Linux overlay sit on the colour they were given, and
+ * Windows' transparent buttons show `canvas` rather than a warning wash.
+ *
+ * The header row BELOW keeps its trailing reservation while a banner is up even
+ * though the controls are no longer over it. That is a deliberate choice of layout
+ * stability over 138px: otherwise the cluster jumps sideways at the moment a banner
+ * appears, on top of the push-down the band's arrival already costs.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-banner] {
+	padding-inline-start: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-start)
+	);
+	padding-inline-end: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-end)
+	);
+	background-image: linear-gradient(
+		to right,
+		var(--color-canvas) 0 var(--chrome-inset-start),
+		transparent var(--chrome-inset-start) calc(100% - var(--chrome-inset-end)),
+		var(--color-canvas) calc(100% - var(--chrome-inset-end))
+	);
+}
+
+/*
+ * THE TRANSCRIPT DISSOLVES AS IT APPROACHES THE CHAT HEADER.
+ *
+ * WHY A MASK RATHER THAN AN OVERLAY. The header's bottom rule is gone, so
+ * nothing draws a line between the bar and the rows: the separation is the
+ * transcript's own top edge fading out. A gradient overlay element would paint
+ * OVER the content - a row scrolled to the top would sit beneath it, dimmed but
+ * present, which is a scrim rather than a dissolve, and one more thing that has
+ * to be kept above the right stacking context. `mask-image` fades the content
+ * itself. The same idiom is already in the tree (`canvas-tabs.tsx`,
+ * `picker-host.tsx`).
+ *
+ * SCROLL-DRIVEN, WITH A STATIC FALLBACK. The fade should exist only while there
+ * is content scrolled under the bar, and clear completely when the oldest row
+ * is at rest against the top edge - a permanent top fade would dim the first row
+ * of every short conversation for no reason. A scroll timeline gives exactly
+ * that, and Chromium is what Electron ships, so the guarded half is the real one
+ * and it is the UNSUPPORTED path that needs naming.
+ *
+ * WHY THE LENGTH IS A REGISTERED PROPERTY AND NOT TWO GRADIENTS. Measured in
+ * the app's own engine (a private headless Chrome, at Electron 44's Blink
+ * version): a keyframe pair interpolating the gradient's first stop from `black`
+ * to `transparent` does NOT interpolate - it flips discretely at 50% of the
+ * range, so the fade would POP in at 12px of scroll instead of ramping.
+ * Animating the middle stop's position between two gradients is discrete for the
+ * same reason (that is `mask-image` to `mask-image`, which the engine does not
+ * blend). Animating a registered `<length>` that the gradient reads measures
+ * linear at every pixel of the range, which is what makes the fade track the
+ * scroll at all, so the length is the animated thing and the gradient is static.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO. The bottom edge is untouched: the composer
+ * band is a separate element, and the transcript's own bottom anchor is
+ * load-bearing for autoscroll. The element keeps `role="log"`, its
+ * `scrollbar-gutter` and its `flex-col-reverse`, and a mask changes neither the
+ * box's size nor its layout, so the reserved gutter stays reserved and the
+ * centring that gutter exists to fix is unaffected. The mask does apply to the
+ * element's whole painted output, scrollbar included - at full fade the top 24px
+ * of the scrollbar's own track softens with the content, which is the same
+ * treatment `canvas-tabs.tsx` gives its edge and is not a clipped or shortened
+ * scrollbar - and it applies to the FLOATING CONTROLS too: the quote and link
+ * toolkits are painted inside this container (`use-floating-control.ts` clamps
+ * them to this element's box), so a toolbar the clamp places in the top 24px is
+ * dissolved with the row behind it. That is reachable (a highlight whose first
+ * line sits 40-64px below the pane's top gets its 32px toolbar clamped to the
+ * pane's top edge) and it is recorded here rather than fixed here: the floor
+ * that would prevent it has to move the control in the states where this fade is
+ * 0px - a transcript that does not overflow, and the oldest end - and the fade's
+ * value is a paint-time quantity no layout hook can read. The fix that would be
+ * exact is to place the control outside the masked element, which is a change to
+ * the quote anchor's coordinate space and belongs in its own change.
+ *
+ * REDUCED MOTION: checked, and deliberately unchanged. This is a scroll-LINKED
+ * paint, not a timed animation - the mask's value IS the scroll position - so
+ * the duration cap has nothing to cap, and suppressing it would freeze the fade
+ * at whatever offset the reader happened to be at. It never plays on its own and
+ * never leaves an element on a `from` keyframe, which is the failure the cap
+ * exists to prevent. A masked header that clears on scroll can read as motion to
+ * some readers, which is why the ramp is 24px of a scroll the reader is already
+ * driving rather than anything of its own.
+ */
+@property --lo-transcript-top-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-lo-canonical-transcript] {
+	--lo-transcript-top-fade: 0px;
+	/*
+	 * Two stops at one position is a hard edge at 0px, i.e. no fade at all. That is
+	 * the value this element carries whenever the animation does not apply - a
+	 * transcript that does not overflow has an INACTIVE timeline, so no keyframe is
+	 * ever sampled and a conversation shorter than the pane is never dimmed at any
+	 * offset - and it is the value the ramp arrives at at the oldest end.
+	 */
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--lo-transcript-top-fade),
+		black 100%
+	);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		/*
+		 * `self`: the mask is on the scroll container itself, so the timeline has to
+		 * come from that element's own scrollport. `linear` because the fade should
+		 * be a function of scroll distance and nothing else.
+		 *
+		 * THE RAMP IS ANCHORED AT THE OLDEST END, AND THAT IS THE WHOLE GEOMETRY.
+		 * This container is `flex-col-reverse`, so 0% of the timeline is the NEWEST
+		 * row at rest and 100% is the oldest end - `use-scroll-paging.ts` reads the
+		 * same origin when it computes `distanceFromTopPx`. The content scrolled
+		 * under the bar is therefore MAXIMAL at 0% and zero only at 100%, which is
+		 * why the ramp belongs to the last 24px and not to the first: with the range
+		 * off the tail the backwards fill holds 24px at rest and all the way up, and
+		 * the animation is spent on the only stretch where there is nothing left to
+		 * dissolve. Measured in this app's own engine (Electron 44.3.0, this
+		 * stylesheet's own text, a 1300px-scrollable transcript in a 300px pane):
+		 * 24px at every offset from rest through 480px up - the resting tail is the
+		 * state the operator's report is about and it is fully faded - and
+		 * 24/12/6/0px at 48/12/6/0px above the oldest end, i.e. exactly
+		 * `clamp(distance above the fold, 0, 24)`, with 0px at every offset of a
+		 * transcript that does not overflow. Anchoring the ramp at the TAIL instead
+		 * (`animation-range: 0 24px`) was measured on the same page and is the defect
+		 * this replaces: 0px at rest, so a resting conversation cuts its top row
+		 * under a rule-less bar. Anchoring it at the near end of the travel
+		 * (`0 calc(100% - 24px)`, 24px -> 0px) was measured too and does not hold the
+		 * fade while content remains above the fold - 23.6px at 24px from rest and
+		 * 15px halfway up, so a row cut at the top of a half-scrolled conversation
+		 * would be faded to two thirds.
+		 */
+		animation-timeline: scroll(self);
+		animation-range: calc(100% - 24px) 100%;
+	}
+
+	@keyframes transcript-top-fade {
+		from {
+			--lo-transcript-top-fade: 24px;
+		}
+		to {
+			--lo-transcript-top-fade: 0px;
+		}
+	}
+}
+
+/*
+ * The path for an engine with no scroll timeline: the same 24px fade, always on.
+ * It is a separate branch rather than a second unconditional rule so the choice
+ * is made by what the engine supports rather than by source order, and it is the
+ * safe direction - a fade that is always there rather than a hard cut that is
+ * never softened.
+ */
+@supports not (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			black 24px,
+			black 100%
+		);
+	}
+}
+
+/*
+ * The chat column's shipped content measure.
+ *
+ * THIS IS THE ONLY PLACE THE NUMBER IS WRITTEN. `CHAT_MEASURE` in
+ * `features/chat/chat-measure.ts` reads the property rather than restating the
+ * value, so the transcript, the composer band and every story that renders
+ * them resolve against one number and cannot drift apart.
+ *
+ * It is a custom property rather than a Tailwind `max-w-[810px]` literal in the
+ * class string because a class can only carry a literal: the value has to be
+ * addressable by name for a runtime change to reach the transcript and the
+ * composer together, and a second copy of the number in a class string is the
+ * drift this file's sibling comment (in `chat-measure.ts`) exists to prevent.
+ *
+ * ## Why 810, and not 640
+ *
+ * The `-90` (10%) from the 900 the column carried is the whole change, and the
+ * reasoning is a measurement rather than a taste margin. Measured on the
+ * rendered app (`scripts/chat-measure-evidence.mjs`, `Chat/Measure`), over a
+ * 1,059-character sample of answer prose at the 14px body step, where the
+ * characters-per-line figure is the sample's character count divided by the
+ * number of rendered line boxes - which INCLUDES the short last line, so it is
+ * a lower bound on the full-line figure rather than an average of full lines:
+ *
+ *  - 900px: 8 lines, 132.4 characters per line, widest line 891.0px.
+ *  - 810px: 9 lines, 117.7 characters per line, widest line 809.7px.
+ *
+ * So the step buys 14.7 characters a line - 11% - for 90px of column.
+ *
+ * ## The figure this replaces, and the one it sits beside
+ *
+ * Two quantities live in `markdown.css`'s measure comment and this file must not
+ * conflate them. The 98.1 it has carried since #106 is a `ch` reading, not a
+ * count of characters, and that file says so explicitly: `ch` is the width of
+ * the glyph `0`, which is roughly half again as wide as an average character of
+ * prose at this font. The character figure it derives from the rendered breaks
+ * is 131 characters on an 832.6px line, and the measurement above is the same
+ * method on a different sample: 132.4 at the 900px column, 117.7 at 810px. The
+ * two agree, which is what makes either usable.
+ *
+ * 640 - what the redesign carried and what the owner reverted on 2026-09-26 - is
+ * inside the design board's comparator range. The brief for this change is
+ * explicitly "narrow the constraint just a bit", so the step is deliberately
+ * well above 640 and does not re-open the redesign.
+ *
+ * The class still gates the cap behind `@min-[750px]/chatcol:`, and the two do
+ * not fight: at a 750px container the content box is 750 - 48 = 702px, so a
+ * 810px cap can only bind above an 858px container. The gate is therefore inert
+ * at every width the product renders, and it is kept because it states the
+ * intent (a narrow column takes the full width) that the number alone does not.
+ */
+:root {
+	--lo-chat-measure: 810px;
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
@@ -29,6 +535,11 @@
 	   contract and § 2 of docs/branding.md. */
 	--color-row-hover: var(--lo-row-hover);
 	--color-row-selected: var(--lo-row-selected);
+	/* The user message block's own surface. Not a fifth ground and not a row
+	   state: one object's fill, and the fill IS its boundary (D10), so it
+	   carries its own ΔE00 floor off `canvas`. See `messageSurface` in the
+	   palette contract and § 2 of docs/branding.md. */
+	--color-message-surface: var(--lo-message-surface);
 
 	--color-ink: var(--lo-ink);
 	--color-ink-muted: var(--lo-ink-muted);
@@ -233,15 +744,44 @@
 	 * would look like the window repainting, and neither property can move a
 	 * sibling.
 	 *
-	 * `sweep` is the indeterminate progress segment. It travels a segment across
-	 * the track rather than sizing or fading one, so the bar reads as "work is
-	 * happening" without stating a fraction - and at its final keyframe the
-	 * segment sits at the left edge, which is a quiet determinate-looking bar.
-	 * The static width and the animation are split across the query below: read
-	 * that rule before moving either half back in.
+	 * `turn` is the panel's two working marks - the rail's head mark, and the
+	 * running step's own marker - and it is the APP'S OWN indeterminate grammar
+	 * (`Spinner`'s ring with a single `accent` quadrant, where the gap is what
+	 * makes a rotation legible) rather than a cadence invented here. Three
+	 * properties of it are deliberate and load-bearing:
+	 *
+	 *   - 1.8s per turn, not `Spinner`'s 1s. This mark turns for the minutes an
+	 *     install takes rather than for the length of a request, and it is the one
+	 *     animation on this screen a user may sit and watch.
+	 *   - `linear` and `infinite`: an eased turn would imply an end the mark does
+	 *     not know.
+	 *   - it animates `transform` ALONE. An opacity breath spends contrast, and in
+	 *     the light themes its trough took the running ring below the waiting rings
+	 *     it has to be told apart from (design D3, measured at 2.88:1 against
+	 *     3.51:1). A turn spends no contrast: the accent quadrant is at full
+	 *     strength in every phase and the ring's other three sides are the `control`
+	 *     the waiting rings carry (design round 2, D7 - under `hairline` the
+	 *     running ring measured 1.22:1 against their 3.13-3.42:1), so the mark that
+	 *     says "working" is never the faintest thing in the column - and
+	 *     `transform`, unlike a width, cannot move a sibling.
+	 *
+	 * THERE IS NO SWEEP KEYFRAME HERE ANY MORE, deliberately. A travelling segment
+	 * used to carry the state where no step has been announced, and that state's own
+	 * reduced-motion parking is what retired it: parked anywhere on the rail it spans
+	 * a marker on each side of itself, and an accent rule joining two steps is a
+	 * determinate claim about them (measured in the frame). The unannounced state is
+	 * now the same ring the running step draws, at the rail's head, so this window
+	 * needs no third keyframe.
 	 */
 	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
 		both;
+	--animate-install-turn: install-turn 1.8s linear infinite;
+
+	@keyframes install-turn {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 	@keyframes install-enter {
 		from {
@@ -254,58 +794,51 @@
 		}
 	}
 
-	@keyframes install-sweep {
-		/*
-		 * Off-track at BOTH ends, so the segment enters and leaves rather than staging
-		 * at a plausible fraction: 0% -> 100% spends its first visible moment flush at
-		 * the track's left edge, which is where a determinate fill sits (design D9).
-		 */
+	/*
+	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7).
+	 *
+	 * The row the reader asked for is flashed for JUMP_HIGHLIGHT_MS (1.4 s),
+	 * then the attribute the module set is removed and the wash is gone. The
+	 * fade runs wash -> transparent on the keyframe so the removal lands on a
+	 * row already back at its own ground.
+	 */
+	@keyframes jump-highlight {
 		from {
-			margin-left: -35%;
+			background-color: var(--color-accent-wash);
 		}
 		to {
-			margin-left: 100%;
+			background-color: transparent;
 		}
 	}
 }
 
 @layer base {
 	/*
-	 * The installer's indeterminate progress segment. THE WIDTH IS OUTSIDE THE
-	 * QUERY AND ONLY THE ANIMATION IS INSIDE IT (design D4, review R1-8).
+	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7): the
+	 * row the reader jumped to holds a transient `accentWash` ground for
+	 * `JUMP_HIGHLIGHT_MS`, so "the row you asked for" is not left to the scroll
+	 * position alone on a surface where every row looks alike.
 	 *
-	 * Declining an animation is not the same as declining the STATE. This element
-	 * gets no width from the panel in the states that use it, so a reduced-motion
-	 * user who saw only the `animation` declined got a 0%-wide fill on a `sunken`
-	 * track - measured #1d1b19 on #22201c, 1.06:1, deltaE 2.07 - which is the empty
-	 * bar the paragraph below says an indeterminate state must never look like, held
-	 * for the whole pre-marker window. A static 35% segment says work is happening
-	 * without claiming how much.
+	 * WHY THE ANIMATION IS GATED ON `no-preference` AND A STATIC WASH SITS
+	 * OUTSIDE IT. The global cap truncates an animation to 0.01 ms and lands it on
+	 * the END keyframe, so a reduced-motion reader of a fade-to-nothing would
+	 * get no cue AT ALL; here the state that must survive is the wash itself,
+	 * so reduced motion holds it still for the attribute's lifetime and the
+	 * module's timer clears it either way.
 	 *
-	 * WHY A PLAIN CLASS RATHER THAN A TAILWIND UTILITY: there is no utility for
-	 * "this element's width follows a keyframe", and the panel sets a real width for
-	 * every state that has one (0%, 25%, 50%, 100%).
+	 * A GROUND, not an outline: the row boxes on this surface are transparent
+	 * wrappers whose children (bubbles, cards) draw their own edges, and an
+	 * outline on the wrapper would ring outside the bubble it is about. A wash
+	 * the children paint over is the one property that shows without inventing
+	 * geometry. `both` fill so the wash does not vanish a frame before the
+	 * removal lands.
 	 */
-	.lo-install-sweep {
-		width: 35% !important;
-		/*
-		 * Mid-track when it is not moving. Parked at the left edge, a static segment is
-		 * indistinguishable from a determinate fill that has stopped there - measured
-		 * at 34.5% of the track in a still, exactly where a 35% determinate fill sits
-		 * (design D9).
-		 */
-		margin-left: 33%;
+	[data-jump-highlight] {
+		background-color: var(--color-accent-wash);
 	}
-
-	/*
-	 * And the motion, where the document has not asked for less of it. This is not
-	 * the global reduced-motion cap doing its work by accident: the cap truncates an
-	 * animation to 0.01ms, which would land this keyframe on `margin-left: 100%` - a
-	 * 35%-wide segment pushed off the end of its track, which is empty again.
-	 */
 	@media (prefers-reduced-motion: no-preference) {
-		.lo-install-sweep {
-			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		[data-jump-highlight] {
+			animation: jump-highlight 1.4s ease-out 1 both;
 		}
 	}
 	/*
@@ -319,6 +852,77 @@
 	 */
 	:where(:focus-visible) {
 		border-radius: inherit;
+	}
+
+	/*
+	 * THE POINTER AFFORDANCE, RESTORED CENTRALLY.
+	 *
+	 * Tailwind v4's preflight deliberately stopped giving buttons the pointer
+	 * cursor - v3's preflight set `button { cursor: pointer }`, and v4 removed it
+	 * to follow the platform's own default - and this app's port off MUI landed
+	 * AFTER that change. MUI's ButtonBase painted its own pointer, so nothing in
+	 * this tree ever had to, and nothing does: measured on the design system's
+	 * own primitives story, all 68 buttons, every Radix trigger (combobox,
+	 * checkbox, switch, tab) and every menu item computed `cursor: default` or
+	 * `auto`. The operator's report - "no pointer affordance across the app" -
+	 * is that same reading taken from a mouse.
+	 *
+	 * ONE LIST, BY SEMANTICS, SO THE NEXT COMPONENT INHERITS IT. The selector is
+	 * the control vocabulary - the roles the shadcn ports render as
+	 * (`role="menuitem"`, `tab`, `switch` ...) plus the native controls the app
+	 * actually uses - so a component added later gets the affordance from what it
+	 * IS rather than from a class somebody remembered to attach, which is the
+	 * property that makes this hold as the app grows. The full audit of every
+	 * story (`scripts/cursor-audit.mjs`) is what keeps the list honest: it
+	 * asserts this vocabulary by name, so a control missing from this rule shows
+	 * up as a measurement rather than as a user's complaint.
+	 *
+	 * `:where()` IS THE MECHANISM, NOT A STYLE. Zero specificity means every
+	 * deliberate word a component says about its own cursor still wins: an
+	 * explicit `cursor-pointer` on a non-semantic card, a `cursor-default` that
+	 * marks an inert row or a control whose affordance is deliberately withdrawn
+	 * (the composer's readings, the dead-directory chip), the resize handles' own
+	 * `col-resize` - all of them are utilities, and a utility always beats a
+	 * base-layer rule. The disabled rule below still wins for a disabled control
+	 * for a different reason: same specificity as this one, and it is the later
+	 * rule.
+	 *
+	 * WHAT IT DELIBERATELY LEAVES ALONE: text entry (the I-beam is the
+	 * platform's to give, and text fields are kept out of the list by name - a
+	 * `textarea` or text `input` carrying `role="combobox"`, which this app puts
+	 * on the composer and on the pickers' filter fields, is a text surface
+	 * first, so the one role a text field can wear is excluded explicitly); `label` elements
+	 * (a label's click-through to its control is a per-component decision);
+	 * resize handles (`role="separator"` names its own cursor); and drag
+	 * surfaces (owned per surface - the mermaid and mesh canvases each swap
+	 * `grab`/`grabbing` themselves).
+	 */
+	:where(
+			a[href],
+			button,
+			summary,
+			select,
+			input[type="button"],
+			input[type="submit"],
+			input[type="reset"],
+			input[type="file"],
+			input[type="checkbox"],
+			input[type="radio"],
+			[role="button"],
+			[role="link"],
+			[role="menuitem"],
+			[role="menuitemcheckbox"],
+			[role="menuitemradio"],
+			[role="tab"],
+			[role="switch"],
+			[role="checkbox"],
+			[role="radio"],
+			[role="option"],
+			[role="combobox"]:not(input):not(textarea):not([contenteditable="true"]),
+			[role="slider"],
+			[role="treeitem"]
+		) {
+		cursor: pointer;
 	}
 
 	/*

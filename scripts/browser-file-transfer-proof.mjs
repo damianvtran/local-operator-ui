@@ -58,6 +58,7 @@ import { dirname, join } from "node:path";
 import sharp from "sharp";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 const ELECTRON_BIN = createRequire(import.meta.url)("electron");
@@ -621,6 +622,14 @@ async function launchApp() {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	/*
+	 * `withTelemetryOff`: this rig boots the built app for a real download and a
+	 * real upload, and that build carries the live PostHog project key in both of
+	 * its processes - the renderer's copy inlined at build time, which is why the
+	 * launch environment is the only place to switch it off. See
+	 * `telemetry-off.mjs`.
+	 */
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}

@@ -56,6 +56,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { radientSessionIssueKey, useRadientSessionIssue } from "./src/renderer/src/shared/hooks/use-radient-session-issue";
+			export { radientUserKeys } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { RadientSessionIssueCallout } from "./src/renderer/src/features/chat/components/radient-session-issue";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
@@ -114,6 +115,7 @@ const {
 	QueryClientProvider,
 	RadientSessionIssueCallout,
 	radientSessionIssueKey,
+	radientUserKeys,
 	useRadientSessionIssue,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -210,6 +212,14 @@ async function mount(world = {}) {
 						});
 					case "accounts.list": {
 						if (state.hold) await state.hold;
+						/*
+						 * The route itself FAILING (a 500), QA round 3's Q-8 state: the
+						 * read errors with no data, which is the one state in which React
+						 * Query re-runs a query when an observer mounts on it.
+						 */
+						if (state.verdict === "failed") {
+							return envelope(500, { detail: "Internal Server Error" });
+						}
 						if (state.verdict === "refused") {
 							/*
 							 * A desktop-PLANE refusal: a bare string with no
@@ -312,10 +322,20 @@ async function mount(world = {}) {
 	}
 
 	let root;
+	/** Bumped to REMOUNT the probe, which is how a host re-creates the callout. */
+	let generation = 0;
 	await act(async () => {
 		root = createRoot(container);
 		root.render(h(QueryClientProvider, { client }, h(Probe)));
 	});
+	const remount = async () => {
+		generation += 1;
+		await act(async () => {
+			root.render(
+				h(QueryClientProvider, { client }, h(Probe, { key: generation })),
+			);
+		});
+	};
 
 	const text = () => container.textContent ?? "";
 	/**
@@ -434,6 +454,7 @@ async function mount(world = {}) {
 
 	return {
 		state,
+		client,
 		latest: () => latest,
 		text,
 		variant,
@@ -446,6 +467,7 @@ async function mount(world = {}) {
 		refresh,
 		query,
 		press,
+		remount,
 		close,
 	};
 }
@@ -509,6 +531,49 @@ test("a verdict read that FAILED is not evidence the login is dead", async () =>
 	);
 	assert.equal(surface.latest().issue.kind, "hidden");
 	assert.equal(surface.text(), "");
+	await surface.close();
+});
+
+/**
+ * Q-8 (QA round 3) found a failed verdict read looping at ~70 requests a second
+ * in Settings, and this surface reads the same key, so it is checked rather than
+ * assumed. The callout OWNS the read and keeps React Query's default
+ * `retryOnMount` on purpose: it lives as long as the composer, and a host that
+ * re-creates it (a session switch, a band change) is exactly when a failed read
+ * should be asked again. What made Settings loop was a HOST that unmounted its
+ * observer on every attempt; this host does not gate on the read at all (a failed
+ * read is `hidden`), so each remount costs ONE read and an idle callout costs
+ * none. Both halves are the bound asserted here.
+ */
+test("a failing verdict route costs one read per mount of the callout, and none while idle", async () => {
+	const surface = await mount({ verdict: "failed" });
+	await surface.verdictApplied();
+	assert.equal(surface.query()?.status, "error");
+	assert.equal(surface.latest().issue.kind, "hidden");
+	const settled = surface.reads("accounts.list");
+	assert.equal(settled, 1, "the first mount made more than one read");
+	await act(async () => sleep(1500));
+	assert.equal(
+		surface.reads("accounts.list"),
+		settled,
+		"an idle callout re-read a failed verdict - it is looping",
+	);
+	for (let remounts = 1; remounts <= 3; remounts++) {
+		await surface.remount();
+		await surface.waitFor(
+			() => surface.reads("accounts.list") === settled + remounts,
+			`remount ${remounts}'s one re-read`,
+		);
+		await surface.verdictApplied();
+		await act(async () => sleep(300));
+		assert.equal(
+			surface.reads("accounts.list"),
+			settled + remounts,
+			`remount ${remounts} cost more than one read`,
+		);
+		assert.equal(surface.latest().issue.kind, "hidden");
+		assert.equal(surface.text(), "");
+	}
 	await surface.close();
 });
 
@@ -584,6 +649,16 @@ test("the action starts the documented flow, and the page is opened by MAIN", as
 test("a completed sign-in refetches the verdict, and never flashes the issue back", async () => {
 	const surface = await mount();
 	await surface.expectKind("needs-sign-in");
+	/*
+	 * A settled account read for the completion to commission, seeded before the
+	 * press: `invalidateQueries` on a key NO query stands under legitimately has
+	 * nothing to mark, so without this the assertion below would pass on a hook
+	 * that never asked for the account read at all - the empty-set version of
+	 * the coverage gap this case exists to close.
+	 */
+	surface.client.setQueryData(radientUserKeys.user(), {
+		account: { id: "seeded-before-the-sign-in" },
+	});
 	await surface.press("Sign in to Radient");
 	await surface.expectKind("signing-in");
 
@@ -610,6 +685,20 @@ test("a completed sign-in refetches the verdict, and never flashes the issue bac
 		surface.latest().issue.kind,
 		"signing-in",
 		"a stored credential must not re-raise the issue while the verdict catches up",
+	);
+	/*
+	 * AND THE ACCOUNT READ IS COMMISSIONED (operator report, 2026-09-27): this
+	 * branch is the composer callout's only completion path, and without the
+	 * re-ask the account surfaces keep whatever the failed read recorded - the
+	 * foot the operator reported sat on "Account unavailable" after a completed
+	 * re-sign-in. The call sites (this one and `provider-detail.tsx`'s
+	 * `refreshProviders`) are pinned by source in `picker-feedback.test.mjs`;
+	 * this asserts the shipped hook actually reaches the shipped key.
+	 */
+	assert.equal(
+		surface.client.getQueryState(radientUserKeys.user())?.isInvalidated,
+		true,
+		"the completed sign-in must commission the account read",
 	);
 
 	surface.state.hold = null;

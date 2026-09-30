@@ -98,7 +98,10 @@ const NEST_STEP_PX = 8;
  *
  * A shared ceiling rather than two tuned ones, because the two halves of a call
  * are the same kind of thing and a reader should not have to learn two budgets.
- * 240px is ~13 argument lines at `text-mono-sm`'s 17.4px line box plus the
+ *
+ * 320px, which is §E5's own number. It was 240px before this commit, argued from
+ * the panes it replaced: ~13 argument lines at `text-mono-sm`'s 17.4px line box
+ * plus the
  * block's 4px row gap: taller than any ordinary call's arguments (the panes this
  * replaced measured 129-223px for their whole content), short enough that a
  * `write` carrying a whole file cannot push the result's label off the screen.
@@ -108,7 +111,12 @@ const NEST_STEP_PX = 8;
  * `max-h-[${n}px]` template is simply not one of them. The number lives here so
  * there is one place to read it, and in `SECTION_MAX` so the two cannot drift.
  */
-const SECTION_MAX = "max-h-[240px]";
+/*
+ * `min(320px, 40vh)` (design round 1, open question d): 320 at 900 and 768
+ * tall, 240 at 600. At 800x600 the transcript is 360px, and a flat 320 would
+ * let one open detail fill 89% of the scroller and push its own row off-screen.
+ */
+const SECTION_MAX = "max-h-[min(320px,40vh)]";
 
 /**
  * The section cap, for a caller that renders its own section in this idiom.
@@ -126,6 +134,18 @@ export type ToolDetailProps = {
 	output: string | null;
 	/** The call failed, so its result is ink`danger` and labelled `Error`. */
 	isError: boolean;
+	/**
+	 * The call was INTERRUPTED rather than run to a verdict (design round 1,
+	 * D1): a steering skip, a cancelled call, or the user's stop, as the record's
+	 * own `stopped` says. The section keeps the output treatment's geometry but
+	 * stops calling a verdict-less body `Output` - it produced no output, it was
+	 * stopped - so it is labelled `Interrupted`, the word the row's own sr-only
+	 * announcement and the TUI use, in the neutral label ink with the body in
+	 * ordinary ink. An interruption never reaches here with `isError` set (the
+	 * reducer clears it), and the belt-and-braces conditions below keep the
+	 * danger treatment for any state that somehow did.
+	 */
+	interrupted?: boolean;
 };
 
 /**
@@ -302,7 +322,12 @@ const Remainder: FC<{ lines: number; overflowing: boolean }> = ({
 		</span>
 	) : null;
 
-export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
+export const ToolDetail: FC<ToolDetailProps> = ({
+	args,
+	output,
+	isError,
+	interrupted = false,
+}) => {
 	const input = argumentLines(args);
 	const structured = resultLines(output);
 	const inputRef = useRef<HTMLDivElement>(null);
@@ -324,7 +349,11 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 	return (
 		<div
 			className={cn(
-				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+				// §E5: `sunken`, radius 10, NO border (design round 1, D9). The
+				// `sunken` step already separates the block from the page; a hairline
+				// on top of it is one of the drawn lines §B3's complete border list
+				// does not include.
+				"w-full rounded-md bg-sunken p-3 font-mono text-mono-sm",
 			)}
 		>
 			{input.length > 0 && (
@@ -352,10 +381,10 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 					<span
 						className={cn(
 							"mb-1 block text-meta",
-							isError ? "text-danger" : "text-ink-dim",
+							isError && !interrupted ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{isError ? "Error" : "Output"}
+						{interrupted ? "Interrupted" : isError ? "Error" : "Output"}
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (
@@ -368,7 +397,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 							<pre
 								className={cn(
 									"whitespace-pre font-mono",
-									isError ? "text-danger" : "text-ink",
+									isError && !interrupted ? "text-danger" : "text-ink",
 								)}
 							>
 								{output}

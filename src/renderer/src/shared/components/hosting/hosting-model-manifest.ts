@@ -99,10 +99,21 @@ const convertToManifestProvider = (
 	};
 };
 
-// Cache for hosting providers to prevent excessive re-renders
+/*
+ * The derived list is cached for the re-renders that ask for it repeatedly -- and
+ * the cache is keyed on the STORE ARRAYS, not on a clock.
+ *
+ * WHY IT IS NOT A TIME WINDOW: a listing that arrives within the window of an
+ * earlier read stayed stale, so a picker kept saying "No models available" while
+ * the store it reads already held the models -- measured by publishing a listing
+ * one second after a mount that had read an empty one (review round 3 R3-m4). The
+ * store's `models`/`providers` arrays are replaced wholesale on every write, so
+ * their identity is exactly the question this cache is asking.
+ */
 let cachedProviders: HostingProvider[] | null = null;
-let lastCacheTime = 0;
-const CACHE_TTL = 5000; // 5 seconds
+let cachedFromModels: unknown = null;
+let cachedFromProviders: unknown = null;
+let cachedFromInitialized: boolean | null = null;
 
 /**
  * Get hosting providers from the models store
@@ -110,15 +121,18 @@ const CACHE_TTL = 5000; // 5 seconds
  * @returns Array of hosting providers
  */
 export const getHostingProviders = (): HostingProvider[] => {
-	const now = Date.now();
-
-	// Return cached providers if they exist and are not expired
-	if (cachedProviders && now - lastCacheTime < CACHE_TTL) {
-		return cachedProviders;
-	}
-
 	const store = useModelsStore.getState();
 	const { providers, models, isInitialized } = store;
+
+	// Return the cache while the store it was derived from is the same store.
+	if (
+		cachedProviders &&
+		cachedFromModels === models &&
+		cachedFromProviders === providers &&
+		cachedFromInitialized === isInitialized
+	) {
+		return cachedProviders;
+	}
 
 	// If the store is not initialized yet, return an empty array
 	if (!isInitialized || providers.length === 0) {
@@ -135,7 +149,9 @@ export const getHostingProviders = (): HostingProvider[] => {
 
 	// Update cache
 	cachedProviders = result;
-	lastCacheTime = now;
+	cachedFromModels = models;
+	cachedFromProviders = providers;
+	cachedFromInitialized = isInitialized;
 
 	return result;
 };

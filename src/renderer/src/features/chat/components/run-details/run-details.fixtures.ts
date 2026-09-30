@@ -38,7 +38,8 @@ type JobSpec = {
 	progress?: string;
 	/** `error_text`, on a failure. */
 	error?: string;
-	/** `result_text`, on a normal settle — the reader's success outcome (`§ 5.1`). */
+	/** `result_text`, on a normal settle — the reader's bounded preview, and only
+	 * in the states where no conversation can be painted (`§ 5.1`). */
 	result?: string;
 	/** `session_id`, the reader's key. `null` is a job the runtime has not given one. */
 	sessionId?: string | null;
@@ -77,10 +78,12 @@ const child = (spec: JobSpec): Record<string, unknown> => ({
 	error_text: spec.error ?? "",
 	/*
 	 * `result_text` is EMPTY unless a spec supplies one, and that default was a
-	 * defect in the first cut of this fixture: `reader-settled` claimed an outcome
-	 * block its own frame could not contain, because no story could set the field.
-	 * A settled child's outcome is a state `§ 5.7` names, so the fixture has to be
-	 * able to carry it.
+	 * defect in the first cut of this fixture: `reader-settled` claimed a block its
+	 * own frame could not contain, because no story could set the field. A settled
+	 * child is a state `§ 5.7` names, so the fixture has to be able to carry it —
+	 * and since the reader now paints the field only where the conversation is
+	 * unreadable, a story that means to photograph it sets it on a page whose
+	 * state makes that true (`reader-result-preview`).
 	 */
 	result_text: spec.result ?? "",
 	session_id: spec.sessionId === undefined ? "a1b2c3d4e5f6" : spec.sessionId,
@@ -1014,7 +1017,16 @@ export const readerChild = (
 		role: "reviewer",
 		status: "running",
 		startedSecondsAgo: 96,
-		progress: "Running pytest tests/unit/server -q",
+		/*
+		 * A STATED INTENT, which is the shape `tool_activity(display, intent)` returns
+		 * when the model said something (`intent.py:310-324` — the intent wins and the
+		 * tool name is dropped), emitted by the relay's `ToolExecutionStartEvent` arm
+		 * (`subagent.py:1327`). Capitalised on purpose: an intent is model-authored
+		 * prose, and this fixture must not read like a command line — the fallback
+		 * shape is lowercase (`f"running {display}"`) and is what
+		 * `reader-live-floor` carries, so the pair shows both arms.
+		 */
+		progress: "Auditing the pending ledger rows",
 		tokens: 23_100,
 		window: 200_000,
 		cost: 0.08,
@@ -1126,6 +1138,70 @@ const entry = (
 });
 
 /**
+ * A settled child's result, at a length that makes the reader's foot the subject.
+ *
+ * Two values rather than one, and the relationship between them IS the fixture's
+ * claim: `LONG_RESULT` is what the child's own transcript holds — the text a
+ * reader sees as the conversation's last message — and `CLIPPED_RESULT` is what
+ * the WIRE carries of it (`frontend_state.py:143-164`, `JOB_RESULT_WIRE_CHARS =
+ * 2_000`), cut mid-word because the runtime truncates by character count and not
+ * at a sentence. A story that set only the clipped value could not show the
+ * duplication the reader used to paint, and a story that set only the long one
+ * would be a fixture for a wire that does not exist.
+ *
+ * THE WIRE'S CLIP IS MARKED, and the first cut of this fixture was not: it was
+ * `LONG_RESULT.slice(0, 2_000)`, which is what a length-only reading of
+ * `_bound_job_text_in_place` gives and is NOT what the runtime sends. The clip
+ * appends an ellipsis (`job[key] = value[:limit] + "…"`,
+ * `frontend_state.py:2829-2841`), and that mark is the only evidence a renderer
+ * has that a value was shortened — which is why the reader's own label and
+ * honesty line are gated on it (`run-child-reader.tsx`'s `WIRE_CLIP_MARKER`) and
+ * why the cut and uncut fixtures have to differ by more than their length. The
+ * truncation here is against the tighter of the field's 2_000 and the row's
+ * share of the frame budget, so a clipped value is `limit + 1` characters and
+ * NOT necessarily 2_001: the fixture states the field's own bound.
+ *
+ * The length is not decoration either: the removed block was unbounded, and its
+ * takeover needed a result that could not fit the pane. This one does not fit in
+ * the 160px the bounded preview allows, which is the point of both frames that
+ * use it.
+ */
+const RESULT_PARAGRAPHS = [
+	"Four of the 412 March invoices are unpaid, and I checked each one against the ledger rather than against the export's own status column, because the two disagree about one of them.",
+	"Northwind has two: INV-2031, 44 days old, and INV-2077, 12 days old. Contoso has one, INV-2044, 31 days old. Fabrikam has one, INV-2069, 19 days old, and it is the only one whose due date has already passed twice, once before the payment run and once after it.",
+	"The outstanding total across those four is $18,420 against $1,204,880 invoiced for the month, so 1.5% of the month's value is open. Two of the four have reminder emails on record, and two do not; the two without are the two oldest, which is the pattern I would expect if a reminder is what moves a customer to pay.",
+	"I could not confirm any of the four from the export alone, which is why each figure above comes from the ledger. The export's own column disagrees on INV-2077, where it reads paid while the ledger shows the payment applied to the February invoice instead. I have left that row untouched rather than correcting it in either direction, because which of the two documents is wrong is not a question this export can answer at all.",
+	"For the other three the ledger and the export agree, and the amounts I have quoted are the ledger's, which is the one the reminders are generated from. If the ledger is the billing truth, the export is a reporting view of it and its status column is the thing to fix; if it is the other way round, then the reminder run is chasing customers who have already paid and the fix is on the collections side instead.",
+	"One more thing worth stating, because it decides what a reader should do with the total: three of the four carry part payments against earlier invoices, so the outstanding figure here is the current balance rather than the invoiced amount. INV-2077's part payment is the February application above; INV-2044 was paid down in January and again in February; and INV-2069 carries a credit from a returned order that nobody applied until the February run.",
+	"Nothing in the March export shows those part payments, which is the second reason I am quoting the ledger. If the two are reconciled by hand each month then this is where the time goes, and a matching rule that applied credits to the invoice they name would take that work off the list; that is a change to the ledger's own tooling and not something I can do from here.",
+	"Recommended next step: reissue INV-2031 and INV-2044, and check the February application on INV-2077 before anything is sent.",
+];
+export const LONG_RESULT = RESULT_PARAGRAPHS.join("\n\n");
+/**
+ * What `JOB_RESULT_WIRE_CHARS` leaves of it on the roster frame: the first
+ * 2_000 characters and the marker `_bound_job_text_in_place` appends, so the
+ * value says for itself that it is a prefix.
+ */
+export const CLIPPED_RESULT = `${LONG_RESULT.slice(0, 2_000)}…`;
+
+/**
+ * A result the wire left WHOLE: under `JOB_RESULT_WIRE_CHARS` (2_000), with no
+ * marker on it — which is the only state in which a renderer may call a value
+ * whole.
+ *
+ * The two values above are about what the clip does; this one is about the half
+ * of the same rule that is easiest to get backwards, and `run-child-reader.tsx`
+ * is explicit that length is not the discriminator: a value the runtime never
+ * truncated must NOT be announced as a shortened copy, and the reader keeps the
+ * two apart by the wire's own marker rather than by counting characters. It is a
+ * self-contained answer on purpose — a prefix of `LONG_RESULT` would read to a
+ * person as a cut paragraph, which is the ambiguity the component already
+ * discloses and the one thing a frame for this branch must not add to.
+ */
+export const WHOLE_RESULT =
+	"Four of the 412 March invoices are unpaid: INV-2031, INV-2044, INV-2077 and INV-2069, $18,420 against $1,204,880 invoiced for the month. The two oldest carry no reminder email; the export's status column disagrees with the ledger on INV-2077, which I have left alone rather than correcting in either direction. Reissue INV-2031 and INV-2044, and check the February application on INV-2077 before anything is sent.";
+
+/**
  * A child's transcript page, as the reader's route answers one (`§ 10.1`).
  *
  * The story set needs these because a fixture cannot prove the PULSE, but it can
@@ -1138,11 +1214,20 @@ export const childPage = ({
 	launchTurn = false,
 	includeTool = false,
 	includeImage = false,
+	finalResult,
 }: {
 	state?: "ready" | "pending" | "gone";
 	launchTurn?: boolean;
 	includeTool?: boolean;
 	includeImage?: boolean;
+	/**
+	 * A closing assistant message, which is where a result actually lives.
+	 *
+	 * A settled child's last durable row IS its result — that is the premise of
+	 * the reader's rule — so a frame that means to show a result on the page has
+	 * to append one rather than point the row's own `result_text` at the reader.
+	 */
+	finalResult?: string;
 } = {}): DesktopChildTranscriptPage => ({
 	state,
 	has_more: false,
@@ -1218,6 +1303,12 @@ export const childPage = ({
 			"assistant",
 			"Three of the four match the ledger. The fourth has no counterpart, so I cannot confirm it from this export alone.",
 		),
+		/*
+		 * The result, in its own chronological place: last, because that is where a
+		 * child's result is. `ts` 280 is the newest instant on this page (the
+		 * readings count BACK from `FIXTURE_NOW_MS`, so a smaller number is later).
+		 */
+		...(finalResult ? [entry("c-a4", 280, "assistant", finalResult)] : []),
 	],
 });
 
@@ -1591,6 +1682,250 @@ export const wakesAndPlan = (): RunDetailsInput => ({
 			message: "Sweep the ingest queue for stuck rows",
 			dueInMinutes: 90,
 			everyMinutes: 90,
+		}),
+	],
+});
+
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One armed monitor in `MonitorState`'s own shape — the spec's identity fields
+ * joined with the health counters, which is exactly what the scheduler's
+ * `index_rows()` publishes (design § 10.2).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS — deliberately NOT
+ * `at()` above, which mints epoch SECONDS for the job rows. Getting either wrong
+ * is a factor of 1000 with nothing on screen to say so: the label would simply
+ * print a 1970 date, so the units are spelled on the fields rather than left to
+ * the reader's sense of which clock a field came off.
+ *
+ * `disabled_reason` is the wire's own shape — the check's last error line, which
+ * the scheduler copies into the counters when the failure ladder trips
+ * (`scheduler.py`: `counters["disabled_reason"] = counters["last_error"]`) — so
+ * a fixture states a plausible stderr line rather than a sentence about being
+ * disabled that no writer would produce.
+ */
+const monitorWatch = (spec: {
+	id: string;
+	name: string;
+	/** Minutes from the fixture's now; `null` for a monitor with no due slot. */
+	dueInMinutes: number | null;
+	/** `every_ms`: the check interval, in MINUTES for legibility. */
+	everyMinutes?: number;
+	/** Minutes since the last check, when one has run. */
+	lastCheckMinutesAgo?: number;
+	checks?: number;
+	description?: string;
+	consecutiveFailures?: number;
+	disabled?: boolean;
+	disabledReason?: string;
+}): Record<string, unknown> => ({
+	id: spec.id,
+	name: spec.name,
+	tool: "bash",
+	arguments: { command: "gh pr view 1710 --json state,reviews" },
+	every_ms: (spec.everyMinutes ?? 1) * 60_000,
+	until_at: null,
+	description: spec.description ?? "",
+	notify: false,
+	sort_lines: false,
+	ignore: [],
+	cwd: "/tmp/fixture",
+	created_at: FIXTURE_NOW_MS - 3_600_000,
+	next_due_at:
+		spec.dueInMinutes === null
+			? null
+			: FIXTURE_NOW_MS + spec.dueInMinutes * 60_000,
+	last_check_at:
+		spec.lastCheckMinutesAgo === undefined
+			? 0
+			: FIXTURE_NOW_MS - spec.lastCheckMinutesAgo * 60_000,
+	checks: spec.checks ?? 0,
+	deliveries: 0,
+	consecutive_failures: spec.consecutiveFailures ?? 0,
+	disabled: spec.disabled ?? false,
+	disabled_reason: spec.disabledReason ?? "",
+});
+
+/**
+ * One watch and nothing else: the monitor chip alone, at the row's start, and
+ * the Monitors section as the pane's only section.
+ *
+ * The state the whole slice exists for — a session whose only standing fact is
+ * something being WATCHED, which nothing in this app could show before.
+ */
+export const monitorsOnly = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+	],
+});
+
+/**
+ * The three health states on ONE list, published out of due order — which is
+ * also the section's ordering claim, the twin of `wakesRecurring`'s.
+ *
+ * Live and simply waiting (`loom-pr-1710`, due soonest, `41 checks` so far),
+ * mid-ladder (`ingest-queue`, `3 failed`), and parked by the ladder
+ * (`staging-pings`, no due slot — its slot reads `disabled` and its tail is the
+ * reason the counters carry). The disabled row arrives LAST on the wire and
+ * sorts last here too, because its `next_due_at` is null.
+ */
+export const monitorsHealth = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m2",
+			name: "ingest-queue",
+			dueInMinutes: 3,
+			lastCheckMinutesAgo: 2,
+			checks: 12,
+			consecutiveFailures: 3,
+			description: "Sweep the ingest queue for stuck rows",
+		}),
+		monitorWatch({
+			id: "m3",
+			name: "staging-pings",
+			dueInMinutes: null,
+			lastCheckMinutesAgo: 9,
+			checks: 57,
+			disabled: true,
+			disabledReason: "connection refused",
+			description: "Ping the staging cluster",
+		}),
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+	],
+});
+
+/**
+ * Nine monitors — ONE past `MONITOR_ROW_CAP` (8), so the overflow marker is in
+ * frame.
+ *
+ * The cap is the arm path's own `values.monitor.maxMonitors` default, so nine is
+ * reachable the way a full session with the setting raised would be, and the
+ * marker's wording ("1 more monitor") is what that state has to read like.
+ */
+export const monitorsMany = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: Array.from({ length: 9 }, (_, index) =>
+		monitorWatch({
+			id: `m${index + 1}`,
+			name: `watch-${index + 1}`,
+			dueInMinutes: (index + 1) * 2,
+			lastCheckMinutesAgo: index + 1,
+			checks: 10 * (index + 1),
+			everyMinutes: index % 3 === 0 ? 30 : 1,
+			description: `Watch ${MONITOR_MANY_DESCRIPTIONS[index]}`,
+		}),
+	),
+});
+
+/** Nine distinct subjects, so no two rows in that frame read alike. */
+const MONITOR_MANY_DESCRIPTIONS = [
+	"the build queue for a stuck job",
+	"the nightly import's row counts",
+	"the ledger for the unpaid rows",
+	"the staging cluster for a failed ping",
+	"the ingest queue for stuck rows",
+	"the backup log for last night's run",
+	"the exchange-rate feed for a stale quote",
+	"the card statement for a new charge",
+	"the failed-jobs list for a retry",
+];
+
+/** The long prose, for the row that has to clamp one and keep the whole text. */
+const LONG_MONITOR_DESCRIPTION =
+	"Watch the pull request's review state for anything that moves: new review comments, a changed approval, the merge queue position, and the check runs against the head commit, then report only what changed since the last look before the release window closes";
+
+/**
+ * One watch whose description is longer than the row can show.
+ *
+ * The truncation claim: the description is the one unbounded, authored string on
+ * a monitor row, so it clamps at two lines while the whole text stays readable
+ * on hover and in the accessible name. The pair is `monitorsOnly` above,
+ * whose description fits — an ellipsis with nothing beside it is not a
+ * comparison.
+ */
+export const monitorLongDescription = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "release-gate",
+			dueInMinutes: 2,
+			lastCheckMinutesAgo: 1,
+			checks: 8,
+			description: LONG_MONITOR_DESCRIPTION,
+		}),
+	],
+});
+
+/**
+ * Wakes and watches together: both standing-fact sections in one scroll region
+ * and both count chips on the row above them, the wakes first.
+ *
+ * The pair order is the TUI band's ("wake rows first, then a monitor section"),
+ * and this fixture is what the pane's section order and the chip group's order
+ * are read against.
+ */
+export const monitorsAndWakes = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "w1",
+			message: "Stand-up reminder",
+			dueInMinutes: 12,
+		}),
+		wakeSchedule({
+			id: "w2",
+			message: "Sweep the ingest queue for stuck rows",
+			dueInMinutes: 90,
+			everyMinutes: 90,
+		}),
+	],
+	monitors: [
+		monitorWatch({
+			id: "m1",
+			name: "loom-pr-1710",
+			dueInMinutes: 1,
+			lastCheckMinutesAgo: 1,
+			checks: 41,
+			description: "Watch the PR's review state for new reviews",
+		}),
+		monitorWatch({
+			id: "m2",
+			name: "ingest-queue",
+			dueInMinutes: 3,
+			lastCheckMinutesAgo: 2,
+			checks: 12,
+			consecutiveFailures: 3,
+			description: "Sweep the ingest queue for stuck rows",
 		}),
 	],
 });

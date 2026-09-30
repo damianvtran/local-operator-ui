@@ -1,5 +1,6 @@
 import { ChatHeader } from "@features/chat/components/chat-header";
 import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -220,7 +221,6 @@ function installBridge(state: BrowserChromeState): void {
 		revokeAllApprovals: noop,
 		forgetSite: noop,
 		clearData: noop,
-		onPopupBlocked: () => () => {},
 		onConsentAttention: () => () => {},
 	};
 	(window as unknown as { api: unknown }).api = { browser };
@@ -277,10 +277,12 @@ const withPane =
 
 /**
  * THE CONVERSATION'S OWN TITLE, so the tray's sentence is the one the app renders
- * (design round 1, N4). `requesterLabel` falls back to the raw session id when the
- * session store holds no title for it - and the fixture held none, so `with-approval`
- * photographed the pane's most prominent sentence as "The agent in conversation
- * session-1f4c", a form the app shows only for a conversation it cannot name. The
+ * (design round 1, N4). `requesterLabel` falls back when the session store holds no
+ * title for it - and the fixture held none, so `with-approval` photographed the pane's
+ * most prominent sentence as a fallback form rather than a name. (That fallback used to
+ * interpolate the session id itself; since 2026-09-23 it reads "An agent from another
+ * session", which is the copy the card carries whenever the app cannot name the
+ * asking session - UX round 1, U5.) The
  * seeding is the same call `browser-consent-bar.stories.tsx` makes for the same
  * reason.
  */
@@ -358,7 +360,7 @@ const CompositionGround: FC<{
 						agentName="Reports agent"
 						description="Quarterly reporting · on this machine"
 						onOpenOptions={() => undefined}
-						onOpenBrowser={() => undefined}
+						onToggleBrowser={() => undefined}
 						browserAttentionCount={count}
 						/* The run trigger, so the cluster really does carry all three of
 						   the right slot's choices (design round 1, D6): the badge's corner
@@ -382,16 +384,12 @@ const CompositionGround: FC<{
 							side="left"
 							label="Resize browser"
 						/>
-						<div
-							data-tour-tag="browser-pane-slot"
-							style={{ width: panelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
-						>
+						<PaneSlot width={panelWidth} tourTag="browser-pane-slot">
 							<BrowserPane
 								sessionId={THIS_CONVERSATION}
 								onClose={() => undefined}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 			</div>
@@ -578,7 +576,7 @@ const HeaderStory: FC<{ count: number }> = ({ count }) => (
 			agentName="Reports agent"
 			description="Quarterly reporting"
 			onOpenOptions={() => {}}
-			onOpenBrowser={() => {}}
+			onToggleBrowser={() => {}}
 			browserAttentionCount={count}
 		/>
 	</div>

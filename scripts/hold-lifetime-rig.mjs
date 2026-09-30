@@ -113,6 +113,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 /** `/bin/launchctl`, by absolute path: this is the machine's own answer. */
 const LAUNCHCTL = "/bin/launchctl";
@@ -436,6 +437,15 @@ exit 1
 			LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 			VITE_DISABLE_BACKEND_MANAGER: "true",
 		});
+		/*
+		 * `withTelemetryOff`: this is the one rig here that boots a PACKAGED `.app`,
+		 * by absolute executable path rather than through a named `electron` command,
+		 * and that bundle carries the live PostHog project key in both of its
+		 * processes with the renderer's copy inlined at build time. Applied to the
+		 * assembled environment rather than at the `spawn` below so every launch this
+		 * rig adds is covered without being remembered. See `telemetry-off.mjs`.
+		 */
+		withTelemetryOff(environment);
 		/*
 		 * The executable's own name, from the bundle's Info.plist, not the .app's
 		 * basename: a rig renames its copy (the install-job label must not collide with

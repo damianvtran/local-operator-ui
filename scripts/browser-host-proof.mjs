@@ -34,7 +34,7 @@
  * Usage: node scripts/browser-host-proof.mjs [--keep]
  */
 
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -57,6 +57,7 @@ import { join } from "node:path";
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 const SCRATCH = join(tmpdir(), `lo-browser-proof-${process.pid}`);
@@ -140,7 +141,9 @@ function check(label, ok, detail) {
  * The page, deliberately small and hostile-free, but exercising exactly the
  * surfaces the capability matrix assigns to this host: a clickable control, a
  * text field, a long enough body to scroll, console output at three levels, an
- * uncaught exception, a permission request, a popup attempt, a same-origin link
+ * uncaught exception, a permission request, a popup dance (open, opener check,
+ * postMessage both ways, cookie share, grandchild refusal, self-close), a
+ * same-origin link
  * so a click can be seen to navigate, and a probe written by the PAGE's own
  * script reporting which globals its world actually has (the isolation claim,
  * measured rather than read off the view's creation options).
@@ -155,6 +158,12 @@ const PAGE = `<!doctype html>
 <input id="name" type="text" />
 <button id="go" type="button">Go</button>
 <button id="nav" type="button">Next page</button>
+<button id="popup-open" type="button">Popup dance</button>
+<button id="popup-hold" type="button">Hold a popup</button>
+<button id="popup-blank" type="button">Blank-first popup</button>
+<button id="popup-denied" type="button">Denied scheme</button>
+<button id="popup-cap" type="button">Fill the cap</button>
+<button id="popup-cleanup" type="button">Cleanup popup</button>
 <p id="result"></p>
 <p id="geo">geolocation: not asked</p>
 <p id="popup">popup: not asked</p>
@@ -189,18 +198,135 @@ const PAGE = `<!doctype html>
   } catch (error) {
     document.getElementById("geo").textContent = "geolocation: threw " + error;
   }
-  try {
-    const opened = window.open("/popup-target", "_blank");
-    document.getElementById("popup").textContent = "popup: " + (opened ? "opened" : "blocked");
-  } catch (error) {
-    document.getElementById("popup").textContent = "popup: threw " + error;
-  }
+  // The popup dance (docs/design/browser-oauth-popups.md 5.1.3). The controls
+  // are clicked by the harness with real input events, so window.open runs with
+  // the user activation a person's click carries; each event is recorded into
+  // #popup as it arrives, and the popup reports through postMessage.
+  // No backticks in this comment: it lives inside a template literal.
+  const popupLog = [];
+  const recordPopup = (entry) => {
+    popupLog.push(entry);
+    document.getElementById("popup").textContent = "popup: " + popupLog.join(" / ");
+  };
+  window.addEventListener("message", (event) => {
+    const data = event.data;
+    if (!data || data.kind !== "popup-ready") return;
+    recordPopup("opener=" + (data.hasOpener ? "yes" : "no"));
+    recordPopup("selfCookie=" + (data.selfCookie ? "yes" : "no"));
+    recordPopup("sharedJar=" + (document.cookie.includes("proof_popup") ? "yes" : "no"));
+    recordPopup("grandchild=" + (data.grandchildDenied ? "denied" : "opened"));
+    event.source.postMessage({ kind: "opener-ack" }, "*");
+    recordPopup("ack=sent");
+    recordPopup("opener-at=" + location.pathname);
+  });
+  document.getElementById("popup-open").addEventListener("click", () => {
+    const popup = window.open("/popup-target", "proofpopup");
+    recordPopup(popup ? "opened" : "blocked-by-host");
+    if (!popup) return;
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll);
+        recordPopup("closed=yes");
+      }
+    }, 50);
+  });
+  document.getElementById("popup-hold").addEventListener("click", () => {
+    const popup = window.open("/popup-target?hold=1&which=direct", "holdpopup");
+    recordPopup("hold=" + (popup ? "opened" : "blocked-by-host"));
+  });
+  document.getElementById("popup-blank").addEventListener("click", () => {
+    // MSAL's shape: the window is opened EMPTY first and navigated after — the
+    // case whose options Electron copies from the opener instead of taking ours.
+    const popup = window.open("", "blankpopup");
+    recordPopup("blank=" + (popup ? "opened" : "blocked-by-host"));
+    if (popup) popup.location.href = "/popup-target?hold=1&which=blank";
+  });
+  document.getElementById("popup-denied").addEventListener("click", () => {
+    let outcome;
+    try {
+      outcome = window.open("mailto:proof@example.com", "deniedpopup") ? "opened" : "refused";
+    } catch (error) {
+      outcome = "threw:" + error;
+    }
+    recordPopup("mailto=" + outcome);
+  });
+  document.getElementById("popup-cap").addEventListener("click", () => {
+    // Three candidates with two children already live: the boundary is the 4th
+    // live child, so this records opened / opened / refused when the cap is 4.
+    const results = [];
+    for (let index = 0; index < 3; index += 1) {
+      const popup = window.open("/popup-target?hold=1&which=cap" + index, "cappopup" + index);
+      results.push(index + ":" + (popup ? "opened" : "refused"));
+    }
+    recordPopup("cap=" + results.join(","));
+  });
+  document.getElementById("popup-cleanup").addEventListener("click", () => {
+    const popup = window.open("/popup-target?hold=1&which=cleanup", "cleanuppopup");
+    recordPopup("cleanup=" + (popup ? "opened" : "blocked-by-host"));
+  });
   setTimeout(() => { throw new Error("proof: uncaught exception"); }, 0);
 </script>
 </body></html>`;
 
 const PAGE2 = `<!doctype html><html><head><meta charset="utf-8"><title>Proof page two</title></head>
 <body><h1>Second page</h1><p id="second">This is the second proof page.</p></body></html>`;
+
+/**
+ * The popup target (docs/design/browser-oauth-popups.md 5.1.3).
+ *
+ * Two shapes, chosen by the query string:
+ *
+ * - no `hold` — the DANCE. It asserts its own opener relation into its status
+ *   line, writes a cookie and re-reads it in its own document, tries a
+ *   grandchild (which the child's own deny-all handler must refuse), reports all
+ *   of it to the opener over postMessage, closes itself once the opener's ack
+ *   arrives, and is recorded by the opener as `closed=yes`.
+ * - `hold=1` — a popup that only exists: it sits there so the harness can hold a
+ *   live child, fill the cap and capture the frame over CDP. Its status line
+ *   still carries the two cross-window readings (opener, shared cookie), which
+ *   is what a held popup is FOR here.
+ *
+ * Both shapes report `cookies=` from THIS document, so a popup opened after the
+ * dance proves the jar is shared in the child-to-parent direction the same way
+ * the dance proves it in parent-to-child.
+ */
+const POPUP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Popup proof target</title></head>
+<body><h1>Popup target</h1><p id="popup-status">popup: starting</p>
+<script>
+  const params = new URLSearchParams(location.search);
+  const status = document.getElementById("popup-status");
+  status.textContent = "popup: opener=" + (window.opener ? "present" : "null") +
+    " cookies=" + (document.cookie.includes("proof_popup") ? "shared" : "none");
+  if (params.has("hold")) {
+    status.textContent += " held";
+  } else {
+    document.cookie = "proof_popup=shared; Path=/";
+    const selfCookie = document.cookie.includes("proof_popup");
+    let grandchildDenied = false;
+    try {
+      grandchildDenied = window.open("/popup-target?which=grandchild", "proof-grandchild") === null;
+    } catch (error) {
+      grandchildDenied = true;
+    }
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.kind === "opener-ack") {
+        status.textContent += " acked";
+        window.close();
+      }
+    });
+    if (window.opener) {
+      window.opener.postMessage({
+        kind: "popup-ready",
+        hasOpener: window.opener !== null,
+        selfCookie: selfCookie,
+        grandchildDenied: grandchildDenied,
+      }, "*");
+      status.textContent += " reported";
+    } else {
+      status.textContent += " NO-OPENER";
+    }
+  }
+</script></body></html>`;
 
 /** Responses still held open by the `/slow` route, destroyed at the end of the
  * run so a deliberately hung request cannot keep this process alive. */
@@ -245,6 +371,11 @@ function startSite() {
 			res.end(PAGE2);
 			return;
 		}
+		if (url.pathname === "/popup-target") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(POPUP_PAGE);
+			return;
+		}
 		res.writeHead(200, { "Content-Type": "text/html" });
 		res.end(PAGE);
 	});
@@ -274,6 +405,11 @@ async function launchApp() {
 	 * real app, and a backend it spawns reaches macOS through `osascript` for a
 	 * parked gate — a banner in the operator's real Notification Center from a
 	 * harness run. See `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` for the same reason one project over: this rig boots the
+	 * real app, whose build carries the live PostHog project key, and neither the
+	 * scratch HOME nor the scratch profile can switch off a client the renderer
+	 * configures from a value inlined at build time. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -289,6 +425,7 @@ async function launchApp() {
 		// app-proof harness uses.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	// Every inherited cmux/lop variable is removed rather than overwritten: this
 	// process is driven by a session that has them set, and an inherited workspace
 	// id has already renamed the operator's real workspaces in this project.
@@ -319,6 +456,9 @@ async function launchApp() {
 	);
 	const logPath = join(SCRATCH, "app.log");
 	const stream = [];
+	// The pid the sampler's reading is judged against (see `startFrontmostSampler`);
+	// the run launches the app twice, so every pid this process launched is kept.
+	appPids.push(child.pid);
 	child.stdout.on("data", (chunk) => stream.push(chunk.toString()));
 	child.stderr.on("data", (chunk) => stream.push(chunk.toString()));
 	const flush = () => writeFileSync(logPath, stream.join(""));
@@ -517,6 +657,221 @@ async function waitForRenderer(timeoutMs = 60_000) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Every target the app exposes on the debugging port, page targets included.
+ * The driven views are targets here, and so is every popup a page opened — which
+ * is what makes "a popup target appeared / disappeared" a reading rather than a
+ * claim. */
+async function targets() {
+	return await (
+		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
+	).json();
+}
+
+/** The page targets' urls, in list order — the transcript's own record of what
+ * exists on the port at a moment. */
+function pageTargetUrls(list) {
+	return list
+		.filter((target) => target.type === "page")
+		.map((target) => target.url);
+}
+
+/** Wait until a page target matches `predicate`, returning it. */
+async function waitForTarget(predicate, label, timeoutMs = 15_000) {
+	const started = Date.now();
+	for (;;) {
+		const hit = (await targets()).find(
+			(target) => target.type === "page" && predicate(target),
+		);
+		if (hit) return hit;
+		if (Date.now() - started > timeoutMs) {
+			throw new Error(`timed out waiting for ${label}`);
+		}
+		await sleep(250);
+	}
+}
+
+/** Wait until NO page target matches `predicate` — the reading a close path
+ * produces (a popup's target leaves the port when its window closes). */
+async function waitForTargetGone(predicate, label, timeoutMs = 15_000) {
+	const started = Date.now();
+	for (;;) {
+		const hit = (await targets()).find(
+			(target) => target.type === "page" && predicate(target),
+		);
+		if (!hit) return true;
+		if (Date.now() - started > timeoutMs) {
+			throw new Error(`timed out waiting for ${label} to disappear`);
+		}
+		await sleep(250);
+	}
+}
+
+/** One one-shot CDP request against a specific target, over its own socket. */
+async function cdpOnTarget(target, method, params = {}, id = 1) {
+	const socket = new WebSocket(target.webSocketDebuggerUrl);
+	await new Promise((resolve, reject) => {
+		socket.addEventListener("open", resolve, { once: true });
+		socket.addEventListener("error", reject, { once: true });
+	});
+	const message = await new Promise((resolve, reject) => {
+		socket.addEventListener("message", (event) => {
+			const incoming = JSON.parse(event.data);
+			if (incoming.id === id) resolve(incoming);
+		});
+		socket.addEventListener("error", reject, { once: true });
+		socket.send(JSON.stringify({ id, method, params }));
+	});
+	socket.close();
+	if (message.error) {
+		throw new Error(`${method}: ${message.error.message}`);
+	}
+	return message.result;
+}
+
+/**
+ * The popup-under-a-headless-run frame (docs/design/browser-oauth-popups.md
+ * 2.6, 5.1.3), captured over CDP against the popup's OWN target.
+ *
+ * WHY CDP AND NOT THE HOST'S `screenshot` ACTION: the popup is deliberately not
+ * a tab, so the driver — which drives views — cannot see it; and `capturePage`'s
+ * visibility-forcing semantics are exactly what the driver refuses for page
+ * content. `Page.captureScreenshot` on the popup's target is the same capture
+ * the driver uses for the renderer, aimed at the window the popup actually is.
+ */
+async function captureTargetFrame(target, path) {
+	const result = await cdpOnTarget(target, "Page.captureScreenshot", {
+		format: "png",
+	});
+	const data = result?.data;
+	if (!data) throw new Error(`no frame came back from ${target.url}`);
+	const bytes = Buffer.from(data, "base64");
+	writeFileSync(path, bytes);
+	return { bytes: bytes.length, url: target.url };
+}
+
+/** Evaluate an expression in a specific target (a popup's own document), the
+ * same shape `rendererEvaluate` uses for the app's renderer. */
+async function targetEvaluate(target, expression) {
+	const result = await cdpOnTarget(target, "Runtime.evaluate", {
+		expression,
+		awaitPromise: true,
+		returnByValue: true,
+	});
+	if (result?.exceptionDetails) {
+		return {
+			error:
+				result.exceptionDetails.exception?.description ??
+				result.exceptionDetails.text ??
+				"threw",
+		};
+	}
+	return { value: result?.result?.value };
+}
+
+/** Click a control in a driven tab by its accessible name, through the host's
+ * own `click` action — a real CDP input event, so `window.open` runs with the
+ * activation a person's click carries. */
+async function clickControl(state, tab, label) {
+	const snapshot = await rpcOk(state, "snapshot", { tab });
+	const ref = new RegExp(`- button "${label}" \\[(e\\d+)\\]`).exec(
+		snapshot.snapshot,
+	)?.[1];
+	if (!ref) {
+		throw new Error(`no "${label}" control in the snapshot`);
+	}
+	return await rpcOk(state, "click", { tab, ref });
+}
+
+/** The text a selector shows in a driven tab. */
+async function readSelector(state, tab, selector) {
+	const read = await rpcOk(state, "read", { tab, selector });
+	return read.text;
+}
+
+/** A popup's own status line, once its document has run — polled, because the
+ * document may still be loading when the target appears. */
+async function waitForPopupStatus(target, label, timeoutMs = 10_000) {
+	const started = Date.now();
+	for (;;) {
+		const result = await targetEvaluate(
+			target,
+			"document.getElementById('popup-status')?.textContent ?? ''",
+		);
+		if (typeof result.value === "string" && result.value.startsWith("popup:")) {
+			return result.value;
+		}
+		if (Date.now() - started > timeoutMs) {
+			throw new Error(
+				`timed out waiting for ${label} (${JSON.stringify(result)})`,
+			);
+		}
+		await sleep(250);
+	}
+}
+
+/*
+ * The app-not-frontmost sampler (docs/design/browser-oauth-popups.md 2.6): the
+ * second reading beside the log's `presentation=never` token, reused from
+ * `scripts/browser-chrome-proof.mjs:1070-1104` and bounded the same way, because
+ * `osascript` reaching System Events is slow on this host (measured there at
+ * 5.31-19.98 s per call). Re-armed one second AFTER each answer rather than by a
+ * fixed timer — one `osascript` in flight, never a stack of them — and an
+ * in-flight child is killed on stop so a slow answer cannot hold this process
+ * open past its own end.
+ */
+const FRONTMOST_TIMEOUT_MS = 15_000;
+const frontmostChildren = new Set();
+
+function cancelFrontmost() {
+	for (const child of frontmostChildren) child.kill();
+	frontmostChildren.clear();
+}
+
+function frontmost() {
+	return new Promise((resolve) => {
+		const child = execFile(
+			"osascript",
+			[
+				"-e",
+				'tell application "System Events" to set p to first application process whose frontmost is true',
+				"-e",
+				'tell application "System Events" to return (name of p) & "|" & (unix id of p)',
+			],
+			{ stdio: ["ignore", "pipe", "ignore"], timeout: FRONTMOST_TIMEOUT_MS },
+			(error, stdout) => {
+				frontmostChildren.delete(child);
+				resolve(error ? null : String(stdout).trim());
+			},
+		);
+		frontmostChildren.add(child);
+	});
+}
+
+function startFrontmostSampler() {
+	const samples = [];
+	let stopped = false;
+	let timer = null;
+	const tick = async () => {
+		const value = await frontmost();
+		if (value) samples.push(value);
+		if (!stopped) timer = setTimeout(tick, 1000);
+	};
+	timer = setTimeout(tick, 1000);
+	return {
+		stop: () => {
+			stopped = true;
+			if (timer) clearTimeout(timer);
+			cancelFrontmost();
+		},
+		samples,
+	};
+}
+
+/** Every pid this run launched, so the sampler's reading can name them all (the
+ * run restarts the app once, and a replaced pid is not the one to test). */
+const appPids = [];
+let frontmostSampler = null;
+
 async function approve(state, origin, decision, kind = "async") {
 	const requested = await rpcOk(state, "request_access", {
 		url: origin,
@@ -589,6 +944,10 @@ async function main() {
 	);
 
 	await waitForRenderer();
+	// The app-not-frontmost sampler runs alongside everything below (design 2.6):
+	// its reading is the OS's own answer to "did any of this take the screen",
+	// and it is stopped beside the final log check.
+	frontmostSampler = startFrontmostSampler();
 	// The renderer owns layout (design 11.2): the chrome measures its content area
 	// and reports it, and main applies it to the active tab. The route that does
 	// this is PR 4, so this run reports the rect itself — through the real IPC
@@ -882,17 +1241,166 @@ async function main() {
 		geoText.text.includes("denied"),
 		`geolocation result on the page: ${JSON.stringify(geoText.text)}`,
 	);
-	const popupText = await rpcOk(state, "read", {
-		tab: handle,
-		selector: "#popup",
-	});
-	const tabsAfterPopup = await rpcOk(state, "tabs", {
+	// --- 5b. the popup policy, as a dance -------------------------------------
+	/*
+	 * The popup parity dance (docs/design/browser-oauth-popups.md 5.1.3). Before
+	 * this change the check standing here asserted the OPPOSITE — "a popup is
+	 * blocked and creates no tab" — and the deny-all it recorded is what broke
+	 * the operator's Microsoft sign-in: a denied `window.open` returns `null` and
+	 * MSAL cannot rebuild its opener/postMessage contract from that. So this
+	 * section now drives the flow the fix exists for, on a real page and real
+	 * child windows, and reads every property the design claims back out of the
+	 * running app: the opener relation both ways, the shared cookie jar, the
+	 * grandchild refusal, the cap boundary, the tab-close cleanup, and a frame of
+	 * the popup itself under this headless run.
+	 */
+	const tabsBefore = await rpcOk(state, "tabs", { requester: "session:proof" });
+	record(
+		"page targets before the popup section",
+		pageTargetUrls(await targets()).join("\n"),
+	);
+
+	// (a) The dance, driven by a real click: opened, opener present, the cookie
+	// visible from both sides, the grandchild refused, ack received, self-closed.
+	await clickControl(state, handle, "Popup dance");
+	let danceText = "";
+	for (let attempt = 0; attempt < 80; attempt += 1) {
+		await sleep(250);
+		danceText = await readSelector(state, handle, "#popup");
+		if (danceText.includes("closed=yes")) break;
+	}
+	check(
+		"the popup dance ran end to end: opened, opener=yes, cookies shared both ways, grandchild denied, closed=yes",
+		[
+			"opened",
+			"opener=yes",
+			"selfCookie=yes",
+			"sharedJar=yes",
+			"grandchild=denied",
+			"ack=sent",
+			"opener-at=/",
+			"closed=yes",
+		].every((token) => danceText.includes(token)),
+		`popup result on the page: ${JSON.stringify(danceText)}`,
+	);
+	// The popup closed itself, so its target leaves the port — the page's own
+	// close path, before the cap test counts live children.
+	await waitForTargetGone(
+		(target) => target.url.endsWith("/popup-target"),
+		"the dance popup's target",
+	);
+	const tabsAfterDance = await rpcOk(state, "tabs", {
 		requester: "session:proof",
 	});
 	check(
-		"a popup is blocked and creates no tab",
-		popupText.text.includes("blocked") && tabsAfterPopup.tabs.length === 1,
-		`popup result on the page: ${JSON.stringify(popupText.text)}; tabs now ${tabsAfterPopup.tabs.length}`,
+		"a popup is a window, not a tab: the tab list did not move",
+		tabsAfterDance.tabs.length === tabsBefore.tabs.length,
+		`tabs before ${tabsBefore.tabs.length}, after the popups ${tabsAfterDance.tabs.length}`,
+	);
+
+	// (b) MSAL's shape: open EMPTY first, then navigate — the case whose
+	// WebPreferences Electron copies from the opener instead of taking ours. The
+	// popup's own status line carries the two cross-window readings, so the
+	// copied-prefs path is measured rather than assumed.
+	await clickControl(state, handle, "Blank-first popup");
+	const blankTarget = await waitForTarget(
+		(target) => target.url.includes("which=blank"),
+		"the blank-first popup target",
+	);
+	const blankStatus = await waitForPopupStatus(
+		blankTarget,
+		"the blank-first popup's status",
+	);
+	const blankRecord = await readSelector(state, handle, "#popup");
+	check(
+		"an about:blank-first popup opens, navigates, and keeps its opener and the shared jar",
+		blankRecord.includes("blank=opened") &&
+			blankStatus.includes("opener=present") &&
+			blankStatus.includes("cookies=shared"),
+		`opener record: ${JSON.stringify(blankRecord)}\npopup status: ${JSON.stringify(blankStatus)}`,
+	);
+
+	// (c) A denied scheme refuses, creates nothing, and is logged.
+	await clickControl(state, handle, "Denied scheme");
+	await sleep(1000);
+	const deniedRecord = await readSelector(state, handle, "#popup");
+	const afterDeniedTargets = pageTargetUrls(await targets());
+	check(
+		"a denied scheme (mailto:) is refused with nothing created",
+		deniedRecord.includes("mailto=refused") &&
+			!afterDeniedTargets.some((url) => url.includes("mailto")),
+		`opener record: ${JSON.stringify(deniedRecord)}\ntargets: ${JSON.stringify(afterDeniedTargets)}`,
+	);
+
+	// (d) The cap: a held popup is opened for the capture, which makes TWO live
+	// children (the blank-first one above and this one); the three candidates
+	// then walk the boundary — the 4th live child is admitted, the 5th refused.
+	await clickControl(state, handle, "Hold a popup");
+	const directTarget = await waitForTarget(
+		(target) => target.url.includes("which=direct"),
+		"the held popup target",
+	);
+	await clickControl(state, handle, "Fill the cap");
+	await sleep(1500);
+	const capRecord = await readSelector(state, handle, "#popup");
+	await waitForTarget(
+		(target) => target.url.includes("which=cap1"),
+		"the last admitted cap candidate",
+	);
+	const capTargets = pageTargetUrls(await targets());
+	check(
+		"the cap admits the 4th live child and refuses the 5th",
+		capRecord.includes("cap=0:opened,1:opened,2:refused") &&
+			capTargets.some((url) => url.includes("which=cap0")) &&
+			capTargets.some((url) => url.includes("which=cap1")) &&
+			!capTargets.some((url) => url.includes("which=cap2")),
+		`opener record: ${JSON.stringify(capRecord)}\ntargets: ${JSON.stringify(capTargets)}`,
+	);
+
+	// (e) The popup-under-headless frames, over the popups' own CDP targets —
+	// twice, because the about:blank-first child went through a different
+	// creation path (copied prefs) than the direct one (our options).
+	const directFrame = await captureTargetFrame(
+		directTarget,
+		join(OUT_DIR, "popup-headless.png"),
+	);
+	const blankFrame = await captureTargetFrame(
+		blankTarget,
+		join(OUT_DIR, "popup-blank-headless.png"),
+	);
+	check(
+		"each popup captures as a full frame while the run is headless",
+		directFrame.bytes > 5000 && blankFrame.bytes > 5000,
+		`popup-headless.png ${directFrame.bytes} bytes (${directFrame.url})\npopup-blank-headless.png ${blankFrame.bytes} bytes (${blankFrame.url})`,
+	);
+
+	// (f) Opener-close cleanup: a second tab opens a held popup, and closing the
+	// TAB takes the popup's target off the port — Chromium's documented
+	// child-closes-with-opener default, which is the whole cleanup story.
+	const cleanupTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/`,
+		requester: "session:proof",
+	});
+	await clickControl(state, cleanupTab.tab, "Cleanup popup");
+	await waitForTarget(
+		(target) => target.url.includes("which=cleanup"),
+		"the cleanup popup target",
+	);
+	await rpcOk(state, "close", { tab: cleanupTab.tab });
+	await waitForTargetGone(
+		(target) => target.url.includes("which=cleanup"),
+		"the cleanup popup's target after its tab closed",
+	);
+	const survivors = pageTargetUrls(await targets());
+	const tabsAfterCleanup = await rpcOk(state, "tabs", {
+		requester: "session:proof",
+	});
+	check(
+		"closing the tab takes its popup with it, and only its popup",
+		survivors.some((url) => url.includes("which=direct")) &&
+			!survivors.some((url) => url.includes("which=cleanup")) &&
+			tabsAfterCleanup.tabs.length === tabsBefore.tabs.length,
+		`targets after the close: ${JSON.stringify(survivors)}\ntabs: ${tabsAfterCleanup.tabs.length}`,
 	);
 	// --- 6. a navigation, and the epoch it invalidates ----------------------
 	const staleClick = await rpc(state, "click", { tab: handle, ref: goRef });
@@ -1125,15 +1633,93 @@ async function main() {
 	const finalLogPath = app.logPath;
 	await stopApp();
 	const logAfter = readFileSync(finalLogPath, "utf8");
-	const browserLines = (logAfter + logBefore)
-		.split("\n")
-		.filter((line) => line.includes("[browser]"));
+	/*
+	 * TWO READINGS OF ONE STREAM, and the split is load-bearing: the checks about
+	 * denials and decisions read `browserLines` (the `[browser]`-tagged lines),
+	 * while the presentation checks below read every line — the raise-family
+	 * tokens are `[window-raise] …` and can never appear in a `[browser]`-filtered
+	 * stream, so a fallback check run against the filtered array would be
+	 * vacuously true (review round 1, finding 1). The live rig scans the
+	 * unfiltered stream for the same reason.
+	 */
+	const combinedLines = (logAfter + logBefore).split("\n");
+	const browserLines = combinedLines.filter((line) =>
+		line.includes("[browser]"),
+	);
 	check(
 		"the host logged its denials and its decisions",
-		browserLines.some((line) => line.includes("denied a geolocation")) &&
-			browserLines.some((line) => line.includes("blocked a popup")),
+		browserLines.some((line) => line.includes("denied a geolocation")),
 		browserLines.slice(0, 40).join("\n"),
 	);
+	// The popup half of the log, token by token (design 8, 5.1.3): every allow
+	// carries the disposition and the effective presentation, every refusal
+	// carries its reason, and the about:blank case is visible as itself.
+	check(
+		"the log carries every popup call: opened lines with presentation=never, the blank case, the scheme refusal, the grandchild refusal and the cap refusal",
+		browserLines.some(
+			(line) =>
+				line.includes("opened a popup:") &&
+				line.includes("which=direct") &&
+				line.includes("presentation=never"),
+		) &&
+			browserLines.some((line) =>
+				line.includes("opened a popup: about:blank"),
+			) &&
+			browserLines.some(
+				(line) =>
+					line.includes("refused a popup from a driven page: mailto:") &&
+					line.includes("(scheme)"),
+			) &&
+			browserLines.some((line) =>
+				line.includes("refused a popup from a popup"),
+			) &&
+			browserLines.some(
+				(line) =>
+					line.includes("refused a popup from a driven page:") &&
+					line.includes("which=cap2") &&
+					line.includes("(cap)"),
+			),
+		browserLines.filter((line) => line.includes("popup")).join("\n"),
+	);
+	// The `never` plan's fallback is the one line a hidden window would leave
+	// behind if `show:false` had not been honoured — the falsifier the design
+	// names, asserted absent rather than assumed.
+	check(
+		"no presentation fallback fired: no popup under the never plan ever read visible",
+		!combinedLines.some((line) => line.includes("fallback=fired")) &&
+			!combinedLines.some((line) => line.includes("[window-raise]")),
+		combinedLines
+			.filter(
+				(line) => line.includes("fallback") || line.includes("window-raise"),
+			)
+			.join("\n") || "(no fallback= or [window-raise] lines at all)",
+	);
+	// The second reading for "no window appeared" (design 2.6): the OS's own
+	// answer, sampled from outside, by pid — the app was frontmost in none of the
+	// samples below, which is what a fired `show()` would have contradicted.
+	frontmostSampler?.stop();
+	{
+		const samples = frontmostSampler?.samples ?? [];
+		const appFrontmost = samples.filter((sample) =>
+			appPids.some((pid) => sample.endsWith(`|${pid}`)),
+		).length;
+		if (samples.length === 0) {
+			skips += 1;
+			say(
+				"[SKIPPED] the app-not-frontmost reading: the OS never answered a sample in this run",
+			);
+			record(
+				"app-not-frontmost sampling",
+				"SKIPPED: the OS never answered a frontmost sample in this run",
+			);
+		} else {
+			check(
+				"the app was never frontmost (sampled from outside, by pid)",
+				appFrontmost === 0,
+				`${samples.length} sample(s), app frontmost in ${appFrontmost}: ${JSON.stringify(samples.slice(-6))}`,
+			);
+		}
+	}
 	record(
 		"app log lines from the browser host",
 		browserLines.slice(0, 60).join("\n"),
@@ -1183,5 +1769,8 @@ main()
 	.finally(async () => {
 		// A failed run must not leave an app behind holding the scraping port and a
 		// state file — the leftover is what made the previous failure so confusing.
+		// The sampler's in-flight `osascript` is reaped here too, so a slow OS answer
+		// cannot hold this process open past its own end.
+		frontmostSampler?.stop();
 		await stopApp();
 	});

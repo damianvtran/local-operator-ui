@@ -36,6 +36,11 @@
  *      (`slash_commands.py:slash_command_for` resolves through `names`), so
  *      nothing becomes unrunnable. This IS a visible change from the old
  *      primary-name label and is flagged for the design round.
+ *
+ *      The alias list is `readonly string[]` on the row types that carry one, so
+ *      the constraint here is `readonly` too: `ArgumentRow.aliases` is spelled
+ *      that way (a row is data, not a mutable list a caller should push to) and a
+ *      mutable constraint would refuse every argument row the popup ranks.
  */
 
 import { SEPARATOR_RUN, pyTrim } from "./slash-token";
@@ -191,10 +196,9 @@ export function commandSuggestions<
  * An EMPTY query returns EVERY choice in the given order, because "I typed the
  * command and stopped" is a request to see the whole set.
  */
-export function matchChoices<C extends { name: string; aliases?: string[] }>(
-	query: string,
-	choices: readonly C[],
-): { name: string; choice: C }[] {
+export function matchChoices<
+	C extends { name: string; aliases?: readonly string[] },
+>(query: string, choices: readonly C[]): { name: string; choice: C }[] {
 	if (!query) return choices.map((choice) => ({ name: choice.name, choice }));
 	const scored: { score: number; order: number; choice: C }[] = [];
 	choices.forEach((choice, order) => {
@@ -214,6 +218,16 @@ export function matchChoices<C extends { name: string; aliases?: string[] }>(
 }
 
 /**
+ * The leading dashes of a FLAG spelling, stripped for the "typed in full" arm.
+ *
+ * A named constant rather than an inline literal for the reason
+ * `slash-submit.ts`'s `LEADING_SLASH` is one: the gate below runs on every
+ * keystroke while a list is open, and a regex built per call is a per-keystroke
+ * allocation in the one path the composer re-renders.
+ */
+const LEADING_DASHES = /^-+/;
+
+/**
  * Whether Enter may RUN the highlighted row rather than only complete it.
  *
  * Unambiguous means one of three things, ported from
@@ -223,7 +237,18 @@ export function matchChoices<C extends { name: string; aliases?: string[] }>(
  *     exists because the matcher may have picked the row on the user's behalf,
  *     and an explicit move is the direct answer to that;
  *   - the typed query equals the row's value in full, so the user named it
- *     rather than letting the matcher choose;
+ *     rather than letting the matcher choose — where "in full" ignores LEADING
+ *     DASHES on either side, so `refresh` names the `--refresh` row. A FLAG row
+ *     is spelled with its dashes (`--refresh`, and the TUI's `--clear`/`--stop`)
+ *     while the same action has a BARE spelling these commands have always
+ *     honoured and still do, and either spelling is the user naming the action
+ *     rather than accepting a guess. This is the terminal's own arm
+ *     (`editor.py:7731-7765`: `query.strip().lower().lstrip("-") ==
+ *     name.strip().lower().lstrip("-")`), taken over with the row that made it
+ *     necessary: without it a user who typed the bare `refresh` — a spelling the
+ *     list itself uses as an ALIAS to find the row — would be asked for a second
+ *     Enter on the one row their word could mean, i.e. the list would teach a
+ *     spelling and then charge a keystroke for using it;
  *   - there is exactly one match AND the list is not destructive.
  *
  * Everything else completes and waits for a second Enter. The point is the
@@ -242,6 +267,13 @@ export function isUnambiguous(
 	chosenByHand: boolean,
 ): boolean {
 	if (chosenByHand) return true;
-	if (query.trim().toLowerCase() === value.trim().toLowerCase()) return true;
+	const typed = pyTrim(query).toLowerCase();
+	const shown = pyTrim(value).toLowerCase();
+	if (typed === shown) return true;
+	if (
+		typed.length > 0 &&
+		typed.replace(LEADING_DASHES, "") === shown.replace(LEADING_DASHES, "")
+	)
+		return true;
 	return !destructive && suggestionCount <= 1;
 }

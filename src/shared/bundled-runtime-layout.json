@@ -1,6 +1,6 @@
 {
 	"python": {
-		"version": "3.12.14",
+		"version": "3.14.7",
 		"buildDate": "20260901",
 		"tkVersion": "9.0",
 		"seedNamespace": "python-runtime-seed",
@@ -11,15 +11,12 @@
 		"seedStdlibMarker": "lib/python{pyver}/encodings/__init__.py",
 		"seedTkDir": "lib/tk{tkver}",
 		"prunedSeedPaths": [
-			"bin/2to3",
-			"bin/2to3-{pyver}",
 			"bin/idle3",
 			"bin/idle3.{pyminor}",
 			"bin/pydoc3",
 			"bin/pydoc3.{pyminor}",
 			"lib/python{pyver}/idlelib",
 			"lib/python{pyver}/turtledemo",
-			"lib/python{pyver}/lib2to3",
 			"lib/python{pyver}/pydoc_data"
 		],
 		"prunedSeedPathsOptional": ["lib/tk{tkver}/demos"]
@@ -35,6 +32,30 @@
 		"checkoutNames": {
 			"arm64": "uv_aarch64",
 			"x64": "uv"
+		},
+		"releaseTriples": {
+			"darwin": {
+				"arm64": "aarch64-apple-darwin",
+				"x64": "x86_64-apple-darwin"
+			},
+			"linux": {
+				"arm64": "aarch64-unknown-linux-gnu",
+				"x64": "x86_64-unknown-linux-gnu"
+			},
+			"win32": {
+				"arm64": "aarch64-pc-windows-msvc",
+				"x64": "x86_64-pc-windows-msvc"
+			}
+		},
+		"archiveExtension": {
+			"darwin": "tar.gz",
+			"linux": "tar.gz",
+			"win32": "zip"
+		},
+		"archiveMember": {
+			"darwin": "uv-{triple}/uv",
+			"linux": "uv-{triple}/uv",
+			"win32": "uv.exe"
 		}
 	},
 	"architectures": ["arm64", "x64"],
@@ -45,6 +66,8 @@
 		"feedfacf",
 		"feedface",
 		"cafebabe",
-		"bebafeca"
+		"bebafeca",
+		"cafebabf",
+		"bfbafeca"
 	]
 }

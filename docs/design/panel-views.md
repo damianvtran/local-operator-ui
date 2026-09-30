@@ -739,6 +739,63 @@ Note the existing caveat, still true: the *aggregate* is per-session OWN figures
 and never rolled up over children; `session_parents` is what lets the client
 re-partition. The route does not do that rollup for you.
 
+**Three more additive fields on the same `aggregate`, from the tokens-per-second
+metric** (they ride the response, so a provider or session row gains a rate
+column with no extra request and no added latency):
+
+```ts
+  decode_us: number;      // summed measured generation window, MICROseconds
+  decode_tokens: number;  // output tokens over ONLY the calls that had a window
+  decode_calls: number;   // how many calls those were — the coverage count
+```
+
+`decode_tps = decode_tokens / (decode_us / 1e6)`, and it is **UNKNOWN when
+`decode_calls === 0`** — never `0 tok/s`. Two facts make that distinction
+load-bearing rather than fussy: every row recorded before the metric shipped
+reads `0/0/0`, and `decode_tokens` is not `output_tokens` (a call whose whole
+answer arrived in one frame has output tokens and no window), so a rate computed
+from `output_tokens` would divide one population by another. All three fields are
+optional on the wire: a backend that predates them simply omits them, and the
+panel then renders the rate column as unknown rather than failing.
+
+### 5.3.1 NEW — `analytics.models`, the per-model rate table
+
+Op `analytics.models`, `GET /v1/desktop/analytics/models?days&session_id&since_ms&until_ms`
+(`desktop-contract.ts`), response
+`{data: {rows: ModelRatePayload[], scope: "ledger", since_ms: number|null, until_ms: number|null}}`.
+
+```ts
+type ModelRatePayload = {
+  provider: string; model_id: string;
+  calls: number; output_tokens: number;
+  decode_us: number; decode_tokens: number; decode_calls: number;
+  wall_us: number;   wall_tokens: number;   wall_calls: number;
+};
+```
+
+It is **its own op, not a field on `analytics.get`**, and the reason is cost: the
+rows come from one grouped scan of the raw ledger (`store.model_rates`), which is
+seconds on a multi-million-row ledger, so folding it into `analytics.get` would
+make every panel load pay for a table most loads never open. It reads the ledger
+rather than a rollup because `usage_daily` is forward-fill (it would be empty
+beside a backfilled headline) and `session_daily` has no model dimension.
+
+TWO rates per row, and they are different measurements:
+
+- `decode_*` → **tok/s (decode)**, the measured generation window. Forward-fill:
+  unknown on rows recorded before the metric shipped.
+- `wall_*` → **tok/s (wall)**, `wall_tokens / (wall_us / 1e6)` over calls with a
+  positive duration and output tokens. It reads columns that have always been
+  recorded, so it covers the whole existing ledger — and it INCLUDES the
+  first-token wait and any queueing, which is why it is labelled wall and never
+  decode speed.
+
+`scope: "ledger"` is served rather than inferred so the section's meta line can
+name its source: these rows are grouped from the ledger, not from the rollup the
+headline Total above them came from, and the section does not claim to partition
+that total. `422` when `since_ms > until_ms`, same as the sibling route; an empty
+answer is `{rows: []}` with a `200`, never an error.
+
 ### 5.4 EXISTING — `sessions.failovers`
 
 Unchanged: op `sessions.failovers`, `GET /v1/desktop/sessions/{id}/failovers`,
@@ -872,8 +929,9 @@ TUI avoided with its single `t` key (`session_panel.py:770-775`).
 |---|---|---|---|---|
 | 1 | **Totals** | `StatGrid` of 4 | `aggregate.calls`, `ok_calls`; `context_tokens + output_tokens`; `cost_micro`/`cost_known_calls`/`calls`; `cache_read_tokens/context_tokens` | Four unrelated scalars with no shared denominator. A bar implies one (`analytics_panel.py:990-991` says the same for the TUI). Meta: `Last 7 days · Sep 7–Sep 13 · all sessions` (or `this session`). Notes: `N failed` only when `ok_calls !== calls`; `X in · Y out`; `N of M calls priced` when partial; `X read · Y written`. Cost card's `fraction` is `cost_known_calls/calls`, so partial pricing is visible without a second section. |
 | 2 | **Daily spend** | `ChartFrame` + `BarChart`, one series | `daily[].cost_micro` (Spend) or `context_tokens + output_tokens` (Tokens) | Buckets are discrete calendar days and the user compares magnitudes; a **bar per bucket** is the honest form, and it is the only form that can show a day with no calls as absent rather than interpolated. One hue (§7). Meta: `Daily rollup · Sep 7–Sep 13`, plus `all sessions` whenever the scope check is on (`daily_scope` is always `all_sessions`). |
-| 3 | **By provider** | `DataTable` with a `ProportionBar` leading cell | `aggregate.by_provider[k]` | Rows of bars, not a stacked or multi-series chart: the shares are within one total, and a multi-hue chart would need roles with invented semantics (§7). Columns: Provider · Calls · Tokens · Cost. Sorted by the selected metric, descending. |
-| 4 | **By session** | `DataTable`, top 12, same shape | `aggregate.by_session`, `data.session_names`, `data.session_parents` | Same reason. Label is `session_names[id] ?? id` (the id in mono when a name is unknown); depth from `session_parents`, indented up to 2 levels then folded into a `+N more` row. Meta: `Own figures per session · totals include subagents` — the aggregate serves OWN figures, and a reader comparing a row with the headline total must be told why they differ (`store.py:1394-1405`). |
+| 3 | **By provider** | `DataTable` with a `ProportionBar` leading cell | `aggregate.by_provider[k]` | Rows of bars, not a stacked or multi-series chart: the shares are within one total, and a multi-hue chart would need roles with invented semantics (§7). Columns: Provider · Calls · Tokens · **tok/s** · Cost. Sorted by the selected metric, descending. The rate column is that row's own `decode_tps` and reads `—` at zero coverage. |
+| 4 | **By session** | `DataTable`, top 12, same shape | `aggregate.by_session`, `data.session_names`, `data.session_parents` | Same reason. Label is `session_names[id] ?? id` (the id in mono when a name is unknown); depth from `session_parents`, indented up to 2 levels then folded into a `+N more` row. Columns as above, with the same rate column in the same position — the two tables read as one table. Meta: `Own figures per session · totals include subagents` — the aggregate serves OWN figures, and a reader comparing a row with the headline total must be told why they differ (`store.py:1394-1405`). |
+| 5 | **By model** | `DataTable`, its own query | `analytics.models` → `rows` | The one section with a **separate read**, so it owns its own loading/error/empty states and the rest of the pane never waits on it. Columns: Model · Calls · Tokens · **tok/s (decode)** · **tok/s (wall)** · Coverage. It is ranked by output tokens (the read's own order) rather than by the toolbar metric, because its rows carry two rates and neither is the metric the other sections sort by. Meta states both its source and its window — `Last 7 days · from the ledger` — because these rows do NOT come from the rollup the headline uses and the section must not claim to partition it. |
 
 Degrades:
 
@@ -884,6 +942,8 @@ Degrades:
 | Metric = Spend, window `cost_known_calls === 0` | Section 2 becomes `PanelNotice kind="empty"`: "No priced calls in this window." Never a flat zero line. |
 | Cost partial (`0 < cost_known_calls < calls`) | `$X+` in the stat, `N of M calls priced` in its note. No second section. |
 | `session_names` / `session_parents` absent | Ids as labels, no indent (silent fallback, §5.3). |
+| `decode_calls === 0` (a ledger recorded before the metric, or calls that all answered in one frame) | Every rate cell reads `—`, never `0 tok/s`: zero is a claim about calls nothing measured. Detection is the count, not the value, so a genuinely slow row still prints its real rate. Where coverage is partial the column's meta states how many calls contributed. |
+| `analytics.models` loading / failed / empty | The **By-model section alone** shows a skeleton, that op's own `errorText`, or "no per-model rows in this window". The rest of the pane renders immediately: this read is seconds on a large ledger and must never gate the sections that did not need it. |
 | Backend unreachable / 4xx | Whole body = `PanelNotice kind="unavailable"` with `errorText(error)` — the backend's own detail, never synthesised (`desktop-api.ts:214-224`). |
 | `diagnostics` capability irrelevant here; `catalogues` covers it | No gate. |
 

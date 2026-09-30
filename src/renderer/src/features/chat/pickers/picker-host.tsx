@@ -82,6 +82,15 @@ export type PickerHostProps = {
 	/** One sentence on what choosing does, and its scope. */
 	description?: string;
 	options?: PickerOption[];
+	/**
+	 * This picker's own search rule, when the default one is wrong for it.
+	 *
+	 * Defaults to `filterPickerOptions`, which is every picker's behaviour up to
+	 * and including the model picker's until it needed a wider rule of its own
+	 * (`matchModelPickerOptions`). A destination that passes one owns the rule
+	 * for its own rows and for nobody else's — see `PickerOptionMatcher`.
+	 */
+	matcher?: PickerOptionMatcher;
 	/** Options are loading from the backend. */
 	loading?: boolean;
 	/** Options failed to load; shown in place of the list. */
@@ -288,6 +297,48 @@ export function pickerListReducer(
 }
 
 /**
+ * A picker's own matcher, for a surface whose search rule differs from the
+ * default one below. `PickerHost` calls it with the same `(options, query)` the
+ * default takes, so the two are interchangeable and a destination opts in by
+ * passing one in — which is the whole point: the rule is only as wide as the
+ * surface that asked for it (see `model-picker-match.ts`).
+ */
+export type PickerOptionMatcher = (
+	options: PickerOption[],
+	query: string,
+) => PickerOption[];
+
+/**
+ * The rows a query matches, in the order they came in — THE DEFAULT RULE.
+ *
+ * This is the plain contiguous substring test every picker has always used, and
+ * it is deliberately unchanged: a model picker's search box has a wider rule of
+ * its own (`matchModelPickerOptions`, passed in through `PickerHostProps.matcher`),
+ * but the commands, providers, MCP and session pickers do not, and giving them
+ * one silently is how typing `/` into **Search commands** went from listing
+ * every command to `Nothing matches.` — their labels start with the slash, so a
+ * query that CARRIES no word is a legitimate query for them and the model half's
+ * punctuation rule is exactly wrong here.
+ *
+ * So the seam is the matcher, not the rule: keep this as the widest-compatible
+ * behaviour, and put a surface-specific rule beside that surface.
+ */
+export function filterPickerOptions(
+	options: PickerOption[],
+	query: string,
+): PickerOption[] {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
+	return options.filter((option) =>
+		[option.label, option.value, option.description ?? "", option.meta ?? ""]
+			.concat(option.keywords ?? [])
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+}
+
+/**
  * What the body shows, given the load state and how many rows survived it.
  *
  * A separate `notice` never reaches this decision: the note is drawn ABOVE the
@@ -305,6 +356,158 @@ export function pickerBodyKind(state: {
 	if (state.loading) return "loading";
 	if (state.loadError) return "error";
 	return state.rowCount === 0 ? "empty" : "list";
+}
+
+/**
+ * Where the highlight goes when the option list changes (UX U1/U2).
+ *
+ * THE TWO CASES THIS HAS TO TELL APART, and the reason it is a function rather
+ * than three lines inside an effect: the list changes when the USER narrows it
+ * (a keystroke, their own act) and when the DATA moves under them (the
+ * automatic provider listing landing, or the 15-minute cadence tick, with no
+ * input at all). The old rule could not: with no query typed it re-placed the
+ * highlight on the current model whenever the option list changed identity, so
+ * the automatic listing pulled the keyboard's row back to row 0 about 2.3 s
+ * after the dialog opened — measured with the footer re-naming Enter's target —
+ * and again on every tick for as long as the dialog stayed open. A list of
+ * 1450 models is scanned with the keyboard, and a selection that moves by
+ * itself is not a selection.
+ *
+ * So the highlight is held by the ROW'S `value` and not by its index: a row that
+ * is still listed keeps the highlight wherever the list moved it to. A row that
+ * is GONE falls back to the dialog's own placement (the current model when
+ * nothing is typed, the clamped index otherwise) — and when the user is the one
+ * who had steered it (`steered`) and the change was not their own typing
+ * (`queryChanged` is false), the landing is NAMED through `retargeted`, because
+ * Enter would otherwise act on a row the user never chose, with nothing on
+ * screen saying so (UX U2).
+ *
+ * `retargeted` IS TRI-STATE, and the third state is why the round-2 fix works:
+ * a sentence sets it, `null` CLEARS it, and `undefined` means THIS PASS HAS
+ * NOTHING TO SAY and the caller must leave whatever is set alone. The pass that
+ * loses the row sets the sentence; the pass that re-places the highlight on the
+ * survivor runs one render later, sees the survivor in place, and has to say
+ * nothing — a two-state `string | null` made it clear the sentence it had just
+ * set, which is how a correct rule shipped a message no user ever saw (measured:
+ * 137 samples across the vanish, never once on screen).
+ *
+ * AND THE SENTENCE IS RETIRED BY THE SAME RULE, in the two ways it can stop
+ * being true (UX U7, review round 3's clearing minors). It carries the row it is
+ * ABOUT (`lost`), not only the words: a sentence of the form "the row you were
+ * on is gone" is false the moment that row is listed again, which is exactly
+ * what the recovery control produces — measured: the provider listing answers
+ * 191ms after the press, the row is back on screen, and the sentence was still
+ * up because nothing about that press ran through this rule. And the user's own
+ * typing retires it too, INCLUDING when the row it would keep survives the
+ * filter: the held row staying put is the highlight's business, and the sentence
+ * is a separate claim about a row that is no longer missing.
+ *
+ * Both retirements live here rather than in an effect or a handler, because the
+ * rule is the one place that sees the list, the query's change and the sentence
+ * together; a second mechanism beside it is how the first one goes stale.
+ */
+export function pickerPlacement(state: {
+	options: PickerOption[];
+	/** The row the highlight is on, by `value`; `null` before it is placed. */
+	held: string | null;
+	/** Its index in the list as last rendered. */
+	active: number;
+	query: string;
+	/** The user's own search changed since the last placement. */
+	queryChanged: boolean;
+	/** The highlight is the user's (they moved it, or clicked a row). */
+	steered: boolean;
+	/** The sentence on screen and the row it is about; `null` when there is none. */
+	retarget?: { lost: string; label: string } | null;
+}): {
+	index: number;
+	held: string | null;
+	/** A sentence to show, `null` to clear it, `undefined` to leave it alone. */
+	retargeted: { lost: string; label: string } | null | undefined;
+	steered: boolean;
+} {
+	const { options, held, active, query, queryChanged, steered } = state;
+	const retarget = state.retarget ?? null;
+	if (options.length === 0) {
+		return { index: 0, held: null, retargeted: null, steered: false };
+	}
+	const heldIndex =
+		held === null ? -1 : options.findIndex((option) => option.value === held);
+	const clamped = Math.max(0, Math.min(active, options.length - 1));
+	const currentIndex = query
+		? -1
+		: options.findIndex((option) => option.current);
+	const index = currentIndex >= 0 ? currentIndex : clamped;
+	if (
+		retarget !== null &&
+		options.some((option) => option.value === retarget.lost) &&
+		heldIndex >= 0
+	) {
+		/*
+		 * THE ROW THE SENTENCE IS ABOUT IS LISTED AGAIN, so the sentence is no
+		 * longer true and goes - in the same pass, wherever the highlight is. The
+		 * highlight itself is NOT moved back to it: the user has seen the landing
+		 * named and been told what Enter sends, and hopping their selection a
+		 * second time, on a press they made to fix the LISTING rather than the
+		 * selection, is the unbidden movement U1 exists to prevent.
+		 *
+		 * `heldIndex >= 0` IS PART OF THE GUARD, and it is what makes retiring the
+		 * sentence and NAMING the next one a single decision rather than two
+		 * (confirmation round, code review MINOR-1 = UX U8). One listing change
+		 * can do both things at once - the row the sentence calls missing comes
+		 * back while the row the highlight was on goes away, which is the normal
+		 * case for a re-list rather than an exotic one: what the provider answers
+		 * is a different SET of rows each time. Retiring here without that term
+		 * took an announcement away: the pass returned before the branch below
+		 * could name the new landing, so the footer dropped to the plain hint on
+		 * the exact pass where Enter started sending a row the user never chose.
+		 * Nothing was FALSE (the highlight and Enter still agreed, the placement
+		 * still happened) - what was lost was the sentence telling the user so. So
+		 * the sentence goes only on a pass with nothing to announce: the lost row
+		 * back AND the held row still listed. Otherwise the pass falls through to
+		 * the branch that set the sentence in the first place.
+		 */
+		return {
+			// The guard above is why these are not ternaries any more: reaching
+			// this branch MEANS the held row survived.
+			index: heldIndex,
+			held,
+			retargeted: null,
+			steered,
+		};
+	}
+	if (heldIndex >= 0) {
+		// The row survived the change: the highlight moved, the SELECTION did not.
+		// The sentence still goes if the user is the one who typed - the held row
+		// staying put is the highlight's business, and "the row you were on is
+		// gone" is a claim about a row that is missing (review round 3, MINOR).
+		return {
+			index: heldIndex,
+			held,
+			retargeted: queryChanged ? null : undefined,
+			steered,
+		};
+	}
+	const landed = options[index];
+	if (queryChanged) {
+		// The user asked for a narrower set: this is the dialog's own placement,
+		// and nothing about it needs saying.
+		return {
+			index,
+			held: landed?.value ?? null,
+			retargeted: null,
+			steered: false,
+		};
+	}
+	return {
+		index,
+		held: landed?.value ?? null,
+		retargeted:
+			steered && held !== null && landed !== undefined
+				? { lost: held, label: landed.label }
+				: undefined,
+		steered,
+	};
 }
 
 /**
@@ -330,9 +533,22 @@ export function pickerFooterHint(state: {
 	activeLabel?: string | null;
 	/** What an in-flight operation is doing, in the user's terms. */
 	busyText?: string;
+	/**
+	 * The row Enter now picks because the row under the highlight is gone.
+	 *
+	 * UX U2: the row set can change under the user — the automatic listing does it
+	 * by design — and the old clamp moved the highlight to whatever now occupied
+	 * the slot, so Enter could act on a model the user never chose with nothing on
+	 * screen saying so. While this is set, the footer states the change instead of
+	 * advertising the arrows; the arrows still work, and the ordinary hint returns
+	 * the moment the user moves the highlight again.
+	 */
+	retargetedLabel?: string | null;
 }): string {
 	if (state.busy) return state.busyText ?? "Applying the change…";
 	if (state.hasList && state.rowCount > 0) {
+		if (state.retargetedLabel)
+			return `The row you were on is gone · Enter picks ${state.retargetedLabel}`;
 		return state.activeLabel
 			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
 			: "Arrows move, Enter picks, Esc closes";
@@ -355,7 +571,10 @@ export function pickerPrimaryLabel(state: {
 	result: PickerResult | null;
 }): string {
 	if (state.busy) return "Close";
-	return state.result && state.result.tone !== "error" ? "Done" : "Close";
+	return state.result &&
+		(state.result.tone === "success" || state.result.tone === "info")
+		? "Done"
+		: "Close";
 }
 
 /**
@@ -453,8 +672,14 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				event.preventDefault();
 				onPick(option, index);
 			}}
+			/*
+			 * No cursor class, on purpose. This row is `role="option"`, so the base
+			 * layer's rule gives it the pointer; an explicit utility here would ALSO
+			 * beat that rule's disabled arm, and a disabled row (`aria-disabled`,
+			 * above) would then advertise a click it cannot take.
+			 */
 			className={cn(
-				"flex cursor-default items-start gap-3 rounded-sm px-2 py-1.5",
+				"flex items-start gap-3 rounded-sm px-2 py-1.5",
 				isActive && "bg-sunken",
 				isHovered && !isActive && "bg-accent-wash",
 				// The structural half of both marks; see the block comment above for
@@ -527,6 +752,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	title,
 	description,
 	options,
+	matcher = filterPickerOptions,
 	loading = false,
 	loadError = null,
 	notice = null,
@@ -568,6 +794,34 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
 	// `hovered` for why the pointer does not steer it.
 	const [active, setActive] = useState(0);
+	/*
+	 * Which ROW the highlight is on, held by identity beside the index above, and
+	 * whether that row is the USER's (UX U1/U2).
+	 *
+	 * WHY AN INDEX IS NOT ENOUGH. The picker's list is not static any more: the
+	 * automatic provider listing lands ~2.3 s after open and re-lists again on the
+	 * 15-minute cadence, so `filtered` changes identity repeatedly while the user
+	 * is reading. The old placement rule could not tell a change the USER caused
+	 * (typing, which narrows the list) from one they did not (a listing arriving),
+	 * so the arriving rows pulled the keyboard back to the current model: measured
+	 * on this change's own harness, highlight on row 3 with the footer reading
+	 * `Enter picks Anthropic: Claude Haiku 4.5`, then back to row 0 and
+	 * `Enter picks Claude Opus 5` when the listing landed — and again on every
+	 * cadence tick, for as long as the dialog stays open.
+	 *
+	 * `activeValueRef` is the row's `value` as last placed, `steeredRef` says that
+	 * placement was the user's own input, and `retargeted` names the row Enter now
+	 * picks when the user's row VANISHES from the list under it (U2) — a selection
+	 * is a model, not a slot, so that case has to be said out loud rather than
+	 * silently re-pointing Enter at whatever moved into the slot.
+	 */
+	const activeValueRef = useRef<string | null>(null);
+	const steeredRef = useRef(false);
+	const placedQueryRef = useRef<string | null>(null);
+	const [retargeted, setRetargeted] = useState<{
+		lost: string;
+		label: string;
+	} | null>(null);
 	// The pointer's position and the picked row's mark, one reducer (see
 	// `pickerListReducer`): both are the LIST's interaction state, they expire on
 	// different edges, and keeping them together is what makes "the pointer left"
@@ -689,18 +943,51 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	const hasList = options !== undefined;
-	const filtered = useMemo(() => {
-		if (!options) return [];
-		const needle = query.trim().toLowerCase();
-		if (!needle) return options;
-		return options.filter((option) =>
-			[option.label, option.value, option.description ?? "", option.meta ?? ""]
-				.concat(option.keywords ?? [])
-				.join(" ")
-				.toLowerCase()
-				.includes(needle),
-		);
-	}, [options, query]);
+	/*
+	 * The filter is a pure exported function so its rule is executable from a
+	 * test (`filterPickerOptions`) rather than only reachable through a mounted
+	 * dialog — the discipline `pickerBodyKind` and the reducer follow here. A
+	 * surface with a rule of its own passes it in (`matcher`) rather than the
+	 * default being widened for everyone.
+	 */
+	const filtered = useMemo(
+		() => (options ? matcher(options, query) : []),
+		[options, query, matcher],
+	);
+
+	/*
+	 * THE ONE INDEX SPACE the mark, the footer, `aria-activedescendant`, the
+	 * scroll target, the click path and `pick` all read (UX U5).
+	 *
+	 * WHY IT IS A VALUE AND NOT AN AGREEMENT. The list renders GROUPED: options
+	 * arrive in the order their source listed them and the dialog re-sorts them
+	 * into the sections the user reads (`Signed in` first), so the rendered order
+	 * is a PERMUTATION of `filtered`. Ids and `isActive` come from a running index
+	 * over the rendered order, and while `active` indexed `filtered` the two
+	 * spaces diverged wherever the orders did: measured on the operator's own
+	 * catalogue shape, pressing ArrowDown eight times with no query left the MARK
+	 * on `openai/gpt-6-luna` while the footer said `Enter picks x-ai/grok-4.7` and
+	 * Enter sent `openrouter/x-ai/grok-4.7`. The click path had the same split —
+	 * clicking a row sent the option the OLD index space held at that position, so
+	 * the band stayed on the row above. Pre-existing on `origin/main`, and fixed
+	 * here because this change leans on exactly this contract: the automatic
+	 * listing moves rows under a highlight and every claim about "the row the user
+	 * chose" is a claim about this index.
+	 *
+	 * `filtered` remains what the filter produced — the same SET, its own order —
+	 * which is why the counts and the empty decision below can read either.
+	 */
+	const grouped = useMemo(() => {
+		const groups = new Map<string, PickerOption[]>();
+		for (const option of filtered) {
+			const key = option.group ?? "";
+			const bucket = groups.get(key);
+			if (bucket) bucket.push(option);
+			else groups.set(key, [option]);
+		}
+		return [...groups.entries()];
+	}, [filtered]);
+	const ordered = useMemo(() => grouped.flatMap(([, rows]) => rows), [grouped]);
 
 	/**
 	 * The row Enter would pick, by name.
@@ -710,13 +997,19 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * user which model the key is about to switch them to without moving the
 	 * pointer or fighting their scroll.
 	 */
-	const activeLabel = filtered[active]?.label ?? null;
+	const activeLabel = ordered[active]?.label ?? null;
 
 	// Reset per open so a re-opened picker never carries a stale filter.
 	useEffect(() => {
 		if (!open) return;
 		setQuery("");
 		setActive(0);
+		// The placement the fresh open owns, not the user's: the highlight goes back
+		// to the current model and nothing about the last dialog's row is carried.
+		activeValueRef.current = null;
+		steeredRef.current = false;
+		placedQueryRef.current = null;
+		setRetargeted(null);
 		dispatch({ type: "reset" });
 	}, [open]);
 	// The picked row's mark is held until the operation SETTLES, not until the
@@ -725,18 +1018,44 @@ export const PickerHost: FC<PickerHostProps> = ({
 	useEffect(() => {
 		if (!busy) dispatch({ type: "settle" });
 	}, [busy]);
-	// Start on the current row so Enter alone confirms "no change"; clamp
-	// rather than reset when the filter shortens the list.
+	/*
+	 * THE HIGHLIGHT, RE-PLACED WHENEVER THE OPTION LIST MOVES. The decision itself
+	 * is `pickerPlacement` above (UX U1/U2) — it is a function rather than an
+	 * inline rule so that the cases that made this change necessary are pinned by
+	 * tests instead of by a rendered frame (`scripts/picker-feedback.test.mjs`).
+	 * This effect only reads and writes the three facts the rule needs: the row
+	 * the user is on, whether that row is theirs, and the search the placement was
+	 * last made for.
+	 *
+	 * `active` is a dependency so the clamp reads the live index; every branch is
+	 * idempotent when it re-runs (a held row resolves to the index already in
+	 * `active`), so an arrow keypress cannot be undone by the effect it triggers.
+	 */
 	useEffect(() => {
-		setActive((current) => {
-			if (filtered.length === 0) return 0;
-			if (query) return Math.min(current, filtered.length - 1);
-			const currentIndex = filtered.findIndex((option) => option.current);
-			return currentIndex >= 0
-				? currentIndex
-				: Math.min(current, filtered.length - 1);
+		const queryChanged = placedQueryRef.current !== query;
+		placedQueryRef.current = query;
+		const placed = pickerPlacement({
+			options: ordered,
+			held: activeValueRef.current,
+			active,
+			query,
+			queryChanged,
+			steered: steeredRef.current,
+			// The sentence already on screen, so the rule can retire it the moment
+			// the row it is about is listed again (UX U7).
+			retarget: retargeted,
 		});
-	}, [filtered, query]);
+		activeValueRef.current = placed.held;
+		steeredRef.current = placed.steered;
+		setActive(placed.index);
+		// `undefined` means this pass has nothing to say about the sentence: the one
+		// set by the pass that LOST the row must survive the pass that re-placed the
+		// highlight, which is this component's own next render - a fix that cleared
+		// it there measured 137 samples of the sentence never once on screen. A pass
+		// that DOES have something to say returns the sentence, or `null` to retire
+		// it (the lost row listed again, or the user's own typing).
+		if (placed.retargeted !== undefined) setRetargeted(placed.retargeted);
+	}, [ordered, query, active, retargeted]);
 	/*
 	 * A query change scrolls the list back to its top (UX U6).
 	 *
@@ -797,6 +1116,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 		 * Hover still does NOT steer it (design D2): only an action moves the
 		 * selection, and the pointer's own action is the click.
 		 */
+		activeValueRef.current = option.value;
+		steeredRef.current = true;
+		setRetargeted(null);
 		setActive(index);
 		void pickRef.current(option);
 	}, []);
@@ -810,24 +1132,32 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
 			if (event.nativeEvent.isComposing) return;
-			if (event.key === "ArrowDown" && filtered.length > 0) {
+			if (event.key === "ArrowDown" && ordered.length > 0) {
 				event.preventDefault();
-				setActive((current) => (current + 1) % filtered.length);
-			} else if (event.key === "ArrowUp" && filtered.length > 0) {
+				// The highlight is the user's from here on (UX U1): a listing that
+				// arrives while they are moving through the rows must not take it.
+				const next = (active + 1) % ordered.length;
+				activeValueRef.current = ordered[next]?.value ?? null;
+				steeredRef.current = true;
+				setRetargeted(null);
+				setActive(next);
+			} else if (event.key === "ArrowUp" && ordered.length > 0) {
 				event.preventDefault();
-				setActive(
-					(current) => (current - 1 + filtered.length) % filtered.length,
-				);
+				const next = (active - 1 + ordered.length) % ordered.length;
+				activeValueRef.current = ordered[next]?.value ?? null;
+				steeredRef.current = true;
+				setRetargeted(null);
+				setActive(next);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				if (hasList && filtered.length > 0 && onPick) {
-					void pick(filtered[active]);
+				if (hasList && ordered.length > 0 && onPick) {
+					void pick(ordered[active]);
 				} else if (onSubmit && !submitDisabled && !busy) {
 					void onSubmit();
 				}
 			}
 		},
-		[filtered, active, hasList, onPick, onSubmit, submitDisabled, busy, pick],
+		[ordered, active, hasList, onPick, onSubmit, submitDisabled, busy, pick],
 	);
 
 	const handleFormSubmit = useCallback(
@@ -837,17 +1167,6 @@ export const PickerHost: FC<PickerHostProps> = ({
 		},
 		[onSubmit, submitDisabled, busy],
 	);
-
-	const grouped = useMemo(() => {
-		const groups = new Map<string, PickerOption[]>();
-		for (const option of filtered) {
-			const key = option.group ?? "";
-			const bucket = groups.get(key);
-			if (bucket) bucket.push(option);
-			else groups.set(key, [option]);
-		}
-		return [...groups.entries()];
-	}, [filtered]);
 
 	// Which of the four body states this render is in. The decision is a pure
 	// export so its order (loading before error before empty) is asserted rather
@@ -925,7 +1244,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								aria-expanded={true}
 								aria-controls={listId}
 								aria-activedescendant={
-									filtered[active] ? `${listId}-${active}` : undefined
+									ordered[active] ? `${listId}-${active}` : undefined
 								}
 								aria-autocomplete="list"
 								value={query}
@@ -1064,7 +1383,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 					<div className={cn(bodyOverflows && "border-control border-b")}>
 						<div
 							ref={attachBodyBox}
-							/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a panel's content sits below the fold and a keyboard user has to be able to reach it. */
+							/*
+							 * The tab stop IS the fix: a panel's content sits below the fold and a
+							 * keyboard user has to be able to reach it. (The suppression that used
+							 * to sit here was reported as UNUSED - the `region` role satisfies the
+							 * rule for this element - so the reasoning is kept and the directive is
+							 * not.)
+							 */
 							role={shell === "panel" ? "region" : undefined}
 							aria-label={
 								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined
@@ -1160,7 +1485,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
-				<div className="flex items-center justify-between gap-3 px-5 py-4">
+				<div
+					className="flex items-center justify-between gap-3 px-5 py-4"
+					data-picker-footer
+				>
 					{/*
 					 * The hint names the row Enter would pick (UX U1) and truncates rather
 					 * than wrapping, because a long model name here is the only text in the
@@ -1183,6 +1511,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 									rowCount: filtered.length,
 									activeLabel,
 									busyText,
+									retargetedLabel: retargeted?.label ?? null,
 								})}
 							</span>
 						) : (
@@ -1192,6 +1521,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								rowCount: filtered.length,
 								activeLabel,
 								busyText,
+								retargetedLabel: retargeted?.label ?? null,
 							})
 						)}
 					</span>
@@ -1273,8 +1603,9 @@ export const PickerCheck: FC<{
 }> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
 	const id = useId();
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-start gap-2">
 			<Checkbox
+				className="mt-0.5"
 				id={id}
 				checked={checked}
 				onCheckedChange={(next) => onCheckedChange(next === true)}
@@ -1325,10 +1656,16 @@ export function PickerSegment<T extends string>({
 							onChange={() => onChange(option.value)}
 							className="sr-only"
 						/>
+						{/*
+						 * The radio above is `sr-only`, so this label is the segmented
+						 * control's whole visible target. The base layer's pointer list is
+						 * semantic controls and a label is not one, so the pointer has to be
+						 * said here.
+						 */}
 						<label
 							htmlFor={id}
 							className={cn(
-								"block cursor-default rounded-sm px-3 py-1 text-body-sm",
+								"block cursor-pointer rounded-sm px-3 py-1 text-body-sm",
 								value === option.value
 									? "bg-surface text-ink"
 									: "text-ink-muted hover:text-ink",

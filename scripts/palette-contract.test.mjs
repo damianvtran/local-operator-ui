@@ -17,6 +17,13 @@ import { test } from "node:test";
  * anything, and every suite stayed green because nothing asserted the pair
  * (round 1, R-1). This file is that assertion, read off the sources rather than
  * rendered, because the question is whether both halves exist at all.
+ *
+ * SINCE ISSUE #659 THE TWO CHORDS HAVE DISTINCT JOBS, and this file pins what
+ * each door ASKS FOR as well as that it exists: `Cmd/Ctrl+P` opens the
+ * conversation switcher - the palette seeded to its chats scope - and
+ * `Cmd/Ctrl+K` keeps the unseeded toggle. A door that still opened the same
+ * list as the other is the defect the split removes, and it would satisfy a
+ * subscription-only check exactly as the pre-split code did.
  */
 
 const read = (path) => readFileSync(path, "utf8");
@@ -85,10 +92,49 @@ test("main does NOT bind Cmd/Ctrl+K, which the renderer owns", () => {
 });
 
 test("something in the renderer subscribes to the channel main sends on", () => {
+	const subscribed =
+		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*([A-Za-z_$][\w$]*)\s*,?\s*\)/.exec(
+			HOOK,
+		);
+	assert.ok(
+		subscribed,
+		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on AND a handler the file defines",
+	);
+	/*
+	 * The handler must reach the store WITH the seed, not with a bare call and
+	 * not as a direct reference (issue #659) — and, since review round 2 (U5),
+	 * not as a bare toggle either: a press while the palette is OPEN moves it
+	 * to the conversations view (`setCommandPaletteQuery` behind the live
+	 * `isCommandPaletteOpen` read), and only a CLOSED palette toggles open. A
+	 * bare call would answer `Cmd+P` with the same unseeded palette as `Cmd+K`
+	 * — the split undone — and a direct reference would seed the query with the
+	 * IPC EVENT object, because `ipcRenderer.on` hands its listener the event
+	 * first.
+	 */
 	assert.match(
 		HOOK,
-		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*toggleCommandPalette\s*,?\s*\)/,
-		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on AND the store's toggle as the handler",
+		new RegExp(`const ${subscribed[1]}\\s*=\\s*\\(\\s*\\)\\s*=>\\s*\\{`),
+		"the subscription's handler must be a block that reads the live flag, not a one-liner",
+	);
+	assert.match(
+		HOOK,
+		/isCommandPaletteOpen[\s\S]{0,240}?setCommandPaletteQuery\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
+		"an already-open palette must MOVE to the chats view (U5) rather than close",
+	);
+	assert.match(
+		HOOK,
+		/else\s+[\w$.]*toggleCommandPalette\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
+		"a closed palette must open through the store's seeded door",
+	);
+	assert.doesNotMatch(
+		HOOK,
+		/ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*toggleCommandPalette\s*,?\s*\)/,
+		"a direct reference would seed the query with the IPC event object",
+	);
+	assert.match(
+		HOOK,
+		/import\s*\{[^}]*CONVERSATION_SWITCHER_SEED[^}]*\}\s*from\s*"\.\/palette-search"/,
+		"the seed must be the one `palette-search.ts` defines, not a second spelling of the chats scope",
 	);
 	/*
 	 * The callback matters, not just the channel: `.on("toggle-command-palette",
@@ -127,6 +173,27 @@ test("the subscription is torn down, so a remount cannot double-toggle", () => {
 		HOOK,
 		/unsubscribe\?\.\(\)|unsubscribe\(\)/,
 		"the unsubscribe `ipcRenderer.on` returns must be called on cleanup",
+	);
+});
+
+test("the two chord doors ask for different jobs (issue #659)", () => {
+	/*
+	 * The split's whole point, pinned on both halves: `Cmd/Ctrl+P` seeds the
+	 * palette to the conversations scope (the quick switcher), and `Cmd/Ctrl+K`
+	 * keeps the unseeded toggle - an empty box, every source. Read off the
+	 * wiring because the P half cannot be pressed in any headless run: the hook
+	 * checks `isFocused() && isVisible()`, and a headless launch is neither
+	 * (`docs/agent-driver.md` states the same limit for this chord).
+	 */
+	assert.match(
+		HOOK,
+		/toggleCommandPalette\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
+		"the Cmd/Ctrl+P door must seed the palette to the conversations scope",
+	);
+	assert.match(
+		HOOK,
+		/paletteShortcutIntent\(event\)[\s\S]{0,240}?toggleCommandPalette\(\s*\)/,
+		"the Cmd/Ctrl+K door must keep the unseeded toggle: an empty box, every source",
 	);
 });
 
@@ -216,7 +283,7 @@ test("the palette owns the screen over the app's full-bleed bands", () => {
 	);
 });
 
-test("the bands are in flow, and the region keeps the window minus their height", () => {
+test("no status surface sits above the window, and the pane owns the ones there are", () => {
 	/*
 	 * THE ACCEPTANCE POINT NO OTHER GATE WATCHES. With no band up the region is the
 	 * WHOLE window, and it is the whole window because both bands `return null`
@@ -263,14 +330,29 @@ test("the bands are in flow, and the region keeps the window minus their height"
 		/className="relative flex h-screen flex-col overflow-hidden"/,
 		"the shell root must be a COLUMN, or the bands and the region share a row",
 	);
-	const order = [
-		"<ConnectivityBanner />",
-		"<BackendCompatibilityBanner />",
-		'className="flex min-h-0 flex-1 overflow-hidden"',
-	].map((needle) => app.indexOf(needle));
+	/*
+	 * AND THE SHELL ROOT CARRIES NEITHER SURFACE ANY MORE (chat redesign §F2,
+	 * design round 1 D3). The bands used to be the shell's first children and this
+	 * file pinned that order; §F2's contract is the opposite - a status message
+	 * belongs INSIDE the conversation pane, under its top row, so it can never
+	 * span the sidebar or sit above the window controls - and the order pin is
+	 * therefore replaced rather than deleted: the root must mount NEITHER band, and
+	 * the pane must mount the strip.
+	 */
+	for (const gone of ["<ConnectivityBanner", "<BackendCompatibilityBanner />"])
+		assert.ok(
+			!withoutComments(app).includes(gone),
+			`the shell root still mounts ${gone}: §F2 puts every status surface inside the conversation pane`,
+		);
+	const pane = withoutComments(
+		read("src/renderer/src/features/chat/components/chat-content.tsx"),
+	);
+	const strip = pane.indexOf("<ChatStatusStrip />");
+	const compatibility = pane.indexOf("<BackendCompatibilityBanner />");
+	const header = pane.indexOf("<ChatHeader");
 	assert.ok(
-		order.every((at) => at > -1) && order[0] < order[1] && order[1] < order[2],
-		`the two bands must be the shell root's FIRST children, above the region (offsets ${order.join(", ")})`,
+		header > -1 && strip > header && compatibility > strip,
+		`the pane must mount the strip under its top row, with the compatibility band after it (header ${header}, strip ${strip}, compatibility ${compatibility})`,
 	);
 });
 

@@ -6,6 +6,7 @@
  * Automatically refreshes feature flags every 10 minutes.
  */
 
+import { telemetryEnabled } from "@shared/config";
 import posthog from "posthog-js";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC, ReactNode } from "react";
@@ -64,13 +65,12 @@ type FeatureFlagProviderProps = {
 };
 
 /**
- * Provider component for type-safe feature flags
- * Wraps the PostHog provider and provides a type-safe interface
- * Automatically refreshes feature flags every 10 minutes
+ * The PostHog-backed provider, in the launches that send telemetry.
+ *
+ * Wraps the PostHog provider and provides a type-safe interface, and reloads the
+ * flags once on mount and every 10 minutes after that.
  */
-export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = ({
-	children,
-}) => {
+const PostHogFeatureFlags: FC<FeatureFlagProviderProps> = ({ children }) => {
 	/**
 	 * Reload feature flags from PostHog
 	 * This will update the flags and trigger a re-render
@@ -139,6 +139,58 @@ export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = ({
 		</FeatureFlagContext.Provider>
 	);
 };
+
+/**
+ * The provider a launch that does not report gets: every flag at its default.
+ *
+ * WHY A SECOND IMPLEMENTATION RATHER THAN A BRANCH INSIDE THE FIRST. The whole
+ * point of switching telemetry off is that no PostHog client exists, and this
+ * component is the only other place in the renderer that reaches for one:
+ * `posthog.reloadFeatureFlags()` on a client that was never initialized is at
+ * best a no-op that logs from inside the library and at worst a call that
+ * initializes it, and the hooks below it subscribe to the same client. So the
+ * off path must not call any of them at all rather than call them and hope they
+ * are inert.
+ *
+ * `isEnabled` returning `false` IS the default branch, not a stub: a flag is off
+ * unless PostHog says otherwise, so a launch that sends nothing evaluates every
+ * gated surface as not-enabled, exactly as a user whose flags failed to load
+ * would. Which implementation runs is a LAUNCH constant, so this choice cannot
+ * change during a mount and the hook order inside either one is stable.
+ *
+ * `src/renderer/src/shared/config/telemetry.ts` owns the rule; a rig or harness
+ * gets it off through the app's launch switch, never from inside here.
+ */
+const DefaultFeatureFlags: FC<FeatureFlagProviderProps> = ({ children }) => {
+	const contextValue = useMemo<FeatureFlagContextType>(
+		() => ({
+			isEnabled: () => false,
+			getValue: () => undefined,
+			reloadFeatureFlags: () => {},
+		}),
+		[],
+	);
+
+	return (
+		<FeatureFlagContext.Provider value={contextValue}>
+			{children}
+		</FeatureFlagContext.Provider>
+	);
+};
+
+/**
+ * Provider component for type-safe feature flags.
+ *
+ * Picks the implementation from this launch's telemetry decision: the
+ * PostHog-backed one when the launch may report, and the all-defaults one when
+ * it may not.
+ */
+export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = (props) =>
+	telemetryEnabled ? (
+		<PostHogFeatureFlags {...props} />
+	) : (
+		<DefaultFeatureFlags {...props} />
+	);
 
 /**
  * Hook to access feature flags in a type-safe manner

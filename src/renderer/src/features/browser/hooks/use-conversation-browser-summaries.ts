@@ -32,7 +32,9 @@ export interface ConversationBrowserSummaries {
 	 * read zero); the contract is the hook's, and the sidebar's per-row mark — the
 	 * consumer that needed the difference, because an empty map put forty inert
 	 * controls on rows in a surface with no browser at all — is gone (operator ask,
-	 * 2026-09-18).
+	 * 2026-09-18). The rail's badge (2026-09-23) reads the whole-projection count through
+	 * its own hook rather than this map, so the distinction still has exactly one
+	 * consumer, and it is still the one whose contract this is.
 	 */
 	summaries: ReadonlyMap<string, ConversationBrowserSummary> | undefined;
 	/** The shared approval clock, so a caller that renders an expiry ("expires in
@@ -46,10 +48,14 @@ export interface ConversationBrowserSummaries {
  *
  * THE SIDEBAR WAS THE SECOND CONSUMER UNTIL THIS CHANGE (operator ask, 2026-09-18):
  * the per-row browser mark read this map, and deleting the mark leaves
- * `useConversationApprovals` as the one reader. The hook stays — the badge's count is
- * still this projection's, and a second implementation of it is what the paragraph
- * below exists to prevent — and the scale argument it was written for is kept because
- * it is why the projection is shared rather than rebuilt per consumer.
+ * `useConversationApprovals` as the one reader of the MAP. The hook stays — the badge's
+ * count is still this projection's, and a second implementation of it is what the
+ * paragraph below exists to prevent — and the scale argument it was written for is kept
+ * because it is why the projection is shared rather than rebuilt per consumer. The rail
+ * joined it on 2026-09-23 and does NOT read this map: it counts every live request in
+ * the projection, including the unattributed ones this map drops by construction (see
+ * `use-app-wide-approvals.ts`), so the two surfaces cannot disagree — they are
+ * different questions, asked once each.
  *
  * WHY A HOOK RATHER THAN A MAP BUILT IN EACH COMPONENT (design R2): a per-consumer
  * projection is the default this codebase invites, and at sidebar scale it is the wrong

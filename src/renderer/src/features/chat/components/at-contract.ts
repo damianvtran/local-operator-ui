@@ -80,6 +80,128 @@ export function atRowBudget(anchorTop: number, clipTop: number): number {
 	return Math.max(AT_ROWS_MIN, Math.min(AT_ROWS_MAX, rows));
 }
 
+/**
+ * One section header's height, in px: `pt-2 pb-1` (12) plus the header's
+ * `text-meta` line box.
+ *
+ * MEASURED rather than derived, the way `AT_ROW_PITCH` above was: design round
+ * 1's D1 read the two headers of a merged listing at 29px each on the built
+ * app's own frames. It is a constant for the same reason the pitch is — the
+ * region's cap is arithmetic over it, and a header that grew would otherwise be
+ * a cap that quietly overflows by a slice of a row.
+ */
+export const AT_SECTION_HEADER_PITCH = 29;
+
+/**
+ * The row runs of a merged listing, in draw order: one count per section, the
+ * way the listing will lay its headers out (a header precedes each run).
+ *
+ * The picker has the rows; the region's arithmetic needs to know WHERE the
+ * headers fall, not just how many there are, because the visible window may
+ * hold one header and not the next. A run of `section: undefined` rows is one
+ * run — a listing without a projects projection draws no headers, and its
+ * caller passes `[]` rather than this.
+ */
+export function atSectionRuns(
+	sections: readonly (string | undefined)[],
+): number[] {
+	const runs: number[] = [];
+	let current: string | undefined;
+	for (const section of sections) {
+		if (runs.length === 0 || section !== current) {
+			runs.push(1);
+			current = section;
+		} else {
+			runs[runs.length - 1] += 1;
+		}
+	}
+	return runs;
+}
+
+/**
+ * The row region's own plan, with SECTION HEADERS CHARGED against its cap
+ * (design round 1, D1; measured-content rule for a full first page, QA round
+ * 2's Q-3).
+ *
+ * The cap is `budget * AT_ROW_PITCH` and the budget is measured in ROWS, so a
+ * section header — a non-row child of the same scroller — was never charged
+ * anything: a merged listing drew its headers INSIDE the row cap, which pushed
+ * the `budget`th whole row past the cap and left the region resting on a sliced
+ * row, exactly the half-row reading the whole-row arithmetic exists to prevent.
+ *
+ * The first fix charged ONE HEADER PER RUN against the budget and divided the
+ * remainder into rows. That is only correct while every header is inside the
+ * window: `floor((budget * pitch - headers * headerPitch) / pitch)` rows leaves
+ * `(budget * pitch - headers * headerPitch) mod pitch` px of the next row drawn
+ * when the window's own content holds FEWER headers than the listing does —
+ * twelve projects and a Files section put one header in the window, not two,
+ * and the region rested on 25.6px of a project row (QA round 2's Q-3, measured
+ * on the built app twice).
+ *
+ * So the plan WALKS THE CONTENT the way the scroller lays it out: a header,
+ * then its rows, for each run, stopping at the last boundary that fits wholly
+ * inside the cap. `shown` is the rows inside that window and `cap` is the
+ * window's own height, so the region always ends on a row's bottom edge — never
+ * on a sliced row, and never on a section name with no rows under it (entering
+ * a run costs its header AND at least one row). `rows` is the listing's own
+ * length and is the walk's ceiling as well as the file-only clip, so a runs
+ * list that over-counts can never draw more rows than the listing holds. The
+ * footer's count is then one currency: the rows drawn against the rows the
+ * listing holds.
+ */
+export function atRegionPlan(
+	rows: number,
+	budget: number,
+	sectionRuns: readonly number[],
+): { shown: number; cap: number } {
+	const room = Math.max(0, budget * AT_ROW_PITCH);
+	if (sectionRuns.length === 0) {
+		return { shown: Math.max(0, Math.min(rows, budget)), cap: room };
+	}
+	let used = 0;
+	let shown = 0;
+	for (const count of sectionRuns) {
+		if (count <= 0) continue;
+		// The listing is fully drawn: stop here rather than charge the next run's
+		// header for rows the ceiling will refuse (agent review round 3's R3-3).
+		if (shown >= rows) break;
+		if (used + AT_SECTION_HEADER_PITCH + AT_ROW_PITCH > room) break;
+		used += AT_SECTION_HEADER_PITCH;
+		let taken = 0;
+		// `rows` is the ceiling on BOTH paths (agent review round 3's R3-3): the
+		// runs describe the same list, so an over-counting caller can never draw
+		// more rows than the listing holds.
+		while (taken < count && shown < rows && used + AT_ROW_PITCH <= room) {
+			used += AT_ROW_PITCH;
+			taken += 1;
+			shown += 1;
+		}
+		if (taken < count) break;
+	}
+	return { shown, cap: used };
+}
+
+/**
+ * The project a `@` span names, or `null` when the span names something else.
+ *
+ * A project reference shares the `@` token grammar with a file path — `:` is
+ * not special to the tokenizer (`at-token.ts` ports the Python one, whose
+ * `_token_end` stops on whitespace only) — so the two are told apart by the
+ * `project:` NAMESPACE the picker writes and the backend's classifier resolves
+ * (`references.py`: `@project:<name>`). Everything after the namespace is the
+ * project NAME, which is what the store is asked about; a token with nothing
+ * after it (`@project:`) is mid-typing rather than a reference to a project
+ * with an empty name.
+ *
+ * The namespace is a literal here, the way `at-rank.ts` spells it in
+ * `projectAtRows` and its namespace filter: one spelling, three readers.
+ */
+export function atProjectName(path: string | undefined): string | null {
+	if (!path?.startsWith("project:")) return null;
+	const name = path.slice("project:".length);
+	return name.length === 0 ? null : name;
+}
+
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type AtKeyIntent =
 	/**
@@ -201,20 +323,52 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * read-only working-directory chip), so this is the app's own vocabulary for the
  * same class of fact rather than a new register.
  *
- * THE ONE THING IT MAY NOT DO IS PROMISE, and that is why it does not read like the
- * other capability sentences in this app ("Update the backend to …"). Those
- * offers are true because the capability they name is one a newer backend has; the
- * `references` key is one NO harness advertises - not the released ones, and not
- * the half in review - so telling the user to update would be a promise nothing on
- * the other side can keep. What is true, and all this says, is what the harness in
- * use cannot do.
+ * IT NAMES THE REMEDY, and that is a REVERSAL of the rule this sentence was first
+ * written under. It used to read "This backend cannot carry file references." and
+ * nothing else, deliberately: the `references` capability was one NO harness
+ * advertised, so "update the backend" would have been a promise with nothing on the
+ * other side to keep it. The harness publishes it now — `capabilities.py`
+ * advertises `references` whenever `at_references_enabled()`, from the release that
+ * carries the key — so the promise is
+ * one a newer backend keeps, and a sentence that names the backend as the reason
+ * while offering no way out of the state is the dead end the sibling gate in this
+ * same band already refuses (`MOVE_UNAVAILABLE_REASON`, on the read-only
+ * working-directory chip). `scripts/at-mentions.test.mjs` asserts BOTH halves of
+ * that: the remedy is an imperative sentence naming the backend, and the sentence
+ * still never carries the `@`. What it deliberately does NOT pin is the wording —
+ * the matcher accepts any `Update …backend` clause, so a reworded remedy passes and
+ * a negated one ("You cannot update the backend.", "Do not update the backend.")
+ * does not.
  *
- * One sentence, in the picker's own notice register ("This folder is empty."),
- * because the picker's one-row notice is where this composer already says why a
- * gesture has nothing behind it.
+ * IT STILL SAYS WHAT THE HARNESS CANNOT DO FIRST. The update clause is the way out
+ * of the state; the first clause is the state, and a user who cannot update this
+ * minute has at least been told why their `@` did nothing. Both clauses are needed
+ * and neither is decoration.
+ *
+ * IT NAMES NO LOCATION FOR THE UPDATE, and that was weighed rather than missed. The
+ * control exists (Settings, under Application updates; the run panel's own failure
+ * sentence names it in full), and the sibling sentence in this band names a second,
+ * always-available route — "Start a new chat to use a different folder, or update
+ * the backend." A mention has no such route: an unexpanded `@path` typed as prose
+ * does nothing at all, so there is no equivalent of "start a new chat" to offer, and
+ * the remaining clause is the same imperative this app uses for a below-version
+ * backend everywhere else (`BACKEND_ERROR_REMEDY.outdated`, "Update the server and
+ * try again."). Adding a path would make the notice three clauses in a one-row slot
+ * to say something the app already says on the surface that owns updating.
+ *
+ * TWO SENTENCES, in the picker's own notice register ("This folder is empty.") -
+ * the one-row notice is where this composer already says why a gesture has nothing
+ * behind it, and the state plus its remedy need one sentence each. It is still ONE line at the app's default column
+ * width — the re-captured frame in `docs/evidence/chat-mention-chips/
+ * harness-cannot-expand/` shows the whole sentence at 1380px — and it is a `block`
+ * in a full-width shell, so a narrower column wraps it inside that shell rather than
+ * widening it or clipping it. Either way it costs the COMPOSER nothing: the notice
+ * stands in the list's own `absolute bottom-full` slot, so it grows upward over the
+ * transcript exactly as the list it stands in for does, and no row of the composer
+ * moves.
  */
 export const AT_UNAVAILABLE_REASON =
-	"This backend cannot carry file references.";
+	"This backend cannot carry file references. Update the backend and try again.";
 
 /**
  * The footer's left line, read off the ACTIVE ROW.
@@ -324,12 +478,25 @@ export function atEmptyCopy(state: {
 	query: string;
 	/** The directory being listed, as the header spells it (`./`, `src/`). */
 	scope: string;
+	/**
+	 * Whether the PROJECTS section was among the sources this pass searched
+	 * (UX round 1, U2). The no-match sentence has to be true of what was
+	 * consulted: with a store in the projection the row used to say `No files
+	 * match` and name one source, while a mistyped project name — a fact only
+	 * the projects source could answer — got the file sentence and no hint that
+	 * projects were searched at all. `false`/absent keeps the file-only
+	 * sentence, which is what the file-only popup ships and what its frames
+	 * show.
+	 */
+	projects?: boolean;
 }): string {
 	if (state.error) return unreadableCopy(state.error);
 	if (state.loading && state.entries === 0) return "Reading this folder…";
 	if (state.entries === 0) return "This folder is empty.";
 	if (state.matched === 0)
-		return `No files match "${state.query}" in ${state.scope}.`;
+		return state.projects
+			? `Nothing here matches "${state.query}" in ${state.scope}.`
+			: `No files match "${state.query}" in ${state.scope}.`;
 	// Unreachable while the caller renders a notice only when it has no rows, and
 	// stated rather than left undefined so a future caller that asks anyway gets a
 	// sentence instead of an empty div.

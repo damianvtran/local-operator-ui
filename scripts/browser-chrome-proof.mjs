@@ -62,6 +62,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 /**
@@ -241,6 +242,11 @@ async function launchApp() {
 	 * run. Headless window mode silences the APP's own banner and cannot silence
 	 * the backend's, which is why the switch has to be in the environment this
 	 * child is handed. See `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` for the other side of the same rule: this rig boots the
+	 * real app, whose build carries the live PostHog project key, while the
+	 * renderer's configuration is inlined at build time and so cannot be switched
+	 * off from the scratch tree. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -252,6 +258,7 @@ async function launchApp() {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
@@ -861,6 +868,130 @@ async function realClickText(role, text) {
 		buttons: 0,
 	});
 	return "clicked";
+}
+
+/** Is a tab-actions menu in the DOM right now? */
+const tabMenuOpen = () =>
+	evaluate(`!!document.querySelector('[data-tour-tag="browser-tab-actions"]')`);
+
+/**
+ * Pick the ⋯ trigger a menu drive should target, and say whether it belongs to a tab
+ * that is NOT the one on screen.
+ *
+ * `Watch this tab` renders only for a tab that is not already presented, so the drive
+ * that wants to see that item asks for a non-active tab; which one was picked is
+ * reported rather than assumed (`nonActive` is false when no such tab exists).
+ */
+async function chooseTabMenuTrigger(preferNonActive = true) {
+	const pick = await evaluate(`(() => {
+		const tabs = [...document.querySelectorAll('[role="tab"]')];
+		const triggers = [...document.querySelectorAll('[data-tour-tag="browser-tab-menu"]')];
+		if (!triggers.length) return 'missing';
+		const wanted = tabs.findIndex((tab) =>
+			${preferNonActive ? "tab.getAttribute('aria-selected') !== 'true'" : "tab.getAttribute('aria-selected') === 'true'"},
+		);
+		return JSON.stringify({ index: wanted >= 0 ? wanted : 0, nonActive: wanted >= 0 });
+	})()`);
+	return pick === "missing" ? "missing" : JSON.parse(pick);
+}
+
+/**
+ * Open a ⋯ trigger with a REAL press.
+ *
+ * The trigger is scrolled into view first (`inline: 'center'`), because the pooled
+ * strip scrolls: an off-screen row's coordinates are a press on whatever is behind the
+ * window's edge — measured 2026-09-28 as a run that died waiting for a menu that a
+ * press never opened, which is a harness miss rather than a finding. The move before
+ * the press is the D13 reveal (an inactive row's controls are `pointer-events-none`
+ * until the row is hovered), and Radix's trigger opens on `pointerdown`.
+ */
+async function pressMenuTrigger(index = 0) {
+	const coords = await evaluate(`(() => {
+		const triggers = [...document.querySelectorAll('[data-tour-tag="browser-tab-menu"]')];
+		const el = triggers.at(${JSON.stringify(index)});
+		if (!el) return 'missing';
+		el.scrollIntoView({ block: 'nearest', inline: 'center' });
+		const rect = el.getBoundingClientRect();
+		return JSON.stringify({ x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) });
+	})()`);
+	if (coords === "missing") return "missing";
+	await sleep(150);
+	const { x, y } = JSON.parse(coords);
+	await send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		buttons: 0,
+	});
+	// One tick for the hover reveal to apply (`group-hover:pointer-events-auto`).
+	await sleep(90);
+	await send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		clickCount: 1,
+		buttons: 1,
+	});
+	await send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y,
+		button: "left",
+		clickCount: 1,
+		buttons: 0,
+	});
+	return "pressed";
+}
+
+/**
+ * Open a ⋯ trigger from the KEYBOARD: focus it, then Enter.
+ *
+ * The fallback the press needs: it takes no hit test at all, and a press that lands
+ * while the strip is mid-scroll can miss. The focus also reveals the trigger
+ * (`group-focus-within`), and Enter is what a button — and a Radix trigger — opens on.
+ */
+async function keyboardMenuTrigger(index = 0) {
+	const focused = await evaluate(`(() => {
+		const triggers = [...document.querySelectorAll('[data-tour-tag="browser-tab-menu"]')];
+		const el = triggers.at(${JSON.stringify(index)});
+		if (!el) return 'missing';
+		el.scrollIntoView({ block: 'nearest', inline: 'center' });
+		el.focus();
+		return 'focused';
+	})()`);
+	if (focused === "missing") return "missing";
+	await sleep(120);
+	await send("Input.dispatchKeyEvent", {
+		type: "rawKeyDown",
+		key: "Enter",
+		code: "Enter",
+		windowsVirtualKeyCode: 13,
+		nativeVirtualKeyCode: 13,
+	});
+	await send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Enter",
+		code: "Enter",
+		windowsVirtualKeyCode: 13,
+		nativeVirtualKeyCode: 13,
+	});
+	await sleep(300);
+	return (await tabMenuOpen()) ? "keyboard" : "unopened";
+}
+
+/**
+ * Open a ⋯ trigger by whatever real input opens it: a press first, the keyboard path
+ * only when the press produced nothing. Which mechanism opened it is RETURNED, so a
+ * check that cares can say so and a reader of the transcript can tell a press-driven
+ * run from a keyboard-driven one.
+ */
+async function openMenuTrigger(index = 0) {
+	const pressed = await pressMenuTrigger(index);
+	if (pressed === "missing") return "missing";
+	await sleep(300);
+	if (await tabMenuOpen()) return "pressed";
+	return await keyboardMenuTrigger(index);
 }
 
 const clickTag = (tag) =>
@@ -1737,123 +1868,222 @@ async function main() {
 		);
 		say(`frame: ${join(OUT_DIR, "05-consent-pending.png")}`);
 
-		// ---- 7. the overlay policy -------------------------------------------
-		// A native view paints above ALL DOM, so a dialog over the browser surface is
-		// invisible unless the view is hidden. This is that property, exercised by
-		// real clicks: the band's row actions open the hand-over dialog, which is a
-		// `BaseDialog`, and the surface behind it reports itself paused.
-		const beforeOverlay = await evaluate(
-			"!!document.querySelector('[data-tour-tag=\"browser-paused\"]')",
-		);
-		/*
-		 * Pressed again if the first press did not open it.
-		 *
-		 * Radix measures at press time and the strip re-renders on every state push, so
-		 * a press that lands while a tab's title changes can miss the trigger — measured
-		 * once as "menu opened: clicked; items []". A retry re-measures the coordinates,
-		 * which is what a person's second click does too; the check still asserts that a
-		 * real press is what opens the menu.
-		 */
-		/*
-		 * THE ROW'S ACTIONS EXPAND IN THE BAND (spec §6). They used to be a Radix
-		 * dropdown anchored at the strip's bottom edge and painting DOWNWARD into the
-		 * content rect, where the native view occludes it — menus in the band are
-		 * deliberately not registered (`browser-view-policy.ts:32-39`) and a z-index
-		 * cannot beat a native sibling view. This is that fix, driven by a real press,
-		 * and the geometry is MEASURED rather than asserted: the strip grows and the
-		 * page's rectangle shrinks by the same number of pixels, because the content
-		 * element is re-measured by its own ResizeObserver and the host re-bounds the
-		 * view. No suppression, no hidden page.
-		 */
+		// ---- 7. the overlay policy, and the tab-actions popout -----------------
+		// A native view paints above ALL DOM, so the tab-actions menu can only be
+		// visible over the page if the view HIDES for it — which is what the menu
+		// registers for while it is open (`useSuppressBrowserView(…,
+		// "browser-tab-actions")`). This is that property on the operator's report
+		// (2026-09-28), driven by a real press: the menu is a portaled popout over the
+		// content rect, the strip does NOT grow and the page's rectangle does NOT move,
+		// the surface behind it reports itself paused, and a dismissal brings the page
+		// back.
+		//
+		// THE FLICKER QUESTION (probe P11) is answered here too, because a still cannot
+		// show it: the open and close transitions are sampled frame by frame, and what
+		// the samples read — menu painted, and the app's own suppression fact — is
+		// recorded in the transcript for both windows.
+		const stripHeight = () =>
+			evaluate(`(() => {
+				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+				return strip ? Math.round(strip.getBoundingClientRect().height) : null;
+			})()`);
+		const menuProbe = () =>
+			evaluate(`(() => {
+				const menu = document.querySelector('[data-tour-tag="browser-tab-actions"]');
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				return { menu: !!menu, suppressedBy: content ? content.dataset.suppressedBy || '' : '', at: Date.now() };
+			})()`);
 		const rectBeforeActions = await contentRect();
+		const stripBeforeActions = await stripHeight();
 		let openedActions = "missing";
-		const watchOffered = false;
+		let watchOffered = false;
+		let openSamples = [];
+		/*
+		 * The trigger is picked once (a non-active tab's, when the strip has one) and then
+		 * driven by REAL input: a press first, sampled as it opens, and the keyboard path
+		 * of the same control only when the press produced nothing — measured 2026-09-28,
+		 * a pooled strip can have scrolled the row out of reach, and a press that misses
+		 * is a harness miss rather than a finding. Which mechanism opened it is recorded.
+		 */
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			const chosen = await chooseTabMenuTrigger(true);
+			if (chosen === "missing") continue;
+			watchOffered = chosen.nonActive;
+			const pressed = await pressMenuTrigger(chosen.index);
+			if (pressed === "missing") continue;
+			openedActions = "pressed";
+			openSamples = [];
+			for (let index = 0; index < 12; index += 1) {
+				if (index % 4 === 0) await grabRenderer(`17-open-sample-${index / 4}`);
+				openSamples.push(await menuProbe());
+				await sleep(25);
+			}
+			const present = await waitFor(
+				async () => (await menuProbe()).menu,
+				"the menu to be up",
+				5_000,
+			).catch(() => false);
+			if (present) break;
+			const viaKeys = await keyboardMenuTrigger(chosen.index);
+			if (viaKeys === "keyboard") {
+				openedActions = "keyboard";
+				break;
+			}
+		}
+		record(
+			"the open transition, sampled per frame",
+			JSON.stringify(openSamples, null, 2),
+		);
 		const actionsState = await waitFor(
 			async () => {
-				/*
-				 * A NON-ACTIVE tab's actions are opened when the strip has one, because
-				 * `Watch this tab` is the §8.3 affordance and it is only rendered for a tab
-				 * that is not already on screen. On the ACTIVE tab the same row correctly
-				 * offers no watch action — there is nothing to switch to — so which tab this
-				 * picker chose is recorded rather than assumed.
-				 */
-				openedActions = await evaluate(`(() => {
-					const tabs = [...document.querySelectorAll('[role="tab"]')];
-					const triggers = [...document.querySelectorAll('[data-tour-tag="browser-tab-menu"]')];
-					if (!triggers.length) return 'missing';
-					const index = tabs.findIndex((tab) => tab.getAttribute('aria-selected') !== 'true');
-					const target = index >= 0 && triggers[index] ? triggers[index] : triggers[0];
-					watchOffered = index >= 0;
-					target.click();
-					return 'clicked';
-				})()`);
-				if (openedActions !== "clicked") return false;
-				await sleep(400);
+				const probe = await menuProbe();
+				if (!probe.menu) return false;
 				return await evaluate(`(() => {
-					const row = document.querySelector('[data-tour-tag="browser-tab-actions"]');
-					if (!row) return false;
-					const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+					const menu = document.querySelector('[data-tour-tag="browser-tab-actions"]');
+					if (!menu) return false;
 					const content = document.querySelector('[data-tour-tag="browser-content"]');
-					const rowRect = row.getBoundingClientRect();
+					const box = menu.getBoundingClientRect();
+					const rect = content.getBoundingClientRect();
+					const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+					const stripBox = strip ? strip.getBoundingClientRect() : null;
 					return JSON.stringify({
-						insideTheBand: !!strip && strip.contains(row),
-						aboveThePage: !!content && Math.round(rowRect.bottom) <= Math.round(content.getBoundingClientRect().top),
-						height: Math.round(rowRect.height),
-						buttons: [...row.querySelectorAll('button')].map((b) => b.innerText.trim()),
-						tags: [...row.querySelectorAll('button')].map((b) => b.getAttribute('data-tour-tag')),
+						portaledOutsideTheStrip: !menu.closest('[data-tour-tag="browser-tab-strip"]'),
+						/*
+						 * RECORDED, NOT ASSERTED: whether the popout's rectangle reaches the content
+						 * element's top. This section runs with a consent band between the strip and
+						 * the content, so a menu this tall hangs over the URL bar and the band without
+						 * touching the content rect — measured 2026-09-28 at a menu bottom of 222
+						 * against a content top of 348 — and a check that demanded the overlap would
+						 * be asserting an accident of the band's height. The popout's actual claims
+						 * are that it floats free of the strip's box and that the app registers
+						 * suppression while it is up; both are asserted below, and the geometry is
+						 * reported in the detail so a reader can see where it landed in this state.
+						 */
+						overlapsContent: Math.round(box.bottom) > Math.round(rect.top),
+						menuBox: {
+							top: Math.round(box.top),
+							bottom: Math.round(box.bottom),
+							height: Math.round(box.height),
+						},
+						contentTop: Math.round(rect.top),
+						stripBottom: stripBox ? Math.round(stripBox.bottom) : null,
+						suppressedBy: content.dataset.suppressedBy || "",
+						paused: !!document.querySelector('[data-tour-tag="browser-paused"]'),
+						menuHeight: Math.round(box.height),
+						items: [...menu.querySelectorAll('[role="menuitem"]')].map((el) => el.innerText.replace(/\\s+/g, ' ').trim()),
+						tags: [...menu.querySelectorAll('[data-tour-tag]')].map((el) => el.getAttribute('data-tour-tag')),
 					});
 				})()`);
 			},
-			"the row's actions to expand inside the band",
+			"the tab actions menu to open as a registered popout",
 			20_000,
 		).catch(() => false);
 		const actionsDom = actionsState ? JSON.parse(actionsState) : null;
 		const rectWithActions = await contentRect();
-		const actionsFrame = await captureRenderer("17-tab-actions-in-band");
-		await compose(
-			"17-tab-actions-in-band",
-			actionsFrame,
-			null,
-			rectWithActions,
-		);
+		const stripWithActions = await stripHeight();
+		const actionsFrame = await captureRenderer("17-tab-actions-popout");
+		await compose("17-tab-actions-popout", actionsFrame, null, rectWithActions);
 		check(
-			"the row's actions expand in the band, above the page's rectangle — not in a menu that paints into it",
-			openedActions === "clicked" &&
-				actionsDom?.insideTheBand === true &&
-				actionsDom?.aboveThePage === true &&
+			"the tab actions open as a PORTALED popout that leaves the strip's box, with the page suppressed behind it",
+			openedActions !== "missing" &&
+				actionsDom?.portaledOutsideTheStrip === true &&
+				actionsDom.menuBox.bottom > actionsDom.stripBottom &&
+				actionsDom.suppressedBy.includes("browser-tab-actions") &&
+				actionsDom.paused === true &&
 				actionsDom.tags.includes("browser-tab-hand-over") &&
 				actionsDom.tags.includes("browser-tab-actions-close") &&
 				(watchOffered === false ||
 					(actionsDom.tags.includes("browser-tab-watch") &&
-						actionsDom.buttons.some((label) => label.startsWith("Watch ")))),
+						actionsDom.items.some((label) => label.startsWith("Watch ")))),
 			JSON.stringify(
 				{
 					opened: openedActions,
 					nonActiveTabPickedForWatch: watchOffered,
 					actions: actionsDom,
+					openTransition: openSamples,
 				},
 				null,
 				2,
 			),
 		);
 		/*
-		 * The strip's growth is a RE-MEASURE of the content element, which is the
-		 * mechanical fact the design's "the dock narrows the page" claim rests on (§2).
-		 * Both numbers are read from the DOM, so a future change that put the actions
-		 * row inside the content element (or over it) fails here rather than silently
-		 * shrinking the page by nothing.
+		 * THE OPERATOR'S REPORT, MEASURED: the strip does not grow and the page does not
+		 * move. Both numbers are read from the DOM — the strip's own height and the
+		 * content element's rectangle — so a change that put the menu back in the band
+		 * (or let it push the page) fails here rather than silently shifting the window.
 		 */
 		check(
-			"the strip's growth moves the page's rectangle by the row's own height: a re-measure, not a suppression",
+			"the menu costs the page NOTHING: the strip's height and the page's rectangle are the same while it is open as before",
 			actionsDom !== null &&
 				rectBeforeActions !== null &&
 				rectWithActions !== null &&
-				rectWithActions.y > rectBeforeActions.y &&
-				Math.abs(rectWithActions.y - rectBeforeActions.y - actionsDom.height) <=
-					2,
-			`content rect without the actions row ${JSON.stringify(rectBeforeActions)} -> with it ${JSON.stringify(rectWithActions)}; the row measured ${actionsDom?.height}px, and the column keeps its height (the page loses exactly the row, not the whole strip)`,
+				stripBeforeActions !== null &&
+				stripWithActions !== null &&
+				stripWithActions === stripBeforeActions &&
+				rectWithActions.y === rectBeforeActions.y &&
+				rectWithActions.height === rectBeforeActions.height,
+			`strip height ${stripBeforeActions} -> ${stripWithActions}; content rect ${JSON.stringify(rectBeforeActions)} -> ${JSON.stringify(rectWithActions)}; the menu measured ${actionsDom?.menuHeight}px and floats`,
 		);
-		say(`frame: ${join(OUT_DIR, "17-tab-actions-in-band.png")}`);
+		say(`frame: ${join(OUT_DIR, "17-tab-actions-popout.png")}`);
+		// ---- 7b. the dismissal, sampled: Escape returns the page ---------------
+		// Sampled like the open, then asserted from the app's own facts — the menu is
+		// gone, nothing suppresses the view any more, and the paused note has yielded to
+		// the page. Escape is dispatched as a real key event; the dismissal path is
+		// Radix's, which is the contract a keyboard user gets.
+		await send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+		await send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+		const closeSamples = [];
+		for (let index = 0; index < 12; index += 1) {
+			if (index % 4 === 0) await grabRenderer(`17-close-sample-${index / 4}`);
+			closeSamples.push(await menuProbe());
+			await sleep(25);
+		}
+		record(
+			"the close transition, sampled per frame",
+			JSON.stringify(closeSamples, null, 2),
+		);
+		const dismissed = await waitFor(
+			async () => {
+				const probe = await menuProbe();
+				const paused = await evaluate(
+					"!!document.querySelector('[data-tour-tag=\"browser-paused\"]')",
+				);
+				return !probe.menu &&
+					!probe.suppressedBy.includes("browser-tab-actions") &&
+					!paused
+					? { ...probe, paused }
+					: null;
+			},
+			"the page to come back after dismissing the menu",
+			15_000,
+		).catch(() => null);
+		const restoredFrame = await captureRenderer("17b-actions-page-restored");
+		await compose(
+			"17b-actions-page-restored",
+			restoredFrame,
+			null,
+			await contentRect(),
+		);
+		check(
+			"a dismissal (Escape) closes the menu and brings the page back: no suppression left, no paused note",
+			dismissed !== null &&
+				dismissed.suppressedBy === "" &&
+				dismissed.paused === false,
+			`dismissed ${JSON.stringify(dismissed)}; close transition ${JSON.stringify(closeSamples)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "17b-actions-page-restored.png")}`);
 
 		// ---- 8. approving through the bar, then the agent drives --------------
 		check(
@@ -1930,10 +2160,10 @@ async function main() {
 		// layer is pasted at that older `y`, so it painted over the band's own rows and
 		// the URL bar below the heading — the "heading with no rows under it" Q3 filed.
 		// The app's own rectangle is what `compose` has to paste the page into, which is
-		// what the band's own frame already does (`rectWithActions`). The other
+		// what the actions menu's own frame already does (`rectWithActions`). The other
 		// call sites that still pass the stale `rect` are NOT touched here: the frames
 		// they write are this harness's own scratch output, and the set this branch ships
-		// from the run is `09`, `16` and `17`.
+		// from the run is named in `docs/evidence/browser-composition/README.md`.
 		await activateAgentTab();
 		await sleep(800);
 		const mixedFrame = await captureRenderer("09-strip-user-and-agent");
@@ -2283,7 +2513,8 @@ async function main() {
 						 */
 						/*
 						 * THE NOTCH, measured because nothing else measures it (review round 6,
-						 * MAJOR 1). It is 1px of 'canvas' at '-bottom-px', and for one round the
+						 * MAJOR 1). It is 1px of the page's own ground ('elevated') at '-bottom-px',
+						 * and for one round the
 						 * row-level clip removed it entirely on every active tab while every
 						 * check stayed green. A clip is an intersection with the padding boxes of
 						 * the overflow ancestors, so that is what this computes: if the notch's
@@ -2563,7 +2794,7 @@ async function main() {
 				JSON.stringify(trayDom.chips) === JSON.stringify(["1", "2"]) &&
 				JSON.stringify(trayDom.selected) === JSON.stringify(["1"]) &&
 				trayDom.chipNames[1] ===
-					"Request 2 from The agent in conversation other: queued-second.example" &&
+					"Request 2 from An agent from another session: queued-second.example" &&
 				trayDom.card.includes("queued-first.example"),
 			JSON.stringify(
 				{
@@ -3133,9 +3364,288 @@ async function main() {
 			`before: ${frontmostBefore}\nafter: ${frontmostAfter}\nsamples: ${sampler.distinct().join(", ")}\nthe app's pid (${app.child.pid}) was frontmost in ${sampler.appWasFrontmost()} of ${sampler.samples.length} samples`,
 		);
 
+		// ---- 10e. a dead tab is not restored, and one press clears the set ----
+		/*
+		 * THE OPERATOR'S ACCUMULATION (2026-09-28), and the two controls that answer
+		 * it. A tab whose page refused to load used to be persisted like any other,
+		 * re-restored on the next launch (where it failed again) and re-persisted — so
+		 * a strip full of dead tabs only ever grew. The session store now marks such a
+		 * tab at capture time (`lastLoadFailed`) and SKIPS it on the next restore, and
+		 * the menu carries a counted `Close N failed tabs` so the set can be cleared in
+		 * one press.
+		 *
+		 * This section creates the mess deliberately — two tabs driven at the dead port
+		 * — photographs it, clears it with the menu item, and leaves ONE dead tab
+		 * standing for section 11's quit to write and section 12's relaunch to refuse.
+		 */
+		const deadUrl = "http://127.0.0.1:9/";
+		const deadSessionPath = join(USER_DATA, "browser", "session.json");
+		const openDeadTab = async () => {
+			await clickTag("browser-new-tab");
+			await sleep(500);
+			// Give the tab a real page first: the dead navigation then REPLACES a
+			// commit, which is the shape the accumulation fix is about — a tab that
+			// died with history of its own, not one that never committed anything.
+			await typeAddress(`${origin()}/index.html`);
+			await waitFor(
+				async () => {
+					const current = await chromeState();
+					const tab = current.tabs.find(
+						(row) => row.tabId === current.activeTabId,
+					);
+					return tab && tab.url === `${origin()}/index.html` ? current : null;
+				},
+				"the fresh tab to load the proof page",
+				25_000,
+			);
+			await typeAddress(deadUrl);
+			await waitFor(
+				async () => {
+					const current = await chromeState();
+					const tab = current.tabs.find((row) => row.url === deadUrl);
+					return tab?.failed === true ? current : null;
+				},
+				"the typed dead address to refuse, on its own tab",
+				25_000,
+			);
+		};
+		const failedBefore = (await chromeState()).tabs.filter(
+			(tab) => tab.failed === true,
+		).length;
+		await openDeadTab();
+		await openDeadTab();
+		const deadState = await chromeState();
+		const deadIds = deadState.tabs
+			.filter((tab) => tab.failed === true)
+			.map((tab) => tab.tabId);
+		const expectedFailed = failedBefore + 2;
+		check(
+			"two tabs driven at the dead port are marked `Failed` in the strip",
+			deadIds.length === expectedFailed,
+			JSON.stringify(
+				deadState.tabs.map((tab) => ({
+					id: tab.tabId,
+					url: tab.url,
+					failed: tab.failed,
+				})),
+				null,
+				2,
+			),
+		);
+		const messFrame = await captureRenderer("21-dead-tabs-in-strip");
+		await compose(
+			"21-dead-tabs-in-strip",
+			messFrame,
+			null,
+			await contentRect(),
+		);
+		say(`frame: ${join(OUT_DIR, "21-dead-tabs-in-strip.png")}`);
+		/*
+		 * THE ACCUMULATION ENGINE, READ FROM THE FILE ITSELF: the dead tabs are written
+		 * to `session.json` WITH the flag that keeps the next restore from recreating
+		 * them. Without the flag (the behaviour this change replaces) the rows are
+		 * restored, fail again and are re-written — the loop the operator's strip was
+		 * full of.
+		 */
+		/*
+		 * THE DEAD TABS' OWN ROWS are the ones SITTING on the dead URL — their last
+		 * entry is it. The filter is deliberately the LAST entry rather than any entry:
+		 * a HEALTHY tab whose history contains the dead URL is a tab that once tried
+		 * the port and was recovered (this run drives one in section 4), and demanding
+		 * the mark of it fails on a working tree. Measured 2026-09-28: the any-entry
+		 * filter read the recovered tab's row and reported the mark missing on a head
+		 * where the relaunch was already refusing the dead tab.
+		 */
+		const rowsOnDeadUrl = (parsed) =>
+			(parsed.tabs ?? []).filter((row) => {
+				const entries = row.entries ?? [];
+				return (
+					entries.length > 0 && entries[entries.length - 1].url === deadUrl
+				);
+			});
+		const deadRows = await waitFor(
+			async () => {
+				if (!existsSync(deadSessionPath)) return null;
+				const parsed = JSON.parse(readFileSync(deadSessionPath, "utf8"));
+				const rows = rowsOnDeadUrl(parsed);
+				return rows.length === 2 &&
+					rows.every((row) => row.lastLoadFailed === true)
+					? rows
+					: null;
+			},
+			"the dead tabs' rows to reach the session file carrying the mark",
+			10_000,
+		).catch(() => null);
+		check(
+			"a failed tab is persisted with the mark that keeps it out of the next restore",
+			deadRows?.every((row) => row.lastLoadFailed === true) === true,
+			JSON.stringify(deadRows, null, 2),
+		);
+		/*
+		 * ONE PRESS CLEARS THE SET. The menu on a tab offers the counted close for
+		 * exactly the set the strip is painting `Failed` on; a real press on the item
+		 * goes through the same batch machinery every other counted close uses (one
+		 * intent, one state change — section 19c counts the events).
+		 */
+		// The LAST row is a dead tab — the newest, and the active one — so the frame
+		// shows the cleanup offered from the context it is about.
+		const cleanupMenu = await openMenuTrigger(-1);
+		const cleanupItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-failed"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the counted failed-tabs close to be offered",
+			10_000,
+		).catch(() => null);
+		check(
+			"the menu offers `Close N failed tabs`, counting the set the press closes",
+			cleanupItem ===
+				`Close ${expectedFailed} failed ${expectedFailed === 1 ? "tab" : "tabs"}`,
+			`menu: ${cleanupMenu}; item: ${JSON.stringify(cleanupItem)}`,
+		);
+		/*
+		 * THE D2 CLEARANCE, MEASURED WHERE THE FRAME PHOTOGRAPHS IT (design round 1, D2;
+		 * QA round 2, Q2-2). This menu is anchored to the strip's last row - the right end
+		 * - so it is the state the Approvals pill shares a corner with. What a reader
+		 * cannot read off a picture is the DISTANCE, so it is measured and reported with
+		 * its numbers: the panel's right edge against the pill's own left edge and its
+		 * leading content. QA round 2 measured the mechanism (`limitShift()` derives from
+		 * Radix's `sticky: "partial"` default and caps the shift at the anchor's width, 28px
+		 * here), so the expected worst case is ~1272.5 against the pill's ~1281.5 - about
+		 * 9px, not the 21.5 the first comment claimed. THE FIRST RUN OF THIS CHECK MEASURED
+		 * the app itself: panel right 1273, pill box 1266.3, leading content 1275.3 -> the
+		 * content stays clear by 2.3px (the pill no longer reads `pprovals`) while the
+		 * panel's edge sits on the box's own padding. RECORDED, NOT PINNED: the check below
+		 * asserts only the goal (the pill's content stays clear); both numbers are here so
+		 * the next reader compares them with the frame instead of with a comment.
+		 */
+		const d2 = await evaluate(`(() => {
+			const panel = document.querySelector('[data-tour-tag="browser-tab-actions"]');
+			const pill = document.querySelector('[data-tour-tag="browser-approvals"]');
+			if (!panel || !pill) return null;
+			const panelBox = panel.getBoundingClientRect();
+			const pillBox = pill.getBoundingClientRect();
+			const inner = pill.firstElementChild ? pill.firstElementChild.getBoundingClientRect() : null;
+			const round = (value) => Math.round(value * 10) / 10;
+			return {
+				panelRight: round(panelBox.right),
+				panelLeft: round(panelBox.left),
+				pillLeft: round(pillBox.left),
+				pillContentStart: inner ? round(inner.left) : null,
+				windowWidth: window.innerWidth,
+			};
+		})()`);
+		const d2Gap = d2
+			? Math.round((d2.pillLeft - d2.panelRight) * 10) / 10
+			: null;
+		const d2ContentGap =
+			d2 && d2.pillContentStart !== null
+				? Math.round((d2.pillContentStart - d2.panelRight) * 10) / 10
+				: null;
+		say(
+			`D2 clearance: panel right ${d2?.panelRight} vs pill box left ${d2?.pillLeft} (leading content ${d2?.pillContentStart}) at window ${d2?.windowWidth} -> box gap ${d2Gap}px, content gap ${d2ContentGap}px`,
+		);
+		/*
+		 * WHAT THE FIRST RUN OF THIS CHECK MEASURED, because the number is why its bar
+		 * moved: panel right 1273, pill box left 1266.3, content 1275.3 at window 1380 —
+		 * i.e. the panel lands on the pill's translucent padding (a 6.7px overlap of the
+		 * BOX), and the pill's icon and label stay clear (2.3px to the leading content).
+		 * The box overlap cannot be shifted away: `limitShift()` caps the shift at the
+		 * anchor's width (28px — QA round 2, Q2-2), so 1300.5 -> 1273 is the strategy's
+		 * whole budget, and the goal D2 asked for was the pill no longer reading
+		 * `pprovals` — its CONTENT. The bar is the content clearance; both gaps are
+		 * recorded above so the next reader compares them with the frame.
+		 */
+		check(
+			"the right-end tab's menu clears the Approvals pill's own content (D2; both gaps are recorded above)",
+			d2 !== null &&
+				(d2.pillContentStart === null
+					? d2.panelRight <= d2.pillLeft
+					: d2.panelRight <= d2.pillContentStart),
+			`panel right ${d2?.panelRight}, pill box ${d2?.pillLeft}, pill content ${d2?.pillContentStart}, box gap ${d2Gap}, content gap ${d2ContentGap}`,
+		);
+		const cleanupFrame = await captureRenderer("22-close-failed-tabs");
+		await compose(
+			"22-close-failed-tabs",
+			cleanupFrame,
+			null,
+			await contentRect(),
+		);
+		say(`frame: ${join(OUT_DIR, "22-close-failed-tabs.png")}`);
+		await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-close-failed"]')?.click()`,
+		);
+		const cleared = await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.tabs.filter((tab) => tab.failed === true).length === 0
+					? current
+					: null;
+			},
+			"the failed set to close in one press",
+			15_000,
+		).catch(() => null);
+		check(
+			"`Close N failed tabs` closes the whole set in one press",
+			cleared !== null,
+			`failed tabs after the press: ${JSON.stringify(
+				(await chromeState()).tabs
+					.filter((tab) => tab.failed === true)
+					.map((tab) => tab.tabId),
+			)}`,
+		);
+		const clearedFrame = await captureRenderer("23-dead-tabs-cleared");
+		await compose(
+			"23-dead-tabs-cleared",
+			clearedFrame,
+			null,
+			await contentRect(),
+		);
+		say(`frame: ${join(OUT_DIR, "23-dead-tabs-cleared.png")}`);
+		// ONE DEAD TAB IS LEFT STANDING for the quit: section 11 writes it (with the
+		// mark) and section 12 proves the relaunch does not bring it back.
+		await openDeadTab();
+		check(
+			"one dead tab is left standing for the quit",
+			(await chromeState()).tabs.filter((tab) => tab.failed === true).length ===
+				1,
+			JSON.stringify(
+				(await chromeState()).tabs
+					.filter((tab) => tab.failed === true)
+					.map((tab) => tab.tabId),
+			),
+		);
+		const standingRow = await waitFor(
+			async () => {
+				const parsed = JSON.parse(readFileSync(deadSessionPath, "utf8"));
+				const rows = rowsOnDeadUrl(parsed);
+				return rows.length === 1 && rows[0].lastLoadFailed === true
+					? rows[0]
+					: null;
+			},
+			"the last dead tab to reach the session file carrying the mark",
+			10_000,
+		).catch(() => null);
+		check(
+			"the row written for it carries the failed mark too",
+			standingRow?.lastLoadFailed === true,
+			JSON.stringify(standingRow, null, 2),
+		);
+
 		// ---- 11. restore across a restart ------------------------------------
 		const beforeQuit = await chromeState();
 		record("tabs at quit", JSON.stringify(beforeQuit.tabs, null, 2));
+		// The tabs the relaunch is supposed to bring back: everything that was NOT
+		// showing a load failure when the quit happened. The dead tab left standing by
+		// the section above is in `beforeQuit`, and it is exactly the row the restore
+		// must now REFUSE — asserted on its own below.
+		const healthyBeforeQuit = beforeQuit.tabs.filter(
+			(tab) => tab.failed !== true,
+		);
 		/*
 		 * THE TAB COUNT IS ASSERTED, not only the file's shape (QA round 2, Q3).
 		 * `stopApp` signals the app itself, and the stop path captures before the views
@@ -3214,11 +3724,18 @@ async function main() {
 			30_000,
 		);
 		check(
-			"both tabs are back, in the same order, and both are the USER's",
-			restored.tabs.length === beforeQuit.tabs.length &&
+			"every tab that was HEALTHY at the quit is back, in the same order, and all are the USER's",
+			restored.tabs.length === healthyBeforeQuit.length &&
 				restored.tabs.every((tab) => tab.owner === "user") &&
 				restored.tabs.every((tab) => tab.restored === true),
-			JSON.stringify(restored.tabs, null, 2),
+			`healthy at quit ${healthyBeforeQuit.length}, restored ${restored.tabs.length}\n${JSON.stringify(restored.tabs, null, 2)}`,
+		);
+		check(
+			"and the tab that was showing a load failure when the session ended is NOT restored",
+			!restored.tabs.some((tab) =>
+				String(tab.url).startsWith("http://127.0.0.1:9/"),
+			),
+			restored.tabs.map((tab) => tab.url).join("\n"),
 		);
 		check(
 			"the restored tabs are FRESH navigations to the same URLs (no POST replay, no revived process)",
@@ -3246,6 +3763,23 @@ async function main() {
 			newOpen.json?.ok && newOpen.json.result?.tab !== agentToken,
 			`new handle ${String(newOpen.json?.result?.tab).slice(0, 12)}… (old ${String(agentToken).slice(0, 12)}…)`,
 		);
+		// THE SKIP IS AUDIBLE (2026-09-28): the relaunch says in its own log how many
+		// recorded rows it refused, so a tab that does not come back is explained by the
+		// app rather than only by this harness's checks.
+		app.flush();
+		const relaunchLog = readFileSync(app.logPath, "utf8");
+		check(
+			"the relaunch logs the skipped rows instead of silently dropping them",
+			relaunchLog.includes(
+				"recorded tab(s) were showing a load failure when the session ended; not restored",
+			),
+			`[browser] lines: ${relaunchLog
+				.split("\n")
+				.filter((line) => line.includes("[browser]"))
+				.slice(-4)
+				.join(" | ")}`,
+		);
+
 		// The frame after the restart: the restored tabs are the user's and hold no
 		// handle, so the page layer here is the agent tab this run just re-opened —
 		// captured through its NEW handle, which is the recovery the design specifies.
@@ -3701,13 +4235,9 @@ async function main() {
 		})()`);
 		const batchBefore = await chromeState();
 		// The row menu of the pool's FIRST tab, which is in the first conversation.
-		const batchMenu = await evaluate(`(() => {
-			const row = document.querySelector('[data-tab-id]');
-			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
-			if (!trigger) return 'missing';
-			trigger.click();
-			return 'clicked';
-		})()`);
+		// A real input opens it — a press, the keyboard path only if the pooled strip
+		// has scrolled the row out of reach — and the mechanism is recorded below.
+		const batchMenu = await openMenuTrigger(0);
 		const batchItem = await waitFor(
 			async () =>
 				(await evaluate(
@@ -3847,13 +4377,7 @@ async function main() {
 
 		// The other shape: a batch that keeps its anchor tab, so the tab the caret must
 		// land on is not a tab the batch removed.
-		const othersMenu = await evaluate(`(() => {
-			const row = document.querySelector('[data-tab-id]');
-			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
-			if (!trigger) return 'missing';
-			trigger.click();
-			return 'clicked';
-		})()`);
+		const othersMenu = await openMenuTrigger(0);
 		const othersItem = await waitFor(
 			async () =>
 				(await evaluate(

@@ -257,9 +257,13 @@ export function isReportableLoadFailure(code: number): boolean {
  *
  * Null for anything that is not a `session:<id>` identity, so an internal request
  * id can never be published as if it named a conversation. See the call site in
- * `chromeState` for why the renderer is given an id at all.
+ * `chromeState` for why the renderer is given an id at all — and, since
+ * `browser/index.ts` publishes the SAME resolution on `browser-consent-attention`
+ * so a banner click can land on the conversation that asked, it is exported rather
+ * than copied: two spellings of "which session is this requester" is how the
+ * badge's conversation and the click's conversation come apart.
  */
-function sessionRequesterOf(requester: string): string | null {
+export function sessionRequesterOf(requester: string): string | null {
 	if (!requester.startsWith("session:")) return null;
 	const id = requester.slice("session:".length);
 	return id || null;
@@ -617,6 +621,19 @@ export class BrowserHost implements BrowserActionContext {
 	clearLoadFailure(tabId: number): void {
 		if (!this.loadFailures.delete(tabId)) return;
 		this.onChanged();
+	}
+
+	/**
+	 * The ids of tabs with a recorded load failure, for the session capture.
+	 *
+	 * A copy rather than a live view: `captureTabs` reads the set while it walks
+	 * the registry, and a collection that could change underneath the walk would
+	 * make "was this row marked" a race. The marks are what stop a dead tab from
+	 * being restored on the next launch (`session-store.ts`, `readSession`), so
+	 * the set is taken once per capture rather than consulted per row.
+	 */
+	failedTabIds(): ReadonlySet<number> {
+		return new Set(this.loadFailures.keys());
 	}
 
 	/** The failure the chrome shows for the ACTIVE tab, or null. */

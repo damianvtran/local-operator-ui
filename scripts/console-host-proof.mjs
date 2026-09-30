@@ -65,6 +65,7 @@ import { join } from "node:path";
 // SHIM's, and signalling it stops the shim while the app keeps running.
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const argv = process.argv.slice(2);
 const KEEP = argv.includes("--keep");
@@ -475,6 +476,14 @@ async function launchApp(appPath = ".") {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	/*
+	 * `withTelemetryOff`: this rig boots the built app and, with `--packaged`, an
+	 * electron-builder bundle of it - two launches, both carrying the live PostHog
+	 * project key that the renderer's build inlined. A console run recorded in the
+	 * product's own analytics is a user who does not exist. See
+	 * `telemetry-off.mjs`.
+	 */
+	withTelemetryOff(env);
 	// Every inherited cmux/lop variable is REMOVED rather than overwritten: this
 	// process is driven by a session that has them set, and the pty inherits this
 	// environment — an inherited `CMUX_WORKSPACE_ID` has already renamed the

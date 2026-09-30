@@ -48,6 +48,7 @@ import {
 	finalMetadataChecks,
 	privatePythonSeedCheck,
 } from "./python-artifact-layout.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 import {
 	bundledBytecodeCheck,
 	bundledPythonCheck,
@@ -212,7 +213,17 @@ function safeEnv(extra = {}) {
 function startOwned(executable, args, label, env = safeEnv()) {
 	const log = createWriteStream(join(evidence, `${label}.log`));
 	const child = spawn(executable, args, {
-		env,
+		/*
+		 * `withTelemetryOff`: this verifier boots the REAL packaged app — an incumbent,
+		 * a candidate and a second launch, all through here — and that app carries the
+		 * live PostHog project key in both of its processes, so a CI run is a user in
+		 * the product's analytics and a session replay beside it. Applied at the one
+		 * place this script decides what a child gets rather than at the three launch
+		 * calls, so a fourth launch added later is covered without being remembered —
+		 * and the non-app children this also reaches have no PostHog client at all.
+		 * See `telemetry-off.mjs`.
+		 */
+		env: withTelemetryOff(env),
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	child.stdout.pipe(log);

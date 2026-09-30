@@ -512,7 +512,17 @@ jobs:
         # behalf of a script that printed nothing — measured against an empty module
         # in the script's place: a bare `pnpm notarize-dmg` passed, `pnpm --silent`
         # and a direct `node` invocation both refused it.
-        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+        #
+        # The second gate is the candidate workflow's too, for the same reason: both
+        # wrappers refuse a silent success, and NEITHER can see a SKIP, because a
+        # skip is a single line and exit 0 (`scripts/notarize-artifacts.mjs` skips on
+        # a missing flag, a missing credential or an empty `dist`). `pipefail` keeps
+        # the wrapper's own status alive through the `tee` that feeds it.
+        run: |
+          set -o pipefail
+          report="$RUNNER_TEMP/notarize-dmg.log"
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
+          bash scripts/require-notarized-dmg.sh "$report"
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -579,6 +589,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The uv release the Windows install script prefers, staged into
+      # `resources/uv` / `resources/uv_aarch64` so `build.win.extraResources`
+      # copies it into the app as `resources/uv/<arch>/uv.exe` - the path the app
+      # hands the installer (`src/main/backend/uv-tool.ts`). Before the build,
+      # because packaging is what reads the tree, and the sha256 check in the
+      # stager is what makes the pin the bytes rather than the URL. Windows has
+      # its own stager: the release there is a `.zip` whose layout differs from
+      # the tar releases (scripts/setup-python-resource.ps1).
+      - name: Stage the bundled uv (Windows)
+        run: pnpm setup-python:win
+
       - name: Setup code signing (Windows)
         shell: bash
         run: |
@@ -614,6 +635,16 @@ jobs:
         # wrapped on the same argument as the macOS step of this name.
         shell: bash
         run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
+
+      # The artifact-side half of the staging step above: the unpacked app itself
+      # must carry exactly the architecture's uv, or every Windows install
+      # silently reverts to the slower pip path with a green build (see
+      # scripts/verify-bundled-uv.mjs). Wrapped like the closure check, because a
+      # gate that exits 0 having printed nothing is the failure require-report
+      # exists to refuse.
+      - name: Verify the packaged app carries its bundled uv
+        shell: bash
+        run: bash scripts/require-report.sh "Bundled uv check" node scripts/verify-bundled-uv.mjs --dist dist --platform win32
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -653,7 +684,43 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The uv release the Linux install script prefers, staged into
+      # `resources/uv` / `resources/uv_aarch64` so `build.linux.extraResources`
+      # copies it into the app as `resources/uv/<arch>/uv`. The Unix stager
+      # detects the platform it runs on and stages the `*-unknown-linux-gnu`
+      # releases here, skipping the interpreter seeds Linux does not ship
+      # (scripts/setup-python-resource.sh).
+      - name: Stage the bundled uv (Linux)
+        run: pnpm setup-python
+
+      # `zsyncmake` writes the `.zsync` the AppImage's embedded update
+      # information points at (the finalize step below); `7z` unpacks the
+      # pinned electron-builder AppImage toolset the prepare step patches.
+      # Neither ships in the runner image, and together they are what makes a
+      # released AppImage updatable in place -- the gap the AppImage catalog
+      # bot reported for v0.31.5 (AppImage/appimage.github.io#4905).
+      - name: Install AppImage update tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zsync p7zip-full
+
+      # The update information has to be inside the AppImage BEFORE
+      # electron-builder assembles it: the toolset's `runtime-x64` is what the
+      # AppImage target prepends verbatim, and the built AppImage must not be
+      # edited afterwards, because the embedded blockmap and the
+      # `latest-linux.yml` sha512/size electron-builder writes describe the
+      # bytes as built. See scripts/appimage-update-info.mjs for the full
+      # argument and the rejected alternatives. The env-file line is what makes
+      # the next step build from THIS toolset -- electron-builder honours
+      # `APPIMAGE_TOOLS_PATH` instead of downloading its own copy.
+      - name: Prepare the AppImage toolset with embedded update information
+        run: |
+          bash scripts/require-report.sh "AppImage toolset" node scripts/appimage-update-info.mjs prepare-toolset --dir "$RUNNER_TEMP/appimage-tools"
+          echo "APPIMAGE_TOOLS_PATH=$RUNNER_TEMP/appimage-tools" >> "$GITHUB_ENV"
+
       - name: Build Linux app
+        # `APPIMAGE_TOOLS_PATH` arrives from the prepare step above through
+        # `$GITHUB_ENV`; the AppImage it builds carries the update information.
         run: pnpm dist:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -666,11 +733,30 @@ jobs:
         # Wrapped on the same argument as the macOS step of this name.
         run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
-      # The `*.blockmap` glob is kept here for symmetry and forward
-      # compatibility, and currently matches nothing: none of the Linux targets
-      # emits one (AppImage resolves its own deltas through zsync), so the
-      # `if-no-files-found: error` below is satisfied - as it must be - by the
-      # installers and `latest-linux.yml` alone.
+      # The artifact-side half of the staging step above: the unpacked app itself
+      # must carry exactly the architecture's uv, or every Linux install silently
+      # reverts to the slower pip path with a green build (see
+      # scripts/verify-bundled-uv.mjs). Wrapped like the closure check, because a
+      # gate that exits 0 having printed nothing is the failure require-report
+      # exists to refuse.
+      - name: Verify the packaged app carries its bundled uv
+        run: bash scripts/require-report.sh "Bundled uv check" node scripts/verify-bundled-uv.mjs --dist dist --platform linux
+
+      # The AppImage's half of the update contract, asserted over the bytes
+      # that will actually be attached: the built file carries the embedded
+      # update information, the `.zsync` is written beside it, and the entry
+      # electron-updater reads in `latest-linux.yml` is checked against the
+      # file's real sha512/size. Before the upload, so a release either carries
+      # an updatable AppImage or fails here.
+      - name: Write the AppImage zsync and assert its update information
+        run: bash scripts/require-report.sh "AppImage update information" node scripts/appimage-update-info.mjs finalize --dist dist
+
+      # The `*.blockmap` glob is kept for symmetry and forward compatibility,
+      # and matches nothing on Linux: none of the Linux targets emits one. The
+      # AppImage resolves its deltas through zsync instead -- the finalize step
+      # above writes `dist/<file>.AppImage.zsync` from the built AppImage, and
+      # that is the file AppImageUpdate fetches by the name embedded in the
+      # AppImage, so it rides to the release with the artifact itself.
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -678,6 +764,7 @@ jobs:
           path: |
             dist/*.deb
             dist/*.AppImage
+            dist/*.AppImage.zsync
             dist/*.rpm
             dist/*.blockmap
             dist/latest*.yml

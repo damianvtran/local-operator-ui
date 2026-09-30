@@ -186,7 +186,13 @@ export function McpAuthDialog({
 		return () => {
 			active = false;
 		};
-		// biome-ignore lint/correctness/useExhaustiveDependencies: `remedy` is a fresh object each render and must not re-arm the probe; `attempt` is the explicit retry
+		/*
+		 * `remedy` is deliberately NOT a dependency: it is a fresh object each render
+		 * and re-arming the probe on it would re-run this effect forever. `attempt` is
+		 * the explicit retry. (The suppression that used to sit here was reported as
+		 * UNUSED - the rule no longer fires on this hook - so the reasoning is kept and
+		 * the directive is not.)
+		 */
 	}, [sessionId, row, capabilities.isLoading, secure, attempt]);
 	// Placed AFTER every hook, so the guard cannot reorder them between renders.
 	/*

@@ -5,7 +5,8 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The `ask` gate's clickable options, asserted against the SHIPPED modules.
+ * The pending gate's clickable options — the `ask` set the model authored, and
+ * the approval pair the client owns — asserted against the SHIPPED modules.
  *
  * Three things are checked here, and each is a property that a screenshot
  * cannot prove and that a future edit could break silently:
@@ -43,6 +44,14 @@ import { build } from "esbuild";
  *    all four of its cases here, including the one the bug was: a `2xx` says
  *    nothing at all.
  *
+ * 5. **An approval's press carries the strict boolean and nothing else.**
+ *    Approve and Deny are the client's own labels (`APPROVAL_OPTIONS`; the wire
+ *    sends no options for this kind), and the daemon route rejects
+ *    `question_index` on an approval — so the request these tests validate is
+ *    `{op, sessionId, epoch, requestId, approved}`, with no `value` and no
+ *    `questionIndex` on it at all, and the JSON the route receives carries only
+ *    the keys it reads.
+ *
  * ## Why the component is exercised as an element tree, not through a DOM
  *
  * There is no jsdom in this repo's tree and this change is not the place to
@@ -60,12 +69,14 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { buildSendPayload, ANSWER_NOT_SENT_CODE, UNCONFIRMED_SEND_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
+			'export { QuestionDock, questionDockHint, questionKeyOf } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { askOptionKeyIntent } from "./src/renderer/src/features/chat/components/trace/ask-options";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -89,7 +100,15 @@ const bundle = await build({
 	// dynamic `require("stream")` that esbuild's ESM output cannot satisfy, and
 	// two React copies would give the component a different dispatcher than the
 	// renderer this test imports.
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider the renders wrap in; the hook inside the
+		 * bundle must find the client. */
+		"@tanstack/react-query",
+	],
 });
 
 // Written to a real file rather than imported as a `data:` URL: React DOM's
@@ -101,7 +120,23 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const { QueryClient, QueryClientProvider } = await import(
+	"@tanstack/react-query"
+);
+/*
+ * The transcript reads its cross-session visibility through react-query; in a
+ * server render the hooks resolve to their loading state, whose fail-closed
+ * answer is "show everything". The provider is external to the bundle so this
+ * client and the `useQuery` inside it are one copy.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 const {
+	QuestionDock,
+	questionDockHint,
+	questionKeyOf,
+	askOptionKeyIntent,
 	AskOptions,
 	resolveNumericAnswer,
 	answerValue,
@@ -117,13 +152,20 @@ const {
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
 	createSendLock,
+	APPROVAL_OPTIONS,
+	approvalVerdict,
+	approvalAnswerValue,
 	answerGateOption,
+	answerGateSecret,
+	SECRET_ANSWER_DOCKED_MESSAGE,
 	errorCodeOf,
 	DesktopControlError,
 	UserFacingError,
 	buildSendPayload,
+	sendFailureCopy,
 	ANSWER_NOT_SENT_CODE,
-	UNCONFIRMED_SEND_CODE,
+	ANSWER_UNCONFIRMED_CODE,
+	gateIsSecret,
 	DESKTOP_LOST_SIGHT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
@@ -305,13 +347,26 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 	assert.equal(sent.length, 2);
 });
 
-test("a question that cannot be addressed is never sent", async () => {
+test("a question that cannot be addressed, or an approval label outside the pair, is never sent", async () => {
 	const lock = createSendLock();
 	for (const deps of [
+		// The approval pair is exhaustive: the loop's label ("whatever") is no
+		// press of any control the card offers, so it is refused before the lock
+		// — and the two unaddressable shapes apply to both kinds the same way.
 		{
 			gate: gate({ kind: "approval", options: [] }),
 			sessionId: SESSION,
 			epoch: EPOCH,
+		},
+		{
+			gate: gate({ kind: "approval", options: [] }),
+			sessionId: null,
+			epoch: EPOCH,
+		},
+		{
+			gate: gate({ kind: "approval", options: [] }),
+			sessionId: SESSION,
+			epoch: null,
 		},
 		{ gate: gate(), sessionId: null, epoch: EPOCH },
 		{ gate: gate(), sessionId: SESSION, epoch: null },
@@ -327,6 +382,169 @@ test("a question that cannot be addressed is never sent", async () => {
 		// would leave the composer disabled on a request that never left.
 		assert.equal(lock.held, false);
 	}
+});
+
+test("an approval mounts the client's pair, and each press posts its own boolean", async () => {
+	// THE MOUNT, through the SHIPPED carrier: the DOCK renders the option band
+	// with the client pair on it — the wire carries no options for this kind, and
+	// this was the branch that did not exist (the card was typed-answers-only).
+	// The fold onto `601a9d5032` re-pointed main's mount from the transcript,
+	// which no longer draws the gate at all (§F1), to the dock that does; the ask
+	// half of the same component is asserted above.
+	const markup = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: gate({ kind: "approval", options: [] }),
+			onAnswer: () => {},
+		}),
+	);
+	assert.ok(markup.includes('aria-label="Answer options"'));
+	for (const option of APPROVAL_OPTIONS) {
+		assert.ok(markup.includes(option.label), `${option.label} paints`);
+		assert.ok(
+			markup.includes(option.description),
+			`${option.label}'s consequence line paints`,
+		);
+	}
+	assert.ok(
+		!markup.includes("Recommended"),
+		"nothing on an approval is marked recommended - the model authored no options for it",
+	);
+
+	// And the SHIPPED answer path, once per option: the label a button submits
+	// becomes the STRICT BOOLEAN the route takes, with neither `value` nor
+	// `questionIndex` riding along - the daemon rejects a question index on an
+	// approval, and a label would be a value the route does not read.
+	for (const [option, expected] of [
+		[APPROVAL_OPTIONS[0], true],
+		[APPROVAL_OPTIONS[1], false],
+	]) {
+		const { outcome, sent } = await press({
+			label: option.label,
+			over: { kind: "approval", options: [] },
+		});
+		assert.equal(outcome.status, "sent");
+		assert.equal(sent.length, 1);
+		assert.ok(!("value" in sent[0]), "an approval carries no value");
+		assert.ok(
+			!("questionIndex" in sent[0]),
+			"an approval carries no questionIndex",
+		);
+		const parsed = desktopRequestSchema.parse(sent[0]);
+		assert.equal(parsed.approved, expected);
+		const wire = desktopEndpoint(parsed);
+		assert.equal(wire.path, `/v1/desktop/sessions/${SESSION}/answers`);
+		assert.equal(wire.method, "POST");
+		assert.equal(wire.body.approved, expected);
+		// The mapper spells every optional key out, so the absence check has to
+		// be about the BYTES: `JSON.stringify` drops `undefined`, and this is
+		// what the route actually receives.
+		assert.equal(
+			JSON.stringify(wire.body),
+			JSON.stringify({
+				epoch: EPOCH,
+				request_id: gate().request_id,
+				approved: expected,
+			}),
+			"the route receives the boolean and the addressing, nothing else",
+		);
+	}
+});
+
+test("two approval presses racing post one answer, and a stale label never takes the lock", async () => {
+	// The one-answer-in-flight property the ask pair asserts, on the approval
+	// pair: Approve and Deny dispatched from ONE tick are two answers to a
+	// one-shot gate, and only one may leave. The loser sends nothing at all.
+	const lock = createSendLock();
+	const sent = [];
+	const send = async (request) => void sent.push(request);
+	const approval = { over: { kind: "approval", options: [] }, send, lock };
+	const [first, second] = await Promise.all([
+		press({ ...approval, label: APPROVAL_OPTIONS[0].label }),
+		press({ ...approval, label: APPROVAL_OPTIONS[1].label }),
+	]);
+	assert.deepEqual(
+		[first.outcome.status, second.outcome.status],
+		["sent", "refused"],
+	);
+	assert.equal(
+		sent.length,
+		1,
+		"one answer in flight is one answer on the wire",
+	);
+	assert.equal(sent[0].approved, true);
+	assert.equal(lock.held, false);
+
+	// A label outside the pair is refused BEFORE the lock is claimed: it cannot
+	// be a press of any control the card offers, so nothing about it belongs on
+	// the wire — and a held lock would disable the two real options.
+	const bogus = await press({ ...approval, label: "Allow all" });
+	assert.equal(bogus.outcome.status, "refused");
+	assert.deepEqual(bogus.sent, []);
+	assert.equal(lock.held, false);
+	assert.equal(sent.length, 1);
+});
+
+test("a typed approval answer takes the shipped words and the card's own ordinals", () => {
+	// THE WORDS. "Reply yes or no in the composer" predates the buttons, and the
+	// hint teaches it: it must keep working, with case and padding forgiven
+	// exactly as the shipped inline rule forgave them.
+	for (const [text, expected] of [
+		["yes", true],
+		["y", true],
+		["approve", true],
+		["ok", true],
+		["allow", true],
+		["no", false],
+		["n", false],
+		["deny", false],
+		["reject", false],
+		["cancel", false],
+		[" Approve ", true],
+		["DENY", false],
+	]) {
+		assert.equal(approvalAnswerValue(text), expected, `${text} resolves`);
+	}
+	// THE ORDINALS. The card prints `1.` `2.`, and a numeral it draws must be
+	// typeable - the ask card's own rule, with its `1.` spelling included.
+	for (const [text, expected] of [
+		["1", true],
+		["2", false],
+		["1.", true],
+		[" 2. ", false],
+	]) {
+		assert.equal(approvalAnswerValue(text), expected, `${text} resolves`);
+	}
+	// And the negative cases are the contract: nothing here may choose for the
+	// user. `3` is not an option the pair offers, `01` is a different string,
+	// and prose is an answer the user meant literally.
+	for (const text of [
+		"3",
+		"0",
+		"-1",
+		"01",
+		"11",
+		"1 of them",
+		"maybe",
+		"yes please",
+		"no thanks",
+	]) {
+		assert.equal(approvalAnswerValue(text), null, `${text} must not resolve`);
+	}
+	// The two labels are the pair's own, so the words path and the verdict agree
+	// on every string BOTH understand - the property that keeps the buttons and
+	// the typed path from disagreeing about one label.
+	for (const option of APPROVAL_OPTIONS) {
+		assert.equal(
+			approvalAnswerValue(option.label),
+			approvalVerdict(option.label),
+		);
+	}
+	// And the ask rule still leaves approvals alone: its resolution is for the
+	// model's options, which an approval does not have.
+	assert.equal(
+		resolveNumericAnswer(gate({ kind: "approval", options: [] }), "1"),
+		"1",
+	);
 });
 
 test("a failed answer reports the transport's own code, like a failed send", async () => {
@@ -350,6 +568,67 @@ test("a failed answer reports the transport's own code, like a failed send", asy
 	// A throw must release the lock too, or one transport blip wedges the
 	// composer and the card together until a reload.
 	assert.equal(lock.held, false);
+});
+
+test("an unresolvable typed approval answer renders the sentence, not an unconfirmed send", () => {
+	/*
+	 * THE CLASS IS THE DISCRIMINATOR (agent review round 1, MAJOR-1; UX round 1,
+	 * U1). `chat-page.tsx` throws this sentence from the approval branch, and a
+	 * plain `Error` carries no code — so the composer's table classified the
+	 * outcome as UNKNOWN and rendered "Couldn't confirm your message was sent."
+	 * with a Retry that re-ran the same refusal, over a press that provably sent
+	 * nothing (measured: Retry reproduced the identical alert). These two
+	 * executions run through the SHIPPED classifier and copy table and are the
+	 * whole difference: the bare `Error` first, so the defect is pinned as a
+	 * state the table can produce, then the shipped throw's own shape.
+	 */
+	const SENTENCE = "Reply yes or no to answer the approval request.";
+	const bare = sendFailureCopy(new Error(SENTENCE), undefined, false);
+	assert.equal(
+		bare.retry,
+		true,
+		"a bare Error is the unconfirmed arm, with a Retry",
+	);
+	assert.notEqual(
+		bare.message,
+		SENTENCE,
+		"and not the sentence the code promises",
+	);
+	const fixed = sendFailureCopy(
+		new UserFacingError(SENTENCE, ANSWER_NOT_SENT_CODE),
+		undefined,
+		false,
+	);
+	assert.equal(fixed.message, SENTENCE, "the authored sentence renders");
+	assert.equal(
+		fixed.retry,
+		false,
+		"with no Retry: nothing was sent, so there is nothing to resend",
+	);
+	assert.equal(fixed.code, ANSWER_NOT_SENT_CODE);
+	/*
+	 * And the call site THROWS that class — the table above is only reached with
+	 * the right shape if the source builds it, and `chat-page.tsx` is unreachable
+	 * from this bundle's entry points (the same hole the call-site pins below
+	 * close; comments are stripped first, exactly as there).
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	assert.match(
+		code,
+		/throw new UserFacingError\(\s*"Reply yes or no to answer the approval request\.",\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
+		"the approval branch must throw UserFacingError carrying ANSWER_NOT_SENT_CODE - a bare Error beside this sentence renders as an unknown outcome with a Retry that cannot work",
+	);
+	assert.doesNotMatch(
+		code,
+		/throw new Error\(\s*"Reply yes or no to answer the approval request\."/,
+		"the bare-Error throw must not come back",
+	);
 });
 
 test("a bare numeral resolves to that option's label", () => {
@@ -398,8 +677,8 @@ test("only a bare, in-range numeral on an options ask is resolved", () => {
 	// A gate with no options is a free-text or secret ask, where a numeral is
 	// very often the real answer.
 	assert.equal(resolveNumericAnswer(gate({ options: [] }), "1"), "1");
-	// Approvals are answered yes/no and carry no options; this must never
-	// touch that path.
+	// An approval carries no WIRE options; its pair is the client's own and is
+	// resolved by `approvalAnswerValue`, so this rule must leave it untouched.
 	assert.equal(
 		resolveNumericAnswer(gate({ kind: "approval", options: [] }), "1"),
 		"1",
@@ -491,6 +770,131 @@ test("the gate branch resolves the TYPED text at the call site the app ships", (
 	);
 });
 
+test("the approval branch resolves the TYPED text at the call site the app ships", () => {
+	/*
+	 * The `approvalAnswerValue` assertions above are not the whole contract:
+	 * reverting the CALL SITE is the cheaper regression, and it left this file
+	 * green — `chat-page.tsx` is unreachable from this bundle's entry points (see
+	 * the ask pin above; agent review round 1, MINOR-2). The sabotage the review
+	 * ran: `approvalAnswerValue(content)` in place of the typed resolution, and
+	 * nothing here moved. The pin is deliberately on THIS expression and on the
+	 * request body beside it, so a rewrite has to come here and say what replaced
+	 * it instead of quietly dropping the guard.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const start = code.indexOf(
+		"const approved = approvalAnswerValue(typed ?? content)",
+	);
+	assert.ok(
+		start >= 0,
+		"the approval branch must resolve the TYPED text beside the payload - typed first, never the composed content alone",
+	);
+	const block = code.slice(start, code.indexOf("});", start) + 3);
+	assert.match(
+		block,
+		/requestId:\s*gate\.request_id,\s*approved,?\s*\}/,
+		"the request body beside it carries `approved` - the strict boolean the route reads",
+	);
+	assert.doesNotMatch(
+		block,
+		/\bvalue\s*:/,
+		"and NO `value`: the daemon rejects one on an approval",
+	);
+	assert.doesNotMatch(
+		block,
+		/questionIndex|question_index/,
+		"and no question index either - the daemon rejects it on an approval",
+	);
+});
+
+test("a winning press consumes an answer-shaped draft, and never a message", () => {
+	/*
+	 * UX round 1, U4: a keyboard user types `1`, presses an option, and the
+	 * keystrokes stayed in the box - focus is already there, so the next Enter
+	 * sent `1` as an ordinary message (measured: a real turn started with it).
+	 * The press now consumes the draft exactly as the typed path does, and this
+	 * pins the two halves that make that safe: WHERE it is called (the sent arm,
+	 * for an approval only) and WHAT it refuses to touch (anything that is not an
+	 * approval answer - `approvalAnswerValue` returning `null` leaves the box
+	 * alone, so a message in progress survives). `chat-page.tsx` and
+	 * `message-input.tsx` are unreachable from this bundle, so both are pinned
+	 * by source, as the pins above are.
+	 */
+	const strip = (text) =>
+		text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const chatPage = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	const sentArm = chatPage.slice(
+		chatPage.indexOf('case "sent":'),
+		chatPage.indexOf('case "card":'),
+	);
+	assert.ok(sentArm.length > 0, "the sent arm is where the consume belongs");
+	/*
+	 * THE ARM INVOKES THE CALLER'S CLAUSE, and the clause is at the OPTION path's
+	 * call site. The switch itself now lives in the shared tail
+	 * (`settleGateAnswer`), because the secret submit runs the same tail and a
+	 * secret answer has no composer draft to consume; `onSent` is the arm's
+	 * whole part of the consume, and the approval-only condition is the
+	 * caller's.
+	 */
+	assert.match(
+		sentArm,
+		/onSent\?\.\(\);/,
+		"the sent arm must invoke the caller's own clause",
+	);
+	const optionClause = chatPage.slice(
+		chatPage.indexOf("settleGateAnswer(outcome, key, () => {"),
+	);
+	assert.ok(
+		optionClause.length > 0,
+		"the option path must have its own clause at its call site",
+	);
+	assert.match(
+		optionClause.slice(0, 900),
+		/gate\.kind === "approval"\)\s*\n?\s*input\.current\?\.consumeApprovalAnswerDraft\(\)/,
+		"and the clause must consume the draft, and only for an approval",
+	);
+	const inputSource = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/message-input.tsx",
+			"utf8",
+		),
+	);
+	assert.match(
+		inputSource,
+		/consumeApprovalAnswerDraft[\s\S]{0,240}?approvalAnswerValue\(newMessage\) === null[\s\S]{0,120}?setNewMessage\(""\)/,
+		"the method must clear ONLY an answer-shaped draft: approvalAnswerValue returning null (prose, a partial token) returns with the box untouched",
+	);
+	assert.match(
+		inputSource,
+		/useImperativeHandle\(ref, \(\) => \(\{[\s\S]{0,400}?consumeApprovalAnswerDraft/,
+		"and the handle must actually expose it",
+	);
+	// The predicate itself, on the discriminating cases: an answer is consumed,
+	// a message in progress is not.
+	for (const text of ["1", "yes", " 2. ", "DENY"]) {
+		assert.notEqual(approvalAnswerValue(text), null, `${text} is consumed`);
+	}
+	for (const text of [
+		"1 small thing",
+		"maybe",
+		"yes please",
+		"please do this",
+	]) {
+		assert.equal(approvalAnswerValue(text), null, `${text} survives`);
+	}
+});
+
 test("the press's report is routed by the LIVE card's identity, at the call site the app ships", () => {
 	/*
 	 * Two things the `answerReport` assertions above cannot see, and both left this
@@ -554,13 +958,13 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// sent); everything else is live.
 	assert.match(
 		code,
-		/liveGateKey: liveGateKey\.current,\s*\n\s*pressedGateKey: key,\s*\n\s*sentEpoch: canonical\.ownerEpoch,\s*\n\s*liveEpoch: liveOwnerEpoch\.current,\s*\n\s*cardOnScreen:/,
+		/liveGateKey: liveGateKey\.current,\s*\n\s*pressedGateKey: pressedKey,\s*\n\s*sentEpoch: canonical\.ownerEpoch,\s*\n\s*liveEpoch: liveOwnerEpoch\.current,\s*\n\s*cardOnScreen:/,
 		"the report must be given the live key, the press's own key, the epoch it SENT and the live one",
 	);
 	assert.match(
 		code,
-		/cardOnScreen:\s*\n?\s*document\.querySelector\('\[aria-label="Answer options"\]'\) !== null,/,
-		"the DOM read is the frame's cardOnScreen, and the identity is decided by the keys rather than by the query alone",
+		/cardOnScreen:\s*\n?\s*document\.querySelector\(\s*\n?\s*'\[aria-label="Answer options"\], \[data-ask-secret\]',\s*\n?\s*\) !== null,/,
+		"the DOM read is the frame's cardOnScreen over BOTH answer surfaces - the options band and the secret field's form - with the identity decided by the keys rather than by the query alone",
 	);
 	// The composer arm: the sentence AND the report's own code, in that arm.
 	assert.match(
@@ -574,8 +978,8 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// 2, U7 / QA Q1).
 	assert.match(
 		code,
-		/case "card":[\s\S]{0,600}?setAnswerState\(\{ key, sending: false, refused: report\.refused \}\);/,
-		"the card arm must write the report's own sentence onto the press's card state",
+		/case "card":[\s\S]{0,600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: report\.refused,\s*retryable: report\.retryable,\s*\}\);/,
+		"the card arm must write the report's own sentence AND its retryable classification onto the press's card state - the classification is what lets a definite refusal release the secret field while an unknowable one keeps the hold",
 	);
 	assert.doesNotMatch(
 		code,
@@ -583,10 +987,12 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		"the card arm must not compose the definite sentence itself - that is what made an unknowable outcome claim a loss",
 	);
 	// The sent arm says nothing: no sentence is written on the winning path.
+	// (Its consume clause is the caller's and is pinned by its own test above; the
+	// register this assertion protects is the ABSENCE of a sentence here.)
 	assert.match(
 		code,
-		/case "sent":[\s\S]{0,900}?setAnswerState\(\{ key, sending: false, refused: null \}\);\s*\n\s*return;/,
-		"the sent arm settles the card's hold and returns without a sentence",
+		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: null,\s*retryable: false,\s*\}\);\s*\n?[\s\S]{0,200}?onSent\?\.\(\);\s*\n?[\s\S]{0,200}?return;/,
+		"the sent arm settles the card's hold with nothing to retry, invokes the caller's clause, and returns without a sentence",
 	);
 	assert.doesNotMatch(
 		code,
@@ -688,14 +1094,15 @@ test("the card prints no ordinal a user could not type against", () => {
 	assert.equal(buttons.length, 12);
 	const textOf = (button) =>
 		visibleText(button).join("").replace(/\s+/g, " ").trim();
-	// 1-9 keep the ordinal, because typing one resolves to that label.
-	assert.match(textOf(buttons[8]), /^9\./);
+	// 1-9 keep the keycap, because typing one answers that option (§F1 draws the
+	// keycap without the list's trailing dot).
+	assert.match(textOf(buttons[8]), /^9\s?Option 9/);
 	// 10-12 do not, because `resolveNumericAnswer` is 1-9 and the terminal's
 	// shortcut has no tenth rung: a numeral there is a key that cannot be pressed,
 	// which is the class of lie this card exists to stop telling (UX round 2,
 	// U11). The rows stay pressable.
 	for (const index of [9, 10, 11]) {
-		assert.doesNotMatch(textOf(buttons[index]), /^1[0-2]\./);
+		assert.doesNotMatch(textOf(buttons[index]), /^1[0-2]/);
 	}
 });
 
@@ -866,6 +1273,10 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	assert.deepEqual(onPressedCard(deadline), {
 		to: "card",
 		refused: answerUnconfirmedMessage(deadline),
+		// THE UNKNOWABLE ARM KEEPS THE HOLD: the answer may have landed, so a
+		// retry could send it twice — the one classification the secret field
+		// reads before it dares reopen (design round 1, D1; UX round 1, U1).
+		retryable: false,
 	});
 	// The card's copy does not assert a loss, which is the whole finding.
 	assert.doesNotMatch(
@@ -888,6 +1299,9 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		{
 			to: "card",
 			refused: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			// A DEFINITE not-sent refusal is retryable: the same question is
+			// still live and a retry carries the live epoch.
+			retryable: true,
 		},
 	);
 	assert.equal(
@@ -916,12 +1330,18 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	assert.deepEqual(onPressedCard(settled), {
 		to: "card",
 		refused: `Your answer was not sent. ${settled.message}`,
+		// Established not-sent, so the secret card may offer the kept value
+		// again; the options band never reads this.
+		retryable: true,
 	});
 
 	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
 	// so rather than asserting a loss (UX round 1, U1 — the owner HAD kept the
 	// pressed label while the composer claimed it was not sent). The code is the
-	// app's existing one for an unconfirmable send.
+	// press's own (`ANSWER_UNCONFIRMED_CODE`): the send's code for this state was
+	// removed with the held claim, and the composer's decisions are now taken from
+	// the notice the failure carries, so this is kept as the one thing a reader can
+	// branch on rather than as the thing that decided the copy.
 	for (const error of [
 		new DesktopControlError(
 			null,
@@ -937,7 +1357,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
-			code: UNCONFIRMED_SEND_CODE,
+			code: ANSWER_UNCONFIRMED_CODE,
 		});
 	}
 	/*
@@ -984,7 +1404,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
-			code: UNCONFIRMED_SEND_CODE,
+			code: ANSWER_UNCONFIRMED_CODE,
 		});
 	}
 	/*
@@ -1167,110 +1587,241 @@ test("the accessible name is the label, not the numeral", () => {
 
 test("a secret ask renders no options at all", () => {
 	// `secret: true` arrives with EMPTY options: the answer is a credential
-	// pasted into the composer's masked input, and a clickable list has
-	// nothing to offer it.
+	// typed into the dock's own masked field (`SecretAnswer`), and a clickable
+	// list has nothing to offer it. The field itself is the dock's business and
+	// is asserted below; what this case pins is that the OPTION band stays out
+	// of the credential path entirely.
 	assert.equal(render({ options: [] }), null);
 });
 
-test("the production transcript renders options as real controls", () => {
-	// The regression this whole change is about: the gate used to paint an
-	// inert `<ul>`. Rendered from the SHIPPED `CanonicalTranscript` so the
-	// assertion is about what ships, not about a component in isolation.
+/*
+ * How much SOURCE may sit between the dock and the composer in the pane.
+ *
+ * It is a guard against an UNRELATED block being swept in between the two, not a
+ * measurement of the dock: the dock's half of the contract is the ORDER, which is
+ * asserted on its own a line above and which no ceiling can replace.
+ *
+ * §G3's STOPPED-TURN LINE IS THE ONE THING ALLOWED IN BETWEEN, and that is a
+ * decision rather than slack. `chat-content.tsx` places the stopped line "above
+ * the composer and below the transcript's own dock", so when a run has ENDED and a
+ * gate is still open the dock necessarily sits one sibling higher than the
+ * composer's top edge. Measured on the head this was written: 1665 characters with
+ * block comments stripped, the stopped-turn block being all but a few of them. The
+ * old ceiling was 1500, which the sibling alone had outgrown - so this one's job is
+ * to clear that block and to fail on a second one.
+ */
+const DOCK_TO_COMPOSER_CEILING = 2000;
+
+test("the transcript no longer draws the question: it is docked (§F1)", () => {
+	/*
+	 * The card used to be the transcript's last item, and a long turn put it
+	 * off-screen (U14). It is docked above the composer now, so the SHIPPED
+	 * transcript given a pending gate must draw none of it - a second copy there
+	 * would be the same question twice, one of them unreachable.
+	 */
 	const markup = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
-			transcript: EMPTY_TRANSCRIPT,
+		createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			createElement(CanonicalTranscript, {
+				transcript: EMPTY_TRANSCRIPT,
+				gate: gate({ recommended: 0 }),
+				waiting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef: { current: null },
+				isSmallView: false,
+				status: "live",
+				awaitingHydration: false,
+				error: null,
+			}),
+		),
+	);
+	assert.ok(!markup.includes('aria-label="Answer options"'));
+	assert.ok(!markup.includes("Popup is not open"));
+	/*
+	 * And the pane mounts the dock, at the composer, on the live gate: pinned on
+	 * the call site because `chat-content.tsx` is not reachable from this bundle.
+	 */
+	const pane = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		pane,
+		/<QuestionDock[\s\S]{0,400}gate=\{canonical\.view\.frontend\.pending_gate\}/,
+	);
+	assert.ok(
+		pane.indexOf("<QuestionDock") <
+			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) &&
+			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) -
+				pane.indexOf("<QuestionDock") <
+				DOCK_TO_COMPOSER_CEILING,
+		"the dock renders before the composer, so it sits at the composer's top edge",
+	);
+});
+
+test("the docked card renders options as real controls", () => {
+	const markup = renderToStaticMarkup(
+		createElement(QuestionDock, {
 			gate: gate({ recommended: 0, question_index: 0, question_total: 2 }),
-			waiting: false,
-			loadingOlder: false,
-			onLoadOlder: async () => true,
-			containerRef: { current: null },
-			isSmallView: false,
-			status: "live",
-			// Required by this branch's hold work, and `false` for these fixtures: no page
-			// is owed, so the pane paints no placeholder - whose `<output>` would
-			// otherwise sit in every state this file asserts about the answer card.
-			awaitingHydration: false,
-			error: null,
 			onAnswer: () => {},
 		}),
 	);
-	// A `fieldset` rather than `role="group"`: the semantic element carries the
-	// grouping, so this asserts the element and its label, not an ARIA role
-	// restating it.
 	assert.ok(markup.includes("<fieldset"), "the options are a labelled group");
 	assert.ok(markup.includes('aria-label="Answer options"'));
+	assert.ok(markup.includes('aria-label="Question from the agent"'));
 	assert.ok(markup.includes("Popup is not open"), "every option label paints");
 	assert.ok(markup.includes("Recommended"), "the recommended option is marked");
-	// The multi-question prefix survives, and the hint names the affordances
-	// while keeping the free-text path honest. The digits are named because they
-	// work and nothing else says so: the card draws `1.` `2.` `3.` and typing one
-	// resolves to that label (UX round 1, U6). "type ... and send", not "press",
-	// because a digit on its own does nothing — it is typed into the composer and
-	// only sending resolves it (UX round 2, U10).
-	assert.ok(markup.includes("Question 1 of 2."));
-	assert.ok(
-		markup.includes(
-			"Choose an option, type 1-9 and send, or type your own answer below.",
-		),
-	);
-	// The idles eyebrow, and no "sending" claim while nothing is in flight.
-	assert.ok(markup.includes("Waiting for your answer"));
+	// §F1: the accent is the card's border, and only there.
+	assert.match(markup, /<section[^>]*class="[^"]*border-accent/);
+	assert.ok(markup.includes("The agent is asking"));
 	assert.ok(!markup.includes("Sending your answer"));
-	// The old dead list must be gone: no `<li>` carrying an option.
+	assert.ok(markup.includes("Question 1 of 2."));
 	assert.ok(
 		!/<li[^>]*>[^<]*Popup is not open/.test(markup),
 		"options must not render as inert list items",
 	);
 });
 
+test("the hint names only keys that work", () => {
+	assert.equal(
+		questionDockHint(gate()),
+		"Up/Down choose · Enter or 1-3 answers · Esc hides · or type your own answer below",
+	);
+	assert.equal(
+		questionDockHint(gate({ question_index: 1, question_total: 3 })),
+		"Question 2 of 3. Up/Down choose · Enter or 1-3 answers · Esc hides · or type your own answer below",
+	);
+	// A secret ask has no options, and the composer is NOT its answer path any
+	// more: the field the card draws is, and the sentence names it. The prefix
+	// composes with it like it does with the options sentence below.
+	assert.equal(
+		questionDockHint(gate({ options: [], secret: true })),
+		"Type or paste the secret above · Enter sends · Esc hides",
+	);
+	assert.equal(
+		questionDockHint(
+			gate({ options: [], secret: true, question_index: 1, question_total: 3 }),
+		),
+		"Question 2 of 3. Type or paste the secret above · Enter sends · Esc hides",
+	);
+	// Held — an UNKNOWABLE outcome keeps the secret field and Send disabled
+	// (a retry could send the answer twice), so the sentence must name the one
+	// key that still works and never an Enter that cannot send (design round 1,
+	// D1; UX round 1, U1; QA round 1, Q-1). The call site passes `held` only
+	// for that arm — a DEFINITE refusal releases the field, so it keeps the
+	// idle sentence — which is the split `question-dock.tsx`'s `secretReleased`
+	// computes and `secret-ask.test.mjs` drives on the shipped component.
+	assert.equal(
+		questionDockHint(gate({ options: [], secret: true }), true),
+		"Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	);
+	assert.equal(
+		questionDockHint(
+			gate({ options: [], secret: true, question_index: 1, question_total: 3 }),
+			true,
+		),
+		"Question 2 of 3. Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	);
+	assert.equal(
+		questionDockHint(gate({ kind: "approval", options: [] })),
+		"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	);
+	// Held — a refused answer holds the card's options disabled for its whole
+	// life, so the sentence names the composer path instead (main's held copy,
+	// carried into this carrier by the fold; agent review round 1, finding 7).
+	assert.equal(
+		questionDockHint(gate({ kind: "approval", options: [] }), true),
+		"Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	);
+	// Twelve options: the digits stop at nine, because the tenth has no key.
+	const twelve = Array.from({ length: 12 }, (_, i) => ({
+		label: `Option ${String(i + 1)}`,
+	}));
+	assert.match(
+		questionDockHint(gate({ options: twelve })),
+		/Enter or 1-9 answers/,
+	);
+});
+
+test("the secret predicate fails closed, in ONE spelling for every consumer", () => {
+	/*
+	 * `gateIsSecret` is the SINGLE reading of `secret` (agent review round 1,
+	 * NIT-1): the dock's field arm, the hint, the composer's closure, the page's
+	 * send refusal and `answerGateSecret`'s precondition all import it, so a
+	 * contract-violating value cannot be masked on one surface while another
+	 * stays open. It reads TRUTHINESS — anything the wire means as "secret" gets
+	 * the masked treatment, and that is the fail-closed direction — while only
+	 * false/absent read as an ordinary ask. The non-boolean truthy is the case
+	 * the three old spellings disagreed about.
+	 */
+	assert.equal(gateIsSecret({ secret: true }), true);
+	assert.equal(gateIsSecret({ secret: 1 }), true);
+	assert.equal(gateIsSecret({ secret: "yes" }), true);
+	assert.equal(gateIsSecret({ secret: {} }), true);
+	assert.equal(gateIsSecret({ secret: false }), false);
+	assert.equal(gateIsSecret({}), false);
+	assert.equal(gateIsSecret(null), false);
+	assert.equal(gateIsSecret(undefined), false);
+});
+
+test("the option keys: arrows rove, digits answer, and nothing else is claimed", () => {
+	const key = (k, over = {}) => ({
+		key: k,
+		altKey: false,
+		ctrlKey: false,
+		metaKey: false,
+		shiftKey: false,
+		...over,
+	});
+	const intent = (k, focused, count = 3, busy = false, over = {}) =>
+		askOptionKeyIntent(key(k, over), focused, count, busy);
+	// Down from the fieldset lands on the first row; it wraps at the ends.
+	assert.deepEqual(intent("ArrowDown", -1), { kind: "move", index: 0 });
+	assert.deepEqual(intent("ArrowDown", 0), { kind: "move", index: 1 });
+	assert.deepEqual(intent("ArrowDown", 2), { kind: "move", index: 0 });
+	assert.deepEqual(intent("ArrowUp", 0), { kind: "move", index: 2 });
+	assert.deepEqual(intent("ArrowUp", 2), { kind: "move", index: 1 });
+	// A digit answers that option directly; one past the count is not the card's.
+	assert.deepEqual(intent("2", 0), { kind: "answer", index: 1 });
+	assert.equal(intent("4", 0), null);
+	assert.equal(intent("0", 0), null);
+	// Enter is the focused button's own activation, so the card does not claim it
+	// (claiming it would answer twice); Escape is the dock's.
+	assert.equal(intent("Enter", 1), null);
+	assert.equal(intent("Escape", 1), null);
+	// Chords belong to the app, and nothing is claimed while an answer is in flight.
+	assert.equal(intent("1", 0, 3, false, { metaKey: true }), null);
+	assert.equal(intent("ArrowDown", 0, 3, false, { altKey: true }), null);
+	assert.equal(intent("ArrowDown", 0, 3, true), null);
+	assert.equal(intent("1", 0, 3, true), null);
+});
+
 test("an answer in flight says so, and the card holds itself after a press", () => {
-	// D3/U2: on a slow round trip the card was frozen for seconds with nothing
-	// on it changing but a colour step the user never saw move. The eyebrow is
-	// the sentence that says the press landed.
-	const base = {
-		transcript: EMPTY_TRANSCRIPT,
-		gate: gate({ recommended: 0 }),
-		waiting: false,
-		loadingOlder: false,
-		onLoadOlder: async () => true,
-		containerRef: { current: null },
-		isSmallView: false,
-		status: "live",
-		// Required by this branch's hold work, and `false` for these fixtures: no page
-		// is owed, so the pane paints no placeholder - whose `<output>` would otherwise
-		// sit in every state this file asserts about the answer card.
-		awaitingHydration: false,
-		error: null,
-		onAnswer: () => {},
-	};
+	const base = { gate: gate({ recommended: 0 }), onAnswer: () => {} };
 	const sending = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answering: true,
 			answer: { sending: true, refused: null },
 		}),
 	);
 	assert.ok(sending.includes("Sending your answer…"));
-	assert.ok(!sending.includes("Waiting for your answer"));
+	assert.ok(!sending.includes("The agent is asking"));
 
-	// The hold after a press: options disabled, no second press, no sending
-	// claim (the answer landed, the next stream frame has not arrived), and the
-	// refusal itself is absent because this one was accepted.
 	const held = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answer: { sending: false, refused: null },
 		}),
 	);
 	assert.ok(held.includes("disabled"), "the card holds its options disabled");
-	assert.ok(held.includes("Waiting for your answer"));
+	assert.ok(held.includes("The agent is asking"));
 	assert.ok(!held.includes("<output"));
 
-	// A refusal lands on the card the press was made on, outcome first (QA
-	// round 1, Q3; UX round 1, U4), and the card stays held so it cannot be
-	// repeated.
 	const refused = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answer: {
 				sending: false,
@@ -1281,4 +1832,315 @@ test("an answer in flight says so, and the card holds itself after a press", () 
 	);
 	assert.ok(refused.includes("<output"));
 	assert.ok(refused.includes("Your answer was not sent."));
+});
+
+test("a held approval refusal names the composer, not the buttons", () => {
+	// (agent review round 1, finding 7; UX round 1, U2/U3.) While a refused or
+	// unconfirmed answer holds the APPROVAL card, its options are disabled for
+	// the rest of the card's life, so the buttons-first sentence would instruct
+	// the two controls that cannot send and name no control that still can. The
+	// held card swaps to the composer, which still reaches the gate, and keeps
+	// the exit; the idle card keeps the buttons-first sentence. Rendered from the
+	// shipped carrier (the dock, re-pointed by the fold onto `601a9d5032` — the
+	// transcript no longer draws the gate), through the same approval gate the
+	// mount test uses.
+	const base = {
+		gate: gate({ kind: "approval", options: [] }),
+		onAnswer: () => {},
+	};
+	const refused = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			...base,
+			answer: {
+				sending: false,
+				refused:
+					"Your answer was not sent. The request could not be completed.",
+			},
+		}),
+	);
+	assert.ok(
+		refused.includes(
+			"Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+		),
+		"a held refusal names the composer path",
+	);
+	assert.ok(
+		!refused.includes("Choose Approve or Deny above"),
+		"and must not instruct the buttons it disabled",
+	);
+	const idle = renderToStaticMarkup(createElement(QuestionDock, base));
+	assert.ok(
+		idle.includes(
+			"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+		),
+		"while the card the buttons can still answer keeps the buttons-first sentence",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The secret ask: the docked masked field and its own answer path     */
+/* ------------------------------------------------------------------ */
+
+/** A secret gate, as the wire sends it: EMPTY options, `secret: true`. */
+const secretGate = (over = {}) =>
+	gate({
+		options: [],
+		secret: true,
+		title: "Paste the GitHub token",
+		detail: "",
+		...over,
+	});
+
+/** Every `<button>`/`<input>` open tag in a rendered markup string. */
+const tagsOf = (markup, name) =>
+	[...markup.matchAll(new RegExp(`<${name}[^>]*>`, "g"))].map(
+		(match) => match[0],
+	);
+
+test("the dock draws a masked field for a secret ask, and no options", () => {
+	const markup = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: secretGate(),
+			onAnswer: () => {},
+			onAnswerSecret: () => {},
+		}),
+	);
+	/*
+	 * THE FIELD'S OWN SUPPRESSIONS, one assertion each, and each one is the
+	 * phone card's (`mobile/web/src/components/pending-card.tsx`'s secret
+	 * variant): a credential must be masked on screen and must not enter the
+	 * platform keyboard's learn/suggest machinery.
+	 */
+	const [input] = tagsOf(markup, "input");
+	assert.ok(input, "the field paints");
+	assert.ok(input.includes('type="password"'), "masked on screen");
+	assert.match(input, /autocomplete="off"/i, "no autocomplete");
+	assert.match(input, /autocapitalize="none"/i, "no autocapitalisation");
+	assert.match(input, /autocorrect="off"/i, "no autocorrect");
+	assert.match(input, /spellcheck="false"/i, "no spellcheck");
+	assert.ok(input.includes('placeholder="Paste the secret"'));
+	assert.ok(
+		input.includes('aria-label="Secret value"'),
+		"the field has a name of its own for a screen reader",
+	);
+	// The reassurance line, ABOVE the field (the phone card's own placement
+	// decision: the claim about a credential is read before pasting it).
+	assert.ok(
+		markup.includes(
+			"Hidden as you type — sent to the agent, not shown in the transcript.",
+		),
+		"the reassurance line paints",
+	);
+	assert.ok(
+		markup.indexOf("Hidden as you type") < markup.indexOf("<input"),
+		"and it is read before the field",
+	);
+	// No option band: there is nothing to offer.
+	assert.ok(!markup.includes('aria-label="Answer options"'));
+	// The submit control: the form's own button, disabled while empty.
+	const [submit] = tagsOf(markup, "button").filter((tag) =>
+		tag.includes('type="submit"'),
+	);
+	assert.ok(submit, "the Send control paints as the form's submit button");
+	assert.ok(
+		submit.includes("disabled"),
+		"and is disabled while the field is empty",
+	);
+	// A surface that cannot answer gets a DISABLED field rather than a live one
+	// nothing can hand over.
+	const readOnly = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: secretGate(),
+			onAnswer: () => {},
+		}),
+	);
+	const [readOnlyInput] = tagsOf(readOnly, "input");
+	assert.ok(readOnlyInput.includes("disabled"), "no handler, no input");
+	// And an ordinary ask draws no password field anywhere near the band.
+	const ordinary = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: gate(),
+			onAnswer: () => {},
+			onAnswerSecret: () => {},
+		}),
+	);
+	assert.ok(!ordinary.includes('type="password"'));
+});
+
+test("the field's state is keyed per question, so the next one starts fresh", () => {
+	const a = questionKeyOf(secretGate({ question_index: 0 }));
+	const b = questionKeyOf(secretGate({ question_index: 1 }));
+	assert.equal(
+		a,
+		questionKeyOf(secretGate({ question_index: 0 })),
+		"the same question keys the same",
+	);
+	assert.notEqual(
+		a,
+		b,
+		"the next question of the same request is a DIFFERENT key, and React remounts a keyed child — which is what empties the typed value",
+	);
+	/*
+	 * And the dock actually keys the field on it: the mechanism, pinned at the
+	 * render site, because the remount above is React's contract rather than
+	 * anything this file can observe in static markup. The jsdom rig
+	 * (`scripts/secret-ask.test.mjs`) drives the remount itself.
+	 */
+	const dock = readFileSync(
+		"src/renderer/src/features/chat/components/trace/question-dock.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(dock, /const key = questionKeyOf\(gate\);/);
+	assert.match(dock, /<SecretAnswer[\s\S]{0,300}?key=\{key\}/);
+});
+
+/** Run one secret submit through the shipped answer path with a recorder. */
+const submitSecret = async ({
+	value,
+	over = {},
+	send,
+	lock = createSendLock(),
+	sessionId = SESSION,
+	epoch = EPOCH,
+}) => {
+	const sent = [];
+	const outcome = await answerGateSecret(
+		{
+			gate: secretGate(over),
+			sessionId,
+			epoch,
+			value,
+			lock,
+		},
+		send ?? (async (request) => void sent.push(request)),
+	);
+	return { outcome, sent };
+};
+
+test("a submitted secret answers with the typed value, trimmed, on its own question", async () => {
+	const { outcome, sent } = await submitSecret({
+		value: "  ghp_example_not_a_real_token  ",
+		over: { question_index: 2, question_total: 3 },
+	});
+	assert.equal(outcome.status, "sent");
+	assert.equal(sent.length, 1);
+	/*
+	 * The REAL schema and the REAL mapper, on the body this path built — the
+	 * same pair the option press is held to, because both answer one wire op.
+	 */
+	const parsed = desktopRequestSchema.parse(sent[0]);
+	const wire = desktopEndpoint(parsed);
+	assert.equal(wire.path, `/v1/desktop/sessions/${SESSION}/answers`);
+	assert.equal(wire.method, "POST");
+	assert.equal(
+		wire.body.value,
+		"ghp_example_not_a_real_token",
+		"the value reaches the wire trimmed — the whole rule both parity surfaces apply",
+	);
+	assert.equal(
+		wire.body.question_index,
+		2,
+		"the question's own index, from the gate rather than a default",
+	);
+	assert.equal(
+		sent[0].requestId,
+		"11111111-1111-4111-8111-111111111111",
+		"the gate's request id, so the owner can route it",
+	);
+	assert.ok(
+		!("approved" in sent[0]),
+		"an ask answer carries no approval flag, and no surprise keys survived the schema",
+	);
+	// The outcome carries nothing back into the UI: no echo, and no value.
+	assert.deepEqual(Object.keys(outcome), ["status"]);
+});
+
+test("a secret answer that is empty, unaddressed, or aimed at another gate is never sent", async () => {
+	const lock = createSendLock();
+	for (const scenario of [
+		{ name: "empty", value: "", over: {} },
+		{ name: "whitespace only", value: "   ", over: {} },
+		{
+			name: "a non-secret ask",
+			value: "x",
+			over: { secret: false, options: OPTIONS },
+		},
+		{
+			name: "an approval",
+			value: "x",
+			over: { kind: "approval", secret: false },
+		},
+		{ name: "no session", value: "x", over: {}, sessionId: null },
+		{ name: "no epoch", value: "x", over: {}, epoch: null },
+	]) {
+		const { outcome, sent } = await submitSecret(scenario);
+		assert.equal(outcome.status, "refused", scenario.name);
+		assert.deepEqual(sent, [], `${scenario.name}: nothing on the wire`);
+		assert.equal(lock.held, false, `${scenario.name}: the lock is not held`);
+	}
+	// A lock already held by an in-flight answer refuses the next submit without
+	// sending; nothing here may be a second request for one question.
+	lock.tryAcquire();
+	const held = await submitSecret({ value: "held", lock });
+	assert.equal(held.outcome.status, "refused");
+	assert.deepEqual(held.sent, []);
+	lock.release();
+});
+
+test("one secret answer in flight is one answer on the wire, and the lock lets go", async () => {
+	const lock = createSendLock();
+	const sent = [];
+	const send = async (request) => void sent.push(request);
+	const [first, second] = await Promise.all([
+		submitSecret({ value: "first-token", send, lock }),
+		submitSecret({ value: "second-token", send, lock }),
+	]);
+	assert.deepEqual(
+		[first.outcome.status, second.outcome.status],
+		["sent", "refused"],
+	);
+	assert.equal(
+		sent.length,
+		1,
+		"one answer in flight is one answer on the wire",
+	);
+	assert.equal(sent[0].value, "first-token");
+	assert.equal(lock.held, false, "the loser leaves the lock free");
+	const third = await submitSecret({ value: "third-token", send, lock });
+	assert.equal(third.outcome.status, "sent");
+	assert.equal(sent.length, 2);
+});
+
+test("the pane refuses a typed send while a secret question waits, before any answer arm", () => {
+	/*
+	 * THE COMPOSER'S REFUSAL AT THE PAGE'S DOOR. The composer's own closure
+	 * (readOnly, the placeholder, the JS guard) still leaves doors that reach
+	 * `send`: a suggestion chip, the stopped-turn Retry, a programmatic caller.
+	 * This refusal is what stops any of them posting their text as a
+	 * credential's answer, and it must sit BEFORE the approval/ask arms below it
+	 * — after them, the ask arm would answer the gate with whatever the door
+	 * carried. The READ is `gateIsSecret` — the one predicate every consumer of
+	 * the secret bit shares (agent review round 1, NIT-1), so this door cannot
+	 * disagree with the composer's closure or the dock's field arm.
+	 */
+	const pane = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const from = pane.indexOf("const send = async (");
+	assert.ok(from > -1, "the page's send door is still one function");
+	const body = pane.slice(from);
+	const refusal = body.indexOf("if (gateIsSecret(gate))");
+	const approval = body.indexOf('if (gate.kind === "approval")');
+	const ask = body.indexOf("await answerGate", approval);
+	assert.ok(refusal > -1, "the secret refusal exists");
+	assert.ok(
+		refusal < approval && approval < ask,
+		"and it comes before both answer arms",
+	);
+	assert.match(
+		body.slice(refusal, refusal + 400),
+		/throw new UserFacingError\(\s*SECRET_ANSWER_DOCKED_MESSAGE,\s*ANSWER_NOT_SENT_CODE,\s*\)/,
+		"the refusal is the authored sentence with the not-sent code, so the alert offers no press that cannot work",
+	);
 });

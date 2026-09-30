@@ -421,8 +421,8 @@ test("the repository's own workflows are compliant, and the scan really finds th
 	);
 	assert.deepEqual(
 		candidate.map((entry) => entry.step),
-		["Build signed candidate without publishing or version changes"],
-		"the workflow this check was added for has exactly one build step, and it is the one named",
+		["Build signed candidate (arm64)", "Build signed candidate (x64)"],
+		"the workflow this check was added for is the one named, and it now has TWO build steps rather than one: each macOS architecture builds in its own pass, because a single `pnpm run build` emits V8 bytecode for one runtime and packaging both architectures from it put arm64 bytecode in the x64 bundle (scripts/mac-build-arch.test.mjs states that contract over every workflow). Both steps carry the four bindings, which is what makes this count more than a list of names.",
 	);
 	// And the canonical mapping the binding check is built on is the repository's
 	// own: the four variables are fed by the secrets named after them. A fixture

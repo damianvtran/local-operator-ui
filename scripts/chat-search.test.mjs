@@ -413,6 +413,8 @@ test("a row shows ONE trailing statement, in priority order", () => {
 		unstarted: false,
 		nested: false,
 		binding: "coder",
+		team: "",
+		agentOpened: false,
 	};
 
 	assert.equal(show(base), "binding");
@@ -433,20 +435,67 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	);
 	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
 
+	/*
+	 * The agent-opened fact, re-cut (operator ask, 2026-09-25): the slot draws the
+	 * TEAM the workstream serves, and NOTHING when it serves none. The decision is
+	 * on the `team` field, not on the slot's binding string - an agent-opened row
+	 * bound to an agent alone has a non-empty `binding` and must still draw nothing,
+	 * which is the case a rule reading `binding` would get wrong.
+	 */
+	assert.equal(show({ ...base, agentOpened: true, team: "lopdev" }), "team");
+	assert.equal(
+		show({ ...base, agentOpened: true, team: "lopdev", binding: "" }),
+		"team",
+		"the decision reads the team field, not the binding beside it",
+	);
+	assert.equal(
+		show({ ...base, agentOpened: true }),
+		"none",
+		"a team-less workstream draws nothing - the binding does NOT fall through",
+	);
+	assert.equal(show({ ...base, agentOpened: true, binding: "" }), "none");
+	// Provenance is the row's OWN, unlike identity: a nested row still draws the
+	// team it serves, wherever the row appears.
+	assert.equal(
+		show({ ...base, agentOpened: true, team: "lopdev", nested: true }),
+		"team",
+	);
+	assert.equal(show({ ...base, agentOpened: true, nested: true }), "none");
+	// And the two claims above it keep their precedence over it.
+	assert.equal(
+		show({ ...base, agentOpened: true, team: "lopdev", unstarted: true }),
+		"not_sent",
+	);
+	assert.equal(
+		show({ ...base, agentOpened: true, team: "lopdev", marked: true }),
+		"conversation",
+	);
+
 	// The property that matters: whatever the input, the answer is exactly one of
-	// the four literals — never undefined, never a list. The return type is what
+	// the five literals — never undefined, never a list. The return type is what
 	// enforces "at most one" today, so this loop is here to catch a future
 	// refactor that widens it (returning an array of statements would pass every
 	// assertion above and fail here), not to re-assert the type.
-	const allowed = ["conversation", "not_sent", "binding", "none"];
+	const allowed = ["conversation", "not_sent", "team", "binding", "none"];
 	for (const marked of [false, true])
 		for (const unstarted of [false, true])
 			for (const nested of [false, true])
 				for (const binding of ["", "coder"])
-					assert.ok(
-						allowed.includes(show({ marked, unstarted, nested, binding })),
-						`${JSON.stringify({ marked, unstarted, nested, binding })} produced something outside the four literals`,
-					);
+					for (const team of ["", "lopdev"])
+						for (const agentOpened of [false, true])
+							assert.ok(
+								allowed.includes(
+									show({
+										marked,
+										unstarted,
+										nested,
+										binding,
+										team,
+										agentOpened,
+									}),
+								),
+								`${JSON.stringify({ marked, unstarted, nested, binding, team, agentOpened })} produced something outside the five literals`,
+							);
 });
 
 /*

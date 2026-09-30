@@ -66,6 +66,16 @@
  * Those claims are verified rather than described: a false one fails the run
  * (`slot.*` steps, `report.claims` in the record).
  *
+ * And the STOPPED ROW'S ALIGNMENT (operator report, 2026-09-27: the cancelled
+ * turn's "Stopped · Retry" line rendered at the chat column's far-left edge
+ * instead of inside the conversation's shared measure). §G3's line and the
+ * composer's own box must resolve the same container, so the rig measures the
+ * line's left edge against the composer box's wherever the line is on screen -
+ * after the Stop press and again after Escape - and asserts |Δ| ≤ 2px. Width
+ * is a knob (`LO_PROOF_WIDTH`): below the measure's binding threshold the same
+ * pair must instead part ways from the column's own inset, and that run is the
+ * half the standard 1380px frame cannot exercise.
+ *
  * Frames land in the output directory: `turn-running.png`, `after-stop.png`,
  * `after-stop-settled.png`, `after-stop-settled-recording.png`, `after-escape.png`,
  * `idle-escape.png`.
@@ -77,14 +87,21 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const OUT = process.argv[2] ?? "/tmp/lo-interrupt-proof";
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
 const PORT = Number(process.env.LO_PROOF_CDP_PORT ?? 0);
-/* The app's own default window: a live frame is only worth something at the
- * size the operator actually runs (src/main/index.ts). */
-const WIDTH = 1380;
+/*
+ * The app's own default window: a live frame is only worth something at the
+ * size the operator actually runs (src/main/index.ts). `LO_PROOF_WIDTH` re-runs
+ * the SAME rig below the chat column's measure threshold (see
+ * `CHAT_MEASURE_MIN_PX`, read from the module below): there the line and the
+ * composer must resolve to the column's shared inset instead of meeting at the
+ * measure's centre, which is the one regime the default width cannot see.
+ */
+const WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
 const HEIGHT = 900;
 /* Long enough that a sleep cannot expire under the assertions, short enough
  * that a broken stop still ends the run. */
@@ -234,6 +251,12 @@ const port = Number(process.env.LO_PROOF_CDP_PORT) || (await freePort());
  * how it is guarded, because a rig is the site most likely to hand the app an
  * environment that banners the operator - this rig forces the switch for the same
  * reason `run-desktop-tests.mjs` does it for every child it spawns.
+ *
+ * `withTelemetryOff` wraps the same object for the same reason one project over:
+ * this rig drives the REAL built app, whose two processes both carry the live
+ * PostHog project key, and the renderer's copy is inlined at build time — so a
+ * run that reaches PostHog shows up as a user and a session replay in the
+ * product's own analytics. See `telemetry-off.mjs`.
  */
 const spawnEnv = withNotificationsOff({
 	...childEnv,
@@ -252,6 +275,7 @@ const spawnEnv = withNotificationsOff({
 	VITE_LOCAL_OPERATOR_API_URL: BACKEND,
 	LOCAL_OPERATOR_DESKTOP_TOKEN: TOKEN,
 });
+withTelemetryOff(spawnEnv);
 
 const app = spawn(
 	"./node_modules/.bin/electron",
@@ -569,7 +593,90 @@ const INTERRUPT_SLOT_GRACE_MS = (() => {
 		);
 	return Number(match[1]);
 })();
+
+/*
+ * THE CHAT COLUMN'S OWN NUMBERS, read from the module the app ships rather
+ * than restated here - the same rule as the grace window above. `CHAT_MEASURE`
+ * binds its cap behind a named container from 750px (`@min-[750px]/chatcol`),
+ * and the column's shared inset is `px-6`; the alignment claim below is about
+ * whatever those two numbers say the pair must resolve to.
+ */
+const { CHAT_MEASURE_MIN_PX, CHAT_COLUMN_INSET_PX } = (() => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/chat-measure.ts",
+		"utf8",
+	);
+	const min = /@min-\[(\d+)px\]\/chatcol/.exec(source);
+	const inset = /CHAT_COLUMN_INSET\s*=\s*"px-(\d+)"/.exec(source);
+	if (!min || !inset)
+		throw new Error(
+			"the chat column's threshold or inset is not declared in src/renderer/src/features/chat/chat-measure.ts",
+		);
+	return {
+		CHAT_MEASURE_MIN_PX: Number(min[1]),
+		/* Tailwind's spacing scale: `px-N` is N * 4px. */
+		CHAT_COLUMN_INSET_PX: Number(inset[1]) * 4,
+	};
+})();
 const composer = 'textarea[aria-label="Message"]';
+
+/*
+ * The app's own toast container, and the control that dismisses it
+ * (`themed-toast-container.tsx` renders `closeButton: true`).
+ */
+const TOAST_SELECTOR = "[data-sonner-toast]";
+const TOAST_CLOSE_SELECTOR = "[data-sonner-toast] [data-close-button]";
+
+/** How many toasts are on screen right now, asked of the app's own DOM. */
+const toastsOnScreen = () =>
+	cdp
+		.evaluate(
+			`document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}).length`,
+		)
+		.catch(() => 0);
+
+/**
+ * Write a toast out of the way with the app's OWN dismiss control.
+ *
+ * WHY THIS RIG HAS TO DO IT (QA round 2, Q4). The app's read-ack toast ("The
+ * unread mark was not cleared. Click the chat to try again.") is drawn over the
+ * right-hand end of the composer row, and every press this rig makes is a
+ * HIT-TESTED press at the element's painted centre: with a toast on top, the
+ * slot-grace section measures the toast - QA measured four `slot.*` claims false
+ * and then `no painted pixel of button[aria-label="Start recording"] hit-tests
+ * to it`, the 30px grid's probes all landing on the toast's own div. The toast
+ * lives ten seconds (`ARCHIVE_FAILURE_TOAST_MS`) and this section measures a
+ * 500ms window, so waiting it out is not available; the close button the app
+ * renders is. Waiting is the fallback for a toast without one, and a toast that
+ * outlives the bound is REPORTED rather than pressed through.
+ */
+const clearToasts = async (timeoutMs = 15_000) => {
+	const startedAt = Date.now();
+	for (;;) {
+		const count = await toastsOnScreen();
+		if (count === 0) return { cleared: true, waitedMs: Date.now() - startedAt };
+		await cdp.evaluate(`(() => {
+			document.querySelector(${JSON.stringify(TOAST_CLOSE_SELECTOR)})?.click();
+			return true;
+		})()`);
+		if (Date.now() - startedAt > timeoutMs)
+			return {
+				cleared: false,
+				waitedMs: Date.now() - startedAt,
+				onScreen: count,
+			};
+		await sleep(150);
+	}
+};
+
+/** The visible toasts' own words, for the record. */
+const toastTexts = () =>
+	cdp
+		.evaluate(
+			`JSON.stringify([...document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)})].map((n) => (n.textContent ?? "").trim().slice(0, 160)))`,
+		)
+		.then((value) => JSON.parse(value))
+		.catch(() => []);
 
 const controlPresent = () =>
 	cdp.evaluate(`!!document.querySelector(${JSON.stringify(STOP)})`);
@@ -591,6 +698,11 @@ const draftValue = () =>
  * unreachable by a pointer, and the run fails with what was found there.
  */
 const pressElement = async (selector, what) => {
+	/*
+	 * Q4: a toast on top of the target turns a hit-test into a measurement of the
+	 * toast itself; the app's own close control is what clears the way.
+	 */
+	await clearToasts();
 	const aim = await cdp.evaluate(`(() => {
 		const el = document.querySelector(${JSON.stringify(selector)});
 		if (!el) return null;
@@ -601,6 +713,16 @@ const pressElement = async (selector, what) => {
 		};
 		const r = el.getBoundingClientRect();
 		const rect = { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), left: Math.round(r.left) };
+		/*
+		 * THE CONTROL'S OWN SLOT, beside the control (UX round 2's slot claims, kept
+		 * honest by the labelled Stop). The Stop is a labelled button with an Esc cap
+		 * beside it, wrapped in one span; the reservation the grace window holds renders
+		 * THE SAME MARKUP, so the pair that must agree is span-to-span. The press still
+		 * aims at the button (that is the thing a reader hits), and this is the box the
+		 * reservation is compared against.
+		 */
+		const pr = el.parentElement ? el.parentElement.getBoundingClientRect() : null;
+		const slotRect = pr ? { w: Math.round(pr.width), h: Math.round(pr.height), top: Math.round(pr.top), left: Math.round(pr.left) } : null;
 		const target = describe(el);
 		const inset = 2;
 		const fractions = [0.5, 0.25, 0.75, 0.1, 0.9];
@@ -612,10 +734,10 @@ const pressElement = async (selector, what) => {
 				const owner = document.elementFromPoint(x, y);
 				const hit = owner === el || owner?.closest("button") === el;
 				attempts.push({ x: Math.round(x), y: Math.round(y), owner: describe(owner), hit });
-				if (hit) return { x, y, rect, target, attempts };
+				if (hit) return { x, y, rect, slotRect, target, attempts };
 			}
 		}
-		return { rect, target, attempts };
+		return { rect, slotRect, target, attempts };
 	})()`);
 	if (!aim) throw new Error(`${what} is not on screen`);
 	if (aim.x === undefined)
@@ -700,6 +822,7 @@ const stamp = async () => {
  * the point, and whether pressing it starts anything.
  */
 const probeSlot = async (point) => {
+	await clearToasts();
 	const owner = await cdp.evaluate(`(() => {
 		const el = document.elementFromPoint(${point.x}, ${point.y});
 		if (!el) return "none";
@@ -783,6 +906,7 @@ const recordingState = async () =>
  * control is live where it now sits".
  */
 const controlAt = async (selector) => {
+	await clearToasts();
 	const info = await cdp.evaluate(`(() => {
 		const el = document.querySelector(${JSON.stringify(selector)});
 		if (!el) return null;
@@ -815,14 +939,22 @@ const clusterBoxesAndStamp = async () => {
 	const value = JSON.parse(
 		await cdp.evaluate(`JSON.stringify({
 			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
-				.map((el) => {
+				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
-					return {
-						label: el.getAttribute("aria-label") ?? "reserved-slot",
-						x: Math.round(r.left),
-						w: Math.round(r.width),
-						centre: Math.round(r.left + r.width / 2),
-					};
+					const label = el.getAttribute("aria-label") ?? "reserved-slot";
+					const own = [{ label, x: Math.round(r.left), w: Math.round(r.width), centre: Math.round(r.left + r.width / 2) }];
+					/*
+					 * THE RUNNING STOP'S SLOT, beside the button itself - the box the grace
+					 * window's reservation reproduces, and so the one the two must be compared
+					 * as (the button is what a press aims at; the span is what the row lays
+					 * out). Read from the parent element rather than a second selector, so the
+					 * pair cannot drift into two different nodes.
+					 */
+					if (label === "Stop" && el.parentElement) {
+						const p = el.parentElement.getBoundingClientRect();
+						own.push({ label: "stop-slot", x: Math.round(p.left), w: Math.round(p.width), centre: Math.round(p.left + p.width / 2) });
+					}
+					return own;
 				})
 				.sort((a, b) => a.x - b.x),
 			now: performance.now(),
@@ -843,18 +975,123 @@ const clusterBoxes = async () =>
 	JSON.parse(
 		await cdp.evaluate(`JSON.stringify(
 			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
-				.map((el) => {
+				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
-					return {
-						label: el.getAttribute("aria-label") ?? "reserved-slot",
-						x: Math.round(r.left),
-						w: Math.round(r.width),
-						centre: Math.round(r.left + r.width / 2),
-					};
+					const label = el.getAttribute("aria-label") ?? "reserved-slot";
+					const own = [{ label, x: Math.round(r.left), w: Math.round(r.width), centre: Math.round(r.left + r.width / 2) }];
+					/* The running Stop's slot; see clusterBoxesAndStamp. */
+					if (label === "Stop" && el.parentElement) {
+						const p = el.parentElement.getBoundingClientRect();
+						own.push({ label: "stop-slot", x: Math.round(p.left), w: Math.round(p.width), centre: Math.round(p.left + p.width / 2) });
+					}
+					return own;
 				})
 				.sort((a, b) => a.x - b.x),
 		)`),
 	);
+
+/**
+ * §G3'S STOPPED LINE, AND THE COMPOSER BOX IT HAS TO LINE UP WITH, in one read
+ * (operator report, 2026-09-27). `[data-stopped-turn]` is the line;
+ * `[data-lo-composer-measure]` is the composer's box (`CHAT_MEASURE`), whose
+ * attribute is the rigs' stable handle on it rather than the classes that
+ * produce it; `[data-lo-composer-band]` is the band, and a full-width child's
+ * border-box left edge IS the column's own left edge - which is what the
+ * below-threshold reading is taken against.
+ *
+ * The wait is bounded and REPORTED: a line that never arrives reads `line:
+ * null` and fails the claim by name, rather than letting a read of nothing
+ * look like agreement.
+ */
+const stoppedGeometry = async (budgetMs = 5000) => {
+	const until = Date.now() + budgetMs;
+	while (Date.now() < until) {
+		if (
+			await cdp.evaluate(
+				`Boolean(document.querySelector("[data-stopped-turn]"))`,
+			)
+		)
+			break;
+		await sleep(100);
+	}
+	return JSON.parse(
+		await cdp.evaluate(`(() => {
+			const rect = (element) => {
+				const r = element.getBoundingClientRect();
+				return {
+					left: +r.left.toFixed(2),
+					right: +r.right.toFixed(2),
+					width: +r.width.toFixed(2),
+				};
+			};
+			const line = document.querySelector("[data-stopped-turn]");
+			const composer = document.querySelector("[data-lo-composer-measure]");
+			const band = document.querySelector("[data-lo-composer-band]");
+			return JSON.stringify({
+				line: line ? rect(line) : null,
+				wrapper: line?.parentElement ? rect(line.parentElement) : null,
+				composer: composer ? rect(composer) : null,
+				band: band ? rect(band) : null,
+				viewport: { w: window.innerWidth, h: window.innerHeight },
+			});
+		})()`),
+	);
+};
+
+/** The reading the alignment claim is decided on, recorded beside it. */
+const alignmentOf = (geometry) => {
+	const containerWidth = geometry.band
+		? +(geometry.band.width - 2 * CHAT_COLUMN_INSET_PX).toFixed(2)
+		: null;
+	return {
+		/* line.left - composer.left: the claim's own number. */
+		delta:
+			geometry.line && geometry.composer
+				? +(geometry.line.left - geometry.composer.left).toFixed(2)
+				: null,
+		/* line.left - (column.left + inset): the below-threshold reading. */
+		insetDelta:
+			geometry.line && geometry.band
+				? +(
+						geometry.line.left -
+						(geometry.band.left + CHAT_COLUMN_INSET_PX)
+					).toFixed(2)
+				: null,
+		containerWidth,
+		measureBinds:
+			containerWidth !== null && containerWidth >= CHAT_MEASURE_MIN_PX,
+	};
+};
+
+/**
+ * THE ALIGNMENT CLAIM. When the container binds (its content width is at or
+ * above the measure's threshold), the line must sit exactly where the composer
+ * box does - the box is the reference edge both resolve. Below it, no cap can
+ * apply to either, so BOTH must hug the column's shared inset instead; a fix
+ * that centred the line unconditionally would pass the first reading and break
+ * this one, which is why the below-threshold run exists.
+ *
+ * 2px is the tolerance: two independent `mx-auto` centrings can disagree by a
+ * subpixel, and nothing else in this pair is a layout coincidence.
+ */
+const stoppedMeetsTheMeasure = (geometry) => {
+	const alignment = alignmentOf(geometry);
+	if (
+		geometry.line === null ||
+		geometry.composer === null ||
+		geometry.band === null ||
+		alignment.containerWidth === null
+	)
+		return false;
+	if (!alignment.measureBinds) {
+		const insetLeft = geometry.band.left + CHAT_COLUMN_INSET_PX;
+		return (
+			Math.abs(geometry.line.left - insetLeft) <= 2 &&
+			Math.abs(geometry.composer.left - insetLeft) <= 2
+		);
+	}
+	return Math.abs(geometry.line.left - geometry.composer.left) <= 2;
+};
 
 /*
  * EVERY TRANSITION OF THE ROW'S TWO INDICATORS, recorded from the page for the
@@ -1074,6 +1311,7 @@ try {
 		[];
 	const runningMic = boxOf(runningBoxes, "Start recording");
 	const runningStop = boxOf(runningBoxes, "Stop");
+	const runningStopSlot = boxOf(runningBoxes, "stop-slot");
 	const runningSend = boxOf(runningBoxes, "Send message");
 	const graceMic = boxOf(graceBoxes, "Start recording");
 	const graceBox = boxOf(graceBoxes, "reserved-slot");
@@ -1087,6 +1325,7 @@ try {
 		Boolean(
 			runningMic &&
 				runningStop &&
+				runningStopSlot &&
 				runningSend &&
 				graceMic &&
 				graceBox &&
@@ -1099,20 +1338,28 @@ try {
 					running && grace && running.x === grace.x && running.w === grace.w
 				);
 			}) &&
-			// The Stop's own box IS the held box: same edges, same centre, so the row
-			// does not move when the control leaves and the box takes its place. Read
-			// from the press's own rect rather than by label, because the child that
-			// stands there inside the window is the box.
-			graceBox.x === box.rect.left &&
-			graceBox.w === box.rect.w &&
-			graceBox.centre === runningStop.centre &&
-			gapBetween(runningMic, runningStop) === gapBetween(graceMic, graceBox) &&
-			gapBetween(runningStop, runningSend) === gapBetween(graceBox, graceSend),
+			// The box is the STOP'S OWN SLOT (the labelled control plus its cap -
+			// the span the reservation re-renders), not the bare button a press aims
+			// at: the control grew a label and the reservation renders the same
+			// markup, so the pair that must agree is span-to-span.
+			graceBox.x === runningStopSlot.x &&
+			graceBox.w === runningStopSlot.w &&
+			graceBox.centre === runningStopSlot.centre &&
+			// AND THE PRESS LANDS INSIDE IT: the button the reader hits sits inside
+			// the held slot, so the point a reflex second press reaches is still
+			// under the reservation rather than beside it.
+			box.rect.left >= graceBox.x &&
+			box.rect.left + box.rect.w <= graceBox.x + graceBox.w &&
+			gapBetween(runningMic, runningStopSlot) ===
+				gapBetween(graceMic, graceBox) &&
+			gapBetween(runningStopSlot, runningSend) ===
+				gapBetween(graceBox, graceSend),
 		{
 			what: "the row inside the grace window is not the row the turn ran with",
 			running: runningBoxes,
 			grace: graceBoxes,
 			stop: box.rect,
+			stopSlot: runningStopSlot,
 		},
 	);
 	// The press has to have landed INSIDE the window for this to be a measurement
@@ -1135,11 +1382,33 @@ try {
 	 * cannot leave this measurement taken while the box is still up, which would
 	 * read as a regression that is not there - plus the settle a frame needs.
 	 */
+	// A toast arriving between the press and here is written out with the app's own
+	// close control (Q4) BEFORE the wait, so the dismissal costs the wait rather
+	// than the measurements below it.
+	await clearToasts();
 	await sleep(INTERRUPT_SLOT_GRACE_MS + 400);
 	const settledBoxes = await clusterBoxes();
 	const settledAt = await stamp();
 	record("slot.clusterSettled", { boxes: settledBoxes, at: settledAt });
 	await cdp.shot("after-stop-settled.png");
+	/*
+	 * §G3'S LINE AT ITS OWN EDGE, the first of the run's two readings (the
+	 * Escape path below takes the second): the line is on screen in this state
+	 * (the settled frame carries it), and its claim is that it resolves the
+	 * conversation's shared measure rather than the column's own inset.
+	 */
+	const stoppedAfterStop = await stoppedGeometry();
+	record("stopped.geometryAfterStop", stoppedAfterStop);
+	verify(
+		"stopped.afterStopMeetsTheMeasure",
+		stoppedMeetsTheMeasure(stoppedAfterStop),
+		{
+			what: "the stopped line does not share the composer's measure: its left edge sits off the composer box's own (operator report, 2026-09-27)",
+			width: WIDTH,
+			alignment: alignmentOf(stoppedAfterStop),
+			geometry: stoppedAfterStop,
+		},
+	);
 	const settledMic = boxOf(settledBoxes, "Start recording");
 	const settledSend = boxOf(settledBoxes, "Send message");
 	const rowGap =
@@ -1154,7 +1423,13 @@ try {
 			settledAt.sinceFlipMs !== null &&
 			settledAt.sinceFlipMs > INTERRUPT_SLOT_GRACE_MS &&
 			gapBetween(settledMic, settledSend) === rowGap &&
-			settledMic.x === graceBox.x,
+			// The dictation control lands INSIDE the box that was held, so a press
+			// aimed at the held box still reaches it (the released cluster is
+			// right-justified against Send, so the control sits in the box's right
+			// part rather than at its left edge - the labelled Stop made the slot
+			// wider than the control).
+			settledMic.x >= graceBox.x &&
+			settledMic.x + settledMic.w <= graceBox.x + graceBox.w,
 		{
 			what: "the settled row is not [dictation][Send] with the box gone and the dictation control where the box was held",
 			graceMs: INTERRUPT_SLOT_GRACE_MS,
@@ -1262,8 +1537,8 @@ try {
 					(box, index) =>
 						box.x === lateBoxes[index].x && box.w === lateBoxes[index].w,
 				) &&
-				heldBoxes.at(-1).x === inFlightPressed.rect.left &&
-				heldBoxes.at(-1).w === inFlightPressed.rect.w,
+				heldBoxes.at(-1).x === inFlightPressed.slotRect?.left &&
+				heldBoxes.at(-1).w === inFlightPressed.slotRect?.w,
 			{
 				what: "the box is not held while a dictation is in flight, so the release moves the recording's own controls 36px under a press",
 				held: heldBoxes,
@@ -1308,10 +1583,73 @@ try {
 	record("turn2.admit", await startTurn(sessionId));
 	record("turn2.streaming", await waitForStreaming(sessionId, true));
 	record("turn2.control", { present: await controlPresent() });
+	/*
+	 * WHAT THE ROW SAID BEFORE THE PRESS (U15's own discriminator). The reducer's
+	 * guard needs the killed call's `startedAt`, which only exists if this viewer
+	 * saw the call START; a row this pane met only as it settled has no clock and is
+	 * deliberately refused (`killedByUserStop`'s note). Reading the tail here, while
+	 * the turn still runs, is what tells the two cases apart in the record instead of
+	 * leaving them to be guessed from the settled text.
+	 */
+	record(
+		"turn2.running",
+		JSON.parse(
+			await cdp.evaluate(`(() => {
+		const text = (el) => (el?.textContent ?? "").replace(/\\s+/g, " ").trim();
+		const rows = [...document.querySelectorAll('[data-record-kind="tool"], [data-record-kind="assistant"]')];
+		return JSON.stringify({ tail: rows.slice(-3).map(text) });
+	})()`),
+		),
+	);
 	await pressEscape();
 	record("turn2.settled", await waitForStreaming(sessionId, false));
 	record("turn2.controlAfter", { present: await controlPresent() });
+	/*
+	 * §G3'S OWN READING (UX round 2, U15 - "trace one stopped turn end to end in the
+	 * built app; the scene this needs does not exist yet"). Two claims the press
+	 * above is supposed to make on the transcript: the turn's own `Stopped` line is
+	 * DRAWN, and the killed call's ledger row does not blame the agent with
+	 * `failed`. The row's text is read from the transcript's own record markers
+	 * rather than from a layout class, so a re-skin cannot move the claim.
+	 */
+	const escapedTurn = JSON.parse(
+		await cdp.evaluate(`(() => {
+			const text = (el) => (el?.textContent ?? "").replace(/\\s+/g, " ").trim();
+			const line = document.querySelector("[data-stopped-turn]");
+			const retry = document.querySelector("[data-stopped-retry]");
+			const rows = [...document.querySelectorAll('[data-record-kind="tool"], [data-record-kind="assistant"]')];
+			return JSON.stringify({
+				stoppedLine: line ? text(line) : null,
+				stoppedRetry: retry ? text(retry) : null,
+				tail: rows.slice(-3).map(text),
+			});
+		})()`),
+	);
+	record("turn2.transcript", escapedTurn);
+	verify(
+		"turn2.readsAsStopped",
+		Boolean(escapedTurn.stoppedLine) &&
+			!/failed/i.test(escapedTurn.tail.join(" ")),
+		{
+			what: "an Esc-stopped turn did not read as Stopped: §G3's line is absent from the transcript, or the killed call's ledger row still says failed (UX round 2, U15)",
+			transcript: escapedTurn,
+		},
+	);
 	await cdp.shot("after-escape.png");
+
+	/* The second reading: the same pair, after the Esc-stopped turn. */
+	const stoppedAfterEscape = await stoppedGeometry();
+	record("stopped.geometryAfterEscape", stoppedAfterEscape);
+	verify(
+		"stopped.afterEscapeMeetsTheMeasure",
+		stoppedMeetsTheMeasure(stoppedAfterEscape),
+		{
+			what: "the stopped line does not share the composer's measure: its left edge sits off the composer box's own (operator report, 2026-09-27)",
+			width: WIDTH,
+			alignment: alignmentOf(stoppedAfterEscape),
+			geometry: stoppedAfterEscape,
+		},
+	);
 
 	/* ------------------------------- 3. the session survived both presses */
 	record("session.survived", await startTurn(sessionId));

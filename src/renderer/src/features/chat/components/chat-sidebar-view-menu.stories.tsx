@@ -1,0 +1,1687 @@
+/**
+ * The surfaces design round 3's D28 found with no rendered frame: the view
+ * POPOVER, the page LADDER, the section caps' `Show N more` feet, an expanded
+ * entity group, the band's hover tooltips, and the sidebar's own voice on a
+ * route where the status strip is not mounted.
+ *
+ * ## Why a file of its own, beside `chat-sidebar-sections.stories.tsx`
+ *
+ * That file photographs the SPLIT - the boundary, its collapse controls and the
+ * restore row. This one photographs the CONTROLS' results and the states the
+ * round named: every story below is a state the operator asked for verbatim
+ * ("starts with 10, then 25, then 50", "showing and hiding sections,
+ * reordering", "limit how far a collapsible section can expand"), and the
+ * design round's finding was that not one of them had a frame to be judged on.
+ *
+ * ## What each group of stories is, and what it cannot say
+ *
+ *   - **The popover frames** are DRIVEN, not seeded: the play opens the real
+ *     Radix popover with a real press on the band's `View options` button (and,
+ *     for the two states, presses the controls inside it), so a frame is the
+ *     panel the app draws after a gesture rather than a prop summary. What they
+ *     cannot show: the pointer's own hover state on a row (the rig's `hover`
+ *     entries exist for that, and the band's are below).
+ *   - **The ladder and cap frames** are story states over the sidebar's own
+ *     fixtures, with the region scrolled by the capture rig (`scrollToEnd`),
+ *     because a scroller's position is browser state no story can set. The
+ *     readout beside each panel prints the numbers the frame is read for - the
+ *     stored `loads`, the drawn row count and the foot's own copy - read back
+ *     from the DOM, so a frame cannot claim a rung the panel is not on.
+ *   - **The off-route voice** is R11's route (agent review round 2): the strip
+ *     lives in the conversation pane and this sidebar is on every route, so on
+ *     a route with no strip mounted the sidebar keeps its own voice. A story
+ *     cannot mount the strip at all, and the readout prints the presence flag
+ *     the gate actually reads (`chatStatusStripPresent()`), so the claim "the
+ *     sidebar speaks where the strip is not" is checkable in the frame instead
+ *     of assumed from the story being a sidebar.
+ *
+ * ## The fixture, and the one state it deliberately does not take
+ *
+ * The real `ChatSidebar`, its real reads and its real popover. `window.api` is
+ * stubbed below: `desktop.request` answers the five reads this surface makes
+ * (`capabilities`, `sessions.list`, `profiles.list`, `teams.list`) and refuses
+ * anything else BY NAME, and `backend.getStatus` answers a snapshot this file
+ * controls - so no story depends on (or probes) a daemon outside the frame, and
+ * the offline state is a stated seed rather than a race with a real server.
+ */
+
+import { serverHealthQueryKey, useServerHealth } from "@shared/hooks";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent } from "@storybook/test";
+import { useQueryClient } from "@tanstack/react-query";
+import { type FC, useEffect, useState } from "react";
+import type { DaemonStatusSnapshot } from "../../../../../shared/backend-status";
+import type { DesktopResponse } from "../../../../../shared/desktop-contract";
+import { DEFAULT_SIDEBAR_VIEW, type SidebarView } from "../chat-sidebar-view";
+import { chatStatusStripPresent } from "../chat-status-presence";
+import { ChatSidebar } from "./chat-sidebar";
+
+/* --------------------------------------------------------------- the bridge */
+
+type BridgeRequest = {
+	op: string;
+	q?: string;
+};
+
+/** One row in `sessions.list`'s own wire field names, as the backend sends it. */
+type WireRow = {
+	id: string;
+	name: string;
+	mtime: number;
+	preview: string;
+	live_state: string;
+	pending: string | null;
+	active: boolean;
+	pinned?: boolean;
+	binding: { agent: string | null; team: string | null };
+	status: { code: string; label: string };
+	status_revision: number;
+	status_epoch: string;
+	/**
+	 * When the conversation was born, in epoch seconds - the second clock on this
+	 * row (`SessionCatalogueRow.created_at`). Optional because a backend that
+	 * predates the field does not send it; the Created basis reads it.
+	 */
+	created_at?: number;
+};
+
+const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
+
+const row = (
+	id: string,
+	name: string,
+	mtime: number,
+	over: Partial<WireRow> = {},
+): WireRow => ({
+	id,
+	name,
+	mtime,
+	preview: "",
+	live_state: "attached",
+	pending: null,
+	active: true,
+	binding: { agent: null, team: null },
+	status: { code: "idle", label: "Recent" },
+	status_revision: 1,
+	status_epoch: EPOCH,
+	...over,
+});
+
+/**
+ * `mtime` is the backend's own Python float in SECONDS (`chat-list-sections.ts`
+ * carries the mapping), so the ages below are seconds from now.
+ */
+const NOW_SECONDS = () => Math.floor(Date.now() / 1000);
+
+/**
+ * The ladder's roster, sized so each rung's foot names the NEXT rung rather
+ * than a remainder: at 10 drawn the step is 15 (toward 25), at 25 it is 25
+ * (toward 50), at 50 it is 50 (toward 100) - the operator's contract, "starts
+ * with 10, then 25, then 50, and then user can click to load more", with more
+ * left than any rung can spend.
+ *
+ * The first rows are newest (they land in TODAY), a band sits a few days back
+ * (THIS WEEK) and the rest run older - so every ladder frame also shows the
+ * sections the redesign draws, not one flat list.
+ */
+const bigRoster = (count: number): WireRow[] =>
+	Array.from({ length: count }, (_, index) => {
+		const ageSeconds =
+			index < 4 ? index * 600 : index < 36 ? index * 7_200 : index * 86_400;
+		return row(
+			`ladder-${String(index).padStart(4, "0")}`,
+			`Conversation ${index + 1}`,
+			NOW_SECONDS() - ageSeconds,
+			index === 0
+				? {
+						status: { code: "busy", label: "Working" },
+						status_revision: 3,
+					}
+				: {},
+		);
+	});
+
+/**
+ * The roster an expanded group is photographed on: four conversations bound to
+ * `coder`, one to `reviewer`, so the open group has rows of its own and the
+ * closed sibling sits beside it for the contrast.
+ */
+const groupRoster = (): WireRow[] => {
+	const rows: WireRow[] = [
+		row("group-0001", "Wire the parser to the ledger", NOW_SECONDS() - 900, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("group-0002", "Split the reducer in two", NOW_SECONDS() - 7_200, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("group-0003", "Draft the migration note", NOW_SECONDS() - 86_400, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("group-0004", "Tidy the fixtures again", NOW_SECONDS() - 3 * 86_400, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("group-0005", "Reviewer rollout notes", NOW_SECONDS() - 2_000, {
+			binding: { agent: "reviewer", team: null },
+		}),
+	];
+	return rows;
+};
+
+const PROFILES = [
+	{ name: "coder", kind: "role", source: "installed" },
+	{ name: "reviewer", kind: "role", source: "installed" },
+	{ name: "architect", kind: "role", source: "installed" },
+];
+
+/** Eleven installed agents, so the agents section exceeds its own cap of eight. */
+const agentsOverCap = () =>
+	Array.from({ length: 11 }, (_, index) => ({
+		name: index === 0 ? "coder" : `agent-${index + 1}`,
+		kind: "role",
+		source: "installed",
+	}));
+
+const profile = ({
+	name,
+	kind,
+	source,
+}: { name: string; kind: string; source: string }) => ({
+	name,
+	kind,
+	source,
+	agent_id: source === "builtin" ? null : `agent-${name}`,
+	description: `${name} — reusable instructions for this role.`,
+	tools: null,
+	effort: null,
+	delegate: false,
+	seed_origin: source === "installed" ? name : null,
+	divergent_fields: [],
+});
+
+/**
+ * Per-story fixture knobs, reset by every story's `render` so no frame
+ * inherits the previous story's answers - the rig shares one profile across a
+ * capture run, which is the same leakage the persisted stores have.
+ */
+let roster: WireRow[] = [];
+let profilesList: { name: string; kind: string; source: string }[] = PROFILES;
+let teamsList: string[] = ["release-crew", "docs-pod"];
+/** `capabilities` answers OK until this flips (the off-route voice story). */
+let capabilitiesFail = false;
+/** `sessions.list` answers OK until this flips (the off-route voice story). */
+let sessionsFail = false;
+/** What `backend.getStatus` answers: attached is the healthy default. */
+let backendState: "attached" | "detached" = "attached";
+
+const statusSnapshot = (
+	state: "attached" | "detached",
+): DaemonStatusSnapshot => ({
+	state,
+	reconnecting: false,
+	owned: false,
+	url: state === "attached" ? "http://127.0.0.1:1131" : null,
+	instanceId: null,
+	pid: null,
+	version: null,
+	prefix: null,
+	installKind: null,
+	desktopAvailable: state === "attached",
+	pairing:
+		state === "attached"
+			? { available: true, cause: null }
+			: { available: false, cause: "unpaired" },
+	failures: state === "attached" ? 0 : 3,
+	capabilityStatus: null,
+	unanswered: 0,
+	lastTransportAt: state === "attached" ? Date.now() : null,
+	detail:
+		state === "attached"
+			? "Attached to the daemon this app started with."
+			: "The daemon stopped answering.",
+	addressSubstitution: null,
+	updatedAt: Date.now(),
+});
+
+const bridge = () => {
+	const ok = (result: unknown): DesktopResponse => ({
+		status: 200,
+		body: { result },
+	});
+	const handler = async (request: BridgeRequest): Promise<DesktopResponse> => {
+		switch (request.op) {
+			case "capabilities":
+				if (capabilitiesFail)
+					throw new Error(
+						"The backend could not complete this request. Check its connection and try again.",
+					);
+				return ok({
+					desktop_contract: 1,
+					desktop_available: true,
+					desktop_auth: "bearer",
+					features: {
+						session_catalogue: 2,
+						profile_catalogue: 1,
+						team_catalogue: 1,
+						session_pins: 1,
+					},
+				});
+			case "sessions.list":
+				if (sessionsFail) throw new Error("Failed to fetch");
+				return ok({ sessions: roster, truncated: false });
+			case "profiles.list":
+				return ok({ profiles: profilesList.map(profile) });
+			case "teams.list":
+				return ok({
+					teams: teamsList.map((name) => ({
+						id: name,
+						name,
+						description: "",
+						manager: "coder",
+						members: [],
+					})),
+				});
+			default:
+				throw new Error(`unexpected desktop op in this story: ${request.op}`);
+		}
+	};
+	const page = window as unknown as {
+		api?: {
+			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+			backend?: { getStatus: () => Promise<DaemonStatusSnapshot> };
+		};
+	};
+	const api = page.api ?? {};
+	page.api = api;
+	api.desktop = { request: handler };
+	api.backend = { getStatus: async () => statusSnapshot(backendState) };
+};
+
+/* ------------------------------------------------------------- the states */
+
+/**
+ * Every persisted field a story can move, written on every call - including
+ * the ones the state does not use - because both stores persist: a story that
+ * set only one field would inherit the previous story's answer for the others.
+ */
+const view = (over: Partial<typeof DEFAULT_SIDEBAR_VIEW> = {}) => {
+	useUiPreferencesStore.setState({
+		chatSidebarView: { ...DEFAULT_SIDEBAR_VIEW, ...over },
+	});
+};
+
+/** The split is held at its shipped shape for every frame in this file. */
+const split = () => {
+	useUiPreferencesStore.setState({
+		chatSidebarRegions: "both",
+		chatSidebarListHeight: null,
+		chatSidebarOrder: "entities-first",
+	});
+};
+
+/** The disclosure record the entity region reads at mount (localStorage-backed). */
+const disclosures = (open: Record<string, boolean>) => {
+	localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(open));
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Wait until the DOM says what the story is about, rather than for a fixed lag. */
+const waitFor = async (predicate: () => boolean, timeoutMs = 8_000) => {
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		if (predicate()) return;
+		await sleep(50);
+	}
+	throw new Error("the fixture never reached the state this story photographs");
+};
+
+const chatRows = () =>
+	document.querySelectorAll(
+		'[data-sidebar-region="chats"] [data-tour-tag="chat-session-row"]',
+	).length;
+
+/** The drawn column, top to bottom, as session ids. */
+const drawnRowIds = () =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			'[data-sidebar-region="chats"] [data-session-row]',
+		),
+	].map((el) => el.dataset.sessionRow ?? "");
+
+const press = async (selector: string) => {
+	const element = document.querySelector<HTMLElement>(selector);
+	if (!element)
+		throw new Error(`no control for \`${selector}\` - the story never drew it`);
+	await userEvent.click(element);
+};
+
+const panelOpen = () =>
+	waitFor(() => {
+		const panel = document.querySelector<HTMLElement>(
+			"[data-sidebar-view-panel]",
+		);
+		return Boolean(panel && panel.getBoundingClientRect().height > 0);
+	});
+
+/**
+ * The kill, as a component because the query client is a hook.
+ *
+ * `OffRouteVoice` needs the daemon to die MID-SESSION - reads that already
+ * answered once, then a failed re-read - and the re-reads are query work, so
+ * the flip cannot live in a play function (a plain async function has no
+ * access to the client). This installs the gesture the play calls instead: flip
+ * the fixture flags, invalidate the capabilities query (its failed refetch is
+ * what draws the list-pane paragraph), re-ask the store's catalogue read (what
+ * draws the foot line) and invalidate the health probe (so the snapshot the
+ * gate reads is the detached one the frame claims). It renders nothing.
+ */
+const KillSwitch: FC = () => {
+	const client = useQueryClient();
+	useEffect(() => {
+		(globalThis as { __flipToDead?: () => void }).__flipToDead = () => {
+			capabilitiesFail = true;
+			sessionsFail = true;
+			backendState = "detached";
+			void client.invalidateQueries({ queryKey: ["desktop", "capabilities"] });
+			void client.invalidateQueries({ queryKey: serverHealthQueryKey });
+			void useCanonicalSessionsStore.getState().fetchSessions();
+		};
+	}, [client]);
+	return null;
+};
+
+/* --------------------------------------------------------------- the page */
+
+/**
+ * The readout beside each panel, read back from the DOM every 250ms rather
+ * than typed by hand: the stored view, the rows drawn, the feet's own copy,
+ * the panel's checks, the strip's presence flag and whether the server reads
+ * as offline - the facts a frame in this file is read for. It is a caption
+ * for the evidence, in the idiom `chat-sidebar-sections.stories.tsx` uses.
+ */
+const Readout = () => {
+	const stored = useUiPreferencesStore((state) => state.chatSidebarView);
+	const health = useServerHealth();
+	const [lines, setLines] = useState<string[]>([]);
+	useEffect(() => {
+		const text = (el?: Element | null) =>
+			(el?.textContent ?? "").replace(/\s+/g, " ").trim();
+		const sample = () => {
+			const pageMore = document.querySelector("[data-sidebar-page-more]");
+			const sectionFeet = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-section-more]",
+				),
+			].map((el) => `${el.dataset.sidebarSectionMore}: "${text(el)}"`);
+			const panel = document.querySelector("[data-sidebar-view-panel]");
+			/*
+			 * D2's own proof, in the frame: the panel's box measured against the
+			 * viewport, and whether its content overflows the box. The defect the
+			 * 800x600 capture found was a box running PAST the viewport edge with
+			 * nothing scrolling; the remedy is a box that stays inside the window
+			 * with the content taller than it - so both numbers are read here
+			 * rather than judged from the pixels.
+			 */
+			const panelGeometry = (el: Element) => {
+				const rect = el.getBoundingClientRect();
+				const node = el as HTMLElement;
+				return `box ${Math.round(rect.width)}x${Math.round(rect.height)} · bottom ${Math.round(rect.bottom)}/${window.innerHeight} · content ${node.scrollHeight}${
+					node.scrollHeight > node.clientHeight + 1 ? " (scrolls)" : ""
+				}`;
+			};
+			const checks = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-view-section]",
+				),
+			].map(
+				(el) =>
+					`${el.dataset.sidebarViewSection}=${el.getAttribute("aria-checked")}`,
+			);
+			const orderNow = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-view-section]",
+				),
+			].map((el) => el.dataset.sidebarViewSection);
+			const basisChecks = [
+				...document.querySelectorAll<HTMLElement>("[data-sidebar-view-basis]"),
+			].map(
+				(el) =>
+					`${el.dataset.sidebarViewBasis}=${el.getAttribute("aria-checked")}`,
+			);
+			const retryRefresh = [...document.querySelectorAll("button")].filter(
+				(el) => text(el) === "Retry refresh",
+			).length;
+			const next = [
+				`Stored view: ${stored.groupBy}/${stored.basis}/${stored.orderBy} · hidden [${stored.hidden.join(", ")}] · loads ${stored.loads}`,
+				`Drawn: ${chatRows()} chat row(s)`,
+				pageMore ? `Page foot: “${text(pageMore)}”` : "Page foot: (none)",
+				sectionFeet.length
+					? `Section feet: ${sectionFeet.join(" · ")}`
+					: "Section feet: (none)",
+				`Strip present: ${chatStatusStripPresent() ? "yes" : "no"} · server online: ${
+					health.data ? String(health.data.online) : "(probe pending)"
+				}`,
+				panel
+					? `Panel: OPEN — sections [${orderNow.join(", ")}] · ${checks.join(" ")} · basis [${basisChecks.join(" ")}] · ${panelGeometry(panel)}`
+					: "Panel: (not open)",
+				`“Retry refresh” controls on screen: ${retryRefresh}`,
+			];
+			setLines((previous) =>
+				previous.length === next.length &&
+				previous.every((value, index) => value === next[index])
+					? previous
+					: next,
+			);
+		};
+		sample();
+		const timer = setInterval(sample, 250);
+		return () => clearInterval(timer);
+	}, [stored, health.data]);
+	return (
+		<div className="w-[380px] shrink-0 space-y-1 border-l border-hairline p-4 text-meta text-ink-muted">
+			<p className="pb-1 text-ink">The sidebar as the frame reads it</p>
+			{lines.map((line) => (
+				<p key={line}>{line}</p>
+			))}
+		</div>
+	);
+};
+
+const Page: FC<{ sidebarWidth?: number }> = ({ sidebarWidth = 360 }) => (
+	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
+		<div
+			className="shrink-0 border-r border-hairline"
+			style={{ width: `${sidebarWidth}px` }}
+		>
+			<ChatSidebar
+				selectedConversation={undefined}
+				onSelectConversation={() => undefined}
+				onStageDraft={() => undefined}
+			/>
+		</div>
+		<Readout />
+	</div>
+);
+
+/* --------------------------------------------------------------- stories */
+
+const meta = {
+	title: "Chat sidebar/View menu",
+	parameters: { layout: "fullscreen" },
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj;
+
+const resetFixtures = () => {
+	roster = [];
+	profilesList = PROFILES;
+	teamsList = ["release-crew", "docs-pod"];
+	capabilitiesFail = false;
+	sessionsFail = false;
+	backendState = "attached";
+	localStorage.removeItem("chat-sidebar-disclosures");
+};
+
+const openViewPopover = async () => {
+	await waitFor(
+		() => document.querySelector("[data-sidebar-view-options]") !== null,
+	);
+	await press("[data-sidebar-view-options]");
+	await panelOpen();
+	// One beat past the press so the paint the shutter photographs is the
+	// state's, not the previous frame's (the idiom the status-feed stories use).
+	await sleep(350);
+};
+
+/**
+ * The popover, open over the band, default view.
+ *
+ * THE FRAME D28 NAMED, and it is DRIVEN: the play presses the band's own
+ * `View options` control and waits for the real Radix panel, so a frame shows
+ * the surface after a gesture rather than a prop summary. What it must show:
+ * the four labelled groups ("Group by" / "Time basis" / "Order by" / "Sections"),
+ * the check on the active row of each single-choice group, and the seven section
+ * rows in their stored order with the move pair on the shown chat sections.
+ */
+export const PopoverOpen: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+	},
+};
+
+/**
+ * The same panel in an 800x600 window - the design direction's D2 capture.
+ *
+ * The new group adds roughly 100px to a panel that was already close to the
+ * window floor, so the pair to look at is the SHORT window: all four groups,
+ * all seven section rows and the hidden-sections sentence must be reachable
+ * (visible, or inside the panel's own scroll), and if Radix's shift does not
+ * save them the remedy is `max-height: var(--radix-popover-content-available-height)`
+ * with `overflow-y: auto` on the panel. The geometry is declared in the capture
+ * rig's STORIES row for this story; the state itself is PopoverOpen's.
+ */
+export const PopoverOpenShort: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+	},
+};
+
+/**
+ * The panel in the shape the APP can actually reach with a short window.
+ *
+ * The 800x600 capture is the design contract's floor (`WINDOW_MIN_WIDTH/HEIGHT`),
+ * but the popover it photographs is not reachable there in the product: below
+ * ~1024px the nav rail collapses and the chat column, and so the View options
+ * trigger, is not drawn (round 1's Q-2, reproduced independently by QA: no
+ * `[data-sidebar-view-options]` in ten seconds at 800x600). The reachable worst
+ * case is a DOCKED width with a short height, so this state is that pair:
+ * 1100x600, the same panel and the same bottom inset the short capture shows.
+ * The geometry is declared in the capture rig's STORIES row for this story.
+ */
+export const PopoverOpenNarrow: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+	},
+};
+
+/**
+ * The popover with one section switched OFF, driven by its own switch.
+ *
+ * The press is the switch itself (`data-sidebar-view-section="running"`), so
+ * the frame proves the control moves the live view - the stored `hidden` list
+ * and the switch's own `aria-checked` both come from the one press, and the
+ * "1 section hidden" sentence appears under the list.
+ */
+export const PopoverHiddenSection: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+		await press('[data-sidebar-view-section="running"]');
+		await waitFor(
+			() =>
+				document
+					.querySelector('[data-sidebar-view-section="running"]')
+					?.getAttribute("aria-checked") === "false",
+		);
+		await settle(
+			() =>
+				!entityDrawn("agents") &&
+				switchState("agents") === "false" &&
+				hiddenSentence() === "1 section hidden",
+		);
+	},
+};
+
+/**
+ * The popover after the move pair reorders a SECTION PAIR, driven by the pair.
+ *
+ * The press is `Move Today down`, so the frame is the result of the control
+ * the operator's request is about: `This week` and `Today` trade places in the
+ * panel's list AND in the list behind it, and the readout prints the stored
+ * order the press wrote. One frame, one press, both halves of "reordering".
+ */
+export const PopoverReorderedPair: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+		await press('[data-sidebar-view-move="today:down"]');
+		await waitFor(() => {
+			const order = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-view-section]",
+				),
+			].map((el) => el.dataset.sidebarViewSection);
+			return (
+				order.indexOf("week") >= 0 &&
+				order.indexOf("week") < order.indexOf("today")
+			);
+		});
+		await sleep(350);
+	},
+};
+
+/**
+ * The fixture where the two clocks DISAGREE, plus the two rows every basis must
+ * leave where they are.
+ *
+ * `moved` is the operator's own case: created forty days ago, asked an hour
+ * ago. `born` is recent under both clocks and `steady` is old under both. The
+ * pinned row and the running row are the invariance claim's subjects - the
+ * pinned partition and the RUNNING status partition are not the basis's to
+ * move, so they must sit in the same place and carry the same state under
+ * either basis, while the today/week/older membership shifts around them.
+ */
+const basisRoster = (): WireRow[] => {
+	const now = NOW_SECONDS();
+	return [
+		row("basis-moved", "Backdated ledger, asked today", now - 3_600, {
+			created_at: now - 40 * 86_400,
+		}),
+		row("basis-born", "Started this morning", now - 1_800, {
+			created_at: now - 7_200,
+		}),
+		row("basis-pinned", "Pinned and untouched for days", now - 5 * 86_400, {
+			pinned: true,
+			created_at: now - 20 * 86_400,
+		}),
+		row("basis-running", "Working right now", now - 300, {
+			status: { code: "busy", label: "Working" },
+			status_revision: 3,
+			created_at: now - 2 * 86_400,
+		}),
+		row("basis-steady", "Untouched for over a week", now - 9 * 86_400, {
+			created_at: now - 30 * 86_400,
+		}),
+	];
+};
+
+/**
+ * The two clocks disagreeing, photographed on ONE roster: the default basis and
+ * `Created` beside it.
+ *
+ * The README states the expected membership of each section under each basis
+ * (the `moved` row is TODAY "1h" under Last active and OLDER under Created),
+ * and both frames carry the popover, so the counts shifting with the membership
+ * are in the photograph rather than only in prose.
+ */
+export const PopoverBasisLastActive: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = basisRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 5);
+		await openViewPopover();
+		await sleep(350);
+	},
+};
+
+/**
+ * The same roster with `Created` pressed, and the assertion a still cannot make
+ * on its own: the LIST ORDER must not change.
+ *
+ * The design's rule is that the basis moves what the TIME numbers read - the
+ * bins and the labels - and is orthogonal to the ordering axes; a frame shows
+ * the first half, and the drawn-row ids compared before and after the press are
+ * the second.
+ */
+export const PopoverBasisCreated: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = basisRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 5);
+		await openViewPopover();
+		await press('[data-sidebar-view-basis="created"]');
+		await waitFor(
+			() =>
+				document
+					.querySelector('[data-sidebar-view-basis="created"]')
+					?.getAttribute("aria-checked") === "true",
+		);
+		/*
+		 * The design's own claim, asserted rather than left to the eye: the basis
+		 * moves WHAT the sections and the labels read, never the ORDER the list is
+		 * sorted in. Section MEMBERSHIP is the basis's to change - `basis-moved`
+		 * lands under OLDER once Created is pressed, and that is the feature - so
+		 * the comparison is each row's position WITHIN its drawn section against
+		 * the catalogue's own order: a basis that re-sorted by `created_at` would
+		 * put rows in an order the catalogue never sent. (The first version of this
+		 * check compared the whole column and failed on the membership change
+		 * itself - the rig's own error, kept in the set's history as the reason
+		 * this reads the sections separately.)
+		 */
+		const rosterOrder = [
+			"basis-moved",
+			"basis-born",
+			"basis-pinned",
+			"basis-running",
+			"basis-steady",
+		];
+		const sectionOfRow = (id: string) =>
+			document
+				.querySelector(`[data-session-row="${id}"]`)
+				?.closest("[data-chat-section]")
+				?.getAttribute("data-chat-section") ?? null;
+		for (const section of ["running", "today", "week", "older"]) {
+			const drawn = drawnRowIds().filter((id) => sectionOfRow(id) === section);
+			const positions = drawn.map((id) => rosterOrder.indexOf(id));
+			const sorted = [...positions].sort((a, b) => a - b);
+			if (positions.join(",") !== sorted.join(",")) {
+				throw new Error(
+					`the Created basis re-sorted ${section}: drawn [${drawn.join(", ")}] against the catalogue's own order`,
+				);
+			}
+		}
+		await sleep(350);
+	},
+};
+
+/**
+ * The reorder rail after D1, photographed where the old pair lied.
+ *
+ * Three claims in one frame, because they are one rule: Pinned and the two
+ * entity rows draw NO move pair (a press there moved the stored order and this
+ * panel while the column stood still); a chat section's arrows are disabled
+ * where the adjacent shown section is not another drawn chat section (Running
+ * up, against Pinned; Older down, against the entity region); and a legal press
+ * still reorders both the panel and the list behind it.
+ */
+export const ReorderEdges: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+		for (const selector of [
+			'[data-sidebar-view-move="pinned:up"]',
+			'[data-sidebar-view-move="pinned:down"]',
+			'[data-sidebar-view-move="agents:up"]',
+			'[data-sidebar-view-move="teams:up"]',
+		]) {
+			if (document.querySelector(selector)) {
+				throw new Error(
+					`the panel draws a move pair it cannot honour: \`${selector}\``,
+				);
+			}
+		}
+		for (const selector of [
+			'[data-sidebar-view-move="running:up"]',
+			'[data-sidebar-view-move="older:down"]',
+			/*
+			 * AND THE EMPTY-SECTION CASES (round 1's m1/U1), which this roster holds in
+			 * both directions: `running` has no loaded rows, so its own down-press is a
+			 * source that draws nothing, and Today's up-neighbour IS that empty
+			 * running, so its press would move nothing the reader sees. Both are
+			 * disabled rather than offered - the dead-control read the round-1 finding
+			 * measured on a store whose only row sat in Today.
+			 */
+			'[data-sidebar-view-move="running:down"]',
+			'[data-sidebar-view-move="today:up"]',
+		]) {
+			const element = document.querySelector<HTMLButtonElement>(selector);
+			if (!element) {
+				throw new Error(
+					`the expected rail control is missing: \`${selector}\``,
+				);
+			}
+			if (!element.disabled) {
+				throw new Error(
+					`\`${selector}\` says it can move, and the model's rule says it cannot`,
+				);
+			}
+		}
+		await press('[data-sidebar-view-move="today:down"]');
+		await waitFor(() => {
+			const order = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-view-section]",
+				),
+			].map((el) => el.dataset.sidebarViewSection);
+			return (
+				order.indexOf("week") >= 0 &&
+				order.indexOf("week") < order.indexOf("today")
+			);
+		});
+		await sleep(350);
+	},
+};
+
+/**
+ * The ladder's first rung: ten chats drawn, the foot naming the step to 25.
+ *
+ * The roster is larger than any rung, so the foot's copy is the NEXT RUNG
+ * ("Show 15 more chats") rather than a small remainder - the operator's
+ * contract, and the state every earlier frame in this repository missed
+ * because its list fit or was cut above the foot. The rig scrolls the chats
+ * region to its end (`scrollToEnd` on the entry), which is where the foot
+ * lives; the readout prints the number drawn and the foot's own copy.
+ */
+export const PageLadderTen: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view({ loads: 0 });
+		roster = bigRoster(180);
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 10);
+		await sleep(350);
+	},
+};
+
+/** The second rung: twenty-five drawn, the foot naming the step to 50. */
+export const PageLadderTwentyFive: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view({ loads: 1 });
+		roster = bigRoster(180);
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 25);
+		await sleep(350);
+	},
+};
+
+/** The third rung: fifty drawn, the foot naming the step to 100. */
+export const PageLadderFifty: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view({ loads: 2 });
+		roster = bigRoster(180);
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 50);
+		await sleep(350);
+	},
+};
+
+/**
+ * The agents section past its cap: eleven owned agents against a cap of
+ * eight, so the section's own foot draws - `Show 3 more` - under the eighth
+ * row. The rig parks the entities region at its end, which is where the cap's
+ * foot and the section's other controls live.
+ */
+export const SectionCapAgents: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		profilesList = agentsOverCap();
+		teamsList = [];
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelector('[data-sidebar-section-more="agents"]') !== null,
+		);
+		await sleep(350);
+	},
+};
+
+/**
+ * The teams section past its cap: twelve teams against a cap of eight, so its
+ * foot draws `Show 4 more`. The two cap stories are split rather than merged
+ * because each foot sits at its own section's end and one frame cannot hold
+ * both at a readable size.
+ */
+export const SectionCapTeams: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = Array.from({ length: 12 }, (_, index) => `team-${index + 1}`);
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelector('[data-sidebar-section-more="teams"]') !== null,
+		);
+		await sleep(350);
+	},
+};
+
+/**
+ * A group (agent) expanded to its chats, on the withdrawn paging path.
+ *
+ * The disclosure record is seeded before mount - the state is the point, and
+ * the press that opens a group is already driven in the driver's own scenes -
+ * so the frame is the expanded shape: the four `coder` rows indented under
+ * their row, each with its title and relative time, beside the closed
+ * `reviewer` sibling.
+ */
+export const ExpandedAgentGroup: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		disclosures({ "agent:coder": true });
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelectorAll(
+					'[data-sidebar-region="entities"] [data-tour-tag="chat-session-row"]',
+				).length >= 4,
+		);
+		await sleep(350);
+	},
+};
+
+/**
+ * The band at rest, with no popover and no press: the story the band's hover
+ * entries are captured from.
+ *
+ * The three tooltips are browser state (`:hover` on a real pointer), so they
+ * cannot come from a play function - the rig's `hover` entries put a real
+ * mouse move on each control, one frame each, and this story is the surface.
+ */
+export const BandResting: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await sleep(350);
+	},
+};
+
+/**
+ * R11's route: the demonstrably-dead server, off `/chat`, with no strip.
+ *
+ * The two reads that carry the sidebar's own voice fail - `capabilities` (its
+ * list-pane paragraph) and the catalogue's own read (its foot line) - while
+ * the health snapshot says `detached`, which is the exact condition the
+ * stand-down is keyed to. The strip is not mounted in this frame (a story
+ * cannot mount it) and the readout prints `chatStatusStripPresent()`'s own
+ * answer, so the frame shows what R11 fixed: where the strip is not, the
+ * sidebar keeps speaking instead of handing the voice to a surface that is not
+ * there.
+ *
+ * The failures are sequenced rather than seeded: capabilities and the
+ * catalogue succeed FIRST (so the structure and last-known rows are mounted,
+ * the state the kill produces mid-session), then the flags flip and the two
+ * reads are re-triggered - the same order the real daemon death takes.
+ */
+export const OffRouteVoice: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return (
+			<>
+				<Page />
+				<KillSwitch />
+			</>
+		);
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await waitFor(
+			() => document.querySelector("[data-sidebar-view-options]") !== null,
+		);
+		/*
+		 * The kill, then the re-reads the app itself performs: the capabilities
+		 * query's failed refetch is what draws the list-pane paragraph, the
+		 * store's re-read is what draws the foot line, and the health probe's
+		 * invalidation makes the snapshot the gate reads the detached one. The
+		 * frame must hold BOTH of the voice's sentences and the rows they sit
+		 * beside - a state with the voice but no rows would be a screenshot of an
+		 * empty column rather than of the sidebar the kill actually produces.
+		 */
+		(globalThis as { __flipToDead?: () => void }).__flipToDead?.();
+		await waitFor(() => document.body.textContent?.includes("Retry refresh"));
+		await waitFor(() =>
+			document.body.textContent?.includes("Showing the last chats loaded."),
+		);
+		await sleep(350);
+	},
+};
+
+/* ------------------------------------------------------------- the audit */
+
+/**
+ * THE VIEW-SETTINGS AUDIT (operator, 2026-09-27), as frames and not as prose.
+ *
+ * The report that opened it: "I unchecked the Agents section from the view
+ * settings and that section still seems to be there, can you double check that
+ * all view settings work as expected." One broken promise makes the other six
+ * untrustworthy, so every control in the panel is driven here by its own press
+ * and the result is read back out of the DOM - a section hidden and restored, a
+ * regression and a flattening, the two orderings against each other - rather
+ * than argued from the source.
+ *
+ * WHY ITS OWN READOUT, and not the one the states above share. That readout is
+ * the caption of frames that are already committed, and extending it would
+ * quietly restate every one of them: a still is evidence about the code that
+ * produced it, so the audit's lines live beside the audit's states. This one
+ * prints BOTH SIDES of the claim - what the panel's switches say and what the
+ * two regions actually draw - because the defect was the two disagreeing inside
+ * one frame, and a caption that could only see one of them could not show it.
+ *
+ * WHAT A FRAME HERE CANNOT SAY: that a setting survives a relaunch. A play
+ * function drives one mounted page and Storybook never reloads it, so the
+ * persistence half is asserted where it belongs - the store's own round trip
+ * through `localStorage` in `scripts/chat-sidebar-view.test.mjs`, which writes
+ * the view the way the popover does, parses the bytes back the way a launch
+ * does, and reads the result through `parseSidebarView`.
+ */
+
+/**
+ * The roster the audit frames are read over.
+ *
+ * FOUR PROPERTIES, each there for one control. Two rows are PINNED, one of them
+ * outside today's section, so a grouping that dropped them is visible; one row
+ * is ACTIVE (a live turn) and deliberately the OLDEST - with four rows more
+ * than the ten-row rung below `Pinned`, so the page's own cut separates the two
+ * orderings: under `Most recent` it is past the cut and absent, under `Active
+ * first` it leads the list; and the rest are spread over today / this week /
+ * older, with the three agent bindings so `Agent and team` has real groups to
+ * draw, `Ungrouped` among them.
+ */
+const auditRoster = (): WireRow[] => {
+	const now = NOW_SECONDS();
+	return [
+		row("audit-pinned-new", "Pinned · release checklist", now - 600, {
+			pinned: true,
+			binding: { agent: "coder", team: null },
+		}),
+		row("audit-pinned-old", "Pinned · vendor follow-up", now - 3 * 86_400, {
+			pinned: true,
+			binding: { agent: null, team: "docs-pod" },
+		}),
+		row("audit-today-1", "Split the reducer", now - 1_200),
+		row("audit-today-2", "Trace the loader", now - 3_600, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("audit-week-1", "Migration note", now - 2 * 86_400, {
+			binding: { agent: null, team: "release-crew" },
+		}),
+		row("audit-week-2", "Fixture tidy-up", now - 4 * 86_400, {
+			binding: { agent: "reviewer", team: null },
+		}),
+		row("audit-older-1", "Vendor questionnaire", now - 12 * 86_400),
+		row("audit-older-2", "Old hand-off", now - 30 * 86_400, {
+			binding: { agent: "coder", team: null },
+		}),
+		row("audit-older-3", "Archived thread", now - 60 * 86_400),
+		row("audit-older-4", "First draft", now - 90 * 86_400),
+		row("audit-older-5", "Older still", now - 120 * 86_400),
+		/*
+		 * FOUR MORE THAN THE PAGE HOLDS, and that is the point of them: the roster
+		 * has to outrun the ten-row rung (fourteen rows below `Pinned`) for the
+		 * live turn at the END of it to sit past the page's cut under `Most
+		 * recent` - which is the whole difference the two orderings are
+		 * photographed for.
+		 */
+		row("audit-older-6", "Quarterly review", now - 150 * 86_400),
+		row("audit-older-7", "Backlog triage", now - 180 * 86_400),
+		row("audit-older-8", "Onboarding notes", now - 210 * 86_400),
+		row("audit-older-9", "Very first thread", now - 240 * 86_400),
+		row("audit-busy-old", "Nine-day migration", now - 9 * 86_400, {
+			status: { code: "busy", label: "Working" },
+			binding: { agent: "reviewer", team: null },
+		}),
+	];
+};
+
+/** The section keys a region draws, in the order it draws them. */
+const regionSections = (region: string) =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			`[data-sidebar-region="${region}"] [data-chat-section]`,
+		),
+	].map((el) => el.dataset.chatSection ?? "?");
+
+/**
+ * Wait for an audit claim, and for NOTHING else.
+ *
+ * THE PLAY MUST BE SHORT, and this is measured rather than stylistic: the rig
+ * navigates, sleeps 900ms, waits for the theme, settles animations and then
+ * reads the DOM - it never waits for a play to finish. A play that runs longer
+ * than that budget races the shutter, and the frame records whichever state the
+ * page happened to be in (the first passes of this set "failed" their own
+ * expectations on a different story and palette each time for exactly that
+ * reason: a 600ms stability window and a 350ms beat on top of the presses cost
+ * more than the rig waits). So the play presses, waits for the claim once, and
+ * stops; the rig's own `expect*` options are what make a wrong frame impossible
+ * rather than unlikely.
+ */
+const settle = (predicate: () => boolean) => waitFor(predicate, 6_000);
+
+/**
+ * Open the panel with the audit's own beat.
+ *
+ * `openViewPopover` above is the states' helper and waits 350ms after the press
+ * ("one beat past the press so the paint the shutter photographs is the
+ * state's"). The audit cannot afford it: its plays have to fit the rig's own
+ * wait (see `settle`), and the panel is already asserted open by `panelOpen()`.
+ */
+const openAuditPopover = async () => {
+	await waitFor(
+		() => document.querySelector("[data-sidebar-view-options]") !== null,
+	);
+	await press("[data-sidebar-view-options]");
+	await panelOpen();
+};
+/** One switch's own state, read from the panel. */
+const switchState = (key: string) =>
+	document
+		.querySelector(`[data-sidebar-view-section="${key}"]`)
+		?.getAttribute("aria-checked");
+
+/** Whether a region currently draws a section - the row, or its disclosure row. */
+const entityDrawn = (key: string) =>
+	document.querySelector(
+		`[data-sidebar-region="entities"] [data-chat-section="${key}"]`,
+	) !== null;
+
+/** The same question of the chats region. */
+const chatsSectionDrawn = (key: string) =>
+	document.querySelector(
+		`[data-sidebar-region="chats"] [data-chat-section="${key}"]`,
+	) !== null;
+
+/** Whether a conversation is on screen at all, in either region. */
+const rowDrawn = (id: string) =>
+	document.querySelector(`[data-session-row="${id}"]`) !== null;
+
+/** The session ids a region draws, in document order. */
+const regionRows = (region: string) =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			`[data-sidebar-region="${region}"] [data-session-row]`,
+		),
+	].map((el) => el.getAttribute("data-session-row") ?? "?");
+
+/** The panel's seven switches: each one's own state and the count it prints. */
+const panelSwitches = () =>
+	[
+		...document.querySelectorAll<HTMLElement>("[data-sidebar-view-section]"),
+	].map((el) => {
+		const key = el.dataset.sidebarViewSection ?? "?";
+		const count = el.querySelector("span.font-mono")?.textContent?.trim();
+		return `${key}=${el.getAttribute("aria-checked")}${count ? `(${count})` : ""}`;
+	});
+
+/**
+ * The rows each drawn section holds, per region - the panel's counts, checked.
+ *
+ * TWO ATTRIBUTES, because the panel draws two kinds of row: a chats section
+ * holds `[data-session-row]` conversations, while an entity section holds
+ * `[data-entity]` rows (the agent and team disclosures - their own children are
+ * conversations nested INSIDE those, so counting `[data-session-row]` there
+ * would count a group's contents rather than the rows the panel's count badges).
+ *
+ * THE CONTAINER IS RESOLVED, not assumed: a chat section and a grouped section
+ * ARE the `[data-chat-section]` element, while an entity row puts the key on the
+ * disclosure BUTTON and keeps its rows in the `<section>` around it.
+ */
+const sectionCounts = (region: string) =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			`[data-sidebar-region="${region}"] [data-chat-section]`,
+		),
+	].map((el) => {
+		const holder =
+			el.tagName === "SECTION" ? el : (el.closest("section") ?? el);
+		const rows = holder.querySelectorAll("[data-session-row]").length;
+		const entities = holder.querySelectorAll("[data-entity]").length;
+		return `${el.dataset.chatSection}:${entities > 0 ? entities : rows}`;
+	});
+
+/** The panel's own sentence about how many sections it believes it hid. */
+/*
+ * The panel's own sentence, read from its OWN element rather than from
+ * `document.body`'s concatenation: the sentence has no data attribute, and the
+ * panel's last count runs into its first digit in that text - the first capture
+ * of these frames read "teams 2" + "1 section hidden" back as "21 section
+ * hidden". An element whose whole text IS the sentence cannot be mis-joined.
+ */
+const HIDDEN_SENTENCE = /^\d+ sections? hidden$/;
+const hiddenSentence = () => {
+	for (const el of document.querySelectorAll("p")) {
+		const text = (el.textContent ?? "").trim();
+		if (HIDDEN_SENTENCE.test(text)) return text;
+	}
+	return "(none)";
+};
+
+/**
+ * The caption of the audit frames: both sides of every claim, read from the DOM
+ * on a 250ms tick so a still cannot describe a state the page is not in.
+ */
+const AuditReadout: FC = () => {
+	const stored = useUiPreferencesStore((state) => state.chatSidebarView);
+	const [lines, setLines] = useState<string[]>([]);
+	useEffect(() => {
+		const sample = () => {
+			const entity = regionSections("entities");
+			const chats = regionSections("chats");
+			const panel = document.querySelector("[data-sidebar-view-panel]");
+			const rows = regionRows("chats");
+			const saysHidden = stored.hidden.includes("agents");
+			const drawsAgents = entity.includes("agents");
+			const next = [
+				`stored: groupBy=${stored.groupBy} · orderBy=${stored.orderBy} · loads ${stored.loads}`,
+				`stored: hidden [${stored.hidden.join(", ")}] · order [${stored.order.join(", ")}]`,
+				`panel open: ${panel ? "yes" : "no"} · switches ${panelSwitches().join(" ")}`,
+				`panel says: "${hiddenSentence()}"`,
+				`entities region draws: [${entity.join(", ")}]`,
+				`chats region draws: [${chats.join(", ")}]`,
+				`chat rows drawn: ${rows.length}`,
+				`section rows drawn: [${sectionCounts("chats").join(" ")}] · entities [${sectionCounts("entities").join(" ")}]`,
+				`chat row order: [${rows.join(", ")}]`,
+				`Agents: panel hidden=${saysHidden} · row drawn=${drawsAgents} → ${
+					saysHidden && drawsAgents
+						? "DISAGREE (the operator's report)"
+						: "agree"
+				}`,
+			];
+			setLines((previous) =>
+				previous.length === next.length &&
+				previous.every((value, index) => value === next[index])
+					? previous
+					: next,
+			);
+		};
+		sample();
+		const timer = setInterval(sample, 250);
+		return () => clearInterval(timer);
+	}, [stored]);
+	return (
+		<div className="w-[380px] shrink-0 space-y-1 border-l border-hairline p-4 text-meta text-ink-muted">
+			<p className="pb-1 text-ink">The audit, as the frame reads it</p>
+			{lines.map((line) => (
+				<p key={line}>{line}</p>
+			))}
+		</div>
+	);
+};
+
+/** The sidebar and the audit's own caption, at the widths the set already uses. */
+const AuditPage: FC = () => (
+	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
+		<div
+			className="shrink-0 border-r border-hairline"
+			style={{ width: "360px" }}
+		>
+			<ChatSidebar
+				selectedConversation={undefined}
+				onSelectConversation={() => undefined}
+				onStageDraft={() => undefined}
+			/>
+		</div>
+		<AuditReadout />
+	</div>
+);
+
+/**
+ * Every audit state below starts from this fixture, driven, with the panel open.
+ *
+ * THE VIEW FIXTURE IS APPLIED HERE, not in the story's `render` body and not in
+ * a child's mount effect, and the difference was measured rather than argued:
+ * both of those write the DEFAULT view at a moment that can land AFTER the play
+ * has pressed the switch (the `render` body is re-invoked when Storybook's
+ * interactions addon books a finished play, and a passive mount effect can be
+ * deferred past the play's first acts under load). Either one puts the tick
+ * back and the section on screen for the frame that claims the opposite - the
+ * first two passes of this set produced exactly that, on a different story and
+ * palette each time. Writing the fixture here makes it the last store write
+ * before the press, and the press the last write before the shutter.
+ */
+const auditScene = async (seed: Partial<SidebarView> = {}) => {
+	await waitFor(
+		() => document.querySelector('[data-sidebar-region="chats"]') !== null,
+	);
+	await waitFor(() => chatRows() >= 3);
+	useUiPreferencesStore.setState({
+		chatSidebarView: { ...DEFAULT_SIDEBAR_VIEW, ...seed },
+	});
+};
+
+/**
+ * The panel's own press, and the checkbox state it lands in.
+ *
+ * IT CONVERGES RATHER THAN PRESSING ONCE, and the reason is measured: a single
+ * press into a page that is still settling is a press the next render can drop
+ * (the first story of a cold capture pass photographed a panel with its tick
+ * restored and an empty `hidden` list, while the same story driven alone
+ * flipped correctly). The state is re-read before every attempt, so the loop
+ * can only ever press toward `checked`, never past it, and it FAILS LOUDLY -
+ * a wrong frame is worse than a missing one.
+ */
+const pressSection = async (key: string, checked: boolean) => {
+	const selector = `[data-sidebar-view-section="${key}"]`;
+	const state = () =>
+		document.querySelector(selector)?.getAttribute("aria-checked");
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		if (state() === String(checked)) return;
+		await press(selector);
+		await sleep(200);
+	}
+	throw new Error(`the ${key} switch never reached ${checked}`);
+};
+
+/**
+ * The same, for the two single-choice groups - and with the same convergence,
+ * for the same reason. `choose` is the row's key; the press is a real pointer
+ * click on the row the reader would press.
+ */
+const pressGroupBy = async (key: string) => {
+	const selector = `[data-sidebar-view-choice="${key}"]`;
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		if (
+			document.querySelector(selector)?.getAttribute("aria-checked") === "true"
+		)
+			return;
+		await press(selector);
+		await sleep(200);
+	}
+	throw new Error(`the ${key} choice never became the active one`);
+};
+
+/**
+ * THE REPORTED BUG, driven: the popover's `Agents` switch is pressed off.
+ *
+ * The play waits only for the POPOVER's own state - the switch's
+ * `aria-checked` and the sentence under the list - because that is the half
+ * that always worked: the press reached the store, the tick went out, and the
+ * panel's own count said one section was hidden. Whether the region below obeys
+ * it is what the caption prints (`Agents: panel hidden=… · row drawn=… → …`),
+ * and on `origin/main` it reads `DISAGREE`, which is the operator's screenshot
+ * reproduced as a frame.
+ */
+export const AuditEntityHidden: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressSection("agents", false);
+		await waitFor(() =>
+			document.body.textContent?.includes("1 section hidden"),
+		);
+		await sleep(350);
+	},
+};
+
+/**
+ * The same switch pressed back ON, from the state the switch itself left behind
+ * (the fixture seeds `hidden: ["agents"]`, which is what the store holds after
+ * the frame above).
+ *
+ * ONE PRESS, and the seeded start is deliberate rather than convenient: the
+ * first revision drove BOTH presses in one play and photographed the pair, and
+ * a press into a panel that is still settling is a press the next render can
+ * drop - the frame that existed was the one the LAST press produced, so the
+ * state at the shutter was one press behind what the play believed. A frame
+ * whose subject is "the switch puts the section back" needs exactly that press
+ * and nothing else in flight, and the caption's own `Agents:` line is what says
+ * the two halves agreed.
+ */
+export const AuditEntityRestored: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene({ hidden: ["agents"] });
+		await openAuditPopover();
+		await pressSection("agents", true);
+		await settle(
+			() => entityDrawn("agents") && switchState("agents") === "true",
+		);
+	},
+};
+
+/**
+ * A CHAT section through the same control - the half that already worked, and
+ * the control the audit's other rows are read against: `This week` is switched
+ * off and the section leaves the chats region while the panel keeps drawing its
+ * own row and tick.
+ */
+export const AuditChatSectionHidden: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressSection("week", false);
+		await settle(
+			() => !chatsSectionDrawn("week") && switchState("week") === "false",
+		);
+	},
+};
+
+/**
+ * `Pinned` through its own control - the THIRD call site of the same question.
+ *
+ * The chats list asks `pinnedShown` for this one and `drawnSections` for the
+ * time sections below it, which is why the audit drives a frame of each rather
+ * than trusting that one call site speaks for the other: the defect this pass
+ * fixed was exactly a call site that did not ask at all.
+ */
+export const AuditPinnedHidden: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressSection("pinned", false);
+		await settle(
+			() =>
+				!chatsSectionDrawn("pinned") &&
+				!rowDrawn("audit-pinned-new") &&
+				switchState("pinned") === "false",
+		);
+	},
+};
+
+/**
+ * `Teams` through the same gate as `Agents`, driven separately so the pair is
+ * two photographs rather than one claim: the fix gates both entity sections, and
+ * a frame of each is what says so.
+ */
+export const AuditTeamsHidden: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressSection("teams", false);
+		await settle(
+			() =>
+				!entityDrawn("teams") &&
+				entityDrawn("agents") &&
+				switchState("teams") === "false",
+		);
+	},
+};
+
+/** `Group by: Agent and team` - the list regroups under the bindings. */
+export const AuditGroupAgent: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressGroupBy("agent");
+		await settle(
+			() => chatsSectionDrawn("coder") && !chatsSectionDrawn("running"),
+		);
+	},
+};
+
+/**
+ * `Group by: In one list` - one unlabelled group over the same rows.
+ *
+ * The PINNED rows are part of it, and the caption prints that: a grouping is an
+ * arrangement, not a filter, so the two pinned conversations lead the flat list
+ * here instead of vanishing with the `Pinned` section that the section
+ * arrangement draws them in. On `origin/main` the caption's row order starts at
+ * `audit-today-1` and neither pinned id appears.
+ */
+export const AuditGroupFlat: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressGroupBy("flat");
+		await settle(
+			() =>
+				chatsSectionDrawn("all") &&
+				rowDrawn("audit-pinned-new") &&
+				rowDrawn("audit-pinned-old"),
+		);
+	},
+};
+
+/**
+ * `Order by: Most recent`, over the flat list so the order is directly readable.
+ *
+ * The catalogue's own order, untouched - and the audited row (`audit-busy-old`,
+ * the live turn that is also the oldest conversation) sits past the ten-row
+ * page, so it is NOT drawn.
+ */
+export const AuditOrderMostRecent: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressGroupBy("flat");
+		await pressGroupBy("recent");
+		await settle(() => !rowDrawn("audit-busy-old"));
+	},
+};
+
+/**
+ * `Order by: Active first`, the same list one press later.
+ *
+ * The live turn is lifted to the head of the page, so it is drawn - the two
+ * frames differ by that row and by nothing else, which is what makes this pair
+ * evidence that the two options are two comparators rather than one control
+ * writing the same order twice.
+ */
+export const AuditOrderActiveFirst: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		roster = auditRoster();
+		return <AuditPage />;
+	},
+	play: async () => {
+		await auditScene();
+		await openAuditPopover();
+		await pressGroupBy("flat");
+		await pressGroupBy("recent");
+		await pressGroupBy("active-first");
+		await settle(() => rowDrawn("audit-busy-old"));
+	},
+};

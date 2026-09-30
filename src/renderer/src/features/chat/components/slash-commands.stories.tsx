@@ -41,9 +41,18 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
+
+const MODEL_DEFAULT_LABEL = /Set current model as default/;
 import type { FC } from "react";
 import "../../../styles/index.css";
-import { type ArgumentRow, argumentRows } from "./slash-argument-rows";
+import { writeModelDefaultSettings } from "../pickers/model-default-settings";
+import {
+	type ArgumentRow,
+	type ArgumentSource,
+	argumentRows,
+	modelDefaultActionRow,
+} from "./slash-argument-rows";
 import {
 	type CompletionRow,
 	type SlashCommandMeta,
@@ -55,8 +64,29 @@ import { matchChoices, matchCommands } from "./slash-rank";
 /* ---------------------------------------------------------------- fixtures */
 
 /**
+ * The `/fast` row, REAL-SHAPED: the registry entry `slash_commands.py` serves
+ * (`desktop_destination="session.fast"`, description verbatim), and the ONE
+ * command whose right-edge slot is a live state — a named const because the
+ * dial story renders this exact object.
+ */
+const FAST_COMMAND: SlashCommandMeta = {
+	name: "fast",
+	description: "Toggle faster output at premium pricing",
+	aliases: [],
+	arguments: "optional",
+	echo: false,
+	consumes_prompt: false,
+	destination: "session.fast",
+	execution: "owner",
+};
+
+/**
  * Registry rows, REAL-SHAPED: the field names and types `GET /v1/desktop/commands`
  * sends (`desktop_commands.py:command_catalogue`).
+ *
+ * `/fast` is carried the way the backend catalogue carries it, so the dial
+ * board and the class-fix frames render the same fixture the live registry
+ * feeds.
  */
 const COMMANDS: SlashCommandMeta[] = [
 	{
@@ -119,6 +149,7 @@ const COMMANDS: SlashCommandMeta[] = [
 		destination: "session.effort",
 		execution: "owner",
 	},
+	FAST_COMMAND,
 	{
 		name: "markdown",
 		description: "Render the transcript as markdown",
@@ -156,6 +187,17 @@ const commandRows = (query: string): CompletionRow[] =>
 		? COMMANDS.map((command) => ({ name: command.name, command }))
 		: matchCommands(query, COMMANDS)
 	).map(({ name, command }) => ({ kind: "command", command, label: name }));
+
+/**
+ * The `/fast` row with its dial state attached — what the hook builds for this
+ * destination and no other (`useSlashCompletion` attaches `fastState` only for
+ * `session.fast`), which cannot run under Storybook. The three values are the
+ * spec's own states (`fastModeState`, `session-model.ts`): `on`, `off`, and
+ * `null` for a model that reports no fast tier — the third renders NO slot.
+ */
+const fastRows = (fastState: "on" | "off" | null): CompletionRow[] => [
+	{ kind: "command", command: FAST_COMMAND, label: "fast", fastState },
+];
 
 /** A long list, for the scrolled state. */
 const MANY_COMMANDS: SlashCommandMeta[] = [
@@ -312,7 +354,7 @@ const THEMES = [
 ];
 
 const argumentRowsFor = (
-	source: "model" | "team" | "agent" | "effort" | "approvals" | "theme",
+	source: ArgumentSource,
 	entities: readonly unknown[],
 	current: unknown,
 	query = "",
@@ -489,6 +531,43 @@ export const CommandPhaseNarrowed: Story = {
 };
 
 /**
+ * THE `/fast` ROW'S RIGHT-EDGE SLOT, in the three states a session's spec can
+ * report: the dial on, the dial off, and a model with no fast tier to report
+ * (no slot at all). Read from `fastModeState` off the spec in force, so the row
+ * and the model chip cannot disagree about a session's dial.
+ *
+ * What it replaced: a bare `value?` placeholder used to trail every optional
+ * command, `/fast` included — parser jargon that read as a broken placeholder.
+ * The whole class is gone (`commandRowSlot`, `slash-contract.ts`);
+ * `command-phase` photographs the other optional rows, this board the dial row.
+ */
+export const CommandPhaseFastDial: Story = {
+	name: "command-phase-fast-dial",
+	render: () => (
+		<Board caption="The /fast row's slot: the dial on, the dial off, and a model that reports no fast tier (no slot) — three sessions, one row.">
+			<Case width={720} draft="/fast" rows={4}>
+				<SlashSuggestionsPopup
+					state={state({ commandQuery: "fast", matches: fastRows("on") })}
+					onPick={noop}
+				/>
+			</Case>
+			<Case width={720} draft="/fast" rows={4}>
+				<SlashSuggestionsPopup
+					state={state({ commandQuery: "fast", matches: fastRows("off") })}
+					onPick={noop}
+				/>
+			</Case>
+			<Case width={720} draft="/fast" rows={4}>
+				<SlashSuggestionsPopup
+					state={state({ commandQuery: "fast", matches: fastRows(null) })}
+					onPick={noop}
+				/>
+			</Case>
+		</Board>
+	),
+};
+
+/**
  * A FUZZY query: `/lgt`. No command starts with those letters — the row is a
  * subsequence match on `logout`, which is the behaviour a prefix filter could
  * never produce.
@@ -507,6 +586,71 @@ export const CommandPhaseFuzzy: Story = {
 };
 
 /** `/team ` typed: the roster, with the session's current team marked. */
+export const ArgumentPhaseModelDefaultAction: Story = {
+	render: () => {
+		const page = window as unknown as {
+			__slashDefaultWrites?: { key: "hosting" | "model_name"; value: string }[];
+		};
+		page.__slashDefaultWrites = [];
+		const action = modelDefaultActionRow(
+			"default",
+			{ provider: "anthropic", model_id: "claude-opus-5" },
+			true,
+			true,
+		);
+		return (
+			<Box width={720} draft="/model default">
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						argumentQuery: "default",
+						paneHasSession: true,
+						matches: [
+							{
+								kind: "action",
+								row: action ?? {
+									kind: "action",
+									id: "model-default",
+									name: "Set current model as default",
+									description: "No active session model is available to save.",
+									model: null,
+									clickText:
+										"A session model is required before this action can save a default.",
+									disabled: true,
+								},
+							},
+						],
+					})}
+					onPick={noop}
+					onActionPick={(row) => {
+						if (!row.model) return;
+						void writeModelDefaultSettings(row.model, async (key, value) => {
+							page.__slashDefaultWrites?.push({ key, value });
+						});
+					}}
+				/>
+				<output data-testid="default-writes">ready</output>
+			</Box>
+		);
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("option", { name: MODEL_DEFAULT_LABEL }),
+		);
+		await waitFor(() =>
+			expect(
+				(window as unknown as { __slashDefaultWrites?: unknown[] })
+					.__slashDefaultWrites,
+			).toEqual([
+				{ key: "hosting", value: "anthropic" },
+				{ key: "model_name", value: "claude-opus-5" },
+			]),
+		);
+	},
+};
+
 export const ArgumentPhaseTeams: Story = {
 	render: () => (
 		<Box width={720} draft="/team ">

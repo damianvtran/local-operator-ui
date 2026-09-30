@@ -91,6 +91,7 @@ import {
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ELECTRON_BIN = createRequire(import.meta.url)("electron");
 
@@ -283,6 +284,13 @@ function launchApp(windowMode, { inspectPort = 0 } = {}) {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: windowMode,
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	/*
+	 * `withTelemetryOff`: this rig boots the built app - headless or inactive,
+	 * depending on the arm - and that app's two processes carry the live PostHog
+	 * project key, with the renderer's copy inlined at build time so the launch is
+	 * the only place it can be switched off. See `telemetry-off.mjs`.
+	 */
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}

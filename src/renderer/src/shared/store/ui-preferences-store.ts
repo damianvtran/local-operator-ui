@@ -5,15 +5,34 @@
  * theme selection, and provides methods to update these preferences.
  */
 
-import type {
-	SidebarOrder,
-	SidebarRegions,
+import {
+	CHAT_PANE_MIN_PX,
+	SIDEBAR_DEFAULT_WIDTH,
+	SIDEBAR_MAX_WIDTH,
+	SIDEBAR_MIN_WIDTH,
+	canvasDockWidth,
+} from "@features/chat/chat-sidebar-layout";
+import {
+	DEFAULT_SIDEBAR_VIEW,
+	type SidebarView,
+} from "@features/chat/chat-sidebar-view";
+import {
+	DEFAULT_SIDEBAR_REGIONS,
+	type SidebarOrder,
+	type SidebarRegions,
 } from "@features/chat/sidebar-split";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { measureCell } from "@shared/themes/terminal-theme";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
+/**
+ * Which menu a recents ring belongs to. The two rosters are separate lists of
+ * separate things (an agent name is never a team name), so one ring would rank
+ * rows the other menu cannot offer.
+ */
+export type ProfileRecencyKind = "agent" | "team";
 
 /**
  * Type definition for the UI preferences store state
@@ -40,9 +59,15 @@ type UiPreferencesState = {
 	closeCommandPalette: () => void;
 
 	/**
-	 * Toggles the command palette visibility
+	 * Toggles the command palette visibility.
+	 *
+	 * `initialQuery` seeds the query when this call OPENS the palette, which is
+	 * how the Cmd/Ctrl+P door opens it as the conversation switcher (issue
+	 * #659); every other door passes nothing and gets the empty box it always
+	 * did. A call that CLOSES keeps the query as it is, and the close path is
+	 * what clears it.
 	 */
-	toggleCommandPalette: () => void;
+	toggleCommandPalette: (initialQuery?: string) => void;
 
 	/**
 	 * Sets the command palette query
@@ -458,6 +483,38 @@ type UiPreferencesState = {
 	chatSidebarOrder: SidebarOrder;
 
 	/**
+	 * How the sidebar's list is ARRANGED: which sections draw, in what order, and
+	 * how the chats are grouped, ordered and paged (the view popover's state).
+	 *
+	 * The rules are `features/chat/chat-sidebar-view.ts`'s, and the component
+	 * reads this through `parseSidebarView` for the reason `chatSidebarListHeight`
+	 * is passed as it was READ: `localStorage` is not the setter's path out, so
+	 * the module is the one place a tampered value is rejected.
+	 *
+	 * ONE OBJECT rather than five fields, and that is what keeps the popover's
+	 * five controls from each writing a field the others read: the setter takes
+	 * the whole next view, so "hide Today" and "move Older up" both go through
+	 * the module's own `toggleSection`/`moveSection` and cannot disagree about the
+	 * order they leave behind.
+	 */
+	chatSidebarView: SidebarView;
+
+	/**
+	 * The built-ins offer the reader dismissed, as the SIGNATURE of the offer
+	 * they dismissed — `features/agents/builtin-offer.ts` derives the value from
+	 * the names on offer and holds the read-side guard. `""` means nothing has
+	 * been dismissed.
+	 *
+	 * A SIGNATURE RATHER THAN A BOOLEAN, because dismissing is a statement about
+	 * the CURRENT state — the precedent `chat-status.ts` sets for the connection
+	 * strip's dismissal ("keyed on the state the reader dismissed rather than on
+	 * a boolean they set once"): a catalogue that gains a built-in is a new
+	 * offer and comes back, while the same catalogue stays dismissed across
+	 * restarts, which is exactly what this persists.
+	 */
+	dismissedBuiltinOfferSignature: string;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -523,6 +580,20 @@ type UiPreferencesState = {
 	setChatSidebarOrder: (order: SidebarOrder) => void;
 
 	/**
+	 * Replace the sidebar's view. Takes the whole value rather than a patch: the
+	 * popover's controls are built from `chat-sidebar-view.ts`'s own
+	 * `toggleSection`/`moveSection`, which each return a complete next view.
+	 */
+	setChatSidebarView: (view: SidebarView) => void;
+
+	/**
+	 * Record the built-ins offer's signature as dismissed. Takes the resolved
+	 * signature rather than the names, because the derivation is the module's
+	 * (`builtinOfferSignature`) and the control that presses this holds it.
+	 */
+	dismissBuiltinOffer: (signature: string) => void;
+
+	/**
 	 * Restore the canvas width to its default value
 	 */
 	restoreDefaultCanvasWidth: () => void;
@@ -551,6 +622,31 @@ type UiPreferencesState = {
 	 * recent use rather than by first use.
 	 */
 	rememberMention: (cwd: string, path: string) => void;
+
+	/**
+	 * The chat header's identity-menu recents: the profiles this app has
+	 * SWITCHED TO, most recent first, one ring per menu.
+	 *
+	 * WHY GLOBAL RATHER THAN PER CONVERSATION. A recents band exists to make a
+	 * long roster cheap to reach, and the roster is the same in every
+	 * conversation: what a session's own history would describe is the ONE
+	 * profile it is bound to, which the menu already reports as the current row.
+	 * So the ring is app-wide (`localStorage`, via this store's persistence) and
+	 * a fresh install starts with both rings empty.
+	 *
+	 * NAMES, NOT ROWS. The row a name describes is read from the live catalogue
+	 * every open, so a name that no longer resolves is dropped at render rather
+	 * than resurrecting a profile the app can no longer switch to.
+	 */
+	profileRecents: Record<ProfileRecencyKind, string[]>;
+
+	/**
+	 * Record a profile the owner accepted. Bounded at `PROFILE_RECENTS_LIMIT`,
+	 * dropping the oldest, and moved to the front when re-used so the ring is
+	 * ordered by recent use rather than by first use — the same rule
+	 * `rememberMention` states one list over.
+	 */
+	rememberProfile: (kind: ProfileRecencyKind, name: string) => void;
 };
 
 /**
@@ -562,14 +658,20 @@ type UiPreferencesState = {
  * union, so a section spelled at a call site and nowhere here would be a request
  * nothing could resolve.
  *
- * The four are the pane's four LIVE lists — the plan, the roster, the tool jobs
- * and the session's armed wake schedules — and they are named for their sections
- * rather than for their controls: `jobs` is the section that draws `bash` rows,
- * which the roster deliberately does not hold (`run-detail-model.ts`'s
- * partition), and `wakes` is the section that draws the schedules, which no other
- * section holds at all.
+ * The five are the pane's five LIVE lists — the plan, the roster, the tool jobs,
+ * the session's armed wake schedules and its armed monitors — and they are
+ * named for their sections rather than for their controls: `jobs` is the section
+ * that draws `bash` rows, which the roster deliberately does not hold
+ * (`run-detail-model.ts`'s partition), `wakes` is the section that draws the
+ * schedules, and `monitors` the section that draws the watches — neither of
+ * the last two held anywhere else in the pane.
  */
-export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
+export type RunPanelSection =
+	| "todos"
+	| "subagents"
+	| "jobs"
+	| "wakes"
+	| "monitors";
 
 /**
  * Which list the browser pane's strip shows: this conversation's tabs, or all of
@@ -624,6 +726,101 @@ const claimRightSlot = (
 	isConsolePaneOpen: pane === "isConsolePaneOpen",
 });
 
+export type RightSlotPane = "canvas" | "run" | "browser" | "console";
+
+/**
+ * The width the right slot gives the open pane, for the row it shares with the
+ * conversation — ONE implementation, TWO callers, which are exactly the two that
+ * can disagree about where the slot's leading edge is:
+ *
+ * - `chat-layout.tsx` paints the 32px chrome lane above the row, and its last
+ *   stop has to land on the pane's leading edge;
+ * - `chat-content.tsx` renders the panes, and this is what the canvas's own
+ *   width is now decided by rather than by a formula beside it.
+ *
+ * WHY A SHARED NUMBER RATHER THAN TWO DERIVATIONS, in one sentence: the lane and
+ * the pane disagreeing by even the transition's width is a horizontal band of the
+ * wrong ground across the pane at y32, which is the operator's original top-edge
+ * report with a different cause — so the two callers are made to read the same
+ * measurement rather than to agree by convention.
+ *
+ * WHY IT IS A NUMBER AND NOT "WHICH PANE IS OPEN": the four panes are not
+ * widths-scaled versions of one another — the canvas holds documents (default
+ * 800, capped at 560 docked), the run panel prose and rosters (420), the browser
+ * a page (640) and the console a measured 100-column grid — and any union of pane
+ * ids would carry their four widths with it, i.e. a second place deciding which
+ * width belongs to an open pane. The caller asks "how wide is the slot" and gets
+ * the one answer that is true for the pane actually open.
+ *
+ * THE ARITHMETIC IS THE ROW'S OWN FLEX, restated once: the row is the work area
+ * beside the sidebar, the conversation's floor is CHAT_PANE_MIN_PX of it, and the
+ * pane takes what is left. That is why the canvas resolves through
+ * `canvasDockWidth` — §I's `min(560, row - 480)`, which IS the same leftover
+ * capped at the pane's dock maximum — and why the other three are
+ * `min(preference, leftover)`. A preference of 0 is the store's "unset" and
+ * resolves to that pane's own fallback first (four panes, four numbers, stated
+ * where each is declared).
+ *
+ * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
+ * one where the mode and the arithmetic are easiest to get out of step: when the
+ * row cannot host the pane beside the conversation, chat-content stops drawing
+ * the divider and the pane COVERS the conversation — but the width it covers it
+ * at is still the leftover, because the conversation keeps its floor under the
+ * pane exactly as it does beside it. So there is no branch here for the mode: at
+ * every row where the pane overlays, `row - 480` is both the width the pane is
+ * drawn at and the whole region right of the sidebar's stop, and at the rows
+ * where a naive reading would disagree (a preference smaller than the overlay's
+ * room), the pane draws at its preference and this function says so.
+ *
+ * UNMEASURED IS NOT ZERO. `rowWidth` is 0 for the frame before the row's first
+ * measurement, and answering 0 there would tell the lane the slot has no pixels —
+ * a full-width elevated band for one frame, then animated away — while the panes
+ * draw at their preferences in that same frame (the rule `chat-content.tsx`
+ * records for the canvas). The preference is the honest answer, and the measured
+ * row corrects it in the same commit.
+ *
+ * Precedence is the reading order of the four and it only matters if the store's
+ * own invariant ever breaks: `claimRightSlot` above makes the four flags mutually
+ * exclusive by construction, so at most one of them is ever true.
+ */
+export function resolveRightSlotWidth(
+	rowWidth: number,
+	state: UiPreferencesState,
+): number {
+	const pane: RightSlotPane | null = state.isCanvasOpen
+		? "canvas"
+		: state.isRunPanelOpen
+			? "run"
+			: state.isBrowserPaneOpen
+				? "browser"
+				: state.isConsolePaneOpen
+					? "console"
+					: null;
+	if (pane === null) return 0;
+
+	let preferred: number;
+	switch (pane) {
+		case "canvas":
+			preferred = state.canvasWidth || CANVAS_PANEL_ZERO_FALLBACK;
+			break;
+		case "run":
+			preferred = state.runPanelWidth || DEFAULT_RUN_PANEL_WIDTH;
+			break;
+		case "browser":
+			preferred = state.browserPanelWidth || DEFAULT_BROWSER_PANEL_WIDTH;
+			break;
+		case "console":
+			preferred = state.consolePanelWidth || DEFAULT_CONSOLE_PANEL_WIDTH;
+			break;
+	}
+	if (rowWidth <= 0) return preferred;
+
+	if (pane === "canvas") {
+		return Math.min(preferred, canvasDockWidth(rowWidth));
+	}
+	return Math.min(preferred, Math.max(0, rowWidth - CHAT_PANE_MIN_PX));
+}
+
 /**
  * A one-shot request to bring one of the pane's sections into view.
  */
@@ -645,9 +842,33 @@ export type RunPanelReveal = {
  */
 /**
  * Default values for canvas and chat sidebar widths
+ *
+ * The chat sidebar's default is the ONE sidebar's: 260px, user-resizable
+ * 220-320, and those three numbers live in
+ * `features/chat/chat-sidebar-layout.ts` so the component, the store's clamp and
+ * the desktop suite all read one table rather than three copies of it. It was
+ * 280 (clamped 240-360) when this was the chat route's SECOND column, beside a
+ * 220px rail: the pair is now one column, and 260 is what the merged contents
+ * need.
  */
-const DEFAULT_CANVAS_WIDTH = 800;
-const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
+/**
+ * The width a fresh profile gives the canvas: the preference an unset store
+ * falls back to at the SETTINGS level, distinct from `CANVAS_PANEL_ZERO_FALLBACK`
+ * below (the value an explicitly zeroed preference reads as). Exported because
+ * the shell story that mounts the dock reads the app's own default rather than
+ * restating it.
+ */
+export const DEFAULT_CANVAS_WIDTH = 800;
+/**
+ * The canvas's zero-fallback, which is NOT its default: `chat-content.tsx` has
+ * always read an unset (`0`) preference as 450 rather than as
+ * `DEFAULT_CANVAS_WIDTH`, and the two have been different numbers since the
+ * pane's first drag shipped. It lives here now because `resolveRightSlotWidth`
+ * below is where the number is consumed, and the lane above the slot reads the
+ * same resolver the shell does.
+ */
+const CANVAS_PANEL_ZERO_FALLBACK = 450;
+const DEFAULT_CHAT_SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 /**
  * Exported because the pane's reset path needs the NUMBER, not the write: a
  * double-click on the divider stores this width directly, and the divider's own
@@ -665,9 +886,28 @@ export const DEFAULT_RUN_PANEL_WIDTH = 420;
  * been working in, and twenty paths is more than any single session's working set.
  */
 export const MENTION_RECENTS_LIMIT = 20;
+
+/**
+ * How many profiles one identity menu remembers.
+ *
+ * Four, and the number is a bound on the BAND rather than on the list: the band is
+ * a shortcut above a roster that is still complete underneath it. It is also what
+ * fits: four of the app's two-line rows plus a band heading (4 x 48 + 28 = 220px,
+ * against the ~247px of rows the panel's ceiling leaves - see
+ * `IDENTITY_MENU_MAX_HEIGHT`), so opening the menu shows the recent band AND the
+ * heading of the full roster below it. A longer ring would scroll the "all" band
+ * out of sight on open, which is a band hiding a list rather than a shortcut to
+ * one.
+ */
+export const PROFILE_RECENTS_LIMIT = 4;
 /** The browser pane's default, and the design's number rather than a fit: see
  * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
-const DEFAULT_BROWSER_PANEL_WIDTH = 640;
+export const DEFAULT_BROWSER_PANEL_WIDTH = 640;
+/**
+ * Exported for the same reason `DEFAULT_RUN_PANEL_WIDTH` is: the shell's own
+ * fallback for an unset preference reads this number instead of restating it
+ * (`chat-content.tsx`), and `resolveRightSlotWidth` above is the third reader.
+ */
 
 /**
  * The console pane's default width: the design's default grid, measured.
@@ -798,9 +1038,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * — so there is nothing to migrate and nothing is written until the
 			 * user drags or collapses something.
 			 */
-			chatSidebarRegions: "both",
+			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
+			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
 			chatSidebarOrder: "entities-first",
+			dismissedBuiltinOfferSignature: "",
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
@@ -815,6 +1057,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
 			isCreateAgentDialogOpen: false,
 			mentionRecents: null,
+			/* Empty on a fresh install, and the menu renders NO recents band (and no
+			 * heading) in that state rather than an empty one - see the menu model. */
+			profileRecents: { agent: [], team: [] },
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -832,12 +1077,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ isCommandPaletteOpen: false, commandPaletteQuery: "" });
 			},
 
-			toggleCommandPalette: () => {
+			toggleCommandPalette: (initialQuery = "") => {
 				set((state) => ({
 					isCommandPaletteOpen: !state.isCommandPaletteOpen,
 					commandPaletteQuery: !state.isCommandPaletteOpen
-						? ""
-						: state.commandPaletteQuery, // Clear query if opening, retain if closing (though it's cleared by closeCommandPalette)
+						? initialQuery
+						: state.commandPaletteQuery, // Retain when closing (though it's cleared by closeCommandPalette)
 				}));
 			},
 
@@ -1010,7 +1255,10 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			setChatSidebarWidth: (width: number) => {
 				set({
-					chatSidebarWidth: Math.min(360, Math.max(240, width)),
+					chatSidebarWidth: Math.min(
+						SIDEBAR_MAX_WIDTH,
+						Math.max(SIDEBAR_MIN_WIDTH, width),
+					),
 				});
 			},
 
@@ -1035,6 +1283,18 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
+				});
+			},
+
+			setChatSidebarView: (view: SidebarView) => {
+				set({
+					chatSidebarView: view,
+				});
+			},
+
+			dismissBuiltinOffer: (signature: string) => {
+				set({
+					dismissedBuiltinOfferSignature: signature,
 				});
 			},
 
@@ -1063,6 +1323,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					return { mentionRecents: { cwd, paths: next } };
 				});
 			},
+
+			rememberProfile: (kind, name) => {
+				set((state) => ({
+					profileRecents: {
+						...state.profileRecents,
+						[kind]: pushProfileRecent(state.profileRecents[kind] ?? [], name),
+					},
+				}));
+			},
 		}),
 		{
 			name: "ui-preferences-storage",
@@ -1088,6 +1357,28 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 		},
 	),
 );
+
+/**
+ * One profile's move to the front of a recents ring: most recent first, no
+ * duplicates, bounded at `PROFILE_RECENTS_LIMIT`.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE EXPRESSION IN THE ACTION, for the reason
+ * `persistedUiPreferences` below is one: the rule is what the band's order means
+ * ("the profile you switched to a moment ago is the first row"), and a rule that
+ * lives inside a `set()` callback can only be exercised by mounting the store. As
+ * a value it is pinned by `scripts/header-identity-menu.test.mjs` - including the
+ * two cases an inline version gets wrong quietly: a name re-used moves rather
+ * than duplicates, and the ring DROPS the oldest rather than growing.
+ */
+export function pushProfileRecent(
+	ring: readonly string[],
+	name: string,
+): string[] {
+	return [name, ...ring.filter((entry) => entry !== name)].slice(
+		0,
+		PROFILE_RECENTS_LIMIT,
+	);
+}
 
 /**
  * The part of the preferences that is written to disk: all of it, minus the two

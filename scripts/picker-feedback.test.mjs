@@ -74,6 +74,7 @@ const bundleInto = async (name, contents) => {
 		// The renderer's own aliases, from `electron.vite.config.js`.
 		alias: {
 			"@shared": resolve("src/renderer/src/shared"),
+			"@features": resolve("src/renderer/src/features"),
 			"@renderer": resolve("src/renderer/src"),
 		},
 		write: false,
@@ -91,6 +92,8 @@ const {
 	pickerBodyKind,
 	pickerFooterHint,
 	pickerPrimaryLabel,
+	pickerPlacement,
+	filterPickerOptions,
 } = await bundleInto(
 	"picker-host",
 	`
@@ -101,21 +104,51 @@ const {
 		pickerBodyKind,
 		pickerFooterHint,
 		pickerPrimaryLabel,
+		pickerPlacement,
+		filterPickerOptions,
 	} from "./src/renderer/src/features/chat/pickers/picker-host";
 `,
 );
 
-const { catalogueListing, failedProviders } = await bundleInto(
-	"catalogue-listing",
+/*
+ * The MODEL picker's own rule, bundled separately because it is a separate
+ * module — the model picker is the only surface that opts into it, and the
+ * default filter above is asserted in the same file to still be the default.
+ */
+const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
+	"model-picker-match",
 	`
-	export { catalogueListing, failedProviders } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+	export {
+		modelPickerMatchKey,
+		matchModelPickerOptions,
+	} from "./src/renderer/src/features/chat/pickers/model-picker-match";
 `,
 );
+
+const { catalogueListing, failedProviders, providerListingNotice } =
+	await bundleInto(
+		"catalogue-listing",
+		`
+	export { catalogueListing, failedProviders, providerListingNotice } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+`,
+	);
 
 const { modelSelector } = await bundleInto(
 	"session-model",
 	`
 	export { modelSelector } from "./src/renderer/src/features/chat/session-status/session-model";
+`,
+);
+
+/*
+ * The fast picker's decision (UX round 1, U2), bundled from its own module for
+ * the same reason the model rule is: the component calls it, so the cases
+ * below pin what the component runs.
+ */
+const { fastPickerOptions } = await bundleInto(
+	"fast-picker-options",
+	`
+	export { fastPickerOptions } from "./src/renderer/src/features/chat/pickers/fast-picker-options";
 `,
 );
 
@@ -384,6 +417,278 @@ test("closing while busy is called Close, not Cancel", () => {
 		pickerPrimaryLabel({ busy: false, result: { tone: "error", text: "no" } }),
 		"Close",
 	);
+	assert.equal(
+		pickerPrimaryLabel({
+			busy: false,
+			result: { tone: "warning", text: "refused" },
+		}),
+		"Close",
+	);
+});
+
+/* ------------------------------------------- the keyboard's row (U1/U2) -- */
+
+/** A filtered option list, as the host builds one. */
+const options = (values, current = null) =>
+	values.map((value) => ({ value, label: value, current: value === current }));
+
+test("a re-list that moves every row leaves the highlight on the user's row", () => {
+	/*
+	 * UX U1, and it is the defect this change made the default path: the
+	 * automatic provider listing lands ~2.3 s after the dialog opens and the
+	 * cadence re-lists every 15 minutes, so the option list moves under the user
+	 * repeatedly. The old rule re-placed the highlight on the CURRENT MODEL
+	 * whenever the list changed identity and no query was typed — measured with
+	 * the highlight on row 3 and the footer reading `Enter picks Anthropic:
+	 * Claude Haiku 4.5`, then back on row 0 and `Enter picks Claude Opus 5`.
+	 *
+	 * The fixture is the same rows ROTATED by one, which is the sharpest form of
+	 * the case: an index-held highlight follows the slot, a row-held one follows
+	 * the model, and the two answers differ in a way the assertion can see.
+	 */
+	const rows = options(
+		[
+			"claude-opus-5",
+			"claude-sonnet-5",
+			"claude-haiku-4-5",
+			"gpt-5.4",
+			"gemma-4",
+		],
+		"claude-opus-5",
+	);
+	const landed = [rows[4], ...rows.slice(0, 4)];
+	const placed = pickerPlacement({
+		options: landed,
+		held: "gpt-5.4",
+		active: 3,
+		query: "",
+		queryChanged: false,
+		steered: true,
+	});
+	assert.equal(placed.held, "gpt-5.4");
+	assert.equal(
+		landed[placed.index].value,
+		"gpt-5.4",
+		"the row the user chose keeps the highlight, wherever the landing put it",
+	);
+	assert.notEqual(
+		landed[placed.index].current,
+		true,
+		"and the highlight did NOT go back to the current model, which is exactly what the old rule did",
+	);
+	assert.equal(
+		placed.retargeted,
+		undefined,
+		"nothing went missing, so this pass has nothing to say - and `undefined` rather than `null` is the whole of round 2's U2 fix: `null` CLEARS the sentence, and the pass that re-places the highlight on the survivor runs one render after the pass that named it, so clearing there is how a correct rule shipped a message no user ever saw",
+	);
+	assert.equal(placed.steered, true, "and the row is still the user's");
+});
+
+test("a row that vanishes under the user's highlight is named, not silently replaced", () => {
+	/*
+	 * UX U2: the row set can change under the user by design now, and the old
+	 * clamp moved the highlight to whatever occupied the slot — so Enter acted on
+	 * a model the user never chose, with nothing on screen saying so. When the
+	 * row is gone the placement still happens (a picker with no highlight would
+	 * be worse), but it is STATED.
+	 */
+	const rows = options(["claude-opus-5", "claude-sonnet-5"], "claude-opus-5");
+	const gone = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+	});
+	assert.equal(gone.index, 1);
+	assert.equal(gone.held, "claude-sonnet-5");
+	assert.deepEqual(
+		gone.retargeted,
+		{ lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+		"Enter's new target is named, because the row it was on is gone - and the ROW it is about travels with the words, so a later pass can tell when the sentence stops being true (UX U7)",
+	);
+
+	/*
+	 * And the other direction, which must NOT be said: a row the user never
+	 * steered was never theirs, so a landing that moves the component's own
+	 * placement is not a retarget.
+	 */
+	const untouched = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "opus",
+		queryChanged: false,
+		steered: false,
+	});
+	assert.equal(
+		untouched.retargeted,
+		undefined,
+		"a row the user never steered is not a retarget, and a landing that moves the component's own placement says nothing either way",
+	);
+
+	/*
+	 * And the third state's OTHER edge: typing is the user's own act and IS the
+	 * case that clears it, because the list they asked for needs no explanation.
+	 */
+	const typedAway = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "claude",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.equal(typedAway.retargeted, null);
+
+	/*
+	 * U7, AND THE TWO WAYS THE SENTENCE STOPS BEING TRUE. Both are decided here,
+	 * in the rule that knows the list, the query's change and the sentence at
+	 * once - no second mechanism beside it.
+	 *
+	 * (a) The row it is about is LISTED AGAIN. That is what the user's own
+	 * recovery control produces: the provider listing answers and the row the
+	 * sentence calls missing is on screen. Measured on the shipped component
+	 * (`scripts/picker-host-selection.test.mjs`) as well as here.
+	 */
+	const recovered = pickerPlacement({
+		options: [
+			rows[0],
+			options(["claude-opus-5.5"], "claude-opus-5")[0],
+			rows[1],
+		],
+		held: "claude-sonnet-5",
+		active: 1,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+	});
+	assert.equal(
+		recovered.retargeted,
+		null,
+		"the sentence goes the moment the row it is about is listed again - it is a claim about a missing row",
+	);
+	assert.equal(
+		recovered.held,
+		"claude-sonnet-5",
+		"and the highlight is NOT hopped back onto the recovered row: the user has been told what Enter sends, and a second unbidden move of their selection is the defect U1 exists to prevent",
+	);
+
+	/*
+	 * (a2) THE CORNER, found from both directions in the confirmation round
+	 * (code review MINOR-1 = UX U8), and the reason `heldIndex >= 0` is part of
+	 * the retirement's guard. ONE pass can do both things at once - the row the
+	 * sentence is about comes BACK while the row the highlight is on goes away -
+	 * and that is ordinary rather than exotic, because a re-list answers with a
+	 * different SET of rows each time. Retiring on that pass without the held
+	 * row's survival returned before the branch below could name the new landing,
+	 * so the footer fell back to the plain hint on the one pass where Enter
+	 * started sending a row the user never chose. The sentence goes only when
+	 * there is nothing to announce; otherwise the pass falls through to the
+	 * branch that set it.
+	 */
+	const swapped = pickerPlacement({
+		options: options(["claude-opus-5.5"]),
+		held: "claude-opus-5",
+		active: 0,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-opus-5" },
+	});
+	assert.deepEqual(
+		swapped.retargeted,
+		{ lost: "claude-opus-5", label: "claude-opus-5.5" },
+		"the sentence about the recovered row is REPLACED, in the same pass, by one naming the row that just went - retiring it here would take the announcement away",
+	);
+	assert.equal(
+		swapped.held,
+		"claude-opus-5.5",
+		"and the highlight is on the row the new sentence names",
+	);
+
+	/*
+	 * (b) The user's own typing, in the case round 3 measured: the row the
+	 * sentence would keep SURVIVES the filter. The highlight staying put is the
+	 * highlight's business; the sentence is a separate claim, and typing is the
+	 * user saying they are done with the explanation.
+	 */
+	const retyped = pickerPlacement({
+		options: [rows[1], options(["claude-sonnet-5"], "claude-opus-5")[0]],
+		held: "claude-sonnet-5",
+		active: 1,
+		query: "sonnet",
+		queryChanged: true,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+	});
+	assert.equal(
+		retyped.retargeted,
+		null,
+		"typing retires the sentence even when the row it names survives the filter (round 3, the clearing minor)",
+	);
+	assert.equal(
+		retyped.held,
+		"claude-sonnet-5",
+		"and the held row keeps the highlight, as it always has across a query change",
+	);
+});
+
+test("typing is the user's own act, so it re-places without a message", () => {
+	const rows = options(
+		["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+		"claude-sonnet-5",
+	);
+	const typed = pickerPlacement({
+		options: rows,
+		held: "gemma-4",
+		active: 3,
+		query: "",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.equal(
+		typed.retargeted,
+		null,
+		"a narrowed list is not a row that went missing",
+	);
+	assert.equal(typed.steered, false, "the placement is the dialog's again");
+	assert.equal(
+		typed.index,
+		1,
+		"with no query the placement is the current model's row, as it has always been",
+	);
+
+	const filtered = pickerPlacement({
+		options: rows,
+		held: null,
+		active: 99,
+		query: "claude",
+		queryChanged: true,
+		steered: false,
+	});
+	assert.equal(
+		filtered.index,
+		rows.length - 1,
+		"with a query typed it clamps rather than jumping to the current model",
+	);
+
+	const empty = pickerPlacement({
+		options: [],
+		held: "claude-opus-5",
+		active: 4,
+		query: "zzz",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.deepEqual(empty, {
+		index: 0,
+		held: null,
+		retargeted: null,
+		steered: false,
+	});
 });
 
 /* ----------------------------------------------------------- the body */
@@ -399,6 +704,9 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		},
 		{ isError: false, error: null },
 		String,
+		// The drawn document is the registry's: a partial failure leaves every row
+		// in place, and the picker drew what the live query answered with.
+		false,
 	);
 	assert.equal(
 		partial.loadError,
@@ -424,6 +732,7 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		{ ...rows, source: "initial", errors: {}, credentials_known: true },
 		{ isError: false, error: null },
 		String,
+		false,
 	);
 	assert.deepEqual(clean, {
 		loadError: null,
@@ -438,12 +747,121 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 			error: new Error("the transport refused it"),
 		},
 		(error) => (error instanceof Error ? error.message : String(error)),
+		true,
 	);
 	assert.match(total.loadError ?? "", /transport refused/);
 	assert.equal(total.notice, null);
 
 	assert.deepEqual(failedProviders({ errors: { a: "x" } }), ["a"]);
 	assert.deepEqual(failedProviders(undefined), []);
+});
+
+test("a failed read with rows in hand is a note, not a wall of error text", () => {
+	/*
+	 * Review round 1, R1-1 (UX U3 is the same defect read from the user's side),
+	 * executed over the SHIPPED rule rather than pinned as source text: the
+	 * automatic listing made a read the user never asked for capable of destroying
+	 * the list they already had.
+	 *
+	 * WHY THE LIBRARY DOES NOT SAVE IT, which is what makes this rule load-bearing:
+	 * `placeholderData: keepPreviousData` carries the previous key's rows only while
+	 * the new key is PENDING — a query that settles as `error` has no data at all —
+	 * so an errored live read reaches the picker with `data: undefined`, the old
+	 * `isError` branch returned `loadError`, and the host draws `loadError` IN
+	 * PLACE of the list. The caller therefore hands this the document to DRAW: the
+	 * live answer when there is one, the registry's own when there is not.
+	 */
+	const stringify = (error) =>
+		error instanceof Error ? error.message : String(error);
+	const failed = {
+		isError: true,
+		error: new Error("the transport refused it"),
+	};
+
+	const withRows = catalogueListing(
+		{
+			models: [{ provider: "anthropic", model_id: "claude-opus-5" }],
+			source: "initial",
+			errors: {},
+			credentials_known: true,
+		},
+		failed,
+		stringify,
+		// This document is the shipped registry's: the live read had no data of its
+		// own, which is the state the clause below is true in (round 2, R2-1).
+		true,
+	);
+	assert.equal(
+		withRows.loadError,
+		null,
+		"rows in hand are what the user reads, whatever the read did",
+	);
+	assert.equal(withRows.notice, providerListingNotice(true));
+	assert.equal(
+		withRows.notice,
+		"The provider listing failed. The rows below are the shipped models; Refresh\u00a0from\u00a0providers tries again.",
+		"and the sentence the user reads is pinned here, `\u00a0` and all",
+	);
+	assert.match(
+		withRows.notice ?? "",
+		/Refresh\u00a0from\u00a0providers/,
+		"the quoted phrase is one UNBREAKABLE token, so the control's own label cannot wrap across a line at the note's line length (design D6): the round-1 note broke between `from` and `providers`",
+	);
+	assert.equal(
+		withRows.noticeDetail,
+		"the transport refused it",
+		"the failure's own sentence travels in the note's detail, beside the note",
+	);
+
+	/*
+	 * And the state the first version got WRONG (round 2, code review R2-1): a
+	 * SAME-KEY refetch failure keeps react-query's previous `data`, so the document
+	 * the picker draws is the provider's own listing. Saying "the rows below are
+	 * the shipped models" over provider rows is a claim the user can check by
+	 * looking at the selectors they came to search.
+	 */
+	const liveRows = catalogueListing(
+		{
+			models: [{ provider: "anthropic", model_id: "claude-opus-5-5" }],
+			source: "live",
+			errors: {},
+			credentials_known: true,
+		},
+		failed,
+		stringify,
+		false,
+	);
+	assert.equal(liveRows.notice, providerListingNotice(false));
+	assert.match(
+		liveRows.notice ?? "",
+		/the last listing that answered/,
+		"a failed refetch says what the rows ARE - the previous answer - instead of claiming they are the registry's",
+	);
+	assert.doesNotMatch(
+		liveRows.notice ?? "",
+		/the shipped models/,
+		"and the false clause is gone from the sentence rather than softened",
+	);
+
+	/*
+	 * And the other half, which is the state this branch was written for: a read
+	 * with nothing behind it still IS the body. Asserted because a rule that turned
+	 * every failure into a note would hide a first-load failure behind an empty
+	 * list — the note is drawn above the body, so with no rows it would say nothing
+	 * at all.
+	 */
+	const nothing = catalogueListing(undefined, failed, stringify, true);
+	assert.equal(nothing.notice, null);
+	assert.match(nothing.loadError ?? "", /transport refused/);
+
+	const emptyRows = catalogueListing(
+		{ models: [], source: "initial", errors: {}, credentials_known: true },
+		failed,
+		stringify,
+		true,
+	);
+	assert.equal(emptyRows.notice, null);
+	assert.match(emptyRows.loadError ?? "", /transport refused/);
 });
 
 test("the body's four states are ordered, and a note is not one of them", () => {
@@ -561,6 +979,397 @@ test("the adapter wires the decisions the tests above pin", () => {
 	assert.match(picker, /pickedCurrent/);
 });
 
+test("the picker lists the providers by itself, on the backend's cadence", () => {
+	/*
+	 * The operator's report: after signing in to Anthropic, a model their own
+	 * `/v1/models` answers with — `Opus 5.5`, where the shipped registry stops at
+	 * `claude-opus-5` — was not in the picker, and appeared only if the user
+	 * pressed "Refresh from providers" on the chance that it would help.
+	 *
+	 * WIRING, pinned as source text, which is this file's discipline for the parts
+	 * a bundle cannot reach: `destination-pickers.tsx` imports MUI, so the module
+	 * is read rather than executed. What is asserted here is the four decisions the
+	 * behaviour is made of, each of which can be reverted on its own:
+	 *
+	 *   1. the promotion to the live listing is AUTOMATIC (a mount effect), and it
+	 *      starts from the registry's own document - `useState(false)` then a
+	 *      promotion, never `useState(true)`, because the 2.33 s live re-list has
+	 *      to run behind rows rather than in front of a spinner;
+	 *   2. the query key is the SHARED prefix (`desktopKeys.catalogue`) plus the
+	 *      flag, which is what makes one invalidation at a credential change drop
+	 *      both documents;
+	 *   3. the cadence is the backend's own number, not a second one;
+	 *   4. the listing label stays gated on `live`, so the registry paint is never
+	 *      labelled as a listing at all (design D8), and the label distinguishes the
+	 *      AUTOMATIC pass from the user's own click (design D2, UX U4);
+	 *   5. the refresh control's slot is WIDTH-RESERVED, because the label swap is
+	 *      otherwise a layout change under a pointer that is not moving (design D1);
+	 *   6. a live read that fails still draws the REGISTRY document it fell back to,
+	 *      rather than a wall of error text where the rows were (review round 1, R1-1).
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+
+	assert.match(
+		picker,
+		/const \[live, setLive\] = useState\(false\)/,
+		"the picker still OPENS on the registry document: promoting the query's initial state to `live` would put the spinner where the rows belong",
+	);
+	assert.match(
+		picker,
+		/const catalogueSettled = catalogue\.isFetched;[\s\S]{0,120}?useEffect\(\(\) => \{\s*if \(catalogueSettled\) setLive\(true\);\s*\}, \[catalogueSettled\]\)/,
+		"the live listing starts on its own, and it starts AFTER the registry read settles - promoting on mount replaced the painted rows with a spinner, because `keepPreviousData` can only carry data that already exists",
+	);
+	assert.match(
+		picker,
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, live\]/,
+		"one key prefix, so `invalidateQueries({queryKey: desktopKeys.catalogue})` drops the registry document and the live one together",
+	);
+	assert.match(
+		picker,
+		/export const PICKER_CADENCE_MS = 15 \* 60_000;/,
+		"the cadence is the backend's `PICKER_TTL_S`, written once",
+	);
+	assert.match(
+		picker,
+		/refetchInterval: live \? PICKER_CADENCE_MS : false/,
+		"only the live key polls: the registry answer cannot change while the dialog is open",
+	);
+	assert.match(
+		picker,
+		/const refreshing = live && catalogue\.isFetching;/,
+		"only a live fetch may claim that a listing is running (design D8)",
+	);
+	assert.ok(
+		picker.includes(
+			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
+		),
+		"the automatic pass and the user's own click read differently, because a control nobody pressed must not borrow the word the click produces (design D2, UX U4)",
+	);
+	assert.ok(
+		picker.includes(
+			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
+		),
+		"and the automatic label fits INSIDE the reserved width: a busy label wider than the idle one puts the row's reflow back (design D1, measured at 12px when this one read `Checking providers…`)",
+	);
+	assert.ok(
+		picker.includes('className="min-w-[149px]"'),
+		"the refresh slot reserves the IDLE label's own box (149px, read off the DOM), so the narrower busy labels swap inside a slot whose edges do not move and the controls beside it do not slide (design D1: 38px, twice per open and again on every cadence tick)",
+	);
+	assert.ok(
+		picker.includes(
+			"const catalogueDocument = catalogue.data ?? registry.data;",
+		),
+		"the picker draws the live answer when it has one and the registry's own document otherwise, which is what keeps the painted rows through a failed live read (review round 1, R1-1)",
+	);
+});
+
+/*
+ * A window focus is not an ask, executed rather than pinned.
+ *
+ * The operator's report — "it asks too often and gets itself rate limited" — is
+ * sharpest on this ONE key, because `staleTime: 0` on the live document means an
+ * inherited `refetchOnWindowFocus: true` turns every alt-tab back into a real
+ * provider listing request per signed-in provider. So the policy is asserted
+ * twice, and the two halves answer different questions:
+ *
+ *   - the WIRING (which options the query ships) as source text, this file's
+ *     discipline for destination-pickers.tsx: it imports MUI, so the module is
+ *     read rather than executed and its inline query object cannot be imported;
+ *   - the BEHAVIOUR (does that policy actually stop the read) by running the
+ *     shipped pair through a real query cache and a real focus event. The
+ *     harness can express this honestly because query-core's own focus channel
+ *     is `focusManager`, and `QueryClient.mount()` — what `QueryClientProvider`
+ *     does on mount — is what wires it to the cache. No DOM event is dispatched
+ *     and no timer is raced: the same code path the app runs.
+ *
+ * What it does NOT prove: that the picker's renderer-level component uses the
+ * spread in the position pinned below (that is the source half), and anything
+ * about the SIDEBAR's own session-catalogue focus refetch
+ * (`chat-sidebar.tsx`), which is a different read and a deliberate one — a local
+ * sessions list whose comment says focus "is the one moment a stale catalogue is
+ * about to be looked at". This change does not touch it. NOR does it prove that a
+ * real macOS app switch DELIVERS the hidden-to-visible transition being opted out
+ * of (QA round 1, Q1): the channel is query-core's focus manager, which
+ * `QueryClientProvider` wires to the window's `visibilitychange` on mount, and both
+ * rigs in this repository that need the transition drive it synthetically. Given
+ * the transition, the counts above hold; if the packaged app never delivers it, the
+ * options are INERT rather than wrong, because the change can only remove reads.
+ */
+test("a focus change does not re-list the live catalogue the picker is showing", async () => {
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	/*
+	 * The catalogue query's own object, from its key to its interval. Sliced
+	 * rather than searched file-wide, because `SNAPSHOT_READ_OPTIONS` is spread by
+	 * three other reads — a file-wide `includes` would pass on any of them.
+	 */
+	const query = picker.slice(
+		picker.indexOf("const catalogue = useQuery({"),
+		picker.indexOf("refetchInterval: live ? PICKER_CADENCE_MS : false,"),
+	);
+	assert.ok(
+		query.length > 0,
+		"the catalogue query is still one object literal",
+	);
+	assert.ok(
+		query.includes("...SNAPSHOT_READ_OPTIONS"),
+		"the live catalogue read opts out of the app's focus refetch through the shared policy object, not through a second copy of the rule",
+	);
+	assert.ok(
+		query.includes("refetchOnReconnect: false"),
+		"and states the reconnect half beside it, so a change to the app default cannot re-arm a provider re-list on this key by accident",
+	);
+	assert.match(
+		query,
+		/staleTime: live \? 0 : 60_000/,
+		"the live key stays immediately stale on purpose: the user's own ask (the refresh control, which calls `refetch`) has to read NOW, which is exactly why the unasked focus read had to be switched off",
+	);
+
+	const { defaultQueryOptions, SNAPSHOT_READ_OPTIONS } = await bundleInto(
+		"query-client-policy",
+		`export { defaultQueryOptions, SNAPSHOT_READ_OPTIONS } from "./src/renderer/src/shared/api/query-client";`,
+	);
+	assert.equal(SNAPSHOT_READ_OPTIONS.refetchOnWindowFocus, false);
+	assert.equal(
+		defaultQueryOptions.queries.refetchOnWindowFocus,
+		true,
+		"the app default this opts out of; if it ever flips, the control below stops being a control",
+	);
+	assert.equal(defaultQueryOptions.queries.refetchOnReconnect, false);
+
+	const { QueryClient, QueryObserver, focusManager } = await import(
+		"@tanstack/react-query"
+	);
+
+	/**
+	 * One open of a catalogue-shaped read, then a real blur-and-focus cycle.
+	 *
+	 * `staleTime: 0` and `mount()` are the picker's key and the provider's own
+	 * behaviour respectively; everything else comes from the shipped defaults, so
+	 * the only variable between the two calls below is the option under test.
+	 */
+	const readsAcrossAFocusCycle = async (label, options) => {
+		let reads = 0;
+		const client = new QueryClient({ defaultOptions: defaultQueryOptions });
+		client.mount();
+		const observer = new QueryObserver(client, {
+			queryKey: ["focus-cycle", label],
+			staleTime: 0,
+			...options,
+			queryFn: async () => {
+				reads += 1;
+				return { rows: reads };
+			},
+		});
+		const unsubscribe = observer.subscribe(() => {});
+		/* Waits for the read in flight to finish, rather than for a clock. */
+		const settled = async () => {
+			for (let waited = 0; waited < 2_000; waited += 5) {
+				const result = observer.getCurrentResult();
+				if (!result.isFetching && result.status !== "pending") return;
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+			throw new Error("the catalogue read never settled");
+		};
+		await settled();
+		assert.equal(reads, 1, "one open is one read");
+		focusManager.setFocused(false);
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		focusManager.setFocused(true);
+		// The focus event's read, when the policy allows one, has started by now;
+		// `settled` waits for it to finish before the count is read.
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		await settled();
+		unsubscribe();
+		/*
+		 * `clear()` and `unmount()` before returning, as `panel-read-policy.test.mjs`
+		 * does: the app defaults carry `gcTime: 10 min`, and a cache holding a
+		 * finished query keeps a collection timer armed that outlives this FILE and
+		 * hangs the runner rather than the test. `unmount` is the other half — the
+		 * focus subscription `mount()` installed.
+		 */
+		client.clear();
+		client.unmount();
+		return reads;
+	};
+
+	/*
+	 * The CONTROL first, so a negative reading below cannot be a harness that
+	 * cannot express a focus read at all: the shipped defaults alone DO re-read,
+	 * which is the behaviour the picker was living with.
+	 */
+	assert.equal(
+		await readsAcrossAFocusCycle("inherited", {}),
+		2,
+		"the app's inherited policy re-lists on a focus change — this is the read the fix removes, and if it ever reads 1 the assertion below proves nothing",
+	);
+	assert.equal(
+		await readsAcrossAFocusCycle("picker", {
+			...SNAPSHOT_READ_OPTIONS,
+			refetchOnReconnect: false,
+		}),
+		1,
+		"with the picker's policy a blur-and-focus cycle issues no catalogue read at all, so no provider is re-asked because the user alt-tabbed back",
+	);
+});
+
+test("a credential change drops the catalogue the renderer is holding", () => {
+	/*
+	 * The other half of the report, and the half the BACKEND cannot do: the route
+	 * already drops its cached listing documents when a credential changes
+	 * (`local_operator/providers/controller._invalidate_cached_listing`, and the
+	 * shell `login` path beside it), so a re-ask after a sign-in is answered
+	 * freshly. What was missing was the renderer ever asking again - its copy of
+	 * the catalogue sat in the react-query store with a 60 s stale time and a 24h
+	 * document behind it, and nothing about the sign-in reached it.
+	 *
+	 * Both points are asserted, and the KEY is asserted through the shared binding
+	 * rather than as a literal: an invalidation that spells the key itself still
+	 * passes a literal check while missing the picker's entry, which is the silent
+	 * failure this pair exists to catch.
+	 */
+	const hooks = source("shared/api/local-operator/desktop-hooks.ts");
+	assert.match(
+		hooks,
+		/catalogue: \["desktop", "models"\] as const/,
+		"the catalogue key is registered once, as the prefix both picker keys sit under",
+	);
+
+	const detail = source("features/providers/provider-detail.tsx");
+	assert.match(
+		detail,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.providers \}\);[\s\S]{0,1200}?invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\)/,
+		"a successful sign-in drops the catalogue as well as the provider list",
+	);
+
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(
+		picker,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.accounts \}\);[\s\S]{0,1200}?invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\)/,
+		"removing an account drops the catalogue too, for the same reason",
+	);
+});
+
+test("a completed Radient credential write commissions the account read", () => {
+	/*
+	 * The other half of the operator's report (2026-09-27): after a Radient
+	 * re-sign-in completed, the sidebar foot kept reading "Account unavailable"
+	 * because NO completion path re-commissioned the account read - the paths
+	 * invalidated providers/catalogue/config/verdict but never `radientUserKeys`,
+	 * and a read nobody re-asks cannot heal. A later Settings visit healed it
+	 * only by mounting a new observer on the failed query.
+	 *
+	 * Round 1 narrowed the shape (M1): the completion must go through the hook
+	 * module's ONE entry point `commissionAccountRead`, which clears, CANCELS a
+	 * pre-write chain still asking - an invalidation alone JOINS a data-less
+	 * chain and re-asks nothing - and only then invalidates. The pins below hold
+	 * the entry point's three steps in order and both call sites to it.
+	 *
+	 * The KEY is asserted through the shared binding rather than as a literal,
+	 * for the reason the catalogue pin above records: a call site that spells the
+	 * key itself passes a literal check while missing every consumer that
+	 * subscribes through the binding.
+	 */
+	const hook = source("shared/hooks/use-radient-user-query.ts");
+	assert.match(
+		hook,
+		/export const radientUserKeys = \{\s*all: \["radient-user"\] as const,/,
+		"the account key is registered once, as the prefix every consumer subscribes under",
+	);
+	assert.match(
+		hook,
+		/export async function commissionAccountRead\(/,
+		"the completion paths' one entry point is exported by the module that owns the key",
+	);
+	assert.match(
+		hook,
+		/commissionAccountRead\([\s\S]{0,300}?forgetAccountReadFailure\(\);[\s\S]{0,120}?cancelQueries\(\{ queryKey: radientUserKeys\.all \}\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\)/,
+		"the entry point clears, cancels any chain still asking, then invalidates - an invalidation alone would join it",
+	);
+
+	const detail = source("features/providers/provider-detail.tsx");
+	assert.match(
+		detail,
+		/import \{[\s\S]{0,200}?commissionAccountRead[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the panel imports the entry point's module directly (the barrel exports it as a type only)",
+	);
+	assert.match(
+		detail,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\);[\s\S]{0,2600}?if \(provider\.id === "radient"\) \{[\s\S]{0,120}?void commissionAccountRead\(queryClient\)/,
+		"a Radient credential landing commissions the account read through the one entry point, with the catalogue",
+	);
+
+	const issue = source("shared/hooks/use-radient-session-issue.ts");
+	assert.match(
+		issue,
+		/import \{[\s\S]{0,200}?commissionAccountRead[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the callout imports the entry point's module directly too",
+	);
+	assert.match(
+		issue,
+		/void commissionAccountRead\(queryClient\);[\s\S]{0,120}?await refreshVerdict\(\)/,
+		"the composer callout's completed sign-in commissions the account read beside the verdict",
+	);
+});
+
+test("one invalidation reaches both catalogue keys, and nothing else", async () => {
+	/*
+	 * QA round 1's Q-1 was a coverage gap rather than a defect: the credential half
+	 * of the report ("a sign-in must drop the cache") was pinned as source text and
+	 * its contract was measured in QA's own scratch harness, but nothing IN THE
+	 * REPOSITORY executed it. The trap that gap hides is the silent one — an
+	 * invalidation spelled against a key nobody reads leaves stale rows painted and
+	 * reports success, which is exactly what the shared `desktopKeys.catalogue`
+	 * binding exists to prevent.
+	 *
+	 * So this runs the SHIPPED binding against react-query's own cache: the binding
+	 * is bundled (external packages, so it is the installed react-query, not a copy)
+	 * and one non-exact invalidation is issued exactly as the two credential-change
+	 * call sites issue it.
+	 *
+	 * WHAT IT DOES NOT REPLACE, stated so it is not read as more than it is: a real
+	 * sign-in. No story mounts `ProviderDetail` and a real one needs a live backend,
+	 * so the end-to-end walk stays unexecuted in this repository (QA round 1, Q-1).
+	 * This is the half that can be executed here, and it is now a test rather than a
+	 * one-off reading.
+	 */
+	const { QueryClient, desktopKeys } = await bundleInto(
+		"catalogue-keys",
+		`
+		import { QueryClient } from "@tanstack/react-query";
+		export { QueryClient };
+		export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+	`,
+	);
+	const client = new QueryClient();
+	const registryKey = [...desktopKeys.catalogue, false];
+	const liveKey = [...desktopKeys.catalogue, true];
+	client.setQueryData(registryKey, {
+		models: [{ provider: "anthropic", model_id: "claude-opus-5" }],
+	});
+	client.setQueryData(liveKey, {
+		models: [{ provider: "anthropic", model_id: "claude-opus-5.5" }],
+	});
+	client.setQueryData(desktopKeys.providers, { items: [] });
+
+	await client.invalidateQueries({ queryKey: desktopKeys.catalogue });
+
+	const invalidated = (key) =>
+		client.getQueryState(key)?.isInvalidated === true;
+	assert.ok(
+		invalidated(registryKey),
+		"the registry document the dialog paints first is dropped",
+	);
+	assert.ok(
+		invalidated(liveKey),
+		"and the live one with it: one prefix, both keys ((invalidateQueries) matching is non-exact by default)",
+	);
+	assert.equal(
+		invalidated(desktopKeys.providers),
+		false,
+		"and nothing else — the invalidation is scoped to the catalogue, so a credential change does not re-list the providers page's own queries",
+	);
+});
+
 test("one binding answers which model the session is on", () => {
 	/*
 	 * UX U7. The ✓ and the header sentence read two different fields, so the
@@ -589,11 +1398,30 @@ test("one binding answers which model the session is on", () => {
 		/modelSelector\(bandReadings\(draftFrontend, null\)\.identity\)/,
 		"and a draft's answer is read through the SAME binding the strip prints, rather than a second precedence over the same two fields (review round 1, R4)",
 	);
-	const options = picker.slice(picker.indexOf("const options = useMemo"));
+	/*
+	 * The in-force row mark now lives in the extracted `modelPickerOptions`, which
+	 * takes the binding as an argument rather than reading a field of its own — so
+	 * the pin follows the code: the mark reads the parameter, and the memo passes
+	 * the SAME `shownSelector` binding the strip prints. Both halves are asserted,
+	 * because a function that took the argument while the memo passed a different
+	 * field would satisfy either one alone.
+	 */
+	const options = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
 	assert.match(
 		options,
-		/current:\s*shownSelector === \(row\.selector \?\? row\.value\)/,
+		/current:\s*options\.shownSelector === \(row\.selector \?\? row\.value\)/,
 		"the in-force row mark reads that binding rather than a field of its own",
+	);
+	const memo = picker.slice(
+		picker.indexOf("const options = useMemo"),
+		picker.indexOf("const listing = catalogueListing"),
+	);
+	assert.match(
+		memo,
+		/modelPickerOptions\(rows,\s*\{[\s\S]*?shownSelector,/,
+		"the memo hands the row builder the one binding, not a second reading",
 	);
 	assert.match(
 		picker,
@@ -781,4 +1609,636 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 		/picker option row selection ground/,
 		"the call site is pinned in the theme gate too, where a palette edit cannot hide it",
 	);
+});
+
+/* ------------------------------------------------- the search matcher */
+
+/*
+ * The operator typed `grok 4.7` into the desktop model picker and got
+ * `Nothing matches.` while `openrouter/x-ai/grok-4.7` and
+ * `openrouter/openai/gpt-6-luna` sat in the catalogue. These tests pin the rule
+ * that answers it, and its BOUNDARY — the round-1 review found the first
+ * revision of it both too narrow (a query the TUI resolves still answered
+ * `Nothing matches.`: R1-1 / UX U1) and too wide (it changed every OTHER
+ * picker's filter, so `/` stopped listing commands: R1-3).
+ *
+ * What the rule is now, and the three things a test has to hold apart:
+ *
+ *   1. `filterPickerOptions` is the DEFAULT filter and is UNCHANGED — the
+ *      contiguous lowercase substring test every picker has always used. The
+ *      commands, providers, MCP and session pickers still read it, and the test
+ *      below pins `/` against a command row so it cannot regress again (R1-3).
+ *   2. `matchModelPickerOptions` is the model picker's own rule, opted into
+ *      through `PickerHost`'s `matcher` prop by `ModelPicker` alone. Two pools,
+ *      the second only when the first is empty: a normalised contiguous/term
+ *      pass, then a character SUBSEQUENCE pass for the compact and elided
+ *      spellings `rank_rows` resolves (R1-1 / UX U1).
+ *   3. The ADAPTER has to feed it the name as well — a green rule with an unfed
+ *      haystack is the defect intact.
+ *
+ * The normaliser is the backend's (`model/ranking.py:_match_key`) so the two
+ * surfaces agree about what a query means; the ROWS the tests resolve with are
+ * the operator's own listing strings (`Grok 4.7`, `GPT-6 Luna`, `Claude Opus
+ * 5.5`, `Nano Banana` — read out of
+ * `~/.local-operator/cache/models-dev.listing.json`), because a fixture whose
+ * names no listing publishes proves the mechanism while being unable to answer
+ * the query the report is about (design D2).
+ */
+
+/**
+ * A row shaped the way the catalogue serves one.
+ *
+ * The `openrouter` rows carry the honest RESELLER label: the backend's naming
+ * rule degrades an aggregator's label to its own selector, so `label` here is
+ * NOT the pretty human name — it is `x-ai/grok-4.7` against a selector of
+ * `openrouter/x-ai/grok-4.7`. The listing's words therefore reach the filter
+ * only through `listing_name`, and the direct provider's pretty label (`Claude
+ * Opus 5`) is the control that already worked through the label.
+ */
+/**
+ * The rows, as SPECS, so both haystacks can be derived from one description:
+ * the shipped one (with the listing name) and the pre-PR one (without it). The
+ * price pair and the context window are part of both — they are the row's own
+ * data, and the D2 cases below are about a query reaching them by accident.
+ */
+const SPECS = [
+	{
+		provider: "anthropic",
+		model_id: "claude-opus-5",
+		label: "Claude Opus 5",
+		listing_name: "Claude Opus 5",
+		price: "$15/75",
+		meta: "200k",
+	},
+	{
+		provider: "anthropic",
+		model_id: "claude-opus-5-5",
+		label: "Claude Opus 5.5",
+		listing_name: "Claude Opus 5.5",
+		price: "$15/75",
+		meta: "200k",
+	},
+	{
+		provider: "openai",
+		model_id: "gpt-5.4",
+		label: "GPT-5.4",
+		price: "$1.25/10",
+		meta: "400k",
+	},
+	{
+		provider: "anthropic",
+		model_id: "claude-sonnet-5",
+		label: "Claude Sonnet 5",
+		price: "$3/15",
+		meta: "200k",
+	},
+	{
+		provider: "openrouter",
+		model_id: "x-ai/grok-4.7",
+		listing_name: "Grok 4.7",
+		price: "$3/15",
+		meta: "256k",
+		aggregated: true,
+	},
+	{
+		provider: "openrouter",
+		model_id: "openai/gpt-6-luna",
+		listing_name: "GPT-6 Luna",
+		price: "$3/15",
+		meta: "400k",
+		aggregated: true,
+	},
+	/* The name-only row: `Nano Banana` appears in no id it carries. */
+	{
+		provider: "openrouter",
+		model_id: "google/gemini-2.5-flash-image",
+		listing_name: "Nano Banana",
+		price: "$3/15",
+		meta: "33k",
+		aggregated: true,
+	},
+];
+
+/**
+ * One spec as the picker's option, the way `modelPickerOptions` builds one.
+ *
+ * `listingName: false` reproduces the PRE-PR haystack: the same row without
+ * `listing_name` in its keywords, which is the comparison the no-drop test and
+ * the adapter's own load-bearing half are measured against.
+ */
+const optionOf = (spec, { listingName = true } = {}) => ({
+	value: `${spec.provider}/${spec.model_id}`,
+	label: spec.label ?? spec.model_id,
+	description: `${spec.provider}${spec.aggregated ? ", aggregated" : ""}${
+		spec.price ? ` · ${spec.price}` : ""
+	}`,
+	meta: spec.meta,
+	keywords: [
+		listingName ? spec.listing_name : undefined,
+		spec.provider,
+		spec.model_id,
+	].filter((term) => typeof term === "string" && term.trim() !== ""),
+});
+
+const [OPUS, OPUS55, GPT54, SONNET, GROK, LUNA, NANO] = SPECS.map((spec) =>
+	optionOf(spec),
+);
+const CATALOGUE_OPTIONS = [OPUS, OPUS55, GPT54, SONNET, GROK, LUNA, NANO];
+
+/** The same rows as the PRE-PR haystack: no `listing_name`, everything else alike. */
+const PRE_PR_OPTIONS = SPECS.map((spec) =>
+	optionOf(spec, { listingName: false }),
+);
+
+const valuesOf = (options) => options.map((option) => option.value);
+
+/*
+ * The PRE-PR rule, frozen verbatim in the test that must not outlive it: the
+ * joined lowercase substring test over the PRE-PR haystack (`[provider,
+ * model_id]`). It is here so "nothing that matched before is dropped" can be
+ * executed instead of argued (R1-4).
+ */
+const prePrFilter = (options, query) => {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
+	return options.filter((option) =>
+		[option.label, option.value, option.description ?? "", option.meta ?? ""]
+			.concat(option.keywords ?? [])
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+};
+const prePrHaystack = () => PRE_PR_OPTIONS;
+
+test("the match key mirrors the backend's normalisation, both sides alike", () => {
+	/*
+	 * The exact rule, stated once. Every run of non-alphanumerics becomes ONE
+	 * space, so the id's hyphens and slash and the name's colon and spaces all
+	 * read as the same separators. `[^0-9a-z]` and not `\W`: `\W` keeps the
+	 * underscore a word character and the backend's class does not.
+	 */
+	assert.equal(modelPickerMatchKey("x-ai/grok-4.7"), "x ai grok 4 7");
+	assert.equal(modelPickerMatchKey("Grok 4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("Claude Opus 5.5"), "claude opus 5 5");
+	assert.equal(modelPickerMatchKey("grok 4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("grok-4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("grok_4.7"), "grok 4 7");
+	assert.equal(
+		modelPickerMatchKey("a__b"),
+		"a b",
+		"underscores are separators, as in the backend",
+	);
+	assert.equal(
+		modelPickerMatchKey("  padded  "),
+		"padded",
+		"the trim matches the backend's `.strip()`",
+	);
+});
+
+test("the operator's spellings all resolve the models, and only those", () => {
+	for (const query of [
+		"grok 4.7",
+		"grok-4.7",
+		"Grok 4.7",
+		"GROK 4.7",
+		"x-ai/grok-4.7",
+	]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/x-ai/grok-4.7"],
+			`"${query}" must resolve exactly the Grok row`,
+		);
+	}
+	for (const query of ["gpt 6 luna", "gpt-6-luna", "GPT 6 Luna"]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/openai/gpt-6-luna"],
+			`"${query}" must resolve exactly the Luna row`,
+		);
+	}
+	/*
+	 * `openai gpt` is the multi-term case, and it resolves BOTH OpenAI rows —
+	 * `gpt-5.4`'s own selector is `openai/gpt-5.4`, so this is the term pass
+	 * answering the words the user typed, not a widened haystack: the fixture has
+	 * held two `openai` rows since the 5.4 case below was added.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "openai gpt")),
+		[GPT54.value, "openrouter/openai/gpt-6-luna"],
+	);
+	/*
+	 * The name-only case, and it has to be a REAL one: `Nano Banana` is the name
+	 * `openrouter/google/gemini-2.5-flash-image` publishes, and no id the row
+	 * carries holds either word — so a haystack without `listing_name` answers
+	 * nothing at all, however good the normalisation is (design D2).
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "nano banana")),
+		["openrouter/google/gemini-2.5-flash-image"],
+		"a listing name is a match target, in the words the listing publishes",
+	);
+	/*
+	 * The report's second spelling, against a catalogue that holds the minor. The
+	 * 5.5 query answers the 5.5 row and NOT its major sibling: `opus 5 5` is not a
+	 * substring of `claude opus 5`, and the ranker scores the same way, so
+	 * answering both would be the desktop inventing a match the backend does not
+	 * have. A minor version is a different model, not a looser spelling of the
+	 * one below it.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opus 5.5")),
+		[OPUS55.value],
+	);
+});
+
+/*
+ * R1-1 / UX U1, the round-1 MAJOR. Two independent streams measured that the
+ * desktop answered `Nothing matches.` for queries the backend's `rank_rows`
+ * resolves (local-operator v0.62.11), so the PR's "one rule, two readers" claim
+ * was not true of MEMBERSHIP. Each query here is one of theirs, and the reason
+ * it used to fail is named beside it.
+ */
+test("the compact and provider-first spellings the backend resolves also resolve here", () => {
+	// Provider, then name: adjacent AND in haystack order was the old test, and
+	// the row's own text orders the words the other way round (`openrouter`,
+	// then `x-ai/grok-4.7`), so the terms must not have to be adjacent.
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "openrouter grok")),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	// Elisions: no substring carries these, and `rank_rows` resolves all three.
+	for (const query of ["grok47", "grok 47"]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/x-ai/grok-4.7"],
+			`"${query}" is the backend's measured resolution`,
+		);
+	}
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "gpt6luna")),
+		["openrouter/openai/gpt-6-luna"],
+	);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opus5")),
+		[OPUS.value, OPUS55.value],
+		"`opus5` resolves the family, as it does on the backend",
+	);
+	/*
+	 * …and the fallback stays a FALLBACK. `opu` is a subsequence of
+	 * `openrouter`, so membership by subsequence alone listed every row in the
+	 * catalogue three characters into a search for `opus` — a new defect in the
+	 * flow this file exists for. The backend answers it the same way: the
+	 * substring pool, when non-empty, REPLACES the fuzzy one.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opu")),
+		[OPUS.value, OPUS55.value],
+		"a query with contiguous hits is not widened by the fuzzy pool",
+	);
+});
+
+test("a query that matches nothing returns nothing, and the tiers survive", () => {
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "zzz"),
+		[],
+		"no match is an empty list, not the whole catalogue",
+	);
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "opus 6"),
+		[],
+		"a version the family does not hold is not answered by its sibling",
+	);
+
+	/*
+	 * TWO EMPTY-ISH CASES. Blank lists everything; punctuation-only carries no
+	 * words and must return NOTHING. Folding them together replaces the list with
+	 * the whole catalogue on one `.` keystroke — the old rule matched rows whose
+	 * text contains the character (5 of this fixture's 12 rows for a lone `.`),
+	 * and the backend measured `'.'` taking 257 to 574 rows — which reads as the
+	 * box doing the opposite of the ask.
+	 */
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "   "),
+		CATALOGUE_OPTIONS,
+		"whitespace is 'typed nothing', so the catalogue lists in its own order",
+	);
+	for (const punctuation of [".", "!", "...", "-", "///", "/"]) {
+		assert.deepEqual(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, punctuation),
+			[],
+			`"${punctuation}" carries no words and matches nothing`,
+		);
+	}
+
+	/*
+	 * A term may not land in an unrelated FIELD. The haystack is a row's label,
+	 * selector, provider line, context window and names joined, and matching a
+	 * multi-term query across that join is how `opus 6` answers a Claude Opus row
+	 * whose context window reads `256k`. Per-string is what stops it, and on the
+	 * backend each string is scored on its own for the same reason.
+	 */
+	const wideGround = {
+		value: "anthropic/claude-opus-4-5",
+		label: "Claude Opus 4.5",
+		description: "anthropic",
+		meta: "256k",
+		keywords: ["Claude Opus 4.5", "anthropic", "claude-opus-4-5"],
+	};
+	assert.deepEqual(
+		matchModelPickerOptions([wideGround], "opus 6"),
+		[],
+		"the `6` in a 256k context window is not part of the model's name",
+	);
+
+	/*
+	 * MEMBERSHIP ONLY, NEVER ORDERING. The picker already has tiers — the row
+	 * builder's grouping and the catalogue's own order — and adding the name as a
+	 * match target must not disturb them: an aggregator whose NAME scored better
+	 * must not be promoted over a direct provider's row.
+	 */
+	assert.deepEqual(valuesOf(matchModelPickerOptions([LUNA, GROK], "luna")), [
+		"openrouter/openai/gpt-6-luna",
+	]);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "o")),
+		valuesOf(CATALOGUE_OPTIONS),
+		"every row matched, in the order they came in",
+	);
+	const ordered = [GROK, OPUS, LUNA];
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(ordered, "opus")),
+		[OPUS.value],
+		"the surviving row keeps the order the catalogue gave it",
+	);
+});
+
+/*
+ * R1-4, executed rather than argued. The review's point was that the PR body's
+ * "nothing that matched before is dropped" was contradicted by its own capture —
+ * so the property is asserted here over the PRE-PR rule and the PRE-PR haystack,
+ * with the punctuation-only queries excluded because THAT narrowing is the
+ * deliberate half (`'.'` goes from 'rows whose text contains a dot' to none).
+ */
+test("nothing that matched the pre-PR rule is dropped by the model rule", () => {
+	const before = prePrHaystack();
+	const queries = [
+		"grok 4.7",
+		"grok",
+		"gpt 6 luna",
+		"luna",
+		"opus 5",
+		"opus 5.5",
+		"claude",
+		"anthropic",
+		"openrouter",
+		"openai/gpt-6-luna",
+		"x-ai/grok-4.7",
+		"o",
+		"5",
+		"$3/15",
+		"free",
+		"zzz",
+	];
+	for (const query of queries) {
+		for (const option of prePrFilter(before, query)) {
+			assert.ok(
+				valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)).includes(
+					option.value,
+				),
+				`"${query}" matched ${option.value} before this change and must still`,
+			);
+		}
+	}
+});
+
+/*
+ * D2, the round-1 second pass's MAJOR, and the half of it that is about the
+ * NORMALISER rather than the pools. A join before normalisation fuses adjacent
+ * fields: the Luna row's `… · $3/15` and its `400k` concatenate into
+ * `3 15 400k`, in which `5 4` — the query `5.4` — is a substring of `1[5 4]00k`.
+ * So `5.4` re-admitted `openai/gpt-6-luna`, a row whose text holds no `5.4` at
+ * all, against base's 1 row and the merged ranker's 1 row.
+ *
+ * The other half is what the widened pools are allowed to read. `3 15` and
+ * `1.25 10` were base-0 and ranker-0 queries that matched here, and per-field
+ * normalisation alone does NOT fix them: `$3/15` normalises to exactly `3 15`
+ * INSIDE its own field, so a `.some()` over every field still answers four
+ * rows. The row's own DATA (price pair, provider line, context window) therefore
+ * stays on the pre-PR contiguous test, and the normalised pools read the strings
+ * that NAME the model. Per-field matching is what removes the fusion; the
+ * naming/data split is what stops a normalised term reaching a price.
+ */
+test("no field is joined to another, and a query cannot reach a row's data", () => {
+	// Base and the merged ranker both answer `5.4` with the GPT-5.4 row alone.
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "5.4")),
+		[GPT54.value],
+	);
+	assert.ok(
+		!valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "5.4")).includes(
+			LUNA.value,
+		),
+		"the `5 4` inside `1[5 4]00k` is a boundary artefact, not a spelling",
+	);
+	// Ranker 0, base 0 — and 0 here.
+	for (const query of ["3 15", "1.25 10", "15 75", "15 200k", "400k 3"]) {
+		assert.deepEqual(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, query),
+			[],
+			`"${query}" is a price line or a boundary fuse, and matches nothing`,
+		);
+	}
+	// The row's data is still searchable EXACTLY as it was before this change:
+	// the pre-PR test runs per field, so a price typed with its own punctuation
+	// and a context window still resolve their rows.
+	for (const query of ["$3/15", "256k", "aggregated", "openai · $1.25/10"]) {
+		assert.ok(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, query).length > 0,
+			`"${query}" is a real, visible string of at least one row`,
+		);
+	}
+});
+
+/*
+ * R1-3, the round-1 MINOR that was the widest defect in the first revision: the
+ * new rule was `PickerHost`'s filter, so EVERY panel inherited it and typing `/`
+ * into **Search commands** — whose rows label themselves `/model  (/m)` — went
+ * from listing every command to `Nothing matches.`. The fix is scoping, not a
+ * tweak: the default filter is unchanged and a surface with a different rule
+ * opts in. Both halves are pinned here, the default by EXECUTION and the wiring
+ * by source text (the discipline this file already follows for the adapters).
+ */
+test("the default filter is untouched, so the commands picker still lists on `/`", () => {
+	const commands = ["/model  (/m)", "/help  (/h)", "/clear", "/new"].map(
+		(label) => ({
+			value: label.split(" ")[0],
+			label,
+			description: "Command",
+		}),
+	);
+	assert.deepEqual(
+		valuesOf(filterPickerOptions(commands, "/")),
+		["/model", "/help", "/clear", "/new"],
+		"a wordless query is a REAL query for a surface whose rows start with it",
+	);
+	assert.deepEqual(valuesOf(filterPickerOptions(commands, "clear")), [
+		"/clear",
+	]);
+	assert.deepEqual(
+		valuesOf(filterPickerOptions(commands, "   ")),
+		valuesOf(commands),
+	);
+	// The model rule is the other side of the same seam, and it must NOT leak.
+	assert.deepEqual(matchModelPickerOptions(CATALOGUE_OPTIONS, "/"), []);
+
+	const host = source("features/chat/pickers/picker-host.tsx");
+	assert.match(
+		host,
+		/matcher = filterPickerOptions/,
+		"the default matcher is the unchanged generic filter",
+	);
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(
+		picker,
+		/matcher=\{matchModelPickerOptions\}/,
+		"the model picker is the one surface that opts into its own rule",
+	);
+});
+
+test("the adapter feeds the human name into the haystack", () => {
+	/*
+	 * The pure rule above is necessary but not sufficient: the operator's symptom
+	 * needs the ADAPTER to hand the rule the name. That half is pinned as source
+	 * text, the discipline this file already follows for `destination-pickers`
+	 * (its WIRING is read as text; its DECISIONS are exported and executed),
+	 * because bundling that module pulls MUI onto the harness's runtime import
+	 * graph, which the other entry points here deliberately avoid.
+	 *
+	 * Three things, each the failure it prevents:
+	 *   - `listing_name` is IN the option's `keywords` (the haystack the operator
+	 *     needed);
+	 *   - the row builder is a pure exported function the component calls, so a
+	 *     test could exercise it — and the memo passes the one binding, not a
+	 *     second reading;
+	 *   - a term that says nothing is dropped, because a blank haystack entry is
+	 *     true of every row and useful to none. NOT because an omitted name would
+	 *     otherwise match everything: it cannot — the backend ships
+	 *     `listing_name: ""` rather than omitting the field, and the empty string
+	 *     normalises away either way (R1-2, corrected).
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	const builder = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
+	assert.match(
+		builder,
+		/keywords:\s*\[[\s\S]*?row\.listing_name[\s\S]*?row\.provider[\s\S]*?row\.model_id/,
+		"the listing's own words lead the haystack, beside the id",
+	);
+	assert.match(
+		builder,
+		/\.filter\(\s*\(term\): term is string =>[\s\S]*?typeof term === "string" && term\.trim\(\) !== ""/,
+		"a term that says nothing is dropped rather than carried as an empty string",
+	);
+	assert.match(
+		builder,
+		/label:\s*row\.label \|\| row\.model_id/,
+		"the displayed label rule is unchanged by this fix",
+	);
+});
+
+test("the omitted-name case cannot match every query, over the real rule", () => {
+	/*
+	 * The behavioural half of the pin above, over the SHIPPED rule: a haystack
+	 * built the way the adapter builds one — name present or absent — must never
+	 * match a query it should not. The backend DOES ship the field rather than
+	 * omit it (`CatalogueEntry.listing_name` is keyword-only with `default=""`, and
+	 * the route serialises `dataclasses.asdict(row)`), so the absent case is the
+	 * older backend; both are built here, and neither may match everything by
+	 * virtue of an empty term.
+	 */
+	const withName = {
+		value: "openrouter/x-ai/grok-4.7",
+		label: "x-ai/grok-4.7",
+		description: "openrouter",
+		keywords: ["Grok 4.7", "openrouter", "x-ai/grok-4.7"],
+	};
+	const withoutName = {
+		value: "anthropic/claude-opus-5",
+		label: "Claude Opus 5",
+		description: "anthropic",
+		keywords: ["anthropic", "claude-opus-5"],
+	};
+	const emptyName = {
+		...withoutName,
+		keywords: ["", "anthropic", "claude-opus-5"],
+	};
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([withName, withoutName], "grok 4.7")),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([withName, withoutName], "nano banana")),
+		[],
+		"a name query resolves nothing when no row carries that name",
+	);
+	// The row with NO name must not match a name query, and must not match
+	// everything by virtue of an empty term.
+	assert.deepEqual(matchModelPickerOptions([withoutName], "luna"), []);
+	assert.deepEqual(valuesOf(matchModelPickerOptions([withoutName], "claude")), [
+		"anthropic/claude-opus-5",
+	]);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([emptyName], "claude")),
+		["anthropic/claude-opus-5"],
+		"a blank listing name is not a wildcard",
+	);
+	assert.deepEqual(matchModelPickerOptions([emptyName], "nano banana"), []);
+});
+
+/* ------------------------------------------- the fast picker's current dial */
+
+/*
+ * UX round 1, U2: the `/fast` row and the chip both state the dial, and the
+ * picker the row opens was the one surface that hid it — `On`/`Off` with
+ * NEITHER marked, right after a row that had just said `currently on`. The fix
+ * is the same tri-state every surface reads, spelled as a decision the
+ * component calls (`fastPickerOptions`), so these cases pin exactly what the
+ * picker shows for each dial state.
+ */
+test("the fast picker marks the current dial, and no-tier marks nothing", () => {
+	const marked = (state) =>
+		fastPickerOptions(state)
+			.filter((option) => option.current)
+			.map((option) => option.value);
+	assert.deepEqual(marked("on"), ["on"]);
+	assert.deepEqual(marked("off"), ["off"]);
+	// No tier is NOT a state: neither option is marked, the same reason the row
+	// prints no slot and the badge hides.
+	assert.deepEqual(marked(null), []);
+	// The rows keep their vocabulary and order; the mark is the addition.
+	assert.deepEqual(
+		fastPickerOptions("on").map((option) => [option.value, option.label]),
+		[
+			["on", "On"],
+			["off", "Off"],
+		],
+	);
+});
+
+test("the fast picker reads the spec in force through the shared tri-state", () => {
+	/*
+	 * The wiring a bundle cannot reach is pinned as source text, the discipline
+	 * this file states at the top: the component must ask `fastModeState` for
+	 * the spec-in-force read (`effective_model ?? selected_model` — the same
+	 * spec the `/fast` row's slot states) and hand the answer to the tested
+	 * builder; a rebuilt array or a second read would drift from the cases
+	 * above.
+	 */
+	const file = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(file, /fastPickerOptions\(dial\)/);
+	assert.match(file, /const dial = fastModeState\(/);
+	assert.match(file, /runningFrontend\(canonical\)\?\.effective_model \?\?/);
+	assert.match(file, /runningFrontend\(canonical\)\?\.selected_model/);
 });

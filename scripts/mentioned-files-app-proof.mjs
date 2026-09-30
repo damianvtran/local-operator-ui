@@ -54,6 +54,7 @@ import {
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const SESSION = process.argv[2] ?? "225326399eed";
 const OUT = process.argv[3] ?? "/tmp/lo-producer-proof";
@@ -89,6 +90,15 @@ for (const key of Object.keys(childEnv)) {
  * `notifications-off.mjs`.
  */
 withNotificationsOff(childEnv);
+/*
+ * And the telemetry switch, applied to the same object for the same reason this
+ * rig boots the real app rather than a fixture: the build carries the live
+ * PostHog project key, so without this line the run is a user in the product's
+ * own analytics and a session replay beside it. `withTelemetryOff` returns the
+ * object it was given, which is why this can be a statement rather than part of
+ * the literal above. See `telemetry-off.mjs`.
+ */
+withTelemetryOff(childEnv);
 
 /*
  * THE APP ITSELF IS SPAWNED, NOT `node_modules/.bin/electron`, and this file was

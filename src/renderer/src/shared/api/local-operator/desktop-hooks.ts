@@ -22,6 +22,25 @@ export const desktopKeys = {
 	commands: ["desktop", "commands"] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
 	/**
+	 * The model catalogues, keyed by the `live` flag the read carried.
+	 *
+	 * A PREFIX rather than a leaf, because two readers ask for two different
+	 * listings: the picker asks `live: false` (the shipped registry, painted on
+	 * the keystroke) and then `live: true` (the providers' own listing), while the
+	 * settings combobox asks only the first. Invalidating the prefix therefore
+	 * drops BOTH documents, which is what every caller below actually needs.
+	 *
+	 * It is here, rather than spelled at each reader, because THREE sites now have
+	 * to agree on it: `destination-pickers.tsx`'s picker, the settings combobox
+	 * (which shares the picker's `live: false` entry rather than fetching the same
+	 * catalogue twice), and the two credential-change points that have to forget
+	 * it - `provider-detail.tsx` when a sign-in succeeds and `LogoutPicker` when an
+	 * account is removed. The failure a second spelling produces is silent: an
+	 * invalidation against a key nobody reads leaves the stale rows painted and
+	 * reports success.
+	 */
+	catalogue: ["desktop", "models"] as const,
+	/**
 	 * One session's stored credential NAMES, as the picker's list reads them.
 	 *
 	 * A factory rather than a constant because the key carries the session, and it
@@ -159,9 +178,49 @@ export type DesktopFeature =
 	| "settings"
 	| "commands"
 	| "catalogues"
+	/**
+	 * The four closed ORGANIZATION operations the merged local server exposes
+	 * (`memberships.list`, `org_agents.list`, `org_team.get`, `org_teams.list`).
+	 *
+	 * ITS OWN KEY because a backend that predates them answers an unknown operation
+	 * with a MASKED 422 ("The request has invalid fields."), which is
+	 * indistinguishable from a malformed call — so a surface that simply attempted
+	 * them would report a mistake the user did not make, and could not tell whether
+	 * to offer a retry or a backend update (local-operator `capabilities.py`, agent
+	 * review round 1's M2). A `below-version` answer here means "update the
+	 * backend", which is the remedy the org surfaces render.
+	 */
+	| "radient_org"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/**
+	 * `sessions.list` can be SCOPED, PAGED and COUNTED: `scope_kind`/`scope_name`,
+	 * `cursor`, `with_counts`, answered with `next_cursor`/`cursor_missing`/`scope`/
+	 * `counts`.
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `session_catalogue` TO 4, on the rule this
+	 * union states in several places: an EXISTING surface must keep working against
+	 * a backend that lacks the new one. The existing surface here is the whole chats
+	 * list, and it keeps working only if the client can ASK whether the daemon
+	 * understands the new parameters - which matters because FastAPI silently
+	 * ignores unknown query parameters, so an un-gated `scope_kind=team&
+	 * scope_name=lopdev` would receive the UNSCOPED page and draw other teams' rows
+	 * under that team, and an un-gated `cursor` would receive page one again and
+	 * duplicate it. A bump to 4 would also overload "the catalogue's shape changed"
+	 * with "the catalogue can be paged", and would have to be bumped again by the
+	 * next shape change.
+	 *
+	 * It gates THREE promises together - the scope, the cursor and the census -
+	 * because they are one contract revision: a client that had the counts without
+	 * the scope could not render a group's count consistently with that group's
+	 * paged rows.
+	 *
+	 * ABSENT MEANS TODAY'S BEHAVIOUR EXACTLY: one unscoped `limit=500` request, the
+	 * badge from the rows the client holds, and every group expanded client-side
+	 * over that one page.
+	 */
+	| "session_catalogue_page"
 	/*
 	 * A session's code memory (the `sessions.variables.*` ops). A backend that
 	 * predates the surface simply does not advertise the key, so
@@ -195,9 +254,31 @@ export type DesktopFeature =
 	 * first send creates is the dead affordance R20 forbids.
 	 */
 	| "draft_selection"
+	/**
+	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
+	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
+	 * from the first keystroke instead of on the send.
+	 *
+	 * Its own key rather than a bump of `draft_preview`/`draft_selection`, for
+	 * the rule this union states in several places: the draft pane is fully
+	 * useful without this — it simply pays the engage on the first send, exactly
+	 * as it always has — so a backend that cannot warm drafts must leave today's
+	 * wiring rather than lose the preview or the chips with it. Absent also
+	 * means NO mint call at all: the mint would spend a round trip learning 404
+	 * against every older daemon, from a keystroke, for nothing.
+	 */
+	| "session_draft_warm"
 	| "lifecycle"
 	| "mcp"
 	| "mcp_auth"
+	/**
+	 * The sessionless MCP catalog (`GET|POST /v1/desktop/mcp`,
+	 * `mcp.catalog*` ops). Its own key rather than a bump of `mcp`: the session
+	 * route is a working surface on every backend that has it, and Settings >
+	 * Integrations falls back to it when this key is absent rather than telling
+	 * the user to update for a page that still works.
+	 */
+	| "mcp_catalog"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
@@ -257,6 +338,19 @@ export type DesktopFeature =
 	 */
 	| "session_interrupt"
 	/**
+	 * `input_mode` on `sessions.message`: the harness carries the composer's own
+	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see
+	 * arch §4.2).
+	 *
+	 * ITS OWN KEY, and the gate is the whole point of it: the field is metadata
+	 * the app never renders, but an OLDER harness validates the message body with
+	 * `extra="forbid"` and would refuse a body that carried it - so the app sends
+	 * the legacy body (field absent) unless the backend advertises this key, and
+	 * nothing else in the app reads it. See `admitChatDraft`'s pinning note for
+	 * the replay rule that goes with it.
+	 */
+	| "input_mode"
+	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
 	 *
@@ -291,26 +385,30 @@ export type DesktopFeature =
 	 * `references`: the harness expands a draft's `@path` tokens into file content
 	 * before the message reaches the model.
 	 *
-	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and it is the one gate in
-	 * this file whose key no backend advertises yet. That is the point of it rather
-	 * than an oversight: the expansion is a HARNESS behaviour, it is not released
-	 * (no tag through `v0.56.8` carries `local_operator/references.py`, and the half
-	 * that adds it is PR #1220, in review), and the harness publishes no route for
-	 * it — the whole feature is two Python modules, with no server surface at all.
-	 * So a composer that offered a picker and painted chips on today's install would
-	 * be promising an expansion nothing on the machine performs: the user picks a
-	 * file, gets a chip that says "this is a reference", and the model receives the
-	 * literal characters. `desktopFeatureEnabled` fails closed, so absent (or
-	 * absent `desktop_available`) means the picker never opens and no chip is ever
-	 * painted — the honest state, and the reason this key is here before its writer.
+	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and this key's writer now
+	 * exists: `local_operator/server/routes/capabilities.py` publishes
+	 * `"references": 1` whenever `at_references_enabled()` is true, so a backend
+	 * built from that tree lights the picker, the chips and the composer tip up by
+	 * itself. Nothing else about this app changed to enable them, which is what the
+	 * key was for: the app shipped the affordance DARK, withheld until a backend
+	 * said it could carry a reference, because a composer that offered a picker and
+	 * painted chips on a backend that does not expand would promise an expansion
+	 * nothing on the machine performs — the user picks a file, gets a chip that says
+	 * "this is a reference", and the model receives the literal characters.
 	 *
-	 * WHAT HAS TO HAPPEN FOR THE AFFORDANCE TO APPEAR: the harness half adds
-	 * `"references": 1` to `features` in
-	 * `local_operator/server/routes/capabilities.py`. That is a one-line change on
-	 * the other side of this contract and it is NOT part of this repository. Named
-	 * where a reader will meet it (the PR body, the review finding) because it is
-	 * load-bearing for the release: until it lands, this feature ships dark by
-	 * design.
+	 * THE KEY IS THE ONE CAPABILITY HERE THAT A CURRENT BACKEND MAY OMIT, because
+	 * the harness's expansion has a per-call kill switch
+	 * (`LOCAL_OPERATOR_AT_REFERENCES`). A process told not to expand advertises
+	 * nothing rather than advertising `0`, so ABSENT covers two cases a client
+	 * cannot tell apart and must answer identically: a backend older than the key,
+	 * and a current one whose operator turned the expansion off. Both mean the same
+	 * thing to this composer — send the draft as typed, offer no affordance, and say
+	 * why when the user's own `@` brings the notice up.
+	 *
+	 * `desktopFeatureEnabled` fails closed, so absent (or an absent
+	 * `desktop_available`, which means no credential for the routes) means the picker
+	 * never opens and no chip is ever painted. A caller that has not read this far
+	 * gets the honest state by default.
 	 */
 	| "references"
 	/**
@@ -386,7 +484,81 @@ export type DesktopFeature =
 	 * no delete affordance is drawn anywhere, from the header menu or from a typed
 	 * `/delete`.
 	 */
-	| "session_delete";
+	| "session_delete"
+	/**
+	 * The mesh: this DAEMON can serve the peer catalogue and the network catalogue.
+	 *
+	 * `mesh-session-mobility.md` §9.3's key, unchanged: the peer catalogue
+	 * (`GET /v1/desktop/peers`), the networks read (`GET /v1/desktop/networks`) and
+	 * the locality fields on the session rows behind them.
+	 *
+	 * IT IS A CAPABILITY, NOT A MEMBERSHIP, and review round 1 (R1-1) caught this
+	 * comment claiming the opposite. lop advertises `peers` unconditionally, on
+	 * purpose - `local_operator/server/routes/capabilities.py`: "the KEYS answer 'what
+	 * can this backend do' rather than 'is this machine in a mesh'" - so a device in NO
+	 * network carries the key too. The backend names where the membership fact lives
+	 * instead: "a device in no network answers an empty catalogue, and an empty
+	 * catalogue mounts nothing". `useMeshMembership` reads exactly that, and it is what
+	 * the rail row and the palette destination are gated on.
+	 *
+	 * ABSENT MEANS NOT MOUNTED, never mounted-disabled: no Mesh rail row, no `/mesh`
+	 * route, no peer sections and no device choice on `/new`. A reserved empty
+	 * destination advertises a feature the user does not have - the argument
+	 * `session_pins` makes above.
+	 *
+	 * WHAT A USER WITH NO NETWORK SEES, stated the way it actually happens rather than
+	 * as "no call at all": ONE read-only catalogue read is issued when the window starts
+	 * - a `networks.list`, which the backend serves after an `is_dir` test with no mkdir,
+	 * so nothing is created - and because the rail is mounted on every route that read
+	 * carries NO interval (`useMeshMembership` asks for `poll: false`; review round 2,
+	 * R2-1, caught the 30 s interval reaching an always-mounted component and dialling
+	 * every peer on every screen). The catalogue's 30 s cadence belongs to the TAB, and
+	 * the rail rides that observer's cache entry while the tab is open. So: no rail row,
+	 * no route content and no peer section mounts, the chrome is today's, and the frames
+	 * in `docs/evidence/mesh-tab/` measure the TAB rather than that chrome - the chrome
+	 * claim is pinned in `scripts/mesh-tab.test.mjs` instead.
+	 *
+	 * SLICE 2 ADDS `session_transfer`, which is the surface this paragraph reserved
+	 * the key for: it gates the MOVE affordance (a chip's drop targets and the
+	 * panel's action). The two keys are deliberately separate, and the backend's own
+	 * register states why: a backend can show a peer's sessions and be unable to move
+	 * one, and on `peers` alone this app would draw its move control against a route
+	 * that 404s. Absent ⇒ the control is not mounted — not mounted-disabled — and
+	 * every drag outcome falls back to the read-only row.
+	 */
+	| "peers"
+	/*
+	 * The Projects surface: the tab, its CRUD, the milestone routes and the `@`
+	 * picker's project section (`/v1/desktop/projects*`).
+	 *
+	 * ONE key for the whole surface rather than one per route, because the store
+	 * ships as a unit: the backend release that serves the listing is the release
+	 * that serves the milestones. Absent here means the sidebar mounts no
+	 * Projects row, the palette offers no entry, and the `@` picker keeps its
+	 * file-only shape - an older backend renders EXACTLY the surface this app
+	 * shipped before, rather than a tab that 404s on its first read.
+	 */
+	| "projects"
+	/**
+	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
+	 *
+	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
+	 * (`routes/capabilities.py`): a backend can list a peer's sessions and be unable
+	 * to move one, so on `peers` alone the canvas would offer drop targets for a route
+	 * that 404s. Advertised unconditionally by the backend — the keys answer "what can
+	 * this backend do", not "is this machine in a mesh" — so the gate here is about
+	 * the BACKEND's age, not about the mesh's existence.
+	 */
+	| "session_transfer"
+	/*
+	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
+	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
+	 * bump of anything, because a client that does not read it must keep working
+	 * unchanged: absent means "this backend has no Aida", which hides the row and
+	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
+	 * exactly as it did before.
+	 */
+	| "aida";
 
 /**
  * WHY a negotiated feature surface may not be offered.

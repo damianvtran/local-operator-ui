@@ -32,14 +32,23 @@ import {
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import {
+	MINI_VIEW_REGISTRATION,
+	MINI_VIEW_REGISTRATION_GET,
+} from "../shared/mini-view";
+import {
 	OPEN_CATALOGUE_FLAG,
 	OPEN_SESSION_FLAG,
 	readLaunchTarget,
 } from "../shared/open-session";
 import {
+	type WindowChromeMode,
+	windowChromeArgumentFor,
+} from "../shared/window-chrome";
+import {
 	BackendInstaller,
 	BackendServiceManager,
 	INTERPRETER_RESOLUTION_WORST_MS,
+	LAUNCHER_PROBE_WORST_MS,
 	LocalOperatorStartupMode,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
@@ -52,6 +61,10 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	CONSENT_ATTENTION_CHANNEL,
+	type ConsentAttentionPayload,
+} from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { consoleCaptureUrlFor } from "./console/capture-url";
 import { DesktopCompanion } from "./desktop-companion";
@@ -60,6 +73,7 @@ import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
 	devDriverArgument,
+	headlessExerciserAllowed,
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
@@ -69,16 +83,31 @@ import {
 	realPathOrNull,
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
+import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import {
+	type QuickSendWatcher,
+	readQuickSendValue,
+	watchQuickSend,
+} from "./local-config";
+import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import { createQuitState } from "./quit-state";
 import { createUserShellPath } from "./shell-path";
+import {
+	describeTelemetryLaunch,
+	resolveTelemetryLaunch,
+	telemetryArgument,
+} from "./telemetry-launch";
+import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	LAUNCHER_EXIT_DEADLINE_MS,
 	LAUNCHER_POLL_INTERVAL_MS,
@@ -86,6 +115,7 @@ import {
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
 	describeWindowLaunch,
+	hotkeysAllowed,
 	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
@@ -110,6 +140,7 @@ import {
 	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
+	reportSkippedWhileQuitting,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -287,11 +318,38 @@ if (process.platform === "darwin" && app.dock) {
 	}
 }
 
-// Initialize PostHog
-const posthogClient = new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
-	host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
-	enableExceptionAutocapture: true,
+/*
+ * PostHog, or nothing at all.
+ *
+ * WHY THIS IS A DECISION RATHER THAN A CONSTRUCTOR CALL. A test, harness, QA or
+ * CI run boots this real app, and until this switch existed every one of them
+ * registered as a user and as a session replay in the "Local Operator Usage"
+ * project: the shipped build carries the live project key by default, so a run
+ * that simply omitted the variable still had one, and an explicitly empty one
+ * threw in the constructor at module load (before `app.whenReady()`, surfacing
+ * as an error dialog). `resolveTelemetryLaunch` owns the two ways this becomes
+ * "off" — the launch's switch, and a build with no key — and reads the switch
+ * from `launchEnv`, the environment this process was LAUNCHED with, so a `.env`
+ * in the checkout can neither silence a real user nor speak for a rig.
+ *
+ * `null` rather than a client with a no-op configuration, because the point is
+ * that nothing is constructed: no client, no queue, no flush, and nothing to
+ * shut down (see the `process.on("exit")` handler below, which is the other half
+ * of this decision). An ordinary launch is unaffected: no switch, a key, and
+ * `posthogClient` is the same client it was.
+ */
+const telemetryLaunch = resolveTelemetryLaunch({
+	env: launchEnv,
+	projectKey: backendConfig.VITE_PUBLIC_POSTHOG_KEY,
 });
+const telemetryLine = describeTelemetryLaunch(telemetryLaunch);
+if (telemetryLine) console.log(telemetryLine);
+const posthogClient = telemetryLaunch.enabled
+	? new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
+			host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
+			enableExceptionAutocapture: true,
+		})
+	: null;
 
 // Create application menu without developer tools in production
 /**
@@ -571,6 +629,37 @@ function createWindow(
 	request: RaiseRequest = ownLaunchRequest(),
 ): BrowserWindow {
 	/*
+	 * THE WINDOW'S CHROME, resolved before the window exists because two of its
+	 * halves are constructor-only: `titleBarStyle` has no setter, and
+	 * `backgroundColor` is what the OS paints before the renderer's first frame - a
+	 * dark palette that gets Electron's default `#FFF` there flashes white on every
+	 * launch. The colours come from the PERSISTED file rather than from the renderer
+	 * for the obvious reason: the renderer does not exist yet, and the theme it would
+	 * report lives in its `localStorage`.
+	 *
+	 * `launchEnv`, not `process.env`, for the reason the window mode is read that way:
+	 * `./backend/config` has already folded a `.env` from the working directory over
+	 * `process.env`, and a file in the checkout must not be able to decide how the
+	 * window is framed.
+	 *
+	 * A problem here is a warning and never a refusal. The mode is recoverable from
+	 * inside the app (Settings > Appearance), and the launch that reached for
+	 * `--window-chrome=native` because the integrated frame had made its window
+	 * impossible to move is exactly the case the switch exists for - refusing to
+	 * start would be the worst answer available to the one launch that needs help.
+	 */
+	const chrome = resolveLaunchWindowChrome({
+		argv: process.argv,
+		env: launchEnv,
+		userDataDir: app.getPath("userData"),
+		platform: process.platform,
+	});
+	for (const problem of chrome.problems) {
+		logger.warn(`[window-chrome] ${problem}`, LogFileType.BACKEND);
+		console.log(`[window-chrome] ${problem}`);
+	}
+
+	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
 	 * `inactive` (shown without activating the app) are how a QA rig or a
@@ -580,6 +669,25 @@ function createWindow(
 	 */
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
+		/*
+		 * The frame, per platform, from a pure function so the matrix is exercised on
+		 * any host (`scripts/titlebar-options.test.mjs`). macOS hides its title bar
+		 * and keeps the native traffic lights, which is why the renderer reserves their
+		 * 32px lane at the top of the shell (`chat-layout.tsx`) - the lane exists
+		 * because this line does, and shipping one without the other is either 32px of
+		 * blank space under a native title bar or lights drawn over the app's own row.
+		 */
+		...titlebarOptions(process.platform, {
+			mode: chrome.mode,
+			colors: chrome.colors,
+		}),
+		/*
+		 * The ground the OS paints before the renderer's first frame. Without it
+		 * Electron's default is `#FFF`, so every launch on a dark palette opened with a
+		 * white flash - the same defect `INSTALL_WINDOW_CANVAS` fixed for the installer
+		 * window, and a hard-coded palette value that a test keeps honest.
+		 */
+		backgroundColor: chrome.colors.ground,
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
@@ -650,7 +758,7 @@ function createWindow(
 			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
 			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...rendererArgumentFlags(initialSession, openCatalogue),
+			...rendererArgumentFlags(initialSession, openCatalogue, chrome.mode),
 		},
 	});
 	applicationWindows.add(mainWindow);
@@ -669,6 +777,48 @@ function createWindow(
 			event.preventDefault();
 		}
 	});
+
+	/*
+	 * The live half of the chrome: the palette's colours on every theme change, the
+	 * reported corner ground, the three state pushes and the app-menu popup. Attached
+	 * AFTER construction because it needs the window, and disposed on `closed` so a
+	 * second window (the auth popup is one) does not inherit the handlers and a
+	 * closed one leaves no `ipcMain` handler pointing at a destroyed object.
+	 *
+	 * It contains no `show`, `showInactive`, `focus`, `maximize` or `setFullScreen`
+	 * call, which is what keeps this window's chrome work compatible with the
+	 * `headless` mode an agent run uses - `maximize()` on a hidden window SHOWS it,
+	 * so a style change that reached for one would put a window on the operator's
+	 * screen. `scripts/window-mode.test.mjs` scans for that family and names this
+	 * module among the ones that must not contain one.
+	 */
+	const chromeController = attachWindowChrome({
+		window: mainWindow,
+		mode: chrome.mode,
+		colors: chrome.colors,
+		userDataDir: app.getPath("userData"),
+		headless: windowLaunch.mode === "headless",
+		log: (line) => logger.info(line, LogFileType.BACKEND),
+	});
+	mainWindow.on("closed", () => chromeController.dispose());
+	/*
+	 * THE MINI VIEW MUST NOT DEFEAT THE WINDOWS/LINUX QUIT CONTRACT (quick-send
+	 * design §C.5's platform note, read against this app's existing behaviour).
+	 * On macOS closing the main window leaves the app running, so the hidden mini
+	 * view simply stays and the hotkey keeps working — the Dock-only case the
+	 * feature is built for. On Windows and Linux, closing every window is how the
+	 * app quits (`window-all-closed`), and a hidden window that nothing closes is
+	 * an app that never reaches it: a process with no visible surface and no way
+	 * back. So the mini view is torn down with the main window THERE, and only
+	 * there — the window-all-closed handler is untouched.
+	 */
+	if (process.platform !== "darwin") {
+		mainWindow.on("closed", () => {
+			miniView?.dispose();
+			desktopCompanion?.dispose();
+			desktopCompanion = null;
+		});
+	}
 
 	/*
 	 * A window created to show a specific conversation HOLDS its first present.
@@ -885,7 +1035,30 @@ const userShellPath = createUserShellPath({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
 const backendService = new BackendServiceManager({ userShellPath });
-const backendInstaller = new BackendInstaller();
+/*
+ * WHETHER THIS PROCESS HAS BEGUN QUITTING, and has not been cancelled since.
+ *
+ * Read by every site that must not answer a request with a window once a quit
+ * is under way - the `second-instance` target, the macOS `activate` handler and
+ * the window-create path - and set at `before-quit`'s FIRST entry, ahead of the
+ * session-cookie hold, which can wait while the window is already doomed (the
+ * operator's #636 report is exactly that state: a relaunch answered by a
+ * process whose window is gone but whose lock and teardown are not). The ONE
+ * release is the setup window's declined "Quit without setup?" - the one
+ * cancellation a running quit has - wired through `BackendInstaller` below; a
+ * cancelled quit that left the state set refused every later second launch and
+ * Dock click for the process's life (round-1 review, F-1). `./quit-state`
+ * carries the full contract and the sweep of the other close guards;
+ * `scripts/window-mode.test.mjs` pins the setter/release wiring and
+ * `scripts/python-bytecode-cache.test.mjs` drives the declined answer against
+ * the shipped installer.
+ */
+const quitState = createQuitState();
+const backendInstaller = new BackendInstaller({
+	// The installer's one route back from a cancelled quit: the declined dialog
+	// answer (`./quit-state` owns why there is exactly one such site).
+	onQuitCancelled: () => quitState.cancel(),
+});
 
 /**
  * Report a start failure unless a shutdown is already in flight.
@@ -1048,6 +1221,24 @@ const devDriverWebPreferences =
 		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
 		: {};
 
+/*
+ * The renderer's half of the telemetry decision, ALWAYS written.
+ *
+ * WHY THIS ONE IS NOT CONDITIONAL, when the dev driver's entry above is. The dev
+ * driver is an opt-in, so its absence can safely mean "off"; telemetry's default
+ * is ON, so if silence also meant "on" then any window created by a path that
+ * forgot to compose this entry would ship the events this switch exists to stop —
+ * and the preload could not tell that case apart from a host that is not an app
+ * window at all. Spelling the decision out on every window makes the renderer's
+ * fail-closed default (`resolveTelemetryEnabled`: an explicit `true` from the
+ * bridge AND a non-blank key in the build it made) safe to hold. The two words
+ * are the whole vocabulary, and they live in `./telemetry-launch`, which the
+ * preload reads back out of its own argv.
+ */
+const telemetryWebPreferences = {
+	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
+};
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -1059,6 +1250,16 @@ const devDriverWebPreferences =
 let mainWindow: BrowserWindow | null = null;
 let desktopCompanion: DesktopCompanion | null = null;
 const applicationWindows = new WeakSet<BrowserWindow>();
+
+/*
+ * The quick-send mini view and its registration (design D6/§G.1). Module scope
+ * so `before-quit` can dispose them and `window-all-closed`'s platform contract
+ * can still reach the window; all three are non-null only in a `normal`
+ * launch, which is the design's whole gate (`hotkeysAllowed`).
+ */
+let miniView: MiniView | null = null;
+let miniViewRegistrar: MiniViewRegistrar | null = null;
+let quickSendWatcher: QuickSendWatcher | null = null;
 
 /*
  * The update service of the most recent window, kept here rather than in the
@@ -1114,27 +1315,41 @@ function launchArgumentFlags(
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
- * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
- * window was created for (`launchArgumentFlags`) and the dev driver's arming
- * entry (`devDriverWebPreferences`) — and both express themselves through the
- * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
- * entries at the call site does not union them: the second spread overwrites the
- * first's array, so an armed run that also names a session would carry one flag
+ * WHY IT EXISTS. There are three sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`), the dev driver's arming
+ * entry, and the telemetry decision (`telemetryWebPreferences`, which is on
+ * every window) — and all of them express themselves through the SAME
+ * `webPreferences.additionalArguments` slot. Spreading them as separate entries
+ * at the call site does not union them: a later spread overwrites the earlier
+ * one's array, so an armed run that also names a session would carry one flag
  * and silently drop the other, with a well-formed window either way. This is the
- * one place that decides, so the two can never disagree about who wins.
+ * one place that decides, so the sources can never disagree about who wins.
  *
  * Empty means `{}` and not `additionalArguments: []`, for the reason
  * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
- * true of the object, not merely equivalent to it.
+ * true of the object, not merely equivalent to it. With telemetry always
+ * present that branch is unreachable from the call sites below, and it is kept
+ * deliberately: this function's contract is "compose whatever applies", not
+ * "there is always something".
  */
 function rendererArgumentFlags(
 	initialSession: string | null,
 	openCatalogue: boolean,
+	chromeMode: WindowChromeMode,
 ): { additionalArguments?: string[] } {
 	const flags = [
+		/*
+		 * The chrome facts, and they are ALWAYS written - unlike the conversation or
+		 * the dev driver's arming entry, which appear only when they apply. The
+		 * renderer chooses between two incompatible layouts on this value, so a reader
+		 * that had to infer it from an absent entry would be guessing; see
+		 * `readWindowChromeArgument` for why the guess fails towards `native`.
+		 */
+		windowChromeArgumentFor(process.platform, chromeMode),
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
@@ -1492,6 +1707,11 @@ function changeWindowZoom(
 	);
 }
 
+// The quit state lives at the top of this file, beside the installer that can
+// release it (`quitState`; `./quit-state` owns the contract): the handler below
+// SETS it at the first `before-quit` entry, and every answer site reads it per
+// request.
+
 // --- Single Instance Lock ---
 /*
  * THE WINDOW INTENT RIDES THE REQUEST THAT LOSES. `second-instance` hands the
@@ -1563,6 +1783,16 @@ if (!gotTheLock) {
 				}),
 				{
 					window: mainWindow,
+					/*
+					 * Read PER REQUEST rather than captured once: this handler outlives every
+					 * window, and the state is LIVE — set at each quit's first `before-quit`
+					 * entry, released when the setup dialog declines to stop a run — so a
+					 * request that arrives during a quit is refused instead of answered with
+					 * a window the shutdown would take down, and a request after a CANCELLED
+					 * quit is answered normally (`./quit-state` owns the transitions;
+					 * `window-raise.ts` owns the refusal and its line).
+					 */
+					quitting: quitState.isQuitting(),
 					openConversation: openConversationInWindow
 						? (session, request) =>
 								openConversationInWindow?.(
@@ -1926,8 +2156,15 @@ app
 					// No window to focus. Recreate one — the same "recreate then
 					// navigate" rule the click path follows (m2), because a request to
 					// bring this app forward from an app alive in the dock is exactly
-					// the case that used to be a no-op.
-					setupMainWindowWithUpdateService();
+					// the case that used to be a no-op. The request names ITS OWN
+					// trigger (round-1 review, F-3): the window this creates presents —
+					// and is refused, if the app is quitting — as `viewer-focus`, where
+					// the default request would have said `initial-present`, this
+					// process's own launch, which this is not.
+					setupMainWindowWithUpdateService(null, false, {
+						show: windowLaunch.show,
+						trigger: "viewer-focus",
+					});
 					return "opened a window";
 				},
 			},
@@ -1973,6 +2210,174 @@ app
 				);
 			}
 		}
+		/*
+		 * The global hotkey's whole wiring (design §D.2/§G): the hidden mini
+		 * window, the registrar over Electron's own `globalShortcut`, the config
+		 * watch, and the registration state pushed to every renderer.
+		 *
+		 * NORMAL LAUNCHES, PLUS THE DEV DRIVER'S HEADLESS EXERCISER (M-B1). The
+		 * design's §C.4 rule reads from the same launch plan every window is built
+		 * from: an ordinary rig-shaped run gets no window and no registration —
+		 * "an agent run never answers the operator's keyboard" is a property of
+		 * the launch rather than of the code paths inside. The one exception is
+		 * the armed dev driver in a `headless` run, where a window the app OWNS is
+		 * what lets a rig exercise the send path at all (the desktop plane admits
+		 * by frame, `desktop-ipc.ts`; a scene-built window is refused before any
+		 * request leaves the app). It registers NOTHING — `hotkeysAllowed` gates
+		 * the registrar and the watcher below — and it is never shown:
+		 * presentation stays `presentMiniView`'s gate, which a headless plan
+		 * refuses.
+		 *
+		 * PLACED BEFORE `registerDesktopIPC` because that registration carries
+		 * this feature's write-through tap: a `keymap.*` write arriving over
+		 * `desktop-request` re-applies the registration the moment the backend
+		 * accepts it, without waiting for the poll (the watcher stays the
+		 * mechanism of record for the TUI, `lop config edit` and hand edits).
+		 *
+		 * WHY THE WINDOW IS CREATED AT READY RATHER THAN ON FIRST PRESS: the
+		 * hotkey must answer on the first press, and a window created at that
+		 * moment would pay its renderer's whole boot inside the interaction.
+		 *
+		 * K6, DECIDED (manager, remediation round 1): the hidden renderer stays
+		 * for the app's life. Measured cost: ≈160–172 MB working set for the mini
+		 * renderer in this branch's evidence runs (QA round 1 re-measured
+		 * 173–195 MB under fleet load) against the design's advisory ">150 MB ⇒
+		 * switch to destroy-after-idle". The acceptance criterion that outranks
+		 * the advisory is the first press: a window created on demand pays the
+		 * renderer's whole boot inside the interaction the hotkey exists to make
+		 * instant. If memory is ever flagged, the follow-up is lazily-created —
+		 * not a lighter always-on window.
+		 */
+		const miniViewExerciser = headlessExerciserAllowed({
+			arming: devDriverArming,
+			windowMode: windowLaunch.mode,
+		});
+		if (hotkeysAllowed(windowLaunch.mode) || miniViewExerciser) {
+			miniView = createMiniView({
+				url: miniViewUrlFor(rendererUrl),
+				preloadPath: join(__dirname, "../preload/index.js"),
+				show: windowLaunch.show,
+				/*
+				 * The launch's chrome facts, resolved through the same function the
+				 * main window called — read here rather than threaded through
+				 * `createWindow`'s signature, which would touch call sites outside
+				 * this feature's slice for a value that is a launch fact (argv, the
+				 * launch env, the persisted file) and cannot differ between the two
+				 * calls. The mini view's visible consumer of it is the platform
+				 * half: the header's keycap spells ⌘⌥⇧Space against Ctrl+Alt+Shift+Space
+				 * from exactly this entry.
+				 */
+				chromeMode: resolveLaunchWindowChrome({
+					argv: process.argv,
+					env: launchEnv,
+					userDataDir: app.getPath("userData"),
+					platform: process.platform,
+				}).mode,
+				report: reportRaise,
+			});
+		}
+		if (hotkeysAllowed(windowLaunch.mode)) {
+			const initial = readQuickSendValue();
+			miniViewRegistrar = createRegistrar({
+				shortcut: globalShortcut,
+				platform: process.platform,
+				/*
+				 * The LAUNCH env, like the window mode: `XDG_SESSION_TYPE` is a fact
+				 * about the session this process started in, and a `.env` in the
+				 * checkout must not be able to decide whether this machine gets a
+				 * dead key (the Wayland refusal).
+				 */
+				env: launchEnv,
+				onTrigger: () => miniView?.toggle(),
+				onState: (state) => {
+					/*
+					 * THE PUSH IS THE SURFACE (design §G.3): the settings row renders
+					 * the live state, so every window hears about every change — a
+					 * chord that failed to register is visible without a reload.
+					 */
+					for (const window of BrowserWindow.getAllWindows()) {
+						if (window.isDestroyed()) continue;
+						window.webContents.send(MINI_VIEW_REGISTRATION, state);
+					}
+				},
+			});
+			if (initial.problem !== undefined) {
+				logger.warn(
+					`mini-view: ${initial.problem} — using the shipped default`,
+					LogFileType.BACKEND,
+				);
+			}
+			const applied = miniViewRegistrar.apply(initial.value);
+			/*
+			 * THE STARTUP LINE (§G.1/§G.5), on stdout as well as the log so a rig
+			 * can read it the way it reads `[window-mode]` — the state a dead key
+			 * would hide behind is exactly the state a tooling run needs to see.
+			 */
+			console.log(
+				applied.status === "registered"
+					? `mini-view: registered ${applied.accelerator} (value ${applied.value})`
+					: `mini-view: not registered (${applied.status}: ${applied.reason ?? "no reason given"})`,
+			);
+			quickSendWatcher = watchQuickSend({
+				onValue: (value) => {
+					const state = miniViewRegistrar?.apply(value);
+					if (state)
+						logger.info(
+							`mini-view: config changed, registration is ${state.status}`,
+							LogFileType.BACKEND,
+						);
+				},
+				onProblem: (message) =>
+					logger.warn(`mini-view: ${message}`, LogFileType.BACKEND),
+				baseline: initial.present ? initial.value : undefined,
+			});
+		} else {
+			if (miniViewExerciser) {
+				const line =
+					"mini-view: exerciser window created (dev driver armed; no registration in this mode)";
+				logger.info(line, LogFileType.BACKEND);
+				console.log(line);
+			}
+			const line = `mini-view: not registered (window mode ${windowLaunch.mode})`;
+			logger.info(line, LogFileType.BACKEND);
+			console.log(line);
+		}
+
+		/*
+		 * The registration READ (design §D.3): the settings row asks once on
+		 * mount and is pushed to thereafter. Authorized like every other window
+		 * channel — the app's own window, its main frame — because the answer
+		 * names the chord this machine listens for.
+		 */
+		ipcMain.removeHandler(MINI_VIEW_REGISTRATION_GET);
+		ipcMain.handle(MINI_VIEW_REGISTRATION_GET, (event) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				event.sender !== owner.webContents ||
+				event.senderFrame !== owner.webContents.mainFrame
+			) {
+				throw new Error("This window cannot read the hotkey registration.");
+			}
+			const state = miniViewRegistrar?.getState() ?? null;
+			if (state) {
+				return state;
+			}
+			/*
+			 * A window exists and the app is running in some other mode (or the
+			 * registrar has not answered yet): the honest answer is what the
+			 * launch said — the registration was denied by the MODE, and the row
+			 * should say so rather than showing a fabricated `registered`.
+			 */
+			return {
+				value: "",
+				accelerator: "",
+				status: "unavailable" as const,
+				reason: `window mode ${windowLaunch.mode} registers no global shortcuts`,
+			};
+		});
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -1981,6 +2386,37 @@ app
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,
 			(sessionId) => viewerRecord?.releaseSession(sessionId),
+			/*
+			 * The hotkey's write-through tap (design §G.2): a `keymap.*` write the
+			 * backend accepted re-reads the file and re-applies immediately. The
+			 * callback re-reads rather than carrying a value, so the fast path
+			 * and the poll share one source of truth.
+			 */
+			() => {
+				const reading = readQuickSendValue();
+				if (reading.problem !== undefined) {
+					logger.warn(
+						`mini-view: the settings write landed but the config re-read failed: ${reading.problem}`,
+						LogFileType.BACKEND,
+					);
+					return;
+				}
+				miniViewRegistrar?.apply(reading.value);
+			},
+			/*
+			 * The mini view's window is a SECOND trusted document (design §D.1):
+			 * its composer resolves the seat and sends through the desktop plane
+			 * exactly as the main window's chat does, so it passes the same gate.
+			 * Its own document URL travels with it — `trustedDesktopFrame` checks
+			 * the pair, so a window can never be admitted on another document's
+			 * URL. Empty until the mini view exists, and empty again after
+			 * `before-quit` disposes it, which is the same lifecycle the
+			 * registration follows.
+			 */
+			() =>
+				miniView === null
+					? []
+					: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }],
 		);
 
 		/*
@@ -2576,16 +3012,42 @@ app
 				}
 
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend after installation, quitting app",
-						LogFileType.INSTALLER,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return;
+					/*
+					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW, and for
+					 * the same reason (review round 1, R1-1). This site used to quit
+					 * unconditionally, and it is REACHABLE in exactly the state the incident
+					 * was measured in: `checkLocalOperatorExists()` false and
+					 * `backendInstaller.isInstalled()` false is a first launch, or an app whose
+					 * managed venv was invalidated, and with both spawn addresses held
+					 * `startOwned` refuses each address (`backend-service.ts`, the record arm
+					 * and `resolveSpawnTarget`), returns false three times, and this arm took
+					 * the window down with the modal - the twelve-minute incident one arm
+					 * down from where it was fixed. The previous round judged this site
+					 * unreachable on the machine it was measured on; the reachability argument
+					 * above is the answer to that, and it is the reason this is fixed rather
+					 * than ticketed.
+					 *
+					 * Falling THROUGH rather than returning is the point, as below: the early
+					 * `return` on the other arms exists to skip window creation, and skipping
+					 * it here would leave the operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.INSTALLER,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
+						);
+						app.quit();
+						return;
+					}
 				}
 			} else {
 				// Start our backend service (for existing installations).
@@ -2597,16 +3059,41 @@ app
 					reuseDiscovery: true,
 				});
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend with existing installation, quitting app",
-						LogFileType.BACKEND,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service. Please restart the application.",
-						LogFileType.BACKEND,
-					);
-					app.quit();
-					return;
+					/*
+					 * AN ADDRESS THIS APP DOES NOT OWN IS NOT A REASON TO TAKE THE APP DOWN.
+					 *
+					 * Measured 2026-09-23: the configured address was held by a different
+					 * local-operator install's stray `lop serve`. The app refused it by identity
+					 * (correct) and refused to spawn its own over it (also correct - the token is
+					 * minted before the spawn, so minting over an occupied address overwrites
+					 * that daemon's credential). Then it quit, and the operator had no app for
+					 * twelve minutes while a backend they did not own held their port.
+					 *
+					 * Nothing about that state justifies losing the window. The backend manager
+					 * has already published which holder refused it, the probe loop is armed, and
+					 * a fallback daemon may be running on the other address the renderer trusts
+					 * - so the app opens, says what is on the address, and keeps trying. Falling
+					 * THROUGH rather than returning is the point: the early `return` on the other
+					 * arms exists to skip window creation, and skipping it here would leave the
+					 * operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend with existing installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.BACKEND,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend with existing installation, quitting app",
+							LogFileType.BACKEND,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service. Please restart the application.",
+							LogFileType.BACKEND,
+						);
+						app.quit();
+						return;
+					}
 				}
 			}
 		}
@@ -2632,11 +3119,88 @@ app
 		 * host owns its own teardown (its ``closed`` listener stops it), which is why
 		 * nothing here has to unwind it.
 		 */
+		/**
+		 * Consent attentions parked because the window they were raised for is GONE.
+		 *
+		 * A BANNER OUTLIVES ITS WINDOW and its click still arrives: macOS keeps a raised
+		 * banner in Notification Center, the notifier's `click` listener is a closure on
+		 * an object main still references, and on macOS the app stays alive in the Dock
+		 * after `window.on("closed")` — which is the operator's own reported state ("I
+		 * click it and nothing happens"). Measured on Electron 44.3.0 (UX review round 1,
+		 * U2): with the window destroyed, reading `webContents` throws
+		 * `Object has been destroyed`, so the click threw in main instead of landing
+		 * anywhere. `consentClickHandler` no longer captures the window and hands the
+		 * request here instead.
+		 *
+		 * A WINDOW IS CREATED WITH THE OPERATOR'S OWN PLAN, exactly as a Dock click does
+		 * (see the `activate` handler): a banner click is a person asking for the app, and
+		 * answering it under a `headless` launch plan would put a real request on a screen
+		 * nobody can reach. In a launch that cannot show a window no banner is raised at
+		 * all (`consent-notifier.ts` gates on `show === "focus"`), so this path cannot be
+		 * reached by an unattended run.
+		 *
+		 * THE QUEUE IS BOUNDED and the OLDEST is dropped, for `PARKED_LAUNCH_LIMIT`'s
+		 * reason: an unbounded in-memory queue on a long-lived app is a leak, and the
+		 * newest click is the one a person is most likely still waiting on. Sixteen is the
+		 * approvals queue's own cap, so the bound cannot be reached by a real click pattern
+		 * without the approvals cap having been reached first.
+		 */
+		const parkedConsentAttentions: ConsentAttentionPayload[] = [];
+		const PARKED_CONSENT_LIMIT = 16;
+
+		function parkConsentAttention(payload: ConsentAttentionPayload): void {
+			parkedConsentAttentions.push(payload);
+			while (parkedConsentAttentions.length > PARKED_CONSENT_LIMIT) {
+				parkedConsentAttentions.shift();
+			}
+		}
+
+		/**
+		 * Deliver every parked attention to a window whose RENDERER CAN HEAR IT.
+		 *
+		 * `did-finish-load` and not the creation, for the reason the parked-conversation
+		 * queue states one screen up: a `webContents.send` into a window that has not
+		 * loaded is dropped silently, so a send at creation would turn the reported no-op
+		 * into a rarer one. An entry whose window died before its first paint goes back on
+		 * the queue rather than out with the window.
+		 */
+		function claimParkedConsentAttention(window: BrowserWindow): void {
+			if (parkedConsentAttentions.length === 0) return;
+			const claimed = parkedConsentAttentions.splice(
+				0,
+				parkedConsentAttentions.length,
+			);
+			window.webContents.once("did-finish-load", () => {
+				for (const payload of claimed) {
+					if (window.isDestroyed()) {
+						parkConsentAttention(payload);
+						continue;
+					}
+					window.webContents.send(CONSENT_ATTENTION_CHANNEL, payload);
+				}
+			});
+		}
+
 		function setupMainWindowWithUpdateService(
 			initialSession: string | null = null,
 			openCatalogue = false,
 			request: RaiseRequest = ownLaunchRequest(),
 		) {
+			/*
+			 * THE CREATE GATE for every caller (round-1 review, F-2/F-3): the consent
+			 * toast's reopen, the viewer's `focusWindow` recreate when no window is
+			 * up, the Dock click and any future caller — this is the one function
+			 * every creation goes through, so one check covers them. A window created
+			 * now would be answered by a process that is tearing down (the #636
+			 * defect, one request-source further out), so the request is refused WHOLE
+			 * and reported under ITS OWN trigger (`trigger=banner-click`,
+			 * `viewer-focus`, ...) — the line answers who asked. Non-quitting creation
+			 * is untouched: the state is false on every other path.
+			 */
+			if (quitState.isQuitting()) {
+				reportSkippedWhileQuitting(request, request.show);
+				return;
+			}
 			/*
 			 * A conversation PARKED by a request that could not be shown — a `headless`
 			 * launch that named one while this app had no window — rides into the window
@@ -2703,6 +3267,15 @@ app
 				parked,
 			);
 
+			/*
+			 * AND THE CLICK THAT COULD NOT BE DELIVERED TO THE WINDOW IT WAS RAISED FOR
+			 * (UX review round 1, U2). Claimed here rather than in the click's own path,
+			 * because the window this creates is created HERE: the click parks the request
+			 * and asks for a window, and the delivery belongs to whatever window exists
+			 * when a renderer can hear it.
+			 */
+			claimParkedConsentAttention(mainWindow);
+
 			// Clean up any previous update service
 			if (updateService) {
 				updateService.dispose();
@@ -2765,8 +3338,11 @@ app
 				const isCmdOrCtrl = input.control || input.meta;
 
 				/*
-				 * Toggle command palette: Cmd/Ctrl + P — the palette's ORIGINAL gesture,
-				 * kept for everyone who learned it from the app's own tour.
+				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
+				 * gesture, kept for everyone who learned it from the app's own tour, and
+				 * since issue #659 a job of its own rather than a second door to the
+				 * same list: the renderer opens the palette seeded to its conversations
+				 * source, which is a chat quick switcher.
 				 *
 				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
 				 * a `before-input-event` hook fires before the renderer sees the key at all,
@@ -2848,6 +3424,43 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The other half of the plan the browser host forwards to a popup's
+					// `webPreferences`: a hidden popup must render like a shown one, so the
+					// mode's own answer travels with the mode rather than being re-derived
+					// (docs/design/browser-oauth-popups.md 2.5).
+					backgroundThrottling: windowLaunch.backgroundThrottling,
+					// A consent banner's click comes forward through the app's own raise policy,
+					// and this is where its one line goes — the same logger every other raise
+					// reports to, so `trigger=banner-click` is greppable beside them.
+					reportRaise,
+					/*
+					 * AND WHERE IT GOES WHEN THERE IS NO WINDOW TO COME FORWARD IN. The request
+					 * is parked and a window is created under the OPERATOR's plan (a banner click
+					 * is a person asking for the app), and `claimParkedConsentAttention` above
+					 * delivers it once that window's renderer can hear it. Without this, a click
+					 * with no window reported at best — and before this round it threw on a
+					 * destroyed window.
+					 */
+					reopenConsent: (payload: ConsentAttentionPayload) => {
+						parkConsentAttention(payload);
+						/*
+						 * THE APP'S OWN QUESTION ABOUT ITS WINDOW, not a census of every
+						 * window this process has (agent review round 2, U8): the console's
+						 * offscreen capture view is a `BrowserWindow` too, so
+						 * `getAllWindows().length === 0` was false while none of them could
+						 * show a conversation - a banner click then parked its request with
+						 * no window created, which is the no-op this path exists to remove.
+						 * `mainWindow` is what every other decision in this file asks about,
+						 * and `isDestroyed()` is the "still usable" half of the same test
+						 * (line 780's form).
+						 */
+						if (!mainWindow || mainWindow.isDestroyed()) {
+							setupMainWindowWithUpdateService(null, false, {
+								show: OPERATOR_SHOW,
+								trigger: "banner-click",
+							});
+						}
+					},
 					// The console's completion banner is raised through this app's ONE
 					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
 					// the window state, the raise policy and the click path). It is still the
@@ -3010,6 +3623,21 @@ app
 				});
 				return;
 			}
+			/*
+			 * THE CREATE GATE (round-1 review, F-2). A window created here would be
+			 * answered by a process already tearing down — the #636 defect, one
+			 * request-source further out — so the request is refused WHOLE, and the
+			 * refusal sits ahead of the park below ON PURPOSE: a park promises a next
+			 * window this process will never create, so letting this branch park would
+			 * trade one broken promise for another. The direct callers that create
+			 * without coming through here (the consent reopen and the viewer's
+			 * `focusWindow` recreate) are refused by the same gate inside
+			 * `setupMainWindowWithUpdateService`, which every creation reaches.
+			 */
+			if (quitState.isQuitting()) {
+				reportSkippedWhileQuitting(request, request.show);
+				return;
+			}
 			// A request that must not be shown does not create a window at all: it parks
 			// its conversation for the operator's next window to open, so nothing
 			// invisible is left holding a screen nobody can reach. See
@@ -3101,9 +3729,32 @@ app
 			// queue emptied into a screen nobody can reach. The mode governs the launch;
 			// this is the other direction, and `OPERATOR_SHOW` is the plan that says so.
 			if (!mainWindow || mainWindow.isDestroyed()) {
+				/*
+				 * A DOCK CLICK DURING A QUIT GETS A LINE, NOT A WINDOW — the same defect
+				 * as a relaunch during teardown, arriving on the operator's own act: the
+				 * click lands in the seconds between the window closing and the process
+				 * going, and the window it used to open died with that shutdown. The
+				 * refusal is reported like every other declined request
+				 * (`applied=skipped+quitting`), because a person who clicked the Dock icon
+				 * is owed the reason nothing appeared — and the NEXT click, after the
+				 * process is gone, launches a window normally.
+				 */
+				if (quitState.isQuitting()) {
+					reportSkippedWhileQuitting(
+						{ trigger: "activate", report: reportRaise },
+						OPERATOR_SHOW,
+					);
+					return;
+				}
 				setupMainWindowWithUpdateService(null, false, {
 					show: OPERATOR_SHOW,
-					trigger: "initial-present",
+					/*
+					 * The request names itself on its raise line. It used to present as
+					 * `initial-present` — this process's own launch — which is what a Dock
+					 * click is not, and the log's whole job is attribution; the refusal
+					 * above is the same request and must carry the same name.
+					 */
+					trigger: "activate",
 				});
 			}
 		});
@@ -3204,10 +3855,13 @@ app.on("window-all-closed", () => {
  * Each term is the exported bound it comes from; changing any of them moves
  * this one.
  *
- * The console term is GONE rather than zeroed. It was two 5 s `where`/`which`
- * ceilings for naming the global launcher; that is now a synchronous search of
- * the installers' bin directories, so no wait is left to bound and a term for
- * one would hold this timer ten seconds past everything it actually waits on.
+ * The console term is no longer a `where`/`which` ceiling - naming the global
+ * launcher is a synchronous search of the installers' bin directories - but the
+ * launcher-USABILITY probe that replaced that question is not synchronous, and it
+ * sits on this path: `startOwned` awaits `checkLocalOperatorExists`, and
+ * `stop(false)` awaits the start promise that is inside it. So the term is the
+ * probe's own worst case, derived from its exported ceiling (`LAUNCHER_PROBE_WORST_MS`)
+ * rather than restated here.
  *
  * What it does NOT cover, stated because a bound that only holds while the
  * thread is free is not a bound: it is a timer, so it cannot fire while the
@@ -3217,6 +3871,7 @@ app.on("window-all-closed", () => {
  */
 const QUIT_FAILSAFE_MARGIN_MS = 5_000;
 const QUIT_CLEANUP_FAILSAFE_MS =
+	LAUNCHER_PROBE_WORST_MS +
 	INTERPRETER_RESOLUTION_WORST_MS +
 	OWNED_STOP_WORST_MS +
 	READINESS_POLL_INTERVAL_MS +
@@ -3312,6 +3967,15 @@ const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 });
 
 app.on("before-quit", async (event) => {
+	/*
+	 * THE QUIT IS RECORDED BEFORE ANYTHING CAN WAIT ON IT. A request that arrives
+	 * after this line must not be answered with a window — the window is doomed
+	 * from here, whether the hold below passes now or holds the quit for the
+	 * session-cookie budget first — so the state is set at the FIRST entry, ahead
+	 * of the hold. The only release is the setup dialog's declined answer, beside
+	 * its own cancellation (`./quit-state` owns why it is the only one).
+	 */
+	quitState.begin();
 	// Electron closes windows before will-quit. Dispose synchronously so closing
 	// the pet during app shutdown does not persist a user's "hide companion" choice.
 	const companion = desktopCompanion;
@@ -3373,6 +4037,18 @@ app.on("before-quit", async (event) => {
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
 	/*
+	 * The mini view's own teardown, beside the line it depends on. The registrar
+	 * releases its chord through the SAME mechanism `unregisterAll` just used,
+	 * but explicitly, so its bookkeeping is not left claiming a live binding; the
+	 * watcher loses its timers (a poll landing mid-shutdown would re-apply a
+	 * registration into a dying process); and the window is destroyed with its
+	 * close-interception stood down, or the quit would be blocked by the very
+	 * guard that turns an accidental close into a hide.
+	 */
+	miniViewRegistrar?.dispose();
+	quickSendWatcher?.stop();
+	miniView?.dispose();
+	/*
 	 * Any quit, not only the panel's button.
 	 *
 	 * The relaunch promise used to belong to one control: quitting any other way
@@ -3402,7 +4078,10 @@ process.on("exit", () => {
 			error,
 		);
 	}
-	posthogClient.shutdown();
+	// Nothing was constructed when telemetry is off, so there is nothing to
+	// flush or close — and a bare `posthogClient.shutdown()` here would be a
+	// TypeError on the exit path of every rig-shaped run.
+	posthogClient?.shutdown();
 });
 
 process.on("uncaughtException", (error) => {

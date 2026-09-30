@@ -28,6 +28,15 @@ export default defineConfig({
 			"@hooks": resolve(root, "src/renderer/src/hooks"),
 			"@api": resolve(root, "src/renderer/src/api"),
 			"@store": resolve(root, "src/renderer/src/store"),
+			/*
+			 * The desktop CONTRACT, which the app imports by relative path from
+			 * wherever it sits. This page lives one directory outside the root, and
+			 * vite's dev server does not serve it a module from outside without an
+			 * alias: measured, the page rendered nothing and the browser reported
+			 * "Failed to resolve import ../../src/shared/desktop-contract", which
+			 * reads as a missing file rather than as a server-boundary refusal.
+			 */
+			"@contract": resolve(root, "src/shared"),
 		},
 	},
 	plugins: [react(), tailwindcss()],

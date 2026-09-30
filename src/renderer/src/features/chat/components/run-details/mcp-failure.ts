@@ -83,7 +83,9 @@ export type McpFailurePhase =
 	| "cancel"
 	| "status"
 	| "disconnect"
-	| "remove";
+	| "remove"
+	/** Settings > Integrations' connection test (the sessionless `test` verb). */
+	| "test";
 
 /**
  * What the phase could NOT do, as the head of its sentence.
@@ -93,7 +95,7 @@ export type McpFailurePhase =
  * not "server ownership", not "transport", not "operation state", and not the
  * session's owner, which no surface of this app shows.
  */
-const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
+export const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
 	probe: "This server's sign-in method could not be checked",
 	grant: "The sign-in could not be started",
 	reconnect: "The server could not be reconnected",
@@ -104,6 +106,7 @@ const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
 	status: "The sign-in status could not be refreshed",
 	disconnect: "The server could not be disconnected",
 	remove: "The server could not be removed",
+	test: "The connection test could not be started",
 };
 
 /**

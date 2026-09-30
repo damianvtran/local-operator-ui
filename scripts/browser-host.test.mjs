@@ -53,6 +53,10 @@ const bundle = await build({
 			// cap moves, and reads green while it does.
 			'export * from "./src/main/browser/vendor/driver/access-queue";',
 			'export * from "./src/main/browser/consent-notifier";',
+			// What a banner click DOES, on the wiring's own side of it: the payload it
+			// sends and the raise it makes, in order. Its own module because no automated
+			// run can produce a native click (`consent-click.ts` says why).
+			'export * from "./src/main/browser/consent-click";',
 			// The banner class itself, reached through the alias below, so the tests can
 			// see what the DEFAULT factory raised without constructing one of their own.
 			'export { Notification as ElectronNotification } from "electron";',
@@ -73,6 +77,10 @@ const bundle = await build({
 			'export * from "./src/main/browser/vendor/driver/file-transfer-policy";',
 			'export * from "./src/main/browser/vendor/driver/file-transfer.tables.gen";',
 			'export * from "./src/main/browser/settle";',
+			// The popup policy for driven pages (docs/design/browser-oauth-popups.md 1-2).
+			// Bundled so the whole allow/deny table is driven here as RULES — the real
+			// popup it describes (a real child window over real CDP) is the proof's job.
+			'export * from "./src/main/browser/popups";',
 			'export * from "./src/main/browser/log-capture";',
 			'export * from "./src/main/browser/actions/gate";',
 			// The vendored driver modules. Their app-side counterparts live in
@@ -104,6 +112,9 @@ const {
 	TabRegistry,
 	MAX_AGENT_TABS,
 	captureTabs,
+	readSession,
+	SESSION_FILENAME,
+	MAX_RESTORED_TABS,
 	surfaceToken,
 	parseSurface,
 	redactToken,
@@ -124,6 +135,7 @@ const {
 	ACCESS_REQUEST_TTL_MS,
 	ConsentNotifier,
 	consentBody,
+	consentClickHandler,
 	ElectronNotification,
 	ipcMain,
 	registerBrowserIpc,
@@ -138,6 +150,12 @@ const {
 	safeHttpUrl,
 	navigateView,
 	settle,
+	// The popup policy's pure decision function and its cap constant: the matrix
+	// below drives this directly, and reads the cap rather than hard-coding 4 — a
+	// test that hard-codes the cap stops testing it the day the cap moves.
+	decidePopup,
+	effectivePresentation,
+	MAX_POPUP_CHILDREN_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -1320,6 +1338,7 @@ test("one banner per count change, not one per pending request", () => {
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
@@ -1327,6 +1346,10 @@ test("one banner per count change, not one per pending request", () => {
 		Array.from({ length: count }, (_, index) => ({
 			entryId: `entry-${index}`,
 			origin: `https://origin-${index}.example`,
+			// The asker's identity string, which every real entry carries
+			// (`approvals.pendingEntries()` is passed straight in by the host) and which
+			// the click forwards so the renderer can land on the right conversation.
+			requester: `session:talker-${index}`,
 		}));
 	notifier.announce(pending(0));
 	assert.equal(raised.length, 0, "nothing pending, nothing to say");
@@ -1354,25 +1377,213 @@ test("one banner per count change, not one per pending request", () => {
 	assert.equal(raised.length, 3);
 });
 
-test("the click on a banner names the OLDEST live request", () => {
+test("the click on a banner names the OLDEST live request, and who asked for it", () => {
+	// BOTH HALVES MATTER (operator ask, 2026-09-23). The entry id is which request the
+	// click means; the requester is which conversation it belongs to, and it is what
+	// lets the landing be the asking conversation rather than the queue. It must be the
+	// OLDEST entry's requester - the same entry the tray selects - and not simply the
+	// first one the loop touched.
 	const attended = [];
 	let click = null;
 	const notifier = new ConsentNotifier({
 		show: "focus",
-		onAttention: (entryId) => attended.push(entryId),
+		onAttention: (entryId, requester) => attended.push([entryId, requester]),
 		createNotification: () => ({
-			on: (event, listener) => {
+			on: () => {},
+			// The click is attached through the notification lifetime's `retain`, which
+			// registers it with `once` — see `notification-lifetime.ts`.
+			once: (event, listener) => {
 				if (event === "click") click = listener;
 			},
 			show: () => {},
 		}),
 	});
 	notifier.announce([
-		{ entryId: "oldest", origin: "https://one.example" },
-		{ entryId: "newer", origin: "https://two.example" },
+		{
+			entryId: "oldest",
+			origin: "https://one.example",
+			requester: "session:oldest-talker",
+		},
+		{
+			entryId: "newer",
+			origin: "https://two.example",
+			requester: "session:newer-talker",
+		},
 	]);
 	click?.();
-	assert.deepEqual(attended, ["oldest"]);
+	assert.deepEqual(attended, [["oldest", "session:oldest-talker"]]);
+});
+
+/**
+ * A window as far as a raise and a channel-send are concerned: it records BOTH in
+ * ONE log, because the ORDER is half of what the handler promises and two separate
+ * arrays could not show it.
+ */
+function recordingWindow({ minimized = false, destroyed = false } = {}) {
+	const calls = [];
+	return {
+		calls,
+		webContents: {
+			send: (channel, payload) => calls.push(["send", channel, payload]),
+		},
+		show: () => calls.push(["show"]),
+		showInactive: () => calls.push(["showInactive"]),
+		focus: () => calls.push(["focus"]),
+		isMinimized: () => minimized,
+		restore: () => calls.push(["restore"]),
+		isDestroyed: () => destroyed,
+	};
+}
+
+test("a consent click names the request, then comes forward through the raise policy", () => {
+	// THE OPERATOR'S REPORT (2026-09-23): "the click does nothing and they must click
+	// the tab by hand". The click only ever told the renderer to navigate, behind
+	// whatever the operator was looking at - which is the state the banner exists for.
+	// The window must come forward, and through `window-raise.ts` (this handler calls
+	// no show/showInactive/focus itself; `scripts/window-mode.test.mjs` is what scans
+	// for that), so the ONE line that answers "who took my focus" names this act.
+	for (const [show, expected] of [
+		["focus", ["show", "focus"]],
+		["inactive", ["showInactive"]],
+		["never", []],
+	]) {
+		const window = recordingWindow();
+		const reported = [];
+		consentClickHandler({
+			// The window is ASKED FOR at click time rather than captured, which is the
+			// U2 fix: a banner outlives the window it was raised for.
+			window: () => window,
+			show,
+			report: (line) => reported.push(line),
+		})("entry-1", "session:2d5ad5da0025");
+
+		const kinds = window.calls.map(([kind]) => kind);
+		assert.deepEqual(
+			window.calls[0],
+			[
+				"send",
+				"browser-consent-attention",
+				{ entryId: "entry-1", requesterSessionId: "2d5ad5da0025" },
+			],
+			`the payload is sent FIRST and carries the asking conversation (plan ${show})`,
+		);
+		assert.deepEqual(
+			kinds.slice(1),
+			expected,
+			`a ${show} plan comes forward this far and no further`,
+		);
+		// A `never` run raises nothing AND reports nothing, which is the promise that
+		// keeps a headless run's log silent.
+		assert.equal(
+			reported.length,
+			show === "never" ? 0 : 1,
+			`a ${show} plan reports ${show === "never" ? "nothing" : "one line"}`,
+		);
+		if (show !== "never") {
+			assert.match(
+				reported[0],
+				/^trigger=banner-click mode=.* requested=/,
+				"the line names the act, so the next caret loss with a banner in the log is attributable",
+			);
+		}
+	}
+});
+
+test("a requester that names no conversation arrives as null, so the click falls back", () => {
+	// The landing side is the renderer's (`consentClickTarget`), and it can only make
+	// that decision from what it is handed: a `call:`/request-id requester is not a
+	// conversation and must reach the renderer as `null` rather than as a bare id the
+	// app would then look up as a session (host.ts's `sessionRequesterOf`).
+	const window = recordingWindow();
+	consentClickHandler({ window: () => window, show: "focus" })(
+		"entry-1",
+		"call:abc123",
+	);
+	assert.deepEqual(window.calls[0], [
+		"send",
+		"browser-consent-attention",
+		{ entryId: "entry-1", requesterSessionId: null },
+	]);
+});
+
+test("a click whose window is gone lands through the app's recreate path instead of throwing (U2)", () => {
+	// UX ROUND 1, U2: the one remaining way the operator's report ("I click it and
+	// nothing happens") still held. A banner outlives its window — macOS keeps it in
+	// Notification Center — and the app stays alive in the Dock after `closed`, so the
+	// click arrives into a main process whose window is destroyed. Measured on Electron
+	// 44.3.0: reading `webContents` there throws `Object has been destroyed`, so the old
+	// handler threw in main instead of landing anywhere.
+	const destroyed = recordingWindow({ destroyed: true });
+	const reopened = [];
+	assert.doesNotThrow(() => {
+		consentClickHandler({
+			window: () => destroyed,
+			show: "focus",
+			reopen: (payload) => reopened.push(payload),
+		})("entry-1", "session:2d5ad5da0025");
+	}, "a destroyed window must not take the click with it");
+	assert.deepEqual(
+		reopened,
+		[{ entryId: "entry-1", requesterSessionId: "2d5ad5da0025" }],
+		"the request is handed to the app's own recreate path, carrying the same payload the renderer would have been sent",
+	);
+	assert.deepEqual(
+		destroyed.calls,
+		[],
+		"and nothing is asked of the destroyed window, not even a send",
+	);
+
+	// No window AND no recreate path: the click reports the no-target line rather than
+	// pretending something happened, and still does not throw.
+	const reported = [];
+	consentClickHandler({
+		window: () => null,
+		show: "focus",
+		report: (line) => reported.push(line),
+	})("entry-1", "session:2d5ad5da0025");
+	assert.equal(reported.length, 1, "the click says it had nowhere to land");
+	assert.match(
+		reported[0],
+		/^trigger=banner-click mode=none .*reason=no-target/,
+		"and names the reason, so the next silent click is greppable",
+	);
+
+	// `window` is asked for ONCE per click: a handler that captured it could not see a
+	// window that appeared between the raise and the click.
+	let asked = 0;
+	const live = recordingWindow();
+	consentClickHandler({
+		window: () => {
+			asked += 1;
+			return live;
+		},
+		show: "focus",
+	})("entry-2", "session:x");
+	assert.equal(asked, 1, "one resolution per click");
+	assert.equal(live.calls[0][1], "browser-consent-attention");
+});
+
+test("an inactive plan orders the window forward without un-minimising it", () => {
+	// The same rule `raiseWindow` states for every request: an `inactive` ask must not
+	// pull a window the operator put away back onto the screen. It is asserted here
+	// because this handler is a NEW caller of that policy and a new caller is where a
+	// policy gets re-decided by accident.
+	const window = recordingWindow({ minimized: true });
+	consentClickHandler({ window: () => window, show: "inactive" })(
+		"entry-1",
+		"session:x",
+	);
+	assert.deepEqual(
+		window.calls,
+		[
+			[
+				"send",
+				"browser-consent-attention",
+				{ entryId: "entry-1", requesterSessionId: "x" },
+			],
+		],
+		"the send happens, and the minimised window is not restored or shown",
+	);
 });
 
 test("the default banner is Electron's own, with the shape the copy expects", () => {
@@ -1385,7 +1596,13 @@ test("the default banner is Electron's own, with the shape the copy expects", ()
 		show: "focus",
 		onAttention: (entryId) => attended.push(entryId),
 	});
-	notifier.announce([{ entryId: "oldest", origin: "https://one.example" }]);
+	notifier.announce([
+		{
+			entryId: "oldest",
+			origin: "https://one.example",
+			requester: "session:one",
+		},
+	]);
 	assert.deepEqual(ElectronNotification.raised, [
 		{
 			title: "Site approval needed",
@@ -1397,8 +1614,8 @@ test("the default banner is Electron's own, with the shape the copy expects", ()
 	// chrome is the primary channel.
 	ElectronNotification.supported = false;
 	notifier.announce([
-		{ entryId: "oldest", origin: "https://one.example" },
-		{ entryId: "newer", origin: "https://two.example" },
+		{ entryId: "oldest", origin: "https://one.example", requester: "a" },
+		{ entryId: "newer", origin: "https://two.example", requester: "b" },
 	]);
 	assert.equal(ElectronNotification.raised.length, 1);
 });
@@ -1410,10 +1627,13 @@ test("no banner is raised when the launch plan would not have focused the window
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
-	notifier.announce([{ entryId: "a", origin: "https://one.example" }]);
+	notifier.announce([
+		{ entryId: "a", origin: "https://one.example", requester: "session:a" },
+	]);
 	assert.equal(
 		raised.length,
 		0,
@@ -4115,7 +4335,11 @@ test("the change capture a restore fires already carries every tab, before a pag
 		() => {},
 		() =>
 			snapshots.push(
-				captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+				captureTabs(
+					registry.list(),
+					registry.activeTab?.tabId ?? null,
+					new Set(),
+				),
 			),
 	);
 	const { host } = makeHost({ registry });
@@ -4241,6 +4465,169 @@ test("a refused load is reported only when it is one a user can act on", () => {
 	);
 	assert.equal(isReportableLoadFailure(-324), true);
 	assert.equal(isReportableLoadFailure(-105), true);
+});
+
+// ---- a tab that is dead when you quit is not restored (2026-09-28) ----------
+
+/*
+ * The operator's accumulation, at the layer it is mechanical on: `captureTabs` writes
+ * a row for a tab whose page refused to load (marked `lastLoadFailed`), and
+ * `readSession` SKIPS a flagged row - so the dead tab is not re-created, and not
+ * re-persisted, on every launch after the one it died on. The mark is written only
+ * while the host has a recorded failure for the tab, so a later successful load
+ * clears it, and the skip runs BEFORE the cap, so a dead row does not consume one of
+ * `MAX_RESTORED_TABS` slots.
+ */
+
+test("a capture marks only the failed tabs, and a later success clears the mark", () => {
+	const { registry } = makeRegistry();
+	const row = (url) => ({
+		owner: "user",
+		active: false,
+		entries: [{ url, title: url }],
+		activeIndex: 0,
+	});
+	const dead = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: row("http://127.0.0.1:9/"),
+	});
+	const alive = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: row("https://example.com/"),
+	});
+
+	const captured = captureTabs(
+		registry.list(),
+		alive.tabId,
+		new Set([dead.tabId]),
+	);
+	assert.equal(captured[0].lastLoadFailed, true, "the failed tab is marked");
+	assert.deepEqual(
+		captured[1],
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://example.com/", title: "https://example.com/" }],
+			activeIndex: 0,
+		},
+		"an unflagged row is written exactly as it always was - the mark is additive and omitted when absent",
+	);
+
+	// The set the host hands in is its live `loadFailures`: once the tab's next
+	// navigation retires the failure, the next capture omits the mark.
+	assert.equal(
+		"lastLoadFailed" in captureTabs(registry.list(), alive.tabId, new Set())[0],
+		false,
+		"a successful load clears the mark",
+	);
+});
+
+test("the host publishes the failed ids the capture reads, and a close retires them", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" });
+	const second = registry.create({ owner: "user" });
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"nothing failed, nothing published",
+	);
+
+	host.recordLoadFailure(second.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	assert.deepEqual([...host.failedTabIds()], [second.tabId]);
+
+	host.clearLoadFailure(second.tabId);
+	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
+
+	host.recordLoadFailure(first.tabId, {
+		code: -105,
+		description: "ERR_NAME_NOT_RESOLVED",
+		url: "http://nope.invalid/",
+	});
+	host.closeTab(first.tabId);
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"and a closed tab cannot leave a failure behind for its id",
+	);
+});
+
+test("readSession skips a flagged row, names the count in the log, and does not let it eat a cap slot", () => {
+	const dir = mkdtempSync(join(root, "session-restore-"));
+	const path = join(dir, SESSION_FILENAME);
+	const rows = (n, from = 0) =>
+		Array.from({ length: n }, (_, i) => ({
+			owner: "user",
+			active: false,
+			entries: [{ url: `https://example.com/${from + i}`, title: "page" }],
+			activeIndex: 0,
+		}));
+
+	// The plain skip, with the count in the log: A unflagged, B flagged, C unflagged.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				...rows(1),
+				{ ...rows(1, 1)[0], lastLoadFailed: true },
+				...rows(1, 2),
+			],
+		}),
+	);
+	const messages = [];
+	const kept = readSession(path, (message) => messages.push(message));
+	assert.deepEqual(
+		kept.map((tab) => tab.entries[0].url),
+		["https://example.com/0", "https://example.com/2"],
+		"the flagged row is not restored, and the healthy rows keep their order",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				"1 recorded tab(s) were showing a load failure when the session ended; not restored",
+			),
+		),
+		`the skip says what it did: ${JSON.stringify(messages)}`,
+	);
+
+	// THE CAP COUNTS RESTORABLE ROWS: MAX + 1 healthy rows plus a flagged one - and
+	// the flagged row is ACTIVE, which is the row the cap would otherwise be sure to
+	// keep. The dead row must neither restore nor displace a healthy one.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				{ ...rows(1)[0], active: true, lastLoadFailed: true },
+				...rows(MAX_RESTORED_TABS + 1, 1),
+			],
+		}),
+	);
+	messages.length = 0;
+	const bounded = readSession(path, (message) => messages.push(message));
+	assert.equal(
+		bounded.length,
+		MAX_RESTORED_TABS,
+		"the cap keeps its full complement of restorable rows",
+	);
+	assert.ok(
+		bounded.every((tab) => tab.lastLoadFailed !== true),
+		"and the dead row is not among them even though it was active",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				`restoring ${MAX_RESTORED_TABS} of ${MAX_RESTORED_TABS + 1} recorded tabs`,
+			),
+		),
+		`the cap arithmetic counts only restorable rows: ${JSON.stringify(messages)}`,
+	);
 });
 
 // ---- who is asking travels as an id and nothing else (D2) -------------------
@@ -5576,4 +5963,159 @@ test("the download reveal opens the host's own directory and takes no path from 
 	);
 	downloads.forget(7);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/*
+ * ---- the popup policy for driven pages -------------------------------------
+ *
+ * The whole §1.1 table as RULES (docs/design/browser-oauth-popups.md). These
+ * cases pin the DECISION; the run that proves a real child window opens with a
+ * live `window.opener`, carries the session's cookies and closes on cue is
+ * `scripts/browser-host-proof.mjs` — the same division every other browser
+ * surface uses here. The grandchild rule ("a popup from a popup is refused") is
+ * NOT in this bundle by construction: a child gets its own deny-all handler in
+ * `wirePopup`, which is Electron-side code only the running app can exercise, and
+ * the proof asserts it end to end.
+ */
+test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
+	const policy = { mode: "focus", live: 0 };
+	const ask = (url, disposition = "default") =>
+		decidePopup({ url, disposition }, policy);
+
+	// `about:blank` EXACTLY is the one allowed `about:` — MSAL opens the blank
+	// window first and navigates it, and a denied blank popup is the failure the
+	// policy exists to remove. The near-misses must not ride the check.
+	assert.deepEqual(ask("about:blank"), { allow: true, presentation: "focus" });
+	for (const near of ["about:blankx", "about:srcdoc", "about:config"]) {
+		assert.deepEqual(
+			ask(near),
+			{ allow: false, reason: "scheme" },
+			`${near} must not pass the exact-string blank check`,
+		);
+	}
+
+	// http(s), ANY host: the boundary is the hardened window (partition, sandbox,
+	// no preload) plus the cap, not a domain list — so even a host nobody would
+	// allowlist is admitted, and that is the design asserted here rather than a
+	// hole. A second domain allowlist beside the window hardening is exactly what
+	// the design rejects, because it would have to name every IdP a user or agent
+	// may meet.
+	for (const url of [
+		"http://127.0.0.1:8080/login",
+		"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		"https://good.com.evil.test/",
+	]) {
+		assert.deepEqual(ask(url), { allow: true, presentation: "focus" });
+	}
+	// A form POST `target=_blank` is the same URL check: Electron carries the body
+	// in its own `details.postBody`, which this decision never reads.
+	assert.deepEqual(
+		ask("https://login.microsoftonline.com/post", "foreground-tab"),
+		{ allow: true, presentation: "focus" },
+	);
+
+	// Everything else refuses BY PARSED SCHEME, never by prefix: a
+	// `startsWith("http")` test would admit `httpfoo:`, and a prefix test on a
+	// host admits `https://good.com.evil.test`. The unparseable cases refuse too.
+	for (const url of [
+		"file:///etc/passwd",
+		"javascript:alert(1)",
+		"data:text/html,<h1>hi</h1>",
+		"blob:https://example.com/9f8c",
+		"chrome://settings",
+		"devtools://devtools/bundled/inspector.html",
+		"msauth://com.example.app",
+		"mailto:someone@example.com",
+		"httpfoo:not-a-scheme",
+		"not a url at all",
+		"",
+	]) {
+		assert.deepEqual(
+			ask(url),
+			{ allow: false, reason: "scheme" },
+			`${JSON.stringify(url)} must be refused as a scheme`,
+		);
+	}
+});
+
+test("the popup cap bounds the view's LIVE children, driven from the constant", () => {
+	const cap = MAX_POPUP_CHILDREN_PER_VIEW;
+	for (let live = 0; live < cap; live += 1) {
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition: "default" },
+				{ mode: "focus", live },
+			).allow,
+			true,
+			`live=${live} is under the cap`,
+		);
+	}
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+	// The cap counts LIVE children rather than opens, which is what keeps a retry
+	// from being refused for a window Chromium will REUSE rather than create
+	// (`window.open(url, "name")` while a window named `name` lives); a slot a
+	// closed child freed is open again.
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap - 1 },
+		).allow,
+		true,
+	);
+	// The cap is decided BEFORE presentation: an over-cap `background-tab` is
+	// refused for the cap, not admitted as an unforegrounded window.
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+});
+
+test("the §2.4 effective-show table: disposition picks presentation only under a normal launch", () => {
+	// Under a `normal` launch the disposition is the only input that selects:
+	// `background-tab` presents without foregrounding, everything else focuses.
+	const foregrounding = ["default", "foreground-tab", "new-window", "other"];
+	for (const disposition of foregrounding) {
+		assert.equal(effectivePresentation("focus", disposition), "focus");
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition },
+				{ mode: "focus", live: 0 },
+			).presentation,
+			"focus",
+		);
+	}
+	assert.equal(effectivePresentation("focus", "background-tab"), "inactive");
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: 0 },
+		).presentation,
+		"inactive",
+	);
+	// `inactive`: every disposition presents the same way — visible, never
+	// foregrounded.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("inactive", disposition), "inactive");
+	}
+	// `headless`: the popup still EXISTS — the page's flow needs it and CDP can
+	// drive it — so the effective show is `never`, not a refusal.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("never", disposition), "never");
+		assert.deepEqual(
+			decidePopup(
+				{ url: "about:blank", disposition },
+				{ mode: "never", live: 0 },
+			),
+			{ allow: true, presentation: "never" },
+		);
+	}
 });

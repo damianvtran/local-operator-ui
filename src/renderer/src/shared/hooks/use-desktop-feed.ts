@@ -55,11 +55,46 @@ export type DesktopFeedConnection = {
 	/** The feed socket is live. Meaningless (and reported false) when unavailable. */
 	connected: boolean;
 	/**
+	 * Whether the transport has REPORTED a state at all, ever.
+	 *
+	 * WHY THIS IS NOT `connected`'s job (round 1, Q3). `connected` starts `false` and
+	 * the first `watchState` callback arrives a few milliseconds after mount, so a
+	 * banner gated on `!connected` alone drew "Not connected to the backend" for one
+	 * frame on every launch - a statement about a connection the app had not yet
+	 * asked about, and about the last known state before there is one. A reader
+	 * cannot act on it and the next paint contradicts it. `reported` is the fact that
+	 * distinguishes "not connected" from "not asked yet".
+	 */
+	reported: boolean;
+	/**
 	 * The backend's catalogue revision as of the last `catalogue` frame, or null
 	 * before the first one. A sidebar effect keyed on this refetches once per
 	 * invalidation.
 	 */
 	catalogueRevision: number | null;
+	/**
+	 * Every edge that can move a row's TIME, counted. A sidebar effect keyed on
+	 * this refetches once per edge, exactly as it does for `catalogueRevision` -
+	 * and it exists because that frame is not promised for every edge.
+	 *
+	 * WHY THE BINS NEED THEIR OWN TRIGGER (2026-09-28, the operator's report). A
+	 * row's bin and its relative label read the transcript's activity clock
+	 * (`updated_at`), and a completed turn advances that clock on disk - but the
+	 * client only learns the new value from a LIST read. The backend publishes a
+	 * `catalogue` invalidation when a completion moves the row's ORDER KEY, and
+	 * that covers the common case; it cannot fire for a completion that moves no
+	 * key (a session already in its completion band, with the busy band missed),
+	 * and there the row sat in its old bin until the 30 s safety poll - measured
+	 * live: 26.3 s after the completion, on the installed runtime. So the two
+	 * events that ARE always published for a finished turn - the row's
+	 * `session_status` transition and its `attention` mark - also re-read the
+	 * catalogue, coalesced into the same request the catalogue frames take.
+	 *
+	 * A COUNTER rather than a revision because the frames carry none for this
+	 * edge: any change re-runs the effect, and two edges in one frame are one
+	 * refetch either way (the store's coalescer is the second half of that rule).
+	 */
+	activityRevision: number;
 	/**
 	 * The backend's AUTHORING revision as of the last `authoring` frame, or null
 	 * before the first one.
@@ -83,9 +118,11 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const available =
 		desktopFeatureEnabled(capabilities.data, "desktop_feed") && Boolean(native);
 	const [connected, setConnected] = useState(false);
+	const [reported, setReported] = useState(false);
 	const [catalogueRevision, setCatalogueRevision] = useState<number | null>(
 		null,
 	);
+	const [activityRevision, setActivityRevision] = useState(0);
 	const [authoringRevision, setAuthoringRevision] = useState<number | null>(
 		null,
 	);
@@ -105,6 +142,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			// leave the sidebar rendering a connection it no longer has.
 			wasConnected.current = false;
 			setConnected(false);
+			setReported(false);
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
@@ -121,11 +159,22 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				hasConnected.current = true;
 			}
 			wasConnected.current = nextConnected;
+			setReported(true);
 			setConnected(nextConnected);
 		});
 		const offFrames = native.subscribe((frame: DesktopFeedFrame) => {
 			if (frame.type === "attention") {
 				applyAttention(frame.session_id, frame.payload);
+				/*
+				 * A STANDING or NEW completion mark is one of the two edges that always
+				 * accompanies a finished turn, so it re-reads the catalogue (see
+				 * `activityRevision`). `unseen === false` - a receipt being CLEARED - is
+				 * deliberately not one: an acknowledgement writes no transcript byte, so
+				 * no row's time moved and there is nothing to re-read.
+				 */
+				if (frame.payload.unseen === true) {
+					setActivityRevision((revision) => revision + 1);
+				}
 				return;
 			}
 			/*
@@ -152,6 +201,14 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					frame.payload.revision,
 					frame.epoch,
 				);
+				/*
+				 * THE OTHER ALWAYS-PUBLISHED EDGE of a turn that started or finished:
+				 * the derived pair moved, and the row's bin/label read a clock this
+				 * frame does not carry, so the list is re-read. The backend dedupes
+				 * clock-only republishes (`status_dedupe_key`), so every frame that
+				 * arrives here is a real transition rather than a ticking age.
+				 */
+				setActivityRevision((revision) => revision + 1);
 				return;
 			}
 			if (frame.type === "catalogue") {
@@ -187,7 +244,9 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	return {
 		available,
 		connected: available && connected,
+		reported: available && reported,
 		catalogueRevision,
+		activityRevision,
 		authoringRevision,
 		authoringReconnectRevision,
 	};

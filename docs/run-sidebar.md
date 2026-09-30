@@ -9,12 +9,21 @@ surface the old design does not contain in any form.
 **Which ref every citation was read from**, because a line number without a
 ref is a claim nobody can check. UI citations are this worktree's tree at
 `78e694777` (`chore(release): bump version to 0.19.2`, the branch base). Python
-citations are `~/local-operator` at **`origin/main`** (`430bd0fa6`), re-resolved
-against that ref with `git show origin/main:<path>` after the first read — the
-root checkout is five commits ahead of `origin/main` on a feature branch, and a
-working-tree line number would have been off by tens to hundreds of lines per
-file. Check any of them with
+citations are `~/local-operator` at **`origin/main`**, re-resolved against that
+ref with `git show origin/main:<path>` after the first read — the root checkout
+sits on a feature branch and carries staged work of its own, so a working-tree
+line number is not a claim about `origin/main` at all. Check any of them with
 `git -C ~/local-operator show origin/main:<path> | sed -n '<line>p'`.
+
+`origin/main` MOVES, so this document names the ref each section was read at
+rather than pretending to one. The citations outside § 5.8 are read at
+**`430bd0fa6`** — where this document was written, and where they still resolve
+(`Binding("p", "subagent_parent", …)` at `app.py:2885`, `"mcp": 1` at
+`capabilities.py:53`). § 5.8's child-reader citations were added later, when
+backend `origin/main` had moved, and are read at **`6bd703e51`**; reading them at
+the older ref is what round 2's R2-1 found the first cut had not done, and the
+numbers below are the ones that ref carries. A number is only ever as good as the
+ref it names.
 
 **One exception to that policy, and it is labelled wherever it appears.** The UI
 half of this design is in flight on `feat/session-sidebar-panel` in this
@@ -523,10 +532,14 @@ that already arrives (no wire change): `childSessionId` (from `session_id` — t
 child's transcript directory name, `harness/comms.py:752-768`), `parentJobId`
 (from `parent_job_id`), and `childCount` (derived in the renderer by grouping the
 session's `task` rows on `parent_job_id` — over the LINEAGE, so a parent's control
-counts the descendants the roster does not list). `resultText` and `errorText`
-become full strings rather than `errorLine` alone, because the reader's outcome
-block needs the whole thing (§ 5.2) — the roster's own `errorLine` rule (first
-line only, `run-detail-model.ts:679-681`) is unchanged.
+counts the descendants the roster does not list). `errorText` becomes a full
+string rather than `errorLine` alone, because the reader prints the exception as
+far as the wire carries it — and now states the wire's bound when it can see the
+cut; `resultText` is the wire's CLIPPED copy of the result, read only in the
+states where no conversation can be painted at all (§ 5.1) and `null` for the one
+`result_text` that is not an outcome (a parked cancel's state stamp, spent as the
+row's `stateWord` instead) — the roster's own
+`errorLine` rule (first line only, `run-detail-model.ts:679-681`) is unchanged.
 
 ---
 
@@ -577,11 +590,67 @@ is drawn:
   `launch_message_id` keeps the brief and whatever the transcript holds —
   duplicating wrapper text is the TUI's own chosen failure mode and it is the
   safer direction.
-- **The outcome is rendered from the roster row, not from the transcript**:
-  `result_text` when the child settled normally, `error_text` verbatim when it
-  failed (the row's own machine-voice rule, `run-detail-model.ts:643-681`). This
-  is the TUI's roster-carries-the-outcome rule (`subagent_panel.py:641-660`) applied
-  in the page, and it needs no new wire data.
+- **The result is the child's own LAST MESSAGE, and the page paints nothing
+  else for it.** § 5.1's earlier rule — an outcome block at the foot, from the
+  roster row — is withdrawn, because it was wrong twice over. It was a LOSSY
+  duplicate: the wire's `result_text` is truncated (`frontend_state.py:143-164`,
+  `JOB_RESULT_WIRE_CHARS = 2_000`, cut mid-word) while the child's final
+  assistant row holds the same text verbatim, so the block could only ever be a
+  prefix of the page's own last row. And it was unbounded, so a long result grew
+  a `shrink-0` sibling until the conversation — the only `flex-1` child of an
+  `overflow-hidden` column — was squeezed to no height at all, which is the
+  defect the operator reported. The TUI, which is the surface § 5 ports, never
+  painted one either: its child page keeps the settled `result_text` for exactly
+  one fact, a job cancelled while parked (`subagent_view.py:1808-1812`), and the
+  result reaches a reader there as the child's own last transcript row.
+  **That one fact is a STATE WORD, not a result, and the pane says it as one:**
+  `harness/jobs.py`'s `cancel()` stamps `CANCELLED_BEFORE_START` on a job whose
+  runner was never entered (`:204`, `:1166-1167`), and the reader spends it in
+  the header — the slot the TUI spends it in (`subagent_view.py:3371-3391`) —
+  with the model recognising the constant rather than sniffing the text. Read as
+  a result it produced the pane's worst four lines: the body's absence line, a
+  `Result preview` label over a 27-character state stamp, and a claim that it had
+  been shortened. No foot block is painted for that state at all (round 1,
+  C2/D1).
+  `branding.md` § 7's hierarchy points the same way: the answer is prose at
+  reading weight, and a second card under the conversation that just made it is
+  the second rail the port exists to avoid.
+- **The failure is the one exception, and a clipped PREVIEW is the other.**
+  `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
+  holds it — which is the runtime's own reason for treating it differently:
+  `JOB_ERROR_WIRE_CHARS` exists precisely because `result_text` is clipped
+  BECAUSE the transcript has a second copy. It is **not a larger allowance**,
+  though: the two bounds are both 2_000 characters, so the block prints the
+  exception as far as the wire carries it and states where the wire stopped when
+  the value carries the clip marker. It stays at the foot, ungated on the
+  transcript state, in machine voice and at `max-h-40 overflow-auto` — unchanged,
+  including for a page that would not open at all, which is where the exception
+  is most needed. Where the conversation cannot be read AT ALL — no `session_id`,
+  `pending`, `gone`, or a page that painted no rows at all (a `ready` file with
+  nothing in it, or a read that failed before it ever painted one) — the wire's
+  `result_text` is likewise the only copy left, so it stays as a **bounded
+  preview**: `max-h-40 overflow-auto`,
+  prose rather than machine voice (the clipping is the app's, not something the
+  child said), and one quiet line stating that the conversation the fuller copy
+  is in is not on this page. **A FAILED read belongs to that list only when it has
+  nothing in hand:** `error` is the fifth `ChildTranscriptState`, and the hook
+  KEEPS the rows it already painted rather than blanking the body it has
+  (`use-child-transcript.ts`), so a failed read with a page on screen paints the
+  conversation like any other state and the foot paints nothing there. Which
+  states those are is decided in ONE place — the reader's own
+  `bodyPaintsConversation`, which guards the transcript branch and defines the
+  foot's predicate — rather than in two predicates that could drift apart
+  (round 2, C8). **Its label and that line are both gated on the
+  wire's own clip marker** (`frontend_state.py` appends `…` where it cut): a
+  value that arrived whole is announced as `Result` with the absence sentence
+  alone, and only a marked one is called `Result preview` — "This is a shortened
+  copy. This subagent's conversation is not available here." A block that called
+  every one of them a preview claimed shortening over values the wire never
+  touched (round 1, C2).
+  `loading` is deliberately NOT one of those states, although there is nothing
+  painted then either: the page is in flight, and a preview that appeared and
+  then vanished under itself would be a flicker at the foot of a pane that is
+  already about to fill in.
 - **Images**: durable rows carry digests, not bytes
   (`transcript._externalize_attachments`; the parent's route at
   `server/routes/desktop_sessions.py:341-352` exists precisely because of that).
@@ -867,20 +936,257 @@ child from this pane, and the composer stays live for the parent conversation �
 `hub ask` traffic and stop controls are their own design problem and the old doc
 already defers the first (`docs/run-details.md` § 10). The footer states the
 surface is read-only for the child (the TUI's `READ_ONLY_NOTE` precedent,
-`subagent_view.py:1619-1623`) so the absence of controls is a stated fact rather
-than a puzzle.
+`subagent_view.py:1619-1623`) so the absence of STEERING controls is a stated fact
+rather than a puzzle.
+
+**One control is painted, and it steers nothing.** The pane's foot carries the
+parent transcript's own scroll-to-bottom control (`§ 5.8b`): a 2rem chip that
+appears when the reader has scrolled away from the live tail and returns them to
+it. It is NAVIGATION within this pane — the same relationship the parent's own
+chip has to its conversation — so the read-only sentence above stays true: it
+moves the reader, never the child. The earlier wording ("the absence of controls")
+was written when the foot held nothing but the working line, and it is corrected
+here rather than left to contradict the shipped surface (design round 1, D2).
+
+**And a failed child gets no control at all**, even when its conversation is long
+and scrollable: with `errorText` on the row, neither the chip nor the band it
+lives in is mounted, because that band sits under the exception text — the one
+thing on this surface a reader must be able to read — and a floating control
+there would sit on top of it. A wheel still moves the reader, and the trade is
+stated rather than inherited (QA round 1, Q2).
+
+**It names the PAGE, not the conversation, and that is what makes it true in
+every state it is painted in:** "Read-only — this is the subagent's page, not a
+way to steer it." The foot is unconditional (`run-child-reader.tsx`), so in the
+states whose body says the conversation is gone or was never addressable, the
+older sentence — "this is the subagent's conversation" — told a reader twice that
+there was nothing to read and then named the missing thing as the thing on
+screen (UX round 1, U1). "Page" is true in all of them, and the sentence keeps
+§ 5.6's job, which is about what this surface does NOT do rather than about what
+it holds.
 
 ### 5.7 What happens when the child changes underneath the reader
 
 | event | rendering |
 |---|---|
 | child emits a progress beat | nothing structural; the pulse triggers a tail refetch |
-| child settles (success) | one final refetch, outcome block appears, the header's status icon and elapsed settle, the elapsed timer stops |
-| child fails | final refetch, outcome block becomes the verbatim `error_text` in machine voice, header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
-| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the outcome block says what the wire said |
+| child settles (success) | one final refetch, the result is the page's own last row and the foot stays quiet (§ 5.1), the foot's working line is withdrawn (§ 5.8), the header's status icon and elapsed settle, the elapsed timer stops |
+| child fails | final refetch, the foot prints the exception as far as the wire carries it (`JOB_ERROR_WIRE_CHARS`, 2_000 characters — the one string with no second copy anywhere), in machine voice, and states that bound when the value carries the wire's clip marker; header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
+| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the foot's working line is withdrawn (§ 5.8, the gate is `running`); where the conversation cannot be read at all, the foot states the wire's clipped result as a preview, labelled from the wire's own clip marker (§ 5.1) |
+| child was cancelled while PARKED, before its runner was entered | no preview and no result, whatever the wire carries: `result_text` is `harness/jobs.py`'s own state stamp (`CANCELLED_BEFORE_START`, written when `started_at is None`), so it is spent as the header's STATE WORD — the slot the TUI uses for it (`subagent_view.py:3371-3391`) — and the foot is empty but for the read-only line (§ 5.1) |
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
+
+### 5.8b The way back: the control, and the band it lives in
+
+The pane paints the parent transcript's OWN control, not a second one built for
+this surface: `ScrollToBottomButton` and `useScrollToBottom`, over the reader's
+own scroller (`containerRef`, `run-child-reader.tsx`) and the reader's own record
+count as the content key. Nothing about the reader's doctrine changes with it —
+the reader still borrows none of the parent's live-session machinery
+(`canonical-transcript.tsx`'s "autoscroll is never taken from the reader") — this
+is a user-invoked scroll of the reader's own box and a visibility flag.
+
+**Where it is.** The parent mounts the chip in its composer band, a column under
+the transcript that carries no prose. This pane has no composer, so the chip
+floats in a band reserved at the foot of the conversation: 48px (8px of air, the
+32px chip, 8px of air), marked `data-lo-child-chip-band`, with the chip at
+`bottomDistance={8}`. The band is reserved STATICALLY — whenever the pane paints a
+conversation and the row carries no failure — so the reader's text never moves as
+the chip appears: the first cut put the chip at the transcript's own `p-4` inset,
+which is where the rows' text is, and the chip covered the row at the fold by its
+full 32px (QA round 1, Q1; UX U1). The rig measures the clearance it now has
+(`cover`, the tallest intersection between the chip and any VISIBLE row: 0.0 in
+every state where the chip is shown). The cost is the 48px inset at the foot of
+every painted conversation, and that is the trade: an inset rather than text under
+a control. The rejected alternative was a band that appears with the chip, which
+would move the reader's own text at the moment they are reading it.
+
+**The clip is the scroller's own box, and the band sits outside it (design round
+2, D6).** The conversation's scroller takes focus after any wheel, so it draws
+the app's own `:focus-visible` ring (2px + a 2px offset, `--color-accent`) — and
+outlines are ink overflow, which an ancestor's `overflow: hidden` clips exactly as
+it clips a shadow. That is why this scroller never showed a ring: its box was the
+clip box. The reserved band moved that clip bottom down by 48px, and the ring's
+bottom segment landed inside it — a full-width accent rule across the foot in
+twelve of the sixteen captured states, appearing and disappearing with focus. The
+pane now carries the clip on a wrapper of its own
+(`data-lo-child-transcript-clip`, around `CanonicalTranscript`), so the clip is
+the scroller's own box again and the band is OUTSIDE it; nothing else about the
+layout moves, and the rig asserts the containment as geometry (`ringClip.contained`
+in every state it shoots). Stated rather than hidden: this leaves the scroller a
+focusable element with no VISIBLE ring — the pre-existing defect the segment
+exposed, not one this pane introduced. The honest fix is the stylesheet's own
+pattern for that case (the wrapper draws the ring, `has-[:focus-visible]:outline-solid`)
+applied to `CanonicalTranscript`'s scroller, which is shared with the chat page and
+needs its own evidence there; recorded as a follow-up on the pull request rather
+than half-done here.
+
+**Why the footer and not the header.** `§ 3.1 B` rejected a dock band as a place
+for the reader to live (it reclaims transcript height on every turn and cannot
+host a child reader) — that is a different question from this band, which is
+inside the pane. Within the pane the header is the wrong end of the conversation:
+the control's whole meaning is "there is more below the fold", and the foot is
+where the fold is.
+
+**When it is offered: `isFarFromBottom` at `TAIL_EPS_PX` (24px), not the parent's
+50.** The reader is scrolled away from the tail, by the paging policy's own
+definition, as soon as `|scrollTop| > TAIL_EPS_PX` (`use-scroll-paging.ts`);
+between 24px and 50px a reader was being left behind with nothing offered, which
+is one condition answered two ways (UX round 1, U3 — measured on the
+pre-remediation head: at 24, 25, 49 and 50px from the tail the control is hidden
+while the paging policy already calls the reader not-following; at 51px it
+shows. QA round 2's Q3 corrected the earlier sentence here, which claimed an
+arrival: an arrival does leave the tail 263px away with the newest row 221px
+below the fold, but the hook's own recompute has shown the control by then — the
+reproducible defect is the stationary window). The
+parent keeps its own 50; its band is a composer and its threshold is its own
+question.
+
+**In the tab order with the pane's own controls.** The chip is rendered FIRST in
+the pane body's DOM and positioned by `absolute`, so its place in the tab order is
+with the header's controls rather than after every row of a streaming child (UX
+round 1, U4: as the last element it was the last tabbable in the pane and in the
+app, reached only after tabbing through the whole conversation).
+
+### 5.8 The working line at the foot
+
+The page's foot carries the child's CURRENT activity, the way the parent
+conversation's foot does: one line, the parent transcript's `WorkingLine`, which
+is the TUI's tail row (`subagent_view.py:_tail_entry`, `:2823-2868`) ported. The
+failure it answers is the one that row's own docstring records — a child's last
+block is often settled prose, the model pausing between tool calls, so without it
+the bottom of a LIVE page is indistinguishable from a finished one.
+
+**The fact is the wire's, not the page's, and that is why it is an input rather
+than a derivation.** `SubagentRow.activity` is `latest_details.progress`, fed by
+the child relay's `report_progress` (`harness/jobs.py:1341`). It cannot be
+recovered from the child's records: the reader reduces a DURABLE page, and every
+durable tool row lands on `phase: "done"` (the tool arm of `durableRecord`,
+`transcript-reducer.ts:1867`). Over those records the parent's own derivation
+paints NOTHING for the props this reader passes — it answers `null`
+(`working-line-model.ts:520`) — and the one change that would make it speak,
+reading them as a claimed `waiting` pane, could only ever say `thinking`. So the
+reader derives the line from the row it already holds
+(`deriveChildWorkingLine`, `run-detail-model.ts`) and hands it to
+`CanonicalTranscript` as its `workingLine` prop — the one live-session concept the
+reader supplies rather than switches off.
+
+**`waiting`/`starting` were the wrong channel for it**, which is worth stating
+because they look like the obvious fit: `waiting` makes the derivation read THIS
+pane's records (for the reader, the child's durable rows, which carry no running
+tool, so the only thing it could then say is `thinking` while claiming a phase it
+cannot know), and `starting` names a send this app admitted — the admitted-send
+rung belongs to the pane that issued the send, and a child reader can never be
+that pane.
+
+**The vocabulary is the parent line's, by the relay's own design**
+(`harness/subagent.py`'s `_make_relay`, defined `:1244`, docstring `:1254-1284`):
+the model's
+stated intent while a tool runs, `running N tools` for a batch, `responding`
+while prose is actually streaming, `thinking` for a model call in flight with
+nothing streamed yet — "a reader watching both surfaces at once should not have
+to learn two vocabularies for one state". An empty activity is therefore
+`thinking`, which is the relay's own word for it (`intent.py:298-340`), not a
+fallback the renderer invented.
+
+**The phase is a classification, and it is what keeps a moved label off the
+phase.** A batch sheds its calls one at a time and re-derives its label each
+time; `working-line.tsx` treats a PHASE change as the phase edge and a label
+change alone as nothing. The relay calls `tool_activity`/`batch_activity` from
+exactly three places — the `ToolExecutionStartEvent` and `ToolExecutionEndEvent`
+arms and the empty-batch fallback (`subagent.py:1325-1334`) — and the arms that
+emit the two named constants are the ones that do NOT call them, so every
+progress string that is neither of those words was emitted with a tool call still
+running. `thinking` -> `thinking`, `responding` -> `responding`, anything else ->
+`running`: closed over the vocabulary the relay can produce. One ambiguity is
+tolerated and recorded rather than hidden — a model-authored INTENT that is
+exactly one of the two reserved words misfiles the PHASE, never the label.
+
+**The line carries NO clock, and that is the one field that is neither the
+wire's nor the classification's.** The wire has no anchor for a child's phase:
+`latest_details` is a bare string (`harness/jobs.py:1341`), and
+`startSeconds` is the child's LAUNCH clock, not the phase's. A number seeded from
+the component's mount would therefore report the age of the READER — the first
+capture printed `0s` beside a header reading `1m36s` for the same child, and
+closing and reopening the pane re-based it again (review round 1, R1; design
+round 1, D1). So the derivation returns `clock: false`, which makes
+`WorkingLine` withhold the number and run no interval while keeping the slot
+RESERVED, so nothing on the row moves:
+
+- **the TUI, the row this ports, resolved the identical shape and records the
+alternative as the defect** — `set_activity(clock=False)` for a `running` phase
+any of whose cards was adopted mid-execution: "the phase changes when the viewer
+arrives, not when the tool started, so the number would count from the switch
+while naming a tool that may be half an hour old" (`tui/app.py:41670-41678`),
+and "a clock started from the wrong zero is worse than no clock"
+(`tui/widgets/transcript.py:3361-3380`, which also names every child row inside
+`subagent_view` in the population whose timestamp does not exist "at any
+price").
+- **recording an anchor instead is not available**, which is why withholding is
+the answer rather than the reviewer's other option: there is nothing on the wire
+to record.
+- **the pane is not left dead**: the reader's HEADER keeps the child's own
+elapsed label ticking at 1 Hz from the child's launch clock (§ 5.3's
+`useChildRowClock`) — the honest duration for that surface, which no
+reader-arrival zero can fake.
+- **under `prefers-reduced-motion`** the spinner holds its frame as always, so
+the row becomes a static statement (the activity word alone). Accepted: that word
+is the fact the row exists to carry.
+
+**Only a `running` child gets a line, and that is a deliberate departure from
+the TUI.** `_tail_entry` paints its row for a queued child too; here the gate is
+`status === "running"`, because the relay emits nothing before a child's first
+event and "thinking" over a child that has not started is a claim the wire never
+made. The header already carries that child's own word instead (§ 5.2's
+`stateWord`), which is the honest statement of a queued or paused page.
+
+**The label is passed through untouched**, and one divergence is recorded rather
+than repaired: the relay has no display layer, so it hands `tool_activity` the
+tool name as called (`intent.py:310-327`) and a child's label reads `running
+mcp__linear_create_issue` where the parent's reads `running create_issue`. The
+roster row above the reader prints the identical wire string
+(`run-detail-row-parts.tsx:140-146`, the row body `run-detail-subagents.tsx`
+renders), so the child's own surfaces keep saying one thing; a second spelling
+here would be the app answering the same question twice. Both arms of that
+vocabulary are pictured: `reader-live` carries a STATED INTENT (model-authored
+prose, which the relay passes through verbatim when it has one) and
+`reader-live-floor` carries the named-tool fallback, at the pane's 320px floor
+where the label has to truncate inside the row. Two measurements, because the
+first cut of this sentence mixed the two widths it was comparing (round 2,
+D2-1/D2-3): at the 320px floor the label box is ≈179 px ≈ **24 characters**, of
+which the row's reserved 6ch slot plus its `gap-2` spends ≈49 px ≈ **7** — the
+reservation is PERMANENT on this surface, since the derivation returns
+`clock: false` for every arm, and releasing it would bring the name back to ≈30
+characters (`mcp__linear_create_issu…`) while still not fitting the
+32-character fallback. The wide pane leaves ≈38-40 characters, so a
+model-authored INTENT can exceed it; no frame carries that case, which is a
+known gap (round 2, D2-1) rather than a claim. `reader-live-floor`'s fallback is
+the longest string the row can be MINTED with, not the longest it can be handed.
+
+**A RUNNING child whose page is still empty paints no line, and that gap is
+recorded here rather than closed in this change.** The body's absence arms
+(`pending`, `gone`, `loading`, and `ready` with no rows) answer with a
+`QuietLine` and never mount `CanonicalTranscript`, so the foot line cannot reach
+them — while the row is running and the relay has already sent its string. The
+TUI reaches a tail notice before its own empty-page arms
+(`subagent_view.py:2849-2857`). It is deferred because it is a COMPOSITION
+decision — a second line above an absence sentence whose copy § 10.1 owns — and
+not a detail of this row. `scripts/child-reader-foot-react.test.mjs` pins the current
+behaviour in the DOM — it RENDERS the reader over each absence page and asserts
+that no working line is painted, with a control that the same row DOES paint one
+over a page carrying rows — so the follow-up that adds the line cannot land
+without that assertion going red (round 2, R2-4: the earlier source-shaped pin,
+which counted `<QuietLine>`s, survived exactly that mutation, which is why the
+pin is rendered now).
+
+The frames are the four answers, in `docs/evidence/chat-run-panel/`:
+`reader-live` (a stated intent), `reader-no-activity` (`thinking`),
+`reader-live-floor` (the named-tool fallback at the pane's floor, truncating),
+and `reader-settled` / `reader-failed` (no line — the settle withdraws it and
+the outcome block owns the foot). All four carry no clock, which is the rule
+above made visible.
 
 ---
 
@@ -1819,8 +2125,12 @@ per `branding.md` § 9's checklist.
 | `swap-canvas-open` | the canvas open with the run trigger still visible and pressed-state-free; then the run panel open with the canvas closed (before/after) |
 | `swap-run-open` | the mirror: the flow a click makes, both directions |
 | `reader-live` | a child's reader open on a **running** child (see below) |
-| `reader-settled` | the same child settled: outcome block, settled clock, no pulse |
-| `reader-failed` | the verbatim exception in the outcome block, `danger` on the header icon only |
+| `reader-settled` | the same child settled: settled clock, no pulse, and a quiet foot — the result is the conversation's own last row (§ 5.1) |
+| `reader-failed` | the exception as far as the wire carries it at the foot — no transcript holds it — with the wire's bound stated when the value was clipped, and `danger` on the header icon only |
+| `reader-result-inline` | a settled child with a LONG result: the result is the conversation's last message and the foot says nothing. The pair's other half is `reader-result-preview`, and the state this frame retires is the unbounded `Result` block that displaced the page. |
+| `reader-result-preview` | the same long result with the conversation **gone**: the bounded preview, labelled from the wire's own clip marker, and its copy line, in the state that has nothing left to push back with |
+| `reader-cancelled-before-start` | a child cancelled while PARKED, whose `result_text` is the runtime's state stamp and not an outcome: the stamp is the header's state word (the TUI's slot for it), the body states the missing conversation, and the foot paints **nothing** — a frame is the only evidence for an absence. The state the preview must never claim (round 1, C2/D1). |
+| `reader-result-preview-floor` | `reader-result-preview` at the pane's **320px floor** (design round 1, D4): the only content in its state, its box still 160px, the honesty line wrapped to three lines — the width the pane promises and the two new surfaces had no frame at |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
 | `reader-child-controls` | a member's page whose child count is ONE: the descend control's singular label and its accessible name, in the only state that can show either, beside the peer stepper for the same child |
@@ -1901,7 +2211,7 @@ covering at least:
 | swap | canvas open → click run trigger; then canvas button | exactly one pane; the other's state is closed; no layout jump in the header |
 | roster | a session with ≥7 children | rows in priority order; `+N more` expands and every child is reachable; failed row never shed |
 | reader live | click a running child; watch it write | the body grows without a manual refresh; the header's elapsed ticks; the pulse cadence is capped (network tab or backend log) |
-| reader settle | let the child finish | final read, outcome block, clock stops, no further requests |
+| reader settle | let the child finish | final read, the result is the conversation's own last row with a quiet foot (§ 5.1), clock stops, no further requests |
 | reader failures | a child that fails; a child whose transcript file is removed; a child that never wrote | the three renderings of § 5.7 / § 10.1, each with its own copy |
 | nested | a grandchild | breadcrumb path, back pops one level, child control descends |
 | back/close | `Escape` at each level, the close button, the trigger toggle | focus lands where § 9 says; no orphaned scroll |

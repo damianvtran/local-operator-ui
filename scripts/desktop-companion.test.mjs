@@ -83,6 +83,23 @@ test("a previous completion receipt cannot make an active turn look finished", (
 		"idle",
 	);
 });
+test("delegated work stays working until the authoritative status changes", () => {
+	const delegated = row("parent", "delegating", {
+		name: "Research",
+		...unread,
+	});
+	assert.deepEqual(select(catalogue(delegated)), {
+		mood: "working",
+		label: "Working",
+		sessionId: "parent",
+		taskTitle: "Research",
+		notifications: [],
+	});
+	assert.equal(
+		select(catalogue(delegated, row("child", "answer"))).sessionId,
+		"child",
+	);
+});
 test("read failures and unfamiliar status never imply readiness", () => {
 	for (const body of [
 		null,

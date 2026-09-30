@@ -15,9 +15,21 @@ import { credentialsQueryKey } from "./use-credentials";
 /**
  * Hook for updating a credential
  *
+ * `successToasts` is the caller's switch for the shared SUCCESS toast - and
+ * only for it. The onboarding search step turns it off because the row's own
+ * `Saved` badge is the receipt and one env-var-named toast per field is noise
+ * there (review round 1, U4). FAILURES ARE NOT SWITCHABLE: the shared error
+ * toast is deduped by the manager and is the only report that survives the
+ * step unmounting, which is exactly the hole leaving Finish with a failed
+ * save in flight used to fall through (UX round 2, U5 - the row's inline
+ * register unmounts with the step, and with every toast silenced the failure
+ * ended up reported nowhere). It defaults to ON, the behaviour every future
+ * caller inherits.
+ *
  * @returns Mutation for updating a credential
  */
-export const useUpdateCredential = () => {
+export const useUpdateCredential = (options?: { successToasts?: boolean }) => {
+	const successToasts = options?.successToasts ?? true;
 	const queryClient = useQueryClient();
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 
@@ -38,6 +50,8 @@ export const useUpdateCredential = () => {
 						? error.message
 						: "An unknown error occurred while updating credential";
 
+				// Not gated by `successToasts`: the deduped toast is the failure's
+				// backstop once the row's own register unmounts with the step (U5).
 				showErrorToast(errorMessage);
 				throw error;
 			}
@@ -73,7 +87,8 @@ export const useUpdateCredential = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast(`Credential "${variables.key}" updated successfully`);
+			if (successToasts)
+				showSuccessToast(`Credential "${variables.key}" updated successfully`);
 		},
 		onError: (error) => {
 			console.error("Error updating credential:", error);

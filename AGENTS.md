@@ -146,6 +146,79 @@ touches `scripts/`, that stamp cannot include the edit until the edit is committ
 so the order is commit, derive, write the values in, `--amend` - the amendment moves
 `docs/` only, and the value written stays true.
 
+**A note must not quote `srcTree`/`scriptsTree`.** A note that names the pair binds
+itself to a hash that every content commit moves, so every re-stamp has to rewrite
+each note that names it: 128 values in `docs/evidence/manifest.json` quote a token
+(measured 2026-09-27), and that is what spreads a two-line re-stamp across nineteen
+merge regions of a 2.5 MB file. Write a pass's identity as the bare SHAs the pass
+itself read (`git rev-parse HEAD:src` at that commit), which is what the sentence
+needs and does not move when a sibling branch lands; the file's own
+`srcTree`/`scriptsTree` pair stays the file's only statement of the binding.
+`scripts/evidence-manifest.test.mjs` fails a note that quotes a token and names the
+key - mechanically, with no lease, inside `pnpm test:desktop`. The notes that
+already do are carried in that file's frozen `LEGACY_STAMP_QUOTING_NOTES` ledger:
+it may shrink as each is repaired in a `docs/`-only re-stamp, a fold that RENAMES
+a note carries the new name into it in the same commit, and it may never gain a
+name, because a new binding is the defect the assertion exists for. The convention
+it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
+SHIPS - is what kept those notes bound across every fold.
+
+**Fold first, re-stamp second, as two commits.** The fold is where the
+two-commit rule above keeps biting: the re-stamp reads like part of the merge,
+and sweeping it in reads the values against the pre-fold head. Merge
+`origin/main` in one commit; re-stamp in a separate `docs/`-only one.
+
+Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
+(`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
+and `scripts/`, and `pnpm test:desktop` named both: `srcTree` is `8e4e9a963` but
+`HEAD:src` is `bcb460a19`, `scriptsTree` is `5cb6ff58d` but `HEAD:scripts` is
+`093faaf43`. #555 (`feat/installer-panel-refresh`) named `scriptsTree` is
+`3fea1efbc` but `HEAD:scripts` is `63d3b1d90`. #554 (`feat/condensed-group-images`)
+swept a `trace-fold.stories.tsx` comment into the fold's re-stamp, so the
+`srcTree` it shipped described the tree before itself, and `fabea58083` had to
+re-derive it: `srcTree is 05b975ca5 but HEAD:src is e5e46f9c6`.
+
+The failing test is `not ok - the SHIPPED manifest's stamps describe the tree it
+ships in` (`scripts/evidence-manifest.test.mjs`), inside `pnpm test:desktop`. A
+`DIRTY` head keeps the older green run and acquires no new one, so the first
+symptom is often a PR with no checks reported at all: fold first, do not wait.
+
+**`gh run view` can cut a log off mid-run, so an absent diagnostic may only be
+past the cut.** On #553's failed `Desktop Tests` job, `gh run view --job
+<job-id> --log` returned 18.7 MB of a 37.7 MB job log (the run-level `gh run view
+<run> --log` returned 19.3 MB), ending mid-suite at test 1034 with the post-job
+cleanup as the next line and no `# fail` line - while the failing assertion
+itself, `not ok 1900`, the manifest-stamp test above, sat in the six minutes the
+reader had dropped. Fetch the job log from the API instead: `gh api
+/repos/<owner>/<repo>/actions/jobs/<job-id>/logs`, which returned all 37.7 MB.
+Pass `--allow-escape-sequences`, or `gh` refuses the body outright ("the response
+contains terminal escape sequences") and prints nothing.
+
+**A green `evidence-manifest.test.mjs` is not evidence about the CITATIONS.** The
+stamp half above is sound. The citation half is not, in two ways that both live on a
+shallow clone. (1) The ancestry test (`the SHIPPED manifest's head citations lie in
+the history it ships in`) STANDS DOWN when the checkout is shallow - and every
+checkout on this machine is (`git rev-parse --is-shallow-repository` -> `true`), as
+is `actions/checkout`'s default - so it SKIPS rather than passes, and a local `35/35`
+says nothing about whether `head`, `partialCapture.addedAtHead` or
+`partialCapture.refreshedAtHead` name commits a reviewer can fetch. (2) The
+reachability half is worse: it is not bound to the shipped manifest at all, and it is
+answered against EVERY local ref, of which this machine carries around a thousand
+(sibling sessions' branches), so a citation kept alive only by a peer's scratch
+branch passes locally and dies in a fresh clone. Five citation failures shipped
+behind a local green for exactly that reason (design review round 2, D2b).
+
+Before quoting a local manifest pass, ask the citations directly against a
+REMOTE-BACKED ref: `git fetch origin <branch>`, then call `citationFailures` and
+`citationAncestryFailures` from `scripts/check-evidence.mjs` with a `git` reader
+restricted to `refs/remotes/**` and `refs/tags/**`, and with the ancestry question
+asked against `origin/<branch>` rather than `HEAD`. A remote branch tip is the
+strongest thing to cite, because a fresh clone of the PR gets it by construction.
+Measured 2026-09-27 with that reader: the three head citations came back clean once
+re-pointed, while eight `supplementary[].capturedAtHead` citations in
+`docs/evidence/manifest.json` are reachable from no remote ref (all eight
+byte-identical on `origin/main`, so pre-existing and not any one branch's).
+
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
@@ -187,6 +260,18 @@ That is the deliberate trade rather than a regression to tune away: the conditio
 is a host already swapping, and the point of the floor is that this suite is not
 what pushes it over. A `test:desktop` run that looks slow should be read as its
 concurrency line first and its timer second.
+
+**Recorded, not done: a class of desktop tests still synchronises on the wall
+clock.** A lane reported, and a reviewer corroborated, that **41 sites across 19
+files** use a wall-clock budget as their synchronisation, with the same `5000` ms
+budget in four other files; one site was measured convertible in ~1035 ms, and
+only two `healed` waits were judged to need a real event. Those counts and that
+classification are the reporting lane's, not a reading of this file - and the
+`healed` code checked here (`scripts/storybook-query-fixture.test.mjs`) heals on a
+`setTimeout` and then polls `Date.now()`, so it is not itself evidence for that
+exception. The sweep was not performed: out of scope for the change that recorded
+it, and the fleet was under disk pressure at the time. No issue was filed - this
+repository's convention is that deferred findings live in the PR thread.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
@@ -354,16 +439,18 @@ pnpm dev:headless
 # accept the profile the dev app already uses.
 
 # A harness that already spawns Electron itself: the switch rides the environment.
-LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
+LOCAL_OPERATOR_UI_WINDOW_MODE=headless LOCAL_OPERATOR_UI_TELEMETRY=off npx electron . --remote-debugging-port=9451
 
 # Omit the mode and it is still headless: the scratch profile says what this is.
-npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
+# The telemetry switch does not ride along with that assumption - name it, or the
+# run reports to the product's own analytics as a user and a session replay.
+LOCAL_OPERATOR_UI_TELEMETRY=off npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
 
 # And a launch that passes NOTHING is a run too, when it is not a packaged app
 # and has no terminal on either stream. That is a rig's shape rather than a
 # person's — a person typing the same command in a terminal still gets a window
 # — and it is the shape that was still stealing focus, so name the mode anyway.
-npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
+LOCAL_OPERATOR_UI_TELEMETRY=off npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
 ```
 
 **WHAT A SCRATCH PROFILE DOES NOT COVER, and an unpackaged run on a FRESH machine
@@ -385,6 +472,13 @@ the operator's real roots: run it where `managed-python/dev/` already has a
 selection, or drive the provisioning directly against an isolated
 `LOCAL_OPERATOR_SUPPORT_PATH`/`LOCAL_OPERATOR_VENV_PATH` as the install-script CI
 job does, rather than booting the app and hoping.
+
+`pnpm app:headless` and `pnpm dev:headless` carry both kill switches themselves
+(the notification one and the telemetry one — see *An agent-driven run does not
+banner either* and *An agent-driven run sends no telemetry either* below); a raw
+`npx electron` line names them, because nothing else on that path would and the
+environment variable is the only channel a launch that bypasses the npm scripts
+has.
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
 same switch covers a check of the published launcher — **from the release that
@@ -516,6 +610,26 @@ because a request that was declined must not look like one that never arrived.
 Undeclared and `normal` requests keep restoring, because those are the ones that
 mean "bring this to me".
 
+A request that arrives while the app is QUITTING is declined and for a stronger
+reason: a window created by a process on its way out dies with the shutdown,
+which is exactly what an immediate relaunch used to open onto (issue #636 — the
+window appeared over the teardown and closed ~0.5 s later). The whole request is
+refused — nothing created, nothing raised, nothing parked — and reported
+(`applied=skipped+quitting`), for a second launch and for a Dock click alike and
+for every request that would have to CREATE the window (a banner click, the
+consent toast's reopen, the viewer's `resume_session` and `focusWindow`
+recreate); that create gate sits in `setupMainWindowWithUpdateService`, the one
+function every creation goes through, and ahead of the park decision in
+`openSessionInWindow`. A delivery into a window that still exists is not refused
+by it — the window is already up and dies with the shutdown either way, and the
+refusal that matters is of requests that would ADD one. The state is set at the
+first `before-quit` entry, which is BEFORE the session-cookie hold can wait, so
+the refusal covers the whole teardown — and a quit that is CANCELLED lets go of
+it beside its own cancellation (the setup window's declined "Quit without
+setup?" is the one cancellation a running quit has), so a cancelled quit refuses
+nothing later. The next launch — the one that finds the process gone — opens
+normally.
+
 Every raise writes one line to the backend log, naming the site, the mode and
 what it did — ONE line per present: the window's `ready-to-show` handler is
 one-shot, because it can fire twice for one window (a reload) and two identical
@@ -527,10 +641,13 @@ lines for one window is a log a person cannot read.
 ```
 
 The triggers are `initial-present` (this process's own launch, including a window
-created for a conversation and presented late), `second-instance`, `banner-click`,
-`viewer-focus` and `viewer-resume` — one name per REQUEST, so the three requests
-that deliver a conversation before raising are told apart rather than collapsing
-into one. `mode` is the mode token a reader greps for; `requested` is the show
+created for a conversation and presented late), `second-instance`, `activate` (a
+macOS Dock click on a windowless app — a person's request, not this process's own
+launch), `banner-click`, `viewer-focus`, `viewer-resume` and `mini-view` (the
+global hotkey's mini composer, which presents only through `presentMiniView`) —
+one name per
+REQUEST, so the three requests that deliver a conversation before raising are
+told apart rather than collapsing into one. `mode` is the mode token a reader greps for; `requested` is the show
 policy it produced; `pid`/`cwd` are printed only when the requester declared them
 across the single-instance boundary, and their absence means this process asked
 itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
@@ -579,7 +696,10 @@ kill-switch binding: the tree-ownership rule above - `detached`, the group signa
 the profile reap - is asserted by no test, so it is enforced by review (R4). The
 deliberate exceptions
 (`notification-evidence.mjs`, interactive `pnpm dev` / `pnpm start`) are named in
-that module and in the table.
+that module and in the table. Telemetry is the same shape one project over
+(`scripts/telemetry-off.mjs`, pinned by a SIBLING scan rather than by another
+column here — the two disagree on real rows, see *An agent-driven run sends no
+telemetry either* below).
 
 **The switch is about PRESENCE, not about the value.** `notify.py` reads it with
 `os.environ.get()` and silences on any non-empty string, so `0`, `1` and `no` all
@@ -648,6 +768,129 @@ the hand-run hop command left two headless trees of eight processes each with
 roots at `ppid 1`, and the app's single-instance lock - PER `--user-data-dir`
 rather than machine-wide, as `renderer-driver.mjs` measures - then turned the
 following launch in that same tree into "Another instance is already running".
+
+### An agent-driven run sends no telemetry either
+
+The app ships a live PostHog project key by DEFAULT (`VITE_PUBLIC_POSTHOG_KEY`'s
+schema default in both `src/main/backend/config.ts` and the renderer's
+`env-schema.ts` is the real `phc_…` key), and it uses it in two processes: main
+constructs a `posthog-node` client at module load and the renderer mounts
+`posthog-js`'s provider with `capture_exceptions`. Every test, harness, QA and CI
+run therefore arrived in the "Local Operator Usage" project as a USER, with the
+renderer's session recorder making it a replay to watch as well — which is what
+inflated its MAU and filled its replay list with runs nobody made.
+
+`LOCAL_OPERATOR_UI_TELEMETRY` is the switch, and it is resolved like the window
+mode and the driver's opt-in: from `launchEnv`, the environment the process was
+LAUNCHED with, never from `process.env` after `backend/config.ts` folds a
+working-directory `.env` over it. A file in a checkout can therefore neither
+silence a real user's analytics nor speak for a rig. `on`/`1`/`true`/`yes` keep
+it; `off`/`0`/`false`/`no` switch it off; NOTHING SET keeps it on, because that is
+the shipped app on a user's own machine. A value that is none of those is refused
+loudly and lands on OFF — the same "refuse rather than obey or ignore" rule as
+`window-mode.ts`, with the OPPOSITE fallback: there a typo keeps `normal` because
+the alternative is a silently hidden window, here a typo means no telemetry
+because the alternative is a run's events in a customer-facing dashboard. An
+EMPTY value is not a choice in either direction (a stale export, a `.env` line in
+the empty shape) and reads as unset.
+
+Off means no client exists at all, in either process:
+
+- **Main** constructs none (`src/main/telemetry-launch.ts` decides, and
+  `src/main/index.ts` constructs only on `true`), so there is no queue, no flush
+  and nothing to shut down — `posthogClient` is `null` and the exit handler's
+  `shutdown` is conditional. A blank or absent `VITE_PUBLIC_POSTHOG_KEY` gets the
+  same no-client answer, which is what fixes the crash this file used to record:
+  `new PostHog("")` throws at module load, before `app.whenReady()`, and surfaced
+  as a main-process error dialog rather than a log line.
+- **The renderer** is told through the window's `additionalArguments`, because its
+  own configuration is inlined at BUILD time and a runtime switch cannot reach it
+  as a variable: main composes `--lo-telemetry=on|off` into every window's
+  `webPreferences` (in `rendererArgumentFlags`, the one place that unions those
+  entries), the preload reads it out of its own `argv` and exposes
+  `window.api.telemetryEnabled`, and `shared/config/telemetry.ts` reads that.
+  WRITTEN ON EVERY WINDOW, unlike the dev driver's opt-in entry, precisely so
+  "no entry" can never be a normal launch's spelling: the renderer's rule is
+  fail-closed (`true` or nothing), and a window created by a future path that
+  forgot the entry must report nothing rather than report by default. With it off
+  the provider is not mounted (no pageview, no autocapture, no session replay, no
+  exception capture) and the feature-flag provider runs its all-defaults branch,
+  which never calls `posthog.reloadFeatureFlags()` and never initializes
+  anything.
+
+A launch that switched it off says so on stdout — `[telemetry] off: switched off
+by LOCAL_OPERATOR_UI_TELEMETRY="off"` — for the same reason the window mode
+announces itself: a rig that believes it sent nothing and one that really sent
+nothing have to be told apart from outside the app.
+
+`scripts/telemetry-off.mjs` applies it to a child environment
+(`withTelemetryOff`), and `scripts/telemetry-spawn-sites.test.mjs` enumerates the
+sites that boot the app or the suite, failing on a new one that is not in its
+table. Two halves, and the split is worth knowing before trusting the word
+"every": the scan sees the sites whose COMMAND is the runtime binary, and a
+second list in the same file names the app-booting paths a text scan cannot see —
+the suite's runner, the CI smoke test, the signed-update verifier, and four rigs
+that boot the app through a variable or a wrapper
+(`scripts/attach-frame-evidence.mjs` and
+`scripts/panels-without-session-evidence.mjs` spawn their helper's `command`
+argument; `scripts/hold-lifetime-rig.mjs` spawns a packaged `.app`'s
+`CFBundleExecutable`; `scripts/run-panel-reveal-proof.mjs` spawns
+`npx electron`). Each of those rows asserts the switch's call is present, so a
+rig that loses it fails the scan by name. **It is a sibling of the notification scan rather than another column in
+it, because the two disagree on real rows**: `scripts/npx-smoke-test.mjs` (the
+`npx-sanity-check` job, which LAUNCHES the packed app on macOS) and
+`scripts/verify-signed-update.mjs` (which boots the real packaged app three times
+on GitHub's runner) are deliberately unguarded for notifications — a released
+build has no parked gate to banner about — and are guarded here, because they are
+exactly the runs that were reporting from a hosted runner on every release. The
+rigs that boot a bare Electron scenario rather than the app
+(`session-cookie-electron.test.mjs`, `notification-evidence.mjs`) and the
+published launcher are exempt, each with its reason in the table, and
+`scripts/telemetry-launch.test.mjs` pins the decision itself in process
+(off-spellings, the refused typo, the blank key, the argv round-trip, and the
+renderer's fail-closed reader).
+
+What it does NOT cover, stated because it is easy to over-read: a rig that boots
+the app WITHOUT the switch still reports (this repository cannot switch off a
+launch it does not make — that is why the scan exists); `pnpm start`, `pnpm dev`
+and the published `npx local-operator-ui` keep their analytics, since those are a
+person's own app on their own screen; and the switch reaches the app's own two
+clients and nothing else in the stack, because the backend is a separately
+installed package this repository does not pin. A caller who sets `on`
+deliberately is also obeyed — `withTelemetryOff` is a default rather than an
+override, and an export of `on` in the shell a rig runs from travels into that
+rig's child by that rule.
+
+A `.env` IN A CHECKOUT CANNOT RE-ARM TELEMETRY, and `pnpm dev` is the one path
+where a file gets a hearing at all — so it is worth stating how far that goes,
+and the one place where it reaches further. `dev` loads the working directory's
+`.env` through `dotenv-cli`, whose default is NOT
+to overwrite a variable already in the environment: the LAUNCH's value wins for
+every key, and the file supplies the keys the launch did not set. That is
+deliberate and load-bearing rather than incidental, because `dev:headless` is
+`pnpm dev` with the switch as a prefix: the prefix has to outrank the file for
+the agent-driven dev launch to hold. An earlier spelling of `dev` re-exported the
+file inside its own shell after that prefix, which let a `.env` line reading
+`LOCAL_OPERATOR_UI_TELEMETRY=` (empty — the app folds it back to "unset", so
+telemetry stayed ON with no off-line printed) or `=on` re-arm the run;
+`scripts/telemetry-spawn-sites.test.mjs` now runs that body against a scratch
+`.env` in all three shapes and fails if the precedence moves back. The trade that
+buys one rule for every key, in one sentence: a `pnpm dev` started from a terminal
+that injects `VITE_*` variables — the Cursor/vscode case the re-export was
+written for — now has the terminal's value beat the checkout's `.env` for every
+key, rather than the other way round.
+
+The KEY runs the other way, and the paragraph above is deliberately narrow about
+it: a file can make a `dev` run quieter than its launcher asked, but never
+louder. `src/main/backend/config.ts` folds a checkout `.env` over `process.env`
+with dotenv `override: true`, and `src/main/telemetry-launch.ts` resolves main's
+switch from `backendConfig.VITE_PUBLIC_POSTHOG_KEY` — correct and deliberate,
+because a build's key IS product configuration and that fold is exactly where it
+is supposed to come from. So a blank `VITE_PUBLIC_POSTHOG_KEY=` line in a
+checkout resolves a `pnpm dev` run to off (`offReason: "this build carries no
+PostHog project key"`), because the schema's `.default()` fills only an ABSENT
+value. Fail-closed, and not a leak: the switch half above is the half the
+guarantee is about, and it is the half a file cannot move.
 
 ### A `headless` run takes no Dock tile, and leaves when its launcher does
 
@@ -1084,7 +1327,7 @@ managed runtime outside the bundle, and the bytecode guards described above.
 The tree is `Contents/Resources/python-runtime-seed/<arch>` — one architecture per
 artifact (`arm64` or `x64`, matching the `-<arch>.zip`/`-<arch>.dmg` filename, and
 asserted against it), carrying the *complete* runtime (`bin/python3` and
-`lib/python3.12/encodings`, not just the executable), no `.pyc` anywhere, no
+`lib/python3.14/encodings`, not just the executable), no `.pyc` anywhere, no
 absolute or escaping symlinks, no hardlinks or special files. `python-runtime-seed`
 is a **namespace, not a name**: nothing may read or execute it in place, and the
 point of the name is that an incumbent venv cannot reach it by accident between
@@ -1247,10 +1490,17 @@ PATH=/tmp/pnpm-good/node_modules/.bin:$PATH CSC_IDENTITY_AUTO_DISCOVERY=false \
   pnpm exec electron-builder --dir --arm64
 ```
 
-**The end-to-end check is the launch, not the build.** With a valid build env -
-note that an empty `VITE_PUBLIC_POSTHOG_KEY` throws inside `new PostHog(...)` at
-module load, before `app.whenReady()`, and surfaces as a main-process error
-dialog rather than a log line - the marker proves the closure came through:
+**The end-to-end check is the launch, not the build.** With a valid build env —
+any `VITE_PUBLIC_POSTHOG_KEY` INCLUDING a blank one, which is now a supported
+"no telemetry" rather than the crash it used to be (an empty key threw inside
+`new PostHog(...)` at module load, before `app.whenReady()`, and surfaced as a
+main-process error dialog rather than a log line; `src/main/telemetry-launch.ts`
+constructs no client for it and `LOCAL_OPERATOR_UI_TELEMETRY=off` is the switch a
+run uses; and the RENDERER is held to the same blank key —
+`src/renderer/src/shared/config/telemetry.ts` resolves it against the key that
+build inlined, so a blank-key build mounts no provider there either, which is the
+half that used to answer differently from main) — the marker proves the closure
+came through:
 
 ```bash
 LOCAL_OPERATOR_UI_SMOKE_TEST=true "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
@@ -1363,9 +1613,20 @@ scope*). Do not read those two green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
-`main` configures **no required status checks**, so an `--admin` merge lands over
-a red guard. Treat a failing `version-bump-guard` as a stop signal rather than an
-obstacle to route around: the job is the reviewer's missing memory, not a lock.
+`main` configures **no required status checks** — so no red check is mechanically
+fatal — but that is not "nothing is required": the same `Main Protection` ruleset
+carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
+merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
+without `--admin` was refused with `is not mergeable: the base branch policy
+prohibits the merge`, and it completed only through the owner's `always` bypass
+actor with `--admin`, disclosed on the PR. Read a refusal for what it is — **a
+refusal naming
+the base branch policy is the missing approval, not the merge method and not CI**;
+`allowed_merge_methods` on that rule is `[merge, squash, rebase]`, so the method
+was never the obstacle. `--admin` is the sanctioned completion for the owner's own
+reviewed PR, never a route around a red guard. Treat a failing
+`version-bump-guard` as a stop signal rather than an obstacle to route around: the
+job is the reviewer's missing memory, not a lock.
 
 The guard fails the **mirror-image** case too: a PR titled
 `chore(release): bump version to X.Y.Z` whose diff does not change the version.
@@ -1655,6 +1916,61 @@ and that refusal is load-bearing: a repair must not move `latest` onto an old ta
 It is also not gated on the writeup, because an old Release's body is whatever it
 shipped with.
 
+**A negative npm read after a publish is not evidence that the publish failed.**
+Measured 2026-09-24 releasing v0.30.24, ~20 minutes *after* the `Build and Publish
+to NPM` job reported success — its own output carrying `+ local-operator-ui@0.30.24`
+and a provenance statement in the sigstore transparency log —
+`registry.npmjs.org` still answered `dist-tags.latest: 0.30.23` with no `0.30.24` in
+`versions`, **404** on `/local-operator-ui/0.30.24` and **404** on the tarball
+`/-/local-operator-ui-0.30.24.tgz`, while v0.30.23 read **200** on those same
+endpoints and two mirrors agreed with the stale reading. The cause was the
+registry's own record rather than the cache in front of it: `npm view
+local-operator-ui time` dates `0.30.24` at **08:41:48Z**, 27m06s after the Release
+event, against 6m54s-8m40s for the five versions before it (0.30.23 `05:41:16` on a
+`05:32:36` Release, 0.30.22 `04:16:22` on `04:08:41`, 0.30.21 `00:35:02` on
+`00:28:08`, 0.30.20 `22:01:58` on `21:54:14`, 0.30.19 `18:34:20` on `18:26:15`).
+The edge was relaying that state, not inventing it: the packument answered
+`cf-cache-status: HIT` with `age: 131` under `cache-control: public, max-age=300`,
+so the copy the edge served had been fetched from npm 131 seconds earlier — fresh by
+cache standards and stale in content. So **timestamp the read and vary the key**: a
+different cache key shows only what some replica holds *now*, and it returns 404
+just as willingly while the origin has nothing, which is why the two discriminating
+reads here — a cache-buster on the tarball URL, and the
+`Accept: application/vnd.npm.install-v1+json` packument, which is its own cache
+entry — flipped only once npm's own record existed; that ordering is what npm's
+`time` entry implies rather than something observed, since the reads carried no
+timestamps. Read them as "the version is there now", never as "the publish worked
+all along", and report an absence as an absence rather than as a failed publish.
+**Give an absence a test before acting on it, and know which case you are in.** The
+job's own `+ <pkg>@<version>` line and its provenance entry are the proof npm
+*accepted* the publish; npm's `time` entry is the proof it *records* it. A `+` line
+with no `time` entry is the case this paragraph is about — npm has the version and
+has not recorded it yet, there is nothing to repair, and every cache key reports an
+absence meanwhile. `time` present while `versions` still lags is a replication wait.
+And the one shape that is a real miss is **neither signal, with the job finished**.
+For either wait, use the **worst** lag measured here — 27m06s for
+v0.30.24, against 6m54s-8m40s for the five versions before it — because a wait sized
+on the ordinary case would have declared 0.30.24 missing for eighteen minutes while
+npm was still recording it, which is the too-early repair this paragraph exists to
+prevent.
+
+**A `workflow_dispatch` repair cannot publish to npm, and that is by design.** The
+npm steps are gated on the event rather than on the tag — `Ensure npm supports
+trusted publishing`, `Install dependencies`, `Pack and assert the tarball ships no
+V8 bytecode` and `Publish to npm` all carry
+`if: github.event_name != 'workflow_dispatch'` (the last two also
+`&& steps.check_version.outputs.published == 'false'`) — because a repair exists to
+re-attach assets for an older tag whose npm version is already published, so npm is
+the one channel it must skip. `Check if version already published` refuses out loud
+on that path, and the refusal is an `exit 1`: `Manual repair requires the matching
+npm version to already exist; refusing publish.` So a genuinely missing npm artifact
+turns a repair run **red** at that step rather than being fixed quietly by it —
+which is the honest outcome and the wrong tool either way. The tool for it is a
+re-run of the release run for that tag, because a hand-published artifact would have
+to reproduce what the job does: the pack step asserts the tarball ships no V8
+bytecode and `npm publish <tarball>` publishes exactly those bytes, where a bare
+`npm publish` rebuilds and ships an artifact nothing asserted.
+
 **Attaching an asset is repairable by re-running the job, and the rule that makes
 that true is about the asset, not about its name.** `scripts/upload-release.mjs`
 streams each installer to the pinned release ID — never buffered whole, since the mac
@@ -1761,11 +2077,16 @@ derivation to guard. What remains:
 - **Write access to `main` is release authority, and it is the widest control this
   repository has.** `main` is governed by the `Main Protection` ruleset —
   `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
-  prescribes, names it, ruleset `23841604` — and the only way past it without a
-  second
-  approval is its one bypass actor, `RepositoryRole` id 5, which on a repository
-  owned by a personal account is the owner alone (AGENTS.md, *Who may merge: two
-  tiers*). What the
+  prescribes, names it, ruleset `23841604` — and past its approval count stand
+  **five** bypass actors rather than one: `RepositoryRole` id 5 with
+  `bypass_mode: always`, which on a repository owned by a personal account is the
+  owner alone, plus four user-scoped actors at `bypass_mode: pull_request` —
+  `bbqben`, `olafagbemi`, `sherman-tsui` and `SanaKetabchi`. A bypass *entry* is
+  not access: merging a pull request also needs write access, which the first three
+  hold and `SanaKetabchi` does not until she accepts the invitation sent
+  2026-09-22, and the mode means they may merge a pull request the count would
+  otherwise refuse while still being unable to push to the branch at all (*Who may
+  merge: two tiers*). What the
   Release trigger adds on top is a single, visible act between a merge and a shipped
   version: nothing reaches users until somebody creates a Release, and that Release,
   its notes and its tag are all attributable to whoever ran the command. Read every
@@ -1780,6 +2101,18 @@ derivation to guard. What remains:
   — or drop the bump with `git revert <the bump commit>` and cut the version the
   window actually wants. Neither is something to leave unattended: a version that
   was bumped but never tagged is a number the next window has to skip.
+- **The Linux AppImage must be built from the prepared toolset, and never edited
+  post-build.** The update information AppImageUpdate reads lives in the AppImage
+  runtime's `.upd_info` ELF section, and the only place it can be written is that
+  runtime inside the toolset `build-linux` prepares
+  (`scripts/appimage-update-info.mjs prepare-toolset`, wired to the build through
+  `APPIMAGE_TOOLS_PATH`); electron-builder prepends it verbatim. Editing the
+  finished AppImage instead — an in-place section write, an appimagetool repack —
+  invalidates the embedded blockmap and/or `latest-linux.yml`, which
+  electron-updater consumes, and the release ships metadata describing bytes nobody
+  downloads. The `finalize` step is what turns that into a failed build instead of
+  an un-updatable release, and the `dist/*.AppImage.zsync` upload glob is what
+  carries the update channel to the release.
 
 ## Notes for Future Agents
 
@@ -1834,15 +2167,27 @@ false`, `require_last_push_approval: false`,
 additional approval for unattributed Copilot pull requests* — scoped to a pull
 request that **Copilot** opened under its own app identity, so an unattributed
 Copilot PR needs two approvals and nothing here does) and
-`allowed_merge_methods: [merge, squash, rebase]`. It carries exactly one bypass
-actor, `RepositoryRole` id 5 with `bypass_mode: always` — and on a repository
-owned by a personal account **that role is the owner's alone**: such a repository
+`allowed_merge_methods: [merge, squash, rebase]`. It carries **five** bypass
+actors, not one. The first is `RepositoryRole` id 5 with `bypass_mode: always` —
+and on a repository owned by a personal account **that role is the owner's
+alone**: such a repository
 has only two permission levels, owner and collaborator, and GitHub refuses `admin`
-and `maintain` on one (`422 Cannot assign <user> permission of admin`), so the
-bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
+and `maintain` on one (`422 Cannot assign <user> permission of admin`), so that
+`always` bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
 for a personal account repository*; the same page names the escape hatch —
 transferring the repository to an organization is what would create those roles,
-and what would permit team-scoped bypass actors). Confirm what is actually
+and what would permit team-scoped bypass actors). The other four are user-scoped
+and deliberately narrower: `bbqben`, `olafagbemi`, `sherman-tsui` and
+`SanaKetabchi`, each `bypass_mode: pull_request`, which GitHub grants *without*
+allowing a direct push — the actor must open a pull request, so the trail survives
+— which is not access: merging also needs write access of its own, and of these
+four `SanaKetabchi` holds only the invitation sent 2026-09-22 until she accepts it
+(the owner set, `.github/CODEOWNERS`). The four are where this paragraph went
+stale, and it was right when it was written: the ruleset's own history shows one
+bypass actor at its creation on 2026-09-22, two by 2026-09-24T11:27:14 and all
+five by 2026-09-24T11:27:33, and this section was committed four minutes after
+that creation — so the four user-scoped actors are a later ruleset edit, not a
+review error. Confirm what is actually
 enforced, rather than trusting this paragraph, with
 `gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
 the state, and it returns the ruleset above today; this paragraph is the record,
@@ -1858,7 +2203,16 @@ nobody "fixes" one half without understanding what the other half is for.
 the operator, running on their machine and under their account, which is the
 normal case here — the standing agent review gate **is** the approval. A clean,
 fresh, independent agent review round plus green CI is **sufficient to merge**;
-the agent does not need to find a second human to click approve. On an
+the agent does not need to find a second human to click approve. That authorizes
+the merge; it does not move the count. The round is recorded as a **comment**, and
+a comment is an approving review to nobody: `required_approving_review_count`
+moves only for an *approving review* from an account other than the author, so a
+PR whose only "approval" is the agent round still reads `BLOCKED` with
+`REVIEW_REQUIRED` and `reviews: []` while it is open — #511 and #513 are in that
+state today — and the v0.30.31 bump PR #510 did too before it merged on
+2026-09-25 by the owner's bypass with zero reviews. (Read those three fields on an
+*open* PR: GitHub stops computing mergeability once one merges, and #510 reads
+`UNKNOWN` there now.) On an
 owner-authored PR that means the completion is `--admin`, because GitHub refuses
 `422 Review Can not approve your own pull request` — no account here can approve
 the pull request it opened, so the rule the reviewer would satisfy by clicking is
@@ -1873,7 +2227,11 @@ rather than as a pass (*Change scope*).
 an approving review **and** a clean agent review round. The approval is the
 ruleset's `required_approving_review_count: 1` doing its job — it must come from a
 collaborator other than the author, and with no code owners declared it is not
-constrained to the owner set. The agent round is this file's standing gate.
+constrained to the owner set. **The four user-scoped bypass actors named above
+are not a route around this tier**: they are the owner's own collaborators, and
+an agent is forbidden from using `--admin` on a tier-2 PR (*Never use `--admin` on
+a tier-2 PR* below), so an outsider's PR still needs the approval however it is
+completed. The agent round is this file's standing gate.
 Neither substitutes for the other, and this tier is why the review count must not
 be lowered: at 0 an outsider could land on `main` with nobody having looked at it.
 
@@ -1881,7 +2239,7 @@ be lowered: at 0 an outsider could land on `main` with nobody having looked at i
 (`422 Review Can not approve your own pull request`), and every agent here pushes
 as the owner's account, so an agent-authored PR the owner created can never be
 *clicked* approved by the account that opened it. The ruleset anticipates exactly
-this: its one bypass actor is the owner's own, so that bypass is the
+this: its `always` bypass actor is the owner's own, so that bypass is the
 **sanctioned** way the owner's reviewed PR completes, not a hole. Concretely, for
 an agent acting for the owner with a clean
 independent round and classified-green CI: try the normal merge first (a

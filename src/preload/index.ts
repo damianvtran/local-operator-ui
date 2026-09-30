@@ -1,6 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { type IpcRendererEvent, contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import { readTelemetryArgument } from "../main/telemetry-launch";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
@@ -20,6 +21,17 @@ import type {
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import {
+	MINI_VIEW_DISMISS,
+	MINI_VIEW_REGISTRATION,
+	MINI_VIEW_REGISTRATION_GET,
+	MINI_VIEW_SUMMONED,
+	type MiniViewDismissReason,
+	type MiniViewRegistrationState,
+	type MiniViewSummonedPayload,
+	isMiniViewRegistrationState,
+	isMiniViewSummonedPayload,
+} from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import {
 	type WebauthnRequestPayload,
@@ -27,6 +39,16 @@ import {
 	isWebauthnSettledOutcome,
 	parseWebauthnRequest,
 } from "../shared/webauthn-request";
+import {
+	DEFAULT_WINDOW_CHROME_FACTS,
+	WINDOW_CHROME_MENU_CHANNEL,
+	WINDOW_CHROME_REPORT_CHANNEL,
+	WINDOW_CHROME_STATE_CHANNEL,
+	type WindowChromeColors,
+	type WindowChromeFacts,
+	type WindowChromeState,
+	readWindowChromeArgument,
+} from "../shared/window-chrome";
 import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
@@ -195,6 +217,61 @@ const api = {
 					},
 				};
 			},
+		},
+	},
+	/**
+	 * Whether THIS launch may report to PostHog, read synchronously from this
+	 * process's own argv.
+	 *
+	 * The window's `additionalArguments`, composed by `rendererArgumentFlags` in
+	 * `src/main/index.ts` from the launch fact in `src/main/telemetry-launch.ts`.
+	 * It travels this way because the renderer's own configuration is inlined at
+	 * BUILD time (its `VITE_*` values), so a variable set at launch cannot reach
+	 * it — which is exactly why a rig that merely omitted the key still shipped
+	 * one, the defect this closes.
+	 *
+	 * FAIL-CLOSED: `readTelemetryArgument` answers `null` for an absent or
+	 * unintelligible entry and `?? false` is what gets exposed, so a host that is
+	 * not a window main created (Storybook, a bare renderer, a future window path
+	 * that forgot the entry) reports nothing rather than reporting by default.
+	 * The renderer's reader is `resolveTelemetryEnabled` in
+	 * `shared/config/telemetry.ts`, which holds the same rule.
+	 */
+	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/**
+	 * The window chrome: the synchronous facts the shell lays out from, the report
+	 * the renderer sends back on every theme change, and the state main pushes.
+	 *
+	 * `facts` is read from THIS process's argv, which main composed in
+	 * `rendererArgumentFlags`. It is synchronous because the shell cannot wait for
+	 * it: `data-chrome-platform` decides whether every column's first row starts 32px
+	 * lower (the macOS lane) or at y 0, and a value that arrives after the first paint
+	 * is a visible jump on every launch.
+	 *
+	 * The default is `native`, the mode that paints the layout the app shipped before
+	 * this work. A window main did not create (Storybook, a bare renderer, a future
+	 * second window path that forgot the entry) gets no lane and no insets, which is
+	 * wrong only in that it is not seamless - the alternative is a 32px band of dead
+	 * space under a native title bar.
+	 */
+	windowChrome: {
+		facts: (): WindowChromeFacts =>
+			readWindowChromeArgument(process.argv) ?? DEFAULT_WINDOW_CHROME_FACTS,
+		report: (report: {
+			themeId?: string;
+			colors?: Partial<WindowChromeColors>;
+			cornerGround?: string;
+		}): Promise<boolean> =>
+			ipcRenderer.invoke(WINDOW_CHROME_REPORT_CHANNEL, report),
+		popupAppMenu: (): Promise<boolean> =>
+			ipcRenderer.invoke(WINDOW_CHROME_MENU_CHANNEL),
+		onState: (callback: (state: WindowChromeState) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: WindowChromeState) =>
+				callback(state);
+			ipcRenderer.on(WINDOW_CHROME_STATE_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(WINDOW_CHROME_STATE_CHANNEL, handler);
+			};
 		},
 	},
 	// Add methods to open files and URLs
@@ -398,14 +475,25 @@ const api = {
 		onBackendUpdateProgress: (
 			callback: (progress: {
 				/**
-				 * `draining` is the WAIT before anything is installed or restarted: the app
-				 * holds the update back while sessions on this machine finish the turns they
-				 * are running (`backend/fleet-drain.ts`). It is its own phase rather than
-				 * part of `installing` because it can last minutes and no install has begun
-				 * - reporting it as installing would make the panel's "this can take a minute
-				 * or two" the wrong sentence for the whole of it.
+				 * `draining` is the WAIT before the REBUILD install: the app holds the
+				 * checkout rebuild back while sessions on this machine finish the turns
+				 * they are running (`backend/fleet-drain.ts`) - the one route whose tree
+				 * rewrite can cut a turn; restarts stopped waiting on 2026-09-29. It is
+				 * its own phase rather than part of `installing` because it can last
+				 * minutes and no install has begun - reporting it as installing would make
+				 * the panel's "this can take a minute or two" the wrong sentence for the
+				 * whole of it.
 				 */
 				phase: "draining" | "installing" | "restarting";
+				/**
+				 * How long the PRESS has been waiting for the fleet, when the phase is
+				 * `draining` (design round 1, D3). The one number the app has for a wait
+				 * that can run to ten minutes; absent on the other phases, and absent from
+				 * an older producer. Declared here since 2026-09-29: the sibling
+				 * declaration in `index.d.ts` carried it alone before, and a renderer
+				 * reading this type saw a shape the shipped event always had.
+				 */
+				waitedMs?: number;
 				/**
 				 * True when the running attempt is the checkout REBUILD rather than the
 				 * release path. The two promise different things while they run - the
@@ -758,38 +846,37 @@ const api = {
 				ipcRenderer.removeListener("browser-consent-changed", handler);
 			};
 		},
-		/** A consent banner was clicked. Navigation only — it never raises the
-		 * window, because `window-raise.ts` is the only module that may. */
+		/** A consent banner was clicked. The renderer decides where to land; the
+		 * WINDOW is raised in main, by the wiring that owns the click, because
+		 * `window-raise.ts` is the only module that may raise one. */
 		onConsentAttention: (
-			callback: (payload: { entryId: string }) => void,
+			callback: (payload: {
+				entryId: string;
+				/** The conversation whose agent asked, or null for a request no
+				 * conversation owns (see `sessionRequesterOf`). */
+				requesterSessionId: string | null;
+			}) => void,
 		): (() => void) => {
-			const handler = (_event: unknown, payload: { entryId?: unknown }) => {
+			const handler = (
+				_event: unknown,
+				payload: { entryId?: unknown; requesterSessionId?: unknown },
+			) => {
 				if (typeof payload?.entryId === "string") {
-					callback({ entryId: payload.entryId });
+					callback({
+						entryId: payload.entryId,
+						// Validated rather than trusted: `undefined` from an older main is
+						// the same fact as `null` — no conversation owns the request — and
+						// the renderer's fallback is the browser route either way.
+						requesterSessionId:
+							typeof payload.requesterSessionId === "string"
+								? payload.requesterSessionId
+								: null,
+					});
 				}
 			};
 			ipcRenderer.on("browser-consent-attention", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-consent-attention", handler);
-			};
-		},
-		onPopupBlocked: (
-			callback: (payload: { tabId: number; url: string }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; url?: unknown },
-			) => {
-				if (
-					typeof payload?.url === "string" &&
-					typeof payload.tabId === "number"
-				) {
-					callback({ tabId: payload.tabId, url: payload.url });
-				}
-			};
-			ipcRenderer.on("browser-popup-blocked", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-popup-blocked", handler);
 			};
 		},
 	},
@@ -1026,6 +1113,48 @@ const api = {
 		settled: (report: { renderer: string }): void => {
 			ipcRenderer.send("console-capture-settled", report);
 		},
+	},
+
+	/*
+	 * The mini view's bridge (design §D.3).
+	 *
+	 * A NAMESPACE OF ITS OWN rather than an extension of `desktop`: these calls
+	 * are about the app's own window and registration state, not about the
+	 * backend, and the mini renderer needs `onSummoned`/`dismiss` even when no
+	 * backend has ever answered. Every listener verifies the payload's shape
+	 * before handing it on, the same rule every other channel here keeps.
+	 */
+	miniView: {
+		/** Main -> this window: the composer is on screen and may take the keystroke. */
+		onSummoned: (
+			callback: (payload: MiniViewSummonedPayload) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, payload: unknown) => {
+				if (isMiniViewSummonedPayload(payload)) callback(payload);
+			};
+			ipcRenderer.on(MINI_VIEW_SUMMONED, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_SUMMONED, handler);
+			};
+		},
+		/** This window -> main: put the mini window away, naming the act. */
+		dismiss: (reason: MiniViewDismissReason): Promise<void> =>
+			ipcRenderer.invoke(MINI_VIEW_DISMISS, reason),
+		/** Main -> every renderer: the live global-shortcut state. */
+		onRegistration: (
+			callback: (state: MiniViewRegistrationState) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) => {
+				if (isMiniViewRegistrationState(state)) callback(state);
+			};
+			ipcRenderer.on(MINI_VIEW_REGISTRATION, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_REGISTRATION, handler);
+			};
+		},
+		/** The current state, for a freshly mounted settings row or the mini header. */
+		getRegistration: (): Promise<MiniViewRegistrationState> =>
+			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
 	},
 
 	/** Opens a native dialog to select a directory */

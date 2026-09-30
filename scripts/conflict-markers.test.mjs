@@ -28,6 +28,14 @@ test("no tracked file carries a git conflict marker", () => {
 	const files = execFileSync("git", ["ls-files", "-z"], {
 		cwd: process.cwd(),
 		encoding: "utf8",
+		/*
+		 * The tracked-path listing crossed Node's spawnSync default of 1 MiB on
+		 * 2026-09-29 - 1,049,304 B at this head, 1,047,391 B on main, which
+		 * squeaked under until tonight - and `ENOBUFS` is the error that default
+		 * throws. Sized for the repo rather than the default; the other
+		 * whole-tree `ls-files` scans carry the same buffer.
+		 */
+		maxBuffer: 64 * 1024 * 1024,
 	})
 		.split("\0")
 		.filter(Boolean);

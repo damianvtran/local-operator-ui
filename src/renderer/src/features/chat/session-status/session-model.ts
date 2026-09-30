@@ -251,6 +251,34 @@ export function bandReadings(
 	return { identity: pendingModel ?? inForce, effort: inForce };
 }
 
+/** The fast dial's three states; `null` is "nothing to report" (not OFF). */
+export type FastModeState = "on" | "off" | null;
+
+/**
+ * The fast dial, read off ONE spec for every surface that shows it: the
+ * strip's badge and the `/fast` row's right-edge slot both call this. The
+ * CALLER picks the spec, and the two call sites pick differently inside an
+ * unconfirmed model switch — the chip's path passes `pendingModel ?? inForce`
+ * (`bandReadings` above), the row the spec in force — so in that window the
+ * two describe different specs, each truthful; outside it they read the same
+ * fields.
+ *
+ * Mirrors `_fast_label` (defined in `local_operator/tui/app.py`; its word is
+ * what `tui/widgets/status_line.py`'s `fast` segment paints): a model that does
+ * not report the tier (`supports_fast_mode !== true`) gets NOTHING — the segment's
+ * presence is the message there, and an `off` would claim a dial the model does
+ * not have. Only a model that HAS the tier can be on or off, and "not on" is
+ * the same fact from the spec's `false` and from a frame that omits the flag
+ * (the backend clamps `fast_mode` to `supports_fast_mode` — `providers/
+ * failover.py:2715` — so it is never true where the tier is absent).
+ */
+export function fastModeState(
+	model: CanonicalModel | null | undefined,
+): FastModeState {
+	if (model?.supports_fast_mode !== true) return null;
+	return model.fast_mode === true ? "on" : "off";
+}
+
 /**
  * The rungs a spec carries, in the spec's own order, or an empty list when it
  * carries none.
@@ -435,6 +463,32 @@ export function specUnresolved(
 		typeof model.display_name === "string" &&
 		model.display_name.trim() === ""
 	);
+}
+
+/**
+ * The model the EFFORT QUERY keys on, read THROUGH THE HOLD - the same
+ * `frontend ?? heldFrontend` fallback the strip and the destination pickers
+ * paint from (task-17, F3).
+ *
+ * WHY IT IS ONE FUNCTION rather than two reads at the call site: reading only
+ * `frontend` made every GAP look like the unresolved -> resolved edge the
+ * effort query invalidates for - a gap drops `frontend` to null (the
+ * authoritative snapshot is gone until its replacement lands), so the model
+ * read as `null` for the whole gap and the next snapshot restored it, one
+ * null -> model transition per reconnect, each spending a `commands.entities`
+ * round trip to prove nothing had changed (measured: one refetch per
+ * gap->snapshot cycle). The hold is dropped by every terminal state and by a
+ * real session change, so the fallback cannot keep a stale model alive past
+ * the point where the pane stops describing a stream. Exported, and asserted
+ * in `scripts/session-status.test.mjs`, so the next surface that keys a query
+ * on the model reads the same rule instead of re-deriving it from `frontend`.
+ */
+export function effortQueryModel(
+	frontend: CanonicalFrontendState | null | undefined,
+	heldFrontend: CanonicalFrontendState | null | undefined,
+): string | null {
+	const spec = (frontend ?? heldFrontend)?.effective_model;
+	return specUnresolved(spec) ? null : (spec?.model_id ?? null);
 }
 
 /**

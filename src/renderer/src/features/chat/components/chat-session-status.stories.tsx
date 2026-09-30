@@ -27,6 +27,33 @@ type Story = StoryObj<typeof meta>;
  */
 const WEDGED_LABEL = "Not answering · process alive (last heartbeat 4m ago)";
 
+/**
+ * The same rule for the newest state, and here the WORDS are the whole fact.
+ *
+ * A delegating row says how many subagents it owns and whether any are still
+ * waiting for capacity, and the backend carries that inside `status.label`
+ * rather than in a field of its own (`session/catalog.py`), because the count
+ * moves on the same clock as the code. A specimen built with `label: code`
+ * would therefore draw the mark beside the token "delegating" and leave the
+ * half a reader actually reads — how many, and whether any are queued —
+ * unpictured, which is design D9's defect one state further on.
+ *
+ * The sentence below is the shape the backend publishes for running work with
+ * waiting work; the singular and queued-only spellings are the same label's
+ * other arms and differ only in their nouns.
+ */
+const DELEGATING_LABEL = "2 subagents running · 1 queued";
+
+/**
+ * The codes whose WORDS ride in the label, written in one place so a specimen
+ * cannot be built from a token the app never shows. Every other code really is
+ * a token specimen, which is the legitimate half of the rule above.
+ */
+const LABELS: Record<string, string> = {
+	wedged: WEDGED_LABEL,
+	delegating: DELEGATING_LABEL,
+};
+
 /** The statuses drawn as a PAIR at the top of `Neighbours`, in the app's words. */
 const PAIR: [string, string][] = [
 	["error", "Unseen error"],
@@ -121,13 +148,24 @@ export const Neighbours: Story = {
 					</div>
 				))}
 			</div>
-			{/* Every code twice, read and unread, beside its own name — the matrix. */}
+			{/*
+			 * Every code twice, read and unread, beside its own name — the matrix.
+			 *
+			 * `delegating` sits directly after `busy`, which is the adjacency its
+			 * precedence asks for: a parent that is working and a parent whose own
+			 * turn is over while its subagents still run are the two states a reader
+			 * must be able to tell apart, and the nearest pair in the set is a
+			 * spinner against a still mark in the same accent role. The words beside
+			 * it are the backend's own sentence, because for this state they are the
+			 * claim rather than a caption.
+			 */}
 			<div className="grid grid-cols-2 gap-4">
 				{[true, false].flatMap((unseen) =>
 					[
 						"complete",
 						"error",
 						"busy",
+						"delegating",
 						"answer",
 						"approval",
 						"wedged",
@@ -138,7 +176,7 @@ export const Neighbours: Story = {
 						"dormant",
 						"unknown",
 					].map((code) => {
-						const label = code === "wedged" ? WEDGED_LABEL : code;
+						const label = LABELS[code] ?? code;
 						const row = {
 							session_id: "specimen",
 							status: { code, label },

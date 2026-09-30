@@ -34,7 +34,11 @@ import {
 	ipcMain,
 	powerMonitor,
 } from "electron";
-import { type UpdateInfo, autoUpdater } from "electron-updater";
+import {
+	CancellationToken,
+	type UpdateInfo,
+	autoUpdater,
+} from "electron-updater";
 import {
 	type DriftAbsence,
 	type DriftRestartHold,
@@ -59,6 +63,7 @@ import {
 	FLEET_RETIRE_GRACE_MS,
 	FLEET_RETIRE_SETTLE_MS,
 	type FleetDrainOutcome,
+	type FleetReengageResult,
 	fleetDrainRefusalSentence,
 	reengageDisplacedSessions,
 	sessionHasRuntime,
@@ -73,7 +78,10 @@ import {
 	updateManagedPython,
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
-import { NOTIFICATIONS_ENV } from "./backend/notification-launch";
+import {
+	NOTIFICATIONS_ENV,
+	resolveNotificationLaunch,
+} from "./backend/notification-launch";
 import {
 	SESSION_ENGAGE_BEAT_MS,
 	SESSION_ENGAGE_HOLD_MS,
@@ -98,6 +106,10 @@ import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
 } from "./python-bytecode-cache";
+import {
+	type ServerReleaseNotes,
+	fetchServerReleaseNotes,
+} from "./server-release-notes";
 import { serverUpdateFailureSentence } from "./server-update-copy";
 import {
 	type UpdateChannelStatus,
@@ -326,6 +338,68 @@ const STARTUP_SEAL_PROBE_DELAY_MS = 15_000;
  */
 const POST_WAKE_CHECK_DELAY_MS = 20_000;
 
+/**
+ * How long ONE app-feed fetch attempt may run before it is abandoned, in ms.
+ *
+ * WHY THIS EXISTS AT ALL, measured. The updater's feed fetch runs through
+ * Electron's `net` module, which has no read deadline, and electron-updater
+ * exposes no cancel for `checkForUpdates` - so a stalled-but-established
+ * connection never settles and nothing downstream ever hears back. The
+ * operator hit exactly that at 10:40:31 with the app's "Checking for updates"
+ * frame up: the first settle was 2m29.6s later, when the wifi was reset, and
+ * the frame had no way out until then (`update-service.log`). This is the
+ * bound it gets instead: a fetch that has not answered in this long is
+ * abandoned, reported through the transient path the retry ladder already
+ * owns, and its late settle can never be read as this check's answer.
+ *
+ * Thirty seconds sits between the two measured facts: the operator's
+ * successful feed reads answer in seconds, and the failure this bounds had not
+ * settled in minutes.
+ */
+const DEFAULT_APP_FEED_DEADLINE_MS = 30_000;
+
+/**
+ * How long an update download may make NO progress before it is cancelled, in ms.
+ *
+ * The same class of bound, one stage later: `downloadUpdate` accepts a
+ * cancellation token but carries no deadline of its own, so a download whose
+ * connection stalls after the first bytes sits on "Downloading..." for as long
+ * as the connection does. Progress is the liveness signal - `download-progress`
+ * fires per chunk and the progress handler resets this watchdog - so this is
+ * the gap between two chunks, not the length of the download.
+ *
+ * Ninety seconds rather than thirty because a download is megabytes (not one
+ * JSON read) and a slow-but-alive start is ordinary; the settle that follows a
+ * stall is the failure path the user asked for, and the install path behind it
+ * already carries its own much longer watchdogs (600s/1800s).
+ */
+const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 90_000;
+
+/**
+ * How long the PyPI version read may take, in ms.
+ *
+ * The read runs inside `checkForAllUpdates`, which is SEQUENTIAL - the server
+ * channel's wait is added to the app channel's - and `https.get` with no
+ * `timeout` has no bound at all, so a stalled read can hold the whole check's
+ * window open behind a fetch that has already finished. One JSON document from
+ * pypi.org; a read that cannot answer in ten seconds is not going to answer
+ * usefully.
+ */
+const PYPI_VERSION_READ_TIMEOUT_MS = 10_000;
+
+/**
+ * The same bound for the npm registry read, which the npx install shape reaches
+ * instead of PyPI's.
+ *
+ * WHY IT EXISTS AT ALL (agent review minor-1, remediation round 1): this read is
+ * awaited from `checkForUpdates`'s npx branch, so a stalled registry connection
+ * held a non-silent check open with no bound of any kind - the same bug class
+ * this PR bounds for the feed, on a rarer install shape. Kept separate from the
+ * PyPI constant rather than shared: two reads on two hosts, and a future
+ * re-price of one must not silently re-price the other.
+ */
+const NPM_VERSION_READ_TIMEOUT_MS = 10_000;
+
 /** ` to version X`, or nothing when the version is unknown. */
 function versionSuffix(version: string | null | undefined): string {
 	return version ? ` to version ${version}` : "";
@@ -355,6 +429,31 @@ function offlineTransportError(): Error {
 		"net::ERR_INTERNET_DISCONNECTED - the machine reported no network, so no request was made",
 	);
 }
+
+/**
+ * The failure a fetch attempt hands its ladder when the feed never answered.
+ *
+ * WHY THE `net::ERR_TIMED_OUT` SPELLING. Two readers classify this error, and
+ * they must disagree about it in exactly one way:
+ *
+ * - the attempt ladder RETRIES it, because `transientTransportCode` knows
+ *   `net::ERR_TIMED_OUT` as a transient transport failure - the code the
+ *   operator's own log carries 24 times for this state;
+ * - the LEGACY filter (`shouldFilterUpdateError`) must NOT swallow it. Its
+ *   network clause matches the errno spelling `ETIMEDOUT` and does not list
+ *   this one - deliberately, and the two strings do not overlap. A filtered
+ *   failure is answered as "no updates available", and a check that could not
+ *   read the feed must never be told as one that found nothing newer: that is
+ *   how a user on a dead network would be told they are up to date.
+ */
+function feedDeadlineError(deadlineMs: number): Error {
+	return new Error(
+		`net::ERR_TIMED_OUT - the update feed did not answer within ${Math.round(
+			deadlineMs / 1000,
+		)}s, so the attempt was abandoned`,
+	);
+}
+
 /**
  * Run a command and report its exit code rather than throwing on failure.
  *
@@ -966,6 +1065,32 @@ export type BackendUpdateCompletion = {
 	serverDidNotComeBack?: boolean;
 	/** The install version read before an unattended attempt, when there was one. */
 	before?: string | null;
+	/**
+	 * How many sessions were still running the OLD build when the attempt
+	 * finished, or null/absent when that was not measured.
+	 *
+	 * The count the success notice's second line carries (2026-09-29, the
+	 * operator's own instruction: "we can just communicate in the popup that N
+	 * sessions are still running old versions but will get the updates when they
+	 * next stop or idle"). It is a POINT-IN-TIME COUNT OF LIVENESS, not a build
+	 * reading: the pre-swap live sessions still resident in the freshest fleet
+	 * read at the re-engage window's end - which in the ordinary flow is exactly
+	 * the sessions still running the old build, and a session with no live runtime
+	 * is not counted either, because it is already on the new build whenever it
+	 * next engages.
+	 *
+	 * THE ONE NARROW OVER-COUNT, named rather than papered over (review round 1,
+	 * m2): liveness does not prove the build, and the fleet roster carries none,
+	 * so a pre-swap session whose runtime came BACK inside the window (re-warmed
+	 * onto the NEW build) is still counted as still on the old one. Excluding it
+	 * would need a build read, which is deferred (`/v1/desktop/runtimes`).
+	 *
+	 * 0 is a MEASURED zero (the notice draws no second line); null is "not
+	 * measured" (no readable fleet snapshot, or the re-engage never ran), which
+	 * the notice renders as the numberless sentence rather than inventing a zero.
+	 * Optional so an older producer keeps working: an absent field reads as null.
+	 */
+	sessionsOnOldBuild?: number | null;
 };
 
 export type BackendUpdateErrorReport = {
@@ -1031,16 +1156,6 @@ export type BackendUpdateErrorReport = {
 		command: string | null;
 		/** The server answered and refused this app's credentials. */
 		credentialsRefused: boolean;
-		/**
-		 * Whether the install this press was asked for had already landed.
-		 *
-		 * The three refusal sites are two different events (design round 2, D6): the
-		 * install leg's refusal left nothing on disk, while both restart-leg refusals
-		 * happen after the build landed and only the bounce was held back. The panel
-		 * keys its heading on this rather than saying "the update did not start" over
-		 * a panel whose own body says the install has landed.
-		 */
-		installLanded: boolean;
 	};
 };
 
@@ -1156,6 +1271,20 @@ export type BackendUpdateInfo = {
 	 * whether "nothing newer" is sent at all (review U12, round 3).
 	 */
 	manual?: boolean;
+	/**
+	 * What changed in the version this offer names, when it could be read.
+	 *
+	 * The app's own card has carried its release notes from the start - they ride
+	 * in the update feed electron-updater reads - so the server card named two
+	 * numbers and a benefit sentence and nothing about the change itself, which is
+	 * the asymmetry a reader meets on the one panel where they are being asked to
+	 * move. Absent or null is "no notes were readable", NOT "nothing changed": the
+	 * lookup needs the network, and a machine that cannot reach GitHub still gets
+	 * its offer, with the panel simply not claiming what it could not read. Where
+	 * they come from, and why they are one request per version, is
+	 * `server-release-notes.ts`.
+	 */
+	releaseNotes?: ServerReleaseNotes | null;
 };
 
 /**
@@ -1529,6 +1658,22 @@ function startRelaunchWatchdog(input: {
 			target: input.targetVersion,
 			running: input.runningVersion,
 		}),
+		/*
+		 * The notification kill switch travels with the plan (operator report,
+		 * remediation round 1): the script's own `notify` is the one notice path
+		 * the app cannot silence from inside, so a launch that carried the switch
+		 * must place it in the script's environment explicitly rather than lean on
+		 * the spawn's `process.env` spread. Read from `launchEnv`, not `process.env`:
+		 * the app's own guard (`notificationsSilenced`) reads the LAUNCH's value for
+		 * the same reason - a fact about the launch must come from the launch.
+		 * RESOLVED, NOT PASSED THROUGH (review minor, remediation round 2): a
+		 * present-but-empty launch key becomes the silencing value exactly as
+		 * `resolveNotificationLaunch` resolves it for the backend child, so the
+		 * empty spelling cannot fall through to the script's osascript while the
+		 * repo's named rules call the same launch silenced.
+		 */
+		noNotifications:
+			resolveNotificationLaunch(launchEnv)[NOTIFICATIONS_ENV] ?? null,
 		// Stated rather than read off `process.platform` at the plan: this
 		// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
 		// refuses it anywhere else, and the script's two probes (launchd's job
@@ -1678,13 +1823,17 @@ const LAUNCH_HOLD_NOTICE_BUDGET_MS =
  * switch, and the BACKEND honours it. The hold's banner is raised by the MAIN
  * process, which never read it - so a harness that switched notifications off
  * (every rig that boots this app does, and the operator's rules require it) still
- * put this path's banner on the operator's screen. Presence-based, like
- * `notify.py`: any non-empty value is off, because `0` and `false` are spellings
- * of "off" the repo's own tooling passes.
+ * put this path's banner on the operator's screen. PRESENCE is the rule (review
+ * round 3, unified with the watchdog's `+x` set-test and with
+ * `resolveNotificationLaunch`, which resolves the same launch for the backend
+ * child): any SET value silences - empty included, because a launch block with
+ * an empty default spells "a test run", not "the user's own app" - and only an
+ * ABSENT key arms. `0` and `false` are spellings of "off" the repo's own tooling
+ * passes, and they keep working.
  */
 function notificationsSilenced(): boolean {
 	const value = launchEnv[NOTIFICATIONS_ENV];
-	return typeof value === "string" && value.length > 0;
+	return typeof value === "string";
 }
 
 /**
@@ -1989,6 +2138,27 @@ export class UpdateService {
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
 
 	/**
+	 * How long an update download may make no progress before it is cancelled, in ms.
+	 *
+	 * The shipped value is `DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS`; a test overrides
+	 * it to milliseconds, the same treatment as `appFeedRetryDelaysMs`.
+	 */
+	public downloadStallTimeoutMs: number = DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS;
+
+	/**
+	 * The watchdog armed while a download is in flight, and the token it cancels.
+	 *
+	 * Armed on the download, reset on every `download-progress` event (the
+	 * download's own liveness signal), and on expiry it cancels the token, which
+	 * rejects `downloadUpdate` with the updater's `CancellationError` - its
+	 * message matches no filter, deliberately, because a download the user asked
+	 * for must report its failure rather than be answered "no updates
+	 * available".
+	 */
+	private downloadStallWatchdog: NodeJS.Timeout | null = null;
+	private downloadCancellationToken: CancellationToken | null = null;
+
+	/**
 	 * The install that just landed, for the one-line affirmation the next launch
 	 * owes the user (UX U4). Null once it has been reported.
 	 */
@@ -2010,6 +2180,24 @@ export class UpdateService {
 	private appChecksInFlight = 0;
 
 	/**
+	 * Feed fetches a deadline has abandoned that have NOT settled yet.
+	 *
+	 * WHY THE OWNERSHIP RULE NEEDS ITS OWN SET. A fetch whose attempt expired is
+	 * still running inside the updater, and when it eventually fails the updater
+	 * emits `error` for it - measured at 2m29.6s after the check that started it
+	 * had to give up, in the operator's own log. That event belongs to a check
+	 * that has already answered its caller, so it must not be reported as fresh
+	 * news: while one of these is pending, an availability-stage `error` is
+	 * attributed to it and logged rather than sent, exactly as with a check in
+	 * flight. Membership ends when the fetch settles - its result is never read
+	 * as an answer, but its settle is the end of the window in which its events
+	 * are expected. Keyed by the promise itself: electron-updater answers a
+	 * re-entrant check with the still-pending promise, so the same fetch can be
+	 * abandoned by more than one sequence and that is the same window.
+	 */
+	private appFeedAbandonedFetches = new Set<Promise<unknown>>();
+
+	/**
 	 * The attempt sequence in flight in the app channel, so a second check rides
 	 * it instead of doubling it.
 	 *
@@ -2028,6 +2216,22 @@ export class UpdateService {
 	> | null = null;
 
 	/**
+	 * The epoch of the sequence `appFeedFetchInFlight` holds, if any.
+	 *
+	 * WHY A NUMBER RIDES BESIDE THE PROMISE. A fetch attempt that expires frees
+	 * the latch (`awaitAppFeedFetch`), so a check arriving afterwards starts its
+	 * own attempt sequence instead of attending one that has already spent a
+	 * deadline. That opens the one window the unconditional clear could not
+	 * produce: the abandoned sequence is still running when a successor has
+	 * taken the latch, and the abandoned sequence's settle must not unpin the
+	 * successor. Every clear site therefore checks that the epoch it is clearing
+	 * is still the current one. (Before the deadline existed, a stalled sequence
+	 * never settled at all, so its clear never ran and the hazard could not
+	 * arise.)
+	 */
+	private appFeedFetchEpoch = 0;
+
+	/**
 	 * The wake-armed check, held so a second wake cannot arm a second one.
 	 */
 	private postWakeCheckTimer: NodeJS.Timeout | null = null;
@@ -2041,6 +2245,16 @@ export class UpdateService {
 	 * case; nothing else does.
 	 */
 	public appFeedRetryDelaysMs: readonly number[] = [1_000, 3_000];
+
+	/**
+	 * How long ONE fetch attempt may run before it is abandoned, in ms.
+	 *
+	 * The shipped value is `DEFAULT_APP_FEED_DEADLINE_MS`; a test overrides it to
+	 * milliseconds rather than waiting half a minute per case, and the default is
+	 * asserted as a value in the suite so the bound cannot go missing behind the
+	 * narrowings.
+	 */
+	public appFeedDeadlineMs: number = DEFAULT_APP_FEED_DEADLINE_MS;
 
 	/** The last update the updater told us about, for its file metadata. */
 	private lastUpdateInfo: UpdateInfo | null = null;
@@ -2176,15 +2390,17 @@ export class UpdateService {
 	private installPreflightInFlight = false;
 
 	/**
-	 * How long an update press may hold back for the fleet, and how often it
-	 * re-reads it.
+	 * How long the rebuild install leg may hold back for the fleet, and how often
+	 * it re-reads it.
 	 *
-	 * FIELDS rather than the module's constants read in place, because both halves
-	 * are waited on inside one press and the harness has to be able to drive a wait
-	 * in milliseconds instead of ten minutes (`scripts/update-robustness.test.mjs`,
-	 * the same lever `waitForBackendVersion` and the install budgets already are).
-	 * The values they start at are the host tool's own, in
-	 * `backend/fleet-drain.ts`, where the reasoning for the ten minutes lives.
+	 * FIELDS rather than the module's constants read in place, because the wait has
+	 * to be drivable in milliseconds instead of ten minutes
+	 * (`scripts/update-robustness.test.mjs`, the same lever `waitForBackendVersion`
+	 * and the install budgets already are). The values they start at are the host
+	 * tool's own, in `backend/fleet-drain.ts`, where the reasoning for the ten
+	 * minutes lives - and where the module head records that the press reaching
+	 * this pair is now only the REBUILD route's install leg (the operator's
+	 * directive removed the restart-leg drains).
 	 */
 	public fleetDrainBudgetMs = FLEET_DRAIN_BUDGET_MS;
 	public fleetDrainPollMs = FLEET_DRAIN_POLL_MS;
@@ -2216,13 +2432,17 @@ export class UpdateService {
 	public sessionEngageHoldMs = SESSION_ENGAGE_HOLD_MS;
 
 	/**
-	 * How long the press IN FLIGHT has already spent waiting for the fleet.
+	 * How long the rebuild press IN FLIGHT has already spent waiting for the fleet.
 	 *
-	 * The budget above is the press's, not each drain's (review round 1, m2): a
-	 * rebuild press drains twice - once before the install and once before the
-	 * restart - so a per-drain budget let one press hold the button for twenty
-	 * minutes while the panel promised ten. Reset at the top of every press, in
-	 * `updateBackend`, because the guarantee is about one press.
+	 * The budget above belongs to the PRESS, not to each drain (review round 1,
+	 * m2): when the restart legs still drained, a rebuild press drained twice -
+	 * once before the install and once before the restart - so a per-drain budget
+	 * let one press hold the button for twenty minutes while the panel promised
+	 * ten. The restart-leg drains are gone (2026-09-29 directive), so the ledger
+	 * now carries at most one leg's spend; it is kept because the promise the
+	 * draining copy makes is about the press, and because it is the seam the wait
+	 * is driven through. Reset at the top of every press, in `updateBackend`,
+	 * because the guarantee is about one press.
 	 */
 	private fleetDrainSpentMs = 0;
 
@@ -4189,6 +4409,11 @@ export class UpdateService {
 		// rest of them.
 		this.stopInstallInFlightRecheck();
 
+		// And a download's stall watchdog, for the same reason: it would otherwise
+		// survive the service and fire into a token whose download this window no
+		// longer owns.
+		this.clearDownloadStallWatchdog();
+
 		// Remove all autoUpdater event listeners
 		autoUpdater.removeAllListeners();
 
@@ -4247,12 +4472,21 @@ export class UpdateService {
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
 		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
-		const sequence = this.runAppFeedAttempts(fetchFeed);
+		const epoch = this.appFeedFetchEpoch + 1;
+		this.appFeedFetchEpoch = epoch;
+		const sequence = this.runAppFeedAttempts(fetchFeed, epoch);
 		this.appFeedFetchInFlight = sequence;
 		try {
 			return await sequence;
 		} finally {
-			this.appFeedFetchInFlight = null;
+			/*
+			 * EPOCH-GUARDED, because `awaitAppFeedFetch` frees the latch on the
+			 * first expired attempt: by the time this sequence settles, a check that
+			 * arrived after that expiry may already hold its own successor sequence,
+			 * and a clear from here must not unpin THAT one (see
+			 * `appFeedFetchEpoch`).
+			 */
+			if (this.appFeedFetchEpoch === epoch) this.appFeedFetchInFlight = null;
 		}
 	}
 
@@ -4271,11 +4505,16 @@ export class UpdateService {
 
 	/**
 	 * The attempt sequence itself: the retries, and the depth that owns them.
+	 *
+	 * `epoch` is the sequence's own latch epoch, passed down so the deadline's
+	 * latch-freeing is guarded the same way the caller's clear is (see
+	 * `appFeedFetchEpoch`).
 	 */
 	private async runAppFeedAttempts(
 		fetchFeed: () => Promise<
 			Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
 		>,
+		epoch: number,
 	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>> {
 		this.appChecksInFlight += 1;
 		try {
@@ -4308,7 +4547,7 @@ export class UpdateService {
 						);
 						continue;
 					}
-					return await fetchFeed();
+					return await this.awaitAppFeedFetch(fetchFeed(), epoch);
 				} catch (error) {
 					const code = transientTransportCode(error);
 					if (code === null || attempt >= delays.length) throw error;
@@ -4329,6 +4568,125 @@ export class UpdateService {
 		} finally {
 			this.appChecksInFlight -= 1;
 		}
+	}
+
+	/**
+	 * One feed fetch, bounded by this service's own deadline.
+	 *
+	 * WHY A DEADLINE HERE RATHER THAN IN electron-updater: `checkForUpdates`'s
+	 * fetch goes through Electron's `net` module, which has no read deadline at
+	 * all, and the updater exposes no cancel for it - so a stalled-but-
+	 * established connection never settles and nothing downstream ever hears
+	 * back. The race below is the only bound available: the attempt rejects with
+	 * a transient-classified failure (`feedDeadlineError`), the ladder retries it
+	 * like any other transient, and what the check then reports is its ordinary
+	 * failure path - `null` for an app-initiated check, a rejection for one the
+	 * user pressed.
+	 *
+	 * THE ABANDONED FETCH IS REMEMBERED, not dropped: it is still running inside
+	 * the updater, it may settle minutes later, and its settle emits the same
+	 * `error` event any failed check emits - so it is counted for the duration
+	 * (`appFeedAbandonedFetches`), and its result is never read as this attempt's
+	 * answer (the race has already settled by then, and a settled promise cannot
+	 * resolve twice).
+	 */
+	private awaitAppFeedFetch<T>(fetch: Promise<T>, epoch: number): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			const deadline = setTimeout(() => {
+				/*
+				 * THE STALLED SEQUENCE LOSES THE LATCH. Sharing exists so checks
+				 * that start together make one fetch; a sequence whose attempt has
+				 * expired is not one a later check should attend to its end - the
+				 * successor runs its own bounded ladder from the moment it asked.
+				 * Guarded by the epoch, because a successor may already hold the
+				 * latch when a LATER attempt of this sequence expires.
+				 */
+				if (this.appFeedFetchEpoch === epoch) {
+					this.appFeedFetchInFlight = null;
+				}
+				this.rememberAbandonedAppFeedFetch(fetch);
+				reject(feedDeadlineError(this.appFeedDeadlineMs));
+			}, this.appFeedDeadlineMs);
+			fetch.then(
+				(value) => {
+					clearTimeout(deadline);
+					resolve(value);
+				},
+				(error) => {
+					clearTimeout(deadline);
+					reject(error);
+				},
+			);
+		});
+	}
+
+	/**
+	 * Count an abandoned fetch until it settles, so its late events are
+	 * attributed to it rather than reported as fresh news (see the set's own
+	 * docstring).
+	 *
+	 * Both handlers are the same function because either outcome ends the window:
+	 * the point is only that the fetch is still pending inside the updater,
+	 * whichever way it ends.
+	 */
+	private rememberAbandonedAppFeedFetch(fetch: Promise<unknown>): void {
+		if (this.appFeedAbandonedFetches.has(fetch)) return;
+		this.appFeedAbandonedFetches.add(fetch);
+		const settled = () => {
+			this.appFeedAbandonedFetches.delete(fetch);
+		};
+		fetch.then(settled, settled);
+	}
+
+	/**
+	 * Arm the download's stall watchdog for a fresh attempt.
+	 *
+	 * Replaces any timer left by a previous one rather than assuming none: there
+	 * can be only one download at a time (the IPC handler's stage and the
+	 * updater's own `downloadPromise` both enforce it), but the token-and-timer
+	 * pair is per attempt and must not leak into the next.
+	 */
+	private armDownloadStallWatchdog(cancellationToken: CancellationToken): void {
+		this.downloadCancellationToken = cancellationToken;
+		this.resetDownloadStallWatchdog();
+	}
+
+	/**
+	 * Restart the stall clock: arming time, and every `download-progress` event.
+	 *
+	 * The reset is what makes the watchdog measure a GAP rather than a duration -
+	 * `download-progress` is the download's own liveness signal, so a download
+	 * that streams for an hour in chunks never fires it, while one that stops
+	 * after the first chunk fires it once.
+	 */
+	private resetDownloadStallWatchdog(): void {
+		if (this.downloadStallWatchdog) {
+			clearTimeout(this.downloadStallWatchdog);
+			this.downloadStallWatchdog = null;
+		}
+		const token = this.downloadCancellationToken;
+		if (!token) return;
+		this.downloadStallWatchdog = setTimeout(() => {
+			this.downloadStallWatchdog = null;
+			logger.warn(
+				`The update download made no progress for ${this.downloadStallTimeoutMs}ms; cancelling it through the updater's own cancellation token.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			token.cancel();
+		}, this.downloadStallTimeoutMs);
+	}
+
+	/**
+	 * Drop the watchdog AND the token; the download handler's `finally`, and
+	 * `dispose()`, so a timer can never outlive the attempt it was armed for or
+	 * fire into a later one.
+	 */
+	private clearDownloadStallWatchdog(): void {
+		if (this.downloadStallWatchdog) {
+			clearTimeout(this.downloadStallWatchdog);
+			this.downloadStallWatchdog = null;
+		}
+		this.downloadCancellationToken = null;
 	}
 
 	private setupUpdateEvents(): void {
@@ -4408,14 +4766,25 @@ export class UpdateService {
 			 * is why `actionable` is tested first: a download that dies while an
 			 * availability check happens to be running is still a failure the user
 			 * asked for.
+			 *
+			 * The ABANDONED half: a fetch a deadline gave up on is still running in
+			 * the updater, and its late failure emits this same event minutes after
+			 * its check answered (`appFeedAbandonedFetches`). It is attributed to
+			 * that fetch and logged, never sent - the alternative is an alert about
+			 * a check the user already got an answer for, which is exactly what the
+			 * operator's log holds a 2m29.6s-late settle of.
 			 */
-			if (!actionable && this.appChecksInFlight > 0) {
+			if (
+				!actionable &&
+				(this.appChecksInFlight > 0 || this.appFeedAbandonedFetches.size > 0)
+			) {
 				logger.info(
 					// The rule, at the point it is implemented: a check in flight owns
 					// its own failure report, and an app-initiated check's owner is a
 					// silent one - so this is the log line that replaces the alert the
-					// operator saw, not a swallowed error.
-					"Update error during an availability check: the check reports its own failure",
+					// operator saw, not a swallowed error. The same holds for a fetch
+					// one of those checks has already given up on.
+					"Update error during an availability check (or from a fetch one abandoned): the owning check reports its own failure",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return;
@@ -4452,6 +4821,12 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 				progressObj,
 			);
+			/*
+			 * THE STALL WATCHDOG'S LIVENESS SIGNAL: every chunk resets it, so it
+			 * fires on the gap between chunks rather than on the age of the
+			 * download (see `resetDownloadStallWatchdog`).
+			 */
+			this.resetDownloadStallWatchdog();
 			if (
 				this.mainWindow &&
 				!this.mainWindow.isDestroyed() &&
@@ -4745,8 +5120,21 @@ export class UpdateService {
 		ipcMain.handle("download-update", async () => {
 			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
 			this.updateStage = "downloading";
+			/*
+			 * A REAL TOKEN, and a watchdog that cancels through it. The updater's
+			 * download has no deadline of its own either, and a connection that
+			 * stalls after the first bytes sits on "Downloading..." for as long as
+			 * the connection does; `downloadUpdate` accepts exactly this token for
+			 * exactly this. Cancelling rejects with the updater's
+			 * `CancellationError` ("cancelled"), which the catch below reports -
+			 * deliberately unfiltered, so the user who asked for the download is
+			 * told it failed rather than answered "no updates available".
+			 */
+			const cancellationToken = new CancellationToken();
+			this.armDownloadStallWatchdog(cancellationToken);
 			try {
-				const downloadedPaths = await autoUpdater.downloadUpdate();
+				const downloadedPaths =
+					await autoUpdater.downloadUpdate(cancellationToken);
 				// The paths are the updater's own answer for where the artifact
 				// landed, so the verification that follows does not have to guess.
 				if (Array.isArray(downloadedPaths) && downloadedPaths.length > 0) {
@@ -4787,6 +5175,12 @@ export class UpdateService {
 
 				throw error;
 			} finally {
+				/*
+				 * The watchdog goes with the attempt: its timer must never outlive
+				 * the download it was armed for, and any settle - success, refusal
+				 * or the cancel it just caused - is the end of the window it guards.
+				 */
+				this.clearDownloadStallWatchdog();
 				this.updateStage = "idle";
 			}
 		});
@@ -5296,8 +5690,16 @@ export class UpdateService {
 			const packageName = "local-operator-ui";
 			const url = `https://registry.npmjs.org/${packageName}`;
 
-			https
-				.get(url, (res) => {
+			const request = https.get(
+				url,
+				/*
+				 * The same socket timeout its PyPI sibling carries (agent review
+				 * minor-1, remediation round 1): without it a stalled registry
+				 * connection holds a non-silent npx check open, which is the bug
+				 * class this PR bounds for the feed.
+				 */
+				{ timeout: NPM_VERSION_READ_TIMEOUT_MS },
+				(res) => {
 					let data = "";
 
 					res.on("data", (chunk) => {
@@ -5318,15 +5720,28 @@ export class UpdateService {
 							resolve(null);
 						}
 					});
-				})
-				.on("error", (error) => {
-					logger.error(
-						"Error fetching from npm registry:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-					resolve(null);
-				});
+				},
+			);
+			/*
+			 * The timeout only ANNOUNCES idleness; the request has to be destroyed for
+			 * the read to actually end, and that destruction's error is what the
+			 * ordinary failure path below reads.
+			 */
+			request.on("timeout", () => {
+				request.destroy(
+					new Error(
+						`The npm version read did not answer within ${NPM_VERSION_READ_TIMEOUT_MS}ms`,
+					),
+				);
+			});
+			request.on("error", (error) => {
+				logger.error(
+					"Error fetching from npm registry:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				resolve(null);
+			});
 		});
 	}
 
@@ -5562,8 +5977,16 @@ export class UpdateService {
 	private getLatestPypiVersion(): Promise<string | null> {
 		return new Promise((resolve) => {
 			const url = "https://pypi.org/pypi/local-operator/json";
-			https
-				.get(url, (res) => {
+			const request = https.get(
+				url,
+				/*
+				 * A socket timeout, so this read cannot hold `checkForAllUpdates`'s
+				 * sequential window open: the app channel already answers before the
+				 * server channel's first byte is asked for, and a stalled read here
+				 * was the one leg of the pair with no bound of any kind.
+				 */
+				{ timeout: PYPI_VERSION_READ_TIMEOUT_MS },
+				(res) => {
 					let data = "";
 					res.on("data", (chunk) => {
 						data += chunk;
@@ -5582,16 +6005,79 @@ export class UpdateService {
 							resolve(null);
 						}
 					});
-				})
-				.on("error", (error) => {
-					logger.error(
-						"Error fetching from PyPI:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-					resolve(null);
-				});
+				},
+			);
+			/*
+			 * The socket timeout only ANNOUNCES idleness; the request has to be
+			 * destroyed for the read to actually end present-tense, and the
+			 * destruction's error is what the ordinary failure path below reads.
+			 */
+			request.on("timeout", () => {
+				request.destroy(
+					new Error(
+						`The PyPI version read did not answer within ${PYPI_VERSION_READ_TIMEOUT_MS}ms`,
+					),
+				);
+			});
+			request.on("error", (error) => {
+				logger.error(
+					"Error fetching from PyPI:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				resolve(null);
+			});
 		});
+	}
+
+	/**
+	 * What changed in the server version this offer names, or null.
+	 *
+	 * The read is off the CRITICAL PATH in the sense that matters: it cannot fail
+	 * the offer. Every way it can come back empty - no release for the tag, an
+	 * unreachable host, an answer that is not JSON, a body with no prose in it -
+	 * is a `null` here and a line in this log, and the panel renders without the
+	 * paragraph rather than not at all. That is the shape the app's own channel
+	 * has always had (`updateInfo.releaseNotes` is optional and the card is drawn
+	 * either way), and it is the one a panel asking a reader to move has to keep:
+	 * the notes are the reason to move, never the condition for being told.
+	 *
+	 * AWAITED RATHER THAN SENT LATER, deliberately. The alternative is a second
+	 * renderer event carrying the notes after the offer is already on screen,
+	 * which buys a panel that grows under the reader's eyes and a state machine to
+	 * review in exchange for saving the one bounded round trip this makes per
+	 * version (every later check reads the cache). The bound is
+	 * `RELEASE_NOTES_TIMEOUT_MS`, and it is smaller than the wait the version read
+	 * above it can already impose with no bound at all.
+	 */
+	private async readServerReleaseNotes(
+		version: string,
+	): Promise<ServerReleaseNotes | null> {
+		try {
+			const lookup = await fetchServerReleaseNotes(version, {
+				userDataDir: app.getPath("userData"),
+			});
+			if (lookup.status === "found") {
+				logger.info(
+					`Release notes for ${version} read from ${lookup.cached ? "the cache" : "GitHub"} (${lookup.notes.summary.length} chars)`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return lookup.notes;
+			}
+			logger.info(
+				`No release notes for ${version}: ${lookup.reason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		} catch (error) {
+			// `fetchServerReleaseNotes` is written not to throw; this is the backstop
+			// that keeps a future edit to it from taking the offer down with it.
+			logger.warn(
+				`Could not read release notes for ${version}: ${error}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
 	}
 
 	/**
@@ -5949,14 +6435,17 @@ export class UpdateService {
 			 * publishes a generation and restarts a daemon. It is the managed global
 			 * arm's own wording, aimed at this arm's mechanism.
 			 *
-			 * AND IT NO LONGER PROMISES A DROPPED TURN. It did, because it described
-			 * what the press used to do; the press now waits for the running turns to
-			 * finish before it moves the server (`drainFleetForUpdate`), so the honest
-			 * consequence is the wait and the sequence, with the cost stated as the
-			 * time it takes rather than as work it destroys.
+			 * AND IT NO LONGER PROMISES A DROPPED TURN - AND NO LONGER PRICES A WAIT. It
+			 * did both at different times, because it described what the press used to
+			 * do; the operator's directive of 2026-09-29 removed the fleet wait from the
+			 * restart legs ("we don't need to wait for all sessions to drain and turn
+			 * over... on idle they should switch over"), so the honest consequence names
+			 * the sequence, the promised absence of dropped work, and the fleet effect
+			 * that remains - sessions still working move onto the new build when they
+			 * next stop or go idle - with the cost stated as the time it takes.
 			 */
 			remedy:
-				"The app publishes the new build beside the one the server is using, waits for the turns already running on this machine to finish, and then moves the server onto it, so nothing in flight is cut off. This can take a minute or two.",
+				"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
 			/*
@@ -6493,9 +6982,20 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
+				/*
+				 * WHAT CHANGED, read before the offer is composed rather than after it
+				 * is sent, so the one card a reader decides on carries the whole
+				 * question at once - see `readServerReleaseNotes` for why a second
+				 * event was refused. Null on every failure, including a machine that
+				 * cannot reach GitHub, and the panel then says nothing about the
+				 * change instead of saying nothing changed.
+				 */
+				const releaseNotes = await this.readServerReleaseNotes(latestVersion);
+
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
 					latestVersion,
+					releaseNotes,
 					/*
 					 * THE PROCESS'S OWN READING, not `/health`'s (review round 2, T1): the
 					 * panel's sentence is "the server you are using is running X until it
@@ -7053,15 +7553,19 @@ export class UpdateService {
 	}
 
 	/**
-	 * Wait for the fleet this app can see to go idle, or refuse the update.
+	 * Wait for the fleet this app can see to go idle, or refuse the rebuild.
 	 *
-	 * THE ONE GATE EVERY RESTART AND EVERY IN-PLACE INSTALL GOES THROUGH. A
-	 * restart of the server serving this app is `stop(true)` - SIGTERM, ten
-	 * seconds, SIGKILL - and the daemon's own `retire.py` declines that exit for
-	 * exactly this reason: its shutdown cancels work it owns. The operator's rule
-	 * is that nothing kills runtimes en masse, so the app waits for the fleet to
-	 * drain before it touches anything, and REFUSES with a remedy at the end of
-	 * its budget rather than cutting off a turn on a timer.
+	 * THE ONE REMAINING GATE, AND IT GUARDS THE ONE ROUTE THAT CAN CUT A TURN. This
+	 * used to stand in front of every restart and every in-place install. The
+	 * operator's directive of 2026-09-29 removed it from the RESTART legs - a
+	 * daemon bounce cuts no turns, because session runtimes are detached and
+	 * converge onto the new build at their own next idle (see the module head in
+	 * `backend/fleet-drain.ts`) - so what is left is the route it still has to
+	 * guard: the checkout REBUILD's install leg, which rewrites a tree a live
+	 * runtime is reading (`update-install.ts`). There the operator's rule stands:
+	 * nothing kills runtimes en masse, so the app waits for the fleet to drain
+	 * before the rebuild starts, and REFUSES with a remedy at the end of its
+	 * budget rather than cutting off a turn on a timer.
 	 *
 	 * WHY THE MANAGER'S OWN READERS. `servingWorkState` is the app's existing
 	 * busy signal (see `servingWorkStateFromSessions`) and `servingSessionFleet`
@@ -7079,23 +7583,18 @@ export class UpdateService {
 		backend: BackendServiceManager;
 		/** The command a reader could run by hand instead, when the plan names one. */
 		command: string | null;
-		what: "install" | "restart";
-		/**
-		 * Whether the install this press was asked for has already landed. It changes
-		 * only the sentence: a refused restart after a landed install must say so,
-		 * or the reader is told an update did not happen when it did.
-		 */
-		installLanded?: boolean;
 	}): Promise<boolean> {
-		const { backend, what } = input;
+		const { backend } = input;
 		/*
-		 * ONE BUDGET PER PRESS, not one per drain (review round 1, m2). A rebuild
-		 * press has TWO drains - the install leg's and the restart leg's - so a
-		 * budget applied to each let a single press wait twice the ten minutes the
-		 * panel promises. What is spent here is subtracted from what the next
-		 * drain may wait, which keeps the promise the copy makes while leaving a
-		 * turn that STARTS during the install exactly as protected as one that was
-		 * running when the press began: the wait is bounded, not skipped.
+		 * ONE LEDGER, KEPT EVEN THOUGH A PRESS NOW DRAINS AT MOST ONCE. It was written
+		 * for the rebuild press's TWO drains - the install leg's and the restart
+		 * leg's - because a per-drain budget let one press wait twice the ten minutes
+		 * the panel promised (review round 1, m2). The operator's directive removed
+		 * the restart-leg drains, so the only spender left is the rebuild install leg;
+		 * the spend is still recorded and still subtracted, because it is the seam the
+		 * wait is driven through (`fleetDrainSpentMs` in the fixtures) and the promise
+		 * the draining copy makes is about the press, however many waits it turns out
+		 * to contain.
 		 */
 		const spentMs = this.fleetDrainSpentMs;
 		const remainingMs = Math.max(0, this.fleetDrainBudgetMs - spentMs);
@@ -7123,7 +7622,7 @@ export class UpdateService {
 					waitedMs: spentMs + elapsedMs,
 				});
 				logger.info(
-					`Update waiting for the fleet to drain before it may ${what} (${Math.round(elapsedMs / 1000)}s so far)`,
+					`Update waiting for the fleet to drain before the rebuild may start (${Math.round(elapsedMs / 1000)}s so far)`,
 					LogFileType.UPDATE_SERVICE,
 				);
 			},
@@ -7131,15 +7630,12 @@ export class UpdateService {
 		this.fleetDrainSpentMs = spentMs + outcome.waitedMs;
 		if (outcome.kind === "drained") {
 			logger.info(
-				`The fleet is idle (${outcome.fleet} session(s) on the roster, ${outcome.waitedMs}ms waited); the update may ${what}`,
+				`The fleet is idle (${outcome.fleet} session(s) on the roster, ${outcome.waitedMs}ms waited); the rebuild may start`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return true;
 		}
-		const message = fleetDrainRefusalSentence(
-			outcome,
-			input.installLanded === true,
-		);
+		const message = fleetDrainRefusalSentence(outcome);
 		/*
 		 * THE COMMAND IS ITS OWN FIELD (design D2). It used to be a clause inside the
 		 * sentence, printed with literal backticks, so the one panel that TELLS the
@@ -7159,7 +7655,7 @@ export class UpdateService {
 		 */
 		const pressWaitedMs = spentMs + outcome.waitedMs;
 		logger.warn(
-			`Refusing to ${what}: the fleet did not drain in ${pressWaitedMs}ms (${outcome.because}, ${outcome.busy.length} mid-turn, this leg spent ${outcome.waitedMs}ms). ${message}${command ? ` By hand: ${command}` : ""}`,
+			`Refusing to install: the fleet did not drain in ${pressWaitedMs}ms (${outcome.because}, ${outcome.busy.length} mid-turn, this leg spent ${outcome.waitedMs}ms). ${message}${command ? ` By hand: ${command}` : ""}`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.sendToRenderer("backend-update-error", {
@@ -7177,16 +7673,6 @@ export class UpdateService {
 				waitedMs: pressWaitedMs,
 				command,
 				credentialsRefused: outcome.credentialsRefused === true,
-				/*
-				 * WHICH REFUSAL THIS IS (design round 2, D6). The heading is the reader's
-				 * takeaway from a panel they have been looking at for ten minutes, and the
-				 * three refusal sites are not the same event: the install leg's refusal left
-				 * nothing on disk, while the two restart-leg refusals happen AFTER the build
-				 * landed. "The update didn't start" is false on the second pair - the
-				 * producer's own doc for `installLanded` says so - so the fact travels with
-				 * the report and the panel keys its heading on it.
-				 */
-				installLanded: input.installLanded === true,
 			},
 		});
 		return false;
@@ -7196,20 +7682,27 @@ export class UpdateService {
 	 * Put back the runtimes a restart displaced, and say what came back.
 	 *
 	 * Step 5 of the host tool's own order (`~/tools/lop-fleet-update`): the app
-	 * snapshots the fleet, drains it, moves the server, and then re-engages what
-	 * the move displaced - the unwatched `daemon`-kind sessions in particular,
-	 * which nothing else revives. `reengageDisplacedSessions` owns the retire wait
-	 * and the ordering rules.
+	 * snapshots the fleet, moves the server, and then re-engages what the move
+	 * displaced - the unwatched `daemon`-kind sessions in particular, which nothing
+	 * else revives. `reengageDisplacedSessions` owns the retire wait and the
+	 * ordering rules.
 	 *
-	 * BEST EFFORT AND NEVER A BLOCKER: this runs after the server is healthy and
-	 * the update has already been reported, so a displace list that will not come
-	 * back is a logged fact rather than a failed update. That is deliberate - a
-	 * `warm` the daemon refuses must not turn a landed update into an error panel.
+	 * BEST EFFORT AND NEVER A BLOCKER: a displace list that will not come back is a
+	 * logged fact rather than a failed update. That is deliberate - a `warm` the
+	 * daemon refuses must not turn a landed update into an error panel.
+	 *
+	 * THE RESULT IS RETURNED FOR THE COMPLETION'S COUNT (2026-09-29): the caller
+	 * reads `stillResident` - the pre-swap runtimes still resident in the freshest
+	 * read at the wait's end, which in the ordinary flow are the sessions still on
+	 * the old build - into `sessionsOnOldBuild`. It is a liveness reading rather
+	 * than a build read (the field's own docblock names the one narrow over-count).
+	 * A failure here answers null and the count is reported as not measured, so
+	 * the notice degrades to the numberless sentence rather than inventing a zero.
 	 */
 	private async reengageFleetAfterRestart(
 		backend: BackendServiceManager,
 		before: readonly FleetRosterRow[],
-	): Promise<void> {
+	): Promise<FleetReengageResult | null> {
 		try {
 			const result = await reengageDisplacedSessions({
 				before,
@@ -7230,7 +7723,8 @@ export class UpdateService {
 				 * bound - is still resident at every read, so it is never "displaced" and
 				 * never engaged; it leaves when its turn ends, which is after this app has
 				 * stopped watching. Saying so is the difference between a log that records
-				 * what the app saw and one that claims the fleet was intact.
+				 * what the app saw and one that claims the fleet was intact - and the same
+				 * reading is exactly what the completion's count carries.
 				 */
 				if (result.stillResident.length > 0) {
 					logger.info(
@@ -7240,7 +7734,7 @@ export class UpdateService {
 						LogFileType.UPDATE_SERVICE,
 					);
 				}
-				return;
+				return result;
 			}
 			if (result.failed.length > 0) {
 				logger.warn(
@@ -7250,11 +7744,13 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 			}
+			return result;
 		} catch (error) {
 			logger.warn(
 				`Could not re-engage the sessions a restart displaced: ${error instanceof Error ? error.message : String(error)}`,
 				LogFileType.UPDATE_SERVICE,
 			);
+			return null;
 		}
 	}
 
@@ -7304,9 +7800,11 @@ export class UpdateService {
 	 *
 	 * NOT `sessions.message`, deliberately: a message would admit a turn in every
 	 * conversation this machine holds, which is work and spend the user did not ask
-	 * for, and the drain that ran before the restart is what makes a notice about
-	 * interrupted work unnecessary - by construction nothing was mid-turn when the
-	 * server moved.
+	 * for - and since the operator's directive removed the restart-leg drains
+	 * (2026-09-29), a re-engaged session may legitimately have been mid-turn when
+	 * the server moved: a daemon bounce cuts no turns, and the session's own turn
+	 * kept running in its detached runtime. This call starts a runtime; it never
+	 * touches a turn.
 	 */
 	private async engageSessionRuntime(
 		backend: BackendServiceManager,
@@ -8006,7 +8504,6 @@ export class UpdateService {
 			!(await this.drainFleetForUpdate({
 				backend,
 				command: freshPlan.updateCommand ?? null,
-				what: "install",
 			}))
 		) {
 			return false;
@@ -8175,8 +8672,10 @@ export class UpdateService {
 		 * THE ONE PRESS THAT STILL MOVES IT is one with nothing left to install:
 		 * the skew panel's own "restart the server onto the new build" control
 		 * reaches this method with the install already current, and there the restart
-		 * IS the work the reader asked for. It goes through the same drain, and its
-		 * sessions are re-engaged afterwards like any other restart's.
+		 * IS the work the reader asked for. It no longer waits on the fleet (the
+		 * 2026-09-29 directive removed the restart-leg drains; `drainFleetForUpdate`
+		 * guards only the rebuild install leg now), and its sessions are re-engaged
+		 * afterwards like any other restart's.
 		 */
 		const generationInstall = freshPlan.managedRoute === "entry-point";
 		const installAlreadyCurrent =
@@ -8223,38 +8722,24 @@ export class UpdateService {
 			return true;
 		}
 
-		// The app owns this daemon, so it is the one process that has to move onto
-		// the new build - and the same tail the bundled path runs: wait for the
-		// fleet, restart, health, hold the reported version to the target, then
-		// announce and put back what the move displaced.
-		if (
-			!(await this.drainFleetForUpdate({
-				backend,
-				command: freshPlan.updateCommand ?? null,
-				what: "restart",
-				/*
-				 * A press with nothing left to install has no install to report as
-				 * landed, and saying one was would be the one false thing in the
-				 * refusal.
-				 */
-				installLanded: !installAlreadyCurrent,
-			}))
-		) {
-			/*
-			 * The install HAS landed and is not undone: a generation install that is
-			 * already current, or a rebuild whose child finished, is on disk and stays
-			 * there. What the refusal holds back is the Bounce - so the next launch (or
-			 * the next idle) moves the daemon onto it, which is the same steady state
-			 * the generation rule above accepts.
-			 */
-			logger.info(
-				installAlreadyCurrent
-					? "Nothing was left to install; the restart was refused because the fleet did not drain. The daemon keeps serving the build it loaded."
-					: "The install landed; the restart was refused because the fleet did not drain. The daemon keeps serving the build it loaded.",
-				LogFileType.UPDATE_SERVICE,
-			);
-			return false;
-		}
+		/*
+		 * The app owns this daemon, so it is the one process that has to move onto
+		 * the new build - and the same tail the bundled path runs: restart, health,
+		 * hold the reported version to the target, then announce and put back what
+		 * the move displaced.
+		 *
+		 * THE RESTART NO LONGER WAITS ON THE FLEET (2026-09-29, the operator's
+		 * directive: "we don't need to wait for all sessions to drain and turn
+		 * over, once the daemon, relays, all the central components roll over,
+		 * then we just allow all sessions to idle and on idle they should switch
+		 * over"). The drain this leg used to run through refused the press on
+		 * exactly the busy machine the update was wanted on - the operator's own
+		 * log: "Refusing to restart: the fleet did not drain in 602562ms (busy, 21
+		 * mid-turn ...)" - while buying nothing: runtimes are detached and
+		 * converge onto the new build at their own next idle, so a daemon bounce
+		 * cuts no turns. The fleet-drain gate lives on the REBUILD route's INSTALL
+		 * leg instead, where a tree rewrite can cut one (`drainFleetForUpdate`).
+		 */
 		logger.info(
 			"Restarting backend service onto the updated install...",
 			LogFileType.UPDATE_SERVICE,
@@ -8262,14 +8747,14 @@ export class UpdateService {
 		this.sendToRenderer("backend-update-progress", { phase: "restarting" });
 		/*
 		 * THE SNAPSHOT IS TAKEN AT THE MOMENT THE RESTART ACTS (review round 1, M2).
-		 * Everything before this line is waiting - a drain of up to ten minutes, and
-		 * on the rebuild route an install of up to half an hour before that - and a
-		 * snapshot from the far side of that wait is a diff over the wrong interval:
-		 * it re-engages sessions that had already retired when the restart began, and
-		 * it cannot see one created while the app was waiting. Taken here, after the
-		 * drain and reading the daemon the restart is about to bounce, the diff is
-		 * exactly "this session had a runtime when the restart began and does not
-		 * now".
+		 * Everything before this line can be an install - up to half an hour on the
+		 * rebuild route (whose own drain runs before THAT leg), minutes on a
+		 * generation press - and a snapshot from the far side of that wait is a
+		 * diff over the wrong interval: it re-engages sessions that had already
+		 * retired when the restart began, and it cannot see one created while the
+		 * app was waiting. Taken here, reading the daemon the restart is about to
+		 * bounce, the diff is exactly "this session had a runtime when the restart
+		 * began and does not now".
 		 */
 		const fleetBeforeRestart = await this.readFleetSnapshot(backend);
 		const restartSuccess = await backend.restart();
@@ -8340,13 +8825,27 @@ export class UpdateService {
 			fleetBeforeInstall,
 			fleetBeforeRestart,
 		);
-		if (reengageSnapshot !== null) {
-			await this.reengageFleetAfterRestart(backend, reengageSnapshot);
-		}
+		/*
+		 * THE FLEET COUNT RIDES THE COMPLETION (2026-09-29; `stillResident` is the
+		 * primary source). What is still resident when the re-engage window ends
+		 * is, in the ordinary flow, "sessions still on the old build": pre-swap
+		 * runtimes that did not move during the window, on their way out at their
+		 * own next idle. Null -
+		 * not measured - when no snapshot was readable or the re-engage failed, and
+		 * the notice then degrades to the numberless sentence rather than inventing
+		 * a zero. The completion is ALWAYS sent: a count is a reading, and a landed
+		 * update may not be turned into an error by a reading that could not be
+		 * taken.
+		 */
+		const reengage =
+			reengageSnapshot !== null
+				? await this.reengageFleetAfterRestart(backend, reengageSnapshot)
+				: null;
 		this.sendToRenderer("backend-update-completed", {
 			installVersion: after,
 			runningVersion: reported,
 			restarted: true,
+			sessionsOnOldBuild: reengage?.stillResident.length ?? null,
 		});
 		return true;
 	}
@@ -8485,7 +8984,11 @@ export class UpdateService {
 		 * ten minutes the drift check could find the pair stale, the fleet idle the
 		 * moment the drain cleared, and bounce the daemon ITSELF: under the press,
 		 * with no snapshot of its own and no re-engage, which is exactly the
-		 * unguarded restart the fleet gate exists to remove.
+		 * unguarded restart the fleet gate exists to remove. The restart-leg drains
+		 * were removed on 2026-09-29 (the operator's directive; see `fleet-drain.ts`),
+		 * so the longest remaining window a press holds the flag through is the
+		 * REBUILD install leg's own drain plus its install - still far longer than
+		 * the restart alone, and still a window the hold must cover.
 		 *
 		 * It also covers the press for the two readers inside the manager: a
 		 * deliberate stop is not an "exited unexpectedly" dialog, and recovery does
@@ -9043,51 +9546,42 @@ export class UpdateService {
 			return true;
 		}
 		/*
-		 * THE FLEET GATE, and this is the arm where it bites: the environment above
-		 * is the app's OWN, so this app is the only thing in the machine that can
-		 * wait for the move to be safe. The publish lands a generation beside the
-		 * running one and touches nothing a live process is reading, while the
-		 * restart below is `stop(true)`: SIGTERM, ten seconds, SIGKILL - so the
-		 * snapshot the re-engage compares against is taken AFTER the drain and
-		 * immediately before the restart, not here (review round 1, M2).
-		 *
-		 * A REFUSAL LEAVES THE INSTALL IN PLACE. The pointer has already flipped, so
-		 * the next launch moves onto it; what is held back is the bounce, and the
-		 * refusal says exactly that to a reader who asked for an update and did get
-		 * one on disk.
+		 * NO FLEET GATE ON THIS RESTART ANY MORE (2026-09-29, the operator's
+		 * directive: "we don't need to wait for all sessions to drain and turn
+		 * over, once the daemon, relays, all the central components roll over,
+		 * then we just allow all sessions to idle and on idle they should switch
+		 * over"). This used to be the arm where the gate bit hardest - the env
+		 * above is the app's OWN, so the app was the only thing that could wait -
+		 * and the drain was removed here with the global route's: the publish
+		 * lands a generation beside the running one and touches nothing a live
+		 * process is reading, and while the restart below is `stop(true)`
+		 * (SIGTERM, ten seconds, SIGKILL), session runtimes are detached and a
+		 * daemon bounce cuts no turns - they converge onto the new build at their
+		 * own next idle. The gate lives only on the rebuild route's install leg
+		 * now, whose drain runs before its tree rewrite (`drainFleetForUpdate`).
 		 */
 		/*
-		 * THE BEFORE-SIDE IS TAKEN HERE, BETWEEN THE PUBLISH AND THE DRAIN (review
+		 * THE BEFORE-SIDE IS TAKEN HERE, BETWEEN THE PUBLISH AND THE RESTART (review
 		 * round 2, R2-M3).
 		 *
 		 * The restart-leg snapshot below is the right reading for the interval the
 		 * RESTART covers, but it is the only read the release path had, and the
-		 * publish happens minutes earlier in the same method. A publish moves the
-		 * install under the runtimes serving this machine, so an idle runtime retires
-		 * on its own build check (5 s cadence, once the marker is 10 s old, spread
-		 * over a 20 s stagger) - and the drain between here and the restart can last
-		 * ten minutes when another session is mid-turn, which is exactly the press
-		 * this gate exists for. Those sessions are gone before the only read that
-		 * could name them, so they were never re-engaged: the idle members of a fleet
-		 * were the ones the app silently lost.
+		 * publish happens earlier in the same method. A publish moves the install
+		 * under the runtimes serving this machine, so an idle runtime retires on its
+		 * own build check (5 s cadence, once the marker is 10 s old, spread over a
+		 * 20 s stagger) - and, in the era of the restart drain, those sessions were
+		 * gone before the only read that could name them, so they were never
+		 * re-engaged. The window may be shorter now that no drain follows, but the
+		 * publish itself is what starts the retirement wave, so the reading is still
+		 * the one that can name it.
 		 *
-		 * This is the reading the REBUILD route already keeps for its own install leg
-		 * (`fleetBeforeInstall`, taken before its drain and unioned below), and the
-		 * union's stated trade is the right side here too: re-engaging a session that
-		 * retired on its own is cheaper than leaving a lost one, and the two readings
-		 * together are still "what actually vanished".
+		 * This is the reading the REBUILD route already keeps for its own install
+		 * leg (`fleetBeforeInstall`, taken before its drain and unioned below), and
+		 * the union's stated trade is the right side here too: re-engaging a session
+		 * that retired on its own is cheaper than leaving a lost one, and the two
+		 * readings together are still "what actually vanished".
 		 */
 		const fleetAfterPublish = await this.readFleetSnapshot(backend);
-		if (
-			!(await this.drainFleetForUpdate({
-				backend,
-				command: null,
-				what: "restart",
-				installLanded: outcome.replaced,
-			}))
-		) {
-			return false;
-		}
 		logger.info(
 			"Restarting backend service onto the published environment...",
 			LogFileType.UPDATE_SERVICE,
@@ -9103,10 +9597,10 @@ export class UpdateService {
 			this.sendToRenderer("backend-update-progress", { phase: "restarting" });
 		}
 		/*
-		 * The snapshot the re-engage compares against is taken HERE - after the
-		 * drain, at the moment of the bounce - for the reason the global route's own
-		 * comment gives (review round 1, M2): a reading from before a ten-minute
-		 * drain diffs the wrong interval.
+		 * The snapshot the re-engage compares against is taken HERE, at the moment
+		 * of the bounce, for the reason the global route's own comment gives
+		 * (review round 1, M2): a reading taken earlier - before an install, or
+		 * before the era's drain - diffs the wrong interval.
 		 */
 		const fleetBeforeRestart = await this.readFleetSnapshot(backend);
 		const restarted = await backend.restart();
@@ -9219,22 +9713,30 @@ export class UpdateService {
 		 *
 		 * THE SNAPSHOT IS THE UNION OF THE PUBLISH-SIDE AND PRE-RESTART READS (review
 		 * round 2, R2-M3), which is the reading the rebuild route already takes: the
-		 * publish retires idle runtimes on the build skew and the drain between the two
-		 * reads can be ten minutes long, so a diff taken only across the restart cannot
-		 * see what the publish itself took away. Deduplicated by session id, so no
-		 * session is engaged twice.
+		 * publish retires idle runtimes on the build skew before either read, so a
+		 * diff taken only across the restart cannot see what the publish itself took
+		 * away. Deduplicated by session id, so no session is engaged twice.
 		 */
 		const reengageSnapshot = unionFleetSnapshots(
 			fleetAfterPublish,
 			fleetBeforeRestart,
 		);
-		if (reengageSnapshot !== null) {
-			await this.reengageFleetAfterRestart(backend, reengageSnapshot);
-		}
+		/*
+		 * AND ITS `stillResident` RIDES THE COMPLETION (2026-09-29): what is still
+		 * running when the re-engage window ends is what the notice's second line
+		 * counts, and null - no readable snapshot, or a failed re-engage - is
+		 * reported as not measured rather than as zero. The completion is ALWAYS
+		 * sent; a count is a reading and may not turn a landed update into an error.
+		 */
+		const reengage =
+			reengageSnapshot !== null
+				? await this.reengageFleetAfterRestart(backend, reengageSnapshot)
+				: null;
 		this.sendToRenderer("backend-update-completed", {
 			installVersion,
 			runningVersion: running,
 			restarted: true,
+			sessionsOnOldBuild: reengage?.stillResident.length ?? null,
 		});
 		return true;
 	}
@@ -9467,7 +9969,15 @@ export class UpdateService {
 			return true;
 		}
 
-		// Filter network errors that might be temporary
+		/*
+		 * Filter network errors that might be temporary.
+		 *
+		 * `ETIMEDOUT` is the errno spelling and stays; the feed deadline's own
+		 * `net::ERR_TIMED_OUT` is deliberately NOT listed here in any form - a
+		 * fetch a deadline gave up on must reach the caller as a failure, not be
+		 * answered as "no updates available" (see `feedDeadlineError`). The two
+		 * strings do not overlap, so this branch cannot catch it by accident.
+		 */
 		if (
 			errorMessage.includes("ENOTFOUND") ||
 			errorMessage.includes("ETIMEDOUT") ||

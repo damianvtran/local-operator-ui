@@ -60,6 +60,10 @@ const bundle = await build({
 				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
 				goalClearLabel,
+				goalDoneLabel,
+				goalDismissLabel,
+				goalDoneToastText,
+				goalStalledNote,
 				goalClearedText,
 				loopActionLabel,
 				loopAffordance,
@@ -71,6 +75,7 @@ const bundle = await build({
 				subagentChipLabel,
 				jobChipLabel,
 				wakeChipLabel,
+				monitorsChipLabel,
 			} from "./src/renderer/src/features/chat/components/composer-status-row";
 			import {
 				activityTally,
@@ -80,19 +85,27 @@ const bundle = await build({
 				childClause,
 				jobClause,
 				wakeClause,
+				monitorClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
 			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
+			import { RunDetailMonitors } from "./src/renderer/src/features/chat/components/run-details/run-detail-monitors";
+			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
+			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
+			import { goalCapability } from "./src/shared/desktop-session-contract";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
+			export const renderMonitors = (props) =>
+				renderToStaticMarkup(createElement(RunDetailMonitors, props));
+			export { GoalPicker };
 			export { toasts };
-			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalClearedText, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -151,9 +164,19 @@ const {
 	ComposerStatusRow,
 	shouldRestoreComposerFocus,
 	renderWakes,
+	renderMonitors,
+	GoalPicker,
 	goalDisclosureLabel,
 	goalClearLabel,
+	goalDoneLabel,
+	goalDismissLabel,
+	goalDoneToastText,
+	goalStalledNote,
 	goalClearedText,
+	goalStateWord,
+	goalCapability,
+	GOAL_DONE_ARGS,
+	GOAL_DISMISS_ARGS,
 	ThemedToastContainer,
 	toasts,
 	loopActionLabel,
@@ -166,6 +189,7 @@ const {
 	subagentChipLabel,
 	jobChipLabel,
 	wakeChipLabel,
+	monitorsChipLabel,
 	deriveRunDetails,
 	activityTally,
 	todoClause,
@@ -173,6 +197,7 @@ const {
 	childClause,
 	jobClause,
 	wakeClause,
+	monitorClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
 } = await import(bundlePath.href);
@@ -272,6 +297,36 @@ const HOUR_MS = 3_600_000;
 const wakesOf = (wakes) =>
 	deriveRunDetails({ jobs: [], todos: [], wakes, nowMs: WAKE_NOW_MS });
 
+/**
+ * One ARMED monitor in `MonitorState`'s own shape: the spec's identity joined
+ * with the health counters, which is what the scheduler's `index_rows()`
+ * publishes. `next_due_at` and `last_check_at` are epoch MILLISECONDS, the trap
+ * the contract names beside the epoch-SECONDS job rows, and `null` is a real
+ * due slot — a monitor the failure ladder parked has none.
+ */
+const wireMonitor = (id, name, dueInMs, extra = {}) => ({
+	id,
+	name,
+	tool: "bash",
+	arguments: {},
+	every_ms: 60_000,
+	until_at: null,
+	description: "",
+	created_at: WAKE_NOW_MS - 60_000,
+	next_due_at: dueInMs === null ? null : WAKE_NOW_MS + dueInMs,
+	last_check_at: WAKE_NOW_MS - 60_000,
+	checks: 1,
+	deliveries: 0,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	...extra,
+});
+
+/** The model over a monitor list, so the chip's gate can be driven. */
+const monitorsOf = (rows) =>
+	deriveRunDetails({ jobs: [], todos: [], monitors: rows, nowMs: WAKE_NOW_MS });
+
 const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance, then write reports/unpaid-march.md and publish the summary";
 
@@ -313,6 +368,15 @@ const SCROLL_BUTTON =
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
+/*
+ * The right-pane SLOT, which is where the pane's box - and so its floor - is
+ * declared since the `PaneSlot` refactor (design round 1, D1). Read
+ * comment-stripped, like every other pin in this file: the slot's class note
+ * quotes the floor it states, so a scan that read the note would pass on a
+ * revert that left the prose behind.
+ */
+const SLOT = "src/renderer/src/shared/components/common/pane-slot.tsx";
+const slot = code(SLOT);
 
 /* ---------------------------------------------------------------- */
 /* The nothing state                                                 */
@@ -904,9 +968,9 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	);
 });
 
-test("each chip files its own section, and the store carries all four", () => {
+test("each chip files its own section, and the store carries all five", () => {
 	const store = useUiPreferencesStore;
-	for (const section of ["subagents", "jobs", "wakes"]) {
+	for (const section of ["subagents", "jobs", "wakes", "monitors"]) {
 		store.setState({
 			runPanelReveal: null,
 			isRunPanelOpen: false,
@@ -1294,7 +1358,12 @@ test("the trigger's dot is ONE mark in two inks, and the ink is the whole distin
 test("the row mounts inside the form, ABOVE the alert and therefore above the box", () => {
 	const source = code(COMPOSER);
 	const row = source.indexOf("<ComposerStatusRow");
-	const alert = source.indexOf('role="alert"');
+	// The region's role is a two-arm expression now (a failure asserts, the late
+	// delivery announces politely - review round 2, NIT), so the boundary is the
+	// expression rather than the literal.
+	const alert = source.indexOf(
+		'role={composerAlert.polite ? "status" : "alert"}',
+	);
 	const box = source.indexOf("COMPOSER_BOX,");
 	assert.ok(row > -1, "the composer mounts the row");
 	assert.ok(
@@ -1394,9 +1463,15 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * `sr-only` floor rule is gone, and the label's `shrink-0` is what makes the
 	 * yield order hold where both chips share a line - the snippet yields, the
 	 * count never does.
+	 *
+	 * The label's ink step while `stalled` rides the SAME span (0px, the loudest ink on
+	 * the row, paired with the word in the accessible name) rather than a second
+	 * element, so the pin is on `shrink-0` PLUS the conditional and not on a bare
+	 * `cn("shrink-0")`: a reordering or an added class must not cost a review round,
+	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('cn("shrink-0")', "{GOAL_LABEL}");
+	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -1409,12 +1484,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
-	 * constant applied under that name. The four count chips ask inside the group
+	 * constant applied under that name. The count chips ask inside the group
 	 * (below), where "first" is a question about the group's own leading edge.
 	 */
 	assert.match(source, /groupIsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /loopFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /wakesFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /monitorsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /subagentsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /jobsFirst \? FIRST_CHIP : undefined/);
 	/*
@@ -1467,13 +1543,18 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * The first-chip chain, which had to grow an item: the loop chip is the second
 	 * ITEM on the row (its own chip plus its dismiss, one wrapper), so the count group
-	 * is first only when neither the goal nor the loop rendered. Six chips, five
-	 * items, and the group's own leading chip is still decided inside the group.
+	 * is first only when neither the goal nor the loop rendered, and the group's own
+	 * leading chip is still decided inside the group — plan, wakes, watches,
+	 * subagents and jobs, in that order.
 	 */
 	assert.match(source, /const loopFirst = !showGoal;/);
 	assert.match(source, /const groupIsFirst = !showGoal && !showLoop;/);
 	assert.match(source, /const wakesFirst = groupIsFirst && !showPlan;/);
-	assert.match(source, /const subagentsFirst = wakesFirst && !showWakes;/);
+	assert.match(source, /const monitorsFirst = wakesFirst && !showWakes;/);
+	assert.match(
+		source,
+		/const subagentsFirst = monitorsFirst && !showMonitors;/,
+	);
 	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
@@ -1508,17 +1589,51 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		"import { AlarmClock, Info, Repeat, X } from",
+		/*
+		 * `CircleCheck` is the settled chip's own mark (design review round 1, D6): the
+		 * erase keeps the shipped `X`, the `Done` control keeps `Check`, and the control
+		 * that only puts a settled chip away wears the mark the pane's settled row wears
+		 * rather than the one that erases. `ScanEye` is the monitor chip's, one count
+		 * over, and it is refused `Eye` for the providers page's reveal control and
+		 * `Monitor` for the console tool's glyph — one glyph in this app means one thing.
+		 */
+		'from "lucide-react"',
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
 	/*
+	 * The marks ride ONE import from `lucide-react`, which is the claim the exact
+	 * source string used to carry until the formatter wrapped the block at the print
+	 * width: read the import's own text rather than one spelling of it, so a wrap (or
+	 * a later glyph) cannot turn this into a failing assertion about formatting.
+	 */
+	{
+		const end = source.indexOf('from "lucide-react"');
+		const start = source.lastIndexOf("import {", end);
+		const lucideImport = source.slice(start, end);
+		for (const glyph of [
+			"AlarmClock",
+			"Check",
+			"CircleCheck",
+			"Info",
+			"Repeat",
+			"ScanEye",
+			"X",
+		]) {
+			assert.ok(
+				lucideImport.includes(glyph),
+				`the row's one lucide import carries ${glyph}`,
+			);
+		}
+	}
+	/*
 	 * ...and the wake chip leads with `AlarmClock` in the same call, from the same
 	 * import: a mark on the third count chip that is a WAKE's rather than the plan's,
 	 * because `Info` means "this opens the run pane" on one chip and one glyph in this
-	 * row means one thing.
+	 * row means one thing. The monitor chip leads with `ScanEye` under that same rule.
 	 */
 	tokens("<AlarmClock", "size-3.5 shrink-0");
+	tokens("<ScanEye", "size-3.5 shrink-0");
 	/*
 	 * The two ACTIVITY chips lead with the roster's state mark instead, taken from
 	 * the component that already owns the nine states' glyphs, inks and motion —
@@ -1615,10 +1730,21 @@ test("the composer's two capped blocks share one whole-line cap", () => {
 	 * than inherited so the boundary cannot drift back through a line. */
 	assert.match(measure, /max-h-\[7\.5rem\]/);
 	assert.match(measure, /leading-5/);
+	const row = code(ROW);
+	/*
+	 * The composer's OTHER capped block consumes the same constant, and the
+	 * send-error notice no longer caps at all - which is this change's answer to
+	 * D12 rather than a regression of it. The cap existed to keep a PARAGRAPH from
+	 * pushing the remedy out of the window: the notice is one sentence now, and the
+	 * thing under it is the box the user is typing in, so a cap could only hide the
+	 * sentence or the control it names. Measured rather than argued -
+	 * `scripts/composer-alert-geometry.mjs` puts the notice at 27.5px muted and
+	 * 51.5-110px for the failure across 892/472/172 columns, with the send control
+	 * on screen at every width.
+	 */
+	assert.match(row, /CAPPED_BLOCK/);
 	const input = code(MESSAGE_INPUT);
-	// The send-error alert, which had the identical `max-h-32` and the identical
-	// defect, now consumes the same constant.
-	assert.match(input, /CAPPED_BLOCK/);
+	assert.doesNotMatch(input, /CAPPED_BLOCK/);
 	assert.doesNotMatch(input, /max-h-32/);
 });
 
@@ -1665,7 +1791,182 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 		source,
 		/messages\.length === 0 && !isHydrating && !isSmallView \?/,
 	);
-	assert.match(source, /\{showEmptyChatPrompt \? \(/);
+	/*
+	 * The wrapper is unconditional; only what it HOLDS depends on the band. With a
+	 * provider connected the headline renders (design round 1 D5 added the
+	 * `!noProvider` half - the next test pins the other branch). The fold's
+	 * resolution spells the gate as the null arm - `{noProvider ? null : (<h2
+	 * ...>)}` - so this pin tracks the shipped spelling rather than the branch's
+	 * earlier `showEmptyChatPrompt && !noProvider ? (` form (agent review round
+	 * 4, R15).
+	 */
+	assert.match(
+		source,
+		/\{noProvider \? null : \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+	);
+});
+
+test("with nothing connected the empty-chat band drops the headline and shows the connect card", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * D5: a headline inviting a prompt the app cannot run pointed the screen's two
+	 * strongest signals in opposite directions, so with no provider the headline
+	 * is withheld and the connect card takes the chips' slot. Both halves are
+	 * pinned: the headline carries the `!noProvider` guard (above), and the card
+	 * is mounted under the opposite guard, in the same wrapper - the fold's
+	 * shipped spelling, `{noProvider ? (<div ...><ConnectProviderCard />`
+	 * (agent review round 4, R15).
+	 */
+	assert.doesNotMatch(
+		source,
+		/\{showEmptyChatPrompt \? \(\s*<h2/,
+		"the headline renders on the empty band whether or not a provider is connected",
+	);
+	assert.match(
+		source,
+		/\{noProvider \? \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
+	);
+});
+
+test("with nothing connected neither the button nor Enter sends", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * The button was disabled and the KEY was not: measured live, typing with no
+	 * provider connected and pressing Enter created a session and sent the message,
+	 * which the transcript then held waiting for an agent that could never run (QA
+	 * round 2 R2-Q2). All three refusals are pinned here -- the keydown, the hint it
+	 * raises, and the form's own submit -- because removing them wholesale left every
+	 * neighbouring suite green (review round 3 R3-m2).
+	 */
+	assert.match(
+		source,
+		/sendRefused &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		"Enter is not refused when nothing can answer",
+	);
+	assert.match(
+		source,
+		/explainRefusedSend\(\);/,
+		"the refusal says why: the placeholder that explained it is gone once the user types (U13)",
+	);
+	assert.match(
+		source,
+		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		"the form's submit path still sends when nothing can answer",
+	);
+	/*
+	 * AND THE STATE ONE STEP PAST IT (UX round 5, U21). A provider connected with no
+	 * model this app can name is not answered by the `noProvider` guard, and it was the
+	 * live case where the band said "Choose a model", Enter sent anyway, and the turn
+	 * sat at "waiting for the agent" with no completion request reaching the daemon.
+	 * All three ways in are pinned: the key, the form's own submit, and the button.
+	 */
+	assert.match(
+		source,
+		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return;\s*\}/,
+		"the submit path still sends with no model to run on",
+	);
+	/*
+	 * THE FOLD DROPPED THE `isLoading` TERM THIS PIN USED TO REQUIRE, and that is
+	 * main's change rather than a convenience: main's own composer series removed
+	 * `isLoading` from this control deliberately (U6), because a press while a send
+	 * is in flight has to REACH the store's refusal and the pane's send-lock line
+	 * ("Your last message is still sending.") instead of being swallowed by a
+	 * disabled button. The pin's subject is that the button reports the same state
+	 * the key does, which it still does for every term that remains; asserting a
+	 * term main deleted would have made this fold carry main's change and its
+	 * opposite at once.
+	 */
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*sendRefused \|\|/,
+		"the Send control must report the same state the key does",
+	);
+	assert.match(
+		source,
+		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
+		"and the refusal must say which state it is refusing in",
+	);
+});
+
+test("the disabled Send press answers the way Enter does, and keeps the caret (U27)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * UX round 7, U27, measured on the built app: with nothing connected, a press on
+	 * the DISABLED Send kept the value, raised nothing, and took the caret out of the
+	 * box (`composer.focused true -> false`) - while Enter, in the same state, raised
+	 * "Connect a provider to send." and kept the caret. The cause is the gate rather
+	 * than the term: `holdCaretOnRefusedPress` suppresses the caret-clearing default
+	 * for `isInputDisabled`, and this branch disabled Send with `noProvider ||
+	 * noModel`, which that predicate does not cover.
+	 *
+	 * The fix is ONE term read by every door - declared once, read by the control's
+	 * `disabled`, by both refusal doors and by the press handler - so a fourth door
+	 * cannot quietly fall behind the other three. That is what these four assertions
+	 * hold down between them.
+	 */
+	assert.match(
+		source,
+		/const sendRefused = noProvider \|\| noModel;/,
+		"the two terms that refuse a send are declared once, not spelled out per door",
+	);
+	assert.match(
+		source,
+		/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnSendPress\}/,
+		"the Send control carries its own press handler, because its disabling terms are wider than the shared gate's",
+	);
+	assert.match(
+		source,
+		/if \(!isInputDisabled && !sendRefused\) return;/,
+		"and that handler's gate is exactly the terms the control is disabled by",
+	);
+	assert.ok(
+		source.includes(
+			"if (sendRefused && !isInputDisabled) explainRefusedSend();",
+		),
+		"and the refusal that used to be silent raises the same sentence the key raises, and is silent exactly where the key is",
+	);
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*sendRefused \|\|\s*\(!newMessage\.trim\(\) && attachments\.length === 0\)/,
+		"the empty box keeps its own disabling term OUTSIDE the refusal's pair: it is disabled for its own reason, so it keeps the browser's press behaviour",
+	);
+});
+
+test("the composer notice carries the connect action the fold re-laid into it (F2)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * #494's review round 9, F2, measured by deletion on that branch: the fold onto
+	 * main's composer rewrite re-laid this branch's `providerConnectActions` action into
+	 * main's notice memo, and removing the spread left 13 suites / 226 tests green - so
+	 * the fold's only semantic re-lay had no pin at all. The behaviour is "with nothing
+	 * connected the notice carries a Connect a provider action, and its press opens the
+	 * dialog"; the seam it lives on is the memo's `actions` and the term those actions
+	 * are built from, which is where it is pinned.
+	 */
+	assert.match(
+		source,
+		/actions: \[\.\.\.\(sendError\?\.actions \?\? \[\]\), \.\.\.providerConnectActions\]/,
+		"the notice's action list still carries the re-laid provider action rather than main's list alone",
+	);
+	assert.match(
+		source,
+		/const providerConnectActions =\s*noProvider \|\|/,
+		"and it is built from `noProvider` FIRST, not only from the failure text: with nothing connected the failure a user actually gets is the app's own 20-second timeout, so the backend's sentence never matched (UX round 2 N3)",
+	);
+	assert.match(
+		source,
+		/label: "Connect a provider"/,
+		"the action names what the no-connection line offers",
+	);
+	assert.match(
+		source,
+		/useConnectProviderStore\.getState\(\)\.openConnect\(\)/,
+		"and opens the same dialog every other connect surface opens",
+	);
+	assert.ok(
+		source.includes("NO_PROVIDER_NOTICE.test(sendError.message)"),
+		"the backend's own refusal still reaches the same action, which is the arm the fold had to keep",
+	);
 });
 
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {
@@ -1794,6 +2095,19 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * the row can host it - otherwise the range collapses onto the drawn width and a
 	 * write is refused (measured: seven real drags moved the preference 420 -> 360 ->
 	 * 320 -> 440 -> 640 while the pane stayed 303px and the separator never moved).
+	 *
+	 * AND THE FLOOR IS READ FROM THE BOX'S OWN FILE, not from this component: the
+	 * `PaneSlot` refactor (design round 1's D1, whose subject was the five copies of
+	 * this box the app and the stories had each grown) moved the wrapper - and with
+	 * it the floor - into `pane-slot.tsx`, so the literal this file used to find
+	 * here is not `chat-content.tsx`'s to carry any more. What the pin asserts is
+	 * unchanged and is asserted in BOTH places it can now be stated: the slot's box
+	 * floors at ZERO by its own default (read from the slot's source below), and
+	 * the run panel's mount passes it a width and NO floor of its own. Relaxing the
+	 * assertion instead - dropping the zero and keeping only the ban on a pinned
+	 * preference - was refused: a box whose floor is whatever the browser resolves
+	 * for an omission is exactly the shape the D1 defect came back in, and the
+	 * measurement behind the default is in `pane-slot.tsx`'s class note.
 	 */
 	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
 	assert.match(
@@ -1801,8 +2115,24 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
 	);
 	assert.match(content, /sidebarWidth=\{runPanelDividerValue\}/);
-	assert.match(content, /minWidth: 0,/);
+	assert.match(slot, /minWidth = 0,/);
+	assert.match(slot, /style=\{\{ minWidth, width \}\}/);
 	assert.doesNotMatch(content, /minWidth: effectiveRunPanelWidth/);
+	/*
+	 * The mount itself: the width it asks for, and no floor beside it. Sliced from
+	 * the ref the pane is measured by to the tag its own probe reads it by, so the
+	 * span is this mount and not the next `PaneSlot` down the file.
+	 */
+	const runSlot = content.slice(
+		content.indexOf("ref={runPanelRef}"),
+		content.indexOf('tourTag="run-panel-dock"'),
+	);
+	assert.match(runSlot, /width=\{effectiveRunPanelWidth\}/);
+	assert.doesNotMatch(
+		runSlot,
+		/minWidth/,
+		"the run panel's box takes its floor from the slot's own default, not from a number written here",
+	);
 	/*
 	 * And the pane's width-derived layout (`tallyBudget`) is handed the width the
 	 * pane is DRAWN at, measured on the wrapper, not the preference it asked for:
@@ -1862,15 +2192,21 @@ test("the reveal moves ONE region, and its arithmetic is the region's own", () =
 });
 
 /**
- * The shipped row in a DOM, beside the textarea the composer owns.
+ * A shipped component in a DOM, beside the textarea the composer owns.
  *
  * `jsdom` is a devDependency this repo already renders shipped components with
  * (`suggestion-stack-react.test.mjs`), and `react-dom/client` is imported AFTER
  * the globals exist because it feature-detects `document` at import time.
  * `cleanup` restores every global it replaced, so the server-rendering tests in
  * this file are unaffected by the order they run in.
+ *
+ * THE HARNESS IS SHARED, and the name says so (it was `rowInDom` while the row was
+ * its only caller): the `GoalPicker` mounts through it too, for the assertions that
+ * need a control's RENDERED markup from behind a portal — a static render of a dialog
+ * is empty, because Radix's portal has no container on the server. The two extra
+ * globals that costs are recorded where they are defined below.
  */
-async function rowInDom() {
+async function domHarness() {
 	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
 	const { window } = dom;
 	const originals = new Map();
@@ -1935,6 +2271,16 @@ async function rowInDom() {
 		 * re-arms `itemFits` and drives `resize()` in the same step should fix the shim
 		 * first rather than write around it.
 		 */
+		/*
+		 * THREE GLOBALS THE PICKERS NEED AND THE ROW DOES NOT, and the difference is the
+		 * dialog: `GoalPicker` renders through `PickerHost`, whose Radix dialog PORTALS, and
+		 * a portal brings a focus scope (which watches the DOM through a
+		 * `MutationObserver`) and a floating layer that can observe intersection. jsdom
+		 * implements both; a mount that omits them throws inside the portal rather than
+		 * skipping the measurement.
+		 */
+		MutationObserver: window.MutationObserver,
+		IntersectionObserver: window.IntersectionObserver,
 		ResizeObserver: class {
 			constructor(callback) {
 				observers.push({ callback, targets: [] });
@@ -2066,7 +2412,7 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 	 * reads the browser's own `activeElement`, so the focus the callback asks for is
 	 * observed and not assumed.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	/*
 	 * Radix's tooltip provider settles a state update after a render returns, so
 	 * React prints its own "not wrapped in act" notice. It is harness noise rather
@@ -2588,7 +2934,7 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 	 * which is what `desktop-api.ts` reads first and the same seam
 	 * `scripts/mcp-auth-complete-no-retry.test.mjs` stubs.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const quiet = [];
 	const realError = console.error;
 	console.error = (...args) => void quiet.push(String(args[0]));
@@ -2810,13 +3156,18 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 * carries it, so the confirmation carries the one press that takes it back, and the
 	 * restore runs through the same command channel with the CLEARED text.
 	 */
+	/*
+	 * The local is `settled`, not `cleared`, because the same press path now carries
+	 * the mark-done confirmation as well — and the CAPTURE is still before the wire
+	 * moves, which is the property this pin exists to keep.
+	 */
 	assert.match(
 		row,
-		/showInfoToast\(goalClearedText\(cleared\), \{/,
+		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
 	assert.match(row, /label: GOAL_UNDO_TEXT,/);
-	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
+	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
 		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
@@ -2835,7 +3186,14 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/const loopCommand = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
 	);
 	assert.doesNotMatch(row, /const command = useSessionCommand/);
-	assert.match(row, /disabled=\{goalCommand\.busy\}/);
+	/*
+	 * The busy flag now reaches the button through the shared `GoalControl`'s `busy`
+	 * prop for the goal's three controls, and directly for the loop's. The property
+	 * the pin keeps is unchanged: a control is disabled by ITS OWN channel's flag.
+	 */
+	assert.match(row, /busy=\{goalCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDoneCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDismissCommand\.busy\}/);
 	assert.match(row, /disabled=\{loopCommand\.busy\}/);
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
@@ -2969,7 +3327,7 @@ test("the loop's figure is painted exactly while the row's own box carries it", 
 	 * (`2 of 100000 turns`, i.e. figures no boundary was sized for) rather than the
 	 * `iterations: 5` fixture that printed `2 of 5 turns`.
 	 */
-	const { window: dom, root, cleanup, resize } = await rowInDom();
+	const { window: dom, root, cleanup, resize } = await domHarness();
 	try {
 		const widths = { row: 0, item: 0 };
 		stubWidths(dom, widths);
@@ -3080,7 +3438,7 @@ test("an idle reading is not a settled identity, so an acknowledged chip comes b
 	 * should return stayed hidden. A detached app or a replaced driver produces exactly
 	 * that order without an observed `running` frame.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const requests = [];
 	dom.api = { desktop: { request: async (request) => requests.push(request) } };
 	try {
@@ -3156,7 +3514,7 @@ test("each dismiss owns its own in-flight state, and the busy one stays painted"
 	 * is the whole subject: a promise that never resolves is what a hung owner looks
 	 * like to the renderer.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const pending = [];
 	const answer = {
 		status: 200,
@@ -3263,7 +3621,7 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	 * The toast is the app's own container, mounted here because the row speaks through
 	 * that channel and the assertion is about what a person could press.
 	 */
-	const { window: dom, root, cleanup, frame } = await rowInDom();
+	const { window: dom, root, cleanup, frame } = await domHarness();
 	const requests = [];
 	dom.api = {
 		desktop: {
@@ -3475,4 +3833,1135 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	} finally {
 		cleanup();
 	}
+});
+
+test("the record's receipt names where the goal went, on screen, and offers nothing back", async () => {
+	/*
+	 * UX round 1's U2, driven through the app's own toast host rather than asserted on
+	 * the builder: the finding is about what a person READS after the press, and the
+	 * sentence is only evidence if it survives the press, the command, and sonner's own
+	 * render. The `Undo` half is asserted too, as an absence — the design refuses an
+	 * undo on this control (§ 2.3(a): an undo would have to retract the `done` row the
+	 * press just wrote, which no slash spelling can do), so what the receipt owes the
+	 * user is the recovery path in words, and a second affordance here would be the row
+	 * promising something it cannot deliver (UX round 1, U8's proportion).
+	 */
+	const { window: dom, root, cleanup, frame } = await domHarness();
+	const requests = [];
+	dom.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				return {
+					status: 200,
+					body: {
+						result: {
+							command: request.command,
+							result: {
+								kind: "notice",
+								text: "ran.",
+								style: "success",
+								data: {},
+							},
+						},
+					},
+				};
+			},
+		},
+	};
+	try {
+		const h = createElement;
+		const element = (goal) =>
+			h(
+				Fragment,
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontendWith({ goal, goal_status: "active" }),
+					runDetails: null,
+				}),
+				h(ThemedToastContainer, { duration: Number.POSITIVE_INFINITY }),
+			);
+		const liveToasts = () =>
+			[...dom.document.querySelectorAll("[data-sonner-toast]")].filter(
+				(node) => node.getAttribute("data-removed") !== "true",
+			);
+		const settle = async () => {
+			for (let round = 0; round < 3; round += 1) {
+				await act(async () => {});
+				await act(async () => frame());
+			}
+		};
+		const waitForLive = async (needle) => {
+			for (let round = 0; round < 12; round += 1) {
+				if (
+					liveToasts().some((node) => (node.textContent ?? "").includes(needle))
+				) {
+					return;
+				}
+				await settle();
+			}
+			assert.fail(
+				`no confirmation carrying ${needle}: ${JSON.stringify(
+					liveToasts().map((node) => node.textContent),
+				)}`,
+			);
+		};
+
+		await act(
+			async () => void root.render(element("Reconcile the March invoices")),
+		);
+		await act(
+			async () =>
+				void dom.document.querySelector("[data-status-goal-done]").click(),
+		);
+		/*
+		 * The whole sentence, on the rendered toast: the value the press settled, that the
+		 * record is KEPT, and the one command that puts the goal back. Nothing in it is
+		 * new vocabulary — `it stays in the goal history` is this row's own dismiss
+		 * clause and `/goal <text>` is the app's spelling for the set form.
+		 */
+		await waitForLive(
+			"Goal done · Reconcile the March invoices — it stays in the goal history; /goal <text> sets it again",
+		);
+		assert.equal(requests.length, 1);
+		assert.equal(requests[0].args, "done");
+		assert.equal(
+			liveToasts().length,
+			1,
+			"the record's confirmation is the only one on screen",
+		);
+		const words = liveToasts()
+			.flatMap((node) => [...node.querySelectorAll("button")])
+			.map((node) => node.textContent);
+		assert.ok(
+			!words.includes("Undo"),
+			"this control has no undo to offer, so its receipt offers none",
+		);
+	} finally {
+		cleanup();
+	}
+});
+
+/* ---------------------------------------------------------------- */
+/* The goal's lifecycle: the done paint, the two controls, the gate  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * THE CAPABILITY GATE IS THE POINT OF THIS SECTION, so it is asserted first and in
+ * both directions: a snapshot carrying the lifecycle fields renders the new
+ * controls, and one lacking them renders the row EXACTLY as it shipped with no new
+ * argument anywhere in the markup. The failure this prevents is measured rather
+ * than imagined — a released backend stored the literal `--clear` as the user's
+ * goal (`docs/composer-status-tabs.md` §12.4) — and `done` is the same class of
+ * word with a second loss channel, because setting a goal also supersedes.
+ */
+const goalFrontend = (fields) => frontendWith({ goal: "Ship it", ...fields });
+
+test("a backend without the lifecycle fields renders no new control at all", () => {
+	const markup = renderRow({
+		frontend: frontendWith({ goal: "Ship it" }),
+		runDetails: null,
+	});
+	// The shipped chip and its shipped dismiss are untouched.
+	assert.match(markup, /Goal:/);
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.match(markup, /Clear goal/);
+	// And nothing new — neither the control nor its word nor its command.
+	assert.doesNotMatch(markup, /data-status-goal-done/);
+	assert.doesNotMatch(markup, />Done</);
+	assert.doesNotMatch(markup, /line-through/);
+	assert.doesNotMatch(markup, /— done/);
+	// The gate itself, stated as the predicate the row reads.
+	assert.equal(goalCapability({ goal: "Ship it" }), false);
+	assert.equal(goalCapability(null), false);
+	assert.equal(
+		goalCapability({ goal: "Ship it", goal_status: "" }),
+		true,
+		"an EMPTY status is a real value of the capability, not an absent field",
+	);
+});
+
+test("an active goal on a capable backend carries both controls, inboard first", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = markup.indexOf("data-status-goal-done");
+	const clear = markup.indexOf("data-status-goal-dismiss");
+	assert.notEqual(
+		done,
+		-1,
+		"the mark-done control exists on a capable backend",
+	);
+	assert.notEqual(clear, -1, "the shipped clear is still there");
+	assert.ok(
+		done < clear,
+		"Done sits INBOARD of the clear: the shipped X keeps the trailing edge, so no muscle memory moves and the new control never lands under a pointer headed for the X",
+	);
+	assert.match(markup, />Done</);
+	assert.match(markup, />Clear goal</);
+});
+
+test("a done goal swaps to one Dismiss and paints the strike and the tag", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	// Exactly one control, and it is the dismiss.
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.doesNotMatch(
+		markup,
+		/data-status-goal-done/,
+		"while done, mark-done and delete reach the same wire state, so one fact gets one spelling",
+	);
+	assert.match(markup, />Dismiss</);
+	assert.doesNotMatch(markup, /Clear goal/);
+	/*
+	 * THE STRIKE IS ON THE VALUE AND NOWHERE ELSE. Counted rather than matched
+	 * once, because the assertion that matters is that the label and the tag did
+	 * NOT also acquire it: a struck tag is the readability defect the to-do row
+	 * already records, and a struck `Goal:` would cross out a control's label.
+	 */
+	assert.equal(
+		(markup.match(/line-through/g) ?? []).length,
+		1,
+		"the value is struck, and exactly one element is",
+	);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bline-through\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bshrink-0\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>Goal:</,
+	);
+	// The settled ink is the app's role for settled work.
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-ink-dim\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
+});
+
+test("the judge's live states cost no pixels and ride the names, stalled aside", () => {
+	/*
+	 * `judging` and `continuing` render IDENTICALLY to active — no glyph, no clause,
+	 * no count — and the state travels in the one derived string. The assertion is on
+	 * the VISIBLE row with the accessible names stripped: the names DIFFER by design
+	 * (§1.3 puts the state there), and an unstripped comparison would either fail for
+	 * the right reason or be weakened into matching nothing. Ids go with them,
+	 * because two independent renders mint their own.
+	 */
+	const visible = (markup) =>
+		markup
+			.replace(/aria-label="[^"]*"/g, "")
+			.replace(/id="[^"]*"/g, "")
+			.replace(/aria-controls="[^"]*"/g, "");
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	for (const state of ["judging", "continuing", "idle", "waiting"]) {
+		const markup = renderRow({
+			frontend: goalFrontend({
+				goal_status: "active",
+				goal_judge: { state },
+			}),
+			runDetails: null,
+		});
+		assert.equal(
+			visible(markup),
+			visible(active),
+			`a ${state} judge must paint the active chip's pixels byte for byte`,
+		);
+	}
+	// The word is in the accessible name, where a screen reader finds it.
+	assert.match(active, /aria-label="Expand the session goal — Ship it"/);
+	const judging = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "judging" },
+		}),
+		runDetails: null,
+	});
+	assert.match(
+		judging,
+		/aria-label="Expand the session goal — working, Ship it"/,
+	);
+	/*
+	 * `stalled` is the one state that moves, and it costs 0px in WIDTH: the label's
+	 * ink steps to the loudest on the row and the word goes in the name. Nothing
+	 * else in the markup may differ, which is what this pair of assertions pins.
+	 */
+	const stalled = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "stalled" },
+		}),
+		runDetails: null,
+	});
+	assert.match(
+		stalled,
+		/aria-label="Expand the session goal — stalled, Ship it"/,
+	);
+	assert.match(
+		stalled,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
+	assert.doesNotMatch(
+		active,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
+	assert.ok(
+		stalled.length - active.length < 120,
+		"the stalled paint is an ink step on an existing span, not new markup",
+	);
+	// The done chip's name carries `done`, because a strike is invisible to a
+	// screen reader and to a non-styled paint.
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(done, /aria-label="Expand the session goal — done, Ship it"/);
+});
+
+test("both new control words drop at the column floor while their names survive", () => {
+	const NARROW = "@max-[240px]/chatcol:hidden";
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	/*
+	 * The word is dropped, the NAME never is: at the floor the control is an icon
+	 * with an accessible name, which is the shipped rule for `Clear goal` and the
+	 * reason a new control must not invent a second one.
+	 */
+	for (const [markup, label] of [
+		[active, "Mark the goal done — Ship it"],
+		[
+			done,
+			"Dismiss the finished goal — it stays in the goal history — Ship it",
+		],
+	]) {
+		assert.match(
+			markup,
+			new RegExp(
+				`<span class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">`,
+			),
+		);
+		assert.match(markup, new RegExp(`aria-label="${label}"`));
+	}
+	assert.match(
+		active,
+		new RegExp(
+			`class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">Clear goal<`,
+		),
+	);
+});
+
+test("the lifecycle's derived strings, one per state", () => {
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, ""),
+		"Expand the session goal — Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, "working"),
+		"Expand the session goal — working, Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", true, "done"),
+		"Collapse the session goal — done, Ship it",
+	);
+	assert.equal(goalDoneLabel("Ship it"), "Mark the goal done — Ship it");
+	assert.equal(
+		goalDismissLabel("Ship it"),
+		"Dismiss the finished goal — it stays in the goal history — Ship it",
+	);
+	/*
+	 * The judge's word, and the open-reader rule: a member this build does not know
+	 * is NOT claimed to be anything. `""` is the resting word, and a surface that
+	 * must print something in it chooses its own (the picker prints `waiting`).
+	 */
+	assert.equal(goalStateWord("done", "judging"), "done");
+	assert.equal(goalStateWord("active", "stalled"), "stalled");
+	assert.equal(goalStateWord("active", "judging"), "working");
+	assert.equal(goalStateWord("active", "continuing"), "working");
+	assert.equal(goalStateWord("active", "waiting"), "");
+	assert.equal(goalStateWord("active", "quiescing"), "");
+	assert.equal(goalStateWord(undefined, undefined), "");
+	// The confirmations: the mark-done names the value AND says where it went and how to
+	// put it back — the recovery path the design's § 2.3 promises in the absence of an
+	// undo (UX round 1, U2).
+	assert.equal(
+		goalDoneToastText("Ship the release"),
+		"Goal done · Ship the release — it stays in the goal history; /goal <text> sets it again",
+	);
+	assert.equal(
+		goalClearedText("Ship the release"),
+		"Goal cleared · Ship the release",
+	);
+	// The verbs the controls send are the whole-argument aliases the backend takes.
+	assert.equal(GOAL_DONE_ARGS, "done");
+	assert.equal(GOAL_DISMISS_ARGS, "dismiss");
+	/*
+	 * ONE STALL SENTENCE PER CAUSE, keyed by the reason the wire carries (UX round 1,
+	 * U1), and the two reasons here are the backend's own constants verbatim. The cap's
+	 * is matched by SHAPE: it is an f-string over the budget, so a literal would go
+	 * silently stale the day that number moves.
+	 */
+	assert.equal(
+		goalStalledNote("judge could not decide"),
+		"goal stalled: judge could not decide — send a message to continue",
+	);
+	/*
+	 * THE CAP'S SENTENCE IS THE BACKEND'S `STALLED_CAP_NOTICE`, byte for byte (QA round 2,
+	 * Q-2): `goal stalled: {STALLED_CAP_REASON} — send a message to continue`. The count
+	 * comes from the reason, so a moved budget moves the sentence with it.
+	 */
+	assert.equal(
+		goalStalledNote("stopped after 12 continuations"),
+		"goal stalled: stopped after 12 continuations — send a message to continue",
+	);
+	assert.equal(
+		goalStalledNote("stopped after 40 continuations"),
+		"goal stalled: stopped after 40 continuations — send a message to continue",
+		"the cap's sentence follows the bound, not the number it was written against",
+	);
+	// The cap's shape with no readable count still names the bound, and never echoes
+	// the unparsed middle into the transcript.
+	for (const uncounted of [
+		"stopped after twelve continuations",
+		"stopped after  continuations",
+	]) {
+		assert.equal(
+			goalStalledNote(uncounted),
+			"goal stalled: reached the continuation limit — send a message to continue",
+		);
+	}
+	/*
+	 * ANY OTHER REASON IS ANNOUNCED AND NOT ATTRIBUTED — including the empty one, which is
+	 * what a stalled frame with no reason at all reads as. The alternative (falling back to
+	 * the breaker) is the confusion U1 is about, and the other alternative (saying
+	 * nothing) is the bug D2 closed.
+	 */
+	for (const unnamed of [
+		undefined,
+		"",
+		"  ",
+		"a bound added after this build",
+	]) {
+		assert.equal(
+			goalStalledNote(unnamed),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	}
+	// A reason that merely mentions continuations is not the cap: both halves are required.
+	assert.equal(
+		goalStalledNote("the judge kept asking for continuations"),
+		"goal stalled: auto-continuation stopped — send a message to continue",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The `/goal --history` receipt, and where its lines go             */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The receipt needs NO desktop renderer of its own, and this pin is what says so
+ * rather than assuming it: `kind="block"` with `data.items` is already the shape
+ * the desktop turns into a transcript note (`slash-dispatch.ts`), built for
+ * `team_list` and its siblings, and the wire's `[text, facts]` pair is exactly the
+ * 2-tuple that path reads — the TUI's own block renderer reads the same pair, so
+ * one shape serves two hosts.
+ *
+ * It also settles the one question the design could not answer from source (its
+ * §10.1): whether a multi-line note keeps its newlines in the transcript. The text
+ * is joined with `"\n"` and the row that paints it is `whitespace-pre-wrap`, so
+ * `/goal --history` renders as one row per goal rather than as a paragraph — which
+ * is what §4.2 assumed and could not verify.
+ */
+test("the /goal --history receipt renders through the existing block path", () => {
+	const dispatch = code(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
+	/*
+	 * The gate is on `result.text` FIRST: a block whose result also carries prose
+	 * prints the prose, which is the shipped precedence and not something this
+	 * feature may quietly reverse.
+	 */
+	assert.match(dispatch, /else if \(result\.kind === "block"\)/);
+	assert.match(dispatch, /items\?: \[string, string\]\[\]/);
+	assert.match(
+		dispatch,
+		/data\.items\.map\(\(\[k, v\]\) => `\$\{k\}: \$\{v\}`\)/,
+	);
+	assert.match(dispatch, /\.join\("\\n"\)/);
+	const transcript = code(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/whitespace-pre-wrap break-words text-body-sm text-ink-muted/,
+		"the note's own row is the one that keeps the receipt's newlines",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The delta of the batched remediation round: the picker's gate,    */
+/* the stalled note, and the two marks the done chip carries         */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The `/goal` picker's rendered markup, from a DOM.
+ *
+ * A STATIC RENDER CANNOT SEE THIS COMPONENT AT ALL, and that is the instrument
+ * question the assertion lives or dies on: `GoalPicker` renders through `PickerHost`,
+ * whose Radix dialog PORTALS, and a portal has no container on the server, so
+ * `renderToStaticMarkup` returns the empty string. Mounting it is therefore the only
+ * way to read what the picker actually paints — the same harness the row's driven
+ * tests use, for the same reason (`domHarness`).
+ */
+async function pickerMarkup(frontend) {
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		await act(async () =>
+			root.render(
+				createElement(GoalPicker, {
+					sessionId: "s-1",
+					canonical: { frontend },
+					onClose: () => {},
+				}),
+			),
+		);
+		return dom.document.body.innerHTML;
+	} finally {
+		cleanup();
+	}
+}
+
+test("the picker gates Mark done on the lifecycle fields, in both directions", async () => {
+	/*
+	 * Agent review round 1's F4: the CHIP's capability gate is pinned, and the picker's
+	 * — the same predicate at the second of the two paths that converge on `done` — had
+	 * no test at all (`grep -rln "GoalPicker" scripts/*.mjs` found nothing), so a future
+	 * edit could have sent the bare word from here to a backend that would store it as
+	 * the user's goal, and every suite would have stayed green.
+	 */
+	const capable = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "waiting" },
+	});
+	assert.match(capable, />Mark done</);
+	assert.match(capable, />Clear goal</);
+	// The judge row is readable here because there IS a goal for it to be reading.
+	assert.match(capable, />Judge</);
+	assert.match(capable, />waiting</);
+
+	const legacy = await pickerMarkup({ goal: "Ship it", session_id: "s-1" });
+	assert.doesNotMatch(
+		legacy,
+		/>Mark done</,
+		"a backend without the lifecycle fields is offered no new control",
+	);
+	assert.match(legacy, />Clear goal</);
+	assert.doesNotMatch(
+		legacy,
+		/>Judge</,
+		"and no judge row: the state it would print does not exist on that wire",
+	);
+
+	const done = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "done",
+		goal_judge: {
+			state: "done",
+			verdict: "achieved",
+			reason: "Every check passed.",
+		},
+	});
+	assert.doesNotMatch(
+		done,
+		/>Mark done</,
+		"a settled goal cannot be marked done twice",
+	);
+	/*
+	 * AND THE SENTENCE NAMES THE RECORD, NOT THE DECIDER (design review round 1,
+	 * D3). `done` is written by the judge's ACHIEVED and by the user's own `Done`
+	 * press alike — the user's path leaves `reason` empty — so a sentence crediting
+	 * the judge was false on that path and contradicted the `Judge` row beneath it.
+	 */
+	assert.match(done, /This goal is settled\. It stays in the goal history/);
+	assert.doesNotMatch(done, /The judge called this done/);
+	/*
+	 * AND IT NOW POINTS AT THE RECORD (UX round 1, U5): the sentence named the history
+	 * without offering a way there, while the only two routes - an icon-only canvas
+	 * segment and a typed `/goal --history` - are not discoverable from any surface the
+	 * question "which goals did I finish?" is asked from. Asserted on the RENDER, not on
+	 * the source, because the clause is only a pointer if it survives into the dialog a
+	 * user reads; it names the segment's own word (`Goals view`, its accessible name).
+	 */
+	assert.match(done, /or find it in the canvas's Goals view\./);
+});
+
+test("the picker prints no judge for a goal that does not exist", async () => {
+	/*
+	 * Design review round 1's D5: `capable` is `typeof goal_status === "string"`, which
+	 * is true on any new backend INCLUDING one whose goal is empty, and `judgeWord`
+	 * falls back to `idle` — so `/goal` on a session with no goal printed `Judge: idle`,
+	 * a readout about a judge with nothing to judge, in the picker whose job at that
+	 * moment is to take the first goal.
+	 */
+	const noGoal = await pickerMarkup({
+		goal: "",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "idle" },
+	});
+	assert.doesNotMatch(noGoal, />Judge</);
+	/*
+	 * And nothing to act on either: the trailing pair lives inside the chip, which the
+	 * row gates on there being a goal at all — so a session with no goal is offered no
+	 * `Mark done`, and the picker's job here is to take the first goal.
+	 */
+	assert.doesNotMatch(noGoal, />Mark done</);
+	assert.doesNotMatch(noGoal, />Clear goal</);
+	// Whitespace is the same absence, by the row's own rule for the same state.
+	const blank = await pickerMarkup({
+		goal: "   ",
+		session_id: "s-1",
+		goal_status: "active",
+	});
+	assert.doesNotMatch(blank, />Judge</);
+});
+
+test("the judge stalling is said ONCE, through the composer's note channel", async () => {
+	/*
+	 * Design review round 1's D2, the desktop half. `stalled` is the one judge state
+	 * with an action behind it — the user has to send a message for the loop to go on —
+	 * and it was announced by 0px of ink alone (the label's step to `text-ink`), which
+	 * nobody reads off a chip they are not already looking at. The row now writes the
+	 * design's own sentence to the transcript, through the channel the composer already
+	 * owns, on the TRANSITION and never per render.
+	 */
+	/*
+	 * A ROW THAT MOUNTS ONTO AN ALREADY-STALLED GOAL SAYS NOTHING, and that is the split
+	 * between this half and the backend's durable note: this row is keyed on the
+	 * conversation, so announcing on mount would write a fresh duplicate every time a
+	 * user switched back to it. What this half owns is the stall they are THERE for.
+	 */
+	const mounted = await domHarness();
+	try {
+		const silent = [];
+		await act(async () =>
+			mounted.root.render(
+				createElement(ComposerStatusRow, {
+					frontend: {
+						goal: "Ship it",
+						session_id: "s-1",
+						goal_status: "active",
+						goal_judge: { state: "stalled" },
+					},
+					runDetails: null,
+					onNote: (text) => silent.push(text),
+				}),
+			),
+		);
+		assert.deepEqual(silent, []);
+	} finally {
+		mounted.cleanup();
+	}
+
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const notes = [];
+		/*
+		 * THE REASON RIDES THE FIXTURE, because it is what chooses the sentence (UX round
+		 * 1, U1): a judgement that could not decide and a goal that ran out of
+		 * auto-continuations are two different next moves, so the row has to report the
+		 * cause the wire published rather than rounding both to whichever sentence was
+		 * written first. The reasons below are the backend's own constants
+		 * (`STALLED_BREAKER_REASON` / `STALLED_CAP_REASON` in `session/goal_judge.py`).
+		 */
+		const element = (judgeState, reason) =>
+			createElement(ComposerStatusRow, {
+				frontend: {
+					goal: "Ship it",
+					session_id: "s-1",
+					goal_status: "active",
+					goal_judge:
+						reason === undefined
+							? { state: judgeState }
+							: { state: judgeState, reason },
+				},
+				runDetails: null,
+				onNote: (text) => notes.push(text),
+			});
+		await act(async () => root.render(element("judging")));
+		assert.deepEqual(
+			notes,
+			[],
+			"a judge still working says nothing: nothing has happened to the user yet",
+		);
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
+		assert.deepEqual(notes, [
+			"goal stalled: judge could not decide — send a message to continue",
+		]);
+		// One per ENTRY, not one per render: the state is still stalled on this frame.
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
+		assert.equal(
+			notes.length,
+			1,
+			"the stall is not re-announced on every frame",
+		);
+		/*
+		 * THE SECOND CAUSE GETS ITS OWN SENTENCE, and this is the assertion the finding is
+		 * about: leaving the state re-arms the note, so a second stall is its own fact — and
+		 * the cap's stall must NOT be announced in the breaker's words, because a user told
+		 * the judge could not decide goes looking for a provider problem that does not exist.
+		 */
+		await act(async () => root.render(element("judging")));
+		await act(async () =>
+			root.render(element("stalled", "stopped after 12 continuations")),
+		);
+		assert.deepEqual(
+			notes.slice(1),
+			[
+				"goal stalled: stopped after 12 continuations — send a message to continue",
+			],
+			"the continuation cap is not reported as a failed judgement",
+		);
+		/*
+		 * A CAUSE THIS BUILD CANNOT NAME IS STILL ANNOUNCED, in a sentence that names no
+		 * bound: silence is the state D2 closed, and naming the breaker for it would be U1
+		 * over again in the other direction.
+		 */
+		await act(async () => root.render(element("judging")));
+		await act(async () =>
+			root.render(element("stalled", "a bound added after this build")),
+		);
+		assert.deepEqual(notes.slice(2), [
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		]);
+		/*
+		 * And the row the note is written for is still the row that shipped: the note is
+		 * an ADDITION, not a replacement for the ink step the design keeps beside it.
+		 */
+		assert.match(dom.document.body.innerHTML, /Goal:/);
+	} finally {
+		cleanup();
+	}
+});
+
+test("the settled chip's control is marked apart from the erase", () => {
+	/*
+	 * Design review round 1's D6. `Dismiss` and `Clear goal` share the slot and share
+	 * `DISMISS_WORD`, so below the stacked band both were one unlabeled X with two
+	 * different consequences: the erase removes the standing goal, the dismiss only puts
+	 * the settled chip away and leaves the history entry behind. The DISMISS yields its
+	 * mark (the shipped X stays on the erase, where muscle memory put it) and wears the
+	 * pane's own mark for a settled goal row.
+	 */
+	const control = (markup, attribute) => {
+		const from = markup.indexOf(attribute);
+		assert.notEqual(from, -1, `${attribute} renders`);
+		return markup.slice(from, markup.indexOf("</button>", from));
+	};
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	assert.match(control(active, "data-status-goal-dismiss"), /lucide-x/);
+	assert.match(control(active, "data-status-goal-done"), /lucide-check/);
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	const dismiss = control(done, "data-status-goal-dismiss");
+	assert.match(dismiss, /lucide-circle-check/);
+	assert.doesNotMatch(
+		dismiss,
+		/lucide-x/,
+		"the erase's mark is not on the control that does not erase",
+	);
+	assert.doesNotMatch(dismiss, /lucide-check/);
+	/*
+	 * THE WORD IS STILL THERE and still the control's name at every width, so the mark
+	 * is a second tell rather than the only one.
+	 */
+	assert.match(done, />Dismiss</);
+	assert.match(
+		done,
+		/aria-label="Dismiss the finished goal — it stays in the goal history — Ship it"/,
+	);
+});
+
+test("the chip's done tag carries its own size step", () => {
+	/*
+	 * Design review round 1's D8. The tag's step was inherited from the chip's box
+	 * (`READING_BOX` is `text-meta`), so the tag and the value it sits beside shared
+	 * both ink and size and the strike was the only differentiator — where the pane's
+	 * row tag and the to-do row's tag each state their own step.
+	 */
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-meta\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	// Still not struck: the tag stays readable on the row it settles.
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
+	);
+	/*
+	 * Design review round 1's D1 AND ROUND 2's D11, measured by `GoalDoneFloor`: at the
+	 * 172px floor the tag left the value 20px of 1956px, so the tag is the piece that
+	 * yields at the stacked band — AND AT THAT BAND'S OWN EDGE, one pixel wider than the
+	 * shared step, because the row's own frame prints a 54px (stacked) row at exactly 240
+	 * while `@max-[240px]` (`NARROW_HIDDEN`, the dismiss's word and the loop's figure) has
+	 * not fired there: reading 39/1956 at 240 against 67/1956 at the floor made the
+	 * value's readable width NON-MONOTONIC in the column's width, the wider band
+	 * identifying the goal by fewer characters than the narrower one. So the tag carries
+	 * its OWN constant (`GOAL_TAG_NARROW`) rather than sharing the dismiss's, and the
+	 * reason is the tag's: it is the only state tell a still paints at the floor (the
+	 * `Dismiss` is `opacity-0` at rest), while the word beside it keeps an accessible-name
+	 * home at every width.
+	 */
+	assert.match(
+		markup,
+		/<span class="[^"]*@max-\[241px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+		"the tag keeps the stacked band's own edge: at exactly 240 the shared step has not fired",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The monitor chip and the Monitors section                          */
+/* (the monitor design doc § 12)                                      */
+/* ---------------------------------------------------------------- */
+
+/** The section's own file, and the panel that owns its place in the list. */
+const MONITORS_SECTION =
+	"src/renderer/src/features/chat/components/run-details/run-detail-monitors.tsx";
+
+test("a session with no monitors renders no monitor chip at all", () => {
+	/*
+	 * The gate, the wake chip's rule one count over: `frontend.monitors` is
+	 * empty on every session that has never armed one, so `0 monitors armed`
+	 * would be a line of chrome above nearly every composer in the app. The
+	 * assertion is over the shipped component's markup.
+	 */
+	const none = renderRow({
+		frontend: frontend("Ship it"),
+		runDetails: detailsWith([], ["pending"]),
+	});
+	assert.doesNotMatch(none, /data-status-monitors/);
+	/* ...and the same session's other chips still render, so the absence is this
+	   chip's and not the whole row's. */
+	assert.match(none, /data-status-plan/);
+	assert.equal(
+		renderRow({
+			frontend: frontend(""),
+			runDetails: deriveRunDetails({ jobs: [], todos: [] }),
+		}),
+		"",
+		"and no goal, no plan and no monitors is still the nothing state",
+	);
+});
+
+test("the monitor chip states the model's clause, off the model's own list", () => {
+	const one = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.match(one, /data-status-monitors/);
+	assert.match(one, /1 monitor armed/, "the singular, spelled by the model");
+	assert.doesNotMatch(one, /1 monitors armed/);
+
+	const three = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([
+			wireMonitor("m1", "loom-pr-1710", 60_000),
+			wireMonitor("m2", "ingest-queue", 2 * 60_000, {
+				consecutive_failures: 3,
+			}),
+			wireMonitor("m3", "staging-pings", null, {
+				disabled: true,
+				disabled_reason: "connection refused",
+			}),
+		]),
+	});
+	assert.match(three, /3 monitors armed/);
+	/*
+	 * The count is the MODEL's, so the clause the chip prints and the clause the
+	 * section's tally prints are one string. Asserted as an identity rather than as
+	 * two literals that happen to agree today.
+	 */
+	assert.equal(monitorClause(1), "1 monitor armed");
+	assert.equal(monitorClause(3), "3 monitors armed");
+	assert.ok(one.includes(monitorClause(1)));
+	/*
+	 * The COUNT is the whole chip: an unhealthy watch changes the pane's ROWS and
+	 * not this row — the health ink is the section's, and a chip that colour-shifted
+	 * with a monitor's health would put a state on the composer that no press can
+	 * act on. Read off the chip's own slice of the markup rather than the whole row,
+	 * so a warning ink anywhere else on the row cannot make this pass.
+	 */
+	const chipStart = three.indexOf("data-status-monitors");
+	const chip = three.slice(chipStart, three.indexOf("</button>", chipStart));
+	assert.equal(
+		chip.includes("text-warning"),
+		false,
+		"the health ink stays on the pane's rows",
+	);
+	/*
+	 * LEADING with the watch's own mark, and it is `ScanEye` rather than the wake
+	 * chip's `AlarmClock` or the plan chip's `Info`: one glyph in this row means one
+	 * thing. The assertion is over the rendered class, which is what the glyph
+	 * arrives with.
+	 */
+	assert.match(one, /lucide-scan-eye/);
+	assert.doesNotMatch(one, /lucide-alarm-clock/, "AlarmClock stays the wake's");
+	assert.doesNotMatch(one, /lucide-info/, "Info stays the plan chip's mark");
+});
+
+test("the monitor chip names the section its press opens, and never toggles", () => {
+	const markup = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.match(
+		markup,
+		/aria-label="Open the monitors in run details — 1 monitor armed"/,
+	);
+	assert.equal(
+		monitorsChipLabel(1),
+		"Open the monitors in run details — 1 monitor armed",
+		"ONE derived string, so the name and the tooltip cannot disagree",
+	);
+	/* It REVEALS, never toggles — the plan chip's own recorded reason: a control
+	   that closed the pane when pressed while looking for the watches is one
+	   control with two meanings. */
+	assert.doesNotMatch(markup, /data-status-monitors[^>]*aria-pressed/);
+});
+
+test("the standing facts order the wakes before the watches", () => {
+	/*
+	 * The pair's order is the TUI band's own ("wake rows first, then a monitor
+	 * section"), read off the rendered row: the wake chip's element comes before the
+	 * monitor chip's in paint order, both on one line ahead of the activity chips.
+	 */
+	const both = renderRow({
+		frontend: frontend(""),
+		runDetails: deriveRunDetails({
+			jobs: [],
+			todos: [],
+			wakes: [wireWake("w1", "Check the deploy", HOUR_MS)],
+			monitors: [wireMonitor("m1", "loom-pr-1710", 60_000)],
+			nowMs: WAKE_NOW_MS,
+		}),
+	});
+	assert.ok(both.includes("data-status-wakes"));
+	assert.ok(both.includes("data-status-monitors"));
+	assert.ok(
+		both.indexOf("data-status-wakes") < both.indexOf("data-status-monitors"),
+		"the wakes lead the watches",
+	);
+	/*
+	 * ...and with no goal, no plan and no wakes, the watch chip takes the row's
+	 * content edge: it is the count group's first item and alone on it.
+	 */
+	const only = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.equal((only.match(/-ml-1\.5/g) ?? []).length, 1);
+	assert.ok(
+		only.indexOf("data-status-monitors") < only.indexOf("-ml-1.5"),
+		"the monitor chip renders before its own padding cancellation",
+	);
+});
+
+test("the section renders one row per armed monitor, soonest first", () => {
+	const late = wireMonitor("m2", "ingest-queue", 3 * 60_000, {
+		consecutive_failures: 3,
+	});
+	const soon = wireMonitor("m1", "loom-pr-1710", 60_000);
+	const parked = wireMonitor("m3", "staging-pings", null, {
+		disabled: true,
+		disabled_reason: "connection refused",
+	});
+	/*
+	 * The wire order is the backend's; the rows are ordered by the due instant, with
+	 * the disabled row LAST because it has no due slot at all. Handed them reversed,
+	 * so the assertion is about the sort and not about the input.
+	 */
+	const markup = renderMonitors({
+		details: monitorsOf([parked, late, soon]),
+	});
+	assert.match(markup, />Monitors</);
+	assert.ok(
+		markup.indexOf('data-run-panel-row="m1"') <
+			markup.indexOf('data-run-panel-row="m2"'),
+		"the soonest check leads, whatever order the wire published",
+	);
+	assert.ok(
+		markup.indexOf('data-run-panel-row="m2"') <
+			markup.indexOf('data-run-panel-row="m3"'),
+		"a watch with no due slot trails",
+	);
+	/*
+	 * What a reader needs to decide whether the watch is what they intended: what
+	 * it watches, how often, when it last looked, and how it is doing.
+	 */
+	assert.match(markup, /loom-pr-1710/);
+	assert.match(markup, /every 1m/);
+	assert.match(markup, /last check /);
+	assert.match(markup, /· 3 failed/, "the mid-ladder health tail");
+	assert.match(markup, /disabled/, "the parked watch's slot states it");
+	assert.match(markup, /connection refused/, "and its tail is the reason");
+});
+
+test("the section's tally is the chip's clause, and its cap is a statement", () => {
+	const one = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.ok(
+		one.includes(monitorClause(1)),
+		"the heading's trailing tally is the same string the chip carries",
+	);
+
+	/*
+	 * Nine is one PAST `MONITOR_ROW_CAP` (8, the arm path's own `maxMonitors`
+	 * default), so the section truncates and its marker is the footer for a payload
+	 * past the declared bound. The marker is a STATEMENT rather than a control —
+	 * nothing in this pane can put a shed monitor back — so it wears the shared
+	 * `Disclosure` primitive's DISABLED branch, and the section names who CAN act on
+	 * the list it just drew.
+	 */
+	const over = renderMonitors({
+		details: monitorsOf(
+			Array.from({ length: 9 }, (_, index) =>
+				wireMonitor(
+					`n${index + 1}`,
+					`watch ${index + 1}`,
+					(index + 1) * 60_000,
+				),
+			),
+		),
+	});
+	// The marker's noun inflects: one hidden row reads `1 more monitor`, and the
+	// plural is pinned absent so the pair cannot drift back.
+	assert.match(over, /1 more monitor/);
+	assert.doesNotMatch(over, /1 more monitors/);
+	assert.ok(over.includes('data-run-panel-row="n8"'));
+	assert.ok(
+		!over.includes('data-run-panel-row="n9"'),
+		"the cap keeps the rows that check first",
+	);
+	assert.match(over, /9 monitors armed/, "the tally counts the WHOLE list");
+	assert.match(
+		over,
+		/ask the agent to cancel it/i,
+		"the list names who can act on it",
+	);
+});
+
+test("monitors are absent rather than empty: no section without armed monitors", () => {
+	/*
+	 * A source pin, and the only instrument that can see it: the panel decides
+	 * whether the section exists at all, and an empty section is what a `>= 0` gate
+	 * would ship — a `Monitors` heading with nothing under it on every session in the
+	 * app. The rule is the panel's for every section.
+	 */
+	const panel = code(SECTION_LIST);
+	assert.match(panel, /if \(details\.monitors\.length > 0\) \{/);
+	assert.match(panel, /<RunDetailMonitors/);
+	/*
+	 * ...and the section is in the panel's fixed order: after the wakes and before
+	 * the MCP servers, which `docs/run-sidebar.md` § 7.2 fixes as LAST.
+	 */
+	assert.ok(
+		panel.indexOf('key: "wakes"') < panel.indexOf('key: "monitors"'),
+		"the monitor section comes after the wakes",
+	);
+	assert.ok(
+		panel.indexOf('key: "monitors"') <
+			panel.indexOf("if (mcpServers.length > 0)"),
+		"the MCP section is still last",
+	);
+});
+
+test("the monitor chip, the pane and the page are ONE derivation", () => {
+	/*
+	 * The chip counts `runDetails.monitors`, the section renders the same list,
+	 * and the page reads the wire ONCE — so a monitor armed in the app cannot be a
+	 * chip on one surface and not a row in the other. Source pins, because what is
+	 * being asserted is that there is no second read of `frontend.monitors`
+	 * anywhere.
+	 */
+	const row = code(ROW);
+	assert.match(row, /const monitors = runDetails\?\.monitors \?\? \[\];/);
+	assert.match(row, /const showMonitors = monitors\.length > 0;/);
+	assert.match(row, /\{monitorClause\(monitors\.length\)\}/);
+
+	const page = code(CHAT_PAGE);
+	assert.match(page, /monitors: canonical\.frontend\.monitors,/);
+	assert.equal(
+		(page.match(/canonical\.frontend\.monitors/g) ?? []).length,
+		1,
+		"one read of the wire, threaded into the one derivation",
+	);
+
+	/*
+	 * And the pane threads a ref for it, in the `Record` whose whole point is that a
+	 * new `RunPanelSection` member is a TYPE ERROR rather than a silently
+	 * mis-scrolled pane (see `run-panel.tsx`).
+	 */
+	const panelSource = code(PANEL);
+	assert.match(
+		panelSource,
+		/const monitorsSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(panelSource, /monitors: monitorsSectionRef,/);
+	assert.match(panelSource, /monitorsSectionRef={monitorsSectionRef}/);
+});
+
+test("nothing about the monitors ticks: no clock and no relative time", () => {
+	/*
+	 * The rule the wakes section states, and WHY the monitor rows' `last check` is
+	 * an absolute local instant rather than the CLI's relative age: a pane does not
+	 * tick, and a relative label would silently age with nothing on screen to say so.
+	 */
+	const source = code(MONITORS_SECTION);
+	assert.doesNotMatch(
+		source,
+		/useEffect\(|setInterval|requestAnimationFrame|Date\.now\(\)/,
+	);
+	assert.doesNotMatch(source, /\bminutes? ago\b|in \d+m\b/);
+	/* ...and the panel hands it the untimed model, beside the wakes. */
+	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
 });

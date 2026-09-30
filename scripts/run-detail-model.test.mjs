@@ -49,6 +49,7 @@ const {
 	busiestClause,
 	childClause,
 	childStateLabel,
+	deriveChildWorkingLine,
 	deriveMcpServers,
 	deriveRunDetails,
 	foldBrief,
@@ -69,12 +70,16 @@ const {
 	childCountLabel,
 	childOpenable,
 	childrenOf,
+	deriveMonitors,
 	deriveWakes,
 	formatWakeCadence,
 	formatWakeDue,
 	formatWakeDuration,
+	monitorClause,
 	wakeClause,
+	visibleMonitors,
 	visibleWakes,
+	MONITOR_ROW_CAP,
 	WAKE_ROW_CAP,
 	reconcileLaunchTurns,
 	retimeChildRow,
@@ -927,6 +932,203 @@ test("a truncated launch row is still the brief", () => {
 		false,
 	);
 });
+
+/* ------------------------------------------------------------------ */
+/* The child reader's working line                                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * What the reader paints at the foot of a running child's page
+ * (`deriveChildWorkingLine`). The line is deliberately NOT derived from the
+ * child's records: `transcript-reducer.ts` reduces every durable tool row to
+ * `phase: "done"` (`:1867`), so over a child's page the parent's own derivation
+ * paints NOTHING for the props the reader passes, and the one change that would
+ * make it speak - claiming a `waiting` pane - could only ever say `thinking`.
+ * It is the child relay's progress string, which reaches the reader as
+ * `SubagentRow.activity`.
+ *
+ * Both rules are asserted here rather than eyeballed in `reader-live`, because
+ * both are rules about WHEN a claim may be made. A misclassified phase moves the
+ * phase the line is in (`working-line.tsx`'s contract, points 2 and 3), and a
+ * line painted over a child that has not started is a claim the wire never made.
+ *
+ * The CLOCK is asserted here too, and it is the third rule: this line carries no
+ * number, because the wire has no anchor for a child's phase - so a mount-seeded
+ * one would report when the READER arrived (review round 1, R1 / design round 1,
+ * D1). See `deriveChildWorkingLine`'s docstring for the TUI precedent.
+ */
+
+/** One child row, through the same derivation the roster runs. */
+const childRow = (over) => derive([job(over)]).subagents[0];
+
+test("a running child's stated intent is the line, in the running phase", () => {
+	// The relay passes the model's own words through and names the tool only when
+	// it has none (`tool_activity`, `intent.py:310-327`), so this is the shape a
+	// tool call with an intent produces.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "auditing merged MRs" } }),
+		),
+		{ activity: "auditing merged MRs", phase: "running", clock: false },
+	);
+});
+
+test("a batch states a count, and the count is the label", () => {
+	// `batch_activity`'s several-calls case, verbatim from `intent.py:298-340`.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "running 3 tools" } }),
+		),
+		{ activity: "running 3 tools", phase: "running", clock: false },
+	);
+});
+
+test("a running child with nothing to report says the relay's own default", () => {
+	// `thinking` is the wire's word for a model call in flight with nothing
+	// streamed (`ACTIVITY_THINKING`), and the relay's own arms mint it when a
+	// batch empties (`subagent.py:1334`) - `batch_activity` has no word of its own
+	// for that and names this constant as the caller's answer (`intent.py:335-336`).
+	const row = childRow({});
+	assert.equal(row.status, "running");
+	assert.equal(row.activity, null);
+	assert.deepEqual(deriveChildWorkingLine(row), {
+		activity: "thinking",
+		phase: "thinking",
+		clock: false,
+	});
+});
+
+test("prose actually streaming is the responding phase", () => {
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "responding" } }),
+		),
+		{ activity: "responding", phase: "responding", clock: false },
+	);
+});
+
+test("a label change inside a batch keeps the phase the line is in", () => {
+	// The phase is keyed to the PHASE and a batch sheds its calls one at a time.
+	// Every label below is a different phrase, and every one of them is emitted
+	// with a tool call still running (`subagent.py:1325-1334`, the only arms that
+	// emit the named constants being the ones that do NOT call
+	// `tool_activity`/`batch_activity`) - so none of them may move the phase.
+	// That classification, not the label, is what makes this safe.
+	const labels = [
+		"running 3 tools",
+		"running 2 tools",
+		"running bash",
+		"auditing merged MRs",
+	];
+	const rows = labels.map((label) =>
+		childRow({ latest_details: { progress: label } }),
+	);
+	assert.deepEqual(
+		rows.map((row) => deriveChildWorkingLine(row).phase),
+		labels.map(() => "running"),
+	);
+	// And the labels really are distinct, so the assertion above is not one value
+	// repeated out of an empty list.
+	assert.equal(new Set(labels).size, labels.length);
+});
+
+test("an intent that IS a ladder word misfiles the phase, never the label", () => {
+	// The one tolerated ambiguity, pinned so it stays the documented one: the
+	// relay passes the intent through unread, so an intent that happens to be
+	// exactly `thinking` or `responding` is indistinguishable from the relay's own
+	// word here. The label survives either way; only the phase is misfiled, and
+	// never in the direction of a wrong activity.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "thinking" } }),
+		),
+		{ activity: "thinking", phase: "thinking", clock: false },
+	);
+});
+
+test("the child's line carries no clock, because the wire has no anchor", () => {
+	/*
+	 * Withheld, not understated: `clock: false` makes `WorkingLine` paint no
+	 * number and run no interval, while the slot stays reserved so nothing on the
+	 * row moves (`working-line.tsx`). `SubagentRow.startSeconds` is the child's
+	 * LAUNCH clock rather than the phase's, so a number seeded from this
+	 * component's mount would report the age of the READER - the shipped
+	 * `reader-live` frame printed `0s` beside a header reading `1m36s` for the
+	 * same child (review R1 / design D1). The TUI resolved the identical shape the
+	 * same way and calls the alternative the defect (`tui/app.py:41670-41678`).
+	 *
+	 * Asserted over EVERY running shape rather than one, because the failure this
+	 * guards against is a single arm regaining a number.
+	 */
+	for (const progress of [
+		"auditing merged MRs",
+		"running 3 tools",
+		"thinking",
+		"responding",
+		undefined,
+	]) {
+		const line = deriveChildWorkingLine(
+			childRow(progress === undefined ? {} : { latest_details: { progress } }),
+		);
+		assert.equal(
+			line.clock,
+			false,
+			`a running child's line must carry no clock (progress: ${progress})`,
+		);
+	}
+});
+
+test("only a running child gets a line", () => {
+	/*
+	 * The QUEUED gate is the deliberate departure from the TUI's tail row
+	 * (`subagent_view.py:2864-2868` paints `thinking` for a queued child). The
+	 * relay emits nothing before the child's first event, so a line over a child
+	 * that has not started is a claim the wire never made, and the reader's header
+	 * already carries that child's honest word (`stateWord`).
+	 *
+	 * The row still CARRIES the string — the roster's second line prints it — which
+	 * is exactly why the gate tests the status and not the field.
+	 */
+	const queued = childRow({
+		queued: true,
+		latest_details: { progress: "thinking" },
+	});
+	assert.equal(queued.status, "queued");
+	assert.equal(queued.activity, "thinking");
+	assert.equal(deriveChildWorkingLine(queued), null);
+
+	// A restored pause, in the durable graph's own word: `JobState` has no
+	// `paused` field at all, which is why the fixture drives the word.
+	assert.equal(deriveChildWorkingLine(childRow({ status: "paused" })), null);
+
+	// And every settled state, including the two whose outcome is an error: the
+	// line must not outlive the work, since a settled child's foot is the outcome
+	// block's (`§5.1`).
+	for (const status of [
+		"completed",
+		"failed",
+		"cancelled",
+		"interrupted",
+		"gone",
+	]) {
+		assert.equal(
+			deriveChildWorkingLine(childRow({ status })),
+			null,
+			`a ${status} child must not claim work`,
+		);
+	}
+});
+
+/*
+ * The reader's absence arms are pinned by a RENDERED test now:
+ * `scripts/child-reader-foot-react.test.mjs` renders the reader over `pending`,
+ * `gone` and empty-`ready` pages and asserts that no working line is painted,
+ * with a control that the same row DOES paint one over a page carrying rows.
+ * A source pin stood here and round 2's R2-4 mutated the component in the
+ * follow-up's exact shape without it failing - none of the strings it counted
+ * changes when a line is added - so the pin moved to the DOM and the counts it
+ * used to make went with it.
+ */
 
 /* ------------------------------------------------------------------ */
 /* The to-do row budget                                                */
@@ -2154,6 +2356,38 @@ test("every child state the design asks for is in the fixture set", () => {
 	}
 });
 
+test("the reader's fixture set covers the three states of the foot", () => {
+	/*
+	 * The reader paints one working line or none (`§ 5.8`), and the three frames
+	 * are the three answers: `reader-live` carries the relay's own string,
+	 * `reader-no-activity` the fallback the relay itself would have sent, and
+	 * `reader-settled` has no line at all. Asserted on the FIXTURES rather than on
+	 * the stories, so a fixture edited to drop the progress string cannot quietly
+	 * turn the first frame into a picture of the second.
+	 */
+	const open = (over) => derive([fixtures.readerChild(over)]).subagents[0];
+	assert.deepEqual(deriveChildWorkingLine(open({})), {
+		activity: "Auditing the pending ledger rows",
+		phase: "running",
+		clock: false,
+	});
+	assert.deepEqual(deriveChildWorkingLine(open({ progress: undefined })), {
+		activity: "thinking",
+		phase: "thinking",
+		clock: false,
+	});
+	assert.equal(
+		deriveChildWorkingLine(
+			open({
+				status: "completed",
+				progress: undefined,
+				result: "Three rows were pending and are now reconciled.",
+			}),
+		),
+		null,
+	);
+});
+
 test("the fixtures cover the omission, suppression and truncation cases", () => {
 	const only = deriveRunDetails(fixtures.subagentsOnly());
 	const gated = only.subagents.find((row) => row.id === "job-gated");
@@ -2221,6 +2455,76 @@ test("the fixtures cover the flat plan, the failure line and both overflows", ()
 		hasUnseenFailure(deriveRunDetails(fixtures.headerTriggerFailed())),
 		true,
 	);
+});
+
+/**
+ * One whitespace character, for the clip's boundary assertion.
+ *
+ * A module-level constant rather than a literal at the assertion: biome's
+ * `useTopLevelRegex` is a gate over this tree, and the rule it enforces — a
+ * regex compiled once rather than per call — is what a test file gets for free
+ * by hoisting it here.
+ */
+const WHITESPACE = /\s/;
+
+test("the long-result fixture is the wire's CLIPPED prefix of the conversation's own result", () => {
+	/*
+	 * The two values are one claim, not two strings, and the claim is the reason
+	 * the reader's foot stopped painting the roster row (`§ 5.1`): the wire's
+	 * `result_text` is a PREFIX of what the child's own last row holds, marked
+	 * where the wire cut it. A fixture whose pair did not satisfy that would let a
+	 * frame — or the render test that uses it — prove the opposite of what it says,
+	 * and the way it would go wrong is silent: two unrelated strings still render,
+	 * still differ, still pass a `not equal` assertion.
+	 */
+	assert.ok(
+		fixtures.LONG_RESULT.length > 2_000,
+		"the long result must exceed the wire's own bound or there is no clip",
+	);
+	assert.equal(
+		fixtures.CLIPPED_RESULT,
+		`${fixtures.LONG_RESULT.slice(0, 2_000)}…`,
+	);
+	/*
+	 * ...and the MARKER is part of that claim rather than decoration. The runtime
+	 * marks what it cut (`frontend_state.py`'s `value[:limit] + "…"`), and the
+	 * reader now reads that mark: the foot's label drops to a plain `Result` and
+	 * its shortening sentence disappears when a value arrives whole
+	 * (`run-child-reader.tsx`, `WIRE_CLIP_MARKER`). A fixture carrying the bare
+	 * prefix would be a value the runtime never sends, and the two states would
+	 * then be indistinguishable in every render test that uses it — which is what
+	 * this fixture was before round 1's C2/D1.
+	 */
+	assert.equal(fixtures.CLIPPED_RESULT.slice(-1), "…");
+	assert.equal(
+		fixtures.LONG_RESULT.startsWith(fixtures.CLIPPED_RESULT.slice(0, -1)),
+		true,
+	);
+	// Cut by CHARACTER COUNT, not at a sentence or a word, which is what makes the
+	// wire copy a fragment rather than a short answer. Asserted at the SEAM (the
+	// last character the wire kept and the first it dropped) rather than at the
+	// value's own ends, since the end is now the marker.
+	assert.equal(
+		WHITESPACE.test(fixtures.LONG_RESULT.slice(1_999, 2_000)),
+		false,
+	);
+	assert.equal(
+		WHITESPACE.test(fixtures.LONG_RESULT.slice(2_000, 2_001)),
+		false,
+	);
+	// The dropped part is real text the page carries and the wire does not, so an
+	// assertion built on it can tell the two apart in either direction.
+	assert.equal(
+		fixtures.CLIPPED_RESULT.includes("Recommended next step"),
+		false,
+	);
+	assert.equal(fixtures.LONG_RESULT.includes("Recommended next step"), true);
+
+	// And the page closes on the result, in its own place rather than appended to
+	// a story's markup: the last row this fixture paints is the whole text.
+	const page = fixtures.childPage({ finalResult: fixtures.LONG_RESULT });
+	const last = page.entries[page.entries.length - 1];
+	assert.equal(last.payload.content[0].text, fixtures.LONG_RESULT);
 });
 
 test("the unseen-failure fixture is a run whose only open fact is a failure", () => {
@@ -3559,5 +3863,277 @@ test("no wakes is absence, and absence is not a state either surface renders", (
 		hasRunDetails(wakesOnly),
 		false,
 		"an armed wake is not 'something asking for something right now'",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                             */
+/* ------------------------------------------------------------------ */
+
+/** A minute, so the watches below read as arithmetic rather than as literals. */
+const MONITOR_MINUTE = 60_000;
+
+/**
+ * One wire monitor, in `MonitorState`'s own shape: the spec's identity joined
+ * with the health counters, which is what the scheduler's `index_rows()`
+ * publishes (design § 10.2).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS, the trap beside the
+ * job rows: those carry epoch SECONDS and the model divides them by 1000.
+ */
+const monitor = (over) => ({
+	id: "m1",
+	name: "loom-pr-1710",
+	tool: "bash",
+	arguments: {},
+	every_ms: 60_000,
+	until_at: null,
+	description: "",
+	created_at: WAKE_NOW - 60_000,
+	next_due_at: WAKE_NOW + MONITOR_MINUTE,
+	last_check_at: WAKE_NOW - MONITOR_MINUTE,
+	checks: 1,
+	deliveries: 0,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	...over,
+});
+
+test("monitors come off the wire soonest-first, with no-due rows last", () => {
+	const wires = [
+		monitor({
+			id: "m3",
+			name: "third",
+			next_due_at: WAKE_NOW + 3 * MONITOR_MINUTE,
+		}),
+		monitor({
+			id: "m1",
+			name: "first",
+			next_due_at: WAKE_NOW + MONITOR_MINUTE,
+		}),
+		monitor({ id: "m2", name: "second", next_due_at: "soon" }),
+		monitor({ id: "m4", name: "parked", next_due_at: null, disabled: true }),
+	];
+	assert.deepEqual(
+		deriveMonitors(wires, WAKE_NOW).map((row) => row.id),
+		["m1", "m3", "m2", "m4"],
+		"the dated rows lead by instant; the unreadable and the absent sort last",
+	);
+	/*
+	 * ...and through the REAL entry point, which is where the renderer reads it:
+	 * the page hands the canonical list to `deriveRunDetails` and the chip and the
+	 * section both read the field it produces.
+	 */
+	const details = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		monitors: wires,
+		nowMs: WAKE_NOW,
+	});
+	assert.deepEqual(
+		details.monitors.map((row) => row.id),
+		["m1", "m3", "m2", "m4"],
+		"one list, ordered once",
+	);
+});
+
+test("the monitor count clause is ONE spelling, and the singular is right", () => {
+	assert.equal(monitorClause(1), "1 monitor armed");
+	assert.equal(monitorClause(2), "2 monitors armed");
+	assert.equal(monitorClause(9), "9 monitors armed");
+	/* The defect the shared function exists to make unreachable. */
+	assert.equal(
+		monitorClause(1).includes("monitors"),
+		false,
+		"the plural is never printed against a count of one",
+	);
+});
+
+test("a monitor's health is the band's own vocabulary, and disabled wins", () => {
+	const rows = deriveMonitors(
+		[
+			monitor({ id: "m1", name: "steady" }),
+			monitor({ id: "m2", name: "failing", consecutive_failures: 3 }),
+			monitor({
+				id: "m3",
+				name: "parked",
+				next_due_at: null,
+				disabled: true,
+				consecutive_failures: 7,
+				disabled_reason: "  connection\n refused  ",
+			}),
+			monitor({ id: "m4", name: "waiting", next_due_at: null }),
+		],
+		WAKE_NOW,
+	);
+	const byId = new Map(rows.map((row) => [row.id, row]));
+
+	const steady = byId.get("m1");
+	assert.equal(steady.healthLabel, "", "a healthy watch says nothing");
+	assert.equal(steady.alerting, false);
+	assert.equal(steady.interval, "every 1m");
+	assert.equal(
+		steady.whenLabel,
+		formatWakeDue(WAKE_NOW + MONITOR_MINUTE, WAKE_NOW),
+		"the due slot is the same local formatter the wakes use",
+	);
+	assert.equal(
+		steady.lastCheckLabel,
+		`last check ${formatWakeDue(WAKE_NOW - MONITOR_MINUTE, WAKE_NOW)}`,
+		"last check is an ABSOLUTE instant: the pane does not tick",
+	);
+	assert.equal(steady.checks, 1, "the figures ride the row beside the labels");
+
+	const failing = byId.get("m2");
+	assert.equal(failing.healthLabel, "3 failed");
+	assert.equal(failing.alerting, true, "mid-ladder takes the warning ink");
+
+	const parked = byId.get("m3");
+	assert.equal(
+		parked.whenLabel,
+		"disabled",
+		"the due slot becomes the state word",
+	);
+	assert.equal(
+		parked.healthLabel,
+		"connection refused",
+		"and the tail is the reason, whitespace-normalised to one line",
+	);
+	assert.equal(
+		parked.alerting,
+		true,
+		"disabled wins over the failure count it also carries",
+	);
+	assert.equal(parked.disabled, true);
+
+	const waiting = byId.get("m4");
+	assert.equal(waiting.whenLabel, "waiting");
+	assert.equal(waiting.healthLabel, "");
+});
+
+test("a monitor with no check yet carries no last-check clause", () => {
+	const [row] = deriveMonitors(
+		[monitor({ last_check_at: 0, checks: 0 })],
+		WAKE_NOW,
+	);
+	assert.equal(row.lastCheckLabel, "", "nothing has run, so nothing is dated");
+	assert.equal(row.checks, 0);
+});
+
+test("the interval label ports the wake duration grammar", () => {
+	const [row] = deriveMonitors(
+		[monitor({ every_ms: 90 * MONITOR_MINUTE })],
+		WAKE_NOW,
+	);
+	assert.equal(row.interval, "every 1h30m");
+});
+
+test("a malformed or partial monitor row degrades rather than blanking the list", () => {
+	/*
+	 * The failure paths, which this file exists for: `deriveRunDetails` reads
+	 * `Array<Record<string, unknown>>`, so a runtime older or newer than this
+	 * renderer is normal. The survival rule is the name OR a readable instant, and
+	 * the two ways to get it wrong are both silent — dropping a row hides a watch
+	 * the user armed, and keeping an empty one draws a row with no content under a
+	 * heading that counts it.
+	 */
+	const rows = deriveMonitors(
+		[
+			{},
+			{ id: "x" },
+			monitor({ id: "m2", name: undefined, description: "dated but nameless" }),
+			monitor({
+				id: 42,
+				name: "",
+				next_due_at: WAKE_NOW,
+				description: "odd id",
+			}),
+			monitor({ id: "m5", name: "odd interval", every_ms: 0 }),
+		],
+		WAKE_NOW,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.id),
+		["monitor-3", "m2", "m5"],
+		"the two empty records are dropped; the rest survive, position-keyed where nameless",
+	);
+	assert.equal(
+		rows[0].description,
+		"odd id",
+		"a row with no name is kept when it has an instant",
+	);
+	assert.equal(rows[1].name, "", "a nameless row is a real wire state");
+	assert.equal(
+		rows[2].interval,
+		"once",
+		"a non-positive interval is not a recurrence",
+	);
+
+	/* Non-records in the list are the wire's business, not the row's. */
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], monitors: [{}, null, "x", 7] })
+			.monitors,
+		[],
+	);
+});
+
+test("the Monitors section renders the full arm path's load, and caps past eight", () => {
+	const rows = deriveMonitors(
+		Array.from({ length: 9 }, (_, index) =>
+			monitor({
+				id: `m${index + 1}`,
+				name: `watch ${index + 1}`,
+				next_due_at: WAKE_NOW + (index + 1) * MONITOR_MINUTE,
+			}),
+		),
+		WAKE_NOW,
+	);
+	/*
+	 * The cap is the arm path's own `values.monitor.maxMonitors` default of eight,
+	 * so nine is one PAST a full session and the marker is the footer for a payload
+	 * past the declared bound rather than a routine truncation of the shipping wire.
+	 */
+	const full = visibleMonitors(rows);
+	assert.equal(full.rows.length, MONITOR_ROW_CAP);
+	assert.equal(MONITOR_ROW_CAP, 8);
+	assert.equal(full.hidden, 1);
+	assert.deepEqual(
+		full.rows.map((row) => row.id),
+		["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"],
+		"the cap keeps the rows that check first",
+	);
+	/* Under the cap nothing is hidden, and the slice is not the caller's list. */
+	const three = visibleMonitors(rows.slice(0, 3));
+	assert.equal(three.hidden, 0);
+	assert.equal(three.rows.length, 3);
+});
+
+test("no monitors is absence, and absence is not a state either surface renders", () => {
+	assert.deepEqual(deriveMonitors([], WAKE_NOW), []);
+	assert.deepEqual(deriveRunDetails({ jobs: [], todos: [] }).monitors, []);
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], monitors: [] }).monitors,
+		[],
+	);
+	/*
+	 * ...and `hasRunDetails` is deliberately NOT widened to cover them, the wakes
+	 * decision one list over: its meaning is "is anything asking for something right
+	 * now" (`run-detail-model.ts`), and an armed monitor is a standing WATCH rather
+	 * than a request — so a monitors-only session answers false here, and the pane
+	 * still shows something because the SECTION renders. Widening this would answer
+	 * a different question under the same name.
+	 */
+	const monitorsOnly = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		monitors: [monitor({ id: "m1" })],
+		nowMs: WAKE_NOW,
+	});
+	assert.equal(monitorsOnly.monitors.length, 1);
+	assert.equal(
+		hasRunDetails(monitorsOnly),
+		false,
+		"an armed watch is not 'something asking for something right now'",
 	);
 });

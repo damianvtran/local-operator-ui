@@ -41,6 +41,8 @@ type SettingsSectionProps = {
 	sectionRef?: RefObject<HTMLDivElement>;
 	dataTourTag?: string;
 	className?: string;
+	/** An anchor for a jump that must land on this section (see its `tabIndex`). */
+	id?: string;
 };
 
 export const SettingsSection: FC<SettingsSectionProps> = ({
@@ -52,9 +54,13 @@ export const SettingsSection: FC<SettingsSectionProps> = ({
 	sectionRef,
 	dataTourTag,
 	className,
+	id,
 }) => (
 	<div
 		ref={sectionRef}
+		id={id}
+		// Focusable so a jump can LAND here without adding a tab stop to the page.
+		tabIndex={id ? -1 : undefined}
 		data-tour-tag={dataTourTag}
 		className={cn("w-full", className)}
 	>

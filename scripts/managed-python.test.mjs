@@ -26,6 +26,7 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { PYTHON_ABI, SEED_STDLIB_MARKER } from "./bundled-runtime-layout.mjs";
 import {
 	artifactArch,
 	finalContainerChecks,
@@ -37,6 +38,42 @@ import {
 	releaseAttachTargets,
 } from "./python-artifact-layout.mjs";
 import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
+
+/**
+ * The version-bearing names these fixtures write, DERIVED from the declaration.
+ *
+ * WHY NOT LITERALS: `privatePythonSeedCheck` (`python-artifact-layout.mjs`) and
+ * the identity check the same fixtures feed expand their stdlib marker from
+ * `src/shared/bundled-runtime-layout.json`, so a fixture that spells
+ * `lib/python3.12/encodings/__init__.py` writes a tree the gate reads as
+ * INCOMPLETE - it answers "the seed must carry the complete Python runtime",
+ * which is a true statement about a fixture that no longer matches the build it
+ * stands in for. The 3.12 to 3.14 refresh is what turned those literals into a
+ * wrong tree; deriving them is what keeps the next refresh from having to find
+ * them again.
+ *
+ * The `bin/python3.12` names left in the fixture trees BELOW that are only
+ * hashed or walked (`runtimeManifest`, `runtimeId`, the bytecode predicate) are
+ * deliberately NOT derived: no check reads a version out of them, so deriving
+ * them would be churn a refresh does not need.
+ */
+const STDLIB_MARKER = SEED_STDLIB_MARKER; // lib/python3.14/encodings/__init__.py
+const STDLIB_DIR = dirname(dirname(STDLIB_MARKER)); // lib/python3.14
+const PY_EXE = `bin/python${PYTHON_ABI}`; // bin/python3.14
+const PYC_TAG = PYTHON_ABI.replace(".", ""); // 314, as in `cpython-314.pyc`
+
+/**
+ * A seed tree that satisfies the completeness check: the launcher and the
+ * stdlib marker it is looked for by. Used by the app fixtures that need exactly
+ * those two halves, so the halves cannot disagree with the declaration or with
+ * each other.
+ */
+function writeSeedMarkers(seed) {
+	mkdirSync(join(seed, "bin"), { recursive: true });
+	mkdirSync(dirname(join(seed, STDLIB_MARKER)), { recursive: true });
+	writeFileSync(join(seed, "bin", "python3"), "fixture");
+	writeFileSync(join(seed, STDLIB_MARKER), "pass");
+}
 
 const result = await build({
 	stdin: {
@@ -256,13 +293,7 @@ test("final app gate rejects legacy aliases even if they are dangling", (t) => {
 	const app = join(scratch, "Candidate.app");
 	const resources = join(app, "Contents", "Resources");
 	const seed = join(resources, "python-runtime-seed", "arm64");
-	mkdirSync(join(seed, "bin"), { recursive: true });
-	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
-	writeFileSync(join(seed, "bin", "python3"), "fixture");
-	writeFileSync(
-		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
-		"pass",
-	);
+	writeSeedMarkers(seed);
 	assert.equal(privatePythonSeedCheck(app).passed, true);
 	symlinkSync("/missing-legacy-python", join(resources, "python_aarch64"));
 	const rejected = privatePythonSeedCheck(app);
@@ -362,13 +393,7 @@ function appBundle(
 	mkdirSync(framework, { recursive: true });
 	thinFrameworkBinary(join(framework, "Electron Framework"));
 	const seed = join(resources, "python-runtime-seed", seedArch);
-	mkdirSync(join(seed, "bin"), { recursive: true });
-	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
-	writeFileSync(join(seed, "bin", "python3"), "fixture");
-	writeFileSync(
-		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
-		"pass",
-	);
+	writeSeedMarkers(seed);
 	if (legacyAlias)
 		symlinkSync("/missing-legacy-python", join(resources, legacyAlias));
 	return app;
@@ -1146,24 +1171,15 @@ function signedMachO(destination) {
 function seedFixture(resources, arch, { cache = false, ballast = 0 } = {}) {
 	const seed = join(resources, "python-runtime-seed", arch);
 	mkdirSync(join(seed, "bin"), { recursive: true });
-	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
-	signedMachO(join(seed, "bin", "python3.12"));
+	mkdirSync(dirname(join(seed, STDLIB_MARKER)), { recursive: true });
+	signedMachO(join(seed, PY_EXE));
 	writeFileSync(join(seed, "bin", "python3"), "fixture launcher\n");
-	writeFileSync(
-		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
-		"pass\n",
-	);
+	writeFileSync(join(seed, STDLIB_MARKER), "pass\n");
 	if (cache) {
-		mkdirSync(join(seed, "lib", "python3.12", "encodings", "__pycache__"));
+		const cached = join(dirname(join(seed, STDLIB_MARKER)), "__pycache__");
+		mkdirSync(cached);
 		writeFileSync(
-			join(
-				seed,
-				"lib",
-				"python3.12",
-				"encodings",
-				"__pycache__",
-				"__init__.cpython-312.pyc",
-			),
+			join(cached, `__init__.cpython-${PYC_TAG}.pyc`),
 			"stray bytecode\n",
 		);
 	}
@@ -1227,7 +1243,7 @@ test("a selected runtime that changed out of band is rebuilt beside the old one"
 	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
 	writeFileSync(
-		join(first.runtime, "lib", "python3.12", "stray.py"),
+		join(first.runtime, STDLIB_DIR, "stray.py"),
 		"changed out of band\n",
 	);
 	const verdict = inspectManagedSelection(opts);
@@ -1244,7 +1260,7 @@ test("a selected runtime that changed out of band is rebuilt beside the old one"
 	assert.notEqual(rebuilt.venv, first.venv);
 	// Nothing was overwritten: the changed generation is still exactly there.
 	assert.equal(
-		readFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "utf8"),
+		readFileSync(join(first.runtime, STDLIB_DIR, "stray.py"), "utf8"),
 		"changed out of band\n",
 	);
 	assert.equal(inspectManagedSelection(opts).kind, "ready");
@@ -1826,7 +1842,7 @@ test("a full disk with an identity-broken published runtime is repaired by recla
 	// the copy that replaces it - the volume is sized so the copy cannot fit
 	// without it.
 	writeFileSync(
-		join(first.runtime, "lib", "python3.12", "stray.py"),
+		join(first.runtime, STDLIB_DIR, "stray.py"),
 		"changed out of band\n",
 	);
 	writeFileSync(
@@ -1972,15 +1988,7 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	assert.deepEqual(second, first);
 	// A byte the seed really does sign still changes the identity.
 	writeFileSync(
-		join(
-			resources,
-			"python-runtime-seed",
-			arch,
-			"lib",
-			"python3.12",
-			"encodings",
-			"__init__.py",
-		),
+		join(resources, "python-runtime-seed", arch, STDLIB_MARKER),
 		"changed\n",
 	);
 	assert.notEqual(

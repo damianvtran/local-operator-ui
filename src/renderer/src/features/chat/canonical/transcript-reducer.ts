@@ -41,7 +41,9 @@ import {
 import {
 	diffFromDetails,
 	preferDiff,
+	preferDiffCounts,
 } from "../components/trace/tool-row-model";
+import { isHarnessChromeText } from "./harness-chrome";
 
 /**
  * One image on a transcript row.
@@ -65,6 +67,19 @@ export type TranscriptImage = {
 	mimeType: string;
 };
 
+/**
+ * The receipt cursor of one frame on the session stream: the owner epoch and
+ * the sequence the frame was published under.
+ *
+ * ONE clock, and deliberately not the frontend state's `(epoch, sequence)` —
+ * `use-canonical-session` checks those two independently because they are
+ * different clocks. This is the one every `event` frame carries, and it is
+ * stable across re-delivery: a frame replayed after a reconnect keeps its
+ * original seq, which is what makes "has this row already folded this frame"
+ * a decidable question (`TranscriptRecord`'s `frame` field).
+ */
+export type DeltaFrame = { epoch: string; seq: number };
+
 /** The § 7 tier a record renders at, decided once here rather than per view. */
 export type TranscriptRecord =
 	| {
@@ -73,6 +88,52 @@ export type TranscriptRecord =
 			ts: number;
 			text: string;
 			images: TranscriptImage[];
+			/**
+			 * This row is the app's own optimistic echo, not the owner's record of
+			 * the message - it has not been confirmed by the session yet.
+			 *
+			 * WHY A FLAG, WHEN THE MODULE WENT OUT OF ITS WAY TO AVOID ONE. The
+			 * echo's own comment says a distinct variant would break `shallowEqual`'s
+			 * key-count comparison, and that is still true: this is a FIELD on the
+			 * ordinary user record, so the owner's row - which never carries it -
+			 * differs by key count and replaces the echo in one `upsert`. That is the
+			 * point of it. A failed send has to be able to retract its OWN echo and
+			 * must never remove the owner's row for the same id, because that row is
+			 * proof the message was delivered: the two cases are indistinguishable by
+			 * id alone, and only the echo knows which it is. Cleared by the owner's
+			 * same-id row — a live `message_start` or the durable page row (which
+			 * also ends the position hold; see `provisional` for why the live one
+			 * does not).
+			 *
+			 * The cost is one extra render of the user row per send (its first
+			 * update replaces a record with one more key), measured as a single
+			 * commit and nothing else - no scroll or anchor move, because
+			 * `working-line-model.ts` anchors on the request id, which does not
+			 * change (risk R2).
+			 */
+			local?: boolean;
+			/**
+			 * The owner has stated no position for this row yet, so no clock
+			 * comparison can decide its place: the echo's `ts` is this renderer's
+			 * clock, every page/seed row carries the owner's, and a row landing
+			 * later can exceed any cap the echo borrowed (agent review round 1,
+			 * F1). Set by `appendPendingUser` on EVERY echo — over an empty
+			 * transcript or a painted cache alike — and the row holds the tail
+			 * position it was admitted at against the merges that carry rows
+			 * (`withTimeOrder`'s tail block). Cleared only when an owner-stamped
+			 * row names the same id: the durable page row replaces this record
+			 * entirely. The seed route reaches only rows the seed DATES —
+			 * `statedIds` gains an id under `!next.index.has(id)`
+			 * (`applyLiveSeed`) — so a seed restating the echo's own id cannot
+			 * clear its hold: an already-painted echo is settled only by its
+			 * durable row (review round 2, N1). A live
+			 * `message_start` that merely RESTATES the message clears `local`
+			 * (delivery — the store's unknown-outcome arm reads exactly that) but
+			 * deliberately keeps `provisional`: on a reconnect its replay folds
+			 * BEFORE the snapshot's page, and ending the hold there is what put
+			 * the echo above the page's pre-send rows (review round 1, F2).
+			 */
+			provisional?: boolean;
 	  }
 	| {
 			kind: "assistant";
@@ -83,6 +144,24 @@ export type TranscriptRecord =
 			text: string;
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
+			/**
+			 * Viewer-clock ms when this record SETTLED, or absent while it streams.
+			 *
+			 * WHY THE LIVE ROW NEEDS IT: `ts` on a live assistant record is its stream
+			 * START (`message_start`'s frame-arrival clock, kept through
+			 * `message_end`), so a wall-clock span built from `ts` would read short by
+			 * the answer's whole streaming time and then jump when the reconcile
+			 * replaces the row with its durable twin, whose `ts` IS the commit
+			 * instant. Stamping the settle moment closes that skew: a live span and
+			 * the same span after a reload agree by construction (the runtime is
+			 * local, one clock — the same assumption `compactingSince` documents).
+			 *
+			 * NOT set on durable rows, deliberately: a page cannot restamp a
+			 * completion it did not witness, and a durable `ts` already means
+			 * "commit = completion". Viewer-transient like `ts` is: superseded by the
+			 * durable row with the same id exactly as `ts` is.
+			 */
+			settledAt?: number;
 			/**
 			 * What this row's text is NOT, when this viewer cannot hold the whole
 			 * message. Absent means the row is the answer.
@@ -118,6 +197,43 @@ export type TranscriptRecord =
 			 * saying it about every row.
 			 */
 			truncated?: "prefix" | "interrupted";
+			/**
+			 * The wire cursor of the last `message_update` frame folded onto this
+			 * row, or absent when every frame that painted it carried none (a seed
+			 * folded with no snapshot cursor in hand, a caller that folds bare
+			 * events).
+			 *
+			 * WHY A ROW HOLDS THE STREAM'S OWN POSITION. Deltas are fragments of an
+			 * ordered stream, and the frame's `(epoch, seq)` IS that order: the seq
+			 * is assigned once, at publish, and a RE-DELIVERY (a receipt replay
+			 * after a reconnect, a flush from a dead stream interleaved with its
+			 * successor's) carries the ORIGINAL seq rather than a new one. Holding
+			 * the last folded seq is what lets `message_update` refuse a frame the
+			 * row has already consumed instead of appending its fragment a second
+			 * time — the corruption class the operator photographed as "some chunks
+			 * are not in the proper overlap/order", where a re-sent fragment lands
+			 * twice in the text (and a short trailing fragment re-applied per
+			 * re-delivery grows a run that was never in the message at all).
+			 *
+			 * THE PREMISE IS THE PRODUCER'S, CONFIRMED THERE BEFORE IT WAS RELIED ON
+			 * HERE: `DesktopSessionBridge.publish` stamps `epoch`/`seq` once at
+			 * publish and `events()` replays stored frames verbatim from its ring
+			 * buffer (filtered by `after_seq`), so a re-delivery carries the ORIGINAL
+			 * cursor; the epoch rotates only with a facade rebuild
+			 * (`server/utils/desktop_sessions.py`, the local-operator repo).
+			 *
+			 * A STREAMING-ROW FACT, not a universal one: this field is stamped by a
+			 * live turn's frames only - `message_end` and `applyHistoryPage` build
+			 * their records without it - which is safe today because a settled row
+			 * refuses later deltas (see `message_update`'s settled-row gate). Any
+			 * path that ever re-arms a settled row must restamp or re-earn this
+			 * cursor, or it silently loses the protection.
+			 *
+			 * Per-EPOCH, because a replaced owner restarts the numbering: the
+			 * comparison is only meaningful within one epoch, and a frame from a
+			 * new epoch is always accepted.
+			 */
+			frame?: DeltaFrame;
 			/** Provider stop reason when settled: refusal/error/aborted change ink. */
 			stopReason: string | null;
 			error: boolean;
@@ -161,6 +277,25 @@ export type TranscriptRecord =
 			 */
 			notRunReason: string | null;
 			/**
+			 * The FAULT_* class of that verdict (`not_run_kind`), or `null`.
+			 *
+			 * The vocabulary is the harness's own (`harness/types.py`'s FAULT_* set,
+			 * produced by `loop.py`): `unknown_tool | invalid_arguments | duplicate_id |
+			 * denied | gate_failed | skipped | aborted`. `null` is the no-verdict case
+			 * every producer before the field, and every frame that is not the terminal
+			 * never-run one, keeps - and every consumer reads it as today's behaviour.
+			 *
+			 * The class is what tells an INTERRUPT from a failure, and it is read here
+			 * rather than sniffed from the reason text: `skipped` (steering redirected
+			 * before the call ran) and `aborted` (the user stopped the turn) are the same
+			 * two kinds the end events and the durable rows carry under
+			 * `details.__fault`, and both settle as `interrupted` - while the planning
+			 * faults (an unknown tool, invalid arguments, a duplicate id, a denied or
+			 * failed gate) keep the failure treatment they already have, because those
+			 * ARE failures.
+			 */
+			notRunKind: string | null;
+			/**
 			 * The call was never handed to a tool: it was parked with a verdict, or
 			 * the turn died while it was still being dictated or waiting to run.
 			 *
@@ -195,6 +330,22 @@ export type TranscriptRecord =
 			 * when the row settles.
 			 */
 			startedAt: number | null;
+			/**
+			 * Ms epoch when the call COMPLETED, for the fold's wall-clock span.
+			 *
+			 * Stamped from the viewer's own end frame as `startedAt + durationS` —
+			 * the producer's two numbers, added in the producer's clock — rather
+			 * than this viewer's arrival instant: the seed for a call that settled
+			 * while a viewer was away replays later, and dating the completion at
+			 * that arrival would extend a run's span by however long the viewer was
+			 * gone. `null` on a running call, on an end frame that stated no
+			 * duration, and on EVERY row restored from the durable transcript: the
+			 * durable tool payload persists `duration_s` and no stamps at all, so a
+			 * run restored from history carries durations it cannot turn into a
+			 * span — which is why the fold's header renders nothing for such a run
+			 * rather than a sum dressed as a span.
+			 */
+			endedAt: number | null;
 			/**
 			 * Screenshots the call returned. This is what makes a browser-tool
 			 * capture visible: the bytes are already on the wire in
@@ -513,6 +664,26 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 };
 
 /**
+ * Whether a fault class names an INTERRUPT rather than a failure.
+ *
+ * The one rule both readings of the interrupted state share: the terminal
+ * never-run frame's `not_run_kind` and an end result's `details.__fault` come
+ * from one vocabulary (`harness/types.py`'s FAULT_* set), and exactly two of its
+ * values mean the call was stopped rather than broken - `skipped` (steering
+ * redirected before it ran) and `aborted` (the user stopped the turn). Keeping
+ * the pair in one exported predicate is what stops the live path, the durable
+ * path and the row's outcome ladder from ever disagreeing about which kinds they
+ * recognise; a third caller added later reads it rather than restating it.
+ *
+ * Everything else - `execution`, the model faults, the gate outcomes, and a
+ * value a future core adds - is `false`, which is today's behaviour, the safe
+ * direction for a vocabulary that may grow.
+ */
+export function isInterruptedFault(fault: unknown): boolean {
+	return fault === "skipped" || fault === "aborted";
+}
+
+/**
  * One frame's `args`, when it has any, as a plain object.
  *
  * The wire is untyped at this boundary, so anything that is not a non-array
@@ -684,24 +855,6 @@ function preferExisting(
 	return next.length === 0 && previous.length > 0 ? previous : next;
 }
 
-/**
- * The `+N` / `-M` counters a write reported, from its own `details`.
- *
- * Mirrors the TUI's `_diff_counts` (tool_card.py:567-583): a value counts only
- * when it is a positive integer, and anything else — missing, malformed,
- * negative, a boolean — is zero. Zero is not rendered, because `+0` claims that
- * nothing was added while a missing count claims nothing at all, and these are
- * the second kind.
- */
-function diffCounts(details: unknown): { added: number; removed: number } {
-	const source = (details ?? {}) as Record<string, unknown>;
-	const count = (value: unknown) =>
-		typeof value === "number" && Number.isInteger(value) && value > 0
-			? value
-			: 0;
-	return { added: count(source.added), removed: count(source.removed) };
-}
-
 function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
 	if (a.length !== b.length) return false;
 	for (let i = 0; i < a.length; i++) {
@@ -723,7 +876,31 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
 }
 
 /**
- * The same records in TIME order, ties broken by the position each already had.
+ * Keep the FURTHEST-advanced frame cursor of the two, never a regression.
+ *
+ * WHY IT CAN REGRESS WITHOUT THIS. The seed fold carries the SNAPSHOT's own
+ * cursor, and a snapshot can state a position BEHIND a row that live frames
+ * already advanced (a re-attach whose snapshot was cut earlier). Stamping the
+ * snapshot's cursor over the row's own would move the row's position backwards,
+ * and then a re-delivery of a frame between the two would pass the gate and
+ * append a fragment the row already consumed — the exact corruption the cursor
+ * exists to refuse. So a stamp is only ever an advance: within one epoch the
+ * higher seq wins, and a new epoch always wins (a replaced owner restarts the
+ * stream, and the old numbering means nothing beside the new).
+ */
+function advancedFrame(
+	current: DeltaFrame | undefined,
+	incoming: DeltaFrame | undefined,
+): DeltaFrame | undefined {
+	if (!incoming) return current;
+	if (!current || incoming.epoch !== current.epoch) return incoming;
+	return incoming.seq >= current.seq ? incoming : current;
+}
+
+/**
+ * The same records in TIME order, ties broken by the position each already had
+ * — EXCEPT the tail block a pending send holds (below), which keeps arrival
+ * order until the owner's row states where it sits.
  *
  * The rule the durable page is ordered by, shared so the live seed places a row
  * by the SAME rule rather than a second one: a row the seed dates from a real
@@ -744,19 +921,120 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
  * `a1,a2,b1,a3` where this produces `a1,a2,a3,b1`, and
  * `scripts/transcript-reducer.test.mjs` pins the order this produces.
  *
+ * WHY A PENDING ECHO IS NOT SORTED BY ITS STAMP (operator report, 2026-09-26):
+ * "after sending a message, additional messages will load and my message ends
+ * up out of order" — the bubble above assistant content that preceded it. A
+ * local echo's `ts` comes from THIS renderer's clock; every page and seed row
+ * carries the owner's. While the page (or seed) is still owed nothing is
+ * painted to compare against, so the echo is stamped with the client's `now`
+ * and any row that lands afterwards carrying an owner stamp ahead of that
+ * clock (a remote owner, a client whose clock trails — or any row the runtime
+ * dates ahead of the reader) sorted BELOW the echo: the just-sent message
+ * rendered above content that preceded it, and stayed there until something
+ * happened to re-sort again.
+ *
+ * The fix is not another stamp bound (`monotonicStamp` in #534 bounds an echo
+ * against rows painted AT STAMP TIME; rows landing afterwards are exactly what
+ * it cannot see). While the owner has stated no position for the message, NO
+ * clock comparison can decide its place — the two stamps come from different
+ * clocks, and any cap the echo borrowed can be exceeded by a row that lands
+ * later (agent review round 1, F1) — so the send holds a TAIL BLOCK instead:
+ *
+ * - `provisional` marks the row whose position the owner has not stated. It
+ *   is set on EVERY echo (`appendPendingUser`), over an empty transcript or a
+ *   painted cache — "transcript non-empty" was never the boundary (review
+ *   round 1, F1/F3: an echo over a few cached rows, or over a notice-only
+ *   transcript, faces the same unchecked clock). It is cleared only when an
+ *   owner-stamped row names the id: the durable page row replaces the record
+ *   and it takes its canonical place. A live `message_start` that merely
+ *   RESTATES the message clears `local` (the owner has the message; the
+ *   store's unknown-outcome delivery read depends on exactly that) but NOT
+ *   `provisional` — on a reconnect its replay folds BEFORE the snapshot's
+ *   page, and ending the hold there put the echo above the page's pre-send
+ *   rows (review round 1, F2).
+ * - At every merge a tail block is cut from the list being sorted: every
+ *   provisional row, plus every row ADMITTED while one was pending (its
+ *   position in the list is past the earliest provisional row's) that THIS
+ *   merge does not state on the owner's side (`ownerIds` — a page's durable
+ *   rows, a seed's stated-clock rows). Non-block rows keep the time order
+ *   they always had; block rows keep arrival order; every non-block row sorts
+ *   above every block row — so the queued page's pre-send rows land above the
+ *   echo, and a row admitted after it (a live answer) never lands above it,
+ *   whatever the two clocks say.
+ *
+ * WHY A BLOCK AND NOT A COMPARATOR CASE: the relations are not a total order.
+ * [pre-send row dated +40s, echo, live answer dated +5s] asks for
+ * pre-send < echo < answer while the stamps say answer < pre-send; any
+ * pairwise rule that honours both asks closes a cycle, and an inconsistent
+ * comparator leaves the result to comparison order — the one thing an order
+ * may not be. Cutting the block makes the comparison total again (class
+ * first, then the key the class owns), and it is the shape the single-echo
+ * case already had — "after every canonical row, arrival order among several"
+ * — widened from "the echoes" to "the rows the send left unresolved".
+ *
+ * WHAT THE BLOCK GIVES UP, stated rather than left for a reviewer to find:
+ * - A replay frame for a row that will turn out to be PRE-send sits after the
+ *   echo until the page states it — durable wins, and it then sorts by its
+ *   own stamp; the correction arrives with the merge that owns it.
+ * - A row whose durable form never arrives (a settled streaming row) keeps
+ *   the arrival position it was admitted at; once no provisional row remains
+ *   the block dissolves and everything sorts by stamps again.
+ *
  * Ties keep the order they already had, so this can never reshuffle two rows
  * that state the same instant while the reader is looking at them. No lookup and
  * no fallback: every record's position is the one it arrives with, which is what
  * makes an unknown id unrepresentable here rather than something to default.
  */
-function withTimeOrder(records: TranscriptRecord[]): TranscriptRecord[] {
-	return records
-		.map((record, position) => ({ record, position }))
-		.sort((a, b) =>
-			a.record.ts !== b.record.ts
+const NO_OWNER_IDS: ReadonlySet<string> = new Set();
+
+function withTimeOrder(
+	records: TranscriptRecord[],
+	/**
+	 * The ids THIS merge states on the owner's side: a page's durable rows, and
+	 * the rows a seed dates from a real clock. They sort above the tail block
+	 * whatever the stamps say — a page whose rows postdate the send carries the
+	 * echo's own row too, and until that arrives the rows it does carry are the
+	 * journal in front of the send (agent review round 1, F1).
+	 */
+	ownerIds: ReadonlySet<string> = NO_OWNER_IDS,
+): TranscriptRecord[] {
+	/*
+	 * `provisional` is the hold; `appendPendingUser` sets it on every echo and
+	 * the owner's stamped row is what clears it. `local` deliberately does NOT
+	 * participate: the live restating `message_start` clears `local` (delivery —
+	 * `peekLocalEcho`'s "owner" is the store's test) while the position hold
+	 * must survive it (review round 1, F2).
+	 */
+	const pendingEcho = (record: TranscriptRecord) =>
+		record.kind === "user" && record.provisional === true;
+	const positioned = records.map((record, position) => ({ record, position }));
+	// The earliest admitted pending row bounds the block. `position` is the
+	// index the record already held in the list being merged — admission order,
+	// which no earlier merge may have re-spelled for rows past the block.
+	const frontier = positioned.reduce(
+		(min, entry) =>
+			pendingEcho(entry.record) && entry.position < min ? entry.position : min,
+		Number.POSITIVE_INFINITY,
+	);
+	/*
+	 * Rows past the frontier were ADMITTED after the send, so they hold the
+	 * tail with it unless this merge itself places them on the owner's side.
+	 */
+	const inTailBlock = (entry: { record: TranscriptRecord; position: number }) =>
+		pendingEcho(entry.record) ||
+		(entry.position > frontier && !ownerIds.has(entry.record.id));
+	return positioned
+		.sort((a, b) => {
+			const blockA = inTailBlock(a);
+			const blockB = inTailBlock(b);
+			if (blockA !== blockB) return blockA ? 1 : -1;
+			// Inside the block, arrival order; outside it, the time order this
+			// function has always produced.
+			if (blockA) return a.position - b.position;
+			return a.record.ts !== b.record.ts
 				? a.record.ts - b.record.ts
-				: a.position - b.position,
-		)
+				: a.position - b.position;
+		})
 		.map((entry) => entry.record);
 }
 
@@ -785,6 +1063,24 @@ function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
 				Array.isArray(before) &&
 				Array.isArray(after) &&
 				sameImages(before, after)
+			)
+				continue;
+		}
+		// `frame` is a VALUE - the pair `(epoch, seq)` - and every fold builds a
+		// fresh object for it, so reference equality would report an unchanged row
+		// as changed on every seed re-apply and replace the record (and re-render
+		// it), the exact cost the equality gate exists to prevent (agent review
+		// round 1, finding 2: an identical seed re-applied was a `s2 !== s1`
+		// replacement). Two cursors are equal exactly when the stream would treat
+		// them as the same position.
+		if (key === "frame") {
+			const before = left[key] as DeltaFrame | undefined;
+			const after = right[key] as DeltaFrame | undefined;
+			if (
+				before !== undefined &&
+				after !== undefined &&
+				before.epoch === after.epoch &&
+				before.seq === after.seq
 			)
 				continue;
 		}
@@ -1123,6 +1419,26 @@ function collapseRecords(state: TranscriptState): TranscriptState {
  * names the harness writes (`session/peer.py`, `harness/wake.py`).
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
+/**
+ * The core's neutral closure copy (v2, 2026-09-29). A `closed` completion is a
+ * disposal that caught a run which spent no provider round-trip: a receipt,
+ * not a verdict. Byte-identical to `harness/rows.py::CLOSED_NOTICE_TEXT` in
+ * local-operator — the two repos render the same sentence for the same record,
+ * and drift between them is the divergence this feature exists to remove.
+ */
+const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
+/*
+ * The retire-for-build row's sentence (core kind `retired`, 2026-09-29; seed
+ * 7e797aaaf6e7): a bound-expired build drain cut a live turn, so the row stays
+ * TRUTHFUL — the turn was cut — but reads in WARNING ink, never danger: the
+ * update was routine. The kept-output clause (design round 2, D1) is the one
+ * fact a user who lost work needs, so it rides in both repos' constants.
+ * Byte-identical to the core's
+ * `harness/rows.py::RETIRED_NOTICE_TEXT`, so both repos print the same words
+ * for the same record (the discipline `CLOSED_OUTCOME_TEXT` above states).
+ */
+const RETIRED_OUTCOME_TEXT =
+	"Retired for an update — a turn was in flight and was cut; its earlier output is kept";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
@@ -1658,6 +1974,41 @@ function bounded(headline: string): string {
 	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+/**
+ * The key the harness stamps on a user row it minted itself.
+ *
+ * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
+ * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
+ * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
+ * field on the row's own payload — and that is why it is the PRIMARY read: it
+ * cannot drift with a producer's wording, and its strict `=== true` fails safe.
+ * It is not the whole contract on its own: rows written before it existed carry
+ * nothing to read, and `harness-chrome.ts` mirrors core's own recogniser for the
+ * goal families those rows belong to, applied only after this marker says no.
+ */
+const HARNESS_INJECTION_KEY = "harness_injected";
+
+/**
+ * Whether the harness minted this row, i.e. nobody typed it.
+ *
+ * A user row carrying the stamp is the harness's own chrome — a loop prompt, a goal
+ * continuation — and the marker's own docblock on the Python side says what that
+ * means for a surface: *"a row carrying it was never typed by a person, so no
+ * human-facing surface may paint it as their words."* This reducer is where the
+ * desktop delivers on that, for BOTH of its wire paths, because the alternative is
+ * the loop's internal prompt appearing in the transcript as the user's own message.
+ *
+ * STRICT `=== true`, AND THE ASYMMETRY IS DELIBERATE: the producer writes a JSON
+ * boolean, so anything else — an absent field, a field a newer writer renamed, a
+ * string — is read as NOT injected and the row paints as it always did. Hiding a
+ * row a person really typed is a worse failure than showing one they did not, and
+ * this is the one direction of the test that fails safe.
+ */
+const isHarnessInjected = (payload: unknown): boolean => {
+	if (!payload || typeof payload !== "object") return false;
+	return (payload as Record<string, unknown>)[HARNESS_INJECTION_KEY] === true;
+};
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -1723,21 +2074,49 @@ function durableRecord(
 		payload.custom_type === "completion_attention"
 	) {
 		const details = (payload.details ?? {}) as Record<string, unknown>;
-		if (
-			typeof details.anchor === "string" &&
-			(details.kind === "error" || details.kind === "interrupted")
-		) {
-			// Preserve the marker's durable position. Appending an old failure at
-			// the current retry tail would misrepresent which outcome was viewed.
-			return {
-				kind: "notice",
-				id: details.anchor,
-				ts,
-				complete: true,
-				text:
-					details.kind === "error" ? "Stopped with an error" : "Interrupted",
-				level: details.kind === "error" ? "error" : "warning",
-			};
+		if (typeof details.anchor === "string") {
+			if (details.kind === "closed") {
+				// THE NEUTRAL CLOSURE (v2, 2026-09-29): the disposal caught a run
+				// that spent no provider round-trip, so the record is a receipt —
+				// info ink, never danger. It keeps `complete: true` so the
+				// working-line ladder retires the wait the same way an incident
+				// does: a runtime that has been disposed is not still working.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: CLOSED_OUTCOME_TEXT,
+					level: "info",
+				};
+			}
+			if (details.kind === "retired") {
+				// THE RETIRE-FOR-BUILD ROW (2026-09-29): a cut for an update is
+				// warning, never danger, and it keeps `complete: true` for the
+				// closure's own reason above — the runtime is quitting, so the
+				// working-line wait must retire beside the row.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: RETIRED_OUTCOME_TEXT,
+					level: "warning",
+				};
+			}
+			if (details.kind === "error" || details.kind === "interrupted") {
+				// Preserve the marker's durable position. Appending an old failure at
+				// the current retry tail would misrepresent which outcome was viewed.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text:
+						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					level: details.kind === "error" ? "error" : "warning",
+				};
+			}
 		}
 	}
 	if (entry.type !== "message") return null;
@@ -1799,7 +2178,29 @@ function durableRecord(
 	}
 	const role = String(payload.role ?? "");
 	if (role === "user") {
+		/*
+		 * A row the harness minted is dropped, not restyled.
+		 *
+		 * The durable path needs its own check even though the live path has one:
+		 * they are different branches over different payload shapes, and a session
+		 * opened fresh (or reconciled after a reattach) reads its turns back from
+		 * these rows. Suppressing only the live one would leave the harness's prompt
+		 * in the transcript of every session that was reloaded — the every-reopen
+		 * case the marker exists for.
+		 */
+		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
+		/*
+		 * THE LEGACY FALLBACK: a row written before the marker existed, or sent by
+		 * an owner on an older build, carries no stamp to read — the operator's own
+		 * stored transcript (2026-09-29) still held ten goal-continuation rows that
+		 * painted as the user's own words. Core keeps its recogniser for exactly
+		 * these rows and names it beside the marker (`docs/DESKTOP_API.md`); the
+		 * check is `harness-chrome.ts`, which mirrors its goal legs. It runs only
+		 * after the marker read above said no, so the structural stamp stays the
+		 * primary one.
+		 */
+		if (isHarnessChromeText(text)) return null;
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
 		if (text.startsWith("Harness recovery notice:")) {
@@ -1853,6 +2254,36 @@ function durableRecord(
 			string,
 			unknown
 		>;
+		const details = (providerPayload.details ?? {}) as Record<string, unknown>;
+		/*
+		 * WHETHER THE RUNTIME SAYS THE CALL WAS ABORTED RATHER THAN FAILED.
+		 *
+		 * The comment this variable replaces said an interrupt was "a live-only fact
+		 * the transcript does not encode separately from `is_error`" - and the second
+		 * half of that is not true. `details.__fault` is the runtime's own fault
+		 * CLASSIFIER (`harness/types.py`'s `FAULT_KEY`; the vocabulary includes
+		 * `aborted` beside `execution`, `denied` and the model faults), written at the
+		 * source through `ToolResult.details` and never text-matched afterwards, and
+		 * it survives into the stored message's `provider_payload` - measured on this
+		 * branch's own rig session, where an Esc-killed call's durable entry reads
+		 * `{"__fault": "aborted", "__synthetic": true}` (UX round 2, U15).
+		 *
+		 * WHY THE DURABLE ROW HAS TO READ IT. Durable rows win over the live record
+		 * with the same id, so without this the reconcile this app performs after a
+		 * turn REWRITES the classification the live event just made: a killed call's
+		 * row painted `stopped` by the end event flipped back to `failed` in danger
+		 * ink the moment the page landed (measured in the rig's own reading, and
+		 * pinned by `transcript-reducer.test.mjs`'s composed-sequence case).
+		 *
+		 * THE TWO INTERRUPTED KINDS, and only as the ladder's "no verdict" state:
+		 * `skipped` (steering redirected before the call ran) joins `aborted` (the user
+		 * stopped the turn), because both name an interrupt rather than a failure -
+		 * the same reading the live end event takes from the same marker, so a
+		 * reloaded transcript and a live one cannot describe the one call two ways.
+		 * `denied` and `gate_failed` keep their own treatment, and a genuine
+		 * `execution` fault keeps the danger ink.
+		 */
+		const interrupted = isInterruptedFault(details.__fault);
 		return {
 			kind: "tool",
 			// Tool records key by call id: the live start/end events for the same
@@ -1868,11 +2299,19 @@ function durableRecord(
 			argumentBytes: 0,
 			// A row read back from the durable transcript is a call the harness
 			// recorded a result for: whatever live verdict it may have carried, the
-			// transcript's own account of the call wins.
+			// transcript's own account of the call wins - the kind with the reason.
 			notRunReason: null,
+			notRunKind: null,
 			neverSent: false,
 			output: messageText(payload) || null,
-			isError: Boolean(payload.is_error),
+			/*
+			 * An interrupted call did not fail, so the danger ink the raw flag would paint
+			 * is cleared HERE rather than at the row's paint, for the same reason the
+			 * live end event clears it: the row's `isError` is the wire's claim about
+			 * how the call ended, and the runtime has already said the end was an
+			 * interrupt.
+			 */
+			isError: interrupted ? false : Boolean(payload.is_error),
 			durationS:
 				typeof providerPayload.duration_s === "number"
 					? providerPayload.duration_s
@@ -1880,6 +2319,10 @@ function durableRecord(
 			// A durable row is settled by definition: it reports the duration the
 			// backend measured, never a clock of its own.
 			startedAt: null,
+			// And no completion stamp either: the durable tool payload carries
+			// `duration_s` and no times (harness `types.py`'s tool-entry
+			// provider_payload), so history rows genuinely cannot date a span.
+			endedAt: null,
 			// Durable tool rows carry image blocks in `content` exactly as user rows
 			// do — confirmed against real transcripts: 6398 tool-role blocks with
 			// keys `(attachment, mime_type)`. This is the reload half of a browser
@@ -1889,7 +2332,12 @@ function durableRecord(
 				`tool:${toolCallId}`,
 				previous?.kind === "tool" ? previous.images : undefined,
 			),
-			...diffCounts(providerPayload.details),
+			// Counts and body share one guard (`preferDiffCounts`): a page row with
+			// no `details` keeps what the row already showed rather than zeroing it.
+			...preferDiffCounts(
+				providerPayload.details,
+				previous?.kind === "tool" ? previous : null,
+			),
 			// The durable half of the diff body, and the same identity rule the
 			// images beside it follow: a replayed page that carries no `details`
 			// must not blank a row the live event already filled in (the live
@@ -1899,10 +2347,14 @@ function durableRecord(
 				diffFromDetails(providerPayload.details),
 				previous?.kind === "tool" ? previous.diff : null,
 			),
-			// A durable row is the authoritative record of how the call ended, and
-			// it ended normally: an interrupt is a live-only fact the transcript
-			// does not encode separately from `is_error`.
-			stopped: false,
+			// A durable row is the authoritative record of how the call ended - and
+			// when the runtime's own classifier says the end was an INTERRUPT
+			// (`skipped`/`aborted`), "ended" is not "failed": the row wears the
+			// ladder's no-verdict state the live end event gives the same call above
+			// (`interrupted`'s note), so a reconcile cannot re-accuse a call the user
+			// stopped or a steering redirect dropped. Every other end keeps `false`
+			// here.
+			stopped: interrupted,
 		};
 	}
 	return null;
@@ -1913,6 +2365,62 @@ function durableRecord(
  * the same id; the page's own order is preserved and it is placed by
  * timestamp relative to what is already painted (older pages prepend).
  */
+/*
+ * The cursor to re-anchor to after a page came back `cursor_missing`, or null
+ * when the page needs no re-anchor.
+ *
+ * The backend's documented reconcile (`read_transcript_page`): a `before_id`
+ * the journal cannot locate — a `/compact` replaced the file under a loaded
+ * conversation — is answered with THE CURRENT TAIL plus `cursor_missing`, "so a
+ * reader can dedupe by stable ID instead of getting stuck on a stale cursor".
+ * The load path must then MOVE: the tail it received is already loaded, so a
+ * reader that keeps the stale id asks forever for a row that is gone and the
+ * affordance loads nothing, silently (operator report, 2026-09-28). The row to
+ * anchor at is the page's own OLDEST — a row this journal just served, so the
+ * next request can locate it and page genuinely below it. Null means "ask
+ * again from where you already are", and equals-anchor guards the degenerate
+ * case where re-anchoring would repeat the same request.
+ */
+export function reanchorAfterCursorMiss(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+): string | null {
+	if (!page.cursor_missing || page.entries.length === 0) return null;
+	const oldest = page.entries[0]?.id;
+	if (typeof oldest !== "string" || oldest === anchor) return null;
+	return oldest;
+}
+
+/**
+ * The load-earlier request's next move, given the page it got back.
+ *
+ * ONE decision point, because the two halves of it are the two ways this can
+ * end: a `cursor_missing` answer is re-anchored ONCE (see
+ * `reanchorAfterCursorMiss`), and a page that is STILL `cursor_missing` on the
+ * retry is the honest dead end — the journal cannot serve that depth from
+ * either cursor, applying the tail would report a click that loaded nothing as
+ * success, and asking a third time would loop. `failed: true` is what drives
+ * the slot's own failed state (agent review round 1, F1: the retry's failure
+ * was unreachable — the retried page was applied and the call resolved true,
+ * so a silent no-op click survived in that corner).
+ *
+ * `alreadyRetried` is the caller's own fact rather than derivable here: the
+ * SAME miss state is a retryable answer the first time and a failure the
+ * second, and only the caller knows which request it is holding.
+ */
+export function loadOlderStep(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+	alreadyRetried: boolean,
+): { cursor: string | null; failed: boolean } {
+	if (!page.cursor_missing) return { cursor: null, failed: false };
+	const reanchored = reanchorAfterCursorMiss(page, anchor);
+	if (!alreadyRetried && reanchored !== null) {
+		return { cursor: reanchored, failed: false };
+	}
+	return { cursor: null, failed: true };
+}
+
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
@@ -2095,7 +2603,15 @@ export function applyHistoryPage(
 	 * function of that list, so a page applied twice, a `replace` re-seed and a
 	 * cold load all end at the same rows (`collapseSettledCompactions`).
 	 */
-	const records = collapseSettledCompactions(withTimeOrder([...byId.values()]));
+	const records = collapseSettledCompactions(
+		withTimeOrder(
+			[...byId.values()],
+			// The rows this page states on the owner's side; the sort holds them
+			// above the pending echo's tail block whatever the stamps say
+			// (agent review round 1, F1).
+			new Set(incoming.map((record) => record.id)),
+		),
+	);
 	// The paging cursor is the first entry of the OLDEST page received: a
 	// newer page (the snapshot's tail after a history_delta) must not move it
 	// forward, or the next "load older" request would skip rows.
@@ -2186,6 +2702,26 @@ export const streamDiagnostics = {
 	 * evidence about the withhold rule.
 	 */
 	seededDeltaWithheld: 0,
+	/**
+	 * A `message_update` frame was refused because the row already held a frame
+	 * at or past its cursor - SAME EPOCH ONLY (the gate's own condition; a
+	 * cross-epoch frame is applied by design and is deliberately not counted
+	 * here).
+	 *
+	 * WHAT THIS COUNTS, exactly, because a counter whose doc claims more than
+	 * its increment is an instrument that lies about the thing it was added to
+	 * measure (the same care `seededDeltaWithheld` states, and agent review
+	 * round 1, finding 4 asked for it here): every refusal the cursor gate
+	 * performs. A receipt replay after a reconnect re-sends frames a healthy
+	 * cursor excludes, and an interleaved flush from a dead stream can land a
+	 * frame again after its successor already applied it - both used to append
+	 * their fragment a second time, so this number answers "is the stream
+	 * actually re-delivering frames to this viewer" by data rather than by the
+	 * absence of a symptom, FOR THE HALF A CURSOR CAN DECIDE. The cross-epoch
+	 * pass-through (see the gate's epoch paragraph) is not counted, so the
+	 * number never claims more than the refusals it saw.
+	 */
+	staleUpdateFrameDropped: 0,
 };
 
 /**
@@ -2206,9 +2742,20 @@ export function applyEvent(
 	 * `message_update`). Omitted on the live path and by every other caller, so the
 	 * default is the live reading.
 	 */
-	options: { seed?: boolean } = {},
+	options: {
+		seed?: boolean;
+		userStoppedAt?: number | null;
+		/**
+		 * The frame this event arrived on, when the caller has one. `seed` folds
+		 * bare events with no frame; the live and receipt-replay paths have the
+		 * frame and pass its cursor, which is what makes a re-delivered
+		 * `message_update` decidable (see `message_update`'s cursor gate).
+		 */
+		frame?: DeltaFrame;
+	} = {},
 ): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
+	const incoming = options.frame;
 	switch (event.type) {
 		case "agent_start": {
 			const generation = Number(event.generation ?? state.generation + 1);
@@ -2237,9 +2784,16 @@ export function applyEvent(
 			let next = state;
 			for (const record of state.records) {
 				if (record.kind === "assistant" && record.streaming) {
+					/*
+					 * The settle stamp rides the same sweep that clears `streaming`: a
+					 * record the turn end settles (an aborted stream is the one this arm
+					 * exists for) settles at the turn's own end instant, which is what
+					 * the span composition reads as `settledAt ?? ts`.
+					 */
 					next = upsert(next, {
 						...record,
 						streaming: false,
+						settledAt: now,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
 					});
 				}
@@ -2295,16 +2849,49 @@ export function applyEvent(
 			if (!message || typeof message.id !== "string") return state;
 			const current = state.records[state.index.get(message.id) ?? -1];
 			if (message.role === "user") {
+				/*
+				 * The live half of the harness-chrome suppression (the durable half is in
+				 * `durableRecord`, and both are needed — see its note). The message object
+				 * has carried `provider_payload` on this path all along; it was simply
+				 * unread for this role, which is why the desktop painted a loop's internal
+				 * prompt as the user's own words.
+				 */
+				if (isHarnessInjected(message.provider_payload)) return state;
+				/*
+				 * The legacy fallback — see `durableRecord`'s note on the same check; the
+				 * arms are separate code paths over separate payload shapes, so the
+				 * fallback runs on both.
+				 */
+				const text = messageText(message);
+				if (isHarnessChromeText(text)) return state;
+				/*
+				 * A RESTATING `message_start` FOR A ROW STILL HOLDING ITS PLACE IS NOT
+				 * THE OWNER STATING WHERE IT SITS (agent review round 1, F2).
+				 *
+				 * `local` clears — the owner has the message, and the store's
+				 * unknown-outcome arm reads exactly that (`peekLocalEcho` === "owner"
+				 * is its delivered test) — but `provisional` stays, and the stamp
+				 * stays OFF the client clock: on a reconnect these frames replay
+				 * BEFORE the snapshot's page, and letting the swap end the hold is
+				 * what sorted the echo above the page's pre-send rows. The durable
+				 * row still ends the hold by replacing the record entirely.
+				 */
+				const keepsHold =
+					current?.kind === "user" && current.provisional === true;
 				return upsert(state, {
 					kind: "user",
 					id: message.id,
-					ts: now,
-					text: messageText(message),
+					// `monotonicStamp`, not `now`, mirrors #534's doctrine: a
+					// locally-derived time may never lift the row above what is
+					// already painted.
+					ts: keepsHold ? monotonicStamp(state, now) : now,
+					text,
 					images: extractImages(
 						message,
 						message.id,
 						current?.kind === "user" ? current.images : undefined,
 					),
+					...(keepsHold ? { provisional: true } : {}),
 				});
 			}
 			if (message.role !== "assistant") return state;
@@ -2316,6 +2903,7 @@ export function applyEvent(
 				ts: now,
 				text: "",
 				streaming: true,
+				...(incoming ? { frame: incoming } : {}),
 				stopReason: null,
 				error: false,
 			});
@@ -2360,6 +2948,7 @@ export function applyEvent(
 					text: body ? body + delta : delta,
 					streaming: true,
 					truncated: body === "" ? "prefix" : undefined,
+					...(incoming ? { frame: incoming } : {}),
 					stopReason: null,
 					error: false,
 				});
@@ -2387,6 +2976,56 @@ export function applyEvent(
 				streamDiagnostics.settledAssistantUpdate += 1;
 				return state;
 			}
+			/*
+			 * A FRAME THE ROW HAS ALREADY CONSUMED IS NOT APPLIED AGAIN — the cursor
+			 * gate, and the fix for the re-delivery class.
+			 *
+			 * `frame` travels with every `event` frame and keeps its value across
+			 * re-delivery, so a row whose last folded frame is at or past this one
+			 * has, by the stream's own accounting, already consumed this fragment:
+			 * a receipt replay after a reconnect re-sending a window the viewer
+			 * already applied, or a flush from a stream that died interleaved with
+			 * its successor's. Appending again is the corruption the operator
+			 * photographed as "some chunks are not in the proper overlap/order" — a
+			 * chunk landing twice in the text, and a short trailing fragment
+			 * re-applied per re-delivery accumulating into a run that was never in
+			 * the message.
+			 *
+			 * The comparison is per-EPOCH because a replaced owner restarts the
+			 * numbering; a frame whose epoch differs is a different stream and is
+			 * applied. THAT ARM IS DELIBERATE and deliberately uncounted: no
+			 * ordering exists between two epochs, so a stale cross-epoch frame
+			 * cannot be told from a legitimate restart replay by any fact this
+			 * layer holds, and the wire has no path that constructs a stale one
+			 * (a reconnect replays under the current receipt epoch, and the
+			 * producer refuses a replaced epoch). Ordering across epochs, if
+			 * delivery ever changes, belongs at the producer rather than in a
+			 * second mechanism here. When no frame is in hand (tests call
+			 * `applyEvent` directly) there is nothing to compare and the rules
+			 * below decide alone, exactly as before.
+			 *
+			 * SEED FOLDS ARE EXEMPT (`options.seed`). Every event in one seed shares
+			 * the snapshot's single cursor, so gating them against each other would
+			 * refuse the seed's own sequence — its `message_start` would stamp the
+			 * cursor and its own `message_update` would then be dropped as stale. The
+			 * seed's window is already decided by the withhold rules immediately
+			 * below, which is the older and more specific rule for exactly that
+			 * question.
+			 */
+			if (
+				options.seed !== true &&
+				incoming &&
+				current.frame &&
+				incoming.epoch === current.frame.epoch &&
+				incoming.seq <= current.frame.seq
+			) {
+				streamDiagnostics.staleUpdateFrameDropped += 1;
+				return state;
+			}
+			// The cursor a row ends this case with: the last folded frame's, never
+			// a regression (see `advancedFrame`). Computed once because both
+			// branches below stamp it.
+			const nextFrame = advancedFrame(current.frame, incoming);
 			if (options.seed === true && !body) {
 				/*
 				 * A SEEDED DELTA-ONLY frame, against a row already on screen.
@@ -2425,6 +3064,10 @@ export function applyEvent(
 				return upsert(state, {
 					...current,
 					text: current.text || delta,
+					// The seed states the row as of the snapshot, so the snapshot's
+					// own cursor is the position this text belongs to — advanced,
+					// never regressed (see `advancedFrame`).
+					...(nextFrame ? { frame: nextFrame } : {}),
 					/*
 					 * Which claim depends on the SAME fact the counter reads: a row that already
 					 * had text had a chunk withheld from the middle of what it holds, while a
@@ -2457,6 +3100,13 @@ export function applyEvent(
 			return upsert(state, {
 				...current,
 				text: next,
+				// The frame that carried this text IS the row's new position: a later
+				// re-delivery of the same frame (or an interleave from the
+				// predecessor stream) is refused by the gate above rather than
+				// appended. Without a frame in hand the previous cursor is kept, and
+				// it is only ever ADVANCED — a snapshot's older cursor cannot pull
+				// the row's position backwards (see `advancedFrame`).
+				...(nextFrame ? { frame: nextFrame } : {}),
 				/*
 				 * A frame with a body supplies the whole running text, so the row stops
 				 * being missing anything and the mark goes on the SAME frame that
@@ -2474,12 +3124,46 @@ export function applyEvent(
 			if (message.role !== "assistant") return state;
 			const position = state.index.get(message.id);
 			const text = messageText(message);
+			/*
+			 * THE SETTLE INSTANT, kept when the row already settled: a replayed
+			 * `message_end` (a receipt replay after a reconnect, a flush from a dead
+			 * stream) must not restamp a completion — the record is replaced id-for-id,
+			 * and the instant it first settled with is the one anything built on it
+			 * already reads. A row arriving here settled for the first time stamps
+			 * `now`, the viewer clock the span composition shares.
+			 */
+			const previous =
+				position === undefined ? undefined : state.records[position];
+			/*
+			 * THE SAME COMPLETION MARK THE DURABLE READ GIVES THE SAME FACT.
+			 *
+			 * The `history` arm marks a text-bearing assistant answer `complete` and
+			 * leaves a tool-call-only turn unmarked; a live `message_end` is the very
+			 * same fact (this answer is finished) delivered by the other path, so it
+			 * carries the very same mark. It is load-bearing beyond bookkeeping:
+			 * `canonical-transcript.tsx` renders `data-completion-complete` from it,
+			 * and the read receipt's anchor gate asks for exactly that attribute
+			 * before it will acknowledge a completion (`use-completion-view.ts`).
+			 * Settling without it made a completion that arrived while its
+			 * conversation was open unacknowledgeable until some later re-read
+			 * replaced the record with a durable one - the operator-visible "cannot
+			 * be cleared until you switch away and back" (QA round 1, Q1; measured
+			 * in `docs/evidence/chat-sidebar-ack-and-selection/`).
+			 */
+			const toolCalls = Array.isArray(message.tool_calls)
+				? message.tool_calls
+				: [];
 			const settled: TranscriptRecord = {
 				kind: "assistant",
 				id: message.id,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
+				...(text || toolCalls.length === 0 ? { complete: true } : {}),
 				streaming: false,
+				settledAt:
+					previous?.kind === "assistant" && previous.settledAt !== undefined
+						? previous.settledAt
+						: now,
 				stopReason: (message.stop_reason as string | null) ?? null,
 				error: Boolean(message.is_error),
 			};
@@ -2590,6 +3274,13 @@ export function applyEvent(
 			 */
 			const reason = String(event.not_run_reason ?? "").trim();
 			const notRun = reason || null;
+			/*
+			 * The verdict's own class, which is what tells the INTERRUPTED kinds
+			 * (`skipped`, `aborted`) from the planning faults. A frame from a core that
+			 * predates the field states nothing, and a dictation frame never does - both
+			 * read as `null` and keep today's `not-run` reading on the row.
+			 */
+			const kind = String(event.not_run_kind ?? "").trim() || null;
 			// The frame's own final count, except that a zero is left alone: an
 			// earlier frame that measured nothing and a frame that carries nothing
 			// agree, and a terminal frame with an empty payload must not erase a size
@@ -2621,6 +3312,7 @@ export function applyEvent(
 				// never-run call never gets one: nothing executed, so there is no
 				// interval to report and the blank column is the honest reading.
 				startedAt: null,
+				endedAt: null,
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
@@ -2630,6 +3322,8 @@ export function applyEvent(
 				diff: null,
 				stopped: false,
 				notRunReason: notRun,
+				// The kind rides the verdict and nothing else: no verdict, no class.
+				notRunKind: notRun ? kind : null,
 				// A verdict is the harness saying the call reached no tool. A call still
 				// being dictated, or waiting to run, has not reached one yet either —
 				// which is a state rather than a settlement, and `phase` carries it.
@@ -2706,8 +3400,9 @@ export function applyEvent(
 				// A call that is running has outgrown the announcement, so any never-run
 				// verdict on the row it revives is spent (the guard above lets that row
 				// through for the two-calls-one-id case, and the twin's execution is the
-				// fact that retires the verdict).
+				// fact that retires the verdict - its kind with it).
 				notRunReason: null,
+				notRunKind: null,
 				neverSent: false,
 				argumentBytes: 0,
 				output: null,
@@ -2754,6 +3449,8 @@ export function applyEvent(
 					(current?.kind === "tool" && current.startedAt !== null
 						? current.startedAt
 						: now),
+				// The call has just started, so it has no completion to report yet.
+				endedAt: null,
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
 				// is comparing — and the same for a diff, which a replayed `_start`
@@ -2792,11 +3489,13 @@ export function applyEvent(
 							phase: "done" as const,
 							argumentBytes: 0,
 							notRunReason: null,
+							notRunKind: null,
 							neverSent: false,
 							output: null,
 							isError: false,
 							durationS: null,
 							startedAt: null,
+							endedAt: null,
 							images: EMPTY_IMAGES,
 							added: 0,
 							removed: 0,
@@ -2824,6 +3523,43 @@ export function applyEvent(
 				learned === state.argsByCall
 					? state
 					: { ...state, argsByCall: learned };
+			const userStoppedAt = options.userStoppedAt ?? null;
+			/*
+			 * The event's own failure claim, ONE expression shared with the paint
+			 * below, so "would this row have painted danger?" is asked in exactly
+			 * one place.
+			 */
+			const claimsFailure = Boolean(event.is_error ?? result.is_error);
+			/*
+			 * THE END EVENT'S OWN FAULT CLASS. `result.details` is where the runtime's
+			 * classifier writes WHY the call ended (`harness/types.py`'s `FAULT_KEY`:
+			 * `aborted` when the user stopped the turn, `skipped` when a call was
+			 * cancelled before it reported a result, `execution` when the tool really
+			 * failed), and this is the wire's own statement - the same marker the durable
+			 * row reads, so the live and reloaded projections of one call cannot disagree.
+			 * `skipped` and `aborted` settle as INTERRUPTED: `isError` cleared, `stopped`
+			 * set, and the duration below kept because the backend measured it.
+			 *
+			 * WHY BOTH THIS AND `killedByUserStop` BELOW: the client-side stop window
+			 * covers the producers whose killing end event carries no marker, and the
+			 * rows this viewer never saw the press for; this arm covers the converse - a
+			 * viewer that never saw the press at all (a replay, a second window, a fresh
+			 * attach), where the wire fact is the only statement that the call was stopped
+			 * rather than broken.
+			 */
+			const interruptedFault = isInterruptedFault(
+				(result.details as Record<string, unknown> | undefined)?.__fault,
+			);
+			/*
+			 * WHETHER THE STOP EXPLAINS THIS END - and for every row WITHOUT a clock,
+			 * not only one born by this event (the reason is the `isError` field's own
+			 * comment below).
+			 */
+			const killedByUserStop =
+				userStoppedAt !== null &&
+				(typeof base.startedAt === "number"
+					? base.startedAt <= userStoppedAt
+					: claimsFailure);
 			return upsert(seeded, {
 				...base,
 				args,
@@ -2835,11 +3571,92 @@ export function applyEvent(
 				// exactly this reason. Leaving it would paint `never sent · N composed`
 				// over a call's real output.
 				notRunReason: null,
+				notRunKind: null,
 				neverSent: false,
 				output: messageText(result) || null,
-				isError: Boolean(event.is_error ?? result.is_error),
+				/*
+				 * A CALL THE USER'S OWN STOP KILLED DID NOT FAIL (UX round 2, U7; the
+				 * second arm below is that round's U15).
+				 *
+				 * `Esc` interrupts the turn, the runtime kills the call in flight, and the
+				 * process that died reports a genuine error — so the row landed on `error`
+				 * and painted `failed` in `danger`: the ledger's loudest ink, blaming the
+				 * agent for the user's own decision. Nothing on the wire separates "this
+				 * call failed" from "this call was killed by the press three milliseconds
+				 * ago", which is why the fact is the client's (`stoppedTurns` in the
+				 * sessions store) and why it is consumed HERE rather than at the row's
+				 * paint: this is the moment the end event arrives, so it is the one place
+				 * where "was this call running when the user pressed stop?" is answerable
+				 * from the record alone.
+				 *
+				 * THE TEST HAS TWO ARMS, AND THE SECOND SPEAKS FOR EVERY ROW WITHOUT A
+				 * CLOCK - both shapes that reach it, and both measured in the rigs.
+				 *
+				 * ARM ONE, `startedAt <= userStoppedAt`, is precise in the direction that
+				 * matters: only a call ALREADY RUNNING at the press can be the one the
+				 * interrupt killed. A call that settled before the press never comes
+				 * through this branch again — its end event was already consumed — so an
+				 * honest failure earlier in the same turn keeps its `danger` row, and a
+				 * call that started after the press cannot exist because the turn is over.
+				 *
+				 * ARM TWO ANSWERS THE ROWS ARM ONE HAD TO REFUSE (U15; widened to the
+				 * parked call by agent review round 4's Q5, which reconciled the rig's
+				 * three failing runs with UX's measurement). Two shapes reach it: the row
+				 * this viewer only ever met as it SETTLED — born by the end event itself,
+				 * because the start never reached it before the press — and the row it saw
+				 * ANNOUNCED but never started, which is what the press actually kills on
+				 * this daemon: a `[bash:N]` call PARKS at the approval gate, so no
+				 * `tool_execution_start` precedes an `Esc` and the clock test has nothing
+				 * to compare. Refusing them — the "a row with no clock is a guess" rule
+				 * this comment used to state — is precisely the defect: the same turn then
+				 * painted `failed` in danger beside its own Stopped line, blaming the
+				 * agent for the user's press, and left the live layer disagreeing with the
+				 * durable one, which re-projects `stopped` from the runtime's own
+				 * `aborted` fault. The stop fact standing for this session is the only
+				 * story that fits a row killed inside the stop window, so it is taken:
+				 * between `failed` and `stopped`, "you stopped this" is the reading that
+				 * does not accuse the user's own agent. That is a decision about whose
+				 * in-principle guess wins (the transcript's "no clock is a guess" rule
+				 * yields here), and the accepted cost is its mirror: a failure that
+				 * settled BEFORE the press, whose end event only reaches a lagging
+				 * viewer afterwards, rides the same window and reads `stopped`. The
+				 * window is bounded rather than open — the press's receipt clears the
+				 * fact on any answer that is not `interrupted`, and the next turn clears
+				 * it again (`chat-page.tsx`) — and the call's real error text stays one
+				 * expansion away either way.
+				 *
+				 * The arm also requires the event's own failure claim: the
+				 * accusation it answers exists only when the row would paint danger, so
+				 * a row whose event reports SUCCESS keeps that outcome — the stop
+				 * fact must not overwrite a result the call demonstrably produced.
+				 *
+				 * `isError` is CLEARED as well as `stopped` set, because the row's outcome
+				 * ladder reads `isError` first (`canonical-transcript.tsx`): leaving it
+				 * true would keep the danger row this exists to remove. The output and the
+				 * failure detail are untouched — the call's real error text is still one
+				 * expansion away, which is what `interrupted` says: the stop is the
+				 * verdict, not a cover-up.
+				 *
+				 * `interruptedFault` is the SECOND reading of the same question (see its own
+				 * note above) and needs no client window to have been standing - the wire's
+				 * fault marker classifies the row on its own.
+				 */
+				isError: killedByUserStop || interruptedFault ? false : claimsFailure,
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
+				/*
+				 * WHEN the call completed, kept for the fold's wall-clock span: the
+				 * producer's own start plus its own measured duration, so the span is
+				 * built from the producer's clock end to end and a frame replayed to a
+				 * late viewer cannot date a completion that never happened then. Null
+				 * when the frame states no duration or the row never carried a start —
+				 * a stamp nobody measured is exactly the `0s` claim the fold refuses.
+				 */
+				endedAt:
+					typeof event.duration_s === "number" &&
+					typeof base.startedAt === "number"
+						? base.startedAt + event.duration_s * 1000
+						: null,
 				// The call ended, so the row stops counting and reports the measured
 				// duration instead. Clearing this is what makes the ticking stop.
 				startedAt: null,
@@ -2864,15 +3681,26 @@ export function applyEvent(
 					extractImages(result, id, base.images),
 					base.images,
 				),
-				...diffCounts(result.details),
+				// The counters ride the same `details` object as the body below, so
+				// they take the same guard: a seed end whose `details` the budget
+				// stripped keeps the durable counts instead of writing 0/0 over them
+				// (see `preferDiffCounts` for the measured sequence).
+				...preferDiffCounts(result.details, base),
 				// THE live diff path: `tool_execution_end` carries the tool RESULT, so
 				// `result.details.diff` is the producer's own line list. Guarded the
 				// way the images above are, and for the same measured reason — a
 				// reconnect seed whose `details` were stripped by the live-event
 				// budget must not blank a body the row already showed.
 				diff: preferDiff(diffFromDetails(result.details), base.diff),
-				// It reported an end, so whatever happened it was not interrupted.
-				stopped: false,
+				// It reported an end, so whatever happened it was not interrupted —
+				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
+				// marker says the end was an interrupt (`interruptedFault`). The leading
+				// `base.stopped` keeps the backend's own verdict on a record this upsert
+				// REPLACES; dropping it would turn an abort into a success tick on the way
+				// through. `killedByUserStop` is the client-side half and `interruptedFault`
+				// the wire's own; `isError` is cleared beside both because the row's
+				// outcome ladder reads `isError` first.
+				stopped: base.stopped || killedByUserStop || interruptedFault,
 			});
 		}
 		case "notice": {
@@ -3207,6 +4035,15 @@ export function applyLiveSeed(
 	state: TranscriptState,
 	frontend: CanonicalFrontendState,
 	now = Date.now(),
+	/**
+	 * The snapshot frame's own cursor, when the caller has one. Every event the
+	 * seed folds is applied AT that position: the seed states the turn as of the
+	 * snapshot, so a row it mints or extends has, by construction, consumed the
+	 * stream up to here — which is what lets a later receipt-replay frame with an
+	 * older cursor be refused rather than appended (see `message_update`'s
+	 * cursor gate).
+	 */
+	origin: DeltaFrame | null = null,
 ): TranscriptState {
 	let next = state;
 	if (frontend.streaming && frontend.generation > next.generation) {
@@ -3235,6 +4072,7 @@ export function applyLiveSeed(
 	const inFlight = frontend.streaming === true;
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
+	const statedIds = new Set<string>();
 	for (const data of frontend.live_events ?? []) {
 		const event = data as LiveEvent;
 		let clock = now;
@@ -3244,6 +4082,7 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
+				statedIds.add(id);
 			} else if (
 				settlesACall(event) ||
 				finishedDictationFrame(event) ||
@@ -3260,10 +4099,18 @@ export function applyLiveSeed(
 		// `seed: true` is what tells `message_update` that this delta is a REPLAY of a
 		// window this viewer may have painted already, so a row with text of its own
 		// keeps it rather than having an unplaceable chunk appended (see that case).
-		next = applyEvent(next, event, clock, { seed: true });
+		// The snapshot's cursor rides along so a row the seed touches records the
+		// position its text belongs to.
+		next = applyEvent(next, event, clock, {
+			seed: true,
+			...(origin ? { frame: origin } : {}),
+		});
 	}
 	if (!placed) return next;
-	const records = withTimeOrder(next.records);
+	// The rows this seed DATES from a real clock are on the owner's side of the
+	// pending echo's tail block (the seed door of review round 1, F1); a
+	// provisional row's own durable row is what ends its hold.
+	const records = withTimeOrder(next.records, statedIds);
 	return { ...next, records, index: withIndex(records) };
 }
 
@@ -3286,10 +4133,12 @@ export function applyLiveSeed(
  *
  * WHY THE CALLER SIZES ITS PAGE FROM THIS rather than using a constant: the
  * seed retains at most `LIVE_EVENT_END_ROWS_MAX` (100) settled calls, each of
- * which costs about two durable entries (its assistant row and its result), so
- * `reconcileLimit` below turns this list into the smallest tail that reaches
- * every one of them — paying for the ACTUAL gap beats both a fixed deeper page
- * on every join and leaving the rows labelled with nothing but their output.
+ * which costs about three durable entries (its assistant row, its result and the
+ * round's `session_spend.v1` row — measured, see `RECONCILE_ENTRIES_PER_CALL`),
+ * so `reconcileLimit` below turns this list into a tail that usually reaches
+ * every one of them in one request, and the hook's walk pages further back for
+ * the rest — paying for the ACTUAL gap beats both a fixed deeper page on every
+ * join and leaving the rows labelled with nothing but their output.
  *
  * Oldest first, deduplicated, and only ids the seed actually settled: a call
  * still running has its start, which carries its own arguments.
@@ -3305,6 +4154,202 @@ export function applyLiveSeed(
  * to read anyway, and a call whose row cannot be found spends its own bounded
  * attempts and is dropped like any other (`labelGapCandidates`).
  */
+/**
+ * When each call the seed settled first RAN, in epoch ms, by call id.
+ *
+ * THE WALK'S ONE HONEST FLOOR, and the reason it exists: a page whose OLDEST row
+ * predates an unlabelled call's own start cannot still be missing that call's
+ * assistant row — where its arguments live — whatever else the journal holds. That
+ * is a fact about one call rather than about the turn it sits in, which is what
+ * the turn-boundary rule (`pageOpensTurn`) is: on a journal that is ONE long turn
+ * there is no boundary row to meet, and a call nothing can label then cost the
+ * whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and 409
+ * rows where `origin/main` reads one page).
+ *
+ * WHY THE DIRECTION WORKS, corrected by round 3's R9. A tool's assistant row and
+ * its result row are written TOGETHER, at the end of the round they belong to:
+ * over 417,999 real pairs the result's `ts` minus the assistant's is a median of
+ * 13.1 µs apart — 17.2 µs across the 25,707 calls that ran longer than a minute —
+ * and NEVER negative. So an assistant row sits at or after its call's own start,
+ * however long the call ran, which is the one direction this floor needs: a page
+ * older than the start by more than the slack has already passed the row. (The
+ * earlier comment here said the row was written "at or within a second of" the
+ * start, which reads as if the row could come first.) The residual 1.369 s worst
+ * case in the paragraph below is the derivation's own slop — `duration_s` measured
+ * from a clock a hair later than the row's write — not the writer's ordering.
+ *
+ * MEASURED, NOT ASSUMED. Over 418,566 real assistant/result pairs across 3,000
+ * journals in `~/.local-operator/sessions` (the assistant row's `ts` minus the
+ * call's own start, `ts - provider_payload.duration_s`), the assistant row is
+ * never more than 1.369 s EARLIER than the start it belongs to and only ONE pair
+ * in the whole set is below -1 s; the median is 0.541 s LATER, because a row is
+ * written as its round is recorded rather than when the tool begins.
+ * `RECONCILE_START_SLACK_MS` is five seconds against that 1.369 s, and being
+ * wrong costs one page (the row falls back to its stand-in, exactly as it does on
+ * `origin/main`) rather than a wrong label.
+ *
+ * The unit conversion is the shared `epochMsFromSeconds` — the same helper the
+ * frame's own `started_at_epoch` reader uses — so the two sides cannot disagree
+ * about what a stated instant is.
+ */
+export function seedCallStarts(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Map<string, number> {
+	const starts = new Map<string, number>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (!settlesACall(frame) && !finishedDictationFrame(frame)) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (!callId) continue;
+		const at = epochMs(frame);
+		if (at !== null) starts.set(callId, at);
+	}
+	return starts;
+}
+
+/**
+ * The calls whose frame says they are still WAITING: a compose with no reason.
+ *
+ * The ONE startless kind that does not refuse the floor, and the exception is the
+ * whole point (round 6, R16). A `tool_call_compose` with no `not_run_reason` is a
+ * call still at a gate: the backend keeps it in the seed until its own
+ * `tool_execution_start` replaces it, its assistant row is written when the round
+ * closes, so NO page can name it yet — refusing the floor for it buys pages that
+ * cannot end the walk (round 4's R11 measured 1 read of 325 rows becoming 2 of 429,
+ * and 1 of 331 becoming 3 of 500 on the row cap).
+ *
+ * Every OTHER startless call does refuse the floor, which is what R16 corrected:
+ * round 5's rule let only a compose that STATES a verdict block it, so a settled
+ * `tool_execution_end` carrying no clock — what a producer older than v0.57.0
+ * sends, or a viewer that joined after the call started sees — was skipped. That
+ * call DID run and a page can label it, and leaving the floor on cost it its label.
+ * The cost is stated the way it was measured, because the two heads are easy to
+ * swap: `7b5ee49d` (round 5) reads 2 pages / 217 rows and leaves the call
+ * unlabelled, while ITS predecessor `f1ef98c4c` reads 3 / 324 and labels it — the
+ * 3-read figure belongs to the head BEFORE the regression, not to the one that
+ * introduced it (round 7, R19).
+ */
+export function seedWaitingComposes(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const waiting = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (frame.type !== "tool_call_compose") continue;
+		const reason = frame.not_run_reason;
+		if (typeof reason === "string" && reason.trim().length > 0) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) waiting.add(callId);
+	}
+	return waiting;
+}
+
+/**
+ * How much earlier than a call's own start an assistant row may be journaled.
+ *
+ * Five seconds against a measured worst case of 1.369 s over 418,566 real pairs
+ * (see `seedCallStarts`, which states the sample and the direction). Generous on
+ * purpose: a wrongly early stop costs the page a row's label and nothing else,
+ * while a wrongly late one pays the journal.
+ */
+export const RECONCILE_START_SLACK_MS = 5_000;
+
+/**
+ * When each orphan's own result row was journaled, in epoch ms, by call id.
+ *
+ * THE FLOOR'S SECOND KIND OF INSTANT, and the shape round 3's R6a measured. An
+ * orphan is a call nothing ever named, found because a page's boundary fell between
+ * an assistant row and its own result (`pageOrphanResults`) — so its assistant row
+ * is the row immediately ABOVE that result, and the result's own `ts` is the
+ * instant that stands in for the call's start: the page that holds the result row
+ * holds the assistant row with it, and a page whose oldest row predates the result
+ * by more than the slack cannot be that page.
+ *
+ * Without it the floor ended the walk a page early on that shape: the seed's own
+ * targets were labelled by page one, the in-flight call's recent start set the
+ * floor, and the orphan — whose assistant row was one row behind the page — stayed
+ * painted with its output, which is Q4's defect. `f1ef98c4c` made 2 reads and
+ * labelled it; the round-3 head made 1 and did not.
+ *
+ * A `ts` the row does not state is left out rather than defaulted: an orphan with
+ * no instant leaves the floor to the walk's other exits.
+ */
+export function pageOrphanResultInstants(
+	entries: DesktopHistoryPage["entries"],
+	orphans: Iterable<string>,
+): Map<string, number> {
+	const wanted = new Set(orphans);
+	const instants = new Map<string, number>();
+	if (wanted.size === 0) return instants;
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || !wanted.has(callId)) continue;
+		const ts = entry.ts;
+		if (typeof ts !== "number" || !Number.isFinite(ts)) continue;
+		instants.set(callId, Math.round(ts * 1000));
+	}
+	return instants;
+}
+
+/**
+ * Whether a fetched page has read past every call still behind it.
+ *
+ * `starts` is `seedCallStarts` for the calls the walk is still looking for,
+ * `orphanInstants` is `pageOrphanResultInstants` for the orphans it is still
+ * chasing, and `entries` is the page it just read, whose OLDEST row is what
+ * answers.
+ *
+ * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR unless the caller names it in
+ * `startlessWaiting` as a call still waiting at a gate (`seedWaitingComposes`). Skipping EVERY
+ * startless target let a co-target's instant set the floor alone and end the walk
+ * before it: a `tool_call_compose` target is startless BY TYPE — the frame has no
+ * clock field — so a settled call from the current round was enough to stop the
+ * walk while a not-run call from an earlier one sat unlabelled behind it (measured:
+ * 1 read and unlabelled against `f1ef98c4c`'s 3 reads and labelled).
+ *
+ * THE EXCEPTION IS ONE KIND, and R16 is why it is the exception rather than the
+ * rule: a compose still WAITING at a gate cannot be labelled by any page yet, so
+ * exempting it costs nothing, while every other startless call — a never-ran
+ * compose WITH a reason, a blocked call, a settled end frame whose producer states
+ * no clock — did run or did end, and a page may hold the row that labels it. The
+ * caller narrows further with the walk's own behind set (`labelTargetsBehindIds`),
+ * so a call of the round still running, newer than everything a page has named, is
+ * not a target the floor is asked about (round 4's R11).
+ */
+export function pagePassedOldestStart(
+	entries: DesktopHistoryPage["entries"],
+	targets: Iterable<string>,
+	starts: ReadonlyMap<string, number>,
+	orphanInstants: ReadonlyMap<string, number> = new Map(),
+	startlessWaiting: ReadonlySet<string> = new Set(),
+): boolean {
+	const oldestSeconds = entries[0]?.ts;
+	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
+		return false;
+	let floor: number | null = null;
+	for (const callId of targets) {
+		const at = starts.get(callId);
+		if (at === undefined) {
+			// See the doc: every startless call refuses the floor but the kind the caller
+			// names as still waiting, because no page can label that kind yet.
+			if (startlessWaiting.has(callId)) continue;
+			return false;
+		}
+		if (floor === null || at < floor) floor = at;
+	}
+	for (const at of orphanInstants.values()) {
+		if (floor === null || at < floor) floor = at;
+	}
+	if (floor === null) return false;
+	// The row's own unit conversion, spelled the way the rest of this file
+	// converts a durable `ts` (`Math.round((entry.ts ?? 0) * 1000)`).
+	const oldestMs = Math.round(oldestSeconds * 1000);
+	return oldestMs <= floor - RECONCILE_START_SLACK_MS;
+}
+
 export function seedCallsMissingLabels(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
 	labelled: ReadonlySet<string>,
@@ -3359,13 +4404,28 @@ export function labelGapCandidates(
 }
 
 /**
- * Durable entries one settled call occupies: its assistant row and its result.
+ * Durable journal entries to budget per unlabelled call, so the first label
+ * read normally reaches the OLDEST one in a single request.
  *
- * The ratio is the seed's own shape, not an estimate: `_fold_live_event` keeps
- * one end per call and the durable transcript writes the assistant row holding
- * that call's `tool_calls` plus the tool row holding its result.
+ * AN ESTIMATE, MEASURED — not the seed's shape. This used to be 2 and was
+ * described as exact (assistant row + tool row per call), but a real journal
+ * also writes a `custom` `session_spend.v1` row per round, `session_state`
+ * rows, prunes and the odd user/steering row, so the distance from the tail back
+ * to a call's assistant row is not a fixed multiple. Measured read-only over
+ * 1,357 real sessions under `~/.local-operator/sessions` (10,395 simulated joins:
+ * seed = the turn's newest 100 calls, page = the newest 100 entries), the
+ * per-missing-call depth past the page is p50 2.50, p75 2.88, p90 3.03, p95
+ * 3.18, p99 4.23. At 2 one request covered 15.7% of joins; at 3.25 it covers
+ * 96.4%, for a mean limit of 263 entries rather than 200. The rest is closed by
+ * the goal-directed walk in `reconcileTail`, which pages back until every
+ * target is labelled, so this ratio decides how many requests a join costs and
+ * never whether the rows get their labels.
+ *
+ * The session in the report (`<session>`) needs 3.03: its turn repeats
+ * assistant, tool, `session_spend.v1`, and at 2 its first read left 23 of 68
+ * calls without a label.
  */
-export const RECONCILE_ENTRIES_PER_CALL = 2;
+export const RECONCILE_ENTRIES_PER_CALL = 3.25;
 
 /** The tail every reconcile asks for, and the app's ordinary history page. */
 export const RECONCILE_TAIL_ENTRIES = 100;
@@ -3387,10 +4447,226 @@ export const RECONCILE_TAIL_MAX_ENTRIES = 500;
  */
 export function reconcileLimit(missingCalls: number): number {
 	if (missingCalls <= 0) return RECONCILE_TAIL_ENTRIES;
+	// `ceil`: the ratio is fractional and the route takes an integer `limit`.
 	return Math.min(
 		RECONCILE_TAIL_MAX_ENTRIES,
-		RECONCILE_TAIL_ENTRIES + RECONCILE_ENTRIES_PER_CALL * missingCalls,
+		RECONCILE_TAIL_ENTRIES +
+			Math.ceil(RECONCILE_ENTRIES_PER_CALL * missingCalls),
 	);
+}
+
+/**
+ * Which of `targets` a durable page names in an assistant row's `tool_calls`.
+ *
+ * The label walk's stop test: a call is labelled once the row that NAMED it is
+ * in hand, because that is where its arguments live (`applyHistoryPage` copies
+ * them into `argsByCall`). Pure so the hook's walk rule can be tested without a
+ * transport.
+ */
+export function pageLabels(
+	entries: DesktopHistoryPage["entries"],
+	targets: ReadonlySet<string>,
+): string[] {
+	const found: string[] = [];
+	if (targets.size === 0) return found;
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string" && targets.has(call.id))
+				found.push(call.id);
+		}
+	}
+	return found;
+}
+
+/**
+ * Whether a fetched page holds the row that OPENED the turn the seed is of.
+ *
+ * THE ABSOLUTE FLOOR OF A LABEL WALK, and the exit a walk that cannot win needs.
+ * Every call a mid-turn snapshot's seed names belongs to the turn that is in
+ * flight, so its assistant row — where its arguments live — was journaled at or
+ * after that turn's opening user row. Reading past the opening row therefore
+ * proves the rest of the walk is looking for rows the journal does not hold, and
+ * the walk descends to the row/request bound for nothing: round 1's R1 measured
+ * a join during a turn's first round paging to the 500-row bound (four reads,
+ * 416 rows) where main read one page. This is the condition that stops it.
+ *
+ * WHY A `user` ROW IS THE TURN'S OWN START, measured rather than assumed: over
+ * 400 real transcripts under `~/.local-operator/sessions` (914 user rows), 0 of
+ * them sit in the middle of a call's life — no row with `role: "user"` has a
+ * tool result after it whose assistant row is before it. A steer or a harness
+ * notice lands between rounds, never inside one, so the FIRST user row met
+ * walking back from the tail is the turn's opening row. A journal that never
+ * grew one (a pruned head) simply never satisfies this, and the walk keeps its
+ * other exits.
+ */
+export function pageOpensTurn(entries: DesktopHistoryPage["entries"]): boolean {
+	for (const entry of entries) if (entry.payload?.role === "user") return true;
+	return false;
+}
+
+/**
+ * Calls a page holds the RESULT of while no assistant row in that same page
+ * names them.
+ *
+ * A CALL THE SEED NEVER NAMED, and the row QA round 1 called out (Q4): a page's
+ * boundary can fall between an assistant row and its own result, so the page
+ * begins with a tool row whose arguments are one row older than the page — and
+ * because nothing in the seed names that call it was never a walk target, so the
+ * row painted its output where the command belongs. That is the very defect this
+ * read exists to fix, one row away from being fixed, and it is worth one page:
+ * the walk turns such a call into a target and its assistant row is read next.
+ *
+ * `known` is every call id the caller can already account for — the seed's own
+ * calls (`every`), everything a fetched page has named (`found`) and the orphans
+ * already collected — so an ordinary page, whose tool rows all have their
+ * assistant rows beside them, produces nothing here.
+ */
+export function pageOrphanResults(
+	entries: DesktopHistoryPage["entries"],
+	known: ReadonlySet<string>,
+): string[] {
+	const named = new Set(known);
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string") named.add(call.id);
+		}
+	}
+	const orphans: string[] = [];
+	const seen = new Set<string>();
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || named.has(callId) || seen.has(callId))
+			continue;
+		seen.add(callId);
+		orphans.push(callId);
+	}
+	return orphans;
+}
+
+/**
+ * Whether the reconcile walk has read far enough to stop.
+ *
+ * TWO conditions, and both are required. The walk used to stop the moment a
+ * fetched page CONNECTED to a painted row, which answers "is anything missing
+ * between the page and the screen" — but the label gap is a different question:
+ * the page has to reach back to the OLDEST unlabelled call's assistant row, and a
+ * tail page connects long before that on any turn with more than a page of
+ * calls. So:
+ *
+ *  - `connected`: some fetched page overlapped the painted rows, or nothing was
+ *    painted (then no page can overlap and one page is the whole coverage);
+ *  - `unlabelled`: how many target calls no fetched page has named yet.
+ *
+ * The walk's other exits live in the loop, because they are facts about the
+ * route, the turn or the calls rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds,
+ * `pageOpensTurn` (the row past which no seeded call of this turn can have its
+ * assistant row) and `pagePassedOldestStart` (the instant past which the OLDEST
+ * unlabelled call's own row cannot lie) — see each for which shape needs it.
+ */
+export function reconcileWalkDone(connected: boolean, unlabelled: number) {
+	return connected && unlabelled === 0;
+}
+
+/**
+ * The calls a seed names as STARTED, SETTLED or a stated verdict: the ids that
+ * RETRACT an earlier announcement that the call was still waiting.
+ *
+ * The waiting set is per conversation and outlives the seed that filled it
+ * (round 1, QA Q1), so it can only be right if every later statement about a
+ * call updates it. Without this the set grew monotonically: a second pass of the
+ * same conversation — or a seed that names one id twice — left a call exempt from
+ * the floor that had since started and settled, so the walk stopped at the floor
+ * and the call kept no label (round 7, R18, measured 2 reads of 217 rows where
+ * the same shape reads 3 of 324 and labels it when the exemption is fresh).
+ *
+ * "Started" is `tool_execution_start`, "settled" is the one frame with no clock
+ * (`settlesACall`), and a compose carrying a `not_run_reason` is the stated
+ * verdict — the three ways a runtime says the call is no longer at a gate.
+ */
+export function seedSettledCalls(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const settled = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		const reason = frame.not_run_reason;
+		const stated =
+			frame.type === "tool_call_compose" &&
+			typeof reason === "string" &&
+			reason.trim().length > 0;
+		if (
+			frame.type !== "tool_execution_start" &&
+			!settlesACall(frame) &&
+			!stated
+		)
+			continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) settled.add(callId);
+	}
+	return settled;
+}
+
+/**
+ * How many label targets are still BEHIND everything read so far.
+ *
+ * `order` is the calls in journal order, oldest first — the seed's own order
+ * (`seedCallsMissingLabels` over the whole seed), which holds the calls a page
+ * already labelled as well as the targets. `found` is every call a durable page
+ * READ FROM THE TAIL has named: the snapshot's own page and each page the walk
+ * fetched. Reading is contiguous back from the tail, so once a call is found,
+ * every target NEWER than it would have been inside what was read if it were
+ * durable at all. Those are calls of the round still running (the round's
+ * assistant row is written when the round closes), so no depth of reading finds
+ * them now and the round-end retry is what labels them. Only targets OLDER than
+ * the oldest found call are worth another page.
+ *
+ * Nothing found means nothing is known about where the targets sit, so all of
+ * them count and the walk keeps reading — but only as far as the row that opened
+ * the turn (`pageOpensTurn`) or the route's own bounds, never past them. Without
+ * this rule a join during a round with finished calls would page to the 500-row
+ * bound on every open, hunting rows that do not exist yet (round 1, R1).
+ */
+export function labelTargetsBehindIds(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): string[] {
+	// A target the seed no longer names was evicted from it by newer calls (a
+	// round-end retry carries ids from an earlier snapshot's seed), so it is
+	// older than everything in `order` and is behind whatever was read.
+	const ordered = new Set(order);
+	const behind: string[] = [];
+	for (const id of targets)
+		if (!ordered.has(id) && !found.has(id)) behind.push(id);
+	for (const id of order) {
+		if (found.has(id)) return behind;
+		if (targets.has(id)) behind.push(id);
+	}
+	// No call in `order` was found: every target is still unaccounted for.
+	return behind;
+}
+
+/**
+ * How many label targets are still behind what has been read (`labelTargetsBehindIds`).
+ *
+ * Kept as a count because that is what `reconcileLimit` sizes a page from, and
+ * derived from the ids so the two callers cannot come to disagree about which
+ * targets are behind — round 4's R11 was a walk that used a narrower set for the
+ * floor than for its own goal.
+ */
+export function labelTargetsBehind(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): number {
+	return labelTargetsBehindIds(order, targets, found).length;
 }
 
 /**
@@ -3531,6 +4807,37 @@ export function dropLiveRecords(state: TranscriptState): TranscriptState {
 }
 
 /**
+ * The stamp a LOCALLY-minted row may carry: `now`, or the largest `ts` already
+ * painted when the client's clock is behind it.
+ *
+ * WHY THIS EXISTS (operator report, 2026-09-26): "when sending a user message,
+ * it seems to end up in an inconsistent place within the conversation history -
+ * it shows up above an older message and then corrects after some time to its
+ * proper position". The mechanism is the seam between two functions that are
+ * each correct alone: the local echo is stamped with the CLIENT's `Date.now()`,
+ * and every merge re-sorts the whole list by `ts` (`withTimeOrder`). A session
+ * whose stamps come from a clock even fractions of a second AHEAD of the
+ * client's - a remote owner, or any client whose clock trails - therefore sorts
+ * the fresh echo BEFORE the newest painted row, above an older message, until
+ * the owner's durable row (the same id, its own stamp) replaces it: the visible
+ * "corrects after some time".
+ *
+ * The guarantee this keeps is the one the sort states: content in time order,
+ * canonical rows authoritative. It changes only WHERE a locally-minted row sits
+ * among rows already painted - never before them. A tie keeps the row after the
+ * one it followed, because `withTimeOrder` breaks ties by position and a freshly
+ * appended row holds the tail position; and the durable row still replaces this
+ * one and sorts to its own canonical place, because the two share an id.
+ */
+function monotonicStamp(state: TranscriptState, now: number): number {
+	let ts = now;
+	for (const record of state.records) {
+		if (record.ts > ts) ts = record.ts;
+	}
+	return ts;
+}
+
+/**
  * Paint the user's own message the instant it is admitted, before the owner
  * echoes it back.
  *
@@ -3558,13 +4865,50 @@ export function appendPendingUser(
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.
 	if (state.index.has(id)) return state;
-	return upsert(state, { kind: "user", id, ts: now, text, images });
+	return upsert(state, {
+		kind: "user",
+		id,
+		ts: monotonicStamp(state, now),
+		text,
+		images,
+		local: true,
+		// Every echo holds its place until the owner states the row: "no rows
+		// painted" was never the boundary (agent review round 1, F1/F3 — an
+		// echo over painted rows, cached or live, faces the same unchecked
+		// clock), so the hold is admission order against the merges that
+		// carry rows (`withTimeOrder`'s tail block). `message_start` clears
+		// `local` alone; the owner's stamped row ends the hold.
+		provisional: true,
+	});
 }
 
 /**
- * Drop one record by id. Used to retract an echo whose send was refused
- * BEFORE admission — the only case where the message provably does not exist
- * on the owner (see `admitChatDraft`'s `refusedBeforeAdmission`).
+ * Remove a record only while it is still this app's own optimistic echo.
+ *
+ * The unknown-outcome case needs the distinction the echo's `local` flag exists
+ * for: the app cannot tell from the id alone whether the row on screen is its own
+ * unconfirmed echo or the owner's durable record of the same message, and the two
+ * demand opposite answers - remove the first, treat the second as proof that the
+ * message was delivered (see `admitChatDraft`).
+ */
+export function removeLocalRecord(
+	state: TranscriptState,
+	id: string,
+): TranscriptState {
+	const record = state.records[state.index.get(id) ?? -1];
+	if (!record || record.kind !== "user" || !record.local) return state;
+	return removeRecord(state, id);
+}
+
+/**
+ * Drop one record by id, whoever painted it.
+ *
+ * The send path uses this for a row whose outcome is UNKNOWN, and it is safe there
+ * for the reason `retractLocalEcho` exists beside it: a `local` row is this app's
+ * own echo, so the message it paints is being handed back to the composer, and
+ * leaving the echo would show one message twice. A durable row for the same id is
+ * never removed this way - `retractLocalEcho` reports that case instead, and the
+ * store treats it as delivery.
  */
 export function removeRecord(
 	state: TranscriptState,
@@ -3586,7 +4930,7 @@ export function appendLocalNote(
 	return upsert(state, {
 		kind: "notice",
 		id: `local:${now}:${localNoteCounter}`,
-		ts: now,
+		ts: monotonicStamp(state, now),
 		text,
 		level,
 	});
@@ -3638,7 +4982,10 @@ export function withRecoveredOutcome(
 	const kind = attention?.kind;
 	if (
 		!anchor ||
-		(kind !== "error" && kind !== "interrupted") ||
+		(kind !== "error" &&
+			kind !== "interrupted" &&
+			kind !== "closed" &&
+			kind !== "retired") ||
 		// Mirrors the TUI's retry guard: a historical failure must not be
 		// inserted at the tail of a retry that is already running.
 		streaming ||
@@ -3656,7 +5003,21 @@ export function withRecoveredOutcome(
 		// tail where the durable rows it follows already are.
 		ts: state.records.at(-1)?.ts ?? Date.now(),
 		complete: true,
-		text: kind === "error" ? "Stopped with an error" : "Interrupted",
-		level: kind === "error" ? "error" : "warning",
+		text:
+			kind === "closed"
+				? CLOSED_OUTCOME_TEXT
+				: kind === "retired"
+					? RETIRED_OUTCOME_TEXT
+					: kind === "error"
+						? "Stopped with an error"
+						: "Interrupted",
+		level:
+			kind === "closed"
+				? "info"
+				: kind === "retired"
+					? "warning"
+					: kind === "error"
+						? "error"
+						: "warning",
 	});
 }

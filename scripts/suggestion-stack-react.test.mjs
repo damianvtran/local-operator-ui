@@ -178,6 +178,8 @@ async function fixture(run) {
 	});
 	window.HTMLElement.prototype.getBoundingClientRect = function () {
 		if (this.dataset.testBand !== undefined) return rect(0, window.innerHeight);
+		if (this.dataset.testFoot !== undefined)
+			return rect(0, Number.parseFloat(this.dataset.testFoot) || 0);
 		if (this.dataset.testSplash !== undefined) {
 			const stack = this.querySelector("[data-lo-suggestion-stack]");
 			return rect(0, 90 + (Number.parseFloat(stack?.style.maxHeight) || 156));
@@ -201,9 +203,11 @@ async function fixture(run) {
 		messages = 0,
 		generation = 0,
 		disabled = false,
+		footHeight = null,
 	}) {
 		const [band, setBand] = useState(null);
 		const [splash, setSplash] = useState(null);
+		const [foot, setFoot] = useState(null);
 		return h(
 			"div",
 			{
@@ -221,6 +225,7 @@ async function fixture(run) {
 					h(MeasuredSuggestionStack, {
 						band,
 						splash,
+						foot: footHeight === null ? undefined : foot,
 						suggestions,
 						disabled,
 						onSelect: (suggestion) => sent.push(suggestion),
@@ -228,6 +233,8 @@ async function fixture(run) {
 							window.document.querySelector("textarea").focus(),
 					}),
 				),
+			footHeight !== null &&
+				h("div", { ref: setFoot, "data-test-foot": String(footHeight) }),
 		);
 	}
 	const api = {
@@ -399,13 +406,36 @@ test("splash → small/send → splash replaces nodes and ignores detached callb
 	});
 });
 
+test("the docked composer's foot is part of the budget, and is observed", async () => {
+	/*
+	 * The chips share the band with the composer BELOW them (§G2: the composer is
+	 * docked at the band's foot on an empty chat too), so the room they may use is
+	 * the band's minus the foot's. Without the foot term the allowance here is 90px
+	 * and two rows fit (cap 84); a 36px foot leaves 54px, so only the first row does.
+	 * The foot grows on its own (a status row, a sentence, attachments), which is
+	 * why it is observed as well as measured.
+	 */
+	await fixture(async (api) => {
+		await api.render({ footHeight: 36 });
+		assert.equal(api.stack().style.maxHeight, "28px");
+		const observed = api.liveObservers().flatMap((o) => [...o.nodes]);
+		assert.ok(
+			observed.some((node) => node.dataset.testFoot !== undefined),
+			"the foot is observed, so its growth re-runs the cap",
+		);
+		await api.render();
+		assertCapped(api);
+	});
+});
+
 test("MessageInput wires node-valued refs and delegates its existing splash predicate", () => {
 	const input = readFileSync(`${source}message-input.tsx`, "utf8");
 	assert.match(input, /ref=\{setBand\}/);
 	assert.match(input, /ref=\{setSplash\}/);
+	assert.match(input, /ref=\{setFoot\}/);
 	assert.match(
 		input,
-		/<MeasuredSuggestionStack\s+band=\{band\}\s+splash=\{splash\}/,
+		/<MeasuredSuggestionStack\s+band=\{band\}\s+splash=\{splash\}\s+foot=\{foot\}/,
 	);
 	assert.match(
 		input,

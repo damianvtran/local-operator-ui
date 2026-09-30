@@ -145,6 +145,23 @@ the common state, so a healthy machine reserves no height here, and the
 `radient-session-issue.tsx` docblock records why a backend that cannot answer
 the verdict is silent rather than assumed healthy.
 
+**The aside panel takes the seat CLOSEST to the box, and it is the one block
+here that is not ambient context.** `/btw` mounts `AsidePanel`
+(`aside-panel.tsx`) in flow between the interrupt notice and the box's anchoring
+wrapper — the last two children of the form before the box, so everything above
+it keeps the order it had. The seat is the box's own because the panel is a MODE
+of the box rather than a report about it: while it is attached the composer
+addresses the aside (the placeholder says so) and its drafts go there, which is
+the last thing before the box for the same reason a `mode` label sits next to
+the field it renames. Two bounds follow, and both are this file's rules rather
+than the panel's own taste: the band still carries **no `max-height` and no
+`overflow`** (the slash popup is an unportaled `absolute bottom-full` child of
+the box's wrapper), so the panel caps its OWN exchange area the way the
+composer's attachment strip does; and the panel is a plain `section` — never a
+Radix dialog, drawer or popover — because a modal traps focus and takes the
+pointer, and this band exists so the user can go on typing while an answer
+streams.
+
 **It is also the one block up here that needs a gap, and it needed one because
 it is the only BORDERED one.** The row and the alert are sentences: their own
 `pb-2` / `pb-1` *is* the gap to the box. A callout's padding is inside its
@@ -972,7 +989,7 @@ merges it with the list panel beside it and no palette assertion can see it).
 | Count | inherits the chip's ink | § 5.4: a coloured count would be a second colour vocabulary for a fact the plan's own section states without colour at all (`docs/run-sidebar.md` § 2.3: the dock band "spends colour on failure and on nothing else", and a to-do waiting on an answer has not failed). |
 | Dismiss mark and word (§ 12) | `text-ink-muted`, the readings' own ink for a control | It is a control, so it takes the control ink rather than `ink-dim`; the role is what makes it "subtly treated", and the hover step to `text-ink` is the same one every other chip on the row takes. |
 | Loop chip, and its mark (§ 13) | `text-ink-dim`, the readings' own ink for an INERT READOUT | It is the row's one readout, not a control, and § 8's distinction is exactly this pair: a control is `ink-muted`, a readout is `ink-dim`. Mark and text share the one role, the same rule the count chips follow. |
-| Nothing destructive | no `danger` anywhere in these three controls | Clearing a goal and stopping a loop remove the session's own standing state, not the user's data, and `danger` on a hover-revealed control that appears under the pointer would be the loudest thing on the composer. The app's danger ink stays where § 8 puts it: the attachment and canvas-tab removals, which delete authored content. |
+| Nothing destructive — with one operator override | no `danger` in the two goal controls; the stop control carries it | Clearing a goal and stopping a loop remove the session's own standing state, not the user's data, and `danger` on a hover-revealed control that appears under the pointer would be the loudest thing on the composer — which is why the goal controls keep no danger. **The stop control is the exception, recorded rather than argued: on the operator's report of the v0.31.0 shell regressions (2026-09-26, PR #534) it is the pre-redesign icon-only `danger` square again** — stopping a turn is the one control in this composer that ends something already running, and its shape (`Square` glyph, `icon` sizing) carries the state before the ink does. The app's danger ink otherwise stays where § 8 puts it: the attachment and canvas-tab removals, which delete authored content. |
 
 **`CONTROLS` in `scripts/contrast-contract.mjs`: no new row, and here is the
 condition that would change it.** The rule is a component *"with its own fill and

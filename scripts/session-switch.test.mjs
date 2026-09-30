@@ -4,28 +4,22 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The switch's ORDERING, pinned rather than timed.
+ * The switch's ORDERING and its send gate, pinned rather than timed.
  *
  * `scripts/session-switch-latency.mjs` measures how long each phase of a switch
- * takes; this file pins the property that produced the number - that a switch
- * commits the target BEFORE the guard read answers, instead of after it. That
- * is a fact about order, not about duration, and a clock would only add flake
- * to a stronger assertion (the same division `submit-latency.test.mjs` draws
- * between its transport measurements and its structural claims).
+ * takes; this file pins the properties that produced the number:
  *
- * It FAILS on the pre-change store, and that is the point: with the read
- * awaited first, `activeSessionId` still names the outgoing session at the
- * moment of the click, which is exactly the serialisation the latency harness
- * measured as the whole of `click → committed`.
- *
- * What is also pinned here, because "commit optimistically" is only half a
- * design and the other half is what happens when the read says no:
- *
- * - the read is still ISSUED, for the latest intent only;
- * - a failed read puts the view back - session and draft - and says why;
- * - an older read cannot roll back a newer switch (the generation guard);
- * - an older read cannot claim success either, which is what keeps the URL
- *   from being rewritten to a session the user has already left.
+ * - the click commits the target in its own frame, and issues NO request of its
+ *   own. The `sessions.get` guard read it used to spend was a second facade
+ *   acquire on the backend, racing the stream for the same bridge locks, and it
+ *   held the composer shut for 2-20 s behind a busy owner (the desktop load
+ *   diagnosis, D-F3). The stream is the validation now;
+ * - a send addressed to the target is refused until the stream proves the
+ *   session exists (`confirmSessionLive`, on its first snapshot), and a 404 on
+ *   the stream tombstones it instead (`confirmSessionMissing`);
+ * - a proof for one target cannot vouch for, or tombstone, another;
+ * - a send that meets a BUSY owner (`runtime_busy`) is resent, bounded, with the
+ *   same request - and nothing else is.
  */
 
 const values = new Map();
@@ -37,20 +31,30 @@ globalThis.localStorage = {
 
 /** Every request the store made, and the scripted answers. */
 const calls = [];
-/** Set by each test: the answer for one `sessions.get`. */
+/** Set by each test: the answer for one `sessions.message`. */
 let answer = async () => ({});
 
 globalThis.__switchRequest = async (request) => {
 	calls.push(request);
-	if (request.op !== "sessions.get") return {};
+	if (request.op !== "sessions.message") return {};
 	return answer(request);
 };
 
 const bundle = await build({
 	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";',
+		contents: `export * from "./src/renderer/src/shared/store/canonical-sessions-store";
+export { hasPendingSend, retainsPendingSend } from "@shared/hooks/use-canonical-session";
+export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
+	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
 	},
 	bundle: true,
 	format: "esm",
@@ -86,8 +90,51 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => {};
+					/*
+					 * A REAL little registry, not a recorder (agent review round 2, R2-2):
+					 * the refusal case below reads what the send wrote - entry retained,
+					 * entry SETTLED - and a no-op stub cannot tell "kept to paint the row"
+					 * from "still going out", which is the distinction the fix turns on.
+					 * Same shape `composer-send-failure` carries, including the settled
+					 * skip, so the two fixtures stand for one rule.
+					 */
+					contents: `const registry = new Map();
+globalThis.__pendingSendRegistry = registry;
+export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = (identity, send) => {
+	let entries = registry.get(identity);
+	if (!entries) { entries = new Map(); registry.set(identity, entries); }
+	entries.set(send.id, { identity, id: send.id, text: send.text, images: send.images, settled: send.settled });
+};
+export const movePendingSendIdentity = (from, to) => {
+	if (from === to) return;
+	const entries = registry.get(from);
+	if (!entries) return;
+	registry.delete(from);
+	const destination = registry.get(to) ?? new Map();
+	for (const [id, entry] of entries) { entry.identity = to; destination.set(id, entry); }
+	registry.set(to, destination);
+};
+export const replacePendingSendText = (identity, id, text) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.text = text;
+};
+export const discardPendingSends = (identity) => registry.delete(identity);
+export const pendingSendForView = (identity) => {
+	const entries = registry.get(identity);
+	if (!entries) return null;
+	const first = [...entries.values()].find((entry) => entry.settled !== true);
+	return first ?? null;
+};
+export const settlePendingSend = (identity, id) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+};
+export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
+export const retainsPendingSend = (identity) => Boolean(registry.get(identity)?.size);
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -101,14 +148,17 @@ const {
 	useCanonicalSessionsStore: store,
 	admitChatDraft,
 	draftIdentityFor,
+	paneDraftKey,
+	hasPendingSend,
+	retainsPendingSend,
 	SESSION_UNVALIDATED_CODE,
+	DesktopControlError,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
 const OUTGOING = "111111111111";
 const DRAFT = "draft:agent:reviewer";
-const MATERIALISED = "444444444444";
 const TARGET = "222222222222";
 const OTHER = "333333333333";
 
@@ -130,6 +180,12 @@ function refusedByReadWindow(error) {
 }
 
 function reset({ draft = null } = {}) {
+	/*
+	 * The registry is MODULE state and outlives a store reset: without this,
+	 * a case reads entries the previous one left behind (`echo-delivery`'s own
+	 * `reset` clears it the same way).
+	 */
+	globalThis.__pendingSendRegistry?.clear?.();
 	calls.length = 0;
 	answer = async () => ({});
 	store.setState({
@@ -147,7 +203,7 @@ function reset({ draft = null } = {}) {
 			: {},
 		sessionByAgent: {},
 		validatingSessionId: null,
-		navigationError: null,
+		forgotten: {},
 		error: null,
 	});
 }
@@ -167,230 +223,69 @@ function deferred() {
 	return { promise, release };
 }
 
-test("the switch commits the target before the guard read answers", async () => {
+test("the switch commits in the click's own frame and spends no request on it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
 
 	const pending = store.getState().openSession(TARGET);
 
-	// The click's own frame. The outgoing session is already gone from the view:
-	// this is the whole change, and it is why the assertion is here and not on a
-	// duration.
+	// The click's own frame. The outgoing session is already gone from the view,
+	// and the window is open: nothing has proven the target exists yet.
 	assert.equal(store.getState().activeSessionId, TARGET);
 	assert.equal(store.getState().activeDraftKey, null);
 	assert.equal(store.getState().validatingSessionId, TARGET);
 	assert.equal(store.getState().error, null);
 
-	// The read is still issued - the guard was moved behind the commit, not
-	// deleted - and it is still the thing that decides the result.
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
-	assert.equal(calls[0].sessionId, TARGET);
-
-	read.release({});
+	/*
+	 * THE WHOLE CHANGE: no `sessions.get`. The panel's own stream is the only
+	 * request a switch makes, and it is the panel's, not the store's. FAILS on
+	 * `fad59ee31`, where this list is `["sessions.get"]`.
+	 */
+	assert.deepEqual(calls, []);
 	assert.equal(await pending, true);
+	assert.deepEqual(calls, []);
 	assert.equal(store.getState().activeSessionId, TARGET);
 });
 
-test("a failed guard read puts the view back where it was, and says why", async () => {
-	reset();
-	answer = async () => {
-		throw new Error("Unknown session.");
-	};
-
-	const ok = await store.getState().openSession(TARGET);
-
-	assert.equal(ok, false);
-	assert.equal(store.getState().activeSessionId, OUTGOING);
-	assert.equal(store.getState().validatingSessionId, null);
-	/*
-	 * The failure goes to `navigationError`, NOT to `error`. `error` is the
-	 * catalogue's health and `fetchSessions` clears it when it starts - which the
-	 * rollback's own refetch does, 4.5-8.1 ms later - so a switch that failed used
-	 * to be silent on every frame (UX round 1, U1).
-	 */
-	assert.equal(store.getState().navigationError, "Unknown session.");
-	assert.equal(store.getState().error, null);
-});
-
-test("a failed read restores the draft the user was in, not just the session", async () => {
-	reset({ draft: "draft:agent:reviewer" });
-	answer = async () => {
-		throw new Error("Unknown session.");
-	};
-
-	const ok = await store.getState().openSession(TARGET);
-
-	assert.equal(ok, false);
-	assert.equal(store.getState().activeDraftKey, "draft:agent:reviewer");
-	assert.equal(store.getState().activeSessionId, null);
-});
-
-/*
- * R1/Q1 - THE ROLLBACK RE-VALIDATES THE DRAFT IT RESTORES.
- *
- * `previous` is captured at the CLICK and the guard read is an arbitrary window,
- * so a send that was in flight on the outgoing draft can land inside it.
- * `finishDraft` then deletes that draft's row and moves `activeSessionId` only
- * while the view is still on that draft - which the commit has just made false -
- * so the row is gone while the snapshot still names it. Writing the snapshot back
- * verbatim put the view on a draft that does not exist: the panel was keyed on
- * the dead key, and a send from it minted a fresh `createRequestId` and opened a
- * SECOND session for a conversation that already had one, with the first now
- * unreachable from the view.
- *
- * This drives the exact interleaving - send in flight, switch, read fails - and
- * FAILS on `a98c2763d`, where `activeDraftKey` came back naming the deleted row.
- */
-test("a failed read does not restore a draft whose row is gone", async () => {
+test("a switch out of a staged draft leaves it, and still spends no request", async () => {
 	reset({ draft: DRAFT });
-	const read = deferred();
-	answer = () => read.promise;
 
-	const pending = store.getState().openSession(TARGET);
-	/*
-	 * The send lands mid-read: the conversation it was admitted under
-	 * materialises as a session and `finishDraft` drops the row. The view is on
-	 * the target by then, so this deliberately does not move `activeSessionId` -
-	 * which is exactly why the rollback cannot read the outcome back out of the
-	 * store later.
-	 */
-	store.getState().finishDraft(DRAFT, MATERIALISED);
-	assert.equal(store.getState().drafts[DRAFT], undefined);
-
-	read.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await pending, false);
-
-	/*
-	 * The pointer must not name a row that is gone: every consumer reads
-	 * `activeDraftKey` as "a draft is being composed", and a send from it goes
-	 * through `admitChatDraft` with no `previous` row - a second session for a
-	 * conversation that already has one.
-	 */
+	assert.equal(await store.getState().openSession(TARGET), true);
 	assert.equal(store.getState().activeDraftKey, null);
-	assert.equal(store.getState().activeSessionId, null);
-	assert.equal(store.getState().navigationError, "Unknown session.");
-});
-
-/*
- * The other half of the same rule, and the reason the fix is not "stop
- * restoring": a draft that SURVIVED the read is still the view the user came
- * from, and a rollback that dropped it would move them twice for one failure.
- */
-test("a failed read still restores a draft whose row survived", async () => {
-	reset({ draft: DRAFT });
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	// The send is still in flight, so the row is where the user left it.
+	assert.equal(store.getState().activeSessionId, TARGET);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+	// The draft row is not deleted by leaving it - it is still in the rail.
 	assert.equal(store.getState().drafts[DRAFT].key, DRAFT);
-
-	read.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await pending, false);
-
-	assert.equal(store.getState().activeDraftKey, DRAFT);
-	assert.equal(store.getState().activeSessionId, null);
+	assert.deepEqual(calls, []);
 });
 
-/*
- * The read window's send gate, which `pendingSessionId` used to carry and which
- * commit-first would otherwise have dropped silently: while `sessions.get` has
- * not answered, the target's existence is unverified, and
- * `validatingSessionId` is what says so. It is closed by the answer - on
- * success and on failure.
- */
-test("the read window is published while it lasts and closed by its answer", async () => {
+test("a later switch replaces the window, and an earlier target's proof cannot close it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	assert.equal(store.getState().validatingSessionId, TARGET);
-
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-});
-
-test("an older read cannot roll back a newer switch", async () => {
-	reset();
-	const first = deferred();
-	const second = deferred();
-	const reads = [first.promise, second.promise];
-	answer = () => reads.shift();
-
-	const firstSwitch = store.getState().openSession(TARGET);
-	// The second click lands while the first read is still in flight.
-	const secondSwitch = store.getState().openSession(OTHER);
+	await store.getState().openSession(TARGET);
+	await store.getState().openSession(OTHER);
 	assert.equal(store.getState().activeSessionId, OTHER);
+	assert.equal(store.getState().validatingSessionId, OTHER);
 
-	// The first read now fails. It must not drag the view back to the outgoing
-	// session: the user has already asked for something else, and this read is
-	// not the one they are waiting on.
-	first.release({});
-	assert.equal(await firstSwitch, false);
-	assert.equal(store.getState().activeSessionId, OTHER);
-
-	/*
-	 * The second read fails, and IT owns the rollback - to `TARGET`, because
-	 * that is where the view was when the second click was made.
-	 *
-	 * This is the compound case: two consecutive failing reads inside one read's
-	 * flight time, which needs a backend that refuses this session twice over.
-	 * The rule is still "put back what the user was looking at", and after the
-	 * first click that WAS the target - so the assertion is written to say what
-	 * the rule is rather than what a single-failure test would assume. The error
-	 * below is the part that matters: whatever is on screen, the user is told
-	 * the last switch failed.
-	 */
-	second.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await secondSwitch, false);
-	assert.equal(store.getState().activeSessionId, TARGET);
-	assert.equal(store.getState().navigationError, "Unknown session.");
-});
-
-test("a superseded read reports false, so the URL is never rewritten back", async () => {
-	reset();
-	const first = deferred();
-	answer = async () => ({});
-
-	const firstSwitch = store.getState().openSession(TARGET);
-	const secondSwitch = store.getState().openSession(OTHER);
-
-	first.release({});
-	// `select` navigates on `true`; a late `true` here would navigate the user
-	// back to the session they have left.
-	assert.equal(await firstSwitch, false);
-	assert.equal(await secondSwitch, true);
+	// The abandoned target's stream lands late - neither proof may vouch for, or
+	// tombstone, the session the user is actually on.
+	store.getState().confirmSessionLive(TARGET);
+	assert.equal(store.getState().validatingSessionId, OTHER);
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().validatingSessionId, OTHER);
+	assert.equal(store.getState().forgotten[TARGET], undefined);
 	assert.equal(store.getState().activeSessionId, OTHER);
 });
 
 /*
- * THE READ WINDOW'S SEND GATE, DRIVEN AS A SEND.
+ * THE WINDOW'S SEND GATE, DRIVEN AS A SEND.
  *
- * `validatingSessionId` is one round trip of unconfirmed session, and the rule
- * that depends on it - a message may not be ADMITTED against a target nothing
- * has confirmed - used to live only in `ChatPage`'s send callback. Nothing
- * exercised it, so a regression (dropping a term, comparing the wrong id) stayed
- * green through CI, and the refusal itself was silent: the composer kept the
- * text, sent nothing, and said nothing (UX round 2, U8; reviewer N2).
- *
- * Both halves are pinned here against the store that owns them. The refusal is
- * driven through the real admission path and named by its own code, and BOTH
- * bounds that open the window are driven: the read's answer, and a live frame
- * from the session's own stream (`confirmSessionLive`) - the bound that opens
- * the gate on the session's own proof instead of making the user wait out the
- * read's 30 s deadline, which is the only thing left when the read is slow. The
- * message is asserted to have created no echo, because "refused before
- * admission" is the reason the composer puts the text BACK rather than holding
- * a claim (`isRefusedBeforeAdmission`).
- *
- * FAILS on `df7f3fdb9`, where the gate had no store-side existence: the first
- * assertion below gets an admission instead of a refusal.
+ * `validatingSessionId` is the stretch of unconfirmed session between the click
+ * and the stream's first snapshot, and the rule that depends on it - a message
+ * may not be ADMITTED against a target nothing has confirmed - is pinned here
+ * against the store that owns it. The refusal is driven through the real
+ * admission path and named by its own code, and the message is asserted to
+ * have created no latch, because "refused before admission" is the reason the
+ * composer puts the text BACK rather than holding a claim
+ * (`isRefusedBeforeAdmission`).
  */
 const SEND = {
 	text: "Review this",
@@ -402,160 +297,188 @@ const SEND = {
 /** The key `admitChatDraft` is addressed by, from the shipped rule. */
 const SEND_KEY = draftIdentityFor(null, TARGET);
 
-test("a send inside the read window is refused, and the answer opens it", async () => {
+test("a send inside the window is refused, and the stream's snapshot opens it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
+	await store.getState().openSession(TARGET);
 	assert.equal(store.getState().validatingSessionId, TARGET);
 
-	// The send, mid-read. Nothing is addressed to the unconfirmed target, and the
-	// refusal carries the code the composer renders and reads back.
 	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
 		refusedByReadWindow(error),
 	);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
+	assert.deepEqual(calls, []);
 	// No claim was latched, so the composer's text is the only copy of the
 	// message: nothing was echoed into a transcript and nothing is being held.
 	assert.equal(store.getState().drafts[SEND_KEY], undefined);
 
-	// The read's own answer is the first bound.
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get", "sessions.message"],
-	);
-});
-
-test("a live frame opens the read window before the read answers", async () => {
-	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	/*
-	 * Refused to begin with, so this case names the same failure on the pre-change
-	 * store as the one above rather than an absent method: the gate is what is
-	 * under test here, and the bound is exercised through it.
-	 */
-	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
-		refusedByReadWindow(error),
-	);
-	/*
-	 * A stale frame cannot vouch for a window it does not belong to - the guard
-	 * that keeps an abandoned target's own snapshot from opening the CURRENT
-	 * session's gate.
-	 */
+	// A stale frame cannot vouch for a window it does not belong to.
 	store.getState().confirmSessionLive(OTHER);
-	assert.equal(store.getState().validatingSessionId, TARGET);
 	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
 		refusedByReadWindow(error),
 	);
 
-	// The session's own stream is the earlier proof: it opens the gate while the
-	// read is still in flight, which is the state a hung read leaves the panel in
-	// (the `Cancel`/Escape affordance that used to cover it is gone).
+	// The session's own stream is the proof, and it is the frame that paints the
+	// messages: the composer sends from the same commit.
 	store.getState().confirmSessionLive(TARGET);
 	assert.equal(store.getState().validatingSessionId, null);
 	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
 	assert.deepEqual(
 		calls.map((request) => request.op),
-		["sessions.get", "sessions.message"],
+		["sessions.message"],
 	);
+});
 
-	// The read lands afterwards and must not roll anything back: it is a read for
-	// a switch that already succeeded.
-	read.release({});
-	assert.equal(await pending, true);
+test("a 404 on the stream tombstones the target and closes the window, view left on it", async () => {
+	reset();
+	await store.getState().openSession(TARGET);
+
+	/*
+	 * The arm the guard read's not-found used to take, now reached from the
+	 * stream: the view stays where the user aimed, so the pane reaches the one
+	 * missing-session notice (and survives a reload, `forgotten` is persisted)
+	 * rather than rolling back to a conversation they left.
+	 */
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
 	assert.equal(store.getState().activeSessionId, TARGET);
+	assert.notEqual(store.getState().forgotten[TARGET], undefined);
+
+	// Only a window still waiting may be told: a 404 with no window open is the
+	// stream's own `missing` state to render, and rewrites no catalogue.
+	reset();
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().forgotten[TARGET], undefined);
 });
 
 /*
  * RE-SELECTING THE ROW THE VIEW IS ALREADY ON, which is a click the sidebar
- * accepts: the current row is not disabled and carries no second action.
- *
- * The window's live-frame bound is edge-triggered - `chat-page` reports a frame
- * only when the session or its stream status CHANGES - so a second window opened
- * for a session whose stream has already reported itself had one bound left,
- * the read's, and refused sends for its whole latency with a notice the user
- * could do nothing about. Driven here as the store sees it, because the store is
- * where the window is opened and every caller is protected by where the rule
- * lives rather than by one screen remembering it (reviewer N4).
+ * accepts: the current row is not disabled and carries no second action. The
+ * window's stream bound is edge-triggered in `chat-page`, so a window opened for
+ * a session whose stream already reported itself would have nothing left to
+ * close it - hence the store does not open one for a switch that moves nothing.
  */
-test("re-selecting the row the view is already on does not reopen the read window", async () => {
+test("re-selecting the row the view is already on does not reopen the window", async () => {
 	reset();
-	// An ordinary switch first: the read answers and closes the window it opened.
+	await store.getState().openSession(TARGET);
+	store.getState().confirmSessionLive(TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
+
 	assert.equal(await store.getState().openSession(TARGET), true);
 	assert.equal(store.getState().validatingSessionId, null);
-	calls.length = 0;
-
-	// The re-click. No window, no second read: `true`, because the view, the
-	// draft and the URL are already where the click asked to go.
-	assert.equal(await store.getState().openSession(TARGET), true);
-	assert.equal(store.getState().validatingSessionId, null);
-	assert.deepEqual(calls, []);
-
-	// Which is the point: the next send is ADMITTED rather than refused.
 	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
 	assert.deepEqual(
 		calls.map((request) => request.op),
 		["sessions.message"],
 	);
-
-	// And a re-click inside an open window does not replace it either: the window
-	// that exists keeps its own read and closes on that read's answer.
-	const read = deferred();
-	answer = () => read.promise;
-	const pending = store.getState().openSession(OTHER);
-	assert.equal(store.getState().validatingSessionId, OTHER);
-	assert.equal(await store.getState().openSession(OTHER), true);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.message", "sessions.get"],
-	);
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-});
-
-/**
- * The same rule does NOT swallow a click that is a real move: a staged draft is
- * a different view of the same session (the sidebar marks the row only when no
- * draft is staged), so clicking that row has to leave the draft.
- */
-test("re-selecting the active session still leaves a staged draft", async () => {
-	reset({ draft: DRAFT });
-	store.setState({ activeSessionId: TARGET });
-	calls.length = 0;
-
-	const pending = store.getState().openSession(TARGET);
-	assert.equal(store.getState().activeDraftKey, null);
-	assert.equal(store.getState().validatingSessionId, TARGET);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
-	assert.equal(await pending, true);
-	assert.equal(store.getState().activeSessionId, TARGET);
-	assert.equal(store.getState().validatingSessionId, null);
 });
 
 /*
- * `cancelOpen` is gone, and so is the test that pinned what it did to the
- * commit. The switch has no cancellable phase left: the commit IS the navigation
- * and it lands in the click's own frame, so "cancel" could only mean "go back to
- * the session I came from" - which is what clicking that row does. The pending
- * banner, its Escape handler, the sidebar spinner and the store field behind them
- * were all unreachable once nothing set one; `validatingSessionId` carries the
- * one guarantee that had to survive (see the read-window tests above).
+ * THE BUSY OWNER (backend workstream A's `runtime_busy`): the daemon refuses a
+ * control call in ~3 s when the session's owner is alive and not answering, and
+ * says a resend with the SAME request id is safe. The store absorbs a few of
+ * those itself; it must reuse the request byte for byte (the receipt is keyed on
+ * a hash of the whole body), respect `retry_after_ms`, stop after its bound, and
+ * leave every other failure alone.
  */
+const busy = (retryAfterMs = 1) =>
+	new DesktopControlError(
+		503,
+		"Session owner is unavailable. Reconnect and reconcile before retrying.",
+		undefined,
+		"runtime_busy",
+		retryAfterMs,
+	);
+
+test("a send that meets a busy owner is resent with the same request, and lands", async () => {
+	reset();
+	let attempts = 0;
+	answer = async () => {
+		attempts += 1;
+		if (attempts < 3) throw busy();
+		return {};
+	};
+	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	const sent = calls.filter((request) => request.op === "sessions.message");
+	assert.equal(sent.length, 3);
+	for (const request of sent) assert.deepEqual(request, sent[0]);
+	assert.equal(typeof sent[0].requestId, "string");
+	// The draft finished: nothing is held, no error is left on the composer.
+	assert.equal(store.getState().drafts[SEND_KEY], undefined);
+});
+
+test("the busy resend is bounded, and hands the refusal to the composer with the text kept", async () => {
+	reset();
+	answer = async () => {
+		throw busy();
+	};
+	await assert.rejects(
+		admitChatDraft(SEND_KEY, SEND, TARGET),
+		(error) => error.code === "runtime_busy",
+	);
+	// One send and three resends, then the existing retryable path takes over.
+	assert.equal(
+		calls.filter((request) => request.op === "sessions.message").length,
+		4,
+	);
+	const draft = store.getState().drafts[SEND_KEY];
+	assert.equal(draft.pending, false);
+	assert.equal(draft.errorCode, "runtime_busy");
+	/*
+	 * NOTHING IS LATCHED FOR A REFUSAL LIKE THIS, AND THE PAYLOAD IS STILL THE
+	 * ROW'S - and the difference between those two facts is the change. A busy
+	 * owner says in its own code that it did not take the message, so the latch is
+	 * off: the pane shows no send in flight, and the app makes no claim about a
+	 * fate. The TEXT stays on the row as the retry rule's comparison basis
+	 * (`payloadMatchesClaim`), because that is what makes an unchanged re-send an
+	 * idempotent replay under the id the owner already answered, rather than a
+	 * second message from an owner that had in fact queued the first. The copy the
+	 * user acts on is in the composer (the store's one return path; its side of
+	 * that is pinned in `composer-send-failure.test.mjs`).
+	 */
+	assert.equal(draft.submittedText, "Review this");
+	assert.equal(draft.admissionAttempted, false);
+});
+
+test("the busy resend waits the backend's retry_after_ms, capped", async () => {
+	reset();
+	const waits = [];
+	const original = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...args) => {
+		waits.push(ms);
+		return original(fn, 0, ...args);
+	};
+	try {
+		let attempts = 0;
+		answer = async () => {
+			attempts += 1;
+			if (attempts === 1) throw busy(2_000);
+			if (attempts === 2) throw busy(60_000);
+			return {};
+		};
+		assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	} finally {
+		globalThis.setTimeout = original;
+	}
+	assert.deepEqual(waits, [2_000, 5_000]);
+});
+
+test("no other failure is resent", async () => {
+	for (const error of [
+		new DesktopControlError(503, "down", undefined, "runtime_unreachable"),
+		new DesktopControlError(null, "no response"),
+		new DesktopControlError(409, "conflict", undefined, "receipt_conflict"),
+	]) {
+		reset();
+		answer = async () => {
+			throw error;
+		};
+		await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET));
+		assert.equal(
+			calls.filter((request) => request.op === "sessions.message").length,
+			1,
+			`${error.code ?? error.status} was resent`,
+		);
+	}
+});
 
 /*
  * The pane's claim, keyed on the READER and on the pane's own statement - never
@@ -738,6 +661,13 @@ test("a session-less draft owes no page, so the pane makes no claim at all", () 
  *
  * The matrix is asserted COMPLETE as well as correct - all 32 combinations, once
  * each - so dropping a row fails here even when every remaining row agrees.
+ *
+ * AND A SIXTH AXIS SITS BESIDE IT: `stale`, the cache's own flag. It is not a
+ * column of THIS table because it changes nothing for the rows here - every one
+ * of them passes no `stale`, which is the "not the cache's" row - and doubling a
+ * 64-row table to say one extra thing is how the extra thing gets skimmed. The
+ * cached combinations have their own table below, with the same two shipped
+ * functions and the completeness check that makes a missing row a failure.
  */
 const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
@@ -891,6 +821,182 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 	}
 });
 
+test("the pane paints nothing of a CACHED conversation until its page lands", async (t) => {
+	/*
+	 * The sixth axis, and the operator's report that made it one: opening a
+	 * conversation this window had already seen painted the cached rows in the
+	 * click's own frame, the readings strip ~67 ms later and the caption's removal
+	 * with it - "things seem to load at different times ... everything should load
+	 * in one solid paint instead of incrementally". Rows that are the cache's while
+	 * a page is owed are therefore held, not painted:
+	 *
+	 * - the hold is TRUE for a quiet pane at any status, owed, with cached rows;
+	 * - it is FALSE the moment the page lands (no page owed), which is when the
+	 *   rows, the readings and the caption-less transcript arrive in ONE commit;
+	 * - it is FALSE while the pane has a send of its own admitted (the wait line
+	 *   outranks it) or a statement of its own (the notice, the reconnecting
+	 *   line) - the same two exclusions every other row of the matrix has;
+	 * - and a pane with records never collapses out of the layout, so the band
+	 *   cannot take the free height for a greeting while anything is held.
+	 *
+	 * `stale` with no page owed is a store-unreachable pair (the page's own commit
+	 * clears the flag, `use-canonical-session.ts:3128`) and is asserted anyway, for
+	 * the same reason the failure rows are: the decision is total. It must paint
+	 * the rows - a pane that has an answer and still holds would be a spinner over
+	 * content nobody is waiting for.
+	 */
+	const CACHED = [
+		// status, owed, admitted, hold
+		["connecting", true, false, true],
+		["connecting", true, true, false],
+		["connecting", false, false, false],
+		["connecting", false, true, false],
+		["live", true, false, true],
+		["live", true, true, false],
+		["live", false, false, false],
+		["live", false, true, false],
+		["reconnecting", true, false, false],
+		["reconnecting", true, true, false],
+		["reconnecting", false, false, false],
+		["reconnecting", false, true, false],
+		["unavailable", true, false, true],
+		["unavailable", true, true, false],
+		["unavailable", false, false, false],
+		["unavailable", false, true, false],
+	];
+	assert.equal(
+		CACHED.length,
+		16,
+		"a cached combination is missing from the table",
+	);
+	for (const status of STATUSES)
+		for (const owed of [true, false])
+			for (const admitted of [false, true])
+				assert.ok(
+					CACHED.some(
+						(row) =>
+							row[0] === status && row[1] === owed && row[2] === admitted,
+					),
+					`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} is not in the table`,
+				);
+
+	for (const [status, owed, admitted, hold] of CACHED) {
+		await t.test(
+			`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} -> ${hold ? "placeholder" : "rows"}`,
+			() => {
+				const view = {
+					status,
+					failure: null,
+					awaitingHydration: owed,
+					recordCount: 2,
+					admittedSend: admitted,
+					stale: true,
+				};
+				assert.equal(holdsPlaceholder(view), hold, "the cached hold");
+				assert.equal(
+					collapses(view),
+					false,
+					"a pane with cached records never collapses out of the layout",
+				);
+				// The invariant the matrix above states, on this axis too: the
+				// placeholder never accompanies the pane's own STATEMENT. (The stale
+				// caption is not a statement for this rule - it is the flag the hold
+				// reads - which is why `speaks` is not the term here.)
+				if (hold)
+					assert.ok(
+						status !== "reconnecting" && !view.missing,
+						"a placeholder beside the pane's own statement",
+					);
+			},
+		);
+	}
+});
+
+test("the cached paint's rows and caption are withheld in the component, not only in the rule", () => {
+	// Two facts, one file: the rule above decides, and these two gates are what
+	// makes the decision paint nothing. Both are single expressions at the sites
+	// the comment above each names, so a later edit that drops the hold from one of
+	// them fails HERE - the rule tests would stay green while the pane went back to
+	// painting its guess under a caption.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/\{stale && !holdPlaceholder && \(/,
+		"the stale caption must stand down while the pane holds",
+	);
+	assert.match(
+		transcript,
+		/\{!missing && !holdPlaceholder && \(/,
+		"the rows must be suppressed while the pane holds",
+	);
+	// And the stop stays keyed on the painted rows, which is what the cached case
+	// needs on top of the record count.
+	assert.match(
+		transcript,
+		/transcript\.records\.length === 0 \|\| holdPlaceholder \? -1 : 0/,
+		"the scroller's stop is keyed on the painted rows",
+	);
+});
+
+test("a switch re-windows in the same render, and never from an effect again", () => {
+	/*
+	 * The operator's report named this stagger too: "things seem to load at
+	 * different times". As an effect the window reset landed one commit AFTER the
+	 * new transcript's first paint - measured on the cached-switch sequence, the
+	 * first painted frame held all 106 fetched rows and the next commit trimmed it
+	 * (scroller extent 8,315.6 -> 4,864.2 px, all of it above the fold). The reset
+	 * is a render-phase adjustment now; both halves are pinned here so the effect
+	 * shape cannot come back green - the render-phase one has to exist, and the
+	 * `useEffect(..., [sessionId])` reset has to stay gone.
+	 */
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/if \(windowSession !== sessionId\) \{[\s\S]{0,160}setWindowSize\(WINDOW\)/,
+		"the window reset is decided during render, in the switch's own commit",
+	);
+	assert.doesNotMatch(
+		transcript,
+		/useEffect\(\(\) => \{\s*setWindowSize\(WINDOW\);\s*\}, \[sessionId\]\)/,
+		"the reset must not move back into an effect on sessionId",
+	);
+});
+
+test("the loading indicator stays one small quiet mark", () => {
+	// The operator's shape for this state (2026-09-26): "a small loading indicator
+	// that is non-intrusive". Three pulse bars were the old shape and a regression
+	// to a skeleton would pass every behavioural test in this file, so the shape
+	// has a cheap structural pin too: no `Skeleton` bars, and exactly ONE
+	// indeterminate element (branding.md's "one such element per surface").
+	const placeholder = readFileSync(
+		"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx",
+		"utf8",
+	);
+	assert.ok(
+		!placeholder.includes("<Skeleton"),
+		"the placeholder is a mark and a sentence, not a content sketch",
+	);
+	assert.equal(
+		// On the class strings rather than the bare token: the docstring names the
+		// keyframes in prose, and a count over the whole file would be counting the
+		// argument for the rule instead of the element it governs.
+		(placeholder.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		1,
+		"one indeterminate element per surface",
+	);
+	assert.match(
+		placeholder,
+		/aria-label="Loading conversation"/,
+		"the live region keeps its name",
+	);
+});
+
 /*
  * WHERE EVERY CHAT URL IN THE RENDERER IS BUILT, AND WHO COMMITS A SWITCH.
  *
@@ -955,13 +1061,23 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the palette's chat-panel entry (a URL-first `path` target, navigated by the palette's own `path` case)",
 	},
-	"src/renderer/src/features/onboarding/components/onboarding-modal.tsx": {
-		count: 1,
-		why: "the onboarding flow's landing URL",
-	},
+	/*
+	 * `onboarding/components/onboarding-modal.tsx` left this table with the
+	 * create-agent step it landed on: its `/chat/${createdAgentId}` was the ONLY
+	 * interpolated chat URL in the file, and setup no longer creates an agent to
+	 * name one. What remains there is a literal `navigate("/chat")` - the same
+	 * landing Finish, Skip and Escape share - which builds no URL and so is not
+	 * this scan's subject. An interpolated chat URL returning to that file fails
+	 * here as an APPEARANCE, which is the point of keeping the entry out rather
+	 * than relaxing the count.
+	 */
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
+	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, which opens the conversation a project links to - the Schedules row's own case, one surface over: the session the row names may never have been opened in this window, so the row that names it has to be able to reach it",
 	},
 };
 
@@ -978,6 +1094,10 @@ const OPEN_SESSION_CALLERS = {
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, through the same rule - a wake's conversation is one the user may never have opened, so the row that names it has to be able to reach it",
+	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, through the same rule - a project's linked conversation is one the user may never have opened, so the row that names it has to be able to reach it",
 	},
 };
 
@@ -1027,8 +1147,31 @@ const expectListed = (found, listed, what) => {
 
 const ENTRANCE_FILES = {
 	"chat-page.tsx": "src/renderer/src/features/chat/components/chat-page.tsx",
+	/*
+	 * THE SIDEBAR'S ENTRANCE MOVED WITH THE SIDEBAR. The rail and the chat list are
+	 * one column now, and it is mounted above the routes (`app.tsx`), so the rows
+	 * that switch conversations are the sidebar's own and no longer call back
+	 * through `chat-page.tsx`. The table follows the call site, which is the point
+	 * of it: an entrance that moved is still an entrance this file has to be able
+	 * to see.
+	 */
+	"sidebar-navigation.tsx":
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+	/*
+	 * AIDA'S OPEN IS AN ENTRANCE TOO, and it takes TWO entries because it is two
+	 * call sites: the rail's row resolves her id in `use-aida-target.ts` (the hook
+	 * the row calls) and the composer's `/aida` resolves it in `slash-dispatch.ts`
+	 * (its own branch), and both then call the shared rule. The pair is what makes
+	 * the claim true (agent review round 1, MINOR-2 corrected an earlier comment
+	 * that read the two as one call site): a `/chat/` URL is still built in one
+	 * module, and the file a future deferred write would HIDE in is named here —
+	 * which then fails this test rather than passing by construction.
+	 */
+	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
+	"slash-dispatch.ts":
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
 };
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -1089,15 +1232,151 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 			`${name} chains its URL write on the guard read`,
 		);
 	}
-	/* Two entrances live in `chat-page` (the sidebar's row and the `/chat` rebind); the palette's is the third. */
+	/*
+	 * One entrance per file: the sidebar's rows, the `/chat` rebind (still
+	 * `chat-page.tsx`'s), the palette's, and Aida's two — the rail's row reaching
+	 * through `use-aida-target.ts` and the composer's command through
+	 * `slash-dispatch.ts`. The pair that used to be counted in `chat-page` was the
+	 * sidebar's row plus that rebind, and the sidebar's row left with the sidebar.
+	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
 			.length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["sidebar-navigation.tsx"]).split(
+			"openConversation(",
+		).length - 1,
+		1,
 	);
 	assert.equal(
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
 			.length - 1,
 		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["use-aida-target.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the rail's row resolves her id through this module alone; a second call here is a second write rule",
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["slash-dispatch.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the composer's `/aida` is the other entrance, and it is this file's one call of the rule",
+	);
+});
+
+test("U5: a pane reached by the session's own route resolves the staged draft's row", () => {
+	reset();
+	/*
+	 * THE SHAPE UX ROUND 2's U5 MET: a refused FIRST send of a New chat. The draft
+	 * row keeps its staged key (the create's answer patches only `sessionId`), and
+	 * the pane the user returns to - the session's own route, so
+	 * `activeDraftKey` is null - derives `send:<sessionId>`. That key names a row
+	 * nothing wrote, which is how the failure's sentence and both of its controls
+	 * disappeared while the row itself stayed on screen.
+	 *
+	 * The resolver and the expression it replaces are asserted BOTH ways, so the
+	 * case fails on the revision that only ever answered `send:<sessionId>`.
+	 */
+	const drafts = {
+		[DRAFT]: {
+			key: DRAFT,
+			createRequestId: "create",
+			admissionRequestId: "admit",
+			sessionId: TARGET,
+			submittedText: "Review this",
+			error: "Couldn't confirm your message was sent.",
+			errorRetry: true,
+		},
+	};
+	assert.equal(paneDraftKey(null, TARGET, drafts), DRAFT);
+	/* What the pane used to read: a miss, which is the defect. */
+	assert.equal(drafts[draftIdentityFor(null, TARGET)], undefined);
+	/* A live send that never staged a draft keeps the derived fallback. */
+	assert.equal(paneDraftKey(null, TARGET, {}), draftIdentityFor(null, TARGET));
+	/* And a staged pane still answers its own key, unchanged. */
+	assert.equal(paneDraftKey(DRAFT, TARGET, drafts), DRAFT);
+});
+
+test("U5: a refused send stops claiming in flight the moment its row states it", async () => {
+	reset();
+	/*
+	 * The refusal is a POST-PAINT failure on a live session (the general boundary
+	 * rule's arm): the row is written, and the registry entry - the pane's "a send
+	 * is still going out" - must be SETTLED with it, because the store's own
+	 * vocabulary already says so (`pending: false` in the same write). Until this
+	 * round it waited for a server read that may be incomplete or slow, and a
+	 * switch-away inside that window came back reading `waiting for the agent Ns`
+	 * for a send that was not alive (UX round 2, U5).
+	 */
+	await store.getState().openSession(TARGET);
+	store.getState().confirmSessionLive(TARGET);
+	const draftKey = `draft:${crypto.randomUUID()}`;
+	store.setState((state) => ({
+		drafts: {
+			...state.drafts,
+			[draftKey]: {
+				key: draftKey,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+				/*
+				 * The patch the create's answer writes (`updateDraft(key, { sessionId })`):
+				 * the row is how a pane reached by the session's own route finds it, and
+				 * it is what makes this the staged-draft shape rather than a bare one.
+				 */
+				sessionId: TARGET,
+			},
+		},
+	}));
+	answer = async () => {
+		throw new Error("runtime_unreachable");
+	};
+	await assert.rejects(admitChatDraft(draftKey, SEND, TARGET));
+
+	const drafts = store.getState().drafts;
+	assert.notEqual(drafts[draftKey].error, undefined);
+	/* The row is found by the route's own pane - the same resolution as above. */
+	assert.equal(paneDraftKey(null, TARGET, drafts), draftKey);
+	const entries = globalThis.__pendingSendRegistry.get(TARGET);
+	const entry = entries ? [...entries.values()][0] : null;
+	assert.ok(entry, "the entry is RETAINED - it is the row's home");
+	/*
+	 * AND THE PANE'S OWN QUESTION STILL ANSWERS YES (membership, not liveness):
+	 * `chat-page`'s failure arm asks the registry whether this send painted a row
+	 * before it lets the ROW be the one statement of the failure - a liveness
+	 * predicate here would answer null for every post-paint failure and put the
+	 * composer's alert back over the row (measured on the re-shoot's first run).
+	 * The id is the row's own, exactly as the pane reads it off `drafts[key]`.
+	 */
+	const advertisedId = store.getState().drafts[draftKey]?.admissionRequestId;
+	assert.equal(typeof advertisedId, "string");
+	assert.equal(
+		hasPendingSend(TARGET, advertisedId),
+		true,
+		"the pane's painted predicate answers on membership after the settle",
+	);
+	/*
+	 * AND THE COMPOSER'S GATE READS THE SAME DISTINCTION (the re-shoot's J4 arm):
+	 * `retainsPendingSend` says a ROW exists, so the composer keeps its mouth shut
+	 * while `pendingSendForView` - liveness - rightly says the claim is answered.
+	 */
+	assert.equal(retainsPendingSend(TARGET), true);
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+	);
+	assert.equal(entry.settled, true, "and SETTLED - the send is not alive");
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+		"no entry still answers `still going out`",
 	);
 });

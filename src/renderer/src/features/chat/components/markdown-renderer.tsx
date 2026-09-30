@@ -8,7 +8,6 @@ import ReactMarkdown, {
 } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import { type CanvasPane, useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_ATTR,
@@ -30,8 +29,15 @@ import {
 } from "../utils/markdown-blocks";
 import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
+import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
+// NOT `remark-math`: its single-dollar tokenizer has no adjacency rules, so
+// once math is on for a message a price's `$` and a later `$` pair up and the
+// text between them is typeset (operator report, 2026-09-27).
+// `markdown-math-guarded.ts` carries the guarded tokenizer, its provenance
+// from `micromark-extension-math@3.1.0`, and the pandoc rules it implements.
+import remarkGuardedMath from "./markdown-math-guarded";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
@@ -98,6 +104,11 @@ type MarkdownRendererProps = {
 	 * streaming - leaves it off and renders exactly what it rendered before. It
 	 * composes with `linkify`: a citation-bearing user turn is also a turn whose
 	 * paths may be linkified, which is why the hook below takes both.
+	 *
+	 * THE READER'S OWN SINGLE NEWLINES RIDE IT TOO (report, 2026-09-25): a message
+	 * sent from the composer reads back with its lines kept rather than every soft
+	 * break collapsed to a space. That transform hangs off this opt-in rather than
+	 * a second flag - the four citation pipelines below carry it and say why.
 	 */
 	credentialCitations?: boolean;
 };
@@ -359,7 +370,7 @@ const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 };
 
 const GFM_ONLY = [remarkGfm];
-const GFM_AND_MATH = [remarkGfm, remarkMath];
+const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
  * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
@@ -378,23 +389,57 @@ const GFM_AND_MATH = [remarkGfm, remarkMath];
  * selector over them.
  */
 const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
-const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
-const GFM_AND_CITATIONS = [remarkGfm, remarkCredentialCitations];
+const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
+/*
+ * THE FOUR CITATION-BEARING PIPELINES ARE ALSO THE FOUR USER-TURN PIPELINES,
+ * and `remarkSoftBreaks` rides them (operator report, 2026-09-25). The report:
+ * a message sent with `Prod:` / `Email:` / `Password:` each on its own line
+ * reads back as ONE line, because a soft break - a single newline inside a
+ * paragraph - is not a node: it is a `\n` inside a `text` node's value, and
+ * HTML collapses it to a space unless a transform turns it into a `break`
+ * node first. `utils/remark-soft-breaks.ts` carries the mechanism.
+ *
+ * WHY HERE RATHER THAN A SECOND FLAG. `credentialCitations` is, in the app as
+ * it stands, the user-turn opt-in: exactly two callers turn it on
+ * (`canonical-transcript.tsx`, `message-item/message-content.tsx`) and both
+ * render the reader's OWN turn, while every agent-facing render leaves it off.
+ * The reader's own lines are owed to the same decision as the chips - what the
+ * composer showed must survive the send - so a `keepLineBreaks` prop would be
+ * a second flag that coincides with this one at every call site. The coupling
+ * is stated here rather than encoded twice; a future caller turning this
+ * opt-in on for something that is NOT the reader's own words reopens this
+ * comment, not a wiring accident.
+ *
+ * `remarkSoftBreaks` SITS LAST on purpose: the linkifier and the citation
+ * transform each see exactly the tree they saw before this change, and the
+ * soft-break walk rewrites only the `text` nodes they leave behind. The four
+ * pipelines that do NOT carry citations (agent output, streaming blocks,
+ * reasoning) are untouched: an agent's answer is a markdown DOCUMENT and keeps
+ * CommonMark's soft-break collapse.
+ */
+const GFM_AND_CITATIONS = [
+	remarkGfm,
+	remarkCredentialCitations,
+	remarkSoftBreaks,
+];
 const GFM_MATH_AND_CITATIONS = [
 	remarkGfm,
-	remarkMath,
+	remarkGuardedMath,
 	remarkCredentialCitations,
+	remarkSoftBreaks,
 ];
 const GFM_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
+	remarkSoftBreaks,
 ];
 const GFM_MATH_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
-	remarkMath,
+	remarkGuardedMath,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
+	remarkSoftBreaks,
 ];
 /*
  * The selector, keyed by the three decisions in their own order (math, linkify,
@@ -421,7 +466,7 @@ const KATEX_ONLY = [rehypeKatex];
  *
  * THE DECISION LIVES IN `markdown-math.ts` NOW (code review round 1, R1-1), and
  * it is no longer only about cost: the citation transform is a remark plugin and
- * `remark-math` is a micromark SYNTAX extension, so enabling math can split a
+ * the math plugin is a micromark SYNTAX extension, so enabling math can split a
  * citation at parse time - before any plugin sees a tree. The citation pass
  * therefore has to be able to veto the math pass, and that rule is a pure
  * function of the content, asserted in `scripts/credential-capture.test.mjs` over

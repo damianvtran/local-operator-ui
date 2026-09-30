@@ -1,5 +1,9 @@
-import { Button, Progress } from "@shared/components/ui";
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import {
+	UpdateType,
+	useDeferredUpdatesStore,
+} from "@shared/store/deferred-updates-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
@@ -11,7 +15,6 @@ import type {
 } from "../../../../../main/update-service";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
-	ProgressContainer,
 	RELEASE_NOTES_PROSE,
 	UpdateActions,
 	UpdateContainer,
@@ -123,22 +126,6 @@ const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
 ].join("\n\n");
 
 /**
- * The refusal's OTHER arm: the same wait, on a press whose install has landed.
- *
- * WHY THIS IS A STORY RATHER THAN A PAGE PATCH (design round 2, D6). Both
- * restart-leg refusals happen after the build is on disk and only the bounce was
- * held back, so their heading is not "The update didn't start" - the producer
- * states the fact and the panel keys on it. The design round had to inject this
- * payload into the shipped component from a CDP pre-document script to judge it,
- * which is not a state the repo's own rig can re-photograph; declared here, the
- * landed arm is captured the ordinary way.
- */
-const DRAIN_REFUSAL_LANDED_MESSAGE = [
-	"4 sessions are still running a turn on this machine: canonical-chat, refactor-tui, support-replies and 1 more.",
-	"The app waited 10 minutes for them to finish and then stopped rather than cut a turn short. The install itself has landed, and the server keeps running the build it loaded until it can restart onto it; the app will offer this update again.",
-].join("\n\n");
-
-/**
  * The wait the draining frame shows, as a fixture the entry's claim asserts.
  *
  * 12 s rather than a round ten minutes: the reading is the claim (design round 2,
@@ -148,7 +135,17 @@ const DRAIN_REFUSAL_LANDED_MESSAGE = [
  */
 const DRAIN_WAITED_MS = 12_000;
 
-const DRAIN_REFUSAL_COMMAND = "uv tool upgrade local-operator";
+/**
+ * THE COMMAND THE ONE REACHABLE REFUSAL SENDS (review round 1, U1): the
+ * restart-leg drains went with the operator's directive, so the press that can
+ * still be refused is the rebuild install leg - and its remedy is the plan's own
+ * `lop-update` (`update-install.ts`'s `sourceRebuildRoute ? "lop-update" : ...`),
+ * the command that rebuilds the checkout this install came from. It used to name
+ * `uv tool upgrade local-operator`, which no reachable arm of this state emits
+ * (for this install class it is a *failing* remedy, per `update-install.ts`) - a
+ * frame of the design round would have shown a command the product cannot send.
+ */
+const DRAIN_REFUSAL_COMMAND = "lop-update";
 const DRAIN_REFUSAL_LOG_PATH =
 	"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log";
 
@@ -162,6 +159,20 @@ const ORPHANED_UPDATER_OUTPUT = [
 const SOURCE_BUILD_REMEDY =
 	"Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
 
+/**
+ * THE MANAGED OFFER'S OWN COST SENTENCE, verbatim from the producer (UX U2).
+ *
+ * `resolveBackendUpdatePlan` composes it for the app-owned managed arm
+ * (`update-service.ts`), and `managedCostSentence` renders it as the paragraph
+ * above `Update server`; the story cannot import a main-process module, so the
+ * literal is transcribed here and the claim in `capture-evidence.mjs`
+ * (`...--backend-update-offer-app-owned`) pins its lead. It is the sentence the
+ * operator's own press reads before the press, and it no longer prices a wait -
+ * the idle switch replaced the wait on 2026-09-29.
+ */
+const MANAGED_OFFER_REMEDY =
+	"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.";
+
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
 
@@ -170,6 +181,52 @@ const APP_OWNED_REMEDY =
 
 const APP_OWNED_DETAIL =
 	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
+
+/**
+ * The lead of the real v0.62.34 release, as the lookup hands it to the panel.
+ *
+ * VERBATIM FROM THE PUBLISHED RELEASE rather than written for the fixture, for
+ * the reason the failure strings above are composed by their producer: the frame
+ * has to show copy the app can actually emit. This is the whole body of
+ * `damianvtran/local-operator`'s v0.62.34 release, whose opening (and only)
+ * paragraph is one sentence - and `scripts/server-release-notes.test.mjs` runs
+ * the summariser over that same body and fails if the rule stops producing this
+ * string, which is the drift guard this literal needs because the story cannot
+ * import a main-process module.
+ *
+ * The version pair is the operator's own report: the app offered 0.62.34 to a
+ * machine serving 0.62.33, which is the panel this change was asked for.
+ */
+const SERVER_NOTES_LEAD =
+	"0.62.34 fixes the stall watchdog wedging the very session it existed to watch.";
+
+/** The release page the paragraph's link opens. */
+const SERVER_NOTES_URL =
+	"https://github.com/damianvtran/local-operator/releases/tag/v0.62.34";
+
+/**
+ * A summary AT the producer's budget, so the truncated state is rendered.
+ *
+ * WHAT IT IS: the output of `summariseReleaseBody` over the published v0.62.33
+ * body's opening paragraph - 391 characters, cut at the 400-character budget on
+ * a word boundary and ending in the producer's own `...`. Taken from the real
+ * release for the reason the short lead above is, and pinned by
+ * `scripts/server-release-notes.test.mjs`, which runs the summariser over that
+ * same paragraph and fails if this string stops being what it produces.
+ *
+ * WHY IT IS A SECOND FIXTURE: the frame the operator's report produced carries a
+ * one-sentence lead, so nothing in the committed set showed what a summary at the
+ * limit looks like - the cut, the eight lines it occupies, or what the card does
+ * with them at the smallest window the app permits. Design review round 1
+ * measured the height the paragraph can add (up to 180px against a 540px cap at
+ * the 572px floor) and asked for exactly this frame; it is shot at 900x572.
+ */
+const SERVER_NOTES_AT_THE_LIMIT =
+	'Seven PRs in this window, and the theme is things that were quietly going wrong. A message sent while a job-result delivery turn holds the session lock is no longer silently dropped — the loss class where the sender got a 503 and a same-id retry was answered "already admitted" with nothing written. A bash or eval call that would print a registered secret value is refused before it runs...';
+
+/** The release page that summary's link opens. */
+const SERVER_NOTES_AT_THE_LIMIT_URL =
+	"https://github.com/damianvtran/local-operator/releases/tag/v0.62.33";
 
 /*
  * THE SENTENCE MAIN COMPOSES FOR THIS STATE, not a paraphrase of it (design
@@ -294,19 +351,15 @@ const mockUpdaterApi = () => {
 			 */
 			if (
 				window.triggerBackendUpdateRefusedBusy ||
-				window.triggerBackendUpdateRefusedUnreadable ||
-				window.triggerBackendUpdateRefusedLanded
+				window.triggerBackendUpdateRefusedUnreadable
 			) {
 				const unreadable =
 					window.triggerBackendUpdateRefusedUnreadable === true;
-				const landed = window.triggerBackendUpdateRefusedLanded === true;
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({
 						message: unreadable
 							? DRAIN_REFUSAL_UNREADABLE_MESSAGE
-							: landed
-								? DRAIN_REFUSAL_LANDED_MESSAGE
-								: DRAIN_REFUSAL_BUSY_MESSAGE,
+							: DRAIN_REFUSAL_BUSY_MESSAGE,
 						phase: "update",
 						logPath: DRAIN_REFUSAL_LOG_PATH,
 						refusal: {
@@ -320,12 +373,6 @@ const mockUpdaterApi = () => {
 							waitedMs: 600_000,
 							command: DRAIN_REFUSAL_COMMAND,
 							credentialsRefused: unreadable,
-							/*
-							 * WHICH REFUSAL THIS IS (design round 2, D6): the install-less arm for the
-							 * busy and unreadable stories, the after-the-install arm for the landed one -
-							 * the panel's heading is keyed on it.
-							 */
-							installLanded: landed,
 						},
 					});
 				}
@@ -388,6 +435,17 @@ const mockUpdaterApi = () => {
 				sourceBuild?: boolean;
 				/** Whether the app owns the daemon it would restart, which decides the promise. */
 				restartable?: boolean;
+				/**
+				 * The build the server SERVING this app reports, when it differs from the
+				 * install - part of the shipped payload the offer's sentence reads.
+				 */
+				runningVersion?: string | null;
+				/** What changed, when the lookup could read the release. */
+				releaseNotes?: {
+					version: string;
+					summary: string;
+					url: string;
+				} | null;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -427,6 +485,26 @@ const mockUpdaterApi = () => {
 					sourceBuild: true,
 				});
 			}
+			/*
+			 * AND THE APP-OWNED MANAGED OFFER, standing (review round 1, U2): the
+			 * install is the app's own managed environment, the app started the daemon,
+			 * and the paragraph is the plan's own managed `remedy` verbatim - the sentence
+			 * no fixture carried, so the one press that publishes a generation and
+			 * restarts the daemon had no photograph anywhere.
+			 */
+			if (window.triggerBackendUpdateOfferAppOwned) {
+				callback({
+					currentVersion: "0.56.10",
+					latestVersion: "0.56.12",
+					updateCommand: "pip install --upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "APP_BUNDLED_VENV",
+					restartable: true,
+					remedy: MANAGED_OFFER_REMEDY,
+					detail: "The app started this server itself (APP_BUNDLED_VENV).",
+					sourceBuild: false,
+				});
+			}
 			if (window.triggerBackendUpdateNonManaged) {
 				callback({
 					currentVersion: "0.54.17",
@@ -443,6 +521,63 @@ const mockUpdaterApi = () => {
 					detail:
 						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
 					sourceBuild: false,
+				});
+			}
+			/*
+			 * THE OFFER WITH THE RELEASE NOTES ON IT, which is the state this change
+			 * creates and the one the operator reported: a server installed outside the
+			 * app (`canManageUpdate` true here because the plan's own updater is what
+			 * runs, `restartable` false because the daemon serving the app was not
+			 * started by it), one version behind the release the lookup found notes
+			 * for. Every field but `releaseNotes` is the payload the other fixtures in
+			 * this block already carry - what is new is the paragraph, and it is the
+			 * producer's own shape: `{ version, summary, url }`, with the summary
+			 * already flattened and bounded on the main-process side.
+			 */
+			if (window.triggerBackendUpdateWithNotes) {
+				callback({
+					currentVersion: "0.62.33",
+					latestVersion: "0.62.34",
+					runningVersion: "0.62.33",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "GLOBAL_INSTALL",
+					restartable: false,
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
+					releaseNotes: {
+						version: "0.62.34",
+						summary: SERVER_NOTES_LEAD,
+						url: SERVER_NOTES_URL,
+					},
+				});
+			}
+			/*
+			 * THE SAME OFFER CARRYING A SUMMARY AT THE PRODUCER'S BUDGET, so the cut
+			 * itself and the height it produces are photographed. Shot at the app's
+			 * minimum window (900x572, where the card's own cap is 540px), because the
+			 * paragraph's cost is only a question there - design review round 1
+			 * measured this fixture's lead at 71px against a floor with ~40px of slack
+			 * on the taller arms.
+			 */
+			if (window.triggerBackendUpdateWithLongNotes) {
+				callback({
+					currentVersion: "0.62.32",
+					latestVersion: "0.62.33",
+					runningVersion: "0.62.32",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "GLOBAL_INSTALL",
+					restartable: false,
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
+					releaseNotes: {
+						version: "0.62.33",
+						summary: SERVER_NOTES_AT_THE_LIMIT,
+						url: SERVER_NOTES_AT_THE_LIMIT_URL,
+					},
 				});
 			}
 			return () => {};
@@ -957,7 +1092,6 @@ declare global {
 		triggerBackendUpdateFailedOrphan?: boolean;
 		triggerBackendUpdateRefusedBusy?: boolean;
 		triggerBackendUpdateRefusedUnreadable?: boolean;
-		triggerBackendUpdateRefusedLanded?: boolean;
 		triggerBackendUpdateSourceBuild?: boolean;
 		triggerBackendUpdateSourceBuildAdopted?: boolean;
 		triggerBackendUpdateSourceBuildInFlight?: boolean;
@@ -1002,6 +1136,14 @@ declare global {
 			restartable?: boolean;
 			appOwnedEnvironment?: boolean;
 			serverDidNotComeBack?: boolean;
+			/**
+			 * The completion's fleet count (2026-09-29): sessions still on the old build
+			 * when the attempt finished, `null` when the producer could not measure it.
+			 * The success toast's second line is derived from it, and its absence reads
+			 * as null, so the stories that drive the completion carry the field the
+			 * shipped payload carries.
+			 */
+			sessionsOnOldBuild?: number | null;
 		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
@@ -1017,6 +1159,28 @@ declare global {
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
 		triggerBackendUpdateNonManaged?: boolean;
+		/**
+		 * Raise the managed offer with the release notes the lookup found.
+		 *
+		 * Its own flag rather than a field on an existing fixture, because every
+		 * other server-offer payload in this file is a machine that could NOT read
+		 * them (the ordinary offline/blocked case, which the panel renders without
+		 * the paragraph), and repainting those frames to add one would tell a reader
+		 * the app always has notes - which is not a state it can promise.
+		 */
+		triggerBackendUpdateWithNotes?: boolean;
+		/** The same offer with a summary AT the producer's budget, shot at the floor. */
+		triggerBackendUpdateWithLongNotes?: boolean;
+		/**
+		 * Raise the app-owned managed offer, standing (review round 1, U2).
+		 *
+		 * Its own flag for the reason the notes flags above have theirs: the press
+		 * stories render the fallback sentence for the ~20 ms before their automatic
+		 * click, so only a STANDING offer can be photographed - and no other fixture
+		 * carries this arm's managed `remedy`, the sentence the operator's own press
+		 * reads.
+		 */
+		triggerBackendUpdateOfferAppOwned?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
@@ -1077,6 +1241,10 @@ const meta = {
 					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
+				window.triggerBackendUpdateWithNotes =
+					context.parameters.triggerBackendUpdateWithNotes;
+				window.triggerBackendUpdateWithLongNotes =
+					context.parameters.triggerBackendUpdateWithLongNotes;
 				window.triggerInstallProgress =
 					context.parameters.triggerInstallProgress;
 				window.triggerInstallSucceeded =
@@ -1095,6 +1263,8 @@ const meta = {
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
 				context.parameters.triggerBackendUpdateNonManaged,
+				context.parameters.triggerBackendUpdateWithNotes,
+				context.parameters.triggerBackendUpdateWithLongNotes,
 				context.parameters.triggerInstallProgress,
 				context.parameters.triggerInstallSucceeded,
 			]);
@@ -1141,61 +1311,24 @@ export const Default: Story = {
 
 /**
  * Shows the component when it's checking for updates.
+ *
+ * THE SHIPPED COMPONENT, not a fork of its markup (review U16's rule): the mount
+ * check is held open by an override installed in the RENDER pass rather than in
+ * an effect, because effects run child-first - a wrapper effect would land after
+ * the component's own mount check had already fired against the bridge's
+ * resolving stub. The delay is narrowed so the still-working line (UX U1) is on
+ * screen in the frame.
  */
+function HeldCheck() {
+	window.api.updater.checkForUpdates = () => new Promise<never>(() => {});
+	return <UpdateNotification autoCheck={true} slowWaitHintMs={1} />;
+}
+
 export const Checking: Story = {
 	args: {
 		autoCheck: false,
 	},
-	parameters: {
-		checking: true,
-	},
-	render: () => {
-		// Create a component that forces the checking state to be true
-		const CheckingComponent = () => {
-			// Use useState to directly control the checking state
-			const [isChecking, setIsChecking] = useState(true);
-
-			// Override the checkForUpdates function to never resolve
-			useEffect(() => {
-				// Replace with a function that never resolves
-				window.api.updater.checkForUpdates = async () => {
-					// Set checking state directly
-					setIsChecking(true);
-					// Return a promise that never resolves to keep checking state true
-					return new Promise<never>(() => {});
-				};
-
-				// Call checkForUpdates immediately
-				window.api.updater.checkForUpdates();
-
-				// Cleanup function that doesn't actually clean up
-				// to maintain the state for the story
-				return () => {
-					// No cleanup needed - we want to maintain the state for stories
-				};
-			}, []);
-
-			// If checking, render the checking UI directly
-			if (isChecking) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">Checking for updates</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							Please wait while we check for available updates...
-						</p>
-						<ProgressContainer>
-							<Progress />
-						</ProgressContainer>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback, should never reach here
-			return <UpdateNotification autoCheck={true} />;
-		};
-
-		return <CheckingComponent />;
-	},
+	render: () => <HeldCheck />,
 };
 
 /**
@@ -1294,7 +1427,69 @@ export const UpdateAvailable: Story = {
 
 /**
  * Shows the notification when an update is being downloaded, with progress indication.
+ *
+ * THE SHIPPED COMPONENT, not a fork (review U16's rule), held in the state the
+ * still-working line (UX U1) is about: the bridge's `downloadUpdate` never
+ * settles, so the wrapper presses the real "Download update" control once it is
+ * mounted and the offer keeps its controls hidden while the download runs.
  */
+/**
+ * Hold the shipped component's offer in its DOWNLOADING state.
+ *
+ * THE READY GATE IS THE FIX (design D2, remediation round 2): the decorator's
+ * `mockUpdaterApi()` installs the bridge in ITS effect, which runs after this
+ * component's, so a component mounted immediately subscribes to the module-state
+ * stub and the offer never fires - which is the one render of delay `Triggered`
+ * above exists for. Mount after ready, then press the real control against a
+ * download the bridge holds open.
+ */
+function HeldDownload() {
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		/*
+		 * The flags and the deferred-updates store are settled BEFORE the post-ready
+		 * mount: the store is localStorage-backed, and a record left in this browser
+		 * would let `shouldShowUpdate` suppress the offer - photographing an empty
+		 * frame instead of the panel the line lives on.
+		 */
+		window.triggerUpdateAvailable = true;
+		window.triggerUpdateProgress = true;
+		window.localStorage.removeItem("deferred-updates-storage");
+		useDeferredUpdatesStore.getState().clearDeferredUpdate(UpdateType.UI);
+		setReady(true);
+	}, []);
+	useEffect(() => {
+		if (!ready) return;
+		/*
+		 * PRESS WHEN THE CONTROL EXISTS (design D5, remediation round 3): a single
+		 * one-shot timer assumed the offer was already painted, and a cold load that
+		 * parked on the offer found no control - silently photographing the offer
+		 * instead of the state under test. Retry on a short bounded loop; the moment
+		 * the press lands the render is identical to the one-shot's, because it is
+		 * the same click on the same button. The download override is (re-)applied
+		 * immediately before the press, the one moment that runs after the
+		 * decorator's `mockUpdaterApi()` has installed the bridge.
+		 */
+		const deadline = Date.now() + 2000;
+		const timer = setInterval(() => {
+			const control = Array.from(document.querySelectorAll("button")).find(
+				(button) => button.textContent === "Download update",
+			);
+			if (control) {
+				window.api.updater.downloadUpdate = () => new Promise<never>(() => {});
+				control.click();
+				clearInterval(timer);
+				return;
+			}
+			if (Date.now() > deadline) clearInterval(timer);
+		}, 50);
+		return () => clearInterval(timer);
+	}, [ready]);
+	return ready ? (
+		<UpdateNotification autoCheck={false} slowWaitHintMs={1} />
+	) : null;
+}
+
 export const Downloading: Story = {
 	args: {
 		autoCheck: false,
@@ -1303,70 +1498,7 @@ export const Downloading: Story = {
 		triggerUpdateAvailable: true,
 		triggerUpdateProgress: true,
 	},
-	render: () => {
-		// Create a component that directly renders the downloading state
-		const DownloadingComponent = () => {
-			// Use state to force the component to render with downloading state
-			const [available, setAvailable] = useState(true);
-			const [downloading, setDownloading] = useState(true);
-			const [info, setInfo] = useState(mockUpdateInfo);
-			const [progress] = useState<ProgressInfo>({
-				percent: 45,
-				transferred: 45 * 1024 * 10,
-				total: 1024 * 1024,
-				bytesPerSecond: 1024 * 50,
-				delta: 45 * 1024,
-			});
-
-			useEffect(() => {
-				// Set the state immediately
-				setAvailable(true);
-				setDownloading(true);
-				setInfo(mockUpdateInfo);
-
-				// Set the trigger flags
-				window.triggerUpdateAvailable = true;
-				window.triggerUpdateProgress = true;
-			}, []);
-
-			// If update is available and downloading, render the UI directly
-			if (available && downloading && info) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">Update available</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							Version {info.version} is available. You are currently using
-							version {process.env.npm_package_version || "1.0.0"}.
-						</p>
-						{info.releaseNotes && (
-							<div className="mt-2 text-body text-ink-muted">
-								Release notes:{" "}
-								{typeof info.releaseNotes === "string"
-									? info.releaseNotes
-									: "See release notes on GitHub"}
-							</div>
-						)}
-
-						<ProgressContainer>
-							<p className="text-body-sm text-ink-muted">
-								Downloading: {Math.round(progress.percent)}%
-							</p>
-							<Progress value={progress.percent} className="mt-2" />
-							<p className="mt-1 text-mono-sm text-ink-dim">
-								{Math.round(progress.transferred / 1024)} KB of{" "}
-								{Math.round(progress.total / 1024)} KB
-							</p>
-						</ProgressContainer>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <DownloadingComponent />;
-	},
+	render: () => <HeldDownload />,
 };
 
 /**
@@ -1525,7 +1657,10 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateSourceBuildInFlight"
 	| "triggerBackendUpdateSourceBuildFailed"
 	| "triggerBackendUpdateFailedOrphan"
-	| "triggerBackendUpdateManualRequiredAppOwned";
+	| "triggerBackendUpdateManualRequiredAppOwned"
+	| "triggerBackendUpdateWithNotes"
+	| "triggerBackendUpdateWithLongNotes"
+	| "triggerBackendUpdateOfferAppOwned";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -1677,6 +1812,48 @@ export const BackendUpdateNonManaged: Story = {
 	parameters: { triggerBackendUpdateNonManaged: true },
 	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
 };
+
+/**
+ * WHAT CHANGED, on the card that asks the reader to change something.
+ *
+ * The state the operator reported, and the one this change is about: a server
+ * one version behind the published release, offered on a card that until now
+ * named two numbers and a benefit sentence and nothing about the change itself -
+ * while the app's OWN update card had carried its release notes since it was
+ * written. Both the version pair (0.62.33 serving, 0.62.34 published) and the
+ * sentence under "Release notes:" are real: the lead is the actual body of that
+ * release, and `scripts/server-release-notes.test.mjs` runs the summariser over
+ * that body and fails if the rule stops producing this string.
+ *
+ * WHY IT IS ITS OWN STORY rather than notes added to the fixtures above. Every
+ * other server-offer payload here is a machine that could NOT read the release -
+ * GitHub unreachable, the tag absent - which is a state that still exists and
+ * still renders (the paragraph simply is not there). Repainting those frames to
+ * carry notes would claim the app always has them, and would spend a re-shoot of
+ * a dozen existing directories proving a sentence about a different state.
+ */
+export const BackendUpdateWithReleaseNotes: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateWithNotes: true },
+	render: () => <Triggered flag="triggerBackendUpdateWithNotes" />,
+};
+
+/**
+ * THE SUMMARY AT ITS LIMIT, ON THE CARD AT ITS SMALLEST WINDOW.
+ *
+ * Two states this change creates that the frame above cannot show, in one set:
+ * the producer's 400-character cut (a word-boundary truncation ending in `...`,
+ * eight lines rather than three) and the height it costs at the 572px floor the
+ * app permits, where the card's own cap is 540px and the classification line is
+ * what goes into the scroll container. Design review round 1 asked for both, and
+ * measured the alternative - a frame at 900px of slack - as evidence about the
+ * one case where the paragraph is free.
+ */
+export const BackendUpdateWithLongReleaseNotes: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateWithLongNotes: true },
+	render: () => <Triggered flag="triggerBackendUpdateWithLongNotes" />,
+};
 /**
  * THE APP-OWNED ARM OF THE SKEW, and the state this change is about.
  *
@@ -1796,6 +1973,69 @@ export const ServerBehindAppOwnedServerDown: Story = {
 };
 
 /**
+ * THE COMPLETION'S FLEET LINE, in the four readings the producer can send (design
+ * §2a/§4a, 2026-09-29): the operator's instruction - "we can just communicate in
+ * the popup that N sessions are still running old versions but will get the
+ * updates when they next stop or idle" - rendered where the completion already
+ * lands. These states exist only as a COMPLETION, so the stories drive the
+ * producer's own payload (`restarted: true` with `sessionsOnOldBuild`), the same
+ * pattern `ServerBehindAppOwnedAfterRestart` uses above.
+ *
+ * A shutter must land inside the toast's own window: it self-closes at 6 s, or
+ * 8 s once it carries the second line (`update-notification.tsx`). The frames are
+ * the design round's to take, declared in `capture-evidence.mjs` with the claims
+ * they are evidence for.
+ */
+const BackendUpdateCompletedWithCount = ({
+	sessionsOnOldBuild,
+}: { sessionsOnOldBuild: number | null }) => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewCompletion = {
+			installVersion: "0.56.12",
+			runningVersion: "0.56.12",
+			restarted: true,
+			sessionsOnOldBuild,
+		};
+		window.triggerBackendUpdateCompleted = true;
+		setReady(true);
+	}, [sessionsOnOldBuild]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+/** The plain success the press earns when nothing is left behind (N = 0). */
+export const BackendUpdateCompleted: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={0} />,
+};
+
+/** One session is still on the old build; the notice names it in the singular. */
+export const BackendUpdateCompletedOneSession: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={1} />,
+};
+
+/**
+ * Three sessions still on the old build - the operator's arm: the notice's second
+ * line says so, and that they will move onto the new build when they next stop or
+ * go idle.
+ */
+export const BackendUpdateCompletedSessionsBehind: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={3} />,
+};
+
+/**
+ * The degraded arm: the count could not be measured (no readable fleet snapshot),
+ * so the notice keeps the mechanic and drops the number rather than inventing a
+ * zero; `null` is what an absent field reads as too.
+ */
+export const BackendUpdateCompletedCountUnreadable: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={null} />,
+};
+
+/**
  * The panel driven the way the user drives it: raise the offer, press its own
  * "Update server", and let the main process answer.
  *
@@ -1819,16 +2059,12 @@ const PressUpdateServer = ({
 	 * sentence and provenance line while the state - a press, and the panel that answers it - is
 	 * the same one; `orphan` is the default offer whose failure is the timeout that left something
 	 * running, so the state differs only in the sentence the main process sends;
-	 * `refused-unreadable` is the refusal arm where nothing could be read at all and
-	 * `refused-landed` the one where the install had already landed (the default refusal is
-	 * the measured busy fleet, before anything was installed).
+	 * `refused-unreadable` is the refusal arm where nothing could be read at all (the default
+	 * refusal is the measured busy fleet, before anything was installed, which is the only
+	 * refusal the shipped producer can still send - the after-the-install arm went with the
+	 * restart-leg drains, 2026-09-29).
 	 */
-	variant?:
-		| "default"
-		| "source-build"
-		| "orphan"
-		| "refused-unreadable"
-		| "refused-landed";
+	variant?: "default" | "source-build" | "orphan" | "refused-unreadable";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
@@ -1861,9 +2097,7 @@ const PressUpdateServer = ({
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateRefusedUnreadable =
 				variant === "refused-unreadable";
-			window.triggerBackendUpdateRefusedBusy =
-				variant !== "refused-unreadable" && variant !== "refused-landed";
-			window.triggerBackendUpdateRefusedLanded = variant === "refused-landed";
+			window.triggerBackendUpdateRefusedBusy = variant !== "refused-unreadable";
 		} else {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateInFlight = outcome === "inflight";
@@ -1881,13 +2115,12 @@ const PressUpdateServer = ({
 				? "Updating server"
 				: outcome === "refused"
 					? /*
-						 * THE HEADING IS THE ARM (design round 2, D6): the refusal's two arms are two
-						 * different events about the same ten-minute wait, so the story waits for the
-						 * heading it is a story about rather than for one arm's.
+						 * THE HEADING IS FIXED (design round 2, D6; simplified 2026-09-29). It used to
+						 * wait on the arm's heading - the after-the-install refusal said "The update
+						 * didn't finish restarting" - and that arm went with the restart-leg drains,
+						 * so there is one refusal heading to wait for now.
 						 */
-						variant === "refused-landed"
-						? "The update didn't finish restarting"
-						: "The update didn't start"
+						"The update didn't start"
 					: "The server update didn't finish";
 		const settle = async () => {
 			/* The offer is raised by the mount effect, so the control exists only
@@ -1919,16 +2152,13 @@ const PressUpdateServer = ({
 			delete document.documentElement.dataset.capturePending;
 		};
 		/*
-		 * `variant` IS A DEPENDENCY BECAUSE THE EFFECT READS IT (round 4). The D6 arm
-		 * above made `expected` depend on which refusal arm this story is, and the deps
-		 * list still named only `ready`/`outcome` - so the hook read a value it did not
-		 * declare, which is exactly what `lint/correctness/useExhaustiveDependencies`
-		 * reports. Nothing local could see it: `pnpm lint` is red on this branch and on
-		 * `main` for an unrelated pre-existing error, and the CI job that reports the
-		 * exit code never ran, because GitHub creates no workflow run for a conflicting
-		 * head. Caught on the first run the rebase made possible.
+		 * `variant` WAS A DEPENDENCY BECAUSE THE EFFECT READ IT (round 4): the D6 arm made
+		 * `expected` depend on which refusal arm this story is. That arm went with the
+		 * restart-leg drains (2026-09-29) and the effect reads only `ready`/`outcome`
+		 * now, so the surplus dependency - itself a `useExhaustiveDependencies` error -
+		 * came off with it rather than being declared for a value nothing reads.
 		 */
-	}, [ready, outcome, variant]);
+	}, [ready, outcome]);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
 };
 
@@ -2037,6 +2267,12 @@ export const ErrorStateRetrying: Story = {
  * again, a download does not, so the sentence names the surface that owns the
  * retry - the update panel behind this alert - and the box offers no control. The
  * frame is the check on that rule, next to `ErrorState`'s, which does carry one.
+ *
+ * THE MESSAGE IS THE STALL'S OWN SHAPE (remediation round 1, D1): the watchdog's
+ * cancel rejects with `cancelled` - label-prefixed text carrying no machine mark,
+ * which the classifier used to hand back verbatim at reading weight, so the
+ * sentence below never rendered. This frame is the evidence for the fixed
+ * rendering: the stage's sentence, with the watchdog's word on the machine line.
  */
 export const ErrorStateDownload: Story = {
 	args: { autoCheck: false },
@@ -2044,7 +2280,7 @@ export const ErrorStateDownload: Story = {
 		<div className="h-screen bg-canvas">
 			<UpdateErrorAlert
 				open
-				message="Error downloading update: net::ERR_TIMED_OUT"
+				message="Error downloading update: cancelled"
 				onClose={() => {}}
 				onRetry={() => {}}
 			/>
@@ -2076,6 +2312,18 @@ export const BackendUpdateOfferSourceBuild: Story = {
 export const BackendUpdateOfferSourceBuildAdopted: Story = {
 	args: { autoCheck: false },
 	render: () => <Triggered flag="triggerBackendUpdateSourceBuildAdopted" />,
+};
+
+/**
+ * THE APP-OWNED MANAGED OFFER (review round 1, U2): the install is the app's own
+ * managed environment, the app started the daemon, so this press is the one that
+ * publishes a generation and restarts it - and the paragraph above `Update
+ * server` is the plan's own managed sentence, which no fixture carried before
+ * this round. Standing, so a shutter can land on it.
+ */
+export const BackendUpdateOfferAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateOfferAppOwned" />,
 };
 
 /**
@@ -2113,24 +2361,6 @@ export const BackendUpdateRefusedUnreadableFleet: Story = {
 	args: { autoCheck: false },
 	render: () => (
 		<PressUpdateServer outcome="refused" variant="refused-unreadable" />
-	),
-};
-
-/**
- * The refusal's third arm, and the one whose heading the round-2 design review had
- * to inject into the shipped component from outside the app: the press reached the
- * restart with the build already published, the fleet did not drain, and what was
- * held back is the BOUNCE rather than the install.
- *
- * The wait, the count and the sessions are the busy arm's; the fact this story exists
- * for is that "The update didn't start" is false here, and the sentence above the
- * heading says so in its own words - which is exactly the contradiction the frame
- * carried before the producer started sending the fact (design round 2, D6).
- */
-export const BackendUpdateRefusedLandedInstall: Story = {
-	args: { autoCheck: false },
-	render: () => (
-		<PressUpdateServer outcome="refused" variant="refused-landed" />
 	),
 };
 

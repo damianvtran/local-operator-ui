@@ -163,46 +163,106 @@ worst single-frame displacement across every reveal:  392px
 displaced frames:                                     5 of 724
 ```
 
-A 6608px reveal held the anchor at **0.00px**. For comparison, QA measured
-**6564px peak displacement, 9 of 9 insertions displaced, 0 recovered** on the
-previous head — so the worst case improved by roughly 17x and the typical case
-by far more.
+The 6608px reveal in trial 3 measured **0.00px**, but that single successful
+trial did not justify the README's earlier claim that every real insertion held
+at zero. Trials 1 and 4 in the same capture each grew the extent and ended with
+392px and 209px post-input frame steps. The earlier comparison against the
+previous head is omitted here: these results are not a valid every-insertion
+pass, so a relative-improvement claim would overstate what the measurements
+establish.
 
-**On the nonzero numbers in that column.** Every trial in which rows were
-actually inserted held the anchor at **0.00px**. The nonzero figures land on
-trials whose extent grew by 24px or not at all — that is, trials in which
-nothing was revealed and the movement is the reader's own wheel notch still
-arriving. An earlier version of this file listed a "209-392px residual" under
-open defects; two independent passes then reproduced the measurement and found
-the same split, with no displacement attributable to the app on any real
-insertion. There is no residual to inherit, and the paragraph that implied one
-has been removed rather than softened: a phantom bug in an evidence file costs
-the next reader a day.
+**The original zero-residual conclusion was incorrect.** The checked-in
+measurements above show `+392px` and `+209px` post-input frame changes on two
+trials with real extent growth (`+4076px` and `+4345px`); those cannot be
+classified as a no-reveal wheel tail. The trial whose anchor settled at 0px does
+not establish that the other insertion trials were held. A fresh browser run on
+`origin/main` reproduced a `100 -> 160` local reveal with `+6724px` extent and a
+`+24px` frame movement after the input stamp. The raw hook trace timestamps were rechecked before attributing that movement:
+input ended at `5294.50ms`; the first sample at `5308.00ms` had offset `+59.06px`
+with unchanged extent; at `6200.60ms` the sample changed to `+83.06px`,
+`scrollTop` was `-10342`, and extent had grown only `24px`; the 60-row reveal
+was observed at `6286.70ms` (`scrollHeight 17532`). A `useLayoutEffect` setter
+write at `6278.90ms` requested `-10342` from `-17042`. **These timestamps do
+not prove the earlier proposed cause** (a subsequent coalesced wheel event or a
+ResizeObserver): neither event appears in this trace, and the large reveal was
+observed after the 24px change. The narrower recorded result is a 24px maximum
+post-input frame delta followed by a reveal/correction-path write, without enough
+isolated cause instrumentation to attribute all movement to the reveal. A
+separate direct sign check on the real `column-reverse` DOM found that a `-113px`
+`scrollTop` change moved the held row `+113px`; `+= drift` remains consistent
+with that measurement.
 
-### What the fix actually was
+This fix invalidates any hold on each trusted user input. It does not rebase
+while momentum continues: the browser retains ownership of `scrollTop`, and only
+a later reveal action may arm a new hold at its own synchronous dispatch-time
+viewport. When no subsequent user input occurs, a layout-only resize remains
+eligible for correction under the existing `0.5px` epsilon. The measurable
+acceptance target is at most `1 CSS px` anchor movement after native input/momentum
+has ended, with no programmatic write to `scrollTop` during active input.
 
-Three defects, all found by driving the app and none by the unit suite:
+**The captured runs are partial evidence, not proof of that target.** They use
+the repository's headless CDP `mouseWheel` helper, which dispatches synthetic
+wheel input rather than a hardware trackpad stream with native momentum. The
+checked-in `origin/main` baseline reports 100→160 rows, +6177px extent, a 1617px
+maximum post-input frame delta, and −1593px net drift in its isolated-reveal
+scenario; its trials and frames are in `after-measurements.json`. A later
+260-row diagnostic trace reported +6724px extent, 60 more mounted rows, and a
+24px maximum post-input frame delta. The available trace shows one 24px
+extent/offset change before the 6724px row-count reveal, then the reveal and a
+correction-path write; it does not provide enough isolated causal instrumentation
+to attribute or exclude all measured movement. The 60-row no-growth control was
+stable across 180 sampled frames after its first sample, but is not a matched
+momentum-tail control. **Native trackpad momentum and the ≤1px post-momentum
+tolerance remain unverified** and require independent QA using a faithful
+native-momentum path.
 
-1. **The correction's sign was inverted.** `column-reverse` inverts the axis
-   twice and the two do not cancel. Measured directly on the real scroller:
+### Reproducing the recorded main/feature comparison
 
-   ```
-   scrollTop  0 -> -100   (more negative)
-   row offset  -2604.45 -> -2504.45   (+100: content moved DOWN)
-   ```
+The repository's supported browser harness compares the current main branch's
+paging policy/hooks to the working tree using one seeded session and fixture.
+Run it against an isolated backend and the renderer harness described above:
 
-   So a row pushed down by insertions is restored by moving `scrollTop` *toward*
-   zero. Written `-=`, every correction doubled the error it was meant to remove.
-2. **The correction measured the wrong row.** It re-sampled whatever was topmost
-   instead of the row it was holding; insertions change which row that is, so
-   the id comparison failed and the correction stood down exactly when needed.
-3. **The correction ran after paint.** The `ResizeObserver` is delivered
-   post-layout, so the frame that mounted the rows was painted uncorrected — a
-   6338px single-frame lurch with a **net drift of 0.00px**, which is the
-   signature of a correction one frame late rather than absent. A net-zero jump
-   is still a jump. It is a `useLayoutEffect` on the *mounted* row count now
-   (the total does not change on a local widen, which is exactly the reveal that
-   displaces the reader furthest).
+```sh
+node scripts/paging-evidence-arms.mjs before origin/main -- \
+  http://localhost:5173 <seeded-session-id> <scratch-output>/before
+node scripts/paging-evidence-arms.mjs after -- \
+  http://localhost:5173 <seeded-session-id> <scratch-output>/after
+```
+
+The `before` arm temporarily swaps only the two paging modules and restores
+their bytes in `finally`; each `arm-record.json` records the swap/restoration
+hashes. The last checked-in baseline (commit `16e772bd9`) is historical: its
+isolated-reveal summary is two trials, one observed reveal, `1617px` worst frame
+delta, and `1593px` worst net drift. The later diagnostic capture on that same
+old feature worktree measured `100 -> 160` mounted rows, `+6724px` extent, and
+`24px` maximum post-input frame delta. It is not a paired measurement on the
+current PR branch, so it cannot establish a before/after improvement. Existing
+frames under `before-04-after-isolated-reveals/` and
+`after-04-after-isolated-reveals/` are screenshots of the respective historic
+sets and not freshly captured evidence for this branch. Existing conversation
+switch states under `docs/evidence/session-switch/` likewise do not prove a
+scrolled-session switch or absence of prior rows flashing; this change does not
+alter that code path.
+
+### The current code path and what this round changes
+
+The main-branch implementation already measures the held row by stable record id,
+corrects before paint on mounted-row-count changes, and watches element extent
+with `ResizeObserver` for late layout changes. This round changes one contract:
+a sample captured by a reveal is valid only until new reader input arrives. The
+input handler increments a revision and clears the sample immediately, so later
+row/extent observations cannot write `scrollTop` back toward a pre-gesture
+viewport. The helper `anchorDriftForCurrentInput` makes that gating decision
+independently testable: newer input returns no correction; layout-only growth
+with the same revision still computes a drift.
+
+The earlier three-defect account below this heading is removed: its alleged
+coalesced wheel, observer write, and timing were not established by the available
+trace. The current baseline has real nonzero displacement (recorded above), but
+the exact causal ordering still needs a more discriminating browser trace and a
+hardware-momentum check. The existing session-switch implementation and evidence
+are unchanged by this paging diff; there is no new claim here that a scrolled
+conversation switch has been browser-captured.
 
 ### Clause L — a conversation that cannot scroll
 
@@ -293,6 +353,27 @@ node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id> \
 backend pages and needs at least two of them to reach the start. The script
 fails loudly if the onboarding modal is up, if the transcript does not mount, or
 if the aim point falls outside the scroller.
+
+The `review` and `switch` capture modes need extra setup:
+
+```bash
+# review mode: one conversation, two arms (later-input / layout-only).
+node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id> \
+  docs/evidence/transcript-scroll-paging review
+
+# switch mode: TWO conversations, each seeded with its OWN title so the frames
+# are self-identifying (D2), and the target passed in SCROLL_PAGING_SWITCH_TARGET.
+node scripts/seed-paging-session.mjs /tmp/lop-paging 260 "Scroll paging fixture A"
+node scripts/seed-paging-session.mjs /tmp/lop-paging 260 "Scroll paging fixture B"
+SCROLL_PAGING_SWITCH_TARGET=<session-id-B> \
+  node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id-A> \
+  docs/evidence/transcript-scroll-paging switch
+```
+
+The switch run reads each conversation's whole durable row set back over
+`sessions.history` before classifying any frame (U2), so it needs the same live
+backend the frames are taken against; it refuses if the two sets are not
+disjoint or if either conversation returns no rows.
 
 For the short-content case (clause L), seed ~130 rows and drive a window taller
 than the resulting content — the transcript must have no overflow at all for the
@@ -683,6 +764,180 @@ only frames here whose provenance is not this round's two runs.
   backend clears it (measured twice tonight, once per arm). This is the same
   leak recorded under "Still open" below as the sustained-paging degradation, and
   it is not on this diff.
+
+## Round-1 remediation — the stale-anchor hold and the scrolled switch
+
+The round-1 findings asked for two measurements this set did not carry: whether a
+later reader input invalidates an active anchor hold without a stale `scrollTop`
+write during REAL layout growth (QA Q1), and what a scrolled conversation switch
+puts on screen (QA Q2, UX round 1). Both are now measured by the same rig, in two
+new modes, and the frames are in this directory.
+
+### `review` mode — the hold, both arms
+
+The arm runs the SAME procedure twice, differing only in whether a real wheel
+input lands while the page is held:
+
+1. Bring the reader to the slot's `Load earlier messages` affordance with the
+   probe-driven cadence below (rows 100, no rows held back, pages still left), and
+   install a `scrollTop` setter probe whose liveness is proven by a scoped write
+   of our own.
+2. Click the real affordance. The wrapper in `openHoldCode` delays the next
+   `sessions.history` request at the browser boundary, so control returns with the
+   request in flight and the anchor armed. No request or response is faked: the
+   real backend still answers, and a real `sessions.history` 200 was observed on
+   both arms.
+3. In the **later-input arm**, send one real wheel notch and stamp the moment.
+   In the **layout-only arm**, send nothing.
+4. Release the held page. A durable page lands (rows 100 → 160, extent grown by
+   ~6.5KB on both arms) and the held row's viewport offset is sampled every frame.
+
+```
+later-input arm   rows 100 -> 160   extent +6724px   max post-input frame delta 0.00px   0 programmatic writes
+layout-only arm   rows 100 -> 160   extent +6724px   max post-input frame delta 0.00px   0 programmatic writes
+```
+
+**What the frames show, and what the numbers do not.** `review-later-input-01-hold-armed`
+and `review-later-input-03-after-real-page-landing` are the same row at the same
+place across the landing; the reader's input steps the held row by `-180.0`
+(`review-measurements.json` gives `anchorAtHold.offset = 7.6875` and
+`anchorAfter.offset = -172.31`, a step of `-180.0`) and it then holds for the
+whole reveal. The `maximumPostInputFrameDeltaPx` of `0.00` is the same fact in
+numbers: across the frames after the input stamp, the held row does not move a
+sub-pixel.
+
+**What `maximumPostInputFrameDeltaPx` measures, and what it excludes.** The
+value is the largest absolute change in the held row's viewport offset between
+CONSECUTIVE entries of the arm's `frameTimeline` that carry the held row id and
+sit at or after the input stamp — `laterInputArm.postInputFrames` is the count of
+those entries — and it is computed over that slice `.slice(1)`, so the
+reader's own first post-input frame is EXCLUDED. That first frame is the step
+itself (here `-180.0`px); the metric is the movement AFTER the step, so `0.00`
+means "the row did not move again after the reader's input landed", not "the row
+never moved". A reader who takes `0.00` as the total displacement would be
+reading the exclusion backwards, which is why the definition is stated here
+rather than left implicit in the JSON.
+
+**The honest limit, stated rather than implied.** On this scroller a durable
+page's rows mount BELOW the held row and the browser's own `overflow-anchor`
+(`column-reverse`, bottom origin) anchors the row in place, so the hook's
+`anchorDrift` computes zero and it does not write `scrollTop` AT ALL on this path
+— which is why BOTH arms record zero writes during the hold, not only the
+later-input arm. The write probe is therefore proven live by an explicit scoped
+write (`probeLiveness.sawsTwo`), not by expecting the hook to write; and on this
+surface the write count cannot separate the arms — which is why the write count
+is not offered as one. A future run on a path where the hook DOES correct (a
+height-changing row above the anchor) would turn the write count into the
+discriminating signal; this
+surface does not, and the README says so rather than reading a zero as proof.
+
+**The layout-only arm is not a discriminating control on this surface (QA round
+2, Q-4).** The two arms record the SAME `0` programmatic writes and the same
+`0.00` post-input delta, so neither the write count nor the per-frame held-row
+delta separates them, and `browserArmsSeparateOn` is `null` on this surface for
+exactly that reason. (The two
+arms' settled offsets differ — `-172.31` against `-90.5` — but only because the
+reader's own notch stepped the later-input arm's row; that is the reader's
+motion, not a correction the app made, so it is not a discriminating reading.)
+Constructing a control that would discriminate needs a row shape
+where `overflow-anchor` does not absorb the landing (a row whose height changes
+ABOVE the anchor), which is a new capture rather than a re-read — and the
+justification is recorded in `review-measurements.json`'s
+`summary.discrimination` block rather than only here. **The arm that DOES
+discriminate is `scripts/transcript-paging-hook.test.mjs`:** it mounts the
+production `useScrollPaging` hook against a JSDOM scroller whose geometry is
+controlled, and asserts that a layout-only growth IS corrected while an
+after-input commit is NOT — the same two arms, separated by the correction the
+browser arms cannot reach. That test, not the browser null, is the proof of the
+correction path.
+
+### `switch` mode — the scrolled conversation switch
+
+Two conversations are seeded, each with its OWN visible title so a reader of the
+frames alone can tell them apart; the reader is scrolled deep into A, then B is
+clicked and A is clicked back. The DOM, the store's own `activeSessionId`, and the
+row ids are sampled every frame across each switch.
+
+```
+scrolled in A   rows 100  scrollTop -6480  activeSessionId b708b843a001  firstRow [row 0160]
+settled in B    rows  60  scrollTop     0  activeSessionId 5db6ec2ab5f3  firstRow [row 0200]
+back in A       rows  60  scrollTop     0  activeSessionId b708b843a001  firstRow [row 0200]
+```
+
+- **Offset is not carried across the switch:** `settledBScrollTop` is `0` against
+  A's `-6480`. The scrolled state belongs to A and is not imposed on B.
+- **No stale-content frame, read against the conversations' OWN rows (UX round
+  2, U2).** Each frame is classified by whether its first painted row id belongs
+  to A's known row set or B's, and both sets are read from the two conversations'
+  own `sessions.history` pages — NOT from the frames under test. The scrolled A
+  top row that round 2 could not see is now in the set the B-labelled frames are
+  judged against, so "B's identity over A's scrolled rows" is a classification
+  the reading can actually produce. `switch-measurements.json`'s
+  `frames.classifier` reports the two set sizes, the scrolled top row id and
+  whether it is in A's set (`scrolledTopRowIsInA: true`), and the run REFUSES to
+  capture unless that membership holds — so a future re-capture whose deep scroll
+  landed on a row outside A's durable set fails the run instead of keeping a zero
+  that no longer rests on a discriminating set. The run also refuses if the sets
+  are not disjoint, because then a frame's first row could identify nothing.
+  What a reader can audit from the artifact is those facts and the per-frame
+  timeline behind them; the full id sets are not published, so the classification
+  is not reproducible from the JSON alone. The classifier is SYMMETRIC — a frame
+  is stale when its identity and its painted rows disagree in EITHER direction,
+  not only the round-2 direction.
+- **The sampling covers every content change (UX round 2, U1).** Round 2's
+  timeline had two multi-frame gaps (~60ms and ~73ms) sitting exactly on the
+  content transitions, so a one- or two-frame stale flash could fall inside a gap
+  and the count would still read `0`. The round-3 sampler is driven by a
+  `requestAnimationFrame` tick, a 4ms interval, **and a `MutationObserver` over
+  the whole document** — a stale frame IS a DOM change, and a DOM change records
+  a sample before the next paint, so no DOM state can exist between two samples.
+  The run ASSERTS the observer was actually driving the recorder
+  (`verdict.mutationsObserved` > 0) rather than asserting a wall-clock gap bound:
+  a time bound would fail on the host's own main-thread stalls, which is exactly
+  what the observer makes irrelevant. `frames.maxInterFrameGapMs` and
+  `frames.transitionGaps` are still recorded as the description of where the
+  thread stalled, but they are a record, not a gate. (What makes the instrument
+  discriminating rather than the clock is the observer, not a wall-clock bound:
+  the round-2 zero was an artefact of the gap, not of the switch.)
+- **The frames** `switch-01-scrolled-in-a`, `switch-02-settled-in-b`,
+  `switch-03-back-in-a` are the three settled states, and each names the
+  conversation it shows in BOTH the header and the highlighted sidebar row (the
+  two seeded titles differ — `Scroll paging fixture A` and `Scroll paging fixture
+  B`), so a reader of the frames alone can tell which session is on screen. The
+  first shows A scrolled mid-history (`[row 0195]`–`[row 0200]`), the second B at
+  its own arrival state (`[row 0255]`–`[row 0259]`), the third A back at its own
+  arrival state.
+
+**What a frame still cannot prove about the round trip.** `switch-03-back-in-a`
+shows A's own content on return, but NOT A's pre-switch SCROLL POSITION
+surviving the round trip: the settled state is A's arrival state, not the deep
+position `switch-01` was taken in. This harness measures whether stale content
+paints during the switch and whether the offset is carried INTO B; it does not
+measure whether A's scroll offset is restored when the reader comes back, and it
+claims nothing about that.
+
+### The two frames this round's design finding asked for (D1)
+
+`review-later-input-02-after-reader-input-before-growth` is the mandated
+fresh consecutive frame: the same interaction as `-01` but taken AFTER the real
+reader input and BEFORE the page lands — the reader's one notch is visible and no
+content has been inserted yet. Paired with `-03` (the page landed, the same row
+at the same offset), the two stills are a same-interaction before/after of the
+exact sequence D1 asked for, and `review-measurements.json`'s `frameTimeline`
+is the geometry behind them (every frame's `offset`, `scrollTop`, `extent` and
+`rows`).
+
+### What this round still does NOT prove
+
+- **Native trackpad momentum.** The momentum tail in round 2's main arm is shaped
+  like a trackpad's (time-bounded decay at frame cadence) but is still synthesized
+  by CDP `Input.dispatchMouseEvent`. `GESTURE_GAP_MS = 400` remains justified by
+  argument, not measured against hardware.
+- **The hook's correction PATH.** As above: on the durable-page path the browser
+  anchors the row, so this run cannot separate "the hook stood down" from "the
+  browser never needed it". The correction path is exercised by
+  `scripts/transcript-paging-hook.test.mjs`, which mounts the production hook and
+  drives the real listener and layout effect with controlled geometry.
 
 ## Still open
 

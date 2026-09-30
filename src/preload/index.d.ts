@@ -13,6 +13,16 @@ import type {
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
+import type {
+	MiniViewDismissReason,
+	MiniViewRegistrationState,
+	MiniViewSummonedPayload,
+} from "../shared/mini-view";
+import type {
+	WindowChromeColors,
+	WindowChromeFacts,
+	WindowChromeState,
+} from "../shared/window-chrome";
 import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
@@ -32,7 +42,53 @@ declare global {
 		 */
 		__loDevDriver?: DevDriverBridge;
 		api: {
+			/**
+			 * Whether THIS launch may report to PostHog.
+			 *
+			 * From `window`'s `additionalArguments` via the preload, never from a
+			 * `VITE_*` value: those are inlined at build time, so a build made with
+			 * the project key carries it whatever the launch says. `false` in every
+			 * launch that did not resolve to telemetry on — including one whose
+			 * switch was set to a value the app does not understand, and any host
+			 * that is not an app window (see `src/main/telemetry-launch.ts`).
+			 */
+			telemetryEnabled: boolean;
+			/**
+			 * The window chrome, the same three calls the preload exposes.
+			 *
+			 * `facts` is a function rather than a value so the renderer reads it once, in
+			 * `main.tsx`, before React renders - the attributes it returns decide whether
+			 * every column's first row starts 32px lower, and a value read after the first
+			 * paint is a visible jump on every launch.
+			 */
+			windowChrome: {
+				facts: () => WindowChromeFacts;
+				report: (report: {
+					themeId?: string;
+					colors?: Partial<WindowChromeColors>;
+					cornerGround?: string;
+				}) => Promise<boolean>;
+				popupAppMenu: () => Promise<boolean>;
+				onState: (callback: (state: WindowChromeState) => void) => () => void;
+			};
 			desktop: DesktopAPI;
+			/**
+			 * The mini view's bridge (design §D.3): the summon/dismiss pair and the
+			 * global-shortcut registration state the settings row and the mini
+			 * header read. Types come from `src/shared/mini-view.ts`, the one source
+			 * main, the preload and this file all import, so a channel or a payload
+			 * shape cannot drift between them.
+			 */
+			miniView: {
+				onSummoned: (
+					callback: (payload: MiniViewSummonedPayload) => void,
+				) => () => void;
+				dismiss: (reason: MiniViewDismissReason) => Promise<void>;
+				onRegistration: (
+					callback: (state: MiniViewRegistrationState) => void,
+				) => () => void;
+				getRegistration: () => Promise<MiniViewRegistrationState>;
+			};
 			/**
 			 * The browser feature's chrome controls. Shapes are `unknown` because
 			 * main owns the projection: the renderer renders what it is given, and a
@@ -143,10 +199,14 @@ declare global {
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
-					callback: (payload: { entryId: string }) => void,
-				) => () => void;
-				onPopupBlocked: (
-					callback: (payload: { tabId: number; url: string }) => void,
+					callback: (payload: {
+						entryId: string;
+						/** The conversation whose agent asked, or null for a request no
+						 * conversation owns (`sessionRequesterOf` in main). Declared here as
+						 * the implementation does, because this file is the renderer's
+						 * contract and the two are read from opposite sides of the process. */
+						requesterSessionId: string | null;
+					}) => void,
 				) => () => void;
 			};
 			/**
@@ -481,10 +541,11 @@ declare global {
 				onBackendUpdateProgress: (
 					callback: (progress: {
 						/**
-						 * `draining` is the wait before anything is installed or restarted: the app
-						 * holds the update back while the sessions on this machine finish the turns
-						 * they are running. It is its own phase because it can last minutes and no
-						 * install has begun.
+						 * `draining` is the wait before the REBUILD install: the app holds the checkout
+						 * rebuild back while the sessions on this machine finish the turns they are
+						 * running - the one route whose tree rewrite can cut a turn; restarts stopped
+						 * waiting on 2026-09-29. It is its own phase because it can last minutes and
+						 * no install has begun.
 						 */
 						phase: "draining" | "installing" | "restarting";
 						/**

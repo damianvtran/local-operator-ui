@@ -142,21 +142,23 @@ const INKS = [
 	["inkDim", 5.0],
 ];
 
-/* ---- 4a. the legibility pass: the six grounds, the ladder, the inks ---- */
+/* ---- 4a. the legibility pass: the eight grounds, the ladder, the inks ---- */
 
 /**
- * The SEVEN grounds an ink can sit on.
+ * The EIGHT grounds an ink can sit on.
  *
  * `GROUNDS` above is the ELEVATION LADDER - four alternative grounds of one
  * panel, which is what every control's own row is measured against. This one
- * adds the three grounds that carry text as a STATE rather than as a surface:
- * `accentWash` (the selection/hover tint, callouts, chips, find-match), and the
+ * adds the grounds that carry text as a STATE rather than as a surface:
+ * `accentWash` (the selection/hover tint, callouts, chips, find-match), the
  * two list-row states `rowHover` and `rowSelected`, which replaced the retired
- * `highlight`. Neither of the state grounds was in the ink loop before it was
- * added, which is how a keycap on a selected row and a reading button on a hover
- * could fail with every assertion in this file green: measured at the old scope,
- * `inkDim` was under its floor on `accentWash` in 17 dark and 11 light palettes,
- * and on the row role in 36 dark and 14 light.
+ * `highlight`, and `messageSurface` - the user message block's fill, which is
+ * its own surface rather than a fifth rung of the ladder (see its doc in the
+ * palette contract). None of the state grounds was in the ink loop before it
+ * was added, which is how a keycap on a selected row and a reading button on a
+ * hover could fail with every assertion in this file green: measured at the old
+ * scope, `inkDim` was under its floor on `accentWash` in 17 dark and 11 light
+ * palettes, and on the row role in 36 dark and 14 light.
  */
 const GROUNDS6 = [
 	"canvas",
@@ -166,6 +168,7 @@ const GROUNDS6 = [
 	"accentWash",
 	"rowHover",
 	"rowSelected",
+	"messageSurface",
 ];
 
 /**
@@ -271,7 +274,7 @@ const INK_STEP_DELTA_E = 2.0;
  * which is why the relation is asserted rather than assumed. It is a ratio of
  * two ratios, and because both inks sit on the same side of every ground it
  * reduces to a fact about the two inks alone (the ground cancels), so it is
- * measured on all six grounds and moves only when the pair itself collapses.
+ * measured on all eight grounds and moves only when the pair itself collapses.
  * At the old values the factor ran 0.39-0.54, so 0.80 is generous by design: it
  * catches a collapse rather than policing a margin.
  */
@@ -302,6 +305,28 @@ const DISABLED_CEILING = 0.8;
  */
 const SELECTION_DELTA_E = 3.0;
 const SELECTION_LIGHTNESS_STEP = 2.0;
+
+/**
+ * The user message block's fill. Its boundary IS the fill (D10), so it needs a
+ * findability floor of its own, and the shared `surface` step cannot carry one:
+ * on the low palettes it measures 2.05 (`sage`), 2.08 (`catppuccinMacchiato`)
+ * and 2.10 (`oneLight`) ΔE00 off the canvas, which is the operator's report -
+ * "the contrast between the user message background and the chat background is
+ * quite poor on some themes". 4.0 is this file's floor for the smallest mark
+ * the eye must find (`LINE_SEPARATION_FLOOR`, a 1px rule). It also sits at or
+ * below the step the same column's composer carries (`elevated` over `canvas`,
+ * 4.17 at its fleet weakest) on 58 of the 59 palettes - `catppuccinFrappe` is
+ * the one exception, the block's 4.26 stepping 0.03 over its composer's 4.23,
+ * which is below any perceptual step and that fill is within ΔE00 0.51 of
+ * `elevated` anyway - so the block reads as the quietest object on the screen,
+ * with that single exception stated rather than rounded away.
+ *
+ * The lightness half is asserted with it - at least 2.5 `L*`, the ladder's own
+ * `canvas` -> `surface` minimum - because ΔE00 is a budget a chroma-only step
+ * can spend while the fill vanishes in a greyscale render.
+ */
+const MESSAGE_SURFACE_DELTA_E = 4.0;
+const MESSAGE_SURFACE_LIGHTNESS_STEP = 2.5;
 
 /**
  * The hover tint's own floor: half a selection's, because a hover is transient
@@ -385,8 +410,8 @@ const CONTROLS = [
 	{
 		/*
 		 * THE COMPOSER THAT REFUSES INPUT, which is a state rather than a second
-		 * control: `message-input.tsx` paints the composer box `bg-surface` with
-		 * `border-control` and, in this state, its ink `ink-disabled`
+		 * control: `message-input.tsx` paints the composer box `bg-elevated` with no
+		 * edge at rest and, in this state, its ink `ink-disabled`
 		 * (`read-only:text-ink-disabled`, `docs/branding.md` § 6's colour step).
 		 *
 		 * A row of its own because the pairing differs from the row above: the ink
@@ -397,11 +422,17 @@ const CONTROLS = [
 		 * left out instead: green output about a component nobody listed is not
 		 * evidence about that component.
 		 *
-		 * What this asserts is therefore the control's EDGE (fill or border against
-		 * each of the four grounds), which is in scope for every state, plus the
-		 * claim that the ink in use IS the exempt one - `EXEMPT_INK` in the loop
-		 * below. The composer keeps its boundary while it refuses, which is what
-		 * keeps the box visible as a box at exactly the moment its ink goes quiet.
+		 * WHAT IT ASSERTS NOW, since chat redesign §G1 removed the edge: the box's own
+		 * ground on the ground it renders over (`elevated` on `canvas`) and the fact
+		 * that the ink in use IS the exempt one - `EXEMPT_INK` in the loop below.
+		 * The EDGE half is declared away with `edge: false`, and that is a move of the
+		 * claim rather than a deletion: a refused composer spends the same ground step
+		 * an idle one does, and that step is asserted by `PERCEPTIBLE`'s
+		 * `canvas` -> `elevated` row and by the palette ladder's own bounds, plus the
+		 * `STRUCTURAL_CALL_SITES` pin on the class string. Keeping `border-control`
+		 * here would be a row attesting a boundary the component deliberately does not
+		 * draw - the exact class of stale evidence this file exists to prevent - and it
+		 * is what the row said before §G1 moved the box from `surface` to `elevated`.
 		 *
 		 * WHY THE EXEMPT INK IS RIGHT HERE, since a number this low deserves its
 		 * reason written down (design round 1, D2) and this row is where it becomes
@@ -418,12 +449,68 @@ const CONTROLS = [
 		 * holds the way out. A refusal that met 4.5:1 would stop reading as a
 		 * refusal, which is the reason `EXEMPT_INK` exists at all. No colour change
 		 * is implied: the ink is byte-identical to the base's `disabled` state.
+		 *
+		 * WHAT THE REFUSAL NO LONGER HAS, named rather than left to be discovered: an
+		 * edge of its own. It used to keep `border-control` while its ink went quiet,
+		 * which is what the previous version of this comment called "the composer keeps
+		 * its boundary while it refuses". §G1 removed the resting border for every
+		 * state of this box, so what still marks the refusal is the ink step alone -
+		 * and the box's ground step, which the idle composer spends too. That is
+		 * enough to read as a refusal (the ink is 2.5:1 in the median palette and the
+		 * transcript says the sentence in full), and it is recorded here because a
+		 * reviewer comparing this row to the previous one would otherwise read the
+		 * change as evidence lost rather than as the design moving.
 		 */
 		name: "composer (read-only)",
-		on: GROUNDS,
-		fill: "surface",
-		border: "borderControl",
+		on: ["canvas"],
+		fill: "elevated",
+		border: null,
+		edge: false,
 		ink: "inkDisabled",
+	},
+	{
+		/*
+		 * THE WINDOW'S OWN CAPTION GLYPHS (chat redesign §J3, evidence plan U-8).
+		 *
+		 * Windows and Linux draw the minimize/maximize/close controls INSIDE the client
+		 * area and take their colour from `symbolColor`, which this app supplies from
+		 * the palette. That makes the OS's controls a component whose ink we choose - the
+		 * one non-text UI component in the app that the app does not draw - and WCAG
+		 * 1.4.11 asks 3:1 of it. The rows below assert the file's own text floor on the
+		 * two grounds the glyphs actually sit on, which is stricter.
+		 *
+		 * `edge: false` because the buttons have NO edge of their own: on Windows the
+		 * overlay is transparent so the app's own pixels are the ground, and on Linux the
+		 * overlay colour IS the ground under them. `CONTROLS`' edge floor would demand a
+		 * boundary the OS does not draw, and the alternative - leaving the row out -
+		 * is the "green output about a component nobody listed" failure this section
+		 * opens with. The two grounds are the app's page and the pane toolbars' recessed
+		 * strip, which is what `data-chrome-inset-end`'s owner paints under the buttons
+		 * when a pane is open.
+		 *
+		 * `inkMuted` and `inkDim`, not `ink`: the glyphs must read as part of the
+		 * header's own quiet icon cluster. `ink` would make the OS's buttons the heaviest
+		 * thing in a row of controls, which is the failure mode § 7's liveness rule and
+		 * D8 both name. Measured over the fleet, `inkMuted` is 6.23:1 at worst on
+		 * `canvas` and `inkDim` 5.0:1 at worst on `sunken`.
+		 */
+		name: "window caption glyphs (active)",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: null,
+		edge: false,
+		ink: "inkMuted",
+	},
+	{
+		/* The inactive state: Microsoft's own guidance dims the glyphs when the window
+		   loses activation, and macOS does it to the lights by itself. Reading
+		   `isFocused()` is a READ and never a raise - see `window-chrome.ts`. */
+		name: "window caption glyphs (inactive)",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: null,
+		edge: false,
+		ink: "inkDim",
 	},
 	{
 		name: "success callout",
@@ -469,12 +556,99 @@ const CONTROLS = [
 		 * 5.26-19.06), and THIS row is what keeps that true: moving it back to a
 		 * variant whose face collapses into the wash fails here rather than in a
 		 * theme nobody runs.
+		 *
+		 * THE NOTICE BANDS ARE NEW CONSUMERS OF THIS SAME PAIRING (the chat pane's
+		 * status strip and the backend compatibility banner, this branch's fix):
+		 * both draw their remedy as `primary sm` on the band's wash, and both are
+		 * pinned at the call site below. The warning-wash counterpart gets its own
+		 * row right after this one rather than a `warningWash` entry here: the
+		 * wash role differs, so the measured pair differs, and one row cannot state
+		 * both.
 		 */
 		name: "primary button on the danger wash",
 		on: ["dangerWash"],
 		fill: "accent",
 		border: "accent",
 		ink: "onAccent",
+	},
+	{
+		/*
+		 * The remedy on the WARNING half of the same family: the status strip and
+		 * the compatibility banner paint `warning-wash` for every state that is a
+		 * transition, a feature limit or an environment fact, and their one filled
+		 * control sits on that wash. `accent` against `warningWash` measures 3.46:1
+		 * at worst (the `on-accent` ink 5.31-20.27 behind it), so the pairing is
+		 * legal everywhere - and this row is what says so, rather than the absence
+		 * of a complaint about it.
+		 */
+		name: "primary remedy on the warning wash",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		/*
+		 * THE STATUS BAND ITSELF, in both severities - the chat pane's strip and
+		 * the backend compatibility banner, one row per wash because a wash is the
+		 * case § 9.7's own rule says must not ship unasserted: the component has a
+		 * fill AND an edge, and both must be measured against the ground it really
+		 * sits on.
+		 *
+		 * WHY THE EDGE IS THE LOAD-BEARING HALF. The wash alone cannot carry a 3:1
+		 * boundary against `canvas` by construction, and on four palettes it is
+		 * very close to invisible: ΔE00(warningWash, canvas) = 1.01 worst (`paper`;
+		 * 3.59 on `localOperatorLight`), against the 25-percentile step a ground
+		 * change owes elsewhere in this file. The `-border` role is what draws the
+		 * boundary, and it is why the band is a bordered fill rather than a tinted
+		 * background - the old strip shipped the wash with no border at all and no
+		 * row anywhere said so. ITS WORST DEPENDS ON THE SCOPE, so both are named
+		 * (agent review round 1, MINOR-1): over the twelve sweep palettes 3.24:1 /
+		 * 3.23:1 (iceberg), and over all 59 the tightest is rosePineDawn at 3.153:1
+		 * / 3.150:1 against the canvas - still clear of the 3:1 floor everywhere,
+		 * which is what this row asserts per palette rather than as a headline.
+		 *
+		 * The body ink is `ink` (5.73:1 worst on warningWash, 7.03:1 on
+		 * dangerWash), and the washes are deliberately NOT in `GROUNDS6`: that
+		 * loop would then demand every ink role clear its floor on them, and the
+		 * detail line's `inkMuted` (5.31 / 5.49 worst) is the one pairing the
+		 * band actually paints - asserted by the two rows below rather than
+		 * implied by a loop that would also pass on pairings nothing renders.
+		 */
+		name: "status band (warning)",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
+	{
+		name: "status band (danger)",
+		on: ["canvas"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The band's second line: the strip's `detail` (and its Retry outcome) and
+		 * the banner's update-error suffix paint `inkMuted` on the wash, at
+		 * `text-meta`. Worst across the palettes: 5.31:1 on warningWash, 5.49:1 on
+		 * dangerWash (`kanagawaLotus` - the same figure the browser transfer row's
+		 * comment carries for the same wash), both clear of the 4.5:1 floor this
+		 * loop applies while staying the quietest line in the band.
+		 */
+		name: "status band detail line (warning)",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+	{
+		name: "status band detail line (danger)",
+		on: ["canvas"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "inkMuted",
 	},
 	{
 		/*
@@ -584,9 +758,10 @@ const CONTROLS = [
 		 * off the characters it sits under. A border here costs 2px per line and
 		 * misaligns every pill that follows it — measured in the frames.
 		 *
-		 * `surface` is the ground the composer box paints (`COMPOSER_BOX`,
-		 * `border-control` on `bg-surface`), and the rows above cover `canvas` for
-		 * the same component wherever it is drawn on a bare page.
+		 * `elevated` is the ground the composer box paints (`COMPOSER_BOX`,
+		 * `bg-elevated` with no resting edge since chat redesign §G1), and the
+		 * `canvas` half covers the same component wherever it is drawn on a bare
+		 * page.
 		 *
 		 * WHICH PAIR MOVES FIRST, named because this is the tightest edge in the table
 		 * and the next palette edit needs to know it without re-deriving the row:
@@ -602,7 +777,7 @@ const CONTROLS = [
 		 * (`docs/design/composer-credential-capture.md` §7.1).
 		 */
 		name: "credential pill",
-		on: ["canvas", "surface"],
+		on: ["canvas", "elevated"],
 		fill: "infoWash",
 		border: "infoBorder",
 		ink: "ink",
@@ -639,7 +814,7 @@ const CONTROLS = [
 	 */
 	{
 		name: "credential pill (unbacked)",
-		on: ["canvas", "surface"],
+		on: ["canvas", "elevated"],
 		fill: "warningWash",
 		border: "warningBorder",
 		ink: "ink",
@@ -736,11 +911,42 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * The DOCKED question card (§F1, `trace/question-dock.tsx`): an `elevated`
+		 * card on the pane's own ground whose ONE boundary is its 1px `accent`
+		 * border - the accent's single spend on the card. Listed because it is a new
+		 * component with its own fill and border: `elevated` against `canvas` is a
+		 * lightness step and not a boundary, so the accent edge has to clear 3:1 on
+		 * its own, and the question's `ink` has to clear the text floor on the card.
+		 */
+		name: "question dock card",
+		on: ["canvas"],
+		fill: "elevated",
+		border: "accent",
+		ink: "ink",
+	},
+	{
 		/* Hover is a colour step, so the stepped fill is its own triple: the
 		   label has to clear the text floor on the ground hover moves it to,
 		   not merely on the resting one. */
 		name: "ask option button (hover)",
 		on: ["canvas", "surface"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The mini composer's field (quick-send design §D; design round 1, D5):
+		 * an `elevated` box with a 1px `border-control` edge on the summoned
+		 * window's `canvas`, whose ink is the base role. A new component with its
+		 * own fill and edge has to be LISTED — by this table's own first rule,
+		 * green output about surfaces nobody named is not evidence about this one.
+		 * The same triple rides under "ask option button (hover)", but that row's
+		 * grounds are the pane's, and a summoned window draws on its own canvas.
+		 */
+		name: "mini composer field",
+		on: ["canvas"],
 		fill: "elevated",
 		border: "borderControl",
 		ink: "ink",
@@ -759,7 +965,7 @@ const CONTROLS = [
 		name: "browser agent marker chip",
 		/*
 		 * The grounds the chip is DRAWN on. The tab-strip grammar moved them: the chip
-		 * renders inside the tab button, whose fills are the page's `canvas` (the active
+		 * renders inside the tab button, whose fills are the page's `elevated` (the active
 		 * tab), the strip's `sunken` (an inactive one) and `elevated` (an inactive tab
 		 * hovered, focused within, or with its actions row open). `surface` was the fill
 		 * a tab used to have and no longer occurs beneath this chip (review round 2, F4:
@@ -771,7 +977,7 @@ const CONTROLS = [
 		 * chrome cluster's opaque band, and the ink has to clear the floor on every
 		 * ground it can actually be drawn on (review round 3, MINOR).
 		 */
-		on: ["canvas", "sunken", "elevated"],
+		on: ["sunken", "elevated"],
 		fill: "accentWash",
 		border: "accent",
 		ink: "ink",
@@ -795,14 +1001,14 @@ const CONTROLS = [
 		 * null because the pill paints no ground of its own: the strip's shows through,
 		 * which is why the row asserts the edge against both grounds it can sit on.
 		 */
-		on: ["canvas", "sunken", "elevated"],
+		on: ["sunken", "elevated"],
 		fill: null,
 		border: "borderControl",
 		ink: "inkMuted",
 	},
 	{
 		name: "browser restored marker pill",
-		on: ["canvas", "sunken", "elevated"],
+		on: ["sunken", "elevated"],
 		fill: null,
 		border: "borderControl",
 		ink: "inkDim",
@@ -813,11 +1019,11 @@ const CONTROLS = [
 		 * The grounds the chip is DRAWN on, which the tab-strip grammar moved (review
 		 * round 1, finding 3). It renders inside the tab button, and an inactive tab has
 		 * no fill at all any more, so the chip sits on the strip's `sunken`; on the
-		 * active tab it sits on the page's own `canvas`. It used to name `surface`,
+		 * active tab it sits on the page's own `elevated`. It used to name `surface`,
 		 * which no longer occurs beneath it — a row asserting the wrong grounds is the
 		 * "green output about a component nobody listed" case.
 		 */
-		on: ["canvas", "sunken", "elevated"],
+		on: ["sunken", "elevated"],
 		fill: "warningWash",
 		border: "borderControl",
 		ink: "ink",
@@ -837,22 +1043,25 @@ const CONTROLS = [
 		 */
 		name: "browser failed marker chip",
 		// The same grammar change as the other two chips: inside the tab button, on
-		// `canvas` (active) or the strip's `sunken` (inactive).
-		on: ["canvas", "sunken", "elevated"],
+		// `elevated` (active) or the strip's `sunken` (inactive).
+		on: ["sunken", "elevated"],
 		fill: "dangerWash",
 		border: "borderControl",
 		ink: "ink",
 	},
 	{
 		/*
-		 * The strip's ACTIVE tab: the PAGE's own ground (`canvas`) on the strip's
+		 * The strip's ACTIVE tab: the PAGE's own ground (`elevated` - the rung the
+		 * page below the strip stands on since the drawer's-rung pass, which this
+		 * fill and its notch moved with in that pass's remediation) on the strip's
 		 * `sunken`, bounded by `border-control` on the three edges it has (design
 		 * round 3, D18; re-specified with the tab-strip grammar, spec §6). It has its
 		 * own fill and edge, so by this file's first rule it has a row - and the row is
-		 * the point: the ground step alone is 1.11:1 in the dark palettes, which is a
-		 * depth cue rather than a marker, so `border-control` is what has to clear the
-		 * 3:1 non-text floor. Measured this round: `borderControl` on `sunken` is
-		 * 3.13:1 at worst (iceberg), and `ink` on `canvas` 9.66:1 at worst.
+		 * the point: the ground step alone is 1.18:1 at its tightest across the 59
+		 * palettes (`cyberpunk`), which is a depth cue rather than a marker, so
+		 * `border-control` is what has to clear the 3:1 non-text floor. Measured across
+		 * the 59 palettes: `borderControl` on `sunken` is 3.01:1 at worst
+		 * (`rosePineDawn`), and `ink` on `elevated` 7.36:1 at worst (`ayuDark`).
 		 *
 		 * `on` no longer lists `surface`: the INACTIVE tab has no fill any more, so the
 		 * only ground this edge borders is the strip's own `sunken`. Keeping a stale
@@ -861,34 +1070,55 @@ const CONTROLS = [
 		 */
 		name: "browser active tab",
 		on: ["sunken"],
-		fill: "canvas",
+		fill: "elevated",
 		border: "borderControl",
 		ink: "ink",
 	},
 	{
 		/*
 		 * The numbered badge on the Approvals control (spec §5.1). `warningWash` is
-		 * already this feature's one meaning - "an agent is blocked on you" - and
-		 * `border-control` is the contract's own answer for its edge: `warningBorder`
-		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
-		 * above records the measurement).
+		 * already this feature's one meaning - "an agent is blocked on you".
 		 *
-		 * ONE GROUND, and finding that it was two is design round 1's D8: the second
-		 * entry was `surface`, reasoned as "the chat pane header's ground when PR 2 puts
-		 * the control there" - and PR 2 put it on the chat header's `canvas` and on the
-		 * pane header's `sunken`, so the row was measuring the component against a
-		 * ground it is never drawn on, which is the failure mode the row above this one
-		 * explicitly names. Both hosts' badges are drawn on `canvas` (the URL bar row is
-		 * `bg-canvas`, the chat header is the same); the pane's own header carries no
-		 * badge, and if one ever lands there its ground (`sunken`) is a row this file
-		 * would have to grow rather than quietly inherit. Measured this round: `ink` on
-		 * `warningWash` 8.39:1 at worst (tokyoNight), `borderControl` 3.34:1 on `canvas`
-		 * at worst.
+		 * FOUR GROUNDS, and the list grew by MEASUREMENT rather than by argument - twice.
+		 * Design round 1's D8 removed `surface` for being fictional ("the chat pane
+		 * header's ground when PR 2 puts the control there" - the header is `canvas` in
+		 * the shipped tree). The rail put the badge on a real `surface` host (operator
+		 * ask, 2026-09-23), and design round 1's D5 plus this round's code review found
+		 * the other half of the same mistake: the rail's badge sits in the Browser ROW,
+		 * and that row is not always `surface`. It paints `row-selected` when the browser
+		 * route is the current destination - which is the state the operator reported
+		 * from - and `row-hover` under the pointer. A row that names two of a component's
+		 * four grounds is D8's finding read the other way round, so all four are here.
+		 *
+		 * THE EDGE ROLE MOVED BECAUSE OF THOSE TWO ROWS. `borderControl` - the role this
+		 * row asserted until this round - clears 3:1 on `canvas` (3.13 worst) and
+		 * `surface` (3.26) but NOT on the row grounds: 2.77:1 on `row-selected` and
+		 * 2.92:1 on `row-hover`, with twelve of the fifty-nine palettes under the 3:1
+		 * non-text floor. The badge's FILL cannot carry that boundary either (it measures
+		 * 1.00-1.19:1 against any of these grounds), so the edge is the whole boundary and
+		 * it has to clear the floor on every ground the mark can sit on. `ink-muted` is
+		 * the quietest role that does: 6.23 `canvas`, 6.56 `surface`, 5.63 `row-selected`,
+		 * 5.91 `row-hover` at worst across all palettes (`ink` would clear it at 7.16
+		 * worst, and `accent` at 4.24 - the role is `ink-muted` because a boundary that is
+		 * not trying to be read as a message should be the quiet one that passes).
+		 * `badge.tsx`'s `attention` variant carries the same role, so the header and the
+		 * URL bar move with it - one spelling of this mark, which is the rule that
+		 * variant's own docstring states.
+		 *
+		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash`
+		 * 5.73:1 at worst (oneDark - ink against a fill does not depend on the ground,
+		 * which is why this number has no ground beside it); `ink-muted` 5.63:1 at worst
+		 * (nightfox, on `row-selected`, the lowest of the four). Both figures were read
+		 * from `scripts/palette-source.mjs` with this file's own ratio, and the earlier
+		 * statement of them (8.39:1 and 7.88:1) was neither the worst of its pair nor
+		 * reproducible - which is exactly the failure this file exists to refuse. The
+		 * `sunken` form D8 mentions is still not a host: nothing draws this badge on the
+		 * pane's own strip.
 		 */
 		name: "browser approvals badge",
-		on: ["canvas"],
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
 		fill: "warningWash",
-		border: "borderControl",
+		border: "inkMuted",
 		ink: "ink",
 	},
 	{
@@ -941,7 +1171,15 @@ const CONTROLS = [
 		 * `surface` 9.02:1 at worst.
 		 */
 		name: "browser approvals dock",
-		on: ["canvas"],
+		/*
+		 * BOTH HOSTS' GROUNDS, and the second one is this pass's edit. The dock is a
+		 * control band inside `BrowserSurface`, which the ROUTE mounts on `canvas` and
+		 * the chat's pane mounts on the drawer's rung - `elevated` since the pane-slot
+		 * pass (`canvas/index.tsx`). Its edge is asserted against both, and it passes
+		 * on `elevated` because `borderControl` is authored at 3:1 on the lightest
+		 * ground the file asserts (`palette-contract.ts`).
+		 */
+		on: ["canvas", "elevated"],
 		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
@@ -984,8 +1222,8 @@ const CONTROLS = [
 		 * loop would then assert every ink on it including the two that fail.
 		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
-		 * than caution: the row is a sibling of the consent band and the popup notice in
-		 * the same strip, and the ground behind the strip is whichever one the route
+		 * than caution: the row is a sibling of the consent band in the same strip, and
+		 * the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */
@@ -995,40 +1233,7 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
-	{
-		/*
-		 * The user's message bubble in the transcript.
-		 *
-		 * `on` names `canvas` because that is the ground the bubble is drawn on
-		 * and therefore the ground its edge floor is measured against: the
-		 * transcript renders inside the chat column, and that column is the
-		 * working surface, `canvas` (see chat-content.tsx). It used to say
-		 * `surface`, matching a surface-coloured column - a stale `on` would keep
-		 * measuring this component against a ground it is no longer drawn on,
-		 * which is the failure mode a green run cannot report.
-		 *
-		 * The bubble keeps its own `surface` fill, so it now has a lightness step
-		 * against the column as well as its border. The border is still what
-		 * makes the edge structural: the agent side renders no bubble at all, so
-		 * this edge is the whole distinction between the two speakers. A step is
-		 * not an edge, and the fill alone cannot carry it - a ground is not
-		 * supposed to clear 3:1 against the next ground.
-		 *
-		 * NOTE what this row does and does not buy. It asserts the PALETTE
-		 * pairing - that the bubble's edge clears the structural floor on the
-		 * ground behind it in all twelve themes - which here resolves through
-		 * `borderControl`, since `surface` on `canvas` is only a few ΔE00. It
-		 * cannot see which class the component actually renders, because this
-		 * script only reads palettes. The call site is asserted separately by
-		 * `STRUCTURAL_CALL_SITES` below, which is what would fail if someone
-		 * changed the bubble back to `hairline`.
-		 */
-		name: "user message bubble",
-		on: ["canvas"],
-		fill: "surface",
-		border: "borderControl",
-		ink: "ink",
-	},
+
 	/*
 	 * The composer's context wheel, one row per rung it can be drawn in.
 	 *
@@ -1052,8 +1257,9 @@ const CONTROLS = [
 	 * "green output about a component nobody listed" this section warns about,
 	 * one level down.
 	 *
-	 * Only `surface` is asserted, and that is not laziness: the wheel has
-	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-surface`.
+	 * Only `elevated` is asserted, and that is not laziness: the wheel has
+	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-elevated`
+	 * (chat redesign §G1; `STRUCTURAL_CALL_SITES` pins the class string).
 	 * Listing grounds it never renders on would be asserting a pairing the
 	 * design does not promise.
 	 */
@@ -1068,21 +1274,21 @@ const CONTROLS = [
 	 */
 	{
 		name: "context wheel, calm reading",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "info",
 		ink: "inkMuted",
 	},
 	{
 		name: "context wheel, worth noticing",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "warning",
 		ink: "inkMuted",
 	},
 	{
 		name: "context wheel, compaction due",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "danger",
 		ink: "inkMuted",
@@ -1178,6 +1384,66 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
+	{
+		/*
+		 * A device node on the Mesh tab's canvas (`mesh-node.tsx`).
+		 *
+		 * THE GROUND IS `sunken`, because the canvas is a well: the topology is drawn
+		 * inside one recessed region rather than on the page. The node's boundary is
+		 * `border-control`, and the number that decides it is this file's own CONTROLS
+		 * floor: the edge measures 3.92:1 against the node's `elevated` fill on
+		 * `localOperatorLight` and 3.30:1 on `localOperatorDark`, above the 3:1 a control
+		 * owes, and the fill's own step off the well (`elevated` on `sunken`) adds ΔE00
+		 * 6.85 / 7.71 beside it.
+		 *
+		 * CORRECTED IN REVIEW ROUND 1 (D1). This row shipped claiming `hairline` on
+		 * `elevated` measured ΔE00 1.44 / 1.23, "below the field floor"; re-measured with
+		 * this repository's own `deltaE` that pair is **9.19 / 4.80**, i.e. the hairline is
+		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
+		 * number that justified it was not, and the frames agree with the corrected one.
+		 *
+		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
+		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
+		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
+		 * ring-accent` - so identity and status are different channels instead of the
+		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
+		 * takes is state too, measured as ink on this fill, already above its floor.
+		 */
+		name: "mesh device node",
+		on: ["sunken"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * THE SETUP WINDOW'S RAIL, and the row is here because the surface was
+		 * unlisted when it mattered (design round 2, D7): the palette half of the
+		 * working ring's stroke was always legal, while the CLASS picked the faintest
+		 * token in the system - and "green output on an unlisted component is not
+		 * evidence about that component" is this file's own warning.
+		 *
+		 * The rail's three ring markers - the waiting ring, the running step's
+		 * marker, and the head mark, the last two being one object - are strokes
+		 * with no fill, so their boundary IS the token this row asserts:
+		 * `borderControl` against `canvas`, measured 3.13-3.42:1 light /
+		 * 3.49-4.00:1 dark on the committed frames. The working marks shipped in
+		 * `hairline` and measured 1.22-1.50:1 there - ~2.8x below the rings that
+		 * mean "not yet", the faintest object in the column - which is the pair
+		 * this row would have failed; the class strings are pinned beside it in
+		 * `STRUCTURAL_CALL_SITES` so the token the component picks cannot regress
+		 * silently either.
+		 *
+		 * `ink` is the rail's label (`text-ink` on `canvas`); the markers paint no
+		 * text themselves. The accent quadrant and the finished dot spend `accent`
+		 * on this ground, the same fill pair the `primary button` row asserts.
+		 */
+		name: "installer rail ring markers",
+		on: ["canvas"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /**
@@ -1243,6 +1509,58 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: role,
 	})),
+	...["success", "warning", "danger", "info", "inkDim"].map((role) => ({
+		/*
+		 * Settings > Integrations' row status dot (`integration-row.tsx`). Five
+		 * inks: the four states that mean something, plus `inkDim` for Ready,
+		 * which is present but asks for nothing. Ready was first drawn in
+		 * `borderControl` (the design audit's spec) and this row refused it:
+		 * 2.77-2.96:1 on `rowSelected` in eleven palettes. The dot is always paired
+		 * with the status words, so it carries no meaning by colour alone, but it
+		 * is still a graphic object read at a glance and owes the 3:1 floor.
+		 *
+		 * Two grounds, because the row has two: the list's own `surface` card, and
+		 * `rowSelected` when a `/mcp <name>` deep link revealed it (design D14
+		 * moved that highlight off `border-accent` onto this role). A row listing
+		 * only `surface` would be blind to exactly the frame the deep link makes.
+		 */
+		name: `integration status dot (${role})`,
+		on: ["surface", "rowSelected"],
+		fg: role,
+	})),
+	{
+		/*
+		 * The provider row's overflow trigger while its panel is open
+		 * (`provider-grid.tsx`): a ghost, icon-only button that paints
+		 * `bg-control` in that state, so its glyph rides on `borderControl`
+		 * rather than on the row behind it. It shipped with the ghost's own
+		 * `text-ink-muted` for an ink -- 59/59 palettes below the 3:1 floor on
+		 * that fill (2.19:1 by token, 2.02:1 in the rendered frame). `ink` is not
+		 * a remedy either (30/59 below, worst 1.87:1); `onAccent` clears the
+		 * floor in every palette (worst 3.53:1) and is what the component now
+		 * paints. Listed because this is exactly the case AGENTS.md warns about:
+		 * the green run said nothing about a state no row described, which is how
+		 * it shipped (design round 6, D1).
+		 */
+		name: "provider row overflow trigger glyph (open)",
+		on: ["borderControl"],
+		fg: "onAccent",
+	},
+	{
+		/*
+		 * The checked mark's dot in the onboarding search step's mode option
+		 * (`search-api-step.tsx`: a `size-2` `bg-on-accent` dot inside the
+		 * `accent` fill). A graphic object on a FILL rather than a theme ground,
+		 * the same shape as the overflow trigger's glyph row above; the unchecked
+		 * ring needs no row of its own because `borderControl` is asserted across
+		 * `GROUNDS` by `CONTROLS`' outline-control row. Listed because the option's
+		 * selection is carried by this mark as well as by the ground step (design
+		 * round 1, D2), and no row described it.
+		 */
+		name: "search setup mode mark dot (checked)",
+		on: ["accent"],
+		fg: "onAccent",
+	},
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink
@@ -1285,6 +1603,27 @@ const GRAPHICS = [
 		 */
 		name: "usage unmeasured mark",
 		on: ["surface"],
+		fg: "inkDim",
+	},
+	{
+		/*
+		 * The checkpoint rail's marks (`checkpoint-model.ts` holds the role
+		 * map the rail paints; design D5, dsh rework 2026-09-29).
+		 *
+		 * A mark that is ALSO a control: each tick is a 3px bar inside a 24x12
+		 * invisible hit target, and it has to be findable at a glance — the rail
+		 * is the transcript's whole checkpoint navigation — while carrying no
+		 * label of its own, so there is no ink-on-fill pair for a `CONTROLS` row
+		 * and no edge to assert either. `inkDim` clears the graphic floor on
+		 * `canvas`, and the hover/focus step to `ink` needs no second row: it is a
+		 * role on a ground, one of the INKS x GROUNDS pairs asserted above. The
+		 * row is here because the role a mark PAINTS is the thing no palette
+		 * assertion can see — the "usage unmeasured mark" precedent directly
+		 * above: that mark shipped in the floor-exempt `inkDisabled` while sitting
+		 * under a green run.
+		 */
+		name: "checkpoint rail tick",
+		on: ["canvas"],
 		fg: "inkDim",
 	},
 	/*
@@ -1335,6 +1674,22 @@ const GRAPHICS = [
 		on: ["accentWash"],
 		fg: "accent",
 	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row: the 2px accent bar on its
+		 * leading edge.
+		 *
+		 * The same pairing the link toolbar's row above asserts (`accent` on
+		 * `accentWash`, 4.53:1 at worst), listed under its own name because it is
+		 * a new component's mark and this file's rule is that green output about
+		 * a component nobody listed is no evidence about that component. The bar
+		 * is what distinguishes the row Enter opens from the pointer's own tint
+		 * on the ground where the wash alone cannot.
+		 */
+		name: "search result active bar (accent)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
 ];
 
 /**
@@ -1357,6 +1712,95 @@ const GRAPHICS = [
  * same element at different times.
  */
 const PERCEPTIBLE = [
+	{
+		/*
+		 * An option ROW inside the docked question card (§F1), under the pointer or
+		 * holding the roving selection. The row draws no edge - the card's accent
+		 * border bounds the set - so its state is a GROUND STEP on the card's
+		 * `elevated`, and what it owes is being seen.
+		 *
+		 * `sunken`, not `row-hover`, and the reason is measured: `row-hover` is the
+		 * list-row state tuned against `canvas`/`surface`, and against `elevated` it is
+		 * ΔE00 0.00 on arcade and under 2.0 on four palettes - a hover nobody can see
+		 * on exactly the card the agent is blocked on. `elevated` -> `sunken` is the
+		 * step the browser tab strip already uses (the row below), ΔE00 6.07 at worst
+		 * (iceberg). The label is `ink`, asserted at 7:1 on `sunken` by the ink loop.
+		 */
+		name: "question dock option row hover fill",
+		role: "sunken",
+		on: ["elevated"],
+		minDeltaE: 5.0,
+		pairedWith: "elevated",
+		maxWeightChange: 2.0,
+		against: "elevated",
+	},
+	{
+		/*
+		 * The onboarding search step's mode option rows (`search-api-step.tsx`):
+		 * a control row whose selected state is `bg-sunken` on the dialog's
+		 * `elevated` plus a filled mark, the same shape as the dock row above and
+		 * the same floor. The mark's half is asserted by `GRAPHICS` below; this
+		 * row owns the GROUND STEP, which is what the selection reads as at a
+		 * glance (design round 1, D2 - measured 7.71 dark / 6.85 light on the
+		 * brand pair when the row was added, but no theme was asserting it).
+		 */
+		name: "search setup mode option row selected fill",
+		role: "sunken",
+		on: ["elevated"],
+		minDeltaE: 5.0,
+		pairedWith: "elevated",
+		maxWeightChange: 2.0,
+		against: "elevated",
+	},
+	{
+		/*
+		 * THE PROVIDER LISTS AND THE EMPTY-CHAT CONNECT CARD (design audit
+		 * section 2 and section 6): a `bg-surface rounded-[14px]` container with NO
+		 * border, on the page's `canvas` (Settings, the empty chat). Here rather
+		 * than in `CONTROLS` because it is not a control: elevation is a lightness
+		 * step (`branding.md`), so the container owes being SEEN as one object,
+		 * not a 3:1 edge. The controls inside it are the ordinary button rows
+		 * `CONTROLS` already asserts on `surface`.
+		 */
+		name: "provider list / connect card container",
+		role: "surface",
+		on: ["canvas"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The same list inside a DIALOG (onboarding step 1, the connect dialog):
+		 * `bg-surface` on the dialog's `elevated`, a step DOWN rather than up. Its
+		 * own row because the pair differs and a list that vanished into the dialog
+		 * would pass the row above.
+		 */
+		name: "provider list inside a dialog",
+		role: "surface",
+		on: ["elevated"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The row's monogram tile: `bg-elevated` two letters on the list's
+		 * `surface`. A fill step behind `ink` text, which the `INKS` loop already
+		 * asserts on `elevated`; this row asserts only that the tile reads as a tile.
+		 */
+		name: "provider monogram tile",
+		role: "elevated",
+		on: ["surface"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The device-code well: the code in mono on `bg-sunken` inside the
+		 * `surface` panel. The code's ink is `ink`, asserted on `sunken` by the
+		 * `INKS` loop; this row asserts the well is visible as one.
+		 */
+		name: "device code well",
+		role: "sunken",
+		on: ["surface"],
+		minDeltaE: 2.0,
+	},
 	{
 		/*
 		 * THE HOVER STEP ON A BROWSER TAB, and why it is HERE rather than in
@@ -1467,7 +1911,7 @@ const PERCEPTIBLE = [
 		 * skeleton bar). What the chip owes is being SEEN as one object, which is this
 		 * table's own question, so the row states that and nothing else.
 		 *
-		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-surface`, which is why
+		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-elevated`, which is why
 		 * `STRUCTURAL_CALL_SITES` pins that call site: against `canvas` the same fill
 		 * step collapses to 1.23 in `obsidian`, because `sunken` on `canvas` is the
 		 * weak step the loading bars already document.
@@ -1488,11 +1932,11 @@ const PERCEPTIBLE = [
 		 */
 		name: "mention chip fill step",
 		role: "sunken",
-		on: ["surface"],
+		on: ["elevated"],
 		minDeltaE: 2.0,
 		pairedWith: "warningWash",
 		maxWeightChange: 2.0,
-		against: "surface",
+		against: "elevated",
 	},
 	{
 		/*
@@ -1529,11 +1973,11 @@ const PERCEPTIBLE = [
 		 */
 		name: "mention chip outside-workspace fill step",
 		role: "warningWash",
-		on: ["surface", "sunken"],
+		on: ["elevated", "sunken"],
 		minDeltaE: 2.0,
 		pairedWith: "sunken",
 		maxWeightChange: 2.0,
-		against: "surface",
+		against: "elevated",
 	},
 	{
 		/*
@@ -1626,6 +2070,29 @@ const PERCEPTIBLE = [
 		pairedWith: "canvas",
 		maxWeightChange: 2.0,
 		against: "canvas",
+	},
+	{
+		/*
+		 * The checkpoint jump's landing wash (`reveal-record.ts` and the
+		 * `[data-jump-highlight]` rules in `styles/index.css`, design §D7): the
+		 * row a tick jump landed on holds a transient `accentWash` ground for
+		 * ~1.4 s. Here rather than in `CONTROLS` because it is not a control -
+		 * no border, no interaction, a state of the reader's own view - and its
+		 * question is this table's: the wash must be SEEN against the ground a
+		 * transcript row sits on (`canvas`), or the flash is a no-op - worst of
+		 * all for a reduced-motion reader, whom the stylesheet deliberately
+		 * keeps on the static wash and nothing else.
+		 *
+		 * The pair is one this file already measures (the reading buttons' hover
+		 * row above: `accentWash` against `canvas` is ΔE00 13.33 dark / 6.75
+		 * light); the floor is the wide "a human can tell these apart" reading
+		 * (2.0), and the row exists so a component that now DEPENDS on the pair
+		 * keeps it asserted rather than borrowing it silently.
+		 */
+		name: "checkpoint jump landing wash",
+		role: "accentWash",
+		on: ["canvas"],
+		minDeltaE: 2.0,
 	},
 ];
 
@@ -1721,16 +2188,18 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
-		 * The active tab's three edges. The tab takes the page's own ground, whose step
-		 * away from the strip's `sunken` is 1.11-1.4:1 - a depth cue, not a marker - so
-		 * the `border-control` edge is what makes the selected tab survive a glance
-		 * (design round 3, D18; spec §6). Reverting it to `border-transparent` (what the
-		 * tab looked like as a button) or to `hairline` keeps the palette rows green.
+		 * The active tab's three edges. The tab takes the page's own ground - `elevated`
+		 * since the drawer's-rung remediation moved the fill and its notch with the
+		 * page - whose step away from the strip's `sunken` is a depth cue rather than a
+		 * marker (1.18-1.55:1 across the palettes), so the `border-control` edge is what
+		 * makes the selected tab survive a glance (design round 3, D18; spec §6).
+		 * Reverting it to `border-transparent` (what the tab looked like as a button) or
+		 * to `hairline` keeps the palette rows green.
 		 */
 		what: "browser active tab edges",
 		file: "src/renderer/src/features/browser/components/browser-tab-strip.tsx",
-		must: "border-control border-x border-t bg-canvas text-ink",
-		why: "the active tab's only marker a glance can find is its `border-control` edge; the ground step alone is a depth cue that measures under 1.4:1 in every palette",
+		must: "border-control border-x border-t bg-elevated text-ink",
+		why: "the active tab's only marker a glance can find is its `border-control` edge; the fill step to the strip is 1.18-1.55:1 across the palettes - a depth cue, not a boundary - so the edge is the whole marker",
 	},
 	{
 		/*
@@ -1774,11 +2243,26 @@ const STRUCTURAL_CALL_SITES = [
 		 * file: this pin closes the half a later edit could move - repainting the box
 		 * `canvas` collapses the same fill step to 1.23 ΔE00 in `obsidian`, below the
 		 * row's floor, and the row cannot see the box at all.
+		 *
+		 * THE EDGE IS GONE AND THE GROUND MOVED ONE STEP UP (chat redesign §G1,
+		 * design round 1 D12). The box used to be `border border-control bg-surface`,
+		 * and on the dark brand palette `control` is the accent's own green - so the
+		 * composer wore a resting accent ring and was the brightest thing on a screen
+		 * whose subject is the transcript. §G1 spends the accent on READY (the send
+		 * control's fill) and on FOCUS (the ring the box paints for its textarea), and
+		 * separates the panel from its column with the lightness step the system
+		 * already has: `elevated` over `canvas`, the pair every menu, popover and
+		 * dialog in the app uses.
+		 *
+		 * The step is FLOORED HERE as well as useful, which is why this row is not
+		 * merely a rename: `elevated` against `canvas` is asserted by the palette rows
+		 * below at the 1.23 ΔE00 the note above names as the floor's own failure case,
+		 * and the mention chip's fill is now measured against `elevated`.
 		 */
 		what: "composer box ground",
 		file: "src/renderer/src/features/chat/components/message-input.tsx",
-		must: "border border-control bg-surface",
-		why: "the mention chip's fill step is measured against `surface`; `sunken` against `canvas` is 1.23 ΔE00 in obsidian, so the box's ground is half of that assertion and no palette row can see it",
+		must: '"mx-auto flex w-full flex-col bg-elevated"',
+		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
 	},
 	{
 		what: "chat working surface ground",
@@ -1793,10 +2277,47 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the list panel takes the `surface` panel ground so it steps away from the `canvas` working surface it opens; repainting this panel `canvas` produces the same merged slab from the other side, which the column's own row cannot see",
 	},
 	{
-		what: "user message bubble edge",
+		/*
+		 * THE BUBBLE'S BOUNDARY IS ITS FILL, NOT A RULE (design amendment D10, §L).
+		 *
+		 * This row used to require `border border-control bg-surface` on the argument
+		 * that the border was the edge distinguishing the two speakers, because the
+		 * agent side has no bubble at all. That argument was right about the NEED and
+		 * wrong about the CHANNEL: the bubble sits on the `canvas` working surface and
+		 * takes its own `messageSurface` fill - the role exists because the fill is
+		 * this block's ONLY boundary (D10), and the shared `surface` step it first
+		 * took measures as low as ΔE00 2.05 across the palettes - and `max-w-[85%]` of
+		 * the 640 column makes it an aside by its own width as well. Two channels,
+		 * and the rule on top of them was the third and loudest mark on the quietest
+		 * object in the transcript: on the palettes where `control` is dark, a settled
+		 * turn read as an outlined drawing rather than as a message.
+		 *
+		 * The pin now takes the fill-form this inventory already supports for a chip
+		 * ("the fill IS the chip's boundary"): the two halves of the step are pinned
+		 * from both sides - `chat working surface ground` above holds `bg-canvas`, and
+		 * this row holds `bg-message-surface` beside it - so repainting either half
+		 * still fails, and dropping the fill entirely fails here. The LEGACY twin is
+		 * pinned by the next entry: both components render the same block, so pinning
+		 * only the canonical half would let `message-paper.tsx` keep the old class.
+		 */
+		what: "user message bubble fill",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-		must: "border border-control bg-surface",
-		why: "the bubble is drawn on the canvas-coloured working surface and keeps its own surface fill; the agent side has no bubble, so this border is the edge that distinguishes the speakers",
+		must: "rounded-frame bg-message-surface text-ink",
+		why: "the bubble's ground step against the canvas working surface IS its boundary (§L's D10 amendment), and the fill now carries the role's own ΔE00 4.0 floor - the edge it used to draw was the third and loudest channel on the quietest object in the transcript, and the other half of this pair is pinned by `chat working surface ground`",
+	},
+	{
+		/*
+		 * The legacy half of the same block. `message-paper.tsx` renders user turns on
+		 * whatever still mounts the legacy path, and its own comment requires the two
+		 * components to AGREE on the block's shape - "whichever surface renders, the
+		 * turn must not change shape". The fill is part of that agreement now that it
+		 * IS the boundary, so it is pinned here rather than left to two comments to
+		 * stay in step.
+		 */
+		what: "legacy user message bubble fill",
+		file: "src/renderer/src/features/chat/components/message-item/message-paper.tsx",
+		must: "rounded-frame bg-message-surface text-ink break-words",
+		why: "the legacy twin renders the same user block with the same fill-by-boundary rule, so a change that moves only the canonical class would leave the two surfaces painting different shapes; no palette assertion can see a class string",
 	},
 	{
 		what: "chat header bottom rule",
@@ -2149,7 +2670,8 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * ground: the rows read against `surface`, which the rail's group lists
+		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
@@ -2235,6 +2757,164 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'variant="ghost"\n\t\t\t\t\t\tsize="sm"\n\t\t\t\t\t\tclassName="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"',
 		why: 'reverting to `variant="outline"` re-introduces seven 3:1 boundaries as the loudest thing on a screen with nothing to compete with them, and `hairline` is the tempting wrong answer here: it is the decorative role and measures 1.25:1 at its worst, which is a boundary nobody can see rather than a quiet one',
 	},
+	{
+		/*
+		 * THE ASIDE PANEL'S FILL AND EDGE, and why this is a call-site pin rather
+		 * than a `CONTROLS` row.
+		 *
+		 * The panel is a SURFACE, not a control: `bg-sunken` with a `hairline`, and
+		 * the hairline is the correct weight rather than a shortcut - § 2 makes a
+		 * decorative rule owe perceptibility, not 3:1, and a component with no
+		 * analogue boundary must not be pushed onto the control floor. A `CONTROLS`
+		 * row cannot express that: it requires `max(fillEdge, borderEdge) >= 3:1`
+		 * against the ground, and this panel's ground is the chat column's, one
+		 * rung away from `sunken` by design (`elevated` -> `surface` -> `sunken` is
+		 * a ladder, not a boundary). Listing it there would either fail the floor or
+		 * force the panel onto `border-control`, which is the conflation § 2 exists
+		 * to prevent.
+		 *
+		 * WHAT THIS PIN ACTUALLY GUARDS is the merge, and it is the same class of
+		 * edit the neighbouring composer-box row guards from the other side: the
+		 * panel sits DIRECTLY ABOVE the composer box, which IS `bg-surface`. Delete
+		 * the edge or repaint the fill `surface` and the two become one slab, while
+		 * every ratio in this file stays green - the panel's inks on `sunken` are
+		 * already asserted by the INKS loop, so nothing else here can see it.
+		 */
+		what: "aside panel fill and edge",
+		file: "src/renderer/src/features/chat/components/aside-panel.tsx",
+		must: "flex flex-col border border-hairline bg-sunken",
+		why: "the panel is a surface above the composer box and reads as one only while its fill steps away from that box's `surface` and its decorative edge is drawn; `CONTROLS` cannot hold this row (it demands a 3:1 edge on a boundary that is deliberately not one), so the class list is the only place the relationship can be undone unseen",
+	},
+	{
+		/*
+		 * The condensed action group's media tile (design review round 1, D2).
+		 *
+		 * The tile IS a focusable `<button>`, so its frame's edge is a control
+		 * boundary and answers to 3:1 (SC 1.4.11) rather than to taste. The palette
+		 * rows above already prove the COLOUR clears the floor - "outline control"
+		 * measures `borderControl` on all four grounds - and what only this pin can
+		 * see is the edit that puts the tile back on the decorative `hairline`: that
+		 * role has no floor at all, measured at 1.25:1 against the light transcript,
+		 * which is invisible chrome for exactly the picture that needs it most (a
+		 * light-canvas screenshot on a light page, where the tile would otherwise have
+		 * no visible extent).
+		 */
+		what: "condensed group media tile edge",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: '"border border-control"',
+		why: "a media tile is a button whose frame is its whole visible boundary; dropping it to `hairline` leaves the pair green in every palette row while a light-canvas picture stops having a visible extent, which no ratio in this file can see",
+	},
+	{
+		/*
+		 * THE STATUS BAND'S REMEDY, the same class of pin as the failure alert's
+		 * above and mirrored from it deliberately: the palette rows
+		 * ("primary button on the danger wash", "primary remedy on the warning
+		 * wash") prove a filled control is legal on each wash the band paints,
+		 * and only this pin can see the edit that moves the strip's Retry back to
+		 * `secondary` - whose sole boundary is `border-control` against those
+		 * washes, 2.09:1 worst on `warningWash` and 2.98:1 worst on `dangerWash`,
+		 * both under the 3:1 floor (measured over all fifty-nine palettes by the
+		 * design pass; the twelve-name sweep carries the same figures).
+		 */
+		what: "the status strip's remedy is a filled control on its wash",
+		file: "src/renderer/src/features/chat/components/chat-status-strip.tsx",
+		must: 'variant="primary"',
+		why: "a secondary control's only boundary is its own edge against the band's wash, which is below the 3:1 floor on both severities in the worst palettes; no palette assertion can see which variant a component renders, so green output about the pair would outlive the fix",
+	},
+	{
+		/*
+		 * The compatibility banner's remedy, for the same reason: the band is one
+		 * grammar on both surfaces now, and a divergence in the CONTROL is what a
+		 * reader would see first - the banner's `Update backend` must stay a filled
+		 * control where it is offered, with `Retry` demoted to `ghost` beside it
+		 * rather than given a second edge.
+		 */
+		what: "the compatibility banner's remedy is a filled control on its wash",
+		file: "src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+		must: 'variant="primary"',
+		why: "the banner's band draws the same washes as the strip's; an outlined or secondary primary control collapses into them below the 3:1 floor, and the palette rows cannot see which variant the component renders",
+	},
+	{
+		/*
+		 * The checkpoint rail tick's fill, at its call site.
+		 *
+		 * The GRAPHICS row of the same name proves `inkDim` clears the floor on
+		 * `canvas`; only this pin can see the edit that repaints the rest mark in
+		 * a role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
+		 * the role the usage mark above actually shipped in) or `hairline` (capped
+		 * below 2:1 by design). Either edit keeps every palette assertion green
+		 * while the rail's ticks stop being findable. The class string lives in
+		 * `checkpoint-model.ts`'s role map (the dsh rework extracted it from the
+		 * component); the pin follows the string, not the file it used to sit in.
+		 */
+		what: "checkpoint rail tick fill",
+		file: "src/renderer/src/features/chat/canonical/checkpoint-model.ts",
+		must: "bg-ink-dim",
+		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row, at its call site.
+		 *
+		 * The row Enter opens is the one the reader is deciding about, and the
+		 * family's own history is why this pin exists: a selection carried by
+		 * `accent-wash` alone is ΔE00 0.77 on `elevated` in obsidian (1.014:1) —
+		 * the defect D12 records for the picker and the slash popup — so the wash
+		 * is paired with a 2px `accent` bar on the leading edge, the same second
+		 * signal `slash-commands.tsx` and `at-picker.tsx` draw. The bar is the
+		 * non-luminance mark, so the pin holds the composed class: dropping the
+		 * bar leaves every palette row green while the row Enter will open stops
+		 * being distinguishable in the themes the wash collapses in.
+		 */
+		what: "search result row active mark",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+		why: "the active row's fill is a wash that collapses onto the panel's own ground in four of twelve themes; the 2px accent bar is its second, non-luminance signal, and only this pin can see the class string that draws it",
+	},
+	{
+		/*
+		 * The marked runs inside a result's snippet.
+		 *
+		 * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
+		 * editor's `FIND_MATCH_CLASS`), and the ink half is what keeps it legal:
+		 * the INKS loop asserts `ink` on `accentWash` at the strong-text floor.
+		 * The rest of the string is deliberately pinned too, because the frames
+		 * proved the fill cannot carry the mark alone: on the panel's `elevated`
+		 * ground the wash measures ΔE00 0.77 in obsidian (2 mentions of the
+		 * matched word, no mark), so the ACCENT UNDERLINE is the signal that
+		 * cannot collapse — `accent` is asserted at the 3:1 structural floor on
+		 * every ground by this file's `STRUCTURAL` list — and `font-medium` is
+		 * what keeps the mark readable on the two row states whose fill is the
+		 * same wash. A repaint that keeps the fill but drops the underline or
+		 * the weight keeps every palette assertion green while the match stops
+		 * being findable in four of twelve themes.
+		 */
+		what: "search match mark in a snippet",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
+		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
+	},
+	{
+		/*
+		 * The setup rail's two working marks - one pin per site, because a substring
+		 * check cannot see WHICH occurrence of a shared class string survived and a
+		 * single pin would stay green while the other site regressed (design round
+		 * 2, D7). Under `hairline` the two measured 1.22-1.50:1 against the waiting
+		 * rings' 3.13-3.42:1: the mark that says "working" was the faintest object
+		 * in the column, and no palette row can see which token the class picked.
+		 * The palette half of the pair is the `installer rail ring markers` row.
+		 */
+		what: "the installer rail's running mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "size-3 animate-install-turn rounded-full border-2 border-control border-t-accent",
+		why: "the running mark is a stroke with no fill, so this token is its only boundary; `hairline` here was 1.22:1 against the waiting rings' 3.13-3.42:1, and only this pin sees the class edit the palette row cannot",
+	},
+	{
+		what: "the installer rail's head mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-control border-t-accent",
+		why: "the head mark is the running mark at the rail's head - the same object in the same stroke - and a single pin would stay green while this site regressed",
+	},
 ];
 
 /**
@@ -2267,13 +2947,14 @@ const STRUCTURAL = [
  *
  * `sunken` is in the list because it is the editor's own ground: every syntax
  * colour is painted on it, and the code-mirror theme rejected `inkDisabled` for
- * comments on exactly the grounds it failed 4.5:1 there. `elevated`,
- * `accentWash` and `highlight` are in it because each is a ground a tone role
- * is genuinely drawn on - a dialog's required-mark and a danger button's label
- * (`elevated`), the ask-option card and the find-match tint (`accentWash`), the
- * selected sidebar row (`highlight`) - and the old list stopped at `sunken`,
- * which is how `danger` came to be drawn at 3.76:1 on `elevated` in `monokai`
- * behind a green gate.
+ * comments on exactly the grounds it failed 4.5:1 there. `elevated` and
+ * `accentWash` are in it because each is a ground a tone role is genuinely
+ * drawn on - a dialog's required-mark and a danger button's label (`elevated`),
+ * the ask-option card and the find-match tint (`accentWash`) - and
+ * `messageSurface` is in it because the block renders arbitrary user prose,
+ * links and markdown included, the likeliest carrier of tone text in a
+ * transcript - and the old list stopped at `sunken`, which is how `danger`
+ * came to be drawn at 3.76:1 on `elevated` in `monokai` behind a green gate.
  */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
 
@@ -2870,6 +3551,13 @@ const REQUIRED_ROLES = [
 	   longer obeys its own doc. */
 	"rowHover",
 	"rowSelected",
+	/* The user message block's own fill. Not a fifth ground - one object's
+	   surface, split off `surface` so its boundary can carry its own ΔE00 floor
+	   without moving every panel in the app (see its doc in the palette
+	   contract). Required for the same reason every role here is: a palette that
+	   omitted it would fall silently through to a utility that resolves to
+	   nothing at all. */
+	"messageSurface",
 	"ink",
 	"inkMuted",
 	"inkDim",
@@ -2921,12 +3609,21 @@ if (palettes.length === 0) {
  * at 0.00 — where `accent` and `success` are the same hex. In the brand pair
  * that is the point, because the brand has one hue and "it worked" is the state
  * it is happiest to own; in monokai and sage it follows from palettes built
- * around a single signature green. Either way it is a decision rather than a
- * defect: nothing in the product asks a user to distinguish an accent from a
- * success, whereas `success` against `info` is a distinction a callout exists
- * to make. A gate that fails by design teaches people to
- * silence gates, so accent is out of the family rather than pinned as an
- * exception in every palette.
+ * around a single signature green.
+ *
+ * THAT USED TO REST ON "nothing in the product asks a user to distinguish an
+ * accent from a success", AND THE STATUS CHANNEL NOW ASKS IT (design round 1,
+ * D1): the projects detail page renders `active` (accent) and `done` (success)
+ * as chips SIDE BY SIDE in one Status column, at the numbers above - 2.22 in
+ * localOperatorLight and 5.07 in localOperatorDark, whose washes are
+ * byte-identical, and 0.00 in monokai. The answer is not a palette change:
+ * `ProjectStatusBadge` carries a check glyph on `done`, so the difference the
+ * channel asks for is made by SHAPE in every palette, and this family stays as
+ * it is - there is no chromatic step left for a user to read. The acceptance is
+ * recorded here rather than re-litigated per palette, the same way
+ * `accentAlt`/`info` records its own below. A gate that fails by design teaches
+ * people to silence gates, so accent is out of the family rather than pinned as
+ * an exception in every palette.
  *
  * The floor is 15 and it is a judgement about *recall*, not comparison. A
  * ΔE00 around 2.3 is where a difference becomes visible with both colours
@@ -3087,6 +3784,28 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+/*
+ * THE REGION FLOOR, for two planes of the same kind meeting with no rule between
+ * them. Declared separately from the two above for the reason the pair above is:
+ * they move for different measurements, and a change to either is a change to one
+ * job.
+ *
+ * 2.0 was calibrated on adjacent ground FIELDS "like a card sitting on a canvas"
+ * - a small object with corners, where SHAPE does most of the work. Two
+ * full-height regions of one window - the conversation and the drawer beside it -
+ * have only the tone step and no shape cue, which is the same integration
+ * argument the line floor below is built on, one step less severe: hence 4.0, the
+ * number that argument already produced for a mark with almost no area to
+ * integrate over.
+ *
+ * WHICH PAIR THIS IS FOR, and only that pair: the conversation's `canvas` against
+ * the drawer's `elevated` (`pane-slot-ground`'s claim 1 reads the same two roles
+ * out of the lane's own stops). The two candidate rungs it rules out are recorded
+ * in `canvas/index.tsx`: `surface` merges with the sidebar and measures 2.05-6.76
+ * against `canvas` itself - 31 of 59 palettes under 3.0 - and `sunken` is the
+ * field floor with 0.0028 of headroom AND the pane's own recessed content ground.
+ */
+const REGION_SEPARATION_FLOOR = 4.0;
 
 /*
  * THE TWO ROW STATES, and the retirement of `highlight`.
@@ -3357,16 +4076,6 @@ const ROW_STATE_NEUTRAL_PANEL = 2.0;
 /* An accent below this chroma has no hue to speak with either. */
 const ROW_STATE_ACCENTLESS = 2.0;
 /*
- * The same derivation the role loop reads, in a form the pair-separation check
- * (which sits outside that loop) can call for itself. Keyed on the PANEL's
- * chroma and never on a palette's name.
- */
-const isNeutralClass = (palette) => {
-	const [, a, b] = toLab(palette.surface);
-	return Math.hypot(a, b) < ROW_STATE_NEUTRAL_PANEL;
-};
-
-/*
  * THE TWO LEDGERS, and they are LEDGERS rather than exemptions: every row names
  * the bound a palette cannot hold, and the assertion that would have failed
  * FAILS anyway unless the row is there - so a palette in this position cannot
@@ -3490,7 +4199,7 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * Ink on every ground, the SIX of them.
+	 * Ink on every ground, the EIGHT of them.
 	 *
 	 * `accentWash` and `highlight` are grounds a body ink is genuinely read on
 	 * - a keycap on a selected row, a reading button on its own hover fill, the
@@ -3957,17 +4666,20 @@ for (const { id, palette: p } of palettes) {
 	 * recorded pins rather than a floor. Those pins are gone; see `EXCEPTIONS`.
 	 */
 	/*
-	 * The TONE grounds are the five, not the seven, and the two the row states
+	 * The TONE grounds are the six, not the eight, and the two the row states
 	 * add are deliberately excluded HERE while being asserted in the ink loop
 	 * above. The measurement is the reason: a tone role reaches a selected row
 	 * only as a badge or a dot, and on the accent-derived fills the four tones plus
 	 * `accent` measure 4.45-4.50:1 in five palettes - the chroma ceiling is what
 	 * caps them, so the shortfall is a property of the rule rather than of a value.
 	 * What a row DOES carry is its own text, and that is the ink layer, which is
-	 * asserted on both row states. So the tones stay on the five grounds the pass
-	 * that added them measured, and the row states are held to the ink floors.
+	 * asserted on both row states. `messageSurface` is the sixth: the block renders
+	 * user prose - links and markdown included - so a tone role is genuinely drawn
+	 * on it (fleet minimum 4.60:1, measured). So the tones stay on the six grounds
+	 * this file measures them on - the four elevations, `accentWash` and
+	 * `messageSurface` - and the row states are held to the ink floors.
 	 */
-	const TONE_GROUNDS = [...GROUNDS, "accentWash"];
+	const TONE_GROUNDS = [...GROUNDS, "accentWash", "messageSurface"];
 	for (const role of AS_TEXT) {
 		for (const g of TONE_GROUNDS) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
@@ -4019,6 +4731,25 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"danger as text on a dialog's ground",
+	);
+
+	/*
+	 * Settings > Integrations' "Needs sign-in" words on a deep-linked row: TEXT
+	 * in `warning` on the `rowSelected` ground a `/mcp <name>` reveal paints.
+	 * `AS_TEXT` covers the four grounds and `accentWash`, not the row states, so
+	 * the pair the deep link actually produces is asserted where it renders.
+	 *
+	 * `danger` is deliberately NOT here: it measured 4.23-4.47:1 on this ground
+	 * in six palettes, so a highlighted row draws "Couldn't start" in `ink` and
+	 * leaves the tone to the dot beside it (`integration-row.tsx`, STATUS_INK).
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowSelected",
+		FLOOR.text,
+		"integration status text on a deep-linked row",
 	);
 
 	/*
@@ -4074,35 +4805,51 @@ for (const { id, palette: p } of palettes) {
 				);
 			}
 
-			/* The control's edge against the ground behind it: fill OR border. */
-			assertions++;
-			const fillEdge = ratio(fill, ground);
-			const borderEdge = isHex(border) ? ratio(border, ground) : 0;
-			const edge = Math.max(fillEdge, borderEdge);
-			if (edge < FLOOR.nonText) {
-				/*
-				 * This assertion had no pin path, which made it the one floor in this
-				 * file that a shared control's colour could only satisfy by being
-				 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
-				 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
-				 * consulted only when the edge is still under the floor, and the stale
-				 * check below fails a pin whose palette no longer needs it.
-				 */
-				const pin = CONTROL_EDGE_PINNED.find(
-					(x) =>
-						x.control === c.name &&
-						x.ground === g &&
-						x.theme === id &&
-						Math.abs(x.got - r2(edge)) < 0.01,
-				);
-				if (pin) {
-					controlEdgeSeen.add(
-						controlEdgeKey(pin.control, pin.ground, pin.theme),
+			/*
+			 * The control's edge against the ground behind it: fill OR border.
+			 *
+			 * A row may declare `edge: false` when the component deliberately draws
+			 * NEITHER and its separation is a ground STEP rather than a boundary — the
+			 * composer box since chat redesign §G1. Without the opt-out the floor below
+			 * would demand a border the design removed on purpose, and the only ways to
+			 * satisfy it would be to invent one or to stop listing the state, which is
+			 * the "green output about a component nobody listed" failure this section
+			 * opens with. The step it spends instead is asserted where a step belongs —
+			 * `PERCEPTIBLE`'s ground-step rows, and the palette ladder's own
+			 * `canvas` -> `elevated` bounds — and the call site is pinned in
+			 * `STRUCTURAL_CALL_SITES` ("composer box ground"), so the opt-out removes no
+			 * coverage: it moves the claim to the instrument that can measure it.
+			 */
+			if (c.edge !== false) {
+				assertions++;
+				const fillEdge = ratio(fill, ground);
+				const borderEdge = isHex(border) ? ratio(border, ground) : 0;
+				const edge = Math.max(fillEdge, borderEdge);
+				if (edge < FLOOR.nonText) {
+					/*
+					 * This assertion had no pin path, which made it the one floor in this
+					 * file that a shared control's colour could only satisfy by being
+					 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
+					 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
+					 * consulted only when the edge is still under the floor, and the stale
+					 * check below fails a pin whose palette no longer needs it.
+					 */
+					const pin = CONTROL_EDGE_PINNED.find(
+						(x) =>
+							x.control === c.name &&
+							x.ground === g &&
+							x.theme === id &&
+							Math.abs(x.got - r2(edge)) < 0.01,
 					);
-				} else {
-					fail(
-						`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
-					);
+					if (pin) {
+						controlEdgeSeen.add(
+							controlEdgeKey(pin.control, pin.ground, pin.theme),
+						);
+					} else {
+						fail(
+							`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+						);
+					}
 				}
 			}
 		}
@@ -4520,7 +5267,7 @@ for (const { id, palette: p } of palettes) {
 	   pressed-fill repair could cut dracula's rest-to-pressed distance from
 	   10.43 to 5.72 without a single gate noticing. These are fields - a whole
 	   button fill - so they take the field floor. */
-	for (const [a, b] of [
+	for (const [a, b, floor = FIELD_SEPARATION_FLOOR] of [
 		["canvas", "surface"],
 		["surface", "elevated"],
 		["elevated", "sunken"],
@@ -4534,13 +5281,22 @@ for (const { id, palette: p } of palettes) {
 		   distance was not, which is the same gap `accent`/`accentActive`
 		   closed for the primary. */
 		["surface", "sunken"],
+		/* THE REGION BOUNDARY (design round, D3): the conversation's ground against
+		   the drawer's, the pair the pane-slot lane paints and `pane-slot-ground`'s
+		   claim 1 derives from the same two tokens. It is in THIS list because the
+		   pair meets on screen exactly like the steps above it - and it takes its
+		   own floor (`REGION_SEPARATION_FLOOR`) because two full-height planes with
+		   no rule between them are not a card on a canvas. Measured over the 59
+		   palettes: 4.17 (`catppuccinMacchiato`) to 11.64 (`radient`), median 5.46,
+		   0 under 4.0. */
+		["canvas", "elevated", REGION_SEPARATION_FLOOR],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
 		assertions++;
 		const got = deltaE(p[a], p[b]);
-		if (got < FIELD_SEPARATION_FLOOR) {
+		if (got < floor) {
 			fail(
-				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${floor}) — a step the eye cannot see is not a step`,
 			);
 		}
 	}
@@ -4734,6 +5490,54 @@ for (const { id, palette: p } of palettes) {
 		if (step < SELECTION_LIGHTNESS_STEP) {
 			fail(
 				`${id}: the palette/picker active row sits ${r2(step)} L* from \`elevated\`, under the ${SELECTION_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
+			);
+		}
+	}
+
+	/*
+	 * 6b. The user message block's fill: its boundary IS the fill (D10), so it
+	 * has to be findable, and on the palettes where the shared `surface` step
+	 * lands low it is not (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight`
+	 * 2.10 - the operator's "the contrast between the user message background and
+	 * the chat background is quite poor on some themes"). The floor is
+	 * `MESSAGE_SURFACE_DELTA_E` (its own comment carries why 4.0), measured off
+	 * `canvas` - the working surface the block is drawn on - with the lightness
+	 * half asserted too so a chroma-only step cannot pass while the fill vanishes
+	 * in a greyscale render. The `CONTROLS` row titled "user message bubble" was
+	 * retired here: post-D10 the component draws no edge of its own, so the row
+	 * measured a `borderControl` border that no longer renders; this block is
+	 * what asserts the pairing the component actually has.
+	 */
+	{
+		/* A palette missing the role already failed the completeness check above;
+		   this block must skip rather than crash on it, the way every other loop
+		   here does. A PRESENT-but-malformed value is the other case, and it must
+		   FAIL rather than skip: measured (agent review round 1, R2), setting
+		   `messageSurface: "notahex"` left this gate exiting 0 with the count
+		   falling 28,111 -> 28,083 - the block's whole floor silently switched off
+		   by a value the palette parser accepts, and a tree that looks green. A
+		   skip guard may answer "absent"; "malformed" has to be loud, because a
+		   malformed value that disarms a floor is worse than no floor. */
+		if (p.messageSurface === undefined) continue;
+		if (!isHex(p.messageSurface)) {
+			fail(
+				`${id}: the user message block's fill \`messageSurface\` ${JSON.stringify(p.messageSurface)} is present but not a flat hex colour, so the role's floor would be silently unmeasured - a malformed value must not switch a floor off`,
+			);
+			continue;
+		}
+		if (!isHex(p.canvas)) continue;
+		const got = deltaE(p.messageSurface, p.canvas);
+		assertions++;
+		if (got < MESSAGE_SURFACE_DELTA_E) {
+			fail(
+				`${id}: the user message block's fill \`messageSurface\` ${p.messageSurface} is ΔE00 ${r2(got)} from \`canvas\` ${p.canvas} (need ${MESSAGE_SURFACE_DELTA_E}) — the fill IS the block's boundary, and below this band it stops being findable`,
+			);
+		}
+		assertions++;
+		const step = Math.abs(toLab(p.messageSurface)[0] - toLab(p.canvas)[0]);
+		if (step < MESSAGE_SURFACE_LIGHTNESS_STEP) {
+			fail(
+				`${id}: the user message block's fill sits ${r2(step)} L* from \`canvas\`, under the ${MESSAGE_SURFACE_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
 			);
 		}
 	}

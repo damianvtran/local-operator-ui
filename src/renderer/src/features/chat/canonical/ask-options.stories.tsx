@@ -1,6 +1,8 @@
 /**
- * The pending `ask` gate, across the states that decide whether its options
- * are answerable.
+ * The pending gate, across the states that decide whether its options are
+ * answerable: an `ask` carrying the model's own options, and an `approval`,
+ * whose two options are the client's own (`APPROVAL_OPTIONS`) — the wire sends
+ * none for that kind, and it is answered with a strict boolean.
  *
  * These render the PRODUCTION `CanonicalTranscript` from real
  * `PendingDesktopGate` fixtures, so what is judged is what ships — not a
@@ -32,12 +34,24 @@
  *   so the numerals are no longer a promise the app breaks.
  * - **The in-flight state disables by COLOUR, never opacity**, so the disabled
  *   card is legible on its own ground rather than washed toward it.
+ * - **An approval wears the same band as an ask**, from the same component
+ *   rather than a forked one — the operator asked for exactly that
+ *   ("approvals need to show options like that too ... and show context about
+ *   the requested command/action"), and one component for both kinds is what
+ *   keeps the contrast triple, the ordinals, the focus handling and the busy
+ *   semantics from drifting apart between them.
  */
 
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
 import "../../../styles/index.css";
+import { answerUnconfirmedMessage } from "../ask-answer";
+import {
+	QuestionDock,
+	type QuestionDockProps,
+} from "../components/trace/question-dock";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
@@ -91,6 +105,8 @@ const Frame = ({
 	height = 320,
 	width = "100%",
 	answering = false,
+	answer = null,
+	onAnswerSecret,
 }: {
 	pending: PendingDesktopGate;
 	/** The user turn the question is an answer to. See `transcriptWith`. */
@@ -99,6 +115,19 @@ const Frame = ({
 	width?: string;
 	/** An answer is in flight: every option is disabled. */
 	answering?: boolean;
+	/**
+	 * This pane's record of the gate it answered — what `chat-page.tsx` hands the
+	 * dock once an outcome landed. A refused answer renders the held card; the
+	 * secret stories reach that state the way a reader does (see
+	 * `SecretAnswerHeldFrame`).
+	 */
+	answer?: QuestionDockProps["answer"];
+	/**
+	 * The secret field's door. Absent (the default) renders the field READ-ONLY,
+	 * which is what a surface that cannot address an owner gets — the secret
+	 * stories pass a no-op so the field photographs as the app wires it.
+	 */
+	onAnswerSecret?: (value: string) => void;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -134,29 +163,24 @@ const Frame = ({
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
-				// Required by main's failure-notice work, and a no-op here for the
-				// same reason `onAnswer` is: this story renders no failure state,
-				// so nothing can reach the action. The other canonical stories
-				// pass an empty function too.
 				onReconnect={() => {}}
-				// `failure`, not the pre-rebase `error`: main's chat-failure work
-				// replaced the transcript's error slot with the published failure
-				// notice, and the rebase left this story naming a prop that no
-				// longer exists. Null is the honest value either way - these
-				// frames are about the pending gate, not about a failure - and
-				// every other story in this directory passes it the same way.
 				failure={null}
-				// Required by this branch's hold work: the pane keys its placeholder on
-				// whether a page for THIS session is still owed, so every call site states
-				// it. This story's transcript has rows and nothing is in flight, and the
-				// other canonical stories pass `false` for the same frames.
 				awaitingHydration={false}
+			/>
+			{/*
+			 * The question is DOCKED under the transcript, where the pane mounts it
+			 * above the composer (§F1) - so the story composes the two the way
+			 * `chat-content.tsx` does rather than asking the transcript for a card it
+			 * no longer draws. `onAnswer` is a no-op: a story has no session, and the
+			 * click path is asserted in `scripts/ask-options.test.mjs`.
+			 */}
+			<QuestionDock
+				gate={pending}
 				answering={answering}
-				// A no-op on purpose: these frames are about what the card LOOKS
-				// like, and a story has no session to answer. The click path is
-				// asserted in `scripts/ask-options.test.mjs` and demonstrated in a
-				// real renderer on the PR.
+				answer={answer}
 				onAnswer={() => {}}
+				onAnswerSecret={onAnswerSecret}
+				className="pt-2"
 			/>
 		</div>
 	);
@@ -370,15 +394,27 @@ export const AnswerInFlight: Story = {
 /**
  * A `secret` ask, which arrives with EMPTY options.
  *
- * The assertion here is an ABSENCE: no option list renders, because the answer
- * is a credential pasted into the composer's masked input and a clickable list
- * has nothing to offer it. The hint falls back to "Type your answer below."
+ * The state the FIELD exists for, and this file is where it is photographed:
+ * no backend this rig can boot will park a secret ask (the mock provider
+ * cannot ask at all — see `renderer-driver.mjs`'s `question-dock` scene, which
+ * carries the same limitation for option asks), so the card's own rendering is
+ * the evidence, and the live half — the composer closure, the masked
+ * attributes, the wire body — is pinned by the desktop suite and driven on the
+ * PR's frames.
+ *
+ * What a reviewer should look for: a PASSWORD field (masked, not a clear-text
+ * value), the reassurance line above it, a Send control disabled while the
+ * field is empty, and a hint that names the field rather than the composer.
+ * The composer is NOT in this frame — the story renders the dock the way
+ * `chat-content.tsx` mounts it; the closure of the box under it is the
+ * composer's own suite's business.
  */
 export const SecretAsk: Story = {
 	render: () => (
 		<Frame
 			asked="Set up the GitHub integration."
 			height={360}
+			onAnswerSecret={() => {}}
 			pending={gate({
 				title: "Paste the GitHub token",
 				detail: "It is stored in the credential store, not in the transcript.",
@@ -390,20 +426,144 @@ export const SecretAsk: Story = {
 };
 
 /**
- * An approval gate, unchanged by this work and captured so that stays true.
+ * A secret answer in flight, WITH THE TYPED VALUE UNDER THE MASK.
  *
- * The wire carries no options for an approval and it is answered yes/no in the
- * composer, so this card must look exactly as it did before.
+ * The field and its Send control refuse input while the one-answer lock is
+ * held, and the eyebrow says what is happening — "Sending your answer…", the
+ * same in-flight reading the option states carry, from the same card. The value
+ * the user handed over stays in the masked field until the outcome is known; it
+ * clears only once the answer was SENT (`SecretAnswer`'s own rule), so the
+ * reading this state exists to show is the DOTS STILL PRESENT mid-submit.
+ *
+ * THE FRAME IS REACHED THE WAY A READER REACHES IT (design round 1, D2; agent
+ * review round 1, MINOR-1). The story renders the idle field; the sweep row
+ * types a fixture into it through the real input pipeline (`insertText`) and
+ * presses Enter through the real key pipeline, and the submit the form receives
+ * flips this story's own `answering` — there is no way to seed a value into the
+ * shipped field from props, and an untyped field made the retention claim
+ * unfalsifiable: an empty field is equally what a premature clear looks like
+ * (which is what this story shipped first, and the round 1 review caught).
  */
-export const ApprovalUnchanged: Story = {
+export const SecretAnswerInFlight: Story = {
+	render: () => <SecretAnswerInFlightFrame />,
+};
+
+const SecretAnswerInFlightFrame = () => {
+	const [answering, setAnswering] = useState(false);
+	return (
+		<Frame
+			asked="Set up the GitHub integration."
+			height={360}
+			answering={answering}
+			onAnswerSecret={() => setAnswering(true)}
+			pending={gate({
+				title: "Paste the GitHub token",
+				detail: "It is stored in the credential store, not in the transcript.",
+				secret: true,
+				options: [],
+			})}
+		/>
+	);
+};
+
+/**
+ * A secret answer HELD: the outcome is unknown, so nothing can send again.
+ *
+ * The one state the round 1 reviews converged on (design D1; UX U1; QA Q-1):
+ * after an UNKNOWABLE outcome the field and Send are disabled with the typed
+ * value kept — a retry could send the answer twice — and the hint swaps to a
+ * sentence that names no dead control. A DEFINITE not-sent refusal does NOT
+ * hold (its field is released for a retry) and this story shows the arm that
+ * does.
+ *
+ * REACHED THE WAY THE IN-FLIGHT FRAME IS: the sweep types a value and presses
+ * Enter, and the submit flips this story's answer to the held outcome — the
+ * same shape `chat-page.tsx` produces from the transport arm of
+ * `answerReport`. The sentence is the shipped one
+ * (`answerUnconfirmedMessage`), not a fixture literal, so the frame cannot
+ * drift from the copy the app renders.
+ */
+export const SecretAnswerHeld: Story = {
+	render: () => <SecretAnswerHeldFrame />,
+};
+
+const SecretAnswerHeldFrame = () => {
+	const [answer, setAnswer] = useState<QuestionDockProps["answer"]>(null);
+	return (
+		<Frame
+			asked="Set up the GitHub integration."
+			height={360}
+			answer={answer}
+			onAnswerSecret={() =>
+				setAnswer({
+					sending: false,
+					refused: answerUnconfirmedMessage(
+						new DesktopControlError(
+							null,
+							"Desktop controls could not reach the backend process.",
+						),
+					),
+					// The unknowable arm holds; a definite refusal would carry `true`
+					// and release the field (round 1's D1/U1/Q-1 split).
+					retryable: false,
+				})
+			}
+			pending={gate({
+				title: "Paste the GitHub token",
+				detail: "It is stored in the credential store, not in the transcript.",
+				secret: true,
+				options: [],
+			})}
+		/>
+	);
+};
+
+/**
+ * An approval gate, which now shows the same options affordance as an ask.
+ *
+ * The wire carries no options for an approval — the title is the tool's name
+ * and the detail the action it wants — so Approve and Deny are the CLIENT's
+ * labels (`APPROVAL_OPTIONS`), and pressing one posts the strict boolean the
+ * answer route takes. This replaced `ApprovalUnchanged`, which photographed the
+ * old yes/no-only card precisely so this change could not go unnoticed.
+ */
+export const Approval: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
 			height={360}
 			pending={gate({
 				kind: "approval",
-				title: "Run `rm -rf ./dist`?",
-				detail: "In ~/local-operator-ui.",
+				// The live wire's own shape for a shell call: the tool's name as
+				// the title, and the tool's own approval describer as the detail
+				// (`_describe_shell_approval` in the backend: "run: <command>").
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+			})}
+		/>
+	),
+};
+
+/**
+ * An approval mid-answer.
+ *
+ * The eyebrow says "Sending your answer…" and both options are disabled — the
+ * same in-flight semantics as an ask, from the same component — because the
+ * window between the press and the gate moving is exactly when a second press
+ * (or a typed send racing the click) would post a second answer to a one-shot
+ * gate. The live half of this pair is in `docs/evidence/approval-options-live/`.
+ */
+export const ApprovalAnswerInFlight: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={360}
+			answering={true}
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
 				options: [],
 			})}
 		/>

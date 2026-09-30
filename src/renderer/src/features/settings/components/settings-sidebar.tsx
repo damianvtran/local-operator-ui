@@ -80,9 +80,15 @@ const TOUR_TAGS: Record<string, string> = {
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	{ label: "General", ids: ["general", "appearance"] },
+	/*
+	 * Model providers first (design audit section 2 / D13): it is the section a
+	 * new install cannot work without, and "Radient account" ahead of it read as
+	 * the place to sign in -- while Radient is ALSO a provider row. The page's
+	 * document order below follows the same order, per the rule above.
+	 */
 	{
 		label: "Account",
-		ids: ["radient", "providers", "integrations"],
+		ids: ["providers", "integrations", "radient"],
 	},
 	// The backend registry section was rendered but reachable only by deep
 	// link because it sat in no group; the rail filters by group membership.
@@ -129,11 +135,15 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  *
  * ## Why no edge of its own
  *
- * The rail draws no border. `settings-page` stacks it above the content below
- * the `md` breakpoint, where the single hairline has to move from right to
- * bottom, and this component cannot know which layout it is in — a hardcoded
- * `border-r` here becomes a stray vertical line in the stacked layout. The page
- * wrapper owns that one edge and moves it.
+ * The rail draws no boundary. It used to carry one hairline from its wrapper in
+ * `settings-page`, for the stacked layout below `md` — and that is the line the
+ * operator reported as stopping partway up the window (2026-09-27). The
+ * stacked layout is gone (the rail has no `max-*` utilities any more) and the
+ * boundary is now the tone step the rail's own ground makes: `elevated`
+ * against the `surface` sidebar on its left and the `canvas` content on its
+ * right. A drawn line over a tone step is the second mark this app's doctrine
+ * removes (`chat-layout.tsx`, and the pass that took the dock's `border-l`),
+ * and the one the wrapper drew was the one that stopped short.
  *
  * ## Why it drops its labels below 1040px
  *
@@ -277,10 +287,29 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 		);
 	};
 
+	/* The rail's ground is a rung of the ladder; its row planes are not.
+	 *
+	 * The rail was `surface`, the same ground as the app sidebar beside it, and
+	 * the two combined into one 480px slab with no boundary between them — the
+	 * operator's report of 2026-09-27 ("a slightly different background shade to
+	 * differentiate from the main sidebar"). It takes `elevated`, one rung up
+	 * (`docs/branding.md` § 2): ΔE00 2.02-6.62 against the sidebar's `surface`
+	 * over all 59 palettes (min `arcade`, median 2.58), and 4.17-11.64 against
+	 * the `canvas` content on its other side.
+	 *
+	 * The ROW STATES do not move with it. Both roles (`row-hover`,
+	 * `row-selected`) are authored as steps OF `surface`, and a surface that
+	 * paints them has to BE `surface` — resolved off `elevated` the current
+	 * fill falls under the 2.0 field floor on 16 of 59 palettes (minimum ΔE00
+	 * 0.47, `duskfox`) — so the ground is SPLIT rather than either direction
+	 * relaxed: the nav takes the rung, and each group's LIST carries the
+	 * `surface` its rows were authored against (the same split the canvas Files
+	 * list made, #564). `scripts/chat-sidebar-selection.test.mjs` resolves each
+	 * list as the rows' ground, so a future re-grounding fails by name. */
 	return (
 		<nav
 			aria-label="Settings sections"
-			className="flex h-full w-full flex-col overflow-hidden bg-surface"
+			className="flex h-full w-full flex-col overflow-hidden bg-elevated"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of
@@ -304,7 +333,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 									{group.label}
 								</div>
 							)}
-							<ul className="flex flex-col gap-0.5">
+							{/* The rows' own plane: both row roles are steps OF `surface`,
+							    so the list — and only the list — wears it (see the ground
+							    note at the top). */}
+							<ul className={cn("flex flex-col gap-0.5 bg-surface")}>
 								{groupSections.map(renderSection)}
 							</ul>
 						</div>
@@ -341,7 +373,7 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	},
 	{
 		id: "providers",
-		label: "Providers",
+		label: "Model providers",
 		icon: Plug,
 	},
 	{

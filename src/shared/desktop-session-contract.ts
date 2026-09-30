@@ -3,13 +3,59 @@
 // docs/desktop-controls.md before implementing replay or notifications.
 export type CanonicalSessionId = string;
 /** Returned by session_catalogue version 2. The backend owns status precedence,
- * active/previous partition and order; clients must not infer them from read state. */
+ * active/previous partition and order; clients must not infer them from read state.
+ *
+ * `code` stays a plain `string` rather than a union of the codes this build knows,
+ * and that is the contract rather than a shortcut: the vocabulary belongs to the
+ * backend, which reaches a client as soon as the runtime is upgraded and without
+ * any change here, so a union would turn every runtime that learns a new state
+ * (`delegating` is the newest) into a compile error in a renderer that was never
+ * asked to care. A client's job with a code it does not recognise is to show it as
+ * unknown rather than to normalise it into a state it does understand. */
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
+/**
+ * Who OPENED a conversation, when it was an agent rather than the operator.
+ *
+ * Present ONLY on a session an agent opened as an explicitly-requested parallel
+ * workstream, and present in BOTH values' senses: the object being here at all is
+ * the fact ("this is not one of your own chats"), which is why the sidebar draws
+ * a marker from its presence rather than from any member. Absent/null on every
+ * conversation the operator opened himself, on every ephemeral machine-started
+ * session, and on every backend that predates the field - so a client that
+ * ignores it renders exactly the list it rendered before.
+ *
+ * EVERY MEMBER IS INDEPENDENTLY NULLABLE, and that is the normal case rather than
+ * a defect: a requester's identity is a fact the backend may hold none of. The
+ * three name the requesting side from three angles - `agent` is its role/agent
+ * identity, `label` its conversation name, `session` its session id - so a
+ * renderer must read each one separately and never require another. `label` is
+ * free text (a conversation name) and may be arbitrarily long, so a surface that
+ * prints it has to bound and truncate it, the way it bounds an agent name.
+ */
+export type SessionOpenedBy = {
+	agent: string | null;
+	label: string | null;
+	session: string | null;
+};
 export type SessionCatalogueRow = {
 	id: CanonicalSessionId;
 	name: string;
 	mtime: number;
+	/**
+	 * When the conversation was BORN, in epoch SECONDS - the backend's
+	 * `session_created_at`: the canonical `created_at.json` record, or the
+	 * directory's birth time when that record is absent, and `0.0` when neither
+	 * can be read.
+	 *
+	 * The second clock on this row, beside `mtime` (the activity clock the
+	 * sidebar's bins read by default): the "Created" basis reads THIS one, and it
+	 * is optional because a backend that predates the field simply does not send
+	 * it - absent and a non-positive value are the same answer to the same
+	 * question ("no birth time"), which is why the reader refuses `<= 0` rather
+	 * than printing 1970 (`rowTimeMs` in `chat-list-sections.ts`).
+	 */
+	created_at?: number | null;
 	preview: string;
 	live_state: string;
 	pending: string | null;
@@ -55,6 +101,12 @@ export type SessionCatalogueRow = {
 	archived: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
+	/**
+	 * The agent that opened this conversation, when one did. See
+	 * `SessionOpenedBy` for why its PRESENCE is the fact and why every member
+	 * inside it may be null.
+	 */
+	opened_by?: SessionOpenedBy | null;
 	attention?: CompletionAttention;
 	/**
 	 * The feed's stamp for `status`, when the backend served this row knows it.
@@ -69,6 +121,53 @@ export type SessionCatalogueRow = {
 	 */
 	status_revision?: number;
 	status_epoch?: string;
+	/**
+	 * How many subagents this session owns that are RUNNING, and how many are
+	 * waiting for capacity, as the record behind the row reports them.
+	 *
+	 * Declared here rather than only reached through the store's index signature
+	 * so the two readings are typed where they are the same fact the row's
+	 * `status` already carries: the backend folds them into `status.label` and
+	 * the app draws no second copy of them, so this is honest typing of a wire
+	 * key, not new plumbing.
+	 *
+	 * `null` means "this build does not report" - a runtime older than the
+	 * fields, or one that cannot see them - and is deliberately NOT `0`: a
+	 * session this client could not ask about must never be shown as one with
+	 * no subagents, so every reader fails toward "unknown". Optional as well as
+	 * nullable because the fields are absent on a backend that has never sent
+	 * them, and absent and `null` are the same answer to the same question.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
+	/**
+	 * -- THE MESH'S FLAT LOCALITY FIELDS, on every row of a listing that asked for
+	 * them (`include_peers`, gated on `features.peers`).
+	 *
+	 * `locality` is the only field that answers which device holds this row, and the
+	 * backend's own model says so: `peer` (the nested block) is `null` on every row
+	 * this shape describes, "so a reader must take `peer: null` as 'this row carries
+	 * no nested block' and never as 'this row is local'". `locality` is therefore
+	 * always present with a value - `"local"` for a row on this device, `"remote"`
+	 * for one another device holds - while the rest are `""`/`true` on a local row,
+	 * present-with-a-value rather than omitted, which is the same "an absent key is
+	 * not a claim" rule `pinned` states above: a row that MOVED home must be able to
+	 * SETTLE its stale `remote` mark rather than keep it forever.
+	 *
+	 * OPTIONAL HERE AND REQUIRED ON THE WIRE, deliberately: they arrive only from a
+	 * listing that asked for peers (and only from a backend new enough to know them),
+	 * so a reader of this type must treat absence as "not asked / not answered" and
+	 * never as "remote" or "unreachable". The Mesh tab is the one reader, and it
+	 * normalises rather than casts (`features/mesh/mesh-types.ts`).
+	 */
+	locality?: "local" | "remote";
+	/** The device that holds it; `""` on a local row's own catalogue entry. */
+	owner_device?: string;
+	owner_device_name?: string;
+	/** Whether the owning device answered the poll that produced this row. */
+	reachable?: boolean;
+	/** One sentence when `reachable` is false, in the backend's own words. */
+	unreachable_reason?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -141,7 +240,7 @@ export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;
 	anchor_id: string | null;
-	kind: "complete" | "error" | "interrupted" | null;
+	kind: "complete" | "error" | "interrupted" | "closed" | "retired" | null;
 	unseen: boolean;
 	revision: [number, number];
 	/** False for a live owner that has not negotiated completion receipts. */
@@ -190,16 +289,53 @@ export type CompletionAttentionAckReceipt = {
  * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
  * names the backend's value.
  *
- * Nothing in the renderer FORKS on this code, and that is deliberate rather than
- * an omission: `use-completion-view.ts` sends every rejection -- this 409
- * included -- to the one shared retry ladder, so a superseded token costs its
- * attempt like any other failure and the re-arm comes from the projection naming
- * a NEW token, not from a special case here. It is kept because it is part of
- * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
- * a client that does need to tell the refusal apart must not have to spell the
- * string itself.
+ * THE RENDERER FORKS ON THIS CODE, and the fork is what makes a stale token
+ * resolvable at all (agent review round 1, M1). `use-completion-view.ts` treats
+ * this refusal as TERMINAL for the loop it interrupted, instead of spending the
+ * shared ladder on it: the ladder exists to ride out a failure, while this is the
+ * backend stating that the completion this attempt named is no longer the current
+ * one - so a retry of the same token cannot succeed however many turns it gets,
+ * and the state that supersedes it is the FEED's to deliver, not this call's. The
+ * loop's next life takes its token from the merge of both channels (the stream and
+ * the row the feed writes), which is the re-read; the anchor hit test is still the
+ * definition of "shown", so a token is never acknowledged blind.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * The backend's machine code for "the store could not take the write because
+ * another writer holds its lock": the ONE refusal of a read receipt whose remedy
+ * is the attempt itself.
+ *
+ * The string is the BACKEND's (`STORE_BUSY` in
+ * `local_operator/session/store_failures.py`, answered as
+ * `503 {"code": "store_busy", "message": ...}` by `_store_refusal` in
+ * `local_operator/server/routes/desktop_sessions.py`), copied here for the same
+ * reason the superseded token above is: the renderer cannot import Python, and a
+ * client that has to spell the backend's own string is a client that loses the
+ * classification the day the backend renames it. `scripts/completion-view-ack.test.mjs`
+ * pins both literals against the documented wire values.
+ *
+ * UNLIKE THAT ONE, THE RENDERER FORKS ON THIS CODE. `use-completion-view.ts`
+ * retries a contention refusal on its own prompt, bounded budget while every
+ * other failure takes the shared ladder (`runtime_busy` is the same shape one
+ * op over, `RUNTIME_BUSY_CODE` in `desktop-contract.ts`). Why the fork exists:
+ * contention clears by itself in the same second-scale window the send path
+ * already absorbs (`BUSY_RESENDS`), and the operator's own log shows the cost of
+ * not telling it apart - three refusals of `/seen`, ONE attempt each, minutes
+ * apart, with the completion's mark still on the row (2026-09-23, the reported
+ * defect). Treating it as a generic failure instead means either hammering a
+ * store that cannot recover or giving up on one that can.
+ *
+ * WHERE IT ARRIVES, precisely, because the body is what a client can key on:
+ * that route's refusal carries `code` and `message` and NO `retry_after_ms`
+ * today (verified in `_store_refusal`, 2026-09-23), while the transport reads
+ * `detail.retry_after_ms` into `DesktopControlError.retryAfterMs` where a
+ * backend does send it. The receipt's busy budget therefore reads that field and
+ * falls back to its own default, so a future backend can steer the wait without
+ * a client change.
+ */
+export const STORE_BUSY_CODE = "store_busy";
 
 /**
  * Whether an acknowledgement may be taken as marking this conversation READ.
@@ -308,6 +444,22 @@ export type CanonicalModel = {
 	reasoning_default_effort?: string | null;
 	/** Whether the model reasons at all, with or without a ladder. */
 	reasoning?: boolean | null;
+	/**
+	 * Whether this route can serve the model on its FAST tier, and whether the
+	 * session's fast dial is ON (`ModelSpec.supports_fast_mode` / `.fast_mode`,
+	 * `local_operator/harness/types.py`; `/fast` flips the second).
+	 *
+	 * OPTIONAL like every field below `model_id`, and for the same reason: the
+	 * pair landed after the spec dump this contract first described, so an older
+	 * owner omits both. `supports_fast_mode !== true` therefore means "no tier to
+	 * report", and every reader shows NOTHING for it rather than an OFF state it
+	 * cannot vouch for — the one tri-state every surface takes from
+	 * `fastModeState` (`session-status/session-model.ts`): the strip's badge and
+	 * the `/fast` row's slot both read that helper, so they cannot disagree
+	 * about a session's dial.
+	 */
+	supports_fast_mode?: boolean | null;
+	fast_mode?: boolean | null;
 	/** The active budget. `max_context_window` retains provider provenance. */
 	context_window?: number | null;
 	max_context_window?: number | null;
@@ -349,7 +501,9 @@ export type PendingDesktopGate = {
 	 *
 	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
 	 * Carried here so the type matches the wire; the secret answer path is the
-	 * composer's masked input, which does not branch on this yet.
+	 * docked card's masked field (`trace/question-dock.tsx`'s `SecretAnswer`,
+	 * posted through `ask-answer.ts`'s `answerGateSecret`), which does not
+	 * branch on this yet.
 	 */
 	persist?: boolean;
 	/**
@@ -394,13 +548,18 @@ export type PendingDesktopGate = {
  * conversation the user is already in. This is what the presence claim
  * advertises — the backend's `delivers(kind)` reads it, and a claim that
  * advertises nothing makes every completion someone else's to raise.
+ *
+ * `retired` joins `interrupted` in staying OUT of this set (agent review round
+ * 2, NIT-1): both are CUT receipts rather than a completed or failed turn —
+ * the per-session bridge raises the cut for the session the user is in, and
+ * the feed's claim covers turns that finished, cleanly or not.
  */
 export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
 
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
-	kind: "complete" | "error" | "interrupted" | "ask" | "approval";
+	kind: "complete" | "error" | "interrupted" | "retired" | "ask" | "approval";
 	title: string;
 	/** Short state category ("Complete", "Needs attention"). */
 	status: string;
@@ -527,6 +686,65 @@ export type CanonicalWakeState = {
 };
 
 /**
+ * One ARMED monitor, as the canonical frontend publishes it (`wake`'s
+ * sibling, `local_operator/session/frontend_state.py::MonitorState`, built by
+ * `_monitor_state` from the scheduler's own `index_rows()`).
+ *
+ * Declared rather than reached through the index signature for the reason
+ * `CanonicalWakeState` states for itself: this is the field that decides
+ * whether the composer's monitor chip and the pane's Monitors section render
+ * at all, and a rename on the wire would silently empty both surfaces with
+ * nothing to catch it.
+ *
+ * The row is the spec's identity JOINED with its health counters — the same
+ * fields the derived index writes (the monitor design doc § 10.2), because
+ * `index_rows()` is the one place those two are composed, so a status surface
+ * and a cold reader cannot disagree about a monitor's shape. Health rides the
+ * row rather than a second call because a disabled monitor must not be
+ * invisible on any surface (§ 11.3).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS, like a wake's due
+ * instant and unlike every second-stamped clock on this wire — the unit is
+ * spelled out on each field because getting it wrong is a factor of 1000 with
+ * nothing on screen to say so. `next_due_at` is null for a monitor whose next
+ * tick is not yet known (or that is disabled), and `last_check_at` is 0 until
+ * the first check — both are real wire states, not errors.
+ *
+ * Every field below `name` is OPTIONAL even though the Python model defaults
+ * it: the wire is the contract and an older producer omits what it does not
+ * know (`extra="allow"` on the Python side, so a newer row still parses), so a
+ * required field here would only make the renderer read `undefined` off a
+ * value TypeScript promised was set.
+ */
+export type CanonicalMonitorState = {
+	id: string;
+	/** The short label, e.g. `loom-pr-1710`. */
+	name: string;
+	/** The session tool the check re-runs (informational on this wire). */
+	tool?: string;
+	/** The check interval in milliseconds (`spec.MIN_MONITOR_INTERVAL_MS` floor). */
+	every_ms?: number | null;
+	/** Stop time, epoch MILLISECONDS, or null/absent for a durable watch. */
+	until_at?: number | null;
+	/** What to watch for — the authored prose line the row shows. */
+	description?: string;
+	/** The next check instant, epoch MILLISECONDS, or null while unknown. */
+	next_due_at?: number | null;
+	/** When the last check ran, epoch MILLISECONDS; 0 before the first. */
+	last_check_at?: number;
+	/** Checks run so far. */
+	checks?: number;
+	/** Deltas delivered so far. */
+	deliveries?: number;
+	/** Failures in a row; non-zero is the row's `failing` health. */
+	consecutive_failures?: number;
+	/** Auto-disabled after the failure ladder trips; the row states it. */
+	disabled?: boolean;
+	/** Why it was disabled (the failure's last line), when there is one. */
+	disabled_reason?: string;
+};
+
+/**
  * The epoch MILLISECONDS a wire stamp states, or `null` when it states none.
  *
  * ONE READER FOR ONE UNIT. The wire states two instants in epoch SECONDS — a
@@ -550,6 +768,46 @@ export function epochMsFromSeconds(value: unknown): number | null {
 		: null;
 }
 
+/**
+ * The live judge state a judged goal carries, as `FrontendSessionState.goal_judge`
+ * publishes it.
+ *
+ * A CLOSED VOCABULARY WITH AN OPEN READER. Every member of `state` is a word some
+ * surface may render, and a reader must tolerate a member it does not know: the
+ * writer is a newer backend than this build, and the alternative to tolerating it
+ * is a surface that paints nothing (or, worse, crashes) on a state that is
+ * perfectly real. `verdict` is typed the same way for the same reason.
+ *
+ * `run` is the count of consecutive auto-continuations admitted for the goal. It
+ * is NOT a progress bar — the design record refuses printing it on the chip
+ * because nothing on the row can act on it — but it is read by the pane and the
+ * picker where a goal has room to say how far a judge has driven it.
+ */
+export type CanonicalGoalJudge = {
+	state: string;
+	run?: number;
+	verdict?: string;
+	reason?: string;
+};
+
+/**
+ * One settled goal, as `FrontendSessionState.goal_history` publishes it.
+ *
+ * `status` is the WIRE's word and is printed as the wire spells it (the loop
+ * chip's own rule for a status word), so the receipt and the pane cannot describe
+ * one goal differently. `id` is stable and is what a future delete-by-id would
+ * address; nothing consumes it yet — the pane's omission of a delete control is
+ * deliberate, because no command deletes a history row.
+ */
+export type CanonicalGoalHistoryEntry = {
+	id: string;
+	text: string;
+	status: string;
+	created_at?: string;
+	settled_at?: string;
+	reason?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -561,6 +819,21 @@ export type CanonicalFrontendState = {
 	conversation_title_user_set: boolean;
 	conversation_title_forked: boolean;
 	goal: string;
+	/**
+	 * `""` (no goal) | `"active"` | `"done"`. Optional, and the optionality is
+	 * LOAD-BEARING rather than incidental: this field, `goal_judge`, `goal_history`
+	 * and `goal_history_truncated` all ship in ONE backend change, so their presence
+	 * on the snapshot is the only capability signal a released-vs-current backend
+	 * gives a renderer. A typed non-optional field here would let a control be
+	 * written that sends a new argument to a backend that would store it as the goal
+	 * text (`goal --clear` did exactly that on a released build, measured in
+	 * `docs/composer-status-tabs.md` §12.4). Read them through `goalCapability`
+	 * below; never assume they are there.
+	 */
+	goal_status?: string;
+	goal_judge?: CanonicalGoalJudge | null;
+	goal_history?: CanonicalGoalHistoryEntry[];
+	goal_history_truncated?: boolean;
 	active_agent: string;
 	active_team: string;
 	selected_model: CanonicalModel | null;
@@ -581,6 +854,17 @@ export type CanonicalFrontendState = {
 	 * state either surface draws.
 	 */
 	wakes: CanonicalWakeState[];
+	/**
+	 * The session's ARMED monitors, `wakes`' sibling. Absent or empty means
+	 * no monitors, which is the ordinary state: the composer's monitor chip
+	 * and the run pane's Monitors section both render as ABSENCE at zero, so
+	 * this list being empty is not a state either surface draws.
+	 *
+	 * A backend that predates the field omits it entirely — the same skew
+	 * `wakes` carried when it landed — so readers take absent and empty alike
+	 * (the run model reads it through the same `toWireList` seam).
+	 */
+	monitors: CanonicalMonitorState[];
 	mcp_servers: Array<{
 		name: string;
 		status: string;
@@ -679,6 +963,51 @@ export type CanonicalFrontendState = {
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
 };
+/**
+ * Whether this snapshot came from a backend that understands the goal lifecycle
+ * arguments (`done`, `dismiss`, `history`).
+ *
+ * ONE PREDICATE, READ BY EVERY NEW CONTROL. The gate is not a nicety: a backend
+ * that predates these fields does not have `--done`/`done` in its flag vocabulary,
+ * so it treats the bare word as goal TEXT and stores the literal `done` as the
+ * user's standing goal — silent data loss from one click, measured for the sibling
+ * `--clear` footgun in `docs/composer-status-tabs.md` §12.4. The fields and the
+ * flags ship in one backend change, so "is the field there" is exactly "does the
+ * flag exist".
+ *
+ * `goal_status` is the field that decides it because it is the one every new
+ * control depends on (the done paint, the `Dismiss` swap, the pane's rows) — and it
+ * is checked with `in`/`typeof` rather than truthiness, because `""` and `false` are
+ * legitimate VALUES of this capability and only absence means "old".
+ *
+ * A `null` frontend (a pane with no snapshot yet) is NOT capable: nothing new may
+ * be sent before a snapshot has said the backend knows it.
+ */
+export const goalCapability = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => typeof frontend?.goal_status === "string";
+/**
+ * Whether this snapshot carries a goal AT ALL — set and in flight, or already
+ * settled.
+ *
+ * THE ONE PRESENCE RULE the surfaces that speak about "a goal" share (design
+ * review round 2, D2). The wire's `goal` is a REQUIRED string whose empty value
+ * means no goal, and a whitespace-only goal is none — the rule the composer chip
+ * already gates on (`frontend?.goal?.trim()` in `composer-status-row.tsx`) and
+ * that the `/goal` picker's `Judge` row reuses for the same reason (`hasGoal`).
+ * It is exported so the canvas pane's empty state can ask THIS question instead
+ * of the one it was asking — *has anything SETTLED* — which told a user with a
+ * goal in flight "No goal set — /goal <text> to set one." while the composer
+ * chip two panes away displayed that goal, in one screen.
+ *
+ * DISTINCT FROM `goalCapability` ON PURPOSE: capability is "does this backend
+ * publish the lifecycle at all", presence is "is there a goal on it". A new
+ * backend with no goal is capable and carries none; a backend that predates the
+ * fields is neither capable nor, on any surface here, able to have one.
+ */
+export const goalPresent = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => (frontend?.goal ?? "").trim().length > 0;
 export type CanonicalFrontendSync = {
 	state_version: number;
 	epoch: string;
@@ -742,6 +1071,18 @@ export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;
 	history: DesktopHistoryPage;
 	cold: boolean;
+	/**
+	 * WHICH cold (`no-runtime`, `owner-silent`, ...), and whether an
+	 * authenticated dial is retained and still syncing. Both are additive on the
+	 * backend (local-operator 93542f91, v0.56.6), so an older daemon sends
+	 * neither and they are optional here. The renderer reads `cold_reason` for
+	 * one thing only: its PRESENCE proves the frame came from a backend whose
+	 * history page is the journal's tail (see `pageIsJournalTail` in
+	 * `use-canonical-session`). No surface paints either token; the pane's
+	 * existing states already say everything the user can act on.
+	 */
+	cold_reason?: string | null;
+	attaching?: boolean;
 };
 type Receipt<T extends string, P> = {
 	session_id: CanonicalSessionId;
@@ -812,6 +1153,31 @@ export type DesktopSessionFrame =
 	// AgentEvent the transcript reducer paints, nor a `frontend.update`, which
 	// is a field delta of persistent state — a notification is a one-shot edge.
 	| Receipt<"notification", DesktopNotification>
+	/**
+	 * One live chunk of an off-record aside's answer (`/btw`).
+	 *
+	 * LIVE-ONLY AND REPLAY-EXEMPT, for the same shape of reason `notification` is:
+	 * the backend publishes it with replay disabled, so a late subscriber never
+	 * receives an earlier delta and there is nothing to gap on. An older renderer
+	 * falls through every branch of its frame loop, advances its receipt cursor on
+	 * `seq`, and paints nothing — and because the text is not durable, nothing is
+	 * lost by that beyond a partial answer its own POST settles anyway.
+	 *
+	 * DELIBERATELY NOT AN `event` (a typed canonical AgentEvent the transcript
+	 * reducer paints): an aside is off the record by construction, so a frame that
+	 * could reach that reducer would be the one way the promise "nothing here joins
+	 * the conversation" could be broken by accident. Nor is it a `frontend.update`,
+	 * which is a field delta of persistent state — this is a chunk of a stream the
+	 * renderer reads into its own store, keyed by `aside_id`.
+	 *
+	 * `aside_id` IS THE CLIENT-GENERATED `request_id` of the POST that asked the
+	 * question (the route answers `aside_id: body.request_id`), which is what lets
+	 * the panel subscribe BEFORE its own request resolves and still catch the first
+	 * chunk. `delta` is a chunk, never the whole answer: the POST's returned text is
+	 * what settles the exchange, so a chunk this renderer never saw costs it nothing
+	 * (see `AsideStream`).
+	 */
+	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 
 /**

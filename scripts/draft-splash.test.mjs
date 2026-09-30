@@ -72,6 +72,8 @@ import { build } from "esbuild";
  */
 
 const SESSION = "7c9e6679-7425";
+/** A `sessions.draft` minted id: the same 12-hex shape a session id has. */
+const DRAFT_ID = "c9fc2c68b834";
 
 const bundle = await build({
 	stdin: {
@@ -83,10 +85,10 @@ const bundle = await build({
 			 * Renders the hook ONCE and hands back the handle it returned. The
 			 * probe renders nothing on purpose: the handle is the whole subject.
 			 */
-			export const handleFor = (sessionId, enabled) => {
+			export const handleFor = (sessionId, enabled, isSession) => {
 				let handle = null;
 				const Probe = () => {
-					handle = useCanonicalSessionStream(sessionId, enabled);
+					handle = useCanonicalSessionStream(sessionId, enabled, isSession);
 					return null;
 				};
 				renderToStaticMarkup(createElement(Probe));
@@ -313,10 +315,54 @@ test("a New chat's draft leaves the pane with nothing to claim", () => {
 	);
 });
 
-test("a cold session whose page is in flight still holds the pane, and stops holding when its rows land", () => {
+test("a draft that HOLDS a stream owes no page either: the subscription is a bridge, not a conversation", () => {
+	/*
+	 * The draft pre-engage gives the pane a stream before any session exists
+	 * (`sessions.draft`'s minted id, subscribed to keep the warm alive), so the
+	 * pane the first test above describes now has `enabled: true` with an id -
+	 * the state that falsifies the sentence "a draft has neither". Unfixed, the
+	 * pane held `Loading conversation…` over its empty state for the draft's
+	 * first ~200 ms (UX round 1, U1). The third input is the caller's answer
+	 * that this id is a DRAFT's; the SAME id read as a session's keeps waiting,
+	 * which is what makes the term the discriminator rather than the id's shape.
+	 */
+	const bridged = handleFor(DRAFT_ID, true, false);
+	assert.equal(
+		waits(bridged),
+		false,
+		"a bridge subscription is not a page anyone is waiting for; the empty state stays the pane's claim",
+	);
+	assert.equal(
+		waits(handleFor(DRAFT_ID, true)),
+		true,
+		"and the term is what discriminates: the same id as a session's is a page still owed",
+	);
+	// The pane's rule, on the bridged draft's own composed fact: nothing to hold.
+	const view = {
+		status: "connecting",
+		failure: null,
+		awaitingHydration: waits(bridged),
+		recordCount: 0,
+	};
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(view),
+		false,
+		"so the skeleton never flashes between the first keystroke and the draft's first frame",
+	);
+	assert.equal(
+		transcriptPaneCollapses(view),
+		true,
+		"and the splash keeps the column while the user types",
+	);
+});
+
+test("a cold session whose page is in flight still holds the pane, and stops holding when its own rows land", () => {
 	// The other half of the same rule, unchanged by this repair (design D7), read
 	// off the SHIPPED handle so the two claims are one line apart: the segment a
-	// real cold session is entitled to, and the row that ends it.
+	// real cold session is entitled to, and the row that ends it. `stale: false`
+	// is the row that ends it: rows this window CACHED keep the hold (see
+	// `session-switch.test.mjs`'s cached table), because they are this window's
+	// memory of the conversation rather than the conversation.
 	const cold = handleFor(SESSION, true);
 	const owed = waits(cold);
 	const paneView = (recordCount) => ({
@@ -324,6 +370,7 @@ test("a cold session whose page is in flight still holds the pane, and stops hol
 		failure: null,
 		awaitingHydration: owed,
 		recordCount,
+		stale: false,
 	});
 
 	assert.equal(owed, true, "a cold session's page has not landed yet");
@@ -341,6 +388,83 @@ test("a cold session whose page is in flight still holds the pane, and stops hol
 		transcriptPaneCollapses(paneView(2)),
 		false,
 		"a pane with rows never collapses out of the layout",
+	);
+});
+
+test("a sessionless send in flight holds the pane, and the band reads the same fact", () => {
+	/*
+	 * THE PRE-SESSION WAIT, WHICH IS THE STATE THIS CHANGE ADDS: a send is
+	 * painted under the draft's own key while `sessions.create` is still in
+	 * flight, so the pane has something to show before its conversation exists.
+	 *
+	 * Two readers, one fact. The pane's term is `admittedSend` - fed from the
+	 * same latch the band reads as `canonical.starting` (`chat-page.tsx` derives
+	 * both from the pending-send registry) - and the claim is that both say
+	 * "not empty" for it: the pane keeps the scroller so the wait line has
+	 * height to paint in, and the band yields the splash, because a conversation
+	 * with a message on its way is not one to greet. The state they must NOT be
+	 * in is the pre-change pair: band centred AND pane collapsed, with the
+	 * message in neither surface.
+	 */
+	const draft = handleFor(undefined, false);
+	const view = {
+		status: "connecting",
+		failure: null,
+		awaitingHydration: waits(draft),
+		recordCount: 0,
+		admittedSend: true,
+	};
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(view),
+		false,
+		"the claim is the wait line, not a page nobody is owed",
+	);
+	assert.equal(
+		transcriptPaneCollapses(view),
+		false,
+		"the pane must grow for the rung: collapsed, the wait line is in the DOM with no height (the measured dead air)",
+	);
+
+	// The band's own half of the agreement, on its shipped expression. No
+	// braces nest inside it, so the first `}` closes the prop.
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	const prop = source.match(/messages=\{([\s\S]*?)\}/);
+	assert.ok(
+		prop,
+		"chat-content.tsx no longer passes `messages` to the band - this guard is aimed at that expression",
+	);
+	const expression = prop[1];
+	const probes = [
+		// A sessionless send in flight: the widened fact, in the state the old
+		// band read as empty because no record had landed yet.
+		{ starting: true, view: { transcript: { records: [] } } },
+		// The same draft before the press: still empty, the band may greet.
+		{ starting: false, view: { transcript: { records: [] } } },
+	];
+	const scope = {
+		canonicalSpeaking: () => false,
+		gone: false,
+		CANONICAL_NONEMPTY: "content",
+		EMPTY_MESSAGES: "empty",
+		messages: [],
+	};
+	let actual;
+	try {
+		actual = probes.map((probe) =>
+			runInNewContext(`(${expression})`, { canonical: probe, ...scope }),
+		);
+	} catch (error) {
+		assert.fail(
+			`the band's \`messages\` expression could not be evaluated with a handle and its helpers in scope (${error.message}) - re-aim this guard at whatever now carries the fact`,
+		);
+	}
+	assert.deepEqual(
+		actual,
+		["content", "empty"],
+		"the band counts an admitted send as content: with `starting` the splash must yield, and without it the empty band still greets",
 	);
 });
 

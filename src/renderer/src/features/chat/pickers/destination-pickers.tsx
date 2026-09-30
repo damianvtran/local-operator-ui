@@ -19,11 +19,32 @@ import {
 	desktopKeys,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+
+/**
+ * The model this session is RUNNING, for a dialog whose job is not to offer the
+ * model it already runs.
+ *
+ * `frontend ?? heldFrontend`, THE SAME VALUE THE READINGS STRIP PAINTS. During a
+ * reconnect the authoritative `frontend` is NULL by design -- the hook drops it
+ * so the replacement stream's frames are treated as replay -- and the readings
+ * the pane keeps are the held copy. Reading `canonical.frontend` alone here made
+ * a HELD pick open with no current row marked and its cursor on catalogue row 0,
+ * so Enter POSTed whichever model sorted first: a model this session had never
+ * run, painted as pending by the strip (UX round 1, U1, a blocker). The same
+ * press in the live phase marks the running row and re-picks the model already
+ * in use, so the two phases disagreed about what a press means.
+ *
+ * Stated once rather than at each call site: two dialogs ask this question and a
+ * second copy is how they would come to disagree about what "current" is.
+ */
+const runningFrontend = (canonical: CanonicalSessionHandle) =>
+	canonical.frontend ?? canonical.heldFrontend;
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -42,11 +63,13 @@ import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
-import type {
-	CanonicalFrontendSync,
-	CanonicalModel,
-	DesktopHistoryPage,
-	SessionCatalogueStatus,
+import {
+	type CanonicalFrontendSync,
+	type CanonicalModel,
+	type DesktopHistoryPage,
+	type SessionCatalogueStatus,
+	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { credentialNamesFrom } from "../components/credential-capture";
@@ -67,11 +90,18 @@ import {
 	effortDisplay,
 	effortLadder,
 	effortLevel,
+	fastModeState,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import { fastPickerOptions } from "./fast-picker-options";
 import { catalogueListing } from "./model-catalogue-listing";
+import {
+	effortCommandSucceeded,
+	writeModelDefaultSettings,
+} from "./model-default-settings";
+import { matchModelPickerOptions } from "./model-picker-match";
 import {
 	PickerCheck,
 	PickerField,
@@ -84,13 +114,16 @@ import {
 import {
 	GOAL_CLEAR_ARGS,
 	GOAL_COMMAND,
+	GOAL_DONE_ARGS,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
+	goalStateWord,
 	loopIsRunning,
 } from "./session-commands";
 import {
 	errorText,
 	isNativeAction,
+	toResult,
 	useOperation,
 	useSessionCommand,
 } from "./use-picker-backend";
@@ -199,6 +232,84 @@ function pricePair(row: CatalogueRow): string {
 		row.output_price,
 		row.routed === true,
 	);
+}
+
+/**
+ * The catalogue's rows as the picker's options — the one place a row becomes a
+ * searchable option.
+ *
+ * EXTRACTED from the component's `useMemo` so its haystack is executable from a
+ * test rather than only reachable through a mounted dialog. The haystack is
+ * where the operator's report lived: it carried `[provider, model_id]` and never
+ * the provider's own HUMAN name, so a query in the words the listing publishes
+ * (`SpaceXAI: Grok 4.7` -> `spacexai`) matched nothing while the row sat in the
+ * catalogue. `listing_name` is a match input now, and the rule that reads it is
+ * `matchModelPickerOptions` (see `model-picker-match.ts`), which normalises both
+ * sides of the test.
+ *
+ * Which half does the work, measured rather than assumed: the NORMALISATION is
+ * what resolves `grok 4.7` and `gpt 6 luna` (their words are already in the id,
+ * glued with hyphens and a slash), and the name is what resolves a query holding
+ * a word that appears in no id at all (`spacexai`). Both are needed; neither
+ * alone answers the report.
+ *
+ * Pure and `shownSelector`-parameterised: `current` is the only field that reads
+ * a value outside the rows, and passing it in is what lets a test build the same
+ * options the component builds.
+ */
+export function modelPickerOptions(
+	rows: CatalogueRow[],
+	options: { credentialsKnown: boolean; shownSelector?: string | null },
+): PickerOption[] {
+	const known = options.credentialsKnown;
+	return rows.map((row) => ({
+		value: selectorOf(row),
+		label: row.label || row.model_id,
+		/*
+		 * The price pair travels with the provider line so the dialog and the
+		 * composer's inline list describe one model the same way: a user who
+		 * reaches for the thorough surface must not have to re-derive what the
+		 * fast one already told them. Same formatter, so `free` and
+		 * `usage-based` are words in both and an absent price is blank in both.
+		 */
+		description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
+			known && !row.connected ? ", no credential" : ""
+		}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
+		meta: row.context_window
+			? `${Math.round(row.context_window / 1000)}k`
+			: undefined,
+		current: options.shownSelector === (row.selector ?? row.value),
+		group: !known
+			? "Sign-in state unknown"
+			: row.connected
+				? "Signed in"
+				: "Needs sign-in",
+		keywords: [
+			/*
+			 * The provider's own HUMAN name (`Grok 4.7` for
+			 * `openrouter/x-ai/grok-4.7`), which is what a user actually types: the
+			 * row id glues the same words with hyphens and a slash, so a query in the
+			 * listing's words reaches the matcher through this term. The filter
+			 * normalises both sides (see `model-picker-match.ts`).
+			 */
+			row.listing_name,
+			row.provider,
+			row.model_id,
+		] /*
+		 * A blank term is dropped. Not because an `undefined` would match every
+		 * query — it cannot: the backend ships `listing_name: ""` for a nameless
+		 * row (`CatalogueEntry.listing_name` is `kw_only` with `default=""`), and
+		 * either way the matcher normalises the joined haystack before reading it,
+		 * so an empty term is invisible. The reason is that a term that says
+		 * nothing is not a search term: keeping it puts a value in the haystack
+		 * that is true of every row and useful to none, and the next person to
+		 * change this list should not have to work out whether it is load-bearing.
+		 */
+			.filter(
+				(term): term is string =>
+					typeof term === "string" && term.trim() !== "",
+			),
+	}));
 }
 
 /**
@@ -478,6 +589,26 @@ function carriedRung(
 		: "";
 }
 
+/**
+ * How often the picker re-asks its providers, WHILE THE DIALOG IS OPEN.
+ *
+ * The number is the backend's own (`local_operator/providers/controller.py`'s
+ * `PICKER_TTL_S` = `15 * 60`), and it is deliberately the same number rather
+ * than a shorter one: that constant is the hard TTL the live read is answered
+ * at, so an interval below it would only re-READ a listing document the backend
+ * is still holding, which is precisely the defect the companion change in
+ * `damianvtran/local-operator` fixes on the route's side. Read from this side it
+ * is the operator-visible half of "the cache must be periodically invalidated":
+ * a model released during a long session appears on the next tick rather than on
+ * the next open.
+ *
+ * The MOUNT is what bounds it. This query only exists inside the dialog, so
+ * closing the picker is what stops the cadence; nothing polls behind a closed
+ * dialog. Each tick costs one local IPC call and, on the backend, one listing at
+ * the picker's own TTL - not a fresh per-provider probe.
+ */
+export const PICKER_CADENCE_MS = 15 * 60_000;
+
 export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
@@ -485,21 +616,12 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 	draft,
 }) => {
-	const [live, setLive] = useState(false);
 	/*
-	 * The model the user last switched to, marked in force before the owner's own
-	 * `frontend.update` frame moves `selected_model` (QA Q2).
-	 *
-	 * The receipt and the frame are two different clocks: QA measured the in-force
-	 * check still on the OLD row 3.7 s after the receipt while the band and the
-	 * result strip already read the new one — and, before UX U7, the header
-	 * sentence with them. It is the same optimistic registration the band's paint
-	 * uses, on the picker's own row and, through `shownSelector` below, in the
-	 * header; it is dropped when the authoritative selector agrees with it (the
-	 * narrower rule the reconciliation effect below states in full, and the reason
-	 * it is not dropped on every disagreement), and a re-open (a fresh mount) reads
-	 * the owner's answer.
+	 * `false` is the shipped registry's own document; the live listing is a
+	 * SEPARATE key (see the promotion beside the query, and why it is the second
+	 * read rather than the first).
 	 */
+	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
 	/*
 	 * What the last successful switch did to the session's ability to RUN the
@@ -513,23 +635,186 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [switchedNeedsSignIn, setSwitchedNeedsSignIn] = useState(false);
 	const catalogue = useQuery({
-		queryKey: ["desktop", "models", live],
+		/*
+		 * The key is the SHARED prefix plus the flag, so a credential change can drop
+		 * both documents with ONE invalidation against `desktopKeys.catalogue`
+		 * (`provider-detail.tsx` on a successful sign-in, `LogoutPicker` on a
+		 * removal) rather than the picker having to remember to ask again.
+		 */
+		queryKey: [...desktopKeys.catalogue, live],
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({ op: "models.catalogue", live }),
 		staleTime: live ? 0 : 60_000,
+		/*
+		 * FOCUS IS NOT AN ASK, and on this key it is the sharpest form of that rule.
+		 * `staleTime: 0` above means the live document is stale the moment it lands,
+		 * so under the inherited `refetchOnWindowFocus: true` a DELIVERED focus
+		 * re-lists every provider the user has signed in to: a real round trip per
+		 * provider, against that provider's own rate limit, which is how a user
+		 * amplifies their own rate limiting by alt-tabbing out and back — the reported
+		 * complaint. The asks are the refresh control (which calls `refetch` and so
+		 * still reads immediately) and the cadence below; a window that came back is
+		 * neither. The option is stated HERE rather than inherited precisely because
+		 * this key is the one that is always stale — see `SNAPSHOT_READ_OPTIONS`, the
+		 * app's single statement of the focus half.
+		 *
+		 * DELIVERY IS NOT PART OF THE CLAIM, and saying so is QA round 1's Q1 rather
+		 * than a hedge: the channel this opts out of is query-core's focus manager,
+		 * which `QueryClientProvider` wires to the window's `visibilitychange` on
+		 * mount, and that a real macOS app switch delivers that transition to THIS
+		 * renderer is not measured anywhere in this repository. Both rigs here that
+		 * need the transition drive it synthetically (`scripts/hub-round-trips.mjs`
+		 * patches `document.visibilityState`; `scripts/attach-frame-evidence.mjs`
+		 * dispatches the event), and the measurement that settles it would need a
+		 * windowed app boot with a real app switch — a window on the operator's screen,
+		 * which is why no round has taken it. If a real switch never delivers it, this
+		 * line is INERT rather than wrong: the change can only remove reads.
+		 *
+		 * `refetchOnReconnect` is already silent app-wide and is named beside it
+		 * rather than left to the global, so a change to that default cannot re-arm a
+		 * provider re-list on this key by accident — the same reason `/usage` names
+		 * its own `retry: 0` instead of inheriting it.
+		 */
+		...SNAPSHOT_READ_OPTIONS,
+		refetchOnReconnect: false,
 		/*
 		 * A live re-list costs a measured 2.33 s, and `live` is a new query key —
 		 * so without this the list is blanked to the loading spinner for the whole
 		 * fetch, which reads as "the catalogue disappeared" right after the user
 		 * asked for it to be refreshed (latency U4). `keepPreviousData` keeps the
-		 * rows the picker already has painted under the new `isFetching` state.
+		 * rows the picker already has painted under the new `isFetching` state, and
+		 * it is load-bearing a second time now that the live fetch starts by itself:
+		 * the rows the dialog opens on are the ones it keeps on screen.
 		 */
 		placeholderData: keepPreviousData,
+		/*
+		 * The "periodically refetch" half of the operator's report, and the half this
+		 * app owns. WHILE THE WINDOW IS FOCUSED the live listing is re-asked on the
+		 * picker cadence - `PICKER_CADENCE_MS` - so a model published during a
+		 * working session appears without the dialog being closed and reopened.
+		 *
+		 * "While the window is focused" is load-bearing rather than padding (review
+		 * round 1, R1-2): `refetchIntervalInBackground` is unset, so query-core skips a
+		 * tick that comes due while the window is hidden and the NEXT one resumes the
+		 * cadence - up to `PICKER_CADENCE_MS` AFTER the user comes back, never at the
+		 * moment they do. Before this change the focus refetch covered exactly that
+		 * gap; now nothing does, and re-covering it with
+		 * `refetchIntervalInBackground: true` would re-list every provider while the
+		 * user is away, which is the unasked provider traffic the focus option exists
+		 * to remove. What a returning user has instead is stated above: the refresh
+		 * control, one click, on a key whose `staleTime: 0` makes it read immediately.
+		 *
+		 * The BACKEND half of the same behaviour (answering that read at the picker's
+		 * TTL rather than from a document that can be 24 hours old) is a separate
+		 * change in `damianvtran/local-operator`. This half works without it - each
+		 * tick is a real read and the backend's stale-while-revalidate still re-lists
+		 * in the background - but the two together are what makes a tick mean "the
+		 * listing is at most 15 minutes old" rather than "we asked again".
+		 *
+		 * Only the live key polls. The registry answer cannot change while the dialog
+		 * is open, so re-asking it would be cost with no reading behind it.
+		 */
+		refetchInterval: live ? PICKER_CADENCE_MS : false,
 	});
-	// Only a PENDING live fetch says "Refreshing…": the initial (non-live) load is
-	// also `isFetching`, and labelling that "Refreshing…" would describe a fetch
-	// the user never asked for (design D8).
+	/*
+	 * STALE-THEN-UPDATE, which is the desktop half of what the TUI picker already
+	 * does (`local_operator/tui/app.py`: `_populate_model_picker` paints the
+	 * registry, then `_refresh_catalogue` re-lists the providers off the loop).
+	 *
+	 * WHY THE PROMOTION IS AUTOMATIC RATHER THAN A BUTTON PRESS. The initial read
+	 * answers from the SHIPPED REGISTRY - what lop last shipped - so a model the
+	 * provider has released since then is simply not in it, and the operator's
+	 * report is the measured case: Anthropic's own `/v1/models` lists `Opus 5.5`
+	 * while the shipped registry stops at `claude-opus-5`, and the picker could not
+	 * reach it without the user first pressing "Refresh from providers" on the
+	 * chance that it would help. Asking for `/model` IS the ask. The button stays,
+	 * as the manual re-ask (and as the control that says a listing is running).
+	 *
+	 * WHY THE LIVE READ IS THE SECOND ONE RATHER THAN THE FIRST. A live re-list is
+	 * a measured 2.33 s, and opening straight into it would put a centred spinner
+	 * where the rows belong - slower AND less useful, because the model the user is
+	 * most likely to want is usually one the registry already knows.
+	 *
+	 * WHY IT WAITS FOR `isFetched`, and this is measured rather than argued. The
+	 * first version promoted on MOUNT, and it threw the paint away: the key changed
+	 * before the registry read had settled, and `keepPreviousData` can only carry
+	 * data that EXISTS - so the live key came up with no placeholder, `isLoading`
+	 * went true, and the frames photographed a spinner reading `Loading` with
+	 * `Refreshing…` beside it and NO rows. That is the exact state
+	 * stale-then-update exists to avoid, and it is why the gate is the read having
+	 * SETTLED rather than the component having mounted.
+	 *
+	 * `isFetched` rather than `isSuccess`: a registry read the backend REFUSED is
+	 * also a settled answer, and refusing to promote on one would leave a picker
+	 * whose only rows came from a failed read with no live attempt made.
+	 *
+	 * The promotion is monotonic - there is no path back to `live: false` - which
+	 * is what stops the two documents trading places while the user types.
+	 */
+	const catalogueSettled = catalogue.isFetched;
+	useEffect(() => {
+		if (catalogueSettled) setLive(true);
+	}, [catalogueSettled]);
+	/*
+	 * The REGISTRY document, subscribed rather than read once, because it is a
+	 * FALLBACK as well as the first paint (review round 1, R1-1).
+	 *
+	 * WHY THE LIVE READ NEEDS ONE AT ALL. `keepPreviousData` carries the previous
+	 * key's rows only while the new key is PENDING; the moment a query settles as
+	 * `error` it has no data, so a live listing that failed left the picker with
+	 * nothing — and `catalogueListing`'s `isError` branch then drew one line of
+	 * error text where the painted registry rows had been. That is design D4's
+	 * defect (1450 rows replaced by a wall of text) re-entered on a path no click
+	 * gates any more: the read the user never asked for destroyed the list they
+	 * already had. The registry document is still in the cache under its own key.
+	 *
+	 * `enabled: false` because this observer never issues a read: the query above
+	 * owns the registry fetch, and a second fetch of the same key would be a
+	 * duplicate on the one path where a request is visible. It shares that key's
+	 * cache entry, so `registry.data` is the same document the first paint used,
+	 * and it keeps the same `staleTime` so the two observers cannot disagree about
+	 * whether their shared entry is fresh.
+	 */
+	const registry = useQuery({
+		queryKey: [...desktopKeys.catalogue, false],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live: false,
+			}),
+		enabled: false,
+		staleTime: 60_000,
+	});
+	/*
+	 * What the picker DRAWS, which is the live answer when there is one and the
+	 * registry's document otherwise: a failed live read falls back to the rows the
+	 * dialog opened on rather than to nothing.
+	 */
+	const catalogueDocument = catalogue.data ?? registry.data;
+	/*
+	 * Only a LIVE fetch says the listing is running: it is the one that re-lists the
+	 * providers, whichever started it - the automatic promotion above or the
+	 * button. The initial (registry) load is also `isFetching`, and labelling that
+	 * as a listing in flight would describe a read the user never asked for
+	 * (design D8).
+	 *
+	 * The LABEL then distinguishes the two starters (review round 1, design D2 and
+	 * UX U4): the automatic pass reads `Checking…` and the user's own click reads
+	 * `Refreshing…`, because `Refreshing…` is a word the user's click produces and,
+	 * with the pass now automatic, the same word on a control nobody pressed made
+	 * the two states indistinguishable from the surface. It is the TUI's own
+	 * vocabulary for the same distinction (`tui/app.py`'s picker footer reads
+	 * `checking providers…` while its automatic fetch runs), shortened to the
+	 * reserved width below: the reserve is the IDLE label's width, so a busy label
+	 * that outgrew it would put the row's reflow back - measured, 12px on the link
+	 * beside it - which is the defect the reserve exists to remove (design D1).
+	 */
 	const refreshing = live && catalogue.isFetching;
+	const [asked, setAsked] = useState(false);
+	useEffect(() => {
+		if (!catalogue.isFetching) setAsked(false);
+	}, [catalogue.isFetching]);
+	const refreshingLabel = asked ? "Refreshing…" : "Checking…";
 	const command = useSessionCommand(sessionId);
 	/*
 	 * A DRAFT pane's own reading, from the ONE query the pane itself reads.
@@ -552,7 +837,9 @@ export const ModelPicker: FC<PickerContext> = ({
 	});
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
-	const selected = canonical.frontend?.selected_model;
+	const selected =
+		runningFrontend(canonical)?.effective_model ??
+		runningFrontend(canonical)?.selected_model;
 	/*
 	 * Both halves must be non-empty to name a model, and the guard is the shared
 	 * selector rather than a local expression: a session frame can carry a spec
@@ -608,52 +895,44 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * disagree.
 	 */
 	const rowAuth = useMemo(() => {
-		const known = catalogue.data?.credentials_known !== false;
+		const known = catalogueDocument?.credentials_known !== false;
 		const map = new Map<string, "runnable" | "needs-sign-in" | "unknown">();
-		for (const row of (catalogue.data?.models ?? []) as CatalogueRow[]) {
+		for (const row of (catalogueDocument?.models ?? []) as CatalogueRow[]) {
 			map.set(
 				selectorOf(row),
 				!known ? "unknown" : row.connected ? "runnable" : "needs-sign-in",
 			);
 		}
 		return map;
-	}, [catalogue.data]);
+	}, [catalogueDocument]);
 
 	const options = useMemo<PickerOption[]>(() => {
-		const rows = (catalogue.data?.models ?? []) as CatalogueRow[];
+		const rows = (catalogueDocument?.models ?? []) as CatalogueRow[];
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
 		// no credentials at all (D5). With that unknown, the picker still lists
 		// everything -- an empty model list would be a worse lie -- but it stops
 		// claiming an auth state it does not have.
-		const known = catalogue.data?.credentials_known !== false;
-		return rows.map((row) => ({
-			value: selectorOf(row),
-			label: row.label || row.model_id,
-			/*
-			 * The price pair travels with the provider line so the dialog and the
-			 * composer's inline list describe one model the same way: a user who
-			 * reaches for the thorough surface must not have to re-derive what the
-			 * fast one already told them. Same formatter, so `free` and
-			 * `usage-based` are words in both and an absent price is blank in both.
-			 */
-			description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
-				known && !row.connected ? ", no credential" : ""
-			}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
-			meta: row.context_window
-				? `${Math.round(row.context_window / 1000)}k`
-				: undefined,
-			current: shownSelector === (row.selector ?? row.value),
-			group: !known
-				? "Sign-in state unknown"
-				: row.connected
-					? "Signed in"
-					: "Needs sign-in",
-			keywords: [row.provider, row.model_id],
-		}));
-	}, [catalogue.data, shownSelector]);
+		const known = catalogueDocument?.credentials_known !== false;
+		return modelPickerOptions(rows, {
+			credentialsKnown: known,
+			shownSelector,
+		});
+	}, [catalogueDocument, shownSelector]);
 
-	const listing = catalogueListing(catalogue.data, catalogue, errorText);
+	/*
+	 * Which document was actually drawn, for the failure note's provenance clause:
+	 * the live answer when the live query has one - a failed SAME-KEY refetch keeps
+	 * `data`, which is how the note came to claim the rows below were the shipped
+	 * models while it was drawing a provider's own (round 2, code review R2-1) -
+	 * and the registry's document otherwise.
+	 */
+	const listing = catalogueListing(
+		catalogueDocument,
+		catalogue,
+		errorText,
+		catalogue.data === undefined,
+	);
 
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {
@@ -758,16 +1037,15 @@ export const ModelPicker: FC<PickerContext> = ({
 				await persist.perform(
 					async () => {
 						try {
-							await desktopResult({
-								op: "settings.edit",
-								key: "hosting",
-								value: provider,
-							});
-							await desktopResult({
-								op: "settings.edit",
-								key: "model_name",
-								value: modelId,
-							});
+							await writeModelDefaultSettings(
+								{ provider, model_id: modelId },
+								(key, settingValue) =>
+									desktopResult({
+										op: "settings.edit",
+										key,
+										value: settingValue,
+									}),
+							);
 							return value;
 						} catch (error) {
 							/*
@@ -896,7 +1174,14 @@ export const ModelPicker: FC<PickerContext> = ({
 						: "Choose the model for this session."
 			}
 			options={options}
-			loading={catalogue.isLoading}
+			/*
+			 * The model picker's own search rule: the catalogue's ids are not strings
+			 * the user wrote, so the shared contiguous test is too narrow for them and
+			 * widening it for everyone is what broke **Search commands** (R1-3). The
+			 * rule and its reasoning live in `model-picker-match.ts`.
+			 */
+			matcher={matchModelPickerOptions}
+			loading={catalogue.isLoading && !catalogueDocument}
 			loadError={listing.loadError}
 			notice={listing.notice}
 			noticeDetail={listing.noticeDetail}
@@ -914,7 +1199,18 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			busyText={draft ? "Resolving the model…" : "Switching the model…"}
 			busyLabel={draft ? "Resolving the model" : "Switching the model"}
-			result={draft ? draftPick.result : combined}
+			result={
+				draft
+					? draftPick.result
+					: persist.result
+						? {
+								...persist.result,
+								text: [command.result?.text, persist.result.text]
+									.filter(Boolean)
+									.join("\n"),
+							}
+						: combined
+			}
 			toolbar={
 				/*
 				 * A draft's toolbar has no default checkbox, and that is the whole of
@@ -941,35 +1237,97 @@ export const ModelPicker: FC<PickerContext> = ({
 								: "Also make it the default for new sessions"}
 						</PickerCheck>
 					)}
-					<Button
-						variant="ghost"
-						size="sm"
-						type="button"
-						/*
-						 * A control that looks enabled has to DO something (design D13).
-						 *
-						 * Settled, this used to read `Live list` and its click set `live` to a
-						 * value it already had — a second click changed nothing and said
-						 * nothing, while the button kept the idle control's ink and weight, so it
-						 * was indistinguishable from one that works. It keeps its verb instead
-						 * and re-lists when pressed; the row count under it is what says the
-						 * listing came from the providers.
-						 */
-						onClick={() => {
-							if (live) void catalogue.refetch();
-							else setLive(true);
-						}}
-						disabled={catalogue.isFetching}
-					>
-						{refreshing ? (
-							<span className="flex items-center gap-2">
-								<Spinner size="xs" />
-								Refreshing…
-							</span>
-						) : (
-							"Refresh from providers"
+					<div className="flex items-center gap-2">
+						{!draft && (
+							<Button
+								variant="ghost"
+								size="sm"
+								type="button"
+								disabled={!currentSelector || command.busy || persist.busy}
+								onClick={() => {
+									if (!selected) return;
+									void persist.perform(
+										() =>
+											writeModelDefaultSettings(selected, (key, value) =>
+												desktopResult({
+													op: "settings.edit",
+													key,
+													value,
+												}),
+											),
+										() => ({
+											tone: "success",
+											text: `Default for new sessions: ${currentSelector}`,
+										}),
+										DEFAULT_SAVE_FAILURE,
+									);
+								}}
+							>
+								Set current model as default
+							</Button>
 						)}
-					</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							type="button"
+							/*
+							 * A control that looks enabled has to DO something (design D13).
+							 *
+							 * Settled, this used to read `Live list` and its click set `live` to a
+							 * value it already had — a second click changed nothing and said
+							 * nothing, while the button kept the idle control's ink and weight, so it
+							 * was indistinguishable from one that works. It keeps its verb instead
+							 * and re-lists when pressed; the row count under it is what says the
+							 * listing came from the providers.
+							 *
+							 * The picker now promotes itself to the live listing once the registry
+							 * read SETTLES, so the settled state is the common one and
+							 * `setLive(true)` is the pre-promotion window alone (a click landed
+							 * inside the first paint's tick). Both paths stay: the button has to
+							 * re-list whether or not the automatic listing has already run.
+							 */
+							onClick={() => {
+								// The label distinguishes this from the automatic pass (design D2,
+								// UX U4): the click is the ask, the promotion is not.
+								setAsked(true);
+								if (live) void catalogue.refetch();
+								else setLive(true);
+							}}
+							disabled={catalogue.isFetching}
+							/*
+							 * A RESERVED WIDTH for the slot the label changes inside (design D1).
+							 *
+							 * The label swap is not a text change in place: with the row laid out
+							 * `justify-between`, the narrower busy label let every control to its
+							 * left slide. Measured on this change's own frames: `Set current model as
+							 * default` sat at x 389-551 settled and x 427-589 in flight - a 38px
+							 * shift under a pointer that is not moving, twice per open, and again on
+							 * every cadence tick.
+							 *
+							 * 149px IS THE IDLE LABEL'S OWN BOX, read off the DOM rather than off a
+							 * frame: in the served story the control is 149 wide settled, 132 in
+							 * flight and 132 while the user's click is out - i.e. `Refreshing…` and
+							 * `Checking…` are both NARROWER than the reserve, so the slot's edges do
+							 * not move and the click target stays where the user aimed it. (132 was
+							 * the first attempt, taken from the text's ink in the frames rather than
+							 * from the box: it left a 17px shift, because the idle label's box is
+							 * wider than its glyphs.)
+							 *
+							 * `min-w` rather than a fixed `w`: a theme with wider type is free to
+							 * grow the control rather than truncate it.
+							 */
+							className="min-w-[149px]"
+						>
+							{refreshing ? (
+								<span className="flex items-center gap-2">
+									<Spinner size="xs" />
+									{refreshingLabel}
+								</span>
+							) : (
+								"Refresh from providers"
+							)}
+						</Button>
+					</div>
 				</div>
 			}
 		/>
@@ -1001,6 +1359,8 @@ export const EffortPicker: FC<PickerContext> = ({
 	);
 	const command = useSessionCommand(sessionId);
 	const draftPick = useDraftPick(draft, note);
+	const defaultSetting = useOperation();
+	const [saveAsDefault, setSaveAsDefault] = useState(false);
 	/* Same key as the model dialog's: the selection in force, not the snapshot the
 	   dialog opened on, so the rungs offered are the current model's (R2). */
 	const draftPreview = useQuery({
@@ -1010,13 +1370,17 @@ export const EffortPicker: FC<PickerContext> = ({
 	const draftModel = draft
 		? bandReadings(draftPreview.data?.snapshot, null).effort
 		: null;
-	const model = draft ? draftModel : canonical.frontend?.selected_model;
+	const model = draft
+		? draftModel
+		: (runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model);
 	const rungs = draft
 		? effortLadder(draftModel)
 		: (entities.data?.entities ?? []).map((row) => row.value);
 	const currentRung = draft
 		? (draftModel?.reasoning_effort ?? null)
 		: (entities.data?.current ?? null);
+
 	const options = useMemo<PickerOption[]>(
 		() =>
 			rungs.map((value) => ({
@@ -1068,6 +1432,19 @@ export const EffortPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title="Reasoning effort"
+			toolbar={
+				!draft ? (
+					<PickerCheck
+						checked={saveAsDefault}
+						onCheckedChange={setSaveAsDefault}
+						tone="muted"
+					>
+						{saveAsDefault
+							? "This pick also sets the default effort for new sessions"
+							: "Also make it the default effort for new sessions"}
+					</PickerCheck>
+				) : undefined
+			}
 			description={
 				noOptions
 					? unresolved
@@ -1089,7 +1466,7 @@ export const EffortPicker: FC<PickerContext> = ({
 							: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
 					: draft
 						? `Effort levels ${label} supports. This sets the level this conversation starts on and keeps running on; your default is unchanged.`
-						: `Effort levels ${label} supports. Applies to this session.`
+						: `Effort levels ${label} supports. Applies to this session unless you also make it the default for new sessions.`
 			}
 			options={options}
 			loading={loading}
@@ -1101,7 +1478,30 @@ export const EffortPicker: FC<PickerContext> = ({
 			}
 			onPick={(value) => {
 				if (!draft) {
-					void command.run("effort", value);
+					void command.run("effort", value).then(async ({ outcome }) => {
+						if (saveAsDefault && effortCommandSucceeded(outcome)) {
+							const saved = await defaultSetting.perform(
+								() =>
+									desktopResult({
+										op: "settings.edit",
+										key: "model_effort",
+										value,
+									}),
+								() => ({
+									tone: "success",
+									text: `Default effort for new sessions: ${effortDisplay(value)}.`,
+								}),
+								"The effort default was not saved",
+							);
+							if (saved) await entities.refetch();
+						} else if (saveAsDefault && outcome?.kind === "notice") {
+							const refusal = toResult(outcome);
+							defaultSetting.setResult({
+								tone: refusal.tone,
+								text: "The effort default was not saved.",
+							});
+						}
+					});
 					return;
 				}
 				/*
@@ -1122,8 +1522,21 @@ export const EffortPicker: FC<PickerContext> = ({
 					},
 				);
 			}}
-			busy={draft ? draftPick.busy : command.busy}
-			result={draft ? draftPick.result : command.result}
+			/* Keep both receipts visible: the effort command and machine-default write
+			 * are separate outcomes, as they are for the model picker. */
+			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
+			result={
+				draft
+					? draftPick.result
+					: defaultSetting.result
+						? {
+								...defaultSetting.result,
+								text: [command.result?.text, defaultSetting.result.text]
+									.filter(Boolean)
+									.join("\n"),
+							}
+						: command.result
+			}
 			/*
 			 * The wait names its work (design D23). A draft's effort pick resolves
 			 * through `sessions.preview` before it records anything, exactly as the
@@ -1132,8 +1545,8 @@ export const EffortPicker: FC<PickerContext> = ({
 			 * without saying what, for a wait the sibling adapter already names.
 			 * A session's effort pick is a command and keeps the default.
 			 */
-			busyText={draft ? "Resolving the effort…" : undefined}
-			busyLabel={draft ? "Resolving the effort" : undefined}
+			busyText={draft ? "Resolving the effort…" : "Switching the effort…"}
+			busyLabel={draft ? "Resolving the effort" : "Switching the effort"}
 		/>
 	);
 };
@@ -1913,43 +2326,158 @@ export const GoalPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 }) => {
-	const current = canonical.frontend?.goal ?? "";
+	const frontend = canonical.frontend;
+	const current = frontend?.goal ?? "";
 	const [goal, setGoal] = useState(current);
 	const command = useSessionCommand(sessionId);
+	/*
+	 * `Mark done` owns its own press (agent review round 2, MINOR 2's rule): a command
+	 * in flight on the danger button must not disable the safe one beside it.
+	 */
+	const doneCommand = useSessionCommand(sessionId);
+	/*
+	 * THE SAME TWO GATES THE CHIP USES, for the same two reasons. `done` decides which
+	 * actions exist (a settled goal cannot be marked done twice) and `capable` decides
+	 * whether the new argument may be sent at all: on a backend without the new wire
+	 * fields, `Mark done` is not rendered, so `/goal done` can never reach a build that
+	 * would store the literal word as the user's goal.
+	 */
+	const done = frontend?.goal_status === "done";
+	const capable = goalCapability(frontend);
+	const judge = frontend?.goal_judge ?? null;
+	/*
+	 * WHETHER THERE IS A GOAL FOR A JUDGE TO BE READING (design review round 1, D5).
+	 *
+	 * `capable` is `typeof goal_status === "string"`, so it is true on any new backend
+	 * — INCLUDING one whose goal is the empty string — and `judgeWord` then falls back
+	 * to `idle`. `/goal` opened on a session with no goal therefore printed
+	 * `Judge: idle`: a readout about a judge with nothing to judge, in the picker whose
+	 * whole job at that moment is to take the first goal. The row's own rule for the
+	 * same state is to paint the judge's resting state NOWHERE (`goalStateWord` returns
+	 * `""` and the chip says nothing at all), and this row follows it —
+	 * including the TRIM, because the row treats a whitespace-only goal as no goal and
+	 * the picker's field is the one place such a value can be typed.
+	 */
+	const hasGoal = goalPresent(frontend);
+	/*
+	 * The judge's state, in the chip's own vocabulary (`goalStateWord`) so the dialog
+	 * and the row cannot describe one state with two words. A goal at rest gets the
+	 * word instead of the chip's deliberate silence, because a readout with room for it
+	 * has to say something — and `stalled` carries the clause the user needs to act on.
+	 */
+	const judgeWord =
+		goalStateWord(frontend?.goal_status, judge?.state) ||
+		(judge?.state === "waiting" ? "waiting" : "idle");
+	const judgeLine =
+		judgeWord === "stalled"
+			? "stalled — send a message to continue"
+			: judgeWord;
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title="Session goal"
+			/*
+			 * NEUTRAL ON PURPOSE (design review round 1, D3). `done` has TWO authors — the
+			 * judge's ACHIEVED and the user's own `Done` press / `/goal --done` — and on the
+			 * user's path the history entry's `reason` is `""`, which the wire's own docblock
+			 * calls "an act of judgement by a person, not a model verdict". The shipped
+			 * sentence attributed that act to the judge and then contradicted the `Judge` row
+			 * directly beneath it, which reads `waiting`/`idle` in exactly that case. This
+			 * sentence names the RECORD rather than the decider, so it is true of both
+			 * authors and of a goal settled by either route.
+			 */
 			description={
-				current
-					? "The standing goal is prepended to every turn. Clear it to remove it."
-					: "A standing goal the agent keeps in view on every turn."
+				done
+					? /*
+						 * THE SETTLED SENTENCE, AND IT NOW POINTS AT THE RECORD (UX round 1, U5). The
+						 * sentence names the history and this dialog is the one surface that names it
+						 * in words — but it named it without offering a way there, and the two routes
+						 * that exist are a 24px icon-only segment and a typed `/goal --history`. The
+						 * clause added here names the segment's own word (`Goals view`, its accessible
+						 * name) so the pointer is followable: a user told to look for a `Goals view`
+						 * can find the one control that answers to it. ONE route and not two: the
+						 * canvas view is the discoverable one, and the typed command keeps its place
+						 * in the `/goal` receipt rather than being repeated in a description.
+						 */
+						"This goal is settled. It stays in the goal history — dismiss it to clear the chip, or find it in the canvas's Goals view."
+					: current
+						? "The standing goal is prepended to every turn. Clear it to remove it."
+						: "A standing goal the agent keeps in view on every turn."
 			}
 			form={
-				<PickerField label="Goal">
-					<Textarea
-						value={goal}
-						onChange={(event) => setGoal(event.target.value)}
-						rows={3}
-						placeholder="Ship the release with green gates"
-					/>
-				</PickerField>
+				<>
+					{/*
+					 * THE STRUCK VALUE, while the goal is done — the same settled paint the
+					 * chip and the pane use (`line-through text-ink-dim` on the value, the
+					 * app's role for a record rather than an instruction). It carries NO new
+					 * copy: the word is the wire's `done`, already in the description above and
+					 * in the Judge row below, and this element is the VALUE.
+					 *
+					 * The field beneath is still a live textarea, and that is deliberate: a
+					 * struck textarea is not a thing, and the picker is where a user types the
+					 * goal that supersedes this one. So the settled state is stated here and the
+					 * editable value stays editable, rather than the one being sacrificed to the
+					 * other.
+					 */}
+					{done && (
+						<p className={cn("text-body-sm text-ink-dim line-through")}>
+							{current}
+						</p>
+					)}
+					<PickerField label="Goal">
+						<Textarea
+							value={goal}
+							onChange={(event) => setGoal(event.target.value)}
+							rows={3}
+							placeholder="Ship the release with green gates"
+						/>
+					</PickerField>
+					{/*
+					 * THE JUDGE ROW EXISTS ONLY WHERE THERE IS A JUDGE TO READ, which is why the
+					 * backend publishes `goal_judge` — the same capability signal the actions are
+					 * gated on — AND a goal for it to be reading (design review round 1, D5: the
+					 * capability alone is true on a session with no goal, and `/goal` then printed
+					 * `Judge: idle` about a goal that does not exist). Showing it on a backend that
+					 * has no judge would invent a state out of the absent field; showing it with no
+					 * goal would invent a judge.
+					 */}
+					{capable && hasGoal && (
+						<PickerField label="Judge">
+							<span className="text-ink-muted text-body-sm">{judgeLine}</span>
+						</PickerField>
+					)}
+				</>
 			}
 			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
 			submitLabel="Set goal"
 			submitDisabled={!goal.trim()}
 			actions={
 				current ? (
-					<Button
-						variant="danger"
-						size="sm"
-						type="button"
-						onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
-						disabled={command.busy}
-					>
-						Clear goal
-					</Button>
+					<>
+						{capable && !done && (
+							<Button
+								variant="secondary"
+								size="sm"
+								type="button"
+								onClick={() =>
+									void doneCommand.run(GOAL_COMMAND, GOAL_DONE_ARGS)
+								}
+								disabled={doneCommand.busy}
+							>
+								Mark done
+							</Button>
+						)}
+						<Button
+							variant="danger"
+							size="sm"
+							type="button"
+							onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
+							disabled={command.busy}
+						>
+							Clear goal
+						</Button>
+					</>
 				) : undefined
 			}
 			busy={command.busy}
@@ -2053,6 +2581,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 
 export const FastPicker: FC<PickerContext> = ({
 	sessionId,
+	canonical,
 	onClose,
 	action,
 }) => {
@@ -2061,16 +2590,26 @@ export const FastPicker: FC<PickerContext> = ({
 	const premium = Boolean(
 		(action.data as { premium_pricing?: boolean }).premium_pricing,
 	);
-	const options: PickerOption[] = [
-		{
-			value: "on",
-			label: "On",
-			description:
-				"Priority processing. Billed at premium rates where the provider offers it.",
-			disabled: premium && !acknowledged,
-		},
-		{ value: "off", label: "Off", description: "Standard processing." },
-	];
+	/*
+	 * The dial comes off the same `effective_model ?? selected_model` spec the
+	 * `/fast` row's slot states, through this file's held-aware
+	 * `runningFrontend` so a held pane answers with the copy the strip paints —
+	 * the option the picker marks is the dial the row just advertised, one read
+	 * for two surfaces (UX round 1, U2).
+	 */
+	const dial = fastModeState(
+		runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model,
+	);
+	/*
+	 * The premium gate stays here rather than in the builder: it is the
+	 * picker's own acknowledgement state, not a property of the dial.
+	 */
+	const options: PickerOption[] = fastPickerOptions(dial).map((option) =>
+		option.value === "on" && premium && !acknowledged
+			? { ...option, disabled: true }
+			: option,
+	);
 	return (
 		<PickerHost
 			open
@@ -2239,122 +2778,6 @@ export const LoopPicker: FC<PickerContext> = ({
 			}
 			busy={command.busy || cancel.busy}
 			result={cancel.result ?? command.result}
-		/>
-	);
-};
-
-export const AsidePicker: FC<PickerContext> = ({
-	sessionId,
-	onClose,
-	action,
-}) => {
-	const [text, setText] = useState(action.args || "");
-	const [asideId, setAsideId] = useState<string | null>(null);
-	const [answer, setAnswer] = useState<string | null>(null);
-	const [adopted, setAdopted] = useState(false);
-	const ask = useOperation();
-	const adopt = useOperation();
-	const submit = useCallback(async () => {
-		if (!text.trim()) return;
-		const value = await ask.perform(
-			() =>
-				desktopResult<{
-					data: { aside_id: string; text: string; off_record: boolean };
-				}>({
-					op: "sessions.aside",
-					sessionId,
-					requestId: uuidv4(),
-					text: text.trim(),
-					asideId: asideId ?? undefined,
-				}),
-			() => ({
-				tone: "info",
-				text: "Answered off the record. Nothing entered the conversation.",
-			}),
-			"The aside was not answered",
-		);
-		if (value) {
-			setAsideId(value.data.aside_id);
-			setAnswer(value.data.text);
-		}
-	}, [ask, sessionId, text, asideId]);
-	const doAdopt = useCallback(async () => {
-		if (!asideId) return;
-		const value = await adopt.perform(
-			() =>
-				desktopResult<{ data: Record<string, unknown> }>({
-					op: "sessions.adopt",
-					sessionId,
-					requestId: uuidv4(),
-					asideId,
-					confirmed: true,
-				}),
-			() => ({
-				tone: "success",
-				text: "Adopted into the conversation as a real turn.",
-			}),
-			"The aside was not adopted",
-		);
-		if (value) setAdopted(true);
-	}, [adopt, sessionId, asideId]);
-	const close = useCallback(() => {
-		// A settled, unadopted panel is closed on the backend so it does not
-		// count against the bounded aside pool; the exchange is discarded.
-		if (asideId && !adopted) {
-			void desktopResult({
-				op: "sessions.aside.close",
-				sessionId,
-				asideId,
-			}).catch(() => {});
-		}
-		onClose();
-	}, [asideId, adopted, sessionId, onClose]);
-	return (
-		<PickerHost
-			open
-			onClose={close}
-			title="Aside (off the record)"
-			description="A side question the model answers without it entering the conversation. Adopt it to make it a real turn."
-			body={
-				answer ? (
-					<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
-						<p className="text-ink-dim text-meta">Q: {text}</p>
-						<p className="mt-1 whitespace-pre-wrap text-body-sm text-ink">
-							{answer}
-						</p>
-					</div>
-				) : undefined
-			}
-			form={
-				adopted ? undefined : (
-					<PickerField label={answer ? "Follow up" : "Question"}>
-						<Textarea
-							value={answer ? "" : text}
-							onChange={(event) => setText(event.target.value)}
-							rows={3}
-							placeholder="Quick question that should not become part of the history"
-						/>
-					</PickerField>
-				)
-			}
-			onSubmit={adopted ? undefined : submit}
-			submitLabel={answer ? "Ask again" : "Ask"}
-			submitDisabled={!text.trim()}
-			actions={
-				answer && !adopted ? (
-					<Button
-						variant="secondary"
-						size="sm"
-						type="button"
-						onClick={doAdopt}
-						disabled={adopt.busy}
-					>
-						Adopt into conversation
-					</Button>
-				) : undefined
-			}
-			busy={ask.busy || adopt.busy}
-			result={adopt.result ?? ask.result}
 		/>
 	);
 };
@@ -2601,6 +3024,15 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 		setSelected(null);
 		await queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
 		await queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
+		/*
+		 * The catalogue goes with them: the listing is per-CREDENTIAL as well as
+		 * per-model, so a removed account changes which rows a provider contributes
+		 * (and whether it contributes any at all). The backend drops its cached
+		 * listing documents on the same event (`providers/controller`, the same path
+		 * a sign-in takes); what this drops is the renderer's copy, which no read
+		 * would otherwise revisit until its 24h document expired.
+		 */
+		await queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 	}, [op, selected, confirmed, queryClient]);
 	return (
 		<PickerHost

@@ -3,7 +3,9 @@ import {
 	type AnalyticsMetric,
 	CACHE_HIT_LABEL,
 	type SessionRow,
+	TOK_PER_SECOND_LABEL,
 	cacheReadFraction,
+	decodeRate,
 	metricValue,
 	sessionDepth,
 	totalTokens,
@@ -46,17 +48,28 @@ import { formatCount, formatMicroUsd } from "./formatters";
  */
 export const SESSION_PAGE_SIZE = 20;
 
-export type SessionSortKey = "session" | "calls" | "tokens" | "cost" | "cache";
+export type SessionSortKey =
+	| "session"
+	| "calls"
+	| "tokens"
+	| "cost"
+	| "cache"
+	| "rate";
 export type SortDirection = "asc" | "desc";
 
 /**
- * The five sort keys, in column order.
+ * The sort keys, in column order.
  *
- * An array rather than five literals repeated per function, because the table's
+ * An array rather than six literals repeated per function, because the table's
  * `onSort` hands back a `string` (the primitive knows nothing about this
  * model's keys) and the conversion has to have exactly one definition: a key
  * that some other module spells differently is a column that silently stops
  * sorting.
+ *
+ * `rate` is last because its column is last, and it is a real key rather than a
+ * decorative column for the reason the other four are: a reader comparing two
+ * sessions on generation speed is asking a question, and a table whose only
+ * unsortable column is the new one answers it by scrolling.
  */
 export const SESSION_SORT_KEYS: readonly SessionSortKey[] = [
 	"session",
@@ -64,6 +77,7 @@ export const SESSION_SORT_KEYS: readonly SessionSortKey[] = [
 	"tokens",
 	"cost",
 	"cache",
+	"rate",
 ];
 
 /** The primitive's own sort intent, as a key this model recognises. */
@@ -79,6 +93,7 @@ const SORT_LABEL: Record<SessionSortKey, string> = {
 	tokens: "Tokens",
 	cost: "Cost",
 	cache: CACHE_HIT_LABEL,
+	rate: TOK_PER_SECOND_LABEL,
 };
 
 export type SessionTableState = {
@@ -265,7 +280,7 @@ function nextSort(
 /**
  * A column's direction on first activation.
  *
- * The question behind Calls, Tokens, Cost and Cache hit rate is "which is
+ * The question behind Calls, Tokens, Cost, Cache hit rate and tok/s is "which is
  * biggest", so those open descending. The Session column opens ascending,
  * because the question there is "where is this one" and a label list is read
  * from its start.
@@ -320,6 +335,17 @@ export type SessionIndexRow = {
 	costKnownCalls: number;
 	/** The row's own rate, or `null` when its calls reported no context total. */
 	cacheRatio: number | null;
+	/**
+	 * The row's own measured decode rate, or `null` when none of its calls
+	 * carries a generation window.
+	 *
+	 * Kept as a NUMBER beside `cacheRatio` rather than as a formatted cell, for
+	 * the reason the comment above gives: `—` is not a zero and `1,240` sorts
+	 * before `980` as a string. It is `null` for BOTH of the two absences the
+	 * column can show — a pre-feature ledger and a backend that predates the
+	 * fields, which are the same fact to the reader — and never `0`.
+	 */
+	decodeRate: number | null;
 	/** The selected metric's number, which is what the rows are ranked by. */
 	value: number;
 };
@@ -375,6 +401,7 @@ export function sessionIndex(
 			costMicro: aggregate.cost_micro,
 			costKnownCalls: aggregate.cost_known_calls,
 			cacheRatio: cacheReadFraction(aggregate),
+			decodeRate: decodeRate(aggregate),
 			value,
 		});
 	}
@@ -421,19 +448,27 @@ export function narrowSessionIndex(
 /**
  * Whether a row's value for a column is UNKNOWN rather than a number.
  *
- * Two columns can be unknown — an unpriced Cost (no call reported a published
- * price) and an unmeasurable Cache hit rate (no call reported a context total)
- * — and both mean the same thing to a reader: this row is not part of the
- * comparison. §6.1 states the rule once for both: unknown sorts LAST in both
- * directions, because a `—` cluster at the top of a descending sort reads as
- * the claim "these cost the most".
+ * THREE columns can be unknown — an unpriced Cost (no call reported a published
+ * price), an unmeasurable Cache hit rate (no call reported a context total), and
+ * a tok/s whose calls carry no measured generation window — and all three mean
+ * the same thing to a reader: this row is not part of the comparison. §6.1
+ * states the rule once for all of them: unknown sorts LAST in both directions,
+ * because a `—` cluster at the top of a descending sort reads as the claim
+ * "these cost the most".
+ *
+ * The rate column is the one where that rule is not a nicety. On a ledger
+ * written before the feature shipped EVERY row is unknown, and without the
+ * partition a descending sort would order the table by nothing at all while
+ * looking like a ranking.
  */
 const isUnknown = (row: SessionIndexRow, key: SessionSortKey): boolean =>
 	key === "cost"
 		? row.costKnownCalls === 0
 		: key === "cache"
 			? row.cacheRatio === null
-			: false;
+			: key === "rate"
+				? row.decodeRate === null
+				: false;
 
 /** The primary comparison, ascending, on numbers rather than on cell strings. */
 function compareAscending(
@@ -462,6 +497,14 @@ function compareAscending(
 		case "cache":
 			/* Unknowns are partitioned out before this runs. */
 			return (a.cacheRatio ?? 0) - (b.cacheRatio ?? 0);
+		case "rate":
+			/*
+			 * `?? 0` on an unknown is unreachable — the partition above has
+			 * already moved every `null` to the end — and is written anyway for
+			 * the reason the cache branch is: the two must not diverge in how
+			 * they treat the case neither of them can see.
+			 */
+			return (a.decodeRate ?? 0) - (b.decodeRate ?? 0);
 	}
 }
 
@@ -579,6 +622,7 @@ export function enrichSessionRows(
 		cost: formatMicroUsd(row.costMicro, row.costKnownCalls, row.calls),
 		fraction: context.total > 0 ? row.value / context.total : 0,
 		cacheHit: row.cacheRatio,
+		decodeRate: row.decodeRate,
 	}));
 }
 

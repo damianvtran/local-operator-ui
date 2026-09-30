@@ -40,7 +40,10 @@ import { Button } from "@shared/components/ui";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { useState } from "react";
-import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-contract";
+import type {
+	DesktopModelRate,
+	DesktopUsageAggregate,
+} from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
 import {
 	desktopRequestDeadlineDetail,
@@ -68,10 +71,32 @@ const aggregate = (
 	context_tokens: 0,
 	cost_micro: 0,
 	cost_known_calls: 0,
+	/*
+	 * The decode-rate measures. `0/0/0` is UNKNOWN — a ledger recorded before
+	 * the metric existed, or calls whose whole answer arrived in one frame — and
+	 * the panel renders it as `—` rather than as `0 tok/s`. `decode_tokens` is
+	 * NOT `output_tokens`: it counts only the calls that produced a measured
+	 * window, which is why a row can carry output tokens and no rate.
+	 */
+	decode_us: 0,
+	decode_tokens: 0,
+	decode_calls: 0,
 	components: {},
 	by_provider: {},
 	by_session: {},
 	...over,
+});
+
+/**
+ * A measured decode window for a fixture row.
+ *
+ * The rate is stated as tokens-per-second and converted, because a fixture that
+ * hard-coded microseconds would make the frame's `tok/s` a number nobody chose.
+ */
+const decode = (calls: number, tokens: number, tokensPerSecond: number) => ({
+	decode_calls: calls,
+	decode_tokens: tokens,
+	decode_us: Math.round((tokens / tokensPerSecond) * 1_000_000),
 });
 
 const provider = (
@@ -79,6 +104,7 @@ const provider = (
 	tokens: number,
 	cost: number,
 	cacheShare = 0,
+	rate?: { calls: number; tokens: number; tokensPerSecond: number },
 ) => {
 	const context = tokens - Math.round(tokens * 0.2);
 	return aggregate({
@@ -89,8 +115,80 @@ const provider = (
 		cache_read_tokens: Math.round(context * cacheShare),
 		cost_micro: cost,
 		cost_known_calls: calls,
+		...(rate ? decode(rate.calls, rate.tokens, rate.tokensPerSecond) : {}),
 	});
 };
+
+/**
+ * One row of the By-model table, which comes from its OWN op over the raw
+ * ledger — hence both rates on it.
+ *
+ * `wall` is stated as its own tokens-per-second rather than derived from the
+ * decode window, because the two are different measurements: the wall rate
+ * includes the first-token wait and any queueing, so a fixture that reused the
+ * decode numbers would photograph two columns that can never disagree and hide
+ * the distinction the columns exist to show.
+ */
+const modelRate = (
+	providerName: string,
+	modelId: string,
+	calls: number,
+	outputTokens: number,
+	rate: { calls: number; tokens: number; tokensPerSecond: number } | null,
+	wall: { tokensPerSecond: number; calls: number } | null,
+): DesktopModelRate => ({
+	provider: providerName,
+	model_id: modelId,
+	calls,
+	output_tokens: outputTokens,
+	decode_calls: rate?.calls ?? 0,
+	decode_tokens: rate?.tokens ?? 0,
+	decode_us: rate
+		? Math.round((rate.tokens / rate.tokensPerSecond) * 1_000_000)
+		: 0,
+	wall_calls: wall?.calls ?? 0,
+	wall_tokens: wall ? outputTokens : 0,
+	wall_us: wall
+		? Math.round((outputTokens / wall.tokensPerSecond) * 1_000_000)
+		: 0,
+});
+
+const MODEL_ROWS: DesktopModelRate[] = [
+	modelRate(
+		"deepseek",
+		"deepseek-flash",
+		46,
+		148_000,
+		{ calls: 46, tokens: 148_000, tokensPerSecond: 92.4 },
+		{ tokensPerSecond: 38.1, calls: 46 },
+	),
+	modelRate(
+		"anthropic",
+		"claude-opus-5",
+		38,
+		96_000,
+		{ calls: 31, tokens: 84_000, tokensPerSecond: 74.8 },
+		{ tokensPerSecond: 29.6, calls: 38 },
+	),
+	modelRate(
+		"openai",
+		"gpt-6-luna",
+		26,
+		40_200,
+		{ calls: 18, tokens: 28_100, tokensPerSecond: 61.2 },
+		{ tokensPerSecond: 24.4, calls: 26 },
+	),
+	/*
+	 * A model whose calls all arrived in one frame, or that predates the metric:
+	 * no decode window at all, so its decode cell is `—` while its wall cell is
+	 * a real number. This is the row that proves the two columns are different
+	 * measurements rather than one rendered twice.
+	 */
+	modelRate("local", "llama-4-8b", 6, 4_100, null, {
+		tokensPerSecond: 51.8,
+		calls: 6,
+	}),
+];
 
 /**
  * A row whose calls reported no read context at all.
@@ -164,17 +262,59 @@ const populated: AnalyticsData = {
 		context_tokens: 1_930_300,
 		cost_micro: 18_402_000,
 		cost_known_calls: 128,
+		/*
+		 * Partial coverage at the headline: 104 of 128 calls produced a measured
+		 * window. The rate is therefore a real number AND the screen has to say
+		 * how much of the scope it speaks for, which is the state a legend
+		 * exists for — a fixture with full coverage would photograph the rate
+		 * and never the disclosure.
+		 */
+		...decode(104, 232_000, 86.3),
 		by_provider: {
-			anthropic: provider(74, 1_240_000, 12_840_000, 0.79),
-			openai: provider(38, 620_000, 4_120_000, 0),
-			google: provider(16, 190_000, 1_442_000, 0.63),
+			anthropic: provider(74, 1_240_000, 12_840_000, 0.79, {
+				calls: 71,
+				tokens: 62_400,
+				tokensPerSecond: 74.8,
+			}),
+			openai: provider(38, 620_000, 4_120_000, 0, {
+				calls: 27,
+				tokens: 44_800,
+				tokensPerSecond: 61.2,
+			}),
+			google: provider(16, 190_000, 1_442_000, 0.63, {
+				calls: 6,
+				tokens: 9_100,
+				tokensPerSecond: 118.4,
+			}),
+			/*
+			 * No window at all: the row's rate cell is `—` while every other
+			 * column still has its numbers. A local model that answers in one
+			 * frame is the everyday shape of this, which is why it belongs in the
+			 * populated frame rather than in a special one.
+			 */
 			local: noContextTotal(4, 12_400),
 		},
 		by_session: {
-			a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.66),
-			b2c3d4e5f6a1: provider(31, 480_000, 4_260_000, 0),
-			c3d4e5f6a1b2: provider(21, 320_000, 3_010_000, 0.48),
-			d4e5f6a1b2c3: provider(14, 210_000, 1_940_000, 0.31),
+			a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.66, {
+				calls: 50,
+				tokens: 48_600,
+				tokensPerSecond: 79.1,
+			}),
+			b2c3d4e5f6a1: provider(31, 480_000, 4_260_000, 0, {
+				calls: 24,
+				tokens: 33_200,
+				tokensPerSecond: 58.7,
+			}),
+			c3d4e5f6a1b2: provider(21, 320_000, 3_010_000, 0.48, {
+				calls: 18,
+				tokens: 21_400,
+				tokensPerSecond: 64.9,
+			}),
+			d4e5f6a1b2c3: provider(14, 210_000, 1_940_000, 0.31, {
+				calls: 12,
+				tokens: 14_800,
+				tokensPerSecond: 91.6,
+			}),
 			e5f6a1b2c3d4: noContextTotal(10, 42_000),
 		},
 	}),
@@ -182,6 +322,38 @@ const populated: AnalyticsData = {
 	daily_scope: "all_sessions",
 	session_names: { a1b2c3d4e5f6: "Panel views" },
 	session_parents: { b2c3d4e5f6a1: "a1b2c3d4e5f6" },
+};
+
+/**
+ * A ledger recorded before the metric existed, which is what the operator's own
+ * history looks like on the day this ships.
+ *
+ * Every `decode_*` field is 0 — UNKNOWN, not a measured zero — so every decode
+ * cell reads `—` and the panel has to explain itself rather than print
+ * `0 tok/s`. The By-model table still has real WALL rates, because those come
+ * from columns that have always been recorded; that asymmetry is the reason the
+ * two rates are separate measurements and the frame is the evidence for it.
+ */
+const preMetric: AnalyticsData = {
+	...populated,
+	aggregate: aggregate({
+		...populated.aggregate,
+		// Zeroed EXPLICITLY: the spread above carries the populated fixture's
+		// partial-coverage measures, and a story whose point is "nothing has a
+		// window yet" must not inherit a headline rate from the fixture it is
+		// derived from. A frame is only evidence of the state it actually shows.
+		decode_us: 0,
+		decode_tokens: 0,
+		decode_calls: 0,
+		by_provider: {
+			anthropic: provider(74, 1_240_000, 12_840_000, 0.79),
+			openai: provider(38, 620_000, 4_120_000, 0),
+		},
+		by_session: {
+			a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.66),
+			b2c3d4e5f6a1: provider(31, 480_000, 4_260_000, 0),
+		},
+	}),
 };
 
 const base = {
@@ -202,6 +374,16 @@ const base = {
 	 * would photograph a different sentence on every capture.
 	 */
 	readAt: NOW.getTime(),
+	/*
+	 * The By-model section's own read. It is a SEPARATE op because it scans the
+	 * raw ledger and costs seconds on a large one, so its three states are
+	 * props the section renders on its own: `null` means no answer yet (not an
+	 * empty answer), and a string is the backend's own detail rather than a
+	 * sentence composed here.
+	 */
+	models: MODEL_ROWS,
+	modelsLoading: false,
+	modelsError: null,
 	onWindowChange: noop,
 	onMetricChange: noop,
 	onThisSessionChange: noop,
@@ -399,6 +581,95 @@ export const Unpriced: Story = {
 				cost_known_calls: 0,
 			})),
 		},
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/**
+ * The day this ships against the operator's own ledger: no decode window exists
+ * anywhere yet.
+ *
+ * Every decode cell is `—` and every wall cell is a real number, because the
+ * wall rate reads columns that have always been recorded. The frame is the
+ * evidence that the two are separate measurements and that UNKNOWN is rendered
+ * as itself rather than as `0 tok/s` — a rate of zero would be a claim about
+ * calls nothing measured.
+ */
+export const PreMetricLedger: Story = {
+	args: {
+		...base,
+		data: preMetric,
+		models: MODEL_ROWS.map((row) => ({
+			...row,
+			decode_us: 0,
+			decode_tokens: 0,
+			decode_calls: 0,
+		})),
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/**
+ * Partial coverage: some calls carried a window and some did not.
+ *
+ * This is the ordinary state rather than an edge one — a provider that answers
+ * short replies in a single frame produces it on every ledger — so the legend
+ * that states how many calls contributed is part of the normal frame, not a
+ * warning.
+ */
+export const PartialRateCoverage: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/** The By-model read is still in flight: its section alone shows a skeleton. */
+export const ModelRowsLoading: Story = {
+	args: {
+		...base,
+		data: populated,
+		models: null,
+		modelsLoading: true,
+		modelsError: null,
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/** The read answered with no rows in this window: an empty ANSWER, not a wait. */
+export const ModelRowsEmpty: Story = {
+	args: {
+		...base,
+		data: populated,
+		models: [],
+		modelsLoading: false,
+		modelsError: null,
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/** The By-model read failed while the rest of the pane loaded: its own detail. */
+export const ModelRowsUnavailable: Story = {
+	args: {
+		...base,
+		data: populated,
+		models: null,
+		modelsLoading: false,
+		modelsError: desktopRequestDeadlineDetail(
+			"analytics.models",
+			desktopRequestDeadlineMs("analytics.models"),
+		).message,
 		loading: false,
 		refreshing: false,
 		error: null,

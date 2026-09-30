@@ -39,6 +39,17 @@ const SPAWN_NAMES = [
 	"execSync",
 	"execFile",
 	"execFileSync",
+	/*
+	 * And `spawnOwned`, the rigs' own ownership wrapper (agent review round 3,
+	 * Q2-era finding on the evidential side): it is how a rig starts a process it
+	 * can later reap as a GROUP, so a launch spelled that way is still a launch
+	 * site - leaving it out of this list is what made the child-reader rig's
+	 * Chrome spawn invisible to the scan and its registry row read as stale. The
+	 * wrapper's own internal `spawn(` matches `spawn` above; its command is a
+	 * parameter rather than a literal, so it classifies as nothing and needs no
+	 * row of its own.
+	 */
+	"spawnOwned",
 ];
 
 /**
@@ -243,6 +254,18 @@ const CHROME_LAUNCH_SITES = [
 		"the Storybook sweep across all twelve themes, which is the rig behind the committed frames",
 	),
 	guarded(
+		"scripts/capture-docs-library.mjs",
+		"spawn",
+		1,
+		"renders the docs screenshot library - twelve scenes x light/dark at 1280x900@2x - for the READMEs and the marketing site",
+	),
+	guarded(
+		"scripts/make-chart.mjs",
+		"spawn",
+		1,
+		"renders the media scene's agent-plotted chart png, the artifact the docs-library story embeds as a tool result",
+	),
+	guarded(
 		"scripts/hub-round-trips.mjs",
 		"spawn",
 		1,
@@ -271,6 +294,24 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"measures the transcript's horizontal geometry from the live DOM",
+	),
+	guarded(
+		"scripts/condensed-group-media-geometry.mjs",
+		"spawn",
+		1,
+		"measures the condensed action group's height and its thumbnail strip from the live DOM, which is the compactness budget the pictures pass states as a number",
+	),
+	guarded(
+		"scripts/chat-measure-evidence.mjs",
+		"spawn",
+		1,
+		"photographs the chat column's shared measure at the shipped value and at the value it carried before, and reads the line length back from the rendered DOM - the frame pair a sweep cannot take, because the previous value is not in the tree at any later head",
+	),
+	guarded(
+		"scripts/cursor-audit.mjs",
+		"spawn",
+		1,
+		"walks every story measuring the pointer affordance - the computed cursor of every interactive element and its state - from the live DOM",
 	),
 	guarded(
 		"scripts/header-cluster-geometry.mjs",
@@ -327,6 +368,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures what the sidebar's list container does to its scroll position while a row re-files itself (the `overflow-anchor` rule on that container)",
 	),
 	guarded(
+		"scripts/session-open-live.mjs",
+		"spawn",
+		1,
+		"measures a conversation open against a real backend",
+	),
+	guarded(
 		"scripts/session-switch-latency.mjs",
 		"spawn",
 		1,
@@ -373,6 +420,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"photographs the row states from a BUILT Storybook of two trees - the branch and `origin/main` - so the before/after pair is two real builds rather than a proposal render",
+	),
+	guarded(
+		"scripts/child-reader-scroll-evidence.mjs",
+		"spawnOwned",
+		1,
+		"measures the run pane's child reader over time - where the viewport sits after an arrival, whether the newest row is on screen, and what its follow-the-tail control is doing - and photographs those states while the scripted child streams; its second spawnOwned is the vite server that serves the page",
 	),
 ];
 

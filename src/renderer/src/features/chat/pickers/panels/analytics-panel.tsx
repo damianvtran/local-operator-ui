@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { Bar, BarChart } from "recharts";
+import type { DesktopModelRate } from "../../../../../../shared/desktop-contract";
 import { clearSearch } from "../../clear-search";
 import { PickerCheck, PickerHost, PickerSegment } from "../picker-host";
 import type { MachinePanelContext } from "../picker-registry";
@@ -21,19 +22,29 @@ import {
 	type AnalyticsWindow,
 	CACHE_HIT_LABEL,
 	CACHE_HIT_MEANING,
+	COVERAGE_LABEL,
 	METRIC_LABEL,
+	type ModelRow,
+	TOK_PER_SECOND_LABEL,
+	WALL_TOK_PER_SECOND_LABEL,
 	analyticsWindow,
 	cacheReadFraction,
 	chartSeries,
 	chartSummary,
 	costKnownFraction,
 	dailyMeta,
+	decodeCoverage,
+	modelCoverage,
+	modelRateLegend,
+	modelRows,
 	percentageOf,
 	providerRows,
+	rateLegend,
 	spendTick,
 	tokenTick,
 	totalTokens,
 	windowMeta,
+	windowTitle,
 } from "./analytics-model";
 import {
 	INITIAL_SESSION_TABLE_STATE,
@@ -56,9 +67,17 @@ import {
 	sessionTableScopeKey,
 	sortSessionIndex,
 } from "./analytics-session-state";
-import { formatCount, formatMicroUsd, formatTokens } from "./formatters";
+import {
+	formatCount,
+	formatMicroUsd,
+	formatTokens,
+	formatTokensPerSecond,
+} from "./formatters";
 import { PanelSection, PanelStack } from "./panel-frame";
-import { analyticsQueryOptions } from "./panel-queries";
+import {
+	analyticsModelsQueryOptions,
+	analyticsQueryOptions,
+} from "./panel-queries";
 import { PanelEmpty, PanelNotice, PanelSkeleton } from "./panel-states";
 import { ChartFrame } from "./primitives/chart-frame";
 import { type Column, DataTable } from "./primitives/data-table";
@@ -106,6 +125,19 @@ export type AnalyticsPanelProps = {
 	refreshing: boolean;
 	/** The backend's own detail. Never synthesised here. */
 	error: string | null;
+	/**
+	 * The By-model read's rows, from its OWN op and its own query.
+	 *
+	 * `null` is "no answer yet" and `[]` is "an answer with no rows", which are
+	 * different facts the section renders differently; the two are separate
+	 * props rather than one nullable-with-a-length because a caller that
+	 * confused them would show an empty state for a read still in flight.
+	 */
+	models: DesktopModelRate[] | null;
+	/** The By-model read is in flight. Its own flag: it does not gate the pane. */
+	modelsLoading: boolean;
+	/** The By-model read's failure. Its own sentence, or `null`. */
+	modelsError: string | null;
 	/** The clock the window is derived from. Fixed in stories, so a frame is reproducible. */
 	now: Date;
 	/**
@@ -125,20 +157,37 @@ export type AnalyticsPanelProps = {
 };
 
 /**
- * The one sentence that says what the cache rate is, under both tables.
+ * One dim line under a table: its measures' own footnote.
  *
  * A visible line rather than a `title` attribute (review round 1, D4): the
  * explanation has to survive a frame, a screenshot, a screen reader and a
  * keyboard, and a tooltip survives none of the four. It sits with the table it
- * explains because it is the table's own measure, and it is folded into the
- * table's accessible name too (`DataTable`'s `label`), so a reader who arrives at
- * the table by navigation hears it rather than only seeing it.
+ * explains because it is the table's own measure, and the cache half is folded
+ * into the table's accessible name too (`DataTable`'s `label`), so a reader who
+ * arrives at the table by navigation hears it rather than only seeing it.
+ *
+ * ONE component for every legend on this panel rather than one per sentence,
+ * for the reason `formatters.ts` exists: the two lines are the same visual
+ * object and two spellings of its type would drift apart on the first edit.
  */
-const CacheHitLegend = () => (
-	<p className={cn("pt-1 text-balance text-ink-dim text-meta")}>
-		{CACHE_HIT_MEANING}
-	</p>
+const Legend = ({ text }: { text: string }) => (
+	<p className={cn("pt-1 text-balance text-ink-dim text-meta")}>{text}</p>
 );
+
+const CacheHitLegend = () => <Legend text={CACHE_HIT_MEANING} />;
+
+/**
+ * The rate column's footnote, or nothing.
+ *
+ * `rateLegend` returns `null` when the column covers every call in scope, and
+ * the panel then draws no line: an "all N of N calls" sentence is noise, and
+ * this panel already refuses that shape (`sessionMatchLine`). The two states it
+ * DOES speak in are the ones a reader can be misled by — partial coverage, and
+ * no coverage at all, where every cell in the column is `—` and the line says
+ * why rather than leaving a column of dashes to be read as a broken panel.
+ */
+const RateLegend = ({ text }: { text: string | null }) =>
+	text === null ? null : <Legend text={text} />;
 
 const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 	data,
@@ -162,6 +211,24 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			header: "Tokens",
 			numeric: true,
 			cell: (row) => formatTokens(row.tokens),
+		},
+		/*
+		 * The rate sits immediately after Tokens, which is where the terminal's
+		 * own table puts it (`analytics_panel.py:2122`, design §9.1): the rate is
+		 * a reading of the token count beside it, and a reader who has just read
+		 * "1.2M" should not have to cross the Cost column to find out how fast.
+		 *
+		 * Not sortable HERE because no column in this table is — its rows are the
+		 * providers that answered, in the order the selected metric ranks them,
+		 * and the primitive's `sortable: false` default is what says so. The
+		 * by-session table's identical column IS sortable, because that table has
+		 * a header sort contract and this one does not.
+		 */
+		{
+			key: "rate",
+			header: TOK_PER_SECOND_LABEL,
+			numeric: true,
+			cell: (row) => formatTokensPerSecond(row.decodeRate),
 		},
 		{
 			key: "cost",
@@ -205,6 +272,13 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 				empty={<PanelEmpty text="No per-provider rows in this window." />}
 			/>
 			<CacheHitLegend />
+			{/*
+			 * The window's own coverage, from the panel's headline aggregate —
+			 * `by_provider` is a partition of it, so the counts are the same fact
+			 * either way, and taking them from the headline keeps this line and
+			 * the by-session line below reading one number.
+			 */}
+			<RateLegend text={rateLegend(decodeCoverage(data.aggregate))} />
 		</>
 	);
 };
@@ -381,6 +455,28 @@ const SessionTable: FC<{
 			sortable: true,
 			cell: (row) => formatTokens(row.tokens),
 		},
+		/*
+		 * The same column, in the same position, as the By-provider table's —
+		 * the two are meant to read as one table stacked twice (design §9.1),
+		 * and the position is also the one the rate's own meaning asks for: a
+		 * rate is a reading of the token count beside it.
+		 *
+		 * Sortable, unlike the By-provider copy, because every value column in
+		 * THIS table is: a reader comparing two sessions on generation speed is
+		 * asking a question, and an unsortable column would answer it by
+		 * scrolling. The `rate` key partitions its unknowns to the end in both
+		 * directions like Cost and Cache hit rate do — on a ledger written
+		 * before the feature shipped EVERY row is unknown, and without that
+		 * partition a descending sort would be ordering the table by nothing at
+		 * all while looking like a ranking.
+		 */
+		{
+			key: "rate",
+			header: TOK_PER_SECOND_LABEL,
+			numeric: true,
+			sortable: true,
+			cell: (row) => formatTokensPerSecond(row.decodeRate),
+		},
 		{
 			key: "cost",
 			header: "Cost",
@@ -518,6 +614,7 @@ const SessionTable: FC<{
 						empty={<PanelEmpty text="No per-session rows in this window." />}
 					/>
 					<CacheHitLegend />
+					<RateLegend text={rateLegend(decodeCoverage(data.aggregate))} />
 					{/*
 					 * The pager replaces the `+N more not shown` line this section used
 					 * to end with. That line was a disclosure that the table was a
@@ -556,6 +653,145 @@ const SessionTable: FC<{
 			<output className={cn("sr-only")} aria-live="polite">
 				{announcement}
 			</output>
+		</>
+	);
+};
+
+/**
+ * The By-model section: the one table on this panel that reads the RAW LEDGER.
+ *
+ * It is a separate read for a reason a reader can see on screen rather than a
+ * reason about modules — the rows cover the operator's whole existing history
+ * (the wall `tok/s` column has a value on a ledger written before this feature
+ * existed), and the price of that coverage is a grouped scan that takes SECONDS
+ * on a large ledger. So the section owns its own three states and the rest of
+ * the pane never waits on it: the stat cards, the chart and both aggregate
+ * tables render from `analytics.get` the moment it answers, and this one
+ * arrives under a skeleton of its own.
+ *
+ * **It does not claim to partition the Totals above it**, and three things say
+ * so instead of one: the meta line names its source (`from the ledger`) where
+ * the Totals read the rollup; the legend under the table names the source again
+ * beside the coverage counts; and the bar's own accessible name says its share
+ * is of output tokens read from the ledger rather than of the headline's token
+ * total. What the two DO share is the window — both are windowed by the same
+ * `since_ms`/`until_ms` bounds — so the largest row's share is still comparable
+ * to the headline's output-token figure, which is the consistency the design
+ * argues for and the most a table without a model dimension in the rollup can
+ * honestly offer.
+ *
+ * **Ranked by output tokens, in both metric positions.** `DesktopModelRate`
+ * carries no price — the grouped scan does not read `cost_micro` — so under
+ * `Spend` there is no column here to rank by, and the section says what it is
+ * ranked by rather than silently ignoring the toolbar's metric control.
+ */
+const ModelTable: FC<{
+	rows: DesktopModelRate[] | null;
+	loading: boolean;
+	error: string | null;
+}> = ({ rows, loading, error }) => {
+	/*
+	 * The failure REPLACES the section, per `panel-states.tsx`: `unavailable`
+	 * takes the content and the meta with it, because "Last 30 days" beside a
+	 * read that failed is a claim about a window nothing was read from.
+	 */
+	if (error) return <PanelNotice kind="unavailable" text={error} />;
+	/*
+	 * No answer yet — the slow read is in flight, or the query has not been
+	 * handed a result. FIRST PAINT is a skeleton rather than a sentence, because
+	 * the shape of what is coming is known and a skeleton says "here is where
+	 * the content will be" (the same rule the panel's own first paint follows).
+	 */
+	if (loading || rows === null) return <PanelSkeleton shape="table" rows={4} />;
+	/*
+	 * An empty ANSWER, which is a different fact from both of the above: the
+	 * read succeeded and the window has no calls against a model. `rows: []` is
+	 * what the route sends, so this is reachable on a fresh install.
+	 */
+	if (rows.length === 0) {
+		return (
+			<PanelNotice
+				kind="empty"
+				text="No per-model rows in this window."
+				detail="The ledger records a model on every provider call, so this window has none."
+			/>
+		);
+	}
+	const tableRows = modelRows(rows);
+	const coverage = modelCoverage(rows);
+	const columns: Column<ModelRow>[] = [
+		{
+			key: "model",
+			header: "Model",
+			cell: (row) => row.label,
+		},
+		{
+			key: "calls",
+			header: "Calls",
+			numeric: true,
+			cell: (row) => formatCount(row.calls),
+		},
+		{
+			key: "tokens",
+			header: "Tokens",
+			numeric: true,
+			/*
+			 * `output_tokens`, not the input+output total the other tables
+			 * print: the grouped scan sums the output column only, so a total
+			 * here would be a different quantity wearing the same header.
+			 */
+			cell: (row) => formatTokens(row.outputTokens),
+		},
+		{
+			key: "rate",
+			header: TOK_PER_SECOND_LABEL,
+			numeric: true,
+			cell: (row) => formatTokensPerSecond(row.decodeRate),
+		},
+		/*
+		 * The column that must never be read as decode speed — and the reason
+		 * both headers carry their qualifier rather than one of them being
+		 * called plain `tok/s`. It is `null` only when no call of the model has
+		 * a recorded duration, which covers the operator's entire existing
+		 * ledger today, so it is the column that has a number when the one
+		 * beside it has none.
+		 */
+		{
+			key: "wall",
+			header: WALL_TOK_PER_SECOND_LABEL,
+			numeric: true,
+			cell: (row) => formatTokensPerSecond(row.wallRate),
+		},
+		/*
+		 * How much of the row's calls the decode column actually speaks for.
+		 * A RATE, and `0%` here is a measured zero rather than an unknown — the
+		 * reverse of the column beside it, which is why the two are separate
+		 * columns and why the legend states the counts in words as well.
+		 */
+		{
+			key: "coverage",
+			header: COVERAGE_LABEL,
+			numeric: true,
+			cell: (row) => percentageOf(row.decodeCoverage),
+		},
+	];
+	return (
+		<>
+			<DataTable<ModelRow>
+				label={`Generation rate by model, read from the usage ledger. ${modelRateLegend(coverage.decode, coverage.wall) ?? ""}`}
+				columns={columns}
+				rows={tableRows}
+				rowKey={(row) => row.key}
+				leading={(row) => (
+					<ProportionBar
+						fraction={row.fraction}
+						className="w-24"
+						srLabel={`${row.label}: ${percentageOf(row.fraction)} of the output tokens this ledger read recorded in this window`}
+					/>
+				)}
+				empty={<PanelEmpty text="No per-model rows in this window." />}
+			/>
+			<RateLegend text={modelRateLegend(coverage.decode, coverage.wall)} />
 		</>
 	);
 };
@@ -605,6 +841,9 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	loading,
 	refreshing,
 	error,
+	models,
+	modelsLoading,
+	modelsError,
 	now,
 	readAt,
 	onWindowChange,
@@ -775,6 +1014,27 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						<PanelSection title="By provider">
 							<ProviderTable data={data} metric={metric} />
 						</PanelSection>
+						{/*
+						 * `from the ledger` is in the meta and not only in the legend,
+						 * because the meta is what a reader sees BEFORE deciding whether
+						 * this table and the Totals above it are one partition — and they
+						 * are not. The by-session table, which stays below, shares the
+						 * Totals' rollup source; this one does not.
+						 *
+						 * `ranked by output tokens` is the other half of the honesty: the
+						 * toolbar's metric control orders the chart and the two aggregate
+						 * tables, and this table has no price column to follow it with.
+						 */}
+						<PanelSection
+							title="By model"
+							meta={`${windowTitle(windowDays)} · from the ledger · ranked by output tokens`}
+						>
+							<ModelTable
+								rows={models}
+								loading={modelsLoading}
+								error={modelsError}
+							/>
+						</PanelSection>
 						<PanelSection
 							title="By session"
 							meta="Own figures per session · totals include subagents"
@@ -807,10 +1067,37 @@ export const AnalyticsView: FC<MachinePanelContext> = ({
 	 */
 	const [now] = useState(() => new Date());
 	const win = analyticsWindow(windowDays, now);
+	/*
+	 * The panel's own window, computed once and handed to BOTH reads, so the
+	 * table's rows and the headline are windowed by the same two numbers rather
+	 * than by two derivations of one clock that could disagree near midnight.
+	 */
+	const scopeSession = thisSessionOnly ? sessionId : undefined;
 	const query = useQuery(
 		analyticsQueryOptions({
 			days: windowDays,
-			sessionId: thisSessionOnly ? sessionId : undefined,
+			sessionId: scopeSession,
+			sinceMs: win.sinceMs,
+			untilMs: win.untilMs,
+		}),
+	);
+	/*
+	 * The per-model read runs BESIDE the panel's own, not behind it: it is a
+	 * grouped scan of the raw ledger and takes seconds on a large ledger, so
+	 * gating the stat cards, the chart or either aggregate table on it would put
+	 * the slowest read on the panel's critical path for no gain. Its three
+	 * states are handed to the By-model section, which is the only thing that
+	 * waits.
+	 *
+	 * `query.dataUpdatedAt || null` has no counterpart here: the By-model
+	 * section states its source and its window, not when it read, and a second
+	 * `as of` on one screen would invite a reader to compare two clocks rather
+	 * than two numbers.
+	 */
+	const modelsQuery = useQuery(
+		analyticsModelsQueryOptions({
+			days: windowDays,
+			sessionId: scopeSession,
 			sinceMs: win.sinceMs,
 			untilMs: win.untilMs,
 		}),
@@ -825,6 +1112,9 @@ export const AnalyticsView: FC<MachinePanelContext> = ({
 			loading={query.isLoading}
 			refreshing={query.isFetching && !query.isLoading}
 			error={query.isError ? errorText(query.error) : null}
+			models={modelsQuery.data?.data.rows ?? null}
+			modelsLoading={modelsQuery.isLoading}
+			modelsError={modelsQuery.isError ? errorText(modelsQuery.error) : null}
 			now={now}
 			readAt={query.dataUpdatedAt || null}
 			onWindowChange={setWindowDays}

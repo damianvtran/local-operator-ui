@@ -23,7 +23,12 @@ import { radientProxy } from "@shared/api/radient/proxy";
 import type { UserInfoResult } from "@shared/api/radient/types";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 
 // Query keys for Radient user data
@@ -183,7 +188,9 @@ const ACCOUNT_READ_KEY = JSON.stringify(radientUserKeys.user());
  * the reader who pressed Retry is told the fault is gone by the act of asking
  * again, which is design round 1's D4 over again. Nothing about starting a fetch
  * touches this record: it is written by the query function's catch and cleared
- * by its ANSWER, and by the query's removal.
+ * by its ANSWER, by the query's removal, and by a completed credential write
+ * (`forgetAccountReadFailure`, whose own docblock says why that event and a
+ * press are not the same kind of thing).
  *
  * AND WHY IT IS A SUBSCRIBED STORE RATHER THAN A BARE MAP (qa round 3, Q2). A map
  * is invisible to React, and React Query notifies an observer only when a prop
@@ -234,24 +241,122 @@ function recordAccountReadFailure(kind: RadientAccountReadFailure): void {
 }
 
 /**
- * Drop the recorded class, because the read it describes has been answered (or
- * the query holding it has been removed).
+ * The clear-generation: bumped by every `forgetAccountReadFailure`.
  *
- * One function rather than four `delete`s so the rule has one home: a recorded
- * failure may only be forgotten by an ANSWER, never by the start of the next
- * attempt - which is the defect this whole map exists to avoid (`failureCount`).
+ * WHY AN ATTEMPT'S FAILURE IS GATED ON IT. The class is recorded by the query
+ * function's own catch, and an attempt that STARTED before a clear can settle
+ * AFTER it: a credential write cancels the chain the old credential left
+ * asking, but cancellation discards a chain's RESULT without stopping the
+ * query function's own promise - so the abandoned attempt's late rejection
+ * would re-arm exactly the class the write just cleared (measured in review
+ * round 1's mid-chain repro: the foot flipped back to "Account unavailable"
+ * right after the completion cleared it, and in the last-attempt repro the
+ * re-recorded class outlived the chain entirely). An attempt may only record
+ * while no clear has happened since it started; an attempt from the newer era
+ * - the re-read the clear commissioned - records normally.
  */
-function forgetAccountReadFailure(): void {
+let accountReadGeneration = 0;
+
+/**
+ * Drop the recorded class: the read it describes has been answered (or the
+ * ordinary signed-out reply came back), the query holding it has been removed
+ * on sign-out, or a completed Radient credential WRITE replaced the credential
+ * the recorded class was about.
+ *
+ * The third one is why this is exported rather than private. "Refused" names
+ * the credential a completed write just replaced, so the write falsifies the
+ * class's premise and the re-read that follows is disclosed as "Checking
+ * account…" only because the stale class is gone from under it - see the two
+ * callers, `provider-detail.tsx`'s `refreshProviders` (gated on the Radient
+ * credential) and `use-radient-session-issue.ts`'s succeeded branch.
+ *
+ * One function rather than a `delete` per caller so the rule has one home: a
+ * recorded failure may only be forgotten by an ANSWER, or by an event whose
+ * completion makes its premise false, never by the start of the next attempt -
+ * which is the defect this whole map exists to avoid (`failureCount`).
+ */
+export function forgetAccountReadFailure(): void {
+	/*
+	 * Bumped even when nothing was recorded: the caller is asserting that an
+	 * event falsified the premise of every attempt already in flight, and an
+	 * attempt from before it must not record after it (see
+	 * `accountReadGeneration`). The clear below is only the visible half.
+	 */
+	accountReadGeneration += 1;
 	if (!accountFailureKinds.delete(ACCOUNT_READ_KEY)) return;
 	announceAccountFailureChange();
 }
+
+/**
+ * Commission the account read for a completed Radient credential write.
+ *
+ * THE ONE ENTRY POINT both completion paths call - `provider-detail.tsx`'s
+ * `refreshProviders` (gated on the Radient credential) and
+ * `use-radient-session-issue.ts`'s succeeded branch - rather than a
+ * clear-then-invalidate pair spelled at each site.
+ *
+ * WHY THE CANCEL, when an invalidation alone reads like it commissions a read
+ * (review round 1, M1). React Query JOINS an in-flight, data-less chain instead
+ * of restarting it (`Query.fetch` continues the retry when
+ * `fetchStatus !== "idle"` and no data has arrived - query-core 5.73.3,
+ * `query.js`, the `continueRetry` path), so an invalidation issued while the
+ * PREVIOUS credential's chain is still asking re-asks NOTHING: the joined chain
+ * answers with the old attempt's outcome, and a write that lands in that
+ * chain's last attempt settles with everything marked invalidated and no
+ * attempt left to re-ask - the foot then waits for a later focus or mount,
+ * which is the operator's symptom surviving remount-free. Cancelling first
+ * drops the pre-write chain (its result can no longer settle the query) and the
+ * invalidation that follows starts a fresh chain under the credential that
+ * just landed: one read per write, no re-ask loop, and the abandoned attempts
+ * can no longer record (the generation bump inside the clear).
+ *
+ * The clear runs FIRST so the fresh chain is disclosed as "Checking account…"
+ * rather than the foot sitting on the class the write just made stale - the
+ * same rule as `forgetAccountReadFailure`'s, now enforced for the in-flight
+ * case too.
+ */
+export async function commissionAccountRead(
+	queryClient: QueryClient,
+): Promise<void> {
+	forgetAccountReadFailure();
+	await queryClient.cancelQueries({ queryKey: radientUserKeys.all });
+	await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+}
+
+/**
+ * The parts of the read a caller may change, and the one that matters here.
+ *
+ * WHY A CALLER EVER WANTS THIS. React Query's `retryOnMount` (default `true`)
+ * decides whether a NEW observer mounting on a query that has already FAILED may
+ * start another read: `shouldLoadOnMount` is
+ * `options.enabled && query.state.data === undefined && !(query.state.status === "error" && options.retryOnMount === false)`
+ * (`@tanstack/query-core@5.73.3`, `queryObserver.js`). That is right for a
+ * surface that owns the read and wrong for one that only reports it, and the
+ * difference is not academic -- see `useRadientUserQuery`'s caller in
+ * `provider-detail.tsx` for the loop it caused and the measurement.
+ */
+export type RadientUserQueryOptions = {
+	/**
+	 * Whether mounting this observer may re-ask a read that has already failed.
+	 *
+	 * `true` (the default, and what every pre-existing caller passes by not asking)
+	 * is the right answer for a surface that owns the read. `false` is for an
+	 * observer whose job is to report a read somebody else is taking: it still
+	 * receives every cache update and still starts the FIRST read when nothing has
+	 * asked yet, and it stops a remount from re-commissioning a failure -- which
+	 * is the difference between a section that settles and one that spins.
+	 */
+	retryOnMount?: boolean;
+};
 
 /**
  * Hook for the current Radient account, resolved by the backend.
  *
  * @returns Query result with user data, loading state, error state, and sign-out
  */
-export const useRadientUserQuery = () => {
+export const useRadientUserQuery = ({
+	retryOnMount = true,
+}: RadientUserQueryOptions = {}) => {
 	const queryClient = useQueryClient();
 	const { setIsSigningOut } = useUserStore();
 	const capabilities = useDesktopCapabilities();
@@ -260,15 +365,22 @@ export const useRadientUserQuery = () => {
 	const userQuery = useQuery<UserInfoResult | null, Error>({
 		queryKey: radientUserKeys.user(),
 		queryFn: async () => {
+			/*
+			 * Captured BEFORE the read: a clear that lands while this attempt is
+			 * in flight falsifies its premise, and its late settle must not
+			 * re-arm the class that clear removed (see `accountReadGeneration`).
+			 */
+			const generation = accountReadGeneration;
 			try {
 				const account = await radientProxy<UserInfoResult>({
 					operation: "account",
 				});
 				/*
-				 * An ANSWER is the only thing that clears a recorded failure - never the
-				 * start of the next attempt, which is what React Query resets
-				 * (`failureCount` and `error`) and what the press beneath the alert
-				 * used to erase the fault with. See `accountFailureKinds`.
+				 * An ANSWER clears a recorded failure - a completed credential write
+				 * clears one too (see `forgetAccountReadFailure`) - but never the START
+				 * of the next attempt, which is what React Query resets (`failureCount`
+				 * and `error`) and what the press beneath the alert used to erase the
+				 * fault with. See `accountFailureKinds`.
 				 */
 				forgetAccountReadFailure();
 				return account;
@@ -282,8 +394,12 @@ export const useRadientUserQuery = () => {
 				}
 				// Recorded HERE rather than from a render, so the class is known for
 				// every reader of this key from the first failure on - see
-				// `accountFailureKinds`.
-				recordAccountReadFailure(classifyRadientAccountFailure(error));
+				// `accountFailureKinds` - and ONLY while this attempt belongs to the
+				// current era: a clear since it started means the event it recorded
+				// for has been superseded, and this attempt may not speak for it.
+				if (generation === accountReadGeneration) {
+					recordAccountReadFailure(classifyRadientAccountFailure(error));
+				}
 				throw error;
 			}
 		},
@@ -303,6 +419,11 @@ export const useRadientUserQuery = () => {
 		 * stalled backend read.
 		 */
 		retry: (failureCount, error) => !isSignedOut(error) && failureCount < 2,
+		/*
+		 * `retryOnMount` is passed through rather than fixed, because the two
+		 * kinds of caller need opposite answers; see `RadientUserQueryOptions`.
+		 */
+		retryOnMount,
 	});
 
 	const isAuthenticated = !!userQuery.data && !userQuery.isLoading;

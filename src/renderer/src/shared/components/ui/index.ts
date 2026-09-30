@@ -15,7 +15,7 @@
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./alert";
 export type { AlertProps } from "./alert";
 export { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-export { Badge, badgeVariants } from "./badge";
+export { Badge, badgeVariants, countLabel } from "./badge";
 export type { BadgeProps } from "./badge";
 export { Button, buttonVariants } from "./button";
 export type { ButtonProps } from "./button";

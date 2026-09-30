@@ -1,4 +1,5 @@
 import type { TranscriptRecord } from "../../canonical/transcript-reducer";
+import type { WorkingLineState } from "../../canonical/working-line-model";
 
 /**: the arithmetic behind the header popover.
  *
@@ -151,6 +152,34 @@ const CHILD_STATE_WORD = {
 } as const satisfies Record<Exclude<ChildStatus, "unknown">, string>;
 
 /**
+ * The runtime's own stamp for a job cancelled BEFORE its runner was entered.
+ *
+ * `harness/jobs.py`'s `CANCELLED_BEFORE_START`, written by `cancel()` at
+ * `:1166-1167` when `started_at is None`, and it rides `result_text` — but it
+ * is NOT a result. It is a state word the manager stamps on the row so the one
+ * fact the cancellation destroys (that the child never ran, and so burned
+ * nothing) survives on every settled surface. The TUI spends it as the page
+ * title's state word rather than as an outcome body (`subagent_view.py:3371-3391`),
+ * and it matches the constant rather than sniffing the text, because `cancel`
+ * is its only writer.
+ *
+ * The desktop's slot for it is the row's own `stateWord`, the same field the
+ * TUI spends it in, and this model keeps that recognition in ONE place: the row
+ * carries it as its state word and does NOT carry it as `resultText`, which is
+ * what stops the reader's foot painting a status stamp under a result label.
+ * The alternative — leaving it in `resultText` and re-matching the constant in
+ * the reader — is two recognitions of one fact, free to disagree.
+ *
+ * EXPORTED because the fixtures and the reader's own test have to SPELL it: this
+ * renderer cannot import the runtime's constant the way the TUI does
+ * (`harness/jobs.CANCELLED_BEFORE_START`), so the literal lives here once and
+ * every desktop caller reads it from this module. A story that hand-wrote the
+ * sentence would be a second spelling free to drift from the one the model
+ * matches.
+ */
+export const CANCELLED_BEFORE_START = "cancelled before it started";
+
+/**
  * The rank the overflow slice evicts by (`subagent_panel._EVICTION_RANK:256-262`).
  *
  * Running and queued share the top rank — a child behind the capacity gate is
@@ -204,6 +233,19 @@ export const TODO_ITEM_CAP = 10;
  * raises the limit — rather than as a routine truncation of the shipping wire.
  */
 export const WAKE_ROW_CAP = 16;
+
+/**
+ * Monitor rows the Monitors section shows before its overflow marker.
+ *
+ * The number is the arm path's own ceiling, `values.monitor.maxMonitors`
+ * (`monitor/settings.py::DEFAULT_MAX_MONITORS = 8`) — the same "the wire's own
+ * limit" rule `WAKE_ROW_CAP` states for wakes, and it carries the same caveat:
+ * it is a ceiling on the TOOL path, not a guarantee about the payload.
+ * `build_monitor_spec` refuses past it, while the setting is per-session
+ * config a hand-edit can raise — so the reader does not assume the bound and
+ * the marker below the list stays reachable by design.
+ */
+export const MONITOR_ROW_CAP = 8;
 
 /**
  * The seam between two facts on one line. The same ` · ` the TUI's row and the
@@ -278,19 +320,42 @@ export type SubagentRow = {
 	 * `error_text`, the WHOLE thing, on a failed child.
 	 *
 	 * `errorLine` stays the ROSTER's field — a list row's summary is one line
-	 * (`§4.1`) — and this is the reader's, whose outcome block prints the
+	 * (`§4.1`) — and this is the reader's, whose failure block prints the
 	 * exception verbatim (`§5.1`). Two fields rather than one because the two
 	 * surfaces want different amounts of the same string, and a row that carried
 	 * only the full text would make the roster's shed rule a formatting decision
 	 * inside a list row.
+	 *
+	 * It is the ONE outcome the child's conversation does not also hold: the
+	 * runtime's wire bound for it exists precisely because `error_text` is
+	 * `str(exc)` from the parent's runner and is in no child transcript
+	 * (`frontend_state.py`'s comment on `JOB_ERROR_WIRE_CHARS`), so the reader
+	 * cannot prefer the page to it the way it now prefers the page to
+	 * `resultText`.
+	 *
+	 * CARRIED AS FAR AS THE WIRE CARRIES IT, which is the same 2_000 characters
+	 * `resultText` gets and not a larger allowance: the field is the wire's, and
+	 * its docstring's old word for the bound ("generous") described its
+	 * RATIONALE rather than its size. The reader prints what arrives and says so
+	 * when the value carries the wire's clip marker (`run-child-reader.tsx`),
+	 * because an exception is the only copy of why a child failed.
 	 */
 	errorText: string | null;
 	/**
-	 * `result_text`, whole, on a settled child.
+	 * `result_text`, as far as the wire carries it, on a settled child.
 	 *
-	 * The reader's outcome block renders this instead of reading the child's
-	 * transcript for it (`§5.1`): the roster row already carries the outcome, and
-	 * the TUI makes the same choice for the same reason.
+	 * AS FAR AS THE WIRE CARRIES IT, and that is the whole reason this field is
+	 * now a PREVIEW rather than the reader's answer: the runtime truncates it at
+	 * `JOB_RESULT_WIRE_CHARS = 2_000` (`frontend_state.py:143-164`, cut mid-word)
+	 * because both free-text fields live verbatim in the CHILD's own transcript,
+	 * which the reader pages in. The child's last durable row therefore states the
+	 * result the reader shows, and this field is read only for the states where no
+	 * conversation can be painted at all (`run-child-reader.tsx`).
+	 *
+	 * `null` for a child cancelled before its runner was entered, whose
+	 * `result_text` is the manager's own STATE stamp rather than an outcome: that
+	 * value is spent as this row's `stateWord` instead (see
+	 * `CANCELLED_BEFORE_START`), so no reader can paint it as a result.
 	 */
 	resultText: string | null;
 	/**
@@ -356,8 +421,156 @@ export type SubagentRow = {
 	 * fabricated rendering of machine text is a claim nobody can check — and it
 	 * is what makes `unknown` falsifiable in the panel instead of being a
 	 * second, vaguer vocabulary for the same fact.
+	 *
+	 * The parked cancel is the third case and it follows the same rule: the
+	 * runtime publishes `cancelled before it started` as that row's own stamp, so
+	 * the row says it rather than the fold's generic `cancelled`
+	 * (`CANCELLED_BEFORE_START`).
 	 */
 	stateWord: string;
+};
+
+/**
+ * The working line a RUNNING child's reader paints at the foot of its page
+ * (`docs/run-sidebar.md` § 5), or `null` when there is nothing to claim.
+ *
+ * WHY THIS IS NOT `deriveWorkingLine`, AND WHAT OMISSION WOULD ACTUALLY PAINT.
+ * The parent transcript derives its foot from the pane's own live records
+ * (`canonical/working-line-model.ts`). The reader's records are the child's
+ * DURABLE page, and `transcript-reducer.ts` maps every durable tool row to
+ * `phase: "done"` — the tool arm of `durableRecord` (`:1867`, declared `:1661`)
+ * — so over those records the parent's derivation answers NOTHING for the props
+ * this reader passes: `waiting` and `starting` are both false, so it returns
+ * `null` (`working-line-model.ts:600`) and the foot stays empty. Driving it from
+ * `waiting` instead — the one change that would make it speak — is what could
+ * only ever have said `thinking`, because a durable page holds no running tool
+ * row for the batch arm to count. Neither is the child's real activity, and that
+ * is on the wire: this row's own `activity` is `latest_details.progress`, fed by
+ * the child relay's `report_progress` into `job.latest_details = {"progress":
+ * details}` (`harness/jobs.py:1341`), and the reader already receives the
+ * row.
+ *
+ * THE VOCABULARY IS THE PARENT WORKING LINE'S OWN, by the relay's own design
+ * (`harness/subagent.py`'s `_make_relay`, defined `:1244`, docstring `:1254-1284`):
+ * the model's
+ * stated intent while a tool runs, `running N tools` for a batch, `responding`
+ * while prose is actually streaming, `thinking` for a model call in flight with
+ * nothing streamed yet — "a reader watching both surfaces at once should not
+ * have to learn two vocabularies for one state". The constants live in
+ * `harness/intent.py`: `ACTIVITY_THINKING`, `ACTIVITY_RESPONDING`,
+ * `tool_activity` and `batch_activity` (`:298-340`), which is also the set the
+ * parent's own derivation reconstructs from its live records.
+ *
+ * THE PHASE IS A CLASSIFICATION, NOT A GUESS, and what it buys HERE is a stable
+ * phase across a moving label. `working-line.tsx`'s contract (points 2 and 3) is
+ * phase-keyed — it restarts the clock when the PHASE changes and never when the
+ * label alone does — and that contract is the PARENT row's: this row withholds
+ * its clock (below), so what the classification buys here is the phase itself,
+ * the identity a viewer, a test and a later anchor read. It is what keeps a
+ * batch that sheds its calls one by one from re-classifying the line as its
+ * label narrows to a survivor.
+ * The relay calls `tool_activity`/`batch_activity` from exactly three places —
+ * the `ToolExecutionStartEvent` and `ToolExecutionEndEvent` arms and the
+ * empty-batch fallback (`subagent.py:1325-1334`) — and the arms that emit the two
+ * named constants are the ones that do NOT call them. So every progress string
+ * that is neither exactly `thinking` nor exactly `responding` was emitted while
+ * at least one tool call was running, and the mapping is closed over the
+ * vocabulary the relay can produce: `thinking` -> `thinking`, `responding` ->
+ * `responding`, anything else -> `running`. One ambiguity is tolerated and
+ * recorded rather than hidden: a model-authored INTENT string that is exactly
+ * `thinking` or `responding` misfiles the phase, never the label.
+ *
+ * WHAT THE CLASSIFICATION DOES NOT BUY, since the paragraph above could be read
+ * as more than it is: it does not make the NUMBER true. It decides which phase
+ * this line is in — the identity a viewer, a test and a later anchor all read —
+ * and nothing about it can supply a zero, which is why the number is withheld
+ * below rather than counted.
+ *
+ * THE CLOCK IS WITHHELD, and it is the one field of this state that is neither
+ * the wire's nor the classification's. `clock: false` makes `WorkingLine` paint
+ * no number and run no interval (`working-line.tsx`; the slot stays RESERVED, so
+ * nothing on the row moves). The reason is that the wire carries NO anchor for a
+ * child's phase: the relay's progress value is a string (`harness/jobs.py`),
+ * and `SubagentRow.startSeconds` is the child's LAUNCH clock, not the phase's.
+ * A number seeded from this component's mount would therefore report the age of
+ * the READER — the shipped `reader-live` frame printed `0s` beside a header
+ * reading `1m36s` for the same child — which is precisely the class the working
+ * line's own type calls wrong (`working-line-model.ts:64-74`, design round 2's
+ * D3) and the one its `clock` field exists for: "the phase edge is the moment
+ * the LABEL changed — so any number here is the seat of an age nothing did".
+ *
+ * THE TUI — THE ROW THIS PORTS — RESOLVED THE SAME SHAPE AND RECORDED THE
+ * ALTERNATIVE AS THE DEFECT. `set_activity(clock=False)` for a `running` phase
+ * any of whose cards was adopted mid-execution: "the phase changes when the
+ * viewer arrives, not when the tool started, so the number would count from the
+ * switch while naming a tool that may be half an hour old"
+ * (`tui/app.py:41670-41678`), and "a clock started from the wrong zero is worse
+ * than no clock" (`tui/widgets/transcript.py:3361-3380`) — which is also where
+ * every child row inside `subagent_view` is named in the population that has no
+ * timestamp "at any price", so the number is "withheld rather than invented".
+ * Recording an anchor instead is not available here: there is nothing on the wire
+ * to record.
+ *
+ * THE TWO CONSEQUENCES, recorded rather than left to be discovered. The pane is
+ * not left dead: the reader's HEADER keeps the child's own elapsed label ticking
+ * at 1 Hz from the child's launch clock (`useChildRowClock`, § 5.3), which is the
+ * honest duration for that surface and which no reader-arrival zero can fake.
+ * And under `prefers-reduced-motion` the spinner holds its frame as always, so
+ * this row becomes a static statement — the activity word alone — accepted
+ * because that word is the fact the row exists to carry.
+ *
+ * WHY `activity || "thinking"`. `thinking` is the relay's own word for a child
+ * with nothing to report yet, and the relay is where it is minted: the
+ * `ToolExecutionEndEvent` arm answers `ACTIVITY_THINKING` the moment the batch
+ * empties (`subagent.py:1334`), and the two message arms do the same for a model
+ * call with nothing streamed (`:1343`, `:1364`) — because `batch_activity` has
+ * no word of its own for "nothing is running" and says so, naming this very
+ * constant as the caller's answer (`intent.py:335-336`). So this is the wire's
+ * default, not a fallback the renderer invented. The classification below reads the RESOLVED label rather
+ * than the raw field, which is the same statement made once: an absent field and
+ * the word `thinking` are one state, and a phase keyed to the raw field would
+ * put the fallback's own label in the `running` phase and restart the clock on
+ * nothing.
+ *
+ * WHY A QUEUED CHILD PAINTS NOTHING. `status` is the gate, and `running` is the
+ * only value that passes: `activity` is non-null while a child is queued too,
+ * but `thinking` over a child that has not started is a claim the wire never
+ * made — the relay emits nothing before the child's first event. The reader's
+ * header already says `queued`/`paused` in its `stateWord`, which is the honest
+ * statement of that state. The TUI paints its tail row for a queued child
+ * (`subagent_view.py:2864-2868`); departing from it is deliberate, as is the
+ * phase classification above.
+ *
+ * The LABEL is passed through untouched. No intent is re-derived here and no
+ * display-name layer is applied, because the relay has none: it hands
+ * `tool_activity` the tool name as called (`intent.py:310-327`), so a child's
+ * label reads `running mcp__linear_create_issue` where the parent's reads
+ * `running create_issue`. That divergence is recorded in `docs/run-sidebar.md`
+ * § 5.8 rather than repaired here — the roster row above the reader prints the
+ * identical wire string (`run-detail-row-parts.tsx:140-146`, the row body
+ * `run-detail-subagents.tsx` renders), so the child's own surfaces keep saying
+ * one thing.
+ */
+export const deriveChildWorkingLine = (
+	row: SubagentRow,
+): WorkingLineState | null => {
+	if (row.status !== "running") return null;
+	// The label the relay would have sent for this state, and the phase the
+	// classification reads: see the docstring on why the fallback is classified
+	// rather than the raw field.
+	const activity = row.activity || "thinking";
+	return {
+		activity,
+		phase:
+			activity === "thinking"
+				? "thinking"
+				: activity === "responding"
+					? "responding"
+					: "running",
+		// No anchor for this phase exists on the wire, so this row carries no
+		// number: a mount-seeded one would report when the reader arrived.
+		clock: false,
+	};
 };
 
 /**
@@ -411,7 +624,85 @@ export type WakeRow = {
 	cadence: string;
 };
 
-/** One to-do item, pass-through from the wire plus the state's own word. */
+/**
+ * One ARMED monitor, as the pane and the composer's chip read it.
+ *
+ * One row per MONITOR rather than per check, the rule `WakeRow` states for
+ * schedules: a monitor that checks every 60s is one row carrying one next-due
+ * instant and one health word, not a row per tick.
+ *
+ * The row ports the TUI band's monitor tuple
+ * (`tui/widgets/wake_panel.py::_monitor_fingerprint`), because the two surfaces
+ * read the same list and must not disagree about a monitor's state:
+ *
+ * - `whenLabel` is the band's due-or-state SLOT — `disabled` when the failure
+ *   ladder parked it, else the local due label, else `waiting` — one slot
+ *   because a pane row cannot afford a health column of its own, exactly as
+ *   the band's own comment says;
+ * - `healthLabel` is the band's health TAIL — the disabled reason, or `3
+ *   failed` while the ladder walks — and `alerting` is the band's ink rule
+ *   (`warning` for a disabled monitor or one mid-ladder);
+ * - `interval` is the band's `every {duration}` with its `once` fallback.
+ *
+ * Two fields are the DESKTOP row's own, and each is argued rather than
+ * inherited:
+ *
+ * - `lastCheckLabel` — the CLI's `last check …` fact, which the band has no
+ *   room for. It is stated as an ABSOLUTE local instant (`last check 9:25 AM
+ *   EDT`), not the CLI's relative `2m ago`: this pane does not tick (see
+ *   `run-detail-wakes.tsx`'s own "Nothing here ticks" note), and a relative age
+ *   would silently age with nothing on screen to say so. An absolute instant
+ *   stays true for as long as it is shown.
+ * - `description` — the authored `What to watch for` line, kept VERBATIM like
+ *   `WakeRow.message` and for its reason: the pane's rule for a variable-length
+ *   authored string is CSS clamping with the whole text in a `title` and an
+ *   `sr-only` twin, and a flattening here would destroy the author's own line
+ *   breaks in the one home that keeps them.
+ *
+ * The figures (`nextDueAt`, `everyMs`, `lastCheckAt`, `checks`, `failures`,
+ * `disabled`) ride beside the labels for `WakeRow`'s own reason: the figures are
+ * facts about the watch that a re-measure or a test can read, and the labels are
+ * what a row draws.
+ *
+ * `nextDueAt` and `lastCheckAt` are epoch MILLISECONDS, like a wake's due
+ * instant and unlike every second-stamped clock this model reads. `lastCheckAt`
+ * is `null` until the first check, and `nextDueAt` is `null` for a disabled
+ * monitor or one whose next tick is not yet known — both are real wire states
+ * that render as stated absences, not errors.
+ */
+export type MonitorRow = {
+	id: string;
+	/** The short label, e.g. `loom-pr-1710`. Never empty on a kept row. */
+	name: string;
+	/** `What to watch for`, verbatim; `""` when the arm carried none. */
+	description: string;
+	/**
+	 * The due-or-state slot: a local due label, `disabled`, or `waiting`.
+	 * Nothing else reaches a kept row — a monitor with no due slot and no
+	 * disabled state reads `waiting`, the band's own word for it.
+	 */
+	whenLabel: string;
+	/** The interval as a reader reads it: `every 60s`, or `once` (the band's fallback). */
+	interval: string;
+	/** `last check 9:25 AM EDT`, or `""` before the first check. */
+	lastCheckLabel: string;
+	/** The health tail: `3 failed`, the disabled reason, or `""`. */
+	healthLabel: string;
+	/** Whether the row takes the warning ink (`disabled` or mid-ladder). */
+	alerting: boolean;
+	/** The next check instant, epoch MILLISECONDS, or `null` while unknown. */
+	nextDueAt: number | null;
+	/** The check interval in milliseconds, or `null` when unreadable. */
+	everyMs: number | null;
+	/** The last check instant, epoch MILLISECONDS, or `null` before the first. */
+	lastCheckAt: number | null;
+	/** Checks run so far. */
+	checks: number;
+	/** Consecutive failures; non-zero is the row's `failing` state. */
+	failures: number;
+	/** Whether the failure ladder auto-disabled this monitor. */
+	disabled: boolean;
+};
 export type TodoItemView = {
 	text: string;
 	status: TodoItemStatus;
@@ -490,6 +781,14 @@ export type RunDetails = {
 	 * definition, so a parallel number could only ever disagree with the list.
 	 */
 	wakes: WakeRow[];
+	/**
+	 * The session's ARMED MONITORS, soonest check first — `wakes`' sibling, and
+	 * the same one-list rule: the list itself is the gate for both surfaces that
+	 * read it (the composer's monitor chip and the pane's Monitors section), so
+	 * "there is at least one" is spelled `monitors.length` and not a second
+	 * count field.
+	 */
+	monitors: MonitorRow[];
 	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
 	/**
@@ -907,6 +1206,15 @@ export type RunDetailsInput = {
 	 */
 	wakes?: Array<Record<string, unknown>>;
 	/**
+	 * The session's armed monitors, off the canonical frontend.
+	 *
+	 * Optional for the reason `wakes` states for itself: absent and empty are
+	 * the same state — the state a session with no monitors is in and the
+	 * state absence is rendered as — and a backend predating the field omits it
+	 * entirely.
+	 */
+	monitors?: Array<Record<string, unknown>>;
+	/**
 	 * Epoch milliseconds to measure a RUNNING child against.
 	 *
 	 * Only a running child depends on it: a settled one is measured against its
@@ -999,6 +1307,15 @@ const deriveChild = (
 	const errorText = oneLine(firstLine(wireText(job.error_text)));
 	const fullErrorText = wireText(job.error_text).trim();
 	const fullResultText = wireText(job.result_text).trim();
+	/*
+	 * A parked cancel's stamp is a STATE, not a result (see the constant).
+	 * It is read off `result_text` here, moved to the state word below, and kept
+	 * OUT of `resultText`, so the reader cannot paint it as an outcome in any
+	 * state — the pane's own body line is where the missing conversation is
+	 * stated, and a second copy under a result label would be that fact twice
+	 * plus a shortening claim over a 27-character value the wire never clipped.
+	 */
+	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
 	const launchPrompts = toWireStringMap(job.launch_prompts);
 	const launchMessageId = wireText(job.launch_message_id);
 	const rawPrompt = wireText(job.prompt).trim();
@@ -1011,9 +1328,13 @@ const deriveChild = (
 		// The band's word for a state this model knows; the wire's own word for one
 		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
 		// sanitised text is itself a state the fold recognises
-		// (`unrecognisedStateWord`).
-		stateWord:
-			status === "unknown"
+		// (`unrecognisedStateWord`). The parked cancel is the one exception, and it
+		// is ahead of both branches: the stamp IS the state word the runtime
+		// publishes for that state, so spending the fold's generic `cancelled`
+		// would say strictly less than the wire does (`CANCELLED_BEFORE_START`).
+		stateWord: cancelledBeforeStart
+			? CANCELLED_BEFORE_START
+			: status === "unknown"
 				? unrecognisedStateWord(rawStatus)
 				: CHILD_STATE_WORD[status],
 		elapsedLabel: clockLabel(clock, nowSeconds),
@@ -1030,13 +1351,13 @@ const deriveChild = (
 		// `§8`: the first line of `error_text` is a failure's one-line summary —
 		// the row is the summary, the child's page is the detail.
 		errorLine: status === "failed" && errorText ? errorText : null,
-		// The failure's WHOLE text and the settled run's whole result: the reader's
-		// outcome block prints either verbatim (`§5.1`), which is why these are not
-		// derived from `errorLine`. `error_text` is NOT gated on the folded status:
-		// a runtime whose word this renderer does not recognise still failed, and
-		// the reader must be able to show why.
+		// The failure's WHOLE text and the settled run's wire-clipped result: the
+		// reader prints either verbatim (`§5.1`), which is why these are not derived
+		// from `errorLine`. `error_text` is NOT gated on the folded status: a runtime
+		// whose word this renderer does not recognise still failed, and the reader
+		// must be able to show why.
 		errorText: fullErrorText || null,
-		resultText: fullResultText || null,
+		resultText: cancelledBeforeStart ? null : fullResultText || null,
 		childSessionId: wireText(job.session_id) || null,
 		parentJobId: wireText(job.parent_job_id) || null,
 		// Filled in by `deriveRunDetails`, which is the layer that can see the
@@ -1347,6 +1668,25 @@ export const wakeClause = (count: number): string =>
 	count === 1 ? "1 wake armed" : `${count} wakes armed`;
 
 /**
+ * The count clause: `1 monitor armed` / `2 monitors armed`.
+ *
+ * ONE spelling, used by the composer's chip and by the Monitors section's
+ * trailing tally — the rule `wakeClause` states for wakes, and the failure it
+ * prevents is the same (`1 monitor armeds` reaching a user on whichever of the
+ * two surfaces was written second).
+ *
+ * `armed` is the design contract's own word for this state ("render armed
+ * monitors with health"; `Armed monitor 'loom-pr-1710' (m1)`), and it keeps
+ * the composer row's one grammar: beside `2 wakes armed`, a reader reads both
+ * counts as "how many X are set up". The TUI band's heading says `N watching`
+ * of the same list, which is that surface's word for a header its rows sit
+ * directly under; the divergence is stated rather than shared, matching
+ * `wakeClause`'s own note about the band's `N scheduled`.
+ */
+export const monitorClause = (count: number): string =>
+	count === 1 ? "1 monitor armed" : `${count} monitors armed`;
+
+/**
  * One wire schedule as a row, or `null` when the record carries nothing a user
  * could recognise.
  *
@@ -1486,6 +1826,120 @@ export const visibleWakes = (
 	return { rows: rows.slice(0, cap), hidden: rows.length - cap };
 };
 
+/**
+ * One wire monitor as a row, or `null` when the record carries nothing a user
+ * could recognise.
+ *
+ * The survival rule is `deriveWake`'s test with the monitor's own identity
+ * field: a row with NEITHER a name NOR a readable due instant has nothing to
+ * recognise it by — no label to read and no time to watch — so it could only
+ * render as a blank line the section counts. Everything else is kept, including
+ * a disabled monitor (the state the design's § 11.3 says must not be invisible
+ * on any surface) and a monitor that has not checked yet (its slot reads
+ * `waiting`). A missing `id` falls back to the row's POSITION in the wire list,
+ * which is the row's React key and the only thing such a row genuinely has.
+ *
+ * Health follows the band's precedence exactly (`_monitor_fingerprint`), stated
+ * once because the pane and the terminal are two readers of one list:
+ * `disabled` wins over everything — the ladder parked it, so a failure count
+ * would point the reader at the wrong remedy — then the failure count the
+ * ladder is walking, else nothing, because an armed monitor that is simply due
+ * needs no state word. The reason is whitespace-normalised to one line (the
+ * band's own `" ".join(reason.split())`), because it is written from a check's
+ * last error and this is a row, not a transcript.
+ */
+const deriveMonitor = (
+	record: Record<string, unknown>,
+	index: number,
+	nowMs: number,
+): MonitorRow | null => {
+	const name = wireText(record.name);
+	const nextDueAt = wireNumber(record.next_due_at);
+	if (name === "" && nextDueAt === null) return null;
+	const everyRaw = wireNumber(record.every_ms);
+	const everyMs = everyRaw !== null && everyRaw > 0 ? everyRaw : null;
+	const disabled = record.disabled === true;
+	const failuresRaw = wireNumber(record.consecutive_failures);
+	const failures =
+		failuresRaw !== null && failuresRaw > 0 ? Math.floor(failuresRaw) : 0;
+	const failing = failures > 0;
+	const lastRaw = wireNumber(record.last_check_at);
+	const lastCheckAt = lastRaw !== null && lastRaw > 0 ? lastRaw : null;
+	const checksRaw = wireNumber(record.checks);
+	const checks =
+		checksRaw !== null && checksRaw > 0 ? Math.floor(checksRaw) : 0;
+	return {
+		id: wireText(record.id) || `monitor-${index}`,
+		name,
+		description: wireText(record.description),
+		whenLabel: disabled
+			? "disabled"
+			: nextDueAt === null
+				? "waiting"
+				: formatWakeDue(nextDueAt, nowMs),
+		interval:
+			everyMs === null ? "once" : `every ${formatWakeDuration(everyMs)}`,
+		lastCheckLabel:
+			lastCheckAt === null
+				? ""
+				: `last check ${formatWakeDue(lastCheckAt, nowMs)}`,
+		healthLabel: disabled
+			? oneLine(wireText(record.disabled_reason))
+			: failing
+				? `${failures} failed`
+				: "",
+		alerting: disabled || failing,
+		nextDueAt,
+		everyMs,
+		lastCheckAt,
+		checks,
+		failures,
+		disabled,
+	};
+};
+
+/**
+ * The session's armed monitors, soonest check first.
+ *
+ * Ordering is by the DUE INSTANT — the rule `deriveWakes` states for schedules,
+ * and the one the CLI's own listing applies to monitors
+ * (`cli.py::_monitor_rows`: "Soonest first; a monitor with no due time …
+ * trails") — so the desktop list and `lop monitor status` cannot disagree about
+ * which watch is next. A row with no readable instant sorts LAST rather than
+ * first: it is a disabled or not-yet-due monitor, and treating an unknown
+ * instant as epoch 0 would put the row a reader cannot date at the top of a
+ * soonest-first list. `Array.sort` is stable, so those rows keep the wire's
+ * order among themselves.
+ */
+export const deriveMonitors = (
+	monitors: Array<Record<string, unknown>>,
+	nowMs: number,
+): MonitorRow[] =>
+	monitors
+		.map((record, index) => deriveMonitor(record, index, nowMs))
+		.filter((row): row is MonitorRow => row !== null)
+		.sort(
+			(a, b) =>
+				(a.nextDueAt ?? Number.POSITIVE_INFINITY) -
+				(b.nextDueAt ?? Number.POSITIVE_INFINITY),
+		);
+
+/**
+ * The rows the Monitors section shows, and how many it hid.
+ *
+ * `visibleWakes`' rule: the slice is the model's, so the section renders `rows`
+ * and its overflow marker counts `hidden` from one slice. There is no priority
+ * carve-out — no row of this list is asking for anything — so the honest slice
+ * is the first `cap` in check order.
+ */
+export const visibleMonitors = (
+	rows: readonly MonitorRow[],
+	cap: number = MONITOR_ROW_CAP,
+): { rows: MonitorRow[]; hidden: number } => {
+	if (rows.length <= cap) return { rows: [...rows], hidden: 0 };
+	return { rows: rows.slice(0, cap), hidden: rows.length - cap };
+};
+
 export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobs = toWireList(input?.jobs);
 	const rawTodos = Array.isArray(input?.todos) ? input.todos : [];
@@ -1606,6 +2060,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		jobs: jobRows,
 		todos,
 		wakes: deriveWakes(toWireList(input?.wakes), nowMs),
+		monitors: deriveMonitors(toWireList(input?.monitors), nowMs),
 		openChildren: roster.filter(isOpenRow).length,
 		openJobs: jobRows.filter(isOpenRow).length,
 		failedChildIds: roster

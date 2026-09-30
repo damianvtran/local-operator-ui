@@ -205,7 +205,7 @@ const sharp = (await import("sharp")).default;
 const imageBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget"; export * from "./src/renderer/src/features/chat/utils/attachment-read";',
+			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget"; export * from "./src/renderer/src/features/chat/utils/attachment-read"; export * from "./src/renderer/src/shared/lib/format-bytes";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -924,7 +924,29 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	);
 	assert.match(
 		send,
-		/setSendError\(unreadableRefusal\);\s*setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\);\s*return false;/,
+		/setSendError\(unreadableRefusal\);/,
+		"the unreadable refusal is computed and never reaches the composer, so the file is still lost",
+	);
+	/*
+	 * AND THE BRANCH RETURNS, read off the branch rather than by adjacency: the
+	 * refusal's own register is set up between the code and the return
+	 * (`setSendErrorRetry(false)`/`setSendErrorMuted(false)`, which is what keeps a
+	 * muted notice from a previous failure from painting this one), so an
+	 * adjacency regex would pin the order of two unrelated statements and fail on
+	 * the next one added between them.
+	 */
+	const refusalBranch = send.slice(
+		send.indexOf("if (unreadableRefusal) {"),
+		send.indexOf("}", send.indexOf("if (unreadableRefusal) {")) + 1,
+	);
+	assert.match(
+		refusalBranch,
+		/setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\);/,
+		"the refusal is raised without its code, so the composer cannot tell this arm from a generic failure",
+	);
+	assert.match(
+		refusalBranch,
+		/return false;/,
 		"the unreadable refusal is computed and the send proceeds anyway, so the file is still lost",
 	);
 	/*
@@ -1014,6 +1036,31 @@ test("formatByteSize never prints a KB value that should have rounded to 1 MB", 
 			!formatByteSize(bytes).startsWith("1000 "),
 			`${bytes} rendered as ${formatByteSize(bytes)}`,
 		);
+});
+
+test("formatByteSize escalates KB -> MB -> GB with one decimal above KB", async () => {
+	const { formatByteSize } = await loadImageBounding();
+	/* The update download's numbers (issue #660): a tens-of-megabyte bundle in
+	 * the same spelling the budget refusals use. 21_504_000 is the issue's own
+	 * "21504 KB" - the value that used to render raw. */
+	assert.equal(formatByteSize(21_504_000), "21.5 MB");
+	assert.equal(formatByteSize(512_000), "512 KB");
+	assert.equal(formatByteSize(45_088_000), "45.1 MB");
+	assert.equal(formatByteSize(2_400_000_000), "2.4 GB");
+
+	/* The GB rung starts at ITS 999_500, the same rule one rung up: just under the
+	 * floor the MB rung prints its highest honest value ("999.5 MB") and the
+	 * first value above it renders "1.0 GB" - "1000 MB" never appears. */
+	assert.equal(formatByteSize(999_499_999), "999.5 MB");
+	assert.equal(formatByteSize(999_500_000), "1.0 GB");
+	assert.equal(formatByteSize(1_000_000_000), "1.0 GB");
+	for (let bytes = 990_000_000; bytes < 1_010_000_000; bytes += 137) {
+		const rendered = formatByteSize(bytes);
+		assert.ok(
+			!rendered.startsWith("1000 ") && !rendered.startsWith("1000.0 "),
+			`${bytes} rendered as ${rendered}`,
+		);
+	}
 });
 
 test("a refusal never states the overflow and the budget as the same number", async () => {
