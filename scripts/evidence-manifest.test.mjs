@@ -2540,6 +2540,7 @@ const BRANCH_RECORDS = [
 	 * resolved this file from main's copy would drop them first, which is the failure this list
 	 * exists to make loud.
 	 */
+	"foldOnto29a9aa985cNote",
 	"foldOnto49491865caMeasureDragNote",
 	"foldOnto5ba0d0dc8aMeasureDragNote",
 	"foldOnto65a3e97b8cMeasureDragNote",
