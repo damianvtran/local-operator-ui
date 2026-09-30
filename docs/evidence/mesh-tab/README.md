@@ -10,7 +10,10 @@ redesign's round-1 remediation added the six that bring it to the **twenty-five*
 the two states the redesign's own model needed on the CANVAS (`reach-states`, `scopes`),
 their list and narrow counterparts (`reach-states-list`, `scopes-narrow`), and the two
 shipped renderings no earlier frame carried (`single-device-panel`'s `never`,
-`scopes-declared`'s declared tier).
+`scopes-declared`'s declared tier). **The round-2 remediation adds the four the stack
+needed** - `scopes-shared-top` and `scopes-nested` with their narrow passes, two and
+three enclosures hanging off one opener - which brings the set to the **twenty-nine**
+below.
 
 **The remedy's own row proves the move, because round 4 fixed the reason it could not**
 (design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
@@ -53,9 +56,11 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-50 frames, 25 states x 2 palettes, written through the repo's own sweep (a private
+58 frames, 29 states x 2 palettes, written through the repo's own sweep (a private
 headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
-on every frame). `manifest.json` records this as a **partial** capture
+on every frame) - the round-2 pass re-shot the set whole, then narrowed once
+(`--dirs=scopes-nested,scopes-nested-narrow`) to re-take the four frames whose fixture
+changed. `manifest.json` records this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a
 sweep of the tree.
 
@@ -189,8 +194,12 @@ missing row proves nothing a reader could check.
 | `reach-states/…` | the five reach states on one canvas, plus the working device | `not asked` no longer wears a failure's hue: each stripe and word is keyed on `deviceReach`, `unknown` says so with no hue, and a suspect device carries the shield as the non-colour channel |
 | `reach-states-list/…` | the same fixture in the list presentation | THE two faces of the round-1 list-ink finding: `not asked` with no hue, and `no answer` + the shield + an `identity suspect` badge on the suspect row - neither was visible on the list in any committed frame before |
 | `scopes/…` | the drawn boundary tiers at 1380x900 | two peers agreeing on WireGuard's default subnet draw dashed; `backup-nas` sharing this device's prefix draws solid; a duplicated address draws nothing |
-| `scopes-narrow/…` | the same tiers at 1024x768 | the label band's second cause, photographed: the topmost label used to run 4.4 px of a 13.9 px box behind the canvas's own top edge, and the reserved band now holds it inside the world at this width |
+| `scopes-narrow/…` | the same tiers at 1024x768 | the label band's second cause, and round 2's second fix: the topmost label was STILL sliced flat by the canvas's own top edge at the fit's floor (k = 0.8 put a 563 px world in a 559 px well), so the floor-bound fit now TOP-ALIGNS rather than centres and the top clearance scales with the stack - this frame is where the corrected behaviour is checkable, and the label sits ~10 px inside at this width |
 | `scopes-declared/…` | the `declared` tier, from a fixture | the third drawn tier's shipped styling (solid frame, the operator's word, `· declared`) - **buildable client-side, not reachable from any backend yet**: `scope` is `""` in every install, so this frame is a styling proof rather than a live state, and `mesh-scope.ts`'s backend ask is where it lands |
+| `scopes-shared-top/…` | two enclosures sharing their topmost device | THE M4 collision, photographed: `build-box` publishes a LAN and a tunnel address, is topmost in both groups, and before the nesting rule both labels anchored at one point - now one nested pair of rings, labels 26 px apart, the shared frame (reaching further down) the outer one |
+| `scopes-shared-top-narrow/…` | the same pair at 1024x768 | the collision at the width where the fit's floor binds, so the staircase and the top-aligned fit can be read together |
+| `scopes-nested/…` | three levels on one opener | the staircase at its full pitch: `build-box` is topmost in three INFERRED groups, so three labels stand 26 px apart and each frame is 4 px wider than the one inside it. A declared tier cannot appear in a stack - an authored scope excludes the device from the prefix arithmetic - which is why this fixture uses a third inferred prefix |
+| `scopes-nested-narrow/…` | the same three levels at 1024x768 | the depth case at the narrow width, where the 84 px row reservation and the top-aligned fit are both visible |
 | `misconfigured/…` | a suspect device, an unreachable device, a revoked membership | each misconfiguration is a named state with its own reason, and the revoked edge draws dashed |
 | `virgin-device/…` | no network at all | the page's own first-run state: the sentence and the command that changes it |
 | `reads-failed/…` | both reads refused | the relay's own sentence, verbatim, and the control that asks again |
@@ -246,5 +255,6 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
 ```
 
 The frames are `.webp` at 1380x900 (and 1024x768 for the narrow rows -
-`two-devices-narrow`, `device-panel-narrow`, `scopes-narrow`), written by the sweep's
+`two-devices-narrow`, `device-panel-narrow`, `scopes-narrow`, `scopes-shared-top-narrow`,
+`scopes-nested-narrow`), written by the sweep's
 own Chrome profile, which it removes on exit.
