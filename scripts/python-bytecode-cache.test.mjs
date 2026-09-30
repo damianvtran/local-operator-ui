@@ -598,6 +598,15 @@ async function loadMainProcess() {
 					export const consoleInterpreter = () => "/fixture/python";
 					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
 					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					/*
+					 * The launcher-usability verdict this fixture does not exercise: this
+					 * file measures the spawn ENVIRONMENT, and a real answer would make
+					 * the run depend on whether the machine has a global install (which
+					 * is why CI and a developer's box could differ here). The negative
+					 * answer is the one a machine with none gives, so the branch taken is
+					 * the same everywhere.
+					 */
+					export const probeGlobalLauncher = async () => ({ usable: false, interpreter: null, reason: "this fixture does not run a global launcher" });
 					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
 				`,
 								}),
@@ -2246,7 +2255,7 @@ const SPAWN_SITES = [
 		"src/main/backend/owned-serve-launch.ts",
 		"spawn",
 		1,
-		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. `ownedServeLaunch` has exactly one caller - `backend-service.ts`, which hands it the environment `backendSpawnEnv()` built, asserted by the row above - so this site never decides the environment it runs a probe under",
+		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. It has two callers, and BOTH hand it a guarded environment: `ownedServeLaunch`, whose one caller - `backend-service.ts` - passes the environment `backendSpawnEnv()` built (asserted by the row above), and `probeGlobalLauncher`, whose caller hands `withPythonBytecodeCache(process.env, appDataPath)` because the launcher's interpreter imports `local_operator` too. The site itself never decides the environment it runs a probe under, which is what keeps those two guards the visible ones",
 	),
 	runsCommand(
 		"src/main/backend/discovery.ts",
@@ -2689,6 +2698,13 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		index: 2,
 		env: /env:\s*pythonChildEnv\(\)/,
 		why: "the same zombie fixture, in the suite",
+	},
+	{
+		file: "scripts/daemon-observation.test.mjs",
+		name: "spawnSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "resolving the interpreter its console-script fixtures name, so the launcher the decision runs is a real interpreter behind a real shebang rather than a script standing in for one",
 	},
 	{
 		file: "scripts/evidence-run-guard.test.mjs",

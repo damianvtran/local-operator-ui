@@ -4,7 +4,6 @@ import type {
 } from "@features/chat/types/canvas";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { getFileName } from "@features/chat/utils/get-file-name";
-import { formatByteSize } from "@features/chat/utils/message-budget";
 /*
  * The `ui/` barrel is deliberately not used here, and this is the only reason:
  * `fold` is the app's one case- and accent-insensitive normaliser, the barrel
@@ -14,6 +13,7 @@ import { formatByteSize } from "@features/chat/utils/message-budget";
  * one string function; the direct import is the same shipped code.
  */
 import { fold } from "@shared/components/ui/searchable-select";
+import { formatByteSize } from "@shared/lib/format-bytes";
 
 /**
  * The Files list's view model, as pure functions.

@@ -289,7 +289,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
-	const trackRef = useRef<HTMLDivElement | null>(null);
+	const frameRef = useRef<HTMLDivElement | null>(null);
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -354,22 +354,34 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	 * now arriving from the reader's own position, the track must keep it in
 	 * its port - a 402-mark conversation scrolls the frame internally, and an
 	 * active mark below the fold is a rung the reader cannot see. The scroll is
-	 * written to the track's own `scrollTop` rather than `scrollIntoView`: the
+	 * written to the frame's own `scrollTop` rather than `scrollIntoView`: the
 	 * latter walks every scrollable ancestor, which would scroll the transcript
-	 * out from under the reader. The 12px pad keeps the mark off the mask fades.
+	 * out from under the reader.
+	 *
+	 * THE MARK'S OFFSET IS DERIVED FROM THE SCROLLER (design round 2, D1).
+	 * `element.offsetTop - track.offsetTop` measured against an offsetParent
+	 * that need not be the scroller, and once the track carries block padding
+	 * the delta and the frame's `scrollTop` stop sharing an origin; a rect
+	 * against the frame's rect plus its `scrollTop` is the same number with
+	 * neither assumption. `pad` is 24px because that is the mask's own fade
+	 * depth - at 12 the mark still landed inside the fade (measured: the
+	 * end-active dash read luma 77 against 238 for an interior active mark,
+	 * dimmer than its rest neighbours in 59/59 palettes).
 	 */
 	useEffect(() => {
 		if (activeId === null) return;
-		const track = trackRef.current;
+		const frame = frameRef.current;
 		const element = tickElements.current.get(activeId);
-		if (track === null || element === undefined) return;
-		const top = element.offsetTop - track.offsetTop;
-		const bottom = top + element.offsetHeight;
-		const pad = 12;
-		if (top < track.scrollTop + pad) {
-			track.scrollTop = Math.max(0, top - pad);
-		} else if (bottom > track.scrollTop + track.clientHeight - pad) {
-			track.scrollTop = bottom - track.clientHeight + pad;
+		if (frame === null || element === undefined) return;
+		const frameRect = frame.getBoundingClientRect();
+		const elementRect = element.getBoundingClientRect();
+		const top = elementRect.top - frameRect.top + frame.scrollTop;
+		const bottom = top + elementRect.height;
+		const pad = 24;
+		if (top < frame.scrollTop + pad) {
+			frame.scrollTop = Math.max(0, top - pad);
+		} else if (bottom > frame.scrollTop + frame.clientHeight - pad) {
+			frame.scrollTop = bottom - frame.clientHeight + pad;
 		}
 	}, [activeId]);
 
@@ -567,7 +579,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 			 */}
 			<div
 				data-rail-frame=""
-				ref={trackRef}
+				ref={frameRef}
 				className={cn(
 					"max-h-[min(calc(100%-4rem),420px)] w-7 overflow-y-auto overscroll-contain",
 					/*
@@ -597,7 +609,16 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 						)}
 					/>
 				)}
-				<div data-rail-track="">
+				{/*
+				 * Block padding INSIDE the masked frame (design round 2, D1): the
+				 * mask's 24px fades sit over this padding rather than over the end
+				 * marks, so an end tick is not dimmed by the fade - measured on the
+				 * committed frames, the end-active dash read luma 77 against 238
+				 * for an interior active mark, and at scroll maximum no follow pad
+				 * alone can move the last tick off the edge (scrollTop is already
+				 * clamped), which is what makes the padding the fix for both ends.
+				 */}
+				<div data-rail-track="" className="py-6">
 					{checkpoints.map((checkpoint) => (
 						<CheckpointMark
 							key={checkpoint.id}

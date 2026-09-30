@@ -91,11 +91,22 @@ export const INSTALL_PHASE_LABELS: Record<InstallPhase, string> = {
  * Sentence case, no jargon, and nothing that assumes a vocabulary the first-run
  * reader does not have yet (UX U10: "your assistants" means nothing on a screen
  * that has never mentioned one).
+ *
+ * EACH SENTENCE CARRIES ITS OWN SUBJECT, because the stage name is no longer
+ * printed in front of it: the rail's row names the stage one line above, and this
+ * line is the second half of that row rather than a second sentence. The previous
+ * wording leaned on the prefix it used to hang off - "The packages it runs on" -
+ * which left "it" with nothing on screen to bind to once the prefix went (design
+ * D6, measured): the fragment was correct in the live region, where a screen
+ * reader hears it out of context too, and wrong on the screen, where a reader can
+ * see the row it is under and still has to guess whether "it" is the app or the
+ * step.
  */
 export const INSTALL_PHASE_DETAILS: Record<InstallPhase, string> = {
 	python: "Copying what the app starts from.",
-	environment: "Giving it a private copy of Python nothing else touches.",
-	components: "The packages it runs on, and the longest step.",
+	environment:
+		"Giving Local Operator a private copy of Python nothing else touches.",
+	components: "The packages Local Operator runs on, and the longest step.",
 	verify: "Starting the backend once to see it come up.",
 };
 
