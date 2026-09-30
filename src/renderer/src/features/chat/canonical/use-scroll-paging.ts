@@ -445,6 +445,7 @@ export function useScrollPaging({
 	 * Every path that can change the answer calls this; the rAF is what turns a
 	 * fling's dozens of wheel events into one evaluation per painted frame.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the pre-dispatch extent is read through the ref at the moment of the ask; a dependency on `containerRef.current` would re-create the pump on every render, which is the indirection the ref exists to provide.
 	const schedule = useCallback(() => {
 		if (pump.current) return;
 		pump.current = requestAnimationFrame(() => {
@@ -561,6 +562,17 @@ export function useScrollPaging({
 			 * what lets a lost race (`stale`, `nothing-to-load`) release the pump
 			 * WITHOUT counting a failure or painting the failed row.
 			 */
+			/*
+			 * THE EXTENT AT THE DISPATCH (loader-continuity 1b). The policy's
+			 * "did the reader see it" question is about pixels on screen, and the
+			 * only honest measure available here is the scroller's own
+			 * `scrollHeight`: recorded before the ask and differenced at the
+			 * settle, it is the growth this reveal produced, whatever the row
+			 * model did. `null` when the region is gone (a session switch mid
+			 * flight) - the policy treats a missing measurement as visible rather
+			 * than inventing an invisible reveal.
+			 */
+			const extentBefore = containerRef.current?.scrollHeight ?? null;
 			const ask: () => Promise<LoadOlderOutcome> = live.current
 				.onLoadOlderOutcome
 				? live.current.onLoadOlderOutcome
@@ -613,8 +625,25 @@ export function useScrollPaging({
 					if (sessionEpoch.current !== landedFor) return;
 					const after = live.current.hiddenRows;
 					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
+						/*
+						 * The reveal's growth, read at the settle rather than at a
+						 * fixed frame: the rows a page mounts author their height over
+						 * several layout passes, so a measurement taken on the frame
+						 * the promise resolves would read the pre-landing extent and
+						 * call every page invisible. This is the same "settle on the
+						 * OBSERVED landing" rule the debt above uses, applied to the
+						 * reader's own currency.
+						 */
+						const el = containerRef.current;
+						const extentAfter = el?.scrollHeight ?? null;
 						state.current = noteSettled(state.current, {
 							hiddenRowsAfter: after,
+							growthPx:
+								extentBefore !== null && extentAfter !== null
+									? extentAfter - extentBefore
+									: null,
+							clientHeight: el?.clientHeight ?? 0,
+							newRecords: outcome.newRecords,
 						});
 						schedule();
 						return;
