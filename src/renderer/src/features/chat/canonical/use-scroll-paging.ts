@@ -15,6 +15,7 @@ import {
 	type PagingState,
 	SETTLE_MS,
 	TAIL_EPS_PX,
+	anchorDrift,
 	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
@@ -563,16 +564,27 @@ export function useScrollPaging({
 			 * WITHOUT counting a failure or painting the failed row.
 			 */
 			/*
-			 * THE EXTENT AT THE DISPATCH (loader-continuity 1b). The policy's
-			 * "did the reader see it" question is about pixels on screen, and the
-			 * only honest measure available here is the scroller's own
-			 * `scrollHeight`: recorded before the ask and differenced at the
-			 * settle, it is the growth this reveal produced, whatever the row
-			 * model did. `null` when the region is gone (a session switch mid
-			 * flight) - the policy treats a missing measurement as visible rather
-			 * than inventing an invisible reveal.
+			 * THE REVEAL'S OWN GROWTH, MEASURED WHERE THE READER IS (loader-continuity
+			 * 1b; agent review round 1, R1-3). The policy's "did the reader see it"
+			 * question is about pixels ON SCREEN, and the quantity that answers it is
+			 * the displacement of the row the reader was looking at — the same
+			 * `sampleAnchor`/`measureHeld`/`anchorDrift` instrument the anchor hold
+			 * already uses, so there is one measurement rather than two.
+			 *
+			 * WHY NOT THE SCROLLER'S `scrollHeight` (the first cut did, and it was
+			 * wrong in the live case this feature exists for): the extent grows for
+			 * ANY reason, including a turn streaming BELOW a tail-following reader,
+			 * and that growth would be credited to the reveal — an invisible reveal
+			 * would read as visible, the chain would end, and the act's round trip
+			 * would stay spent. A row's viewport offset moves only when content is
+			 * added ABOVE it, so the drift's positive part is exactly the reveal's own
+			 * growth; content below the anchor contributes zero.
+			 *
+			 * `null` when there is no anchor to measure (a session switch mid flight,
+			 * an empty transcript) — the policy treats a missing measurement as visible
+			 * rather than inventing an invisible reveal.
 			 */
-			const extentBefore = containerRef.current?.scrollHeight ?? null;
+			const anchorBefore = sampleAnchor();
 			const ask: () => Promise<LoadOlderOutcome> = live.current
 				.onLoadOlderOutcome
 				? live.current.onLoadOlderOutcome
@@ -635,13 +647,21 @@ export function useScrollPaging({
 						 * reader's own currency.
 						 */
 						const el = containerRef.current;
-						const extentAfter = el?.scrollHeight ?? null;
+						const anchorAfter =
+							anchorBefore === null ? null : measureHeld(anchorBefore.id);
 						state.current = noteSettled(state.current, {
 							hiddenRowsAfter: after,
+							/*
+							 * The drift's positive part: how far the held row was pushed DOWN, which
+							 * is how much content landed above it. A negative drift (the reader's own
+							 * motion, or a browser re-clamp) reads as no growth rather than as
+							 * negative growth — the invisible test is `growthPx < floor`, and a
+							 * negative number must not buy a chain.
+							 */
 							growthPx:
-								extentBefore !== null && extentAfter !== null
-									? extentAfter - extentBefore
-									: null,
+								anchorBefore === null
+									? null
+									: Math.max(0, anchorDrift(anchorBefore, anchorAfter)),
 							clientHeight: el?.clientHeight ?? 0,
 							newRecords: outcome.newRecords,
 						});
@@ -654,7 +674,7 @@ export function useScrollPaging({
 				requestAnimationFrame(awaitLanding);
 			});
 		});
-	}, [holdAnchor, measure]);
+	}, [holdAnchor, measure, sampleAnchor, measureHeld]);
 
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
