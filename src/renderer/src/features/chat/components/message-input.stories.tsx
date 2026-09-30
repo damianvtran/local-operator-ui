@@ -1,4 +1,5 @@
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import { MessageInput } from "@shared/components/composer/message-input";
 import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
@@ -25,7 +26,6 @@ import type { CanonicalFrontendState } from "../../../../../../src/shared/deskto
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
-import { MessageInput } from "./message-input";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";

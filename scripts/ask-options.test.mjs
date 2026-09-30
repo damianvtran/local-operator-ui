@@ -866,7 +866,7 @@ test("a winning press consumes an answer-shaped draft, and never a message", () 
 	);
 	const inputSource = strip(
 		readFileSync(
-			"src/renderer/src/features/chat/components/message-input.tsx",
+			"src/renderer/src/shared/components/composer/message-input.tsx",
 			"utf8",
 		),
 	);
