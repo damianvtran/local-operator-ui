@@ -441,31 +441,83 @@ test("very long single message: no segment, no bar, the answer stays", () => {
 const labelsOf = (spec) => {
 	const p = partition(spec);
 	return p.result.segments.map((span) =>
-		labelOfSegment(p.result.cycles, span, p.result.answer?.closeIndex ?? null),
+		labelOfSegment(p.records, p.result.cycles, span),
 	);
 };
 
-test("labels: the ordinary bar has none; follow-ups say what happened", () => {
+/** The completed flag exactly as the plan computes it (label decides the arm). */
+const completedOf = (spec) => {
+	const p = partition(spec);
+	const at = p.result.answer?.closeIndex ?? null;
+	return p.result.segments.map((span) =>
+		segmentIsCompleted(
+			p.records,
+			span,
+			at,
+			labelOfSegment(p.records, p.result.cycles, span) !== null,
+		),
+	);
+};
+
+test("labels: one noun per trigger, whatever side of the answer it lands on (D2/D3)", () => {
 	assert.deepEqual(labelsOf("U T A"), [null]);
-	assert.deepEqual(labelsOf("U T A M W T A"), [null, "Followed up"]);
-	assert.deepEqual(labelsOf("U T A M P T A"), [null, "Peer note"]);
+	/*
+	 * A follow-up the reader opened is NOT labelled: their own message is visible
+	 * above the bar (only hidden spans get bars), so a word would restate it. A
+	 * wake or a peer cycle after the answer says what opened it, in the same word
+	 * it would carry before the answer.
+	 */
+	assert.deepEqual(labelsOf("U T A M W T A"), [null, "Wake"]);
+	assert.deepEqual(labelsOf("U T A M P T A"), [null, "Peer message"]);
 	assert.deepEqual(
 		labelsOf("U T A M J T A"),
 		[null, "Job result"],
 		"a job result inherits, so it is the answer",
 	);
+	assert.deepEqual(labelsOf("U T A M H T A"), [null, "Peer message"]);
+	assert.deepEqual(labelsOf("U T A M X T A"), [null, "Wake"]);
 });
 
-test("labels: a wake or peer cycle BEFORE the answer is named by what opened it", () => {
+test("labels: a wake or peer cycle BEFORE the answer carries the same word", () => {
 	// `W` opens the second cycle and inherits its class, so the segment spans both
 	// cycles and is named by the LAST one it ends in - the wake.
-	assert.deepEqual(labelsOf("U T A W T A"), ["Woken"]);
+	assert.deepEqual(labelsOf("U T A W T A"), ["Wake"]);
+	assert.deepEqual(labelsOf("U T A P T A"), ["Peer message"]);
+	assert.deepEqual(labelsOf("U T A J T A"), ["Job result"]);
 	// A hidden cycle opened by a wake:
 	const p = partition("U W T N P T A");
-	const labels = p.result.segments.map((span) =>
-		labelOfSegment(p.result.cycles, span, p.result.answer.closeIndex),
+	assert.equal(
+		p.result.segments.map((span) =>
+			labelOfSegment(p.records, p.result.cycles, span),
+		).length,
+		1,
 	);
-	assert.equal(labels.length, 1);
+});
+
+test("labels: a follow-up that never closed is named by what opened it", () => {
+	// `W T` after the answer, no close: the cycle is not in `cycles`, so the
+	// opener is read from the triggers ahead of its first step.
+	assert.deepEqual(labelsOf("U T A M W T"), [null, "Wake"]);
+	assert.deepEqual(labelsOf("U T A M P T"), [null, "Peer message"]);
+	assert.deepEqual(labelsOf("U T A M W T M"), [null, "Wake"]);
+});
+
+test("labels: the five old words are gone (Noted, Woken, Followed up, Peer note)", () => {
+	const all = new Set(
+		[
+			"U T A M W T A",
+			"U T A M P T A",
+			"U T A W T A",
+			"U T A P T A",
+			"U T A M J T A",
+			"U T A M X T A",
+			"U T A M H T A",
+			"U T A U T A",
+		].flatMap((spec) => labelsOf(spec)),
+	);
+	for (const word of ["Noted", "Woken", "Followed up", "Peer note"]) {
+		assert.equal(all.has(word), false, `${word} is retired`);
+	}
 });
 
 test("a receipt in the middle of user-opened work does not name the bar", () => {
@@ -474,17 +526,79 @@ test("a receipt in the middle of user-opened work does not name the bar", () => 
 	assert.deepEqual(labelsOf("U T J T J T A"), [null]);
 });
 
-test("completed: only a settled segment that lies wholly after the answer", () => {
-	const p = partition("U T A M W T A");
-	const after = p.result.segments[1];
-	const at = p.result.answer.closeIndex;
-	assert.equal(segmentIsCompleted(p.records, after, at), true);
-	assert.equal(segmentIsCompleted(p.records, p.result.segments[0], at), false);
+test("R1-2: a mid-turn steer hidden inside a span makes the bar SAY so", () => {
+	/*
+	 * `U T A U T A`: the second user row is a steer inside the run. The partition
+	 * still hides it (pinning it would split every steered turn in two - the
+	 * decision was to label, not to reshape), so the bar that holds it must name
+	 * it or the reader's own message vanishes behind an unlabelled bar.
+	 */
+	const p = partition("U T A U T A");
+	assert.deepEqual(
+		p.result.segments.map((span) =>
+			p.records.slice(span.from, span.to + 1).map((r) => r.id),
+		),
+		[["T1", "A2", "U3", "T4"]],
+		"the steer is inside the span",
+	);
+	assert.deepEqual(labelsOf("U T A U T A"), ["Steered"]);
+	// It outranks the trigger word: the steer is the one row in the span the
+	// reader wrote.
+	assert.deepEqual(labelsOf("U T A U T A M W T A"), ["Steered", "Wake"]);
+	// No user row inside, no word.
+	assert.deepEqual(labelsOf("U T T A"), [null]);
+});
+
+test("completed: a real closer, on a section of the turn, that was not cut off", () => {
+	// A follow-up after the answer that settled: marked.
+	assert.deepEqual(completedOf("U T A M W T A"), [false, true]);
+	// The ordinary unlabelled bar directly under the answer: never (the answer
+	// says it finished, and a constant mark carries nothing).
+	assert.deepEqual(completedOf("U T A"), [false]);
+	// D4 symmetry: a LABELLED bar before the answer is a section too.
+	assert.deepEqual(completedOf("U T A W T A"), [true]);
+	assert.deepEqual(completedOf("U T A P T A"), [true]);
+});
+
+test("completed: a bar the disposal cut off carries no false receipt (D4)", () => {
+	/*
+	 * The wake's work (`W T`) is followed by the stop marker: it ended in that
+	 * state, not in success. Two bars (the work under the answer, then the wake's
+	 * section), and the one the marker interrupted must not wear the green check
+	 * the surrounding sections earn.
+	 */
+	assert.deepEqual(completedOf("U T A W T M"), [false, false]);
+	assert.deepEqual(labelsOf("U T A W T M"), [null, "Wake"]);
+	assert.deepEqual(completedOf("U T A M W T M"), [false, false]);
+	const incident = seq("U T A M W T I");
+	assert.equal(
+		segmentIsCompleted(incident, { from: 4, to: 5 }, 2, true),
+		false,
+		"an incident right after the span is a terminal boundary too",
+	);
+});
+
+test("R1-3: a span holding only a bare receipt is not completed", () => {
+	/*
+	 * The reviewer's repros: the wake / peer row alone between two pinned rows
+	 * used to fall through to `return true`, so its bar read `Wake ✓` over
+	 * nothing. Nothing in it finished.
+	 */
+	assert.deepEqual(completedOf("U T A M W C T A"), [false, false, true]);
+	assert.deepEqual(completedOf("U T A M P C T A"), [false, false, true]);
+	// The receipt-only span's own verdict, isolated.
+	const p = partition("U T A M W C T A");
+	const span = p.result.segments[1];
+	assert.equal(p.records[span.from].kind, "wake");
+	assert.equal(span.from, span.to, "the span is the wake row alone");
+	assert.equal(segmentIsCompleted(p.records, span, 2, true), false);
+});
+
+test("completed: a follow-up still being written is not over", () => {
 	const streaming = seq("U T A M W T S");
 	assert.equal(
-		segmentIsCompleted(streaming, { from: 4, to: 6 }, 2),
+		segmentIsCompleted(streaming, { from: 4, to: 6 }, 2, true),
 		false,
-		"a follow-up still being written is not over",
 	);
 });
 
@@ -521,6 +635,34 @@ test("the invariant check catches overlap, a hidden answer and a hidden pinned r
 	assert.match(
 		violationsOf(records, coversAnswer, { from: 1, pinned: PINNED }).join("; "),
 		/answer row is hidden/,
+	);
+});
+
+test("R1-1: the check catches a segment over the opening user row and a split contiguous span", () => {
+	const { records, result } = partition("U T T A");
+	// A segment that swallows the run's OPENING user row (index 0 < from).
+	const overOpener = { ...result, segments: [{ from: 0, to: 2 }] };
+	assert.match(
+		violationsOf(records, overOpener, { from: 1, pinned: PINNED }).join("; "),
+		/above the span's first row/,
+	);
+	// One contiguous hidden run reported as two adjacent bars.
+	const split = {
+		...result,
+		segments: [
+			{ from: 1, to: 1 },
+			{ from: 2, to: 2 },
+		],
+	};
+	assert.match(
+		violationsOf(records, split, { from: 1, pinned: PINNED }).join("; "),
+		/not maximal/,
+	);
+	// And the honest plan for the same rows is clean (the two rules are not a
+	// blanket refusal).
+	assert.deepEqual(
+		violationsOf(records, result, { from: 1, pinned: PINNED }),
+		[],
 	);
 });
 
@@ -638,7 +780,7 @@ test("the operator's journal: the bar's totals belong to the turn, and the follo
 	const follow = run.segments.filter((s) => s.afterAnswer);
 	assert.equal(follow.length, 1);
 	assert.equal(follow[0].facts.actions, toolsAfter);
-	assert.equal(follow[0].label, "Peer note");
+	assert.equal(follow[0].label, "Peer message");
 	assert.equal(
 		follow[0].completed,
 		true,

@@ -423,7 +423,11 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
 		userRecord("user:1"),
-		toolRecord("tool:1", { ts: TS + 1_000, endedAt: TS + 2_000 }),
+		toolRecord("tool:1", {
+			ts: TS + 1_000,
+			endedAt: TS + 2_000,
+			durationS: 3,
+		}),
 		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
 	]);
 	const summary = bar(mounted);
@@ -441,7 +445,7 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	assert.match(
 		summary.textContent,
 		/Took 3s/,
-		"opening user row to the answer",
+		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
 	assert.match(summary.textContent, /1 action/);
 	assert.equal(
@@ -932,7 +936,7 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 	 */
 	const running = [
 		userRecord("user:1"),
-		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
 	];
 	const mounted = await mount(t, running, { waiting: true });
 	const region = () =>
@@ -1732,7 +1736,8 @@ test("a post-terminal reply is a follow-up bar AFTER the answer, with the comple
 		"true",
 		"only the follow-up is marked complete",
 	);
-	assert.match(bars[1].textContent, /Peer note/);
+	assert.match(bars[1].textContent, /Peer message/);
+	assert.doesNotMatch(bars[1].textContent, /Peer note/, "the retired word");
 	assert.ok(rowBox(mounted, "answer:1"), "the ANSWER stays mounted");
 	assert.ok(
 		rowBox(mounted, "answer:1").hasAttribute("data-turn-answer") ||
@@ -1769,4 +1774,89 @@ test("a reveal names the bar that holds the row: data-segment-ids decides among 
 		second.getAttribute("data-run-ids"),
 		"the run's ids stay whole on every bar (the existing contract)",
 	);
+});
+
+/* ------------- pressing a bar keeps it where it was (UX U1) --------------- */
+
+test("U1: opening a bar moves the scroller by exactly how far the bar moved, and only then", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+	]);
+	/*
+	 * The transcript's own scroller: the harness hands `mounted.container` in as
+	 * the ref, but React writes the real element over it, so the container itself
+	 * is not what the effect scrolls.
+	 */
+	const region = mounted.container.querySelector(
+		"[data-lo-canonical-transcript]",
+	);
+	assert.ok(region, "the scroller is mounted");
+	const summary = bar(mounted);
+	/*
+	 * jsdom has no layout, so the bar's rect is stated: 300px into the scroller
+	 * while shut, and 320px higher (-20) once its span is mounted above the
+	 * pinned tail - the measured bottom-of-transcript case, where the browser's
+	 * scroll anchoring does not hold the pressed bar.
+	 */
+	const real = summary.getBoundingClientRect;
+	let drift = -320;
+	summary.getBoundingClientRect = () => {
+		const open =
+			summary.querySelector("button")?.getAttribute("aria-expanded") === "true";
+		const top = open ? 300 + drift : 300;
+		return { top, bottom: top + 33, left: 0, right: 0, width: 0, height: 33 };
+	};
+	region.scrollTop = 0;
+	await click(barTrigger(mounted));
+	assert.equal(
+		region.scrollTop,
+		-320,
+		"the scroller follows the bar down by the 320px it moved (reversed axis: negative)",
+	);
+	// Where the browser already held the bar the delta is zero: no write.
+	await click(barTrigger(mounted)); // closes
+	region.scrollTop = 0;
+	drift = 0;
+	await click(barTrigger(mounted));
+	assert.equal(region.scrollTop, 0, "an anchored bar is left alone");
+	summary.getBoundingClientRect = real;
+});
+
+/* -------- a live ladder: bars above, the running turn untouched (D5) ------- */
+
+test("D5: a turn still running keeps every row while the turns above it wear their ladders", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			toolRecord("tool:1", { ts: TS + 1_000, durationS: 4 }),
+			compactionRecord("compaction:1", { ts: TS + 2_000 }),
+			toolRecord("tool:2", { ts: TS + 3_000, durationS: 6 }),
+			answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+			userRecord("user:2", { ts: TS + 5_000 }),
+			toolRecord("tool:3", { ts: TS + 6_000, durationS: 2 }),
+			compactionRecord("compaction:2", { ts: TS + 7_000 }),
+			toolRecord("tool:4", { ts: TS + 8_000, durationS: 2 }),
+		],
+		{ waiting: true },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(
+		bars.length,
+		2,
+		"the settled turn's two bars, none for the live one",
+	);
+	assert.deepEqual(
+		bars.map((node) => node.getAttribute("data-segment-ids")),
+		["tool:1", "tool:2"],
+	);
+	assert.match(bars[0].textContent, /Took 4s/);
+	assert.match(bars[1].textContent, /Took 6s/);
+	for (const id of ["tool:3", "compaction:2", "tool:4"]) {
+		assert.ok(rowBox(mounted, id), `${id} stays mounted while the turn runs`);
+	}
 });
