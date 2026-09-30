@@ -1,9 +1,15 @@
-import { Spinner } from "@shared/components/common/spinner";
+import {
+	SpeakButton,
+	useSpeakControl,
+} from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { speechUnavailableReason } from "@shared/lib/speech-gate";
+import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
-import { useSpeechStore } from "@shared/store/speech-store";
+import {
+	fetchAgentSpeech,
+	selectionSpeechKey,
+	useSpeechStore,
+} from "@shared/store/speech-store";
 import {
 	ClipboardCopy,
 	Copy,
@@ -11,8 +17,6 @@ import {
 	MessageSquareReply,
 	Reply,
 	Sparkles,
-	Square,
-	Volume2,
 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -75,30 +79,35 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		rect: DOMRect | null;
 		range: Range | null;
 	}>({ text: "", html: "", rect: null, range: null });
-	const { playSpeech, stopSpeech, loadingMessageId, playingMessageId } =
-		useSpeechStore();
+	const { speak } = useSpeechStore();
 
 	const { addReply, addAttachment } = useConversationInputStore();
 
-	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
-	const canEnableSpeechFeature = canUseRadientSpeech;
-
-	// The sentence for a disabled control comes from the one copy table the four
-	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
-	// unreachable for a signed-in reader by construction: only an ANSWERED "no
-	// account" or a refused credential earns it (issue #674; design round 1,
-	// D1).
-	const speechDisabledReason = speechUnavailableReason(
-		"speaking-aloud",
-		speechBlock,
-	);
-
-	const [currentSelectionId, setCurrentSelectionId] = useState<string | null>(
-		null,
-	);
-	const isPlaying = playingMessageId && playingMessageId === currentSelectionId;
-	const isLoading = loadingMessageId && loadingMessageId === currentSelectionId;
-
+	/*
+	 * The selection's Speak, through the ONE control every speech surface renders
+	 * (`speak-control.tsx`) - the block below used to inline its own copy of the
+	 * gate, the ladder and the spinner, which is the second implementation § 9 of
+	 * `docs/branding.md` refuses. The key is this selection's own words, clipped
+	 * first; `scope` falls back to the agent id when no conversation id rides in,
+	 * so two surfaces that speak the same context agree on the one cache entry.
+	 */
+	const speechScope = conversationId ?? agentId ?? null;
+	const speechControl = useSpeakControl({
+		key:
+			selection.text && speechScope
+				? selectionSpeechKey(speechScope, clipForSpeech(selection.text).text)
+				: null,
+		getText: () => selection.text || null,
+		play: ({ text }) => {
+			if (speechScope && agentId) {
+				speak(
+					selectionSpeechKey(speechScope, text),
+					fetchAgentSpeech(agentId, text),
+				);
+			}
+		},
+		available: Boolean(agentId),
+	});
 	const handleMouseUp = useCallback(() => {
 		if (!targetRef.current) {
 			setSelection({ text: "", html: "", rect: null, range: null });
@@ -163,18 +172,6 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			window.removeEventListener("resize", handleScrollAndResize, true);
 		};
 	}, [selection.range, scrollableContainerRef]);
-
-	const handlePlay = () => {
-		if (agentId && selection.text) {
-			const newSelectionId = uuidv4();
-			setCurrentSelectionId(newSelectionId);
-			playSpeech(newSelectionId, agentId, selection.text);
-		}
-	};
-
-	const handleStop = () => {
-		stopSpeech();
-	};
 
 	const handleCopy = () => {
 		if (selection.html) {
@@ -315,52 +312,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-			{showSpeech &&
-				(isPlaying ? (
-					<Tooltip content="Stop">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Stop"
-							onClick={handleStop}
-						>
-							<Square aria-hidden="true" />
-						</Button>
-					</Tooltip>
-				) : (
-					<Tooltip
-						content={
-							isLoading
-								? "Loading"
-								: !canEnableSpeechFeature
-									? speechDisabledReason
-									: "Speak aloud"
-						}
-					>
-						{/*
-						 * A disabled button fires no pointer events, so the tooltip needs
-						 * a wrapper that does — which is also the only way the reason it
-						 * is disabled reaches the user.
-						 */}
-						<span className="flex">
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								// The spinner is hidden from the accessibility tree, so the
-								// button's own name is what says the app is busy.
-								aria-label={isLoading ? "Loading speech" : "Speak aloud"}
-								onClick={handlePlay}
-								disabled={isLoading || !agentId || !canEnableSpeechFeature}
-							>
-								{isLoading ? (
-									<Spinner size="xs" />
-								) : (
-									<Volume2 aria-hidden="true" />
-								)}
-							</Button>
-						</span>
-					</Tooltip>
-				))}
+			{showSpeech && <SpeakButton control={speechControl} />}
 			{showCopy && (
 				<>
 					<Tooltip content="Copy">

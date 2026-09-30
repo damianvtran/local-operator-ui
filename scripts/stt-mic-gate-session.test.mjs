@@ -1336,6 +1336,13 @@ test("the shared copy table classifies every state and names every sentence", ()
  * ladder of its own: each enable flag must derive from the shared capability,
  * each disabled sentence from the shared table (design round 1, D5), and each
  * control must answer to its one name — recording / speaking aloud (D2).
+ *
+ * THE SPEAK-ALOUD CONTROL AND THE SELECTION TOOLBAR READ THE CAPABILITY
+ * THROUGH THE SHARED CONTROL (`speak-control.tsx`, the speak-aloud round): the
+ * two surfaces no longer inline the probe or the copy call at all, so pinning
+ * `canUseRadientSpeech` in THEIR sources would pin the old duplication back —
+ * the pin follows the delegation, and the shared control itself carries the
+ * capability/table assertions that used to live on the call sites.
  */
 const SOURCES = {
 	/*
@@ -1343,14 +1350,26 @@ const SOURCES = {
 	 * HOST's read (`recordingProbe`) — the pin follows the file (and
 	 * `shared-composer.test.mjs` pins the chat that feeds it).
 	 */
-	"the composer mic":
-		"src/renderer/src/shared/components/composer/message-input.tsx",
-	"the speak-aloud control":
-		"src/renderer/src/features/chat/components/message-item/message-controls.tsx",
-	"the selection toolbar":
-		"src/renderer/src/shared/components/common/text-selection-controls.tsx",
-	"the canvas editor mic":
-		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
+	"the composer mic": {
+		path: "src/renderer/src/shared/components/composer/message-input.tsx",
+		reads: "capability",
+	},
+	"the speak-aloud control": {
+		path: "src/renderer/src/features/chat/components/message-item/message-controls.tsx",
+		reads: "shared-control",
+	},
+	"the selection toolbar": {
+		path: "src/renderer/src/shared/components/common/text-selection-controls.tsx",
+		reads: "shared-control",
+	},
+	"the canvas editor mic": {
+		path: "src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
+		reads: "capability",
+	},
+	"the shared speak control": {
+		path: "src/renderer/src/shared/components/common/speak-control.tsx",
+		reads: "capability",
+	},
 };
 
 /*
@@ -1362,18 +1381,27 @@ const CAPABILITY_FLAG = /canUseRadientSpeech/;
 const FILE_ONLY_GATE =
 	/= hasRadientApiKey && !isUnavailable|isRadientApiKeyConfigured && !isLoadingCredentials/;
 const SHARED_COPY_CALL = /speechUnavailableReason\(/;
+const SHARED_SPEAK_CONTROL = /@shared\/components\/common\/speak-control/;
 const INLINED_SENTENCE =
 	/unavailable while Local Operator is offline|in the settings page to enable/;
 const DEPRECATED_CONTROL_NAMES = /Voice input|audio recording|text to speech/i;
 
 test("every speech surface derives its gate from the shared capability", async () => {
-	for (const [name, path] of Object.entries(SOURCES)) {
+	for (const [name, { path, reads }] of Object.entries(SOURCES)) {
 		const source = await readFile(path, "utf8");
-		assert.match(
-			source,
-			CAPABILITY_FLAG,
-			`${name} must read the shared session-first capability`,
-		);
+		if (reads === "shared-control") {
+			assert.match(
+				source,
+				SHARED_SPEAK_CONTROL,
+				`${name} must render through the shared speak control`,
+			);
+		} else {
+			assert.match(
+				source,
+				CAPABILITY_FLAG,
+				`${name} must read the shared session-first capability`,
+			);
+		}
 		assert.doesNotMatch(
 			source,
 			FILE_ONLY_GATE,
@@ -1383,13 +1411,15 @@ test("every speech surface derives its gate from the shared capability", async (
 });
 
 test("every speech surface states its reason from the one shared copy table", async () => {
-	for (const [name, path] of Object.entries(SOURCES)) {
+	for (const [name, { path, reads }] of Object.entries(SOURCES)) {
 		const source = await readFile(path, "utf8");
-		assert.match(
-			source,
-			SHARED_COPY_CALL,
-			`${name} must read its disabled sentence from @shared/lib/speech-gate (design round 1, D5)`,
-		);
+		if (reads === "capability") {
+			assert.match(
+				source,
+				SHARED_COPY_CALL,
+				`${name} must read its disabled sentence from @shared/lib/speech-gate (design round 1, D5)`,
+			);
+		}
 		assert.doesNotMatch(
 			source,
 			INLINED_SENTENCE,
