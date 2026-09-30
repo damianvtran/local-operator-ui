@@ -2739,6 +2739,7 @@ const BRANCH_RECORDS = [
 	 * it adds no name to the quoting ledger.
 	 */
 	"sttRecordingDisplayFoldThreeNote",
+	"sttRecordingDisplayFoldFourNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
