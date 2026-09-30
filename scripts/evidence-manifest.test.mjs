@@ -2727,6 +2727,18 @@ const BRANCH_RECORDS = [
 	 * would drop it.
 	 */
 	"rowMenuRoundThreeRestampNote",
+	/*
+	 * And the FOLD RECORDS the round-2 folds wrote but left unregistered (their
+	 * passes added the records to the manifest without adding the list entries;
+	 * closed here with the round-3 fold's own). Same reason as every entry - a
+	 * fold resolved from main's copy would drop them.
+	 */
+	"foldOnto8712e8684cNote",
+	"foldOnto2e866d5d49Note",
+	/*
+	 * And THIS round-3 fold's own, alongside them.
+	 */
+	"foldOntoefca9e16fcNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
