@@ -6,6 +6,7 @@ import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
@@ -110,6 +111,15 @@ export const CheckForUpdatesButton = ({
 	 * another check's broadcast arriving late.
 	 */
 	const manualCheckRef = useRef(false);
+
+	/**
+	 * The release detail's own switch (issue #672).
+	 *
+	 * Read as an action rather than a reading: this component never draws the
+	 * card, it only says that the check it just ran is a reason to show it. See
+	 * the call site for why an explicit check is the loud path.
+	 */
+	const openDetail = useUpdateNoticeStore((state) => state.openDetail);
 
 	/**
 	 * Whether the message on screen right now is the whole-check affirmation.
@@ -395,6 +405,29 @@ export const CheckForUpdatesButton = ({
 			// A superseded check paints nothing, in either direction: the newer
 			// check owns the screen, and its own outcome has already been applied.
 			if (seq !== checkSeqRef.current) return;
+
+			/*
+			 * A CHECK THE USER ASKED FOR IS THE LOUD ONE (issue #672).
+			 *
+			 * The app's own periodic news is a quiet band at the bottom of the window
+			 * now, so a press on this button has to be the surface that still raises
+			 * the release card - otherwise the answer to "check for updates" would be a
+			 * one-line indicator, which is the wrong shape for a question someone just
+			 * asked. Opening the detail is what draws the card; the offer itself arrived
+			 * on its own event during this call, so there is something for it to render.
+			 *
+			 * The followed-segment preference deliberately does NOT apply here. It gates
+			 * the app's unsolicited notices; a person who pressed the button is told what
+			 * the check found, including a release their own setting would have kept
+			 * quiet - the same rule the deferral store has always followed (this button
+			 * clears the deferrals above so the check can see everything).
+			 *
+			 * `restart-required` is not opened here: it means the server on disk is
+			 * ahead of the one SERVING this app, which is the skew panel's own state and
+			 * not this offer's.
+			 */
+			if (result.app === "available") openDetail(UpdateType.UI);
+			if (result.server === "available") openDetail(UpdateType.BACKEND);
 
 			/*
 			 * An affirmation is painted only when this check's own window saw no

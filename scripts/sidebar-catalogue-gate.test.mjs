@@ -132,6 +132,29 @@ const hookBundle = await build({
 						loader: "js",
 					}),
 				);
+				/*
+				 * The composer's optional-client seam, stubbed in this suite's own idiom: it
+				 * exists to record what `useDesktopCapabilities` ASKS REACT QUERY FOR, so the
+				 * seam answers like a document that HAS a provider - the app's own condition,
+				 * where `provided` is always true and `enabled` therefore never changes the
+				 * options this recorder reads. Its client is never touched: the stubbed
+				 * `useQuery` above takes the options alone.
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
+					() => ({
+						path: "optional-query-client",
+						namespace: "optional-query-fixture",
+					}),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "optional-query-fixture" },
+					() => ({
+						contents:
+							"export const useOptionalQueryClient = () => ({ client: {}, provided: true });",
+						loader: "js",
+					}),
+				);
 			},
 		},
 	],

@@ -93,11 +93,12 @@ async newTab(): Promise<Record<string, unknown>> {
 `chromeState().tabs[].sessionId` — the ONE field the pane's scope filter reads —
 is `null` (`src/main/browser/host.ts:574`, filtered by
 `tabsInScope` in `src/renderer/src/features/browser/model/approval-queue-model.ts:382`).
-So the three user-facing ways to open a tab all produce a tab that "This
+So the two user-facing ways to open a tab all produce a tab that "This
 conversation" will never show: the strip's `Plus` (`browser-tab-strip.tsx:838-849`
-→ `chrome.newTab()`, `browser-surface.tsx:452`), the empty state's `New tab`
-(`browser-surface.tsx:624-630`), and the blocked-popup notice's "Open in a new tab"
-(`browser-surface.tsx:508-521`). `git grep -n "browser" chat-sidebar.tsx` returns
+→ `chrome.newTab()`, `browser-surface.tsx:452`) and the empty state's `New tab`
+(`browser-surface.tsx:624-630`). (A third — the blocked-popup notice's "Open in a
+new tab" — was removed with the notice itself: `docs/design/browser-oauth-popups.md`
+§1.2.) `git grep -n "browser" chat-sidebar.tsx` returns
 nothing: there is no per-conversation entry point in the sidebar at all. The only
 entry points are the Globe in the open conversation's header
 (`chat-header.tsx:283-360`) and the rail's route.
@@ -215,7 +216,7 @@ copy standard exists to prevent.
 
 | Host | Scope on screen | Control | Accessible label | Effect |
 |---|---|---|---|---|
-| Pane (`hostSessionId = S`) | This conversation | strip `Plus`, empty-state `New tab`, popup notice's `Open in a new tab` | `New tab in this conversation` | tab created with `sessionId: S` |
+| Pane (`hostSessionId = S`) | This conversation | strip `Plus`, empty-state `New tab` | `New tab in this conversation` | tab created with `sessionId: S` |
 | Pane | All tabs | same | `New tab in this conversation` | same — the host is still S |
 | Pane on a draft (`sessionId = null`) | all | same | `New tab` | unattributed (`sessionId: null`) |
 | Route (`hostSessionId = null`) | all | same | `New tab` | unattributed (unchanged) |

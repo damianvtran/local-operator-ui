@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
@@ -12,11 +13,18 @@ import { createElement as h } from "react";
  * what the bar says, which rows hide). This file asserts what only a mount can:
  * that a completed run ARRIVES collapsed and its hidden rows are really
  * unmounted; that the reader's press opens it and puts it back; that the
- * expansion survives a remount (the property the per-session store exists for)
- * and follows the CONVERSATION rather than the component; that the failure
- * failure tally never renders and the failed row stays one press away; and
- * that a live run, and a run the window has cut, render exactly as they did
- * before the feature.
+ * expansion survives a remount AND the head arriving later (the properties the
+ * per-session store and the head-independent run key exist for) and follows the
+ * CONVERSATION rather than the component; that the failure tally never renders
+ * and the failed row stays one press away; that a live run renders exactly as
+ * it did before the feature; that a run whose head the FETCHED rows cut off
+ * condenses from its loaded span (the end-loaded rule, operator report
+ * 2026-09-29) with no fabricated `Took`; that a settle does not fold the row
+ * the reader's focus is in; that a bar's appearance is stated politely — and
+ * that a WIDEN's revealed bars are not, because a reveal is not a settle
+ * (review round 1, MAJOR-1); and (operator report, 2026-09-29) that the row
+ * under the bar's rule renders at the block step with the bar's chevron
+ * landing on the rule's end.
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the collapsed and expanded
  * states look like; it cannot say that the collapsed state unmounts the rows
@@ -63,6 +71,26 @@ const shims = {
 		observe() {}
 		unobserve() {}
 		disconnect() {}
+	},
+	/*
+	 * jsdom implements neither. The bar's press path mounts the transcript's own
+	 * rows, and one of those (the cross-session receipt row) observes mutations -
+	 * the same shim every other harness in `scripts/` carries.
+	 */
+	MutationObserver: window.MutationObserver,
+	/*
+	 * The focus manager the bar's press path reaches for walks tabbables with
+	 * `NodeFilter`; jsdom implements it on the window.
+	 */
+	NodeFilter: window.NodeFilter,
+	HTMLInputElement: window.HTMLInputElement,
+	IntersectionObserver: class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+		takeRecords() {
+			return [];
+		}
 	},
 	matchMedia: (query) => ({
 		matches: false,
@@ -114,6 +142,17 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
+			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			/* The walk's bound, so the assertion below names the shipped number. */
+			'export { ALIGN_WALK_MAX_PAGES } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			/*
+			 * The two query keys the transcript's own hook reads, so the hide case
+			 * below seeds the SAME entries the app resolves - a second spelling of
+			 * either key would pass here while the product read another cache entry.
+			 */
+			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
+			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -137,7 +176,18 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		/*
+		 * EXTERNAL, so the provider below and the hook inside the bundle resolve
+		 * to ONE copy: a bundled second copy carries a different React context
+		 * object and `useQuery` would not find the client this file seeds.
+		 */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL(
 	`./_turn-collapse-behaviour-${process.pid}.mjs`,
@@ -151,6 +201,10 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	GAP,
+	ALIGN_WALK_MAX_PAGES,
+	backendSettingsKeys,
+	desktopKeys,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -223,6 +277,21 @@ const wakeRecord = (id, over = {}) => ({
 	text: "(alarm) Scheduled wake w-9\n\nCollect the staged records.",
 	...over,
 });
+
+/**
+ * The memory statement: the pin list's first member, and the row the operator's
+ * 2026-09-29 report is about. Durable (no settled sentence of its own), so the
+ * text is the reader's `COMPACTED_LINE`.
+ */
+const compactionRecord = (id, over = {}) => ({
+	kind: "compaction",
+	id,
+	ts: TS + 6_000,
+	text: "Context compacted",
+	before: 41_000,
+	...over,
+});
+
 /** A statement the collapse pins in place (a completion marker). */
 const noticeRecord = (id, over = {}) => ({
 	kind: "notice",
@@ -231,6 +300,31 @@ const noticeRecord = (id, over = {}) => ({
 	text: "Interrupted",
 	level: "warning",
 	complete: true,
+	...over,
+});
+
+/** One picture on a tool record, the shape `transcript-reducer.ts` composes. */
+const shotImage = (recordId, index, data = "iVBORw0KGgo=") => ({
+	recordId,
+	id: `${recordId}:${index}`,
+	data,
+	attachment: null,
+	mimeType: "image/png",
+});
+
+/** The reason a turn died: an error-level custom statement, pinned below the bar. */
+const incidentRecord = (id, over = {}) => ({
+	kind: "custom",
+	id,
+	ts: TS + 8_000,
+	customType: "session_incident",
+	text: "[session incident (anthropic/claude-opus-5)] mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	level: "error",
+	category: "mcp",
+	headline:
+		"MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	detail: null,
+	provider: "anthropic/claude-opus-5",
 	...over,
 });
 
@@ -255,26 +349,39 @@ const mount = async (t, records, over = {}) => {
 	});
 	mounted.container = document.createElement("div");
 	document.body.appendChild(mounted.container);
+	/*
+	 * A fresh client per mount, or the one the caller seeded: the transcript now
+	 * reads its cross-session visibility through react-query, so every mount
+	 * needs a provider - and the unseeded default is exactly the fail-closed
+	 * path (no capabilities answer ⇒ nothing hidden).
+	 */
+	const client =
+		over.client ??
+		new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const render = async (next, nextOver = over) => {
 		await act(async () => {
 			mounted.root.render(
-				h(CanonicalTranscript, {
-					frontend: nextOver.frontend ?? null,
-					transcript: {
-						...transcriptOf(next),
-						hasMore: nextOver.hasMore ?? false,
-					},
-					gate: nextOver.gate ?? null,
-					waiting: nextOver.waiting ?? false,
-					loadingOlder: false,
-					onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
-					containerRef: { current: mounted.container },
-					isSmallView: false,
-					status: "live",
-					failure: null,
-					awaitingHydration: false,
-					onReconnect: () => {},
-				}),
+				h(
+					QueryClientProvider,
+					{ client },
+					h(CanonicalTranscript, {
+						frontend: nextOver.frontend ?? null,
+						transcript: {
+							...transcriptOf(next),
+							hasMore: nextOver.hasMore ?? false,
+						},
+						gate: nextOver.gate ?? null,
+						waiting: nextOver.waiting ?? false,
+						loadingOlder: false,
+						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
+						containerRef: { current: mounted.container },
+						isSmallView: false,
+						status: "live",
+						failure: null,
+						awaitingHydration: false,
+						onReconnect: () => {},
+					}),
+				),
 			);
 		});
 	};
@@ -539,6 +646,11 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		/Worked/,
 		"the bar replaces the foot line, as on any completed run",
 	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\+ actions/,
+		"and a COMPLETE run carries no marker: its count is a total",
+	);
 });
 
 test("the snap's fetch half runs when the head is cut off, and is bounded", async (t) => {
@@ -558,9 +670,20 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		fetches += 1;
 		return true;
 	};
-	const records = Array.from({ length: 420 }, (_, index) =>
-		toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
-	);
+	/*
+	 * LOADER-CONTINUITY 1b, ROUND 1's RETARGET: the walk is armed by the CONDENSED,
+	 * head-cut BAR (see `alignWalkRunKey`), so the fixture has to carry the thing
+	 * that paints one — a closing answer. Without it the run is either the live
+	 * turn or a turn whose answer is prose-free, and neither paints a partial
+	 * statement; the first cut of this fixture omitted the answer and got a fetch
+	 * anyway, because the trigger was the window edge rather than the bar.
+	 */
+	const records = [
+		...Array.from({ length: 420 }, (_, index) =>
+			toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
+	];
 	const mounted = await mount(t, records, {
 		hasMore: true,
 		onLoadOlder: load,
@@ -575,20 +698,18 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	const afterRender2 = fetches;
 	assert.ok(afterMount >= 1, "the cut head is asked for");
 	/*
-	 * AGENT REVIEW ROUND 2, MINOR-2: an "asks stop" equality could not see a
-	 * dropped bound (a mutated run counted 5 -> 7 -> 7 and passed). The DELTA
-	 * is the property a dropped bound breaks — each re-render may add at most
-	 * one align ask — while the bound's exact arithmetic stays in the model
-	 * suite, where a strict-mode remount cannot muddle the reading.
+	 * AGENT REVIEW ROUND 2, MINOR-2 pinned the flat two-page budget with a
+	 * "one re-render adds at most one align ask" delta. LOADER-CONTINUITY 1b
+	 * replaced that budget with the bounded WALK, and the delta is no longer the
+	 * property: the walk's whole point is that ONE open may spend several pages
+	 * (the operator's bar could not state its own action count otherwise), so a
+	 * harness that re-creates the transcript object on every render legitimately
+	 * re-runs the effect once per commit. What must still hold, and is asserted
+	 * here NET of the control's own paging-arm asks, is the BOUND — a dropped
+	 * bound would blow past it — while the bound's exact arithmetic stays in the
+	 * model suite, where a strict-mode remount cannot muddle the reading.
 	 */
-	assert.ok(
-		afterRender1 - afterMount <= 1,
-		`one re-render adds at most one align ask (mount=${afterMount} r1=${afterRender1})`,
-	);
-	assert.ok(
-		afterRender2 - afterRender1 <= 1,
-		`and so does the next (r1=${afterRender1} r2=${afterRender2})`,
-	);
+	assert.ok(afterMount >= 1 && afterRender1 >= 1 && afterRender2 >= 1);
 
 	/* The control: the enclosing run's head IS loaded, so the effect stands down. */
 	let idleFetches = 0;
@@ -597,6 +718,7 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		...Array.from({ length: 419 }, (_, index) =>
 			toolRecord(`headed:${index + 1}`, { ts: TS + 1_000 + index }),
 		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
 	];
 	const idle = await mount(t, headed, {
 		hasMore: true,
@@ -626,15 +748,21 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		afterRender2 > idleFetches,
 		`the cut asks more than the head-loaded control (cut=${afterRender2} control=${idleFetches})`,
 	);
+	assert.ok(
+		afterRender2 - idleFetches <= ALIGN_WALK_MAX_PAGES,
+		`the walk stays inside its bound (cut=${afterRender2} control=${idleFetches})`,
+	);
 });
 
-test("a run whose head the LOADED rows cut off renders as today: no bar, foot as it was", async (t) => {
+test("a run whose head the LOADED rows cut off condenses from the loaded span: counts, no Took", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
-	 * The other half of §5 case 12: the row list itself starts mid-run (the
-	 * leading tool rows), so no window can be snapped to a boundary that is not
-	 * loaded — a summary may only ever describe rows that are on hand, and the
-	 * foot line stands as it always did.
+	 * END-LOADED ELIGIBILITY (operator report, 2026-09-29). The row list itself
+	 * starts mid-run (the leading tool rows — the state after a deep jump or a
+	 * long tail turn), so no window can be snapped to a boundary that is not
+	 * loaded. The bar may only ever describe rows on hand, and that is what it
+	 * does: the loaded calls, and no `Took` (the span would have to start at the
+	 * first loaded row, a number the turn never had).
 	 */
 	const records = [
 		toolRecord("tool:0", { ts: TS + 500 }),
@@ -642,15 +770,186 @@ test("a run whose head the LOADED rows cut off renders as today: no bar, foot as
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);
+	const summary = bar(mounted);
+	assert.ok(summary, "the cut run condenses from its loaded span");
+	assert.equal(
+		summary.getAttribute("data-run-ids"),
+		"tool:0 tool:1 answer:1",
+		"every loaded row stays addressable through the bar",
+	);
+	/*
+	 * THE HONEST MARKER (design round 1, D1). The count is a MINIMUM - two loaded
+	 * calls of a turn whose earlier rows are not in the store - and the bar says so
+	 * in its own vocabulary rather than stating `2 actions`, which reads exactly
+	 * like a settled total. The same claim is in words for assistive tech, and the
+	 * complete-run case below asserts the marker is ABSENT there, so the two
+	 * statements cannot collapse into one.
+	 */
+	assert.match(
+		summary.textContent ?? "",
+		/2\+ actions/,
+		"a partial count is marked: `2+ actions`",
+	);
+	assert.doesNotMatch(
+		summary.textContent ?? "",
+		/Took/,
+		"no duration: it would be fabricated from the first loaded row",
+	);
+	const partialLabel = [...summary.querySelectorAll("*")]
+		.map((node) => node.getAttribute("aria-label"))
+		.find((label) => label?.startsWith("At least"));
+	assert.equal(
+		partialLabel,
+		"At least 2 actions — earlier rows of this turn are not loaded",
+		"and the same claim is stated in words",
+	);
+	assert.doesNotMatch(
+		mounted.container.textContent ?? "",
+		/Worked/,
+		"the bar replaces the foot line, as on any completed run",
+	);
+});
+
+test("the head arriving later keeps the cut run's expansion: its key does not move", async (t) => {
+	__resetTurnCollapseOpen();
+	const cut = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
+	];
+	const mounted = await mount(t, cut, {
+		frontend: { session_id: "chat-head" },
+	});
+	assert.ok(bar(mounted), "the cut run condenses on arrival");
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "tool:0"), "the reader opened it");
+	/*
+	 * A page lands and brings the opening user row: the pre-fix key (the run's
+	 * first row) would have changed right here and the reader's expansion would
+	 * have silently reverted.
+	 */
+	await mounted.render([userRecord("user:0", { ts: TS + 100 }), ...cut], {
+		frontend: { session_id: "chat-head" },
+	});
+	assert.ok(
+		rowBox(mounted, "tool:0"),
+		"the reader's expansion survives the head arriving",
+	);
+	assert.ok(bar(mounted), "the bar is still the run's summary");
+});
+
+test("a settle does not fold the run out from under the reader's focus", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The collapse UNMOUNTS rows; a reader whose keyboard focus sits in one of
+	 * them would lose focus to the body. The guard holds that run open until the
+	 * focus moves on — and it is invisible to a reader who is not focused in a
+	 * row (the pointer case: no focus event, no hold).
+	 */
+	const running = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const trigger = rowBox(mounted, "tool:1")?.querySelector("button");
+	assert.ok(trigger, "the running row has a focusable control");
+	await act(async () => {
+		trigger.focus();
+	});
+	assert.equal(
+		document.activeElement,
+		trigger,
+		"the reader's focus is in the row",
+	);
+	const settled = [
+		...running,
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	await mounted.render(settled, {});
 	assert.equal(
 		bar(mounted),
 		null,
-		"a run whose opening user row is not loaded never condenses",
+		"the settle does not fold the run out from under the focus",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "the focused row stays mounted");
+	assert.equal(document.activeElement, trigger, "and the focus is intact");
+	await act(async () => {
+		trigger.blur();
+	});
+	assert.ok(bar(mounted), "once the focus leaves, the run folds");
+});
+
+test("a widen announces nothing: a reveal is not a settle", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * AGENT REVIEW ROUND 1, MAJOR-1. The window only ever GROWS, so a widen
+	 * (the reader's scroll-up, the open's snap, a jump's mount) presents bars
+	 * for runs the previous pass never held. The pre-fix effect — a
+	 * set-difference against the previous pass's collapsed keys — announced
+	 * every one of them: measured on this fixture, ten "Turn condensed"
+	 * sentences on a widen and zero settles (the reviewer's
+	 * `probe-widen-announce.test.mjs`). Nothing was unmounted out from under
+	 * the reader — those runs were folded before the reader ever saw them
+	 * unfold — so the fix requires an utterance to ALSO find the run present
+	 * in the previous pass (sharing a row with it), which window-entered bars
+	 * fail.
+	 */
+	const records = [];
+	for (let i = 1; i <= 30; i += 1) {
+		records.push(userRecord(`user:${i}`, { ts: TS + i * 60_000 }));
+		records.push(toolRecord(`tool:${i}`, { ts: TS + i * 60_000 + 1_000 }));
+		records.push(answerRecord(`answer:${i}`, { ts: TS + i * 60_000 + 5_000 }));
+	}
+	const mounted = await mount(t, records, { hasMore: false });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const bars = () =>
+		mounted.container.querySelectorAll("[data-turn-summary]").length;
+	assert.ok(bars() > 0, "the loaded window arrives folded");
+	assert.equal(region(), "", "a load announces nothing");
+	const before = bars();
+	await flushFrames();
+	assert.ok(
+		bars() > before,
+		`the frames widened the window (before=${before} after=${bars()})`,
+	);
+	assert.equal(
+		region(),
+		"",
+		"the revealed bars are window-entered, not settled",
+	);
+});
+
+test("a settle announces the new bar politely, in the bar's own words", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * A bar appearing is a transition the reader did not initiate — rows
+	 * readable a moment ago are unmounted — and the live region is where it is
+	 * said out loud: the bar's own facts, no more. A load's bars are not a
+	 * settle and stay silent (the running turn below is the whole initial
+	 * transcript).
+	 */
+	const running = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "a running turn announces nothing");
+	await mounted.render(
+		[
+			...running,
+			answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+		],
+		{},
 	);
 	assert.match(
-		mounted.container.textContent,
-		/Worked/,
-		"its foot line stands as it always did",
+		region(),
+		/Turn condensed: took 3s, 1 action\./,
+		"the settle states the bar's own facts",
 	);
 });
 
@@ -734,6 +1033,66 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 	);
 });
 
+test("the row under the bar takes the block step, and the chevron reaches the rule (operator report, 2026-09-29)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the condensed row ('Context compacted') hugs the
+	 * summary row's rule too closely ... wants more breathing room between the
+	 * horizontal line and the row beneath it" and "the chevron ('>') doesn't
+	 * reach the right end of the rule". jsdom has no layout engine, so this pins
+	 * the MECHANISM per class - the pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-compaction/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 *
+	 * The row's gap: a pinned statement is BUILT against its original neighbour -
+	 * here a hidden tool row, which gives it the trace tier's 2px - so when the
+	 * collapse leaves it directly under the bar, the render pass re-tiers the
+	 * row to the item step: the same 12px the closing answer already sits below
+	 * the rule. The chevron: the trigger ends 16px short of the row on the right
+	 * (the disclosure's documented left-only bleed) and the slot's `-mr-4`
+	 * reclaims exactly that, so the row's right edge lands on the rule's end.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const row = rowBox(mounted, "compaction:1");
+	assert.ok(row, "the compaction row is pinned below the bar");
+	assert.ok(
+		row.classList.contains(GAP.item[0]),
+		`the first row under the bar renders at the item tier (${GAP.item[0]}), not the trace tier it was built with`,
+	);
+	assert.ok(
+		!row.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the row beneath the rule",
+	);
+	const chevron = barTrigger(mounted)?.querySelector("svg")?.closest("span");
+	assert.ok(chevron, "the bar's chevron slot exists");
+	assert.ok(
+		chevron.classList.contains("-mr-6"),
+		"the chevron slot's 24px pull lands the glyph's leading edge on the rule's endpoint (the alignment datum)",
+	);
+	/*
+	 * The rule's own two sides (second round): the bar block carries 12px of air
+	 * above the rule (`pb-3`) - the SAME step the row below sits at, so the rule
+	 * divides 12px of box either side - and the row below keeps the item step the
+	 * walk re-tiers it to. jsdom has no layout engine; the pair the frames show
+	 * is 17px of ink above against 15px below (ink-edge to rule-edge, text
+	 * register, both palettes - the settled reading after the first 16px pass
+	 * measured 21 against 15 and the design round flagged it).
+	 */
+	const summary = bar(mounted);
+	assert.ok(
+		summary.classList.contains("border-b") &&
+			summary.className.includes("pb-3"),
+		"the bar block carries its own 12px of air above the rule",
+	);
+});
+
 test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", async (t) => {
 	/*
 	 * ISSUE #5. The pin list dropped `peer`/`wake`: in a completed turn the
@@ -765,6 +1124,261 @@ test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", 
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:1"), "the peer receipt mounts on the press");
 	assert.ok(rowBox(mounted, "wake:1"), "the wake receipt mounts on the press");
+});
+
+test("a collapsed span that produced pictures keeps them under the bar", async (t) => {
+	/*
+	 * THE OPERATOR REPORT, as a behaviour, one fold level up from
+	 * `trace-fold-behaviour.test.mjs`'s case: the turned condensation unmounts
+	 * the rows a hidden span holds, so the pictures those rows would have
+	 * drawn have to ride the bar - and the strip is the bar's own, under its
+	 * line, gone the moment the reader presses it open (open, the rows draw
+	 * their own media and the strip would double it).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the row that would draw them is unmounted",
+	);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "and the pictures are on screen anyway");
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"2 images from this run",
+		"the strip names its set and its size",
+	);
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		2,
+		"one tile per picture, no count clause at two",
+	);
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/2 images/,
+		"and the count is a clause on the bar's own line",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		2,
+		"the bar is its disclosure plus the strip",
+	);
+
+	/* Pressing is what trades the strip for the rows that draw their own media. */
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"open, the strip goes",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "the press mounts the row again");
+});
+
+test("a span with no pictures is the bar it was: no strip, no clause", async (t) => {
+	/*
+	 * The overwhelmingly common case, pinned for the bar the way
+	 * `trace-fold-behaviour.test.mjs` pins it for the fold: an image-less run
+	 * must not grow a slot, a rule, an empty row or a count - the wrapper's
+	 * child count is the claim.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"no pictures, no strip",
+	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\d+ images?/,
+		"and no count clause either",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		1,
+		"the bar is its disclosure and nothing else",
+	);
+});
+
+test("the strip caps at four tiles and counts the rest", async (t) => {
+	/*
+	 * The pathological span: eight pictures cost one capped row - four tiles
+	 * and a `+4 more images` - which is the height bound `FOLD_MEDIA_LIMIT`
+	 * exists for, and the count is what keeps the row from pretending
+	 * otherwise. The count slot is also the ONLY route to the pictures past
+	 * the cap, so it is a control (U1), and that is asserted here against the
+	 * real bar.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 8 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "the strip renders");
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		5,
+		"four tiles and the count's own slot",
+	);
+	assert.match(
+		strip.textContent ?? "",
+		/\+4 more images/,
+		"and the count says how many are left, and of what",
+	);
+	/*
+	 * U1: it OPENS the bar rather than standing as text - the same toggle the
+	 * bar's own trigger runs, so pressing it reveals the rows (and with them
+	 * the pictures past the cap, at the row level where each is drawn in full).
+	 * The match is on the count's own words: the tiles inside the strip are
+	 * buttons too, and pointing at one of those would expand a picture instead
+	 * of opening the run.
+	 */
+	const more = [...strip.querySelectorAll("button")].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the count slot is a button, not inert text");
+	await click(more);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"pressing the count opens the run, putting the rows it stood for back",
+	);
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"8 images from this run",
+		"the set's size is still stated in full",
+	);
+});
+
+test("the group's clause drops only when it repeats the bar's number (D3/U6)", async (t) => {
+	/*
+	 * The drop branch of `soleImageGroup`, pinned rather than left to the
+	 * re-shot frame alone: a span whose ONLY image-bearing run is the whole
+	 * story (its count equals the bar's) does not print the same number twice
+	 * one line apart - the bar keeps the aggregate, the group row omits the
+	 * duplicate.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 3 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const group = bar(mounted)?.querySelector("[data-fold-ids]");
+	assert.ok(group, "the run's own fold mounts under the bar");
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/3 images/,
+		"the bar states the span's count",
+	);
+	assert.doesNotMatch(
+		group.textContent ?? "",
+		/\d+ images?/,
+		"and the group does not repeat the same number one line below",
+	);
+});
+
+test("a group holding only part of the span keeps its own clause (D3/U6, keep branch)", async (t) => {
+	/*
+	 * The keep branch: two image-bearing folds under one bar, neither carrying
+	 * the whole set - the numbers differ, so both levels state their own and
+	 * the suppression must NOT fire. The notice between the two runs is what
+	 * splits them (`foldRuns`: a non-call row breaks a run).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		noticeRecord("notice:1"),
+		toolRecord("tool:4"),
+		toolRecord("tool:5", {
+			images: [shotImage("tool:5", 0), shotImage("tool:5", 1)],
+		}),
+		toolRecord("tool:6"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const groups = [...(bar(mounted)?.querySelectorAll("[data-fold-ids]") ?? [])];
+	assert.equal(groups.length, 2, "two runs sit under the bar");
+	assert.deepEqual(
+		groups.map((node) => (node.textContent ?? "").match(/\d+ images?/)?.[0]),
+		["2 images", "2 images"],
+		"each group keeps its own count: neither repeats the bar's 4",
+	);
+});
+
+test("one press on the bar's count reaches the whole set (U8)", async (t) => {
+	/*
+	 * The round-2 UX finding: pressing `+N more images` on the bar opened the
+	 * bar, but the sole run inside drew the SAME capped strip, so pictures 5-8
+	 * cost a second press. The group that IS the span's whole image story now
+	 * renders `uncapped`, so the one press the reader made reaches every
+	 * picture - and no second count control is left to press.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:1", index),
+			),
+		}),
+		toolRecord("tool:2", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:2", index),
+			),
+		}),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the collapsed bar shows four tiles and the count control");
+	await click(more);
+	const groupStrip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(groupStrip, "the press opened the bar onto its group's strip");
+	assert.equal(
+		groupStrip.querySelectorAll("li").length,
+		8,
+		"and the group shows its WHOLE set: one press reached the rest",
+	);
+	assert.equal(
+		[...groupStrip.querySelectorAll("button")].filter((control) =>
+			/more images?/.test(control.textContent ?? ""),
+		).length,
+		0,
+		"with no second count control left to press",
+	);
 });
 
 test("a parked turn does not condense: the gate is half of the liveness", async (t) => {
@@ -838,5 +1452,165 @@ test("the trigger is focusable; the only press inside it toggles", async (t) => 
 		controlsInside.map((node) => node.tagName),
 		[],
 		"no separate control lives inside the trigger",
+	);
+});
+
+test("hiding cross-session rows: the receipt and the send row leave, the bar's ids follow, and clearing the key restores them", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The component's own seam, end to end: `useCrossSessionHidden` reads the
+	 * settings query, `shownRecords` filters, and the rows plus the bar's ids
+	 * are downstream of BOTH. The query client is SEEDED with the two cache
+	 * entries the app resolves rather than mocking the hook, which is what
+	 * makes the toggle below meaningful: one `setQueryData` in each direction
+	 * under the same mount is "turning it off restores them", exactly as the
+	 * operator experiences it (no remount, no refetch).
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	const settings = (hide) => ({
+		sections: [],
+		settings: [{ key: "display.hide_cross_session", value: hide }],
+	});
+	client.setQueryData(backendSettingsKeys.all, settings(true));
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+
+	// On: the receipt and the send row are not mounted; the ordinary call is
+	// only behind the bar (collapsed), not gone.
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt is hidden");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row is hidden");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 tool:1 answer:1",
+		"the bar's ids name only what the pane keeps",
+	);
+	// Expand: the work comes back, and the hidden send does NOT — the filter
+	// sits above the collapse, so no interaction can reveal it.
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "tool:1"), "the ordinary call is revealed");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row stays gone");
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt stays gone");
+
+	// Off, under the same mount: both come back where they belong. The drain is
+	// two ticks rather than one: the query's notification is applied on a TASK
+	// and the row repaint then queues a FRAME, and the harness's own
+	// `flushFrames` no-ops when nothing has queued a frame yet - exactly this
+	// case's race. Both ticks are explicit, so the assert reads a settled tree.
+	await act(async () => {
+		client.setQueryData(backendSettingsKeys.all, settings(false));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt returns");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row returns");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the run is whole again",
+	);
+});
+
+test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback", async (t) => {
+	/*
+	 * The frozen contract's absent-key skew (an old backend behind a new app),
+	 * at the seam that reads it: capabilities answer `settings: 1` while the
+	 * registry carries no `display.hide_cross_session`. `setting?.value ===
+	 * true` is the whole read, so absence resolves false - nothing is hidden,
+	 * and no row is dropped by a key the backend never sent. Pinned because
+	 * this is the one fallback direction the seeded toggle test cannot reach.
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(backendSettingsKeys.all, {
+		sections: [],
+		settings: [{ key: "display.shimmer", value: true }],
+	});
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the bar's ids keep every row the run holds",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
+});
+
+test("the incident row under the bar takes the block step too (operator report, 2026-09-29, second round)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the 'session incident: …' row beneath sits too tight
+	 * to the line - the below-line gap fix must cover the incident-row class
+	 * (like the compaction row)". The first round's re-tier marked only the
+	 * FIRST group after a bar, so an incident behind the memory statement kept
+	 * the trace tier its original neighbour gave it and hugged the statement by
+	 * 2px (measured: `mt-0.5` against the compaction's `mt-3`). The walk now
+	 * re-tiers every group a bar leaves visible.
+	 *
+	 * jsdom has no layout engine, so this pins the mechanism per class - the
+	 * pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-incident/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		incidentRecord("incident:1"),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const statement = rowBox(mounted, "compaction:1");
+	assert.ok(statement, "the memory statement is pinned below the bar");
+	assert.ok(
+		statement.classList.contains(GAP.item[0]),
+		`the memory statement renders at the item tier (${GAP.item[0]})`,
+	);
+	const incident = rowBox(mounted, "incident:1");
+	assert.ok(incident, "the incident reason is pinned below the bar");
+	assert.ok(
+		incident.classList.contains(GAP.item[0]),
+		`the incident behind the statement takes the same block step (${GAP.item[0]}), not the trace tier its neighbour gave it`,
+	);
+	assert.ok(
+		!incident.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the incident row beneath the rule",
 	);
 });

@@ -318,12 +318,13 @@ function recordsAfter(
  * anything.
  *
  * A DURABLE COMPLETION MARKER is the transcript's own record that the turn is
- * over: the reducer writes `complete` on a `notice` for exactly two things, both
- * of them an incident - "Stopped with an error" and "Interrupted" - and never
- * for its own renderer notes (a harness recovery notice, a retry line, a subagent
- * failure all omit it). That is why the test is the marker rather than the text:
- * the copy is expected to be reworded, and matching on prose would silently stop
- * matching.
+ * over: the reducer writes `complete` on a `notice` for exactly three things —
+ * "Stopped with an error", "Interrupted", and the v2 neutral closure
+ * "Completed — runtime retired/disposed" a disposal publishes for a run that
+ * spent nothing — and never for its own renderer notes (a harness recovery
+ * notice, a retry line, a subagent failure all omit it). That is why the test is
+ * the marker rather than the text: the copy is expected to be reworded, and
+ * matching on prose would silently stop matching.
  *
  * WHY A STOP HAS TO RETIRE THE WAIT. The rung is a claim about work in flight, and
  * a turn that died before it painted anything leaves the transcript with no row
@@ -363,7 +364,16 @@ export function stoppedAfterAdmission(
 	return Boolean(
 		attention?.anchor_id &&
 			attention.anchor_id !== previousAnchor &&
-			(attention.kind === "error" || attention.kind === "interrupted"),
+			(attention.kind === "error" ||
+				attention.kind === "interrupted" ||
+				// The v2 neutral closure (2026-09-29): a disposed runtime ends the
+				// wait the same way an incident does — leaving the line up would
+				// claim work in flight beside a receipt that says it stopped.
+				attention.kind === "closed" ||
+				// The retire-for-build kind (2026-09-29): the drain is leaving and
+				// the turn was cut, so a spinner beside "Retired for an update …"
+				// is the same contradiction as the closure's.
+				attention.kind === "retired"),
 	);
 }
 
@@ -684,10 +694,16 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
 /**
  * The derivation's input, read off one pane's canonical state.
  *
- * Exported so the rung and the composer are handed the SAME FACTS rather than
- * two constructions that can drift: the records are the list both of them render,
- * and `unavailable` is the pane's own `canonicalTranscriptSpeaks`, so neither
- * reader keeps a second copy of the rule that decides it.
+ * Exported so the rung and the composer are handed the same facts from one
+ * builder rather than two constructions that can drift, and so `unavailable`
+ * is the pane's own `canonicalTranscriptSpeaks` rather than a second copy of
+ * the rule. The records are NOT one list in every caller: the transcript's
+ * rung is handed the cross-session filter's `shownRecords` while the
+ * composer's hint still reads the raw records, and no divergence is reachable
+ * today because the one predicate that could flip on the dropped rows
+ * (`ownerAnswered`) is decided over raw records in `chat-page` before either
+ * reader is built - the trace and the dependency live beside the rung
+ * (`canonical-transcript.tsx`, the `paneWorking` memo).
  */
 export function workingLineInputFor(pane: {
 	waiting: boolean;

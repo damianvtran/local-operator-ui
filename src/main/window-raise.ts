@@ -19,10 +19,12 @@
  * EVERY RAISE NAMES ITS TRIGGER, and reports one line through the caller's
  * logger. This file used to log nothing, which is why the operator's report —
  * "the app steals my focus whenever a chat completes" — was unanswerable on the
- * machine where it happened: five causes raise a window here, from an ordinary
- * launch to a second instance sharing the profile, a clicked banner, the viewer's
- * focus endpoint and a conversation delivered to a window, and nothing recorded
- * which one had just taken the focus. The trigger is a required part of the call
+ * machine where it happened: eight causes raise a window here, from an ordinary
+ * launch and a macOS Dock click to a second instance sharing the profile, a
+ * clicked banner, the viewer's focus endpoint, a conversation delivered to a
+ * window, the global hotkey's mini composer and a driven page's popup, and
+ * nothing recorded which one had just taken the focus. The trigger is a required
+ * part of the call
  * so a new raise cannot be added anonymously, and `never` — the path that raises
  * nothing — is deliberately silent: a headless run's whole value is that it leaves
  * no trace on the machine, its logs included. A `never` delivery that REPLACES an
@@ -69,10 +71,18 @@ export interface RaisableWindow {
  * `viewer-resume` and `viewer-focus` are separate verbs of one control endpoint
  * because they are separate requests: one opens a conversation, the other only
  * raises the window.
+ *
+ * `activate` IS THE REQUEST `initial-present` CANNOT NAME: a person clicking the
+ * Dock icon of a windowless app is not this process's own launch, and before this
+ * name existed its window presented under `initial-present` — which reads, in the
+ * one log whose job is attribution, exactly like the launch that already
+ * presented. The Dock click names itself now, on its present line and on the
+ * refusal a quitting process answers it with.
  */
 export type RaiseTrigger =
 	| "initial-present"
 	| "second-instance"
+	| "activate"
 	| "banner-click"
 	| "viewer-focus"
 	| "viewer-resume"
@@ -82,7 +92,14 @@ export type RaiseTrigger =
 	 * `presentMiniView` below, which is gated on the launch plan's `focus`
 	 * policy like every other presentation in this file.
 	 */
-	| "mini-view";
+	| "mini-view"
+	/*
+	 * A driven page's popup, whose ONLY presentation path is `presentPopupWindow`
+	 * below (docs/design/browser-oauth-popups.md 2.4): the browser host may not
+	 * touch `show*`/`focus` itself, and under the `never` plan this name is the
+	 * one that stays silent unless the visibility fallback fires.
+	 */
+	| "popup-open";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -311,6 +328,11 @@ const REFUSABLE_DELIVERY: Record<
 	// THE ONE REFUSAL. The residual above says what it rests on and what it cannot
 	// see.
 	"second-instance": "when-its-plan-is-silent",
+	// A Dock click carries no conversation and installs nothing: it only ever
+	// opens this process's own window, so there is no delivery here to refuse or
+	// to park. (The refusal a QUITTING process answers it with is not this gate's;
+	// it has a line of its own, `applied=skipped+quitting`.)
+	activate: "never",
 	// A person clicked a real banner, so refusing it and applying it must not
 	// differ — and with a window up it does not even reach this gate.
 	"banner-click": "never",
@@ -324,6 +346,10 @@ const REFUSABLE_DELIVERY: Record<
 	// gate's question (may this request REPLACE an in-use window's conversation)
 	// never arises; declared for the same totality rule as `viewer-focus`.
 	"mini-view": "never",
+	// A driven page's popup delivers nothing and can replace nothing: whether it
+	// may appear at all is `presentPopupWindow`'s own gate, and this table's
+	// question never arises. Declared for the same totality rule as `viewer-focus`.
+	"popup-open": "never",
 };
 
 /**
@@ -620,6 +646,44 @@ export function reportParksAtQuit(
 }
 
 /**
+ * A request was REFUSED because this process is quitting: a window it created now
+ * would die with the shutdown. The refusal answers from the two request sites (a
+ * second launch and a Dock click) AND from the window-CREATE path itself — a
+ * banner click, the consent toast's reopen, the viewer's recreate verbs — so one
+ * line shape covers every source, carrying the source's own `trigger`.
+ *
+ * WHY THIS IS A LINE AND NOT SILENCE. The reported shape: Cmd+Q closes the window
+ * while the process keeps tearing down — the session-cookie hold, then the
+ * owned-backend stop, seconds of it — with the single-instance lock still held.
+ * A relaunch inside that window used to be answered by the dying process with a
+ * fresh window (an undeclared relaunch resolves `focus`), which appeared over a
+ * teardown that killed it again seconds later: "the relaunched app opens onto
+ * the app still shutting down". The request is refused instead — nothing is
+ * created, nothing is raised, nothing is parked — and this line is the account of
+ * it. Without one, the log's answer to "what happened to what I asked for" would
+ * be nothing at all for a request whose losing launch was told "the app will
+ * raise its window", which is the same silence the park line exists to remove
+ * (UX round 2, U5). `applied=skipped+...` is the family the declined `inactive`
+ * raise reports in, and `quitting` names the one reason that holds for every plan
+ * at once: the process is going away, so nothing it showed could be promised to
+ * stay.
+ */
+export function reportSkippedWhileQuitting(
+	context: RaiseContext,
+	requested: WindowShow,
+): void {
+	context.report?.(
+		[
+			`trigger=${context.trigger}`,
+			`mode=${MODE_OF_SHOW[requested]}`,
+			`requested=${requested}`,
+			...requesterFields(context),
+			"applied=skipped+quitting",
+		].join(" "),
+	);
+}
+
+/**
  * What a second launch or a clicked notification banner asks for: bring this
  * window to the operator.
  *
@@ -775,6 +839,21 @@ export interface SecondLaunchTarget {
 	 * consumes whatever is parked as its initial session.
 	 */
 	openWindow?: ((request: SecondLaunchRequest) => void) | null;
+	/**
+	 * True when this process has already begun quitting and the quit has NOT been
+	 * cancelled since (see `quit-state.ts`; `index.ts` reads it per request, so a
+	 * cancelled quit answers normally again).
+	 *
+	 * WHY THE TARGET CARRIES IT. A window created or raised during teardown is a
+	 * window that dies with the shutdown — and the operator sees exactly that: the
+	 * relaunch "opens onto the app still shutting down" and is gone again a second
+	 * later, because the process that answered it was the one on its way out. The
+	 * whole request is refused instead (`reportSkippedWhileQuitting`), so the next
+	 * launch — the one that finds the process gone — is the one that starts.
+	 * `index.ts` reads its own quit state per request; the default keeps every other
+	 * caller's behaviour.
+	 */
+	quitting?: boolean;
 	report?: RaiseReport;
 }
 
@@ -792,11 +871,36 @@ export interface SecondLaunchTarget {
  * building one would leave an invisible window holding a screen nobody can reach,
  * so the conversation waits for the operator's next window instead
  * (`canCreateWindowFor`, and the queue in `index.ts`).
+ *
+ * A QUITTING PROCESS ANSWERS WITH NOTHING BUT A LINE. Every path below ends in a
+ * window the shutdown is about to take down, so the request is refused whole
+ * (`reportSkippedWhileQuitting`) rather than answered by a process that cannot
+ * keep what it shows.
  */
 export function applySecondLaunch(
 	request: SecondLaunchRequest,
 	target: SecondLaunchTarget,
 ): void {
+	/*
+	 * A PROCESS THAT IS QUITTING ANSWERS NOTHING WITH A WINDOW, whatever the
+	 * request named and whatever else the target could do with it. This is the
+	 * first check rather than a condition inside a branch: every path below ends in
+	 * a window that the shutdown is about to take down — created, raised, or
+	 * delivered into — and refusing the request whole is the only answer that is
+	 * still true a second later. The line is the account of the refusal (see
+	 * `reportSkippedWhileQuitting` for the defect it answers).
+	 */
+	if (target.quitting) {
+		reportSkippedWhileQuitting(
+			{
+				trigger: "second-instance",
+				requester: request.requester ?? undefined,
+				report: target.report,
+			},
+			request.show,
+		);
+		return;
+	}
 	if (request.session !== null) {
 		if (target.openConversation) {
 			target.openConversation(request.session, request);
@@ -854,4 +958,49 @@ export function presentMiniView(
 	window.focus();
 	applied.push("show", "focus");
 	context.report?.(raiseLine(context, show, applied));
+}
+
+/**
+ * The slice of a `BrowserWindow` a popup's presentation touches beyond a raise:
+ * the `never` plan reads visibility and hides a window that came up visible.
+ * Kept off `RaisableWindow` on purpose — no other raise has business hiding
+ * anything, so the wider slice stays on the one caller that needs it.
+ */
+export interface PresentablePopupWindow extends RaisableWindow {
+	isVisible(): boolean;
+	hide(): void;
+}
+
+/**
+ * A driven page's popup, presented — or deliberately not — under the launch
+ * plan's own gate (docs/design/browser-oauth-popups.md §2.4).
+ *
+ * WHY A SEPARATE FUNCTION rather than a `presentWindow` call from the browser
+ * host: `window-raise.ts` is the only module allowed to show a window (the
+ * source scan in `scripts/window-mode.test.mjs` enforces that, and
+ * `src/main/browser/index.ts` promises it in its own header), and the popup has
+ * one rule no other caller has — under the `never` plan the window still EXISTS
+ * (the page's flow needs it, CDP can reach it, and a headless run has nobody who
+ * was ever going to see it) but must never be seen. So `focus` and `inactive`
+ * pass straight through to `presentWindow`'s implementation, and `never` is the
+ * branch that also carries the fallback hiding a window that came up visible.
+ *
+ * A FIRED FALLBACK IS A BUG, NOT A FEATURE: `show:false` is the option that
+ * should make the window invisible, and a popup that reads visible here means it
+ * was not honoured. The line is reported because `never` is otherwise silent,
+ * and the e2e proof asserts the token never appears.
+ */
+export function presentPopupWindow(
+	window: PresentablePopupWindow,
+	show: WindowShow,
+	context: RaiseContext,
+): void {
+	if (show === "never") {
+		if (window.isVisible()) {
+			window.hide();
+			context.report?.(`${raiseLine(context, show, ["hide"])} fallback=fired`);
+		}
+		return;
+	}
+	presentWindow(window, show, context);
 }

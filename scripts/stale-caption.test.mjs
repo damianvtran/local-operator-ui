@@ -53,7 +53,25 @@ const bundle = await build({
 	// React stays EXTERNAL so the bundle shares ONE copy with this file's own
 	// imports — two copies give the component a different dispatcher than the
 	// server renderer and every render throws on an invalid hook call.
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider the renders wrap in; the hook inside the
+		 * bundle must find the client. */
+		"@tanstack/react-query",
+	],
 });
 
 const bundlePath = new URL("./_stale-caption.bundle.mjs", import.meta.url);
@@ -61,6 +79,18 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const { QueryClient, QueryClientProvider } = await import(
+	"@tanstack/react-query"
+);
+/*
+ * The transcript reads its cross-session visibility through react-query; in a
+ * server render the hooks resolve to their loading state, whose fail-closed
+ * answer is "show everything". The provider is external to the bundle so this
+ * client and the `useQuery` inside it are one copy.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 const { CanonicalTranscript, EMPTY_TRANSCRIPT } = await import(bundlePath.href);
 // Unlinked as soon as the graph is evaluated, so no build artifact survives a
 // crash mid-run and none can be committed by accident — the same rule, and the
@@ -79,21 +109,25 @@ const CAPTION = "Showing the last saved view — checking for newer messages.";
  */
 function renderPane({ stale, missing = false }) {
 	return renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
-			transcript: EMPTY_TRANSCRIPT,
-			gate: null,
-			waiting: false,
-			loadingOlder: false,
-			onLoadOlder: async () => true,
-			containerRef: { current: null },
-			isSmallView: false,
-			status: "live",
-			hydrated: true,
-			stale,
-			missing,
-			error: null,
-			onAnswer: () => {},
-		}),
+		createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			createElement(CanonicalTranscript, {
+				transcript: EMPTY_TRANSCRIPT,
+				gate: null,
+				waiting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef: { current: null },
+				isSmallView: false,
+				status: "live",
+				hydrated: true,
+				stale,
+				missing,
+				error: null,
+				onAnswer: () => {},
+			}),
+		),
 	);
 }
 

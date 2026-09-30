@@ -543,7 +543,7 @@ test("the composer and the mirror both make the calls these pins describe", () =
 	 * no behaviour change — the assertion has to pin the SEMANTICS.
 	 */
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	const flatComposer = composer.replace(/\s+/g, " ");

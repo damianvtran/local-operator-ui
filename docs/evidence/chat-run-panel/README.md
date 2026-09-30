@@ -112,6 +112,12 @@ The before halves live in `../chat-run-panel-result-before/`, which is a DECLARE
 | _All six wake rows_ | Every row in this set carries the section's closing line (`To stop a wake, ask the agent to cancel it.`) as of round 1's remediation — it is part of the section, not of one band, and it is what the last line of each frame's section now reads. |
 | [`wakes-and-plan`](wakes-and-plan/) | A plan and two armed wakes: the two sections in one scroll region, which is what most real sessions look like, and the pane's own answer to "the row shows two counts, where do they point". The MCP servers are absent from the fixture so the frame's two sections are the whole list, which is what makes the ORDER legible: the plan, then the wakes. |
 | [`wakes-floor-320`](wakes-floor-320/) | The same section at the pane's 320px floor, which is where its first line is longest and narrowest: a due label carrying a date, a zone and a cadence (the YEAR case is NOT in this band and is not blocked on anything: `dueInMinutes` is unbounded, so `500_000` prints `Feb 24 2027 10:46 AM EST` through the shipped path — the band is simply not built yet, and round 2 quantifies the risk at ~55px of headroom on this frame's longest line against the ~40px a year adds). The label YIELDS (`min-w-0 truncate`, whole text in a `title`) and the cadence does not (`shrink-0`), so the bounded figure is never cut mid-word. Measured here: the longest row (`Mar 15 7:26 AM EDT · every 6h · 3 left`) still fits one line at 320px, so the truncation rule is the safety net rather than the ordinary reading. |
+| [`monitors-only`](monitors-only/) | The **Monitors** section (the monitor design doc § 12) with one ARMED watch: `Monitors` tallied `1 monitor armed`, one row carrying the watch's next check in local time with its zone, its interval (`every 1m`), its name and its description line. The state this change exists for - a standing READ-ONLY check that between deliveries is invisible in the transcript, so the alternative was seeing nothing at all until something already changed. The row's health slot reads the due label while the watch is healthy; that is the whole vocabulary `wakes-only` has no sibling for. |
+| [`monitors-health`](monitors-health/) | The three health states on ONE list, published out of due order (`m2`, `m3`, `m1` on the wire; the rows read `m1`, `m2`, `m3`): live and waiting, mid-ladder (`3 failed` in the warning ink), and PARKED by the failure ladder - its due slot reads `disabled` and its tail is the reason the counters carry (`connection refused`), and it sorts last because it has no due slot. This section SPENDS the state ink the Wakes rows deliberately lack, because every wake row is armed by construction while a monitor has a state to distinguish. **The due SLOT yields and the STATE WORD does not**: the first capture of this frame clipped `disabl…` (both shrinkable slots split the overflow, and the reason's length decided how much of the state survived), so the row now reads `nextDueAt === null` and pins the state word with `shrink-0` while the free-text reason is what truncates - `connection refu…` here, whole on `title`. |
+| [`monitors-many`](monitors-many/) | Nine watches, one PAST `MONITOR_ROW_CAP` - the arm path's own `values.monitor.maxMonitors` default of eight: eight rows drawn, the marker `1 more monitor` in frame, and the tally `9 monitors armed` counting the WHOLE list. The marker is a STATEMENT, not a control (nothing in this pane can put a shed watch back), and the section closes with `To stop a monitor, ask the agent to cancel it.` |
+| [`monitor-long-description`](monitor-long-description/) | One watch whose description is longer than its row. The description is the only unbounded, authored string on a monitor row, so it clamps at two lines while the whole text stays on hover (`title`) and in the accessible name - the treatment `wake-long-message` gives a wake's prompt, one list over. |
+| [`monitors-and-wakes`](monitors-and-wakes/) | The two standing-fact sections in one scroll region, the wakes FIRST: the order the TUI band renders its two groups in (`wake rows first, then a monitor section`, the band's own comment) and the order both surfaces' chips follow. The pair `wakes-and-plan` is for the plan; this is for the other standing fact. |
+| [`monitors-floor-320`](monitors-floor-320/) | The health list at the pane's 320px floor, where the first line is longest - a due label with zone, an interval and a `last check` instant - the health tail is the clause that yields (`min-w-0 truncate`, whole text on `title`) rather than pushing the row wide, and the STATE WORD beside it does not yield at all (`shrink-0`) - the yield order the `monitors-health` row above records from the first capture's clipped `disabl…`. |
 | [`jobs-only`](jobs-only/) | The same section as the pane's ONLY content: no child and no plan, so `openJobs` is the sole reason the pane is not empty. Read against `panel-empty`, which is the same button over a session with nothing in flight. |
 | [`trigger-activity-dot`](trigger-activity-dot/) | The trigger's second ink: the pane is CLOSED and a child is running, so the dot is drawn in `info` rather than `danger` (`docs/composer-activity-chips.md` § 5). Its pair is `trigger-idle` (nothing to say) and its control is `panel-empty` (pane open over the same run, activity ink absent by design). The mark is `aria-hidden` and adds no clause to the accessible name: the label already says `1 subagent running`. |
 | [`roster-capped`](roster-capped/) | Nine children at the roster's cap: seven rows and the disclosure, `Show 3 more`. |
@@ -295,3 +301,86 @@ does not touch, so it is unchanged by it: the stamps visible here are the child 
 **Three frames in this set look empty to a scan that starts below their sentence, and they are not (design round 1, D4).** `reader-pending`, `reader-gone` and `reader-unaddressed` each carry their own copy — `This subagent has no transcript on disk yet.`, `This subagent's session directory is no longer on disk.`, `This subagent's row carries no session id, so there is no conversation to open from here.` — near the TOP of the body, because the reader's absence arms are `QuietLine`s in a top-anchored body rather than foot rows; everything below the sentence is ground. Measured on the committed frames: ink deviation in the band `y 120–250` is 20.1 / 21.1 / 23.7 (text present, and three DIFFERENT strings — the files hash differently) and exactly **0.00** in `y 260–860`, which is the band that scan covered. No frame was dropped: each depicts its state, and the rows above now say where the copy sits.
 
 **`reader-childless` opens a FIXTURE page on a `queued` child** (design round 1's NIT), which the wire will usually not produce together — a child that has not started normally has no transcript file yet, i.e. § 10.1's `pending` rather than a ready page. Both facts the frame exists for are true of its row (status `queued`, a populated page) and the claim is about the FOOT: a queued child gets no line even when the row carries an activity string.
+
+## Re-taken for the monitor controls (slice 4b-ui B)
+
+**The Monitors section gained its row-level cancel, and the section's stopgap footer retired.** `docs/design/monitor-tool.md`'s cancel-affordance paragraph shipped v1 cancel as the agent tool and the CLI; this change adds the desktop half — a `Cancel monitor` control revealed on hover and on focus-within (the app's row idiom), one shared confirmation, the `monitors.cancel` DELETE op behind it, and a refusal rendered in the dialog that asked. The footer sentence ("To stop a monitor, ask the agent to cancel it.") went with it rather than staying beside the control.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its base `6083a5135e`:**
+
+```
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+```
+
+**Twenty frames: four new surfaces and six re-shot states.** Added: `monitor-cancel-hover` (the control under the rig's real pointer — `:hover` is browser state a story cannot set, and the rig asserts it before the shutter), `monitor-cancel-focus` (the keyboard's `:focus-visible` ring, `focus({focusVisible:true})` the way the MCP remedy's own frame does it), `monitor-cancel-confirm` (the dialog, opened by pressing the real control), and `monitor-cancel-refused` (the dialog after the route refused — the two-press flow driven by the story, the owner-present sentence injected verbatim from the core's `monitors/arm.py`). Re-shot: the six at-rest states, because the footer's removal and the reserved action column change every one of them.
+
+**The before half is this same diff.** The six re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff rather than a supplementary directory; the four new directories have no before because the control did not exist, and their affordance-absent state is what the six re-shot frames show.
+
+**One cost the frames carry rather than hide.** The reserved action column narrows each row's first line by about 54px, so the health tail truncates one clause earlier than in the base frames (the first row of `monitors-health` reads `3 fa…` where it read `3 failed`). That is the row's established degradation — the full string stays in the element's `title` and its screen-reader twin, the pair the section's own comment records for long reasons — and the alternative (an overlay that appears only on hover) would move a pointer target while the pointer is on it, which is why the action column lives in the layout.
+
+**A still cannot carry the write path, so the PR's e2e transcript does.** The cancel was exercised end to end against a locally booted isolated daemon of core main: arm/list/cancel through the app's own `desktopEndpoint` mapping, plus the 404 already-gone, the 422 malformed handle and the 503 owner-present refusals, and the on-disk transcript and index states.
+
+## Re-taken for the monitor controls' round-1 remediation
+
+**The cancel flow's first review round moved the interaction itself (agent review F1; UX review U2-U6, U8), and four of the six cancel states plus all six at-rest states were re-shot.** What changed, in the order the findings landed:
+
+- The `Cancel monitor` control now shows **at rest** (it was hover/focus-revealed) in a 24px box (`h-6`, overriding `size="sm"`'s 28px) — U6: with the stopgap footer retired, at rest nothing signalled cancellability, and the revealed control measured 51.6x20 px, under the hit floor. Every at-rest frame of the section was re-shot for this alone, because the control is in every one of them.
+- The confirmation's confirm reads **`Stop monitor`** (U7 — `Cancel` was doing both jobs) and pends while the write is in flight: disabled + `aria-busy` + the spinner + the busy label (written `Cancelling…` here, renamed `Stopping…` under `Stop monitor` by design round 1's D3), with every close path (Escape, outside click, the corner X) refused for that window — U3, one request per press against an answering writer. The `confirm` frame was re-shot; the `refused` frame was re-shot too (same dialog, same backend sentence, new label).
+- A receipt now acknowledges itself on the row — `Cancelled`, the control disabled in place — and a dismissed refusal leaves its record — `Cancel refused` beside the live control, the whole sentence on `title` — U4/U8. These are the two NEW surfaces: `monitor-cancel-cancelled`, `monitor-cancel-refusal-record`.
+- The retry policy no longer re-sends against an ANSWER (U3/F1): it is kept for a request nothing answered, and for the one 503 the core itself calls retryable (the contended lock). That is a fact about requests, not pixels — see the test note below.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its folded tip** (warm — the first attempts hit the preview's cold compile under the day's fleet load and a 10 s theme settle; `--theme-settle-ms=120000` is the budget the committed runs used, and the frames a failed attempt had already written were re-taken by the run that ships):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+```
+
+**Twenty-four frames: two new surfaces and ten re-shot states.** Added: `monitor-cancel-cancelled` (the two-press flow against an `ok` receipt — the row's control itself, disabled, reading `Cancelled`) and `monitor-cancel-refusal-record` (the flow's three presses — control, confirm, Keep — leaving the record beside the live control). Re-shot: the four earlier cancel states (`hover`, `focus`, `confirm`, `refused`) and the six at-rest states, because the control's at-rest visibility and 24px box move all ten.
+
+**One cost the new record carries rather than hides:** while `Cancel refused` stands, the action column is ~90px wider, so the refused row's first line yields one clause earlier (the first row of `monitor-cancel-refusal-record` reads `6. …` where `monitors-health` reads `6:27 AM EDT`), with the whole sentence on the record's `title`. It is the row's established yield order and it is transient — the next attempt against that row clears the record (U8).
+
+**The write's own facts are pinned by a DOM harness, not by a still.** `scripts/monitor-cancel-dialog.test.mjs` mounts the shipped pane body in jsdom and drives the real controls: the refusal surviving the list churn and its sentence still on screen (U2), one request per press with both buttons pended while it is in flight (U3), the immediate `Cancelled` mark and its ending at the re-read (U4), the clean reopen (U5), the record + the focus return + the session reset (U8). The retry discrimination is pinned in `scripts/monitor-controls.test.mjs` (retried: no answer at all, or the core's retryable contention 503; never an answered 503 — F1/U3).
+
+**The before half is this same diff**, as in the section above: the ten re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff; the two new directories have no before because the marks did not exist.
+
+## Re-taken for the monitor controls' design round 1
+
+**The design round found the row's first line unable to survive the pane's 320px floor with the control in it (design review round 1, D1), so every state whose frame carries a monitor row was re-shot, and one new surface was added.**
+
+- **D1 (major):** the cadence and the `last check` instant were ONE `shrink-0` span whose min-content (~185px) could not shrink: once the due slot and the health tail had yielded to zero at 320, the span ran text under the action column (`Cancel` printed over `AM EDT` in `monitors-floor-320`, and rows lost their due label entirely). The line is now built from yieldable boxes with weighted shrink: the health tail gives way first (`shrink-[30]`), then `last check` (`shrink-[3]`), then the due slot; the cadence never clips (`shrink-0`); the action column itself can yield (`min-w-0 shrink-[3]`) while the control stays `shrink-0`. The pair to read: `monitors-floor-320` (plain) and the new `monitors-floor-320-refusal-record` (the worst case — the record's ~90px widens the column further).
+- **D2 (minor):** `Cancelled` — the row's only acknowledgement of a landed write — moves from `ink-disabled` (1.99:1 dark / 2.96:1 light, floor-exempt for dead controls) to `ink-dim` (5.25:1 / 6.14:1) while staying non-interactive (`monitor-cancel-cancelled`).
+- **D3 (minor):** the busy label keeps the confirm's own verb — `Stopping…` under `Stop monitor` — instead of `Cancelling…` (in no still — the busy window is between presses; pinned in `scripts/monitor-cancel-dialog.test.mjs`).
+- **D4 (nit):** the confirmation's panel is width-pinned (`w-[26rem]`) so a refusal cannot re-centre the card and move the buttons under the pointer between the first press and the retry (`monitor-cancel-confirm` vs `monitor-cancel-refused` — same card box).
+- **D5 (nit):** the control's comment block now describes the shipped control (visible at rest, `h-6`), not the retired hover-reveal `h-5` design.
+
+**Two narrowed runs against a Storybook of this tree at its captured tip** (head `c35cbe3ce9`, warm):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320,monitors-floor-320-refusal-record,monitor-cancel-hover,monitor-cancel-focus,monitor-cancel-confirm,monitor-cancel-refused,monitor-cancel-cancelled,monitor-cancel-refusal-record \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+```
+
+**Twenty-six frames: one new surface (two frames) and twelve re-shot states.** Added: `monitors-floor-320-refusal-record` (the refusal-record flow's three presses at 320 — D1's worst case). Re-shot: the six at-rest states and the six cancel states, because the first line is respaced wherever it is drawn (the cadence is its own box now) and reordered at the floor. The second (narrow) run re-took the two floor states alone after the health tail's shrink weight was deepened from `6` to `30`, which is what removes the bare `…` sliver the first cut left on the disabled row.
+
+**What the pair shows.** At 320 the due slot now survives (`6:27 AM …` where the base frame lost it entirely), `last check` truncates before it, the health tail yields first, and with the record standing the row reads `6:27 A… · every 1m` — no text under the buttons in either floor state, both themes.
+

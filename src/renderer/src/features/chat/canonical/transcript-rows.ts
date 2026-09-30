@@ -221,16 +221,26 @@ function walkTurns<T>(
  */
 export type TurnRun = {
 	/**
-	 * Stable identity: the opening user row's record id, or the first row's id
-	 * for a run whose head is cut off (which can never collapse — see
-	 * `opensWithUserRow`).
+	 * Stable identity ACROSS THE HEAD ARRIVING LATER: the closing answer's
+	 * record id when the run has one (the row the bar and the caption already
+	 * speak through), else the run's LAST row's id.
+	 *
+	 * WHY NOT THE OPENING USER ROW (the pre-fix identity): a run whose head the
+	 * fetched rows cut off keys off whatever it does have — that used to be its
+	 * first row — so the day a page landed the head, the key changed and every
+	 * consumer keyed by it (the reader's expansion on the bar, the bar's own
+	 * React key) silently started over. Rows only ever arrive ABOVE a run's
+	 * head, so its tail is the stable half and the two candidates above are the
+	 * same row in both the head-cut and the head-loaded list.
 	 */
 	key: string;
 	/**
 	 * Whether the run's opening user row is in this list. False means the
-	 * window's leading edge has walked past it: the span is PARTIAL, and the
-	 * collapse renders it as today (there is no opening row to anchor a bar to,
-	 * and a summary may only ever describe rows that are actually loaded).
+	 * window's leading edge or the fetched set has walked past it: the span is
+	 * PARTIAL. The collapse decides what that costs — a run with its closing
+	 * answer on hand still condenses from the loaded span (end-loaded
+	 * eligibility, `turn-collapse-model.ts`), stating no duration it cannot
+	 * honestly compute.
 	 */
 	opensWithUserRow: boolean;
 	/** Index of the run's first row in the list handed to `runsOf`. */
@@ -251,10 +261,7 @@ export type TurnRun = {
  */
 export function runsOf(rows: Row[]): TurnRun[] {
 	return walkTurns(rows, (row) => row.record).map((span) => ({
-		key:
-			span.openingUserIndex !== null
-				? (rows[span.openingUserIndex]?.record.id ?? "")
-				: (rows[span.openingIndex]?.record.id ?? ""),
+		key: span.closingAnswerId ?? rows[span.endIndex]?.record.id ?? "",
 		opensWithUserRow: span.openingUserIndex !== null,
 		openingIndex: span.openingIndex,
 		endIndex: span.endIndex,

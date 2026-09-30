@@ -33,6 +33,7 @@ import {
 	ListChecks,
 	type LucideIcon,
 	Monitor,
+	PictureInPicture2,
 	Plug,
 	Search,
 	Send,
@@ -94,6 +95,23 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	agent: Users,
 	send: Send,
 	peer: Inbox,
+	/*
+	 * `sessions` mirrors the TUI's `nf-fa-window_restore` (a SECOND window
+	 * opened beside this one - the noun for a PARALLEL SESSION, which is what
+	 * the sessions tool opens and manages) in this repo's own vocabulary,
+	 * never the same codepoint by force. `PictureInPicture2` is the one lucide
+	 * mark that draws two windows, one beside the other; `AppWindow` was the
+	 * alternate and it shows a single window (and already means "opens in its
+	 * own app" at `link-toolkit.tsx`'s `open-default`), while `Copy` and
+	 * `SquareStack` are the copy/stack shapes the sibling's own rationale
+	 * retired for `nf-fa-clone` - a spawned workstream is its own run, not a
+	 * copy of this one. Deliberately not `Users` (`task`/`agent` hand work to a
+	 * CHILD; a peer session is a window of its own that this session watches
+	 * rather than owns) and not `Send` (a note to a peer). The TUI counterpart
+	 * (`damianvtran/local-operator` PR #1825) renders its own pick for a design
+	 * round; a design round on these frames owns the last word here too.
+	 */
+	sessions: PictureInPicture2,
 };
 
 export function toolIcon(toolName: string): LucideIcon {

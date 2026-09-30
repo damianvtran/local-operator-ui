@@ -75,6 +75,7 @@ const bundle = await build({
 				subagentChipLabel,
 				jobChipLabel,
 				wakeChipLabel,
+				monitorsChipLabel,
 			} from "./src/renderer/src/features/chat/components/composer-status-row";
 			import {
 				activityTally,
@@ -84,8 +85,10 @@ const bundle = await build({
 				childClause,
 				jobClause,
 				wakeClause,
+				monitorClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
 			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
+			import { RunDetailMonitors } from "./src/renderer/src/features/chat/components/run-details/run-detail-monitors";
 			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
@@ -98,9 +101,21 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
+			export const renderMonitors = (props) =>
+				renderToStaticMarkup(
+					/*
+					 * The pane body's cancel interaction, stubbed: these cases are about
+					 * the list's markup, and the interaction itself is driven against the
+					 * real panel by script/monitor-cancel-dialog.test.mjs.
+					 */
+					createElement(RunDetailMonitors, {
+						cancel: { request: () => undefined, stateFor: () => undefined },
+						...props,
+					}),
+				);
 			export { GoalPicker };
 			export { toasts };
-			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -116,6 +131,16 @@ const bundle = await build({
 	// React stays external so the bundle shares ONE copy with this file's own
 	// imports. Two copies give the component a different React than the server
 	// renderer uses, and every render throws on an invalid hook call.
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
 	external: [
 		"react",
 		"react-dom",
@@ -159,6 +184,7 @@ const {
 	ComposerStatusRow,
 	shouldRestoreComposerFocus,
 	renderWakes,
+	renderMonitors,
 	GoalPicker,
 	goalDisclosureLabel,
 	goalClearLabel,
@@ -183,6 +209,7 @@ const {
 	subagentChipLabel,
 	jobChipLabel,
 	wakeChipLabel,
+	monitorsChipLabel,
 	deriveRunDetails,
 	activityTally,
 	todoClause,
@@ -190,6 +217,7 @@ const {
 	childClause,
 	jobClause,
 	wakeClause,
+	monitorClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
 } = await import(bundlePath.href);
@@ -289,6 +317,36 @@ const HOUR_MS = 3_600_000;
 const wakesOf = (wakes) =>
 	deriveRunDetails({ jobs: [], todos: [], wakes, nowMs: WAKE_NOW_MS });
 
+/**
+ * One ARMED monitor in `MonitorState`'s own shape: the spec's identity joined
+ * with the health counters, which is what the scheduler's `index_rows()`
+ * publishes. `next_due_at` and `last_check_at` are epoch MILLISECONDS, the trap
+ * the contract names beside the epoch-SECONDS job rows, and `null` is a real
+ * due slot — a monitor the failure ladder parked has none.
+ */
+const wireMonitor = (id, name, dueInMs, extra = {}) => ({
+	id,
+	name,
+	tool: "bash",
+	arguments: {},
+	every_ms: 60_000,
+	until_at: null,
+	description: "",
+	created_at: WAKE_NOW_MS - 60_000,
+	next_due_at: dueInMs === null ? null : WAKE_NOW_MS + dueInMs,
+	last_check_at: WAKE_NOW_MS - 60_000,
+	checks: 1,
+	deliveries: 0,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	...extra,
+});
+
+/** The model over a monitor list, so the chip's gate can be driven. */
+const monitorsOf = (rows) =>
+	deriveRunDetails({ jobs: [], todos: [], monitors: rows, nowMs: WAKE_NOW_MS });
+
 const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance, then write reports/unpaid-march.md and publish the summary";
 
@@ -320,7 +378,8 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 const ROW = "src/renderer/src/features/chat/components/composer-status-row.tsx";
-const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const COMPOSER =
+	"src/renderer/src/shared/components/composer/message-input.tsx";
 // Named for the band's own file in the round-1 findings; `COMPOSER` is the
 // historical name for the same file in this suite's earlier assertions.
 const MESSAGE_INPUT = COMPOSER;
@@ -330,6 +389,10 @@ const SCROLL_BUTTON =
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
+// The store, where the run pane's floor is DECLARED since the #677 review
+// (D2): the slot's resolver holds the shared width to it, and the resolver
+// cannot import the component.
+const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
 /*
  * The right-pane SLOT, which is where the pane's box - and so its floor - is
  * declared since the `PaneSlot` refactor (design round 1, D1). Read
@@ -930,9 +993,9 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	);
 });
 
-test("each chip files its own section, and the store carries all four", () => {
+test("each chip files its own section, and the store carries all five", () => {
 	const store = useUiPreferencesStore;
-	for (const section of ["subagents", "jobs", "wakes"]) {
+	for (const section of ["subagents", "jobs", "wakes", "monitors"]) {
 		store.setState({
 			runPanelReveal: null,
 			isRunPanelOpen: false,
@@ -1446,12 +1509,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
-	 * constant applied under that name. The four count chips ask inside the group
+	 * constant applied under that name. The count chips ask inside the group
 	 * (below), where "first" is a question about the group's own leading edge.
 	 */
 	assert.match(source, /groupIsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /loopFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /wakesFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /monitorsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /subagentsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /jobsFirst \? FIRST_CHIP : undefined/);
 	/*
@@ -1504,13 +1568,18 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * The first-chip chain, which had to grow an item: the loop chip is the second
 	 * ITEM on the row (its own chip plus its dismiss, one wrapper), so the count group
-	 * is first only when neither the goal nor the loop rendered. Six chips, five
-	 * items, and the group's own leading chip is still decided inside the group.
+	 * is first only when neither the goal nor the loop rendered, and the group's own
+	 * leading chip is still decided inside the group — plan, wakes, watches,
+	 * subagents and jobs, in that order.
 	 */
 	assert.match(source, /const loopFirst = !showGoal;/);
 	assert.match(source, /const groupIsFirst = !showGoal && !showLoop;/);
 	assert.match(source, /const wakesFirst = groupIsFirst && !showPlan;/);
-	assert.match(source, /const subagentsFirst = wakesFirst && !showWakes;/);
+	assert.match(source, /const monitorsFirst = wakesFirst && !showWakes;/);
+	assert.match(
+		source,
+		/const subagentsFirst = monitorsFirst && !showMonitors;/,
+	);
 	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
@@ -1546,22 +1615,50 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 */
 	tokens(
 		/*
-		 * `CircleCheck` is the fifth glyph and it is the settled chip's own mark
-		 * (design review round 1, D6): the erase keeps the shipped `X`, the `Done` control
-		 * keeps `Check`, and the control that only puts a settled chip away wears the mark
-		 * the pane's settled row wears rather than the one that erases.
+		 * `CircleCheck` is the settled chip's own mark (design review round 1, D6): the
+		 * erase keeps the shipped `X`, the `Done` control keeps `Check`, and the control
+		 * that only puts a settled chip away wears the mark the pane's settled row wears
+		 * rather than the one that erases. `ScanEye` is the monitor chip's, one count
+		 * over, and it is refused `Eye` for the providers page's reveal control and
+		 * `Monitor` for the console tool's glyph — one glyph in this app means one thing.
 		 */
-		"import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from",
+		'from "lucide-react"',
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
 	/*
+	 * The marks ride ONE import from `lucide-react`, which is the claim the exact
+	 * source string used to carry until the formatter wrapped the block at the print
+	 * width: read the import's own text rather than one spelling of it, so a wrap (or
+	 * a later glyph) cannot turn this into a failing assertion about formatting.
+	 */
+	{
+		const end = source.indexOf('from "lucide-react"');
+		const start = source.lastIndexOf("import {", end);
+		const lucideImport = source.slice(start, end);
+		for (const glyph of [
+			"AlarmClock",
+			"Check",
+			"CircleCheck",
+			"Info",
+			"Repeat",
+			"ScanEye",
+			"X",
+		]) {
+			assert.ok(
+				lucideImport.includes(glyph),
+				`the row's one lucide import carries ${glyph}`,
+			);
+		}
+	}
+	/*
 	 * ...and the wake chip leads with `AlarmClock` in the same call, from the same
 	 * import: a mark on the third count chip that is a WAKE's rather than the plan's,
 	 * because `Info` means "this opens the run pane" on one chip and one glyph in this
-	 * row means one thing.
+	 * row means one thing. The monitor chip leads with `ScanEye` under that same rule.
 	 */
 	tokens("<AlarmClock", "size-3.5 shrink-0");
+	tokens("<ScanEye", "size-3.5 shrink-0");
 	/*
 	 * The two ACTIVITY chips lead with the roster's state mark instead, taken from
 	 * the component that already owns the nine states' glyphs, inks and motion —
@@ -2004,6 +2101,7 @@ test("the escape ladder accepts the chip, which is a third way in", () => {
 
 test("the pane's floor is its contract minimum, not the user's preference", () => {
 	const content = code(CONTENT);
+	const prefs = code(PREFS);
 	/*
 	 * A preference pinned as a floor is not a floor: the pane asked for 420 and
 	 * refused to render narrower, so at any window the row could not host 420 the
@@ -2037,7 +2135,15 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * for an omission is exactly the shape the D1 defect came back in, and the
 	 * measurement behind the default is in `pane-slot.tsx`'s class note.
 	 */
-	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
+	/*
+	 * THE DECLARATION MOVED, THE USES DID NOT: the #677 review (D2) gave the
+	 * number a second reader - the slot's resolver, which holds the shared
+	 * width up to this pane's floor - and the resolver cannot import the
+	 * component, so the store is the declaration's home. Everything asserted
+	 * against `chat-content.tsx` below stays: the divider's range and
+	 * `runPanelResizable` still consume the imported constant.
+	 */
+	assert.match(prefs, /export const RUN_PANEL_MIN_PX = 320;/);
 	assert.match(
 		content,
 		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
@@ -4584,4 +4690,393 @@ test("the chip's done tag carries its own size step", () => {
 		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
 		"the tag keeps the stacked band's own edge: at exactly 240 the shared step has not fired",
 	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The monitor chip and the Monitors section                          */
+/* (the monitor design doc § 12)                                      */
+/* ---------------------------------------------------------------- */
+
+/** The section's own file, and the panel that owns its place in the list. */
+const MONITORS_SECTION =
+	"src/renderer/src/features/chat/components/run-details/run-detail-monitors.tsx";
+
+test("a session with no monitors renders no monitor chip at all", () => {
+	/*
+	 * The gate, the wake chip's rule one count over: `frontend.monitors` is
+	 * empty on every session that has never armed one, so `0 monitors armed`
+	 * would be a line of chrome above nearly every composer in the app. The
+	 * assertion is over the shipped component's markup.
+	 */
+	const none = renderRow({
+		frontend: frontend("Ship it"),
+		runDetails: detailsWith([], ["pending"]),
+	});
+	assert.doesNotMatch(none, /data-status-monitors/);
+	/* ...and the same session's other chips still render, so the absence is this
+	   chip's and not the whole row's. */
+	assert.match(none, /data-status-plan/);
+	assert.equal(
+		renderRow({
+			frontend: frontend(""),
+			runDetails: deriveRunDetails({ jobs: [], todos: [] }),
+		}),
+		"",
+		"and no goal, no plan and no monitors is still the nothing state",
+	);
+});
+
+test("the monitor chip states the model's clause, off the model's own list", () => {
+	const one = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.match(one, /data-status-monitors/);
+	assert.match(one, /1 monitor armed/, "the singular, spelled by the model");
+	assert.doesNotMatch(one, /1 monitors armed/);
+
+	const three = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([
+			wireMonitor("m1", "loom-pr-1710", 60_000),
+			wireMonitor("m2", "ingest-queue", 2 * 60_000, {
+				consecutive_failures: 3,
+			}),
+			wireMonitor("m3", "staging-pings", null, {
+				disabled: true,
+				disabled_reason: "connection refused",
+			}),
+		]),
+	});
+	assert.match(three, /3 monitors armed/);
+	/*
+	 * The count is the MODEL's, so the clause the chip prints and the clause the
+	 * section's tally prints are one string. Asserted as an identity rather than as
+	 * two literals that happen to agree today.
+	 */
+	assert.equal(monitorClause(1), "1 monitor armed");
+	assert.equal(monitorClause(3), "3 monitors armed");
+	assert.ok(one.includes(monitorClause(1)));
+	/*
+	 * The COUNT is the whole chip: an unhealthy watch changes the pane's ROWS and
+	 * not this row — the health ink is the section's, and a chip that colour-shifted
+	 * with a monitor's health would put a state on the composer that no press can
+	 * act on. Read off the chip's own slice of the markup rather than the whole row,
+	 * so a warning ink anywhere else on the row cannot make this pass.
+	 */
+	const chipStart = three.indexOf("data-status-monitors");
+	const chip = three.slice(chipStart, three.indexOf("</button>", chipStart));
+	assert.equal(
+		chip.includes("text-warning"),
+		false,
+		"the health ink stays on the pane's rows",
+	);
+	/*
+	 * LEADING with the watch's own mark, and it is `ScanEye` rather than the wake
+	 * chip's `AlarmClock` or the plan chip's `Info`: one glyph in this row means one
+	 * thing. The assertion is over the rendered class, which is what the glyph
+	 * arrives with.
+	 */
+	assert.match(one, /lucide-scan-eye/);
+	assert.doesNotMatch(one, /lucide-alarm-clock/, "AlarmClock stays the wake's");
+	assert.doesNotMatch(one, /lucide-info/, "Info stays the plan chip's mark");
+});
+
+test("the monitor chip names the section its press opens, and never toggles", () => {
+	const markup = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.match(
+		markup,
+		/aria-label="Open the monitors in run details — 1 monitor armed"/,
+	);
+	assert.equal(
+		monitorsChipLabel(1),
+		"Open the monitors in run details — 1 monitor armed",
+		"ONE derived string, so the name and the tooltip cannot disagree",
+	);
+	/* It REVEALS, never toggles — the plan chip's own recorded reason: a control
+	   that closed the pane when pressed while looking for the watches is one
+	   control with two meanings. */
+	assert.doesNotMatch(markup, /data-status-monitors[^>]*aria-pressed/);
+});
+
+test("the standing facts order the wakes before the watches", () => {
+	/*
+	 * The pair's order is the TUI band's own ("wake rows first, then a monitor
+	 * section"), read off the rendered row: the wake chip's element comes before the
+	 * monitor chip's in paint order, both on one line ahead of the activity chips.
+	 */
+	const both = renderRow({
+		frontend: frontend(""),
+		runDetails: deriveRunDetails({
+			jobs: [],
+			todos: [],
+			wakes: [wireWake("w1", "Check the deploy", HOUR_MS)],
+			monitors: [wireMonitor("m1", "loom-pr-1710", 60_000)],
+			nowMs: WAKE_NOW_MS,
+		}),
+	});
+	assert.ok(both.includes("data-status-wakes"));
+	assert.ok(both.includes("data-status-monitors"));
+	assert.ok(
+		both.indexOf("data-status-wakes") < both.indexOf("data-status-monitors"),
+		"the wakes lead the watches",
+	);
+	/*
+	 * ...and with no goal, no plan and no wakes, the watch chip takes the row's
+	 * content edge: it is the count group's first item and alone on it.
+	 */
+	const only = renderRow({
+		frontend: frontend(""),
+		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.equal((only.match(/-ml-1\.5/g) ?? []).length, 1);
+	assert.ok(
+		only.indexOf("data-status-monitors") < only.indexOf("-ml-1.5"),
+		"the monitor chip renders before its own padding cancellation",
+	);
+});
+
+test("the section renders one row per armed monitor, soonest first", () => {
+	const late = wireMonitor("m2", "ingest-queue", 3 * 60_000, {
+		consecutive_failures: 3,
+	});
+	const soon = wireMonitor("m1", "loom-pr-1710", 60_000);
+	const parked = wireMonitor("m3", "staging-pings", null, {
+		disabled: true,
+		disabled_reason: "connection refused",
+	});
+	/*
+	 * The wire order is the backend's; the rows are ordered by the due instant, with
+	 * the disabled row LAST because it has no due slot at all. Handed them reversed,
+	 * so the assertion is about the sort and not about the input.
+	 */
+	const markup = renderMonitors({
+		details: monitorsOf([parked, late, soon]),
+	});
+	assert.match(markup, />Monitors</);
+	assert.ok(
+		markup.indexOf('data-run-panel-row="m1"') <
+			markup.indexOf('data-run-panel-row="m2"'),
+		"the soonest check leads, whatever order the wire published",
+	);
+	assert.ok(
+		markup.indexOf('data-run-panel-row="m2"') <
+			markup.indexOf('data-run-panel-row="m3"'),
+		"a watch with no due slot trails",
+	);
+	/*
+	 * What a reader needs to decide whether the watch is what they intended: what
+	 * it watches, how often, when it last looked, and how it is doing.
+	 */
+	assert.match(markup, /loom-pr-1710/);
+	assert.match(markup, /every 1m/);
+	assert.match(markup, /last check /);
+	assert.match(markup, /· 3 failed/, "the mid-ladder health tail");
+	assert.match(markup, /disabled/, "the parked watch's slot states it");
+	assert.match(markup, /connection refused/, "and its tail is the reason");
+});
+
+test("the section's tally is the chip's clause, and its cap is a statement", () => {
+	const one = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	assert.ok(
+		one.includes(monitorClause(1)),
+		"the heading's trailing tally is the same string the chip carries",
+	);
+
+	/*
+	 * Nine is one PAST `MONITOR_ROW_CAP` (8, the arm path's own `maxMonitors`
+	 * default), so the section truncates and its marker is the footer for a payload
+	 * past the declared bound. The marker is a STATEMENT rather than a control —
+	 * nothing in this pane can put a shed monitor back — so it wears the shared
+	 * `Disclosure` primitive's DISABLED branch, and the list it just drew carries
+	 * the control that acts on it: the revealed `Cancel monitor` on every drawn
+	 * row. That control is what the stopgap's "ask the agent to cancel it" sentence
+	 * retired for (the monitors controls pass) — a sentence pointing at the agent,
+	 * beside a button that cancels, would send a reader around it; the Wakes
+	 * section keeps its own sentence because wakes kept theirs. Both facts are
+	 * pinned below, and the sentence is pinned ABSENT so the pair cannot drift
+	 * back.
+	 */
+	const over = renderMonitors({
+		details: monitorsOf(
+			Array.from({ length: 9 }, (_, index) =>
+				wireMonitor(
+					`n${index + 1}`,
+					`watch ${index + 1}`,
+					(index + 1) * 60_000,
+				),
+			),
+		),
+	});
+	// The marker's noun inflects: one hidden row reads `1 more monitor`, and the
+	// plural is pinned absent so the pair cannot drift back.
+	assert.match(over, /1 more monitor/);
+	assert.doesNotMatch(over, /1 more monitors/);
+	assert.ok(over.includes('data-run-panel-row="n8"'));
+	assert.ok(
+		!over.includes('data-run-panel-row="n9"'),
+		"the cap keeps the rows that check first",
+	);
+	assert.match(over, /9 monitors armed/, "the tally counts the WHOLE list");
+	assert.match(
+		over,
+		/data-monitor-cancel="n1"/,
+		"the list carries the control that acts on it",
+	);
+	assert.doesNotMatch(
+		over,
+		/ask the agent to cancel it/i,
+		"the stopgap's sentence is retired with the control it stood in for",
+	);
+});
+
+test("the row's cancel control shows at rest and clears the hit floor", () => {
+	/*
+	 * U6 (UX review round 1): with the footer sentence retired, nothing at rest
+	 * said a monitor could be cancelled, and the hover-revealed control measured
+	 * 51.6x20 px - under the 24px hit floor. The control is in the open at rest
+	 * now and its box is `h-6`; both are asserted on the shipped markup, because
+	 * jsdom has no layout engine to measure a hit area with.
+	 */
+	const markup = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	const control = markup.match(
+		/<button[^>]*data-monitor-cancel="m1"[^>]*>/,
+	)?.[0];
+	assert.ok(control, "the row carries the control");
+	assert.doesNotMatch(control, /opacity-0/, "no hover reveal any more");
+	assert.doesNotMatch(
+		control,
+		/group-hover\/monitor/,
+		"and no group-reveal classes",
+	);
+	assert.match(
+		control,
+		/h-6/,
+		"the 24px hit floor, not the reveal's 20px band",
+	);
+	assert.doesNotMatch(control, /disabled=""/, "a live row's control acts");
+});
+
+test("the row's cancel state renders in place: Cancelled on the control, refused beside it", () => {
+	/*
+	 * U4/U8's visible half, pinned at the markup level: the receipt's mark is
+	 * the control ITSELF - disabled, reading `Cancelled` - so the one element
+	 * the dialog restores focus to on close stays alive, while a refused
+	 * attempt's record is a quiet note BESIDE the live control with the whole
+	 * sentence on `title`.
+	 */
+	const cancelled = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "cancelled" }),
+		},
+	});
+	assert.match(cancelled, /data-monitor-cancel-state="cancelled"/);
+	assert.match(cancelled, />Cancelled</, "the control's own label states it");
+	assert.match(
+		cancelled,
+		/<button[^>]*disabled=""[^>]*>/,
+		"and the control does not act any more",
+	);
+
+	const refused = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "refused", detail: "Nothing was written." }),
+		},
+	});
+	assert.match(refused, /data-monitor-cancel-state="refused"/);
+	assert.match(refused, />Cancel refused</);
+	assert.match(
+		refused,
+		/title="Nothing was written\."/,
+		"the whole sentence rides the title",
+	);
+	/* The control stays live for the next attempt - clearing the record is it. */
+	assert.match(refused, /data-monitor-cancel="m1"/);
+});
+
+test("monitors are absent rather than empty: no section without armed monitors", () => {
+	/*
+	 * A source pin, and the only instrument that can see it: the panel decides
+	 * whether the section exists at all, and an empty section is what a `>= 0` gate
+	 * would ship — a `Monitors` heading with nothing under it on every session in the
+	 * app. The rule is the panel's for every section.
+	 */
+	const panel = code(SECTION_LIST);
+	assert.match(panel, /if \(details\.monitors\.length > 0\) \{/);
+	assert.match(panel, /<RunDetailMonitors/);
+	/*
+	 * ...and the section is in the panel's fixed order: after the wakes and before
+	 * the MCP servers, which `docs/run-sidebar.md` § 7.2 fixes as LAST.
+	 */
+	assert.ok(
+		panel.indexOf('key: "wakes"') < panel.indexOf('key: "monitors"'),
+		"the monitor section comes after the wakes",
+	);
+	assert.ok(
+		panel.indexOf('key: "monitors"') <
+			panel.indexOf("if (mcpServers.length > 0)"),
+		"the MCP section is still last",
+	);
+});
+
+test("the monitor chip, the pane and the page are ONE derivation", () => {
+	/*
+	 * The chip counts `runDetails.monitors`, the section renders the same list,
+	 * and the page reads the wire ONCE — so a monitor armed in the app cannot be a
+	 * chip on one surface and not a row in the other. Source pins, because what is
+	 * being asserted is that there is no second read of `frontend.monitors`
+	 * anywhere.
+	 */
+	const row = code(ROW);
+	assert.match(row, /const monitors = runDetails\?\.monitors \?\? \[\];/);
+	assert.match(row, /const showMonitors = monitors\.length > 0;/);
+	assert.match(row, /\{monitorClause\(monitors\.length\)\}/);
+
+	const page = code(CHAT_PAGE);
+	assert.match(page, /monitors: canonical\.frontend\.monitors,/);
+	assert.equal(
+		(page.match(/canonical\.frontend\.monitors/g) ?? []).length,
+		1,
+		"one read of the wire, threaded into the one derivation",
+	);
+
+	/*
+	 * And the pane threads a ref for it, in the `Record` whose whole point is that a
+	 * new `RunPanelSection` member is a TYPE ERROR rather than a silently
+	 * mis-scrolled pane (see `run-panel.tsx`).
+	 */
+	const panelSource = code(PANEL);
+	assert.match(
+		panelSource,
+		/const monitorsSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(panelSource, /monitors: monitorsSectionRef,/);
+	assert.match(panelSource, /monitorsSectionRef={monitorsSectionRef}/);
+});
+
+test("nothing about the monitors ticks: no clock and no relative time", () => {
+	/*
+	 * The rule the wakes section states, and WHY the monitor rows' `last check` is
+	 * an absolute local instant rather than the CLI's relative age: a pane does not
+	 * tick, and a relative label would silently age with nothing on screen to say so.
+	 */
+	const source = code(MONITORS_SECTION);
+	assert.doesNotMatch(
+		source,
+		/useEffect\(|setInterval|requestAnimationFrame|Date\.now\(\)/,
+	);
+	assert.doesNotMatch(source, /\bminutes? ago\b|in \d+m\b/);
+	/* ...and the panel hands it the untimed model, beside the wakes. */
+	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
 });

@@ -14,6 +14,10 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
+	type MessageInputHandle,
+	composerHoldsFocusUntouched,
+} from "@shared/components/composer/message-input";
+import {
 	hasPendingSend,
 	pendingSendForView,
 	retainsPendingSend,
@@ -133,13 +137,10 @@ import type { HeaderIdentityData } from "./chat-header-identity";
 import { headerIdentityControlsShown } from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
-	type MessageInputHandle,
-	composerHoldsFocusUntouched,
-} from "./message-input";
-import {
 	deriveRunDetails,
 	mcpErrorTexts,
 	useMcpRemedy,
+	useMonitorControls,
 	useRunPanelMcpServers,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
@@ -770,6 +771,14 @@ function SessionPanel({
 						 * second source of truth for a count the user can see twice on one screen.
 						 */
 						wakes: canonical.frontend.wakes,
+						/*
+						 * The armed monitors ride the same derivation, which is what puts the
+						 * composer's monitor chip, the pane's Monitors section and the section's
+						 * trailing tally on ONE list — the wake wiring's own argument, one count
+						 * over: a second read of the wire here would be a second source of truth
+						 * for a count the user can see twice on one screen.
+						 */
+						monitors: canonical.frontend.monitors,
 					})
 				: null,
 		[sessionId, canonical.frontend],
@@ -818,6 +827,13 @@ function SessionPanel({
 	 * read. The section receives them as props and stays presentational.
 	 */
 	const mcpRemedy = useMcpRemedy({ sessionId });
+	/*
+	 * The pane's monitor cancel, taken HERE beside the MCP remedies for their
+	 * reason: this component owns the session identity, and the Monitors
+	 * section's confirmation and refusal stay presentational props. The hook owns
+	 * the retry policy and the canonical re-read (`use-monitor-controls.ts`).
+	 */
+	const monitorControls = useMonitorControls({ sessionId });
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
@@ -3616,6 +3632,7 @@ function SessionPanel({
 					mcpServers={mcpServers}
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
+					monitorControls={monitorControls}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}
 					mentionsUnsupported={mentionsUnsupported}

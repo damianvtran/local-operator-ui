@@ -125,6 +125,34 @@ export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
 export const CHECKPOINT_WARM_MAX_IDS = 16;
 
 /**
+ * Longest in-thread find query the `sessions.find` op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and it matches `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user
+ * typed": the overlay's input carries `maxLength` at this number, so a paste
+ * cannot exceed it either, and the schema refuses an over-long query BY NAME
+ * rather than projecting it into every doc comparison of the session's index.
+ */
+export const THREAD_FIND_MAX_CHARS = 256;
+
+/**
+ * How many in-thread hits one find may return.
+ *
+ * The backend's own route default (`limit: int = Query(default=100, ge=1,
+ * le=200)`), sent explicitly by the client so the request the app makes does
+ * not depend on a route default that could move: find is a navigation surface,
+ * not an export, and the panel renders a screenful at a time.
+ */
+export const THREAD_FIND_DEFAULT_LIMIT = 100;
+
+/**
+ * The route's ceiling, mirrored so a client cannot compute its own refusal:
+ * `sessions.find` refuses `limit > 200` here rather than letting the backend's
+ * generic "invalid fields" 422 answer a request this app built itself.
+ */
+export const THREAD_FIND_MAX_LIMIT = 200;
+
+/**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
  *
  * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
@@ -335,6 +363,17 @@ const wakeMessage = z.string().min(1).max(WAKE_MESSAGE_MAX_CHARS);
  * backend minted", and that is what is checked.
  */
 const wakeId = z.string().min(1).max(64);
+
+/**
+ * A monitor's per-session handle, `m1`..`m8` on the wire (`^m\d{1,4}$`).
+ *
+ * Lenient for the wakeId's own reason, and it matters more here: the run pane
+ * renders the handle the SESSION minted (`frontend.monitors[].id`), so a pattern
+ * a drawn row could fail would be a control that is drawn and cannot be pressed.
+ * The route declares `^m\d{1,4}$` as its path pattern and refuses a malformed
+ * handle with a 422 before any handler runs, which is where the shape belongs.
+ */
+const monitorId = z.string().min(1).max(64);
 
 const scheduleWrite = z
 	.object({
@@ -1041,8 +1080,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.create"),
 			requestId,
-			cwd: z.string().min(1).max(4096),
+			/*
+			 * OPTIONAL ONLY FOR A `purpose` CREATE, and the pair is enforced below by
+			 * the union's own `superRefine` rather than by two union members: a
+			 * `discriminatedUnion` accepts one member per `op` value, and a `.refine`
+			 * on a member would make it a `ZodEffects` the union refuses (the same
+			 * constraint `agent.publish`'s pairing rule states).
+			 *
+			 * WHY A CONFIGURATION RUN OMITS IT AT ALL. `cwd` exists so a conversation
+			 * has a folder to work in, and this app has always refused an empty one
+			 * precisely because it would resolve to "a directory the user never named".
+			 * A configuration run edits this device's registries and holds no file
+			 * tools at all, so its cwd is not authority — and the renderer cannot name
+			 * one honestly: it would have to invent a path it cannot verify exists.
+			 * The backend resolves it (to the config directory) when `purpose` is set.
+			 */
+			cwd: z.string().min(1).max(4096).optional(),
 			target: target.optional(),
+			/*
+			 * WHAT KIND OF SESSION THIS IS, when it is not a conversation the operator
+			 * asked for: `agents-config` starts a supervised configuration run (the
+			 * Agents page's composer), which the backend stamps as a hidden origin and
+			 * admits through the desktop door for watch/events/messages/interrupt
+			 * without ever listing it as one of the operator's conversations.
+			 *
+			 * A LITERAL, so a typo is a compile error on this side and a 422 on a
+			 * backend that does not know the value. It is capability-gated before it is
+			 * ever sent (`agents_config`), because a backend older than this field
+			 * validates the create body with `extra="forbid"` and would report a
+			 * malformed request for a request the app deliberately made.
+			 */
+			purpose: z.literal("agents-config").optional(),
 			/*
 			 * OMITTED when the user never picked anything, so the body is the one
 			 * this op sent before the draft's chips could open: making them
@@ -1202,6 +1270,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			ids: z.array(id).max(CHECKPOINT_WARM_MAX_IDS).optional(),
 			limit: z.number().int().min(1).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+		})
+		.strict(),
+	/*
+	 * In-thread find (D9): messages of ONE conversation matching `q`, best
+	 * first, served from the per-session transcript index.
+	 *
+	 * A READ like `history` and `checkpoints` beside it. The answer's `state` is
+	 * the checkpoint manifest's own ladder: a cold or stale index answers
+	 * `building` inside the first-paint budget (with hits ranked from the
+	 * previous scan marked `partial`) while the background refresh runs, so the
+	 * overlay's first paint is immediate; `unsupported` is a peer conversation
+	 * whose journal is not on this device; `error` is a failed refresh inside
+	 * its cooldown. The overlay renders both tiers (`exact`/`soft`) and treats
+	 * `ranges` as snippet-relative — empty on a soft hit, which has no literal
+	 * occurrence of the query by construction.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.find"),
+			sessionId,
+			// `.min(1)`: an empty query is not a search. The overlay's client never
+			// sends one — it answers an empty query locally, without a request — so
+			// refusing it by name keeps the vocabulary closed rather than paying a
+			// round trip for an answer the box already knows.
+			q: z.string().min(1).max(THREAD_FIND_MAX_CHARS),
+			limit: z.number().int().min(1).max(THREAD_FIND_MAX_LIMIT).optional(),
 		})
 		.strict(),
 	/*
@@ -2011,6 +2105,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
+	/*
+	 * The monitor surface's one write that has a UI: cancelling a standing watch
+	 * (`DELETE /v1/desktop/monitors/{session_id}/{monitor_id}`). The sibling
+	 * routes - the machine-wide listing and the arm - are deliberately not
+	 * mirrored yet: the pane and the composer's chip read the SESSION's own
+	 * `frontend.monitors` field (the design's §12 row states the desktop contract
+	 * as "the `monitors` field + command routes"), so a listing op would have no
+	 * reader, and the arm op waits for the form that will use it.
+	 */
+	z
+		.object({
+			op: z.literal("monitors.cancel"),
+			sessionId,
+			monitorId,
+		})
+		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
@@ -2508,6 +2618,55 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * A CONVERSATION NEEDS A FOLDER; A CONFIGURATION RUN DOES NOT.
+		 *
+		 * The rule lives here rather than on the member because the two fields are
+		 * one decision (`cwd` is required UNLESS `purpose` names a run), and this is
+		 * the same place the publication pair is checked for the same reason: a
+		 * request that could reach the wire half-specified would be answered with a
+		 * 422 the app composed itself. `cwd` is checked by presence rather than by
+		 * truthiness because an empty string is already refused by the field's own
+		 * `min(1)`.
+		 */
+		if (request.op === "sessions.create" && request.purpose === undefined) {
+			if (request.cwd === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"A conversation needs a working directory: only a configuration run (`purpose`) may omit `cwd`.",
+					path: ["cwd"],
+				});
+			}
+			return;
+		}
+		if (request.op === "sessions.create" && request.purpose !== undefined) {
+			/*
+			 * A RUN EDITS THIS DEVICE'S REGISTRIES, and this op has no `peer` field to
+			 * refuse: the create schema cannot express a peer session at all, so
+			 * "local only" is a property of the wire rather than a rule to check here.
+			 * Stated so the next reader does not add a check that can never fire.
+			 */
+			/*
+			 * AND IT CARRIES NONE OF A CONVERSATION'S OWN FIELDS (agent review round
+			 * 1, n3). The backend resolves a run's cwd, model and target itself and
+			 * refuses a body that also states them
+			 * (`agents_config_client_fields`), so a caller that sent both would be
+			 * refused on the wire for a request this schema had let through — the
+			 * refusal the app composed itself, one layer later than it could have
+			 * been. `draftId` is in the list for the same reason: it names a pane's
+			 * conversation draft, and a run has no pane.
+			 */
+			for (const field of ["cwd", "target", "model", "draftId"] as const) {
+				if (request[field] === undefined) continue;
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `A configuration run resolves its own \`${field}\`: send \`purpose\` alone.`,
+					path: [field],
+				});
+			}
+			return;
+		}
 		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
 			return;
 		}
@@ -2903,6 +3062,29 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
+ * The outcome of cancelling (or arming) one monitor, as the route's
+ * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
+ *
+ * Shared by both writes on the wire; this client only sends the cancel today,
+ * so the fields a cancel answers are the load-bearing ones - `monitor_id` names
+ * the row that changed, `remaining` is what the conversation holds after it
+ * (0 removes the index entry, which is also what releases the cleanup reap
+ * guard), and `next_due_at` is always null after a cancel. A refusal is not a
+ * value here: it travels as the error's `detail.message`.
+ */
+export type DesktopMonitorWriteReceipt = {
+	session_id: string;
+	monitor_id: string;
+	name: string;
+	next_due_at: number | null;
+	remaining: number;
+	already_armed: boolean;
+	reactivated: boolean;
+	receipt: string;
+	index_written: boolean;
+};
+
+/**
  * What a checkpoint MARKS: the reader's own message, or a finished turn.
  */
 export type CheckpointKind = "user" | "completion";
@@ -3001,6 +3183,64 @@ export type CheckpointManifest = {
 export type CheckpointWarmAnswer = {
 	accepted: string[];
 	pending: string[];
+};
+
+/**
+ * What one find hit matched (D3/D9): a casefolded literal substring of what was
+ * said (`exact`), or the bounded soft tier (`soft` — prefix, token-AND, or edit
+ * distance <= 2 on 4+ character tokens).
+ *
+ * The tiers are the backend's and are rendered differently rather than
+ * re-derived here: a client that guessed which hits were literal would differ
+ * from the index exactly where the index's ranking is subtlest.
+ */
+export type ThreadFindTier = "exact" | "soft";
+
+/**
+ * The find answer's lifecycle state (D9); see the op's own comment for what
+ * each one means and how the overlay degrades.
+ */
+export type ThreadFindState = "ready" | "building" | "error" | "unsupported";
+
+/**
+ * One message the query matched, with the snippet the results list renders.
+ *
+ * `ranges` are match offsets RELATIVE TO `snippet` (non-overlapping, oldest
+ * first, at most five), so the client marks `snippet[start:end]` without
+ * knowing the window offset into the message. They are always present — empty
+ * for a soft hit, which has no literal occurrence of the query. `role` is the
+ * wire vocabulary (`user`/`agent`); the backend translates the stored docs'
+ * `assistant` so both clients read the same word.
+ *
+ * `ts` is the journal's own epoch SECONDS, not milliseconds — the same unit
+ * every durable transcript entry carries; a caller that shows a clock converts
+ * once, where it formats (the rail's `checkpointClockLabel` is the precedent).
+ */
+export type ThreadFindHit = {
+	id: string;
+	role: "user" | "agent";
+	ts: number;
+	snippet: string;
+	ranges: [number, number][];
+	tier: ThreadFindTier;
+};
+
+/**
+ * The `sessions.find` 200 body (D9).
+ *
+ * `query` is echoed rather than assumed: the overlay debounces its input, so
+ * responses can arrive out of order and it must be able to tell which of its
+ * queries this answers. `partial` is true exactly when `hits` were ranked from
+ * an index that does not reflect the journal's current tail (`building`),
+ * never as a substitute for `truncated`, which reports the hit list itself
+ * being cut at `limit`.
+ */
+export type ThreadFindAnswer = {
+	query: string;
+	state: ThreadFindState;
+	partial: boolean;
+	hits: ThreadFindHit[];
+	truncated: boolean;
 };
 
 /**
@@ -3410,6 +3650,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.aside.get",
 	"sessions.checkpoints",
 	"sessions.failovers",
+	"sessions.find",
 	"sessions.get",
 	"sessions.history",
 	"sessions.list",
@@ -4307,7 +4548,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					cwd: request.cwd,
+					/*
+					 * OMITTED, not nulled, for a configuration run: the backend resolves the
+					 * folder itself (see the field's own note), and sending an empty string
+					 * would be a different request from the one this feature means to make —
+					 * it would trip the `min(1)` on the backend's own `cwd` validator and
+					 * report a mistake nobody made.
+					 */
+					...(request.cwd !== undefined ? { cwd: request.cwd } : {}),
 					/*
 					 * THE DEVICE THE PANE PICKED (`features.peers`), and it is omitted for every
 					 * draft nobody aimed at a peer - the same additive rule `target`, `model` and
@@ -4327,6 +4575,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// Omitted, not nulled, when the pane has no minted id: see the field's
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
+					...(request.purpose ? { purpose: request.purpose } : {}),
 				},
 			};
 		case "sessions.preview":
@@ -4386,6 +4635,22 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.limit !== undefined ? { limit: request.limit } : {}),
 				},
 			};
+		case "sessions.find": {
+			// `encodeURIComponent` rather than interpolation, for `sessions.search`'s
+			// reason: a query is whatever the user typed, and `&`, `#` or a space in
+			// it would otherwise change the request's meaning (or truncate it)
+			// instead of being searched for. `limit` is ALWAYS sent (the route's
+			// default is a second authority, and `truncated` on the answer is a fact
+			// about the list the caller actually asked for).
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? THREAD_FIND_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/find?${query}`,
+				method: "GET",
+			};
+		}
 		case "subagents.transcript": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
@@ -4730,6 +4995,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "wakes.remove":
 			return {
 				path: `/v1/desktop/wakes/${request.sessionId}/${request.wakeId}`,
+				method: "DELETE",
+			};
+		/*
+		 * The monitor cancel, mapped like its wake sibling. Both segments are
+		 * `encodeURIComponent`ed even though both their schemas already refuse
+		 * separators: the schema is this client's own check, and a redirect or a
+		 * hand-built request must not be able to turn a handle into a path
+		 * fragment (the mesh writes' own rule).
+		 */
+		case "monitors.cancel":
+			return {
+				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
 				method: "DELETE",
 			};
 		case "legacy.jobs.list": {
