@@ -60,8 +60,8 @@ is this document's original basis (`panel - 16`), so those columns read 16px wid
 | Panel | Row box (MEASURED) | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 240 (a below-default step) | 208 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
-| 280 (widened past the default) | 248 | 264 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
-| 320 | 288 | 304 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 280 (widened past the default) | 248 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 320 | 288 | 248 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
 
 What that costs, at rest, inside the row (264px on this document's original basis, 248px on the measured one at a 280px panel):
 
@@ -513,11 +513,18 @@ rounded-row ring reads - `#a6a091` dark, `#656056` light).
 **WHY IT IS AN OUTLINE AND NOT AN INSET `ring-1` (round 3, design D10).** The first spelling was
 a box-shadow, and a box-shadow is painted UNDER the element's children: the CURRENT row's own
 button carries `rowCurrent`'s opaque `bg-row-selected`, so it erased the mark everywhere it
-reached. Measured on the committed frames, the ink in the row box's 3px border band was
-**60.2%** on a held row that is not current - a complete outline - against **5.3%** on the held
-current row, which is exactly the state round 2's D7 was filed about. An outline paints after the
-element's descendants, so the button cannot cover it, and the `-1px` offset keeps it inside the
-box.
+reached. An outline paints after the element's descendants, so the button cannot cover it, and the
+`-1px` offset keeps it inside the box.
+
+**THE ONE SET OF COVERAGE NUMBERS (design round 4, D13 - every place that quotes them quotes
+these).** The measurement is the ink within ±6 per channel of the mark's colour, inside the
+outermost 3 device px of the held row's box (device x24-519, y1123-1186 on these frames): a
+**complete outline** on a held row that is NOT current reads **60.2%** of that band (the 66%/55%
+per-edge figures are below 100% because the band includes the rounded corners), the held CURRENT
+row read **5.3%** before this fix - a fragment along the right-hand slot, which is exactly the
+state round 2's D7 was filed about - and reads **32.1%** after it, in both palettes. The 32.1% is
+three of the row's four edges: the top edge is where the drop indicator sits, so it is the
+insertion line's, not the mark's.
 
 **AND THE GRIP REVEALS ON HOVER ONLY (agent review round 2, N1).** It is `aria-hidden` and
 `tabIndex={-1}`, so a `group-focus-within` term was showing a sighted keyboard reader a handle

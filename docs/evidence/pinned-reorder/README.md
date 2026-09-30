@@ -81,17 +81,19 @@ and the drop target's computed outline is `none` while the held row's is `solid 
 **WHY IT IS AN OUTLINE AND NOT AN INSET RING (round 3, design D10).** The first spelling was
 `ring-1 ring-inset` — a box-shadow — and a box-shadow is painted UNDER the element's
 children: on the CURRENT row, the row's own button carries the opaque `bg-row-selected` fill
-and covered the mark everywhere it reached. Measured on the frames by the outline's own
-method (the ink in the row box's 3px border band, over the band's area): the held row's mark
-covers **61.1%** of that band on a row that is not current (`drag-mid`, `drag-top`, both palettes)
-and **4.0%** on the held CURRENT row before this fix (light 4.1%) — while after it, the same
-band on `current-drag-mid` reads **33.1% in both palettes**, which is three of the row's four
-edges: the top edge is the one the drop line sits on, exactly as `search-drag-mid` reads
-(33.1% for the same reason). The method is one script and one box: the row's box is found by
-the held ground colour, grown by the 2 device px the mark occupies, and the ink matching the
-mark's role colour is counted inside the outermost 3 device px of that box. The two grounds the two rows wear are
-1.04:1 apart, so the mark is the half of the held state a reader can actually see; that is
-why the spellings are not interchangeable.
+and covered the mark everywhere it reached. **One set of coverage numbers, one method, and
+everywhere else that quotes them quotes these** (design round 4's D13 — the
+`chat-sidebar.tsx` comment and `sidebar-row-space.md` §8 carry the same three). The
+measurement is the ink within ±6 per channel of the mark's colour, inside the outermost 3
+device px of the held row's box (device x24-519, y1123-1186 on these frames): a complete
+outline on a held row that is not current reads **60.2%** of that band (the 66%/55% per-edge
+figures are below 100% because the band includes the rounded corners), the held CURRENT row
+read **5.3%** before this fix — a fragment along the right-hand slot, which is exactly the
+state round 2's D7 was filed about — and reads **32.1%** after it, in both palettes. The
+32.1% is three of the row's four edges: the top edge is where the drop indicator sits, so it
+is the insertion line's rather than the mark's. The two grounds the two rows wear are 1.04:1
+apart, so the mark is the half of the held state a reader can actually see; that is why the
+two spellings are not interchangeable.
 
 The gesture's own readings, from the same runs:
 

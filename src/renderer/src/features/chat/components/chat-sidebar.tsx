@@ -564,14 +564,17 @@ export const rowDragging =
  * mark began as `ring-1 ring-inset ring-ink-dim`, a box-shadow on the row's box, and it
  * does not render there: the CURRENT row's own button carries `rowCurrent`'s opaque
  * `bg-row-selected` and is a CHILD of that box, so the child's fill paints over the
- * parent's inset shadow everywhere the button reaches. Measured on the committed frames, the
- * ink in the box's 3px border band was **60.2%** on a held row that is not current (a
- * complete outline) against **5.3%** on the held current row - a fragment along the right
- * edge, i.e. the one state round 2's D7 was filed about rendered the mark it was fixed with
- * almost nowhere. An OUTLINE is painted after the element's descendants, so it is not
- * covered by the button's fill; `-1px` of `outline-offset` keeps it INSIDE the row's
- * `rounded-md` box, so there is no layout shift and it is not ink that hangs outside the
- * box (the clipping constraint `docs/branding.md` states).
+ * parent's inset shadow everywhere the button reaches. The coverage is measured as the ink
+ * within ±6 per channel of the mark's colour inside the outermost 3 device px of the held
+ * row's box, and there is ONE set of these numbers (design round 4, D13): **60.2%** of that
+ * band on a held row that is not current (a complete outline), **5.3%** on the held current
+ * row before this change - a fragment along the right edge, i.e. the one state round 2's D7
+ * was filed about rendered the mark it was fixed with almost nowhere - and **32.1%** after
+ * it, in both palettes, which is three of the row's four edges (the top one carries the drop
+ * indicator). An OUTLINE is painted after the element's descendants, so it is not covered by
+ * the button's fill; `-1px` of `outline-offset` keeps it INSIDE the row's `rounded-md` box,
+ * so there is no layout shift and it is not ink that hangs outside the box (the clipping
+ * constraint `docs/branding.md` states).
  *
  * The ground underneath is the row's own role and does not change: `rowDragging` while
  * the row is not the current one, `rowCurrent` while it is.
