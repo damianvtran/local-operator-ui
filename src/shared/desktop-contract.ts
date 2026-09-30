@@ -3412,6 +3412,55 @@ export function moveClientBoundMs(shape: MoveShape): number {
 	);
 }
 
+/*
+ * THE HUB'S WRITES ARE MODEL MERGES, so they sit on their own budgets, ABOVE the
+ * backend's (agent review round 1, R2; UX U9).
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE: `hub_sync/resolver.py` gives one
+ * item `MERGE_ITEM_TIMEOUT_S = 120.0` of wall time (retries included), and
+ * `apply`/`retry` first re-check that one item against the hub over the network.
+ * On the 20 s control budget this layer gave up FIRST, told the person the update
+ * "may or may not have reached the server", and their natural next press minted a
+ * new request id (so the server's receipts could not dedupe it) and started a
+ * SECOND concurrent merge.
+ *
+ * - `hub.apply` / `hub.retry`: one item = the 120 s merge + its network check and
+ *   the write, with the same margin the move envelope uses (`MOVE_CLIENT_MARGIN_S`).
+ * - `hub.check`: a network read of every linked item, and it applies nothing.
+ * - `hub.applyAll`: SEQUENTIAL over every waiting item, so the honest bound scales
+ *   with a number this file cannot know at request time. It is a generous fixed
+ *   ceiling (five worst-case merges) rather than a promise; a run that outlasts it
+ *   ends in the "still working" sentence and the poll shows what landed. The
+ *   backend stops the run at the first systemic failure, so a typical long run is
+ *   far shorter than the ceiling.
+ */
+const HUB_ITEM_MERGE_S = 120;
+const HUB_ITEM_WRITE_DEADLINE_MS =
+	(HUB_ITEM_MERGE_S + 30 + MOVE_CLIENT_MARGIN_S) * 1000;
+const HUB_CHECK_DEADLINE_MS = 60_000;
+const HUB_APPLY_ALL_DEADLINE_MS = 5 * HUB_ITEM_WRITE_DEADLINE_MS;
+
+const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
+	"hub.apply",
+	"hub.retry",
+	"hub.check",
+	"hub.applyAll",
+]);
+
+function hubWriteDeadlineMs(op: string): number | null {
+	switch (op) {
+		case "hub.apply":
+		case "hub.retry":
+			return HUB_ITEM_WRITE_DEADLINE_MS;
+		case "hub.check":
+			return HUB_CHECK_DEADLINE_MS;
+		case "hub.applyAll":
+			return HUB_APPLY_ALL_DEADLINE_MS;
+		default:
+			return null;
+	}
+}
+
 /**
  * The deadline one request may run for.
  *
@@ -3428,6 +3477,8 @@ export function desktopRequestDeadlineMs(
 		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
 	}
 	const op = typeof request === "string" ? request : request.op;
+	const hub = hubWriteDeadlineMs(op);
+	if (hub !== null) return hub;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -3650,6 +3701,19 @@ export function desktopRequestDeadlineDetail(
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
+	/*
+	 * A HUB WRITE THAT RAN OUT OF TIME IS STILL RUNNING, and the person's next move
+	 * is to wait, not to repeat it (a repeat is a second merge). The sentence says
+	 * so in the app's own words, without a number of seconds or a mention of what
+	 * "the server" did (UX round 1, U9).
+	 */
+	if (HUB_WRITE_OPS.has(op)) {
+		return {
+			code,
+			message:
+				"This is taking longer than expected. It may still finish; the mark will update.",
 		};
 	}
 	if (READ_ONLY_OPS.has(op)) {
