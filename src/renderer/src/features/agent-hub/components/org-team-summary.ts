@@ -88,7 +88,19 @@ export const announcedDescription = (
 	if (expanded || description.length <= DESCRIPTION_ANNOUNCE_CHARS) {
 		return description;
 	}
-	return `${description.slice(0, DESCRIPTION_ANNOUNCE_CHARS).trimEnd()}…`;
+	/*
+	 * Cut at a WORD boundary, not at the character: the first version ended
+	 * announcements mid-word ("...adverse med...", "...grouped by regim..."), which
+	 * a screen reader reads as a broken word rather than as an abbreviation. The
+	 * bound is unchanged - `lastIndexOf` only ever moves the cut earlier - and a
+	 * description with no space inside the window (a long unbroken token, a URL)
+	 * falls back to the character cut, because a word boundary that does not exist
+	 * cannot be used.
+	 */
+	const window = description.slice(0, DESCRIPTION_ANNOUNCE_CHARS);
+	const boundary = window.lastIndexOf(" ");
+	const head = (boundary > 0 ? window.slice(0, boundary) : window).trimEnd();
+	return `${head}…`;
 };
 
 /** A date the way the expanded body and the tooltip both print it. */

@@ -1025,11 +1025,13 @@ const TEAMS = [
 ];
 
 /*
- * The six-row fixture: one row per way the data can be awkward. Each row is a
+ * The nine-row fixture: one row per way the data can be awkward. Each row is a
  * claim a frame can check - (a) the whole anatomy, (b) a long description with a
  * newline, a 90-character unbroken token and a 64-character name, (c) a nine-slot
  * roster, (d) every optional field absent at once, (e) no manager and one
- * member, (f) a description past the expanded ceiling.
+ * member, (f) a description past the expanded ceiling, (g) a manager with no
+ * roster, (h) a stamp in the future, (i) an unusable `updated_at` with a usable
+ * creation date.
  */
 const LONG_DESCRIPTION = `${"Watches the supplier register for sanctions, adverse media and ownership changes, and writes one dated finding per supplier so a reviewer can act on it without re-reading the sources. ".repeat(3).trim()}\nSecond paragraph: a hit is never closed automatically. ${"x".repeat(90)} ends the paragraph.`;
 const VERY_LONG_DESCRIPTION = `${"This team keeps a running brief of every regulatory change that touches the desk, grouped by regime and dated, and it never rewrites history. ".repeat(21).trim()}`;
@@ -1340,7 +1342,7 @@ export const OrgTeamsNarrow: Story = {
 	...OrgTeams,
 };
 
-/** The six-row fixture: every awkward shape the roster has to survive, at rest. */
+/** The nine-row fixture: every awkward shape the roster has to survive, at rest. */
 export const OrgTeamsVaried: Story = {
 	render: () => {
 		installBridge({
@@ -1368,13 +1370,14 @@ export const OrgTeamsVaried: Story = {
 	},
 };
 
-/** The six-row fixture at 920. */
+/** The nine-row fixture at 920. */
 export const OrgTeamsVariedNarrow: Story = { ...OrgTeamsVaried };
 
 /**
- * Rows (b), (c) and (f) opened, by pressing their triggers the way a person
- * does: the un-clamped description, the 12-line ceiling and its ellipsis, the
- * slot list with kinds and the exact dates, with more than one row open at once.
+ * Rows (b), (c) and (f) of the nine-row fixture, opened by pressing their triggers
+ * the way a person does: the un-clamped description, the 12-line ceiling and its
+ * ellipsis, the slot list with kinds - and the `Members` label over them - and the
+ * exact dates, with more than one row open at once.
  */
 export const OrgTeamsExpanded: Story = {
 	...OrgTeamsVaried,
@@ -1420,7 +1423,7 @@ export const OrgTeamsExpanded: Story = {
 	},
 };
 
-/** The six-row fixture, opened, at 920. */
+/** The nine-row fixture, opened, at 920. */
 export const OrgTeamsExpandedNarrow: Story = { ...OrgTeamsExpanded };
 
 /** An organization that has shared no teams: the Teams view's empty sentence. */
