@@ -243,9 +243,17 @@ test("the cap and the attribute the chord presses are one spelling", () => {
 		mod.chatRowActCapJoined("pin", true).split("+").join(""),
 		mod.chatRowActCap("pin", true),
 	);
+	/*
+	 * AND THE NON-MAC FORM IS PINNED TO ITS LITERAL (agent review round 1, R2). The
+	 * first spelling of this line compared `chatRowActCapJoined("pin", false)`
+	 * joined against `chatRowActCap("pin", false)` joined - and the joined non-mac
+	 * form IS that function's output, so both sides were one computation and the
+	 * assertion could not fail. The round trip above is the load-bearing property;
+	 * this pins the bytes themselves.
+	 */
 	assert.equal(
 		mod.chatRowActCapJoined("pin", false).split("+").join(""),
-		mod.chatRowActCap("pin", false).split("+").join(""),
+		"CtrlShiftP",
 	);
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.pin, "data-session-pin");
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.archive, "data-session-archive");

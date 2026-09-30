@@ -7418,6 +7418,61 @@ export const STORIES = [
 		520,
 		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
 	],
+	/*
+	 * THE REMEDIATION'S TWO STATES (round-1 findings D1/D2), captured BESIDE the
+	 * set rather than into it: neither re-takes an existing frame.
+	 *
+	 * `pointer-hover` is the SAME story as `pointer-open`, driven one move further:
+	 * `hoverChain` walks the real pointer onto the row and then onto the panel's
+	 * first item, which is the state a pointer user meets the moment they move
+	 * into the menu - an item carrying `data-highlighted` on `bg-accent-wash` - and
+	 * the one observation the set was missing (the menu's only washed row was
+	 * `keyboard-open`'s, where the app's focus ring also draws). The chain waits
+	 * for the item to exist, which is why this is a second `dir` of the
+	 * pointer-open entry instead of a second story: the scene is identical and
+	 * only the gesture differs. `expectPresent` refuses the shutter if the item
+	 * never took the highlight, so a frame filed under this name cannot be the
+	 * un-hovered state.
+	 *
+	 * `archived-row` is the set's only widened-search state: the story drives the
+	 * field and `Include archived`, then opens the menu at the archived row's own
+	 * box - the state whose item reads `Unarchive conversation`, the widest label
+	 * the panel draws, so the frame closes the width table's last case. Its two
+	 * gates read the claims the frame is for: the row is DRAWN as archived
+	 * (`data-session-archived`), and the menu says Unarchive.
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{
+			dir: "pointer-hover",
+			hoverChain: [
+				'[data-session-row="s2"]',
+				'[role="menu"] [role="menuitem"]',
+			],
+			hoverChainSettleMs: 300,
+			expectPresent: '[role="menu"] [data-highlighted]',
+		},
+	],
+	[
+		"chat-sidebar-row-context-menu--archived-row",
+		780,
+		520,
+		{
+			hoverChain: ['[data-session-row="s4"]'],
+			hoverChainSettleMs: 300,
+			expectAttribute: {
+				selector: '[data-session-row="s4"]',
+				name: "data-session-archived",
+				equals: "true",
+			},
+			expectSentence: {
+				selector: '[role="menu"]',
+				includes: "Unarchive conversation",
+			},
+		},
+	],
 ];
 
 /**

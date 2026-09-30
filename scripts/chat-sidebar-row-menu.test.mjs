@@ -357,3 +357,42 @@ test("the keyboard opener synthesises its point and never reads the platform's",
 		"the menu clause is no longer rendered beside the row's other remedies",
 	);
 });
+
+test("the open-menu id is reconciled when the row that set it leaves the tree", () => {
+	/*
+	 * U1's guard (UX round 1): Radix's context-menu root does nothing on unmount,
+	 * so a row that left the tree with its menu open used to leave `openMenuRowId`
+	 * naming a row that no longer renders - and the list's keydown stood down for
+	 * the rest of the session (arrow-walk, Home/End, the two chords and
+	 * type-to-filter all dead). The reconcile rides the ROW INSTANCE: every
+	 * menu-carrying row renders `RowMenuOwner`, whose unmount cleanup clears the
+	 * id and the keyboard flag TOGETHER - guarded by the sidebar's latest value,
+	 * so an unrelated row's departure touches nothing. Pinned here because this
+	 * suite cannot mount the sidebar (it reads the router, the store and the
+	 * capability hooks - see the file header), and the behaviour itself is QA's
+	 * scene in round 2.
+	 */
+	const owner = between(
+		SIDEBAR_CODE,
+		"const RowMenuOwner: FC<{",
+		"return null;",
+	);
+	assert.ok(
+		owner.includes("if (openMenuRowIdRef.current !== id) return;"),
+		"the unmount cleanup no longer checks the id still names the row that is leaving",
+	);
+	assert.ok(
+		owner.includes("setOpenMenuRowId(null)") &&
+			owner.includes("openedByKeyboard.current = false"),
+		"the unmount cleanup no longer clears the id and the keyboard flag together",
+	);
+	const rowMenu = between(SIDEBAR_CODE, "<ContextMenu\n", "</ContextMenu>");
+	assert.ok(
+		rowMenu.includes("<RowMenuOwner"),
+		"the menu-carrying row no longer mounts the unmount cleanup",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes("openMenuRowIdRef.current = openMenuRowId;"),
+		"the latest-value mirror the cleanup reads is no longer kept",
+	);
+});

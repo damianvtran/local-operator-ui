@@ -75,10 +75,14 @@ import {
 	X,
 } from "lucide-react";
 import {
+	type Dispatch,
+	type FC,
 	type KeyboardEvent,
+	type MutableRefObject,
 	type FocusEvent as ReactFocusEvent,
 	type ReactNode,
 	type Ref,
+	type SetStateAction,
 	createElement,
 	useCallback,
 	useEffect,
@@ -594,6 +598,53 @@ const menuIsMac = (): boolean =>
 	navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
 /**
+ * Clears the sidebar's open-menu id when the row INSTANCE that could hold it
+ * leaves the tree (UX round 1, U1).
+ *
+ * WHY AN INSTANCE, NOT THE MENU'S DOM. Radix's context-menu root does nothing
+ * on unmount (`@radix-ui/react-context-menu@2.3.7`, `dist/index.mjs:20-53`),
+ * so the user-facing close paths - Escape, outside press, item select - were
+ * the only writers of `null`: a row that left the tree with its menu open
+ * (re-filed between containers on the same order key, dropped by a page or
+ * doorbell update, archived in another window) left the id naming a row that
+ * no longer renders - and the list's keydown stood down for the rest of the
+ * session, arrow-walk and Home/End and the two chords and type-to-filter all
+ * dead until some row's menu was opened and closed again.
+ *
+ * The clear is attached to the row's own life, so it happens in the commit
+ * that removes the row - and it can be EXACT, because "the id names me" is a
+ * fact about this instance. A sidebar-level check of the panel's DOM was
+ * measured wrong in both directions before this shipped (scratch CDP probe,
+ * round 1): Radix's `Presence` mounts the panel a render AFTER the open
+ * commit, so the id is briefly set with no panel in the document - a false
+ * "the menu is gone" a DOM check reads as death - and a sidebar `useEffect`
+ * only runs when the SIDEBAR re-renders, so whether it ever sees the panel
+ * while it is up (the fact that tells "still opening" apart from "gone") is a
+ * property of what else happens to re-render.
+ *
+ * `openMenuRowIdRef` is the sidebar's latest value: a cleanup runs with what
+ * its own closure saw last, and the row that is leaving does not re-render
+ * first. The keyboard flag is cleared on the same path, so a menu that is
+ * later opened by the POINTER cannot inherit this one's keyboard focus rules.
+ */
+const RowMenuOwner: FC<{
+	id: string;
+	openMenuRowIdRef: MutableRefObject<string | null>;
+	setOpenMenuRowId: Dispatch<SetStateAction<string | null>>;
+	openedByKeyboard: MutableRefObject<boolean>;
+}> = ({ id, openMenuRowIdRef, setOpenMenuRowId, openedByKeyboard }) => {
+	useEffect(
+		() => () => {
+			if (openMenuRowIdRef.current !== id) return;
+			setOpenMenuRowId(null);
+			openedByKeyboard.current = false;
+		},
+		[id, openMenuRowIdRef, setOpenMenuRowId, openedByKeyboard],
+	);
+	return null;
+};
+
+/**
  * THE MENU'S OWN SENTENCE (U-D5): the row's box is a context-menu trigger and
  * carries no `aria-haspopup` - the primitive writes only `data-state` and
  * `data-disabled` on it - so without a clause a screen reader walking the list
@@ -607,8 +658,20 @@ const menuIsMac = (): boolean =>
  * are printed inside the menu and stay in each item's accessible name, where
  * the acts are; repeating them in the row's description would be a second
  * telling of the same fact.
+ *
+ * AND THE SPELLING IS THE PLATFORM'S (UX round 1, U2). The clause is announced
+ * on every row, and on a macOS-first app that announcement cannot hand every
+ * reader `Shift+F10` unqualified: an Apple keyboard has no Menu key and sends
+ * F10 as a media key unless `Fn` is held. So the macOS sentence names
+ * `Fn+Shift+F10`, the same device `chat-regions.ts` uses for the region walk's
+ * second spelling ("on macOS `F6` is a media key on most keyboards unless the
+ * user has turned that off"). `menuIsMac()` is read when a row renders, which
+ * is why this is a function over that read rather than a module constant.
  */
-const ROW_MENU_CLAUSE = "Right-click or press Shift+F10 for its actions.";
+const rowMenuClause = (isMac: boolean): string =>
+	isMac
+		? "Right-click or press Fn+Shift+F10 for its actions."
+		: "Right-click or press Shift+F10 for its actions.";
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
 /**
@@ -3452,12 +3515,13 @@ export function ChatSidebar({
 		 * the target the button's `aria-describedby` points at on a row that carries
 		 * the menu, and it has to render whenever the attribute names it - a
 		 * dangling id resolves to no description at all (the rule the attribute's
-		 * own comment states). `ROW_MENU_CLAUSE` carries why the sentence exists
-		 * and why it is not in the flyout's words.
+		 * own comment states). `rowMenuClause` carries why the sentence exists,
+		 * why it is not in the flyout's words, and why its spelling is the
+		 * platform's.
 		 */
 		const menuRemedy = menuEnabled ? (
 			<span id={rowMenuClauseId(row.session_id)} className="sr-only">
-				{ROW_MENU_CLAUSE}
+				{rowMenuClause(isMac)}
 			</span>
 		) : null;
 
@@ -4073,6 +4137,12 @@ export function ChatSidebar({
 					);
 				}}
 			>
+				<RowMenuOwner
+					id={row.session_id}
+					openMenuRowIdRef={openMenuRowIdRef}
+					setOpenMenuRowId={setOpenMenuRowId}
+					openedByKeyboard={menuOpenedByKeyboard}
+				/>
 				{withFlyout(
 					<ContextMenuTrigger asChild>{rowBox}</ContextMenuTrigger>,
 					row.session_id,
@@ -4839,6 +4909,17 @@ export function ChatSidebar({
 	 */
 	const menuOpenedByKeyboard = useRef(false);
 	/*
+	 * THE ID'S LATEST VALUE, read by the row instances' unmount cleanup
+	 * (`RowMenuOwner`): a cleanup runs with what its own closure saw last, and
+	 * the row that is LEAVING does not re-render first - so the value is kept
+	 * here rather than expected through a prop. Synced after every id change,
+	 * which every unmount that matters is a later commit of.
+	 */
+	const openMenuRowIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		openMenuRowIdRef.current = openMenuRowId;
+	}, [openMenuRowId]);
+	/*
 	 * THE KEYBOARD OPENER (`ContextMenu`, and `Shift+F10` with it): the keyboard's
 	 * own way to ask "what can I do with this", the shape `use-link-subject.ts`
 	 * already trusts over the platform.
@@ -4889,7 +4970,9 @@ export function ChatSidebar({
 		 * then steps to `rows[0]`, so an arrow pressed inside the open menu would
 		 * move focus OUT of it to the list's first conversation; the type-to-filter
 		 * branch is safe only by accident of its attribute check. `openMenuRowId` is
-		 * exactly the claim this guard reads.
+		 * exactly the claim this guard reads - and it cannot outlive the row that
+		 * set it: `RowMenuOwner`, rendered with every menu-carrying row, clears it
+		 * on that row's unmount (UX round 1, U1).
 		 */
 		if (openMenuRowId !== null) return;
 		const target = event.target as HTMLElement;
