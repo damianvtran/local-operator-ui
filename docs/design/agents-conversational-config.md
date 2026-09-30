@@ -162,9 +162,14 @@ Restating the requirements as properties a mechanism has to have:
 - **P1 — separate.** It is a different session from Aida's and from any
   conversation the operator has open. Nothing it says or does is written to
   another transcript.
-- **P2 — tooled and bounded.** It can call `agent` and `team` and little else.
-  It cannot read the operator's files, run a shell, or reach the network, because
-  the operator asked it to edit two registries, not to act on their machine.
+- **P2 — tooled and bounded, by OP and not only by name.** It can reach the
+  add/edit ops of `agent` and `team` and little else — `list`/`show`/`search`/
+  `create`/`update` (and `install`) — and never `agent reset`, `agent sync` or
+  `team_delete`. It cannot read the operator's files, run a shell, or reach the
+  network, because the operator asked it to edit two registries, not to act on
+  their machine. The containment must be enforced at the declaration seam, and
+  that seam must be able to express OPS as well as tool names (§ 3.4; review
+  round 1, R1-1).
 - **P3 — supervised.** The operator sees that it is running, what it is doing at
   a high level, can stop it, and is told what it changed.
 - **P4 — reachable from the UI alone.** The Agents page has no agent shell and no
@@ -279,9 +284,11 @@ When it is present the backend:
    interrupt/snapshot only, while leaving it out of `USER_ORIGINS` — so it stays
    absent from the sidebar, `/resume`, the phone list, the attention/notification
    feed and the first-run predicate (§ 3.1);
-3. **declares the run's tool inventory** to `agent` and `team` (no `team_delete`,
-   no shell, no file tools, no network) and **injects a server-owned preamble**
-   that says what the run is for and what it must not do (§ 3.4);
+3. **declares the run's reach to the add/edit OPS of `agent` and `team`** — the
+   inventory must express ops, not only tool names, or `agent reset`/`sync` ride
+   in with the admitted `agent` tool (R1-1) — with no `team_delete`, no shell, no
+   file tools and no network, and **injects a server-owned preamble** that says
+   what the run is for and what it must not do (§ 3.4);
 4. **resolves the cwd and model itself** (§ 3.3), so the client sends neither;
 5. **enforces single flight** and answers a second create with the active run's
    id (§ 3.7);
@@ -401,8 +408,11 @@ beyond the three the pulse module already uses.
 - **Profile.** No bound `target`. The shipped seeds are `aida`, `architect`,
   `coder`, `copy-reviewer`, `designer`, `manager`, `reviewer`, `scout`,
   `tui-designer`, `ux-reviewer` (`agent_seeds/manifest.json`); none is a config
-  author, and adding one would put it in every operator's agent list
-  (`profile_catalogue` includes seeds, `server/utils/desktop_profiles.py`).
+  author, and adding one would put it in every operator's agent list:
+  `profile_catalogue` (`server/utils/desktop_profiles.py:90`) unions the
+  registry's roles and specialists with the packaged starters — `|
+  set(list_seeds())` at `:93`, over `agent_profiles.py:313` — so a new
+  `agent_seeds/<name>.md` reaches every operator's list, not only a run's.
   Recommendation: a **server-owned preamble** in code, versioned with the backend,
   not a seed. Trade-off: the operator cannot tune it. That is the right default
   for a bounded-authority run; Q6 asks whether it should be user-visible.
@@ -420,23 +430,60 @@ Allowed: the `agent` tool's `list`, `show`, `search`, `create`, `update`
 `create`, `update` (`agent_tool.py:117-130`, `team_tool.py:54`). That is the
 "add or edit agents and teams" the operator asked for, through the *same* write
 functions the manual editor's `profiles.*`/`teams.*` ops use
-(`desktop_profiles.py:226` calls `write_profile` from the tool module), so
-validation — effort against the live configuration, name collisions
-(`NameTakenError`), the team cycle/depth check (`MAX_ORG_DEPTH = 8`,
-`teams.py:148`, enforced by `validate_target`,
-`server/utils/desktop_profiles.py:110`) — is identical on both paths.
+(`desktop_profiles.py:226` calls `write_profile` from the tool module), so the two
+paths share one writer and the field validations that writer applies (effort
+against the live configuration; name collisions — `NameTakenError`).
 
-Excluded in v1, by the inventory and not by the prompt:
+**What is NOT validated on write, on either path — and must not be claimed as
+parity (review round 1, R1-2).** `validate_target`
+(`server/utils/desktop_profiles.py:110`) has **no write-path caller**. Its callers
+are the session *binding* paths (`server/utils/desktop_sessions.py:5991`,
+`:6115`; `routes/desktop_sessions.py:2208`, `:2310`, `:2416`) and the TUI's move
+(`tui/app.py:30506`) — never the desktop `teams.*` ops, which call
+`registry.create_team`/`update_team` directly (`routes/desktop_profiles.py:296`,
+`:304`), and never the `team` tool, which calls the same two registry methods
+(`team_tool.py:229`, `:233`). So `MAX_ORG_DEPTH` (`teams.py:148`), the cycle guard
+and manager/member resolution are **not** enforced when a team is written: a
+roster naming `no-such-agent` persists and renders as an ordinary row — the UX
+consult's U7. The configuration run inherits exactly that: it can write a dangling
+reference as the manual form can, and the UI is where the operator is meant to see
+it flagged (§ 5, U7). Wiring `validate_target` into the write path is a real
+backend change that belongs to *both* writers at once (the registry's write arm),
+not to the run, and it is not in scope here.
 
-- **`team_delete`.** It is separate and write-tier "so deletion always asks for
-  write approval" (`team_tool.py:339-353`). A supervised run *could* surface that
-  approval in the strip, but the page has no delete affordance today either
-  (`desktop_profiles.py` registers none), so a conversational delete would be the
-  first delete in the product. Out of scope; noted for a later round.
+**Excluded by OP, enforced at the declaration seam (review round 1, R1-1).** The
+declaration seam is per tool **name**: `Session._filter_declared` narrows on
+`getattr(tool, "name")` (`session/session.py:8323`) and `set_tool_inventory` takes
+`names: Sequence[str]` (`:8356`). But `reset` and `sync` are not tools — they are
+`op=` values of the single `agent` tool (`agent_tool.py:120`, dispatched at
+`:1383`/`:1385`). Declaring `agent` therefore hands the run the whole tool, `reset`
+and `sync` included, which would give it `sync`'s hub credential path while the
+note promises it no network reach. The requirement is stated as a contract with
+two allowed mechanisms, and the core coder will state which it built:
+
+- **(a) preferred — op-level exclusion at the declaration/enforcement seam.** The
+  seam must express OPS as well as names, so `agent` is admitted for
+  `list`/`show`/`search`/`create`/`update`/`install` and `reset`/`sync` are refused
+  at the same enforcement point `_filter_declared` uses — an excluded op must be
+  *unreachable*, not merely unadvertised (`set_tool_inventory`'s docstring:
+  "Declare — and ENFORCE").
+- **(b) acceptable — split `reset`/`sync` into their own tools**, so the
+  name-level seam excludes them outright. Larger, but it leaves the existing seam
+  sufficient rather than widening it.
+
+With that contract, the exclusions are:
+
+- **`team_delete`.** Separate and write-tier "so deletion always asks for write
+  approval" (`team_tool.py:339-353`); excluding it is name-level today and stays so
+  under either mechanism. A supervised run *could* surface that approval in the
+  strip, but the page has no delete affordance today either (`desktop_profiles.py`
+  registers none), so a conversational delete would be the first delete in the
+  product. Out of scope; noted for a later round.
 - **`agent reset` and `agent sync`.** `reset` overwrites operator-edited
   instructions (`agent_tool.py:875`, which prints the replaced text back to keep it
   recoverable) and `sync` pulls from the hub with credentials. Neither is
-  "add or edit"; both stay manual.
+  "add or edit"; both stay manual, and both must be excluded by (a) or (b) above,
+  because neither is a tool the name-level seam can name.
 - **Setting `action_class: proactive`.** The proactive class lets an agent attach
   hidden patience waits and run proactive deliveries (`agent_tool.py:217-224`,
   "set it ONLY when the user clearly asked for a..."). Recommended: the run may not
@@ -466,13 +513,21 @@ one in v1.
 
 Two independent channels, on purpose:
 
-1. **The lists refresh themselves.** The run writes; the authoring probe notices
-   within one probe interval; the frame arrives; `useAuthoringRefresh`
-   (`profile-hooks.ts:79`) invalidates `["desktop", "profiles"|"teams"]` **and** the
-   singular detail keys (`["desktop","profile"]`/`["desktop","team"]` — the hook's
-   comment explains why the list key does not reach the detail key). This already
-   works on `/agents` because the effect lives in the query's own hook, not the
-   route-scoped sidebar.
+1. **The lists refresh themselves; the open DETAIL does not, today.** The run
+   writes; the authoring probe notices within one probe interval; the frame
+   arrives; `useAuthoringRefresh` (`profile-hooks.ts:79`) invalidates
+   `["desktop", "profiles"|"teams"]` **and** the singular detail keys
+   (`["desktop","profile"]`/`["desktop","team"]` — the hook's comment explains why
+   the list key does not reach the detail key). The hook is correct and the
+   invalidation does reach the singular key (`profile-hooks.ts:91-95`), but the UX
+   consult's **U6 measured the list refreshing in ~4 s while the open detail did
+   not change for 14 s+** on this same head. Whichever half is at fault — the
+   authoring revision not being raised by the consult's out-of-band patch, or the
+   active detail query not refetching on an invalidation it did receive — the note
+   cannot claim "this already works", and **U6 is an explicit acceptance test of
+   Scope A/B: a change made out of band must appear in the open detail without a
+   reload.** The UI PR fixes it; the conversational path depends on it, since
+   "then the changes appear on the page" is this promise.
 2. **The run's settle also invalidates, unconditionally.** The feed is
    capability-gated both ways (`use-desktop-feed.ts`: `available:false` for an
    older backend or a browser-dev build with no relay), and a lost frame after a
@@ -515,9 +570,11 @@ Mechanism: a `create` with `purpose` while a run is live answers **409 with a co
 and the active run's `session_id`** (the form the route already uses for typed
 refusals, e.g. `{"code": ..., "message": ...}` in `create_session`), and the UI
 re-attaches to that id instead of erroring. The same lookup is how a page that
-mounts mid-run finds it after a reload; the renderer persists **nothing**, unlike
-the aside store's stated reason for staying in memory (`aside-store.ts:26`) — this
-run is a real transcript the server owns, so the server is the source of truth.
+mounts mid-run finds it after a reload; the renderer persists **nothing**, for the
+opposite reason to the `/btw` aside store — that one keeps its exchanges in memory
+because they are off the record (`aside-store.ts:26`), while this run is a real
+transcript the server owns, so the server is the source of truth and a client copy
+would be the second place the two could disagree.
 
 A **manual editor save during a run** is the second concurrency case. The page's
 existing idempotency (`request.current` in `ProfileEditor`, `agents-page.tsx:56`)
@@ -531,7 +588,7 @@ text. Otherwise the view updates in place.
 | Situation | What the operator sees | Basis |
 |---|---|---|
 | Backend older than the feature | The composer is absent; the structured editor is the only path, with one honest line saying conversational setup needs a backend update. | `desktopFeatureState` distinguishes `unknown`/`unpaired`/`below-version`/`enabled` (`desktop-hooks.ts:612`); the page already words its own below-version state (`agents-page.tsx`, "Update the backend to manage reusable agents"). |
-| Create refused (daemon retiring, latch, no usable model) | `refused`: the backend's own sentence via `userFacingMessage`, with the message retained in the composer so nothing typed is lost. | The aside's `asideAskFailure` habit (`aside.ts:63`); `DaemonRetiring`'s message says to reconnect. |
+| Create refused (daemon retiring, latch, no usable model) | `refused`: the backend's own sentence via `userFacingMessage`, with the message retained in the composer so nothing typed is lost. | The `/btw` aside's `asideAskFailure` habit (`aside.ts:63`) is the precedent; `DaemonRetiring`'s message says to reconnect. |
 | Run errors (the turn fails) | `error`: what failed, the touched set so far ("it had already updated `reviewer`"), and a retry that sends a **new** request id. | Same receipt rule as § 3.5. |
 | Run is slow | Stays `running`. **No timeout copy** — a turn's duration is the model's, and inventing a threshold would call a healthy run broken. The elapsed time is shown; Stop is always there. | — |
 | Feed/socket down mid-run | "Connection lost. The setup run may still be going." The run is server-side and continues; on reconnect the page re-attaches through § 3.7. | `use-desktop-feed.ts` reports `connected`/`available` separately, and its header argues a dead socket must be surfaced, not swallowed. |
@@ -575,7 +632,7 @@ gets the structured page and no composer.
 
 ---
 
-## 4. The aside's states, affordances and surfacing (UI)
+## 4. The configuration run's states, affordances and surfacing (UI)
 
 ### 4.1 States
 
@@ -625,8 +682,11 @@ check:
 - **Changed rows get a quiet mark, not motion.** A small "Updated" tag that clears
   when the row is opened. Nothing lifts, scales or translates on hover; focus is an
   outline (`docs/branding.md` § 6).
-- **A selected entity updated remotely updates in place** — unless the operator has
-  unsaved edits on it, in which case § 3.7's banner applies.
+- **A selected entity updated remotely updates in place — once U6 is fixed.** This
+  is *not* today's behaviour: the consult measured the open detail stale for 14 s+
+  after an outside change (U6). It is an acceptance criterion of this work (§ 3.6
+  item 1), and the qualifier stands — if the operator has unsaved edits on the
+  entity, § 3.7's banner applies instead of a silent replace.
 - **The composer keeps its text on any refusal.** A retained draft is the
   difference between "the backend was down" and "I lost what I typed".
 
@@ -641,7 +701,7 @@ right) but make both carry information. It is a *list + detail*, not a modal for
 
 **List.**
 - Agents | Teams as the app's own `Tabs`, each tab carrying its count, replacing
-  the two `Button`s at the top of the aside — the same control #681's browse bar
+  the two `Button`s at the top of today's list column — the same control #681's browse bar
   uses, so the two surfaces read as one system.
 - Each row: name, a **source badge** (built-in / installed / custom, from
   `source`), the one-line description, and for teams the member count. A search
@@ -658,10 +718,11 @@ and a dirty section is visibly dirty.
   profile, where it came from.
 - *Behaviour* — the instructions as a rendered read view with an expander; the
   textarea appears only when this section is being edited.
-- *Tools* — the allow-list as chips with an explicit "all tools" state (today's
-  comma string cannot say "unrestricted" versus "empty"; `tools: null` vs a list
-  are different meanings, `agent_profiles.py`). A tool picker needs a catalogue of
-  tool names — Q3.
+- *Tools* — the allow-list as chips with an explicit "all tools" state. Today's
+  comma string cannot say "unrestricted" versus "empty": `tools: null` means
+  "whatever the parent would build" while a list filters to exactly those names
+  (`agent_profiles.py:180`, `AgentProfile.tools`) — two different meanings the form
+  renders identically. A tool picker needs a catalogue of tool names — Q3.
 - *Delegation and autonomy* — `delegate` as a switch, `effort` as a select, class as
   a labelled control (the `action_class` field exists on `ProfileEdit`,
   `desktop_profiles.py:72`, and the page never sets it).
@@ -669,10 +730,14 @@ and a dirty section is visibly dirty.
   affordance where the wire supports it. This is information the wire already
   ships and the current page discards.
 - *Teams* — manager and members as **rows with resolved state**: a kind icon, the
-  count as a stepper, and an inline warning when a referenced name does not resolve
-  (the check `validate_target` already performs server-side,
-  `server/utils/desktop_profiles.py:110`). Collaboration and project briefs are
-  sections with the same read-first treatment.
+  count as a stepper, and an inline warning when a referenced name does not
+  resolve. **The resolution check must be the UI's**, because nothing on the write
+  path performs it (R1-2; § 3.4): `validate_target`
+  (`server/utils/desktop_profiles.py:110`) is wired only to the session *binding*
+  paths, so a dangling manager or member saves silently today (U7). The editors
+  should offer resolved names, and the warning is the honest state for a stored
+  roster that already names something missing. Collaboration and project briefs
+  are sections with the same read-first treatment.
 
 **Actions** live in a header: New chat, Extend, Install (built-ins), and a new
 **"Edit with setup assistant"** entry that opens the composer prefilled with the
@@ -684,6 +749,22 @@ what to do, an error with a retry that names the cause, and the existing
 below-version / unpaired wording (`desktopFeatureState`). The page currently
 collapses list, team and detail errors into one `role="alert"` block
 (`agents-page.tsx`); each pane should own its own.
+
+**Acceptance criteria carried in from the consults** (so a reader of this note
+alone knows what is owed, not only a reader of the PR thread):
+
+- **U1 — the save dead-lock must be fixed here.** `ProfileEditor`'s `save` sets
+  `request.current ??= {id, body}` **before** the call and clears it only on
+  success, so a *definite* 4xx refusal (a bad effort tier, a duplicate name)
+  leaves the ref set and the next edit trips the `body !== request.current.body`
+  guard — "The previous save has not been confirmed" on a form the user has just
+  corrected (`agents-page.tsx:56`; the same shape at `:328` for teams). The guard
+  is right for an **ambiguous** outcome (a dropped request); it is wrong for a
+  definite refusal, which should free the request id. Scope A must fix it: Scope
+  B's fallback path lands on this same form, so the dead-lock would greet every
+  operator whose conversational request the agent could not complete.
+- **U6 — the open detail must refresh** (§ 3.6 item 1).
+- **U7 — an unresolved team reference must be visible** (Teams section, above).
 
 **Consistency with #681.** Take, do not copy: the Agents | Teams `Tabs` with
 counts, the aria-live status-sentence habit, and the scope-chip *pattern*. The
@@ -729,6 +810,14 @@ construction, which is the release-skew property P5 requires.
   session is unread (`session/retention.py` keeps `origin.json` as bookkeeping, but
   I did not trace when hidden directories are reclaimed). Left alone they
   accumulate; Q5.
+- **The op-level exclusion (R1-1).** Containment now rests on the declaration
+  seam expressing OPS; if it only ever narrows by name, `agent reset`/`sync` ride
+  in with the admitted `agent` tool. The test must assert the excluded ops are
+  *unreachable*, not merely absent from the advertised list — the same bar
+  `_filter_declared` already meets for names.
+- **The detail's refresh (R1-3/U6).** Scope B's "the changes appear on the page"
+  promise is the detail-refresh behaviour the consult measured as broken; do not
+  sign off the run on a green list refresh alone.
 - **Persistent instructions** (§ 3.9). The run writes text future sessions obey.
   Watch the authority-changing fields in the summary, and watch for the first
   operator report of a profile that "changed by itself".
