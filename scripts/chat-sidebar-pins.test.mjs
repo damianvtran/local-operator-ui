@@ -210,13 +210,22 @@ test("a pinned row stays in its agent's group, because groups are the other axis
 	);
 });
 
-test("the order is the catalogue's own, untouched", () => {
+test("the partition is a filter: the catalogue's own order, untouched", () => {
 	/*
 	 * The wire carries no rank or timestamp beside `pinned`, and the partition must
 	 * not invent one: the TUI's `★ Pinned` section is drawn in the catalogue's
-	 * order too, so a re-sort here would present one list in two orders across two
+	 * order too, so a re-sort HERE would present one list in two orders across two
 	 * surfaces. Deliberately un-sorted input - newest pin first would put `dddd`
 	 * ahead of `aaaaaaaaaaaa`.
+	 *
+	 * WHAT CHANGED WITH ISSUE #693, and what did not. The SECTION can now be arranged
+	 * by hand - that is the whole of the change - and the arrangement is applied
+	 * DOWNSTREAM of this function, over its output, by
+	 * `orderPinnedRows(pinned, view.pins)` (`chat-pin-order.ts` carries the rules and
+	 * `scripts/sidebar-pin-order.test.mjs` drives them). So the two claims here are
+	 * both still live and they are the boundary the change had to keep: this
+	 * partition re-sorts nothing, and the permutation is the VIEW's - a desktop-local
+	 * preference the terminal never sees - rather than a rank invented for the wire.
 	 */
 	const rows = [
 		row("aaaaaaaaaaaa", { pinned: true }),
@@ -230,6 +239,24 @@ test("the order is the catalogue's own, untouched", () => {
 		"dddddddddddd",
 	]);
 	assert.deepEqual(ids(unpinnedRows(rows, true)), ["bbbbbbbbbbbb"]);
+	/*
+	 * And the boundary, read off the shipped source rather than described: the
+	 * partition the section draws FROM is this module's own call, and the list it
+	 * RENDERS is that call's output permuted - two calls, so an order can never be
+	 * smuggled back into the partition (and the entity lists, which read the
+	 * unpartitioned list, cannot inherit one either).
+	 */
+	const source = read(SIDEBAR);
+	assert.match(
+		source,
+		/const pinned = pinnedRows\(matching, pinsEnabled\);/,
+		"the section's partition is still the catalogue's own order passed through",
+	);
+	assert.match(
+		source,
+		/const orderedPinned = orderPinnedRows\(pinned, view\.pins\);/,
+		"and the reader's arrangement is a second call over its output",
+	);
 });
 
 test("with the capability absent the partition does not run, so no row is lost", () => {
@@ -651,13 +678,22 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * branch fails the `notEqual` below rather than passing quietly, so widening it
 	 * cannot hide a control that stopped being drawn - it only has to reach the
 	 * branch the assertions are about.
+	 *
+	 * THE BRANCH'S END IS READ FROM THE SOURCE, NOT FROM THE WINDOW (issue #693).
+	 * The window's job is to bound where the SEARCH STARTS, and using it as a bound
+	 * on where a slide ENDS is what made this test fail the day the unpin's
+	 * forget-write (the `forgetPinnedOrder` block, in this control's own handler)
+	 * pushed the `: cn(` marker past 5200 chars: the slice then ran to -1 and the
+	 * assertion read an empty-ish string, which is a FALSE POSITIVE about the mark
+	 * rather than a real finding. Absolute offsets from the same anchor cannot drift
+	 * apart that way.
 	 */
 	const block = source.slice(at, at + 5200);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
-	const pinnedBranchText = block.slice(
-		branchMatch.index,
-		block.indexOf(": cn(", branchMatch.index),
+	const pinnedBranchText = source.slice(
+		at + branchMatch.index,
+		source.indexOf(": cn(", at + branchMatch.index),
 	);
 	assert.ok(
 		pinnedBranchText.includes("flex"),
