@@ -28,6 +28,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import type { KeyboardEvent } from "react";
@@ -56,6 +57,16 @@ import { slashArgumentContext, slashContext } from "./slash-token";
 
 /** One row of the listbox: the DISCOVERY name and the description it carries. */
 export type SkillCatalogRow = { name: string; description?: string };
+
+/*
+ * The row region's height budget, the sibling popup's own rule and values
+ * (`slash-commands.tsx`: 6 x 36): the max-height is a whole number of the row
+ * pitch, so the list never RESTS on a half-row slice - a sliced glyph at the
+ * region's edge reads as a clipping bug rather than as a scroller (design
+ * round 1, D2).
+ */
+const MAX_VISIBLE_ROWS = 6;
+const ROW_PITCH = 36;
 
 export type SkillCompletionState = {
 	/** The `$` token at the caret, or null. Null also drives `open` false. */
@@ -96,6 +107,18 @@ export function useSkillCompletion({
 }: SkillListArgs): SkillCompletionState {
 	const capabilities = useDesktopCapabilities();
 	/*
+	 * THE PROVIDER-OPTIONAL CLIENT (QA round 1, Q-1). The shared composer mounts
+	 * in documents that carry no `QueryClientProvider` (the mini view), where
+	 * `useQuery` cannot be called at all - it throws "No QueryClient set" from
+	 * `useQueryClient()` before any option is read, whatever `enabled` says. The
+	 * vocabulary read below therefore hands `useQuery` this hook's client
+	 * explicitly (the lift's own pattern: `useDesktopCapabilities` and the slash
+	 * hook both take it this way) and folds `provided` into its gate, so a
+	 * provider-less document gets no list rather than a crash - the fail-closed
+	 * direction the composer's host contract requires.
+	 */
+	const { client, provided } = useOptionalQueryClient();
+	/*
 	 * `catalogues`, the capability the route that serves `skills.list` declares
 	 * (`local_operator/server/routes/capabilities.py`). Read here for the same
 	 * reason the slash hook reads `commands`: a backend that predates the op is
@@ -132,15 +155,23 @@ export function useSkillCompletion({
 	 * undefined on a draft pane, and the op needs a session's cwd to discover
 	 * from — that is a fact about the route, not a policy: no session, no rows.
 	 */
-	const skillsQuery = useQuery({
-		queryKey: ["desktop", "skills", sessionId],
-		queryFn: () =>
-			desktopResult<{
-				data: { skills: SkillCatalogRow[] };
-			}>({ op: "skills.list", sessionId: sessionId ?? "" }),
-		enabled: active && Boolean(sessionId),
-		staleTime: 30_000,
-	});
+	const skillsQuery = useQuery(
+		{
+			queryKey: ["desktop", "skills", sessionId],
+			queryFn: () =>
+				desktopResult<{
+					data: { skills: SkillCatalogRow[] };
+				}>({ op: "skills.list", sessionId: sessionId ?? "" }),
+			/*
+			 * `provided &&`: beside the capability (`active`) and the session
+			 * fact, the provider is the second half of "can this surface ask at
+			 * all" - see the client comment above.
+			 */
+			enabled: active && Boolean(sessionId) && provided,
+			staleTime: 30_000,
+		},
+		client,
+	);
 	const choices = useMemo<SkillCatalogRow[]>(
 		() => skillsQuery.data?.data.skills ?? [],
 		[skillsQuery.data],
@@ -198,7 +229,16 @@ export function useSkillCompletion({
 	const setActiveHover = setActive;
 
 	const activeIndex = Math.min(state.active, Math.max(rows.length - 1, 0));
-	const open = state.open && tokenKey !== null && rows.length > 0;
+	/*
+	 * A QUERY WITH NO MATCHES STILL OPENS, SAYING THE MISS (design round 1, D3).
+	 * `$zzz` used to unmount the listbox silently where the sibling `/` palette
+	 * renders "No commands match." in the same place - the two lists share one
+	 * corner of the composer and answer the same way now. A bare `$` (no query)
+	 * stays closed, as its `@` sibling is: there is nothing to say about an
+	 * empty query.
+	 */
+	const hasQuery = token !== null && token.query.trim() !== "";
+	const open = state.open && tokenKey !== null && (rows.length > 0 || hasQuery);
 	return {
 		token,
 		leading,
@@ -295,7 +335,7 @@ export function SkillSuggestionsPopup({
 			role="listbox"
 			aria-label="Skills"
 			className={cn(
-				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
+				"absolute bottom-full left-0 right-0 z-20 mb-1",
 				"overflow-hidden rounded-md border border-control bg-elevated",
 				"shadow-lg",
 			)}
@@ -303,48 +343,61 @@ export function SkillSuggestionsPopup({
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
 				{SKILL_PHASE_LABEL}
 			</div>
-			<div className="max-h-52 overflow-y-auto">
-				<ul>
-					{state.rows.map((row, index) => (
-						/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
-						/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */
-						<li
-							key={skillRowId(row.name)}
-							id={`${state.listId}-${skillRowId(row.name)}`}
-							ref={index === state.active ? activeRef : null}
-							// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea.
-							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
-							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
-							role="option"
-							aria-selected={index === state.active}
-							className={cn(
-								"relative flex items-baseline gap-3 px-3 py-2",
-								index === state.active
-									? "bg-accent-wash before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
-									: "bg-transparent",
-							)}
-							onMouseDown={(event) => {
-								// Focus, not the pick: prevents the default so the
-								// textarea keeps its caret and draft position.
-								event.preventDefault();
-							}}
-							onClick={() => onPick(row)}
-							onMouseEnter={() => state.setActiveHover(index)}
-						>
-							<span className="min-w-0 shrink-0 truncate font-mono text-body-sm text-ink">
-								${row.name}
-							</span>
-							{row.description && (
-								<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
-									{row.description}
+			<div
+				className="overflow-y-auto"
+				style={{ maxHeight: `${MAX_VISIBLE_ROWS * ROW_PITCH}px` }}
+			>
+				{state.rows.length === 0 ? (
+					<div className="px-3 py-2 text-body-sm text-ink-muted">
+						No skills match.
+					</div>
+				) : (
+					<ul>
+						{state.rows.map((row, index) => (
+							/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
+							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */
+							<li
+								key={skillRowId(row.name)}
+								id={`${state.listId}-${skillRowId(row.name)}`}
+								ref={index === state.active ? activeRef : null}
+								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea.
+								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
+								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+								role="option"
+								aria-selected={index === state.active}
+								className={cn(
+									"relative flex items-baseline gap-3 px-3 py-2",
+									index === state.active
+										? "bg-accent-wash before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
+										: "bg-transparent",
+								)}
+								onMouseDown={(event) => {
+									// Focus, not the pick: prevents the default so the
+									// textarea keeps its caret and draft position.
+									event.preventDefault();
+								}}
+								onClick={() => onPick(row)}
+								onMouseEnter={() => state.setActiveHover(index)}
+							>
+								{/* `shrink`, never `shrink-0`: the latter sizes the span to
+							    max-content, which makes `truncate` inert and hard-clips
+							    the name while the description collapses (design round 1,
+							    D1). The sibling's class is the same. */}
+								<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
+									${row.name}
 								</span>
-							)}
-						</li>
-					))}
-				</ul>
+								{row.description && (
+									<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
+										{row.description}
+									</span>
+								)}
+							</li>
+						))}
+					</ul>
+				)}
 			</div>
 			{activeRow && (
-				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
+				<div className="space-y-0.5 border-t border-hairline px-3 py-1 text-meta text-ink-dim">
 					<p>{skillEnterFooter(activeRow.name)}</p>
 					<p>{skillClickFooter(activeRow.name)}</p>
 				</div>
@@ -387,11 +440,6 @@ export function handleSkillKeyDown(
 		}
 		case "close":
 			state.close();
-			return true;
-		case "hold":
-			// The list is up and holds no row, so Enter must not reach the
-			// composer's submit path: the user pressed the key to TAKE A ROW and
-			// there is none to take.
 			return true;
 		default:
 			return false;

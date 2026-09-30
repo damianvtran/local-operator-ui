@@ -2324,21 +2324,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (carried.unconfirmed.length > 0)
 					showWarningToast(unconfirmedNotice(carried.unconfirmed));
 				/*
-				 * THE `$skill` EXPANSION (issue #664), resolved on the TYPED line and
-				 * applied where the message leaves. Only a FIRST-TOKEN `$name` matching
-				 * a DISCOVERED skill fires — `parseSkillInvocation` is the harness's own
-				 * recognition rule, and the vocabulary is the `skills.list` answer with
-				 * no hard-coded names — and the payload it injects is `invoke.py`'s
-				 * expansion character-for-character (`skill-invocation.ts` owns that
-				 * half, escape order included).
+				 * THE `$skill` EXPANSION (issue #664), resolved on the SUBMITTED line
+				 * and applied where the message leaves. Only a FIRST-TOKEN `$name`
+				 * matching a DISCOVERED skill fires — `parseSkillInvocation` is the
+				 * harness's own recognition rule, and the vocabulary is the
+				 * `skills.list` answer with no hard-coded names — and the payload it
+				 * injects is `invoke.py`'s expansion character-for-character
+				 * (`skill-invocation.ts` owns that half, escape order included).
+				 *
+				 * WHAT KEEPS A PASTED DOCUMENT FROM FIRING IS THE ANCHOR, not a
+				 * typed-vs-pasted marker: the rule reads the FIRST token of what is
+				 * being submitted, so a document whose later line says `$research …`
+				 * cannot fire — the harness's own stated guarantee
+				 * (`command_picker.py`). A paste whose content IS the first line
+				 * behaves exactly as typing it does, which is also the harness's
+				 * behaviour (`$skill` at offset 0 IS the invocation). Mid-document
+				 * pastes stay prose for the same anchor reason.
 				 *
 				 * A skill whose body cannot be read is NOT silently swallowed: the
 				 * notice says so and the raw text goes through untouched, which is the
 				 * harness's own trade — a message the user can see and resend beats a
 				 * gesture that looked like it fired and did not. The REQUEST comes from
 				 * the substituted text (`carried.text`) when that still parses to the
-				 * same invocation, because credential citations may have rewritten it
-				 * inside the request; the typed parse is the fallback.
+				 * SAME skill, because credential citations may have rewritten it inside
+				 * the request; a different or missing parse keeps the typed request.
 				 */
 				let outgoingText = buildSendPayload(carried.text, replies);
 				const skillNames = skillNamesRef.current;
@@ -2357,13 +2366,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						invocation.name,
 					);
 					if (body !== null && skillBodyHasContent(body)) {
-						const substituted =
-							parseSkillInvocation(carried.text, skillNames) ?? invocation;
+						const substituted = parseSkillInvocation(carried.text, skillNames);
+						const request =
+							substituted && substituted.name === invocation.name
+								? substituted.request
+								: invocation.request;
 						outgoingText = buildSendPayload(
-							renderSkillInvocation(
-								{ ...invocation, request: substituted.request },
-								body,
-							),
+							renderSkillInvocation({ ...invocation, request }, body),
 							replies,
 						);
 					} else if (body !== null) {

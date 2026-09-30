@@ -75,9 +75,11 @@ test("a `$` opens a token only at a word boundary", () => {
 	// running the tokenizer on every keystroke of ordinary prose safe.
 	assert.equal(tokenOf("costs$5"), null);
 	assert.equal(tokenOf("a$b"), null);
-	// A boundary `$` followed by money DOES open, and that is harmless: `5`
-	// matches no skill name, so the list comes back empty and closes itself
-	// (`skill-rank.test` below asserts the empty answer).
+	// A boundary `$` followed by money still TOKENISES (the grammar is the
+	// boundary's, not the vocabulary's) — what it no longer does is vanish
+	// silently: a no-match query keeps its listbox up saying so (design round 1,
+	// D3), the sibling `/` palette's own answer. `skill-rank.test` below
+	// asserts the empty match.
 	assert.deepEqual(tokenOf("costs $5", 8), {
 		start: 6,
 		end: 8,
@@ -300,10 +302,12 @@ test("Enter and Tab both complete, never run; Escape closes; nothing else is cla
 	});
 	assert.deepEqual(intent({ key: "Escape" }), { kind: "close" });
 	assert.deepEqual(intent({ key: "a" }), { kind: "pass" });
-	// Enter with no row to take is claimed rather than falling through to the
-	// composer's submit path: the user pressed the key to take a row.
+	// Enter with no row to take PASSES, so the line is sent as written: the
+	// no-match query keeps its listbox up saying the miss (D3), and a key that
+	// was claimed there would wedge the very send the empty state explains.
+	// Same answer the sibling's empty slash list gives.
 	assert.deepEqual(intent({ key: "Enter", count: 0, active: 0 }), {
-		kind: "hold",
+		kind: "pass",
 	});
 });
 
@@ -376,5 +380,30 @@ test("the shipped composer wires the `$` seams", () => {
 		input,
 		/readSkillBody\(/,
 		"reading the body through the shared cache",
+	);
+	/*
+	 * THE EMPTY STATE (design round 1, D3), pinned on the picker's own source
+	 * because it is a React component the harness cannot bundle: a no-match
+	 * query keeps the listbox and says the miss, rather than unmounting silently
+	 * where the sibling `/` palette says "No commands match.".
+	 */
+	const picker = code(
+		"src/renderer/src/features/chat/components/skill-picker.tsx",
+	);
+	assert.match(picker, /No skills match\./, "the miss is stated");
+	assert.match(
+		picker,
+		/rows\.length > 0 \|\| hasQuery/,
+		"and the listbox stays up for a no-match query",
+	);
+	assert.match(
+		picker,
+		/enabled: active && Boolean\(sessionId\) && provided/,
+		"the vocabulary read is provider-gated (QA round 1, Q-1)",
+	);
+	assert.match(
+		picker,
+		/useOptionalQueryClient\(\)/,
+		"through the provider-optional client, as the host contract requires",
 	);
 });

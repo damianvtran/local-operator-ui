@@ -237,6 +237,17 @@ export const retireDraftApplies = (
  *
  * Pure and exported so the rule is asserted without a DOM, in the shape
  * `retireDraftApplies` above takes.
+ *
+ * A DELIBERATE DIVERGENCE FROM THE HARNESS, stated here because the harness
+ * still does the other thing: the TUI's composer gates the same key on the
+ * CARET (`editor.py`'s `_caret_at_top_edge()`) and keeps recall-with-draft,
+ * stashing the draft on the way out. The desktop instead requires the EMPTY
+ * box — the convention issue #673 asks for, matching Slack and Discord, where
+ * history is reachable from a blank composer so a half-written prompt is never
+ * swapped or stashed without the user meaning it. Two consequences that follow
+ * from reading the VALUE rather than its trim: a whitespace-only box counts as
+ * content (one character), so a stray space blocks recall until the box is
+ * truly empty; and the walk's stash can now only ever hold `""`.
  */
 export const historyRecallEngages = (value: string): boolean => value === "";
 
