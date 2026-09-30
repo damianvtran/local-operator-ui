@@ -1,61 +1,68 @@
 /**
- * The team section header the List, the Timeline and the Board share
- * (issue #703): a small-caps label and a quiet count on a hairline, in a
- * register of its own so a section can no longer be mistaken for a project row.
+ * The List view's team band (issue #703, RESHAPED on operator direction).
  *
- * WHAT WAS WRONG. Each surface hand-rolled the same band: `text-meta`, the team
- * name in `text-ink`, the count in `text-ink-muted`, on `canvas`. One type step
- * under a row's `text-body-sm text-ink` name, in the same ink family and the same
- * flush left edge, a header read as a row that had forgotten to react to hover -
- * the reporter's "you can hover a project but not a team name". Three copies of
- * the recipe was also how the three views could drift into three registers.
+ * WHAT THE OPERATOR ASKED FOR, and why this file is List-only now. The first
+ * pass of #703 gave the List, the Timeline and the Board one shared register
+ * (small-caps label on a hairline) and that is not what was wanted: "The headers
+ * can remain with their current backgrounds on the board view btw it's just the
+ * list view that needs better contrast", and "there should probably be some sort
+ * of borderless chrome background with slight brightness contrast on the header
+ * just for the list view to make it easier to visually divide." The Timeline and
+ * the Board therefore ship exactly what `main` ships - their own bands, byte for
+ * byte, reverted in this change - and this component is what the List alone
+ * uses. The issue records the Timeline half as "not needed per operator
+ * direction (List-only division; Timeline/Board unchanged)"; the Timeline's own
+ * band is the next candidate, not this change.
  *
- * THE REGISTER IS THE APP'S OWN SECTION LABEL, not a new one: `font-medium
- * text-ink-dim text-meta uppercase tracking-wide` is byte-for-byte the class list
- * of the chat sidebar's `sectionLabel()` and the view menu's `group()` (the
- * "muted small-caps group label", design-reviewed in PR #493), so a team header
- * reads as the same kind of thing as "Active chats" and "Group by". Type steps
- * are `docs/branding.md` §4's `text-meta`; the ink is §2's `ink-dim` (caption /
- * metadata), whose 5:1 floor `pnpm check-themes` already holds on `canvas`.
- * The COUNT stays in the same quiet ink: the old `ink-muted` count would now be
- * louder than the `ink-dim` name it annotates, inverting the hierarchy.
+ * THE BAND IS A LIGHTNESS STEP, NOT A RULE. `bg-surface` is the ladder's own
+ * canvas -> surface rung (docs/branding.md §2, "+2.5 to +5.0 L*"), measured by
+ * the design consult across all 59 palettes: dL* min 2.53 / median 3.54 / max
+ * 4.98, dE00 min 2.05 (iceberg) with no palette under the contract's 2.0 field
+ * floor, and ink floors on the new fill of 8.15:1 (`ink`, catppuccinFrappe) and
+ * 6.56:1 (`ink-muted`) - so the label and its count clear 4.5:1 everywhere and
+ * no palette role is added. That is the whole change: "slight brightness
+ * contrast", one role.
  *
- * THE HAIRLINE AND THE HEIGHT. The band is `h-8` (32px) - the board's pinned band
- * offset (`top-11`, the 44px column row plus this) is written against exactly that
- * number, so the shared component must not move it - with the label bottom-aligned
- * (`items-end pb-1`) above a `border-b border-hairline`, the view menu's own
- * group idiom (`pt-3` above, a small gap, the rule below). Bottom-aligning inside a
- * fixed height, rather than padding, is what lets the one component fit the
- * board's constant AND give the list and timeline the same air above the label.
- * The rule is a §2 "decorative" line (`hairline`, not `border-control`): it
- * bounds nothing that can be operated.
+ * WHY THIS RUNG AND NOT ANOTHER. `elevated` is REJECTED because it is the rung a
+ * ROW's own hover already uses (`hover:bg-elevated`), so a band on it would be
+ * the same fill as a hovered row directly beneath it; `row-hover` is a state
+ * role rather than chrome; `sunken` is the wrong direction (a well, not chrome
+ * above the rows). Accepted consequence, stated so a later round does not "fix"
+ * it: the ordering reads canvas (rows) < surface (band) < elevated (a hovered
+ * row), so a hovered row sits one rung ABOVE the band for the moment the pointer
+ * is on it - the band is static chrome and the hover is transient and local.
  *
- * A HEADER IS A LABEL, NOT AN ACTION - so it has no hover. There is no hover
- * ground, no pointer cursor (`cursor-default` states it rather than leaving the
- * I-beam over a heading the rows beside it make look clickable), nothing
- * focusable was added and nothing animates, so §9 items 6-7 (keyboard, reduced
- * motion) have nothing to check. The asymmetry the reporter read as broken is now
- * the register's intent: rows react because they open a project; a small-caps
- * label on a rule does not, in this app or any of the three views. Should a
- * collapse ever be ruled in, it belongs on this component's one element.
+ * BORDERLESS, AND WHY THAT IS THE POINT. No border, no hairline, no radius, no
+ * shadow: elevation here is a lightness step, and a rule under a band that
+ * already separates itself by fill is the "bare text with no visual division"
+ * complaint inverted. The label is the same `text-meta` as the column strip and
+ * sits on the same rail as the rows.
  *
- * THE STICKY CONTRACT STAYS WITH THE SURFACE. The band is a plain block here; each
- * view passes the pinning that is its own (`sticky top-0`, the board's `top-11`,
- * the timeline's h-scroll pin) through `className`, and `innerClassName`/
- * `innerStyle` for the box that holds name and count, because the board and the
- * timeline pin THAT box left while the band's ground and hairline keep masking
- * the full width. The `data-*` hooks (`data-project-team`, `data-board-team`) are
- * passed straight through to the band: they are the stories' and the rig's handle
- * on the sticky geometry.
+ * THE LABEL IS THE TEAM'S OWN NAME, CASE PRESERVED. A `<h3>` (the chat sidebar's
+ * level for a section label, so a screen reader gets the structure the visual
+ * grouping already had) in `text-ink`, with NO `uppercase`, NO `tracking-wide`
+ * and NO `font-medium`: a team name is user data, and a register that prints
+ * "Aida" as "AIDA" is a defect rather than a style. The count stays in the
+ * quieter `text-ink-muted` beside it.
  *
- * HEADING SEMANTICS: the label is an `<h3>`, the sidebar's level for a section
- * label, so a screen reader gets the section structure the visual grouping
- * already had. Same `cn` route as every className here, so a type step and an ink
- * role in one call cannot collide silently.
+ * A BAND IS A LABEL, NOT AN ACTION. No hover fill, no pointer cursor
+ * (`cursor-default` states it rather than leaving the I-beam over a heading the
+ * rows beside it make look clickable), nothing focusable and nothing animating -
+ * rows react because they open a project; a section label does not.
+ *
+ * THE MASKING CONTRACT. The List pins the band itself (`sticky top-0 z-10`
+ * through `className`), and the band's opaque fill spans the same box as the
+ * rows - the scrolling `<ul>`'s `px-6` inset, so the band and a row both run
+ * x=24..1256 at the 1280px frame - which is what lets a row scroll fully under
+ * it with no pixel escaping beside it. A solid role fill needs no
+ * `backdrop-blur` and no scrim.
+ *
+ * The `data-project-team` hook rides through `...rest` to the band: it is the
+ * stories' and the rig's handle on the sticky geometry.
  */
 
 import { cn } from "@shared/lib/utils";
-import type { CSSProperties, FC, HTMLAttributes } from "react";
+import type { FC, HTMLAttributes } from "react";
 import { NO_TEAM_LABEL } from "../project-model";
 
 export type TeamSectionHeaderProps = Omit<
@@ -66,35 +73,22 @@ export type TeamSectionHeaderProps = Omit<
 	team: string | null;
 	/** How many projects the section holds. */
 	count: number;
-	/** Extra classes for the box that holds the name and the count. */
-	innerClassName?: string;
-	/** Inline style for that box (the timeline's fixed name column width). */
-	innerStyle?: CSSProperties;
 };
 
 export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 	team,
 	count,
 	className,
-	innerClassName,
-	innerStyle,
 	...rest
 }) => (
 	<div
 		{...rest}
 		className={cn(
-			"flex h-8 cursor-default items-end border-hairline border-b bg-canvas pb-1",
+			"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
 			className,
 		)}
 	>
-		<span
-			className={cn("flex min-w-0 items-center gap-2", innerClassName)}
-			style={innerStyle}
-		>
-			<h3 className="truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
-				{team ?? NO_TEAM_LABEL}
-			</h3>
-			<span className="shrink-0 text-ink-dim text-meta">{count}</span>
-		</span>
+		<h3 className="truncate text-ink">{team ?? NO_TEAM_LABEL}</h3>
+		<span className="shrink-0 text-ink-muted">{count}</span>
 	</div>
 );

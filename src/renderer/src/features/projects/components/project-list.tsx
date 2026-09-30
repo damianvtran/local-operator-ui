@@ -10,8 +10,12 @@
  * columns and the timeline run, headers pinned `top-0` inside the scroller so
  * the current team stays named while its rows scroll under it and the next
  * header pushes it out — the ordinary sticky contract, which is all the
- * "pin and push" behaviour needs. A header's ground is `canvas` because that
- * IS the view's ground now; `surface` would float a band over the rows.
+ * "pin and push" behaviour needs. A header's ground is the `surface` rung, one
+ * lightness step above the rows' `canvas` (issue #703, reshaped on operator
+ * direction to a List-only division): the opaque fill spans the rows' own box,
+ * so what scrolls under it is fully covered, and `TeamSectionHeader`'s comment
+ * carries the measurement and the rejected rungs. The band carries no rule:
+ * the step is the division.
  *
  * THE COLUMNS ARE THE DESIGN'S OWN LIST, in its order — name, status chip,
  * target date, estimate, milestone `n/m`, live count, progress age with the
@@ -148,7 +152,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 						<TeamSectionHeader
 							team={group.team}
 							count={group.items.length}
-							className="sticky top-0 z-10 px-3"
+							className="sticky top-0 z-10"
 							data-project-team={group.team ?? ""}
 						/>
 						<ul className="divide-y divide-hairline">

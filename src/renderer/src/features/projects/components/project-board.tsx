@@ -91,6 +91,7 @@ import { useProjectDetail } from "../hooks/use-projects-queries";
 import {
 	BOARD_COLUMNS,
 	BOARD_SIDE_COLUMNS,
+	NO_TEAM_LABEL,
 	PROGRESS_STALE_LABEL,
 	boardColumns,
 	boardProgressText,
@@ -107,7 +108,6 @@ import {
 	writeBoardColumnOrder,
 } from "../project-model";
 import { todayUtcMs } from "../timeline-model";
-import { TeamSectionHeader } from "./team-section-header";
 
 type ProjectBoardProps = {
 	projects: DesktopProject[];
@@ -711,13 +711,19 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * dimensions): the team stays readable without clipping at the
 							 * window edge.
 							 */}
-							<TeamSectionHeader
-								team={band.team}
-								count={band.items.length}
-								className="sticky top-11 z-20 px-3"
-								innerClassName="sticky left-3 max-w-[calc(100cqw-2.25rem)]"
+							<div
 								data-board-team={band.team ?? ""}
-							/>
+								className="sticky top-11 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
+							>
+								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
+									<span className="truncate text-ink">
+										{band.team ?? NO_TEAM_LABEL}
+									</span>
+									<span className="shrink-0 text-ink-muted">
+										{band.items.length}
+									</span>
+								</span>
+							</div>
 							{/*
 							 * NO EMPTY-BAND SHAPE SHIPS HERE (design round 2, D4): an earlier draft
 							 * drew a flat line for a team with no tickets, but `groupByTeam`
