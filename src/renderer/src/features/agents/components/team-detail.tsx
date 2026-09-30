@@ -153,6 +153,8 @@ export function TeamDetail({
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
+	/** The collaboration field, so a refused create puts the caret in it (D14). */
+	const teamInstructionsRef = useRef<HTMLTextAreaElement>(null);
 
 	/* A pane opened by a Create takes the caret itself (QA Q7) — see the note on
 	 * the handoff in `detail-parts`.
@@ -240,6 +242,7 @@ export function TeamDetail({
 		if (creating && !draft.instructions.trim()) {
 			setError("Give the team instructions.");
 			setErrorField("instructions");
+			teamInstructionsRef.current?.focus();
 			return;
 		}
 		setPending(true);
@@ -361,7 +364,9 @@ export function TeamDetail({
 				) : null}
 			</header>
 
+			{/* noValidate — the team form validates in `save()` (D14). */}
 			<form
+				noValidate
 				onSubmit={(event) => {
 					event.preventDefault();
 					void save(event);
@@ -586,6 +591,7 @@ export function TeamDetail({
 						</Section>
 						<Section title="Collaboration instructions">
 							<Textarea
+								ref={teamInstructionsRef}
 								aria-label="Collaboration instructions"
 								className="min-h-36"
 								maxLength={8000}

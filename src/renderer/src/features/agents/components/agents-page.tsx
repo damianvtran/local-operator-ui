@@ -186,6 +186,15 @@ export function AgentsPage() {
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
 	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
+	/*
+	 * HOW MUCH OF THE SCROLLER THE DOCKED STRIP IS COVERING (D12, design review
+	 * round 2). The strip floats above the composer so it cannot resize the pane
+	 * (D4) — which means the pane has to reserve that room itself, or the last
+	 * block of a long definition sits under the overlay where no scroll reaches
+	 * it. The composer reports its own measured height; this is the scroller's
+	 * answer, and `16` is the dock's own `p-4`, which the overlay also spans.
+	 */
+	const [stripHeight, setStripHeight] = useState(0);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
 	const clearMark = useConfigRunStore((state) => state.clearMark);
@@ -565,7 +574,12 @@ export function AgentsPage() {
 						</Button>
 					</div>
 				) : null}
-				<div className="min-h-0 flex-1 overflow-auto p-6 pb-0">
+				<div
+					className="min-h-0 flex-1 overflow-auto p-6 pb-0"
+					style={
+						stripHeight > 0 ? { paddingBottom: stripHeight + 16 } : undefined
+					}
+				>
 					{!catalogueEnabled ? (
 						/*
 						 * THREE STATES, THREE TITLES. While the capabilities read is in flight
@@ -786,6 +800,7 @@ export function AgentsPage() {
 							run={run}
 							about={run.about}
 							onClearAbout={() => run.setAbout(null)}
+							onStripHeightChange={setStripHeight}
 							blockedReason={
 								editDirty ? "Finish or cancel your edit first." : null
 							}
