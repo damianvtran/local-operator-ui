@@ -10,6 +10,7 @@ import {
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ChatLayout } from "@shared/components/common/chat-layout";
@@ -586,6 +587,15 @@ const INERT_REMEDY: McpRemedyControls = {
 };
 
 /**
+ * No-op monitor controls. The Monitors section is not this frame's subject and
+ * the fixtures carry no monitors, so the control is the inert shape the panel
+ * requires rather than a behaviour this story claims.
+ */
+const INERT_MONITOR_CONTROLS: MonitorControls = {
+	cancel: async () => ({ ok: true }),
+};
+
+/**
  * The conversation column: the production `ChatHeader` over a transcript at the
  * app's own ground and inset.
  *
@@ -801,6 +811,7 @@ export const ChatDockRunPanel: Story = {
 							mcpServers={deriveMcpServers([], {}, [])}
 							mcpGrantRunning={mcpGrantInFlight([])}
 							mcpRemedy={INERT_REMEDY}
+							monitorControls={INERT_MONITOR_CONTROLS}
 							sessionId="a1b2c3d4e5f6"
 							pulses={{}}
 							childrenOpenable
