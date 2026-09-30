@@ -33,6 +33,12 @@ halves stay the disabled-gates run from the original lane — they document the
 reported defects on that tree, and nothing in this delta changes what they
 show.
 
+FOLDED ONTO A MOVED `origin/main` AFTER THE SHOOT, AND NOT RE-CAPTURED: the
+fold's one composer change is the optional `deviceHold` node (`{deviceHold}`
+renders nothing when no move store is mounted, which the story never has), so
+the photographed band is the same DOM; the manifest's stamp pair was re-derived
+at the folded tip instead.
+
 The reports:
 
 - **#673** — ArrowUp in a box holding a draft swapped the draft for a history
