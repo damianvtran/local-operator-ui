@@ -441,7 +441,7 @@ export function installDevDriver(): string[] {
 				 * apart (`renderer-driver.mjs`'s `browser-pane` scene).
 				 */
 				browserPaneOpen: preferences.isBrowserPaneOpen,
-				browserPanelWidth: preferences.browserPanelWidth,
+				rightSlotWidth: preferences.rightSlotWidth,
 				activeSessionId: sessions.activeSessionId,
 				/*
 				 * WHERE THE ROW LIVES, for the scenes that come back to a conversation

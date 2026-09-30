@@ -6,6 +6,7 @@ import {
 	countLabel,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -157,6 +158,17 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenDownloads,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
+	/*
+	 * The chord captions (issue #675's round-1 review, U5): the product caps
+	 * every other chord on the control that owns it (`sidebarToggleCap`,
+	 * `paletteShortcutLabel`), and these two buttons are the nearest affordances
+	 * the gesture has. `aria-keyshortcuts` is the machine-readable half; the
+	 * tooltip is the visible one. The `aria-label`s stay the action alone —
+	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.
+	 */
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const backChord = navigationShortcutLabel("back", isMac);
+	const forwardChord = navigationShortcutLabel("forward", isMac);
 	/**
 	 * Where the user asked to go, held only while the tab has not committed it.
 	 *
@@ -207,11 +219,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
-			<Tooltip content="Back">
+			<Tooltip content={`Back (${backChord})`}>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					aria-label="Back"
+					aria-keyshortcuts={backChord}
 					disabled={disabled || !canGoBack}
 					onClick={onBack}
 					data-tour-tag="browser-back"
@@ -219,11 +232,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<ArrowLeft aria-hidden className="size-4" />
 				</Button>
 			</Tooltip>
-			<Tooltip content="Forward">
+			<Tooltip content={`Forward (${forwardChord})`}>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					aria-label="Forward"
+					aria-keyshortcuts={forwardChord}
 					disabled={disabled || !canGoForward}
 					onClick={onForward}
 					data-tour-tag="browser-forward"
