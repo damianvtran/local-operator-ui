@@ -1,7 +1,7 @@
 {
  "scene": "pinned-reorder",
  "theme": "localOperatorDark",
- "round": "round 2 remediation (PR #697), re-shot on the folded tree: the held row's ground plus its inset ring, the 260 default width, the current-row drag, the shed at 240 and the keyboard walk are this pass's additions; the drag ground, the slot-0 line, the grip count rule and the scrolled drop carry over from round 1",
+ "round": "round 3 remediation (PR #697), re-shot on the twice-folded tree: the held row's mark is now an inset OUTLINE (round 3, D10 - the inset box-shadow ring was painted UNDER the current row's own opaque button, so it survived at 5.3% on exactly the row round 2 was about); everything else carries over - the 260 default width, the current-row drag, the held ground, the shed at 240, the grip count rule, the scrolled drop and the keyboard walk",
  "slices": {
   "three": {
    "checks": {
@@ -12,7 +12,7 @@
    "frames": [
     {
      "label": "order-before-240",
-     "bytes": 192733,
+     "bytes": 192712,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -92,7 +92,7 @@
     },
     {
      "label": "drag-mid",
-     "bytes": 198732,
+     "bytes": 197598,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -102,7 +102,7 @@
     },
     {
      "label": "after-drop",
-     "bytes": 198007,
+     "bytes": 196895,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -122,7 +122,7 @@
     },
     {
      "label": "drag-top",
-     "bytes": 199741,
+     "bytes": 199708,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -132,7 +132,7 @@
     },
     {
      "label": "search-filtered",
-     "bytes": 195586,
+     "bytes": 195548,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -142,7 +142,7 @@
     },
     {
      "label": "search-drag-mid",
-     "bytes": 197059,
+     "bytes": 197030,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -152,7 +152,7 @@
     },
     {
      "label": "search-after-drop",
-     "bytes": 196044,
+     "bytes": 196036,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -162,7 +162,7 @@
     },
     {
      "label": "current-drag-mid",
-     "bytes": 165911,
+     "bytes": 165988,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -338,16 +338,16 @@
      "round2": {
       "heldCurrent": {
        "ground": "rgb(55, 47, 36)",
-       "ring": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(166, 160, 145) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+       "mark": "rgb(166, 160, 145) solid 1px offset -1px",
        "restingGround": "rgb(55, 47, 36)"
       },
       "heldPlain": {
        "ground": "rgb(55, 47, 36)",
-       "ring": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(166, 160, 145) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+       "mark": "rgb(166, 160, 145) solid 1px offset -1px"
       },
       "hoveredTarget": {
        "ground": "rgb(48, 45, 41)",
-       "ring": "none"
+       "mark": "none"
       }
      }
     }
@@ -455,11 +455,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed"
+     "payload": "9 seen, 0 owned by a live pid (kept), 9 younger than 30m (kept), 0 removed"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18347"
+     "payload": "out/renderer/index.html: http://127.0.0.1:18349 added to frame-src and media-src (build output only; src/ untouched)"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -483,8 +483,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18347",
-      "backend": "http://127.0.0.1:18347"
+      "apiBaseUrl": "http://127.0.0.1:18349",
+      "backend": "http://127.0.0.1:18349"
      }
     },
     {
@@ -646,11 +646,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed"
+     "payload": "3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18347"
+     "payload": "already widened for http://127.0.0.1:18349"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -674,8 +674,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18347",
-      "backend": "http://127.0.0.1:18347"
+      "apiBaseUrl": "http://127.0.0.1:18349",
+      "backend": "http://127.0.0.1:18349"
      }
     },
     {
@@ -763,11 +763,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "7 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 0 removed"
+     "payload": "5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18347"
+     "payload": "already widened for http://127.0.0.1:18349"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -791,8 +791,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18347",
-      "backend": "http://127.0.0.1:18347"
+      "apiBaseUrl": "http://127.0.0.1:18349",
+      "backend": "http://127.0.0.1:18349"
      }
     },
     {
@@ -830,11 +830,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "9 seen, 0 owned by a live pid (kept), 9 younger than 30m (kept), 0 removed"
+     "payload": "7 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 0 removed"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18347"
+     "payload": "already widened for http://127.0.0.1:18349"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -858,8 +858,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18347",
-      "backend": "http://127.0.0.1:18347"
+      "apiBaseUrl": "http://127.0.0.1:18349",
+      "backend": "http://127.0.0.1:18349"
      }
     },
     {
