@@ -951,28 +951,27 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 		);
 	}
 	/*
-	 * THE CONTAINER DECLARATION IS BACK, AND THIS IS ITS ONE READER (round 1, design D2;
-	 * the direction this test's own comment left open - "the reversal note that stays in
-	 * the file is where the shed would go back"). What went back is NOT the pair shed:
-	 * the pin, the archive and the move pair are still drawn at every width, and the
-	 * shared 24px menu, its anchor and the two constants stay retired. What sheds at or
-	 * below a 278px panel is the GRIP alone - 28px of the revealed cluster, an
-	 * accelerator for a gesture the arrows already perform, leaving the pair as WCAG
-	 * 2.5.7's single-pointer path. So the assertion flips from "the name is absent" to
-	 * "the name is present and exactly one class reads it", which is the property that
-	 * keeps a future shed from arriving unnoticed.
+	 * THE CONTAINER DECLARATION IS GONE AGAIN, AND SO IS THE BREAK THAT READ IT
+	 * (2026-09-30). Round 1 brought both back for one member - the GRIP, shed at or
+	 * below a 278px panel because the FIVE-control cluster left the 240 clamp a 40px
+	 * title - and this change deletes the arrow pair that made the cluster five wide.
+	 * With the pair gone the same width leaves 124px, so the grip is drawn at every
+	 * width and the `@container/chatsidebar` on the panel root - whose only reader the
+	 * query was - goes with it. The assertion therefore flips back to "the name is
+	 * absent", which is the property that keeps a future width query from arriving
+	 * unnoticed.
 	 */
 	const containerReads =
 		source.match(/@(?:max|min)-\[[0-9]+px\]\/chatsidebar:/g) ?? [];
 	assert.deepEqual(
 		containerReads,
-		["@max-[263px]/chatsidebar:"],
-		`the panel's container is read by something other than the grip's own shed: ${JSON.stringify(containerReads)}`,
+		[],
+		`the panel's container is read again, by something other than a deliberate break: ${JSON.stringify(containerReads)}`,
 	);
-	assert.match(
-		source,
-		/@container\/chatsidebar relative flex h-full/,
-		"the panel root declares the container the grip's shed measures",
+	assert.equal(
+		/@container\/chatsidebar/.test(source),
+		false,
+		"the panel root still declares the container the grip's deleted shed measured",
 	);
 	/*
 	 * AND THE REPLACEMENT IS ONE RULE AT EVERY WIDTH, on the wrapper: `hidden` while the
