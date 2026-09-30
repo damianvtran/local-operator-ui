@@ -71,6 +71,20 @@ export type TurnSummaryProps = {
 	/** Tool rows in the run; zero omits the clause. */
 	actionCount: number;
 	/**
+	 * Whether `actionCount` is a MINIMUM: the run's opening row is not loaded, so
+	 * the turn is known to have at least this many actions and possibly more.
+	 *
+	 * WHY THE MARKER EXISTS AT ALL (design round 1, D1). `7 actions` over a turn of
+	 * 423 is indistinguishable from a true count — the operator's screenshot read
+	 * `97 actions` and nothing on the line said otherwise — and the state is
+	 * reachable whenever the head cannot be fetched (a run taller than the walk's
+	 * allowance, a backend whose earlier pages are gone). The bar is the turn's only
+	 * size statement, so the honest shape is the count followed by `+`, with the
+	 * duration clause absent (there is no wall span to state either) and the same
+	 * claim in words for a pointer or a screen reader.
+	 */
+	partial?: boolean;
+	/**
 	 * The fold-style class sentence (`foldSummary`, e.g. "Explored 4 files, 1
 	 * search"), one hover away at zero line weight; null when the run has no
 	 * actions to phrase.
@@ -129,6 +143,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	className,
 	durationS,
 	actionCount,
+	partial = false,
 	title,
 	stampTs,
 	open,
@@ -137,6 +152,21 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	condensedMedia,
 	mediaCount = 0,
 }) => {
+	/*
+	 * The count clause and the sentence behind it, derived once: the visible words
+	 * carry the marker the model's `partial` fact asks for, and the title/name say
+	 * the same thing in full. Kept beside each other so the two cannot drift into
+	 * claiming different things about the same number.
+	 */
+	const actionClause = partial
+		? `${actionCount}+ actions`
+		: actionCount === 1
+			? "1 action"
+			: `${actionCount} actions`;
+	const actionClauseTitle = `At least ${
+		actionCount === 1 ? "1 action" : `${actionCount} actions`
+	} — earlier rows of this turn are not loaded`;
+
 	return (
 		<div
 			/*
@@ -237,8 +267,18 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						)}
 						{durationS !== null && actionCount > 0 && <Dot />}
 						{actionCount > 0 && (
-							<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-								{actionCount === 1 ? "1 action" : `${actionCount} actions`}
+							<span
+								className={cn("shrink-0 text-body-sm text-ink-muted")}
+								/*
+								 * The words carry the marker for AT: `307+ actions` reads as a
+								 * range only if the `+` is announced, and a `title` gives the
+								 * sighted reader the same sentence on hover. Both are the same
+								 * claim the visible glyph makes - a minimum, not a total.
+								 */
+								title={partial ? actionClauseTitle : undefined}
+								aria-label={partial ? actionClauseTitle : undefined}
+							>
+								{actionClause}
 							</span>
 						)}
 						{/*
