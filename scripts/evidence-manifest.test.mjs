@@ -2720,6 +2720,13 @@ const BRANCH_RECORDS = [
 	 * resolved from main's copy would drop it.
 	 */
 	"rowMenuRoundTwoRestampNote",
+	/*
+	 * And ROUND 3'S own, beside it: the re-stamp QA round 3's Q-1 fix forced by
+	 * moving `src/` (the capture-phase read) and the suite's pins in `scripts/`.
+	 * Registered for the list's usual reason - a fold resolved from main's copy
+	 * would drop it.
+	 */
+	"rowMenuRoundThreeRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

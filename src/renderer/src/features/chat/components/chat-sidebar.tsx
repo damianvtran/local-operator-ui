@@ -4035,6 +4035,7 @@ export function ChatSidebar({
 				 */
 				data-session-menu-trigger
 				onKeyDown={openRowMenuAtKeyboard}
+				onPointerDownCapture={rememberFocusBeforePress}
 				onBlur={keepFlyoutWhileFocusStaysInRow}
 				className={cn(
 					// Carried while EITHER per-row control is mounted, because both reveal
@@ -4137,11 +4138,14 @@ export function ChatSidebar({
 				open={menuOpen}
 				onOpenChange={(open) => {
 					/*
-					 * THE POINTER CLOSE'S RETURN TARGET, captured here because this is
-					 * the moment before the primitive moves focus into the panel (U8;
-					 * the restore lives in `onCloseAutoFocus`).
+					 * THE POINTER CLOSE'S RETURN TARGET WHEN NO PRESS RAN (U8; the
+					 * restore lives in `onCloseAutoFocus`). The press records it
+					 * earlier, on `pointerdown`'s capture phase (QA round 3, Q-1 -
+					 * `rememberFocusBeforePress`), so this runs only when nothing has
+					 * been recorded yet - a dispatched `contextmenu` - and can never
+					 * overwrite the press-time value.
 					 */
-					if (open)
+					if (open && menuFocusReturnRef.current === null)
 						menuFocusReturnRef.current =
 							document.activeElement instanceof HTMLElement
 								? document.activeElement
@@ -4941,17 +4945,26 @@ export function ChatSidebar({
 	 */
 	const menuOpenedByKeyboard = useRef(false);
 	/*
-	 * WHAT HELD FOCUS WHEN A ROW'S MENU OPENED, for the pointer path's close
-	 * (UX round 2, U8). The pointer path takes no focus of its own, but the
-	 * primitive still moves focus into the panel on open - the shipped
-	 * `pointer-hover` frame reads `focus: menuitem` - and on close the element
-	 * holding it unmounts, so without a memory the caret fell to `<body>` and a
-	 * reader who was typing had to click before the next keystroke landed (QA
-	 * round 2's reading: composer focused -> right-click -> Escape -> `<body>`).
-	 * One ref for the whole sidebar rather than one per row, for the same reason
-	 * `openMenuRowId` is one id: only one menu can be open. Written in the row's
-	 * `onOpenChange`, read in `onCloseAutoFocus`, never rendered - so a ref, not
-	 * state.
+	 * WHAT HELD FOCUS BEFORE A ROW'S MENU WAS ASKED FOR, for the pointer path's
+	 * close (UX round 2, U8; re-read at the press by QA round 3's Q-1). The
+	 * pointer path takes no focus of its own, but the primitive still moves
+	 * focus into the panel on open - the shipped `pointer-hover` frame reads
+	 * `focus: menuitem` - and on close the element holding it unmounts, so
+	 * without a memory the caret fell to `<body>` and a reader who was typing
+	 * had to click before the next keystroke landed (QA round 2's reading:
+	 * composer focused -> right-click -> Escape -> `<body>`).
+	 *
+	 * READ AT `pointerdown`, IN THE CAPTURE PHASE, because the press itself is
+	 * what moves focus: a real right-press's `mousedown` default focuses the
+	 * row's button BEFORE the menu opens, so a capture inside `onOpenChange`
+	 * remembered the button - Escape returned it and the next keystroke started
+	 * the row's type-to-filter (QA round 3's Q-1, measured live). The capture
+	 * phase runs before that default, where the control the reader was in is
+	 * still the active element; `onOpenChange` keeps a capture for opens with
+	 * no press (a dispatched `contextmenu`), guarded so it cannot overwrite the
+	 * press-time value. One ref for the whole sidebar rather than one per row,
+	 * for the same reason `openMenuRowId` is one id: only one menu can be open.
+	 * Read in `onCloseAutoFocus`, never rendered - so a ref, not state.
 	 */
 	const menuFocusReturnRef = useRef<HTMLElement | null>(null);
 	/*
@@ -5004,6 +5017,26 @@ export function ChatSidebar({
 				clientY: rect.bottom - 1,
 			}),
 		);
+	};
+	/*
+	 * THE PRE-PRESS FOCUS (QA round 3, Q-1). Wired as the box's
+	 * `onPointerDownCapture`, so it runs in the CAPTURE phase - before the
+	 * press's own `mousedown` default moves focus to the row's button - and the
+	 * control the reader was in (the composer) is what gets remembered, which
+	 * is what the pointer close must give back: read at open time instead, the
+	 * remembered button came back and a following keystroke began the row's
+	 * type-to-filter. Every button, not only the right one: `Control`+click is
+	 * a context-menu press on this platform and its left-button default moves
+	 * focus the same way. Skipped while a menu is already open, so a press on
+	 * another row cannot overwrite the value the closing menu is about to
+	 * restore.
+	 */
+	const rememberFocusBeforePress = () => {
+		if (openMenuRowIdRef.current !== null) return;
+		menuFocusReturnRef.current =
+			document.activeElement instanceof HTMLElement
+				? document.activeElement
+				: null;
 	};
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		/*

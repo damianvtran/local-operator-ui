@@ -301,7 +301,8 @@ test("the keyboard opener synthesises its point and never reads the platform's",
 	 * without first pressing an arrow) and returns the caret to the row's button on
 	 * close; both prevent the primitive's default, and `menuOpenedByKeyboard` is
 	 * the one splitter. The pointer path takes no focus of its own but GIVES BACK
-	 * WHAT THE MENU TOOK (U8 below).
+	 * WHAT THE MENU TOOK (U8 below), read at the press itself (QA round 3's Q-1 -
+	 * the press's own default moves focus, so the capture must run first).
 	 */
 	const open = between(MENU, "onFocus={(event) => {", "onCloseAutoFocus");
 	assert.ok(
@@ -344,6 +345,34 @@ test("the keyboard opener synthesises its point and never reads the platform's",
 		openChange.includes("document.activeElement") &&
 			openChange.includes("menuFocusReturnRef.current ="),
 		"the open no longer captures the pre-open focus target the pointer close returns to (U8)",
+	);
+	/*
+	 * AND THE PRESS ITSELF IS THE CAPTURE MOMENT (QA round 3, Q-1): a real
+	 * right-press's own `mousedown` default moves focus to the row's button
+	 * BEFORE the menu opens, so a capture inside `onOpenChange` remembered the
+	 * button - Escape returned it and the next keystroke began the row's
+	 * type-to-filter (measured live). The box reads the pre-press focus on
+	 * `pointerdown`'s capture phase, where the press's default has not run yet;
+	 * `onOpenChange`'s capture remains for opens with no press and is guarded by
+	 * the ref's emptiness so it cannot overwrite the press-time value.
+	 */
+	const pressCapture = between(
+		SIDEBAR_CODE,
+		"const rememberFocusBeforePress = () => {",
+		"};",
+	);
+	assert.ok(
+		pressCapture.includes("document.activeElement") &&
+			pressCapture.includes("menuFocusReturnRef.current ="),
+		"the pre-press focus is no longer read on pointerdown's capture phase (QA r3 Q-1)",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes("onPointerDownCapture={rememberFocusBeforePress}"),
+		"the row box no longer wires the capture-phase reader (QA r3 Q-1)",
+	);
+	assert.ok(
+		openChange.includes("menuFocusReturnRef.current === null"),
+		"the open-time capture is no longer guarded against overwriting the press-time value (QA r3 Q-1)",
 	);
 	assert.ok(
 		close.includes("menuFocusReturnRef.current") &&
