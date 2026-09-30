@@ -433,7 +433,15 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 */
 	assert.match(
 		source,
-		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		/*
+		 * `\b<section` rather than `<section>` (issue #697): the section now carries its
+		 * own anchors - the drag indicator's containing block and the
+		 * `data-chat-section="pinned"` marker the evidence rigs scope by - so the open tag
+		 * has attributes between its name and its bracket. What this assertion is about is
+		 * unchanged and is still the whole of it: the gate is the branch AROUND the
+		 * element, and a `pinnedShown` that swallowed it would leave the heading standing.
+		 */
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section\b/,
 		"the pinned section is no longer gated by the pin capability",
 	);
 });

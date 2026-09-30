@@ -84,7 +84,9 @@ const {
 	chatPinMoveControl,
 	forgetPinnedOrder,
 	movePinnedOrder,
+	movePinnedOrderTo,
 	orderPinnedRows,
+	pinDragSlot,
 	pinMoveBoundaryNote,
 	pinMoveNote,
 	pinnedOrder,
@@ -105,6 +107,81 @@ const row = (session_id, over = {}) => ({
 	...over,
 });
 const ids = (rows) => rows.map((item) => item.session_id);
+
+/*
+ * THE DRAG'S OWN MODEL (issue #697, item 7): a drop is the same sequence of
+ * single-step swaps the chords make, so the two routes cannot produce two
+ * different stored arrays from the same start.
+ *
+ * WHAT IS ASSERTED HERE AND NOT IN THE COMPONENT: that a drop several places away
+ * is ONE array (one store write), that the intervening ids keep their slots, and
+ * that the result is EXACTLY what repeating the corresponding chord would have
+ * produced - which is the property that makes a drag and a keyboard move the same
+ * act rather than two implementations of one idea.
+ */
+test("a drop lands as the sequence of swaps the chords would have made", () => {
+	const full = ["a", "b", "c", "d", "e"];
+	const dropped = movePinnedOrderTo(full, full, full, "a", 3);
+	assert.deepEqual(dropped, ["b", "c", "d", "a", "e"], "three places, one array");
+	let chorded = full;
+	for (let step = 0; step < 3; step += 1)
+		chorded = movePinnedOrder(full, chorded, chorded, "a", 1);
+	assert.deepEqual(dropped, chorded, "identical to three \u2318\u21e7\u2193 presses");
+	// And the same in the other direction, from the same start.
+	assert.deepEqual(movePinnedOrderTo(full, full, full, "e", 0), [
+		"e",
+		"a",
+		"b",
+		"c",
+		"d",
+	]);
+});
+
+test("a drop over a filtered section keeps every hidden id's slot", () => {
+	const full = ["a", "b", "c", "d"];
+	const shown = ["a", "c", "d"]; // `b` is filtered out of the section
+	const dropped = movePinnedOrderTo(full, full, shown, "d", 0);
+	assert.deepEqual(dropped, ["d", "b", "a", "c"], "the hidden id keeps its index");
+	assert.deepEqual(
+		pinnedOrder(full, dropped).filter((id) => shown.includes(id)),
+		["d", "a", "c"],
+		"and the drop is read off the rows on screen",
+	);
+});
+
+test("a drop that lands where it started writes nothing", () => {
+	const full = ["a", "b", "c"];
+	assert.equal(movePinnedOrderTo(full, full, full, "b", 1), null);
+	assert.equal(movePinnedOrderTo(full, full, full, "b", 1.4), null, "a rounded slot");
+	assert.equal(movePinnedOrderTo(full, full, full, "z", 0), null, "an id not drawn");
+	/* A pointer past either end means "the end", which is the one reading a clamp
+	   and a refusal agree on - and it is what a drag into the section's padding
+	   produces, so it must not be a null. */
+	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", 99), ["a", "c", "b"]);
+	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", -3), ["b", "a", "c"]);
+	/* And a row ALREADY at that end has nowhere to go, so the clamp is a null - the
+	   same "no write" a drop on its own slot gives. */
+	assert.equal(movePinnedOrderTo(full, full, full, "c", 99), null);
+});
+
+/*
+ * THE HIT TEST (item 5): the midpoint comparison the component feeds from the
+ * section's own row boxes. Geometry here rather than in the component because a
+ * rule this small is exactly what this repository keeps where a test can drive it.
+ */
+test("the drop slot is the rows the pointer has crossed, and never the dragged row", () => {
+	const boxes = [
+		{ id: "a", top: 0, bottom: 20 },
+		{ id: "b", top: 20, bottom: 40 },
+		{ id: "c", top: 40, bottom: 60 },
+	];
+	assert.equal(pinDragSlot(boxes, "c", 5), 0, "above every midpoint");
+	assert.equal(pinDragSlot(boxes, "c", 25), 1, "past a's midpoint");
+	assert.equal(pinDragSlot(boxes, "c", 45), 2, "past b's midpoint");
+	assert.equal(pinDragSlot(boxes, "c", 200), 2, "the dragged row is not a target");
+	// A row dragged one place toward its neighbour reports the slot it would move into.
+	assert.equal(pinDragSlot(boxes, "a", 35), 1, "one place down");
+});
 
 /*
  * RULE 1. A fresh profile - or one where nobody has moved a pinned row - draws
@@ -426,4 +503,66 @@ test("the pair is a row control: one stop per row, a chord, and a live region", 
 	// The row it renders is the ordered one: the section draws the permutation,
 	// not the catalogue list it was computed from.
 	assert.match(source, /\{orderedPinned\.map\(\(row\) => sessionRow\(row\)\)\}/);
+});
+
+/*
+ * THE DRAG HALF (issue #697, items 1, 4, 5 and 6), read off the shipped source in
+ * the same idiom as the test above - and for the same reason: the sidebar cannot
+ * be rendered here, so the properties that make the gesture safe are asserted
+ * where they are written.
+ *
+ * WHAT THIS TEST IS NOT: evidence that a drag works. The pixels, the indicator
+ * mid-gesture and the order after a drop are the driver's (`pinned-reorder`), and
+ * a class string that looks right is not a row that moved.
+ */
+test("the grip is a drag handle: pointer-only, revealed like the pair, and one write per drop", () => {
+	const source = SOURCE(SIDEBAR);
+	const at = source.indexOf("data-session-pin-grip");
+	assert.notEqual(at, -1, "the grip is not in the sidebar");
+	const grip = source.slice(at, source.indexOf("</button>", at));
+	// Out of both rings: the Tab ring and the arrow ring (`data-chat-row`).
+	assert.match(grip, /tabIndex=\{-1\}/);
+	assert.equal(
+		grip.includes("data-chat-row"),
+		false,
+		"the grip must not join the arrow ring",
+	);
+	// Revealed by the row's pointer or its focus, exactly as the pair is.
+	assert.match(grip, /group-hover:flex/);
+	assert.match(grip, /group-focus-within:flex/);
+	// A cursor, never a transform: nothing in the control lifts, scales or fades.
+	assert.match(grip, /cursor-grab/);
+	assert.equal(/opacity-|scale-|translate-|shadow-/.test(grip), false);
+	// The four pointer handlers, all on the grip: the press is the only entry to a
+	// drag, and the capture keeps every move aimed at it.
+	assert.match(grip, /onPointerDown=\{\(event\) =>/);
+	assert.match(grip, /startPinDrag\(row\.session_id, label, event\)/);
+	assert.match(grip, /onPointerMove=\{movePinDrag\}/);
+	assert.match(grip, /onPointerUp=\{\(\) => settlePinDrag\(true\)\}/);
+	assert.match(grip, /onPointerCancel=\{\(\) => settlePinDrag\(false\)\}/);
+	// The press refuses a non-primary button and stops the row's own plumbing.
+	assert.match(source, /if \(event\.button !== 0\) return;\n\t\tevent\.preventDefault\(\);\n\t\tevent\.stopPropagation\(\);/);
+	assert.match(source, /setPointerCapture\(event\.pointerId\)/);
+	// The drop is the model's, once, through the view preference.
+	assert.match(source, /movePinnedOrderTo\(/);
+	assert.match(source, /dropPinnedRow[\s\S]{0,600}?setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/);
+	// A cancel writes nothing and says so; Escape is the cancel with no pointer.
+	assert.match(source, /if \(!commit\) \{[\s\S]{0,200}?announcePinMove\("Move cancelled\."\)/);
+	assert.match(source, /event\.key !== "Escape"/);
+	// The dragged row is marked on its own box, and the mark is a colour step. The
+	// predicate is read ONCE (`dragging`), so the attribute and the ground cannot
+	// disagree about which row is being moved.
+	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
+	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
+	assert.match(source, /dragging && rowDragging,/);
+	assert.match(source, /export const rowDragging = "bg-row-selected text-ink";/);
+	// The indicator exists only during the drag, is inert, and lives in the section
+	// the rows are drawn in (so it scrolls with them).
+	assert.match(source, /pinDrag !== null && \(/);
+	assert.match(source, /data-session-pin-indicator=""/);
+	assert.match(source, /ref=\{pinnedSectionRef\}/);
+	assert.match(source, /className="pointer-events-none absolute right-1 left-1 h-0\.5 rounded-full bg-accent"/);
+	// The auto-scroll loop is armed with the drag and reaped with it.
+	assert.match(source, /requestAnimationFrame\(/);
+	assert.match(source, /cancelAnimationFrame\(pinDragAutoScrollRef\.current\)/);
 });

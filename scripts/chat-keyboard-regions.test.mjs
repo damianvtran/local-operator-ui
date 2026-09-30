@@ -483,12 +483,20 @@ test("no chat row carries a tabIndex prop, so the roving stop is the only writer
 	 * second stop has to be out of the ring. They are drawn only on a pinned row in
 	 * the section arrangement, which is why they are the last two - and why they are
 	 * a decision somebody made rather than a count that drifted.
+	 *
+	 * THE SEVENTH IS THE PIN DRAG HANDLE (issue #697), the pair's own case one
+	 * control over: a drag is a POINTER gesture, so the handle has no chord to
+	 * answer it with (the chords are the pair's, and they are how a keyboard reader
+	 * reorders), and the row's one stop stays the row's. It is drawn on exactly the
+	 * rows the pair is drawn on, which is why it sits here rather than in a ring of
+	 * its own: a handle in the Tab ring would give every pinned row a second stop to
+	 * reach a gesture the keyboard cannot make.
 	 */
 	const props = [...sidebarSource.matchAll(/^\s*tabIndex=\{/gm)];
 	assert.equal(
 		props.length,
-		6,
-		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned six are the nav's door, the two row acts (applyRowStop owns the rows), the chats scroller's own -1 (U16) and the pinned row's two move controls (#693) - all six are deliberately out of the ring`,
+		7,
+		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned seven are the nav's door, the two row acts (applyRowStop owns the rows), the chats scroller's own -1 (U16), the pinned row's two move controls (#693) and its drag handle (#697) - all seven are deliberately out of the ring`,
 	);
 	/*
 	 * AND THE RING'S OWN EXCLUSION (agent review round 2's R7): a row the caret
