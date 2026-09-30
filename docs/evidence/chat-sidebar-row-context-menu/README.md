@@ -152,13 +152,20 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   18,352 bytes) — both are “hover settled, no menu, flyout drawn”. Sixteen
   distinct pictures under twenty names, and the coincidences are the
   measurement rather than two takes of one shot.
+- **Two capture clocks (design round 2, D6).** The round-1 half was written at
+  00:00:17–00:00:59 on 2026-09-30 over rows dated the previous local day, so
+  its list header reads `THIS WEEK` (ink 66px); the two remediation states
+  were written at 02:51 over rows dated minutes before, so they read `TODAY`
+  (ink 40px). Both are right for their capture instant — the sidebar sections
+  by the local calendar day — and no geometry, readout or claim in the set
+  depends on the header.
 - **This set supersedes the design round's proposal set**
   (`../chat-sidebar-row-context-menu-proposal/`), which lives on
   `design/row-context-menu-694` as the record of what was proposed — its
   `pointer-open-unheld` control reproduces a defect the shipped hold removes,
   and nothing in this set re-photographs it.
-- **The fold.** The branch carries four merges of `origin/main` (`0044c53422`,
-  `9dd18ab318`, `0f35e824ac`, and `1cb4a2a8b3`, round 1's remediation fold);
+- **The fold.** The branch carries five merges of `origin/main` (`0044c53422`,
+  `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3` and `8712e8684c`, round 2's fold);
   the two remediation states were captured at the commit `addedAtHead` names,
   and the manifest's pass record names the commits the frames came from.
 - The story renders the app's real `ChatSidebar` over a stubbed transport, so

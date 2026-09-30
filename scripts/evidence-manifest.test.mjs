@@ -2713,6 +2713,13 @@ const BRANCH_RECORDS = [
 	 * registered beside the others for the list's usual reason (agent review round 5, Q-3).
 	 */
 	"foldOnto48b4b90b66Note",
+	/*
+	 * And ROUND 2'S own, beside the focus return's records: the re-stamp U8's
+	 * move of `src/` (the pointer close's capture-and-restore) and the suite's
+	 * pins in `scripts/` forced. Registered for the list's usual reason - a fold
+	 * resolved from main's copy would drop it.
+	 */
+	"rowMenuRoundTwoRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

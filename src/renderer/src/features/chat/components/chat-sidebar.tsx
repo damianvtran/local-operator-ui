@@ -659,18 +659,22 @@ const RowMenuOwner: FC<{
  * the acts are; repeating them in the row's description would be a second
  * telling of the same fact.
  *
- * AND THE SPELLING IS THE PLATFORM'S (UX round 1, U2). The clause is announced
- * on every row, and on a macOS-first app that announcement cannot hand every
- * reader `Shift+F10` unqualified: an Apple keyboard has no Menu key and sends
- * F10 as a media key unless `Fn` is held. So the macOS sentence names
- * `Fn+Shift+F10`, the same device `chat-regions.ts` uses for the region walk's
- * second spelling ("on macOS `F6` is a media key on most keyboards unless the
- * user has turned that off"). `menuIsMac()` is read when a row renders, which
- * is why this is a function over that read rather than a module constant.
+ * AND THE SPELLING IS THE PLATFORM'S (UX round 1, U2), AS A PARENTHETICAL
+ * (UX round 2, U9). The clause is announced on every row, and on a
+ * macOS-first app that announcement cannot hand every reader `Shift+F10`
+ * unqualified: an Apple keyboard has no Menu key and sends F10 as a media key
+ * unless `Fn` is held - but "press `Fn+Shift+F10`" is itself exact only in
+ * the DEFAULT media-key mode: with "Use F1, F2, etc. keys as standard
+ * function keys" ON, `Fn` sends the special key instead and the advised
+ * chord would do nothing. The parenthetical holds in both modes and names
+ * the same device `chat-regions.ts` uses for the region walk's second
+ * spelling ("on macOS `F6` is a media key on most keyboards unless the user
+ * has turned that off"). `menuIsMac()` is read when a row renders, which is
+ * why this is a function over that read rather than a module constant.
  */
 const rowMenuClause = (isMac: boolean): string =>
 	isMac
-		? "Right-click or press Fn+Shift+F10 for its actions."
+		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
 		: "Right-click or press Shift+F10 for its actions.";
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
@@ -4132,6 +4136,16 @@ export function ChatSidebar({
 				key={row.session_id}
 				open={menuOpen}
 				onOpenChange={(open) => {
+					/*
+					 * THE POINTER CLOSE'S RETURN TARGET, captured here because this is
+					 * the moment before the primitive moves focus into the panel (U8;
+					 * the restore lives in `onCloseAutoFocus`).
+					 */
+					if (open)
+						menuFocusReturnRef.current =
+							document.activeElement instanceof HTMLElement
+								? document.activeElement
+								: null;
 					setOpenMenuRowId((current) =>
 						open ? row.session_id : current === row.session_id ? null : current,
 					);
@@ -4189,16 +4203,34 @@ export function ChatSidebar({
 					}}
 					onCloseAutoFocus={(event) => {
 						/*
-						 * BOTH PATHS PREVENT THE DEFAULT; only the keyboard path focuses
-						 * anything, and what it focuses is the row's own button - the caret
-						 * goes back where the press came from, the shape the pin control's
-						 * caret correction already uses. The pointer path focuses nothing (its
-						 * row has no keyboard place to keep). The primitive's own guard (focus
-						 * back to the trigger) never runs: its listener is composed after this
-						 * one and checks `defaultPrevented`.
+						 * BOTH PATHS PREVENT THE DEFAULT; what each focuses differs. The
+						 * keyboard path returns the caret to the row's own button - where
+						 * the press came from, the shape the pin control's caret correction
+						 * already uses. The pointer path focuses the element the open
+						 * captured (U8): the primitive moves focus into the panel on open
+						 * even under the pointer, and the element it sits on is unmounting
+						 * here, so returning without focusing dropped the caret to `<body>`
+						 * and the next keystroke a reader typed reached nothing (QA round 2:
+						 * composer focused -> right-click -> Escape -> `<body>`). When the
+						 * remembered node is gone, the row's own button is the deliberate
+						 * fallback - the keyboard path's own destination; with neither,
+						 * focus is left alone rather than aimed at a guess. The primitive's
+						 * own guard (focus back to the trigger) never runs: its listener is
+						 * composed after this one and checks `defaultPrevented`.
 						 */
 						event.preventDefault();
-						if (!menuOpenedByKeyboard.current) return;
+						const remembered = menuFocusReturnRef.current;
+						menuFocusReturnRef.current = null;
+						if (!menuOpenedByKeyboard.current) {
+							if (remembered?.isConnected) remembered.focus();
+							else
+								document
+									.querySelector<HTMLElement>(
+										`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+									)
+									?.focus();
+							return;
+						}
 						menuOpenedByKeyboard.current = false;
 						document
 							.querySelector<HTMLElement>(
@@ -4903,11 +4935,25 @@ export function ChatSidebar({
 	 * WHICH PATH OPENED THE OPEN MENU, because the two differ at both focus edges:
 	 * the keyboard path lands in the first item on open (U-D4's minimum) and
 	 * returns the caret to the row's button on close; the pointer path takes no
-	 * focus in either direction. A ref rather than state: it is read only inside
-	 * the menu's own focus callbacks, and it must not re-render the row it
-	 * describes.
+	 * focus OF ITS OWN but gives back what the primitive's open took (U8 below).
+	 * A ref rather than state: it is read only inside the menu's own focus
+	 * callbacks, and it must not re-render the row it describes.
 	 */
 	const menuOpenedByKeyboard = useRef(false);
+	/*
+	 * WHAT HELD FOCUS WHEN A ROW'S MENU OPENED, for the pointer path's close
+	 * (UX round 2, U8). The pointer path takes no focus of its own, but the
+	 * primitive still moves focus into the panel on open - the shipped
+	 * `pointer-hover` frame reads `focus: menuitem` - and on close the element
+	 * holding it unmounts, so without a memory the caret fell to `<body>` and a
+	 * reader who was typing had to click before the next keystroke landed (QA
+	 * round 2's reading: composer focused -> right-click -> Escape -> `<body>`).
+	 * One ref for the whole sidebar rather than one per row, for the same reason
+	 * `openMenuRowId` is one id: only one menu can be open. Written in the row's
+	 * `onOpenChange`, read in `onCloseAutoFocus`, never rendered - so a ref, not
+	 * state.
+	 */
+	const menuFocusReturnRef = useRef<HTMLElement | null>(null);
 	/*
 	 * THE ID'S LATEST VALUE, read by the row instances' unmount cleanup
 	 * (`RowMenuOwner`): a cleanup runs with what its own closure saw last, and
