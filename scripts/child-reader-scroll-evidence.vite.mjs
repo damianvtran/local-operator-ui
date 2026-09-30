@@ -217,6 +217,58 @@ export default defineConfig({
 				process.stdin.on("close", shutDownWithTheRig);
 				process.stdin.resume();
 				const child = new ScriptedChild();
+				/*
+				 * How OLDER-page asks are answered, and the only knob this harness has over
+				 * the slot's states.
+				 *
+				 * `ok` is the shipped answer every other step measures. The slot's failed row
+				 * exists only after a page ask that fails, and its loading row only while one
+				 * is in flight, so a frame of either needs the route to be told to answer
+				 * that way — `fail` answers an error envelope, `hold` parks the response
+				 * until `/__child/release`. Tail reads are never touched: the pane must keep
+				 * being a live child whose page can be read, which is what makes the failed
+				 * older page a failure of PAGING rather than of the reader.
+				 */
+				let olderMode = "ok";
+				const held = [];
+				/**
+				 * The route's own failure envelope, in one place because two callers send it:
+				 * a `fail` ask that is answered immediately, and the parked asks a
+				 * `release` flushes while the mode says `fail`.
+				 */
+				const answerOlderFailure = (res) => {
+					res.statusCode = 500;
+					res.end(
+						JSON.stringify({
+							status: 500,
+							body: {
+								detail: {
+									code: "child_transcript_unavailable",
+									message: "the scripted child could not read that page",
+								},
+							},
+						}),
+					);
+				};
+				/**
+				 * Flush every parked ask, at whatever the mode says NOW: a `hold` that was
+				 * switched to `fail` before the release is how the failed row is reached
+				 * without racing the frame the loading row is photographed in.
+				 */
+				const answerHeld = () => {
+					for (const parked of held.splice(0)) {
+						if (olderMode === "fail") {
+							answerOlderFailure(parked.res);
+							continue;
+						}
+						parked.res.end(
+							JSON.stringify({
+								status: 200,
+								body: { result: child.page(parked.limit) },
+							}),
+						);
+					}
+				};
 				const readBody = (req) =>
 					new Promise((done) => {
 						let body = "";
@@ -238,6 +290,20 @@ export default defineConfig({
 						}
 						if (request.op === "subagents.transcript") {
 							child.reads += 1;
+							/*
+							 * An older-page ask is the one the slot's failed/loading rows are made
+							 * of (`beforeId` is what distinguishes it from the tail read), so it is
+							 * the only request this control changes.
+							 */
+							const older = Boolean(request.beforeId);
+							if (older && olderMode === "fail") {
+								answerOlderFailure(res);
+								return;
+							}
+							if (older && olderMode === "hold") {
+								held.push({ res, limit: request.limit ?? 100 });
+								return;
+							}
 							res.statusCode = 200;
 							res.end(
 								JSON.stringify({
@@ -277,6 +343,18 @@ export default defineConfig({
 				server.middlewares.use("/__child", (req, res) => {
 					void (async () => {
 						res.setHeader("content-type", "application/json");
+						if (req.url?.startsWith("/older")) {
+							const mode = req.url.split("/")[2] ?? "";
+							if (mode === "release") {
+								answerHeld();
+								olderMode = "ok";
+							} else if (mode === "ok" || mode === "fail" || mode === "hold") {
+								olderMode = mode;
+							}
+							res.statusCode = 200;
+							res.end(JSON.stringify({ olderMode, held: held.length }));
+							return;
+						}
 						if (req.url?.startsWith("/batch")) {
 							child.batch();
 							res.statusCode = 200;
@@ -287,6 +365,8 @@ export default defineConfig({
 						}
 						if (req.url?.startsWith("/reset")) {
 							child.reset();
+							olderMode = "ok";
+							answerHeld();
 							res.statusCode = 200;
 							res.end(JSON.stringify({ rows: child.rows.length }));
 							return;

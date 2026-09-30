@@ -10,8 +10,9 @@ into a page-side synthetic microphone).
   `src/` at `origin/main` = `49491865ca` (this branch's base).
 - `after/empty-field/`, `after/with-draft/` - the redesigned lane on this
   branch's tree (`f1cbaf469b`, the round-1 fold).
-- `after/narrow-empty-field/` - the same state in a 760 px window (design
-  review round 1, D4).
+- `after/narrow-empty-field/` - the same state in an 800 px window: the run
+  asked for `LO_PROOF_WIDTH=760` and the app clamps to its `WINDOW_MIN_WIDTH`
+  floor of 800, which it logs (design review round 1, D4; reviewer round 2, M1).
 - `before/stt-proof.json`, `after/stt-proof.json`, `after/stt-proof-narrow.json`
   - each run's own record (claims, geometry, engage timings, viewport). Every
   run: zero failed claims.
@@ -23,7 +24,8 @@ LO_PROOF_CAPTURE_ONLY=1 LO_PROOF_AUDIO_FILE=<speech.wav> \
   node scripts/stt-dictation-proof.mjs <out-dir>
 ```
 
-(and `LO_PROOF_WIDTH=760` for the narrow frame) against the app BUILT from
+(and `LO_PROOF_WIDTH=760` for the narrow frame, which the app clamps to its
+800 px floor) against the app BUILT from
 the half's tree (`pnpm build`), in `--window-mode=headless`, with the app's
 own isolated backend (scratch config root, `tool_approval_mode: auto`) plus
 the rig's fake Radient upstream and its recording proxy. `LO_PROOF_CAPTURE_ONLY`
@@ -76,8 +78,9 @@ B-F are the `stt-dictation` set's evidence, not this set's.
    between the halves.
 5. NOT COVERED HERE. The inline-edit surface mounts the same component into
    its own box; the label row is the shared surface, and that consumer is not
-   photographed by this set. The narrow frame is the smallest width in
-   evidence - nothing smaller was driven.
+   photographed by this set. The narrow frame sits at the app's 800 px floor
+   (the requested 760 is clamped), so nothing smaller is reachable through a
+   normal window.
 
 ## The gain pipeline
 
