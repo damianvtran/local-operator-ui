@@ -41,13 +41,6 @@ For the agent environment CLI and server backend, see the [Local Operator reposi
   <a href="https://github.com/damianvtran/local-operator/tree/main/examples/notebooks">Examples</a>
 </p>
 
-## Desktop companion
-
-Use **View > Desktop companion** to show a floating character that follows task
-progress. Click to pet, use the chat button to talk, drag to move, or right-click
-to hide or change characters.
-Choose Sprout, Hoodie, Pixel, Inky, or [add your own character](docs/desktop-companion-packs.md).
-
 ## Getting started
 
 ### Prerequisites
@@ -153,6 +146,7 @@ The Local Operator backend is bundled with the application and is installed auto
 
 - **Chat with agents** — real-time conversation with markdown rendering for code blocks and formatted text, syntax highlighting, and per-conversation history.
 - **Agent management** — create, update, and delete agents, and configure their settings: model and description (general), temperature and top_p (chat), and security prompt and execution permissions (security).
+- **Desktop companion** — an optional floating character with compact chat and task notifications. Choose one in **Settings > Appearance**, or [add your own](docs/desktop-companion-packs.md).
 - **Settings** — system prompt configuration, API credentials management, and application configuration in one place.
 - **Local Operator API integration** — the app talks to the Local Operator backend API and shows real-time status updates for long-running operations.
 - **Bundled backend** — the Local Operator backend is installed automatically on first run on every platform; an existing backend installation is detected and used instead.
