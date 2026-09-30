@@ -944,3 +944,34 @@ test("a write that changes nothing claims nothing, so the reader's next motion i
 		hook.close();
 	}
 });
+
+test("R3-1: two acknowledged writes coalescing into one frame leave no claim behind", () => {
+	const hook = mountHook();
+	try {
+		hook.requestReveal();
+		hook.growAboveAnchor();
+		hook.scrollEvent(); // drain the correction's own acknowledgement
+		assert.equal(hook.scrollTop, -26, "the reader's hold is standing");
+		hook.pointerDown(); // the bar press: the drag window is open
+		/*
+		 * TWO writes in one frame, which is the real shape: the hook's own
+		 * `correctAnchor` and the transcript's press-anchor write share a layout
+		 * phase, and the browser emits ONE `scroll` event for the pair. A counter
+		 * acknowledgement spends one claim here and keeps the other, so the
+		 * reader's next scroll is swallowed; an offset cannot.
+		 */
+		hook.ownWrite(-30);
+		hook.ownWrite(10);
+		hook.scrollEvent(); // the single event the pair emits
+		hook.setScrollTop(-80); // the reader's own motion, right after
+		hook.scrollEvent();
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-80,
+			"the reader's scroll was attributed to them, so no hold corrected it away",
+		);
+	} finally {
+		hook.close();
+	}
+});

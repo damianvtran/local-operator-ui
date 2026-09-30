@@ -1863,43 +1863,98 @@ test("D5: a turn still running keeps every row while the turns above it wear the
 
 /* --------------- the mark's name, and the close's compensation -------------- */
 
-test("QA-1: the completion mark is in the bar's accessible name, and only where it is earned", async (t) => {
+test("QA-1/QA-3: the completion word ends the bar's accessible name, and only where it is earned", async (t) => {
 	/*
-	 * The mark itself is `aria-hidden` decoration, so without this the fact it
-	 * states is unavailable to a screen-reader user. It travels as words in the
-	 * trigger's own content (the button carries no `aria-label`, so its content
-	 * IS its accessible name), not as a second live region.
+	 * The mark itself is an `aria-hidden` glyph, so without words the fact it
+	 * states is unavailable to a screen-reader user. The words join the trigger's
+	 * own accessible name (the button carries no `aria-label`, so its content IS
+	 * its name) - and the ORDER is the claim: they come after the facts, read the
+	 * way the row renders, so a marked bar is `Peer message Took 1s 1 action
+	 * completed` rather than a word wedged between the label and its count. The
+	 * unlabelled marked shape (a resync window's bar) reads `Took 9s 8 actions
+	 * completed` by the same rule, which is why the assertion below is on the LAST
+	 * part rather than on a full literal alone.
+	 *
+	 * The name is computed the way an accessibility tree computes it: document
+	 * order, `aria-hidden` subtrees dropped, an `aria-label` standing in for its
+	 * subtree. jsdom has no AX tree, so this is the closest faithful reading; the
+	 * strings were cross-checked against QA round 3's AX read.
 	 */
+	const nameParts = (node) => {
+		const parts = [];
+		const walk = (n) => {
+			if (n.nodeType === 3) {
+				const text = n.textContent.replace(/\s+/g, " ").trim();
+				if (text) parts.push(text);
+				return;
+			}
+			if (n.nodeType !== 1) return;
+			if (n.getAttribute("aria-hidden") === "true") return;
+			const label = n.getAttribute("aria-label");
+			if (label) {
+				parts.push(label);
+				return;
+			}
+			for (const child of n.childNodes) walk(child);
+		};
+		walk(node);
+		return parts;
+	};
+
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
 		userRecord("user:1"),
-		toolRecord("tool:1", { ts: TS + 1_000 }),
-		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 1 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000, durationS: 2 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
 		noticeRecord("marker:1", {
-			ts: TS + 3_000,
+			ts: TS + 5_000,
 			text: "Stopped with an error",
 			level: "error",
 		}),
-		peerRecord("peer:1", { ts: TS + 4_000 }),
-		toolRecord("tool:2", { ts: TS + 5_000 }),
+		peerRecord("peer:1", { ts: TS + 6_000 }),
+		toolRecord("tool:3", { ts: TS + 7_000, durationS: 1 }),
 		answerRecord("answer:2", {
-			ts: TS + 6_000,
-			settledAt: TS + 6_000,
+			ts: TS + 8_000,
+			settledAt: TS + 8_000,
 			text: "Status note.",
 		}),
 	]);
 	const bars = barsOf(mounted);
-	const nameOf = (node) => node.querySelector("button")?.textContent ?? "";
-	assert.match(nameOf(bars[1]), /completed/, "the marked bar says so in words");
-	assert.doesNotMatch(
-		nameOf(bars[0]),
-		/completed/,
-		"the unmarked bar claims nothing",
+	assert.equal(bars.length, 3);
+	const parts = bars.map((node) => nameParts(node.querySelector("button")));
+	/*
+	 * Joined with a single space, which is how an accessibility tree renders the
+	 * parts: these three strings are the names QA round 3 read off the AX tree of
+	 * the real app.
+	 */
+	const names = parts.map((list) => list.join(" "));
+	assert.deepEqual(
+		names,
+		[
+			"Took 1s 1 action",
+			"Took 2s 1 action",
+			"Peer message Took 1s 1 action completed",
+		],
+		"the unmarked bars claim nothing; the marked one names its completion last",
 	);
+	const [first, second, marked] = parts;
+	for (const [index, parts] of [first, second, marked].entries()) {
+		assert.equal(
+			parts.includes("completed"),
+			index === 2,
+			`bar ${index}: the word appears only where the mark is earned`,
+		);
+	}
 	assert.equal(
-		bars[1].querySelector(".sr-only")?.getAttribute("aria-hidden"),
-		null,
-		"the words are in the name, not hidden from AT",
+		marked.at(-1),
+		"completed",
+		"and it ends the name, which is what makes an unlabelled marked bar read `Took 9s 8 actions completed`",
+	);
+	assert.ok(
+		marked.indexOf("completed") > marked.indexOf("1 action"),
+		"the word follows the facts, not the label",
 	);
 });
 
