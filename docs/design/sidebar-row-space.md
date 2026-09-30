@@ -32,10 +32,15 @@ because a row's width is the user's preference (`chatSidebarWidth`, clamped
 record corrected itself to 280, and 320 is a width the panel really can be put
 at, so all three are photographed here.
 
-The panel is `p-2` (8px), so a 280px panel gives a 264px row. Inside the row:
+The panel is `p-2` (8px), so on this document's ORIGINAL basis a 280px panel gives a
+264px row - and the SHIPPED row box measures **248px** there, because the list carries an
+inset of its own on top of the panel's (`panel - 32`, not `panel - 16`). Round 3's design
+review (D12) is why both are named from here on: the `Row box` column in the table below is
+the measured element and the columns beside it are on the original basis, so read the DELTA
+down a column and never a number across the two. Inside the row:
 
 ```
-row box   "flex h-8 items-center gap-1 rounded-md"          264
+row box   "flex h-8 items-center gap-1 rounded-md"          264   <- original basis; 248 measured
   button  rowStyle + px-1 (4+4)  "min-w-0 grow"             208
     status slot  ChatSessionStatus, size-4                  16
     gap (gap-1)                                              4
@@ -47,19 +52,22 @@ row box   "flex h-8 items-center gap-1 rounded-md"          264
     archive                size-6                           24   <- never painted at rest
 ```
 
-Measured on the committed frames, identical in both palettes:
+Identical in both palettes, and on the two bases this section now names (round 3, D12):
+the `Row box` column is the MEASURED `[data-session-row]` element (`panel - 32`, the reading
+`docs/evidence/pinned-reorder/measurements/` carries, and §3's basis), and every other column
+is this document's original basis (`panel - 16`), so those columns read 16px wide against it.
 
-| Panel | Row box | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
+| Panel | Row box (MEASURED) | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 240 (a below-default step) | 224 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
-| 280 (widened past the default) | 264 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
-| 320 | 304 | 248 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 240 (a below-default step) | 208 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
+| 280 (widened past the default) | 248 | 264 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 320 | 288 | 304 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
 
-What that costs, at rest, inside the 264px row:
+What that costs, at rest, inside the row (264px on this document's original basis, 248px on the measured one at a 280px panel):
 
 | Row class | Painted in the trailing 60px | Paints nothing |
 | --- | --- | --- |
-| unpinned | - | **56px (21.2% of the row)** |
+| unpinned | - | **56px (21.2% of the original-basis row, 22.6% of the measured one)** |
 | pinned | the 24px pin glyph | 32px |
 | current | - | 56px |
 
@@ -114,7 +122,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **68** | **80** | **120** | at 280px and above: the archive, the grip, the move pair, then the mark (136px). At or below 278px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
+| **pinned** | hover / focus-within | **68** | **80** | **120** | at 279px and above: the archive, the grip, the move pair, then the mark (136px). At or below 278px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -494,12 +502,22 @@ that says "this is the conversation you are in". Measured in both palettes: held
 `rgb(48,45,41)` dark / `rgb(237,236,231)` light - the hover role - against the drop target's own
 hover ground, one reading for two rows.
 
-The held state is now carried by a **1px inset ring** off `[data-dragging]`
-(`ring-1 ring-inset ring-ink-dim`) and the fill underneath is the row's own role, unchanged: the
-drag's `rowSelected` step. A held row is therefore distinct from a merely hovered one in both
-row states, and "you are here" survives the gesture. Inset rather than a border, so there is no
-layout shift and nothing to clip; a role rather than a hex, so both palettes get it from one
-declaration (`ink-dim` is the role the panel's own rounded-row ring reads).
+The held state is now carried by a **1px inset outline** off `[data-dragging]`
+(`outline outline-1 outline-offset-[-1px] outline-ink-dim`) and the fill underneath is the row's
+own role, unchanged: the drag's `rowSelected` step. A held row is therefore distinct from a
+merely hovered one in both row states, and "you are here" survives the gesture. Inset by 1px, so
+there is no layout shift and nothing hangs outside the row's own rounded box; a role rather than
+a hex, so both palettes resolve it from one declaration (`ink-dim` is the role the panel's own
+rounded-row ring reads - `#a6a091` dark, `#656056` light).
+
+**WHY IT IS AN OUTLINE AND NOT AN INSET `ring-1` (round 3, design D10).** The first spelling was
+a box-shadow, and a box-shadow is painted UNDER the element's children: the CURRENT row's own
+button carries `rowCurrent`'s opaque `bg-row-selected`, so it erased the mark everywhere it
+reached. Measured on the committed frames, the ink in the row box's 3px border band was
+**60.2%** on a held row that is not current - a complete outline - against **5.3%** on the held
+current row, which is exactly the state round 2's D7 was filed about. An outline paints after the
+element's descendants, so the button cannot cover it, and the `-1px` offset keeps it inside the
+box.
 
 **AND THE GRIP REVEALS ON HOVER ONLY (agent review round 2, N1).** It is `aria-hidden` and
 `tabIndex={-1}`, so a `group-focus-within` term was showing a sighted keyboard reader a handle

@@ -993,7 +993,7 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// gave the held row the `row-hover` role while it was also the current one,
 				// and that is the fill the row under the pointer wears, so two rows on screen
 				// read alike (measured in both palettes). The held cue is now a 1px INSET
-				// RING (`rowDraggingMark`), which is not a ground role and so is not counted
+				// OUTLINE (`rowDraggingMark`), which is not a ground role and so is not counted
 				// here - the ground underneath is the row's own, `rowDragging`'s selected
 				// step, and that spelling is still the literal PLUS ONE below.
 				"hover:bg-row-hover": 17,
