@@ -43,6 +43,7 @@ import {
 	preferDiff,
 	preferDiffCounts,
 } from "../components/trace/tool-row-model";
+import { isHarnessChromeText } from "./harness-chrome";
 
 /**
  * One image on a transcript row.
@@ -1996,10 +1997,11 @@ function bounded(headline: string): string {
  * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
  * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
  * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
- * field on the row's own payload — and that is the whole reason this suppression
- * lives here: a text list copied into TypeScript would be a second decision that
- * could disagree with the TUI's, and the harness's continuation prompt embeds the
- * goal text, so it is a FAMILY of strings rather than one that could be matched.
+ * field on the row's own payload — and that is why it is the PRIMARY read: it
+ * cannot drift with a producer's wording, and its strict `=== true` fails safe.
+ * It is not the whole contract on its own: rows written before it existed carry
+ * nothing to read, and `harness-chrome.ts` mirrors core's own recogniser for the
+ * goal families those rows belong to, applied only after this marker says no.
  */
 const HARNESS_INJECTION_KEY = "harness_injected";
 
@@ -2205,6 +2207,17 @@ function durableRecord(
 		 */
 		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
+		/*
+		 * THE LEGACY FALLBACK: a row written before the marker existed, or sent by
+		 * an owner on an older build, carries no stamp to read — the operator's own
+		 * stored transcript (2026-09-29) still held ten goal-continuation rows that
+		 * painted as the user's own words. Core keeps its recogniser for exactly
+		 * these rows and names it beside the marker (`docs/DESKTOP_API.md`); the
+		 * check is `harness-chrome.ts`, which mirrors its goal legs. It runs only
+		 * after the marker read above said no, so the structural stamp stays the
+		 * primary one.
+		 */
+		if (isHarnessChromeText(text)) return null;
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
 		if (text.startsWith("Harness recovery notice:")) {
@@ -2969,6 +2982,13 @@ export function applyEvent(
 				 */
 				if (isHarnessInjected(message.provider_payload)) return state;
 				/*
+				 * The legacy fallback — see `durableRecord`'s note on the same check; the
+				 * arms are separate code paths over separate payload shapes, so the
+				 * fallback runs on both.
+				 */
+				const text = messageText(message);
+				if (isHarnessChromeText(text)) return state;
+				/*
 				 * A RESTATING `message_start` FOR A ROW STILL HOLDING ITS PLACE IS NOT
 				 * THE OWNER STATING WHERE IT SITS (agent review round 1, F2).
 				 *
@@ -2989,7 +3009,7 @@ export function applyEvent(
 					// locally-derived time may never lift the row above what is
 					// already painted.
 					ts: keepsHold ? monotonicStamp(state, now) : now,
-					text: messageText(message),
+					text,
 					images: extractImages(
 						message,
 						message.id,

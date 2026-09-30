@@ -5888,6 +5888,24 @@ export const STORIES = [
 	["chat-interrupted-rows--turn-counts", 1280, 800],
 	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
 	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
+	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
+	   the `harness_injected` stamp existed carries no marker to read - and one
+	   still arrives from an owner on an older build - so hiding only stamped
+	   rows painted the harness's words as the person's own (the operator's
+	   stored transcript held ten such rows, 2026-09-29). The production reducer
+	   folds `scripts/fixtures/harness-chrome-legacy.json` through
+	   `harness-chrome-legacy.stories.tsx`; the BEFORE half is the declared
+	   supplementary `chat-harness-chrome-legacy-before/`, the same stories
+	   against the base tree's reducer (which hides stamped rows only).
+	   `typed-near-miss` is the control: the person's own words, opening with the
+	   same head, must paint in both halves. `multi-cycle` is the same class at
+	   the operator's real length - one ask, three (work turn, continuation)
+	   cycles and the answer - because the repetition is the shape a folding fix
+	   breaks on, and all three rows must go together. */
+	["chat-harness-chrome-legacy--stored-transcript", 1280, 800],
+	["chat-harness-chrome-legacy--live-arrival", 1280, 800],
+	["chat-harness-chrome-legacy--typed-near-miss", 1280, 800],
+	["chat-harness-chrome-legacy--multi-cycle", 1280, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
