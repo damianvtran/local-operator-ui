@@ -27,9 +27,7 @@ interface PendingSend extends TurnPosition {
 	text: string;
 }
 
-interface TurnWait extends TurnPosition {
-	requestId: string;
-	text: string;
+interface TurnWait extends PendingSend {
 	sawWorking: boolean;
 }
 
@@ -51,13 +49,14 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function result(reply: DesktopResponse): Record<string, unknown> {
-	const value = record(record(reply.body)?.result);
+	const body = record(reply.body);
+	const value = record(body?.result);
 	if (reply.status < 200 || reply.status >= 300 || !value) {
 		throw Object.assign(
 			new Error(
 				"The request could not be confirmed. Open the app for details.",
 			),
-			{ code: record(record(reply.body)?.detail)?.code },
+			{ code: record(body?.detail)?.code },
 		);
 	}
 	return value;
@@ -125,7 +124,6 @@ function transcript(
 
 export class CompanionChatService {
 	private state = initial(true);
-	private chiefOfStaff = true;
 	private generation = 0;
 	private readId = 0;
 	private disposed = false;
@@ -146,6 +144,10 @@ export class CompanionChatService {
 				? { id: this.waiting.requestId, text: this.waiting.text }
 				: undefined,
 		};
+	}
+
+	private get chiefOfStaff(): boolean {
+		return this.state.destination === "chief-of-staff";
 	}
 
 	private current(generation: number): boolean {
@@ -171,7 +173,6 @@ export class CompanionChatService {
 
 	private reset(chiefOfStaff = false): void {
 		this.generation++;
-		this.chiefOfStaff = chiefOfStaff;
 		this.sending = false;
 		this.refreshing = null;
 		this.pending = null;
@@ -465,13 +466,7 @@ export class CompanionChatService {
 				throw new Error("No admission receipt.");
 			accepted = true;
 			this.pending = null;
-			this.waiting = {
-				requestId: intent.requestId,
-				text: intent.text,
-				sawWorking: false,
-				epoch: intent.epoch,
-				generation: intent.generation,
-			};
+			this.waiting = { ...intent, sawWorking: false };
 			this.update({ status: "working", error: null, canSend: false });
 		} catch {
 			if (this.current(generation))

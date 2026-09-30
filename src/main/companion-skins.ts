@@ -196,6 +196,20 @@ function readBounded(path: string, limit: number): Buffer {
 	}
 }
 
+function writeJson(path: string, value: unknown): void {
+	const temp = join(dirname(path), `.${randomUUID()}.tmp`);
+	try {
+		writeFileSync(temp, JSON.stringify(value), { mode: 0o600, flag: "wx" });
+		renameSync(temp, path);
+	} finally {
+		try {
+			unlinkSync(temp);
+		} catch {
+			// Successful rename has already removed the temporary file.
+		}
+	}
+}
+
 function validatePng(bytes: Buffer, decode: boolean): void {
 	const invalid = () => new Error("Each pose must be a valid PNG image.");
 	if (
@@ -476,22 +490,13 @@ export class CompanionSkinLibrary {
 	}
 
 	private writeIndex(): void {
-		const temp = join(this.directory, `.${randomUUID()}.tmp`);
 		try {
-			const packs = Array.from(this.packs.values());
-			writeFileSync(temp, JSON.stringify({ version: 1, packs }), {
-				mode: 0o600,
-				flag: "wx",
+			writeJson(join(this.directory, INDEX_NAME), {
+				version: 1,
+				packs: Array.from(this.packs.values()),
 			});
-			renameSync(temp, join(this.directory, INDEX_NAME));
 		} catch {
 			// Pack files remain authoritative if this optional startup cache cannot be saved.
-		} finally {
-			try {
-				unlinkSync(temp);
-			} catch {
-				/* Atomic rename already removed it. */
-			}
 		}
 	}
 
@@ -609,11 +614,9 @@ export class CompanionSkinLibrary {
 		if (!exists && !replaceId && this.packs.size >= MAX_PACKS) {
 			throw new Error("The companion library is full (64 custom companions).");
 		}
-		const temp = join(this.directory, `.${randomUUID()}.tmp`);
 		try {
 			mkdirSync(this.directory, { recursive: true, mode: 0o700 });
-			writeFileSync(temp, JSON.stringify(pack), { mode: 0o600, flag: "wx" });
-			renameSync(temp, join(this.directory, `${id}.json`));
+			writeJson(join(this.directory, `${id}.json`), pack);
 			if (replaceId && replaceId !== id) {
 				try {
 					this.remove(replaceId);
@@ -626,12 +629,6 @@ export class CompanionSkinLibrary {
 			throw new Error(
 				"Could not save this companion to the app's companion library.",
 			);
-		} finally {
-			try {
-				unlinkSync(temp);
-			} catch {
-				/* Atomic rename already removed the temporary file. */
-			}
 		}
 		this.packs.set(id, packMetadata(this.directory, id, pack.name));
 		this.cached = { id, pack };
