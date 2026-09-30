@@ -17,7 +17,7 @@ half from this branch, and both halves come from a DISPOSABLE fixture tree
 | `after-long-label.webp` | `3f93b7941c` | the chip against an eighty-character label at the 560 band — the cap truncates, the title reads whole (after-only: see below) |
 | `after-long-label-800.webp` | `3f93b7941c` | the same label at the app's own 800 minimum width |
 | `after-projects-list.webp` | `3f93b7941c` | the projects list's team group headings, resolved through the label lookup (after-only) |
-| `after-projects-detail.webp` | `3f93b7941c` | a project detail's `Managed by atlas · Platform Delivery` line (after-only) |
+| `after-projects-detail.webp` | `204b3b5cb9` | a project detail's `Managed by atlas · Platform Delivery` line (after-only) |
 | `after-projects-start-session.webp` | `3f93b7941c` | the start-session dialog over the same page: labelled team options, the page behind already resolved (after-only) |
 
 ## The fixture trick, and what each pair is allowed to claim
@@ -118,6 +118,32 @@ again (`git checkout -- docs/evidence && git clean -fd docs/evidence`).
 - Not capturable, declared: the sidebar entity row's tooltip is a native
   `title` attribute, which never appears in a CDP screenshot. Its text is
   `Label (slug)` when the two differ, pinned by the row's own tests.
+
+- Not capturable, declared: the sidebar entity row's tooltip is a native
+  `title` attribute, which never appears in a CDP screenshot. Its text is
+  `Label (slug)` when the two differ, pinned by the row's own tests.
+
+### Re-run at the folded head (`204b3b5cb9`)
+
+The branch folded `origin/main` again after round 1 (`dad1778e14`, #615's chat
+move control over #712), so every frame was re-verified at the fold: the
+header pair, menu pair, slash pair, both long-label frames, the projects list
+and the start-session dialog reproduced **byte-for-byte**, and two frames were
+re-taken and are what this branch now ships:
+
+- `after-projects-detail.webp`: the fold's shared-style changes move the
+  milestone input's hairline by at most 6/255 over a 540x4 band (measured; the
+  crop is visually identical). Two consecutive folded-head runs reproduce each
+  other byte-for-byte, and this file is one of them.
+- `after-sections.webp` is NOT re-taken, and the reason is stated rather than
+  smoothed over: at the folded head the story's own 200 ms instrumentation
+  caption settles on a mid-remount reading (`(not mounted)` / `0 entity · 0
+  chats`) while the sidebar rows are drawn - a probe race the fold's changed
+  timing exposed in the STORY harness. The sidebar's own pixels reproduce
+  across the fold (262 px differ above a delta of 6, at most 17 px above a
+  delta of 10, all single-pixel glyph edges), so the frame kept is the round-0
+  one, whose caption agrees with its pixels. A reviewer diffing this file at
+  the folded head will see exactly the caption column, and nothing else.
 
 ## What the pairs show, in one line each
 
