@@ -4897,7 +4897,7 @@ for (const { id, palette: p } of palettes) {
 	 * one pair in this state that nothing measured.
 	 *
 	 * Measured before it was written: worst palette `warning`/`rowHover` is
-	 * 4.696:1 (rose-pine-dawn), clear of the floor in all 58, so no pin is
+	 * 4.696:1 (rose-pine-dawn), clear of the floor in all 59, so no pin is
 	 * recorded here. `rowSelected` is not listed: a transcript row is never
 	 * selected, and the ledger's own row has no selected state.
 	 */

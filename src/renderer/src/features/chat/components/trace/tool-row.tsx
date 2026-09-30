@@ -65,6 +65,7 @@ import {
 	SEND_DELIVERY_WORD,
 	type SendDeliveryState,
 	type ToolCategory,
+	deliverySettledVerb,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
@@ -601,10 +602,10 @@ const StatusCluster = ({
 	/*
 	 * THE STATE WORD, at `text-meta`/500, on the trailing edge where the eye
 	 * already is for the duration (§E1). For a `send` that stated its delivery this
-	 * is `SEND_DELIVERY_WORD` (`wake unconfirmed`, `unconfirmed`, `not delivered`)
-	 * and the ink is the ROLE - amber for the two partial states, danger for
-	 * `failed`; every other failure keeps its own words (`failed`, `never ran`) in
-	 * the danger role.
+	 * is `SEND_DELIVERY_WORD` (`wake unconfirmed`, `delivery unconfirmed`,
+	 * `not delivered`) and the ink is the ROLE - amber for the two partial states,
+	 * danger for `failed`; every other failure keeps its own words (`failed`,
+	 * `never ran`) in the danger role.
 	 */
 	const deliveryWord = deliveryState
 		? SEND_DELIVERY_WORD[deliveryState]
@@ -615,6 +616,34 @@ const StatusCluster = ({
 			? (deliveryWord ?? OUTCOME_LABEL[outcome])
 			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
+	/*
+	 * THE DROP BELOW THE WIDTH THAT HOLDS THE WORD (design note §3(b) Narrow; UX
+	 * round 1, U7). The word is ALL-OR-NOTHING: at 320px the mailbox row measured
+	 * 262px of content against a 240px row - a 22px overflow - because the word
+	 * never gives way and the summary, already at `truncate`, cannot go below
+	 * zero. So the word is drawn only while the row can hold it whole, and the row
+	 * already owns the mechanism: `@container/toolrow` on the row box and a
+	 * container variant on the sibling that sheds first (`DiffCounters`,
+	 * `@[34rem]/toolrow:flex`).
+	 *
+	 * `19rem` (304px) is DERIVED, not chosen: the cluster is the word (~134px for
+	 * the longest, `delivery unconfirmed`) + the 6px gap + the 14px mark + the 6px
+	 * gap + the 5ch right-aligned duration slot (~48px) = ~208px, and a summary
+	 * below ~96px is not a summary - eight characters of the mono step. Below
+	 * that the row sheds the word and the MARK plus the sr-only sentence carry the
+	 * state, which is the half that must never be colour-only.
+	 *
+	 * WHY ONLY THE TWO AMBER STATES CARRY THE GATE. The fallback is the mark, and
+	 * only the partial pair has one: a failed row's word IS its whole non-colour
+	 * carrier (`not delivered`), so shedding it at a narrow width would leave the
+	 * danger WASH - colour alone - saying the row had failed. That row keeps
+	 * today's behaviour exactly: the word is always drawn.
+	 */
+	const wordClass = cn(
+		"font-medium text-meta",
+		wordInk,
+		partial && "hidden @[19rem]/toolrow:inline",
+	);
 	/*
 	 * The word the row STATES and the words it SPEAKS are not the same sentence for
 	 * the partial states: the drawn word is short enough to sit at the row's edge
@@ -647,7 +676,14 @@ const StatusCluster = ({
 		: outcome === "interrupted"
 			? InterruptedGlyph
 			: null;
-	const glyphInk = partial ? "text-warning" : "text-ink-dim";
+	/*
+	 * The mark's ink follows the MARK, not the outcome (QA round 1, Q3): with a
+	 * `partial` outcome and no state there is no glyph to tint, and the empty span
+	 * kept the warning ink it could not spend. Unreachable from the app - the
+	 * ladder derives `partial` FROM the state - but an empty slot tinted amber is
+	 * the kind of reading a screenshot later cannot tell from a real one.
+	 */
+	const glyphInk = Glyph && partial ? "text-warning" : "text-ink-dim";
 	/*
 	 * The status column of a RUNNING row, which is either its own clock or
 	 * NOTHING AT ALL.
@@ -679,7 +715,7 @@ const StatusCluster = ({
 			 */}
 			{word ? (
 				<span
-					className={cn("font-medium text-meta", wordInk)}
+					className={wordClass}
 					// The hover is the explanation the word cannot fit: it exists for the
 					// two partial states only (`SEND_DELIVERY_TITLE`), and `send` is the one
 					// row whose word is a hedge rather than a verdict.
@@ -768,6 +804,11 @@ export const ToolRow = ({
 		summaryFallback,
 		running,
 		op,
+		/*
+		 * The one row whose settled verb its own result overrides (UX round 1, U8):
+		 * a `send` that provably delivered nothing must not open with `Sent`.
+		 */
+		deliverySettledVerb(deliveryState),
 	);
 
 	const row = (

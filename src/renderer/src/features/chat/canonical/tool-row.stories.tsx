@@ -3636,24 +3636,47 @@ export const SendDeliveries: Story = {
 };
 
 /**
- * The two amber states expanded, with the delivered row collapsed above them as
- * the silence control.
+ * The incident's own expansion — the mailbox state — with the other three rows
+ * collapsed.
  *
- * THE BOX IS SHORTER THAN THE COLUMN ON PURPOSE (500 against ~590 at four
- * expansions): a story frame taller than the surface around it is clipped, and a
- * clipped frame cannot be photographed whole by a capture rig. Keeping a
- * disclosure open is what `keepClosed` is for (the receipt stories use the same
- * pair), so the two expansions the state model is about are the two that fit.
- * The refusal's own expansion is the story below.
+ * ONE EXPANSION PER FRAME, and that is the round-1 fix to this story rather than
+ * a preference (design round 1, D1): at four expansions the column is ~590px
+ * tall against a 500px box, so the second one was clipped mid-argument and the
+ * frame did not show what its docstring said it did. A capture rig photographs
+ * the top of an over-tall frame and cannot scroll a story's own box, so each
+ * expansion now has a frame that holds it whole — and the ROWS stay in the same
+ * order, with the same prose, in every one of them, which is what makes the four
+ * frames comparable.
+ *
+ * `keepClosed` names the positions left shut, in paint order (the receipt
+ * stories use the same pair): here the delivered row (0), the `unconfirmed` row
+ * (2) and the refusal (3).
  */
 export const SendDeliveriesOpen: Story = {
 	render: () => (
 		<Frame
-			height={500}
+			height={460}
 			openRows
-			/* The delivered row's expansion is unchanged behaviour and the failed
-			   row's is the story below; these two are what this frame is about. */
-			keepClosed={[0, 3]}
+			keepClosed={[0, 2, 3]}
+			records={sendDeliveryRows()}
+		/>
+	),
+};
+
+/**
+ * The retry-exhausted state expanded — the one whose instruction the reader
+ * cannot act on twice without duplicating a delivery.
+ *
+ * This frame is the U1 measurement in picture form: the wrapped delivery
+ * sentence sits above the arguments, and the machine line under it (the one that
+ * continues off the right edge) is no longer the only carrier of what to do.
+ */
+export const SendDeliveriesUnconfirmedOpen: Story = {
+	render: () => (
+		<Frame
+			height={460}
+			openRows
+			keepClosed={[0, 1, 3]}
 			records={sendDeliveryRows()}
 		/>
 	),
@@ -3661,17 +3684,18 @@ export const SendDeliveriesOpen: Story = {
 
 /**
  * The refusal expanded: the danger pathway kept, and the only one of the four
- * whose result renders as an `Error` block. One row out of the shared fixture,
- * so this frame and the four-row ones cannot drift apart.
+ * whose result renders as an `Error` block.
+ *
+ * Note the verb: the settled row reads `Attempted`, not `Sent` (UX round 1, U8),
+ * because `Sent … not delivered` is the row contradicting itself.
  */
 export const SendDeliveriesFailureOpen: Story = {
 	render: () => (
 		<Frame
-			height={300}
+			height={460}
 			openRows
-			records={sendDeliveryRows().filter(
-				(record) => record.id === "send:prose:3" || record.id === "send:failed",
-			)}
+			keepClosed={[0, 1, 2]}
+			records={sendDeliveryRows()}
 		/>
 	),
 };
@@ -3684,8 +3708,47 @@ export const SendDeliveriesNarrow: Story = {
 	),
 };
 
+/**
+ * BELOW the width that holds the word whole — the other half of the narrow rule
+ * (design note §3(b) Narrow; UX round 1, U7, measured at 320px as a 22px row
+ * overflow before this).
+ *
+ * What to look for: the amber pair keeps its MARK and its spoken sentence and
+ * sheds only the word, so the state is still carried with the colour off; the
+ * refusal, which has no mark, keeps its word — a failure never relies on the
+ * wash alone. The two frames together are the rule the suite can only pin as a
+ * mechanism (`scripts/tool-row.test.mjs`).
+ */
+export const SendDeliveriesTooNarrow: Story = {
+	render: () => (
+		<Frame width="320px" height={420} records={sendDeliveryRows()} />
+	),
+};
+
 /** The same four under a light palette, where `warning` is the closer call. */
 export const SendDeliveriesLight: Story = {
 	args: { theme: "localOperatorLight" },
 	render: () => <Frame height={420} records={sendDeliveryRows()} />,
+};
+
+/**
+ * A folded run of sends — the case no other frame here can show (UX round 1,
+ * U6).
+ *
+ * The other stories insert prose between the four sends precisely so they do NOT
+ * fold (a run of three or more consecutive actions condenses behind one bar,
+ * `FOLD_MIN_ACTIONS`), and the round-1 disposition is to record the folded case
+ * rather than to invent a tally for it: the fold's `· N failed` chip was retired
+ * by the operator on 2026-09-29, and a partial result is deliberately not a
+ * failure there. So this frame shows what the caveat costs — four sends, one of
+ * them a `mailbox`, condensed to a neutral count line with no amber anywhere —
+ * and it is evidence about the GAP, not a proposal to change it.
+ */
+export const SendDeliveriesFolded: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={sendDeliveryRows().filter((record) => record.kind === "tool")}
+		/>
+	),
 };

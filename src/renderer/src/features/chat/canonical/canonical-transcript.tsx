@@ -109,6 +109,8 @@ import {
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
+	SEND_DELIVERY_NOTE,
+	type SendDeliveryState,
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
@@ -1228,6 +1230,31 @@ function toolRecordSummary(
 }
 
 /**
+ * The delivery sentence a `send` expansion opens its result section with.
+ *
+ * WHY THE EXPANSION NEEDS A SECOND VOICE (UX round 1, U1/U4). The result body is
+ * the core's own line, written for a model: it prints the pid, the message id, an
+ * attempt count, and - for the fourth state - the agent API call that would check
+ * the peer (`sessions(op="peek", …)`). A human who expanded the row to find out
+ * what to do got one `whitespace-pre` line clipped by the box's right edge, with
+ * the actionable half behind a horizontal scroll and no scrollbar drawn at rest
+ * (measured: 811px of the mailbox sentence, 1423px of the `unconfirmed` one).
+ *
+ * So the instruction is said again, in the reader's own terms and in a box that
+ * wraps (`SEND_DELIVERY_NOTE`), above the machine line rather than instead of it:
+ * the raw text keeps the ids and the cause, and this keeps the reader from
+ * re-sending a message that is already sitting in a peer's mailbox.
+ *
+ * `null` for `delivered` and for every row with no stated delivery, so a
+ * successful send's expansion is exactly the one it always was.
+ */
+function DeliveryNote({ state }: { state: SendDeliveryState }) {
+	const note = SEND_DELIVERY_NOTE[state];
+	if (!note) return null;
+	return <span data-delivery-note={state}>{note}</span>;
+}
+
+/**
  * One tool call as a ledger row.
  *
  * The row itself is `ToolRow`; this decides what goes in each of its columns
@@ -1404,7 +1431,16 @@ const ToolRow = memo(function ToolRow({
 		<ToolDetail
 			args={record.args}
 			output={record.output}
-			isError={record.isError}
+			/*
+			 * THE SAME PREDICATE THE COUNTS USE (QA round 1, Q2). `record.isError`
+			 * alone let a producer that set `is_error` on a partial paint an amber row
+			 * over an `Error` block - the one place in the row the contradiction the
+			 * rest of this change is armoured against would still show.
+			 * `isFailedResult` is the expression the fold's failed count, the turn
+			 * foot and the failed-row jump already read, so the heading and the counts
+			 * cannot disagree about whether a call failed.
+			 */
+			isError={isFailedResult(record.isError, record.delivery)}
 			/*
 			 * The durable interrupted row reaches `ToolDetail` (its verdict lives in
 			 * `output`, not `notRunReason`, so `notRun` is false for it) and must not
@@ -1412,6 +1448,13 @@ const ToolRow = memo(function ToolRow({
 			 * live arm reads (design round 1, D1).
 			 */
 			interrupted={record.stopped === true}
+			/*
+			 * The reader's own sentence for a send that did not plainly succeed; the
+			 * machine result stays below it (see `DeliveryNote`).
+			 */
+			note={
+				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+			}
 		/>
 	) : undefined;
 	/*

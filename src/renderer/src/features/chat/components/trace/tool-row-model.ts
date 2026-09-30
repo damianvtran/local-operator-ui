@@ -276,21 +276,35 @@ export function preferDeliveryState(
  * the colour off, and none is `failed` - "Sent ... failed" reads as a statement
  * about the message, while `not delivered` states the fact the reader acts on
  * (the same precedent as `never ran`).
+ *
+ * BOTH AMBER WORDS NAME THEIR SUBJECT (agent review round 1 / UX U2). The fourth
+ * state drew the bare `unconfirmed` for one round, which is a VERDICT at the row's
+ * trailing edge - `Sent ... unconfirmed` reads as "it did not go", the single
+ * reading that leads to the resend this state exists to prevent - and it was
+ * also the vaguer, shorter word for the state where a wrong guess costs a
+ * duplicate delivery. `unconfirmed` is what the word is ABOUT, never the word:
+ * either it stands where the row's name gives it a subject (`wake unconfirmed`)
+ * or it carries its own (`delivery unconfirmed`).
  */
 export const SEND_DELIVERY_WORD: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
 	mailbox: "wake unconfirmed",
-	unconfirmed: "unconfirmed",
+	unconfirmed: "delivery unconfirmed",
 	failed: "not delivered",
 };
 
 /**
- * The hover text on the word, for the two states whose word alone under-tells
- * them. Both hedges are deliberate and verbatim from the frozen interface:
- * `mailbox` tells the reader the message is safe and will be read, while
- * `unconfirmed` says the opposite half - it may still arrive, so check first.
- * `failed` needs none (its word is the whole statement).
+ * The hover text on the word, for the two amber states whose word alone
+ * under-tells them.
+ *
+ * WHICH OF THESE ARE QUOTED AND WHICH ARE OURS (agent review round 1). The
+ * `mailbox` sentence is the frozen interface's, verbatim. The `unconfirmed` one
+ * is THIS PR's OWN composition - the frozen interface fixes a hover for
+ * `mailbox` alone - and the design round records it in its own note in round 2;
+ * until then it is copy this change authored, and no test may cite it as a
+ * requirement (see `scripts/tool-row.test.mjs`). `failed` needs none: its word
+ * is the whole statement, and a hover would only repeat it.
  */
 export const SEND_DELIVERY_TITLE: Readonly<
 	Partial<Record<SendDeliveryState, string>>
@@ -301,13 +315,55 @@ export const SEND_DELIVERY_TITLE: Readonly<
 		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
 };
 
-/** What assistive tech hears for each state (the word is drawn, this is spoken). */
+/**
+ * The wrapping, reader-facing sentence the EXPANSION prints for a state.
+ *
+ * Why it exists at all (UX round 1, U1/U4 - major). The result text is a
+ * machine line: it is one `whitespace-pre` line inside an `overflow-x: auto`
+ * box, so at ordinary widths the half that tells the reader what to DO sits off
+ * the right edge behind a scrollbar macOS does not even draw - measured on the
+ * round-1 frames as 811 px of the mailbox sentence and 1423 px of the
+ * `unconfirmed` one. The reader who expanded the row precisely to find out what
+ * to do got `… — the wake`.
+ *
+ * So the instruction gets its own line, and this is the UI's copy rather than
+ * the core's: it WRAPS (so it cannot be clipped), it names the reader's own
+ * actions, and it carries no agent API - `sessions(op="peek", …)` belongs to the
+ * model-facing string, where the reader is a model. The raw result text is NOT
+ * removed: it stays as the row's `Output` block, which is where the pid, the
+ * message id and the attempt count live for anyone who wants them.
+ *
+ * `delivered` has no entry by design: a success says nothing, and the expansion
+ * of a delivered send is the row it always was.
+ */
+export const SEND_DELIVERY_NOTE: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox:
+		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
+	unconfirmed:
+		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
+	failed: "Nothing was delivered. Fix the cause above or retry the send.",
+};
+
+/**
+ * What assistive tech hears for each state (the word is drawn, this is spoken).
+ *
+ * The AMBER state's spoken sentence carries the hedge its hover carries (UX
+ * round 1, U3): the drawn word is `aria-hidden` whenever the two differ, so the
+ * label is the whole of what a reader with no screen sees - and `delivery
+ * unconfirmed` on its own is "it did not go", the reading the hover exists to
+ * correct. A hedge that only a mouse can reach is not a hedge.
+ *
+ * `failed` has no entry: its drawn word IS the announcement, so an entry here
+ * would be a string nothing renders (agent review round 1, residue).
+ */
 export const SEND_DELIVERY_LABEL: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
 	mailbox: "delivered, wake unconfirmed",
-	unconfirmed: "delivery unconfirmed",
-	failed: "not delivered",
+	unconfirmed:
+		"delivery unconfirmed — it may still arrive, so check before resending",
 };
 
 /**
@@ -328,16 +384,38 @@ export function isPartialDelivery(
  * non-`send` row - which is what keeps an old transcript on exactly the path it
  * had before this field existed.
  *
- * `error` is returned for `failed` so the CALLER can tell the two ways a row can
- * be an error apart: a `send` that this state names has the delivery word
- * (`not delivered`) available, where every other error keeps `failed`.
+ * `failed` maps to `null` too, and NOT to `error`: the failed row's outcome is
+ * the one it already had (`isError`), and the word it prints comes from
+ * `SEND_DELIVERY_WORD` inside the status cluster. An `"error"` return existed
+ * for one round with no production caller (agent review round 1, residue), and a
+ * branch that describes a caller that does not exist is a future edit that
+ * silently does nothing.
  */
 export function deliveryRowOutcome(
 	state: SendDeliveryState | null | undefined,
-): "partial" | "error" | null {
-	if (isPartialDelivery(state)) return "partial";
-	if (state === "failed") return "error";
-	return null;
+): "partial" | null {
+	return isPartialDelivery(state) ? "partial" : null;
+}
+
+/**
+ * The settled VERB a `send` row prints when its delivery did not happen, or
+ * `null` when the tool's own verb stands.
+ *
+ * `Attempted` for `failed` alone, and the reason is the row's own sentence (UX
+ * round 1, U8): the ledger's settled verb is `Sent`, so the one state that says
+ * `not delivered` read `Sent … not delivered` - the row contradicting itself in
+ * six words, on the state whose whole job is to be unambiguous. The settled verb
+ * is there to name the ATTEMPT (the design note's own convention, which is why
+ * the amber rows keep `Sent`), and an attempt that provably delivered nothing is
+ * exactly that: an attempt.
+ *
+ * Deliberately not the amber states: `Sent … wake unconfirmed` claims only that
+ * the attempt was made, which is true there - the message is in the mailbox.
+ */
+export function deliverySettledVerb(
+	state: SendDeliveryState | null | undefined,
+): string | null {
+	return state === "failed" ? "Attempted" : null;
 }
 
 /**
@@ -1221,13 +1299,20 @@ export function toolRowLabel(
 	summaryFallback: string | null,
 	running: boolean,
 	op = "",
+	/**
+	 * The settled verb a result STATES, over the tool's own (see
+	 * `deliverySettledVerb`). `null` for every row but a `send` that provably
+	 * delivered nothing, which is the one case the tool's own verb would
+	 * contradict the trailing word beside it.
+	 */
+	settledVerb: string | null = null,
 ): ToolRowLabel {
 	const verb = toolVerb(toolName, op);
 	const bare = isBareToolName(summary, toolName)
 		? (summaryFallback ?? "")
 		: summary;
 	return {
-		verb: running ? verb.running : verb.settled,
+		verb: running ? verb.running : (settledVerb ?? verb.settled),
 		object: verb.named
 			? bare
 			: [displayName(toolName), bare].filter(Boolean).join(" "),

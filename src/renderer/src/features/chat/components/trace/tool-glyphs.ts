@@ -21,7 +21,6 @@
 
 import {
 	Check,
-	CircleDashed,
 	CircleSlash,
 	Clock,
 	Columns3,
@@ -33,6 +32,7 @@ import {
 	Inbox,
 	ListChecks,
 	type LucideIcon,
+	MailQuestion,
 	Mailbox,
 	Monitor,
 	PictureInPicture2,
@@ -148,13 +148,16 @@ export function toolIcon(toolName: string): LucideIcon {
  * They take a SHAPE of their own so the two read apart with the colour off,
  * which is the same reason the pair above is three shapes and not three tints:
  * `Mailbox` is the noun the state is named for (the message is sitting in the
- * recipient's tray), and `CircleDashed` is the incomplete circle the TUI already
- * spends on "answered, not whole" (`ICON_PARTIAL`, `◐`) — an unclosed outline,
- * not a verdict. Neither is `Inbox` (`peer`'s own tool glyph) nor `Send`
- * (`send`'s), so a row's mark and its tool glyph cannot be read as each other.
+ * recipient's tray), and `MailQuestion` is a message carrying a question - "we do
+ * not know where this one is" - chosen over the dashed circle the fourth state
+ * first drew, which is the app's BUSY silhouette (`chat-session-status.tsx`'s and
+ * `chat-status-strip.tsx`'s spinning loader circle) and so said "still working"
+ * on a settled row (UX round 1, U5). Neither is `Inbox` (`peer`'s own tool glyph)
+ * nor `Send` (`send`'s), so a row's mark and its tool glyph cannot be read as each
+ * other.
  */
 export const SuccessGlyph = Check;
 export const ErrorGlyph = X;
 export const InterruptedGlyph = CircleSlash;
 export const MailboxGlyph = Mailbox;
-export const DeliveryUnconfirmedGlyph = CircleDashed;
+export const DeliveryUnconfirmedGlyph = MailQuestion;
