@@ -298,6 +298,11 @@
 .lo-markdown table {
 	border-collapse: collapse;
 	width: 100%;
+	/* Explicit rather than defaulted, because the table fix below rests on it:
+	   auto layout is what prices a column from its content once the cells'
+	   min-content is honest, and `table-layout: fixed` would take that
+	   pricing away while looking like an unrelated edit. */
+	table-layout: auto;
 	margin: 0.75rem 0;
 }
 
@@ -314,6 +319,99 @@
 .lo-markdown th {
 	background-color: var(--lo-sunken);
 	font-weight: 600;
+}
+
+/*
+ * A MARKDOWN TABLE SIZES ITS COLUMNS FROM ITS CONTENT, AND SCROLLS RATHER THAN
+ * SQUEEZES (operator report, 2026-09-30; design consult D1).
+ *
+ * The report: a table the agent wrote into an answer rendered with its short
+ * columns squeezed to a few pixels - `#684 (1a)` and `MERGED f11952f1d2`
+ * wrapping mid-token - while the long "What it fixes" column took the width.
+ *
+ * The cause is the root rule's `word-break: break-word` above. It is the legacy
+ * alias whose behaviour equals `overflow-wrap: anywhere`, and for INTRINSIC
+ * sizing that lets a soft wrap opportunity sit inside a word, so a cell's
+ * min-content is one character (measured on the reported strings, at the cell's
+ * own computed face: `#684 (1a)` prices at 8.9px against the same string's
+ * 35.1px with `word-break: normal`, and a 40-character sha drops from 307.8px
+ * to 8.9px). Auto table layout gives every column at least its min-content, so
+ * a column can be squeezed to a single character. Making that min-content
+ * honest FOR CELLS ONLY is the whole of the fix; the browser's own auto layout
+ * then does the rest - every column keeps at least its longest word, the
+ * deficit comes off the widest column first, and the prose column absorbs it.
+ * Measured on the reported shape at the 810px measure, dark: the columns
+ * 44.2 / 67.1 / 697.7 became 85 / 164.3 / 559.7, and row 1's 3 / 4 / 1 line
+ * counts became 1 / 1 / 1.
+ *
+ * The root rule stays, so prose, lists, headings and quotes are untouched.
+ * `overflow-wrap: break-word` is kept beside `normal` as the safety net for a
+ * cell narrower than a single word; it does not affect intrinsic sizing, so it
+ * cannot re-create the squeeze `word-break` did.
+ */
+.lo-markdown th,
+.lo-markdown td {
+	word-break: normal;
+	overflow-wrap: break-word;
+	/* A CEILING on how much min-content one cell may demand, not a second
+	   policy. It exists for the token with no word boundaries at all: a
+	   263-character digest allowed its min-content would make the table a
+	   1932px scroll, and capped at 64ch it wraps inside its own column
+	   instead. Tokens a reader works with fit under the cap - SHA-1's 40,
+	   sha256-hex's 64, paths, deep links - so those are never broken, and the
+	   three-SHA table that still exceeds the measure (3 x 307.8 > 810)
+	   scrolls in the wrapper below rather than squeezing. Swept 32-72ch
+	   against the change's fixtures (design note, measure-sweep.json): at 36
+	   and below a 40-character sha wraps mid-token; 44-56 stop the capped
+	   column absorbing the width, so the SHORT columns balloon (44: 107/207px
+	   against the chosen recipe's 85/164); 64 is the smallest value that
+	   keeps sha256's 64 characters whole without widening the giant-token
+	   scroll 72 produces. */
+	max-width: 64ch;
+}
+
+/*
+ * The code-span override is required, not optional: `.lo-markdown code` above
+ * sets `word-break: break-word` directly on the span, and a direct declaration
+ * cannot be overridden by inheritance - without this line, a
+ * `<code>#684 (1a)</code>` cell keeps squeezing no matter what `th, td`
+ * declares (measured: still computing `break-word`). Agents write paths, PR
+ * ids and SHAs in code spans inside tables constantly. `pre code` is outside
+ * tables and keeps its own rule.
+ */
+.lo-markdown td code,
+.lo-markdown th code {
+	word-break: normal;
+	overflow-wrap: inherit;
+}
+
+/*
+ * THE CONTAINER. A table whose columns' min-contents sum above the measure has
+ * to go somewhere: squeezing is what the fix removes, and letting the table
+ * overflow the page scrolls the whole transcript sideways, so it scrolls
+ * INSIDE its own box instead. `max-width: 100%` keeps a table that fits
+ * exactly the measure it had; `overflow-x: auto` gives the excess a scroll
+ * region, whose affordance is the app's own always-visible scrollbar styling
+ * (no extra chrome, no fade mask); `overscroll-behavior-x: contain` stops a
+ * horizontal swipe reaching the region's edge from triggering the shell's
+ * back/forward gesture.
+ *
+ * The margin MOVES HERE from the table: a scrollbar painted inside the block
+ * that carried the bottom margin sits above it and reads as detached. The
+ * wrapper is a static element from `markdown-table.tsx` - the CSS cannot add
+ * one, and no JS measures or `tabindex` is added (Chromium makes an
+ * overflowing scroller keyboard-focusable on its own; a non-overflowing one
+ * stays out of the tab order).
+ */
+.lo-md-table-scroll {
+	overflow-x: auto;
+	max-width: 100%;
+	overscroll-behavior-x: contain;
+	margin: 0.75rem 0;
+}
+
+.lo-md-table-scroll > table {
+	margin: 0;
 }
 
 .lo-markdown .math-display {
