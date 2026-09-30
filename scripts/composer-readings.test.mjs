@@ -36,7 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
-			export { LAST_READING_NOTE, READINGS_DROPPED_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE, READINGS_DROPPED_NOTE, FAST_MODE_ON_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -79,6 +79,7 @@ const {
 	renderStrip,
 	LAST_READING_NOTE,
 	READINGS_DROPPED_NOTE,
+	FAST_MODE_ON_NOTE,
 	desktopEndpoint,
 	desktopRequestSchema,
 } = await import(bundlePath.href);
@@ -1348,4 +1349,61 @@ test("a held reading keeps its value, and the strip says once that it is the las
 		/aria-label="[^"]*Reconnecting/,
 		"the strip must not restate the pane's own reconnecting notice",
 	);
+});
+
+/* ---- 6. the fast badge --------------------------------------------------- */
+
+/**
+ * The badge's three states, off the SAME spec the chip labels itself from.
+ *
+ * The operator's mock (2026-09-29): a bolt immediately before the model name
+ * when fast mode is on — hidden when the dial is off, and hidden when the
+ * model reports no fast tier at all (`fastModeState`'s tri-state: `nothing` is
+ * not `off`). The badge carries no tooltip trigger of its own; its sentence
+ * rides the chip's single panel, and the chip's `aria-label` states the fact —
+ * a screen reader hears what the bolt means (the bolt itself is decoration).
+ */
+test("the fast badge marks an on spec, and only an on spec", () => {
+	const render = (model) =>
+		renderStrip({
+			frontend: { ...DRAFT, effective_model: model },
+			onCommand: () => undefined,
+		});
+	const ON = render({ ...GPT_5, supports_fast_mode: true, fast_mode: true });
+	const OFF = render({ ...GPT_5, supports_fast_mode: true, fast_mode: false });
+	const NO_TIER = render(GPT_5);
+
+	// The bolt renders as the shared `Zap` (`lucide-zap` in the markup, like
+	// every other icon assertion in this suite) — before the name it qualifies,
+	// which is where the mock puts it.
+	assert.match(ON, /lucide-zap/, "the on spec carries the bolt");
+	assert.match(
+		ON,
+		/lucide-zap[\s\S]*?<\/svg>\s*<span class="truncate">gpt-5<\/span>/,
+		"the bolt sits immediately before the name (the aggregator's bare id, the name this chip prints)",
+	);
+	// The chip's accessible name states the fact the bolt marks, at the same
+	// moment the bolt shows.
+	assert.match(
+		ON,
+		/aria-label="Model: openrouter\/openai\/gpt-5, fast mode on\./,
+		"the chip speaks the state it shows",
+	);
+	// The tooltip's line is the component's own constant; a reworded sentence
+	// must move this test rather than silently leave the PR notes behind.
+	assert.equal(FAST_MODE_ON_NOTE, "Fast mode on");
+
+	// OFF IS NOT MARKED, and it makes no claim either: no bolt, no clause.
+	assert.doesNotMatch(OFF, /lucide-zap/, "a supported off dial shows no bolt");
+	assert.doesNotMatch(OFF, /fast mode on/, "and claims no state");
+	assert.match(
+		OFF,
+		/aria-label="Model: openrouter\/openai\/gpt-5\. /,
+		"the label keeps its plain form",
+	);
+
+	// NO TIER IS NOT OFF: the badge hides for it the same way, and the chip
+	// stays silent about a dial the model does not have.
+	assert.doesNotMatch(NO_TIER, /lucide-zap/);
+	assert.doesNotMatch(NO_TIER, /fast mode on/);
 });
