@@ -66,8 +66,10 @@ kind, not only in place:
   and labelled: **the menu is the only door a keyboard user can find by
   pressing it.**
 - **The pair's target is 24px and appears after a reflow.** It is `display:
-  none` at rest, and revealing it takes 56px out of the title
-  (`pair children … :215w24`, `:243w24` against a 255px box). The menu's own
+  none` at rest on an ordinary row, and revealing it takes 56px out of the
+  title (`pair children … :215w24`, `:243w24` against a 255px box); a pinned
+  row's strip is now four controls and takes **108px** (§ 7's shipped
+  measurements; `pinned-row`). The menu's own
   rows are the panel's content rows, not the strip's 24 × 24 controls: the shipped
   panels measure **273 × 81** (two rows) and **273 × 46** (one row) -
   `pointer-open` and `pin-state-unknown` - and the pointer opens the menu over
@@ -297,7 +299,7 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | open at the pointer, normal row | 2 rows, archive then pin, chords drawn | reveal held, hover ground held | `pointer-open` |
 | the same, the pointer moved onto the first item | 2 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
 | the same, hold rule **not** applied (the design round's control) | 2 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
-| open at the pointer, pinned row | 2 rows, item 2 reads `Unpin conversation` | pair already drawn at rest (the mark) | `pinned-row` |
+| open at the pointer, pinned row | 2 rows, item 2 reads `Unpin conversation` | the pair is drawn at rest (the mark is the state), and #697's move pair reveals with it — four children, all held under the menu | `pinned-row` |
 | open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
 | `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
 | `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
@@ -537,11 +539,13 @@ the arithmetic is worth stating so #693 does not have to rediscover it:
 
 - **The menu stays two rows** and the third row stays reserved. The menu costs
   **zero rest width**.
-- **The strip goes from 2 controls to 4** — 112px of the 280px panel. With the
-  row-space contract (`Only a control slot costs title width`, 28px each;
-  `title = panel − 16 − 28 × controls − 28`, `session-archive-delete.md:122-129`)
-  the title goes from **180px to 124px** at the default width. That is #693's
-  price and it is already paid for in its own decision.
+- **The strip went from 2 controls to 4 — the shipped measurements, not the
+  forecast** (`docs/evidence/pinned-reorder/README.md:34-38`): the revealed
+  cluster is **108px** (136px with the grip), the grip is shed at the shipped
+  default panel **260**, and the title under the pointer reads **88px** at 260
+  and **80px** at 280. The forecast's four-control count held; its arithmetic
+  (`112px` of a 280 panel) did not — #693's price is the measured one, already
+  paid for in its own decision.
 - **Had #693 taken the menu**, the cap would have broken: 2 mirrored rows + 2
   move rows = **4**, past the reporter's own "two at most pushing it three".
   The trade at that point is not "raise the cap" — it is **drop the mirror** and
@@ -596,7 +600,7 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
 | pair | `flex` | `flex` | `flex` | `flex` | `flex` | `flex` | `not mounted` |
-| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | as `pointer-open` | archive `flex:243w24` | — |
+| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | archive `flex:159w24`, up `flex:187w24`, down `flex:215w24`, mark `flex:243w24` | archive `flex:243w24` | — |
 | flyout | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` |
 | focus | menu; first item not highlighted | **first item, `data-highlighted`** | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
 
