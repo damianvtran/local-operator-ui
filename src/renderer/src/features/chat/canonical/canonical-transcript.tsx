@@ -149,6 +149,7 @@ import {
 	foldImages,
 	foldRuns,
 	turnFeet,
+	workedSecondsOf,
 } from "./trace-fold-model";
 import {
 	TRANSCRIPT_DRAG_SLOP_PX,
@@ -184,6 +185,7 @@ import {
 } from "./transcript-rows";
 import {
 	type RunCollapsePlan,
+	type SegmentPlan,
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
@@ -247,19 +249,25 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  * only when non-zero. `formatDuration` is the bar's own formatter, so the
  * sentence and the row cannot disagree about "20m30s".
  */
-function condenseSentence(plan: RunCollapsePlan): string {
+function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
-	if (plan.facts.durationS !== null) {
-		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	if (segment.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(segment.facts.durationS)}`);
 	}
-	if (plan.facts.actions > 0) {
+	if (segment.facts.actions > 0) {
 		parts.push(
-			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+			segment.facts.actions === 1
+				? "1 action"
+				: `${segment.facts.actions} actions`,
 		);
 	}
-	return parts.length === 0
-		? "Turn condensed."
-		: `Turn condensed: ${parts.join(", ")}.`;
+	/*
+	 * A labelled bar states its own kind first ("Wake: 8 actions."): a
+	 * follow-up section appearing after the answer is not "the turn condensing",
+	 * and saying so would announce the answer's own turn twice.
+	 */
+	const lead = segment.label ?? "Turn condensed";
+	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
 }
 
 /**
@@ -965,7 +973,31 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			<div
 				ref={turnRef}
-				className={cn("relative w-full break-words text-ink")}
+				className={cn(
+					"relative break-words text-ink",
+					/*
+					 * THE ANSWER'S OWN MARK (issue #665): a 2px rule in the margin the row
+					 * already has, on the turn's ELECTED answer only (`closesTurn` is the
+					 * segments module's election, so a post-dispose status reply never
+					 * wears it). `-ml-2` + `border-l-2` + `pl-1.5` net to zero, so the
+					 * prose box does not move: no second left edge, no second measure, no
+					 * card and no ground (docs/branding.md section 7 forbids each). It is
+					 * `ink-dim` because that role is already asserted at the 3:1 non-text
+					 * floor on every ground, so this adds no token and no contract row.
+					 * `data-turn-answer` is the hook rigs and tests read instead of a
+					 * class name.
+					 */
+					/*
+					 * AUTO WIDTH ON THE MARKED ROW, `w-full` otherwise. A block with a
+					 * negative left margin and auto width grows LEFT by exactly the margin
+					 * and keeps its right edge; `w-full` pinned the width, so the same
+					 * margin slid the box left and left the prose 8px short on the right
+					 * (measured: 802px against the row's 810). Left edge and right edge
+					 * both stay where an unmarked row's are.
+					 */
+					closesTurn ? "-ml-2 border-l-2 border-ink-dim pl-1.5" : "w-full",
+				)}
+				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 				data-lo-truncated={record.truncated || undefined}
@@ -2313,6 +2345,52 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		},
 		[sessionId],
 	);
+	/*
+	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
+	 * press and its layout effect share. The rule these serve - a pressed bar stays
+	 * where it was pressed, and its write goes out acknowledged to the paging hook
+	 * - is stated at the effect that spends them.
+	 */
+	const pressedBar = useRef<{ id: string; top: number } | null>(null);
+	/*
+	 * Found by comparing the attribute rather than by a selector: a record id is
+	 * arbitrary text, and escaping it for a selector is a second thing to get wrong
+	 * (and `CSS.escape` is absent from the test DOM).
+	 */
+	const barFor = useCallback(
+		(id: string): Element | null => {
+			const bars = containerRef.current?.querySelectorAll(
+				"[data-turn-summary]",
+			);
+			for (const bar of bars ?? []) {
+				if (bar.getAttribute("data-record-id") === id) return bar;
+			}
+			return null;
+		},
+		[containerRef],
+	);
+	const openBar = useCallback(
+		(runKey: string, firstId: string, open: boolean) => {
+			/*
+			 * RECORDED FOR A CLOSE AS WELL AS AN OPEN (QA round 2, QA-2). The open
+			 * was compensated first because that is where the defect was measured;
+			 * the close moves the viewport the other way by the same span and is
+			 * just as much the reader's press, so it takes the same record and the
+			 * same single write. One record per press, consumed by the next commit,
+			 * so the two movements cannot double-count each other - the open's write
+			 * is already spent, and acknowledged, before the close is pressed.
+			 */
+			const bar = barFor(firstId);
+			if (bar) {
+				pressedBar.current = {
+					id: firstId,
+					top: bar.getBoundingClientRect().top,
+				};
+			}
+			setRunOpen(runKey, open);
+		},
+		[barFor, setRunOpen],
+	);
 	const total = rows.length;
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
@@ -2495,8 +2573,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			durationOf: workedSecondsOf,
 			/*
 			 * The fold's condensed header is fed from the records themselves: the
 			 * running call's own words (`toolRecordSummary`), its own running
@@ -2560,8 +2637,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return turnFeet(visible, {
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			/*
+			 * The SAME quantity every condensed bar states (`workedSecondsOf`): one
+			 * definition, so the bars of a ladder add up to this figure (#708 D1).
+			 */
+			durationOf: workedSecondsOf,
 			isAction: (row) => row.record.kind === "tool",
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
@@ -2759,26 +2839,71 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder, mayAutoWalk } = useScrollPaging({
-		containerRef,
-		sessionKey: sessionId,
-		hiddenRows: hidden,
-		hasMore: Boolean(transcript.hasMore),
-		onWiden: widen,
-		onLoadOlder,
-		onLoadOlderOutcome,
-		olderFailed,
-		loadingOlder,
-		// The content node exists only once the transcript is non-empty; this is
-		// what re-runs the observer effect at that moment.
-		contentKey: collapsed ? "empty" : "filled",
-		// The MOUNTED count, not the total: a local widen reveals rows the
-		// transcript already had, so `rows.length` does not change and the
-		// pre-paint correction would skip exactly the reveal that displaces the
-		// reader furthest. `visible.length` changes on both growth paths.
-		rowCount: visible.length,
+	const { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite } =
+		useScrollPaging({
+			containerRef,
+			sessionKey: sessionId,
+			hiddenRows: hidden,
+			hasMore: Boolean(transcript.hasMore),
+			onWiden: widen,
+			onLoadOlder,
+			onLoadOlderOutcome,
+			olderFailed,
+			loadingOlder,
+			// The content node exists only once the transcript is non-empty; this is
+			// what re-runs the observer effect at that moment.
+			contentKey: collapsed ? "empty" : "filled",
+			// The MOUNTED count, not the total: a local widen reveals rows the
+			// transcript already had, so `rows.length` does not change and the
+			// pre-paint correction would skip exactly the reveal that displaces the
+			// reader furthest. `visible.length` changes on both growth paths.
+			rowCount: visible.length,
+		});
+	/*
+	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
+	 *
+	 * The disclosure idiom is "the row you press stays and its content appears
+	 * under it". The browser's scroll anchoring gives that everywhere except at
+	 * the bottom of this transcript: the scroller is `flex-col-reverse` and pinned
+	 * at `scrollTop = 0`, so growing content is added ABOVE the pinned tail and
+	 * the pressed bar is pushed off the top (measured: y 272 to -348, the scroller
+	 * unmoved, with 620px of opened span between the reader and the bar's label).
+	 * A reader following live work sits at the bottom, so that is the most likely
+	 * place for the press.
+	 *
+	 * So the press records where the bar is, and the commit that MOUNTS OR
+	 * UNMOUNTS its content moves the scroller by exactly how far the bar moved -
+	 * the close needs this as much as the open (QA round 2, QA-2: an un-
+	 * compensated close moved the reader about 2.5 span-lengths, the same defect
+	 * with the sign flipped). Where the
+	 * browser already held the bar (top, mid-transcript) the delta is zero and
+	 * this writes nothing, so it cannot fight the anchoring it complements. The
+	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
+	 * tail and more negative moves content DOWN - `scroll-paging` states the
+	 * contract), and it is one assignment in the layout phase, so no frame paints
+	 * the bar off-screen first.
+	 *
+	 * THE WRITE IS ACKNOWLEDGED TO THE PAGING HOOK, and that is not bookkeeping
+	 * (review round 2, MINOR-3). This scroller's `onPointerDown` opened the hook's
+	 * drag window when the reader pressed the bar, so the `scroll` event this
+	 * write produces would otherwise be read as the reader dragging older-ward:
+	 * a correction recorded as input, which arms a paging demand from a click.
+	 * `acknowledgeOwnWrite` takes the offsets around the assignment, so a write
+	 * the browser clamps to nothing claims nothing either.
+	 */
+	useLayoutEffect(() => {
+		const pressed = pressedBar.current;
+		if (pressed === null) return;
+		pressedBar.current = null;
+		const region = containerRef.current;
+		const bar = barFor(pressed.id);
+		if (!region || !bar) return;
+		const moved = bar.getBoundingClientRect().top - pressed.top;
+		if (Math.abs(moved) < 1) return;
+		const before = region.scrollTop;
+		region.scrollTop += moved;
+		acknowledgeOwnWrite(before, region.scrollTop);
 	});
-
 	/*
 	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
 	 * settled turn finishes its own condensation instead of waiting for the
@@ -3239,31 +3364,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
 	useEffect(() => {
-		const collapsed = collapse.runs.filter((run) => run.collapses);
+		/*
+		 * The announcement's unit is the SEGMENT (a run can now hold several bars),
+		 * keyed by the same key the reader's expansion uses. Still ONE `<output>` for
+		 * the whole list: several bars per run make a live region per bar the
+		 * obvious wrong turn, and each new bar simply adds its sentence to the one.
+		 */
+		const collapsed = collapse.runs.flatMap((run) =>
+			run.segments.filter((segment) => segment.collapsed),
+		);
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
 			 * bars are what the conversation loaded with, not a settle. A pass
-			 * with no runs at all — a held or empty pane — leaves the
+			 * with no runs at all - a held or empty pane - leaves the
 			 * initialisation for the first pass that paints rows.
 			 */
 			if (collapse.runs.length > 0) {
 				announcedPlan.current = {
-					keys: new Set(collapsed.map((run) => run.key)),
+					keys: new Set(collapsed.map((segment) => segment.key)),
 					rowIds,
 				};
 			}
 			return;
 		}
 		const appeared = collapsed.filter(
-			(run) =>
-				!previous.keys.has(run.key) &&
-				run.recordIds.some((id) => previous.rowIds.has(id)),
+			(segment) =>
+				!previous.keys.has(segment.key) &&
+				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
 		announcedPlan.current = {
-			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			keys: new Set([
+				...previous.keys,
+				...collapsed.map((segment) => segment.key),
+			]),
 			rowIds,
 		};
 		if (appeared.length === 0) return;
@@ -3272,10 +3408,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
-	 * with one exception: a collapsed run's hidden groups move INSIDE its bar
-	 * (so they are merely unmounted while collapsed — the fold's own contract)
-	 * and the bar takes the FIRST hidden row's slot and gap. Pinned and tail
-	 * groups keep their places, so a collapse never reorders a visible row.
+	 * with one exception: a collapsed SEGMENT's hidden groups move INSIDE its bar
+	 * (so they are merely unmounted while collapsed - the fold's own contract)
+	 * and the bar takes the slot and gap of the segment's FIRST hidden group.
+	 * Pinned rows, the elected answer and the trailing statements keep their
+	 * places, so a collapse never reorders a visible row.
+	 *
+	 * THE WALK CONSUMES GROUPS STRICTLY IN ORDER, which is why a pinned row between
+	 * two hidden spans can no longer land after a bar that precedes it: each span
+	 * pushes its own bar the moment its first group is reached, and the pinned row
+	 * is pushed where the walk finds it. Sorting afterwards could not express that
+	 * (the two orders differ per expansion state); the partition is what fixes it.
 	 */
 	const chatEntries = useMemo(() => {
 		const indexOf = new Map<string, number>();
@@ -3287,23 +3430,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					group: SectionGroup;
 					suppressClosingLine: boolean;
 					/**
-					 * Whether this group renders directly under a collapsed run's
-					 * bar. The row beneath the bar's rule re-tiers at the render pass
-					 * (`atItemTierGroup`); this flag is the walk's half of that
-					 * decision, set where the bar is placed.
+					 * Whether this group renders below a bar of its run. The row beneath
+					 * the bar's rule re-tiers at the render pass (`atItemTierGroup`); this
+					 * flag is the walk's half of that decision, set where the bar is
+					 * placed.
 					 */
 					afterBar?: boolean;
 			  }
 			| {
 					kind: "bar";
-					plan: RunCollapsePlan;
+					segment: SegmentPlan;
+					/** The whole run's ids: the bar's long-standing `data-run-ids`. */
+					runIds: readonly string[];
 					children: SectionGroup[];
 					/**
-					 * The hidden span's pictures, computed HERE because the bar's children
+					 * The segment's pictures, computed HERE because the bar's children
 					 * are unmounted while it is collapsed and these are what they would
-					 * have shown. `plan.hidden` rather than the whole run: the bar shows
-					 * exactly what the collapse hides, and a pinned row that stays on
-					 * screen keeps drawing its own media.
+					 * have shown. The segment's own rows rather than the whole run: a bar
+					 * shows exactly what it hides, and a pinned row that stays on screen
+					 * keeps drawing its own media.
 					 */
 					images: TranscriptImage[];
 			  };
@@ -3335,55 +3480,68 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				continue;
 			}
-			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
-			const children: SectionGroup[] = [];
+			/* Which segment (index) each hidden row belongs to. */
+			const segmentOf = new Map<string, number>();
+			plan.segments.forEach((segment, index) => {
+				for (const id of segment.segmentIds) segmentOf.set(id, index);
+			});
 			/*
-			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
-			 * statement's gap was BUILT against its original neighbour - often a
-			 * tool row that has collapsed into the bar - so it arrives at the trace
-			 * tier and the collapse leaves it 2px under the rule, which the
-			 * operator read as the row hugging it. The SECOND report extended the
-			 * class: an incident row behind the memory statement hugged THAT row
-			 * by the same 2px, because only the first group was re-tiered. Every
-			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
-			 * so the statements under the rule sit at the block step, not the
-			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
-			 * read as statements of their own. Groups built at a wider tier (prose,
-			 * the closing answer) are handed back unchanged by the memoised
-			 * helper - the re-tier only ever fires on the trace tier.
+			 * The turn's ONE stamp lives on the bar that carries it, and that bar
+			 * withholds the answer's own closing line (`stampTs` is set only when
+			 * that bar is the run's sole pre-answer segment, so the totals it
+			 * states are the turn's). Any other shape keeps the foot: it is where
+			 * the turn's totals and stamp go when the bars state only parts.
 			 */
+			const footWithheld = plan.segments.some(
+				(segment) => segment.collapsed && segment.stampTs !== null,
+			);
+			const children = new Map<number, SectionGroup[]>();
 			let afterBar = false;
 			for (const group of groups) {
-				const hidden =
-					group.kind === "run"
-						? group.rows.every((row) => hiddenIds.has(row.record.id))
-						: hiddenIds.has(group.row.record.id);
-				if (hidden) {
-					children.push(group);
-					if (children.length === 1) {
-						/* The bar sits where the first hidden group did. */
+				/*
+				 * A GROUP IS HIDDEN ONLY IF EVERY ROW OF IT IS IN ONE SEGMENT (agent
+				 * review round 1 on #708, R1-5; the pre-segments code checked `every`).
+				 * A segment is a maximal contiguous span and a run group is a run of
+				 * contiguous tool rows, so a group cannot straddle a boundary today - but
+				 * that invariant lives in two other files, and if a boundary is ever
+				 * drawn mid-group, reading only the FIRST row would swallow the group's
+				 * visible rows into the bar without a sound. A mixed group renders in
+				 * place instead: visible rows stay visible.
+				 */
+				const groupRows = group.kind === "run" ? group.rows : [group.row];
+				const first = segmentOf.get(groupRows[0].record.id);
+				const index = groupRows.every(
+					(member) => segmentOf.get(member.record.id) === first,
+				)
+					? first
+					: undefined;
+				const segment = index === undefined ? null : plan.segments[index];
+				if (segment !== null && index !== undefined && segment.collapsed) {
+					let held = children.get(index);
+					if (held === undefined) {
+						held = [];
+						children.set(index, held);
+						/* The bar sits where the segment's first hidden group did. */
 						entries.push({
 							kind: "bar",
-							plan,
-							children,
-							images: foldImages(plan.hidden),
+							segment,
+							runIds: plan.recordIds,
+							children: held,
+							images: foldImages(segment.rows),
 						});
 						afterBar = true;
 					}
+					held.push(group);
 					continue;
 				}
 				/*
-				 * Everything visible in a bar'd run renders with its closing line
-				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
-				 *
-				 * `afterBar` is deliberately NOT reset: see the comment above -
-				 * every visible group of a bar'd run, not only the first, is the
-				 * block below the bar.
+				 * A hidden group of a segment the focus hold stood open renders in
+				 * place, exactly as it did before this pass could collapse it.
 				 */
 				entries.push({
 					kind: "group",
 					group,
-					suppressClosingLine: true,
+					suppressClosingLine: footWithheld && segment === null,
 					afterBar,
 				});
 			}
@@ -4040,34 +4198,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
-											 * answer's, else the run's last row's), and both candidates
-											 * render as their own groups elsewhere in the same list — an
-											 * unprefixed key collided with one of them (two children, one
-											 * key) and React silently dropped one of the pair. The prefix
-											 * also states which collided: the replaced slot is not the bar.
+											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's; later segments append
+											 * `#<row>`), and the run's groups render as their own children
+											 * elsewhere in the same list - an unprefixed key collided with
+											 * one of them (two children, one key) and React silently
+											 * dropped one of the pair. The prefix also states which
+											 * collided: the replaced slot is not the bar.
 											 */
-											key={`turn-summary:${entry.plan.key}`}
-											recordIds={entry.plan.recordIds}
+											key={`turn-summary:${entry.segment.key}`}
+											recordIds={entry.runIds}
+											/*
+											 * The ids THIS bar hides. With several bars in a run, the
+											 * run's ids alone cannot say which bar holds a row, and the
+											 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
+											 * of the run for a row in the second - one unrequested
+											 * expansion per bar in between.
+											 */
+											segmentIds={entry.segment.segmentIds}
 											/*
 											 * The bar stands where the FIRST hidden row stood, so it
 											 * carries that row's identity: a lookup for the row finds the
 											 * bar that replaced its slot.
 											 */
-											anchorRecordId={entry.plan.hidden[0].record.id}
-											className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
-											durationS={entry.plan.facts.durationS}
-											actionCount={entry.plan.facts.actions}
+											anchorRecordId={entry.segment.firstId}
+											className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
+											durationS={entry.segment.facts.durationS}
+											actionCount={entry.segment.facts.actions}
 											/*
-											 * The count is a minimum while the run's head is cut (`N+ actions`):
-											 * see `TurnSummaryFacts.partial` - the bar says so in its own
-											 * vocabulary rather than stating a total it cannot know.
+											 * The count is a minimum while the segment's head is cut
+											 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
+											 * so in its own vocabulary rather than stating a total it
+											 * cannot know.
 											 */
-											partial={entry.plan.facts.partial}
-											title={entry.plan.facts.title}
-											stampTs={entry.plan.stampTs}
-											open={openRuns.has(entry.plan.key)}
-											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											partial={entry.segment.facts.partial}
+											title={entry.segment.facts.title}
+											stampTs={entry.segment.stampTs}
+											label={entry.segment.label}
+											completed={entry.segment.completed}
+											open={openRuns.has(entry.segment.key)}
+											onOpenChange={(next) =>
+												openBar(entry.segment.key, entry.segment.firstId, next)
+											}
 											/*
 											 * The span's pictures, while the rows that draw them are
 											 * unmounted - the same composition and the same rule as
