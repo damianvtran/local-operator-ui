@@ -16789,8 +16789,8 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: drawn.railBadge, name: drawn.railName }),
 		);
 		reading(
-			"the badge does not move the rail's label, and the row is still 32px",
-			drawn.railButton.height === 32 &&
+			"the badge does not move the rail's label, and the row is still 30px",
+			drawn.railButton.height === 30 &&
 				(quiet.railButton === null ||
 					quiet.railButton.height === drawn.railButton.height) &&
 				(quiet.railLabel === null || quiet.railLabel.x === drawn.railLabel.x),
@@ -16945,18 +16945,28 @@ async function sceneApprovalBadges(cdp) {
 
 		/*
 		 * 5. COLLAPSED. The rail's own geometry is the risky half: a 16px badge cannot sit
-		 * outside a 48px rail, and the offset has to clear the 16px glyph inside a 32px
+		 * outside a 56px rail, and the offset has to clear the 16px glyph inside a 30px
 		 * button. The numbers are the claim; the frame is the picture of it.
+		 *
+		 * THE GEOMETRY READINGS HERE WERE RE-DERIVED FROM THE TREE (2026-09-30), and the
+		 * reason is the repo's own: the scene outlived the layout it described. It read
+		 * the strip as 48px and the row as 32px when this set's badge work ran, and read
+		 * the rail's container as a `nav`- `closest('nav')` matched nothing on today's
+		 * tree, so `railWidth`/`railEdge` were `null` and every clearance claim below was
+		 * a comparison against nothing. The strip is 56px and the row 30px now (the
+		 * mount the driver reads is `[data-sidebar-shell]` docked and
+		 * `[data-sidebar-strip]` collapsed); the readings are corrected, the claims are
+		 * the same claims.
 		 */
 		await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
 		await wait(400);
 		const collapsed = await readApprovalBadges(cdp);
 		note("badges (three pending, rail collapsed)", JSON.stringify(collapsed));
 		reading(
-			"the collapsed rail is 48px and the badge stays inside it",
-			collapsed.railWidth === 48 &&
+			"the collapsed rail is 56px and the badge stays inside it",
+			collapsed.railWidth === 56 &&
 				collapsed.railBadge !== null &&
-				collapsed.railBadge.right <= 48 &&
+				collapsed.railBadge.right <= 56 &&
 				collapsed.railBadge.x >= 0,
 			JSON.stringify({ rail: collapsed.railWidth, badge: collapsed.railBadge }),
 		);
@@ -16966,10 +16976,10 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify(collapsed.railName),
 		);
 		reading(
-			"the collapsed row is still a 32px square inside the 48px rail",
-			collapsed.railButton.height === 32 &&
+			"the collapsed row is still a 30px row inside the 56px rail",
+			collapsed.railButton.height === 30 &&
 				collapsed.railButton.x >= 0 &&
-				collapsed.railButton.right <= 48,
+				collapsed.railButton.right <= 56,
 			JSON.stringify(collapsed.railButton),
 		);
 		/*
@@ -17038,7 +17048,7 @@ async function sceneApprovalBadges(cdp) {
 		await wait(300);
 		reading(
 			"the rail expands again for the next state",
-			(await readApprovalBadges(cdp)).railWidth === 220,
+			(await readApprovalBadges(cdp)).railWidth === 260,
 			`rail width ${(await readApprovalBadges(cdp)).railWidth}`,
 		);
 
@@ -17080,52 +17090,64 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: crowdedCollapsed.railBadgeText }),
 		);
 		/*
-		 * AND THE MARK DOES NOT REACH BACK OVER THE GLYPH, which is the claim the cap
-		 * used to be asked to make and cannot: `9+` and `13` are the same two
-		 * characters, so the width a cap saves is nil for every count this queue can
-		 * hold. What saves it is the VERTICAL offset: the badge's bottom edge must land
-		 * at or above the glyph's top edge, which at `-top-2` it does.
-		 */
-		/*
 		 * WHAT THE TWO-DIGIT MARK DOES TO THE ICON, stated as measurements rather than
 		 * as a promise it cannot keep. At two characters the pill is ~25px wide and its
 		 * left edge reaches back over the icon's crown, exactly as the chat header's
-		 * badge crosses its own trigger's glyph - so the claim here is the reason the
-		 * collapse is safe there: the badge carries a `ring-2`, and the ring's 2px of
-		 * outward paint must stay inside the rail's own 1px border. The badge's box is
-		 * allowed to kiss the glyph; the rail's edge is not allowed to eat the mark.
+		 * badge crosses its own trigger's glyph. The QUIET register changed what this
+		 * claim is about (operator restyle, 2026-09-30): the mark no longer carries a
+		 * `ring-2`, so its own box is its whole boundary and the rail's edge may not
+		 * eat it — while the numeral's ink, not any edge, is what keeps the count
+		 * legible (contrast-contract's `rail approval badge (quiet)` row).
 		 */
 		reading(
-			"the two-digit mark and its ring stay inside the rail's edge",
+			"the two-digit mark stays inside the rail's edge",
 			crowdedCollapsed.railBadge !== null &&
 				crowdedCollapsed.railEdge !== null &&
-				crowdedCollapsed.railBadge.right + 2 <= crowdedCollapsed.railEdge - 1,
+				crowdedCollapsed.railBadge.right <= crowdedCollapsed.railEdge - 1,
 			JSON.stringify({
 				badge: crowdedCollapsed.railBadge,
 				railEdge: crowdedCollapsed.railEdge,
-				ringClearance:
+				clearance:
 					crowdedCollapsed.railBadge !== null &&
 					crowdedCollapsed.railEdge !== null
-						? crowdedCollapsed.railEdge - (crowdedCollapsed.railBadge.right + 2)
+						? crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right
 						: null,
 			}),
 		);
+		/*
+		 * THE MARK'S PAINT, which is the whole of the restyle, read from the computed
+		 * style rather than from a class: the ring and the border that used to BE the
+		 * boundary are gone (`boxShadow: none`, `border-width: 0px`), and the numeral
+		 * is the quiet register's — `text-meta-sm` (11px) at weight 400 in `ink-dim`,
+		 * where the old mark was a 12px medium `ink`. A background still paints, so
+		 * the shape is a subtle step and not nothing.
+		 */
 		reading(
-			"and the two-digit mark crosses the icon by no more than the ring it carries",
-			crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railIcon !== null &&
-				crowdedCollapsed.railBadge.y + crowdedCollapsed.railBadge.height <=
-					crowdedCollapsed.railIcon.y + 2,
+			"the mark is borderless and ringless: its box is its whole boundary",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.boxShadow === "none" &&
+				Number.parseFloat(crowdedCollapsed.railBadgeStyle.borderTopWidth) === 0,
+			JSON.stringify(crowdedCollapsed.railBadgeStyle),
+		);
+		reading(
+			"the numeral is the count family's: 11px, weight 400, muted ink",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.fontSize === "11px" &&
+				crowdedCollapsed.railBadgeStyle.fontWeight === "400" &&
+				crowdedCollapsed.railBadgeStyle.color.length > 0 &&
+				crowdedCollapsed.railBadgeStyle.backgroundColor !== "rgba(0, 0, 0, 0)",
 			JSON.stringify({
-				badge: crowdedCollapsed.railBadge,
-				glyph: crowdedCollapsed.railIcon,
+				fontSize: crowdedCollapsed.railBadgeStyle?.fontSize ?? null,
+				fontWeight: crowdedCollapsed.railBadgeStyle?.fontWeight ?? null,
+				color: crowdedCollapsed.railBadgeStyle?.color ?? null,
+				background: crowdedCollapsed.railBadgeStyle?.backgroundColor ?? null,
 			}),
 		);
 		reading(
-			"and the capped mark still clears the rail's edge",
+			"and the two-digit mark still clears the rail's edge",
 			crowdedCollapsed.railEdge !== null &&
 				crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 2,
+				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 1,
 			JSON.stringify({
 				railEdge: crowdedCollapsed.railEdge,
 				badgeRight: crowdedCollapsed.railBadge?.right ?? null,
@@ -17214,7 +17236,19 @@ function readApprovalBadges(cdp) {
 			};
 		};
 		const railButton = document.querySelector('[data-tour-tag="nav-item-browser"]');
-		const rail = railButton ? railButton.closest('nav') : null;
+		/*
+		 * THE RAIL'S OWN CONTAINER, and it is NOT a nav: the sidebar renders
+		 * [data-sidebar-shell] docked and [data-sidebar-strip] collapsed, and
+		 * this read used closest('nav'), which had matched nothing since the
+		 * element changed - so railWidth/railEdge were null and every clearance
+		 * reading below was a comparison against nothing. The root cause was a
+		 * driver left behind by the tree it photographs; the readings are
+		 * re-derived, not the claims.
+		 */
+		const rail = railButton
+			? (railButton.closest('[data-sidebar-shell]') ??
+				railButton.closest('[data-sidebar-strip]'))
+			: null;
 		const railBadge = railButton
 			? railButton.querySelector('[data-tour-tag="nav-browser-badge"]')
 			: null;
@@ -17247,6 +17281,29 @@ function readApprovalBadges(cdp) {
 			),
 			railBadge: box(railBadge),
 			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
+			/*
+			 * THE MARK'S OWN PAINT (operator restyle, 2026-09-30), read from the
+			 * computed style rather than from the class string: a class is a claim
+			 * about intent, the computed value is what the platform draws. The
+			 * quiet register removed the border and the ring, so borderTopWidth and
+			 * boxShadow are the two facts that say the ring is gone, and
+			 * fontSize/fontWeight/color are the subtler numeral.
+			 */
+			railBadgeStyle: railBadge
+				? (() => {
+						const s = getComputedStyle(railBadge);
+						return {
+							borderTopWidth: s.borderTopWidth,
+							borderTopStyle: s.borderTopStyle,
+							boxShadow: s.boxShadow,
+							backgroundColor: s.backgroundColor,
+							color: s.color,
+							fontSize: s.fontSize,
+							fontWeight: s.fontWeight,
+							radius: s.borderTopLeftRadius,
+						};
+					})()
+				: null,
 			railName: railButton ? railButton.getAttribute('aria-label') : null,
 			railCurrent: railButton
 				? railButton.getAttribute('aria-current') !== null

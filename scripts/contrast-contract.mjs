@@ -1109,6 +1109,54 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
+		 * register of the approval mark, worn by the sidebar's Browser row and by
+		 * Aida's, i.e. on the same four grounds the row above lists. It is a
+		 * separate row rather than a `fill`/`border` change to the row above,
+		 * because the two marks differ in what carries them: the bordered mark's
+		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so
+		 * this one draws no edge at all and the NUMERAL is the whole mark.
+		 *
+		 * THE INK IS THE MARK, so the ink is what this row asserts: `inkDim` on
+		 * `elevated`, 5.01:1 at worst over the fifty-nine palettes (measured from
+		 * `scripts/palette-source.mjs` with this file's own ratio, the same way the
+		 * row above's figures were) — clear of the 4.5:1 text floor the `CONTROLS`
+		 * loop applies to a control's label, which is the floor that matters here
+		 * because the numeral is READ rather than merely seen. It is the role the
+		 * count lines the operator compared against already wear (11-13px
+		 * metadata), and it is deliberately quieter than the bordered mark's `ink`.
+		 *
+		 * THE EDGE IS DECLARED AWAY, and the declaration is honest rather than a
+		 * convenience: the mark provably cannot carry one across every palette.
+		 * Its `elevated` fill steps ΔE00 2.02 off `surface` (the rail's own ground,
+		 * so the step the user actually sees) and 2.5 off `surface` in the light
+		 * palette, but 0.47 off `rowSelected` and 0.00 off `rowHover` at worst — so
+		 * on a hovered or current row it merges into the ground entirely, and no
+		 * single role fixes that at both ends (over the four grounds `elevated`
+		 * spans 0.00-11.64, `sunken` 0.44-14.88, the wash family 0.87-2.27 on the
+		 * deep rows). What keeps the count legible is the numeral's own floor above;
+		 * what keeps it a MARK rather than plain label text is that a quiet row
+		 * draws nothing at all. The step is therefore a cue on the plain grounds and
+		 * absent on the deep ones, which is the same deal the sidebar's count lines
+		 * strike, and `edge: false` moves the claim to the instrument that can state
+		 * it (the ink floor here) rather than inventing a border the design removed
+		 * on purpose.
+		 *
+		 * NOT AS CONTRASTED AS WHAT IT REPLACES, stated as the two steps the
+		 * operator compared: the old bordered mark's wash stepped ΔE00 5.22 off
+		 * `surface` in the dark palette and 5.44 in the light; this one steps 2.02
+		 * and 2.5. Same ground, roughly half the separation — the "slightly
+		 * contrasted but not as contrasted" the report asked for.
+		 */
+		name: "rail approval badge (quiet)",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
