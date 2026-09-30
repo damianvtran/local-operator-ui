@@ -3915,6 +3915,31 @@ app.on("will-quit", (event) => {
 		.stop(false)
 		.then(() => {
 			clearTimeout(failsafe);
+			/*
+			 * `app.exit(0)`, NOT `app.quit()`, AND THIS LINE IS THE FIX (measured on
+			 * this machine, 2026-09-30, Electron 44.3.0, `scripts/exp-quit-trace`). A
+			 * quit that `will-quit` CANCELLED is not restarted by calling `app.quit()`
+			 * from this continuation: instrumented, the first quit reached
+			 * `will-quit` (prevented), the owned cleanup resolved, `app.quit()` ran —
+			 * and NO second `before-quit` was ever emitted (probe: `stop resolved`,
+			 * then silence until an EXTERNAL quit 20 s later). The app then sat running
+			 * with no window until the user quit a SECOND time, which is the operator's
+			 * report verbatim: "click to quit, it just closes the window, and you have
+			 * to click to quit again in the dock to actually close the app".
+			 *
+			 * The second quit exits only because by then `isOwnedCleanupComplete()` is
+			 * true and `will-quit` no longer prevents — i.e. the work had already been
+			 * done by the first quit, and the first quit had no way to finish itself.
+			 *
+			 * WHY `exit` IS THE RIGHT TERMINAL HERE: the cleanup this continuation waited
+			 * on HAS run (the owned serve is stopped, `stop` resolved), the window is
+			 * already gone, and `before-quit`'s own session-cookie hold has already had
+			 * its pass in this quit. `app.exit` terminates unconditionally, and the
+			 * process-level `exit` handler (`emergencyStopOwned`, telemetry shutdown)
+			 * still fires. The failsafe above keeps its own `app.exit(1)`; the two now
+			 * agree on the mechanism, which is what makes the bound the only difference
+			 * between a clean and a failed exit.
+			 */
 			app.quit();
 		})
 		.catch((error) => {
@@ -3994,6 +4019,26 @@ app.on("before-quit", async (event) => {
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	logger.info("App is about to quit", LogFileType.BACKEND);
+
+	/*
+	 * THE OWNED BACKEND'S STOP IS AWAITED ON THE HANDLER THAT CAN WAIT.
+	 *
+	 * `will-quit` cannot await a listener, so it used to cancel the quit and
+	 * finish it from an async continuation — and MEASURED (2026-09-30, Electron
+	 * 44.3.0, instrumented) a quit that `will-quit` cancelled is NOT restarted by
+	 * `app.quit()` from that continuation: the owned cleanup resolved, `app.quit()`
+	 * ran, and no second `before-quit` was emitted, so the first quit left the
+	 * process running with no window until the user quit again (the operator's
+	 * report). The stop belongs here, where the quit can wait for it: by the time
+	 * `will-quit` runs, `isOwnedCleanupComplete()` is true and that handler simply
+	 * lets the quit through, so ONE quit exits.
+	 *
+	 * The bound is `will-quit`'s own failsafe, kept below for a stop that stops
+	 * resolving after this point.
+	 */
+	if (!backendService.isOwnedCleanupComplete()) {
+		await backendService.stop(false);
+	}
 
 	/*
 	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
