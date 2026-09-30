@@ -114,7 +114,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **84** | **124** | **164** | the archive, the move pair, then the mark (108px + the 4px row gap) - see #693 below |
+| **pinned** | hover / focus-within | **40** | **80** | **120** | the archive, the grip, the move pair, then the mark (136px + the 4px row gap) - see #693 and #697 below. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -130,6 +130,22 @@ is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on a
 unpinned row, `24` at rest on a pinned one, `52` under the pointer on an unpinned
 row and `108` under the pointer on a PINNED one - the archive, the move pair and
 the mark, 4 x 24 + 3 x 4 (issue #693); at 240/280/320 the row box is 224/264/304.
+
+**THE FIFTH CONTROL, AND WHAT THE GRIP COSTS (issue #697, measured).** The pinned row's
+revealed cluster grew again when the drag handle arrived: `archive + grip + move up + move
+down + mark` is **136px** of controls in a row box of **208 / 248 / 288px** at the 240 / 280 /
+320 panel settings, so the title has **40 / 80 / 120px** under the pointer against the
+**126 / 166 / 206px** it has at rest - the grip takes **28px** (its 24px box plus the cluster's
+4px gap) off the title at every width, exactly what one control costs, and nothing at rest
+(the handle is reveal-only, like the pair it sits beside). **At the 240 clamp that leaves 40px
+of title, about five characters** - measured, not derived
+(`docs/evidence/pinned-reorder/measurements/pinned-reorder-geometry-<theme>.json`, and the
+`grip-hover-240` frame). That is the number a designer should weigh against the alternatives:
+a shed for the handle alone at the clamp, the handle drawn only where the row is already
+truncating, or the moves left to the chords alone (which is what the keyboard path already
+offers). What the code refuses is the same thing the pair refuses - an `order` class - and the
+indicator's own width is not part of this arithmetic (it is a 2px line inside the section's own
+coordinates, drawn only while a gesture runs).
 
 **THE FOURTH CONTROL, AND WHAT IT COSTS (issue #693).** A pinned row's revealed
 cluster grew from 52 to 108 when the pinned section became reorderable by hand:

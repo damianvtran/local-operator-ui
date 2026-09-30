@@ -1,0 +1,303 @@
+{
+ "scene": "pinned-reorder",
+ "theme": "localOperatorLight",
+ "widths": [
+  {
+   "240": {
+    "applied": {
+     "width": 240,
+     "clamped": false
+    },
+    "panel": {
+     "width": 240,
+     "clamped": false
+    },
+    "rowBox": {
+     "x": 12,
+     "y": 636,
+     "w": 208,
+     "h": 32
+    },
+    "restTitles": {
+     "p000": 126,
+     "p005": 126,
+     "p010": 126
+    },
+    "hoverTitles": {
+     "p000": 126,
+     "p005": 40,
+     "p010": 126
+    },
+    "hoveredCluster": {
+     "grip": {
+      "x": 112,
+      "y": 566,
+      "w": 24,
+      "h": 24
+     },
+     "up": true,
+     "down": true,
+     "archive": true,
+     "pin": true
+    }
+   },
+   "280": {
+    "applied": {
+     "width": 280,
+     "clamped": false
+    },
+    "panel": {
+     "width": 280,
+     "clamped": false
+    },
+    "rowBox": {
+     "x": 12,
+     "y": 530,
+     "w": 248,
+     "h": 32
+    },
+    "restTitles": {
+     "p000": 166,
+     "p005": 166,
+     "p010": 166
+    },
+    "hoverTitles": {
+     "p000": 166,
+     "p005": 80,
+     "p010": 166
+    },
+    "hoveredCluster": {
+     "grip": {
+      "x": 152,
+      "y": 566,
+      "w": 24,
+      "h": 24
+     },
+     "up": true,
+     "down": true,
+     "archive": true,
+     "pin": true
+    }
+   },
+   "320": {
+    "applied": {
+     "width": 320,
+     "clamped": false
+    },
+    "panel": {
+     "width": 320,
+     "clamped": false
+    },
+    "rowBox": {
+     "x": 12,
+     "y": 530,
+     "w": 288,
+     "h": 32
+    },
+    "restTitles": {
+     "p000": 206,
+     "p005": 206,
+     "p010": 206
+    },
+    "hoverTitles": {
+     "p000": 206,
+     "p005": 120,
+     "p010": 206
+    },
+    "hoveredCluster": {
+     "grip": {
+      "x": 192,
+      "y": 566,
+      "w": 24,
+      "h": 24
+     },
+     "up": true,
+     "down": true,
+     "archive": true,
+     "pin": true
+    }
+   }
+  }
+ ],
+ "perWidth": {
+  "240": [
+   {
+    "row": {
+     "x": 12,
+     "y": 636,
+     "w": 208,
+     "h": 32
+    },
+    "restTitle": {
+     "x": 36,
+     "y": 674,
+     "w": 126,
+     "h": 20
+    },
+    "hoverTitle": {
+     "x": 36,
+     "y": 568,
+     "w": 40,
+     "h": 20
+    },
+    "grip": {
+     "x": 112,
+     "y": 566,
+     "w": 24,
+     "h": 24
+    }
+   }
+  ],
+  "280": [
+   {
+    "row": {
+     "x": 12,
+     "y": 530,
+     "w": 248,
+     "h": 32
+    },
+    "restTitle": {
+     "x": 36,
+     "y": 568,
+     "w": 166,
+     "h": 20
+    },
+    "hoverTitle": {
+     "x": 36,
+     "y": 568,
+     "w": 80,
+     "h": 20
+    },
+    "grip": {
+     "x": 152,
+     "y": 566,
+     "w": 24,
+     "h": 24
+    }
+   }
+  ],
+  "320": [
+   {
+    "row": {
+     "x": 12,
+     "y": 530,
+     "w": 288,
+     "h": 32
+    },
+    "restTitle": {
+     "x": 36,
+     "y": 568,
+     "w": 206,
+     "h": 20
+    },
+    "hoverTitle": {
+     "x": 36,
+     "y": 568,
+     "w": 120,
+     "h": 20
+    },
+    "grip": {
+     "x": 192,
+     "y": 566,
+     "w": 24,
+     "h": 24
+    }
+   }
+  ]
+ },
+ "drop": [
+  {
+   "targetY": 624,
+   "boxes": [
+    {
+     "id": "p005",
+     "y": 562,
+     "h": 32
+    },
+    {
+     "id": "p010",
+     "y": 626,
+     "h": 32
+    }
+   ],
+   "indicator": {
+    "y": 626,
+    "h": 2
+   },
+   "rowBox": {
+    "x": 12,
+    "y": 562,
+    "w": 248,
+    "h": 32
+   },
+   "order": [
+    "p000",
+    "p005",
+    "p010"
+   ]
+  }
+ ],
+ "many": [
+  {
+   "state": "many",
+   "pins": 15,
+   "scrollerTop": 320,
+   "scrollerHeight": 515,
+   "scrolledBefore": 0,
+   "scrolledAfter": 722.5
+  }
+ ],
+ "single": [
+  {
+   "state": "single",
+   "pins": 1
+  }
+ ],
+ "persisted": [
+  {
+   "stored": [
+    "p005",
+    "p000",
+    "p010"
+   ],
+   "view": {
+    "hidden": [],
+    "order": [
+     "pinned",
+     "running",
+     "today",
+     "week",
+     "older",
+     "agents",
+     "teams"
+    ],
+    "groupBy": "section",
+    "basis": "active",
+    "orderBy": "active-first",
+    "loads": 0,
+    "pins": [
+     "p005",
+     "p000",
+     "p010"
+    ]
+   },
+   "keys": {
+    "all": [
+     "onboarding-storage",
+     "chat-sidebar-disclosures",
+     "canonical-sessions-storage",
+     "ui-preferences-storage"
+    ],
+    "stateKeys": [
+     "isSidebarCollapsed",
+     "chatSidebarWidth",
+     "chatSidebarRegions",
+     "chatSidebarView",
+     "chatSidebarListHeight",
+     "chatSidebarOrder"
+    ],
+    "rawView": "{\"isCommandPaletteOpen\":false,\"commandPaletteQuery\":\"\",\"isSidebarCollapsed\":false,\"showAgentReasoning\":false,\"themeName\":\"localOperatorLight\",\"canvasWidth\":800,\"chatSidebarWidth\":280,\"chatSidebarRegions\":\"both\",\"chatSidebarView\":{\"hidden\":[],\"order\":[\"pinned\",\"running\",\"today\",\"week\",\"older\",\"agents\",\"teams\"],\"groupBy\":\"section\",\"basis\":\"active\",\"orderBy\":\"active-first\",\"loads\":0,\"pins\":[\"p005\",\"p"
+   }
+  }
+ ]
+}
