@@ -183,16 +183,18 @@ export const OrgTeamsList: React.FC<{
 
 			{isLoading && (
 				/*
-				 * The skeletons are `aria-hidden` with one `sr-only` line beside them, the
-				 * hub's own loading pattern (`Loading agents…`): a pair of bare skeletons is
-				 * a silent state to a screen reader, and this roster is the only section on
-				 * the page without a loading sentence (copy review round 1, C6).
+				 * The skeletons are `aria-hidden`, and there is NO `sr-only` sentence
+				 * beside them (design round 1's N3). The copy review that added one
+				 * (C6) was right that a pair of bare skeletons is silent; it is not right
+				 * any more, because the page's own `aria-live` status line says
+				 * "Loading teams…" one line above - so a screen reader heard the same
+				 * sentence twice from two elements, and only one of them is the region
+				 * that goes on to report the count.
 				 */
 				<div
 					className="flex flex-col gap-2 p-4"
 					data-testid="org-teams-loading"
 				>
-					<span className="sr-only">Loading teams…</span>
 					<div aria-hidden="true" className="flex flex-col gap-2">
 						<Skeleton className="h-4.5 w-40" />
 						<Skeleton className="h-3.5 w-64" />

@@ -42,6 +42,19 @@ export const useOrgTeamsQuery = ({
 		staleTime: 5 * 60 * 1000,
 		gcTime: 10 * 60 * 1000,
 		refetchOnWindowFocus: false,
+		/*
+		 * A REFUSED OR FAILED READ IS NOT RE-ISSUED BY A REMOUNT (QA round 1, Q1).
+		 * The page observes this key for the tab's count and the roster observes it
+		 * again when the Teams tab opens; an errored query holds no data, so React
+		 * Query treats the second mount as a reason to refetch, and - because it has
+		 * no data to keep on screen - flips the query back to `pending` while it
+		 * does. That cost two reads (the second being `retryDesktopQuery`'s retry)
+		 * per Teams open on an org already known to refuse, AND flashed the roster's
+		 * skeleton over the refusal it had just shown (the plan-lapsed frame was
+		 * photographed mid-flash). The refusal is a state the viewer sits in until an
+		 * owner acts, and "Try again" refetches explicitly, so the remount does not.
+		 */
+		retryOnMount: false,
 		retry: retryDesktopQuery,
 	});
 

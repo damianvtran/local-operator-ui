@@ -321,14 +321,10 @@ export const AgentHubPage: React.FC = () => {
 	 * legible without visiting it, and that number cannot exist without the read.
 	 * It costs nothing over the old layout, which mounted the roster (and so read
 	 * the list) on every org-scope entry too. `OrgTeamsList` calls the same hook
-	 * with the same key, so the two observers share ONE request; on the SUCCESS
-	 * path a tab switch re-issues neither list (`staleTime` five minutes, focus
-	 * refetch off). A REFUSED read is not cached data, so opening Teams on a
-	 * refused org re-reads it (QA round 1, Q1: 2 reads per open, one being
-	 * `retryDesktopQuery`'s single retry) - accepted, because the alternative is
-	 * threading the agents read's refusal into the roster to suppress a read whose
-	 * own error line is the honest place the refusal is said, for a state the
-	 * viewer sits in only until an owner fixes the plan. The public
+	 * with the same key, so the two observers share ONE request; a tab switch
+	 * re-issues neither list (`staleTime` five minutes, focus refetch off), and a
+	 * refused read is not re-issued by the roster mounting either
+	 * (`retryOnMount: false` in the hook - QA round 1, Q1). The public
 	 * scope passes no tenant, so the query is disabled and issues ZERO team
 	 * reads - there is no public team read to make (§11 O-7).
 	 *
@@ -1007,7 +1003,7 @@ export const AgentHubPage: React.FC = () => {
 								{view === "agents" && isRefreshing ? (
 									<>
 										{" "}
-										<span>Updating…</span>
+										<span data-testid="agent-hub-updating">Updating…</span>
 									</>
 								) : null}
 							</p>
