@@ -61,6 +61,17 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+	type ActionClass,
+	BUILTIN_SWITCH_DISCLOSURE,
+	CLASS_LABEL,
+	CLASS_MEANING,
+	CLASS_SWITCH_EFFECT,
+	ClassSwitchError,
+	classOf,
+	classSwitchFailure,
+	switchAgentClass,
+} from "../utils/agent-class";
+import {
 	type FieldTarget,
 	duplicateNameCandidates,
 	refusalCopy,
@@ -148,6 +159,138 @@ function AgentChips({ profile }: { profile: ReusableProfile }) {
 				</Badge>
 			) : null}
 		</div>
+	);
+}
+
+/**
+ * The class control: what the agent's class means, and the one press that
+ * changes it.
+ *
+ * WHY IT IS NOT PART OF THE EDIT FORM. Everything else on this pane is a FIELD
+ * of the definition — read it, change it, save it. The class is not: it is a
+ * platform switch that takes effect on a running session at its next decision
+ * point, it is the one thing on this pane whose wrong value, by the time you read
+ * it, is an agent already messaging you, and it has a consequence the operator
+ * needs BEFORE the press rather than in a diff afterwards. Burying it behind Edit
+ * and Save would put a bounded delay between the intent and the outcome for no
+ * gain, so it writes on the press, through the same profile route the rest of the
+ * pane uses.
+ *
+ * THE PAYLOAD IS THE AUTHORITY, and the optimistic value is only ever a bridge to
+ * it. The switch paints the class the operator asked for immediately — a switch
+ * that waits for a round trip reads as broken — and then defers to the READ the
+ * moment the two agree, so an out-of-band change (another window, a
+ * configuration run, `/agent class` in the terminal) is never masked by a value
+ * this component once painted. A refused write CLEARS the optimistic value, which
+ * is what makes the displayed state revert rather than sit on a lie, and the
+ * refusal is stated beside the switch.
+ */
+function AgentClassControl({
+	profile,
+	onChanged,
+}: {
+	profile: ReusableProfile;
+	/** The record may have moved; re-read it. The same contract `Install` uses. */
+	onChanged: (name: string) => void;
+}) {
+	const current = classOf(profile);
+	const [optimistic, setOptimistic] = useState<ActionClass | null>(null);
+	const [pending, setPending] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (optimistic !== null && current === optimistic) setOptimistic(null);
+	}, [current, optimistic]);
+
+	const shown = optimistic ?? current;
+
+	const flip = async (next: ActionClass) => {
+		if (pending || next === shown) return;
+		setOptimistic(next);
+		setError(null);
+		setPending(true);
+		try {
+			await switchAgentClass(profile, next, (step, requestId) =>
+				step.op === "profiles.install"
+					? desktopResult<ReusableProfile>({
+							op: "profiles.install",
+							name: step.name,
+							requestId,
+						})
+					: desktopResult<ReusableProfile>({
+							op: "profiles.update",
+							name: step.name,
+							requestId,
+							fields: step.fields ?? {},
+						}),
+			);
+			onChanged(profile.name);
+			showSuccessToast(
+				next === "proactive"
+					? `${profile.name} is now proactive — it may message you on its own.`
+					: `${profile.name} is now reactive — proactive messaging stopped.`,
+			);
+		} catch (caught) {
+			/*
+			 * REVERT FIRST, then say what happened. The optimistic value is dropped even
+			 * when the failure is ambiguous (a transport error may or may not have
+			 * landed), because the read that follows `onChanged` is the only thing that
+			 * can answer that — and a switch left sitting in the asked-for position would
+			 * be the component asserting an outcome nobody confirmed.
+			 */
+			setOptimistic(null);
+			const completed =
+				caught instanceof ClassSwitchError ? caught.completed : [];
+			const copy = classSwitchFailure(caught, completed);
+			setError(copy);
+			showErrorToast(copy);
+			/*
+			 * A HALF-COMPLETED SWITCH MOVED THE RECORD and not the class: the install
+			 * succeeded, so the starter now has a row of its own, and the pane must
+			 * re-read or its source chip keeps saying Built-in while the list says
+			 * Installed. The sentence above the switch says exactly this happened.
+			 */
+			if (completed.length > 0) onChanged(profile.name);
+		} finally {
+			setPending(false);
+		}
+	};
+
+	return (
+		<>
+			<div className="flex items-center gap-2 text-body-sm">
+				<Switch
+					checked={shown === "proactive"}
+					disabled={pending}
+					aria-label="Proactive"
+					data-testid="agent-class-switch"
+					onCheckedChange={(checked) =>
+						void flip(checked ? "proactive" : "reactive")
+					}
+				/>
+				<span className="text-ink">Proactive</span>
+				{/*
+				 * The value in words, live. The switch's own position is the state, but a
+				 * position is not something a reader can quote, and this line is also what
+				 * announces the change to a screen reader: `aria-live` on the only text
+				 * whose content moves.
+				 */}
+				<span aria-live="polite" className="text-ink-muted">
+					{pending ? "Switching…" : CLASS_LABEL[shown]}
+				</span>
+			</div>
+			<p className="text-body-sm text-ink">{CLASS_MEANING[shown]}</p>
+			<p className="text-meta text-ink-muted">{CLASS_SWITCH_EFFECT[shown]}</p>
+			{profile.source === "builtin" ? (
+				<p className="text-meta text-ink-muted">{BUILTIN_SWITCH_DISCLOSURE}</p>
+			) : null}
+			{error ? (
+				<Alert variant="danger" role="alert" data-testid="agent-class-error">
+					<AlertTitle>The class was not changed</AlertTitle>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			) : null}
+		</>
 	);
 }
 
@@ -794,6 +937,18 @@ export function AgentDetail({
 							<p className="text-body-sm text-ink-muted">
 								Effort tier: {profile.effort ?? "inherit"}
 							</p>
+						</Section>
+						{/*
+						 * The class sits with the other BEHAVIOUR facts — what this agent does
+						 * between your messages is the same kind of statement as whether it
+						 * delegates and how hard it works — and above "Used by", which is a
+						 * footnote about where the definition is referenced.
+						 */}
+						<Section
+							title="Class"
+							description="Reactive agents answer when you ask. Proactive agents may also message you on their own."
+						>
+							<AgentClassControl profile={profile} onChanged={onSaved} />
 						</Section>
 						<Section
 							title="Used by"
