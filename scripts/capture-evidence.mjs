@@ -7509,9 +7509,10 @@ export const STORIES = [
 	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
 	 * repro measured as two labels on one anchor, with no frame to show it. The state is
 	 * the M4 case itself (two levels), at both widths because the narrow pass is where
-	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - the same
-	 * stack with the declared ring inside it - so the staircase's full pitch is on disk
-	 * too.
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
 	 */
 	["mesh-tab--scopes-shared-top", 1380, 900],
 	[
