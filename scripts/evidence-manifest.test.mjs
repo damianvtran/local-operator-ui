@@ -2749,6 +2749,10 @@ const BRANCH_RECORDS = [
 	 * And the fold's own re-shoot record, beside it (same reason).
 	 */
 	"pinnedStripReshootNote",
+	/*
+	 * And THE #702 FOLD'S - the fourth fold's record (same reason).
+	 */
+	"foldOnte78e4395ebNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
