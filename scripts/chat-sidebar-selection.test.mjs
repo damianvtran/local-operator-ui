@@ -368,6 +368,7 @@ const carriesGround = (classes) => classes.includes("bg-row-selected");
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+const rowDragging = literalOf(SIDEBAR, "rowDragging");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -424,6 +425,14 @@ const CURRENT = [
 			revealArmed: true,
 			rowBoxStyle,
 			rowCurrent,
+			/*
+			 * THE DRAG'S OWN TWO TERMS (issue #697): the box now reads `dragging` for the
+			 * `data-dragging` mark and `rowDragging` for the fill it steps to. `false` is
+			 * the state this entry is about - no gesture is running, so the box must
+			 * resolve to exactly the class list it had before the drag existed.
+			 */
+			dragging: false,
+			rowDragging,
 			current: true,
 			// Both per-row capabilities present: the box the ground is asserted on is
 			// carried while EITHER control is mounted, and this is the delivered
@@ -512,6 +521,66 @@ const CURRENT = [
 				SIDEBAR,
 				"aria-label={archiveControlLabel(label, archived)}",
 			),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
+	},
+	{
+		/*
+		 * The pinned row's DRAG HANDLE (issue #697): the pair's own shape one control
+		 * over - revealed by the pointer, `tabIndex={-1}`, and carrying
+		 * `hover:bg-row-hover` guarded `!current`, because it sits inside a row's box
+		 * exactly as the pair does. The grip is a SIBLING of the row's button, so the
+		 * pointer can reach it without leaving the row, which is why the guard is the
+		 * pointer's step rather than a new rule.
+		 *
+		 * Resolved FORWARD from the control's own attribute (the pair's shape again):
+		 * the attribute precedes the `className` in the source, so a forward search
+		 * lands on this control's expression and not on the one below it. `ground:
+		 * false` for the pair's reason - the element that owns the ground is the ROW
+		 * BOX, and this entry exists so the `!current` guard is exercised on a control
+		 * that can sit inside a current row.
+		 */
+		what: "the pinned row's drag handle",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-pin-grip\n"),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
+	},
+	{
+		/*
+		 * The pinned row's MOVE PAIR (issue #693): the row's third and fourth sibling
+		 * controls, and the first that exist only in one of the row's two states. They
+		 * are row surfaces for the same reason the pin and the archive are - they sit
+		 * INSIDE a row's box and answer the pointer - so `hover:bg-row-hover` is their
+		 * sanctioned ground and the `!current` guard is what keeps the pointer from
+		 * replacing the mark that says where the reader is.
+		 *
+		 * BOTH ARE LISTED, each resolved through its own `cn(...)`, and they are the
+		 * reason the two class lists are spelled out per control rather than shared
+		 * through one constant: this file resolves an ELEMENT's own class expression,
+		 * so a constant would be one list no entry here could measure - exactly the
+		 * blindness this table exists to remove. The pair's own two lists are kept
+		 * identical by the two entries below, each of which fails on its own if the
+		 * list it reads stops being a row surface.
+		 *
+		 * Resolved FORWARD from each control's own attribute, the archive entry's own
+		 * shape: the attribute precedes the `className` in the source, so a forward
+		 * search lands on this control's expression and not on the one above it.
+		 */
+		what: "the pinned row's move-up control",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-move-up\n"),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
+	},
+	{
+		/* The pair's other half: the same list, the same two guards, one glyph down. */
+		what: "the pinned row's move-down control",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-move-down\n"),
 		stubs: { current: true },
 		ground: false,
 		notCurrent: { current: false },
@@ -912,14 +981,41 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// can never sit inside a current row: it is a list-level action for the
 				// whole drafts group, like the bulk read receipt's heading sibling. Both
 				// take the ROW state rather than a ground.
-				"hover:bg-row-hover": 14,
+				// SIXTEEN (issue #693, 2026-09-30). The pinned row's move pair added TWO
+				// more, one per control: they are the row's own siblings, revealed by the
+				// pointer, and both are resolved by their own `CURRENT` entries above -
+				// the count is what forced those entries to exist rather than a promise
+				// that somebody wrote them.
+				// SEVENTEEN (issue #697, 2026-09-30). The pin DRAG HANDLE adds one: it is the
+				// pair's own shape one control over (revealed by the pointer, guarded
+				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
+				// a pinned row's box like every other control counted here.
+				// SEVENTEEN AGAIN (PR #697's round-2 remediation, design D7 + UX U6): the
+				// EIGHTEENTH literal round 1 added - `rowDraggingCurrent`'s hover half - is
+				// GONE, and the held state no longer has a second fill at all. That constant
+				// gave the held row the `row-hover` role while it was also the current one,
+				// and that is the fill the row under the pointer wears, so two rows on screen
+				// read alike (measured in both palettes). The held cue is now a 1px INSET
+				// OUTLINE (`rowDraggingMark`), which is not a ground role and so is not counted
+				// here - the ground underneath is the row's own, `rowDragging`'s selected
+				// step, and that spelling is still the literal PLUS ONE below.
+				"hover:bg-row-hover": 17,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
 				// "selected" meaning, and the filled pill the operator's reference draws.
 				// It is a BAND control, so it is outside both regions and cannot be a
 				// current row; the `CURRENT` table could never be asked to resolve it.
-				"hover:bg-row-selected": 2,
+				// PLUS ONE (issue #697, agent review round 1, R1's neighbour D1): the
+				// DRAGGED row's ground - `rowDragging`'s expression - restates `row-selected`
+				// at the hover variant, for the reason measured on both the frames and a live
+				// run: a bare `bg-row-selected` LOSES to the row box's own `hover:bg-row-hover`,
+				// and the pointer that armed the drag never leaves the captured row, so the
+				// dragged row painted exactly what a merely hovered row paints. The
+				// restatement is `rowCurrent`'s own idiom one state over, and it is a CONSTANT
+				// rather than a class in a JSX expression, so no `CURRENT` entry can resolve it
+				// - the count is the honest place for it.
+				"hover:bg-row-selected": 3,
 				// ROUND 2's NINTH LITERAL returns this spelling to the file: the drafts
 				// foot's `Clear all` stills its hover GROUND while inapplicable
 				// (`aria-disabled:hover:bg-transparent!`, agent review round 2's R7 and
@@ -928,7 +1024,12 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// foot for the drafts group and can never sit inside a current row; it
 				// paints NOTHING here rather than taking a row state, which is why no
 				// expression has to resolve it.
-				"hover:bg-transparent": 1,
+				// PLUS TWO (issue #693): the move pair's controls still the same step while
+				// they are inapplicable - the first and last pinned rows - and they are the
+				// one case in this panel where a ROW control can be inapplicable, so the
+				// reset lives with the control rather than in the pair's own `hidden`
+				// reveal. Resolved by their `CURRENT` entries above.
+				"hover:bg-transparent": 3,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling

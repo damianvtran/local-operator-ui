@@ -187,9 +187,9 @@ test("no rule on the row box is authored against `data-state`", () => {
 	/*
 	 * AND THE SANCTIONED SPELLING IS PRESENT, so the guard above cannot pass by
 	 * the hold being deleted: the ground on `!current` rows, and the reveal's
-	 * THREE authoring sites - the pin glyph, the archive glyph and the pair
-	 * wrapper - because a hold on the wrapper alone renders a `flex` box with
-	 * nothing in it.
+	 * authoring sites - the pin glyph, the archive glyph, the pair wrapper, and
+	 * (with #697 folded in) the pin strip's own grip and move pair - because a
+	 * hold on the wrapper alone renders a `flex` box with nothing in it.
 	 */
 	assert.ok(
 		boxClasses.includes('menuOpen && !current && "bg-row-hover"'),
@@ -197,8 +197,8 @@ test("no rule on the row box is authored against `data-state`", () => {
 	);
 	assert.equal(
 		SIDEBAR_CODE.split('menuOpen && "flex text-ink-muted"').length - 1,
-		2,
-		"the held reveal no longer covers BOTH glyphs (the reveal is authored in three class strings, and the wrapper is not one of these two)",
+		5,
+		"the held reveal no longer covers every revealing site (both glyphs, and #697's grip and move pair: five clauses; the wrapper holds separately)",
 	);
 	assert.ok(
 		SIDEBAR_CODE.includes("pinned || menuOpen"),
