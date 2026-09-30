@@ -942,7 +942,6 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 		"ROW_CONTROLS_PAIR_SHED",
 		"ROW_CONTROLS_SHARED_SHOWN",
 		"data-session-actions",
-		"@container/chatsidebar",
 		"<DropdownMenu",
 	]) {
 		assert.equal(
@@ -952,16 +951,42 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 		);
 	}
 	/*
+	 * THE CONTAINER DECLARATION IS BACK, AND THIS IS ITS ONE READER (round 1, design D2;
+	 * the direction this test's own comment left open - "the reversal note that stays in
+	 * the file is where the shed would go back"). What went back is NOT the pair shed:
+	 * the pin, the archive and the move pair are still drawn at every width, and the
+	 * shared 24px menu, its anchor and the two constants stay retired. What sheds at or
+	 * below a 278px panel is the GRIP alone - 28px of the revealed cluster, an
+	 * accelerator for a gesture the arrows already perform, leaving the pair as WCAG
+	 * 2.5.7's single-pointer path. So the assertion flips from "the name is absent" to
+	 * "the name is present and exactly one class reads it", which is the property that
+	 * keeps a future shed from arriving unnoticed.
+	 */
+	const containerReads =
+		source.match(/@(?:max|min)-\[[0-9]+px\]\/chatsidebar:/g) ?? [];
+	assert.deepEqual(
+		containerReads,
+		["@max-[263px]/chatsidebar:"],
+		`the panel's container is read by something other than the grip's own shed: ${JSON.stringify(containerReads)}`,
+	);
+	assert.match(
+		source,
+		/@container\/chatsidebar relative flex h-full/,
+		"the panel root declares the container the grip's shed measures",
+	);
+	/*
 	 * AND THE REPLACEMENT IS ONE RULE AT EVERY WIDTH, on the wrapper: `hidden` while the
 	 * row is unpinned, `flex` while it is pinned - because the pinned row's mark is a
 	 * STATE and must read without hovering, which is also the 240 fix (a pinned row there
 	 * used to draw no pin at all, because the mark lived inside the wrapper the query
-	 * hid). The reversal note that stays in the file is where the shed would go back.
+	 * hid) - OR while its context menu is open (`menuOpen`), the hold: the menu's portal
+	 * is modal, so the reveal cannot come from `:hover` while it is up and is state
+	 * instead. The reversal note that stays in the file is where the shed would go back.
 	 */
 	const pairWrapper = between(SIDEBAR, "data-session-control-pair", "</div>");
 	assert.match(pairWrapper, /"items-center gap-1"/);
 	assert.match(
 		pairWrapper,
-		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
 	);
 });

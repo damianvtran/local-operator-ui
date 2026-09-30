@@ -12,14 +12,28 @@
  * two things a pure model cannot own: WHAT a reader's own press may change, and
  * WHEN a finished section condenses.
  *
- * ## Condensed by default, and the one event that condenses
+ * ## Condensed by default, and the reader is the only closer
  *
  * The fold opens on NOTHING but the reader's own press: a group must not arrive
  * open (operator report, 2026-09-26 - groups auto-opened for the newest turn and
- * then never closed, "which defeats the purpose"). It closes on exactly ONE
- * event, encoded below where it cannot be mistaken for a timer: the moment the
- * fold's section stops being the live one, and only while nothing inside it is
- * still running.
+ * then never closed, "which defeats the purpose").
+ *
+ * It closes on THE READER'S press and nothing else (operator report, 2026-09-27:
+ * "[expanded states] shouldn't be closed simply by state updates if they've been
+ * explicitly opened"). The condense this component used to own - one close, the
+ * moment the fold's section stopped being live, guarded by `!sectionLive &&
+ * live === null` - was written for the auto-open that no longer exists: with
+ * groups arriving condensed, its only client was the reader's OWN fold, and it
+ * closed that under them. The two failure modes it had were both reported or
+ * measured: a live turn whose section edge fires while the reader watches
+ * (the rig's fold rounds reproduce it at every turn end - `expanded true ->
+ * false` in the trace), and any frame where the working line is transiently
+ * absent mid-turn (a gate, a reconnect) closing a fold whose turn is still
+ * running. So the close is not here, and `open`/`onOpenChange` are REQUIRED
+ * rather than defaulted: the state lives in the transcript's own registry
+ * (`fold-open.ts`), which is what lets an explicit open survive the fold's
+ * React identity changing under a windowed run (see that module's header) and
+ * what resets it exactly once, on a conversation switch.
  *
  * ## What the condensed header says
  *
@@ -65,6 +79,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
+import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
 
@@ -92,22 +107,57 @@ export type TraceFoldProps = {
 	/**
 	 * The call being watched (`foldLive`), or null when no call is EXECUTING.
 	 *
-	 * It names the header while the fold is collapsed. It is NOT the fold's
-	 * settle predicate on its own: the close is gated on `!sectionLive &&
-	 * live === null`, and a composing or queued call is unsettled yet unnamed -
-	 * those phases cannot coexist with `!sectionLive`, so the section guard is
-	 * what holds them, and the call executing as the section ends is the race
-	 * this value closes by itself (UX round 2, U2 narrowed it from "unsettled").
+	 * It names the header while the fold is collapsed, and it is the fold's
+	 * running clock while the fold is open - nothing else. The close it used to
+	 * gate left with the condense (see the state rule above): the reader's press
+	 * is the only closer now, so an executing call here can never hold a fold
+	 * open or close one.
 	 */
 	live: FoldLive | null;
 	/**
-	 * The fold's section is the live one: the newest turn, while that turn is in
-	 * flight. While this is true nothing the app does may touch an open fold; the
-	 * condense fires on the transition out of it.
+	 * Whether the reader has this fold open. Owned by the CALLER - the transcript's
+	 * registry (`fold-open.ts`) - not by this component: a fold's key changes when
+	 * the render window's edge walks through its run, and state held here would be
+	 * thrown away by the remount (see that module's header for the measured walk).
 	 */
-	sectionLive: boolean;
+	open: boolean;
+	/** The reader's press, reported upward for the registry to hold. */
+	onOpenChange: (open: boolean) => void;
 	/** The fold's own margin: the gap tier its first row arrived with (D8). */
 	className?: string;
+	/**
+	 * Media the run produced, drawn UNDER the condensed header.
+	 *
+	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
+	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * reader had to expand the group to see the artifact, which is the cost
+	 * condensing exists to remove. This is the fold's own copy of the principle
+	 * #537 applied to metadata — the condensed state carries the facts the rows
+	 * would have carried.
+	 *
+	 * Render it ONLY while condensed, and that is what the prop asks of its
+	 * caller rather than something this component can check: open, the rows draw
+	 * their own media (`TranscriptRow`'s `media`) and a strip here as well would
+	 * put one picture on screen twice. The caller composes it
+	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
+	 * rather than this file importing it, because the fold is a trace-tier
+	 * component and the transcript is what knows a record's images; the fold
+	 * hands the node its own toggle, so the strip's `+N more images` slot can
+	 * open this fold instead of being a dead end (UX round 1, U1).
+	 */
+	condensedMedia?: (expand: () => void) => ReactNode;
+	/**
+	 * How many pictures `condensedMedia` stands for, for the header's own clause.
+	 *
+	 * A number beside the node rather than something read out of it, because the
+	 * node is opaque here (the caller builds it) and because the COUNT is the part
+	 * a 64px tile cannot carry: the strip is a presence cue, so the reader has to
+	 * be told the number in text - legible at any tile size, reachable without a
+	 * pointer, and the same fact the strip's accessible name already states
+	 * (design review round 1, D3). Zero or absent adds no clause at all, which is
+	 * what keeps a run with no pictures byte-identical.
+	 */
+	mediaCount?: number;
 	/**
 	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
 	 * because a collapsed fold UNMOUNTS its rows, so a reader (or a future
@@ -145,51 +195,26 @@ export const TraceFold = ({
 	actionCount,
 	span,
 	live,
-	sectionLive,
+	open,
+	onOpenChange,
 	className,
+	condensedMedia,
+	mediaCount = 0,
 	recordIds,
 	children,
 }: TraceFoldProps) => {
 	/*
-	 * THE CONDENSE RULE, in one place, because this is exactly the rule someone
-	 * will later "simplify" into a bug:
-	 *
-	 *   finished sections condense; the live section and anything the reader has
-	 *   open obey the reader.
-	 *
-	 * The fold opens on the reader's own press and on nothing else, and it closes
-	 * on ONE event: the moment its section stops being the live one. Two guards
-	 * keep that event honest:
-	 *
-	 * - it never fires while the section is STILL live, so a fold the reader
-	 *   opened mid-watch is never closed underneath them while they watch it;
-	 * - it never fires while a call in the run has not settled: the close reads
-	 *   `live === null` (nothing EXECUTING) AND the section having ended, so a
-	 *   call composing or queued - unsettled but unnamed - cannot slip past it
-	 *   while `!sectionLive`, because the turn working through such a call is
-	 *   exactly what `sectionLive` reports. The call executing as the section
-	 *   ends is the race the `live` half closes on its own (UX round 2, U2).
-	 *
-	 * `armed` is what makes this an EVENT rather than a state: it is set while the
-	 * section is live and cleared when the condense fires once, so a fold restored
-	 * already-finished - or one the reader opens AFTER its section ended, like the
-	 * failed-row jump does - stays open. Only the transition out of a live section
-	 * condenses. Do not turn this into a timer, a hover rule, or a
-	 * "close it if nobody is looking" heuristic: the section's own end is the only
-	 * event the reader has agreed to.
+	 * NO CONDENSE EVENT LIVES IN THIS COMPONENT, and that is now the whole of the
+	 * state rule (operator report, 2026-09-27): a fold is opened and closed by
+	 * the reader's own press, and the transcript's registry holds that across
+	 * remounts. The rule this replaces - "one close, when the section stops being
+	 * live" - belonged to the auto-open that no longer exists; its remaining
+	 * client was the reader's own fold, which it closed under them (the fold
+	 * rounds' trace: `expanded true -> false` at a turn end; and a working line
+	 * that blinks false mid-turn - a gate, a reconnect - closes it early). Do not
+	 * reintroduce an app-driven close here: an explicitly-opened fold is the
+	 * reader's until they close it or switch conversations.
 	 */
-	const [open, setOpen] = useState(false);
-	const [armed, setArmed] = useState(sectionLive);
-	useEffect(() => {
-		if (sectionLive) {
-			setArmed(true);
-			return;
-		}
-		if (armed && live === null) {
-			setArmed(false);
-			setOpen(false);
-		}
-	}, [sectionLive, armed, live]);
 
 	/*
 	 * The run's clock. `span.running` ticks it against now; a settled span freezes
@@ -217,7 +242,7 @@ export const TraceFold = ({
 				 * and the app's state disagreeing about whether the fold is open.
 				 */
 				open={open}
-				onOpenChange={setOpen}
+				onOpenChange={onOpenChange}
 				/*
 				 * The summary is the aggregate line, so the chevron is what carries "there are
 				 * rows in here" — the count alone would read as a statement of fact rather
@@ -308,6 +333,44 @@ export const TraceFold = ({
 						 * failure count is noise at a glance, and the rows (red,
 						 * behind the fold) carry the state. */}
 						{/*
+						 * How many pictures the run produced, as the count the strip cannot
+						 * carry at 64px - and the reason this clause is here at all is the
+						 * inversion the design round found: the strip's accessible name
+						 * stated the count while the visible header said nothing, so a
+						 * sighted reader got strictly less than a screen-reader user
+						 * (design review round 1, D3). It costs no height: it joins the
+						 * facts the header already prints.
+						 *
+						 * IT DOES COST WIDTH, and that is written down here rather than found
+						 * again later: this span is `shrink-0`, so while a call is in flight
+						 * the clause is paid for out of the live clause - the row's only
+						 * truncating element - and `Running git push origin
+						 * feat/condensed-group-images` loses its tail to `…group-…` (design
+						 * review round 2, D5, measured on the long-name pair). It stands for
+						 * now because both ways to give the characters back change what this
+						 * surface's committed frames show - withholding the clause while
+						 * live, or shortening it to `· 1 img` - and the frames are the
+						 * evidence a reviewer reads, so that is a change taken with a
+						 * capture of `image-live` and `long-name` in both palettes rather
+						 * than folded into a comment round. No reader is left without the
+						 * count in the meantime: the strip renders in this same condensed
+						 * window and states it itself - countable while the pictures fit,
+						 * `+N more` past the cap.
+						 */}
+						{foldMediaClause(mediaCount) !== null && (
+							<>
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+								<span className={cn("shrink-0 text-ink-muted text-meta")}>
+									{foldMediaClause(mediaCount)}
+								</span>
+							</>
+						)}
+						{/*
 						 * The run's own clock, as the sentence's last fact (`3 shell · 1
 						 * python · 1 failed · 15s`), matching the foot line's register. It is
 						 * the WALL-CLOCK SPAN (first start to last completion), rendered in the
@@ -351,6 +414,17 @@ export const TraceFold = ({
 				 */}
 				<div className={cn("flex flex-col")}>{children}</div>
 			</Disclosure>
+			{/*
+			 * The run's pictures, while the rows that would draw them are unmounted.
+			 *
+			 * OUTSIDE the disclosure and below it, so the header keeps its own 24px
+			 * pitch and the strip is what the reader gains rather than something the
+			 * header now has to trade against. Only while condensed: open, every row
+			 * draws its own media and rendering both would show one picture twice.
+			 * The fold's own toggle is handed to the node so its count slot can open
+			 * the fold (`FoldMedia`'s `onRevealMore`).
+			 */}
+			{!open && condensedMedia && condensedMedia(() => onOpenChange(true))}
 		</div>
 	);
 };

@@ -221,7 +221,6 @@ function installBridge(state: BrowserChromeState): void {
 		revokeAllApprovals: noop,
 		forgetSite: noop,
 		clearData: noop,
-		onPopupBlocked: () => () => {},
 		onConsentAttention: () => () => {},
 	};
 	(window as unknown as { api: unknown }).api = { browser };
@@ -350,7 +349,7 @@ const CompositionGround: FC<{
 			isBrowserPaneOpen: paneOpen,
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
-			browserPanelWidth: panelWidth,
+			rightSlotWidth: panelWidth,
 		});
 	}, [paneOpen, panelWidth]);
 	return (
@@ -603,18 +602,37 @@ export const TriggerThreeApprovals: Story = {
  * F1). The same ground with the pane closed is `ComposedTriggerOnly`, and the pair
  * is what shows the conversation NARROWING rather than being covered.
  */
+type ComposedWithPaneArgs = Story["args"] & { panelWidth?: number };
+
 export const ComposedWithPane: Story = {
-	render: () =>
-		frame(
+	render: (args) => {
+		/*
+		 * `panelWidth` is a story-level knob rather than a `BrowserPane` prop —
+		 * read structurally so the typed args stay the pane's — and it exists for
+		 * the #677 evidence: `?args=panelWidth:700` photographs the pane at the
+		 * shared width, against its 640 seed default (`?args=panelWidth:640`),
+		 * which is the pair the design round asked to see at this geometry.
+		 */
+		const panelWidth =
+			typeof (args as ComposedWithPaneArgs).panelWidth === "number"
+				? (args as ComposedWithPaneArgs).panelWidth
+				: 640;
+		return frame(
 			1380,
 			900,
 			<CompositionGround
 				paneOpen
 				count={3}
+				panelWidth={panelWidth}
 				state={projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]])}
 			/>,
-		),
-	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+		);
+	},
+	args: {
+		sessionId: THIS_CONVERSATION,
+		onClose: () => {},
+		panelWidth: 640,
+	} as ComposedWithPaneArgs,
 };
 
 /** The "before": the same ground with the pane closed, which is the chat surface

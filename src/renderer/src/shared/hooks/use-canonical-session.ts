@@ -46,7 +46,6 @@ import {
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
-	loadOlderStep,
 	markLiveRecordsTruncated,
 	pageLabels,
 	pageOpensTurn,
@@ -97,6 +96,10 @@ import {
 	type SessionFailureNotice,
 	streamFailureNotice,
 } from "../../../../shared/desktop-stream-notice";
+import {
+	type LoadOlderOutcome,
+	createOlderLoader,
+} from "../../features/chat/canonical/load-older";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
@@ -285,6 +288,20 @@ export type CanonicalSessionView = {
 	/** Older durable rows are being fetched. */
 	loadingOlder: boolean;
 	/**
+	 * The last "load earlier" ask, from ANY caller, failed - and nothing has been
+	 * applied since.
+	 *
+	 * THE FAILED ROW HAS ONE OWNER, and it is this hook (loader-continuity R2).
+	 * The scroll pump used to keep its own `failed` state, set from `!ok`, so it
+	 * could only ever see its own asks and it read "someone else is loading" and
+	 * "the session changed in flight" as failures: a healthy conversation painted
+	 * the red "Could not load earlier messages" row, while a REAL failure from the
+	 * align fetch, the jump walk or the mentioned-files scan never reached it.
+	 * Set on a `failed` outcome from any caller; cleared by any `applied` outcome,
+	 * by `/clear`, and by a session switch.
+	 */
+	olderFailed: boolean;
+	/**
 	 * How many `subagent_start|subagent_progress|subagent_end` events this viewer
 	 * has seen for each child, keyed by job id (`docs/run-sidebar.md` § 5.3).
 	 *
@@ -423,6 +440,12 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * retries forever or never.
 	 */
 	loadOlder: () => Promise<boolean>;
+	/**
+	 * The same ask as `loadOlder`, answering WHAT HAPPENED rather than whether a
+	 * page was applied. `loadOlder` is `outcome.kind === "applied"` of this. New
+	 * callers that must tell a failure from a lost race use this one.
+	 */
+	loadOlderDetailed: () => Promise<LoadOlderOutcome>;
 	/** View-only clear (the `/clear` contract): nothing is deleted. */
 	clearView: () => void;
 	/**
@@ -2055,6 +2078,7 @@ export function useCanonicalSessionStream(
 			stale: seed?.stale ?? false,
 			missing: false,
 			loadingOlder: false,
+			olderFailed: false,
 			// No child has been heard from yet: the snapshot that follows seeds the
 			// counter from its own `live_events`.
 			subagentPulses: {},
@@ -4266,6 +4290,9 @@ export function useCanonicalSessionStream(
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,
+			// A failure belongs to the journal it happened on; a new session has not
+			// failed to load anything yet.
+			olderFailed: false,
 		}));
 		// The retry bookkeeping is per SESSION: a previous session's outstanding call
 		// ids would each buy a history page for the new one, sized by the old gap,
@@ -4539,116 +4566,107 @@ export function useCanonicalSessionStream(
 	// closed over, so an in-flight page can tell whether it is still wanted.
 	const sessionRef = useRef(sessionId);
 	sessionRef.current = sessionId;
-
-	const loadingOlderRef = useRef(false);
 	/*
-	 * The cursor `loadOlder` asks from, when it is NOT the transcript's own oldest
-	 * row.
+	 * A per-VIEW generation of the conversation on screen: bumped every time
+	 * `sessionId` changes, so leaving A and coming back to A is a NEW view.
 	 *
-	 * WHY THIS EXISTS (operator report, 2026-09-28: "when I click manually to
-	 * load more, nothing loads"): a `/compact` REPLACES the journal file. When it
-	 * does so while a conversation is open, the transcript's oldest loaded row is
-	 * an id the new file no longer contains — and the backend answers a
-	 * `before_id` it cannot locate with THE CURRENT TAIL plus `cursor_missing`
-	 * (`read_transcript_page`'s documented reconcile), precisely so a reader can
-	 * dedupe and move on. This path did not move on: the tail it got back was
-	 * already loaded, so nothing applied, `oldestId` never advanced, and every
-	 * later click asked for the same missing row — a button that loads nothing,
-	 * forever, with nothing said. The override is the move: it re-anchors to the
-	 * page's own oldest id, which the journal just SERVED and can therefore
-	 * locate, so the retry in the same call fetches the rows genuinely below it.
+	 * WHY THE BARE ID IS NOT ENOUGH (loader-continuity round 1, R1-3). A page still
+	 * out for A when the reader goes A -> B -> A compared equal to the returning
+	 * view by id, so it was treated as current: it landed on A's freshly reset
+	 * transcript (`oldestId` null), where the reducer's first-page rule seeded the
+	 * cursor from that deep page, and the rows between it and the tail were never
+	 * fetched - the dead-zone class this loader exists to close, by a narrow race.
+	 * Comparing the epoch makes "the same conversation" mean "the same visit to it".
+	 * Written in render, like `sessionRef`, so it is already correct in the first
+	 * frame of the new view and idempotent under a repeated render.
 	 */
-	const historyCursorRef = useRef<{
-		session: string | null;
-		cursor: string | null;
-	}>({
-		session: null,
-		cursor: null,
-	});
-	// A different conversation inherits nothing (clause H's reasoning: the
-	// cursor is state ABOUT a journal, and it is not this journal's). Keyed by
-	// session INSIDE the ref because `sessionRef` is refreshed on every render,
-	// so a comparison against it could never see the change.
-	if (historyCursorRef.current.session !== sessionId) {
-		historyCursorRef.current = { session: sessionId ?? null, cursor: null };
-	}
-	const loadOlder = useCallback(async (): Promise<boolean> => {
-		if (!sessionId || loadingOlderRef.current) return false;
-		const { transcript } = viewRef.current;
-		if (!transcript.hasMore || !transcript.oldestId) return false;
+	const epochRef = useRef({ id: sessionId, epoch: 0 });
+	if (epochRef.current.id !== sessionId)
+		epochRef.current = { id: sessionId, epoch: epochRef.current.epoch + 1 };
+
+	/*
+	 * The older-page loader. One per mounted hook, and NOT keyed to a session: it
+	 * is single-flight PER conversation (`load(key, ...)`), so a page still out for
+	 * the conversation the reader just left neither blocks the new one nor is
+	 * applied to it (it resolves `stale`).
+	 *
+	 * There is deliberately no cursor kept here. The store's own `oldestId` is the
+	 * only statement of where history stops (`applyHistoryPage` advances it for
+	 * every continuation, even a page that adds no record); the ref that used to
+	 * shadow it after a `cursor_missing` existed only because the store could not
+	 * advance, and a second authority is how the reader came to ask for one page
+	 * for ever.
+	 */
+	const olderLoader = useRef<ReturnType<typeof createOlderLoader> | null>(null);
+	if (olderLoader.current === null) olderLoader.current = createOlderLoader();
+	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
+		const loader = olderLoader.current;
+		if (!sessionId || !loader) return { kind: "nothing-to-load" };
 		// The session this request is being made for. A page that resolves after
 		// the reader has switched conversations describes a transcript that is no
-		// longer on screen, and `applyHistoryPage` would happily splice it into
-		// the new one (clause H). Scroll paging makes this reachable in a way
-		// clicking never did: a page can be in flight for any scroll that happens
-		// to precede a click in the sidebar.
+		// longer on screen, and `applyHistoryPage` would happily splice it into the
+		// new one (clause H); the loader checks `isCurrent` before it applies.
 		const requested = sessionId;
-		loadingOlderRef.current = true;
-		commitView((current) => ({ ...current, loadingOlder: true }));
-		try {
-			const readPage = (beforeId: string) =>
+		const epoch = epochRef.current.epoch;
+		const stillHere = () => epochRef.current.epoch === epoch;
+		// Single-flight is per VIEW for the same reason `isCurrent` is: a page left
+		// out for a previous visit to this conversation resolves `stale`, and handing
+		// that promise to the returning reader would answer their ask with a dropped
+		// page instead of one for the transcript they are looking at.
+		const outcome = await loader.load(`${requested}#${epoch}`, {
+			getTranscript: () => viewRef.current.transcript,
+			readPage: (beforeId) =>
 				desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
 					sessionId: requested,
 					beforeId,
 					limit: 100,
-				});
-			const anchor = historyCursorRef.current.cursor ?? transcript.oldestId;
-			let page = await readPage(anchor);
+				}),
+			isCurrent: stillHere,
+			commit: (update) =>
+				commitView((current) => {
+					const transcript = update(current.transcript);
+					return transcript === current.transcript
+						? current
+						: { ...current, transcript };
+				}).transcript,
 			/*
-			 * ONE re-anchored retry, in the click's own turn (`loadOlderStep`):
-			 * a cursor the journal can no longer locate comes back as the tail
-			 * it already holds, and asking once more from the row that tail
-			 * itself begins at is what turns the silent no-op into the page the
-			 * reader asked for. A SECOND `cursor_missing` is the failed state —
-			 * never another retry, and never a success for a click that loaded
-			 * nothing (agent review round 1, F1).
+			 * The in-flight flag is written for the conversation that OWNS the page,
+			 * so a switch mid-request cannot leave the OLD session's spinner disabled
+			 * ("Loading earlier messages" with no request out and no way to retry).
 			 */
-			let step = loadOlderStep(page, anchor, false);
-			if (step.cursor !== null) {
-				historyCursorRef.current = { session: requested, cursor: step.cursor };
-				page = await readPage(step.cursor);
-				step = loadOlderStep(page, step.cursor, true);
-			}
-			historyCursorRef.current = { session: requested, cursor: step.cursor };
-			if (step.failed) {
-				/*
-				 * No splice and no success: the tail the retry returned is not
-				 * the rows the reader asked for, and the slot's own failed state
-				 * is the report. Cleared here for BOTH session states — a switch
-				 * mid-request must not leave the OLD session's spinner disabled.
-				 */
-				commitView((current) => ({ ...current, loadingOlder: false }));
-				return false;
-			}
-			if (sessionRef.current !== requested) {
-				// Clear the flag before standing down. The rows are not spliced (a
-				// foreign page must never reach this transcript), but `loadingOlder`
-				// is the OLD session's view state and nothing else clears it: the
-				// `finally` below resets only the module-level ref, and the
-				// session-switch effect deliberately leaves view fields alone. Left
-				// true, switching back showed a disabled "Loading earlier messages"
-				// spinner with no request in flight and no way to clear it short of
-				// a reload — and because the affordance renders disabled in that
-				// state, the reader could not even retry.
-				commitView((current) => ({ ...current, loadingOlder: false }));
-				return false;
-			}
-			commitView((current) => ({
-				...current,
-				loadingOlder: false,
-				transcript: applyHistoryPage(current.transcript, page),
-			}));
-			return true;
-		} catch {
-			// The rows already painted are still correct; the affordance simply
-			// stays available for another try.
-			commitView((current) => ({ ...current, loadingOlder: false }));
-			return false;
-		} finally {
-			loadingOlderRef.current = false;
+			setLoading: (loading) => {
+				if (!stillHere()) return;
+				commitView((current) =>
+					current.loadingOlder === loading
+						? current
+						: { ...current, loadingOlder: loading },
+				);
+			},
+		});
+		/*
+		 * The failed row's single writer (R2): every caller lands here, so a failure
+		 * from the align fetch, the jump walk or the mentioned-files scan reaches the
+		 * slot, and any applied page clears it. `stale` and `nothing-to-load` touch
+		 * nothing - they say nothing about the health of the journal on screen.
+		 */
+		if (stillHere()) {
+			if (outcome.kind === "failed")
+				commitView((current) =>
+					current.olderFailed ? current : { ...current, olderFailed: true },
+				);
+			else if (outcome.kind === "applied")
+				commitView((current) =>
+					current.olderFailed ? { ...current, olderFailed: false } : current,
+				);
 		}
+		return outcome;
 	}, [commitView, sessionId]);
+	const loadOlder = useCallback(
+		async (): Promise<boolean> =>
+			(await loadOlderDetailed()).kind === "applied",
+		[loadOlderDetailed],
+	);
 
 	const refreshingTailRef = useRef(false);
 	/*
@@ -4755,6 +4773,8 @@ export function useCanonicalSessionStream(
 		commitView((current) => ({
 			...current,
 			transcript: clearTranscript(current.transcript),
+			// The failure described rows the reader has just cleared.
+			olderFailed: false,
 			/*
 			 * The held copy goes with it, and costs nothing visible: `/clear` is
 			 * VIEW-only, so `frontend` is still painted and the readings still come
@@ -4854,6 +4874,7 @@ export function useCanonicalSessionStream(
 			awaitingHydration:
 				enabled && Boolean(sessionId) && isSession && !view.hydrated,
 			loadOlder,
+			loadOlderDetailed,
 			refreshTail,
 			clearView,
 			addNote,
@@ -4867,6 +4888,7 @@ export function useCanonicalSessionStream(
 			sessionId,
 			isSession,
 			loadOlder,
+			loadOlderDetailed,
 			refreshTail,
 			clearView,
 			addNote,

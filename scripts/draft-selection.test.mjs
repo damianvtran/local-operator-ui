@@ -1392,15 +1392,24 @@ test("U1: the picker's running model is the value the strip paints, held or live
 	);
 
 	/*
-	 * AND BOTH DIALOGS ASK IT THAT WAY. The two reads that decided "the model
-	 * this session is on" are pinned here so a later edit cannot quietly go back
-	 * to the authoritative field at one of them — which is exactly how the two
-	 * phases came apart.
+	 * AND EVERY READ ASKS IT THAT WAY. The reads that decided "the model this
+	 * session is on" — the model picker, the effort picker, and the fast
+	 * picker's dial (UX round 1, U2) — are pinned here so a later edit cannot
+	 * quietly go back to the authoritative field at one of them — which is
+	 * exactly how the two phases came apart.
+	 *
+	 * SEVEN CALLS, because the pin counts CALLS and not call sites: the three
+	 * pickers above are two each (`effective_model` then `selected_model`) and the
+	 * seventh is the reload receipt's title read (`ReloadPicker`'s `subject`, review
+	 * R8) — same helper, same held-`frontend` pair, a different FIELD off the same
+	 * reading. That read is what keeps the receipt naming the session the way the
+	 * pane names it rather than falling back to the id on every live session, so it
+	 * belongs in this set rather than beside it.
 	 */
 	assert.equal(
 		(source.match(/runningFrontend\(canonical\)/g) ?? []).length,
-		4,
-		"both reads use the helper, on both of the fields they name",
+		7,
+		"every read uses the helper, on both of the fields each one names, plus the receipt's title",
 	);
 	assert.doesNotMatch(
 		source,

@@ -77,6 +77,10 @@ const bundle = await build({
 			'export * from "./src/main/browser/vendor/driver/file-transfer-policy";',
 			'export * from "./src/main/browser/vendor/driver/file-transfer.tables.gen";',
 			'export * from "./src/main/browser/settle";',
+			// The popup policy for driven pages (docs/design/browser-oauth-popups.md 1-2).
+			// Bundled so the whole allow/deny table is driven here as RULES — the real
+			// popup it describes (a real child window over real CDP) is the proof's job.
+			'export * from "./src/main/browser/popups";',
 			'export * from "./src/main/browser/log-capture";',
 			'export * from "./src/main/browser/actions/gate";',
 			// The vendored driver modules. Their app-side counterparts live in
@@ -111,6 +115,13 @@ const {
 	readSession,
 	SESSION_FILENAME,
 	MAX_RESTORED_TABS,
+	// The restore pass's own bounds, read rather than hard-coded for the same reason
+	// as the queue's constants above: the straggler tests derive how many tabs a
+	// budget expiry should leave queued from `RESTORE_CONCURRENCY`, and a literal
+	// would read green the day the number moves.
+	RESTORE_CONCURRENCY,
+	RESTORE_TAB_TIMEOUT_MS,
+	RESTORE_BUDGET_MS,
 	surfaceToken,
 	parseSurface,
 	redactToken,
@@ -146,6 +157,12 @@ const {
 	safeHttpUrl,
 	navigateView,
 	settle,
+	// The popup policy's pure decision function and its cap constant: the matrix
+	// below drives this directly, and reads the cap rather than hard-coding 4 — a
+	// test that hard-codes the cap stops testing it the day the cap moves.
+	decidePopup,
+	effectivePresentation,
+	MAX_POPUP_CHILDREN_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -709,6 +726,11 @@ test("a user tab has no capability until it is handed over, and revoking removes
 	);
 	// The session is stored BARE, whatever spelling the caller hands over.
 	registry.handOver(user.tabId, "session:b");
+	assert.equal(
+		user.handedFrom,
+		"user",
+		"the pre-hand-over owner is pinned for the restore boundary",
+	);
 	const token = surfaceToken(user);
 	assert.ok(token, "the hand-over mints the capability");
 	assert.equal(registry.requireSurface(token).tabId, user.tabId);
@@ -721,6 +743,7 @@ test("a user tab has no capability until it is handed over, and revoking removes
 	assert.equal(registry.mayDrive(user, "c"), false);
 	registry.revokeHandOver(user.tabId);
 	assert.equal(surfaceToken(user), null);
+	assert.equal(user.handedFrom, null, "the pin clears with the capability");
 	assert.throws(
 		() => registry.requireSurface(token),
 		(error) => error.code === "tab_closed",
@@ -4620,6 +4643,541 @@ test("readSession skips a flagged row, names the count in the log, and does not 
 	);
 });
 
+// ---- the restore boundary is the sweep (2026-09-29) --------------------------
+
+/*
+ * The second accumulation fix, at the layers it is mechanical on, plus the two
+ * restore-robustness changes that end the "empty tab" loop.
+ *
+ * THE SKIP: an agent-owned row that was not the active tab at the capture is not
+ * restored, so abandoned agent tabs stop coming back as user tabs at every
+ * launch (the operator's "dev cruft" / "oauth cruft" rows). It can only be
+ * decided at the restore boundary, because the capture after a restore rewrites
+ * a restored tab as the user's (the laundering boundary). THE CARVE-OUT keeps
+ * the one agent tab the user was plausibly on when they quit. THE HAND-OVER
+ * EXCEPTION in `captureTabs` is what keeps the user's OWN tab out of the skip's
+ * teeth. THE QUIET-DEATH MARK (`hydrateOne`) makes a restore that never
+ * committed a page visible, closetable and terminal instead of a blank tab that
+ * loops forever; THE DRAIN (`hydrateRestored`) starts every load the budget left
+ * queued, so no straggler is left `about:blank`. `readSession`'s filters and the
+ * quit-time guard's population count share ONE predicate (`restorableRow`), so
+ * the two sides cannot drift.
+ */
+
+test("readSession skips a non-active agent row, keeps the active one and the user's, and does not let it eat a cap slot", () => {
+	const dir = mkdtempSync(join(root, "session-agent-skip-"));
+	const path = join(dir, SESSION_FILENAME);
+	const userRow = (url) => ({
+		owner: "user",
+		active: false,
+		entries: [{ url, title: "page" }],
+		activeIndex: 0,
+	});
+	const agentRow = (url, active) => ({
+		owner: "agent",
+		active,
+		entries: [{ url, title: "page" }],
+		activeIndex: 0,
+	});
+
+	// The plain skip, with the count in the log: a user's tab, an abandoned agent
+	// tab, the agent tab that WAS active at the quit, a second user tab. Only the
+	// middle agent row is skipped, and the order of the rest is kept.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				userRow("https://example.com/user-a"),
+				agentRow("http://127.0.0.1:3691/cruft", false),
+				agentRow("https://example.com/agent-active", true),
+				userRow("https://example.com/user-b"),
+			],
+		}),
+	);
+	const messages = [];
+	const kept = readSession(path, (message) => messages.push(message));
+	assert.deepEqual(
+		kept.map((tab) => tab.entries[0].url),
+		[
+			"https://example.com/user-a",
+			"https://example.com/agent-active",
+			"https://example.com/user-b",
+		],
+		"the non-active agent row is not restored; the active agent tab and the user's rows are",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				"1 recorded tab(s) were opened by an agent and were not active at the quit; not restored",
+			),
+		),
+		`the skip names its count: ${JSON.stringify(messages)}`,
+	);
+
+	// AND IT DOES NOT EAT A CAP SLOT: one active agent tab, MAX + 1 user rows, and
+	// one abandoned agent row. The cap keeps its full complement of RESTORABLE
+	// rows - the active agent row among them, the abandoned one not.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				agentRow("https://example.com/agent-active", true),
+				...Array.from({ length: MAX_RESTORED_TABS + 1 }, (_, i) =>
+					userRow(`https://example.com/u${i}`),
+				),
+				agentRow("http://127.0.0.1:9/cruft", false),
+			],
+		}),
+	);
+	messages.length = 0;
+	const bounded = readSession(path, (message) => messages.push(message));
+	assert.equal(
+		bounded.length,
+		MAX_RESTORED_TABS,
+		"the cap keeps its full complement of restorable rows",
+	);
+	assert.ok(
+		bounded.some(
+			(tab) => tab.entries[0].url === "https://example.com/agent-active",
+		),
+		"the active agent row is restored (the carve-out)",
+	);
+	assert.ok(
+		bounded.every((tab) => !tab.entries[0].url.includes("/cruft")),
+		"and the abandoned agent row is not, whatever its position",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				`restoring ${MAX_RESTORED_TABS} of ${MAX_RESTORED_TABS + 2} recorded tabs`,
+			),
+		),
+		`the cap arithmetic counts only restorable rows: ${JSON.stringify(messages)}`,
+	);
+});
+
+test("a capture writes a handed-over tab as the user's, and an agent tab as the agent's", () => {
+	// Live tabs with a history of their own (the restoreRow path would force the
+	// restored-tab rules instead - `create` makes every restored tab the user's,
+	// which is design 7.3 and not what this test is about).
+	const registry = new TabRegistry(
+		(_options, tabId) => new FakeView(tabId),
+		() => {},
+		() => {},
+	);
+	const navigate = (record, url) => {
+		const history = record.view.webContents.navigationHistory;
+		history.getAllEntries = () => [{ url, title: url }];
+		history.getActiveIndex = () => 0;
+	};
+	const mine = registry.create({ owner: "user" });
+	navigate(mine, "https://example.com/mine");
+	const cruft = registry.create({ owner: "agent", sessionId: "alice" });
+	navigate(cruft, "http://127.0.0.1:3691/cruft");
+	const handed = registry.create({ owner: "user" });
+	navigate(handed, "https://example.com/handed");
+	registry.handOver(handed.tabId, "session:alice");
+	assert.equal(
+		handed.owner,
+		"agent",
+		"the registry flips a handed-over tab to agent ownership - the trap the capture adjustment exists for",
+	);
+	// A RE-HANDED AGENT TAB IS STILL THE AGENT'S (round 1, m-2): `handOver`
+	// accepts an agent tab (the cap does not change), so `handedTo !== null`
+	// cannot stand in for "the user's tab" - only the owner pinned BEFORE the
+	// hand-over can. Keyed on `handedTo`, this row was written `user` and survived
+	// the sweep (the review's own reproduced mutation).
+	const rehanded = registry.create({ owner: "agent", sessionId: "alice" });
+	navigate(rehanded, "http://127.0.0.1:3691/rehanded");
+	registry.handOver(rehanded.tabId, "session:bob");
+	// A re-hand does not move the pin: it records what the tab was before the
+	// FIRST hand-over, not what the previous handle was.
+	registry.handOver(rehanded.tabId, "session:carol");
+	assert.equal(
+		rehanded.handedFrom,
+		"agent",
+		"an agent's tab pins agent as the pre-hand-over owner, through re-hands",
+	);
+	assert.equal(
+		cruft.handedFrom,
+		null,
+		"a tab that was never handed over carries no pin",
+	);
+
+	const captured = captureTabs(registry.list(), mine.tabId, new Set());
+	assert.deepEqual(
+		captured.map((tab) => [tab.entries[0].url, tab.owner]),
+		[
+			["https://example.com/mine", "user"],
+			["http://127.0.0.1:3691/cruft", "agent"],
+			["https://example.com/handed", "user"],
+			["http://127.0.0.1:3691/rehanded", "agent"],
+		],
+		"a plain user tab and an agent tab keep their owners; the handed-over user tab is written as the user's, and the re-handed AGENT tab stays the agent's - or the sweep would launder it",
+	);
+
+	// The end-to-end consequence, because the write only matters through the read:
+	// the written file restores the user's tab and the handed-over tab, and skips
+	// the agent's.
+	const dir = mkdtempSync(join(root, "session-handover-"));
+	const path = join(dir, SESSION_FILENAME);
+	writeFileSync(path, JSON.stringify({ version: 1, tabs: captured }));
+	const kept = readSession(path, () => {});
+	assert.deepEqual(
+		kept.map((tab) => tab.entries[0].url),
+		["https://example.com/mine", "https://example.com/handed"],
+		"a handed-over user tab survives the quit/restore round trip; the agent's does not",
+	);
+});
+
+test("a hydration that never commits a page is marked failed, and the next navigation retires it", async () => {
+	// A registry whose loads reject the way a quiet timeout does; the views keep
+	// the fake's event surface so the commit predicate can be driven by hand.
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () =>
+				Promise.reject(new Error("timed out after 10000ms"));
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const messages = [];
+	const { host } = makeHost({
+		registry,
+		log: (message) => messages.push(message),
+	});
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/never", title: "dead" }],
+			activeIndex: 0,
+		},
+	]);
+	await host.whenRestored();
+
+	const tabId = registry.list()[0].tabId;
+	assert.deepEqual(
+		[...host.failedTabIds()],
+		[tabId],
+		"the failure no did-fail-load could report is on record",
+	);
+	const navFailure = host.chromeState().navFailure;
+	assert.equal(
+		navFailure?.description,
+		"ERR_FAILED (restore)",
+		"the panel gets a description that names the restore",
+	);
+	assert.equal(navFailure?.url, "http://127.0.0.1:3691/never");
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				"is marked as failed: the restore did not commit a page",
+			),
+		),
+		`support can see why a Failed chip appeared: ${JSON.stringify(messages)}`,
+	);
+
+	// The next capture carries the mark the reader skips on.
+	const captured = captureTabs(
+		registry.list(),
+		registry.activeTab?.tabId ?? null,
+		host.failedTabIds(),
+	);
+	assert.equal(
+		captured[0].lastLoadFailed,
+		true,
+		"the mark reaches the row readSession skips",
+	);
+
+	// And the ordinary clear wiring (browser/index.ts) retires it: the mark is a
+	// statement about the restore, not a verdict on the tab.
+	host.clearLoadFailure(tabId);
+	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
+});
+
+test("a hydration that failed after a commit is not marked failed", async () => {
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () => {
+				// The page COMMITTED (a slow origin past the timeout looks like this),
+				// and only then the hydration gave up: measured on Electron 44,
+				// `restore()`'s promise stays pending through a commit, so a timeout
+				// alone does not mean nothing arrived.
+				view.webContents.emit("did-navigate", {}, "http://127.0.0.1:3691/slow");
+				return Promise.reject(new Error("timed out after the commit"));
+			};
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const messages = [];
+	const { host } = makeHost({
+		registry,
+		log: (message) => messages.push(message),
+	});
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/slow", title: "slow" }],
+			activeIndex: 0,
+		},
+	]);
+	await host.whenRestored();
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"a page that committed is never marked failed, even when the hydration gave up on it",
+	);
+	assert.equal(host.chromeState().navFailure, null);
+	assert.ok(
+		!messages.some((message) => message.includes("is marked as failed")),
+		"and no log line claims it was",
+	);
+});
+
+test("a restore failure does not overwrite a refusal the view already reported", async () => {
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () =>
+				Promise.reject(new Error("ERR_CONNECTION_REFUSED (-102)"));
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const { host } = makeHost({ registry, log: () => {} });
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/refused", title: "refused" }],
+			activeIndex: 0,
+		},
+	]);
+	// The view's own `did-fail-load`, which `browser/index.ts` records BEFORE the
+	// load promise rejects (measured order: fail at 1206ms, reject at 1217ms). It
+	// is staged here between `restoreTabs` and the flush that lets the rejection
+	// propagate - synchronously, which is exactly that sequence.
+	host.recordLoadFailure(registry.list()[0].tabId, {
+		code: -102,
+		description: "ERR_CONNECTION_REFUSED",
+		url: "http://127.0.0.1:3691/refused",
+	});
+	await host.whenRestored();
+	const navFailure = host.chromeState().navFailure;
+	assert.equal(
+		navFailure?.description,
+		"ERR_CONNECTION_REFUSED",
+		"the specific refusal keeps the sentence the panel maps for it",
+	);
+	assert.equal(navFailure?.code, -102);
+	assert.equal(
+		host.failedTabIds().size,
+		1,
+		"and the tab is still marked failed, so the next boot still skips it",
+	);
+});
+
+// The two clear sites a restore-failure mark's self-healing depends on, hoisted
+// to the module scope for the source test below (the file's `useTopLevelRegex`
+// contract reads inline literals as a performance warning).
+const WIRE_VIEW_CLEARS_ON_LOAD_START =
+	/on\(\s*"did-start-loading"[\s\S]{0,400}?host\.clearLoadFailure\(tabId\)/;
+const WIRE_VIEW_CLEARS_ON_NAVIGATE =
+	/on\(\s*"did-navigate"[\s\S]{0,700}?host\.clearLoadFailure\(tabId\)/;
+
+test("the self-healing a restore-failure mark depends on is wired in browser/index.ts", () => {
+	/*
+	 * A SOURCE assertion, deliberately: the listeners live in the Electron entry
+	 * (`wireView`), which this suite must never boot. The mark `hydrateOne` records
+	 * is self-healing ONLY because these handlers clear it - a restored page that
+	 * commits (or starts loading) past the timeout must stop being 'failed' - and
+	 * this pins the shape that makes that true.
+	 */
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	const wireView = functionBody(
+		source,
+		"function wireView(",
+		"src/main/browser/index.ts",
+	);
+	assert.match(
+		wireView,
+		WIRE_VIEW_CLEARS_ON_LOAD_START,
+		"the load-start clear is gone: a retried tab would stay 'failed' through its own reload",
+	);
+	assert.match(
+		wireView,
+		WIRE_VIEW_CLEARS_ON_NAVIGATE,
+		"the navigation clear is gone: a page that commits past the restore timeout would stay 'failed'",
+	);
+});
+
+test("a restore budget that expires still starts every queued tab's load", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const attempts = [];
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			// A page that accepts and never answers: the load is started and then
+			// hangs - exactly what the budget exists for, and what used to leave the
+			// queued tabs as forever-blank views.
+			view.webContents.loadURL = (url) => {
+				attempts.push({ tabId, url });
+				return new Promise(() => {});
+			};
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const messages = [];
+	const { host } = makeHost({
+		registry,
+		log: (message) => messages.push(message),
+	});
+	const recorded = Array.from({ length: 10 }, (_, i) => ({
+		owner: "user",
+		active: i === 0,
+		entries: [{ url: `https://example.com/slow/${i}`, title: "slow" }],
+		activeIndex: 0,
+	}));
+
+	host.restoreTabs(recorded);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		attempts.length,
+		RESTORE_CONCURRENCY,
+		"the first wave started; the rest wait in the queue",
+	);
+
+	// The per-tab timeout fires, the workers run out of budget, and the drain has
+	// to start everything still queued - without the pass waiting on any of it.
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	await host.whenRestored();
+
+	assert.deepEqual(
+		attempts.map((attempt) => attempt.url).sort(),
+		recorded.map((row) => row.entries[0].url).sort(),
+		"every recorded tab's load was started - none left about:blank",
+	);
+	assert.equal(
+		new Set(attempts.map((attempt) => attempt.tabId)).size,
+		recorded.length,
+		"once per tab, and none started twice (the drain must not re-start in-flight loads)",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				`the ${RESTORE_BUDGET_MS}ms restore budget expired with ${recorded.length - RESTORE_CONCURRENCY} tab(s) still queued; they start loading in the background`,
+			),
+		),
+		`the budget line counts what the drain starts: ${JSON.stringify(messages)}`,
+	);
+
+	// THE DRAIN'S BOUNDED WAIT (round 1, F1 = m-1 = Q-1 = U1 = D3): the rows the
+	// drain starts get the SAME per-tab wait as the first wave, so a straggler
+	// whose server never answers is marked Failed within one launch instead of
+	// spinning outside `Close N failed tabs` forever. Every row here hangs, so
+	// after the drained promises' own timers fire every row must be terminal.
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		host.failedTabIds().size,
+		recorded.length,
+		"every drained straggler reached a terminal state within its own bounded wait",
+	);
+	assert.equal(
+		messages.filter((message) =>
+			message.includes(
+				"is marked as failed: the restore did not commit a page",
+			),
+		).length,
+		recorded.length,
+		`one terminal mark per row, wave and drain alike: ${JSON.stringify(messages)}`,
+	);
+});
+
+test("the drain uses history.restore when the view has it, and still starts every queued tab", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const restoreCalls = [];
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.navigationHistory.restore = (options) => {
+				const url = options.entries[options.index ?? 0]?.url;
+				restoreCalls.push({ tabId, url });
+				// ONE drained row's load settles inside its wait: a healthy tab must NOT
+				// be flagged (round 1, F1's other half - the mark is for quiet deaths,
+				// not for stragglers in general).
+				return url?.endsWith("/restore/4")
+					? Promise.resolve()
+					: new Promise(() => {});
+			};
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const { host } = makeHost({ registry, log: () => {} });
+	const recorded = Array.from({ length: 6 }, (_, i) => ({
+		owner: "user",
+		active: i === 0,
+		entries: [{ url: `https://example.com/restore/${i}`, title: "slow" }],
+		activeIndex: 0,
+	}));
+
+	host.restoreTabs(recorded);
+	await new Promise((resolve) => setImmediate(resolve));
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	await host.whenRestored();
+
+	assert.deepEqual(
+		restoreCalls.map((call) => call.url).sort(),
+		recorded.map((row) => row.entries[0].url).sort(),
+		"every queued tab's restore was started through the history API, first wave and drain alike",
+	);
+	const counts = new Map();
+	for (const call of restoreCalls) {
+		counts.set(call.tabId, (counts.get(call.tabId) ?? 0) + 1);
+	}
+	assert.equal(counts.size, recorded.length, "one start per tab");
+	assert.ok(
+		[...counts.values()].every((count) => count === 1),
+		"and no tab started twice",
+	);
+
+	// ROUND 1, F1: the drained rows carry the same bounded wait as the first wave —
+	// the ones that never answer are marked, the one that answered is not.
+	t.mock.timers.tick(RESTORE_TAB_TIMEOUT_MS);
+	await new Promise((resolve) => setImmediate(resolve));
+	const healthy = restoreCalls.find((call) => call.url.endsWith("/restore/4"));
+	assert.ok(healthy, "the healthy drained row was started");
+	assert.equal(
+		host.failedTabIds().size,
+		recorded.length - 1,
+		"every hung row reached a terminal state; the one that answered did not",
+	);
+	assert.equal(
+		host.failedTabIds().has(healthy.tabId),
+		false,
+		"a drained tab whose load settles inside its wait is not marked Failed",
+	);
+});
+
 // ---- who is asking travels as an id and nothing else (D2) -------------------
 
 test("a pending request names its requesting session, and never a non-session identity", () => {
@@ -4654,9 +5212,9 @@ test("a pending request names its requesting session, and never a non-session id
  * Brace matching rather than a regex because this file asserts about SCOPE: the
  * question is which function a call sits inside, and a regex cannot ask that.
  */
-function functionBody(source, signature) {
+function functionBody(source, signature, file = "src/main/index.ts") {
 	const start = source.indexOf(signature);
-	assert.notEqual(start, -1, `${signature} is gone from src/main/index.ts`);
+	assert.notEqual(start, -1, `${signature} is gone from ${file}`);
 	const open = source.indexOf("{", start);
 	let depth = 0;
 	for (let index = open; index < source.length; index += 1) {
@@ -5953,4 +6511,159 @@ test("the download reveal opens the host's own directory and takes no path from 
 	);
 	downloads.forget(7);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/*
+ * ---- the popup policy for driven pages -------------------------------------
+ *
+ * The whole §1.1 table as RULES (docs/design/browser-oauth-popups.md). These
+ * cases pin the DECISION; the run that proves a real child window opens with a
+ * live `window.opener`, carries the session's cookies and closes on cue is
+ * `scripts/browser-host-proof.mjs` — the same division every other browser
+ * surface uses here. The grandchild rule ("a popup from a popup is refused") is
+ * NOT in this bundle by construction: a child gets its own deny-all handler in
+ * `wirePopup`, which is Electron-side code only the running app can exercise, and
+ * the proof asserts it end to end.
+ */
+test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
+	const policy = { mode: "focus", live: 0 };
+	const ask = (url, disposition = "default") =>
+		decidePopup({ url, disposition }, policy);
+
+	// `about:blank` EXACTLY is the one allowed `about:` — MSAL opens the blank
+	// window first and navigates it, and a denied blank popup is the failure the
+	// policy exists to remove. The near-misses must not ride the check.
+	assert.deepEqual(ask("about:blank"), { allow: true, presentation: "focus" });
+	for (const near of ["about:blankx", "about:srcdoc", "about:config"]) {
+		assert.deepEqual(
+			ask(near),
+			{ allow: false, reason: "scheme" },
+			`${near} must not pass the exact-string blank check`,
+		);
+	}
+
+	// http(s), ANY host: the boundary is the hardened window (partition, sandbox,
+	// no preload) plus the cap, not a domain list — so even a host nobody would
+	// allowlist is admitted, and that is the design asserted here rather than a
+	// hole. A second domain allowlist beside the window hardening is exactly what
+	// the design rejects, because it would have to name every IdP a user or agent
+	// may meet.
+	for (const url of [
+		"http://127.0.0.1:8080/login",
+		"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		"https://good.com.evil.test/",
+	]) {
+		assert.deepEqual(ask(url), { allow: true, presentation: "focus" });
+	}
+	// A form POST `target=_blank` is the same URL check: Electron carries the body
+	// in its own `details.postBody`, which this decision never reads.
+	assert.deepEqual(
+		ask("https://login.microsoftonline.com/post", "foreground-tab"),
+		{ allow: true, presentation: "focus" },
+	);
+
+	// Everything else refuses BY PARSED SCHEME, never by prefix: a
+	// `startsWith("http")` test would admit `httpfoo:`, and a prefix test on a
+	// host admits `https://good.com.evil.test`. The unparseable cases refuse too.
+	for (const url of [
+		"file:///etc/passwd",
+		"javascript:alert(1)",
+		"data:text/html,<h1>hi</h1>",
+		"blob:https://example.com/9f8c",
+		"chrome://settings",
+		"devtools://devtools/bundled/inspector.html",
+		"msauth://com.example.app",
+		"mailto:someone@example.com",
+		"httpfoo:not-a-scheme",
+		"not a url at all",
+		"",
+	]) {
+		assert.deepEqual(
+			ask(url),
+			{ allow: false, reason: "scheme" },
+			`${JSON.stringify(url)} must be refused as a scheme`,
+		);
+	}
+});
+
+test("the popup cap bounds the view's LIVE children, driven from the constant", () => {
+	const cap = MAX_POPUP_CHILDREN_PER_VIEW;
+	for (let live = 0; live < cap; live += 1) {
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition: "default" },
+				{ mode: "focus", live },
+			).allow,
+			true,
+			`live=${live} is under the cap`,
+		);
+	}
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+	// The cap counts LIVE children rather than opens, which is what keeps a retry
+	// from being refused for a window Chromium will REUSE rather than create
+	// (`window.open(url, "name")` while a window named `name` lives); a slot a
+	// closed child freed is open again.
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: cap - 1 },
+		).allow,
+		true,
+	);
+	// The cap is decided BEFORE presentation: an over-cap `background-tab` is
+	// refused for the cap, not admitted as an unforegrounded window.
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: cap },
+		),
+		{ allow: false, reason: "cap" },
+	);
+});
+
+test("the §2.4 effective-show table: disposition picks presentation only under a normal launch", () => {
+	// Under a `normal` launch the disposition is the only input that selects:
+	// `background-tab` presents without foregrounding, everything else focuses.
+	const foregrounding = ["default", "foreground-tab", "new-window", "other"];
+	for (const disposition of foregrounding) {
+		assert.equal(effectivePresentation("focus", disposition), "focus");
+		assert.equal(
+			decidePopup(
+				{ url: "https://example.com/", disposition },
+				{ mode: "focus", live: 0 },
+			).presentation,
+			"focus",
+		);
+	}
+	assert.equal(effectivePresentation("focus", "background-tab"), "inactive");
+	assert.equal(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "background-tab" },
+			{ mode: "focus", live: 0 },
+		).presentation,
+		"inactive",
+	);
+	// `inactive`: every disposition presents the same way — visible, never
+	// foregrounded.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("inactive", disposition), "inactive");
+	}
+	// `headless`: the popup still EXISTS — the page's flow needs it and CDP can
+	// drive it — so the effective show is `never`, not a refusal.
+	for (const disposition of [...foregrounding, "background-tab"]) {
+		assert.equal(effectivePresentation("never", disposition), "never");
+		assert.deepEqual(
+			decidePopup(
+				{ url: "about:blank", disposition },
+				{ mode: "never", live: 0 },
+			),
+			{ allow: true, presentation: "never" },
+		);
+	}
 });

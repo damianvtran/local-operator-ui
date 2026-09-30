@@ -15,6 +15,7 @@ import {
 	sidebarToggleCap,
 } from "@features/chat/chat-sidebar-layout";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
+import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
 import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
 import { cn } from "@shared/lib/utils";
 import {
@@ -113,7 +114,8 @@ type ChatLayoutProps = {
 const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
 
 /**
- * The marker a route's own leading column wears, so the lane can carry its ground.
+ * The marker a route's own leading column wears, so the lane can carry its
+ * ground - and it NAMES that ground, because the lane paints what it names.
  *
  * WHY A ROUTE HAS TO SAY ANYTHING AT ALL. The lane above the two shell columns is a
  * MIRROR of their grounds: it paints the app sidebar's width in `surface` and the
@@ -121,13 +123,10 @@ const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
  * the row that holds the columns is `overflow: hidden` with a second clipped column
  * inside it, so nothing a route renders can reach y0. The mirror is therefore the
  * only thing that can put a route-owned column's ground up there, and it has to be
- * told which column that is.
- *
- * WHAT IT ASKS FOR, and the two halves are one contract: the marked element is a
- * full-height leading column standing on the DEFAULT `surface` ground, and the lane's
- * `surface` band must therefore run past its right edge. A column on another ground
- * could not be served by this band - the lane would need that ground's role per
- * marker - which is why the marker names a ground rather than a width.
+ * told which column that is - and on which rung the column stands. It used to assume
+ * `surface`; the settings rail's move to `elevated` (2026-09-27) is what made the
+ * assumption visible, and the attribute's VALUE is now the role the lane must paint
+ * across the marked column's width.
  *
  * WRITTEN BY `useLaneLeadingColumn` rather than spelled in the JSX, so the attribute
  * and the registration that gives it meaning cannot be separated: an element wearing
@@ -135,6 +134,13 @@ const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
  * the handle a rig finds the column by (`--scene route-tops`).
  */
 const LANE_LEADING_COLUMN = "data-lane-leading-column";
+
+/**
+ * The rungs a route's leading column may stand on. The shell paints the one the
+ * marker names, resolved off the theme's own `--lo-<role>` variable, so the value
+ * is a role and never a colour.
+ */
+type LaneLeadingGround = "surface" | "elevated";
 
 /** The shell's half of the contract: a route hands its leading column over. */
 type LaneLeadingRegistration = (column: HTMLElement | null) => void;
@@ -144,6 +150,15 @@ const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
 /**
  * Attach to a route's own leading column - `ref={laneLeadingColumn}` - and the shell
  * puts that column's ground behind the window's top strip.
+ *
+ * THE ARGUMENT IS THE COLUMN'S OWN GROUND, and it is required rather than defaulted:
+ * a route added later has to say which rung it stands on for its column to be
+ * mirrored, and the settings rail's `elevated` is why one fixed ground is no longer
+ * enough. This hook does not restate the paint - `chat-layout`'s lane reads the
+ * marker back - so the value and the class on the column are one decision, pinned by
+ * the sweep: `lane-leading.test.mjs` reads the painting file's `bg-<ground>` beside
+ * the handed value, so `settings-sidebar.tsx`'s `bg-elevated` and the rail wrapper's
+ * `"elevated"` fail together if only one of them moves.
  *
  * A REF RATHER THAN A QUERY, and the settings rail is why: it renders after the
  * route's config read resolves, so on a cold route it is not in the tree at the
@@ -158,7 +173,9 @@ const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
  * nothing registers and no marker is written, and only the lane's band is missing,
  * because there is no lane.
  */
-export const useLaneLeadingColumn = (): LaneLeadingRegistration => {
+export const useLaneLeadingColumn = (
+	ground: LaneLeadingGround,
+): LaneLeadingRegistration => {
 	const register = useContext(LaneLeadingContext);
 	return useCallback<LaneLeadingRegistration>(
 		(column) => {
@@ -167,15 +184,28 @@ export const useLaneLeadingColumn = (): LaneLeadingRegistration => {
 			 * element was handed to the shell", and outside the shell there is no shell to
 			 * hand it to - so a story rendering the route alone must not wear it.
 			 */
-			if (column && register) column.setAttribute(LANE_LEADING_COLUMN, "");
+			if (column && register) column.setAttribute(LANE_LEADING_COLUMN, ground);
 			register?.(column);
 		},
-		[register],
+		[register, ground],
 	);
 };
 
 /**
- * Where the lane's `surface` band has to end on the route that is up.
+ * The ground the marker names, read back off the element.
+ *
+ * `surface` answers for an absent or unknown value rather than throwing: the
+ * shell's job on a bad hand-over is to paint something sane - the band's
+ * historic shape - and not to take the window down over a route's regression.
+ */
+const laneGroundOf = (column: HTMLElement): LaneLeadingGround =>
+	column.getAttribute(LANE_LEADING_COLUMN) === "elevated"
+		? "elevated"
+		: "surface";
+
+/**
+ * Where the lane's `surface` band has to end on the route that is up, and on which
+ * rung the column that ends it stands.
  *
  * The right edge of the registered column, in the lane's own coordinates, or null
  * where the route has no such column - which is most of them (chat, schedules, agent
@@ -192,32 +222,44 @@ function useLaneLeadingEdge(
 	lane: RefObject<HTMLDivElement | null>,
 	column: HTMLElement | null,
 	sidebarWidth: number,
-): number | null {
-	const [edge, setEdge] = useState<number | null>(null);
+): { edge: number; ground: LaneLeadingGround } | null {
+	const [leading, setLeading] = useState<{
+		edge: number;
+		ground: LaneLeadingGround;
+	} | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `sidebarWidth` is a re-measure TRIGGER rather than a value the body reads. The registered column's right edge moves with the sidebar it stands beside, and the observer cannot see that: dragging the divider does not change the column's own box at all, only where it sits.
 	useLayoutEffect(() => {
 		const laneElement = lane.current;
 		if (!laneElement || !column) {
-			setEdge(null);
+			setLeading(null);
 			return;
 		}
 		const measure = () => {
 			/* One rounding, so a fractional box does not re-render the shell on its own
 			   noise: the value becomes a background stop, and a stop is a length. */
-			const next =
-				Math.round(
-					(column.getBoundingClientRect().right -
-						laneElement.getBoundingClientRect().left) *
-						100,
-				) / 100;
-			setEdge((previous) => (previous === next ? previous : next));
+			const next = {
+				edge:
+					Math.round(
+						(column.getBoundingClientRect().right -
+							laneElement.getBoundingClientRect().left) *
+							100,
+					) / 100,
+				ground: laneGroundOf(column),
+			};
+			setLeading((previous) =>
+				previous !== null &&
+				previous.edge === next.edge &&
+				previous.ground === next.ground
+					? previous
+					: next,
+			);
 		};
 		const observer = new ResizeObserver(measure);
 		observer.observe(column);
 		measure();
 		return () => observer.disconnect();
 	}, [column, lane, sidebarWidth]);
-	return edge;
+	return leading;
 }
 
 /**
@@ -408,7 +450,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * hung from. It is still ONE element spanning both columns - that is what keeps
 	 * the brand row and the conversation title on one line - but it paints each
 	 * column's ground with a hard-stop gradient: the band's width in `surface` (the
-	 * sidebar's own, or a leading column a route hands over - `bandWidth` below),
+	 * sidebar's own, or a leading column a route hands over - `laneEdge` below),
 	 * the conversation's in `canvas`, and - since the slot moved to the drawer's
 	 * rung (`canvas/index.tsx`) - THE SLOT'S WIDTH IN `elevated`, so the pane is
 	 * continuous from y0 down. A pane-only change would leave the pane's tone
@@ -464,22 +506,31 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	/*
 	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
 	 * leading column of its own: settings has its rail, agents its list pane, and the
-	 * saved-agent route a 280px roster. On those routes the rail's ground stopped at
-	 * the lane's `canvas` band - the operator's report of 2026-09-26, and again of
-	 * 2026-09-27 as still true, with a screenshot showing the settings rail's ground
-	 * beginning below a differently-toned strip. The sidebar's width is the FLOOR
-	 * rather than the answer: a route column can only ever stand to the right of it,
-	 * and with no marker the number is exactly what it always was.
+	 * saved-agent route a 280px roster. On those routes the lane has to carry the
+	 * column's own ground across its width - the column cannot paint above its own top
+	 * edge, and the operator's report of 2026-09-26 (and again of 2026-09-27, as still
+	 * true) is the screenshot that proves it: the settings rail's ground began below a
+	 * differently-toned strip. The sidebar's width is the FLOOR rather than the answer:
+	 * a route column can only ever stand to the right of it, and with no marker the
+	 * number is exactly what it always was.
 	 *
 	 * THE TWO EDGES COMPOSE RATHER THAN COMPETE, which is why both are computed here
-	 * and neither replaces the other: `bandWidth` is where the surface band ends and
-	 * the conversation's `canvas` begins, `slotEdge` is where the conversation's
-	 * token repeats and the slot's `elevated` begins. The chat route draws no leading
+	 * and neither replaces the other. THE FIRST PAIR - `laneEdge` - IS THE LEADING
+	 * COLUMN'S RUNG (the settings-rail edge, 2026-09-27) and is read off the marker
+	 * rather than assumed: the lane paints the sidebar's width in `surface`, the rung
+	 * the column NAMES across its width, then `canvas`. A `surface` column keeps the
+	 * old two-stop shape exactly (the band IS the column), which is also what a route
+	 * with no column gets. THE LAST PAIR - `slotEdge` - IS THE SLOT'S STOP (the
+	 * drawer's-rung pass): it repeats the conversation's token at the pane's leading
+	 * edge, so the slot's `elevated` begins exactly where the conversation's `canvas`
+	 * ends and the pane is continuous from y0 down. The chat route draws no leading
 	 * column, so there the first pair collapses onto the sidebar's own width and the
-	 * gradient is the one the drawer's-rung pass shipped.
+	 * gradient is the one the drawer's-rung pass shipped. The sheet, the divider and
+	 * the drag handling are untouched by any of this.
 	 */
-	const leadingEdge = useLaneLeadingEdge(laneRef, leadingColumn, columnWidth);
-	const bandWidth = Math.max(columnWidth, leadingEdge ?? 0);
+	const leading = useLaneLeadingEdge(laneRef, leadingColumn, columnWidth);
+	const laneEdge = Math.max(columnWidth, leading?.edge ?? 0);
+	const laneGround = leading?.ground ?? "surface";
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			{/*
@@ -508,7 +559,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				data-slot-edge={slotEdge}
 				className="h-8 shrink-0"
 				style={{
-					background: `linear-gradient(to right, var(--lo-surface) ${bandWidth}px, var(--lo-canvas) ${bandWidth}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`,
+					background:
+						laneGround === "surface"
+							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`
+							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`,
 				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -570,6 +624,26 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					</LaneLeadingContext.Provider>
 				</div>
 			</div>
+			{/*
+			 * THE UNSOLICITED UPDATE NOTICE LIVES HERE (issue #672), at the bottom edge of
+			 * the window's own column and in flow.
+			 *
+			 * In the SHELL rather than in a route: the updater's events arrive wherever the
+			 * window happens to be, and `UpdateNotification` is mounted at the app root for
+			 * the same reason - so a notice that only existed on the chat route would be
+			 * silent on Settings, which is where a person who wants to act on it usually is.
+			 *
+			 * It DRAWS no band with nothing waiting — the live region is mounted empty and
+			 * only the box's own classes are conditional (review R4, so a populated region
+			 * is never inserted whole) — so it costs no height and no pixels for a user who
+			 * is not being offered anything. Its reasoning, and why it is a band rather
+			 * than a corner chip, are in the component's own header.
+			 *
+			 * BELOW the lane and the two columns, and above nothing: the sheet below is a
+			 * portal, so in flow this row is the column's last child and the band reads as
+			 * the window's own status row rather than as part of either column.
+			 */}
+			<UpdateQuietIndicator />
 			<Sheet
 				open={layout.sheetOpen}
 				onOpenChange={(open) => {

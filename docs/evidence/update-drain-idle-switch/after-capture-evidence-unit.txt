@@ -1,0 +1,22 @@
+✔ a sweep takes its frames and nothing else (2.76075ms)
+✔ a directory the sweep empties is removed, one that still holds prose is not (2.747083ms)
+✔ a play that threw a TypeError is caught, and a healthy console is not (0.780084ms)
+✔ the drawn-story floor rejects the decorator's own furniture (0.073541ms)
+✔ the drawn-story floor admits the smallest story in the set (0.101208ms)
+✔ the predicate the page runs is the predicate this suite pins (0.162584ms)
+✔ the profile-name rule answers for the profile shape and nothing else (0.129375ms)
+✔ the sweep takes the abandoned profile and leaves the rest of the temp directory (144.978833ms)
+✔ the theme guard's flag is honoured, and the default is the shipped 10s (0.267583ms)
+✔ a malformed theme-settle budget is refused, not defaulted (0.37775ms)
+✔ the script refuses to load at all on a malformed theme-settle flag (206.442416ms)
+✔ a space-separated theme-settle flag is refused rather than ignored (0.121417ms)
+✔ the theme guard spends the configurable budget, not a literal (0.776792ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1060.6615
+rc=0

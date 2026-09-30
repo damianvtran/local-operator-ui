@@ -306,6 +306,13 @@ const bundle = await build({
 			 */
 			export { UpdateErrorAlert } from "./src/renderer/src/shared/components/common/update-error-alert";
 			export { PanelDetails } from "./src/renderer/src/shared/components/common/panel-details";
+			/*
+			 * The notice store, exported from THIS bundle rather than imported on the
+			 * side: the harness drives the same module instance the component reads, or
+			 * it would be opening a detail in a second copy of the store and the card
+			 * would still render nothing.
+			 */
+			export { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -430,6 +437,13 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
  * mid-flight states (a check started but not answered) are exact rather than
  * timing-dependent.
  */
+/**
+ * Opens the release detail for a surface, bound to the shipped store once the
+ * bundle has been imported. Declared here because `updater.emit` (below) needs it
+ * and the bundle's top-level await has not run yet at this point.
+ */
+let openNoticeDetail = () => {};
+
 const updater = {
 	handlers: new Map(),
 	checks: [],
@@ -476,6 +490,25 @@ const updater = {
 		};
 	},
 	emit(event, payload) {
+		/*
+		 * AN OFFER IN THIS FILE STANDS FOR A CHECK THE READER ASKED FOR (issue #672).
+		 *
+		 * The app's own periodic news is a quiet band at the bottom of the window
+		 * now, and the release CARD renders only while the detail is open - which an
+		 * explicit check from Settings, or a press on the band, is what opens. Every
+		 * case below is about the panels: which copy they hand back, which control
+		 * they offer, what a press does. So the channel that carries an offer opens
+		 * the detail first, and the cases keep asserting the surface they are about.
+		 *
+		 * The unsolicited presentation - the band, the segment gate, the deferral -
+		 * is `scripts/update-indicator-segments.test.mjs`'s subject, driven on the
+		 * shipped component in a real DOM. Nothing here is silent about that split:
+		 * a card that no longer appears on its own is the behaviour this change
+		 * ships, and these cases would be asserting the defect if they kept
+		 * expecting it.
+		 */
+		if (event === "update-available") openNoticeDetail("ui");
+		if (event === "backend-update-available") openNoticeDetail("backend");
 		for (const handler of [...(updater.handlers.get(event) ?? [])])
 			handler(payload);
 	},
@@ -547,8 +580,17 @@ const {
 	Button,
 	UpdateContainer,
 	UpdateNotification,
+	useUpdateNoticeStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
+
+/*
+ * Bound here rather than at the declaration, because the store only exists once
+ * the bundle has been imported - see the note beside `openNoticeDetail`.
+ */
+openNoticeDetail = (type) => {
+	useUpdateNoticeStore.getState().openDetail(type);
+};
 
 /*
  * Real timers are left alone. The component schedules one 2s reset of its
@@ -1639,18 +1681,20 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	 * withdrawn. The sentence is asserted as the same one the restart phase uses, so
 	 * the two cannot drift apart.
 	 *
-	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18): the press drains the fleet
-	 * before it restarts anything, so the sentence prices the WAIT and promises that
-	 * nothing in flight is cut off. The assertion is the promise, because a later
-	 * reader who "restores" the old clause would be promising work loss the app no
-	 * longer inflicts.
+	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18), AND NO LONGER A WAIT
+	 * (2026-09-29): the sentence prices the outage, and it promises that nothing in
+	 * flight is cut off - the harness truth for a daemon bounce, whose runtimes are
+	 * detached and converge onto the new build at their own next idle. The restart
+	 * legs used to drain the fleet first and say so; the operator's directive
+	 * removed those waits, so a reader who "restores" the old wait clause here
+	 * would be pricing a wait this press no longer pays.
 	 */
 	assert.ok(
 		copy.some(
 			(text) =>
 				/offline while it comes back - usually a few seconds, up to half a minute/.test(
 					text,
-				) && /nothing in flight is cut off/.test(text),
+				) && /Nothing in flight is cut off/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
 	);
@@ -2081,12 +2125,13 @@ test("a restart that came back on the new build is still the success toast", () 
  * app's own completion notice. The event now carries `restartable`, and this case
  * pins both directions off the SAME payload: only the ownership reading differs.
  *
- * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE. It used to
- * promise a dropped turn ("...so a turn that is in flight is dropped while the
- * server comes back"); a restart now waits for the running turns to finish first,
- * so no surface may describe one as dropping work in flight - and the sentence
- * below is the plan's own, kept verbatim because that is the whole subject of this
- * case.
+ * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE, and again
+ * with the operator's directive: it used to promise a dropped turn ("...so a turn
+ * that is in flight is dropped while the server comes back"), then priced a wait
+ * once the gate existed, and the 2026-09-29 directive removed the restart-leg
+ * waits - so no surface may describe one as dropping work in flight OR as waiting
+ * on it. The sentence below is the plan's own, kept verbatim because that is the
+ * whole subject of this case.
  */
 test("the offer names the restart cost only where the app may restart the server", () => {
 	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.
@@ -2516,10 +2561,25 @@ test("the UI offer's defer control closes the box too", () => {
 
 	updater.emit("update-available", { version: "0.25.10" });
 	handle.render();
-	const shown = visible(handle);
-	assert.equal(shown.length, 1, JSON.stringify(shown));
-	assert.equal(shown[0].variant, "info");
-	assert.match(shown[0].text, /0\.25\.10/);
+	/*
+	 * AND THE NEXT OFFER PAINTS NOTHING HERE, by design (review U3, superseding
+	 * this case's original toast assertion). The card the app drew for its own
+	 * periodic news is gone - an unsolicited release is the quiet band now - so the
+	 * offer's redundant `A new update is available: v0.25.10` notice would have been
+	 * the one box left saying what the band says, raised as the answer to a press
+	 * the user had not made yet. What this case still protects is R3-1's own
+	 * invariant, that deferring did not leave the box armed with the old error: the
+	 * slot must be EMPTY, not showing the failure it was told to close.
+	 *
+	 * The offer itself is not lost - it is recorded on the store and pressed from the
+	 * band, which `update-indicator-segments.test.mjs` drives ("a deferred version is
+	 * not raised at all", and the re-armed band).
+	 */
+	assert.equal(
+		visible(handle).length,
+		0,
+		"an unsolicited re-offer raises no box, and certainly not the closed failure",
+	);
 });
 
 test("the by-hand panel replaces the in-flight one without a second message", async () => {

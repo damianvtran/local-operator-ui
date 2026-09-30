@@ -43,12 +43,20 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
-	alignFetchDecision,
+	ALIGN_WALK_MAX_PAGES,
+	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	alignWalkDecision,
+	alignWalkRunKey,
+	alignWalkStateFor,
+	initialAlignWalkState,
 	collapsePlan,
 	isFailedCall,
+	paintedRows,
 	runsOf,
 	snapWindowToRunBoundary,
+	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
+	widenTarget,
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
@@ -775,41 +783,56 @@ test("a durable run still dates itself: ts is the commit, and the span holds", (
 	assert.equal(plan.runs[0].facts.durationS, 3);
 });
 
-/* ------------------- the alignment fetch's bound (F2) -------------------- */
+/* ------- the completion walk's bound and gates (1b, spec section 7) ------- */
 
-test("the align fetch's decision is the whole bound, by construction", () => {
+test("the completion walk's decision is the whole bound and its whole gate, by construction", () => {
 	/*
-	 * AGENT REVIEW ROUND 1, F2: the window snap's load half. A page may be
-	 * spent only while there is more to load, nothing is in flight, and the
-	 * cut is real; and never past `max` — the property that keeps an open
-	 * from walking an unbounded conversation into memory.
+	 * LOADER-CONTINUITY 1b, design spec section 7. The open-time alignment used
+	 * to spend a FLAT two pages (`ALIGN_FETCH_MAX`), which is what left the
+	 * operator's bar stating "97 actions" against a run of 423 calls: a turn
+	 * whose head lay further up the journal than two pages could never complete
+	 * its own condensation. It is now a bounded WALK, and this is the table the
+	 * walk consults -- decided by construction, so the bound cannot be observed
+	 * only by re-mounting a component (a strict-mode remount once made a
+	 * per-instance cap of two read as three).
 	 */
+	assert.equal(ALIGN_WALK_MAX_PAGES, 12, "one act's worth of pages");
 	const step = (spent, over = {}) =>
-		alignFetchDecision(
-			spent,
-			over.hasMore ?? true,
-			over.loadingOlder ?? false,
-			over.headCut ?? true,
-			over.max ?? 2,
-		);
+		alignWalkDecision(spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: false,
+			...over,
+		});
 	assert.deepEqual(step(0), { fetch: true, spent: 1 });
-	assert.deepEqual(step(1), { fetch: true, spent: 2 });
-	assert.deepEqual(step(2), { fetch: false, spent: 2 }, "the bound holds");
 	assert.deepEqual(
-		step(0, { hasMore: false }),
-		{ fetch: false, spent: 0 },
-		"nothing to load",
+		step(ALIGN_WALK_MAX_PAGES - 1),
+		{ fetch: true, spent: ALIGN_WALK_MAX_PAGES },
+		"the last page inside the bound is spent",
 	);
 	assert.deepEqual(
-		step(0, { loadingOlder: true }),
-		{ fetch: false, spent: 0 },
-		"a page is already in flight",
+		step(ALIGN_WALK_MAX_PAGES),
+		{ fetch: false, spent: ALIGN_WALK_MAX_PAGES },
+		"and the next one is not: the bound holds",
 	);
-	assert.deepEqual(
-		step(0, { headCut: false }),
-		{ fetch: false, spent: 0 },
-		"no cut to fix",
-	);
+	for (const [reason, over] of [
+		["nothing left on the backend", { hasMore: false }],
+		["a page is already in flight", { loadingOlder: true }],
+		["no cut to complete", { headCut: false }],
+		[
+			"the reader is not following the tail, or has just given input",
+			{ mayWalk: false },
+		],
+		["a page did not apply", { halted: true }],
+	]) {
+		assert.deepEqual(
+			step(3, over),
+			{ fetch: false, spent: 3 },
+			`no page while ${reason}`,
+		);
+	}
 });
 
 /* --------------------------- the failed count (F4) ----------------------- */
@@ -1166,5 +1189,576 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 	assert.ok(
 		!String(planOn.runs[0].facts.title).toLowerCase().includes("send"),
 		"the bar's sentence names no hidden tool",
+	);
+});
+
+/* ---------- the window widen, measured in the reader's currency (1b) ---------- */
+
+/*
+ * WHAT THESE PIN. The render window is a RAW row count, but a completed run
+ * folds into one bar, so a raw step over a transcript of finished turns paints
+ * almost nothing new (measured against the operator's real-shape journal: a
+ * 618-row run painted 4..7 rows across window 60..300 - every widen step
+ * invisible, ten gestures of nothing). `widenTarget` picks the next window
+ * size by what the reader SEES. The painted-row count below is computed HERE
+ * from `collapsePlan` on purpose, independent of the shipped `paintedRows`, so
+ * the assertion cannot agree with the code by construction.
+ */
+const SNAP_MAX_EXTRA = 300;
+/*
+ * THE RENDER'S OWN DERIVATION, restated (agent review round 1, R1-1/R1-4). It is
+ * `canonical-transcript.tsx`'s two calls with the SAME two bounds — `alignSize`
+ * from the snap, then the plan over the mounted slice — so the assertions below
+ * are against the window the component mounts rather than a replica that stops
+ * at the ordinary allowance. The first cut passed only `SNAP_MAX_EXTRA`, which is
+ * exactly why the completed-run case was invisible to this file.
+ */
+const paintedAt = (
+	rows,
+	size,
+	{
+		live = false,
+		openRuns,
+		completedRunMaxExtra = WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	} = {},
+) => {
+	const total = rows.length;
+	const align = snapWindowToRunBoundary(
+		rows,
+		size,
+		SNAP_MAX_EXTRA,
+		completedRunMaxExtra,
+	);
+	const visible = total > align ? rows.slice(total - align) : rows;
+	const plan = collapsePlan(visible, { live, openRuns });
+	return (
+		visible.length -
+		plan.runs.reduce(
+			(sum, run) =>
+				sum +
+				(run.collapses && !openRuns?.has(run.key) ? run.hidden.length : 0),
+			0,
+		)
+	);
+};
+
+/** `turns` finished turns of `toolsPerTurn` calls each: user, tools, answer. */
+const finishedTurns = (turns, toolsPerTurn) => {
+	const rows = [];
+	for (let turn = 0; turn < turns; turn += 1) {
+		rows.push(user(`u${turn}`, { ts: TS + turn * 100_000 }));
+		for (let index = 0; index < toolsPerTurn; index += 1) {
+			rows.push(
+				tool(
+					`t${turn}-${index}`,
+					{ ts: TS + turn * 100_000 + 1_000 + index },
+					"trace",
+				),
+			);
+		}
+		rows.push(answer(`a${turn}`, { ts: TS + turn * 100_000 + 90_000 }));
+	}
+	return rows;
+};
+
+/**
+ * A fetched set that STARTS mid-run, with the window edge inside that head-cut
+ * run: the journal's own shape (`read_transcript_page` returns 100 entries and
+ * the conversation's long turn continues above them). 105 rows, so a 60-row
+ * window's top edge (index 45) lands inside the first, head-cut run.
+ */
+const headCutRows = () => [
+	...Array.from({ length: 100 }, (_, i) =>
+		tool(`hc${i}`, { ts: TS + i }, "trace"),
+	),
+	user("u2", { ts: TS + 10_000 }),
+	answer("a2", { ts: TS + 11_000 }),
+	user("u3", { ts: TS + 12_000 }),
+	tool("t3", { ts: TS + 13_000 }, "trace"),
+	answer("a3", { ts: TS + 14_000 }),
+];
+
+test("widenTarget: a plain +step over finished turns paints fewer than 8 new rows, the target does not", () => {
+	assert.equal(
+		typeof widenTarget,
+		"function",
+		"widenTarget must be exported by the turn-collapse model",
+	);
+	const rows = finishedTurns(30, 24);
+	const window = 60;
+	const base = paintedAt(rows, window);
+	const plain = paintedAt(rows, window + 60);
+	assert.ok(
+		plain - base < 8,
+		`the defect this fixes: a raw +60 paints ${plain - base} new rows (base ${base}, plain ${plain})`,
+	);
+	const target = widenTarget(rows, window, {
+		step: 60,
+		maxRows: window + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	});
+	assert.ok(target > window + 60, `the target keeps stepping (got ${target})`);
+	assert.ok(
+		paintedAt(rows, target) - base >= 8,
+		`and lands where the reader sees at least 8 new rows (painted ${paintedAt(rows, target)} vs base ${base})`,
+	);
+	assert.ok(
+		target <= window + 12 * 60 && target <= rows.length,
+		"never past maxRows or the transcript",
+	);
+});
+
+test("widenTarget: a completed tall run is mounted whole, so a gesture reaches PAST it (R1-1)", () => {
+	/*
+	 * ONE tall run whose opening row IS loaded (so the completed-run allowance
+	 * mounts it whole — the state the completion walk produces at open), with
+	 * finished turns above it. Two halves are pinned here, and they are the pair
+	 * agent review round 1 found disagreeing:
+	 *
+	 *   - the metric describes the MOUNT (the run's own span, not the raw 60-row
+	 *     window), so `paintedRows(rows, mount)` is the count the render paints;
+	 *   - the widen, measured from that mount, steps past the run it already shows
+	 *     in full and lands where a gesture can actually paint something — the
+	 *     older turns above it.
+	 *
+	 * Before this round the replica in this file stopped at the ordinary snap
+	 * bound, so the run was never mounted at window 60 and the case could not be
+	 * expressed at all.
+	 */
+	const older = [];
+	for (let turn = 0; turn < 5; turn += 1) {
+		older.push(user(`ou${turn}`, { ts: TS + turn * 300_000 }));
+		for (let index = 0; index < 20; index += 1) {
+			older.push(
+				tool(
+					`ot${turn}-${index}`,
+					{ ts: TS + turn * 300_000 + 1_000 + index },
+					"trace",
+				),
+			);
+		}
+		older.push(answer(`oa${turn}`, { ts: TS + turn * 300_000 + 90_000 }));
+	}
+	const tall = [
+		user("u1", { ts: TS + 2_000_000 }),
+		...Array.from({ length: 616 }, (_, index) =>
+			tool(`t${index}`, { ts: TS + 2_000_000 + index }, "trace"),
+		),
+		answer("a1", { ts: TS + 3_000_000 }),
+	];
+	assert.equal(tall.length, 618, "fixture: the operator's one long run");
+	const rows = [...older, ...tall];
+	const options = {
+		step: 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	};
+	const mount = snapWindowToRunBoundary(
+		rows,
+		60,
+		SNAP_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	);
+	assert.equal(
+		mount,
+		tall.length,
+		"the allowance mounts the completed run whole",
+	);
+	assert.equal(
+		paintedRows(rows, mount, options),
+		paintedAt(rows, mount),
+		"and the metric agrees with the render about that mount",
+	);
+	const before = paintedRows(rows, mount, options);
+	const target = widenTarget(rows, mount, {
+		...options,
+		maxRows: mount + 12 * 60,
+	});
+	assert.ok(
+		target > mount,
+		`the search steps past the mounted run rather than inside it (${target} > ${mount})`,
+	);
+	assert.ok(
+		paintedRows(rows, target, options) - before >= 8,
+		`and paints at least the minimum a reader can be said to have been shown (${before} -> ${paintedRows(rows, target, options)})`,
+	);
+});
+
+test("widenTarget: nothing to collapse behaves as a plain +step, and never overshoots the transcript", () => {
+	const chat = [];
+	for (let turn = 0; turn < 100; turn += 1) {
+		chat.push(user(`cu${turn}`), answer(`ca${turn}`));
+	}
+	const options = {
+		step: 60,
+		maxRows: 60 + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	};
+	assert.equal(widenTarget(chat, 60, options), 120);
+	assert.equal(widenTarget(chat, 180, options), 200, "clamped to the total");
+	assert.equal(widenTarget(chat, 200, options), 200, "already everything");
+	/*
+	 * A LIVE newest run does not collapse, so its rows all paint and the first
+	 * step is already a visible reveal: a plain +step. (The run is longer than
+	 * the snap's own reach on purpose - a short one would be pulled whole into
+	 * the window by `snapWindowToRunBoundary`, and the case would be about the
+	 * snap rather than about liveness.)
+	 */
+	const running = [
+		user("ru"),
+		...Array.from({ length: 699 }, (_, i) => tool(`rt${i}`, {}, "trace")),
+	];
+	assert.equal(widenTarget(running, 60, { ...options, live: true }), 120);
+});
+
+test("widenTarget: an open run counts as painted, exactly as the render pass does", () => {
+	const rows = finishedTurns(30, 24);
+	const options = {
+		step: 60,
+		maxRows: 60 + 12 * 60,
+		live: false,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	};
+	const allOpen = new Set(runsOf(rows).map((run) => run.key));
+	const openTarget = widenTarget(rows, 60, { ...options, openRuns: allOpen });
+	assert.equal(openTarget, 120, "one step is already a visible reveal");
+	assert.ok(
+		paintedAt(rows, openTarget, { openRuns: allOpen }) -
+			paintedAt(rows, 60, { openRuns: allOpen }) >=
+			8,
+		"and the rows it reveals really do paint",
+	);
+	assert.ok(
+		openTarget < widenTarget(rows, 60, options),
+		`an open run reaches the reader sooner than a collapsed one (${openTarget} < ${widenTarget(rows, 60, options)})`,
+	);
+});
+
+/* ---- the completed-run snap: the open frame the operator asked for (1b/A) ---- */
+
+/*
+ * WHAT THESE PIN. The bar's facts are computed over the MOUNTED window, so a run taller than the snap's
+ * general bound states a partial count with no `Took` at open — the operator's symptom 1 ("the full set of
+ * condensed messages don't load") with no gesture available to fix it, because a reader following the tail
+ * is never widened (1a's guard, correctly). The rule: once the run's own opening row is IN THE STORE (rows
+ * load tail-first and contiguously, so that row's presence is proof the whole run is loaded — and it is
+ * what the completion walk now fetches), the snap may extend all the way to that row, up to a named cap.
+ */
+test("a run proven complete may be snapped to its own opening row, past the general bound", () => {
+	const rows = finishedTurns(30, 24); // 780 rows, 26 per turn
+	// Window 60 lands inside run 27 (rows 702..727), whose opening is 18 rows above the edge.
+	assert.equal(
+		snapWindowToRunBoundary(rows, 60, 300),
+		78,
+		"the general snap covers it: 18 <= the ordinary bound",
+	);
+	// A run taller than the general bound: one long run whose opening is far above the window edge.
+	const tall = [
+		user("tu", { ts: TS }),
+		...Array.from({ length: 500 }, (_, i) =>
+			tool(`tt${i}`, { ts: TS + 1_000 + i }, "trace"),
+		),
+		answer("ta", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		snapWindowToRunBoundary(tall, 60, 300),
+		60,
+		"beyond the ordinary bound the snap refuses (the shipped behaviour)",
+	);
+	const completed = snapWindowToRunBoundary(
+		tall,
+		60,
+		300,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	);
+	assert.ok(
+		completed > 60,
+		`a PROVEN-COMPLETE run must be reachable (got ${completed})`,
+	);
+	assert.equal(
+		snapWindowToRunBoundary(
+			tall,
+			60,
+			300,
+			WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		),
+		completed,
+	);
+	// The completed run's opening row is in the list, and the snapped window therefore shows it.
+	assert.equal(
+		runsOf(tall.slice(tall.length - completed))[0].opensWithUserRow,
+		true,
+		"the snapped window opens on the run's own first row",
+	);
+	assert.equal(completed, tall.length, "and it covers the whole run");
+});
+
+test("the completed-run allowance is capped, and never applies to a head-cut run", () => {
+	assert.equal(WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA, 720);
+	const huge = [
+		...Array.from({ length: 60 }, (_, i) =>
+			tool(`ht${i}`, { ts: TS + i }, "trace"),
+		),
+		// 900 rows of one run AFTER the head-cut request: the enclosing run's extra exceeds the cap.
+		user("hu", { ts: TS + 1_000 }),
+		...Array.from({ length: 900 }, (_, i) =>
+			tool(`hn${i}`, { ts: TS + 2_000 + i }, "trace"),
+		),
+		answer("ha", { ts: TS + 900_000 }),
+	];
+	// Window 60 with total 961: top = 901, inside the head-cut... no: build the cut case explicitly.
+	const cut = [
+		...Array.from({ length: 740 }, (_, i) =>
+			tool(`ct${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ca", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		windowTopRunIsHeadCut(cut, 60),
+		true,
+		"the fixture really is head-cut, or the case proves nothing",
+	);
+	assert.equal(
+		snapWindowToRunBoundary(cut, 60, 300, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA),
+		60,
+		"a head-cut run has no boundary to snap to, however large the allowance",
+	);
+	assert.ok(
+		snapWindowToRunBoundary(
+			huge,
+			60,
+			300,
+			WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		) <=
+			60 + 720,
+		"and the cap holds for a run taller than it",
+	);
+});
+
+/* ------------- the walk's memory, per head-cut run (1b/B) ------------- */
+
+test("the walk's budget belongs to a RUN: a second cut run gets its own, strictly once each", () => {
+	/*
+	 * The operator runs long-lived sessions: a conversation that outlives its first walk must still
+	 * complete the bars of turns that settle LATER. The budget is therefore keyed by the run under the
+	 * window's edge (its stable `runsOf` key), not by a counter that only resets on a session change.
+	 */
+	assert.equal(typeof alignWalkStateFor, "function");
+	assert.equal(typeof alignWalkRunKey, "function");
+	/*
+	 * The fixture is the journal's own shape: the fetched set STARTS mid-run (no
+	 * opening user row for the first run), and the window edge lands inside that
+	 * first run — which is the state a completion walk exists for. A fully headed
+	 * list has no head-cut run at all, so it cannot express this case.
+	 */
+	const rows = headCutRows();
+	const keyA = alignWalkRunKey(rows, { live: false });
+	assert.ok(keyA !== null, "this fixture opens on a condensed, head-cut bar");
+	// Walk A to its bound.
+	let state = initialAlignWalkState();
+	state = alignWalkStateFor(state, keyA);
+	let spentA = 0;
+	for (let i = 0; i < ALIGN_WALK_MAX_PAGES + 3; i += 1) {
+		const decision = alignWalkDecision(state.spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: state.halted,
+		});
+		state = { ...state, spent: decision.spent };
+		if (decision.fetch) spentA += 1;
+	}
+	assert.equal(
+		spentA,
+		ALIGN_WALK_MAX_PAGES,
+		"run A spends the bound, and only the bound",
+	);
+	// The SAME run again: no more work, however many effect runs pass.
+	assert.equal(
+		alignWalkStateFor(state, keyA).spent,
+		ALIGN_WALK_MAX_PAGES,
+		"the same run is never retried for the same content",
+	);
+	// A DIFFERENT head-cut run: its own budget.
+	const stateB = alignWalkStateFor(state, "another-run-key");
+	assert.equal(stateB.key, "another-run-key");
+	assert.equal(stateB.spent, 0, "a later settled run gets its own walk");
+	assert.equal(stateB.halted, false);
+	assert.equal(
+		alignWalkDecision(stateB.spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: stateB.halted,
+		}).fetch,
+		true,
+		"and it starts spending immediately",
+	);
+	// `halted` is per run too: run A's failure does not silence run B.
+	const haltedA = { ...state, halted: true };
+	assert.equal(alignWalkStateFor(haltedA, "another-run-key").halted, false);
+	assert.equal(
+		alignWalkStateFor(haltedA, keyA).halted,
+		true,
+		"run A's own halt survives its own key",
+	);
+});
+
+test("the walk is armed by the BAR, not by the window edge (QA round 1, Q-2)", () => {
+	/*
+	 * THE REGRESSION THIS PINS. The trigger used to be
+	 * `windowTopRunIsHeadCut(rows, windowSize)`, which answers FALSE for a list
+	 * SHORTER than the window — `windowTopRun` needs an edge to land in, and a list
+	 * of 55 rows inside a 60-row window has none. That is the operator's restored
+	 * journal: the first page lands 55 rows, the bar reads `30 actions` of 423, and
+	 * the walk never fired at all (measured: 0 asks over 40 s of no input). The
+	 * question the bar itself answers is the one that must arm it.
+	 */
+	const short = [
+		...Array.from({ length: 50 }, (_, i) =>
+			tool(`sh${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("sha", { ts: TS + 900_000 }),
+	];
+	assert.equal(short.length, 51, "fixture: fewer rows than the window");
+	assert.equal(
+		windowTopRunIsHeadCut(short, 60),
+		false,
+		"the old trigger is blind here — that IS the defect",
+	);
+	assert.equal(
+		collapsePlan(short, { live: false }).runs[0].collapses,
+		true,
+		"…while the run paints a condensed bar, which is what owes a walk",
+	);
+	assert.equal(
+		alignWalkRunKey(short, { live: false }),
+		runsOf(short)[0].key,
+		"the key is the bar's own run, whatever the window edge does",
+	);
+});
+
+test("alignWalkRunKey: null for a headed run, a live run, and a bar the reader has open", () => {
+	const headed = [
+		user("hu", { ts: TS }),
+		...Array.from({ length: 100 }, (_, i) =>
+			tool(`ht${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ha", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		alignWalkRunKey(headed, { live: false }),
+		null,
+		"a run whose opening row is loaded owes no walk",
+	);
+	const cut = headCutRows();
+	const key = alignWalkRunKey(cut, { live: false });
+	assert.equal(key, runsOf(cut)[0].key, "the cut run's own key");
+	assert.equal(
+		alignWalkRunKey(cut, { live: false, openRuns: new Set([key]) }),
+		null,
+		"a bar the reader has OPEN paints its rows: there is no partial statement to complete",
+	);
+	/*
+	 * The live case: a turn still being written never collapses (`live`), so even a
+	 * head-cut newest run owes no walk — the walk is for a SETTLED turn's bar.
+	 */
+	const liveRun = Array.from({ length: 50 }, (_, i) =>
+		tool(`lv${i}`, { ts: TS + i }, "trace"),
+	);
+	assert.equal(
+		collapsePlan(liveRun, { live: true }).runs[0].collapses,
+		false,
+		"fixture: the live run paints no bar",
+	);
+	assert.equal(alignWalkRunKey(liveRun, { live: true }), null);
+});
+
+/* ------------- the metric in the render's currency (agent review R1-1) ------------- */
+
+test("paintedRows agrees with the render on a COMPLETE run past the ordinary snap bound (R1-1)", () => {
+	/*
+	 * The shape the allowance was added for, and the one the metric could not see:
+	 * ONE run of 501 rows whose opening row IS loaded (proven complete), a window of
+	 * 60. The ordinary snap (300) cannot reach its opening row; the completed-run
+	 * allowance mounts all 501. Before the allowance was threaded through
+	 * `paintedRows`, the metric described the raw 60-row window while the component
+	 * mounted 501 — so the widen searched its whole bound for a painted delta of 0
+	 * (agent review round 1, R1-1).
+	 */
+	const rows = [
+		user("cu", { ts: TS }),
+		...Array.from({ length: 499 }, (_, i) =>
+			tool(`ct${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ca", { ts: TS + 900_000 }),
+	];
+	assert.equal(rows.length, 501);
+	assert.equal(
+		snapWindowToRunBoundary(rows, 60, SNAP_MAX_EXTRA),
+		60,
+		"the ordinary snap cannot reach the run's opening row",
+	);
+	assert.equal(
+		snapWindowToRunBoundary(
+			rows,
+			60,
+			SNAP_MAX_EXTRA,
+			WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		),
+		rows.length,
+		"the completed-run allowance mounts the whole run",
+	);
+	const options = {
+		step: 60,
+		snapMaxExtra: SNAP_MAX_EXTRA,
+		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	};
+	assert.equal(
+		paintedRows(rows, 60, options),
+		paintedAt(rows, 60),
+		"the metric and the render's own derivation agree about the same window",
+	);
+	assert.notEqual(
+		paintedRows(rows, 60, options),
+		paintedRows(rows, 60, { ...options, completedRunMaxExtra: 0 }),
+		"and the allowance is load-bearing: without it the count describes a window nobody mounts",
+	);
+});
+
+/* ------------- the bar's own honesty marker (design round 1, D1) ------------- */
+
+test("the facts carry `partial` exactly while the run's head is cut (design D1)", () => {
+	const cut = collapsePlan(headCutRows(), { live: false }).runs[0];
+	assert.equal(
+		cut.facts.partial,
+		true,
+		"a head-cut run states a MINIMUM: `N+ actions`, and no `Took`",
+	);
+	assert.equal(cut.facts.durationS, null, "and no wall span to state either");
+	const headed = [
+		user("hu", { ts: TS }),
+		...Array.from({ length: 100 }, (_, i) =>
+			tool(`ht${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ha", { ts: TS + 900_000 }),
+	];
+	const complete = collapsePlan(headed, { live: false }).runs[0];
+	assert.equal(
+		complete.facts.partial,
+		false,
+		"a complete run states its count",
+	);
+	assert.ok(
+		complete.facts.durationS !== null,
+		"and its span, which is the pair the marker is the absence of",
 	);
 });

@@ -28,6 +28,7 @@ const {
 	applyHistoryPage,
 	loadOlderStep,
 	reanchorAfterCursorMiss,
+	reanchorCandidate,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -540,6 +541,60 @@ test("throughput: 5000 deltas over a 400-row transcript stays sub-millisecond pe
 	assert.equal(state.records.at(-1).text.length, n);
 });
 
+test("a durable completion marker paints error, interrupted and closed rows", () => {
+	// The OTHER producer of outcome rows: a `completion_attention` entry
+	// replayed from the journal (the shape the core actually writes — `type:
+	// "custom"`, details under `payload`, checked against the frozen 664a
+	// transcript). v2 (2026-09-29) adds the neutral `closed` closure beside the
+	// two incident kinds, and a `complete` marker must still project to nothing.
+	const marker = (kind) => ({
+		id: `m-${kind}`,
+		ts: 2,
+		type: "custom",
+		payload: {
+			custom_type: "completion_attention",
+			details: {
+				conversation_id: "session/123456abcdef",
+				token: "t1",
+				anchor: `completion-${kind}-anchor`,
+				kind,
+			},
+		},
+	});
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			marker("error"),
+			marker("interrupted"),
+			marker("closed"),
+			marker("complete"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const byId = new Map(records.map((record) => [record.id, record]));
+	assert.equal(
+		byId.get("completion-error-anchor").text,
+		"Stopped with an error",
+	);
+	assert.equal(byId.get("completion-error-anchor").level, "error");
+	assert.equal(byId.get("completion-interrupted-anchor").text, "Interrupted");
+	assert.equal(byId.get("completion-interrupted-anchor").level, "warning");
+	const closed = byId.get("completion-closed-anchor");
+	assert.equal(closed.kind, "notice");
+	assert.equal(closed.text, "Completed — runtime retired/disposed");
+	assert.equal(closed.level, "info", "the closure never wears danger ink");
+	assert.equal(
+		closed.complete,
+		true,
+		"the marker retires the working-line wait",
+	);
+	assert.equal(
+		byId.get("completion-complete-anchor"),
+		undefined,
+		"a completion marker projects to nothing",
+	);
+});
+
 // --- crash-recovered outcomes -------------------------------------------------
 //
 // `withRecoveredOutcome` is the only producer of the row for an outcome that
@@ -589,6 +644,81 @@ test("a crash-recovered outcome is rendered at its own anchor, and is ackable", 
 		).text,
 		"Stopped with an error",
 	);
+});
+
+test("a closed outcome synthesizes as an info receipt and retires like a stop", () => {
+	// v2 (2026-09-29): a disposal that caught a zero-work run publishes
+	// `closed`. The desktop must paint the receipt — never "Stopped with an
+	// error" — and the row keeps `complete` so the working-line ladder ends a
+	// wait for a runtime that has been disposed.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "closed" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(row.text, "Completed — runtime retired/disposed");
+	assert.equal(row.level, "info");
+	assert.equal(row.complete, true);
+});
+
+test("a durable retired marker paints the warning row", () => {
+	// The retire-for-build arm (2026-09-29; core kind `retired`, seed
+	// 7e797aaaf6e7): the same durable shape as the closure cell above, one tier
+	// apart — warning, never danger — and `complete: true` so the working-line
+	// wait retires beside the row.
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "m-retired",
+				ts: 2,
+				type: "custom",
+				payload: {
+					custom_type: "completion_attention",
+					details: {
+						conversation_id: "session/7e797aaaf6e7",
+						token: "t3",
+						anchor: "completion-retired-anchor",
+						kind: "retired",
+						cause: "runtime-retired",
+						reason:
+							"the runtime retired so the next engage would run a newer build",
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(records.length, 1);
+	assert.equal(records[0].kind, "notice");
+	assert.equal(
+		records[0].text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(records[0].level, "warning", "a cut for an update is warning");
+	assert.equal(records[0].complete, true, "the marker retires the wait");
+});
+
+test("a retired outcome synthesizes as a warning receipt", () => {
+	// Same synthesis path as the closure cell above; the retired arm must paint
+	// the warning tier — never danger, never the closure's info whisper.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "retired" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(
+		row.text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(row.level, "warning");
+	assert.equal(row.complete, true);
 });
 
 test("the recovered row survives its own acknowledgement", () => {
@@ -659,7 +789,11 @@ test("synthesis is idempotent and never overwrites a real durable row", () => {
 	);
 });
 
-test("only error and interrupted outcomes are synthesized", () => {
+test("only error, interrupted and closed outcomes are synthesized", () => {
+	// `closed` joined the synthesizable set in v2 (2026-09-29): a disposal's
+	// neutral closure is an outcome the transcript keeps a row for, exactly as
+	// it keeps one for an incident. `complete` still synthesizes nothing — a
+	// finished turn has its own rows.
 	for (const kind of ["complete", null, undefined, "weird"]) {
 		assert.equal(
 			rowFor(
@@ -4277,11 +4411,35 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		false,
 		"the tail read leaves the paging state alone",
 	);
+	/*
+	 * CHANGED BY THE LOADER-CONTINUITY FIX (design spec 1.1 rule 4), and this is
+	 * the one sanctioned change to a caller that passes no option. An ordinary
+	 * (tail-type) read used to adopt the page's `has_more` unconditionally, which
+	 * is how a re-applied newest page flipped a fully loaded conversation back to
+	 * "load earlier". It now believes the page only when the page reaches
+	 * STRICTLY OLDER than the stored cursor - a genuinely wider read.
+	 */
 	const ordinary = applyHistoryPage(loaded, page);
 	assert.equal(
 		ordinary.hasMore,
+		false,
+		"an ordinary read of a NEWER page leaves the paging state alone",
+	);
+	const wider = applyHistoryPage(loaded, {
+		...pageOf([
+			{
+				id: "u-1",
+				ts: at / 1000 - 5,
+				type: "message",
+				payload: { role: "user", content: "oldest" },
+			},
+		]),
+		has_more: true,
+	});
+	assert.equal(
+		wider.hasMore,
 		true,
-		"an ordinary read still believes the page",
+		"an ordinary read that reaches strictly older still believes the page",
 	);
 
 	/*
@@ -5457,6 +5615,351 @@ test("a new message identity starts from zero while the previous buffer stays pu
 	assert.equal(m2.text, "The lane has ", "the new identity starts from zero");
 });
 
+/* ------------------------------------------------ one id per update (#671) */
+
+/*
+ * #671: an assistant-only turn (a background job's auto-delivery, a scheduled
+ * wake) mis-rendered while the journal was clean — a later message SPLICED
+ * into an earlier assistant block and also DUPLICATED it. The reachable route
+ * at this layer is the id itself: the three live guards tested the TYPE of
+ * `message.id` alone, so `id: ""` was admitted, and every id-less frame —
+ * whatever turn it belonged to — resolved to ONE record. Overlapping streams
+ * then merged through the append-only contract (a frame that cannot be told
+ * apart from the row it names is the same message's next chunk), painting a
+ * paragraph that exists in no record; and because the durable entry carries
+ * the id the journal gave the message, the same message painted a second
+ * block beside the first. The contract these cells pin: ONE ID PER UPDATE — a
+ * frame that states no usable id paints nothing and fuses with nothing, and a
+ * durable row with no id is dropped rather than synthesised under "".
+ */
+
+test("an id-less live frame paints nothing, so two of them cannot fuse (#671)", () => {
+	// The reproduced input (triage, issue #671): two assistant-only streams,
+	// both id-less, overlapping — one delivery lands while the previous row is
+	// still being written. Pre-fix the second row's chunks append to the first
+	// row's buffer (id `""`), and the record on screen is a paragraph no
+	// producer ever wrote: "PARA-ONE-BODY. PARA-TWO-LEAD. PARA-TWO-MORE."
+	const refused = streamDiagnostics.idlessFrameRefused;
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-ONE-BODY. ",
+			message: assistant("", ""),
+		},
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-TWO-LEAD. ",
+			message: assistant("", ""),
+		},
+		4,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "PARA-TWO-MORE.",
+			message: assistant("", ""),
+		},
+		5,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			message: assistant("", "PARA-TWO-LEAD. PARA-TWO-MORE."),
+		},
+		6,
+	);
+	assert.equal(state.records.length, 0, "no usable id, no record");
+	assert.equal(
+		state.index.has(""),
+		false,
+		"the empty string is never a record id",
+	);
+	// The instrument, so the field can answer "did a frame arrive with no id"
+	// by data rather than by the absence of a symptom (the reason every other
+	// counter here exists). Six frames in the sequence stated no id.
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 6,
+		"every id-less frame was counted",
+	);
+});
+
+test("an id-less live stream does not double the block its durable entry paints (#671)", () => {
+	// The other half of the report: the same message painted twice. The live
+	// frames name no id while the journal's entry carries the message's own
+	// id, so pre-fix the text painted under `""` AND under `delivery-1`. Only
+	// a frame with a usable id may create a row; the durable page is where the
+	// message paints, under the id it actually has.
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Job done. ", message: assistant("", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("", "Job done. ") },
+		3,
+	);
+	state = applyHistoryPage(
+		state,
+		pageOf([
+			messageEntry("delivery-1", 40, {
+				kind: "message",
+				...assistant("delivery-1", "Job done. "),
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1, "one block, not two");
+	assert.equal(state.records[0].id, "delivery-1");
+	assert.equal(state.records[0].text, "Job done. ");
+});
+
+test("a history_delta row with no id is dropped, never synthesised under ''", () => {
+	// The durable door into the same class: the frame's rows used to be given
+	// `String(row.id ?? "")`, so id-less rows collided with themselves and with
+	// every live frame that stated none. A row that names no id names no
+	// record; it is refused exactly as the live guards refuse one.
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "history_delta",
+			messages: [
+				assistant("", "ROW-ONE-BODY. "),
+				assistant("", "ROW-TWO-BODY. "),
+			],
+		},
+		10,
+	);
+	assert.equal(state.records.length, 0, "no id, no row");
+	assert.equal(state.index.has(""), false);
+});
+
+test("a frame with a usable id still coalesces with its durable entry (the #671 control)", () => {
+	// The fix must refuse only frames that state NO id. The ordinary shape —
+	// live frames and the durable row of the SAME message under the same id —
+	// must keep coalescing into one record, or the cure is the disease.
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("m1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Hi. ", message: assistant("m1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("m1", "Hi. ") },
+		3,
+	);
+	state = applyHistoryPage(
+		state,
+		pageOf([
+			messageEntry("m1", 40, { kind: "message", ...assistant("m1", "Hi. ") }),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].id, "m1");
+	assert.equal(state.records[0].text, "Hi. ");
+});
+
+test("an id-less end settles the ONE open assistant row, writing no text (#671 fallback)", () => {
+	/*
+	 * The bounded fallback agreed with the condense/continuity lane
+	 * (2026-09-29; re-bounded by the #671 review round, U3): an id-less end
+	 * cannot name its record, so it ends the session's single open assistant
+	 * row — settle semantics only. The frame's own text is NOT written (the
+	 * record keeps its accumulated text) and nothing is counted as refused.
+	 */
+	const refused = streamDiagnostics.idlessFrameRefused;
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "Only answer.",
+			message: assistant("a1", ""),
+		},
+		2,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			// No id at all, and a full assembled text the fallback must not adopt.
+			message: assistant(undefined, "FRAME-TEXT-THAT-NEVER-RAN"),
+		},
+		3,
+	);
+	const a1 = state.records.find((record) => record.id === "a1");
+	assert.equal(a1.streaming, false, "the one open row settled");
+	assert.equal(a1.complete, true, "an answer that ended is complete");
+	assert.equal(typeof a1.settledAt, "number", "the settle instant is stamped");
+	assert.equal(a1.text, "Only answer.", "the frame's text was not written");
+	assert.equal(
+		state.records.length,
+		1,
+		"no second row appeared for the unnamed frame",
+	);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused,
+		"a settled end is not a refusal",
+	);
+});
+
+test("an id-less end with TWO open assistant rows guesses nothing and is refused (#671 fallback, U3)", () => {
+	/*
+	 * Concurrent assistant streams make the unnamed end a guess between rows —
+	 * settling either could pick the wrong one and strand the other (review
+	 * round 1, U3). Both stay streaming and the frame is counted as refused.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("b1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "One ", message: assistant("b1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("b2", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Two ", message: assistant("b2", "") },
+		4,
+	);
+	const refused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant(undefined, "Assembled.") },
+		5,
+	);
+	const b1 = state.records.find((record) => record.id === "b1");
+	const b2 = state.records.find((record) => record.id === "b2");
+	assert.equal(b1.streaming, true, "neither row settles on a guess");
+	assert.equal(b2.streaming, true, "neither row settles on a guess");
+	assert.equal(b1.text, "One ");
+	assert.equal(b2.text, "Two ");
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 1,
+		"the ambiguous end was counted as refused",
+	);
+});
+
+test("an id-less end with no open assistant stays a counted refusal", () => {
+	// Nothing open: there is no record to end, so the frame keeps the old
+	// behaviour — dropped and counted.
+	const emptyRefused = streamDiagnostics.idlessFrameRefused;
+	const afterEmpty = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_end", message: assistant("", "Anything.") },
+		1,
+	);
+	assert.equal(afterEmpty.records.length, 0);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		emptyRefused + 1,
+		"an empty transcript counted the refusal",
+	);
+	// A settled row is not open either: one named end first, then the id-less
+	// end — refused, and the settled row's text is untouched.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("m1", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("m1", "Done.") },
+		3,
+	);
+	const settledRefused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("", "Later text.") },
+		4,
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(
+		state.records[0].text,
+		"Done.",
+		"no text merge onto a settled row",
+	);
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		settledRefused + 1,
+		"the second id-less end was counted too",
+	);
+});
+
+test("an id-less end for a user message settles nothing", () => {
+	// The fallback is for the ASSISTANT end the producer emits; an unnamed end
+	// of any other role must not end a turn it does not belong to.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "Still writing.",
+			message: assistant("a1", ""),
+		},
+		2,
+	);
+	const refused = streamDiagnostics.idlessFrameRefused;
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: user("", "Typed.") },
+		3,
+	);
+	const a1 = state.records.find((record) => record.id === "a1");
+	assert.equal(a1.streaming, true, "the assistant row is still open");
+	assert.equal(
+		streamDiagnostics.idlessFrameRefused,
+		refused + 1,
+		"the user end was refused",
+	);
+});
+
 test("a row the seed painted carries the snapshot's cursor; an older replay is refused", () => {
 	let state = applyLiveSeed(
 		EMPTY_TRANSCRIPT,
@@ -5670,6 +6173,151 @@ test("a row a person typed is untouched, marker or no marker", () => {
 	assert.equal(elsewhere.records.length, 1);
 });
 
+/*
+ * THE LEGACY HALF. Rows written before the marker existed carry no stamp to
+ * read, and core's own contract keeps the recogniser for exactly that
+ * (`docs/DESKTOP_API.md`: "An owner on an older build still sends these rows,
+ * which is why the marker (and the recogniser) remain the contract"). The
+ * operator's stored transcript (2026-09-29) held ten unstamped
+ * goal-continuation rows, painted as the user's own words; these pin the
+ * fallback that hides them on both arms - and the near-misses it must NOT
+ * touch.
+ *
+ * THE LITERALS BELOW ARE COPIED FROM THE PYTHON PRODUCERS, deliberately as
+ * literals rather than imported from `harness-chrome.ts`: the module's copy is
+ * a restatement (the renderer cannot import Python), so the day either side's
+ * wording moves, THIS is the alarm - an import would move with it and prove
+ * nothing. Producers: `session/goal_judge.py` (GOAL_CONTINUATION_HEAD/TAIL,
+ * `is_goal_continuation_instruction`) and `session/goal_loop.py`
+ * (LOOP_GOAL_PROMPT, LOOP_PROMPT, `is_loop_goal_instruction`), mirrored by
+ * `harness/rows.py::is_harness_chrome`.
+ */
+const goalContinuation = (goal) =>
+	`Continue working toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.`;
+
+const loopGoalPrompt = (goal) =>
+	`Work toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly.`;
+
+const LOOP_SELF_CONTINUATION =
+	"Continue working toward the standing goal. Make concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly and stop.";
+
+test("an unstamped goal-continuation row is chrome, live - no marker needed", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u10", goalContinuation("ship the goal-chrome fix")),
+		},
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"the fixed head and tail are the whole shape; the row predates the stamp",
+	);
+});
+
+test("...and on the durable arm, where stored transcripts read it back", () => {
+	/*
+	 * The row AND the turn it was driving, because the fix's claim is not just
+	 * "the row goes" - the conversation it continued must stay whole.
+	 */
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u11",
+				ts: 10,
+				type: "message",
+				payload: {
+					kind: "message",
+					...user("u11", goalContinuation("ship the goal-chrome fix")),
+				},
+			},
+			{
+				id: "a11",
+				ts: 11,
+				type: "message",
+				payload: {
+					kind: "message",
+					...assistant("a11", "Making concrete progress now."),
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((record) => record.id),
+		["a11"],
+		"the chrome row goes; the answer it drove stays",
+	);
+});
+
+test("the loop's fixed prompt and its goal family are recognised too", () => {
+	for (const text of [
+		LOOP_SELF_CONTINUATION,
+		loopGoalPrompt("keep the loop moving"),
+	]) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u12", text) },
+			1,
+		);
+		assert.deepEqual(
+			state.records,
+			[],
+			`loop chrome must not paint: ${text.slice(0, 32)}...`,
+		);
+	}
+});
+
+test("whitespace around a chrome row does not save it", () => {
+	/*
+	 * Core strips before matching because "the two hosts do not agree on what
+	 * they hand in" - a persisted prompt that gained a trailing newline must
+	 * not flip from hidden to painted on one surface only.
+	 */
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u13", `\n\n  ${goalContinuation("g")} \n`),
+		},
+		1,
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("near-misses are the user's own words and still paint", () => {
+	const nearMisses = [
+		// Opens with the head, never closes with the tail: the user's own words.
+		"Continue working toward this goal:\n\nship it",
+		// Quotes the tail inside a sentence of their own.
+		"I asked it to say \u201cMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.\u201d - does that read like the harness?",
+		// The whole continuation shape, then the user speaks.
+		`${goalContinuation("ship it")} Also, ping me when it lands.`,
+		// The fixed prompt plus one word of theirs is not the fixed prompt.
+		`${LOOP_SELF_CONTINUATION} Please.`,
+	];
+	for (const text of nearMisses) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u14", text) },
+			1,
+		);
+		assert.equal(
+			state.records.length,
+			1,
+			`must paint (${text.slice(0, 32)}...)`,
+		);
+		assert.equal(
+			state.records[0].text,
+			text,
+			"and it paints as typed, not as a recognised shape",
+		);
+	}
+});
+
 test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {
 	/*
 	 * The operator report (2026-09-28): after a /compact replaced the journal
@@ -5747,4 +6395,162 @@ test("a cursor_missing page re-anchors the load cursor to its own oldest row", (
 		);
 	});
 	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
+});
+
+/*
+ * THE PAGER CURSOR (loader-continuity, design spec sections 1.1 and 6).
+ *
+ * `oldestId`/`oldestTs`/`hasMore` are the reducer's sole statement of "where
+ * history stops". The cursor used to be derived by looking the page's first entry
+ * up among the RECORDS, which fails for every entry that is not one (silent
+ * customs, `tool:`-keyed results); it is now stored, and moved by five rules
+ * keyed on what kind of read the page was.
+ */
+const cursorEntry = (id, ts, type = "custom") => ({
+	id,
+	ts,
+	type,
+	payload:
+		type === "custom"
+			? { custom_type: "session_spend.v1", details: {} }
+			: {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: id }],
+					tool_calls: [],
+				},
+});
+const cursorPage = (entries, hasMore = true) => ({
+	entries,
+	has_more: hasMore,
+	cursor_missing: false,
+});
+
+test("the cursor's instant is stored with it, and an empty transcript has none", () => {
+	assert.equal(EMPTY_TRANSCRIPT.oldestTs, 0);
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("c1", 100), cursorEntry("m1", 101, "message")]),
+	);
+	assert.equal(s.oldestId, "c1", "the first page's first entry, silent or not");
+	assert.equal(
+		s.oldestTs,
+		100_000,
+		"stored in ms, not looked up from a record",
+	);
+	assert.equal(s.index.has("c1"), false, "the cursor entry is not a record");
+});
+
+test("a continuation page moves the cursor even when it adds no record", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")]),
+	);
+	const silent = cursorPage([cursorEntry("c3", 300), cursorEntry("c4", 400)]);
+	const next = applyHistoryPage(s, silent, { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "c3");
+	assert.equal(next.oldestTs, 300_000);
+	assert.equal(next.hasMore, true);
+	assert.notEqual(
+		next,
+		s,
+		"a moved cursor is a change, not the no-op early return",
+	);
+});
+
+test("an empty continuation page ends paging instead of repeating the ask", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const next = applyHistoryPage(s, cursorPage([], true), { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "m5", "nothing to move to");
+	assert.equal(next.hasMore, false, "a page that cannot advance is the end");
+});
+
+test("a tail-type read moves the cursor only to a strictly older instant", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	// A newer, changed tail (a live turn): cursor and hasMore are unchanged.
+	const newer = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m9", 900, "message")], false),
+	);
+	assert.equal(newer.oldestId, "m5");
+	assert.equal(
+		newer.hasMore,
+		true,
+		"a tail read's has_more is not this reader's",
+	);
+	// The same instant is not older: the reader keeps the cursor it has.
+	const same = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m5b", 500, "message")], false),
+	);
+	assert.equal(same.oldestId, "m5");
+	// A strictly older page (a wider read) does move it, and takes its has_more.
+	const older = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+	);
+	assert.equal(older.oldestId, "m1");
+	assert.equal(older.oldestTs, 100_000);
+	assert.equal(older.hasMore, false);
+});
+
+test("keepPaging wins over a continuation assertion, and replace reseeds the cursor", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const kept = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+		{ keepPaging: true, pagedBefore: "m5" },
+	);
+	assert.equal(kept.oldestId, "m5");
+	assert.equal(kept.hasMore, true);
+	const replaced = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m8", 800, "message")], false),
+		{ replace: true },
+	);
+	assert.equal(replaced.oldestId, "m8");
+	assert.equal(replaced.oldestTs, 800_000);
+	assert.equal(replaced.hasMore, false);
+});
+
+test("reanchorCandidate is the oldest held record that is a real journal entry id", () => {
+	const at = (kind, id, ts) => ({ kind, id, ts });
+	const held = {
+		...EMPTY_TRANSCRIPT,
+		records: [
+			at("tool", "tool:call-1", 100),
+			at("notice", "anchor-1", 110),
+			at("user", "u1", 120),
+			at("assistant", "a1", 130),
+		],
+	};
+	assert.equal(
+		reanchorCandidate(held),
+		"u1",
+		"tool:<callId> and notice anchors are not journal entry ids",
+	);
+	for (const kind of ["custom", "peer", "wake", "compaction"])
+		assert.equal(
+			reanchorCandidate({ ...EMPTY_TRANSCRIPT, records: [at(kind, "x1", 1)] }),
+			"x1",
+			`${kind} records carry the entry id`,
+		);
+	assert.equal(reanchorCandidate(EMPTY_TRANSCRIPT), null, "an empty store");
+	assert.equal(
+		reanchorCandidate({
+			...EMPTY_TRANSCRIPT,
+			records: [at("tool", "tool:c", 1), at("notice", "n", 2)],
+		}),
+		null,
+		"nothing usable held",
+	);
 });

@@ -5,6 +5,14 @@
  *     node scripts/child-reader-scroll-evidence.mjs [--arm=before|after]
  *         [--themes=localOperatorDark,localOperatorLight] [--out=<dir>]
  *         [--port=5197] [--json=<file>] [--frames]
+ *         [--only=<group,...>] [--skip-chip] [--seed=<n>]
+ *
+ * The groups the driver can be narrowed to (`--only`): `slot` is the
+ * older-history row on the child reader (the windowed sentence, the page ask in
+ * flight, and the failed row with and without a transport), and `foot`/`ring`
+ * are the chip's own surfaces. `--skip-chip` drops G and H rather than adding
+ * anything: those two pause the page's animations and swap the row under the
+ * reader, which is the one part of this rig that has wedged on this host.
  *
  * WHY THIS IS A SCRIPT AND NOT A TEST. The claim is about a scroll container
  * over TIME: which row sits at the top of the viewport when a page lands, where
@@ -94,6 +102,14 @@ const ONLY = flag("only", null)
 	?.split(",")
 	.map((part) => part.trim())
 	.filter((part) => part.length > 0);
+/*
+ * Skip the chip's own interaction groups (G and H), which pause the page's
+ * animations and swap the row under the reader. They are the one part of this
+ * rig that has wedged under this host's load (see the gate in the theme loop for
+ * the measurement), and a run that only wants a transcript state must not pay
+ * for them. Default off: every other invocation measures them as it always has.
+ */
+const SKIP_CHIP = ARGS.includes("--skip-chip");
 /** Batches of the scripted child to place before the first reading. */
 const SEED = Number(flag("seed", "21"));
 /*
@@ -431,10 +447,11 @@ async function main() {
 				pointerType: "mouse",
 			});
 		};
-		const reads = async () => {
+		const routeState = async () => {
 			const response = await fetch(`http://localhost:${PORT}/__child/state`);
-			return (await response.json()).reads;
+			return response.json();
 		};
+		const reads = async () => (await routeState()).reads;
 		/**
 		 * The read count, once it has stopped moving.
 		 *
@@ -929,205 +946,418 @@ async function main() {
 				);
 			await shoot("near-tail-40-after-batch", theme);
 
-			/* ---- G: the control's own interaction states (design D4) ------ */
-			await evaluate("window.__childScroll.drift(0)", true);
-			await sleep(200);
 			/*
-			 * THE APPEARANCE, FROZEN RATHER THAN RACED (design round 2, D7).
+			 * SKIPPED ON REQUEST, WITH THE MEASUREMENT THAT MAKES IT WORTH SKIPPING.
 			 *
-			 * The pair used to be two frames taken after sleeps, and both were
-			 * settled — mean |Δ| 0.05/255 in the chip's own box in light — so the
-			 * pairing answered nothing about the transition. `freezeFade` watches for
-			 * the transition on the frame it starts, pauses it and moves its clock to
-			 * 40% of the duration it actually has, so `appearing` is a fade in
-			 * flight; `runFade` then completes it for `appeared`. Both frames carry
-			 * the wrapper's computed opacity in their readings, so the pair is a
-			 * number even if a capture lands late.
+			 * G pauses the page's own animations to photograph the control's fade, and
+			 * H swaps the row under the reader — both sample the control mid-transition.
+			 * Under this host's load that wedged the run twice: the driver sat awaiting a
+			 * page-side promise for ten minutes with the page itself responsive (a
+			 * second CDP connection answered `measure()`, `captureScreenshot` and a
+			 * wheel dispatch throughout; the fade's animations were paused at the
+			 * fraction the step asks for, so the steps BEFORE this point had all
+			 * landed — measured 2026-09-29, load ~150). A run that does not measure the
+			 * chip must not inherit that risk, and `--skip-chip` is how it says so.
+			 *
+			 * The default is unchanged: every other invocation runs both groups.
 			 */
-			await wheel(-600);
-			const frozen = await evaluate(
-				"window.__childScroll.freezeFade(0.4)",
-				true,
-			);
-			const appearing = await waitForStep(
-				"G0 the control appearing (fade frozen at 40%)",
-				"a fade in flight: the control is mounted, its opacity is mid-transition",
-				(reading) => reading?.button?.visible === true,
-				8000,
-			);
-			appearing.frozen = frozen;
-			if (ARM === "after" && !appearing.button?.visible)
-				throw new Error(
-					`${theme}: the control never appeared while the reader was scrolled up`,
-				);
-			if (ARM === "after" && frozen.count === 0)
-				throw new Error(
-					`${theme}: no transition was running when the control appeared, so this arm cannot show the fade`,
-				);
-			await shoot("appearing", theme);
-			const released = await evaluate("window.__childScroll.runFade()", true);
-			await sleep(400);
-			const appeared = await step(
-				"G1 the control settled (fade released)",
-				"the fade has completed: opacity 1",
-			);
-			appeared.released = released;
-			await shoot("appeared", theme);
-			const chip = await evaluate("window.__childScroll.chipBox()");
-			if (ARM === "after" && !chip)
-				throw new Error(`${theme}: no control to point at while scrolled up`);
-
-			if (chip) {
-				await send("Input.dispatchMouseEvent", {
-					type: "mouseMoved",
-					x: chip.x,
-					y: chip.y,
-					button: "none",
-					clickCount: 0,
-				});
-				await sleep(260);
-				const hovered = await step(
-					"G2 hover",
-					"a real pointer over the control",
-				);
-				if (ARM === "after" && !hovered.button?.hovered)
-					throw new Error(
-						`${theme}: the pointer is over the control but it does not read as hovered`,
-					);
-				await shoot("hover", theme);
-
+			if (!SKIP_CHIP) {
+				/* ---- G: the control's own interaction states (design D4) ------ */
+				await evaluate("window.__childScroll.drift(0)", true);
+				await sleep(200);
 				/*
-				 * Focus by REAL Tab presses, counted: the claim is about the pane's tab
-				 * order (UX U4 moved the control to the top of the DOM for it), and a
-				 * programmatic `.focus()` would prove nothing about the order.
+				 * THE APPEARANCE, FROZEN RATHER THAN RACED (design round 2, D7).
+				 *
+				 * The pair used to be two frames taken after sleeps, and both were
+				 * settled — mean |Δ| 0.05/255 in the chip's own box in light — so the
+				 * pairing answered nothing about the transition. `freezeFade` watches for
+				 * the transition on the frame it starts, pauses it and moves its clock to
+				 * 40% of the duration it actually has, so `appearing` is a fade in
+				 * flight; `runFade` then completes it for `appeared`. Both frames carry
+				 * the wrapper's computed opacity in their readings, so the pair is a
+				 * number even if a capture lands late.
 				 */
-				let focused = null;
-				let tabs = 0;
-				for (let press = 0; press < 24 && !focused; press++) {
-					await send("Input.dispatchKeyEvent", {
-						type: "rawKeyDown",
-						key: "Tab",
-						code: "Tab",
-						windowsVirtualKeyCode: 9,
-						nativeVirtualKeyCode: 9,
-					});
-					await send("Input.dispatchKeyEvent", {
-						type: "keyUp",
-						key: "Tab",
-						code: "Tab",
-						windowsVirtualKeyCode: 9,
-						nativeVirtualKeyCode: 9,
-					});
-					tabs = press + 1;
-					await sleep(140);
-					const now = await evaluate("window.__childScroll.measure()");
-					if (now?.button?.focused) focused = now;
-				}
-				if (ARM === "after" && !focused)
-					throw new Error(
-						`${theme}: ${tabs} Tab presses never reached the control`,
-					);
-				const order = await evaluate("window.__childScroll.tabOrder()");
-				const at = order.findIndex((entry) => entry.isControl);
-				if (ARM === "after" && at < 0)
-					throw new Error(
-						`${theme}: the control is not in the page's tab order at all`,
-					);
-				if (focused)
-					STEPS.push({
-						...focused,
-						step: `G3 focus (${tabs} tabs)`,
-						theme: themeOf,
-						reads: await reads(),
-						tabOrderIndex: at,
-						tabOrderLength: order.length,
-						expected:
-							"keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation",
-					});
-				await shoot("focus", theme);
-
-				/*
-				 * A real press, held: the frame is taken while the button is down, which is
-				 * the only way a `:active` state is a picture rather than a claim.
-				 */
-				await send("Input.dispatchMouseEvent", {
-					type: "mousePressed",
-					x: chip.x,
-					y: chip.y,
-					button: "left",
-					clickCount: 1,
-				});
-				await sleep(140);
-				await shoot("pressed", theme);
-				await send("Input.dispatchMouseEvent", {
-					type: "mouseReleased",
-					x: chip.x,
-					y: chip.y,
-					button: "left",
-					clickCount: 1,
-				});
-				/*
-				 * WAIT ON THE EVENT, NOT ON A CLOCK (review round 2, R2-5). This was a
-				 * `sleep 1400` followed by a 1px tolerance, and it flaked in the
-				 * reviewer's round at load ~200 ("pressing the control left the reader
-				 * 192px from the tail") — a smooth scroll still in flight read as a
-				 * product defect. A wait that can read a mid-flight state as a failure
-				 * is a defect in the instrument, so the state is polled until it holds
-				 * (`waitForStep`) and the elapsed wait is recorded on the row; the
-				 * assertion below still fires, with the time it waited, if the bound
-				 * expires.
-				 */
-				const pressStart = Date.now();
-				const afterPress = await waitForStep(
-					"G4 after the press",
-					"the reader is back at the tail and the control is hidden again",
-					(reading) =>
-						(reading?.fromBottom ?? Number.POSITIVE_INFINITY) <= 1 &&
-						!reading?.button?.visible,
+				await wheel(-600);
+				const frozen = await evaluate(
+					"window.__childScroll.freezeFade(0.4)",
+					true,
+				);
+				const appearing = await waitForStep(
+					"G0 the control appearing (fade frozen at 40%)",
+					"a fade in flight: the control is mounted, its opacity is mid-transition",
+					(reading) => reading?.button?.visible === true,
 					8000,
 				);
-				afterPress.waitedMs = Date.now() - pressStart;
-				/*
-				 * The throw re-asserts BOTH halves of the poll condition above (agent review
-				 * round 3, F4): checking only `fromBottom` let a control that stayed visible
-				 * at the tail time out, record `button: on` with the full waitedMs, and pass
-				 * the run - a state the poll itself refuses to accept.
-				 */
-				if (afterPress.fromBottom > 1 || afterPress.button?.visible)
+				appearing.frozen = frozen;
+				if (ARM === "after" && !appearing.button?.visible)
 					throw new Error(
-						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail${afterPress.button?.visible ? " with the control still showing" : ""} after waiting ${afterPress.waitedMs}ms`,
+						`${theme}: the control never appeared while the reader was scrolled up`,
 					);
+				if (ARM === "after" && frozen.count === 0)
+					throw new Error(
+						`${theme}: no transition was running when the control appeared, so this arm cannot show the fade`,
+					);
+				await shoot("appearing", theme);
+				const released = await evaluate("window.__childScroll.runFade()", true);
+				await sleep(400);
+				const appeared = await step(
+					"G1 the control settled (fade released)",
+					"the fade has completed: opacity 1",
+				);
+				appeared.released = released;
+				await shoot("appeared", theme);
+				const chip = await evaluate("window.__childScroll.chipBox()");
+				if (ARM === "after" && !chip)
+					throw new Error(`${theme}: no control to point at while scrolled up`);
+
+				if (chip) {
+					await send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: chip.x,
+						y: chip.y,
+						button: "none",
+						clickCount: 0,
+					});
+					await sleep(260);
+					const hovered = await step(
+						"G2 hover",
+						"a real pointer over the control",
+					);
+					if (ARM === "after" && !hovered.button?.hovered)
+						throw new Error(
+							`${theme}: the pointer is over the control but it does not read as hovered`,
+						);
+					await shoot("hover", theme);
+
+					/*
+					 * Focus by REAL Tab presses, counted: the claim is about the pane's tab
+					 * order (UX U4 moved the control to the top of the DOM for it), and a
+					 * programmatic `.focus()` would prove nothing about the order.
+					 */
+					let focused = null;
+					let tabs = 0;
+					for (let press = 0; press < 24 && !focused; press++) {
+						await send("Input.dispatchKeyEvent", {
+							type: "rawKeyDown",
+							key: "Tab",
+							code: "Tab",
+							windowsVirtualKeyCode: 9,
+							nativeVirtualKeyCode: 9,
+						});
+						await send("Input.dispatchKeyEvent", {
+							type: "keyUp",
+							key: "Tab",
+							code: "Tab",
+							windowsVirtualKeyCode: 9,
+							nativeVirtualKeyCode: 9,
+						});
+						tabs = press + 1;
+						await sleep(140);
+						const now = await evaluate("window.__childScroll.measure()");
+						if (now?.button?.focused) focused = now;
+					}
+					if (ARM === "after" && !focused)
+						throw new Error(
+							`${theme}: ${tabs} Tab presses never reached the control`,
+						);
+					const order = await evaluate("window.__childScroll.tabOrder()");
+					const at = order.findIndex((entry) => entry.isControl);
+					if (ARM === "after" && at < 0)
+						throw new Error(
+							`${theme}: the control is not in the page's tab order at all`,
+						);
+					if (focused)
+						STEPS.push({
+							...focused,
+							step: `G3 focus (${tabs} tabs)`,
+							theme: themeOf,
+							reads: await reads(),
+							tabOrderIndex: at,
+							tabOrderLength: order.length,
+							expected:
+								"keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation",
+						});
+					await shoot("focus", theme);
+
+					/*
+					 * A real press, held: the frame is taken while the button is down, which is
+					 * the only way a `:active` state is a picture rather than a claim.
+					 */
+					await send("Input.dispatchMouseEvent", {
+						type: "mousePressed",
+						x: chip.x,
+						y: chip.y,
+						button: "left",
+						clickCount: 1,
+					});
+					await sleep(140);
+					await shoot("pressed", theme);
+					await send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: chip.x,
+						y: chip.y,
+						button: "left",
+						clickCount: 1,
+					});
+					/*
+					 * WAIT ON THE EVENT, NOT ON A CLOCK (review round 2, R2-5). This was a
+					 * `sleep 1400` followed by a 1px tolerance, and it flaked in the
+					 * reviewer's round at load ~200 ("pressing the control left the reader
+					 * 192px from the tail") — a smooth scroll still in flight read as a
+					 * product defect. A wait that can read a mid-flight state as a failure
+					 * is a defect in the instrument, so the state is polled until it holds
+					 * (`waitForStep`) and the elapsed wait is recorded on the row; the
+					 * assertion below still fires, with the time it waited, if the bound
+					 * expires.
+					 */
+					const pressStart = Date.now();
+					const afterPress = await waitForStep(
+						"G4 after the press",
+						"the reader is back at the tail and the control is hidden again",
+						(reading) =>
+							(reading?.fromBottom ?? Number.POSITIVE_INFINITY) <= 1 &&
+							!reading?.button?.visible,
+						8000,
+					);
+					afterPress.waitedMs = Date.now() - pressStart;
+					/*
+					 * The throw re-asserts BOTH halves of the poll condition above (agent review
+					 * round 3, F4): checking only `fromBottom` let a control that stayed visible
+					 * at the tail time out, record `button: on` with the full waitedMs, and pass
+					 * the run - a state the poll itself refuses to accept.
+					 */
+					if (afterPress.fromBottom > 1 || afterPress.button?.visible)
+						throw new Error(
+							`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail${afterPress.button?.visible ? " with the control still showing" : ""} after waiting ${afterPress.waitedMs}ms`,
+						);
+				}
+
+				/* ---- H: the gate (design D3, QA Q2) -------------------------- */
+				await wheel(-600);
+				await sleep(700);
+				await evaluate('window.__childScroll.shape("failed")', true);
+				const failed = await step(
+					"H0 a failed child, scrolled up",
+					"no control and no band: the exception text owns the foot",
+				);
+				if (!absent(failed.button) || !absent(failed.band))
+					throw new Error(
+						`${theme}: a failed child paints the control's band or the control itself over its exception text (button=${JSON.stringify(failed.button)}, band=${JSON.stringify(failed.band)})`,
+					);
+				await shoot("failed-scrolled-up", theme);
+				await evaluate('window.__childScroll.shape("no-session")', true);
+				const noSession = await step(
+					"H1 a child with no session id",
+					"no control and no band: there is no scroller to lead back to",
+				);
+				if (!absent(noSession.button) || !absent(noSession.band))
+					throw new Error(
+						`${theme}: a session-less child paints the control's band or the control (button=${JSON.stringify(noSession.button)}, band=${JSON.stringify(noSession.band)})`,
+					);
+				if (!absent(noSession.scrollTop))
+					throw new Error(
+						`${theme}: a session-less child still has a scroller to lead back to (${noSession.scrollTop})`,
+					);
+				await shoot("no-session", theme);
+				await evaluate('window.__childScroll.shape("live")', true);
+				await sleep(300);
 			}
 
-			/* ---- H: the gate (design D3, QA Q2) -------------------------- */
-			await wheel(-600);
-			await sleep(700);
-			await evaluate('window.__childScroll.shape("failed")', true);
-			const failed = await step(
-				"H0 a failed child, scrolled up",
-				"no control and no band: the exception text owns the foot",
-			);
-			if (!absent(failed.button) || !absent(failed.band))
-				throw new Error(
-					`${theme}: a failed child paints the control's band or the control itself over its exception text (button=${JSON.stringify(failed.button)}, band=${JSON.stringify(failed.band)})`,
+			/* ---- S: the older-history row on the CHILD reader (design round 1,
+			 *      D1's copy and D5's missing frame) ---------------------------- */
+			/*
+			 * NEVER part of the default sweep. The states below need the child's
+			 * conversation PAST the route's own page limit (100 rows), so this group
+			 * re-seeds the scripted child from scratch rather than borrowing the seed
+			 * the other groups were measured with — and it therefore runs LAST, where a
+			 * re-seed cannot change what an earlier step measured.
+			 *
+			 * What it is for. The child reader's failed row had NO rendered artifact
+			 * anywhere (D5): the story boards mount the fixture seam, which issues no
+			 * request at all, so no frame could reach a page ask that failed. The two
+			 * controls this group drives — `/__child/older/hold` and `/older/fail` —
+			 * are what make it reachable, and the frame is the evidence the design
+			 * round asked for. The windowed sentence is here because D1 rewrote it and
+			 * the parent's own boards are captured separately (`capture-evidence.mjs`)
+			 * when a storybook is available.
+			 */
+			if (ONLY?.includes("slot")) {
+				await evaluate("window.__childScroll.transportDown(false)", true);
+				await evaluate("window.__childScroll.reset()", true);
+				/*
+				 * THE CHILD IS GROWN *BEFORE* THE READ THAT DEFINES THE CURSOR, and the
+				 * order is the whole trick: the paging cursor comes from the first page the
+				 * reader applies (rule 2 of `applyHistoryPage`), and every later TAIL-type
+				 * read may only move it to a strictly OLDER instant — which a tail page of
+				 * a child that has grown since it opened never is, because the child's
+				 * launch row is its oldest entry. Seeding through `batch(n)` grows and reads
+				 * at once, so `has_more` stays false for ever and the row reads `Start of
+				 * conversation` over a 121-row child (measured, twice). The route is grown
+				 * directly here — no read, no pulse — and one `remount()` then makes the
+				 * child's FIRST read a page from a child PAST the route's own page limit
+				 * (100 rows), which is the only state the older-page ask exists in.
+				 */
+				for (let i = 0; i < 40; i++)
+					await fetch(`http://localhost:${PORT}/__child/batch`, {
+						method: "POST",
+					});
+				await evaluate("window.__childScroll.remount()", true);
+				await sleep(600);
+				/**
+				 * Place the reader so the older-history row is INSIDE the scroller's box.
+				 *
+				 * The row is the scroll content's first child, so it is only on screen at the
+				 * very top of the range — and the wheel does not land there: measured, the
+				 * wheel-driven state below leaves it laid out, inside the viewport,
+				 * `opacity: 1` and CLIPPED 28px above the scroller's own top edge, which is a
+				 * frame that shows the conversation and not the row under test. `drift` is a
+				 * placement rather than a gesture (the pump ignores it by clause A), so the
+				 * state under test does not change — the first attempt jumps to the hard top
+				 * (a placement beyond the end clamps there) — but the row is then something a
+				 * reader can see. A round that could not place it throws rather than shipping
+				 * a frame of the wrong band.
+				 */
+				const revealSlot = async () => {
+					let placed = await evaluate("window.__childScroll.measure()");
+					for (let attempt = 0; attempt < 12; attempt++) {
+						const slot = placed?.slot;
+						if (!slot?.rect || !slot.scroller) break;
+						if (slot.rect.top >= slot.scroller.top - 2) break;
+						await evaluate(
+							`window.__childScroll.drift(${Math.round(attempt === 0 ? 9000 : placed.fromBottom + 120)})`,
+							true,
+						);
+						await sleep(200);
+						placed = await evaluate("window.__childScroll.measure()");
+					}
+					return placed;
+				};
+				const assertSlotOnScreen = (reading, stepName) => {
+					const slot = reading?.slot;
+					if (!slot?.rect || !slot.scroller)
+						throw new Error(
+							`${theme}: ${stepName} has no older-history row to photograph: ${JSON.stringify(slot)}`,
+						);
+					if (slot.rect.top < slot.scroller.top - 2)
+						throw new Error(
+							`${theme}: ${stepName}'s row is above the scroller's own top edge (${slot.rect.top} vs ${slot.scroller.top}) — the frame would show the conversation, not the row`,
+						);
+				};
+				await revealSlot();
+				const slotWindowed = await step(
+					"S0 the windowed row at the child's column",
+					"one sentence, no count and no unit: `Earlier history above — scroll up to load`",
 				);
-			await shoot("failed-scrolled-up", theme);
-			await evaluate('window.__childScroll.shape("no-session")', true);
-			const noSession = await step(
-				"H1 a child with no session id",
-				"no control and no band: there is no scroller to lead back to",
-			);
-			if (!absent(noSession.button) || !absent(noSession.band))
-				throw new Error(
-					`${theme}: a session-less child paints the control's band or the control (button=${JSON.stringify(noSession.button)}, band=${JSON.stringify(noSession.band)})`,
+				const windowedText = slotWindowed.slot?.text ?? "";
+				if (!windowedText.includes("Earlier history above — scroll up to load"))
+					throw new Error(
+						`${theme}: the windowed row does not carry the noun-free sentence: slot=${JSON.stringify(windowedText)} route=${JSON.stringify(await routeState())}`,
+					);
+				/*
+				 * THE CLAIM D1 IS ABOUT, asserted rather than looked at: no digit in the
+				 * row. The old copy counted transcript ROWS and called them messages, so
+				 * a number here means a unit came back without a name for it.
+				 */
+				if (/\d/.test(windowedText))
+					throw new Error(
+						`${theme}: the windowed row states a count: ${JSON.stringify(windowedText)}`,
+					);
+				assertSlotOnScreen(slotWindowed, "S0");
+				await shoot("slot-windowed", theme);
+
+				/*
+				 * The page ask is HELD, so `Loading earlier messages` is a state the run can
+				 * stop in rather than one it has to catch between two frames.
+				 */
+				await fetch(`http://localhost:${PORT}/__child/older/hold`, {
+					method: "POST",
+				});
+				let slotLoading = null;
+				for (let attempt = 0; attempt < 16 && slotLoading === null; attempt++) {
+					await wheel(-600);
+					await sleep(350);
+					const reading = await evaluate("window.__childScroll.measure()");
+					if (/^Loading earlier messages$/.test(reading?.slot?.text ?? "")) {
+						await revealSlot();
+						slotLoading = await step(
+							"S1 the page ask in flight",
+							"the row states the act: `Loading earlier messages`",
+						);
+					}
+				}
+				if (slotLoading === null)
+					throw new Error(
+						`${theme}: the windowed row never reached its loading state in 16 wheel gestures, so the page ask was not dispatched and the failed row below cannot be reached`,
+					);
+				assertSlotOnScreen(slotLoading, "S1");
+				await shoot("slot-loading", theme);
+
+				/*
+				 * The parked ask is answered with the route's own failure envelope: the
+				 * hook counts a failed outcome, the row turns red with its retry.
+				 */
+				await fetch(`http://localhost:${PORT}/__child/older/fail`, {
+					method: "POST",
+				});
+				await fetch(`http://localhost:${PORT}/__child/older/release`, {
+					method: "POST",
+				});
+				const slotFailed = await waitForStep(
+					"S2a the failed row (before placement)",
+					"the failed row is in the DOM",
+					(reading) =>
+						/try again/i.test(reading?.slot?.retry?.label ?? "") &&
+						(reading?.slot?.text ?? "").includes(
+							"Could not load earlier messages",
+						),
+					12000,
 				);
-			if (!absent(noSession.scrollTop))
-				throw new Error(
-					`${theme}: a session-less child still has a scroller to lead back to (${noSession.scrollTop})`,
+				if (absent(slotFailed.slot?.retry))
+					throw new Error(
+						`${theme}: a failed page ask paints no retry: ${JSON.stringify(slotFailed.slot)}`,
+					);
+				/* The placement is re-applied AFTER the state change, which re-anchors. */
+				await revealSlot();
+				const failedReading = await step(
+					"S2 the failed row",
+					"the recoverable fault with its action: `Could not load earlier messages` + `Try again`",
 				);
-			await shoot("no-session", theme);
-			await evaluate('window.__childScroll.shape("live")', true);
-			await sleep(300);
+				assertSlotOnScreen(failedReading, "S2");
+				await shoot("slot-failed", theme);
+
+				/*
+				 * THE TRANSPORT PAIR, which is D2's whole subject: the same failed row with
+				 * the session's stream down. The child's own `status` cannot say this — it
+				 * is a read-only route with no stream of its own — which is why the pane
+				 * threads the session's status down (`olderTransportDown`).
+				 */
+				await evaluate("window.__childScroll.transportDown(true)", true);
+				await waitForStep(
+					"S3a the quiet row (before placement)",
+					"the row is quiet in the DOM",
+					(reading) =>
+						(reading?.slot?.text ?? "").includes(
+							"Earlier messages did not load",
+						),
+					4000,
+				);
+				await revealSlot();
+				const slotQuiet = await step(
+					"S3 the same row with the stream down",
+					"quiet, action-free: `Earlier messages did not load`, and no retry beside it",
+				);
+				assertSlotOnScreen(slotQuiet, "S3");
+				if (!absent(slotQuiet.slot?.retry))
+					throw new Error(
+						`${theme}: the stream is down and the row still offers a retry: ${JSON.stringify(slotQuiet.slot?.retry)}`,
+					);
+				await shoot("slot-failed-transport-down", theme);
+
+				await evaluate("window.__childScroll.transportDown(false)", true);
+				await fetch(`http://localhost:${PORT}/__child/older/ok`, {
+					method: "POST",
+				});
+			}
 		}
 
 		/*
