@@ -367,7 +367,159 @@ const CASES = [
 		key: "Enter",
 		expect: { ran: "/rename --refresh", draft: "", list: null },
 	},
+	/*
+	 * THE PROVIDER AND MCP LISTS — the operator's feature, end to end.
+	 *
+	 * The report this rig's pair exists for: typing `/login ope…` in the composer
+	 * offered NOTHING. The fixture (`message-input.stories.tsx`) serves the
+	 * census, the accounts document and the MCP catalog (+ the two capabilities),
+	 * so these frames show the real list copy, the real rank, and the real
+	 * gestures. The three groups mirror the acceptance: suggest-on-typing
+	 * (typeOnly), the one-Enter and one-click RUN paths for `/login`, and the
+	 * DESTRUCTIVE half — `/logout`'s and `/mcp`'s rows FILL the box and never run
+	 * on the gesture that names them, because those rows remove credentials and
+	 * config entries (`runs: false` on the source; `alert` on each row).
+	 */
+	{
+		name: "login-suggest-on-ope",
+		why: "The operator's exact repro: `/login ope` — a subsequence of `openai` — offers the OpenAI row with its registry qualifier and a live state in the detail column. On the base tree this shows no list at all.",
+		word: "login ope",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/login ope",
+			list: "Command arguments",
+			phase: "Providers",
+		},
+	},
+	{
+		name: "login-space-lists-every-provider",
+		why: "The bare space after `/login`: every loginable provider in registry order, logged-in rows annotated in the detail column and still offered (the acceptance's `/login [provider]` half).",
+		word: "login ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/login ",
+			list: "Command arguments",
+			phase: "Providers",
+		},
+	},
+	{
+		name: "login-one-click-runs",
+		why: "One CLICK on a suggested provider runs the sign-in for it — the pointer half of the acceptance, and the gesture the operator reached for.",
+		word: "login ope",
+		click: "OpenAI",
+		expect: { ran: "/login openai", draft: "", list: null },
+	},
+	{
+		name: "logout-space-lists-stored-accounts",
+		why: "`/logout ` offers only providers with stored credentials: one row per PROVIDER, the removal digest in the detail column and the single account's identity where there is one.",
+		word: "logout ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/logout ",
+			list: "Command arguments",
+			phase: "Accounts",
+		},
+	},
+	{
+		name: "logout-enter-fills-never-runs",
+		why: "Fill-not-run, the destructive gate: `/logout anthro` + Enter completes the survivor to `/logout anthropic` and dispatches NOTHING — a credential is only ever removed by a press on a box the user can read.",
+		word: "logout anthro",
+		key: "Enter",
+		expect: { ran: "none", draft: "/logout anthropic" },
+	},
+	{
+		name: "logout-click-completes-never-runs",
+		why: "A CLICK on a `/logout` row only completes it — the pointer arm has no ambiguity gate, so `runs: false` on the source is the whole floor and the frame shows the filled box instead of a removal.",
+		word: "logout ",
+		click: "anthropic",
+		expect: { ran: "none", draft: "/logout anthropic" },
+	},
+	{
+		name: "mcp-space-lists-the-verbs",
+		why: "`/mcp ` offers the document's own verb table — `list` first, every destructive verb below it carrying its alert, which is what the next two cases spend.",
+		word: "mcp ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/mcp ",
+			list: "Command arguments",
+			phase: "Servers",
+		},
+	},
+	{
+		name: "mcp-logout-lists-signed-in-servers",
+		why: "`/mcp logout ` filters the catalog to the rows a logout can act on (`offers: signed_in`), and the detail names what is REMOVED rather than the connection that happens to be up.",
+		word: "mcp logout ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/mcp logout ",
+			list: "Command arguments",
+			phase: "Servers",
+		},
+	},
+	{
+		name: "mcp-logout-enter-fills-never-runs",
+		why: "The destructive gate on the MCP side: `/mcp logout gith` + Enter completes to `/mcp logout github` and dispatches nothing — the credential survives the first press.",
+		word: "mcp logout gith",
+		key: "Enter",
+		expect: { ran: "none", draft: "/mcp logout github" },
+	},
+	{
+		name: "mcp-remove-click-completes-never-runs",
+		why: "A CLICK on a `/mcp remove` row completes it and dispatches nothing: deleting a config entry takes a second, deliberate press, and the frame records the filled box.",
+		word: "mcp remove ",
+		click: "remove github",
+		expect: { ran: "none", draft: "/mcp remove github" },
+	},
+	{
+		name: "login-enter-fills-the-top-match",
+		why: "`/login ope` + Enter FILLS the top match instead of running it, because `ope` is a subsequence of `openrouter` too — two candidates, so the matcher's pick may not be run on the user's behalf (the frame names the row the box now holds, OpenAI, not the runner-up).",
+		word: "login ope",
+		key: "Enter",
+		expect: { ran: "none", draft: "/login openai" },
+	},
+	{
+		name: "login-second-enter-runs",
+		why: "The second Enter on the box the fill wrote (`/login openai`, EXACT) runs the sign-in — the two-Enter path a fuzzy query has to take, ending in the one-gesture outcome the operator asked for once the word is named.",
+		word: "login ope",
+		key: "Enter",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "/login openai", draft: "", list: null },
+	},
+	{
+		name: "logout-typed-full-then-enter-submits",
+		why: "The destructive source's escape hatch, recorded rather than assumed: with `/logout anthropic` typed in full, the first Enter only completes-and-closes (runs: false keeps the popup from ever being the dispatcher), and the NEXT Enter — no list holding the key — submits the command like any other draft. The deviation is the popup's extra press, not a dead end.",
+		word: "logout anthropic",
+		key: "Enter",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "/logout anthropic", draft: "", list: null },
+	},
 ];
+
+/*
+ * An optional case filter, for the before/after pair: a base-tree run needs only
+ * the cases whose subject is the change (`SLASH_PROOF_CASES=login,mcp`), while
+ * the rename and ambiguity cases were written for a tree that no longer matches
+ * the base's component set. Kept here rather than as a second script, so both
+ * halves of the pair run the SAME file and the filter is the only difference.
+ */
+const CASE_FILTER = (process.env.SLASH_PROOF_CASES ?? "")
+	.split(",")
+	.map((name) => name.trim())
+	.filter(Boolean);
+if (CASE_FILTER.length > 0) {
+	CASES.splice(
+		0,
+		CASES.length,
+		...CASES.filter((testCase) =>
+			CASE_FILTER.some((needle) => testCase.name.includes(needle)),
+		),
+	);
+}
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

@@ -33,12 +33,18 @@
  *     (`editor.py:_sync_picker_if_phase_changed`).
  */
 
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import {
+	fetchMcpCatalog,
+	mcpCatalogKeys,
+} from "@shared/api/local-operator/mcp-catalog";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -56,7 +62,10 @@ import {
 } from "react";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
-import { useEntities } from "../pickers/destination-pickers";
+import {
+	type StoredAccount,
+	useEntities,
+} from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
 	type InlineArgumentSource,
@@ -73,14 +82,17 @@ import {
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
 	argumentRows,
+	effectiveInlineArgument,
 	flagTokenDraws,
 	flagTokenSelects,
 	isRendererLocalSource,
+	isSessionlessBackendSource,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
 	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
+	type PickDestination,
 	activeRowRuns,
 	argumentEmptyCopy,
 	candidateKey,
@@ -219,6 +231,14 @@ export function resolveCommand(
  * Derived from the `inline` field rather than from a second list of command
  * names, so a new registry row fails in one place (`picker-registry.tsx` states
  * why the table is keyed by destination).
+ *
+ * It reads the RAW table, without the capability resolution the hook applies to
+ * every list it opens: the vocabulary's jobs are completion spans and the
+ * planner's word set, and whether a list actually opens is decided downstream
+ * (`useSlashCompletion`'s effective inline). Filtering here would need the
+ * capability answer a module function cannot hold, for a difference no surface
+ * can see — a word this names on a backend that lacks the list simply opens
+ * nothing, exactly as it did before the row existed.
  */
 function argumentVocabulary(commands: readonly SlashCommandMeta[]): {
 	words: string[];
@@ -259,8 +279,21 @@ export type SlashCompletionState = {
 	/** The command word whose argument list is up, when in the argument phase. */
 	argumentCommand: string | null;
 	/** The inline disposition of that command. Presence is the whole of
-	 *  "completing its word opens a list". */
+	 *  "completing its word opens a list".
+	 *
+	 *  It is the EFFECTIVE disposition: `effectiveInlineArgument` has already
+	 *  dropped a list the backend does not license, so every reader — the two
+	 *  footers and the pick gate, here and in `message-input.tsx` — reads one
+	 *  answer for a feature-absent backend. */
 	inline: InlineArgumentSource | undefined;
+	/**
+	 * The destination entry a pick of the ACTIVE command row routes through —
+	 * `DESTINATIONS` with the same capability resolution applied to its inline
+	 * list, so `pointerPickRuns` cannot flip a command row to completes-only on
+	 * a backend that never had the list. Returned for every kind of
+	 * destination; only picker entries carry an inline at all.
+	 */
+	effectiveEntry(destination: string | undefined): PickDestination | undefined;
 	/** The argument text typed so far, for the ambiguity gate. */
 	argumentQuery: string;
 	/**
@@ -362,24 +395,101 @@ export type SlashCompletionState = {
  * the same `@shared/themes` table its dialog reads, and `title-refresh` is a
  * fixed spelling list. Both are answered from a local read and reported as
  * loaded, because "nothing to ask" must not render as "not reported yet".
+ *
+ * The SESSIONLESS sources (`SESSIONLESS_BACKEND_SOURCES`) fetch the three
+ * sessionless routes — the LoginPicker's and LogoutPicker's own reads, and the
+ * MCP catalog Settings > Integrations owns — under the SAME query keys, so an
+ * existing invalidation (a sign-in, a removed account, an MCP control) reaches
+ * the composer's list and one cache entry serves both surfaces.
+ * `needsSession: false` on all three: none of these routes is scoped to a
+ * conversation, which is the point of the category — a draft pane can answer
+ * them without a session to ask.
+ *
+ * The three queries are declared UNCONDITIONALLY (hooks cannot be called
+ * conditionally) and merely DISABLED while their source is not the active one.
+ * They do not re-ask the capability question: a backend that does not advertise
+ * the source's feature never resolves `source` at all (`effectiveInlineArgument`
+ * upstream), and a second gate here would be a second answer.
  */
 function useArgumentRows(
 	source: ArgumentSource | undefined,
 	sessionId: string | undefined,
+	/*
+	 * The pane's working directory and the typed argument text — the two inputs
+	 * the sessionless sources add. `cwd` keys the MCP catalog read (its key is
+	 * `(cwd, sessionId)` exactly as the controls' `setQueryData` writes it), and
+	 * the argument text is what the `mcp` slot split reads (`/mcp ` offers the
+	 * verbs, `/mcp login ` their servers).
+	 */
+	cwd: string | undefined,
+	argument: string,
 	activeTeam: unknown,
 	activeAgent: unknown,
 	enabled: boolean,
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
-	// is merely DISABLED for a renderer-local source.
+	// is merely DISABLED for a renderer-local or sessionless source — the entity
+	// route is session-bound, and a sessionless id reaching it would ask the
+	// wrong route for a list it does not serve.
 	const local = isRendererLocalSource(source);
-	const entitySource = source && !local ? source : "model";
+	const sessionless = isSessionlessBackendSource(source);
+	const entitySource = source && !local && !sessionless ? source : "model";
 	const entities = useEntities(
 		sessionId ?? "",
 		entitySource,
 		undefined,
-		enabled && Boolean(source) && !local && Boolean(sessionId),
+		enabled && Boolean(source) && !local && !sessionless && Boolean(sessionId),
+	);
+	/*
+	 * The LoginPicker's own read, restated rather than reached through
+	 * `useDesktopProviders` because that hook mounts a plain `useQuery`: this
+	 * composer is reachable in documents without a `QueryClientProvider` (the
+	 * mini view), where the fallback client must not fetch
+	 * (`useOptionalQueryClient`). Same key, same fetch, same options, so one
+	 * cache entry serves both surfaces.
+	 */
+	const providers = useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers ?? []),
+			enabled: enabled && provided && source === "providers",
+			staleTime: 30_000,
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
+	/* The LogoutPicker's query, same key and same shape, under the fallback client. */
+	const accounts = useQuery(
+		{
+			queryKey: desktopKeys.accounts,
+			queryFn: () =>
+				desktopResult<{ accounts: StoredAccount[] }>({
+					op: "accounts.list",
+				}).then((result) => result.accounts ?? []),
+			enabled: enabled && provided && source === "provider-accounts",
+		},
+		client,
+	);
+	/*
+	 * The sessionless catalog read, under the integrations page's own key and
+	 * fetch — `(cwd, sessionId)` is what makes the overlay answer a live status
+	 * where one exists and degrade silently where one does not. Same freshness
+	 * window as that page's read; no polling, because a composer list is not a
+	 * status surface.
+	 */
+	const mcp = useQuery(
+		{
+			queryKey: mcpCatalogKeys.catalog(cwd ?? null, sessionId ?? null),
+			queryFn: () => fetchMcpCatalog(cwd ?? null, sessionId ?? null),
+			enabled: enabled && provided && source === "mcp",
+			staleTime: 10_000,
+		},
+		client,
 	);
 	const localThemes = useMemo(
 		() =>
@@ -436,6 +546,37 @@ function useArgumentRows(
 				needsSession: false,
 			};
 		}
+		if (source === "providers") {
+			return {
+				rows: argumentRows("providers", providers.data ?? [], null),
+				loading: providers.isLoading,
+				error: providers.isError
+					? "The list could not be loaded. Try again."
+					: null,
+				needsSession: false,
+			};
+		}
+		if (source === "provider-accounts") {
+			return {
+				rows: argumentRows("provider-accounts", accounts.data ?? [], null),
+				loading: accounts.isLoading,
+				error: accounts.isError
+					? "The list could not be loaded. Try again."
+					: null,
+				needsSession: false,
+			};
+		}
+		if (source === "mcp") {
+			return {
+				rows: argumentRows("mcp", mcp.data?.servers ?? [], null, {
+					argument,
+					verbs: mcp.data?.verbs,
+				}),
+				loading: mcp.isLoading,
+				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				needsSession: false,
+			};
+		}
 		if (!sessionId) {
 			// No session, no entity source. Called out rather than rendered as an
 			// empty list, because "not reported yet" would be a lie about a
@@ -456,6 +597,16 @@ function useArgumentRows(
 		entities.data,
 		entities.isLoading,
 		entities.isError,
+		providers.data,
+		providers.isLoading,
+		providers.isError,
+		accounts.data,
+		accounts.isLoading,
+		accounts.isError,
+		mcp.data,
+		mcp.isLoading,
+		mcp.isError,
+		argument,
 		current,
 		sessionId,
 	]);
@@ -466,6 +617,12 @@ export type SlashCompletionArgs = {
 	selectionStart: number;
 	/** The live canonical session id, or undefined for a draft. */
 	sessionId?: string;
+	/*
+	 * The pane's working directory, passed through to the sessionless MCP
+	 * catalog read — its query key is `(cwd, sessionId)` and the document it
+	 * answers depends on both (`mcp-catalog.ts`). Absent on a pane with none.
+	 */
+	cwd?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
 	/** The active session model, used only to describe `/model default`. */
@@ -498,6 +655,7 @@ export function useSlashCompletion({
 	inputValue,
 	selectionStart,
 	sessionId,
+	cwd,
 	activeProfile,
 	activeModel,
 	activeSpec,
@@ -709,6 +867,34 @@ export function useSlashCompletion({
 	}, [argumentWord, registry]);
 
 	/*
+	 * THE EFFECTIVE INLINE — the one resolution every reader below, and the pick
+	 * gate in `message-input.tsx` through this hook's returned state, shares:
+	 * the declaration above, minus a list the backend does not license
+	 * (`effectiveInlineArgument`). A feature-absent backend therefore cannot
+	 * have the fetch ask for rows, a footer promise a list, or the gate run a
+	 * pick whose list does not exist — all four read this one answer.
+	 */
+	const effectiveInline = useMemo(
+		() => effectiveInlineArgument(inline, capabilities.data),
+		[inline, capabilities.data],
+	);
+	/*
+	 * The same resolution for a COMMAND row's destination: the entry a pick
+	 * routes through, with its inline list dropped when unlicensed — which is
+	 * what keeps `/login`'s pick running its picker on a backend without
+	 * `provider_catalogue`, exactly as it does today.
+	 */
+	const effectiveEntry = useCallback(
+		(destination: string | undefined) => {
+			const entry = destination ? DESTINATIONS[destination] : undefined;
+			if (!entry || entry.kind !== "picker") return entry;
+			const resolved = effectiveInlineArgument(entry.inline, capabilities.data);
+			return resolved === entry.inline ? entry : { ...entry, inline: resolved };
+		},
+		[capabilities.data],
+	);
+
+	/*
 	 * Whether a pick of the active row would HOIST this draft: text that survives
 	 * the caret's token, so the command moves to the front with that text as its
 	 * argument (`planSlashArming`) instead of the pick only completing its word.
@@ -775,21 +961,23 @@ export function useSlashCompletion({
 	}, [commandContext, registry, openArchived, archiveEnabled, activeSpec]);
 
 	const argumentList = useArgumentRows(
-		inline?.source,
+		effectiveInline?.source,
 		sessionId,
+		cwd,
+		argumentContext?.value ?? "",
 		activeProfile?.team,
 		activeProfile?.agent,
 		enabled,
 	);
 
 	const argumentMatches = useMemo(() => {
-		if (!inline || !argumentContext) return [];
+		if (!effectiveInline || !argumentContext) return [];
 		/*
 		 * `default` is a direct machine-setting operation, not a model catalogue
 		 * entry. It replaces the catalogue matches so fuzzy survivors can never
 		 * take index zero and switch the model when the user intended the action.
 		 */
-		if (inline.source === "model") {
+		if (effectiveInline.source === "model") {
 			const action = modelDefaultActionRow(
 				argumentContext.value,
 				activeModel,
@@ -803,7 +991,7 @@ export function useSlashCompletion({
 			({ choice }) => ({ kind: "argument" as const, row: choice }),
 		);
 	}, [
-		inline,
+		effectiveInline,
 		argumentContext,
 		argumentList.rows,
 		activeModel,
@@ -836,12 +1024,12 @@ export function useSlashCompletion({
 	 * word, so whitespace is exactly the signal.
 	 */
 	const nameComplete =
-		inline?.nameThenMessage === true &&
+		effectiveInline?.nameThenMessage === true &&
 		argumentContext !== null &&
 		SEPARATOR.test(argumentContext.value);
 	const phase: SlashCompletionState["phase"] =
 		purePhase === "argument"
-			? inline && !nameComplete
+			? effectiveInline && !nameComplete
 				? "argument"
 				: null
 			: purePhase === "command" && commandMatches.length > 0
@@ -873,9 +1061,14 @@ export function useSlashCompletion({
 	 * so a title-shaped token cannot draw the row at all, whoever's mistake reaches
 	 * it. Every other source keeps its behaviour exactly.
 	 */
-	const flagDraw = flagTokenDraws(inline?.source, argumentContext?.value ?? "");
+	const flagDraw = flagTokenDraws(
+		effectiveInline?.source,
+		argumentContext?.value ?? "",
+	);
 	const phaseWithFlagList =
-		phase === "argument" && !showsUnmatchedList(inline?.source) && !flagDraw
+		phase === "argument" &&
+		!showsUnmatchedList(effectiveInline?.source) &&
+		!flagDraw
 			? null
 			: phase;
 
@@ -987,7 +1180,8 @@ export function useSlashCompletion({
 				? `${listId}-${rowId(matches[state.active])}`
 				: null,
 		argumentCommand: argumentWord,
-		inline,
+		inline: effectiveInline,
+		effectiveEntry,
 		argumentQuery: argumentContext?.value ?? "",
 		commandQuery: commandContext?.query ?? "",
 		argumentList,
@@ -1096,12 +1290,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	 */
 	const activeDestination =
 		activeRow?.kind === "command" ? activeRow.command.destination : undefined;
+	/*
+	 * The EFFECTIVE entry for that destination — `DESTINATIONS` with the inline
+	 * resolved against the capability answer — is what both readers below route
+	 * through, read once so the pick's route and the footer's description cannot
+	 * come from different tables.
+	 */
+	const activeEntry = state.effectiveEntry(activeDestination);
 	const pickRuns = activeRowRuns({
 		destination: activeDestination,
-		entry:
-			activeRow?.kind === "command"
-				? DESTINATIONS[activeRow.command.destination]
-				: undefined,
+		entry: activeEntry,
 		inlineRuns: state.inline?.runs ?? false,
 	});
 	const footer = activeAction
@@ -1118,14 +1316,15 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				nameThenMessage: state.inline?.nameThenMessage ?? false,
 				runs: pickRuns,
 				/*
-				 * Whether this row's completion OPENS a list, asked of the registry table the
-				 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
-				 * command names. It separates the two `runs: false` command states the copy
-				 * has to word differently (UX round 1, U4): `/model` completes and opens its
-				 * list, `/clear` completes and is run by the NEXT Enter.
+				 * Whether this row's completion OPENS a list — asked of the SAME effective
+				 * entry the pick routes through (`activeEntry`), never of a second table,
+				 * so the copy and the gesture cannot disagree about the same row. It
+				 * separates the two `runs: false` command states the copy has to word
+				 * differently (UX round 1, U4): `/model` completes and opens its list,
+				 * `/clear` completes and is run by the NEXT Enter.
 				 */
 				opensList: Boolean(
-					activeCommand && inlineArgumentFor(activeCommand.command.destination),
+					activeEntry?.kind === "picker" && activeEntry.inline !== undefined,
 				),
 				value: activeArgument?.value ?? "",
 				matched: Boolean(activeRow),
