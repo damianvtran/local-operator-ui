@@ -327,15 +327,29 @@ test("I4: a page that resolves after a session switch is stale, not failed", asy
 	);
 });
 
-test("I4: leaving a conversation and coming back does not revive the page that was out for the first visit", async () => {
+test("I4 (contract pin, not a regression): a returning visit is handed its own page, never the first visit's", async () => {
 	/*
-	 * The loader is keyed by whatever identity the host passes, and the session
-	 * hook passes a per-VISIT one (`<session id>#<epoch>`): a bare session id
-	 * compared equal on return, so the page still out for the first visit was
-	 * treated as current, landed on the returning view's reset transcript and
-	 * seeded its cursor from a deep page (loader-continuity round 1, R1-3). The
-	 * hook-level pin is in `reconnect-page-gap.test.mjs`; this is the loader's half
-	 * of the contract - a different visit's key shares no flight and no verdict.
+	 * WHAT THIS PINS. The loader is single-flight keyed by whatever identity its
+	 * HOST passes (`load-older.ts` `load(key, deps)` / `flight.key === key`), so two
+	 * different keys share no flight and no verdict: the page still out for the
+	 * first visit resolves `stale` and never lands on the returning view's reset
+	 * transcript, and the returning visit gets its own page.
+	 *
+	 * WHY THE NAME SAYS CONTRACT. It is deliberately NOT a fresh regression pin,
+	 * and the round-2 review (R2-2) is right about why: the defect it describes was
+	 * the HOST's key - `use-canonical-session.ts` passed a bare session id, so the
+	 * returning visit compared equal and was handed the first visit's promise
+	 * (round 1, R1-3) - while `load-older.ts`, which honours whatever key it is
+	 * given, is BYTE-IDENTICAL between the pre-fix tree and this head (`git diff
+	 * 0ce62bad54 HEAD -- .../canonical/load-older.ts` is empty). No loader-level
+	 * assertion can therefore discriminate against that tree: measured, this whole
+	 * file is 5 pass / 0 fail against `0ce62bad54`'s src. The regression itself is
+	 * pinned where the key lived - `reconnect-page-gap.test.mjs`, 23 pass / 1 fail
+	 * pre-fix.
+	 *
+	 * WHY IT IS STILL WORTH KEEPING. It is the loader's half of that contract, and
+	 * it fails first if a later change moves the key comparison back into the
+	 * loader or keys the flight on something coarser than the visit.
 	 */
 	const journal = FakeJournal.fromShape();
 	const reader = new Reader(m, journal, { key: "session-a#0" }).open();
