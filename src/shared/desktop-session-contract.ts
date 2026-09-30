@@ -444,6 +444,22 @@ export type CanonicalModel = {
 	reasoning_default_effort?: string | null;
 	/** Whether the model reasons at all, with or without a ladder. */
 	reasoning?: boolean | null;
+	/**
+	 * Whether this route can serve the model on its FAST tier, and whether the
+	 * session's fast dial is ON (`ModelSpec.supports_fast_mode` / `.fast_mode`,
+	 * `local_operator/harness/types.py`; `/fast` flips the second).
+	 *
+	 * OPTIONAL like every field below `model_id`, and for the same reason: the
+	 * pair landed after the spec dump this contract first described, so an older
+	 * owner omits both. `supports_fast_mode !== true` therefore means "no tier to
+	 * report", and every reader shows NOTHING for it rather than an OFF state it
+	 * cannot vouch for — the one tri-state every surface takes from
+	 * `fastModeState` (`session-status/session-model.ts`): the strip's badge and
+	 * the `/fast` row's slot both read that helper, so they cannot disagree
+	 * about a session's dial.
+	 */
+	supports_fast_mode?: boolean | null;
+	fast_mode?: boolean | null;
 	/** The active budget. `max_context_window` retains provider provenance. */
 	context_window?: number | null;
 	max_context_window?: number | null;
