@@ -92,6 +92,15 @@ const GPT_5 = {
 };
 
 /**
+ * A fast-capable sibling of `GPT_5`: the same spec with the fast tier reported
+ * (`ModelSpec.supports_fast_mode` / `.fast_mode`, `local_operator/harness/
+ * types.py` — the pair the badge and the `/fast` row both read). Two dial
+ * states, because OFF is a state these frames have to show: the badge hides.
+ */
+const GPT_5_FAST = { ...GPT_5, supports_fast_mode: true, fast_mode: true };
+const GPT_5_FAST_OFF = { ...GPT_5, supports_fast_mode: true, fast_mode: false };
+
+/**
  * The strip inside the composer's own box, at the composer's own inset.
  *
  * Photographing the strip on bare canvas would judge it against a ground it
@@ -221,6 +230,72 @@ export const States: Story = {
 			</Frame>
 		</div>
 	),
+};
+
+/**
+ * THE FAST BADGE (operator's mock, 2026-09-29): the bolt immediately before
+ * the model name, shown ONLY when the dial is on — a model that reports no
+ * fast tier and a supported model with the dial off both hide it, because the
+ * badge's presence is the message (the same rule the TUI band's `fast` segment
+ * shipped with, `_fast_label`).
+ *
+ * The badge carries no tooltip trigger of its own; its sentence (`Fast mode
+ * on`) rides the chip's existing panel, and the chip's `aria-label` states it
+ * too — see `FAST_MODE_ON_NOTE` in `session-status-strip.tsx` for why a second
+ * trigger inside the button is a defect. `fast-mode-tooltip` photographs that
+ * panel by focusing the trigger, the path a keyboard user takes.
+ */
+export const FastMode: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame label="Fast mode on: the badge sits immediately before the name">
+				<SessionStatusStrip
+					frontend={state({ effective_model: GPT_5_FAST })}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="Fast mode off: supported, dial off — no badge">
+				<SessionStatusStrip
+					frontend={state({ effective_model: GPT_5_FAST_OFF })}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame label="No fast tier reported: no badge, no state to claim">
+				<SessionStatusStrip
+					frontend={state({ effective_model: GPT_5 })}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/** The badge's sentence in the chip's own tooltip, on the fast-on spec. */
+export const FastModeTooltip: Story = {
+	render: () => {
+		const Focused: FC<{
+			frontend: CanonicalFrontendState;
+		}> = ({ frontend }) => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				// The model reading is the row's first control.
+				const buttons = host.current?.querySelectorAll("button");
+				(buttons?.[0] as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip frontend={frontend} onCommand={() => undefined} />
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame label="The chip's panel while the badge shows: the selector, `Fast mode on`, and the closing line">
+					<Focused frontend={state({ effective_model: GPT_5_FAST })} />
+				</Frame>
+			</div>
+		);
+	},
 };
 
 /**
@@ -388,7 +463,9 @@ export const EffortStates: Story = {
 };
 
 /**
- * A model name long enough to overrun the row, at two widths.
+ * A model name long enough to overrun the row, at three widths — one of them
+ * with the fast bolt showing, so the truncated-name floor is photographed with
+ * and without the badge (design D2, round 1).
  *
  * An aggregator id with no curated name is the real source of these: the model
  * chip falls back to `model_id`, which is a full slug.
@@ -421,6 +498,25 @@ export const LongModelName: Story = {
 					<SessionStatusStrip
 						frontend={state({
 							effective_model: long,
+							context_tokens: 210_000,
+							context_window: 400_000,
+							cumulative_parent_cost: 1.84,
+							cost_knowledge: "exact",
+						})}
+						onCommand={() => undefined}
+					/>
+				</Frame>
+				<Frame
+					width={380}
+					label="Narrower, fast on: the bolt rides the truncated name"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: {
+								...long,
+								supports_fast_mode: true,
+								fast_mode: true,
+							},
 							context_tokens: 210_000,
 							context_window: 400_000,
 							cumulative_parent_cost: 1.84,
@@ -465,6 +561,28 @@ export const CollapsedColumn: Story = {
 							...GPT_5,
 							display_name: "",
 							model_id: "moonshotai/kimi-k2-instruct-0905",
+						},
+						context_tokens: 352_000,
+						context_window: 400_000,
+						context_is_estimate: true,
+						cumulative_parent_cost: 4.02,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame
+				width={220}
+				label="220px, long model name, fast on: the bolt at the floor"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: {
+							...GPT_5,
+							display_name: "",
+							model_id: "moonshotai/kimi-k2-instruct-0905",
+							supports_fast_mode: true,
+							fast_mode: true,
 						},
 						context_tokens: 352_000,
 						context_window: 400_000,

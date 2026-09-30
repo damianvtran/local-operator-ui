@@ -54,6 +54,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
 import { useEntities } from "../pickers/destination-pickers";
 import {
@@ -62,6 +63,10 @@ import {
 	destinationNeedsSession,
 	inlineArgumentFor,
 } from "../pickers/picker-registry";
+import {
+	type FastModeState,
+	fastModeState,
+} from "../session-status/session-model";
 import {
 	type ArgumentActionRow,
 	type ArgumentRow,
@@ -83,6 +88,7 @@ import {
 	clickFooter,
 	commandChoiceUnambiguous,
 	commandLabels,
+	commandRowSlot,
 	enterFooter,
 	phaseLabel,
 	pickArmsCommand,
@@ -172,7 +178,18 @@ export type CompletionRow =
 	 * the row shows and the string the completion writes, so the highlight
 	 * cannot describe something Enter will not do.
 	 */
-	| { kind: "command"; command: SlashCommandMeta; label: string }
+	| {
+			kind: "command";
+			command: SlashCommandMeta;
+			label: string;
+			/**
+			 * The live state a command's right-edge slot shows, or `null`/absent for
+			 * no slot: `/fast`'s `on`/`off`, attached by the hook from the spec in
+			 * force. Every other row leaves it off, and `commandRowSlot`
+			 * (`slash-contract.ts`) is the one reader.
+			 */
+			fastState?: FastModeState;
+	  }
 	| { kind: "argument"; row: ArgumentRow }
 	| { kind: "action"; row: ArgumentActionRow };
 
@@ -454,6 +471,18 @@ export type SlashCompletionArgs = {
 	/** The active session model, used only to describe `/model default`. */
 	activeModel?: { provider?: unknown; model_id?: unknown } | null;
 	/**
+	 * The spec in force for this session (`effective_model ?? selected_model`
+	 * from the canonical snapshot) — which is where a command row's live state
+	 * comes from: `/fast`'s right-edge slot mirrors the dial the command would
+	 * flip. The chip's own path additionally considers a PENDING selection
+	 * (`session-model.ts` `bandReadings`), so inside an unconfirmed switch the
+	 * two describe different specs — each truthful — and outside it they read
+	 * the same fields. Deliberately NOT `activeModel` above: that one is
+	 * NARROWED to provider/model_id at the call site (it feeds the `/model
+	 * default` action row), and the fast flags would vanish with the narrowing.
+	 */
+	activeSpec?: CanonicalModel | null;
+	/**
 	 * Whether the pane this composer sits on can address a SESSION — the
 	 * dispatcher's own question, passed down from the page that builds it.
 	 *
@@ -471,6 +500,7 @@ export function useSlashCompletion({
 	sessionId,
 	activeProfile,
 	activeModel,
+	activeSpec,
 	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
@@ -718,6 +748,7 @@ export function useSlashCompletion({
 		 * is refused WITH A REASON there, which is why this filter is a preference
 		 * about what to offer rather than the enforcement point.
 		 */
+		const fastState = fastModeState(activeSpec);
 		return ranked
 			.filter(({ command }) =>
 				archiveDestinationApplies(
@@ -728,9 +759,20 @@ export function useSlashCompletion({
 			)
 			.map(
 				({ name, command }) =>
-					({ kind: "command", command, label: name }) as CompletionRow,
+					({
+						kind: "command",
+						command,
+						label: name,
+						/*
+						 * Only the dial row carries a right-edge state; every other command
+						 * row keeps `fastState` off and `commandRowSlot` paints no slot for it
+						 * (the operator's `value?` class fix).
+						 */
+						fastState:
+							command.destination === "session.fast" ? fastState : undefined,
+					}) as CompletionRow,
 			);
-	}, [commandContext, registry, openArchived, archiveEnabled]);
+	}, [commandContext, registry, openArchived, archiveEnabled, activeSpec]);
 
 	const argumentList = useArgumentRows(
 		inline?.source,
@@ -1322,7 +1364,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 };
 
 function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
-	const { command, label } = row;
+	const { command, label, fastState } = row;
 	/*
 	 * THE DANGER ROLE ON THE COMMAND'S OWN WORD, which is the ink `/delete` is
 	 * marked with in this host: a bare command row carries no argument row and
@@ -1332,6 +1374,16 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 	 * destructive - the same reason the function exists at all.
 	 */
 	const destructive = slashDestructive(command.name, undefined);
+	/*
+	 * THE RIGHT-EDGE SLOT, from the one decision (`commandRowSlot`,
+	 * `slash-contract.ts`): a REQUIRED command says what it needs, the dial row
+	 * (`/fast`) shows its live state, and every optional or parameterless row
+	 * shows NOTHING - the operator report was that `/fast` trailed a literal
+	 * "value?", and the placeholder is gone from the class rather than renamed
+	 * for one command. The slot shares the row's meta register; the WORDS carry
+	 * the state, which is what a metadata column may spend on a fact.
+	 */
+	const slot = commandRowSlot(command, fastState);
 	return (
 		<>
 			<span
@@ -1353,10 +1405,8 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 			<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 				{command.description}
 			</span>
-			{command.arguments !== "none" && (
-				<span className="shrink-0 text-meta text-ink-dim">
-					{command.arguments === "required" ? "needs a value" : "value?"}
-				</span>
+			{slot !== null && (
+				<span className="shrink-0 text-meta text-ink-dim">{slot}</span>
 			)}
 		</>
 	);
