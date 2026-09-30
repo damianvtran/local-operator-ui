@@ -1,0 +1,290 @@
+{
+  "backend": "http://127.0.0.1:1139",
+  "proxy": "http://127.0.0.1:8391",
+  "out": "/Users/damian/.local-operator/sessions/2955efce7468/scratchpad/stt-rec-7c2e/before-new",
+  "steps": [
+    {
+      "step": "rig.radientUpstream",
+      "port": 8741,
+      "delayMs": 900
+    },
+    {
+      "step": "rig.proxy",
+      "port": 8391,
+      "upstream": "http://127.0.0.1:1139"
+    },
+    {
+      "step": "bridge",
+      "present": true
+    },
+    {
+      "step": "rig.mode",
+      "role": "after",
+      "captureOnly": true,
+      "audioFile": "/Users/damian/.local-operator/sessions/2955efce7468/scratchpad/stt-rec-7c2e/audio/stt-recording-display.wav"
+    },
+    {
+      "step": "capabilities",
+      "desktop_available": true,
+      "input_mode_injected": false,
+      "features_keys": 27
+    },
+    {
+      "step": "capabilities.input_mode",
+      "inject": false,
+      "value": null
+    },
+    {
+      "step": "boot.pushToTalkReset",
+      "status": 404
+    },
+    {
+      "step": "capabilities.input_modeMatchesRunMode",
+      "ok": true,
+      "value": null
+    },
+    {
+      "step": "sessionA.draftTyped",
+      "ok": true,
+      "draft": "review the stt overhaul"
+    },
+    {
+      "step": "sessionA.idle",
+      "textarea": true,
+      "recording": false,
+      "indicator": false,
+      "transcribing": false,
+      "confirm": false,
+      "cancel": false,
+      "micDisabled": false,
+      "draft": "review the stt overhaul",
+      "boxHeight": 110
+    },
+    {
+      "step": "sessionA.micTooltip",
+      "text": [
+        "Start recording (Cmd+Shift+S or hold Right-Option)"
+      ]
+    },
+    {
+      "step": "sessionA.combo.timestamps",
+      "t0": 12401.70000000298,
+      "flip": 14745.79999999702
+    },
+    {
+      "step": "sessionA.comboEngages",
+      "ok": true,
+      "deliveredToPage": true,
+      "flipped": true,
+      "latencyMs": 2344,
+      "budgetMs": 9000,
+      "cold": true
+    },
+    {
+      "step": "sessionA.recordingTreatment",
+      "textarea": true,
+      "recording": true,
+      "indicator": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": "review the stt overhaul",
+      "boxHeight": 150
+    },
+    {
+      "step": "sessionA.combo.transcribingSeen",
+      "transcribing": true
+    },
+    {
+      "step": "sessionA.transcriptLanded",
+      "transcribingSeen": true,
+      "draft": "review the stt overhaul dictated words from the fake upstream."
+    },
+    {
+      "step": "sessionA.space.timestamps",
+      "t0": 24147.20000000298,
+      "flip": 24256.79999999702
+    },
+    {
+      "step": "sessionA.spaceEngages",
+      "ok": true,
+      "deliveredToPage": true,
+      "flipped": true,
+      "latencyMs": 110,
+      "budgetMs": 6000,
+      "cold": false
+    },
+    {
+      "step": "sessionA.recordingTreatmentSpace",
+      "textarea": true,
+      "recording": true,
+      "indicator": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": "review the stt overhaul dictated words from the fake upstream.",
+      "boxHeight": 150
+    },
+    {
+      "step": "sessionA.space.transcribingSeen",
+      "transcribing": true
+    },
+    {
+      "step": "sessionA.transcriptLandedSpace",
+      "draft": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream."
+    },
+    {
+      "step": "sessionA.sentBody",
+      "body": {
+        "request_id": "40c9258d-a365-493a-b8a2-56045bf67073",
+        "text": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream.",
+        "images": [],
+        "mode": "prompt"
+      }
+    },
+    {
+      "step": "sessionA.inputMode",
+      "ok": true,
+      "input_mode": null
+    },
+    {
+      "step": "sessionG.focus",
+      "pressed": true
+    },
+    {
+      "step": "sessionG.microphone",
+      "input": "/Users/damian/.local-operator/sessions/2955efce7468/scratchpad/stt-rec-7c2e/audio/stt-recording-display.wav",
+      "install": "installed"
+    },
+    {
+      "step": "sessionG.17-recording-display-empty.engage",
+      "flipped": true
+    },
+    {
+      "step": "sessionG.17-recording-display-empty.recording",
+      "textarea": true,
+      "recording": true,
+      "indicator": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": "",
+      "boxHeight": 150
+    },
+    {
+      "step": "sessionG.17-recording-display-empty.geometry",
+      "box": {
+        "x": 415,
+        "w": 810,
+        "h": 150
+      },
+      "row": {
+        "x": 431,
+        "w": 778,
+        "h": 24
+      },
+      "lane": {
+        "x": 526,
+        "w": 112,
+        "h": 24
+      },
+      "field": {
+        "x": 431,
+        "w": 778,
+        "h": 34
+      }
+    },
+    {
+      "step": "sessionG.emptyEngages",
+      "ok": true
+    },
+    {
+      "step": "sessionG.draftTyped",
+      "ok": true,
+      "draft": "the draft stays while recording"
+    },
+    {
+      "step": "sessionG.18-recording-display-draft.engage",
+      "flipped": true
+    },
+    {
+      "step": "sessionG.18-recording-display-draft.recording",
+      "textarea": true,
+      "recording": true,
+      "indicator": true,
+      "transcribing": false,
+      "confirm": true,
+      "cancel": true,
+      "micDisabled": null,
+      "draft": "the draft stays while recording",
+      "boxHeight": 150
+    },
+    {
+      "step": "sessionG.18-recording-display-draft.geometry",
+      "box": {
+        "x": 415,
+        "w": 810,
+        "h": 150
+      },
+      "row": {
+        "x": 431,
+        "w": 778,
+        "h": 24
+      },
+      "lane": {
+        "x": 526,
+        "w": 112,
+        "h": 24
+      },
+      "field": {
+        "x": 431,
+        "w": 778,
+        "h": 34
+      }
+    },
+    {
+      "step": "sessionG.draftEngages",
+      "ok": true
+    },
+    {
+      "step": "sessionG.draftAfterCancel",
+      "draft": "the draft stays while recording"
+    }
+  ],
+  "claims": [],
+  "notes": [],
+  "wire": [
+    {
+      "at": 1790729320592,
+      "path": "/v1/desktop/sessions/c29400af55eb/messages",
+      "body": {
+        "request_id": "40c9258d-a365-493a-b8a2-56045bf67073",
+        "text": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream.",
+        "images": [],
+        "mode": "prompt"
+      }
+    }
+  ],
+  "sessionA": "c29400af55eb",
+  "sessionG": "6c351d4734a1",
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}",
+  "radientCalls": [
+    {
+      "at": 1790729309016,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 63604,
+      "authorized": true
+    },
+    {
+      "at": 1790729317437,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 46868,
+      "authorized": true
+    }
+  ]
+}
