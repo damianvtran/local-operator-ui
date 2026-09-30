@@ -646,6 +646,11 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		/Worked/,
 		"the bar replaces the foot line, as on any completed run",
 	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\+ actions/,
+		"and a COMPLETE run carries no marker: its count is a total",
+	);
 });
 
 test("the snap's fetch half runs when the head is cut off, and is bounded", async (t) => {
@@ -665,9 +670,20 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		fetches += 1;
 		return true;
 	};
-	const records = Array.from({ length: 420 }, (_, index) =>
-		toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
-	);
+	/*
+	 * LOADER-CONTINUITY 1b, ROUND 1's RETARGET: the walk is armed by the CONDENSED,
+	 * head-cut BAR (see `alignWalkRunKey`), so the fixture has to carry the thing
+	 * that paints one — a closing answer. Without it the run is either the live
+	 * turn or a turn whose answer is prose-free, and neither paints a partial
+	 * statement; the first cut of this fixture omitted the answer and got a fetch
+	 * anyway, because the trigger was the window edge rather than the bar.
+	 */
+	const records = [
+		...Array.from({ length: 420 }, (_, index) =>
+			toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
+	];
 	const mounted = await mount(t, records, {
 		hasMore: true,
 		onLoadOlder: load,
@@ -702,6 +718,7 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		...Array.from({ length: 419 }, (_, index) =>
 			toolRecord(`headed:${index + 1}`, { ts: TS + 1_000 + index }),
 		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
 	];
 	const idle = await mount(t, headed, {
 		hasMore: true,
@@ -760,11 +777,31 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 		"tool:0 tool:1 answer:1",
 		"every loaded row stays addressable through the bar",
 	);
-	assert.match(summary.textContent ?? "", /2 actions/);
+	/*
+	 * THE HONEST MARKER (design round 1, D1). The count is a MINIMUM - two loaded
+	 * calls of a turn whose earlier rows are not in the store - and the bar says so
+	 * in its own vocabulary rather than stating `2 actions`, which reads exactly
+	 * like a settled total. The same claim is in words for assistive tech, and the
+	 * complete-run case below asserts the marker is ABSENT there, so the two
+	 * statements cannot collapse into one.
+	 */
+	assert.match(
+		summary.textContent ?? "",
+		/2\+ actions/,
+		"a partial count is marked: `2+ actions`",
+	);
 	assert.doesNotMatch(
 		summary.textContent ?? "",
 		/Took/,
 		"no duration: it would be fabricated from the first loaded row",
+	);
+	const partialLabel = [...summary.querySelectorAll("*")]
+		.map((node) => node.getAttribute("aria-label"))
+		.find((label) => label?.startsWith("At least"));
+	assert.equal(
+		partialLabel,
+		"At least 2 actions — earlier rows of this turn are not loaded",
+		"and the same claim is stated in words",
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent ?? "",
