@@ -698,7 +698,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 /* --------------------------------------------------------------- the arrival */
 
 /**
- * What to say when a move answers.
+ * What to say when a transfer answers - a move OR a copy.
  *
  * TWO SENTENCES, AND BOTH ARE REAL. The default destination sits COLD: the
  * design leaves the lease unclaimed so the first engage wins it, so a moved
@@ -715,6 +715,19 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
  * engage it" is not a sentence this app is entitled to render. Until the receipt
  * (or the row) publishes the fact, every arrival renders the sentence that is
  * true for every peer that predates `engage_on_arrival` - cold.
+ *
+ * A KEEP RECEIPT IS NOT A MOVE, AND THE NOTICE OWES IT COPY WORDS (QA Q3-1).
+ * The control's confirmation offers the copy as its second option (`Copy to
+ * build-box`, "the original stays where it is"), and the contract makes the
+ * distinction explicit: `source_retired = (mode == "move")`, so a kept source
+ * is the one thing a move receipt cannot say. Reading `sourceRetired` in the
+ * recall arm alone let a keep receipt render "the copy here is deleted" - a
+ * sentence true of every move and false of every copy, contradicting the dialog
+ * the user pressed one step earlier. The keep arm below states the same three
+ * facts the Mesh tab's own keep branch states for the same receipt
+ * (`mesh-page.tsx`: "Copied" / "<dest> holds a copy as <id-tail>; the original
+ * is still here."), because two surfaces naming one operation must not disagree
+ * about it.
  */
 export function arrivalCopy(input: {
 	engaged: boolean | null;
@@ -729,6 +742,8 @@ export function arrivalCopy(input: {
 	 * happened - the copy here is the one that just came back (UX U2, QA Q-1).
 	 */
 	from: string | null;
+	/** The receipt's `new_session_id` - the id the copy was minted under. */
+	newSessionId: string;
 	/** Whether the receipt said the source copy was retired. */
 	sourceRetired: boolean;
 }): {
@@ -737,7 +752,7 @@ export function arrivalCopy(input: {
 	/** Non-null only for the cold arrival; the surface must render it when set. */
 	second: string | null;
 } {
-	const { engaged, name, from, sourceRetired } = input;
+	const { engaged, name, from, newSessionId, sourceRetired } = input;
 	if (from !== null) {
 		return {
 			verb: "Moved back to this device",
@@ -751,6 +766,24 @@ export function arrivalCopy(input: {
 			 * hands, where the pane they are typing in is the answer to it.
 			 */
 			second: null,
+		};
+	}
+	if (!sourceRetired) {
+		return {
+			verb: `Copied to ${name}`,
+			detail: `${name} holds a copy as ${newSessionId.slice(-6)}; the original is still here`,
+			/*
+			 * THE COLD LINE ADAPTS, and "in the copy" is not decoration: the move arm's
+			 * "start it there" reads back to its nearest noun, which in this arm is "the
+			 * original" - an offer to start, on a machine it never left, the conversation
+			 * the user is looking at. The copy is what starts there, and the dialog's own
+			 * sentence ("The copy can be erased again from the session list",
+			 * mesh-actions.tsx) is where a reader meets it again.
+			 */
+			second:
+				engaged === true
+					? null
+					: `Nothing is running on ${name} yet. Send a message in the copy to start it there, or open it from the session list.`,
 		};
 	}
 	if (engaged === true) {
