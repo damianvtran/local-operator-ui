@@ -275,6 +275,43 @@ test("every seat sentence renders the resolved name", () => {
 	);
 });
 
+test("every seat sentence the frame can say names the resolved seat", () => {
+	/*
+	 * THE RENAME RULE AT FULL COVERAGE (reviewer R2-2). Two sentences were still
+	 * role-literal when the first round landed - the "no seat in this build" and
+	 * "could not open the conversation" arms - and a renamed seat met the word
+	 * "chief-of-staff" on exactly the failure path a user reaches when something
+	 * is wrong. All six are pinned here, so a seventh sentence that reaches for a
+	 * role instead of the name has a failing case to answer.
+	 */
+	assert.equal(
+		MINI_COPY.seatMissing("Aida"),
+		"This build doesn't have a Aida seat.",
+	);
+	assert.equal(
+		MINI_COPY.seatOpenFailed("Aida"),
+		"Couldn't open the Aida conversation.",
+	);
+	for (const sentence of [
+		MINI_COPY.seatLabel("Nova"),
+		MINI_COPY.placeholder("Nova"),
+		MINI_COPY.seatUnreachable("Nova"),
+		MINI_COPY.postAdmission("Nova"),
+		MINI_COPY.seatMissing("Nova"),
+		MINI_COPY.seatOpenFailed("Nova"),
+	]) {
+		assert.ok(
+			!sentence.includes("chief of staff") &&
+				!sentence.includes("chief-of-staff"),
+			`a seat sentence still carries the role as a literal: ${sentence}`,
+		);
+		assert.ok(
+			sentence.includes("Nova"),
+			`the name is missing from: ${sentence}`,
+		);
+	}
+});
+
 test("the name resolver falls back on absence AND on a blank", () => {
 	/*
 	 * `name ?? "Aida"` at the sibling display sites treats an empty string as a

@@ -24,6 +24,7 @@ import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
 	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
+	MINI_VIEW_PAINTED,
 	MINI_VIEW_REGISTRATION,
 	MINI_VIEW_REGISTRATION_GET,
 	MINI_VIEW_RESIZE,
@@ -1152,6 +1153,14 @@ const api = {
 		 */
 		resize: (height: number): void => {
 			ipcRenderer.send(MINI_VIEW_RESIZE, { height });
+		},
+		/**
+		 * This window -> main: the document has committed its first paint, so the
+		 * window may be shown without flashing white (see `MINI_VIEW_PAINTED`).
+		 * Fire-and-forget, and sent once per load.
+		 */
+		painted: (): void => {
+			ipcRenderer.send(MINI_VIEW_PAINTED);
 		},
 		/**
 		 * Main -> this window: a native dialog the window opened is up, or answered.

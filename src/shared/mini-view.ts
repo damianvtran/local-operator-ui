@@ -73,6 +73,22 @@ export const MINI_VIEW_RESIZE = "mini-view:resize";
 export const MINI_VIEW_DIALOG = "mini-view:dialog";
 
 /**
+ * The mini renderer -> main: "this document has committed its first paint".
+ *
+ * WHY MAIN NEEDS IT. The mini window is created hidden and presented on
+ * summon, and the renderer document it loads is a whole bundle: for as long as
+ * that load and its first commit take, a presented frameless window is a WHITE
+ * RECTANGLE (macOS paints white under an unpainted frameless window, and a
+ * frameless card has no chrome to say otherwise). Measured on the shipped
+ * build: every open after a bundle swap showed a blank white card until the
+ * app was relaunched. So presentation waits for this signal (or for the paint
+ * timeout that swaps in the error card), and the signal is sent from the
+ * frame's first COMMIT - not from `requestAnimationFrame`, which a window that
+ * has never been shown does not reliably run.
+ */
+export const MINI_VIEW_PAINTED = "mini-view:painted";
+
+/**
  * Whether the global shortcut is live, and why not when it is not.
  *
  * `registered` is the only state in which pressing the chord opens the mini
