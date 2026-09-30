@@ -633,9 +633,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			 * the same reason - so a notice that only existed on the chat route would be
 			 * silent on Settings, which is where a person who wants to act on it usually is.
 			 *
-			 * It renders `null` with nothing waiting, so it costs no height and no pixels
-			 * for a user who is not being offered anything. Its reasoning, and why it is a
-			 * band rather than a corner chip, are in the component's own header.
+			 * It DRAWS no band with nothing waiting — the live region is mounted empty and
+			 * only the box's own classes are conditional (review R4, so a populated region
+			 * is never inserted whole) — so it costs no height and no pixels for a user who
+			 * is not being offered anything. Its reasoning, and why it is a band rather
+			 * than a corner chip, are in the component's own header.
 			 *
 			 * BELOW the lane and the two columns, and above nothing: the sheet below is a
 			 * portal, so in flow this row is the column's last child and the band reads as

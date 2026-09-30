@@ -7,9 +7,12 @@
  * values cannot be told apart is a frame where the setting silently does the
  * wrong thing for a year.
  *
- * The states are the two that differ in SHAPE rather than in text: the shipped
+ * The states are the two that differ in SHAPE rather than in text - the shipped
  * default (both surfaces on every release) and a mixed card, where the app
- * follows majors while the server follows everything. The listbox itself is a
+ * follows majors while the server follows everything - plus `MinorsOnly`, which
+ * exists for one reason: the MIDDLE option's label (`Minor and major only`) was
+ * in no frame of either take, so one of the three strings this control forms had
+ * never been looked at as rendered (design round 2, D11). The listbox itself is a
  * portal-rendered popper that no committed frame can photograph, which is why
  * each option's explanation rides the item's `title` rather than a second line.
  */
@@ -80,6 +83,17 @@ export const MixedSegments: Story = {
 	args: {
 		followedUi: FollowedSegment.MAJOR,
 		followedBackend: FollowedSegment.PATCH,
+	},
+};
+
+/**
+ * Both surfaces on the MIDDLE step - the option between "every release" and
+ * majors only, and the one label no earlier frame carried (design D11).
+ */
+export const MinorsOnly: Story = {
+	args: {
+		followedUi: FollowedSegment.MINOR,
+		followedBackend: FollowedSegment.MINOR,
 	},
 };
 

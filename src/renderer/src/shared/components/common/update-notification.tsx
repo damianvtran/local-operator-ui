@@ -506,6 +506,10 @@ export const UpdateContainer = ({
 	 * `p-4` is what keeps the focus outlines off the scroll edge: `overflow-y: auto`
 	 * makes the cross axis compute to `auto` too, and a ring drawn AT the card's
 	 * padding box would be clipped by it - 16px of padding is wider than the ring.
+	 * It lives on the inner scrolling box rather than on the card itself, for the
+	 * reason the close control's own note gives (review U12): the exit has to stay
+	 * put while the notes move, so the cap and the clip moved one level down and
+	 * this box became the one that never scrolls.
 	 */
 	useSuppressBrowserView(true, "update-notice");
 	return (
@@ -543,8 +547,7 @@ export const UpdateContainer = ({
 			}
 			className={cn(
 				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
-				"max-h-[calc(100vh-2rem)] overflow-y-auto",
-				"rounded-lg bg-elevated p-4 shadow-overlay",
+				"rounded-lg bg-elevated shadow-overlay",
 				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
 				className,
 			)}
@@ -555,6 +558,17 @@ export const UpdateContainer = ({
 				 * THE VISIBLE CLOSE CONTROL (review U1). Icon-only, so it needs a name - and the
 				 * name says which panel it dismisses rather than a bare "Close", because this
 				 * card shares the corner with the failure panels.
+				 *
+				 * AND IT SITS OUTSIDE THE SCROLLER (review U12), which is why the card is two
+				 * boxes. It used to be an absolutely-positioned child of the scrolling
+				 * element, and an abspos child of a scroll container scrolls WITH it - so on a
+				 * card taller than its own cap the exit travelled with the notes: measured on
+				 * the shipped card at a 300px viewport, `beforeY 24 (visible) -> afterY -20
+				 * (NOT visible)`, which left a reader who had scrolled to the bottom of a long
+				 * release with no visible way out (`sticky` cannot help here, because it needs
+				 * an in-flow element). So the scrolling moved to the inner box and this control
+				 * is positioned against the card, which never scrolls. Escape always worked;
+				 * this is the pointer and Tab path that had no reachable target.
 				 */
 				<Button
 					type="button"
@@ -562,12 +576,25 @@ export const UpdateContainer = ({
 					size="icon-sm"
 					onClick={onClose}
 					aria-label={closeLabel}
-					className="absolute top-2 right-2"
+					className="absolute top-2 right-2 z-10"
 				>
 					<X aria-hidden="true" />
 				</Button>
 			) : null}
-			{children}
+			{/*
+			 * THE SCROLLING BOX, one level in so the control above can stay put. Everything
+			 * the cap and the clip already did is here - `max-h`, the `overflow-y-auto`
+			 * that makes the cross axis compute to `auto` too, and the `p-4` that keeps
+			 * focus outlines off the scroll edge - so the card's own box, its radius and
+			 * its geometry at rest are unchanged, and the scrollbar still sits on the
+			 * card's trailing edge because this box spans the card exactly.
+			 */}
+			<div
+				data-release-detail-scroll=""
+				className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg p-4"
+			>
+				{children}
+			</div>
 		</div>
 	);
 };
@@ -1294,7 +1321,6 @@ export const UpdateNotification = ({
 		(state) => state.clearQuietOffer,
 	);
 	const clearSurface = useUpdateNoticeStore((state) => state.clearSurface);
-	const openDetail = useUpdateNoticeStore((state) => state.openDetail);
 	const closeDetail = useUpdateNoticeStore((state) => state.closeDetail);
 	const noteRunningVersion = useUpdateNoticeStore(
 		(state) => state.noteRunningVersion,
@@ -1339,10 +1365,27 @@ export const UpdateNotification = ({
 	 * there the focus simply leaves the card (the settings control the user pressed
 	 * is a fixed landmark on that route and keeps its own focus).
 	 */
-	const detailWasOpen = useRef(false);
+	const openDetailsRef = useRef<readonly UpdateType[]>([]);
 	useEffect(() => {
-		const open = NOTICE_SURFACES.some((type) => detailOpen[type]);
+		const open = NOTICE_SURFACES.filter((type) => detailOpen[type]);
 		/*
+		 * THE SURFACE WHOSE DETAIL JUST CLOSED, not the first item in the band
+		 * (reviews R10 and UX U11, found independently). The selector used to be
+		 * unscoped, so with both surfaces offering the hand-back landed on whichever
+		 * item `NOTICE_SURFACES` lists first (the app's) rather than the one the press
+		 * came from: focus stayed inside the band, but the reader's next Tab or Enter
+		 * then operated the OTHER surface's control - a defect in exactly the flow this
+		 * PR added. A SWITCH IS NOT A CLOSE, which is why this compares the two SETS
+		 * and not one boolean: when the detail moves from one surface to the other
+		 * (pressing the other band item), nothing is handed back - the press is the
+		 * reader's own and the card it opened has already taken focus.
+		 *
+		 * A DETAIL WITH NO ITEM TO RETURN TO STILL HAS NONE. A check opened under a
+		 * segment that withholds the band item (the loud path, which answers whatever
+		 * the preference says) finds no landmark here, and there the focus simply
+		 * leaves the card - the settings control the user pressed is a fixed landmark
+		 * on that route and keeps its own focus.
+		 *
 		 * `typeof document` GUARDED, and that is not defensive decoration: this
 		 * component is mounted by the repo's DOM-LESS desktop harnesses too
 		 * (`scripts/update-affirmation.test.mjs` is a hand-rolled renderer with no
@@ -1350,12 +1393,17 @@ export const UpdateNotification = ({
 		 * somebody else's click - which is how a fix in this file has broken another
 		 * suite before. The band simply is not there to focus in that world.
 		 */
-		if (detailWasOpen.current && !open && typeof document !== "undefined") {
+		const closed = openDetailsRef.current.filter(
+			(type) => !open.includes(type),
+		);
+		if (closed.length > 0 && typeof document !== "undefined") {
 			document
-				.querySelector<HTMLElement>("[data-update-indicator-open]")
+				.querySelector<HTMLElement>(
+					`[data-update-indicator-open="${closed[0]}"]`,
+				)
 				?.focus();
 		}
-		detailWasOpen.current = open;
+		openDetailsRef.current = open;
 	}, [detailOpen]);
 
 	/**
@@ -1426,7 +1474,36 @@ export const UpdateNotification = ({
 	 */
 	const openDetailForWaitingOffer = useCallback((type: UpdateType) => {
 		const store = useUpdateNoticeStore.getState();
-		if (store.offers[type] !== null) store.openDetail(type);
+		/*
+		 * THE OFFER IS THE LICENCE, not the verdict (review R9). A verdict reading
+		 * `available` is main's reading of the release feed, not a fact this renderer
+		 * holds: a version the user already DEFERRED still reads `available` there,
+		 * because the gate that decides whether the app speaks about it is
+		 * `shouldShowUpdate` on THIS side - so the deferral path never called
+		 * `noteQuietOffer`, no offer is recorded, and there is nothing on screen to
+		 * open. Opening anyway left a `detailOpen` with no offer behind it, and the
+		 * card's guards read `detailOpen` alone (`:2911`, `:3340`) - so the card the
+		 * user had already answered painted itself, unsolicited, on the next offer for
+		 * that surface. Requiring a recorded offer is also exactly the deferral rule,
+		 * because a deferred release is one whose offer was never recorded.
+		 */
+		if (store.offers[type] === null) return;
+		/*
+		 * AND ONE CARD AT A TIME (review R9b). Both channels can report available in
+		 * one check - the whole point of the aggregate - and the two cards are
+		 * `fixed top-4 right-4 z-50` in a single early-return chain, so opening both
+		 * painted one and QUEUED the other: closing the first revealed the second,
+		 * which is a card the reader never asked for. The exclusivity is the band's own
+		 * (`update-quiet-indicator.tsx`'s `pressSurface`): the surface that gives way
+		 * keeps its OFFER, so it comes back as a band item rather than disappearing.
+		 * The last one this check opened therefore holds the card, which is the same
+		 * "show what the press was about" rule the band follows - and both presses that
+		 * reach the aggregate come from a SERVER panel.
+		 */
+		for (const other of NOTICE_SURFACES) {
+			if (other !== type) store.closeDetail(other);
+		}
+		store.openDetail(type);
 	}, []);
 
 	const checkForUpdates = useCallback(
@@ -1521,9 +1598,21 @@ export const UpdateNotification = ({
 			 * verdict rather than the store. The two panels that reach here (the by-hand
 			 * command panel and the backend failure panel) used to send the user to a
 			 * check whose own finding could not appear anywhere.
+			 *
+			 * THE VERDICT IS THE QUESTION, NOT THE ANSWER (review R9). It says what the
+			 * RELEASE FEED holds, not what this renderer is holding: a release the user
+			 * already deferred still reads `available` here, and opening a card for it
+			 * either painted something the user had answered (via a `detailOpen` left set
+			 * with no offer behind it) or queued a second card behind the first. So both
+			 * lines take the same helper the single-channel checks take, which requires a
+			 * recorded offer and keeps one card on screen.
 			 */
-			if (verdict.app === "available") openDetail(UpdateType.UI);
-			if (verdict.server === "available") openDetail(UpdateType.BACKEND);
+			if (verdict.app === "available") {
+				openDetailForWaitingOffer(UpdateType.UI);
+			}
+			if (verdict.server === "available") {
+				openDetailForWaitingOffer(UpdateType.BACKEND);
+			}
 		} catch (err) {
 			// The same verdict as every other check producer (see
 			// `reportUpdateMessage`), on the message `updateMessageOf` unwraps.
@@ -1531,7 +1620,7 @@ export const UpdateNotification = ({
 		} finally {
 			setChecking(false);
 		}
-	}, [openDetail, reportUpdateMessage]);
+	}, [openDetailForWaitingOffer, reportUpdateMessage]);
 
 	// Download the update
 	const downloadUpdate = useCallback(async () => {

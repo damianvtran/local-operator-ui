@@ -109,6 +109,15 @@ const isAbove = (to: VersionTriple, from: VersionTriple): boolean => {
  * product can publish is silently withheld while the label reads like an ordinary
  * noise filter (reviews R7, U7). `0.x -> 1.0` moves the first position and is a
  * breaking step on either reading, which is why the two branches meet there.
+ *
+ * `0.0.z` IS NOT MODELLED, stated here rather than branched on (review R12). Its
+ * breaking position is the THIRD one, so npm's caret would treat `0.0.1 -> 0.0.2`
+ * as breaking while this reads it as a patch move - and the sentence above would
+ * be false about it. Neither channel has ever published a `0.0.z`, and 0.3x cannot
+ * step down to one, so the arm that handled it would be untestable code reached by
+ * no fixture. If a channel ever starts at `0.0.1`, this is the line to revisit
+ * first, and the rule then is `from[0] === 0 && from[1] === 0 ? from[2] !== to[2]`
+ * as a third branch.
  */
 const breakingStep = (from: VersionTriple, to: VersionTriple): boolean =>
 	from[0] === 0 && to[0] === 0 ? from[1] !== to[1] : from[0] !== to[0];
