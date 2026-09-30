@@ -42,6 +42,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useNavigationGestures } from "@shared/hooks/use-navigation-gestures";
 import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
@@ -236,6 +237,17 @@ const App: FC = () => {
 	 * one is a chord that does nothing and says nothing.
 	 */
 	useCommandPaletteShortcut();
+
+	/*
+	 * The navigation gestures (issue #675): Cmd/Ctrl+[ and Cmd/Ctrl+] move the
+	 * router, and the mouse's back/forward buttons with them. Mounted here for
+	 * the same reason the palette's hook is — the listeners have to exist for
+	 * whatever surface the window is showing, not only for the route that
+	 * happened to paint first. The driven browser pane's own history is a
+	 * second, separate owner for the events that never reach this DOM (see
+	 * `@shared/navigation-gesture`).
+	 */
+	useNavigationGestures();
 
 	/*
 	 * The console's blip, watched where the WINDOW is (design 12.2). R14's whole case

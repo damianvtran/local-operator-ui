@@ -48,7 +48,19 @@
  *    React handler on the composer's textarea, so it runs during the delegated
  *    dispatch - before this listener - and it calls `preventDefault`, which the
  *    early check already sees.
- * 6. The sidebar's search field and the working-directory chip's inline edit.
+ * 6. THE PINNED ROW'S DRAG CANCEL (issue #697; UX round 1, U5). Escape while a
+ *    row is being dragged cancels the DRAG - the row returns to where it was and
+ *    nothing is written - and never touches the turn. It sits here rather than
+ *    with rung 1 because the claim is the sidebar's own: `chat-sidebar.tsx`'s
+ *    window listener settles the gesture and then calls `preventDefault`, which
+ *    this hook's microtask read is what makes sufficient (the sidebar's listener
+ *    is registered after this one, so nothing earlier could be trusted). It was
+ *    measured INHERITED before this rung was written - a Radix tooltip happened to
+ *    be open under the pointer and claimed the press - and the tooltip is now
+ *    suppressed for the whole gesture (same round, D4), so the claim had to be
+ *    stated instead of depended on. Bounded by the gesture: the listener is bound
+ *    only while a drag is armed, so a press with no drag in flight is not its.
+ * 7. The sidebar's search field and the working-directory chip's inline edit.
  *    Both consume Escape in a React handler that calls NO `preventDefault` -
  *    `chat-sidebar.tsx` clears the query and blurs, `directory-indicator.tsx`
  *    cancels the edit - so they cannot be inherited and are named by the
@@ -56,8 +68,8 @@
  *    preference: the rule exists because those two surfaces claim the key
  *    without announcing it, and the alternative - editing two components this
  *    change has no other business in - would have been the larger diff.
- * 7. This listener: the turn interrupt.
- * 8. Nothing running. Do nothing, and specifically do NOT clear the composer:
+ * 8. This listener: the turn interrupt.
+ * 9. Nothing running. Do nothing, and specifically do NOT clear the composer:
  *    the TUI states that as a hard rule, and a half-written message is not the
  *    interrupt's to discard.
  *

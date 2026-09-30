@@ -131,6 +131,16 @@ const bundle = await build({
 	// React stays external so the bundle shares ONE copy with this file's own
 	// imports. Two copies give the component a different React than the server
 	// renderer uses, and every render throws on an invalid hook call.
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
 	external: [
 		"react",
 		"react-dom",
@@ -379,6 +389,10 @@ const SCROLL_BUTTON =
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
+// The store, where the run pane's floor is DECLARED since the #677 review
+// (D2): the slot's resolver holds the shared width to it, and the resolver
+// cannot import the component.
+const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
 /*
  * The right-pane SLOT, which is where the pane's box - and so its floor - is
  * declared since the `PaneSlot` refactor (design round 1, D1). Read
@@ -2087,6 +2101,7 @@ test("the escape ladder accepts the chip, which is a third way in", () => {
 
 test("the pane's floor is its contract minimum, not the user's preference", () => {
 	const content = code(CONTENT);
+	const prefs = code(PREFS);
 	/*
 	 * A preference pinned as a floor is not a floor: the pane asked for 420 and
 	 * refused to render narrower, so at any window the row could not host 420 the
@@ -2120,7 +2135,15 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * for an omission is exactly the shape the D1 defect came back in, and the
 	 * measurement behind the default is in `pane-slot.tsx`'s class note.
 	 */
-	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
+	/*
+	 * THE DECLARATION MOVED, THE USES DID NOT: the #677 review (D2) gave the
+	 * number a second reader - the slot's resolver, which holds the shared
+	 * width up to this pane's floor - and the resolver cannot import the
+	 * component, so the store is the declaration's home. Everything asserted
+	 * against `chat-content.tsx` below stays: the divider's range and
+	 * `runPanelResizable` still consume the imported constant.
+	 */
+	assert.match(prefs, /export const RUN_PANEL_MIN_PX = 320;/);
 	assert.match(
 		content,
 		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,

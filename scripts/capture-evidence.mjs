@@ -18,16 +18,17 @@
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
  *
- * The Storybook it reads has to BUILD first, and on the tree as it stands the
- * shipped `.storybook/main.ts` cannot build its preview: it sets
- * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
- * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
- * undefined (reading 'React')` inside the docgen parser before a single frame
- * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
- * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
- * rather than argued: the whole `chat-ask-options` set re-captured under it came
- * back byte-identical to the committed frames, so it changes how the preview is
- * BUILT and nothing about what is photographed (design round 3, D12).
+ * The Storybook it reads has to BUILD first, and the config on `main` now does.
+ * This paragraph used to say the opposite - that the shipped `.storybook/main.ts`
+ * set `reactDocgen: "react-docgen-typescript"`, that the pair threw `Cannot read
+ * properties of undefined (reading 'React')` under TypeScript 7 before a single
+ * frame was taken, and that a capturer must boot with `reactDocgen: false` in
+ * its own checkout until the config moved. It moved: `.storybook/main.ts` sets
+ * `reactDocgen: "react-docgen"` (with the why beside it), and the shipped config
+ * boots this rig unmodified - the log prints `Using tsconfig paths for
+ * react-docgen` and the first frame is taken. A capturer that still follows the
+ * old paragraph is disabling a docgen mode the tree no longer uses, which costs
+ * only the types-driven prop tables `react-docgen` already gives up.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -1388,6 +1389,7 @@ export const STORIES = [
 	["browser-tab-strip--waiting", 1280, 140],
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--failed-while-loading", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
 	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
 	// because only one tab can be active and the active row pays 68px for the cluster
@@ -1460,6 +1462,7 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+	["browser-load-failure--restore-unanswered", 1280, 420],
 
 	/*
 	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
@@ -2136,6 +2139,22 @@ export const STORIES = [
 	 * story OPENS it so the frame holds both the summary line and the rows.
 	 */
 	["chat-tool-rows--tool-ops", 1280, 570],
+	/*
+	 * The sessions tool's six ops, one row each (list bare and scoped, info,
+	 * spawn listed and ephemeral, resume, stop, three peek windows, a live
+	 * spawn): the desk half of the sessions lane (sibling
+	 * `damianvtran/local-operator` #1825). Before it a row for any of them
+	 * read `Called sessions <first scalar>` under the generic wrench; now the
+	 * op's verb leads and the discriminator rides first in the object (a
+	 * spawn's visibility, a peek's window). The fold on the frame reads
+	 * `12 sessions`, the noun this lane adds to `KIND_NOUNS`. The BEFORE half
+	 * is the declared set `sessions-ops-baseline/`, the same story captured
+	 * from unmodified `origin/main` - see that set's README. Height paired
+	 * with the story's own `Frame` (470): eleven actions condense into one
+	 * fold, and the story OPENS it so the frame holds the summary line and
+	 * every row beneath it.
+	 */
+	["chat-tool-rows--sessions-ops", 1280, 470],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
@@ -4612,6 +4631,35 @@ export const STORIES = [
 	["agent-hub-page--org-plan-lapsed", 1280, 900],
 	["agent-hub-page--org-access-revoked", 1280, 900],
 	/*
+	 * The hub's browse bar and Teams view (operator report, 2026-09-29: teams were
+	 * a roster under the grid, the scope a select, the pager an off-centre box).
+	 * `org-teams` is the same id as before and now photographs the promoted Teams
+	 * tab over a POPULATED grid; the rest are new states of the same surface:
+	 * the roster's empty and loading arms, the plan refusal read from the Teams
+	 * view, the PUBLIC-scope explanation (teams are organization-only, so it is a
+	 * state and not a list) in its signed-in and signed-out shapes, and the pager
+	 * footer at both widths - one row of cards keeps it inside the frame.
+	 */
+	["agent-hub-page--org-teams-empty", 1280, 900],
+	["agent-hub-page--org-teams-loading", 1280, 900],
+	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
+	["agent-hub-page--teams-public-scope", 1280, 900],
+	["agent-hub-page--teams-signed-out", 1280, 900],
+	/*
+	 * Round 1's remediation states: the public Teams view's other four reasons
+	 * (the pending read that used to be misreported as "none", the settled empty
+	 * read, the unavailable backend and the failed memberships read) and the pager
+	 * on its last page, where focus has moved to Previous.
+	 */
+	["agent-hub-page--teams-public-loading", 1280, 900],
+	["agent-hub-page--teams-public-none", 1280, 900],
+	["agent-hub-page--teams-public-unavailable", 1280, 900],
+	["agent-hub-page--teams-public-unreadable", 1280, 900],
+	["agent-hub-page--pager-last-page", 1280, 900],
+	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
+	["agent-hub-page--pager-footer", 1280, 900],
+	["agent-hub-page--pager-footer-narrow", 920, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
@@ -4754,6 +4802,94 @@ export const STORIES = [
 		741,
 		760,
 	],
+	/* A 41-conversation team expanded: TEN rows and the foot naming the next rung and the position. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{ dir: "group-bound/ten" },
+	],
+	/* The same team after ONE real press on the foot: twenty-five rows drawn. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-one",
+		741,
+		900,
+		{ dir: "group-bound/after-one" },
+	],
+	/* After TWO presses: the third rung exceeds what the team holds, so the group is fully drawn and the foot is gone. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-two",
+		741,
+		900,
+		{ dir: "group-bound/after-two" },
+	],
+	/* The viewed conversation sits below the bound, so it is lifted to the head of the group rather than admitted in place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-lifted",
+		741,
+		900,
+		{ dir: "group-bound/current-lifted" },
+	],
+	/* The lift gone again: after two real presses the ladder has drawn past the viewed row, which settles in its catalogue place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-settled",
+		741,
+		900,
+		{ dir: "group-bound/current-settled" },
+	],
+	/* A busy row below the bound is drawn anyway (it costs no quota), and the foot counts it. */
+	[
+		"chat-sidebar-view-menu--group-bound-running-exempt",
+		741,
+		900,
+		{ dir: "group-bound/running-exempt" },
+	],
+	/* The foot under a real pointer: the idle -> hover ink step, with `:hover` asserted before the shutter. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{
+			hover: '[data-entity-more="team:minervadev"]',
+			hoverSettleMs: 900,
+			dir: "group-bound/foot-hover",
+		},
+	],
+	/*
+	 * WITHDRAWN — `group-bound/search-finds-unloaded` HAS NO FRAME, deliberately.
+	 *
+	 * The claim it would carry (a query reaches a row the bound has not loaded) is
+	 * the one the operator named, and it is asserted in
+	 * `scripts/chat-sidebar-view.test.mjs` ("a query is never bounded: the bound
+	 * cannot hide a hit"). Its FRAME could not be made reproducible: capturing the
+	 * same story on one clean tree six times produced two distinct end states, the
+	 * diff spanning the whole panel rather than one label, and a settle-wait plus
+	 * an assertion on the story's own facts did not remove it. A frame that
+	 * photographs one of two states under a caption that claims one is worse than
+	 * no frame, so the story stays in Storybook for a human to look at and is NOT
+	 * captured here. Re-add this row only with a story whose state is pinned.
+	 */
+	/* BEFORE the spacing fix: Agents collapsed above Teams expanded, at this branch's head. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/agents-collapsed-teams-expanded" },
+	],
+	/* BEFORE the spacing fix: both sections collapsed. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap-before/both-collapsed" },
+	],
+	/* BEFORE the spacing fix: both sections expanded, the case a shortened constant would tighten unasked. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/both-expanded" },
+	],
 	[
 		"chat-sidebar-view-menu--band-resting",
 		741,
@@ -4763,6 +4899,27 @@ export const STORIES = [
 			hoverSettleMs: 900,
 			dir: "band-search-hover",
 		},
+	],
+	/* AFTER the spacing fix: Agents collapsed above Teams expanded, the operator's own case. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap/agents-collapsed-teams-expanded" },
+	],
+	/* AFTER the spacing fix: both sections collapsed - the last-section-on-screen case. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap/both-collapsed" },
+	],
+	/* AFTER the spacing fix: both expanded, which must be pixel-identical to the before frame. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap/both-expanded" },
 	],
 	[
 		"chat-sidebar-view-menu--band-resting",
@@ -5164,6 +5321,106 @@ export const STORIES = [
 	["projects-tab--board-sticky", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
+	/*
+	 * The board's time window (feat/board-time-window): one frame per rung plus
+	 * the states around it. Each play asserts the visible card set - and the R5
+	 * frame's 12d-old progress line under a 24h window - so a capture whose
+	 * filter regressed FAILS rather than photographing the wrong board.
+	 * `-narrow` is the 800px window floor; `-menu-open` photographs the open
+	 * panel with its check on the current rung.
+	 */
+	["projects-tab--board-window-populated", 1280, 900],
+	["projects-tab--board-window-24-h", 1280, 900],
+	["projects-tab--board-window-30-d", 1280, 900],
+	["projects-tab--board-window-90-d", 1280, 900],
+	["projects-tab--board-window-all", 1280, 900],
+	["projects-tab--board-window-empty", 1280, 900],
+	["projects-tab--board-window-widened", 1280, 900],
+	["projects-tab--board-window-menu-open", 1280, 900],
+	["projects-tab--board-window-narrow", 800, 900],
+	/* The empty window at two more rungs (design round 1, D5): the heading has to
+	 * read the RUNG's phrase, and one frame of the default rung could not show
+	 * that. The hint frame is the control's own dimension said in words (D1),
+	 * opened on focus - the keyboard path - by its play. */
+	["projects-tab--board-window-empty-24-h", 1280, 900],
+	["projects-tab--board-window-empty-90-d", 1280, 900],
+	["projects-tab--board-window-hint", 1280, 900],
+	["projects-tab--board-window-no-projects", 1280, 900],
+	/*
+	 * The operator's title items (2026-09-30): the clipped card title's reveal
+	 * (the play opens it on hover and leaves it open on FOCUS - the keyboard
+	 * path is the state the shutter lands on), and the long-title detail at
+	 * the wide viewport and the 800px floor, whose wrap and edge-riding
+	 * scrollbar are the frame's whole claim.
+	 */
+	["projects-tab--board-title-tooltip", 1280, 900],
+	/*
+	 * The long-title detail, wide and at the 800px floor. `expectSentence`
+	 * scoped to the `h1` is the machine-checked half of the claim: the header
+	 * leads with the TITLE (not the key). The other half - that the title is not
+	 * clipped - is the frame's own subject, read off these pixels by the design
+	 * round (`expect` cannot carry it: that phase runs BEFORE the story-ready
+	 * probe, and a probe that reads a header the story has not mounted yet fails
+	 * for the wrong reason - measured here as `"No Preview"`).
+	 */
+	[
+		"projects-tab--detail-long-title",
+		1280,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	[
+		"projects-tab--detail-long-title-narrow",
+		800,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
 	/*
 	 * The column reorder: the layer the drag writes. `board-column-order-stored`
 	 * is the reload half (a stored order applied at mount),
@@ -7355,6 +7612,217 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+	/*
+	 * THE ACTION ROW UNDER THE TURN-CLOSING ANSWER (issue #695, design memo (h)).
+	 *
+	 * `rest` is the discoverability claim itself: the row is present with NO
+	 * pointer in the frame, which is the whole difference from the toolbar this
+	 * supersedes. The interaction states are entries rather than stories because
+	 * every one of them is BROWSER state the rig has to produce with real input -
+	 * `hover` moves a real pointer, `tabTo` presses real Tabs until the button
+	 * holds focus, `press` is a real press through the input pipeline - and a
+	 * story that faked any of them in a class would photograph the story.
+	 *
+	 * `hover-answer-no-corner-control` is the pointer parked ON THE ANSWER (the
+	 * region the superseded pattern raised a corner toolbar from) with both
+	 * selectors asserted: the row must be present and no link toolbar may be
+	 * raised. It is the honest half of the before/after comparison - this set
+	 * carries no frame of the dead component, per the memo's ruling: what the
+	 * frame shows is that the live surface raises nothing there.
+	 *
+	 * `copied` asserts the label the press produced (`expectAttribute`) rather
+	 * than trusting the tick to be legible in six themes, and it is the one entry
+	 * whose subject is a TIMER: the button's own reset is 2000 ms and the rig
+	 * presses ~400 ms before the shutter, so the frame is the pressed state and
+	 * not a race the timing decides.
+	 *
+	 * Six themes, by the memo's logic rather than by taste: the two brand
+	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
+	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
+	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			// The action row is what hover must NOT change, and nothing may be raised
+			// over the answer: the link toolbar only exists for a link, and this
+			// fixture has none - so the assertion is that the surface is unchanged.
+			expectPresent: "[data-lo-answer-actions]",
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-answer-no-corner-control",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 400,
+			dir: "hover-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			tabTo: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			dir: "focus-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			press: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: "[data-lo-answer-actions] button",
+				name: "aria-label",
+				equals: "Copied",
+			},
+			dir: "copied",
+		},
+	],
+	["chat-canonical-message-actions--short-answer", 1024, 320],
+	["chat-canonical-message-actions--refused", 1024, 380],
+	["chat-canonical-message-actions--truncated", 1024, 400],
+	["chat-canonical-message-actions--streaming", 1024, 620],
+	["chat-canonical-message-actions--multi-answer", 1024, 640],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
+	["chat-canonical-message-actions--narrow", 420, 620],
+
+	/*
+	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
+	 * implementation, not from a proposal.
+	 *
+	 * The stories drive the REAL path: a dispatched `contextmenu` at the row's own
+	 * box (the trigger) for the pointer states, a real `ContextMenu` keydown on the
+	 * row's button for the keyboard one, the real `openMenuRowId` hold, the pair's
+	 * real predicates (s1 pinned, s2 normal, s3 pin-unknown), and per-frame readouts
+	 * of the numbers each frame is read for, sampled from the DOM.
+	 *
+	 * THE HOVER IS PART OF THE MEASUREMENT, not decoration: the row's reveal and its
+	 * hover ground are `:hover`/`group-hover` until the menu takes the pointer, and
+	 * the hold is what replaces them while it is open. The story opens the menu
+	 * 250ms in - before the flyout's own 400ms dwell - so the clean frames carry no
+	 * flyout; `flyout-dwelled` waits 1800ms so the flyout has drawn and the frame
+	 * can show it suppressed; `flyout-alone` is its control (same hover, same dwell,
+	 * no menu), and `menu-closed` is the before/after partner of `pointer-open`
+	 * (same scene, same settle, no open).
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	["chat-sidebar-row-context-menu--keyboard-open", 780, 520],
+	[
+		"chat-sidebar-row-context-menu--pinned-row",
+		780,
+		520,
+		{ hover: '[data-session-row="s1"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--pin-state-unknown",
+		780,
+		520,
+		{ hover: '[data-session-row="s3"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--archive-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-dwelled",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-alone",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--menu-closed",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * THE REMEDIATION'S TWO STATES (round-1 findings D1/D2), captured BESIDE the
+	 * set rather than into it: neither re-takes an existing frame.
+	 *
+	 * `pointer-hover` is the SAME story as `pointer-open`, driven one move further:
+	 * `hoverChain` walks the real pointer onto the row and then onto the panel's
+	 * first item, which is the state a pointer user meets the moment they move
+	 * into the menu - an item carrying `data-highlighted` on `bg-accent-wash` - and
+	 * the one observation the set was missing (the menu's only washed row was
+	 * `keyboard-open`'s, where the app's focus ring also draws). The chain waits
+	 * for the item to exist, which is why this is a second `dir` of the
+	 * pointer-open entry instead of a second story: the scene is identical and
+	 * only the gesture differs. `expectPresent` refuses the shutter if the item
+	 * never took the highlight, so a frame filed under this name cannot be the
+	 * un-hovered state.
+	 *
+	 * `archived-row` is the set's only widened-search state: the story drives the
+	 * field and `Include archived`, then opens the menu at the archived row's own
+	 * box - the state whose item reads `Unarchive conversation`, the widest label
+	 * the panel draws, so the frame closes the width table's last case. Its two
+	 * gates read the claims the frame is for: the row is DRAWN as archived
+	 * (`data-session-archived`), and the menu says Unarchive.
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{
+			dir: "pointer-hover",
+			hoverChain: [
+				'[data-session-row="s2"]',
+				'[role="menu"] [role="menuitem"]',
+			],
+			hoverChainSettleMs: 300,
+			expectPresent: '[role="menu"] [data-highlighted]',
+		},
+	],
+	[
+		"chat-sidebar-row-context-menu--archived-row",
+		780,
+		520,
+		{
+			hoverChain: ['[data-session-row="s4"]'],
+			hoverChainSettleMs: 300,
+			expectAttribute: {
+				selector: '[data-session-row="s4"] [data-session-archived]',
+				name: "data-session-archived",
+				equals: "true",
+			},
+			expectSentence: {
+				selector: '[role="menu"]',
+				includes: "Unarchive conversation",
+			},
+		},
+	],
 ];
 
 /**
@@ -9130,6 +9598,28 @@ const main = async () => {
 			if (!prepared) {
 				throw new Error(
 					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
+				);
+			}
+			/*
+			 * A STORY'S OWN SHUTTER LATCH THAT EXPIRED IS A REFUSAL, NOT A FRAME.
+			 *
+			 * `data-capture-pending` is how a story holds the shutter until the state
+			 * its play produced is on screen (`agent-hub.stories.tsx`'s `holdShutter`,
+			 * and `docs-library.stories.tsx`'s `HubHold`). Clearing it on a TIMEOUT
+			 * without a word hands the shutter back mid-play and files whatever was on
+			 * screen — the state the latch exists to avoid photographing. The story
+			 * sets `data-capture-failed` in that seat, and this is the check that makes
+			 * the marker mean something for THIS rig: `capture-docs-library.mjs` has
+			 * read it since its own scenes grew latches, and the evidence sweep did
+			 * not, so an expired latch was silent here (agent review round 2, N1).
+			 */
+			const latch = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: 'document.documentElement.dataset.captureFailed || ""',
+			});
+			if (latch.result.value) {
+				throw new Error(
+					`${story} @ ${theme}: the story's shutter latch expired — ${latch.result.value}. The play did not put the state this frame claims on screen, and the frame was refused rather than taken mid-flight.`,
 				);
 			}
 			/*

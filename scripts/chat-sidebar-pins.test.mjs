@@ -210,13 +210,22 @@ test("a pinned row stays in its agent's group, because groups are the other axis
 	);
 });
 
-test("the order is the catalogue's own, untouched", () => {
+test("the partition is a filter: the catalogue's own order, untouched", () => {
 	/*
 	 * The wire carries no rank or timestamp beside `pinned`, and the partition must
 	 * not invent one: the TUI's `★ Pinned` section is drawn in the catalogue's
-	 * order too, so a re-sort here would present one list in two orders across two
+	 * order too, so a re-sort HERE would present one list in two orders across two
 	 * surfaces. Deliberately un-sorted input - newest pin first would put `dddd`
 	 * ahead of `aaaaaaaaaaaa`.
+	 *
+	 * WHAT CHANGED WITH ISSUE #693, and what did not. The SECTION can now be arranged
+	 * by hand - that is the whole of the change - and the arrangement is applied
+	 * DOWNSTREAM of this function, over its output, by
+	 * `orderPinnedRows(pinned, view.pins)` (`chat-pin-order.ts` carries the rules and
+	 * `scripts/sidebar-pin-order.test.mjs` drives them). So the two claims here are
+	 * both still live and they are the boundary the change had to keep: this
+	 * partition re-sorts nothing, and the permutation is the VIEW's - a desktop-local
+	 * preference the terminal never sees - rather than a rank invented for the wire.
 	 */
 	const rows = [
 		row("aaaaaaaaaaaa", { pinned: true }),
@@ -230,6 +239,24 @@ test("the order is the catalogue's own, untouched", () => {
 		"dddddddddddd",
 	]);
 	assert.deepEqual(ids(unpinnedRows(rows, true)), ["bbbbbbbbbbbb"]);
+	/*
+	 * And the boundary, read off the shipped source rather than described: the
+	 * partition the section draws FROM is this module's own call, and the list it
+	 * RENDERS is that call's output permuted - two calls, so an order can never be
+	 * smuggled back into the partition (and the entity lists, which read the
+	 * unpartitioned list, cannot inherit one either).
+	 */
+	const source = read(SIDEBAR);
+	assert.match(
+		source,
+		/const pinned = pinnedRows\(matching, pinsEnabled\);/,
+		"the section's partition is still the catalogue's own order passed through",
+	);
+	assert.match(
+		source,
+		/const orderedPinned = orderPinnedRows\(pinned, view\.pins\);/,
+		"and the reader's arrangement is a second call over its output",
+	);
 });
 
 test("with the capability absent the partition does not run, so no row is lost", () => {
@@ -406,7 +433,15 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 */
 	assert.match(
 		source,
-		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		/*
+		 * `\b<section` rather than `<section>` (issue #697): the section now carries its
+		 * own anchors - the drag indicator's containing block and the
+		 * `data-chat-section="pinned"` marker the evidence rigs scope by - so the open tag
+		 * has attributes between its name and its bracket. What this assertion is about is
+		 * unchanged and is still the whole of it: the gate is the branch AROUND the
+		 * element, and a `pinnedShown` that swallowed it would leave the heading standing.
+		 */
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section\b/,
 		"the pinned section is no longer gated by the pin capability",
 	);
 });
@@ -590,10 +625,18 @@ test("the unpinned reveal is a display switch and cannot reflow the row it is no
 		`the reveal is a group-hover/group-focus-within display step: ${classes}`,
 	);
 	/*
-	 * AND THE REST HALF STATES `hidden` AND NOT `flex`, which is the cascade rule read
-	 * off the branch rather than off the whole class list: the PINNED branch legitimately
+	 * AND THE REST HALF STATES `hidden` AND NOT A BARE `flex`, which is the cascade rule
+	 * read off the branch rather than off the whole class list: the PINNED branch legitimately
 	 * declares `flex` (the mark is the state, D4), so the assertion is about the unpinned
 	 * one - the element's base plus the inner `cn` that is its rest state.
+	 *
+	 * THE ONE `flex` THE REST HALF MAY CARRY IS THE MENU HOLD, and it is GUARDED: while
+	 * this row's context menu is open the reveal is state rather than pointer state (the
+	 * menu's portal is modal, so the pointer cannot hold the group states), and the glyph
+	 * comes back as `menuOpen && "flex text-ink-muted"` - one display value per evaluated
+	 * list, because `cn`'s tailwind-merge resolves the pair and the guard is what keeps the
+	 * statement conditional rather than a tie. A bare `"flex"` here is the cascade bug this
+	 * test exists for.
 	 */
 	const rest = classes.slice(classes.indexOf(": cn("));
 	const restTokens = rest
@@ -601,10 +644,11 @@ test("the unpinned reveal is a display switch and cannot reflow the row it is no
 				.map((match) => match[1] ?? match[2] ?? match[3])
 				.flatMap((value) => value.split(/\s+/))
 		: [];
+	const bareFlex = [...rest.matchAll(/(?<!menuOpen && )"flex(?:\s|")/g)];
 	assert.equal(
-		restTokens.filter((token) => token === "flex").length,
+		bareFlex.length,
 		0,
-		`the rest state must not state \`flex\` beside the variant's own: ${classes}`,
+		`the rest state must not state a bare \`flex\` beside the variant's own - the only sanctioned one is the guarded \`menuOpen && "flex ..."\` hold: ${classes}`,
 	);
 	assert.ok(
 		restTokens.includes("hidden"),
@@ -651,13 +695,22 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * branch fails the `notEqual` below rather than passing quietly, so widening it
 	 * cannot hide a control that stopped being drawn - it only has to reach the
 	 * branch the assertions are about.
+	 *
+	 * THE BRANCH'S END IS READ FROM THE SOURCE, NOT FROM THE WINDOW (issue #693).
+	 * The window's job is to bound where the SEARCH STARTS, and using it as a bound
+	 * on where a slide ENDS is what made this test fail the day the unpin's
+	 * forget-write (the `forgetPinnedOrder` block, in this control's own handler)
+	 * pushed the `: cn(` marker past 5200 chars: the slice then ran to -1 and the
+	 * assertion read an empty-ish string, which is a FALSE POSITIVE about the mark
+	 * rather than a real finding. Absolute offsets from the same anchor cannot drift
+	 * apart that way.
 	 */
 	const block = source.slice(at, at + 5200);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
-	const pinnedBranchText = block.slice(
-		branchMatch.index,
-		block.indexOf(": cn(", branchMatch.index),
+	const pinnedBranchText = source.slice(
+		at + branchMatch.index,
+		source.indexOf(": cn(", at + branchMatch.index),
 	);
 	assert.ok(
 		pinnedBranchText.includes("flex"),
@@ -672,8 +725,8 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	);
 	assert.match(
 		pairWrapper.slice(0, 400),
-		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
-		"the pair wrapper must be displayed on a pinned row and revealed on an unpinned one",
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		"the pair wrapper must be displayed on a pinned row or while its menu hold is on, and revealed on an unpinned one",
 	);
 });
 
