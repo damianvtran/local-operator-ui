@@ -319,6 +319,7 @@ const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
  * run's count without the reader's own gesture.
  */
 export const WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA = 720;
+
 /**
  * The window's top edge, snapped UP to the opening of the run it lands in.
  *
@@ -402,6 +403,26 @@ export function windowTopRunIsHeadCut(
 	windowSize: number,
 ): boolean {
 	return windowTopRun(rows, windowSize)?.opensWithUserRow === false;
+}
+
+/**
+ * The key of the head-cut run under the window's edge — the run a completion
+ * walk would be walking — or null when no run there needs one.
+ *
+ * WHY THE KEY AND NOT A COUNTER (loader-continuity 1b, per-run re-arm). The walk
+ * spends its budget per RUN: a long-lived conversation settles turn after turn,
+ * and each turn's bar must be able to complete itself, so a budget that reset
+ * only on a session change would leave every later turn partial. `TurnRun.key` is
+ * the stable identity the collapse already remembers runs by (its closing
+ * answer's id, else its last row's), so it survives the head arriving and cannot
+ * be confused with a raw row count.
+ */
+export function alignWalkRunKey(
+	rows: Row[],
+	windowSize: number,
+): string | null {
+	const run = windowTopRun(rows, windowSize);
+	return run !== null && !run.opensWithUserRow ? run.key : null;
 }
 
 /**
@@ -584,6 +605,49 @@ export function alignWalkDecision(
 		return { fetch: false, spent };
 	}
 	return { fetch: true, spent: spent + 1 };
+}
+
+/**
+ * What the walk remembers, and WHOSE walk it was.
+ *
+ * The run is part of the state rather than a side ref because the budget is a
+ * fact about a run: `key` names the head-cut run the count belongs to, and every
+ * consumer reads the pair together. A conversation that outlives its walk is the
+ * reason (`alignWalkRunKey`): a later settled turn must be able to complete
+ * itself, and the walk for ITS run starts from zero.
+ */
+export type AlignWalkState = {
+	/** `TurnRun.key` of the run this budget belongs to, or null when none is cut. */
+	key: string | null;
+	/** Pages spent on that run, bounded by `ALIGN_WALK_MAX_PAGES`. */
+	spent: number;
+	/** That run's walk saw a page that did not apply. */
+	halted: boolean;
+};
+
+export const initialAlignWalkState = (): AlignWalkState => ({
+	key: null,
+	spent: 0,
+	halted: false,
+});
+
+/**
+ * Point the memory at the run that owes a walk, resetting only when the run
+ * CHANGES.
+ *
+ * A null key (no head-cut run under the window edge) leaves the memory
+ * untouched rather than clearing it: a run's budget is spent once, and a window
+ * that momentarily sits elsewhere — the reader scrolls down, a page lands — must
+ * not hand the same run a second walk. A DIFFERENT key is a different run, and it
+ * starts with a full budget (and a clean `halted`, because one run's failure says
+ * nothing about another's).
+ */
+export function alignWalkStateFor(
+	state: AlignWalkState,
+	key: string | null,
+): AlignWalkState {
+	if (key === null || key === state.key) return state;
+	return { key, spent: 0, halted: false };
 }
 
 function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
