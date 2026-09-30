@@ -1832,6 +1832,30 @@ const PERCEPTIBLE = [
 		against: "sunken",
 	},
 	{
+		/*
+		 * THE TURN-ANSWER RAIL (`turn-answer-rail.ts`, opt-in `display.turn_answer_rail`):
+		 * a 1px `border-hairline` rule beside the elected answer, on the transcript's
+		 * `canvas`. It is decorative - the layout already identifies the answer - so
+		 * it owes being SEEN rather than a 3:1 floor, and it is the quieter of the
+		 * two roles that could carry it (#708 used `ink-dim` at 2px, which the
+		 * operator found ugly).
+		 *
+		 * THE FLOOR IS 4.0, NOT THE PRESET THRESHOLD, and that is the design round's
+		 * finding rather than taste: measured across all 59 palettes this pair is
+		 * ΔE00 4.42 at its weakest (`rosePineDawn`, 1.20:1 - a rule a reader could
+		 * take for a rendering artefact) and 9.39 at the median. A 3.0 floor would
+		 * sit 1.4 BELOW the weakest palette that ships today, so it could not catch a
+		 * palette drifting toward invisible - which is the only reason to write the
+		 * row at all. 4.0 pins what ships with 0.42 of headroom and still leaves the
+		 * step to be re-argued if a future palette cannot clear it (design round 1,
+		 * D1).
+		 */
+		name: "turn answer rail",
+		role: "hairline",
+		on: ["canvas"],
+		minDeltaE: 4.0,
+	},
+	{
 		name: "context wheel track, empty state",
 		role: "hairline",
 		/* Both grounds the empty ring renders on: the composer, and the reading
@@ -2473,6 +2497,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
+	},
+	{
+		what: "turn answer rail role",
+		file: "src/renderer/src/features/chat/canonical/turn-answer-rail.ts",
+		must: '"-ml-[13px] border-hairline border-l pl-3"',
+		why: "PERCEPTIBLE measures hairline against canvas as `turn answer rail`; nothing otherwise proves the rail renders that role, and a swap to a louder or fainter ink would keep the gate green",
 	},
 	{
 		what: "context wheel empty track role",
