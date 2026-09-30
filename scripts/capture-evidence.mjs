@@ -1714,7 +1714,15 @@ export const STORIES = [
 			keys: [{ key: "ArrowDown", settleMs: 300 }],
 			expectPresent: [
 				'[data-header-identity-menu="team"]',
-				'[data-header-identity-menu="team"] [data-highlighted]',
+				/*
+				 * The highlight contract, read from the COMBOBOX's own mark: the arrows
+				 * move `aria-activedescendant` while focus stays in the field, so the
+				 * active row is the one carrying `aria-selected`, not one Radix
+				 * roving-focus `data-highlighted` (which a menu would set and a listbox
+				 * does not). `[role="option"]` rather than plain `[aria-selected]`, so
+				 * the claim names the thing it is about.
+				 */
+				'[data-header-identity-menu="team"] [role="option"][aria-selected="true"]',
 			],
 			dir: "team-menu-keyboard-highlight",
 		},
@@ -1929,12 +1937,172 @@ export const STORIES = [
 		},
 	],
 	/*
-	 * The fold the controls accept at the operator's own title length (design
-	 * D3's boundary frame): 49 characters at the 560 band, where the identity
-	 * line sits on the clipped second line. The frame is the decision, not a
-	 * defect - the title outranks the path and the identity by construction.
+	 * UX round 1's U2, as a claim that can fail rather than a frame alone: the
+	 * operator's own 49-character title at the 560 band, and a real press
+	 * thrown at the AGENT chip's own centre must open its panel. The entry
+	 * records the fold this story used to show - the identity wrapped onto the
+	 * clipped second line, the chip present but not painted, so
+	 * `elementFromPoint` at its centre hit the band and the press opened
+	 * nothing - and it would have failed before the block stopped wrapping
+	 * while the controls are its second half (`chat-header.tsx`).
+	 */
+	[
+		"chat-header-identity--narrow-fold",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "narrow-fold-agent-menu-open",
+		},
+	],
+	/*
+	 * The boundary frame itself (design D3): the same 49 characters at the 560
+	 * band. It photographed the fold as a decision until U2 measured its
+	 * pointer cost; the block no longer wraps for the controls, so the frame
+	 * now shows them ON the painted line with the title truncated - and the
+	 * press entry above is what keeps that claim honest.
 	 */
 	["chat-header-identity--narrow-fold", 560, 84],
+	/*
+	 * THE BOUND, THE FILTER AND THE RECENTS BAND (the operator's second report,
+	 * 2026-09-26: "the height is unbounded and goes past the height of the
+	 * screen ... add a search filter to each ... recents separated from all").
+	 *
+	 * Seven entries, and each one is a state the report names rather than a
+	 * variation of one:
+	 *
+	 * - `long-roster-agent-open` is the bound at a window with room for it. The
+	 *   claim is two-fold and ASSERTED (`expectPresent`): the panel is up, and it
+	 *   has rows - a shutter that fired before the popover mounted would otherwise
+	 *   photograph the resting chip under a name that says otherwise.
+	 * - `long-roster-short-window` is the SAME panel at 220px of window, where the
+	 *   352px ceiling is no longer the binding term and Radix's available height
+	 *   is. This is the frame that separates a ceiling from a bound: a fixed
+	 *   `max-height` would render a panel taller than the window here.
+	 * - `menu-near-window-bottom` puts the band at the BOTTOM of the viewport, so
+	 *   the panel has to flip up - the operator's third case.
+	 * - `search-results` and `search-no-results` are the field's two ends; the
+	 *   second asserts `[data-header-identity-no-matches]`, because "the filter
+	 *   matched nothing" is a sentence the panel claims and a frame cannot.
+	 * - `recents-agent-open` and `recents-team-open` are the band with history, in
+	 *   BOTH menus (the operator asked for the two pickers to agree, and one frame
+	 *   plus an assurance about the other is not agreement).
+	 * - `no-recents-team-open` is the other half: a fresh install's ring, where the
+	 *   panel renders no band and no heading at all - `expectGone` on the band
+	 *   heading is what makes "an empty Recents header is a defect" a check rather
+	 *   than a promise.
+	 */
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				'[data-header-identity-menu="agent"] [role="option"]',
+			],
+			dir: "long-roster-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--long-roster",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				'[data-header-identity-menu="agent"] [role="option"]',
+			],
+			dir: "long-roster-short-window",
+		},
+	],
+	[
+		"chat-header-identity--long-roster-at-the-bottom",
+		560,
+		520,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				'[data-header-identity-menu="agent"] [role="option"]',
+			],
+			dir: "menu-near-window-bottom",
+		},
+	],
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			type: "rev",
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]',
+			],
+			dir: "search-results",
+		},
+	],
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			type: "zzzz",
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-no-matches]",
+			],
+			dir: "search-no-results",
+		},
+	],
+	[
+		"chat-header-identity--recents",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				'[data-header-identity-menu="agent"] [role="option"]',
+			],
+			dir: "recents-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--recents",
+		560,
+		640,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				'[data-header-identity-menu="team"] [role="option"]',
+			],
+			dir: "recents-team-open",
+		},
+	],
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				'[data-header-identity-menu="team"] [role="option"]',
+			],
+			/* The fresh-install half: no ring, so no band and no heading. A panel
+			 * that grew an empty `Recent teams` strip would match everything the
+			 * frame shows except this selector. */
+			expectGone: '[data-header-identity-menu="team"] [role="presentation"]',
+			dir: "no-recents-team-open",
+		},
+	],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
@@ -9786,6 +9954,23 @@ const main = async () => {
 					}
 					await sleep(spec.settleMs ?? 120);
 				}
+			}
+			/*
+			 * TYPED TEXT, for a claim that is about a FILTER rather than about a state:
+			 * `type: "rev"` on the identity menu's entries, where what the frame has to
+			 * show is the list the field narrowed to, and the sentence the panel shows
+			 * when nothing matches at all.
+			 *
+			 * `Input.insertText` and not a `dispatchKeyEvent` per character, because
+			 * what a filter reads is the element's VALUE after an `input` event: the
+			 * insertion path is the one a real keyboard ends at, and it does not depend
+			 * on a keycode table that only declares the handful of navigation keys this
+			 * rig needs. It types into whatever holds focus, which for these entries is
+			 * the panel's own search field - the field the open gesture focuses.
+			 */
+			if (options?.type) {
+				await cdp.send("Input.insertText", { text: options.type });
+				await sleep(options.typeSettleMs ?? 250);
 			}
 			/*
 			 * WHAT THE GESTURES ABOVE MUST HAVE PRODUCED, asserted rather than
