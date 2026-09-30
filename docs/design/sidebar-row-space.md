@@ -114,7 +114,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **140** | **180** | **220** | the archive, revealed beside the mark |
+| **pinned** | hover / focus-within | **84** | **124** | **164** | the archive, the move pair, then the mark (108px + the 4px row gap) - see #693 below |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -127,8 +127,23 @@ first time.
 
 **The px budget per state**, as the arithmetic a reviewer can re-check: the title
 is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on an
-unpinned row, `24` at rest on a pinned one, and `52` under the pointer; at 240/280
-/320 the row box is 224/264/304.
+unpinned row, `24` at rest on a pinned one, `52` under the pointer on an unpinned
+row and `108` under the pointer on a PINNED one - the archive, the move pair and
+the mark, 4 x 24 + 3 x 4 (issue #693); at 240/280/320 the row box is 224/264/304.
+
+**THE FOURTH CONTROL, AND WHAT IT COSTS (issue #693).** A pinned row's revealed
+cluster grew from 52 to 108 when the pinned section became reorderable by hand:
+two arrow controls, `size-6`, drawn only on the rows that offer a move (a pinned
+row in the section arrangement). The title therefore pays for three revealed acts
+rather than one, and at the 240 clamp that is 84px of title under the pointer -
+about ten characters, with the pan (§5) carrying the rest. The narrower band is
+where this is felt first, and the pair is drawn only under the pointer or under
+focus: at rest the numbers in the table above are unchanged, which is the state
+the operator's own ask was about. A designer reviewing this surface should weigh
+the 240 hover against the alternative spellings (a shed for the pair alone, or
+the moves on the row's own chord with no control at all); what the code refuses
+is `order`, which cannot be spelled safely for both wrapper shapes - see the
+comment on the pair in `chat-sidebar.tsx`.
 
 **Which control is drawn FIRST in the pair is part of the design, and the code
 orders the ARCHIVE first** (design round 2, folded here as D12; the sentence this
