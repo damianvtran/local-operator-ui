@@ -199,6 +199,8 @@ export function useScrollPaging({
 	rowCount,
 }: ScrollPagingOptions): ScrollPagingHandle {
 	const state = useRef<PagingState>(initialPagingState());
+	// Bumped by the session-change reset below; see the guard on the ask's outcome.
+	const sessionEpoch = useRef(0);
 	// The slot's rendered state is the only thing this hook publishes, so it is
 	// the only thing that re-renders the transcript. Everything else lives in
 	// refs: a demand arming or a settle timer firing must not repaint a list
@@ -529,7 +531,18 @@ export function useScrollPaging({
 						(await live.current.onLoadOlder())
 							? { kind: "applied", newRecords: 0, exhausted: false }
 							: { kind: "failed", reason: "request" };
+			// The conversation this ask was made for. The session-change effect has
+			// already replaced the policy state (and armed a fresh `continuation`), so
+			// an outcome that resolves for the PREVIOUS conversation describes nothing
+			// this state holds: folding a late `stale` in would `noteAborted` the new
+			// conversation and clear the one auto-continuation a short, unscrollable
+			// pane has (loader-continuity round 1, R1-4).
+			//
+			// A generation rather than the key itself: A -> B -> A returns to an equal
+			// key with a policy state that was reset twice in between.
+			const askedFor = sessionEpoch.current;
 			void ask().then((outcome) => {
+				if (sessionEpoch.current !== askedFor) return;
 				if (outcome.kind === "failed") {
 					state.current = noteFailed(state.current);
 					requestAnimationFrame(schedule);
@@ -645,6 +658,7 @@ export function useScrollPaging({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
 	useEffect(() => {
 		state.current = initialPagingState();
+		sessionEpoch.current += 1;
 		anchor.current = {
 			sample: null,
 			until: 0,
