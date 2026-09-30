@@ -32,70 +32,90 @@
  */
 
 import { cn } from "@shared/lib/utils";
-import { Monitor, Network } from "lucide-react";
+import { Monitor, Network, ShieldAlert } from "lucide-react";
 import type { FC } from "react";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
+import { conversationUnit, deviceStatLine } from "./mesh-graph";
 import {
-	deviceNodeStatLine,
-	deviceStatLine,
-	deviceStateWords,
-} from "./mesh-graph";
-import { DEVICE_HEIGHT, NETWORK_HEIGHT, NODE_WIDTH } from "./mesh-positions";
+	DEVICE_HEIGHT,
+	NETWORK_HEIGHT,
+	NODE_BODY_HEIGHT,
+	NODE_WIDTH,
+} from "./mesh-positions";
+import {
+	type DeviceReach,
+	REACH_DOT,
+	REACH_INK,
+	deviceActivity,
+	deviceReach,
+	reachSentence,
+	reachWords,
+} from "./mesh-reach";
 import { sessionStripeKey } from "./mesh-sessions";
 import type { ChipStripeKey, DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
 /**
- * The node's state stripe, its state ink, and the ring that says WHICH NODE IS YOU -
- * three channels, and WHY ONE OF THE FOUR STATES IS NEUTRAL, which is measured rather
- * than assumed (kept from PR #498, whose design round measured it).
+ * The node's stripe: keyed on REACH, with the suspect overlay on top.
  *
- * The obvious mapping - self=accent, reachable=success, unreachable=warning,
- * suspect=danger - spends TWO GREENS on one channel: the two roles measure ΔE00 5.07
- * apart on `localOperatorDark` (`accent` `#38c96a` against `success` `#57c785`) and
- * 2.22 on `localOperatorLight` (`#137742` against `#19764a`, the same green to the
- * eye), so a graph whose "this device" node and whose healthy nodes are those two has
- * no status channel left. The RESTING state is therefore the quiet one, which is the
- * rule the rest of this app already applies: reachable is the ordinary case - most
- * nodes, most of the time - so it takes the neutral role, and the three states that
- * mean something take a hue each.
+ * WHY NOT `state` ANY MORE, and this is the design round's D2. The shipped stripe was
+ * `Record<DeviceState, string>`, so a device this app never dialled - `reachable:
+ * false` because the listing budget ran out, which the relay reports exactly as it
+ * reports a silence - wore `border-l-warning`, the amber of `unreachable`. Two
+ * channels, two different things, and the louder one was wrong: the state line said
+ * `not asked` while the stripe said a machine had failed. The stripe now answers
+ * "can this device be talked to", which is the question its colour is read as.
  *
- * SELF IS A RING, NOT A HUE (design round 1, D6). The identity channel and the status
- * channel are separate on purpose: `self` takes the same neutral stripe a resting node
- * takes, and the accent lives in a ring around the node's box, which no status state
- * can spend. Before this, "this device" was an accent STRIPE - the same channel the
- * three anomalies use - so in a misconfigured graph the reader saw one green bar among
- * red and amber ones, where green conventionally reads "healthy".
+ * SUSPECT OUTRANKS EVERY PROBE RESULT and keeps its hue, because it is a fact about
+ * the member RECORD rather than about this app's dialect. It is applied here rather
+ * than inside `mesh-reach.ts` so no surface can answer "how was it reached" with a
+ * security verdict.
+ *
+ * TWO OF THE FOUR HUE-BEARING STATES ARE NEUTRAL, and that is the measurement the
+ * shipped comments already carry: the obvious mapping (self=accent, reachable=success,
+ * unreachable=warning, suspect=danger) spends TWO GREENS on one channel - `accent`
+ * `#38c96a` against `success` `#57c785` measure ΔE00 5.07 apart on `localOperatorDark`
+ * and 2.22 on `localOperatorLight`, the same green to the eye - so a graph whose own
+ * device and whose healthy nodes are those two has no status channel left. `reached`
+ * is therefore the quiet case, `not-attempted` and `unknown` take no hue at all (an
+ * app's own limit and an absent read are neither of them the device's failure), and
+ * `unanswered` is the one probe result that earns `warning`.
  */
-const STATE_STRIPE: Record<DeviceState, string> = {
+const REACH_STRIPE: Record<DeviceReach, string> = {
 	self: "border-l-hairline",
-	// The resting state is the QUIET one: `border-control` is already the node's edge,
-	// so its stripe takes the decorative hairline rather than a second, louder line.
-	reachable: "border-l-hairline",
-	unreachable: "border-l-warning",
-	suspect: "border-l-danger",
+	// `border-control` is already the node's edge, so the resting stripe takes the
+	// decorative hairline rather than a second, louder line.
+	reached: "border-l-hairline",
+	unanswered: "border-l-warning",
+	"not-attempted": "border-l-hairline",
+	unknown: "border-l-hairline",
 };
+
+/** The stripe a node actually wears: the suspect override, then the reach. */
+function nodeStripe(device: MeshDevice): string {
+	return device.suspect ? "border-l-danger" : REACH_STRIPE[deviceReach(device)];
+}
 
 /**
  * The identity ring, and it is `null` for every state that is not this device.
  *
  * `ring-2 ring-accent` rather than an `outline`: the ring is drawn OUTSIDE the border
- * box, so it does not eat into the 200x48 world box the layout pins, and it survives
+ * box, so it does not eat into the 200x96 world box the layout pins, and it survives
  * the world layer's `transform: scale()` the same way the border does.
+ *
+ * SELF IS A RING, NOT A HUE (design round 1, D6). The identity channel and the status
+ * channel are separate on purpose: `self` takes the same neutral stripe a resting node
+ * takes, and the accent lives in a ring around the node's box, which no status state
+ * can spend. Before this, "this device" was an accent STRIPE - the same channel the
+ * anomalies use - so in a misconfigured graph the reader saw one green bar among red
+ * and amber ones, where green conventionally reads "healthy".
  */
 const STATE_RING: Record<DeviceState, string | null> = {
 	self: "ring-2 ring-accent",
 	reachable: null,
 	unreachable: null,
 	suspect: null,
-};
-
-const STATE_TEXT: Record<DeviceState, string> = {
-	self: "text-accent",
-	reachable: "text-ink-muted",
-	unreachable: "text-warning",
-	suspect: "text-danger",
 };
 
 /**
@@ -131,10 +151,21 @@ const DROP_BORDER: Record<"accept" | "refuse", string> = {
 	refuse: "border-warning",
 };
 
-/** The accessible name of a device node: its label, its state in words, its stat. */
-export function deviceNodeName(device: MeshDevice, nowSeconds: number): string {
-	const state = deviceStateWords(device);
-	return [device.label, state || null, deviceStatLine(device, nowSeconds)]
+/**
+ * The accessible name of a device node: its label, its stat, and what is running on it.
+ *
+ * THE STAT IS THE REACH-AWARE ONE (`deviceStatLine`), so the name cannot say
+ * `unreachable` about a device nobody asked: the list view, the panel and this name all
+ * read the same builder. The REASON travels in the node's own `title`
+ * (`reachSentence`), which is where there is room for the relay's sentence - the node
+ * draws neither, and the panel is the place that labels them.
+ */
+export function deviceNodeName(
+	device: MeshDevice,
+	nowSeconds: number,
+	activity: string | null,
+): string {
+	return [device.label, deviceStatLine(device, nowSeconds), activity]
 		.filter(Boolean)
 		.join(", ");
 }
@@ -165,10 +196,19 @@ export function chipLabel(session: MeshSessionRow): string {
 export function chipFact(
 	session: MeshSessionRow,
 	ownerLabel: string,
-	ownerReachable: boolean,
+	ownerReach: DeviceReach,
 ): string {
-	if (!ownerReachable) {
-		return `unreachable${session.unreachable_reason ? ` (${session.unreachable_reason})` : ""}`;
+	if (ownerReach !== "reached" && ownerReach !== "self") {
+		/*
+		 * THE WORD IS THE REACH MODEL'S (agent review round 1, Q1). This sentence said
+		 * `unreachable`, which is the word this redesign deleted from every drawn surface -
+		 * and the chip is the surface that is READ ALOUD, so a not-attempted device was
+		 * still announced as a failure here after every visible copy had stopped saying it.
+		 */
+		const words = reachWords(ownerReach);
+		return session.unreachable_reason
+			? `${words} (${session.unreachable_reason})`
+			: words;
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
 	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
@@ -298,15 +338,27 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	onChipClick,
 	onShowAllSessions,
 }) => {
-	const stat = deviceStatLine(device, nowSeconds);
 	/*
-	 * WHAT THE NODE PAINTS IS THE NARROWER FORM (design review round 2, D12): the
-	 * sentence above is what this node's accessible name and its tooltip carry, and the
-	 * line below is the same facts in the words that fit 147 px. They are two renderings
-	 * of one builder (`mesh-graph.ts`), so a fact cannot appear in one and not the other.
+	 * WHAT THE NODE SAYS, and what it deliberately does not.
+	 *
+	 * The node paints three rows and no sentence (D4/D6): `deviceStatLine` survives for the
+	 * ACCESSIBLE NAME and the tooltip, where a full sentence still has a reader, but a
+	 * sentence whose most-consulted clause was a rotation stamp labelled as a heartbeat is
+	 * not worth three lines of a 200 px box when the same space carries a count at a fixed
+	 * x and the reach word under it.
+	 *
+	 * `working` IS DERIVED AND SAYS SO (see `mesh-reach.ts`): the session read is paged, so
+	 * a busy conversation nobody read draws as silence - which is why the activity is
+	 * rendered from the rows in hand and never as a claim about the device's whole state.
+	 *
+	 * ONE `reach`, THREE CHANNELS: the stripe, the state line and the node's own
+	 * `data-mesh-reach` hook read the same value, because two of those disagreeing on one
+	 * node is the defect class this redesign exists to close.
 	 */
-	const statAtNodeWidth = deviceNodeStatLine(device, nowSeconds);
-	const name = deviceNodeName(device, nowSeconds);
+	const { activity } = deviceActivity(device, sessions.rows);
+	const working = activity === "working";
+	const name = deviceNodeName(device, nowSeconds, working ? "working" : null);
+	const reach = deviceReach(device);
 	return (
 		<li
 			data-mesh-device={device.id}
@@ -353,7 +405,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 				 * carries it, and the words on the stat line say it too.
 				 */
 				selected && "border-y-ink border-r-ink bg-row-selected",
-				STATE_STRIPE[device.state],
+				nodeStripe(device),
 				STATE_RING[device.state],
 				/*
 				 * THE DROP STATE WINS OVER THE STRIPE AND THE SELECTION, and it has to: while
@@ -376,40 +428,112 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			<button
 				type="button"
 				data-mesh-device-open={device.id}
+				data-mesh-reach={reach}
 				aria-label={name}
+				/*
+				 * THE TITLE CARRIES THE REASON. The node no longer draws a sentence, so the relay's
+				 * own words for a silence live one hover away (`reachSentence`: the reach word plus
+				 * the backend's sentence, never re-worded), and the accessible name carries the
+				 * reach word itself. Nothing on this surface says `unreachable` any more: see
+				 * `REACH_STRIPE` for why that word was the defect rather than the description.
+				 */
+				title={reachSentence(device)}
 				onClick={() => onOpen(device.id)}
 				className={cn(
-					"flex w-full items-center gap-2 rounded-t-[5px] px-3 pt-2 pb-1 text-left",
+					/*
+					 * THE BODY IS THE THREE ROWS: identity, the metric rail, the state line. The height
+					 * is a constant rather than a padding sum because the node's box is pinned in world
+					 * coordinates (`DEVICE_HEIGHT`), and `justify-between` absorbs the fractions of a
+					 * line so those three rows cannot add up to 96.4 px and push the next node down.
+					 */
+					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-left",
 					// A CONTROL'S CURSOR (UX review round 1, U6): this is the click-to-inspect target
 					// and Tailwind's preflight leaves buttons at `cursor: default`, so the title
 					// read like a label. `cursor-pointer` is the app's own spelling.
 					"cursor-pointer",
 					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]",
 				)}
+				style={{ height: NODE_BODY_HEIGHT }}
 			>
-				<Monitor
-					aria-hidden="true"
-					className="size-4 shrink-0 text-ink-muted"
-				/>
-				<span className="min-w-0 flex-1">
-					<span className="block truncate text-body-sm text-ink">
+				{/*
+				 * ROW 1 - IDENTITY. The `ShieldAlert` is here rather than on the state line because
+				 * THAT is where the design first put it and the frame refused it: the phrase
+				 * `identity suspect` truncated to `identity suspe…` in a 147 px row, and a fact cut
+				 * mid-word is a fact a reader mis-reads. The icon is the mark; the words stay in the
+				 * panel and in the accessible name, so the colour is never the only channel.
+				 */}
+				<span className="flex w-full min-w-0 items-center gap-2">
+					<Monitor
+						aria-hidden="true"
+						className="size-4 shrink-0 text-ink-muted"
+					/>
+					<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
 						{device.label}
 					</span>
-					<span
-						/*
-						 * The stat line truncates at the node's 200 px (an unreachable device's reason
-						 * is the backend's own sentence and can be any length), so the whole sentence
-						 * stays reachable as the element's `title` - the same treatment the network
-						 * node gives `epoch`, and one reason the list view ships beside this one.
-						 */
-						title={stat}
-						className={cn("block truncate text-meta", STATE_TEXT[device.state])}
-					>
-						{statAtNodeWidth}
-						{device.memberships.length > 1
-							? ` · ${device.memberships.length} networks`
-							: ""}
+					{device.suspect && (
+						<ShieldAlert
+							aria-hidden="true"
+							className="size-3.5 shrink-0 text-danger"
+						/>
+					)}
+				</span>
+				{/*
+				 * ROW 2 - THE METRIC RAIL, which is ask 3's answer and the whole reason the node is
+				 * taller. The count is MONOSPACE AT A FIXED X (`w-3`, 12 px, the width the frame
+				 * measured between the digits at 795.8 and the unit at 808.3) so that comparing two
+				 * devices is comparing digits in the same column rather than remembering a sentence.
+				 *
+				 * AN EN DASH, NOT A ZERO, when the count is `null`: the node's own page has carried
+				 * "`null` is not `0`" since the join was written, and this is that rule made visible.
+				 * The unit is dimmed there too, because "not reported" is not a measurement.
+				 */}
+				<span className="flex w-full min-w-0 items-baseline gap-1">
+					<span className="w-3 shrink-0 font-mono text-body-sm text-ink tabular-nums">
+						{device.sessionCount ?? "–"}
 					</span>
+					<span
+						className={cn(
+							"min-w-0 truncate text-meta",
+							/*
+							 * A STATED FLOOR, NOT A DISABLED-LOOKING WORD (UX review round 1, U6):
+							 * `ink-disabled` measured 1.99:1 on this fill in dark and 2.96:1 in light,
+							 * which hides the very null-vs-zero distinction this row exists to carry.
+							 * `ink-dim` reads 5.25:1 on the same ground and is still clearly quieter
+							 * than the count it labels.
+							 */
+							device.sessionCount === null ? "text-ink-dim" : "text-ink-muted",
+						)}
+					>
+						{conversationUnit(device.sessionCount)}
+					</span>
+				</span>
+				{/*
+				 * ROW 3 - THE STATE LINE. A dot glyph, the reach word, the derived activity and the
+				 * network count - in that order, and only the reach word is always there.
+				 *
+				 * THE DOT IS `aria-hidden` AND THE WORD IS NOT: glyph-plus-word is one fact, and a
+				 * reader on a screen reader gets the word rather than a shape they cannot see.
+				 */}
+				<span
+					data-mesh-state-line=""
+					className="flex w-full min-w-0 items-baseline gap-1.5 text-meta"
+				>
+					<span aria-hidden="true" className="shrink-0 text-ink-dim">
+						{REACH_DOT[reach]}
+					</span>
+					<span className={cn("shrink-0", REACH_INK[reach])}>
+						{reachWords(reach)}
+					</span>
+					{working && (
+						<span data-mesh-working="" className="shrink-0 text-info">
+							working
+						</span>
+					)}
+					{device.memberships.length > 1 && (
+						<span className="min-w-0 truncate text-ink-dim">
+							· {device.memberships.length} networks
+						</span>
+					)}
 				</span>
 			</button>
 
@@ -423,7 +547,21 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			<ul
 				aria-label={`Conversations on ${device.label}`}
 				className={cn(
-					"m-0 flex list-none items-center gap-1 overflow-hidden px-3 pb-2",
+					/*
+					 * THE BAND IS A FIXED 24 px, EMPTY OR NOT (`NODE_CHIP_BAND`): it is awarded by
+					 * `DEVICE_HEIGHT` and this is the element that occupies it, so a node with no chips
+					 * is the same height as one with two. The empty sentence that used to sit here is
+					 * gone (design round's D6): `no conversations here` spent a whole text row of a 147 px
+					 * box saying "nothing" beside a count that already said it, and the fact survives in
+					 * the rail above and in the node's accessible name.
+					 */
+					/*
+					 * NO VERTICAL PADDING: the band is 24 px and the chips are now a 24 px target
+					 * each (UX review round 1, U7), so `pb-1.5` - which used to bias the shorter
+					 * chips upward - would centre a 24 px chip in an 18 px content box and clip it
+					 * against the band's own top edge. The row centres its children either way.
+					 */
+					"m-0 flex h-6 list-none items-center gap-1 overflow-hidden px-3",
 					/*
 					 * THE ROW UNDER THE GHOST DIMS (design review round 1, D4): the ghost is drawn at
 					 * the pointer, so over an accepting target it lands on the row it is aimed at and
@@ -440,6 +578,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						key={session.id}
 						session={session}
 						ownerLabel={device.label}
+						ownerReach={reach}
 						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}
 						dragging={draggedSessionId === session.id}
@@ -454,7 +593,12 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							data-mesh-more={device.id}
 							onClick={() => onShowAllSessions(device.id)}
 							className={cn(
-								"rounded-sm px-1.5 py-0.5 text-meta text-ink-dim",
+								/*
+								 * THE SAME 24 px FLOOR AS THE CHIPS (UX review round 1, U7): this control
+								 * sits in the same row, opens the same panel, and a row that fixed only
+								 * the chips would leave the audit reading the control beside them.
+								 */
+								"flex min-h-6 items-center rounded-sm px-1.5 text-meta text-ink-dim",
 								"hover:bg-row-hover hover:text-ink",
 								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 							)}
@@ -479,29 +623,10 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						</button>
 					</li>
 				)}
-				{sessions.rows.length === 0 && emptyChipWords(device) !== null && (
-					<li className="text-meta text-ink-dim">{emptyChipWords(device)}</li>
-				)}
 			</ul>
 		</li>
 	);
 };
-
-/**
- * What an empty chip row says, or `null` when it should say nothing.
- *
- * AN EMPTY OWN ROW IS A FACT, not a gap: this device is where the reader is, so
- * "no conversations here" is answerable and worth saying. A PEER'S EMPTINESS IS ONLY
- * SAID WHEN THE RELAY COUNTED IT - `session_count === 0` - because a peer that
- * answered with no rows and a peer that did not answer at all look identical from
- * here, and `null` is this feature's word for "not told". Nobody else's silence is
- * rendered as "no conversations".
- */
-function emptyChipWords(device: MeshDevice): string | null {
-	if (device.state === "self") return "no conversations here";
-	if (device.sessionCount === 0) return "no conversations";
-	return null;
-}
 
 type SessionChipProps = {
 	session: MeshSessionRow;
@@ -514,6 +639,14 @@ type SessionChipProps = {
 	 * `ChipStripeKey`.
 	 */
 	ownerReachable: boolean;
+	/**
+	 * The same device's REACH, for the sentence the chip SPEAKS (agent review round 1,
+	 * Q1): the stripe answers "will this refuse me" from the boolean, while the words
+	 * take the reach model's own vocabulary - a chip on a device nobody dialled said
+	 * `unreachable` in its `title` and `aria-label`, which is the word every drawn
+	 * surface had just stopped saying.
+	 */
+	ownerReach: DeviceReach;
 	moving: boolean;
 	dragging: boolean;
 	onPointerDown: (
@@ -544,18 +677,19 @@ type SessionChipProps = {
 const SessionChip: FC<SessionChipProps> = ({
 	session,
 	ownerLabel,
+	ownerReach,
 	ownerReachable,
 	moving,
 	dragging,
 	onPointerDown,
 	onClick,
 }) => {
-	const fact = chipFact(session, ownerLabel, ownerReachable);
+	const fact = chipFact(session, ownerLabel, ownerReach);
 	if (moving) {
 		return (
 			// biome-ignore lint/a11y/useSemanticElements: `role="status"` has no semantic element of its own; `<output>` is for a form's result, and this is a live region inside a list item.
 			<li role="status" data-mesh-session={session.id} data-mesh-moving="true">
-				<span className="rounded-sm bg-sunken px-1.5 py-0.5 text-meta text-ink-muted">
+				<span className="flex min-h-6 items-center rounded-sm bg-sunken px-1.5 text-meta text-ink-muted">
 					moving…
 				</span>
 			</li>
@@ -578,24 +712,18 @@ const SessionChip: FC<SessionChipProps> = ({
 				onPointerDown={(event) => onPointerDown(event, session)}
 				onClick={() => onClick(session)}
 				className={cn(
-					"w-full max-w-32 truncate rounded-sm border border-hairline bg-surface px-1.5 py-0.5 text-left text-meta text-ink-muted",
 					/*
-					 * LEFT-TRUNCATION: `direction: rtl` with `text-align: left` is what moves the
-					 * overflow - and the ellipsis - to the START, which is where it has to be, because a
-					 * device's conversations are named in series (`Sweep 011`, `Sweep 012`) and the part
-					 * that tells two of them apart is the END. End-truncation is what round 2 measured at
-					 * the cap: two conversations rendered as `Swe…` and `Res…`.
+					 * A 24 px TARGET (UX review round 1, U7): the chip measured 115.6 x 21.1, and its
+					 * miss-cost is a whole gesture - a drag start or the panel - not a no-op, while
+					 * WCAG 2.5.8's own spacing exception does not hold here: the 24 px circle centred
+					 * on a 21.1 px chip intersects the node body's button directly above it. The
+					 * height comes from `min-h-6`, which is exactly the row's reserved band
+					 * (`NODE_CHIP_BAND`), so the chip cannot grow the node.
 					 *
-					 * NOT `unicode-bidi: plaintext`, which is the tempting companion and the wrong one: it
-					 * makes the PARAGRAPH direction follow the first strong character, so the box goes back
-					 * to truncating at the end - photographed on this branch's own `cap-at-four` frame, where
-					 * the chips read `Sweep …` with the ellipsis on the right. An LTR title inside an RTL
-					 * box still renders its words in order (the run is LTR; only the line's overflow side
-					 * follows the box), and the full title is in the tooltip and the accessible name either
-					 * way, so a title in another script is a rendering this can be judged on rather than a
-					 * claim made here.
+					 * THE TEXT MOVED INTO ITS OWN SPAN with that change: a flex container cannot
+					 * ellipsise its own text, so the truncation lives on the one span that still can.
 					 */
-					"[direction:rtl]",
+					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-left text-meta text-ink-muted",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.
@@ -644,7 +772,9 @@ const SessionChip: FC<SessionChipProps> = ({
 				 * guess that clips the tail on exactly the widest titles. The browser measures; the
 				 * classes only say WHICH END loses characters.
 				 */}
-				{chipLabel(session)}
+				<span className="min-w-0 flex-1 truncate [direction:rtl]">
+					{chipLabel(session)}
+				</span>
 			</button>
 		</li>
 	);

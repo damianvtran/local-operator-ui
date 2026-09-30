@@ -118,6 +118,9 @@ export const neon: ThemeDefinition = {
 		 * `surface` is the tightest ground at ΔE00 12.46.
 		 */
 		hairline: "#1F4050",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
+		hairlineStrong: "#264555",
 		// Derived. The old theme bounded inputs with cyan at 20 percent alpha, about
 		// 1.3:1 — a neon outline that was not actually there.
 		borderControl: "#6F8F99",
