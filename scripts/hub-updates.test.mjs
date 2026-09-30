@@ -551,3 +551,37 @@ test("the detail editors re-seed when the fetched definition changes (R1)", () =
 	);
 	assert.match(page, /contentKey\(detail\.data\)/);
 });
+
+/*
+ * THE REPLACED-EDIT NOTICE, PINNED WHERE CI CAN REACH IT (agent review round 3,
+ * N2). Its behaviour is asserted by the `update-under-an-open-editor` story, and
+ * nothing runs Storybook stories in CI - `pnpm test:desktop` is the `node --test`
+ * set, and the stories are a hand-run rig. So the same cheap source pins the R1
+ * fix uses stand here: both editors must keep reporting their unsaved state up,
+ * the notice must stay conditional on a DIRTY editor, and it must stay scoped to
+ * the definition it describes (N1).
+ */
+test("the replaced-edit notice keeps its wiring, its condition and its scope (R2-5, N1/N2)", () => {
+	const page = read(
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+	);
+	// Both editors expose the report, and every mount site passes it up.
+	assert.equal(
+		(page.match(/onDirty: \(dirty: boolean\) => void;/g) ?? []).length,
+		2,
+		"both editors must expose their unsaved state",
+	);
+	assert.equal(
+		(page.match(/onDirty=\{onEditorDirty\}/g) ?? []).length,
+		4,
+		"every editor mount site must pass the report up",
+	);
+	// The notice fires only for a hub-driven content change under a dirty editor.
+	assert.match(page, /if \(dirtyRef\.current\) setLostEdits\(true\);/);
+	// ...and a change of IDENTITY re-seeds and clears it instead of comparing.
+	assert.match(page, /if \(seededIdentity\.current !== identity\)/);
+	assert.match(
+		page,
+		/if \(seededIdentity\.current !== identity\) \{[\s\S]{0,300}?setLostEdits\(false\);/,
+	);
+});
