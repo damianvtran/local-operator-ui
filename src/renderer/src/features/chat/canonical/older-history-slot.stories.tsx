@@ -68,7 +68,6 @@ const Ruled = ({
 		<div className="border-hairline border-y" style={{ width }}>
 			<OlderHistorySlot
 				state={state}
-				hiddenRows={137}
 				transportDown={transportDown}
 				onLoadOlder={() => undefined}
 			/>
@@ -186,23 +185,23 @@ export const TransportDown: Story = {
 	),
 };
 
-/** The singular, which is its own copy branch and its own chance to be wrong. */
-export const OneHiddenRow: Story = {
+/**
+ * The windowed sentence alone, at a size the copy can be read at.
+ *
+ * This board used to pin the SINGULAR count branch — `1 earlier message
+ * above`, its own branch and its own chance to be wrong. That branch is gone:
+ * the windowed row states no count and no unit (design round 1, D1, measured
+ * off these frames — the row read `14 earlier messages above — scroll up to
+ * load` while the bar beneath it read `225 actions`, and the counted unit was
+ * transcript ROWS, which is not what a reader counts). One sentence replaced
+ * both spellings of the count, so there is nothing left to compare branch to
+ * branch; what is worth a board of its own is the sentence at full size, which
+ * the five-row `EveryState` frame cannot give it.
+ */
+export const WindowedSentence: Story = {
 	render: () => (
 		<div className="flex flex-col gap-6 bg-canvas p-8">
-			<Ruled state="windowed" caption="one row, singular copy" />
-			<div className="flex items-start gap-4">
-				<span className="w-64 shrink-0 pt-1 text-ink-muted text-meta">
-					rendered with hiddenRows=1
-				</span>
-				<div className="w-[32rem] border-hairline border-y">
-					<OlderHistorySlot
-						state="windowed"
-						hiddenRows={1}
-						onLoadOlder={() => undefined}
-					/>
-				</div>
-			</div>
+			<Ruled state="windowed" caption="windowed: no count, no unit" />
 		</div>
 	),
 };

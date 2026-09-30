@@ -5901,7 +5901,7 @@ export const STORIES = [
 	   measures at the app's own 800px minimum window. Sized to the boards. */
 	["chat-older-history-slot--every-state", 900, 460],
 	["chat-older-history-slot--app-minimum-width", 900, 720],
-	["chat-older-history-slot--one-hidden-row", 900, 260],
+	["chat-older-history-slot--windowed-sentence", 900, 260],
 	/* The transport-down branch: a failure the reader cannot answer is not
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
