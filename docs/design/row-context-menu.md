@@ -481,7 +481,10 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
   already moved focus there - so `Escape` returned the button and the next
   keystroke began the row's type-to-filter (QA round 3's Q-1, measured live).
   Read at the press, the control the reader was in (the composer) is what
-  comes back, and the next keystroke lands there - U8's intent. The
+  comes back, and the next keystroke lands there - U8's intent. An
+  `onOpenChange` capture remains beside the press-time one for opens with no
+  press (a dispatched `contextmenu`), guarded by the remembered ref's
+  emptiness so it can never overwrite what the press recorded. The
   return-to-pre-open applies to closes that commit no act (round 3's U10):
   item activation has its own destinations rather than returning - `Pin
   conversation` leaves the caret on the row's pin control (or the row's
