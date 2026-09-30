@@ -46,6 +46,9 @@ const {
 	ALIGN_WALK_MAX_PAGES,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
+	alignWalkRunKey,
+	alignWalkStateFor,
+	initialAlignWalkState,
 	collapsePlan,
 	isFailedCall,
 	runsOf,
@@ -1235,6 +1238,23 @@ const finishedTurns = (turns, toolsPerTurn) => {
 	return rows;
 };
 
+/**
+ * A fetched set that STARTS mid-run, with the window edge inside that head-cut
+ * run: the journal's own shape (`read_transcript_page` returns 100 entries and
+ * the conversation's long turn continues above them). 105 rows, so a 60-row
+ * window's top edge (index 45) lands inside the first, head-cut run.
+ */
+const headCutRows = () => [
+	...Array.from({ length: 100 }, (_, i) =>
+		tool(`hc${i}`, { ts: TS + i }, "trace"),
+	),
+	user("u2", { ts: TS + 10_000 }),
+	answer("a2", { ts: TS + 11_000 }),
+	user("u3", { ts: TS + 12_000 }),
+	tool("t3", { ts: TS + 13_000 }, "trace"),
+	answer("a3", { ts: TS + 14_000 }),
+];
+
 test("widenTarget: a plain +step over finished turns paints fewer than 8 new rows, the target does not", () => {
 	assert.equal(
 		typeof widenTarget,
@@ -1442,5 +1462,106 @@ test("the completed-run allowance is capped, and never applies to a head-cut run
 		) <=
 			60 + 720,
 		"and the cap holds for a run taller than it",
+	);
+});
+
+/* ------------- the walk's memory, per head-cut run (1b/B) ------------- */
+
+test("the walk's budget belongs to a RUN: a second cut run gets its own, strictly once each", () => {
+	/*
+	 * The operator runs long-lived sessions: a conversation that outlives its first walk must still
+	 * complete the bars of turns that settle LATER. The budget is therefore keyed by the run under the
+	 * window's edge (its stable `runsOf` key), not by a counter that only resets on a session change.
+	 */
+	assert.equal(typeof alignWalkStateFor, "function");
+	assert.equal(typeof alignWalkRunKey, "function");
+	/*
+	 * The fixture is the journal's own shape: the fetched set STARTS mid-run (no
+	 * opening user row for the first run), and the window edge lands inside that
+	 * first run — which is the state a completion walk exists for. A fully headed
+	 * list has no head-cut run at all, so it cannot express this case.
+	 */
+	const rows = headCutRows();
+	const keyA = alignWalkRunKey(rows, 60);
+	assert.ok(
+		keyA !== null,
+		"the window edge sits inside a head-cut run in this fixture",
+	);
+	// Walk A to its bound.
+	let state = initialAlignWalkState();
+	state = alignWalkStateFor(state, keyA);
+	let spentA = 0;
+	for (let i = 0; i < ALIGN_WALK_MAX_PAGES + 3; i += 1) {
+		const decision = alignWalkDecision(state.spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: state.halted,
+		});
+		state = { ...state, spent: decision.spent };
+		if (decision.fetch) spentA += 1;
+	}
+	assert.equal(
+		spentA,
+		ALIGN_WALK_MAX_PAGES,
+		"run A spends the bound, and only the bound",
+	);
+	// The SAME run again: no more work, however many effect runs pass.
+	assert.equal(
+		alignWalkStateFor(state, keyA).spent,
+		ALIGN_WALK_MAX_PAGES,
+		"the same run is never retried for the same content",
+	);
+	// A DIFFERENT head-cut run: its own budget.
+	const stateB = alignWalkStateFor(state, "another-run-key");
+	assert.equal(stateB.key, "another-run-key");
+	assert.equal(stateB.spent, 0, "a later settled run gets its own walk");
+	assert.equal(stateB.halted, false);
+	assert.equal(
+		alignWalkDecision(stateB.spent, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted: stateB.halted,
+		}).fetch,
+		true,
+		"and it starts spending immediately",
+	);
+	// `halted` is per run too: run A's failure does not silence run B.
+	const haltedA = { ...state, halted: true };
+	assert.equal(alignWalkStateFor(haltedA, "another-run-key").halted, false);
+	assert.equal(
+		alignWalkStateFor(haltedA, keyA).halted,
+		true,
+		"run A's own halt survives its own key",
+	);
+});
+
+test("alignWalkRunKey answers with the head-cut run under the window edge, and null otherwise", () => {
+	const rows = headCutRows();
+	const key = alignWalkRunKey(rows, 60);
+	const enclosing = runsOf(rows).find(
+		(run) =>
+			run.openingIndex <= rows.length - 60 && rows.length - 60 <= run.endIndex,
+	);
+	assert.equal(key, enclosing.key, "the key is the run under the edge");
+	assert.equal(
+		alignWalkRunKey(rows, rows.length),
+		null,
+		"a window that already covers the list has no cut run to walk",
+	);
+	const headed = [
+		user("hu", { ts: TS }),
+		...Array.from({ length: 100 }, (_, i) =>
+			tool(`ht${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("ha", { ts: TS + 900_000 }),
+	];
+	assert.equal(
+		alignWalkRunKey(headed, 60),
+		null,
+		"a run whose opening row is loaded owes no walk",
 	);
 });
