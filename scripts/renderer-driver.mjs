@@ -31046,6 +31046,20 @@ async function sceneMiniView(app, cdp) {
 		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
 		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
 		const composerAlert = `document.querySelector('[role="alert"]')`;
+		/*
+		 * THE PALETTE THIS SCENE PHOTOGRAPHS (design N2). `--theme` reached only the MAIN
+		 * window (`verb(cdp, "setTheme", ...)`), while the mini document publishes its own
+		 * palette from the persisted preference - so every still was dark whatever the
+		 * flag said, and the twelve-theme promise had no frame behind it. The same
+		 * attribute `applyThemeToDocument` writes is set here, on the mini's own
+		 * documentElement, and asserted below: two documents, one palette name.
+		 */
+		if (THEME) {
+			await mini.evaluate(
+				`(() => { document.documentElement.dataset.theme = ${JSON.stringify(THEME)}; return true; })()`,
+			);
+		}
+
 		const pageState = await mini.evaluate(
 			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${composerField}?.placeholder ?? null, sendDisabled: ${composerSend}?.disabled ?? null })`,
 		);
@@ -31058,9 +31072,22 @@ async function sceneMiniView(app, cdp) {
 		);
 		check(
 			"the mini document mounted the app's palette",
-			typeof pageState?.theme === "string" && pageState.theme.length > 0,
-			`data-theme = ${JSON.stringify(pageState?.theme)}`,
+			typeof pageState?.theme === "string" &&
+				pageState.theme.length > 0 &&
+				(THEME === null || pageState.theme === THEME),
+			`data-theme = ${JSON.stringify(pageState?.theme)}${THEME ? ` (asked for ${THEME})` : ""}`,
 		);
+
+		/*
+		 * THE COLUMN'S LEFT EDGES, PRINTED (design D2). The header, the hint and the box
+		 * were measured apart (12 / 12 / 36) in the design round; these are the frame's
+		 * own numbers, taken in the document they describe, so a later alignment claim
+		 * has a reading behind it rather than a class name.
+		 */
+		const edges = await mini.evaluate(
+			`(() => { const box = ${composerField}?.closest("div[class*=bg-elevated]"); const rect = (element) => element ? Math.round(element.getBoundingClientRect().x * 10) / 10 : null; const chain = []; let node = box; while (node && chain.length < 8) {   const style = getComputedStyle(node);   chain.push({ tag: node.tagName.toLowerCase() + (node.dataset.tourTag ? "#" + node.dataset.tourTag : ""), x: rect(node), padLeft: style.paddingLeft, width: Math.round(node.getBoundingClientRect().width) });   node = node.parentElement; } return { header: rect(document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-seat" + String.fromCharCode(34) + String.fromCharCode(93))), status: rect(document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-composer-status" + String.fromCharCode(34) + String.fromCharCode(93))), field: rect(${composerField}), box: rect(box), boxRight: box ? Math.round(box.getBoundingClientRect().right * 10) / 10 : null, chain }; })()`,
+		);
+		note("the column left edges (css px)", JSON.stringify(edges));
 		check(
 			"the mini document has the preload's bridge",
 			pageState?.dismissBridge === true,
@@ -31298,7 +31325,7 @@ async function sceneMiniView(app, cdp) {
 		].join("\n");
 		await type(longDraft);
 		const growth = await mini.evaluate(
-			`(() => { const box = ${composerField}; const frame = document.body.getBoundingClientRect(); const bounds = window.__lopMiniSceneWindow?.getContentBounds?.() ?? null; return { scrolls: box.scrollHeight > box.clientHeight || box.scrollHeight >= box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height), contentHeight: bounds?.height ?? null, contentWidth: bounds?.width ?? null }; })()`,
+			`(() => { const box = ${composerField}; const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); const frame = document.body.getBoundingClientRect(); return { bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height), innerHeight: window.innerHeight, columnScrollHeight: column?.scrollHeight ?? null, columnBoxHeight: column ? Math.round(column.getBoundingClientRect().height) : null }; })()`,
 		);
 		/*
 		 * THE RESIZE CONTRACT (design R2), replacing the old "the window never
@@ -31310,11 +31337,13 @@ async function sceneMiniView(app, cdp) {
 		 * quick-send surface from becoming a panel.
 		 */
 		check(
-			"a long draft keeps the fixed width and stays inside the height range",
+			"a long draft keeps the fixed width, fits inside the window, and stays in range",
 			growth?.bodyWidth === width &&
 				growth?.bodyHeight >= height &&
 				growth?.bodyHeight <= maxHeight &&
-				(growth?.contentHeight ?? growth?.bodyHeight) <= maxHeight,
+				typeof growth?.columnScrollHeight === "number" &&
+				typeof growth?.innerHeight === "number" &&
+				growth.columnScrollHeight <= growth.innerHeight,
 			JSON.stringify(growth),
 		);
 		await captureMini("mini-view-long");
@@ -31360,7 +31389,13 @@ async function sceneMiniView(app, cdp) {
 			 * moment. A literal in the frame, or a second source, would show up
 			 * here as a mismatch rather than passing a shape check.
 			 */
-			const named = await daemonPost("/v1/desktop/aida", { op: "status" });
+			/*
+			 * THE GET IS THE SHAPE THAT CARRIES `name` (QA Q1-a): the POST's op answer is
+			 * `AidaOpState` (session/paused/greeted), and reading `name` off it returned null
+			 * on every backend - so this check failed for the harness's reason rather than the
+			 * app's. `GET /v1/desktop/aida` answers `AidaState`, the record the sidebar reads.
+			 */
+			const named = await daemonGet("/v1/desktop/aida");
 			const resolvedName = named?.json?.result?.name ?? null;
 			check(
 				"the frame renders the name the backend resolves, not a literal",
@@ -31399,6 +31434,23 @@ async function sceneMiniView(app, cdp) {
 				JSON.stringify(sheetOpen.value),
 			);
 			await captureMini("mini-view-sheet");
+			/*
+			 * THE SHEET FITS TOO (design D1 / UX U1: 261 px of it was painted outside the
+			 * window). The same reading the long-draft state takes, on the state that made the
+			 * defect visible: nothing inside the frame extends past the window's own edge.
+			 */
+			const sheetFit = await mini.evaluate(
+				`(() => { const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); const list = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-sheet" + String.fromCharCode(34) + String.fromCharCode(93)); return { innerHeight: window.innerHeight, columnScrollHeight: column?.scrollHeight ?? null, sheetBottom: list ? Math.round(list.getBoundingClientRect().bottom) : null }; })()`,
+			);
+			check(
+				"the sheet state fits inside the window",
+				typeof sheetFit?.innerHeight === "number" &&
+					typeof sheetFit?.columnScrollHeight === "number" &&
+					sheetFit.columnScrollHeight <= sheetFit.innerHeight &&
+					(sheetFit.sheetBottom === null ||
+						sheetFit.sheetBottom <= sheetFit.innerHeight),
+				JSON.stringify(sheetFit),
+			);
 			const sheetRows = await mini.evaluate(
 				`document.querySelectorAll('[data-tour-tag="mini-sheet"] [role="option"]').length`,
 			);
@@ -31478,6 +31530,22 @@ async function sceneMiniView(app, cdp) {
 				draftBeforeMic === recordingDraft,
 				JSON.stringify(draftBeforeMic),
 			);
+			/*
+			 * THE MIC NEEDS ITS PROBE TO HAVE SETTLED (QA Q1-e): one press in four no-op'd when
+			 * clicked immediately after `type()`, because the control stays disabled until the
+			 * credential read answers.
+			 */
+			const micReady = await pollMini(
+				`Boolean(${composerMicStart}) && ${composerMicStart}.disabled === false`,
+				(value) => value === true,
+				"the mic control to be pressable",
+				10_000,
+			);
+			check(
+				"the mic is enabled before the walk presses it",
+				micReady.ok,
+				JSON.stringify(micReady.value),
+			);
 			await mini.evaluate(`${composerMicStart}.click(); true`);
 			const recordingState = await pollMini(
 				`${select("mini-composer-status")}.textContent`,
@@ -31508,11 +31576,11 @@ async function sceneMiniView(app, cdp) {
 			 * draft is byte-identical.
 			 */
 			const beforeEnter = await mini.evaluate(
-				`({ sendDisabled: ${composerSend}.disabled, mic: ${composerMicConfirm}?.getAttribute("aria-label") ?? null })`,
+				`({ sendControl: Boolean(${composerSend}), mic: ${composerMicConfirm}?.getAttribute("aria-label") ?? null })`,
 			);
 			check(
-				"Send is disabled while a recording is live",
-				beforeEnter?.sendDisabled === true &&
+				"no Send control stands while a recording is live",
+				beforeEnter?.sendControl === false &&
 					beforeEnter?.mic === dictationStopSentence,
 				JSON.stringify(beforeEnter),
 			);
@@ -31535,7 +31603,7 @@ async function sceneMiniView(app, cdp) {
 				8_000,
 			);
 			const afterEnter = await mini.evaluate(
-				`({ text: ${composerField}.value, disabled: ${composerField}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+				`({ text: ${composerField}.value, readOnly: ${composerField}.readOnly, sendControl: Boolean(${composerSend}), status: ${select("mini-composer-status")}?.textContent ?? null })`,
 			);
 			check(
 				"Enter confirmed the recording instead of sending",
@@ -31609,10 +31677,26 @@ async function sceneMiniView(app, cdp) {
 					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
 				);
 				await wait(150);
+				/*
+				 * SETTLE AND RE-VERIFY IMMEDIATELY BEFORE THE CLICK (QA Q1-d). Every window in
+				 * this rig is unfocused, so the draft store's cross-document sync (R5) may absorb
+				 * the OTHER document's copy between `type()` and the press - measured: the run
+				 * sent an older draft while the harness watched for the new one. The box is
+				 * pinned here, and a mismatch refuses rather than sending a message this walk is
+				 * not describing.
+				 */
+				const pinned = await mini.evaluate(
+					`(() => { const box = ${composerField}; box.focus(); return box.value === ${JSON.stringify(message)}; })()`,
+				);
+				check(
+					"the box still holds the message at the press",
+					pinned === true,
+					`pinned=${pinned}`,
+				);
 				await mini.evaluate(`${composerSend}.click(); true`);
 				const inFlight = await pollMini(
-					`({ editable: !${composerField}.disabled, sendDisabled: ${composerSend}.disabled })`,
-					(value) => value?.editable === false,
+					`({ readOnly: ${composerField}.readOnly, sendControl: Boolean(${composerSend}) })`,
+					(value) => value?.readOnly === true,
 					"the in-flight state",
 					6_000,
 				);

@@ -43,6 +43,7 @@ import { gateIsSecret } from "@features/chat/ask-answer";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
 import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
 import { unreadableAttachmentRefusal } from "@features/chat/utils/attachment-read";
+import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { messageBudgetRefusal } from "@features/chat/utils/message-budget";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
@@ -65,10 +66,17 @@ import {
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { applyThemeToDocument } from "@shared/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { DesktopCapabilities } from "../../../shared/desktop-contract";
 import type {
 	DesktopAidaControlResult,
@@ -119,18 +127,18 @@ export function MiniComposer() {
 	}, [frame]);
 
 	const [seatId, setSeatId] = useState<string | null>(null);
-/*
- * THE UNSEATED BOX'S OWN CONVERSATION KEY. The shared composer owns the draft
- * through `useMessageInput` keyed by a conversation id, and its submit REFUSES
- * without one - so a quick-send box that passed `undefined` until a seat
- * resolved would have a Send that silently did nothing on the first press.
- * The key is therefore always present; when the seat resolves, whatever was
- * typed under this one is MIGRATED into the seat's key (see the effect below),
- * because the operator's rule is that the seat conversation's draft is one
- * draft - the same text whether it is read in the chat pane or the popup.
- */
-const UNSEATED_DRAFT_KEY = "mini-view:unseated";
-const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
+	/*
+	 * THE UNSEATED BOX'S OWN CONVERSATION KEY. The shared composer owns the draft
+	 * through `useMessageInput` keyed by a conversation id, and its submit REFUSES
+	 * without one - so a quick-send box that passed `undefined` until a seat
+	 * resolved would have a Send that silently did nothing on the first press.
+	 * The key is therefore always present; when the seat resolves, whatever was
+	 * typed under this one is MIGRATED into the seat's key (see the effect below),
+	 * because the operator's rule is that the seat conversation's draft is one
+	 * draft - the same text whether it is read in the chat pane or the popup.
+	 */
+	const UNSEATED_DRAFT_KEY = "mini-view:unseated";
+	const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 	const seatRef = useRef<string | null>(null);
 	const seatPromiseRef = useRef<Promise<string | null> | null>(null);
 	/*
@@ -290,7 +298,10 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
 			seatRef.current = null;
 			update((current) =>
-				miniFrameTransitions.noted(current, MINI_COPY.seatMissing),
+				miniFrameTransitions.noted(
+					current,
+					MINI_COPY.seatMissing(seatNameRef.current),
+				),
 			);
 			return null;
 		}
@@ -326,7 +337,10 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 			if (!sessionId) {
 				seatRef.current = null;
 				update((current) =>
-					miniFrameTransitions.noted(current, MINI_COPY.seatOpenFailed),
+					miniFrameTransitions.noted(
+						current,
+						MINI_COPY.seatOpenFailed(seatNameRef.current),
+					),
 				);
 				return null;
 			}
@@ -496,6 +510,25 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 					return false;
 				}
 				setSendError(undefined);
+				/*
+				 * THE FILES PANEL GETS WHAT WAS SENT WITH IT (QA Q3). The composer's attachments
+				 * are not on the wire - a canonical content block is text or an image - so
+				 * without this write the mini's new attach control could accept a file, admit the
+				 * message, and leave the file existing nowhere (observed: the daemon's history
+				 * carried the text alone). This is the chat page's own carriage, ported rather
+				 * than reinvented: both keys, because a draft is keyed by its draft key while the
+				 * admitted session is keyed by its id, and writing only one would orphan the file
+				 * at the moment the user looks for it. A pasted image (`data:`) is skipped: it has
+				 * no path to open, and the image itself already rode the wire.
+				 */
+				const sentFiles = attachments
+					.filter((attachment) => !attachment.startsWith("data:"))
+					.map((attachment) => canvasDocumentForPath(attachment));
+				if (sentFiles.length > 0) {
+					const canvas = useCanvasStore.getState();
+					canvas.addMentionedFilesBatch(key, sentFiles);
+					canvas.addMentionedFilesBatch(target, sentFiles);
+				}
 				update((current) => miniFrameTransitions.sentUp(current));
 				if (sentTimerRef.current !== null) {
 					window.clearTimeout(sentTimerRef.current);
@@ -553,6 +586,12 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
 			update((current) => miniFrameTransitions.summoned(current));
 			setSheet(null);
+			/*
+			 * THE HEIGHT RETURNS TO REST WITH THE SUMMON (reviewer M1): a sheet or a
+			 * long draft grown on the last summon is closed here, and the observer
+			 * then asks for the smaller height - the request is driven by content,
+			 * so it shrinks as well as grows.
+			 */
 			window.setTimeout(() => inputRef.current?.focusInput(), 0);
 			void (async () => {
 				const id = seatRef.current
@@ -587,23 +626,44 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 	/**
 	 * THE DRAFT FOLLOWS THE SEAT (see `UNSEATED_DRAFT_KEY`).
 	 *
-	 * Words typed before the seat resolved live under the placeholder key; the
-	 * moment the seat exists they are MOVED onto its conversation, so the text in
-	 * the popup is the same draft the chat pane would show for that conversation -
-	 * one draft per conversation, which is the operator's rule, and the composer's
-	 * own re-seed on the id change then paints them without a second write.
+	 * What was typed - and what was attached - before the seat resolved lives under
+	 * the placeholder key; the moment the seat exists the whole ROW moves onto its
+	 * conversation, so the popup's draft is the same draft the chat pane would show
+	 * for that conversation. One draft per conversation is the operator's rule, and
+	 * the composer's own re-seed on the id change then paints it without a second
+	 * write.
 	 *
-	 * Order matters: the store is written BEFORE `seatId` moves, so the render
-	 * that follows the state change seeds from the seat's row and never sees an
-	 * empty box.
+	 * THE CHIPS MOVE WITH THE TEXT (reviewer m1). `clearComposer` empties the whole
+	 * row, attachments included, so a migration that carried only `currentInput`
+	 * either wiped a file the user had attached before the seat answered or - with
+	 * no text to carry - returned early and stranded it invisibly under a key
+	 * nothing renders. Both are silent losses of exactly the kind the encoder's own
+	 * comment rejects, so the row is moved whole.
+	 *
+	 * THE ORDER IS THE STORE'S, NOT THIS EFFECT'S (reviewer N1): the effect runs
+	 * after the render that follows `seatId` changing, so the box is first re-seeded
+	 * from the seat's (still empty) row and the migrated text arrives through the
+	 * hook's own store-adoption effect (`use-message-input.ts`, `storedDraft !==
+	 * lastPushedRef`). The outcome is right; the mechanism is that one, so a later
+	 * change that assumed a pre-emptive write would be building on an invariant this
+	 * code does not hold.
 	 */
 	useEffect(() => {
 		if (seatId === null) return;
 		const store = useConversationInputStore.getState();
-		const pending = store.inputByConversation[UNSEATED_DRAFT_KEY]?.currentInput;
-		if (typeof pending !== "string" || pending === "") return;
-		store.setCurrentInput(seatId, pending);
-		store.clearComposer(UNSEATED_DRAFT_KEY);
+		const pendingRow = store.inputByConversation[UNSEATED_DRAFT_KEY];
+		if (pendingRow === undefined) return;
+		const pendingText = pendingRow.currentInput;
+		const pendingChips = pendingRow.attachments ?? [];
+		if (pendingChips.length > 0) {
+			for (const chip of pendingChips) store.addAttachment(seatId, chip);
+		}
+		if (typeof pendingText === "string" && pendingText !== "") {
+			store.setCurrentInput(seatId, pendingText);
+		}
+		if (pendingChips.length > 0 || pendingText !== "") {
+			store.clearComposer(UNSEATED_DRAFT_KEY);
+		}
 	}, [seatId]);
 
 	/**
@@ -654,31 +714,47 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 	}, []);
 
 	/*
-	 * THE MEASURED RESIZE (design R2). The frame's content column is measured
-	 * on every layout settle and the height asked of main, which clamps and
-	 * calls `setContentSize`. rAF-coalesced, because a burst of state (a sheet
-	 * opening, a preview landing) fires the observer several times and only
-	 * the settled height is worth a message.
+	 * THE MEASURED RESIZE (design R2). The frame's content column is measured and
+	 * the height asked of main, which clamps and calls `setContentSize`.
+	 *
+	 * TWO DRIVERS, AND THE SECOND IS THE ONE THAT MATTERS. The measurement runs in
+	 * a LAYOUT EFFECT on every render - the states that grow this frame (a draft
+	 * gaining a line, the alert appearing, a chip landing, the sheet opening) are
+	 * all render-driven, and a layout effect runs while the window is HIDDEN.
+	 * The ResizeObserver stays for the growth that no render announces (a font
+	 * landing, the browser's own auto-size after a paste) and posts directly: it
+	 * already batches per frame, so the rAF this used to coalesce through was
+	 * costing correctness for nothing.
+	 *
+	 * WHY THE rAF HAD TO GO (measured in this pass's own rig): a hidden window has
+	 * Chromium's background throttling on, so `requestAnimationFrame` callbacks do
+	 * not run at all - the scene's walk measured a content column of 227px while
+	 * the window stayed 168 and not one resize request was posted. The window is
+	 * created hidden and shown on summon, so the old shape would have kept the
+	 * live surface clipped until its first painted frame, and the headless rig
+	 * could never see the mechanism work.
 	 */
+	const postHeight = useCallback((): void => {
+		const node = contentRef.current;
+		if (node === null) return;
+		window.api?.miniView?.resize?.(
+			Math.ceil(node.getBoundingClientRect().height),
+		);
+	}, []);
+
+	useLayoutEffect(() => {
+		postHeight();
+	});
+
 	useEffect(() => {
 		const node = contentRef.current;
 		if (node === null) return;
-		let raf = 0;
-		const schedule = (): void => {
-			cancelAnimationFrame(raf);
-			raf = requestAnimationFrame(() => {
-				const height = Math.ceil(node.getBoundingClientRect().height);
-				window.api?.miniView?.resize?.(height);
-			});
-		};
-		const observer = new ResizeObserver(schedule);
+		const observer = new ResizeObserver(postHeight);
 		observer.observe(node);
-		schedule();
 		return () => {
 			observer.disconnect();
-			cancelAnimationFrame(raf);
 		};
-	}, []);
+	}, [postHeight]);
 
 	useEffect(() => {
 		return () => {
@@ -798,7 +874,7 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 				? frame.notice.tone === "danger"
 					? "text-danger"
 					: "text-ink-muted"
-				: "text-ink-muted";
+				: "text-ink-dim";
 
 	return (
 		<div
@@ -809,7 +885,20 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 			<div
 				ref={contentRef}
 				data-tour-tag="mini-frame-content"
-				className="flex min-h-full flex-col gap-2 p-3"
+				/*
+				 * `shrink-0`, NO `min-h-full`, and both halves are load-bearing
+				 * (design D1 / UX U1 / QA Q2). This node is what the ResizeObserver
+				 * below measures, and `min-h-full` made its box the VIEWPORT height
+				 * while the default `flex-shrink: 1` let the parent's `h-screen`
+				 * column squeeze it: the observer therefore read 168 in every state
+				 * and `mini-view:resize` was asked for the height the window already
+				 * had, so the sheet and a long draft were painted outside the window
+				 * (measured: sheet content 479 px against innerHeight 168). With the
+				 * intrinsic box the observer reports real content, which is also
+				 * what lets a request DROP again when the content shrinks (reviewer
+				 * M1) - main clamps below at MINI_VIEW_HEIGHT.
+				 */
+				className="flex shrink-0 flex-col gap-2 p-3"
 			>
 				<div className="flex h-4 shrink-0 items-center justify-between pb-0.5">
 					<span
@@ -834,9 +923,18 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 					 * before the seat answered would be a dead control on the one press
 					 * this surface exists for.
 					 */
-					conversationId={draftKey}					messages={EMPTY_MESSAGES}
+					conversationId={draftKey}
+					messages={EMPTY_MESSAGES}
 					isLoading={false}
 					isSmallView
+					/*
+					 * THE FRAME IS THE GUTTER (design D2): the composer's chat inset
+					 * exists to align the box with a transcript's scrollbar gutter, and
+					 * a quick-send frame has neither - its own `p-3` is the edge, and
+					 * inheriting the chat's 24px put the box 24px in from the header and
+					 * the hint that sit at that edge.
+					 */
+					ownGutter
 					transcriptless
 					placeholderOverride={MINI_COPY.placeholder(seatName)}
 					cwd={frontend?.cwd}
@@ -851,20 +949,44 @@ const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
 					onSendMessage={onSendMessage}
 					sendError={sendError}
 				/>
-				<p
-					data-tour-tag="mini-composer-status"
-					role={frame.notice !== null || dictating ? "status" : undefined}
-					aria-live={frame.notice !== null ? "polite" : undefined}
-					className={cn("min-h-4 shrink-0 truncate text-meta", statusTone)}
-				>
-					{statusText}
-				</p>
+				{/*
+				 * ONE ERROR SURFACE (design D3): while the composer is showing its own
+				 * failure alert, this row does not repeat the same sentence below it -
+				 * the composer owns "your send did not go", with its Retry, and a second
+				 * copy here made the block two lines taller and the field jump under the
+				 * user's caret. Every other state (the resting hint, a frame notice, the
+				 * recording line, the Sent flash) still speaks here.
+				 */}
+				{sendError?.message ? null : (
+					<p
+						data-tour-tag="mini-composer-status"
+						role={frame.notice !== null || dictating ? "status" : undefined}
+						aria-live={frame.notice !== null ? "polite" : undefined}
+						className={cn("min-h-4 shrink-0 truncate text-meta", statusTone)}
+					>
+						{statusText}
+					</p>
+				)}
 				{sheet !== null && seatId !== null ? (
 					<MiniSheet
 						mode={sheet}
 						sessionId={seatId}
-						onClose={() => setSheet(null)}
+						/*
+						 * EVERY EXIT HANDS THE KEYBOARD BACK (UX U3): the open path
+						 * focuses the sheet, and without this the closed sheet left
+						 * `document.activeElement` on `<body>` - no caret, and the next
+						 * Escape never reached the frame's ladder because the event's
+						 * target sat outside the React root. Both exits (Escape and a
+						 * pick) come through here, so the restore cannot be forgotten on
+						 * one of them.
+						 */
+						onClose={() => {
+							setSheet(null);
+							inputRef.current?.focusInput();
+						}}
 						onPicked={() => {
+							setSheet(null);
+							inputRef.current?.focusInput();
 							void refreshSeatReads(seatId);
 							scheduleSettleRead(seatId);
 						}}

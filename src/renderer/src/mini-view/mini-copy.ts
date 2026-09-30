@@ -51,8 +51,8 @@ export const MINI_COPY = {
 	/** Dictation states. The mic control's own labels are the composer's. */
 	recording: "Recording. Press the stop button when you're done.",
 	/** The seat could not be resolved. */
-	seatMissing: "This build doesn't have a chief-of-staff seat.",
-	seatOpenFailed: "Couldn't open the chief-of-staff conversation.",
+	seatMissing: (name: string) => `This build doesn't have a ${name} seat.`,
+	seatOpenFailed: (name: string) => `Couldn't open the ${name} conversation.`,
 	seatUnreachable: (name: string) => `Couldn't reach ${name}.`,
 	/**
 	 * Paired with a pre-admission refusal, so the reader knows the draft was

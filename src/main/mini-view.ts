@@ -233,7 +233,12 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			);
 		}
 	};
-	ipcMain.removeListener(MINI_VIEW_RESIZE, onResize);
+	/*
+	 * NO `removeListener` BEFORE THE `on`: `onResize` is a fresh closure per creation,
+	 * so its identity never matched a predecessor's (reviewer N2 - the line could
+	 * not do what it read as doing). `dispose()` below is what actually removes it,
+	 * and it is reached by every path that tears a mini view down.
+	 */
 	ipcMain.on(MINI_VIEW_RESIZE, onResize);
 
 	let disposed = false;
