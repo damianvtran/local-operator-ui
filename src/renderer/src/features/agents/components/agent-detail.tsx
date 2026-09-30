@@ -296,6 +296,7 @@ export function AgentDetail({
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
 	const [unconfirmed, setUnconfirmed] = useState(false);
 	const [conflict, setConflict] = useState(false);
+	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	const navigate = useNavigate();
 
@@ -350,12 +351,22 @@ export function AgentDetail({
 		setError(null);
 		setErrorField(null);
 		setUnconfirmed(false);
+		setConfirmDiscard(false);
 		const next = draftOf(profile);
 		setBase(next);
 		setDraft(next);
 	};
 
-	useEscapeToCancel(cancel, editing);
+	/*
+	 * ESCAPE ASKS THE SAME QUESTION THE CANCEL BUTTON ASKS. It used to call
+	 * `cancel` outright, so the keyboard path discarded a dirty draft silently
+	 * while the pointer path asked - the asymmetry U3 is about.
+	 */
+	const requestCancel = () => {
+		if (dirty) setConfirmDiscard(true);
+		else cancel();
+	};
+	useEscapeToCancel(requestCancel, editing);
 
 	const save = async (event?: FormEvent) => {
 		event?.preventDefault();
@@ -666,6 +677,8 @@ export function AgentDetail({
 							</div>
 						</Section>
 						<EditFooter
+							confirming={confirmDiscard}
+							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
 							pending={pending}
 							onSave={() => void save()}

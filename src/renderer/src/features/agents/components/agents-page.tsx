@@ -242,7 +242,11 @@ export function AgentsPage() {
 					}
 				>
 					<TabsList aria-label="Browse definitions by type" className="w-full">
-						<TabsTrigger value="agent" className="flex-1">
+						<TabsTrigger
+							value="agent"
+							className="flex-1"
+							data-testid="agents-tab"
+						>
 							<Bot className="size-3.5" />
 							Agents
 							{profiles.data ? (
@@ -251,7 +255,11 @@ export function AgentsPage() {
 								</span>
 							) : null}
 						</TabsTrigger>
-						<TabsTrigger value="team" className="flex-1">
+						<TabsTrigger
+							value="team"
+							className="flex-1"
+							data-testid="teams-tab"
+						>
 							<Users className="size-3.5" />
 							Teams
 							{teams.data ? (
@@ -354,7 +362,13 @@ export function AgentsPage() {
 			 * pane when it appears is the jank the design calls out).
 			 */}
 			<main className="flex min-w-0 flex-1 flex-col">
-				<div className="min-h-0 flex-1 overflow-auto p-6">
+				{/*
+				 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM
+				 * of this scroller, and a bottom padding under it left a 24px band where
+				 * the sections kept scrolling through beneath the bar (measured in the
+				 * edit-mode frames). The footer supplies the spacing instead.
+				 */}
+				<div className="min-h-0 flex-1 overflow-auto p-6 pb-0">
 					{!catalogueEnabled ? (
 						<Alert variant="warning" className="max-w-xl">
 							<AlertTitle>Reusable agents need a newer backend</AlertTitle>
@@ -610,68 +624,68 @@ function Roster({
 				);
 				return (
 					<li key={row.name}>
-					<button
-						ref={(node) => {
-							if (node) refs.current.set(row.name, node);
-							else refs.current.delete(row.name);
-						}}
-						type="button"
-						aria-current={row.name === selected ? "true" : undefined}
-						tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
-						data-testid={`roster-row-${row.name}`}
-						className={cn(
-							"flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
-							row.name === selected && "bg-row-selected",
-						)}
-						onFocus={() => setFocused(row.name)}
-						onClick={() => onOpen(row.name)}
-						onKeyDown={(event) => {
-							if (event.key === "ArrowDown") {
-								event.preventDefault();
-								move(row.name, 1);
-							} else if (event.key === "ArrowUp") {
-								event.preventDefault();
-								move(row.name, -1);
-							} else if (event.key === "Home") {
-								event.preventDefault();
-								move(row.name, -rows.length);
-							} else if (event.key === "End") {
-								event.preventDefault();
-								move(row.name, rows.length);
-							}
-						}}
-					>
-						<span className="flex w-full items-center gap-2">
-							<span
-								className={cn(
-									"truncate text-body-sm",
-									row.name === selected ? "font-medium text-ink" : "text-ink",
-								)}
-							>
-								{row.name}
-							</span>
-							{marked ? (
-								<Badge variant="attention" data-testid="roster-row-updated">
-									Updated
-								</Badge>
-							) : null}
-						</span>
-						<span className="flex w-full flex-wrap items-center gap-1.5">
-							{isProfile ? <SourceChip source={row.source} /> : null}
-							{"members" in row ? (
-								<Badge variant="neutral">
-									{row.members.length === 1
-										? "1 member"
-										: `${row.members.length} members`}
-								</Badge>
-							) : null}
-							{row.description ? (
-								<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
-									{row.description}
+						<button
+							ref={(node) => {
+								if (node) refs.current.set(row.name, node);
+								else refs.current.delete(row.name);
+							}}
+							type="button"
+							aria-current={row.name === selected ? "true" : undefined}
+							tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
+							data-testid={`roster-row-${row.name}`}
+							className={cn(
+								"flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
+								row.name === selected && "bg-row-selected",
+							)}
+							onFocus={() => setFocused(row.name)}
+							onClick={() => onOpen(row.name)}
+							onKeyDown={(event) => {
+								if (event.key === "ArrowDown") {
+									event.preventDefault();
+									move(row.name, 1);
+								} else if (event.key === "ArrowUp") {
+									event.preventDefault();
+									move(row.name, -1);
+								} else if (event.key === "Home") {
+									event.preventDefault();
+									move(row.name, -rows.length);
+								} else if (event.key === "End") {
+									event.preventDefault();
+									move(row.name, rows.length);
+								}
+							}}
+						>
+							<span className="flex w-full items-center gap-2">
+								<span
+									className={cn(
+										"truncate text-body-sm",
+										row.name === selected ? "font-medium text-ink" : "text-ink",
+									)}
+								>
+									{row.name}
 								</span>
-							) : null}
-						</span>
-					</button>
+								{marked ? (
+									<Badge variant="attention" data-testid="roster-row-updated">
+										Updated
+									</Badge>
+								) : null}
+							</span>
+							<span className="flex w-full flex-wrap items-center gap-1.5">
+								{isProfile ? <SourceChip source={row.source} /> : null}
+								{"members" in row ? (
+									<Badge variant="neutral">
+										{row.members.length === 1
+											? "1 member"
+											: `${row.members.length} members`}
+									</Badge>
+								) : null}
+								{row.description ? (
+									<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
+										{row.description}
+									</span>
+								) : null}
+							</span>
+						</button>
 					</li>
 				);
 			})}
