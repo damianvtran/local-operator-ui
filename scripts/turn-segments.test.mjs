@@ -452,6 +452,7 @@ const completedOf = (spec) => {
 	return p.result.segments.map((span) =>
 		segmentIsCompleted(
 			p.records,
+			p.result.cycles,
 			span,
 			at,
 			labelOfSegment(p.records, p.result.cycles, span) !== null,
@@ -571,8 +572,9 @@ test("completed: a bar the disposal cut off carries no false receipt (D4)", () =
 	assert.deepEqual(labelsOf("U T A W T M"), [null, "Wake"]);
 	assert.deepEqual(completedOf("U T A M W T M"), [false, false]);
 	const incident = seq("U T A M W T I");
+	const incidentCycles = cyclesOf(incident, paintsSomething);
 	assert.equal(
-		segmentIsCompleted(incident, { from: 4, to: 5 }, 2, true),
+		segmentIsCompleted(incident, incidentCycles, { from: 4, to: 5 }, 2, true),
 		false,
 		"an incident right after the span is a terminal boundary too",
 	);
@@ -591,15 +593,43 @@ test("R1-3: a span holding only a bare receipt is not completed", () => {
 	const span = p.result.segments[1];
 	assert.equal(p.records[span.from].kind, "wake");
 	assert.equal(span.from, span.to, "the span is the wake row alone");
-	assert.equal(segmentIsCompleted(p.records, span, 2, true), false);
+	assert.equal(
+		segmentIsCompleted(p.records, p.result.cycles, span, 2, true),
+		false,
+	);
 });
 
 test("completed: a follow-up still being written is not over", () => {
 	const streaming = seq("U T A M W T S");
 	assert.equal(
-		segmentIsCompleted(streaming, { from: 4, to: 6 }, 2, true),
+		segmentIsCompleted(
+			streaming,
+			cyclesOf(streaming, paintsSomething),
+			{ from: 4, to: 6 },
+			2,
+			true,
+		),
 		false,
 	);
+});
+
+test("MINOR-2: a section that never closed wears no check, whatever its last row is", () => {
+	/*
+	 * The reviewer's repro: `U T A M W T` ends on a FINISHED TOOL CALL, so the
+	 * last-row test alone said "settled" and the bar read `Wake ✓` over a section
+	 * that only ever started. A cycle exists only around a close row, so a span
+	 * ending outside every cycle never handed anything over.
+	 */
+	assert.deepEqual(completedOf("U T A M W T"), [false, false]);
+	assert.deepEqual(completedOf("U T A M P T"), [false, false]);
+	// And the negative control: the SAME shape with a closer still earns it, so
+	// the rule is "did this section close", not "was there a tool at the end".
+	assert.deepEqual(completedOf("U T A M W T A"), [false, true]);
+	/*
+	 * The positive control on the same axis: the same wake-and-work shape with a
+	 * closer after it IS a closed section, so its bar keeps the check.
+	 */
+	assert.deepEqual(completedOf("U W T A"), [true]);
 });
 
 /* --------------------------- the invariant check ------------------------- */
