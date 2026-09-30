@@ -143,10 +143,35 @@ const box = (element: Element | null): Box | null => {
 function App() {
 	const params = new URLSearchParams(window.location.search);
 	const mode = params.get("rail") ?? "off";
+	/**
+	 * `?expand=1` presses the turn's condensed bar open before the probe reads, so
+	 * a frame can show the span the bar holds — the peer-message receipt among the
+	 * calls — beside the elected answer. That is the arrangement the operator's
+	 * report is about (the mark and the condensed block in one view), and it is a
+	 * press rather than a different fixture: the shipped rows decide what it paints.
+	 */
+	const expand = params.get("expand") === "1";
 	const theme = (params.get("theme") ?? "localOperatorDark") as ThemeName;
 
 	useEffect(() => {
 		applyThemeToDocument(theme);
+		let cancelled = false;
+		if (expand) {
+			/*
+			 * Two frames: the first lets the transcript paint its bar, the second
+			 * presses it. The bar's trigger is the only `aria-expanded="false"`
+			 * button on this page, which is the shipped disclosure's own marker.
+			 */
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					if (cancelled) return;
+					const trigger = document.querySelector<HTMLButtonElement>(
+						'button[aria-expanded="false"]',
+					);
+					trigger?.click();
+				});
+			});
+		}
 		const raf = requestAnimationFrame(() => {
 			const answer = document.querySelector('[data-record-id="answer:1"]');
 			const mark = answer?.querySelector("[data-turn-answer]") ?? null;
@@ -167,7 +192,10 @@ function App() {
 				toolOuter: box(tool),
 			};
 		});
-		return () => cancelAnimationFrame(raf);
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(raf);
+		};
 	});
 
 	return (

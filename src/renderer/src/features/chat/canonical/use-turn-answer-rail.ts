@@ -8,9 +8,17 @@
  * respelled) so there is one fetch and one cache entry, and a save in Settings
  * repaints every open transcript in both directions.
  *
- * FAIL-CLOSED: an absent key (a backend that predates it), an unanswered or
- * failed query, and a plane that does not advertise `settings` all resolve to
- * false - no rail. The reading rule itself is `turnAnswerRailEnabled`.
+ * FAIL-CLOSED, on BOTH planes. An absent key (a backend that predates it), an
+ * unanswered or failed query, and a plane that does not advertise `settings`
+ * all resolve to false - no rail. The capability arm is checked BEFORE the
+ * cached payload is read, and that ordering is the whole point: `enabled: false`
+ * only stops the query REFETCHING, so a plane that downgrades while
+ * `backendSettingsKeys.all` still holds `true` would keep painting the rail off
+ * a capability the desktop no longer advertises (agent review round 1, R3; QA
+ * round 1, Q-1). The sibling this file mirrors, `use-cross-session-hidden.ts`,
+ * still reads its cache in that window - same shape, reported rather than
+ * changed here, because that file is another surface's behaviour and this
+ * branch does not own it.
  */
 import { backendSettingsKeys } from "@features/settings/components/backend-settings-section";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -31,5 +39,6 @@ export function useTurnAnswerRail(): boolean {
 		enabled,
 		staleTime: 10_000,
 	});
+	if (!enabled) return false;
 	return turnAnswerRailEnabled(settingsQuery.data?.settings);
 }

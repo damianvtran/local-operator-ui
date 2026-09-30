@@ -1838,13 +1838,22 @@ const PERCEPTIBLE = [
 		 * `canvas`. It is decorative - the layout already identifies the answer - so
 		 * it owes being SEEN rather than a 3:1 floor, and it is the quieter of the
 		 * two roles that could carry it (#708 used `ink-dim` at 2px, which the
-		 * operator found ugly). The threshold is the context wheel's, for the same
-		 * reason: a 1px line has little area to carry the difference.
+		 * operator found ugly).
+		 *
+		 * THE FLOOR IS 4.0, NOT THE PRESET THRESHOLD, and that is the design round's
+		 * finding rather than taste: measured across all 59 palettes this pair is
+		 * ΔE00 4.42 at its weakest (`rosePineDawn`, 1.20:1 - a rule a reader could
+		 * take for a rendering artefact) and 9.39 at the median. A 3.0 floor would
+		 * sit 1.4 BELOW the weakest palette that ships today, so it could not catch a
+		 * palette drifting toward invisible - which is the only reason to write the
+		 * row at all. 4.0 pins what ships with 0.42 of headroom and still leaves the
+		 * step to be re-argued if a future palette cannot clear it (design round 1,
+		 * D1).
 		 */
 		name: "turn answer rail",
 		role: "hairline",
 		on: ["canvas"],
-		minDeltaE: 3.0,
+		minDeltaE: 4.0,
 	},
 	{
 		name: "context wheel track, empty state",

@@ -1811,6 +1811,45 @@ test("the answer's rail is an opt-in setting: off by default, on under the key, 
 		"one elected answer",
 	);
 
+	/*
+	 * THE CAPABILITY PLANE IS THE OTHER HALF OF FAIL-CLOSED (agent review round 1,
+	 * R3; QA round 1, Q-1). A cached `true` plus a plane that stops advertising
+	 * `settings` used to keep the rail on: `enabled: false` stops the query
+	 * refetching but leaves the cache in place, and the hook read that cache. The
+	 * rail must drop the moment the capability does, without waiting for a reload.
+	 */
+	await act(async () => {
+		client.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a plane that stops advertising `settings` draws no rail, cached true or not",
+	);
+	assert.ok(answerEl(mounted), "the election hook is still set for rigs");
+
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	/*
+	 * TWO ticks, for the reason the cross-session toggle above gives: the query's
+	 * notification is applied on a TASK and the row's repaint then queues a FRAME,
+	 * and a capability flip re-enables the query, so the settle is one step later
+	 * than the seeded-write path.
+	 */
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.match(
+		answerEl(mounted).className,
+		/\bborder-hairline\b/,
+		"the rail returns when the plane advertises `settings` again",
+	);
+
 	await seed([{ key: "display.turn_answer_rail", value: "true" }]);
 	assert.equal(answerEl(mounted).className.includes("border-l"), false);
 	assert.ok(answerEl(mounted), "still marked for rigs with the rail off");
