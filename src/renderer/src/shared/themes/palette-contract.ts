@@ -519,6 +519,33 @@ export type ThemePalette = {
 	 */
 	hairline: string;
 	/**
+	 * The decorative role ONE STEP ABOVE `hairline`, and still decoration: no floor.
+	 *
+	 * WHY A SECOND DECORATIVE LINE EXISTS AT ALL. The canvas's dot ground is ported from
+	 * `local_operator/callback_page.py`, which draws on a `--hairline-strong` this system
+	 * did not have. Drawn on `hairline`, the field measured **1.15 : 1** on `sage`, 1.18
+	 * on `localOperatorLight` and 1.23 on `iceberg` against 1.54 on `localOperatorDark`
+	 * and 1.87 on `dracula` - so a motif that reads as depth on the dark themes was
+	 * invisible on the light ones, which is the failure mode `docs/branding.md` calls out
+	 * for the twelve-theme promise: a theme is a promise to a user, and a decorative
+	 * feature that does not appear on three of them is not minimalism, it is missing.
+	 *
+	 * WHAT IT MAY SPEND. Decoration only - a texture, a rule, a separator. The moment it
+	 * becomes a control's fill or its boundary it is `borderControl` and takes that
+	 * role's 3:1 floor; `scripts/contrast-contract.mjs`'s `CONTROLS` table is where such
+	 * a claim has to be made, and nothing in it reads this role.
+	 *
+	 * HOW EACH PALETTE'S VALUE IS DERIVED, stated because 59 hand-picked hexes would be
+	 * 59 chances to pick badly: `hairline` moved toward that same palette's `inkDim` in
+	 * 5 % steps, taking the first step that reaches **1.5 : 1 on the palette's own
+	 * `sunken`** (5 % when it already does, 25 % at the light end). Every palette lands
+	 * between 1.51 and 2.09 on its own `sunken`, which is the dark set's own band - the
+	 * target was parity of PERCEPTION with the themes that already read, not a floor.
+	 * Hue and chroma class are preserved because the step is toward a role of the same
+	 * palette rather than toward grey.
+	 */
+	hairlineStrong: string;
+	/**
 	 * Structural 1px boundary — the sole visual boundary of an input, select,
 	 * checkbox or outlined button. Floor: 3:1 on all four grounds.
 	 *
