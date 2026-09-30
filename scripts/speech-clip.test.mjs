@@ -34,6 +34,25 @@ const { clipForSpeech, SPEECH_MAX_CHARS } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+/* Top level: `scripts/` is held to the tree's per-call-regex lint budget. */
+const TRAILING_HIGH_SURROGATE = /[\uD800-\uDBFF]$/;
+
+test("the cap is the pinned literal 10000 (agent review round 1, MAJOR-1)", () => {
+	/*
+	 * The cap tracks agent-server's admission cap (`POST /v1/tools/speech`,
+	 * `input` validated `max=10000`), not a model that happens to be deployed:
+	 * the served ceiling is per-model and can be lower (v3 5,000) or higher
+	 * (flash 40,000), and the client may only ever be MORE conservative. This
+	 * assertion exists so a change to the number is a deliberate act with a
+	 * test to update - the comment alone is not a pin.
+	 */
+	assert.equal(
+		SPEECH_MAX_CHARS,
+		10000,
+		"changing the client cap must move this literal and its comment together",
+	);
+});
+
 test("text within the cap is returned untouched and undeclared", () => {
 	const short = "Four were late, and the oldest is 41 days behind.";
 	const result = clipForSpeech(short);
@@ -114,6 +133,21 @@ test("with neither ender nor whitespace the cut is the hard limit", () => {
 	assert.equal(result.clipped, true);
 	assert.equal(result.text, "z".repeat(SPEECH_MAX_CHARS));
 	assert.equal(result.text.length, SPEECH_MAX_CHARS);
+});
+
+test("the hard cut never returns a trailing lone surrogate (QA round 1, Q-1)", () => {
+	/*
+	 * The emoji straddles the cap: its HIGH half sits at index 9999 and the raw
+	 * hard cut would slice between the halves, returning a string that
+	 * JSON-encodes as an unpaired `\uD83D` and decodes upstream as one
+	 * replacement character. The cut backs off one unit instead.
+	 */
+	const long = `${"a".repeat(SPEECH_MAX_CHARS - 1)}😀${"b".repeat(50)}`;
+	const result = clipForSpeech(long);
+	assert.equal(result.clipped, true);
+	assert.equal(result.text, "a".repeat(SPEECH_MAX_CHARS - 1));
+	assert.equal(result.text.length, SPEECH_MAX_CHARS - 1);
+	assert.doesNotMatch(result.text, TRAILING_HIGH_SURROGATE);
 });
 
 test("a whitespace-only window still sends something", () => {

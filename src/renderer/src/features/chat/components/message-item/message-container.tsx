@@ -52,9 +52,12 @@ export const MessageContainer: FC<MessageContainerProps> = ({
 
 	/*
 	 * `group` is load-bearing: the action row that rides the answer's foot line
-	 * fades at rest and is revealed by hovering or focusing anywhere in the
-	 * TURN (`message-actions-row.tsx`), and this container is the box that spans
-	 * the answer and its foot. Nothing inside reacted to it before the reveal
+	 * fades at rest and is revealed by hovering or focusing THIS RECORD's own
+	 * box (`message-actions-row.tsx`) - every `TranscriptRow` renders its own
+	 * `MessageContainer`, so on a turn with several assistant records, hovering
+	 * earlier prose does not reveal the closing answer's row; only that record's
+	 * own hover or focus does (agent review round 1, NIT-4 - this sentence used
+	 * to promise the whole TURN). Nothing inside reacted to it before the reveal
 	 * landed, so adding it here moved nothing; it is on the agent branch only,
 	 * because a user turn's reveal hangs off its own column's group.
 	 */

@@ -120,7 +120,7 @@ const bundle = await build({
 				);
 			};
 
-			export const LinkHarness = ({ conversationId, label }) => {
+			export const LinkHarness = ({ conversationId, label, quoteAvailable = true }) => {
 				const turnRef = useRef(null);
 				const [subject, setSubject] = useState(null);
 				return (
@@ -144,7 +144,7 @@ const bundle = await build({
 								conversationId={conversationId}
 								turnRef={turnRef}
 								subject={subject}
-								quoteAvailable
+								quoteAvailable={quoteAvailable}
 								onDismiss={() => {}}
 							/>
 						)}
@@ -440,6 +440,48 @@ test("the selection's toolbar offers Speak beside Quote, and speaks exactly the 
 	await unmount();
 });
 
+test("clearing the highlight takes the selection's audio with it (UX round 1, U1)", async () => {
+	const text = "The quick brown fox jumps over the lazy dog.";
+	const { dom, press, select, flush, unmount } = await mount(mod.QuoteHarness, {
+		conversationId: "conv-1",
+		text,
+	});
+	const node = dom.window.document.querySelector("p").firstChild;
+	await select(node, 4, node, 19); // "quick brown fox"
+	await press(buttonIn(dom, "[data-lo-quote-toolkit]", "Speak aloud"));
+	const key = mod.selectionSpeechKey("conv-1", "quick brown fox");
+	assert.equal(
+		mod.useSpeechStore.getState().playingKey,
+		key,
+		"the selection is playing before the dismissal",
+	);
+	/*
+	 * The dismissal itself: the range is cleared (a click away or Escape both
+	 * end here - "no range, selectionchange fires"). The toolbar is this
+	 * audio's only Stop, so `useSpeakDismissal`'s cleanup must take the playback
+	 * down with it; without it the reader is left with audio and no control
+	 * anywhere that can stop it.
+	 */
+	await act(async () => {
+		dom.window.getSelection().removeAllRanges();
+		dom.window.document.dispatchEvent(
+			new dom.window.Event("selectionchange", { bubbles: true }),
+		);
+	});
+	await flush();
+	assert.equal(
+		mod.useSpeechStore.getState().playingKey,
+		null,
+		"clearing the highlight stopped its audio",
+	);
+	assert.equal(
+		dom.window.document.querySelector("[data-lo-quote-toolkit]"),
+		null,
+		"and the toolbar is gone with it",
+	);
+	await unmount();
+});
+
 /* ---------------------------------------- 2/3. Quote and Escape, unchanged */
 
 test("Quote stages exactly the highlight and leaves speech alone", async () => {
@@ -563,13 +605,30 @@ test("a highlight inside a link offers Speak on the link toolbar, speaking exact
 	await unmount();
 });
 
-test("with no highlight, the link toolbar's Speak answers with the link's own text", async () => {
+test("with no highlight, the link toolbar's Speak answers with the link's own text, and the pair trails (MINOR-2)", async () => {
+	/*
+	 * `quoteAvailable: false` is the REAL value on this arm - the reviewer's
+	 * MINOR-2: `use-link-subject` flips it true only when the highlight lies
+	 * wholly inside the link, so this case (no highlight) is precisely where it
+	 * is false, and the matrix puts the pair at the strip's TAIL. The first
+	 * mount of this harness asserted the leading order with the subject value;
+	 * this one drives the hover arm's value and pins that half of the promise.
+	 */
 	const { dom, press, requests, unmount } = await mount(mod.LinkHarness, {
 		conversationId: "conv-1",
 		label: "report.txt",
+		quoteAvailable: false,
 	});
 	const button = buttonIn(dom, "[data-lo-link-toolbar]", "Speak aloud");
 	assert.ok(button, "the hover arm offers Speak too (round 2, U4)");
+	const labels = [
+		...dom.window.document.querySelectorAll("[data-lo-link-toolbar] button"),
+	].map((node) => node.getAttribute("aria-label"));
+	assert.deepEqual(
+		labels.slice(-2),
+		["Quote", "Speak aloud"],
+		"with no highlight the pair trails the strip (the real quoteAvailable=false arm)",
+	);
 	await press(button);
 	assert.deepEqual(
 		requests,

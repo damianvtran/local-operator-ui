@@ -21,7 +21,12 @@
  * The generation cases are the point of the file: a slow first response must
  * not start playing after a second press - whichever surface the second press
  * came from, which is exactly why the guard lives in the store and not in a
- * button ("loading" disables the button, but ANOTHER surface is still live).
+ * button (the pressed control can now cancel itself, but ANOTHER surface is
+ * still live).
+ *
+ * Its second subject is DISMISSAL (UX round 1, U1): a toolbar that goes away
+ * takes its key's audio with it, and the paid synthesis of a cancelled fetch
+ * is still kept for a later press (agent review round 1, MINOR-1).
  */
 
 import assert from "node:assert/strict";
@@ -90,7 +95,9 @@ URL.revokeObjectURL = (url) => {
 
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/renderer/src/shared/store/speech-store";',
+		contents:
+			'export * from "./src/renderer/src/shared/store/speech-store";\n' +
+			'export { SPEECH_FAILURE_COPY, SPEECH_PLAYBACK_COPY } from "./src/renderer/src/shared/lib/speech-errors";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -145,6 +152,8 @@ const {
 	AUDIO_CACHE_LIMIT,
 	messageSpeechKey,
 	selectionSpeechKey,
+	SPEECH_FAILURE_COPY,
+	SPEECH_PLAYBACK_COPY,
 	useSpeechStore,
 } = mod;
 
@@ -304,8 +313,8 @@ test("a slow first response does not start after a second press", () => {
 		);
 		assert.equal(
 			state().audioCache.has("msg:first"),
-			false,
-			"a superseded response is not cached for a press that no longer exists",
+			true,
+			"a superseded response is still cached: the synthesis was paid for (MINOR-1)",
 		);
 	})();
 });
@@ -337,20 +346,53 @@ test("a stale failure is silent: the newer press owns the state", () => {
 
 /* ------------------------------------------------------- the failures */
 
-test("a failed press records the error and raises the toast once", () => {
+test("a designed refusal reaches the reader verbatim through the one toast channel", () => {
 	reset();
 	return (async () => {
 		await state().speak("msg:x", async () => {
-			throw new Error("Speech is temporarily unavailable.");
+			throw new Error(
+				"Speech is temporarily unavailable. Try again in a moment.",
+			);
 		});
-		assert.equal(state().error, "Speech is temporarily unavailable.");
+		assert.equal(
+			state().error,
+			"Speech is temporarily unavailable. Try again in a moment.",
+		);
 		assert.equal(state().loadingKey, null, "the press settles out of loading");
 		assert.equal(state().playingKey, null);
 		assert.deepEqual(
 			toasts().errors,
-			["Speech is temporarily unavailable."],
-			"the failure reaches the reader through the one toast channel",
+			["Speech is temporarily unavailable. Try again in a moment."],
+			"the daemon's designed sentence is kept character-for-character",
 		);
+	})();
+});
+
+test("every designed refusal is kept verbatim (the daemon's set, pinned across repos)", () => {
+	/*
+	 * The full set `local-operator` #1835 ships, plus agent-server's own base 503
+	 * (which can leak through during deploy skew), so the mapper's allowlist and
+	 * the daemon's sentences cannot drift apart silently. A change on either side
+	 * must move both - that is the point of pinning the literals here.
+	 */
+	const designed = [
+		"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+		"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+		"Speech is unavailable right now. Try again in a moment.",
+		"Speech is temporarily unavailable. Try again in a moment.",
+		"Speech is temporarily unavailable.",
+		"Sign in to Radient in the settings page to enable text to speech.",
+		"This conversation's agent is no longer available.",
+	];
+	return (async () => {
+		for (const sentence of designed) {
+			reset();
+			// eslint-disable-next-line no-await-in-loop
+			await state().speak("msg:d", async () => {
+				throw new Error(sentence);
+			});
+			assert.deepEqual(toasts().errors, [sentence], sentence);
+		}
 	})();
 });
 
@@ -360,7 +402,62 @@ test("a fetcher that answers nothing is a failure, not a silent success", () => 
 		await state().speak("msg:x", async () => null);
 		assert.equal(state().playingKey, null);
 		assert.match(state().error ?? "", NO_AUDIO_SENTENCE);
-		assert.equal(toasts().errors.length, 1);
+		assert.deepEqual(
+			toasts().errors,
+			[SPEECH_FAILURE_COPY],
+			"the transport's words stay out of the reader's sentence",
+		);
+	})();
+});
+
+test("an unmapped upstream diagnostic is mapped, with the detail only in the console (U3/C5)", () => {
+	reset();
+	return (async () => {
+		const raw =
+			"Speech generation failed upstream: Upstream responded 503 with no body.";
+		const logged = [];
+		const original = console.error;
+		console.error = (...args) => {
+			logged.push(args.join(" "));
+		};
+		try {
+			await state().speak("msg:x", async () => {
+				throw new Error(raw);
+			});
+		} finally {
+			console.error = original;
+		}
+		assert.deepEqual(
+			toasts().errors,
+			[SPEECH_FAILURE_COPY],
+			"the support diagnostic never reads as copy",
+		);
+		assert.equal(state().error, raw, "the raw detail is kept for the tests");
+		assert.ok(
+			logged.some((line) => line.includes("Upstream responded 503")),
+			"and it goes to the console",
+		);
+	})();
+});
+
+test("a playback failure raises the error toast through the same channel (C1)", () => {
+	reset();
+	return (async () => {
+		await state().speak("msg:e", async () => new Blob(["audio"]));
+		assert.equal(state().playingKey, "msg:e");
+		const original = console.error;
+		console.error = () => {};
+		try {
+			fakeAudios[0].onerror();
+		} finally {
+			console.error = original;
+		}
+		assert.deepEqual(
+			toasts().errors,
+			[SPEECH_PLAYBACK_COPY],
+			"a fetched-then-unplayable press must not look like nothing happened",
+		);
+		assert.equal(state().playingKey, null, "and the slot is released");
 	})();
 });
 
@@ -411,6 +508,63 @@ test("a hit refreshes an entry's place, so the in-use entry survives eviction", 
 			false,
 			"the oldest untouched entry left",
 		);
+	})();
+});
+
+/* ------------------------------------------------------------ dismissal */
+
+test("dismiss cancels an in-flight fetch: its response is cached, never played (U1)", () => {
+	reset();
+	return (async () => {
+		let release;
+		const pending = state().speak(
+			"sel:conv-1:deadbeef",
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		assert.equal(state().loadingKey, "sel:conv-1:deadbeef");
+		state().dismiss("sel:conv-1:deadbeef");
+		assert.equal(
+			state().loadingKey,
+			null,
+			"the control returns to rest immediately, not at the response's leisure",
+		);
+		release(new Blob(["late"]));
+		await pending;
+		assert.equal(
+			state().playingKey,
+			null,
+			"a dismissed press never starts playing",
+		);
+		assert.equal(fakeAudios.length, 0, "no element is built for it");
+		assert.ok(
+			state().audioCache.has("sel:conv-1:deadbeef"),
+			"the paid synthesis is still cached for a later press",
+		);
+	})();
+});
+
+test("dismiss stops this key's playback and touches no other key", () => {
+	reset();
+	return (async () => {
+		await state().speak("msg:a", async () => new Blob(["a"]));
+		await state().speak("msg:b", async () => new Blob(["b"]));
+		assert.equal(state().playingKey, "msg:b");
+		state().dismiss("msg:a");
+		assert.equal(
+			state().playingKey,
+			"msg:b",
+			"another key's playback is untouched by the dismissal",
+		);
+		state().dismiss("msg:b");
+		assert.equal(
+			state().playingKey,
+			null,
+			"the dismissed key's playback stops",
+		);
+		assert.equal(fakeAudios[1].paused, true, "its element is paused");
 	})();
 });
 

@@ -76,7 +76,7 @@ const RE_ROW_MOUNT =
 	/<AnswerActionRow\b[\s\S]{0,200}bodyText=\{remainingContent\}/;
 const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
-const RE_USER_ROW_MOUNT = /<AnswerActionRow kind="user"/;
+const RE_USER_ROW_MOUNT = /<AnswerActionRow\s+kind="user"/;
 
 /**
  * One in-memory build of the shipped row and its model.

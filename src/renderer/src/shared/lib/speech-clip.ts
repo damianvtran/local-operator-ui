@@ -22,16 +22,35 @@
  *
  * The counting unit is the string's own UTF-16 length, the same unit the
  * server's rune-count fallback approximates for the ASCII-dominant prose this
- * is for. A cut inside a surrogate pair cannot be produced here (a boundary
- * character is never a lone surrogate), and a long run of astral characters is
- * counted one-per-two - the disclosure states the returned text's own length,
- * so the number the reader sees is never a claim about a string they do not
- * have.
+ * is for. A cut inside a surrogate pair cannot be produced here: the two
+ * boundary cuts land after a boundary character, which is never a lone
+ * surrogate, and the hard cut backs off one unit when it would split a pair
+ * (`cutForSpeech`'s dangling-half guard; QA round 1, Q-1). A long run of
+ * astral characters is counted one-per-two - the disclosure states the
+ * returned text's own length, so the number the reader sees is never a claim
+ * about a string they do not have.
  */
 
 /**
- * The most characters a single press sends. Mirrors the service's own cap so
- * the client is never the side that discovers it.
+ * The most characters a single press sends.
+ *
+ * WHERE 10000 COMES FROM, because a number asserted in a comment is the thing
+ * this repo's own pricing history warns about. It is the agent-server speech
+ * endpoint's own admission cap (`POST /v1/tools/speech`, `input` validated
+ * `max=10000`), and that cap is itself the deployed default model's ceiling:
+ * `eleven_multilingual_v2` reads 10,000 characters per request. The daemon no
+ * longer pins a model (its speech route picks ElevenLabs via the relay), so the
+ * served ceiling is PER-MODEL and lives behind the service - `eleven_flash_v2_5`
+ * admits 40,000 and `eleven_v3` only 5,000 - which means this constant is
+ * deliberately pinned to the admission cap rather than tracking a model: the
+ * client can only ever be MORE conservative than the served ceiling, never the
+ * side that discovers it, and a change to the admission cap is the one change
+ * that must move this number (agent review round 1, MAJOR-1; the 4,096-char
+ * OpenAI interim this branch merges past is out of scope by the round's
+ * ordering).
+ *
+ * `speech-clip.test.mjs` asserts the literal 10000, so a change here is a
+ * deliberate act with a test to update, not a quiet drift.
  */
 export const SPEECH_MAX_CHARS = 10000;
 
@@ -79,6 +98,26 @@ export type SpeechClip = {
 	clipped: boolean;
 };
 
+/** A UTF-16 high surrogate, i.e. the first half of an astral code point. */
+const HIGH_SURROGATE = /[\uD800-\uDBFF]/;
+
+/**
+ * The hard cut's index, backed off one unit when taking it whole would return
+ * a trailing lone high surrogate.
+ *
+ * The two boundary cuts can never split a pair (a boundary character is never
+ * a lone surrogate), but the hard cut is a raw index into the window and can:
+ * slicing `"a".repeat(9999) + "😀"` at 10000 ends on the emoji's HIGH half,
+ * which JSON-encodes as `\uD83D` and arrives as one replacement character
+ * (QA round 1, Q-1, reproduced at exactly this shape). One unit back drops the
+ * unpaired half; the cut may only be pathological prose shorter by one code
+ * unit, and the disclosure states the returned text's own length either way.
+ */
+const hardCutIndex = (window: string): number =>
+	HIGH_SURROGATE.test(window[SPEECH_MAX_CHARS - 1])
+		? SPEECH_MAX_CHARS - 1
+		: SPEECH_MAX_CHARS;
+
 /**
  * Clip `input` to what one press may send.
  *
@@ -99,7 +138,7 @@ export function clipForSpeech(input: string): SpeechClip {
 			? sentenceEnd
 			: whitespaceEnd > 0
 				? whitespaceEnd
-				: SPEECH_MAX_CHARS;
+				: hardCutIndex(window);
 	const text = input.slice(0, cut).trimEnd();
 	/*
 	 * The degenerate window - nothing but whitespace to the cap - would trim to

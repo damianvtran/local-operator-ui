@@ -68,6 +68,7 @@
 import {
 	SpeakButton,
 	useSpeakControl,
+	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
@@ -145,11 +146,18 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	 * reason Quote does - the strip can outlive the drag that raised it.
 	 */
 	const { speak } = useSpeechStore();
+	const speakKey =
+		highlight === null
+			? null
+			: selectionSpeechKey(conversationId, clipForSpeech(highlight).text);
+	/*
+	 * The dismissal contract (UX round 1, U1): when this highlight goes away -
+	 * cleared, superseded by a re-drag, or this row windowed out - the audio its
+	 * key owns goes with it, because this toolbar is that audio's only Stop.
+	 */
+	useSpeakDismissal(speakKey);
 	const speakControl = useSpeakControl({
-		key:
-			highlight === null
-				? null
-				: selectionSpeechKey(conversationId, clipForSpeech(highlight).text),
+		key: speakKey,
 		getText: () => quoteSelectionIn(turnRef.current)?.text ?? null,
 		play: ({ text }) =>
 			speak(
