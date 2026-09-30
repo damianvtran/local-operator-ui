@@ -53,9 +53,16 @@ use). PNG, not WebP, on purpose: `check-evidence.mjs`'s frame walker counts
 | Directory | Tree | What it is |
 | --- | --- | --- |
 | `before/` | `origin/main` = `ee5611a2e4` (version 0.31.25) | the bordered bubble the operator reported, on the browser row |
-| `after/` | this branch | the quiet mark, the same states |
+| `after/` | this branch, `src/`+`scripts/` at the `dad1778e14` fold = `35bb92b8b9` | the quiet mark, the same states |
 | `aida/` | both trees | her row, before and after, one missed-message receipt |
 | `alternatives/` | this branch, `bg-transparent` build | the PLAIN-numeral variant the report asked to weigh |
+
+The frames were re-shot on the folded head after this branch folded `origin/main`
+(`dad1778e14`, #615 + #712), and the browser-row frames came back **byte
+identical** to the pre-fold capture: the fold touched no file on the badge's
+rendering path (only `styles/index.css` overlapped, merged with this change's
+`--text-meta-sm` block intact), which is the trees' own answer to "did the fold
+move the pixels".
 
 ### The states (`before/` and `after/`, `-dark` and `-light`)
 
