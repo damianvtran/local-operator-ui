@@ -63,6 +63,18 @@ The sizes are the rig's own per-story frames (`741x760`, `560x84`, `560x220`,
 `768x340`); the two files of each pair have distinct bytes (their sha256s
 differ), and every frame was eyeballed before the branch was pushed.
 
+### Re-run at the folded head (byte-identical)
+
+The branch folded `origin/main` twice after these frames were taken (`ee5611a2e4`,
+then `961887cf7c`; the only conflict was `docs/evidence/manifest.json` in both
+folds). Every AFTER frame was then re-captured at the folded head `ac68897fef`
+and compared with `cmp`: `after-sections.webp` reproduced byte-for-byte on its
+single re-run, and `after-header.webp`, `after-header-menu.webp` and
+`after-slash-teams.webp` on two consecutive runs each. One earlier run of the
+same commands produced a differing byte stream that did not recur in the two
+runs after it, so the receipt is the consecutive byte-identical runs rather
+than a claim of strict determinism.
+
 ## What the pairs show, in one line each
 
 - **sections**: `Release Engineering` against `release-crew`; the unlabelled
