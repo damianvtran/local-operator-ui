@@ -387,7 +387,13 @@ export function SkillSuggestionsPopup({
 									${row.name}
 								</span>
 								{row.description && (
-									<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
+									/* `min-w-16` (64px) is a FLOOR on the disambiguator, and it is
+									   the D1 re-measure's own finding: with the sibling's classes
+									   the name's shrink absorbs the whole deficit, so an extreme
+									   name starves the description back to clientW 0 (measured at
+									   620px). The floor keeps it readable there (64px, measured)
+									   and is inert everywhere the name leaves room. */
+									<span className="min-w-16 flex-1 truncate text-body-sm text-ink-muted">
 										{row.description}
 									</span>
 								)}
