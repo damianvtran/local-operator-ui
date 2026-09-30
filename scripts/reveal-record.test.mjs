@@ -619,6 +619,66 @@ test("a wash stripped mid-settle is re-asserted at the landing (QA round 2)", as
 	}
 });
 
+test("the settle's resolve asks the rail for one fresh reading (QA round 5)", async () => {
+	/*
+	 * The settle's later re-applies can write the scrollTop they already hold,
+	 * so no scroll event leaves the scroller after the last moving write and the
+	 * rail's cue can stay on the pre-landing reading. One synthetic scroll at
+	 * the resolve is the re-read; jsdom dispatches no scroll on scrollTop
+	 * writes, so the count here is exactly the dispatch's own.
+	 */
+	const { root, region } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	Object.defineProperty(region, "scrollTop", { value: -600, writable: true });
+	let scrolls = 0;
+	region.addEventListener("scroll", () => {
+		scrolls += 1;
+	});
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	assert.equal(scrolls, 1, "one scroll event left the region at the landing");
+});
+
+test("a reader's gesture superseding the settle gets no synthetic re-read (QA round 5)", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	let scrolls = 0;
+	region.addEventListener("scroll", () => {
+		scrolls += 1;
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	region.dispatchEvent(new window.Event("wheel"));
+	const outcome = await pending;
+	assert.equal(outcome, "landed");
+	assert.equal(
+		scrolls,
+		0,
+		"the reader's own events drive the cue; no synthetic one",
+	);
+});
+
 test("a row behind a bar AND a fold: both open, outermost first", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">

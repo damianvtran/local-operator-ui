@@ -286,6 +286,28 @@ async function landOnTop(
 		region.removeEventListener("touchstart", yieldToReader);
 		window.removeEventListener("keydown", onKey);
 	}
+	/*
+	 * ASK THE RAIL FOR ONE FRESH READING (QA round 5's oldest-end intermittent):
+	 * the settle's later re-applies can write the scrollTop it already holds, so
+	 * no scroll event leaves the scroller after the last MOVING write - and the
+	 * rail's cue, which reads on scroll, can stay on the pre-landing reading
+	 * (`u0001` above a landing at `n0001`, measured 3/5 at the short viewport).
+	 * One synthetic scroll is the reader's own question replayed at the landing.
+	 * Skipped when the reader took over (their own events drive the cue) or a
+	 * newer settle superseded this one (that settle asks for its own).
+	 */
+	if (!yielded && generation === settleGeneration) {
+		/*
+		 * The scroller's OWN realm builds the event: the bare global can be a
+		 * different realm's `Event` (the test harness runs the module under Node
+		 * with jsdom's window installed separately), and jsdom refuses a foreign
+		 * event class at `dispatchEvent`.
+		 */
+		const view = region.ownerDocument?.defaultView;
+		if (view !== null && view !== undefined) {
+			region.dispatchEvent(new view.Event("scroll"));
+		}
+	}
 }
 
 export function jumpToEntry(
