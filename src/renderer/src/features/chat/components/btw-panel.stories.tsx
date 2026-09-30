@@ -36,6 +36,7 @@
  * live run's, not this file's.
  */
 
+import { MessageInput } from "@shared/components/composer/message-input";
 import {
 	type AsideStream,
 	beginAsideStream,
@@ -44,7 +45,6 @@ import {
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ReactNode } from "react";
 import type { Message } from "../types/message";
-import { MessageInput } from "./message-input";
 import "./story-electron-shim";
 
 /** An empty transcript, so the band claims the column rather than a list. */

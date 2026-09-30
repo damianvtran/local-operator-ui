@@ -9,7 +9,8 @@
  * - `canonical-transcript.tsx` RENDERS it: "This conversation is no longer on
  *   this machine." is the pane's statement of the state, and its way out
  *   (`Start a new chat`) sits under it.
- * - `components/message-input.tsx` POINTS at it: a composer that refuses input
+ * - `shared/components/composer/message-input.tsx` POINTS at it: a composer that
+ *   refuses input
  *   is the one control whose own reason a reader cannot otherwise reach (UX
  *   round 1, U3). The box's placeholder states the refusal only while the box is
  *   EMPTY, and the state this exists for is a box holding the reader's own words;
