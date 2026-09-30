@@ -35,6 +35,10 @@ const paging = await import(
 );
 const {
 	ANCHOR_EPSILON_PX,
+	INVISIBLE_GROWTH_MIN_PX,
+	INVISIBLE_GROWTH_FRACTION,
+	MAX_ACT_ASKS,
+	MAX_CHAIN_INVISIBLE,
 	GESTURE_GAP_MS,
 	HARD_TOP_PX,
 	MAX_AUTO_ATTEMPTS,
@@ -1582,4 +1586,204 @@ test("noteAborted keeps failures already counted and never exhausts the budget",
 		"aborts neither add to nor forgive the count",
 	);
 	assert.equal(isExhausted(state), false);
+});
+
+/* ------------- the invisible-reveal chain (loader-continuity 1b) ------------- */
+
+/*
+ * WHAT THESE PIN. A reveal the reader cannot see must not be spent as the
+ * answer to their act: with a raw row budget the whole conversation could be
+ * walked while the answer to every gesture was "nothing changed" (measured on
+ * the operator's real-shape journal: ten gestures of nothing for a 618-row run
+ * whose bar only moved at window 300). So a settle that produced less than
+ * `max(120px, 35% of the viewport)` of growth, inside a transcript that still
+ * has somewhere to go, refunds the act's round trip, arms a `continuation`, and
+ * counts against `MAX_CHAIN_INVISIBLE` - while the FIRST visible reveal ends
+ * the chain and the guardrail bounds stay exactly as they were.
+ */
+const settled = (state, over = {}) =>
+	noteSettled(state, { hiddenRowsAfter: 0, ...over });
+
+test("an invisible reveal is not the answer to the act: it refunds the budget and chains", () => {
+	const state = wheelUp(initialPagingState(), 0);
+	const spent = decide(state, geo(), SETTLE_MS + 1);
+	assert.equal(spent.action, "fetch");
+	assert.equal(
+		spent.state.actFetchSpent,
+		true,
+		"the act's round trip is spent",
+	);
+	const after = settled(spent.state, { growthPx: 40, clientHeight: 800 });
+	assert.equal(after.busy, false);
+	assert.equal(
+		after.actFetchSpent,
+		false,
+		"an invisible reveal refunds the act's network budget",
+	);
+	assert.equal(
+		after.continuation,
+		true,
+		"and keeps the door open for the next reveal",
+	);
+	assert.equal(after.chainInvisible, 1, "counted against its own bound");
+	/* The chain is spent without any further input: this is the whole point. */
+	const again = decide(after, geo(), SETTLE_MS + 1);
+	assert.equal(again.action, "fetch", "the next ask needs no gesture");
+	assert.equal(again.state.chainInvisible, 1, "deciding does not count a page");
+});
+
+test("the first VISIBLE reveal ends the chain and buys nothing further", () => {
+	const state = wheelUp(initialPagingState(), 0);
+	const spent = decide(state, geo(), SETTLE_MS + 1);
+	const visible = settled(spent.state, { growthPx: 600, clientHeight: 800 });
+	assert.equal(
+		visible.chainInvisible,
+		0,
+		"visible growth answers the act: the invisible chain is over",
+	);
+	assert.equal(visible.actFetchSpent, true, "and the round trip stays spent");
+	assert.equal(
+		decide(visible, geo(), SETTLE_MS + 1).action,
+		"none",
+		"a scrollable transcript gets one reveal per act",
+	);
+});
+
+test("ONE ACT cannot buy more round trips by walking through more than one door (QA round 1, Q-4)", () => {
+	/*
+	 * THE DEFECT THIS BOUNDS, MEASURED RATHER THAN REASONED: on the tall-run journal
+	 * one real wheel notch produced thirteen `sessions.history` asks (QA measured
+	 * fifteen on their fixture) against a stated bound of twelve. Every door was
+	 * inside its OWN bound — the unscrollable pane's short-content chain, the
+	 * invisible-reveal chain — and the act was not, because it walked through both.
+	 * `MAX_ACT_ASKS` is the sum, and the fixture that walks through both doors is an
+	 * unscrollable pane whose reveals keep landing invisible.
+	 */
+	assert.equal(MAX_ACT_ASKS, MAX_CHAIN_INVISIBLE);
+	let state = wheelUp(initialPagingState(), 0);
+	let pages = 0;
+	for (let i = 0; i < 60; i++) {
+		const decision = decide(
+			state,
+			geo({ scrollable: false }),
+			SETTLE_MS + 1 + i,
+		);
+		if (decision.action !== "fetch") break;
+		pages += 1;
+		state = settled(decision.state, { growthPx: 10, clientHeight: 800 });
+	}
+	assert.equal(
+		pages,
+		MAX_ACT_ASKS,
+		`the act spends its whole budget and not one ask more (asked ${pages})`,
+	);
+	/*
+	 * And the budget REFILLS for the reader's next act: the bound is about one
+	 * gesture, not about a reader's session (rule 2's own shape).
+	 */
+	const next = decide(
+		wheelUp(state, SETTLE_MS * 4),
+		geo({ scrollable: false }),
+		SETTLE_MS * 5,
+	);
+	assert.equal(next.action, "fetch", "a fresh act asks again");
+});
+
+test("the invisible chain is bounded at MAX_CHAIN_INVISIBLE for a scrollable reader", () => {
+	assert.equal(MAX_CHAIN_INVISIBLE, 12);
+	let state = wheelUp(initialPagingState(), 0);
+	let pages = 0;
+	for (let i = 0; i < 40; i++) {
+		const decision = decide(state, geo(), SETTLE_MS + 1 + i);
+		if (decision.action !== "fetch") break;
+		pages += 1;
+		state = settled(decision.state, { growthPx: 10, clientHeight: 800 });
+	}
+	assert.equal(
+		pages,
+		MAX_CHAIN_INVISIBLE,
+		"the chain walks exactly the bound, and cannot spin",
+	);
+});
+
+test("an empty page (no records, moved cursor) is an invisible reveal by definition", () => {
+	const state = wheelUp(initialPagingState(), 0);
+	const spent = decide(state, geo(), SETTLE_MS + 1);
+	const after = settled(spent.state, {
+		growthPx: 5000,
+		clientHeight: 800,
+		newRecords: 0,
+	});
+	assert.equal(
+		after.continuation,
+		true,
+		"a page whose rows were all silent or already held shows the reader nothing",
+	);
+	assert.equal(after.chainInvisible, 1);
+});
+
+test("the invisible-reveal threshold is the reader's currency, not a row count", () => {
+	assert.equal(INVISIBLE_GROWTH_MIN_PX, 120);
+	assert.equal(INVISIBLE_GROWTH_FRACTION, 0.35);
+	/* 800px viewport -> the threshold is 280px (35% beats the 120px floor). */
+	const threshold = (clientHeight) =>
+		Math.max(INVISIBLE_GROWTH_MIN_PX, INVISIBLE_GROWTH_FRACTION * clientHeight);
+	const spent = decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1);
+	const justUnder = settled(spent.state, {
+		growthPx: threshold(800) - 1,
+		clientHeight: 800,
+	});
+	assert.equal(justUnder.chainInvisible, 1, "one pixel short is invisible");
+	assert.equal(
+		justUnder.actFetchSpent,
+		false,
+		"so the act's round trip is back",
+	);
+	assert.equal(
+		settled(spent.state, { growthPx: threshold(800), clientHeight: 800 })
+			.chainInvisible,
+		0,
+		"the threshold itself is visible",
+	);
+});
+
+test("a new act resets the invisible chain, like the other chain counters", () => {
+	const spent = decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1);
+	let state = settled(spent.state, { growthPx: 10, clientHeight: 800 });
+	state = settled(decide(state, geo(), SETTLE_MS * 2).state, {
+		growthPx: 10,
+		clientHeight: 800,
+	});
+	assert.equal(state.chainInvisible, 2);
+	const reopened = noteInput(state, {
+		direction: "up",
+		continuous: true,
+		deliberate: false,
+		atHardTop: false,
+		travelledPx: 200,
+		at: 100_000,
+	});
+	assert.equal(
+		reopened.chainInvisible,
+		0,
+		"input is a fresh act: the chain it started is over",
+	);
+});
+
+test("an exhausted backend ends the invisible chain: there is nowhere left to go", () => {
+	const spent = decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1);
+	const landed = settled(spent.state, { growthPx: 10, clientHeight: 800 });
+	assert.equal(landed.chainInvisible, 1, "the reveal was invisible");
+	/* The backend has nothing older: the chain has budget left and still stops. */
+	const exhausted = decide(landed, geo({ hasMore: false }), SETTLE_MS * 2);
+	assert.equal(
+		exhausted.action,
+		"none",
+		"a chain with nothing behind it stops",
+	);
+	assert.equal(
+		exhausted.state.continuation,
+		false,
+		"and the demand is dropped rather than held for a later page",
+	);
 });
