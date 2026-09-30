@@ -140,6 +140,18 @@ const { modelSelector } = await bundleInto(
 `,
 );
 
+/*
+ * The fast picker's decision (UX round 1, U2), bundled from its own module for
+ * the same reason the model rule is: the component calls it, so the cases
+ * below pin what the component runs.
+ */
+const { fastPickerOptions } = await bundleInto(
+	"fast-picker-options",
+	`
+	export { fastPickerOptions } from "./src/renderer/src/features/chat/pickers/fast-picker-options";
+`,
+);
+
 const source = (rel) =>
 	readFileSync(join(ROOT, "src/renderer/src", rel), "utf8");
 
@@ -2183,4 +2195,50 @@ test("the omitted-name case cannot match every query, over the real rule", () =>
 		"a blank listing name is not a wildcard",
 	);
 	assert.deepEqual(matchModelPickerOptions([emptyName], "nano banana"), []);
+});
+
+/* ------------------------------------------- the fast picker's current dial */
+
+/*
+ * UX round 1, U2: the `/fast` row and the chip both state the dial, and the
+ * picker the row opens was the one surface that hid it — `On`/`Off` with
+ * NEITHER marked, right after a row that had just said `currently on`. The fix
+ * is the same tri-state every surface reads, spelled as a decision the
+ * component calls (`fastPickerOptions`), so these cases pin exactly what the
+ * picker shows for each dial state.
+ */
+test("the fast picker marks the current dial, and no-tier marks nothing", () => {
+	const marked = (state) =>
+		fastPickerOptions(state)
+			.filter((option) => option.current)
+			.map((option) => option.value);
+	assert.deepEqual(marked("on"), ["on"]);
+	assert.deepEqual(marked("off"), ["off"]);
+	// No tier is NOT a state: neither option is marked, the same reason the row
+	// prints no slot and the badge hides.
+	assert.deepEqual(marked(null), []);
+	// The rows keep their vocabulary and order; the mark is the addition.
+	assert.deepEqual(
+		fastPickerOptions("on").map((option) => [option.value, option.label]),
+		[
+			["on", "On"],
+			["off", "Off"],
+		],
+	);
+});
+
+test("the fast picker reads the spec in force through the shared tri-state", () => {
+	/*
+	 * The wiring a bundle cannot reach is pinned as source text, the discipline
+	 * this file states at the top: the component must ask `fastModeState` for
+	 * the spec-in-force read (`effective_model ?? selected_model` — the same
+	 * spec the `/fast` row's slot states) and hand the answer to the tested
+	 * builder; a rebuilt array or a second read would drift from the cases
+	 * above.
+	 */
+	const file = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(file, /fastPickerOptions\(dial\)/);
+	assert.match(file, /const dial = fastModeState\(/);
+	assert.match(file, /runningFrontend\(canonical\)\?\.effective_model \?\?/);
+	assert.match(file, /runningFrontend\(canonical\)\?\.selected_model/);
 });
