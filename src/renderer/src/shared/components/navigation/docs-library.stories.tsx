@@ -821,8 +821,18 @@ const ExpandReceipt = ({ marker }: { marker: string }) => {
 };
 
 /**
- * Hold the shutter until the hub's scope switch (its `play`) has landed; a
- * play that failed shows no error display, so the timeout leaves
+ * Hold the shutter until the hub's scope switch (its `play`) has landed. An org
+ * badge on screen is the proof: the Teams roster used to be rendered under the
+ * grid and was the marker, but it is a tab now and only mounts when opened.
+ *
+ * THE SCENE STAYS ON THE AGENTS TAB ON PURPOSE (agent review round 1, m4). It is
+ * the library's picture of the hub's org workspace - grid, badges, scope - and
+ * the browse bar above it now shows the Teams tab with its count, which is the
+ * one-glance version of what the roster under the grid used to be. Opening the
+ * Teams tab would swap the grid the marketing shot exists for. The change is
+ * disclosed on the PR because the shot is a public asset.
+ *
+ * A play that failed shows no error display, so the timeout leaves
  * `data-capture-failed` for the rig to refuse on.
  */
 const HubHold = () => {
@@ -830,7 +840,7 @@ const HubHold = () => {
 		document.documentElement.dataset.capturePending = "1";
 		const started = Date.now();
 		const timer = window.setInterval(() => {
-			if (document.querySelector('[data-testid="org-teams"]')) {
+			if (document.querySelector('[data-testid="agent-org-badge"]')) {
 				document.documentElement.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 			} else if (Date.now() - started > 20_000) {
@@ -1595,12 +1605,10 @@ export const AgentHub: Story = {
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
 		await userEvent.click(
-			await screen.findByRole("option", { name: "Aster Labs" }),
+			await screen.findByRole("button", { name: "Aster Labs" }),
 		);
-		await screen.findByTestId("agent-org-badge");
-		await screen.findByTestId("org-teams");
+		await screen.findAllByTestId("agent-org-badge");
 	},
 };
 
