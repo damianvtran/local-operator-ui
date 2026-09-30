@@ -2818,6 +2818,40 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnte78e4395ebNote",
 	/*
+	 * And the trace-sessions lane's own record: the desk half of the sessions
+	 * glyph/label mapping (sibling `damianvtran/local-operator` #1825), whose
+	 * two new frames and its declared `sessions-ops-baseline/` set are exactly
+	 * what a fold resolved from main's copy would drop first - the list's
+	 * usual reason.
+	 */
+	"traceSessionsGlyphRestampNote",
+	/*
+	 * And the lane's fold onto `742a3a1e94` (#569's sidebar load-more), the
+	 * record a later fold resolved from main's copy would drop first - same
+	 * reason.
+	 */
+	"foldOnto742a3a1e94Note",
+	/*
+	 * And the second fold, onto `ee0e1f01e8` (#688's drain lane), for the same
+	 * reason again: main moved under the reviewed head a second time.
+	 */
+	"foldOntoee0e1f01e8Note",
+	/*
+	 * And the third fold, onto `bbffb9a8a9` (#681's agent-hub revamp) - the
+	 * same reason a third time, which is exactly what this list is for.
+	 */
+	"foldOntobbffb9a8a9Note",
+	/*
+	 * And the fourth fold, onto `20ccfd4512` (#685's rail-jump anchor over
+	 * #682's stt display), the R-4 fold of review round 1 - same reason again.
+	 */
+	"foldOnto20ccfd4512Note",
+	/*
+	 * And the fifth fold, onto `fb565e2b8a` (#690's composer cluster) - the
+	 * merge prerequisite of round 2, and the same reason once more.
+	 */
+	"foldOntofb565e2b8aNote",
+	/*
 	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
 	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
 	 * adds no name to the quoting ledger.
