@@ -1,0 +1,61 @@
+/* Proposal render for docs/design/scrollbars-fade.md — NOT a build of the app.
+   Mechanism per the architect memo: registered @property + color-mix alpha on the
+   thumb, transition on the scroller element, attribute data-lo-scrollbar. */
+@property --lo-sb { syntax: "<number>"; inherits: true; initial-value: 0; }
+* { --lo-sb: 0; }
+[data-theme="dark"] {
+  --c-canvas:#22201c; --c-surface:#2b2721; --c-elevated:#322d22; --c-sunken:#1d1b19;
+  --c-ink:#f1eee6; --c-ink-muted:#c2bcaf; --c-ink-dim:#a6a091; --c-hairline:#403b2c;
+  --c-control:#837c6d; --c-accent:#38c96a; --c-on-accent:#16130e; --c-msg:#2e2a21;
+  --c-row-hover:#302d29; --c-danger:#ef8078;
+}
+[data-theme="light"] {
+  --c-canvas:#f2ede3; --c-surface:#f7f5ee; --c-elevated:#fefdfa; --c-sunken:#ece6d8;
+  --c-ink:#211e18; --c-ink-muted:#4e4940; --c-ink-dim:#656056; --c-hairline:#dad5cb;
+  --c-control:#857f70; --c-accent:#137742; --c-on-accent:#f6faf8; --c-msg:#fcfbf7;
+  --c-row-hover:#edece7; --c-danger:#b23a31;
+}
+html,body{margin:0;background:#101010;color:#dcdcdc;font:12px/1.45 ui-sans-serif,system-ui,sans-serif}
+h1{font-size:15px;margin:14px 18px 2px;font-weight:600}
+h2{font-size:12.5px;margin:16px 18px 6px;font-weight:600;color:#9ad3a8;text-transform:uppercase;letter-spacing:.06em}
+p.sub{margin:0 18px 10px;color:#9a9a9a;font-size:11.5px}
+.row{display:flex;flex-wrap:wrap;gap:14px;padding:0 18px 6px}
+.tile{width:330px}
+.cap{font-size:11px;color:#b9b9b9;margin:0 0 4px}
+.cap b{color:#fff;font-weight:600}
+.frame{border:1px solid #3a3a3a;border-radius:8px;overflow:hidden}
+[data-theme]{background:var(--c-canvas);color:var(--c-ink)}
+/* ---- the mechanism under proposal ---- */
+[data-lo-scrollbar]{transition:--lo-sb 180ms cubic-bezier(.4,0,.6,1)}
+[data-lo-scrollbar][data-state="active"]{--lo-sb:1}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background-color:var(--c-control)}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background-color:transparent}
+.scroll::-webkit-scrollbar{width:8px;height:8px}
+.scroll::-webkit-scrollbar-thumb{background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent);border-radius:4px}
+.scroll::-webkit-scrollbar-thumb:hover{background-color:var(--c-control)}
+.scroll::-webkit-scrollbar-track,.scroll::-webkit-scrollbar-corner{background-color:transparent}
+/* forced stills: a still cannot hold a transition, so the envelope is frozen by hand */
+[data-still="0"]{--lo-sb:0} [data-still="1"]{--lo-sb:1}
+[data-still=".45"]{--lo-sb:.45} [data-still=".7"]{--lo-sb:.7}
+/* ---- app-ish content ---- */
+.content{padding:12px;font-size:11.5px}
+.msg{background:var(--c-msg);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.tool{color:var(--c-ink-muted);border-left:2px solid var(--c-hairline);padding-left:8px;margin-bottom:8px;font-family:ui-monospace,monospace;font-size:10.5px}
+.prose{color:var(--c-ink);margin-bottom:8px}
+.side{background:var(--c-surface);border-radius:10px;padding:6px;width:250px}
+.srow{padding:6px 8px;border-radius:6px;color:var(--c-ink-muted);font-size:11.5px}
+.srow.sel{background:var(--c-row-hover);color:var(--c-ink)}
+.srow.cur{background:var(--c-accent);color:var(--c-on-accent)}
+.board{display:flex;gap:10px;padding:10px;width:640px}
+.col{background:var(--c-sunken);border-radius:10px;padding:8px;width:170px;flex:0 0 auto}
+.card{background:var(--c-surface);border-radius:6px;padding:7px 8px;margin-bottom:6px;font-size:11px}
+.pill{display:inline-block;font-size:10px;border:1px solid var(--c-hairline);border-radius:999px;padding:1px 7px;color:var(--c-ink-muted)}
+table.md{border-collapse:collapse;font-size:11px;white-space:nowrap}
+table.md td,table.md th{border:1px solid var(--c-hairline);padding:3px 7px;text-align:left}
+.fade{position:fixed;left:0;right:0;bottom:0;background:#101010;opacity:.92;font-size:10.5px;color:#cfcfcf;padding:3px 10px;text-align:center}
+.dissolve{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24px,#000 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 24px,#000 100%)}
+.badge{font-size:9.5px;border:1px solid #4b4b4b;border-radius:4px;padding:1px 5px;color:#cfe8d5;margin-left:6px}
+.badge.bad{border-color:#6b3b38;color:#e8b6b1}
+.kbd{border:1px solid #4b4b4b;border-radius:4px;padding:0 4px;font-family:ui-monospace,monospace;font-size:10px;color:#ddd}

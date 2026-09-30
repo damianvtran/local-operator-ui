@@ -1,0 +1,174 @@
+[build] current: assets 2026-09-30T21:22:34.813Z >= sources 2026-09-30T21:20:00.761Z
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/scrollbar-fade-0930-4a54
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-40703
+  frames        /Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-40703/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:54952   (dead port; the run cannot reach a backend)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/scrollbar-fade-0930-4a54/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[PASS] the app holds no connection to the renderer's built API URL (http://127.0.0.1:1111)
+[PASS] window mode is headless and the window is never shown or focused
+[note] scroller census (/chat)
+        {
+  "viewport": {
+    "w": 1380,
+    "h": 900,
+    "dpr": 2
+  },
+  "scrollers": [
+    {
+      "tag": "div",
+      "tourTag": null,
+      "tabIndex": -1,
+      "ox": "auto",
+      "oy": "auto",
+      "box": "8,284 244x560",
+      "overflow": "0x0",
+      "fade": null,
+      "loSb": "0"
+    }
+  ]
+}
+[PASS] the theme resolves the thumb's own role to a colour
+[PASS] vertical: a scroller is on screen for the keyboard arm
+[note] vertical keyboard arrival
+        {"programmatic":{"found":true,"tabIndex":-1,"active":true,"focusVisible":true,"animationBefore":"none","animationAfter":"none","attributeBefore":null},"hunt":{"pressed":0,"reached":null},"keyed":true}
+[PASS] vertical-focus-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.3 vs 32.1 own / 237.3 other
+[PASS] vertical: tabbing onto a cold scroller reveals it with nothing scrolled
+[PASS] vertical: the reveal animates nothing, so no other animation on the element loses its properties
+[PASS] vertical-focus-after-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.2 vs 32.1 own / 237.3 other
+[PASS] vertical: the bar after a keyboard arrival is at the ordinary hold, with no second fade behind it
+[note] vertical keyboard arm
+        {"target":{"over":324,"tag":"div","tourTag":null,"cls":"max-h-96 overflow-y-auto p-2","rect":{"x":371,"y":266,"width":638,"height":384},"centre":{"x":690,"y":458},"fade":null,"loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"programmatic":{"found":true,"tabIndex":-1,"active":true,"focusVisible":true,"animationBefore":"none","animationAfter":"none","attributeBefore":null},"hunt":{"pressed":0,"reached":null},"keyed":true,"subject":"keyboard","awakeState":{"fade":"active","loSb":"1","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":0,"rect":{"x":371,"y":266,"width":638,"height":384}},"afterState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":0,"rect":{"x":371,"y":266,"width":638,"height":384}},"settledAt":2717,"awakePixels":{"sampled":5888,"near":3193,"mean":[94,88,75],"size":"2760x1800"},"afterPixels":{"sampled":5888,"near":0,"mean":[50,45,34],"size":"2760x1800"},"frames":{"awake":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-focus-dark.png","after":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-focus-after-dark.png"}}
+[PASS] a vertical scroller with something to scroll is on screen
+[note] vertical target
+        {"over":324,"tag":"div","tourTag":null,"cls":"max-h-96 overflow-y-auto p-2","rect":{"x":371,"y":266,"width":638,"height":384},"centre":{"x":690,"y":458},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}}
+[PASS] vertical-idle-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 21.9 vs 32.1 own / 237.3 other
+[PASS] vertical: at rest the bar is idle and paints nothing
+[PASS] vertical-active-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.3 vs 32.1 own / 237.3 other
+[PASS] vertical: the wheel scrolls the app
+[PASS] vertical: the wheel wakes the bar
+[PASS] vertical: the thumb is painted while awake
+[PASS] vertical: the write watcher is on the scroller
+[PASS] vertical: twelve wheels inside the hold write the attribute zero times
+[PASS] vertical-idle-after-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.2 vs 32.1 own / 237.3 other
+[PASS] vertical: the hold expires and the bar goes back to rest
+[PASS] vertical: and nothing is painted once it has
+[PASS] vertical: the bar's geometry is the same in every state
+[note] vertical act
+        {"target":{"over":324,"tag":"div","tourTag":null,"cls":"max-h-96 overflow-y-auto p-2","rect":{"x":371,"y":266,"width":638,"height":384},"centre":{"x":690,"y":458},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"strip":{"frameWidth":2760,"frameHeight":1800,"x0":2004,"x1":2012,"y0":548,"y1":1284},"restingState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":0,"rect":{"x":371,"y":266,"width":638,"height":384}},"awakeState":{"fade":"active","loSb":"1","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"idleState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"frames":{"idle":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-idle-dark.png","active":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-active-dark.png","idleAfter":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-idle-after-dark.png"},"pixels":{"idle":{"sampled":5888,"near":0,"mean":[50,45,34],"size":"2760x1800"},"active":{"sampled":5888,"near":3041,"mean":[93,87,74],"size":"2760x1800"},"idleAfter":{"sampled":5888,"near":0,"mean":[50,45,34],"size":"2760x1800"}},"writes":0}
+[PASS] vertical: a scroller is on screen for the thumb arm
+[PASS] vertical-thumbrest-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.2 vs 32.1 own / 237.3 other
+[PASS] vertical-thumbhover-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.3 vs 32.1 own / 237.3 other
+[PASS] vertical: the thumb under the pointer is painted the moment the pointer is on it
+[PASS] vertical-thumbheld-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.3 vs 32.1 own / 237.3 other
+[note] vertical: the thumb with the pointer parked on it, past the hold
+        {"holdExpired":{"fade":"idle","loSb":"0"},"thumbBand":{"onArrival":{"near":3041,"sampled":3216},"pastHold":{"near":3041,"sampled":3216},"atRest":{"near":0,"sampled":3216}}}
+[note] vertical thumb arm
+        {"target":{"over":324,"tag":"div","tourTag":null,"cls":"max-h-96 overflow-y-auto p-2","rect":{"x":371,"y":266,"width":638,"height":384},"centre":{"x":690,"y":458},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"geometry":{"rect":{"x":371,"y":265.5,"width":638,"height":384},"track":384,"thumb":208.27118644067798,"pos":175.72881355932202,"offset":324,"dpr":2},"point":{"x":1005,"y":511},"band":{"frameWidth":2760,"frameHeight":1800,"x0":2004,"x1":2012,"y0":882,"y1":1284},"resting":{"sampled":3216,"near":0,"mean":[50,45,34],"size":"2760x1800"},"hover":{"sampled":3216,"near":3041,"mean":[129,122,107],"size":"2760x1800"},"held":{"sampled":3216,"near":3041,"mean":[129,122,107],"size":"2760x1800"},"heldState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"frames":{"rest":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-thumbrest-dark.png","hover":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-thumbhover-dark.png","held":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-thumbheld-dark.png"}}
+[PASS] vertical: a scroller is on screen for the hover act
+[PASS] vertical-hover-idle-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.2 vs 32.1 own / 237.3 other
+[PASS] vertical: the pointer on the bar's strip resolves to the scroller
+[PASS] vertical-hover-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.3 vs 32.1 own / 237.3 other
+[PASS] vertical: moving onto the bar wakes it
+[PASS] vertical: the thumb is painted while the pointer is on the bar
+[PASS] vertical-hover-after-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.2 vs 32.1 own / 237.3 other
+[PASS] vertical: and it fades again once the pointer has left and the hold expires
+[note] vertical hover act
+        {"target":{"over":324,"tag":"div","tourTag":null,"cls":"max-h-96 overflow-y-auto p-2","rect":{"x":371,"y":266,"width":638,"height":384},"centre":{"x":690,"y":458},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"point":{"x":1005,"y":458},"resolved":{"under":{"tag":"div","cls":"max-h-96 overflow-y-auto p-2"},"resolves":true},"restingState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"awakeState":{"fade":"active","loSb":"1","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"afterState":{"fade":"idle","loSb":"0","barWidth":8,"barHeight":0,"xOverflow":0,"yOverflow":324,"scrollLeft":0,"scrollTop":324,"rect":{"x":371,"y":266,"width":638,"height":384}},"restingPixels":{"sampled":5888,"near":0,"mean":[50,45,34],"size":"2760x1800"},"awakePixels":{"sampled":5888,"near":3041,"mean":[93,87,74],"size":"2760x1800"},"afterPixels":{"sampled":5888,"near":0,"mean":[50,45,34],"size":"2760x1800"},"frames":{"idle":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-hover-idle-dark.png","hover":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-hover-dark.png","after":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/vertical-hover-after-dark.png"}}
+[note] document listeners the fade's own event types have on this page
+        [{"type":"scroll","capture":true,"passive":true,"line":844,"column":25967},{"type":"pointerover","capture":true,"passive":true,"line":844,"column":26025},{"type":"pointerdown","capture":true,"passive":true,"line":844,"column":26047},{"type":"focusin","capture":true,"passive":true,"line":844,"column":26069},{"type":"pointerdown","capture":false,"passive":false,"line":75,"column":23749},{"type":"focusin","capture":false,"passive":false,"line":0,"column":5739},{"type":"focusin","capture":false,"passive":false,"line":75,"column":24918},{"type":"focusin","capture":false,"passive":false,"line":75,"column":26003}]
+[PASS] the module's four listeners are attached: one each, capture phase, passive
+[PASS] and every scroll listener on the document is capture phase, as the app's own are
+[note] (the inventory above is every document listener of those three types, this change's or not)
+[PASS] the renderer's performance counters are readable
+[note] perf across 300 wheel events (deltas from Performance.getMetrics)
+        {"events":300,"scriptDurationMs":44,"taskDurationMs":312,"recalcStyleCount":17,"layoutCount":2}
+[note] perf across the module's own expiry and fade-out, with no input in the window
+        {"window":"2700ms with no input in it","recalcStyleCount":23,"layoutCount":0,"scriptDurationMs":2.259}
+[PASS] the fade's own window — one timer expiry and one fade-out — changes no layout
+[note] tabs open in the strip
+        13
+[PASS] a horizontal scroller with something to scroll is on screen
+[note] horizontal target
+        {"over":924,"tag":"div","tourTag":null,"cls":"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-","rect":{"x":268,"y":36,"width":1039,"height":41},"centre":{"x":788,"y":56},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}}
+[PASS] horizontal-idle-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.1 vs 32.1 own / 237.3 other
+[PASS] horizontal: at rest the bar is idle and paints nothing
+[PASS] horizontal-active-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.3 vs 32.1 own / 237.3 other
+[PASS] horizontal: the wheel scrolls the app
+[PASS] horizontal: the wheel wakes the bar
+[PASS] horizontal: the thumb is painted while awake
+[PASS] horizontal: the write watcher is on the scroller
+[PASS] horizontal: twelve wheels inside the hold write the attribute zero times
+[PASS] horizontal-idle-after-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.0 vs 32.1 own / 237.3 other
+[PASS] horizontal: the hold expires and the bar goes back to rest
+[PASS] horizontal: and nothing is painted once it has
+[PASS] horizontal: the bar's geometry is the same in every state
+[note] horizontal act
+        {"target":{"over":924,"tag":"div","tourTag":null,"cls":"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-","rect":{"x":268,"y":36,"width":1039,"height":41},"centre":{"x":788,"y":56},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"strip":{"frameWidth":2760,"frameHeight":1800,"x0":552,"x1":2598,"y0":140,"y1":148},"restingState":{"fade":"idle","loSb":"0","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":924,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"awakeState":{"fade":"active","loSb":"1","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":504,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"idleState":{"fade":"idle","loSb":"0","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":0,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"frames":{"idle":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-idle-dark.png","active":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-active-dark.png","idleAfter":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-idle-after-dark.png"},"pixels":{"idle":{"sampled":16368,"near":0,"mean":[29,27,25],"size":"2760x1800"},"active":{"sampled":16368,"near":8790,"mean":[84,79,70],"size":"2760x1800"},"idleAfter":{"sampled":16368,"near":0,"mean":[29,27,25],"size":"2760x1800"}},"writes":0}
+[PASS] horizontal: a scroller is on screen for the hover act
+[PASS] horizontal-hover-idle-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.0 vs 32.1 own / 237.3 other
+[PASS] horizontal: the pointer on the bar's strip resolves to the scroller
+[PASS] horizontal-hover-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.3 vs 32.1 own / 237.3 other
+[PASS] horizontal: moving onto the bar wakes it
+[PASS] horizontal: the thumb is painted while the pointer is on the bar
+[PASS] horizontal-hover-after-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 44.0 vs 32.1 own / 237.3 other
+[PASS] horizontal: and it fades again once the pointer has left and the hold expires
+[note] horizontal hover act
+        {"target":{"over":924,"tag":"div","tourTag":null,"cls":"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-","rect":{"x":268,"y":36,"width":1039,"height":41},"centre":{"x":788,"y":56},"fade":"idle","loSb":"0","dpr":2,"viewport":{"width":1380,"height":900}},"point":{"x":788,"y":73},"resolved":{"under":{"tag":"div","cls":"flex min-w-0 grow items-stretch overflow-x-auto "},"resolves":true},"restingState":{"fade":"idle","loSb":"0","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":0,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"awakeState":{"fade":"active","loSb":"1","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":0,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"afterState":{"fade":"idle","loSb":"0","barWidth":0,"barHeight":8,"xOverflow":924,"yOverflow":1,"scrollLeft":0,"scrollTop":0,"rect":{"x":268,"y":36,"width":1039,"height":41}},"restingPixels":{"sampled":16368,"near":0,"mean":[29,27,25],"size":"2760x1800"},"awakePixels":{"sampled":16368,"near":8667,"mean":[83,78,69],"size":"2760x1800"},"afterPixels":{"sampled":16368,"near":0,"mean":[29,27,25],"size":"2760x1800"},"frames":{"idle":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-hover-idle-dark.png","hover":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-hover-dark.png","after":"/Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4/horizontal-hover-after-dark.png"}}
+[PASS] reduced motion caps the fade's duration
+[PASS] forced colors pins the bar visible, whatever the attribute says
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+[PASS] no process from this run outlived its boot
+
+frames: horizontal-active-dark.png, horizontal-hover-after-dark.png, horizontal-hover-dark.png, horizontal-hover-idle-dark.png, horizontal-idle-after-dark.png, horizontal-idle-dark.png, vertical-active-dark.png, vertical-focus-after-dark.png, vertical-focus-dark.png, vertical-hover-after-dark.png, vertical-hover-dark.png, vertical-hover-idle-dark.png, vertical-idle-after-dark.png, vertical-idle-dark.png, vertical-thumbheld-dark.png, vertical-thumbhover-dark.png, vertical-thumbrest-dark.png
+frames directory: /Users/damian/.local-operator/sessions/1df24a7de4d7/scratchpad/frames-r1-fold4
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-40703/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
