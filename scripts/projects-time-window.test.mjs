@@ -649,6 +649,28 @@ test("the empty window names the ladder, and its action widens and persists", as
 			"all",
 			"the recovery must persist the token it widened to",
 		);
+		/*
+		 * AND THE CARET COMES BACK (UX round 1, U3; pinned here because review
+		 * round 2 asked for the assert that discriminates rather than for the
+		 * sentence). The action unmounts the button the press came from, so
+		 * without the hand-back `document.activeElement` is BODY - a keyboard
+		 * reader dropped at the top of the document with the state they just
+		 * changed behind them. Measured: this assertion fails on `864b71e559`
+		 * (activeElement = body) and passes from `d89f1aa15d`.
+		 */
+		const control = document.querySelector(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		assert.ok(control, "the window control is still on screen at `all`");
+		await waitFor(
+			() => document.activeElement === control,
+			"the caret to come back to the window control",
+		);
+		assert.equal(
+			document.activeElement,
+			control,
+			"the recovery must hand the caret back to the window control",
+		);
 	});
 });
 

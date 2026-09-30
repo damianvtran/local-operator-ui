@@ -2781,6 +2781,31 @@ export const BoardWindowWidened: Story = {
 		if (localStorage.getItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY) !== "all") {
 			throw new Error("the recovery did not persist the `all` token");
 		}
+		/*
+		 * AND THE HINT IS GONE AT `all` (design round 2, D6/D7): the sentence says
+		 * older rows are HIDDEN, and at the full ladder nothing is - the panel was
+		 * still claiming a filter the board had stopped applying, on the very
+		 * control "Show all time" had just handed the caret back to. Asserted as
+		 * the ABSENCE, through both doors, after a wait longer than the
+		 * primitive's open delay: an unconditional copy cannot come back unnoticed.
+		 */
+		const control = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		const panel = (): string =>
+			document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? "";
+		await userEvent.hover(control);
+		await new Promise((resolve) => setTimeout(resolve, 1200));
+		if (panel().includes(BOARD_WINDOW_HINT)) {
+			throw new Error("the window hint still claims rows are hidden at `all`");
+		}
+		control.focus();
+		await new Promise((resolve) => setTimeout(resolve, 1200));
+		if (panel().includes(BOARD_WINDOW_HINT)) {
+			throw new Error(
+				"the window hint claims rows are hidden at `all` on focus",
+			);
+		}
 	}),
 };
 

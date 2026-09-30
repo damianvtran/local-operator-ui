@@ -54,7 +54,15 @@ export const BoardWindowSelect: FC<{
 }> = ({ value, onChange }) => (
 	<Select value={value} onValueChange={(next) => onChange(next as BoardWindow)}>
 		<Tooltip
-			content={BOARD_WINDOW_HINT}
+			/*
+			 * NULL AT THE FULL LADDER (design round 2, D6). The sentence says older
+			 * rows are HIDDEN, and at `all` nothing is: the panel was still claiming a
+			 * filter the board had stopped applying (visible in the `board-window-
+			 * widened` frame, where "Show all time" had just handed the caret back to
+			 * this control). The primitive renders `children` alone for a null
+			 * `content`, so the control stays - only the claim goes.
+			 */
+			content={value === "all" ? null : BOARD_WINDOW_HINT}
 			side="bottom"
 			/*
 			 * CLOSES ON LEAVE, the same rule the card title's tooltip carries (QA round
