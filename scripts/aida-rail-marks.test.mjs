@@ -702,6 +702,7 @@ const code = (path) =>
 
 const NAV =
 	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx";
+const BADGE = "src/renderer/src/shared/components/ui/badge.tsx";
 const MISSED = "src/renderer/src/features/aida/use-aida-missed-messages.ts";
 const WORKING = "src/renderer/src/features/aida/use-aida-working.ts";
 
@@ -744,6 +745,43 @@ test("the primitive takes the ROW's tag, and the name reads the ROW's words", ()
 		nav,
 		/attention > 0 && item\.attentionName/,
 		"the name's sentence comes from the row, never a hardcoded noun",
+	);
+});
+
+/*
+ * THE RAIL'S COUNTED REGISTER (operator ask, 2026-09-30): the rail badge is the
+ * quiet mark — borderless, a subtle `elevated` disc, and the count family's own
+ * muted numeral — while the bordered `attention` mark stays where the ring is
+ * load-bearing (the chat header's globe, the URL bar). Both halves are pinned,
+ * because the failure this test exists for is a later edit that "quietens" one
+ * and takes the other with it, or that reaches for the quiet register where the
+ * ring is what separates the mark from neighbouring glyphs.
+ */
+test("the rail draws the quiet register, and the bordered mark is left where the ring is load-bearing", () => {
+	const nav = code(NAV);
+	assert.match(
+		nav,
+		/variant="attentionQuiet"/,
+		"the rail badge is the quiet register, not the bordered one",
+	);
+	const badge = code(BADGE);
+	const quiet = badge.match(/attentionQuiet:\s*"([^"]+)"/)?.[1] ?? "";
+	assert.ok(quiet.length > 0, "the quiet variant exists on the primitive");
+	assert.match(quiet, /border-0/, "borderless: the ring is gone");
+	assert.match(quiet, /bg-elevated/, "a subtle ground step, not a wash");
+	assert.match(quiet, /text-ink-dim/, "the muted numeral the count lines wear");
+	assert.match(quiet, /text-meta-sm/, "and the smaller numeral");
+	assert.match(quiet, /font-normal/, "at the quieter weight");
+	/*
+	 * THE BORDERED MARK IS INTACT, byte for byte: the header's globe and the URL
+	 * bar still wear it, and their ring (`ring-2 ring-canvas`) is what keeps a
+	 * 16px mark legible against the glyph it overlaps. A change to that edge is
+	 * a different change, and this is where it would show up.
+	 */
+	assert.match(
+		badge,
+		/attention:\s*"border-ink-muted bg-warning-wash text-ink"/,
+		"the attention variant still carries its edge and its wash",
 	);
 });
 
