@@ -18,16 +18,17 @@
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
  *
- * The Storybook it reads has to BUILD first, and on the tree as it stands the
- * shipped `.storybook/main.ts` cannot build its preview: it sets
- * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
- * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
- * undefined (reading 'React')` inside the docgen parser before a single frame
- * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
- * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
- * rather than argued: the whole `chat-ask-options` set re-captured under it came
- * back byte-identical to the committed frames, so it changes how the preview is
- * BUILT and nothing about what is photographed (design round 3, D12).
+ * The Storybook it reads has to BUILD first, and the config on `main` now does.
+ * This paragraph used to say the opposite - that the shipped `.storybook/main.ts`
+ * set `reactDocgen: "react-docgen-typescript"`, that the pair threw `Cannot read
+ * properties of undefined (reading 'React')` under TypeScript 7 before a single
+ * frame was taken, and that a capturer must boot with `reactDocgen: false` in
+ * its own checkout until the config moved. It moved: `.storybook/main.ts` sets
+ * `reactDocgen: "react-docgen"` (with the why beside it), and the shipped config
+ * boots this rig unmodified - the log prints `Using tsconfig paths for
+ * react-docgen` and the first frame is taken. A capturer that still follows the
+ * old paragraph is disabling a docgen mode the tree no longer uses, which costs
+ * only the types-driven prop tables `react-docgen` already gives up.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -1388,6 +1389,7 @@ export const STORIES = [
 	["browser-tab-strip--waiting", 1280, 140],
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--failed-while-loading", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
 	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
 	// because only one tab can be active and the active row pays 68px for the cluster
@@ -1460,6 +1462,7 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+	["browser-load-failure--restore-unanswered", 1280, 420],
 
 	/*
 	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
@@ -3090,6 +3093,56 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
 	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
+	/*
+	 * The rows that OWN subagents while the primary mark says something else
+	 * (the operator's report, 2026-09-29). Same pair of widths and the same
+	 * reason the delegating pair above carries them: the second frame is the
+	 * 240px floor `ui-preferences-store.ts` clamps to, where the longest title is
+	 * truncated hardest and the new mark has the least room beside it.
+	 *
+	 * The roster deliberately includes the delegating arm's own row as its last
+	 * entry - the one state whose primary mark already IS the subagent mark - so
+	 * the frames answer the question a reader will have about it (why is there no
+	 * second glyph there) on the same surface, rather than in prose alone.
+	 */
+	["chat-sidebar-status-feed--subagent-rows-running", 720, 660],
+	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
+	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
+	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
+	/*
+	 * THE OTHER STORY THAT CAN SILENTLY NO-OP (review round 2's MINOR). Its
+	 * subject is a SELECTED row, and "selected" is a prop the story passes rather
+	 * than a state the row reaches on its own - so a story that spelled that prop
+	 * wrong would photograph two resting rows and still look like evidence. The
+	 * guard is the row's own hook: `data-chat-row` is the attribute every harness
+	 * addresses a row by, and `aria-current="page"` is what the current row
+	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
+	 *
+	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
+	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
+	 * the frame claimed the operator's own case and drew two resting rows. The
+	 * story passes the bare id now, and this entry is what keeps that true.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-selected-row",
+		720,
+		660,
+		{ expectPresent: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
+	 * version typed no query at all - the play's label lookup matched two elements
+	 * and died - so the rig photographed the unarchived twin and wrote the frame
+	 * without complaint. The selector is the row's own archive attribute, so the
+	 * rig now refuses to write these frames unless an archived row is on screen.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-archived-row",
+		720,
+		660,
+		{ expectPresent: '[data-session-archived="true"]' },
+	],
 	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
@@ -5178,6 +5231,49 @@ export const STORIES = [
 			expectSentence: "Moving Active column",
 		},
 	],
+	/*
+	 * The scroll chain (operator refinement): the wheel delivered at ONE
+	 * trusted point over a column that cannot scroll (the quiet `planning`
+	 * cell) must reach the board, and over a column that CAN scroll (the
+	 * `active` queue) must first exhaust that cell and then reach the board —
+	 * each entry asserts its own reading before the shutter.
+	 */
+	[
+		"projects-tab--board-scroll-chain",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="planning"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'document.querySelector("[data-board-strip]").scrollTop > 200',
+				message:
+					"the wheel over a non-scrollable column did not advance the board (the wheel is trapped in the column)",
+			},
+		},
+	],
+	[
+		"projects-tab--board-scroll-edge",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="active"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'(() => { const strip = document.querySelector("[data-board-strip]"); const cell = document.querySelector(\'[data-board-strip] section [data-board-cell="active"]\'); return strip.scrollTop > 200 && cell.scrollTop >= cell.scrollHeight - cell.clientHeight - 1; })()',
+				message:
+					"the wheel over the active column did not exhaust the cell and then advance the board",
+			},
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
@@ -5836,7 +5932,7 @@ export const STORIES = [
 	   measures at the app's own 800px minimum window. Sized to the boards. */
 	["chat-older-history-slot--every-state", 900, 460],
 	["chat-older-history-slot--app-minimum-width", 900, 720],
-	["chat-older-history-slot--one-hidden-row", 900, 260],
+	["chat-older-history-slot--windowed-sentence", 900, 260],
 	/* The transport-down branch: a failure the reader cannot answer is not
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
@@ -7290,6 +7386,99 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+	/*
+	 * THE ACTION ROW UNDER THE TURN-CLOSING ANSWER (issue #695, design memo (h)).
+	 *
+	 * `rest` is the discoverability claim itself: the row is present with NO
+	 * pointer in the frame, which is the whole difference from the toolbar this
+	 * supersedes. The interaction states are entries rather than stories because
+	 * every one of them is BROWSER state the rig has to produce with real input -
+	 * `hover` moves a real pointer, `tabTo` presses real Tabs until the button
+	 * holds focus, `press` is a real press through the input pipeline - and a
+	 * story that faked any of them in a class would photograph the story.
+	 *
+	 * `hover-answer-no-corner-control` is the pointer parked ON THE ANSWER (the
+	 * region the superseded pattern raised a corner toolbar from) with both
+	 * selectors asserted: the row must be present and no link toolbar may be
+	 * raised. It is the honest half of the before/after comparison - this set
+	 * carries no frame of the dead component, per the memo's ruling: what the
+	 * frame shows is that the live surface raises nothing there.
+	 *
+	 * `copied` asserts the label the press produced (`expectAttribute`) rather
+	 * than trusting the tick to be legible in six themes, and it is the one entry
+	 * whose subject is a TIMER: the button's own reset is 2000 ms and the rig
+	 * presses ~400 ms before the shutter, so the frame is the pressed state and
+	 * not a race the timing decides.
+	 *
+	 * Six themes, by the memo's logic rather than by taste: the two brand
+	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
+	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
+	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			// The action row is what hover must NOT change, and nothing may be raised
+			// over the answer: the link toolbar only exists for a link, and this
+			// fixture has none - so the assertion is that the surface is unchanged.
+			expectPresent: "[data-lo-answer-actions]",
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-answer-no-corner-control",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 400,
+			dir: "hover-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			tabTo: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			dir: "focus-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			press: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: "[data-lo-answer-actions] button",
+				name: "aria-label",
+				equals: "Copied",
+			},
+			dir: "copied",
+		},
+	],
+	["chat-canonical-message-actions--short-answer", 1024, 320],
+	["chat-canonical-message-actions--refused", 1024, 380],
+	["chat-canonical-message-actions--truncated", 1024, 400],
+	["chat-canonical-message-actions--streaming", 1024, 620],
+	["chat-canonical-message-actions--multi-answer", 1024, 640],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
+	["chat-canonical-message-actions--narrow", 420, 620],
 ];
 
 /**
@@ -8794,28 +8983,34 @@ const main = async () => {
 			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
 			 * state - the same argument the `hold` arm states.
 			 */
+			/*
+			 * The point resolver both gesture options share: a selector's centre
+			 * once it has a painted box, or a named failure. A gesture that
+			 * finds nothing must fail the capture rather than photograph a
+			 * state the gesture never reached.
+			 */
+			const pointAt = async (selector, what) => {
+				for (let i = 0; i < 100; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(selector)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (result.value) return result.value;
+					await sleep(150);
+				}
+				throw new Error(
+					`${story} @ ${theme}: the ${what} selector \`${selector}\` never appeared (15s) - a gesture that finds nothing must fail rather than photograph the settled state`,
+				);
+			};
 			if (options?.drag) {
-				const point = async (selector) => {
-					for (let i = 0; i < 100; i++) {
-						const { result } = await cdp.send("Runtime.evaluate", {
-							returnByValue: true,
-							expression: `(() => {
-								const el = document.querySelector(${JSON.stringify(selector)});
-								if (!el) return null;
-								const r = el.getBoundingClientRect();
-								if (r.width === 0 || r.height === 0) return null;
-								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-							})()`,
-						});
-						if (result.value) return result.value;
-						await sleep(150);
-					}
-					throw new Error(
-						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
-					);
-				};
-				const from = await point(options.drag.from);
-				const to = await point(options.drag.to);
+				const from = await pointAt(options.drag.from, "drag");
+				const to = await pointAt(options.drag.to, "drag");
 				const mouse = (type, x, y, buttons) =>
 					cdp.send("Input.dispatchMouseEvent", {
 						type,
@@ -8849,6 +9044,54 @@ const main = async () => {
 				 * leaves stories without such a mechanism untouched.
 				 */
 				if (options.drag.settleMs) await sleep(options.drag.settleMs);
+			}
+
+			/*
+			 * A TRUSTED WHEEL, for the scroll-chain stories (operator
+			 * refinement): a play's synthetic wheel cannot scroll a container
+			 * (untrusted events skip the default action), so the gesture has
+			 * to come through CDP. Ticks are delivered at ONE point, which is
+			 * the case under test: a column that cannot scroll (or has hit
+			 * its edge) must let the wheel chain to the board's own scroller.
+			 */
+			if (options?.wheel) {
+				const at = await pointAt(options.wheel.at, "wheel");
+				const times = options.wheel.times ?? 5;
+				const deltaY = options.wheel.deltaY ?? 240;
+				const settleMs = options.wheel.settleMs ?? 120;
+				for (let i = 0; i < times; i += 1) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: at.x,
+						y: at.y,
+						deltaX: 0,
+						deltaY,
+						button: "none",
+						buttons: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(settleMs);
+				}
+			}
+
+			/*
+			 * THE GESTURE'S OWN CLAIM, checked in-page after it lands and
+			 * before the shutter: an expression that must read exactly `true`,
+			 * with the failure naming what was expected and what was read. A
+			 * wheel that a column swallowed fails here rather than shipping a
+			 * frame that claims a scroll the board never made.
+			 */
+			if (options?.expect) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: options.expect.expression,
+				});
+				if (result.value !== true) {
+					throw new Error(
+						`${story} @ ${theme}: ${options.expect.message} (read ${JSON.stringify(result.value)})`,
+					);
+				}
 			}
 
 			/*

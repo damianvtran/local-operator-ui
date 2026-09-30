@@ -148,6 +148,35 @@ function reading() {
 		return rect.top < box.bottom && rect.bottom > box.top;
 	});
 	/*
+	 * THE OLDER-HISTORY ROW, read from the DOM like everything else here: its
+	 * exact sentence, its box, and the retry control it does or does not paint.
+	 *
+	 * Selected by the row's own container-query name (`@container/olderhistory`,
+	 * declared by the slot's `BOX` and depended on by both of its spellings).
+	 * That is deliberate and it is the only selector that works here: this
+	 * scroller holds TWO `output[aria-live]` regions — the transcript content's
+	 * own, whose box wraps every row and whose text is the whole conversation, and
+	 * the slot's, whose box is the one fixed-height row — so a "first live region"
+	 * scan reads the transcript and calls it the slot (measured: the first version
+	 * of this reading returned 85 rows of conversation under `slot.text`).
+	 *
+	 * The sr-only announcement is excluded from the visible text rather than
+	 * doubled into it: it repeats the sentence the row paints, in the states that
+	 * announce one.
+	 */
+	const slotBox = scroller.querySelector("[class*='olderhistory']");
+	const slotAnnouncement =
+		slotBox?.querySelector('output[aria-live="polite"]') ?? null;
+	const slotRect = slotBox?.getBoundingClientRect() ?? null;
+	const slotRetry = slotBox?.querySelector("button") ?? null;
+	const slotRetryRect = slotRetry?.getBoundingClientRect() ?? null;
+	const slotVisibleText = Array.from(slotBox?.childNodes ?? [])
+		.filter((node) => node !== slotAnnouncement)
+		.map((node) => node.textContent ?? "")
+		.join(" ")
+		.replace(/\s+/g, " ")
+		.trim();
+	/*
 	 * The affordance, by its own accessible name. `visible` and `hitTestable`
 	 * are read from the computed style rather than from the prop, because the
 	 * trap this component documents is a hidden control that is still a real
@@ -231,6 +260,98 @@ function reading() {
 			newestRect.bottom > box.top - 1,
 		visibleRows: visible.length,
 		bottomId: visible.at(-1)?.dataset.recordId ?? null,
+		slot: slotBox
+			? {
+					text: slotVisibleText,
+					announcement: slotAnnouncement?.textContent?.trim() || null,
+					hintTitle:
+						slotBox.querySelector("[title]")?.getAttribute("title") ?? null,
+					height: slotRect?.height ?? null,
+					/*
+					 * WHETHER THE ROW IS PAINTED WHERE ITS BOX IS, which is a different
+					 * question from where its box is (a row can be laid out, in the viewport
+					 * and still not be what a reader sees — clipped by an ancestor, hidden by
+					 * a zero-opacity wrapper, or scrolled out of a reversed flex container).
+					 * `elementFromPoint` is the reader's own answer: whatever it names at the
+					 * box's centre is what the eye finds there.
+					 */
+					style: slotBox
+						? {
+								opacity: getComputedStyle(slotBox).opacity,
+								visibility: getComputedStyle(slotBox).visibility,
+								display: getComputedStyle(slotBox).display,
+								position: getComputedStyle(slotBox).position,
+							}
+						: null,
+					atCentre: (() => {
+						if (!slotRect) return null;
+						const node = document.elementFromPoint(
+							slotRect.left + slotRect.width / 2,
+							slotRect.top + slotRect.height / 2,
+						);
+						return node
+							? {
+									tag: node.tagName.toLowerCase(),
+									cls: String(node.className).slice(0, 48),
+									text: (node.textContent ?? "").trim().slice(0, 48),
+								}
+							: null;
+					})(),
+					parent: slotBox?.parentElement
+						? {
+								cls: String(slotBox.parentElement.className).slice(0, 48),
+								top: Math.round(
+									slotBox.parentElement.getBoundingClientRect().top,
+								),
+								height: Math.round(
+									slotBox.parentElement.getBoundingClientRect().height,
+								),
+							}
+						: null,
+					scroller: {
+						top: Math.round(box.top),
+						height: Math.round(box.height),
+					},
+					firstRow:
+						rows.length > 0
+							? {
+									id: rows[0].dataset.recordId ?? null,
+									top: Math.round(rows[0].getBoundingClientRect().top),
+								}
+							: null,
+					rect: slotRect
+						? {
+								top: slotRect.top,
+								left: slotRect.left,
+								width: slotRect.width,
+								height: slotRect.height,
+							}
+						: null,
+					/*
+					 * The retry, as a reader would find it: the words, whether the control takes
+					 * focus, whether it is `aria-disabled` while a page is in flight, and its
+					 * box. `null` when the state paints no action, which is the claim the
+					 * transport-down and windowed rows make.
+					 */
+					retry: slotRetry
+						? {
+								label: slotRetry.textContent?.trim() ?? null,
+								ariaDisabled: slotRetry.getAttribute("aria-disabled"),
+								tabIndex: slotRetry.tabIndex,
+								focusable: slotRetry.tabIndex >= 0,
+								disabled: slotRetry.hasAttribute("disabled"),
+								rect: slotRetryRect
+									? {
+											top: slotRetryRect.top,
+											left: slotRetryRect.left,
+											width: slotRetryRect.width,
+											height: slotRetryRect.height,
+										}
+									: null,
+							}
+						: null,
+				}
+			: null,
 		button: button
 			? {
 					visible: wrap ? getComputedStyle(wrap).opacity !== "0" : false,
@@ -390,6 +511,15 @@ const App = () => {
 	 * `reading()` as every other step.
 	 */
 	const [mode, setMode] = useState<"live" | "failed" | "no-session">("live");
+	/*
+	 * Whether the SESSION's stream is down, for the older-history row's retry.
+	 *
+	 * The app's answer comes from its stream (`chat-content`); this harness has a
+	 * scripted backend and no stream at all, so the state is a control the driver
+	 * sets — `transportDown(down)` — and its default (`false`, the reachable
+	 * backend) is what every other step in this rig measures.
+	 */
+	const [transportDown, setTransportDown] = useState(false);
 
 	useEffect(() => {
 		(window as unknown as { __childScroll?: unknown }).__childScroll = {
@@ -427,6 +557,24 @@ const App = () => {
 				await fetch("/__child/reset", { method: "POST" });
 				setPulse(0);
 				setLive(true);
+				setMount((value) => value + 1);
+				await sleep(900);
+				return reading();
+			},
+			/**
+			 * A fresh mount over WHATEVER the route already holds — no wipe, no pulse.
+			 *
+			 * WHY THIS EXISTS. The reader's paging cursor is defined by the first page it
+			 * applies, and a tail-type read may only move it to a strictly OLDER
+			 * instant. A child's launch row is its OLDEST entry, so no tail page of a
+			 * child that has grown since it was opened can ever be strictly older than
+			 * the cursor that first read set: `has_more` stays false and the child's
+			 * older-page affordance can never appear at all. Opening a child that is
+			 * ALREADY past the route's page limit is therefore the only way to reach
+			 * that state, and it takes a mount with the file grown rather than a grow
+			 * after the mount — this, after the growth.
+			 */
+			async remount() {
 				setMount((value) => value + 1);
 				await sleep(900);
 				return reading();
@@ -499,6 +647,19 @@ const App = () => {
 			async shape(next: "live" | "failed" | "no-session") {
 				setMode(next);
 				await sleep(400);
+				return reading();
+			},
+			/**
+			 * Whether the session's stream is down, as the pane would tell the reader.
+			 *
+			 * This is the prop the app threads from its own status (`D2`): with it true
+			 * the aged-history row's retry drops, and with it false the row keeps a
+			 * `Try again` — the pair a frame of the child reader could not show before,
+			 * because the child's own `status` is a static `"live"`.
+			 */
+			async transportDown(down: boolean) {
+				setTransportDown(down);
+				await sleep(300);
 				return reading();
 			},
 			/**
@@ -663,6 +824,13 @@ const App = () => {
 					sessionId={SESSION_ID}
 					pulse={pulse}
 					live={live}
+					/*
+					 * The scripted backend is reachable, so the child's failed row keeps its
+					 * retry — the transport-up case, which is the one the slot's own rule has
+					 * something to say about (see `transportDown` in the control surface
+					 * below, which flips it for the down frame).
+					 */
+					olderTransportDown={transportDown}
 					attachmentScope={{ sessionId: SESSION_ID, childId: CHILD_SESSION_ID }}
 					measuredAtMs={MEASURED_AT_MS}
 					measuredAtRealMs={MEASURED_AT_MS}
