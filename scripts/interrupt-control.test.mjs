@@ -155,7 +155,7 @@ await unlink(bundlePath);
  * on the standing gap the first version of this fix left behind.
  */
 const ROW_SOURCE = readFileSync(
-	"src/renderer/src/features/chat/components/message-input.tsx",
+	"src/renderer/src/shared/components/composer/message-input.tsx",
 	"utf8",
 );
 /*
@@ -606,7 +606,7 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 	// reads its answer and nothing here restates the fold's rules.
 	assert.match(
 		ROW_SOURCE,
-		/import \{ useInterruptSlotHold \} from "\.\.\/hooks\/use-interrupt-slot-hold"/,
+		/import \{ useInterruptSlotHold \} from "@features\/chat\/hooks\/use-interrupt-slot-hold"/,
 	);
 	assert.match(
 		HOOK_SOURCE,

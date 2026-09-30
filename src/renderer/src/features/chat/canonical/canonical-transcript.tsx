@@ -55,6 +55,7 @@ import {
 	expandedRunsOf,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
@@ -82,8 +83,13 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
-import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_MEASURE,
+	readShippedChatMeasurePx,
+} from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
+import { ChatMeasureHandle } from "../components/chat-measure-handle";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
@@ -122,6 +128,7 @@ import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
+import { FoldMedia } from "./fold-media";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -136,6 +143,7 @@ import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
 	type TurnFoot,
+	foldImages,
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
@@ -155,6 +163,7 @@ import {
 } from "./transcript-pane";
 import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
+	type TranscriptImage,
 	type TranscriptRecord,
 	type TranscriptState,
 	isInterruptedFault,
@@ -487,6 +496,18 @@ export type CanonicalTranscriptProps = {
 	 * replaces it.
 	 */
 	labelMarked?: ReadonlySet<string>;
+	/**
+	 * Mount the measure's drag handles on this column.
+	 *
+	 * Opt-in, and only the chat page passes it: the width a handle writes is a
+	 * document-root property shared by every chat surface, so a second mount
+	 * (the run pane's child reader) would let a drag there resize the main
+	 * column (review, finding 2). A transcript without it is indistinguishable
+	 * from the state before the handles existed - they are absolutely
+	 * positioned children of this column, and the `relative` on the column is
+	 * theirs.
+	 */
+	measureHandle?: boolean;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -1329,11 +1350,7 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={
-							record.images.length === 1
-								? "Screenshot"
-								: `Screenshot ${index + 1}`
-						}
+						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				))}
 			</div>
@@ -1983,7 +2000,19 @@ const CHECKPOINT_JUMP_MISS_COPY =
  * partition's own row variant unchanged.
  */
 type SectionGroup =
-	| (Extract<FoldGroup, { kind: "run" }> & { isNewestTurn: boolean })
+	| (Extract<FoldGroup, { kind: "run" }> & {
+			isNewestTurn: boolean;
+			/**
+			 * The run's images, computed by the groups memo while the rows are still
+			 * in hand (`foldImages`). The fold's condensed header carries them because
+			 * a collapsed fold UNMOUNTS the rows that draw them: without this, the
+			 * artifact a call produced went with the rows and the reader had to expand
+			 * the group to see it, which is the cost condensing was built to remove.
+			 * Empty for almost every run, which is what keeps the no-image case's DOM
+			 * and its height exactly what they were.
+			 */
+			images: TranscriptImage[];
+	  })
 	| Extract<FoldGroup, { kind: "row" }>;
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
@@ -2011,6 +2040,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2298,6 +2328,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				? {
 						...group,
 						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
+						/*
+						 * The run's pictures, computed HERE rather than at the fold's call
+						 * site: a collapsed fold unmounts the rows that draw them, so the
+						 * condensed group has to carry what they would have shown, and
+						 * this memo is where the rows are still in hand. Empty for almost
+						 * every run (`foldImages` returns nothing when no action produced
+						 * an image), which is what keeps the no-image case's DOM and its
+						 * height exactly what they were.
+						 */
+						images: foldImages(group.rows),
 					}
 				: group,
 		);
@@ -2599,6 +2639,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
 	const [perf, setPerf] = useState("");
+
+	/*
+	 * The conversation column's width, and the two writes that change it.
+	 *
+	 * The READ is the reader's own width when they have one and the shipped
+	 * default otherwise - never the width on screen, which a narrow pane may have
+	 * clamped (`chat-measure-drag.ts` argues that distinction). `useMemo` with no
+	 * dependencies because the shipped value is a property lookup on the document
+	 * and the stylesheet has loaded by the time this component mounts; reading it
+	 * per render would put a `getComputedStyle` on the streaming transcript's hot
+	 * path for a number that cannot change while the app runs.
+	 */
+	const chatMeasureWidth = useUiPreferencesStore(
+		(state) => state.chatMeasureWidth,
+	);
+	const setChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.setChatMeasureWidth,
+	);
+	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.restoreDefaultChatMeasureWidth,
+	);
+	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
+	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
@@ -2989,7 +3052,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 */
 					afterBar?: boolean;
 			  }
-			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+			| {
+					kind: "bar";
+					plan: RunCollapsePlan;
+					children: SectionGroup[];
+					/**
+					 * The hidden span's pictures, computed HERE because the bar's children
+					 * are unmounted while it is collapsed and these are what they would
+					 * have shown. `plan.hidden` rather than the whole run: the bar shows
+					 * exactly what the collapse hides, and a pinned row that stays on
+					 * screen keeps drawing its own media.
+					 */
+					images: TranscriptImage[];
+			  };
 
 		const entries: ChatEntry[] = [];
 		let next = 0;
@@ -3045,7 +3120,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					children.push(group);
 					if (children.length === 1) {
 						/* The bar sits where the first hidden group did. */
-						entries.push({ kind: "bar", plan, children });
+						entries.push({
+							kind: "bar",
+							plan,
+							children,
+							images: foldImages(plan.hidden),
+						});
 						afterBar = true;
 					}
 					continue;
@@ -3075,7 +3155,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * withheld from a run that carries a bar: the bar states both, one per turn
 	 * (`feet.get(...) ?? null` and the caption block share one switch).
 	 */
-	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+	const renderGroup = (
+		group: SectionGroup,
+		suppressClosingLine: boolean,
+		soleImageGroup = false,
+	) =>
 		group.kind === "run" ? (
 			<TraceFold
 				key={group.id}
@@ -3099,6 +3183,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * turn did.
 				 */
 				sectionLive={working !== null && group.isNewestTurn}
+				/*
+				 * The run's images, while the rows that draw them are unmounted.
+				 * Rendered only while the fold is condensed, and not passed at all
+				 * for a run that produced none - the overwhelmingly common case, and
+				 * the reason a group with no images is byte-for-byte the group it was.
+				 */
+				condensedMedia={
+					group.images.length > 0
+						? (expand: () => void) => (
+								<FoldMedia
+									images={group.images}
+									scope={mediaScope}
+									onRevealMore={expand}
+									uncapped={soleImageGroup}
+								/>
+							)
+						: undefined
+				}
+				/*
+				 * The count travels beside the node: the header prints it as text,
+				 * because a 64px tile cannot carry a label and the count is what the
+				 * strip's own accessible name already says. `soleImageGroup` is the
+				 * bar's own children's case, with two effects, both keyed to the same
+				 * fact - this group IS the span's whole image story:
+				 *
+				 * - the clause drops (D3/U6): when its count would repeat the bar's
+				 *   number one line above, the BAR keeps the aggregate and the group
+				 *   omits the duplicate; two image-bearing groups make the numbers
+				 *   differ, and then each level states its own;
+				 * - the strip uncaps (U8): the press that opened the bar asked for
+				 *   `the rest`, so this group's strip shows its whole set rather than
+				 *   charging a second press for pictures the reader already asked for.
+				 */
+				mediaCount={soleImageGroup ? 0 : group.images.length}
 			>
 				{group.rows.map((row, index) => (
 					<TranscriptRow
@@ -3422,9 +3540,47 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
+						 *
+						 * `relative` is here for the measure handles and for nothing else: they are
+						 * positioned against the CONTENT column rather than against the scroller,
+						 * which is what makes them track the column's edge for free as the measure
+						 * changes and as the pane resizes. They are absolutely positioned, so they
+						 * are out of flow and the rows cannot move because of them, and they sit in
+						 * the 24px gutter the measure already insets its content by
+						 * (`chat-measure.ts`: `p-4` + the 8px scrollbar gutter), so they never cover
+						 * text and cannot swallow a click meant for it.
 						 */
-						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
 					>
+						{/*
+						 * One handle per edge of the measure, where the mount opts in
+						 * (`measureHandle` - only the chat page does) AND there is a measure to
+						 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
+						 * stylesheet, where the column has no cap at all and a control
+						 * offering to resize it would be inventing one.
+						 *
+						 * `width` is the CAP - the reader's own width, else the shipped
+						 * default - and never the width on screen: see `chat-measure-drag.ts`
+						 * for why that distinction is the difference between a drag and a bug.
+						 */}
+						{measureHandle && measurePx !== null && (
+							<>
+								<ChatMeasureHandle
+									edge="left"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+								<ChatMeasureHandle
+									edge="right"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+							</>
+						)}
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
@@ -3651,6 +3807,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											stampTs={entry.plan.stampTs}
 											open={openRuns.has(entry.plan.key)}
 											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											/*
+											 * The span's pictures, while the rows that draw them are
+											 * unmounted - the same composition and the same rule as
+											 * `renderGroup`'s: rendered only while collapsed, and not
+											 * passed at all for a run that produced none.
+											 */
+											condensedMedia={
+												entry.images.length > 0
+													? (expand: () => void) => (
+															<FoldMedia
+																images={entry.images}
+																scope={mediaScope}
+																onRevealMore={expand}
+																indent="flush"
+															/>
+														)
+													: undefined
+											}
+											mediaCount={entry.images.length}
 										>
 											{entry.children.map((child, index) =>
 												/*
@@ -3659,10 +3834,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												 * group's slot, so the group cannot also keep the turn-tier
 												 * margin it earned as the turn's opener (D2). Every other
 												 * group keeps the gap the unfolded list gave it.
+												 *
+												 * The third argument is the span's sole-image-group fact,
+												 * named with both of its effects at the parameter's own
+												 * comment: D3/U6's duplicate rule for the clause, and
+												 * U8's uncapped strip so one press reaches the rest.
 												 */
 												renderGroup(
 													index === 0 ? atTraceTierGroup(child) : child,
 													true,
+													child.kind === "run" &&
+														entry.images.length > 0 &&
+														child.images.length === entry.images.length,
 												),
 											)}
 										</TurnSummary>

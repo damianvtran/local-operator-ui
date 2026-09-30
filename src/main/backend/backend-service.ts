@@ -114,8 +114,10 @@ import { resolveNotificationLaunch } from "./notification-launch";
 import { managedEnvironmentRoots, managedVenvPath } from "./venv-paths";
 
 import {
+	type LauncherUsability,
 	consoleInterpreter,
 	ownedServeLaunch,
+	probeGlobalLauncher,
 	windowsInterpreterCandidates,
 	windowsPathInterpreterCandidates,
 } from "./owned-serve-launch";
@@ -130,7 +132,10 @@ import {
  * term in place would inflate `QUIT_CLEANUP_FAILSAFE_MS` by ten seconds of
  * waiting that no longer happens, and that constant's own note says each term
  * has to be the bound it comes from. A future exec on this path owes the
- * failsafe a term again.
+ * failsafe a term again - and one took its place: `checkLocalOperatorExists` now
+ * RUNS the launcher (`probeGlobalLauncher`, which is bounded but not synchronous),
+ * so its worst case is exported as `LAUNCHER_PROBE_WORST_MS` and carried by
+ * `QUIT_CLEANUP_FAILSAFE_MS` where this note used to say nothing was owed.
  */
 
 /** The shutdown escalation one `stop(false)` can spend before it gives up: the
@@ -723,6 +728,45 @@ export class BackendServiceManager {
 		backendConfig.VITE_DISABLE_BACKEND_MANAGER !== "true";
 	private startupMode: LocalOperatorStartupMode =
 		LocalOperatorStartupMode.NOT_STARTED;
+	/**
+	 * The last POSITIVE answer `probeLauncherFor` produced, keyed by the launcher
+	 * it answered about.
+	 *
+	 * WHY IT IS CACHED. `checkLocalOperatorExists` runs twice in one startup tick -
+	 * once for the install decision in `index.ts`, once inside `startOwned` when it
+	 * chooses between GLOBAL_INSTALL and APP_BUNDLED_VENV - and the verdict now
+	 * costs a spawn of the launcher (measured 1.96 s for the operator's own install
+	 * on this fleet-loaded host, 0.33 s idle). Paying that twice for one answer is a
+	 * second of startup latency bought for nothing.
+	 *
+	 * WHAT THE KEY IS, AND THE LIMIT IT SETS: the resolved path together with the
+	 * launcher FILE's own size and mtime, so a launcher rewritten in place - which is
+	 * exactly what `lop-update`, `uv tool` and a pip reinstall all do to a console
+	 * script - is probed again rather than inheriting the verdict the previous bytes
+	 * earned (the shim's shebang names a generation directory, so replacing it is how
+	 * an install moves). A launcher whose INTERPRETER is deleted underneath it, with
+	 * the shim itself untouched, keeps its old verdict until the app restarts - the
+	 * honest limit of a probe taken at startup, and one the spawn's own identity
+	 * probe still REPORTS BETTER than this one can: as a start failure in its own
+	 * words, not as a recovery, because nothing falls back to the managed environment
+	 * once a start is refused.
+	 *
+	 * AND ONLY POSITIVES ARE HELD; a negative is released the moment it settles
+	 * (`probeLauncherFor`, below). The directions are not symmetric: a positive is a
+	 * fact about an install that does not change under this process, while a negative
+	 * can be a fact about the MOMENT - a 15 s timeout on a loaded machine, a package
+	 * reinstall caught mid-flight - and one kept reading decides both call sites for
+	 * the whole session, which is how a working global install sits unused while the
+	 * app builds its own environment (review round 1, R1-1).
+	 *
+	 * The in-flight PROMISE is still what is held while it runs, so two callers in
+	 * one tick share one spawn rather than racing two; it is the settled negative
+	 * that is let go.
+	 */
+	private launcherVerdict: {
+		fingerprint: string;
+		verdict: Promise<LauncherUsability>;
+	} | null = null;
 	private port: number;
 	private backendUrl: string;
 	/**
@@ -1918,8 +1962,25 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Check if the local-operator command exists globally
-	 * @returns Promise resolving to true if the command exists, false otherwise
+	 * Check if the local-operator command exists globally AND can actually run.
+	 *
+	 * WHY THIS IS NOT AN EXISTENCE CHECK ANY MORE. It gates the decision that skips
+	 * provisioning entirely (`index.ts`: a global command means `install()` is never
+	 * called and the app attaches to that CLI instead), so a negative answer is the
+	 * difference between the app preparing the backend it expects and the app
+	 * running whatever happens to be on the machine. `resolveGlobalConsoleScript`
+	 * answers "a file is there"; two broken installs pass that test and fail
+	 * everything after it: a launcher whose shebang names an interpreter that is
+	 * gone (a tool environment removed under the shim, a pruned generation), and a
+	 * launcher whose interpreter starts but cannot import `local_operator` (the
+	 * package uninstalled under it). Both used to surface as a spawn failure well
+	 * after provisioning had been skipped - three failed start attempts and then
+	 * "Failed to start the Local Operator backend service. Please restart the
+	 * application." - so the user was told to restart an app that could not start,
+	 * for a reason this probe can see in a second and act on (`probeGlobalLauncher`).
+	 *
+	 * @returns Promise resolving to true when the resolved launcher ran and
+	 * answered, false when there is none or it could not be used.
 	 */
 	async checkLocalOperatorExists(): Promise<boolean> {
 		const command = this.globalConsoleScript();
@@ -1948,11 +2009,86 @@ export class BackendServiceManager {
 			);
 			return false;
 		}
+		const usability = await this.probeLauncherFor(command);
+		if (!usability.usable) {
+			/*
+			 * WARN, and with the consequence spelled out, because this is the one
+			 * sentence that explains why the app is about to spend a minute building
+			 * an environment when the machine already looks like it has one. The
+			 * operator's own install is the case this is written for: it is
+			 * resolved by `resolveCommandPath` out of `~/.local/bin`, so it is found
+			 * on every launch whether or not a shell would have.
+			 */
+			logger.warn(
+				`The global local-operator at ${command} can not be used as this app's backend: ${usability.reason}. It will not suppress provisioning - this app is preparing its own managed environment instead, so the backend is the build this app expects rather than whatever that install contains.`,
+				LogFileType.BACKEND,
+			);
+			return false;
+		}
+		/*
+		 * The positive answer names WHICH install this app will run on, because
+		 * "local-operator command found at" alone never answered the question a user
+		 * with both a global `lop` and a bundled environment actually asks. The
+		 * version is what the launcher printed, not a comparison - an old install is
+		 * the update path's subject (`classifyGlobalInstall`, `backend-version-drift`).
+		 */
 		logger.info(
-			`local-operator command found at: ${command}`,
+			`local-operator command found at: ${command}${
+				usability.interpreter ? ` (interpreter ${usability.interpreter})` : ""
+			}${
+				usability.version
+					? `, reporting ${usability.version}`
+					: ", which answered no version"
+			}; this app will use it instead of preparing its own environment`,
 			LogFileType.BACKEND,
 		);
 		return true;
+	}
+
+	/**
+	 * One probe per launcher FINGERPRINT, shared by both call sites in a startup tick.
+	 *
+	 * See the field for why this is cached, what the key is, what its limit is and
+	 * which direction is released. The stat is the cheap half of the key and it never
+	 * decides anything on its own: a launcher that cannot be stat'ed (removed between
+	 * the resolution and this call) is keyed by path alone, and the probe then answers
+	 * for it honestly. `process.env` is handed to the probe rather than
+	 * `backendSpawnEnv()` - this answers a question about the LAUNCHER (does its own
+	 * `--version` run), not about the serve environment, and the launcher's shebang
+	 * names its interpreter absolutely - but it is handed WITH the bytecode guard:
+	 * this spawn runs an interpreter that imports `local_operator`, and every spawn of
+	 * an interpreter this app starts owes the bundle `withPythonBytecodeCache` (the
+	 * code-sealed-bundle mechanism; the same pair `backendSpawnEnv()` applies to the
+	 * serve child). A child that needs PATH customised beyond that is the serve
+	 * child's problem, and it is solved where that child is built.
+	 */
+	private probeLauncherFor(command: string): Promise<LauncherUsability> {
+		let fingerprint = command;
+		try {
+			const stat = fs.statSync(command);
+			fingerprint = `${command}\u0000${stat.size}\u0000${stat.mtimeMs}`;
+		} catch {
+			// Not an answer: the probe below is.
+		}
+		if (this.launcherVerdict?.fingerprint === fingerprint) {
+			return this.launcherVerdict.verdict;
+		}
+		const verdict = probeGlobalLauncher(
+			command,
+			withPythonBytecodeCache(process.env, this.appDataPath),
+		);
+		this.launcherVerdict = { fingerprint, verdict };
+		/*
+		 * The negative is released the moment it settles, and the check names THIS
+		 * promise so a newer probe that has already replaced the slot is never cleared
+		 * by an older one. See the field for why the directions are asymmetric.
+		 */
+		verdict.then((answer) => {
+			if (!answer.usable && this.launcherVerdict?.verdict === verdict) {
+				this.launcherVerdict = null;
+			}
+		});
+		return verdict;
 	}
 
 	/**

@@ -51,11 +51,11 @@
 
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import type { Message } from "@renderer/features/chat/types/message";
 import {
 	type ComposerSendError,
 	MessageInput,
-} from "@renderer/features/chat/components/message-input";
-import type { Message } from "@renderer/features/chat/types/message";
+} from "@renderer/shared/components/composer/message-input";
 import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
