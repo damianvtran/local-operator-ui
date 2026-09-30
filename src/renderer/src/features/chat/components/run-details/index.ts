@@ -95,3 +95,8 @@ export type {
 	McpRefusal,
 	McpRemedyControls,
 } from "./use-mcp-remedy";
+export { useMonitorControls } from "./use-monitor-controls";
+export type {
+	MonitorCancelOutcome,
+	MonitorControls,
+} from "./use-monitor-controls";
