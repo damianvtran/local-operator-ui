@@ -6,6 +6,7 @@
  */
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks";
 import type { CredentialListResult } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { radientSpeechBlock } from "@shared/lib/speech-gate";
@@ -119,6 +120,14 @@ export const useCredentials = () => {
  * `sign-in` is reachable only when the account read ANSWERED no: an outage or
  * an in-flight read must not send a signed-in user to the settings page.
  *
+ * AND THE FEATURE NEGOTIATION IS THE LADDER'S FIRST INPUT (design round 2,
+ * D6): the account read is DISABLED until the capabilities read answers, and a
+ * disabled query reports no data and no error — so on a cold mount, and
+ * through every capabilities outage, the account's `signed-out` is silence
+ * rather than an answer, and it classified as a sign-in for exactly that
+ * window. The block therefore reads the negotiation's own state (`pending` ->
+ * `checking`, `error` -> `could-not-check`) before the account classes.
+ *
  * `isPending && fetchStatus === "idle"` is react-query's shape for a query the
  * connectivity gate disabled: pending forever, never fetching.
  */
@@ -131,6 +140,20 @@ export const useRadientCredentialProbe = () => {
 		unavailable: accountUnavailable,
 	} = useRadientAuth();
 	const { isServerOnline } = useConnectivityGate();
+	const capabilities = useDesktopCapabilities();
+
+	/**
+	 * The capabilities read's own state, for the block's gate arm: `pending`
+	 * before anything has asked, `error` when the negotiation itself failed —
+	 * in both windows the account read was never able to ask, and its silence
+	 * must not become a sentence about the account (design round 2, D6).
+	 */
+	const capabilitiesState: "pending" | "error" | "answered" =
+		capabilities.isPending
+			? "pending"
+			: capabilities.isError
+				? "error"
+				: "answered";
 
 	/** The legacy question: the credentials file lists a Radient API key. */
 	const hasRadientApiKey = Boolean(data?.keys?.includes("RADIENT_API_KEY"));
@@ -191,6 +214,7 @@ export const useRadientCredentialProbe = () => {
 		serverOnline: isServerOnline,
 		accountRead,
 		accountUnavailable,
+		capabilitiesState,
 	});
 
 	return {

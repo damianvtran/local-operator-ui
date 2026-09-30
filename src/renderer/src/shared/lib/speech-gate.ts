@@ -22,22 +22,27 @@
  * THE SENTENCES, AND WHAT EACH BLOCK MEANS:
  *
  *   - `checking`        - the account read is in flight and nothing has failed.
- *                         This is the FIRST moment after a mount, which used to
- *                         render the offline sentence before anything had even
- *                         been asked (UX round 1, U2): a sentence about a failed
- *                         check, shown before a check had started, is the kind
- *                         of copy that teaches a reader to distrust the tooltip.
+ *                         This is the FIRST moment after a mount — including the
+ *                         window before the feature negotiation has answered,
+ *                         when nothing has asked yet (design round 2, D6; see
+ *                         the ladder) — which used to render the offline
+ *                         sentence before anything had even been asked (UX
+ *                         round 1, U2): a sentence about a failed check, shown
+ *                         before a check had started, is the kind of copy that
+ *                         teaches a reader to distrust the tooltip.
  *   - `sign-in`         - the account read ANSWERED "no account" (`signed-out`)
  *                         or "Radient refused this credential" (`refused`). Only
  *                         these two get the sign-in sentence, because only these
  *                         two have signing in as their remedy (design round 1,
  *                         D1).
  *   - `could-not-check` - the read reached a failure the reader cannot fix by
- *                         signing in (`unavailable`, `unknown`), or the backend
- *                         cannot serve Radient at all: an outage is not an
- *                         account problem, so the copy says what is true - the
- *                         check did not answer - without sending anyone to a
- *                         settings page their account cannot repair.
+ *                         signing in (`unavailable`, `unknown`), the feature
+ *                         negotiation itself failed so the read could not ask
+ *                         (design round 2, D6), or the backend cannot serve
+ *                         Radient at all: an outage is not an account problem,
+ *                         so the copy says what is true - the check did not
+ *                         answer - without sending anyone to a settings page
+ *                         their account cannot repair.
  *   - `offline`         - the local server itself is down, which is the only
  *                         state the offline sentence describes. The connectivity
  *                         banner is the way out this sentence points at; making
@@ -74,20 +79,29 @@ export type RadientSpeechBlock =
  *  1. The local server being down is stated first: it is the only state the
  *     offline sentence is true for, it is what the connectivity banner explains,
  *     and no account read can answer while it holds.
- *  2. A backend that cannot serve Radient is stated next, and BEFORE the account
+ *  2. THE FEATURE NEGOTIATION ANSWERS BEFORE THE ACCOUNT READ MAY ASK (design
+ *     round 2, D6). The account query is DISABLED until the capabilities read
+ *     answers (`enabled = desktopFeatureEnabled(capabilities.data, "radient")`),
+ *     and a disabled query reports no data and no error — so `pending` is a
+ *     window in which nothing has asked yet and its silence must read as the
+ *     check itself (`checking`), while an `error` in the negotiation is a check
+ *     that will not answer (`could-not-check`). Either silence read as an
+ *     account class is the Q1 defect one level up: it told a signed-in reader
+ *     to sign in on the cold mount and through every capabilities outage.
+ *  3. A backend that cannot serve Radient is stated next, and BEFORE the account
  *     read's own class — because on that backend the read never asked. The
  *     feature gate DISABLES the query (`desktopFeatureEnabled(capabilities.data,
  *     "radient")` is false), so React Query reports no data and no error and
  *     `accountRead` lands on `signed-out` without an answer behind it (measured
  *     by QA round 1: an older backend rendered the sign-in sentence). Reading
  *     that silence as "no account" is the same defect class as reading it as
- *     "offline", and consulting the unavailable reading first is what makes the
- *     `could-not-check` arm reachable in integration rather than only in unit
- *     assertions.
- *  3. An in-flight read is `checking`.
- *  4. Only an ANSWERED "no" (`signed-out`, `refused`) earns the sign-in
+ *     "offline", and consulting the unavailable reading ahead of the account
+ *     classes is what makes the `could-not-check` arm reachable in integration
+ *     rather than only in unit assertions.
+ *  4. An in-flight read is `checking`.
+ *  5. Only an ANSWERED "no" (`signed-out`, `refused`) earns the sign-in
  *     sentence; signing in is its remedy and nothing else's.
- *  5. Every other failure is the check itself failing, and the copy says so.
+ *  6. Every other failure is the check itself failing, and the copy says so.
  *
  * @param state.serverOnline - the connectivity gate's reading, `false` once the
  *   local server is known to be down.
@@ -96,13 +110,22 @@ export type RadientSpeechBlock =
  * @param state.accountUnavailable - the backend cannot serve Radient at all
  *   (an older backend), so the read never answered and will never leave
  *   `signed-out`.
+ * @param state.capabilitiesState - the capabilities read's own state, because
+ *   the feature gate DISABLES the account read until it answers: `pending`
+ *   (the cold-mount window; nothing has asked) and `error` (the negotiation
+ *   itself failed) are both "no answer behind the silence" and must not
+ *   classify as an answer class (design round 2, D6); `answered` leaves the
+ *   account classes below as the only reading.
  */
 export function radientSpeechBlock(state: {
 	serverOnline: boolean;
 	accountRead: RadientAccountRead;
 	accountUnavailable: boolean;
+	capabilitiesState: "pending" | "error" | "answered";
 }): RadientSpeechBlock {
 	if (!state.serverOnline) return "offline";
+	if (state.capabilitiesState === "pending") return "checking";
+	if (state.capabilitiesState === "error") return "could-not-check";
 	if (state.accountUnavailable) return "could-not-check";
 	if (state.accountRead === "checking") return "checking";
 	if (state.accountRead === "signed-out" || state.accountRead === "refused") {
