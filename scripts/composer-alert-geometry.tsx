@@ -51,12 +51,12 @@ import {
 } from "@contract/desktop-contract";
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import type { Message } from "@renderer/features/chat/types/message";
+import { messageBudgetRefusal } from "@renderer/features/chat/utils/message-budget";
 import {
 	type ComposerSendError,
 	MessageInput,
-} from "@renderer/features/chat/components/message-input";
-import type { Message } from "@renderer/features/chat/types/message";
-import { messageBudgetRefusal } from "@renderer/features/chat/utils/message-budget";
+} from "@renderer/shared/components/composer/message-input";
 import {
 	SEND_FAILURE_COPY,
 	normalizeSendText,

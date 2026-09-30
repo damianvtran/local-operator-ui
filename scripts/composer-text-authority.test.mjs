@@ -473,7 +473,7 @@ test("a late delivery takes the delivered words out of the box", async () => {
  */
 test("the send control is pressable while a send is in flight", () => {
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	/*
