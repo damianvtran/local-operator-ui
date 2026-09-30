@@ -1,0 +1,371 @@
+/**
+ * The pieces a definition's detail pane is built from — one copy, for agents and
+ * for teams.
+ *
+ * WHY THIS FILE EXISTS AT ALL. Scope A's finding (design consult D2/D3, UX U4) is
+ * that the page was two stacked free-text forms: seven fields at equal weight,
+ * no read view, no hierarchy. The replacement is a READ view per section with an
+ * explicit Edit mode, and every part of that is the same for a profile and for a
+ * team — the section frame, the bounded reading block, the sticky footer that
+ * saves or cancels, the discard confirmation, and the state placeholders. Written
+ * twice, the two panes drift: one gains a Cancel and the other does not, which is
+ * exactly the "second way of doing things" this repo treats as a defect.
+ */
+
+import { Badge } from "@shared/components/ui/badge";
+import { Button } from "@shared/components/ui/button";
+import { Skeleton } from "@shared/components/ui/skeleton";
+import { cn } from "@shared/lib/utils";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+
+/**
+ * One titled block of a detail pane.
+ *
+ * Sections rather than a field stack, because the operator's question is "what
+ * does this agent do and what may it touch", not "what are the values" — and the
+ * two need different reading weights: the instructions are prose, the tools are
+ * a list, and the provenance is a footnote.
+ *
+ * The hairline rule between sections is decorative (never `border-control`,
+ * which is a control's only boundary), and the first section drops it so the
+ * pane does not open with a rule under the header.
+ */
+export function Section({
+	title,
+	description,
+	actions,
+	children,
+	className,
+}: {
+	title: string;
+	description?: ReactNode;
+	actions?: ReactNode;
+	children: ReactNode;
+	className?: string;
+}) {
+	return (
+		<section
+			className={cn(
+				"space-y-2 border-hairline border-t pt-4 first:border-t-0 first:pt-0",
+				className,
+			)}
+		>
+			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+				<h3 className="text-heading">{title}</h3>
+				{actions}
+			</div>
+			{description ? (
+				<p className="text-meta text-ink-muted">{description}</p>
+			) : null}
+			{children}
+		</section>
+	);
+}
+
+/**
+ * Prose, at reading weight, with a bound and a way past it.
+ *
+ * THIS IS THE FIX FOR THE READ VIEW'S CENTRAL DEFECT (design consult D1). The
+ * instructions used to be a `<textarea disabled>`, which is not a reading
+ * surface at all: the reviewer measured 206 of 699 px of the reviewer prompt
+ * visible (29.5%), a keyboard user unable to scroll it (a disabled textarea is
+ * not focusable), and — the part that made the whole read view a lie — a fill and
+ * border identical to an editable field's, so a built-in's read view looked like
+ * a form the user was not allowed to type into.
+ *
+ * `tabIndex={0}` on the scroller is what makes it readable without a pointer: the
+ * block itself is the scroll container, so arrow keys and Page Down work when it
+ * has focus, and the app's own `:focus-visible` outline says where focus is. The
+ * bound is `max-h-64`: tall enough for a real instruction set's opening
+ * paragraphs, short enough that a 1,900-character prompt does not push every
+ * other section off screen.
+ */
+export function ReadBlock({
+	text,
+	empty = "Nothing here yet.",
+	mono = false,
+}: {
+	text: string;
+	empty?: string;
+	/** Machine voice (a packaged prompt shown for comparison), per branding §5. */
+	mono?: boolean;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const [overflows, setOverflows] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+
+	/*
+	 * Measured, not assumed from a character count: what overflows depends on the
+	 * column's width, which changes with the window, and a character threshold
+	 * would show "Show all" on text that already fits at 1380px.
+	 *
+	 * The measurement is skipped while expanded ON PURPOSE, so `overflows` keeps
+	 * its last clamped value — which is what keeps "Show less" on screen once the
+	 * block has been expanded (an unbounded block never overflows, so re-measuring
+	 * would hide the only control that can put it back).
+	 */
+	useEffect(() => {
+		if (expanded) return;
+		const element = ref.current;
+		if (!element) return;
+		// `text` is read by the MEASUREMENT rather than by the arithmetic: the
+		// bound has to be re-measured when the content changes, and this is the
+		// dependency that says so (the empty-text branch above returns before the
+		// scroller exists at all).
+		setOverflows(
+			Boolean(text) && element.scrollHeight > element.clientHeight + 1,
+		);
+	}, [text, expanded]);
+
+	if (!text.trim()) {
+		return <p className="text-body-sm text-ink-muted">{empty}</p>;
+	}
+
+	return (
+		<div className="space-y-1">
+			<div
+				ref={ref}
+				// biome-ignore lint/a11y/noNoninteractiveTabindex: this is a scroll container, which is the one non-interactive role a tab stop is for - a disabled textarea (what this replaced) could not be focused or scrolled at all, and arrow/PageDown only reach a long prompt once the block itself has focus.
+				tabIndex={0}
+				aria-label="The full text"
+				className={cn(
+					"whitespace-pre-wrap rounded-sm border border-hairline bg-surface px-3 py-2 text-body-sm text-ink",
+					// A reading block is not a control: `hairline` bounds it, and the
+					// app's focus ring (not a border colour) is what says it has focus.
+					!expanded && "max-h-64 overflow-y-auto",
+					mono && "font-mono text-meta",
+				)}
+			>
+				{text}
+			</div>
+			{overflows ? (
+				<Button
+					variant="link"
+					size="sm"
+					onClick={() => setExpanded((value) => !value)}
+				>
+					{expanded ? "Show less" : "Show all"}
+				</Button>
+			) : null}
+		</div>
+	);
+}
+
+/**
+ * The source of a definition, as a chip.
+ *
+ * The wire has carried `source` (`builtin | installed | custom`) all along and
+ * the page threw it away in the list and reduced it to a 12px meta line in the
+ * detail (D3). It is the first thing an operator needs before editing anything:
+ * "will my change be overwritten by a hub pull" is answered by this chip.
+ */
+export function SourceChip({
+	source,
+}: { source: "builtin" | "installed" | "custom" }) {
+	const label =
+		source === "builtin"
+			? "Built-in"
+			: source === "installed"
+				? "Installed"
+				: "Custom";
+	// `neutral` for every source on purpose: this is a statement of fact, not a
+	// warning, and a colour step per source would rank three equally valid states.
+	return <Badge variant="neutral">{label}</Badge>;
+}
+
+/**
+ * Escape cancels the edit, the way every other editor in this app does it.
+ *
+ * `defaultPrevented` is checked because Radix's dismissable layers (the
+ * `SearchableSelect` popup, a dialog) close themselves on Escape and call
+ * `preventDefault` — without the guard, closing the manager picker with Escape
+ * would also throw away the edit the user was in the middle of.
+ */
+export function useEscapeToCancel(onCancel: () => void, active: boolean) {
+	useEffect(() => {
+		if (!active) return;
+		const handler = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			event.preventDefault();
+			onCancel();
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [active, onCancel]);
+}
+
+/**
+ * The edit footer: one primary action, one way out, and what it costs.
+ *
+ * THREE FINDINGS ARE ANSWERED HERE.
+ *
+ * - U3 / D5: Edit had no Cancel and no dirty protection, and every action
+ *   carried the same weight, so leaving silently discarded typing. Cancel asks
+ *   before discarding, and names what it would discard.
+ * - D5's other half: the primary action sat BELOW the fold (measured at y=961 on
+ *   a three-member team). The footer is sticky to the pane's foot, so Save is on
+ *   screen at every scroll position and the sections scroll behind it.
+ * - U8: a completed save said nothing and dropped focus to `body`, which is where
+ *   a screen-reader user loses their place. The caller moves focus to the
+ *   heading; this component's button holds focus until it unmounts.
+ */
+export function EditFooter({
+	dirty,
+	pending,
+	onSave,
+	onCancel,
+	saveLabel = "Save changes",
+	pendingLabel = "Saving…",
+	dirtyHint,
+}: {
+	dirty: boolean;
+	pending: boolean;
+	onSave: () => void;
+	onCancel: () => void;
+	saveLabel?: string;
+	pendingLabel?: string;
+	dirtyHint?: string;
+}) {
+	const [confirming, setConfirming] = useState(false);
+
+	useEffect(() => {
+		// A footer that is no longer in a confirming state (the edit ended, the
+		// draft became clean) must not come back mid-confirmation.
+		if (!dirty) setConfirming(false);
+	}, [dirty]);
+
+	return (
+		<div className="sticky bottom-0 -mx-6 mt-6 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas px-6 py-3">
+			<Button variant="primary" onClick={onSave} disabled={pending}>
+				{pending ? pendingLabel : saveLabel}
+			</Button>
+			{confirming ? (
+				<>
+					<span className="text-body-sm text-ink-muted">
+						{dirtyHint ?? "Discard your unsaved changes?"}
+					</span>
+					<Button variant="danger" onClick={onCancel}>
+						Discard changes
+					</Button>
+					<Button variant="ghost" onClick={() => setConfirming(false)}>
+						Keep editing
+					</Button>
+				</>
+			) : (
+				<Button
+					variant="ghost"
+					onClick={() => (dirty ? setConfirming(true) : onCancel())}
+					disabled={pending}
+				>
+					Cancel
+				</Button>
+			)}
+			{dirty && !confirming ? (
+				<span className="text-meta text-ink-muted">Unsaved changes</span>
+			) : null}
+		</div>
+	);
+}
+
+/**
+ * A list that is loading, at the row height it will settle to.
+ *
+ * The old page left the list column blank while the main pane already said
+ * "Select a definition to view or edit it" (D4) — a sentence about a list that
+ * had not arrived, next to an empty box. Skeletons at the roster's own height
+ * keep the layout still when the rows land.
+ */
+export function RosterSkeleton({ rows = 6 }: { rows?: number }) {
+	return (
+		<div className="space-y-1" aria-hidden="true">
+			{SKELETON_ROWS.slice(0, rows).map((key) => (
+				<Skeleton key={key} className="h-11 w-full" />
+			))}
+		</div>
+	);
+}
+
+/**
+ * Stable identities for skeleton rows.
+ *
+ * NAMED RATHER THAN INDEXED because a skeleton is a placeholder list: an index
+ * key is correct here in React's terms and flagged by this repo's lint, and the
+ * cheap way to say "these are interchangeable placeholders" is to give them
+ * identities that do not move.
+ */
+const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+/** A detail pane that is loading, shaped like the sections it will fill. */
+export function DetailSkeleton() {
+	return (
+		<div className="max-w-3xl space-y-6" aria-hidden="true">
+			<Skeleton className="h-7 w-64" />
+			<Skeleton className="h-5 w-40" />
+			<Skeleton className="h-28 w-full" />
+			<Skeleton className="h-24 w-full" />
+		</div>
+	);
+}
+
+/**
+ * A failed read, in the order branding §8 asks for: what happened, what it
+ * means, what to do.
+ *
+ * WHY IT IS A COMPONENT RATHER THAN ONE `role="alert"` ON THE PAGE. The old page
+ * collapsed a list failure, a team failure and a detail failure into a single
+ * alert that replaced EVERYTHING, list included (D4) — so a failed detail read
+ * destroyed a list that was fine, and a `profiles.list` 500 was rendered as
+ * "Desktop controls need a compatible backend connection", which blames
+ * compatibility for a server error. Each pane owns its own failure now, and the
+ * caller supplies the plain-language cause.
+ */
+export function PaneError({
+	title,
+	what,
+	meaning,
+	onRetry,
+	retrying = false,
+}: {
+	title: string;
+	/** What happened, in one sentence. */
+	what: string;
+	/** What it means for the reader. */
+	meaning: string;
+	onRetry: () => void;
+	retrying?: boolean;
+}) {
+	return (
+		<div role="alert" className="max-w-xl space-y-2">
+			<h2 className="text-heading">{title}</h2>
+			<p className="text-body-sm text-ink">{what}</p>
+			<p className="text-body-sm text-ink-muted">{meaning}</p>
+			<Button variant="secondary" onClick={onRetry} disabled={retrying}>
+				{retrying ? "Retrying…" : "Retry"}
+			</Button>
+		</div>
+	);
+}
+
+/** The label above an editable field, with room for a field-level refusal. */
+export function FieldLabel({
+	label,
+	htmlFor,
+	error,
+}: {
+	label: string;
+	htmlFor: string;
+	error?: string | null;
+}) {
+	return (
+		<div className="flex items-baseline justify-between gap-2">
+			<label htmlFor={htmlFor} className="text-body-sm text-ink-muted">
+				{label}
+			</label>
+			{error ? (
+				<span className="text-meta text-danger" role="alert">
+					{error}
+				</span>
+			) : null}
+		</div>
+	);
+}
