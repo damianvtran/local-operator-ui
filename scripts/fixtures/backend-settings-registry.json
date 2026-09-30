@@ -1391,6 +1391,36 @@
 			"gated_by": null
 		},
 		{
+			"key": "display.turn_answer_rail",
+			"section": "appearance",
+			"label": "Answer rail",
+			"kind": "bool",
+			"help": "Draw a thin rule beside the answer that closes a turn in the desktop transcript.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "draw the rule"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no rule"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null
+		},
+		{
 			"key": "tui.sidebar_visible",
 			"section": "appearance",
 			"label": "Session sidebar",
