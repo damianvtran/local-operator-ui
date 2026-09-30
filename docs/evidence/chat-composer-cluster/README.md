@@ -15,6 +15,24 @@ frames moved by sub-pixel raster noise only. Verdicts: 9/9 on this branch
 against 7 failures of 9 on the base half, every reading in the pair's two
 `result.json`s.
 
+RE-SHOT A THIRD TIME, for the SESSIONLESS `$` delta (spec §2–§3 of the v2 lane):
+the composer's skills read no longer addresses a session — it travels with the
+composer's own folder, so a draft pane answers before any conversation exists —
+and the list gained the four no-rows states (durable / transient / empty /
+miss) plus the `$` token ink. The set is TWENTY-TWO cases across BOTH themes
+now: every case was driven twice (`COMPOSER_PROOF_THEME=localOperatorDark` and
+`localOperatorLight`), and the light twin of every row is committed beside its
+dark frame as `<stem>-after-light.png`. All 22 pass in both themes
+(`result.json`, `result-light.json`). Two fidelity changes ride with the
+re-shoot and are why the pre-existing after halves were retaken too: the
+harness now passes the composer's `cwd` (the real pages always do — the
+WORKING-DIRECTORY CHIP is visible in these frames and was absent from the
+earlier story), and the desk bridge learned scenario knobs (`skillFixture`,
+`pane`) that the driver sets per case through the story's args. The BEFORE
+halves stay the disabled-gates run from the original lane — they document the
+reported defects on that tree, and nothing in this delta changes what they
+show.
+
 The reports:
 
 - **#673** — ArrowUp in a box holding a draft swapped the draft for a history
@@ -44,17 +62,50 @@ describes), then reads the box, the list, the send the composer dispatched
 | `theme-qualified` | `/theme dracula` + Enter | the confirmation receipt **over the full 59-row grid** | the confirmation: `Theme: Dracula`, **no grid** |
 | `theme-bare` | `/theme` + Enter | the grid | unchanged — the modal keeps the table for a bare `/theme` |
 
+### The v2 rows — sessionless `$` on both panes
+
+These are the rows the sessionless delta adds. `pane:draft` is the harness
+without a session status (`paneHasSession={false}`), i.e. the New-chat pane the
+first message is written on; the default rows run on the session pane. The
+scenario each frame ran under is recorded in its `result.json` entry
+(`state.scenario`), so a frame's fixture is readable rather than inferred.
+
+| case | gesture / scenario | the claim the reading pins |
+| --- | --- | --- |
+| `skill-list-bare-leading` | draft pane, type `$` | THE v2 HEADLINE: the whole catalogue opens with NO session — 3 rows (`research`, `release-notes`, `secret-ritual`), and the bare token is uninked |
+| `skill-list-leading-fuzzy` | type `$res` | leading ≥3 chars runs the full fuzzy matcher (TUI parity): 2 rows (`research` + `release-notes`'s subsequence) |
+| `skill-list-leading-single` | type `$resea` | one more character narrows to 1 row (`research`); `$rese` would still match `release-notes` |
+| `skill-highlight-resolved` | type `$research fix this` | the resolved run paints (`data-slash-run="skill"` on `$research`) with a request behind it |
+| `skill-highlight-paints-through` | type `$research`, list open | a RESOLVED token paints THROUGH the open list (the v2 ink rule) |
+| `skill-highlight-inert` | type `$zzz`, read, Escape, read | nothing paints while the miss list owns the token; the dim run (`skill-unknown`) arrives after Escape closes it |
+| `skill-highlight-money-guards` | `costs$5 …`, then `echo $PATH` | zero `$` runs in both: a glued `$5` is not a token, an inline `$PATH` is not leading |
+| `skill-highlight-slash-claim` | `/model $5` | a `$` inside a recognised command's argument paints no skill run |
+| `skill-notice-durable` | `skillFixture:old-backend`, type `$` | the update-the-backend sentence in the list shell — and ZERO `skills.list` calls on the wire (`state.skillListCalls = 0`) |
+| `skill-notice-transient` | `skillFixture:broken`, type `$` | "Skills aren't available right now." (a 503 from the bridge) |
+| `skill-notice-empty` | `skillFixture:empty`, session pane, type `$` | "No skills found — see /skills" (the pointer can be followed here) |
+| `skill-notice-empty-draft` | `skillFixture:empty`, draft pane, type `$` | "No skills found." — the pointer clause is dropped where `/skills` would be refused |
+| `skill-draft-first-send` | draft pane, `$research fix this` + Enter | the first-message expansion fires: `[data-sent]` starts with the invocation header and carries `invocation="$research fix this"` — the send the session gate used to forbid |
+
+The v2 rows are AFTER-ONLY, and that is a statement about the fixture rather
+than an omission: the before state of each is a fact of the old tree (the
+silent draft — #690's F-1 finding; no ink anywhere; no notices), but the base
+tree's story cannot RENDER the scenarios (no scenario args, no draft pane), so
+a "before" shot of `skillFixture:empty` would photograph the wrong fixture.
+What a before frame here would show instead is recorded in the table above and
+in the lane's `bare-dollar-probe/` evidence.
+
 The multiline case records the walk it expects: after the first ArrowUp the
 reader can see `draft: "one\ntwo"` with the caret at `3` (line 1) and the draft
 intact — the second ArrowUp is the one that swapped it on the base half and does
 nothing on this branch.
 
-## The base half is this tree with three gates disabled
+## The base half is that lane's tree with three gates disabled
 
 `disabled-gates/result.json` is that run's own record. The tree it ran from is
-this branch's head with exactly three one-line reversals — each fix's arm gated
+THAT branch's head with exactly three one-line reversals — each fix's arm gated
 off at its own gate, so the keystrokes the cases play are the same ones a user
-plays:
+plays. The before halves are kept as the run that documents the three reported
+defects; the after halves were re-taken later (see the re-shoot note above).
 
 - `use-message-input.ts` — the recall arm's engagement test replaced by the base
   tree's own `isCursorAtFirstLine()` gate.
@@ -73,12 +124,23 @@ base half: the rows above that differ; the two unchanged cases pass on both).
 
 ```sh
 ./node_modules/.bin/storybook dev -p 6018 --host 127.0.0.1 --no-open --disable-telemetry
-node scripts/composer-cluster-proof.mjs http://127.0.0.1:6018 "$OUT"
+COMPOSER_PROOF_THEME=localOperatorDark node scripts/composer-cluster-proof.mjs http://127.0.0.1:6018 "$OUT_DARK"
+COMPOSER_PROOF_THEME=localOperatorLight node scripts/composer-cluster-proof.mjs http://127.0.0.1:6018 "$OUT_LIGHT"
 ```
 
-The story is `chat-message-input--composer-cluster` (dark palette default). One
-PNG per case, 1380x900 at DPR 1, captured from the browser driving the story —
-the same shape the slash-enter set's harness uses.
+`COMPOSER_PROOF_ONLY=<substring>` narrows a rerun to the cases whose name
+contains it (e.g. `COMPOSER_PROOF_ONLY=skill-notice`); the subset still writes
+a complete `result.json` of what ran. Committed frames are the run's PNGs
+renamed `<stem>-after.png` (dark) and `<stem>-after-light.png` (light) — the
+stem is the shipped case name from the tables above, which trims the driver's
+longer names where the original set did.
+
+The story is `chat-message-input--composer-cluster`; the palette is whichever
+`COMPOSER_PROOF_THEME` names, seeded into the preview's persisted preferences
+AND passed as the story's `theme` argument, so the store and the arg agree from
+the first paint. One PNG per case per theme, 1380x900 at DPR 1, captured from
+the browser driving the story — the same shape the slash-enter set's harness
+uses.
 
 ## What the frames do not show
 
@@ -89,9 +151,9 @@ the same shape the slash-enter set's harness uses.
 - Reachability of hidden skills is pinned by the HARNESS's own tests —
   `local_operator/tests/unit/tui/test_skill_invocation.py::test_hidden_skill_is_invocable_by_name`
   and `tests/unit/skills/test_invoke.py::test_hidden_skills_are_invocable` — not
-  by one of these nine gestures: `skills.list` carries `{name, description}`, so
-  the hidden flag never reaches the renderer and no UI-side pin could assert
-  it. What this set shows is that the list renders every row the op answers.
+  by one of these gestures: `skills.list` carries `{name, description}`, so the
+  hidden flag never reaches the renderer and no UI-side pin could assert it.
+  What this set shows is that the list renders every row the op answers.
 - The transcript's "expanded payload" row for a sent `$skill` is deliberately
   not part of this change (see the PR's notes).
 - The `theme-qualified` frame cannot show the theme APPLYING: the story's
