@@ -1388,6 +1388,7 @@ export const STORIES = [
 	["browser-tab-strip--waiting", 1280, 140],
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--failed-while-loading", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
 	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
 	// because only one tab can be active and the active row pays 68px for the cluster
@@ -1460,6 +1461,7 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+	["browser-load-failure--restore-unanswered", 1280, 420],
 
 	/*
 	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
