@@ -368,12 +368,16 @@ they're inactive in the sidebar".
   240) — the rungs the catalogue ranks ABOVE `delegating`: a `busy` row with two
   running children and one queued (the three-glyph worst case), a `busy` row with
   two, a `wedged` row with one, the three `delegating` cells (queued-and-running,
-  running-only, queued-only), and the `null`-counts compatibility cell.
+  running-only, queued-only), and TWO compatibility cells — `null` counts and
+  `0/0` counts, both on a busy row.
 - **`subagent-rows-resting/`** and **`subagent-rows-resting-minimum/`** (280 and
   240) — the resting primaries the indicator has to read beside: an unseen
   completion, an attached session, a scheduled wake with a queue, an idle ring, an
-  unseen failure, the `0/0` compatibility cell, and a bound (agent-attributed)
-  row.
+  unseen failure, the same compatibility pair on a RESTING row (`0/0` and
+  `null`), and a bound (agent-attributed) row. The compatibility cells are four
+  because the rule is not a function of the status code, and the four are how
+  that is said in pixels: S11 asks for the pair on a busy row AND on an idle one
+  (review MINOR 2 — the first pass photographed two of the four).
 - **`subagent-selected-row/`** — the operator's own case: the row they had
   opened, on the `rowSelected` ground, with two running children and an
   unselected twin below it.
@@ -382,11 +386,22 @@ they're inactive in the sidebar".
   filtered out of the at-rest list by `chat-archived.ts`'s `visibleRows`, so this
   story reaches the row the only way a reader can: a query plus the search
   block's own `Include archived` control.
+  **THE FIRST PASS OF THIS STORY PHOTOGRAPHED THE WRONG STATE** (QA round 1, Q-1;
+  design D1 on the same frame): the play asked for "Search chats and agents" by
+  label, and the band's search BUTTON and the search FIELD carry that one
+  accessible name, so the lookup matched two elements and the play died before a
+  character was typed — leaving a frame of the unarchived twin that still looked
+  like evidence. Roles separate them now, and the capture entry carries
+  `expectPresent: '[data-session-archived="true"]'`, so the rig itself refuses to
+  write these frames unless an archived row is on screen.
 
 **The before half is a separate declared set**, `docs/evidence/chat-sidebar-subagent-baseline/`
 — the same six rosters, same fixtures, same two viewports and same twelve
-palettes, rendered by unmodified `origin/main` in its own worktree. That set's
-manifest entry carries the provenance. Every cell's before/after pair therefore
+palettes, rendered by unmodified `origin/main` at `073164505e` in its own
+worktree (re-taken at the round-1 fold, since the fold moved the tree the
+roster's own file is staged into). That set's manifest entry carries the
+provenance. Read against it: the archived baseline row carries the `Archive`
+mark and NO indicator, which is the pair this cell exists for. Every cell's before/after pair therefore
 differs by the indicator and by nothing else; on the baseline, a busy row with two
 running children draws one spinner and the sidebar says nothing about them.
 
