@@ -129,6 +129,7 @@ import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
+import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { AnswerActionRow } from "./message-actions-row";
@@ -2075,13 +2076,14 @@ const CHECKPOINT_JUMP_MISS_COPY =
 	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
- * A fold group as the aggregation pass hands it on: a run group carries the
- * section flag it was decorated with (`isNewestTurn`), a row group is the
- * partition's own row variant unchanged.
+ * A fold group as the aggregation pass hands it on: the partition's own
+ * variants unchanged. A run group used to carry a section flag
+ * (`isNewestTurn`) for the fold's condense; the condense is retired (the
+ * fold's open state is the reader's, see `fold-open.ts`), so the decoration
+ * is gone with it.
  */
 type SectionGroup =
 	| (Extract<FoldGroup, { kind: "run" }> & {
-			isNewestTurn: boolean;
 			/**
 			 * The run's images, computed by the groups memo while the rows are still
 			 * in hand (`foldImages`). The fold's condensed header carries them because
@@ -2257,6 +2259,51 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		alignWalk.current = initialAlignWalkState();
 		announcedPlan.current = null;
 	}
+	/*
+	 * THE FOLD-OPEN REGISTRY, keyed to the conversation and reset the same
+	 * render-phase way (operator report, 2026-09-27). It lives HERE rather than
+	 * on each `TraceFold` because a fold's React identity is its key - the first
+	 * row of its run - and the render window's leading edge walks through runs as
+	 * rows arrive, remounting them; `fold-open.ts`'s header carries the measured
+	 * walk and the migration the registry performs. `sessionId` is the
+	 * transcript's own conversation identity, the same value the window above
+	 * resets on, so the two cannot disagree about a switch.
+	 *
+	 * THE IDENTITY IS STICKY ACROSS A NULL, and that is the report's own failure
+	 * class one layer down: the reconnect gap arms null `frontend` outright, so a
+	 * registry keyed on `sessionId` alone would close every fold the reader opened
+	 * on every reconnect. The last STATED id is held until a different one
+	 * arrives - a gap keeps the conversation, a switch changes it.
+	 */
+	const foldSession = useRef(sessionId);
+	if (sessionId !== null) foldSession.current = sessionId;
+	const [foldOpen, setFoldOpen] = useState<{
+		session: string | null;
+		entries: readonly FoldOpenEntry[];
+	}>(() => ({ session: foldSession.current, entries: [] }));
+	if (foldOpen.session !== foldSession.current) {
+		setFoldOpen({ session: foldSession.current, entries: [] });
+	}
+	/**
+	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
+	 *
+	 * `keep` is every record the conversation holds - not just the render window:
+	 * a fold scrolled outside the window is still the reader's, and pruning its
+	 * entry the moment its rows leave the window would reproduce the bug this
+	 * registry exists to fix, one scroll later.
+	 */
+	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
+		const keep = new Set(transcript.records.map((record) => record.id));
+		setFoldOpen((current) => ({
+			session: foldSession.current,
+			entries: withFoldOpen(
+				current.session === foldSession.current ? current.entries : [],
+				ids,
+				open,
+				keep,
+			),
+		}));
+	};
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
 	 * sibling of the paint cache (`shared/store/turn-collapse-open.ts`) so the
@@ -2479,13 +2526,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const rowGroups = useMemo(() => {
 		/*
-		 * The newest turn is the one after the last user row: a run in an OLDER turn
-		 * must not open itself because a LATER turn happens to be running.
+		 * `isNewestTurn` used to be computed here for the fold's condense; the
+		 * condense is retired (the fold's open state is the reader's, see
+		 * `fold-open.ts`), and the map below carries only the run's images - the
+		 * media lane's own decoration, documented at its own site.
 		 */
-		let lastUserIndex = -1;
-		for (let index = 0; index < visible.length; index += 1) {
-			if (visible[index].record.kind === "user") lastUserIndex = index;
-		}
 		const groups = foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
@@ -2522,13 +2567,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
-		const firstIndexOf = new Map<string, number>();
-		visible.forEach((row, index) => firstIndexOf.set(row.record.id, index));
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
 						...group,
-						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
 						/*
 						 * The run's pictures, computed HERE rather than at the fold's call
 						 * site: a collapsed fold unmounts the rows that draw them, so the
@@ -3012,7 +3054,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const p50 = flushes[Math.floor(flushes.length / 2)] ?? 0;
 			const max = flushes.at(-1) ?? 0;
 			setPerf(
-				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld} staleUpdateFrameDropped=${streamDiagnostics.staleUpdateFrameDropped}`,
+				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld} staleUpdateFrameDropped=${streamDiagnostics.staleUpdateFrameDropped} idlessFrameRefused=${streamDiagnostics.idlessFrameRefused}`,
 			);
 		}, 1000);
 		return () => window.clearInterval(timer);
@@ -3445,14 +3487,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				span={group.span}
 				live={group.live}
 				/*
-				 * THE FOLD'S SECTION: the newest turn while that turn is in
-				 * flight. While it is true nothing condenses the fold; when it
-				 * turns false the fold closes itself once (see `TraceFold`'s
-				 * condense rule). `working` is the same liveness the working
-				 * line reads, so the section ends exactly when the pane says the
-				 * turn did.
+				 * THE READER'S OPEN STATE, held by the conversation rather than by
+				 * the fold (operator report, 2026-09-27): the fold's React key is
+				 * its first row, and the render window's leading edge walks through
+				 * a run as rows arrive, which remounts the fold - state kept on the
+				 * instance cannot survive that, and the fold re-collapsed under the
+				 * reader. The registry answers for the fold's CURRENT id set and
+				 * migrates with it.
 				 */
-				sectionLive={working !== null && group.isNewestTurn}
+				open={foldOpenOf(
+					foldOpen.entries,
+					group.rows.map((row) => row.record.id),
+				)}
+				onOpenChange={(next) =>
+					setFoldOpenFor(
+						group.rows.map((row) => row.record.id),
+						next,
+					)
+				}
 				/*
 				 * The run's images, while the rows that draw them are unmounted.
 				 * Rendered only while the fold is condensed, and not passed at all
@@ -4159,19 +4211,57 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							</CanvasPaneProvider>
 						)}
 
-						{working && (
-							// On the `item` tier, not a tier of its own: the working line is
-							// the foot of the run above it and shares that run's rhythm. It
-							// takes slightly more than `trace` because it is the one row that
-							// is not a completed action, and slightly less than a turn
-							// boundary because the turn has not ended.
-							<div className={GAP.item[isSmallView ? 1 : 0]}>
-								<WorkingLine
-									activity={working.activity}
-									phase={working.phase}
-									startedAt={working.startedAt}
-									clock={working.clock}
-								/>
+						{/*
+						 * THE FOOT SLOT IS RESERVED, NOT TOGGLED (operator report, 2026-09-27).
+						 *
+						 * "Sometimes the whole conversation including the leading edge shifts up
+						 * even though we're now in the scroll phase." Measured on the harness
+						 * (`scripts/scroll-shift-evidence.mjs`, a tall fixture at 1380x872):
+						 * while the transcript is anchored at the tail, this row MOUNTING moved
+						 * every settled row and the last row's bottom edge - the leading edge -
+						 * up 29.4px in one frame at the turn's start, and its unmount moved them
+						 * back down at the turn's end. The scroller is pinned at `scrollTop = 0`,
+						 * so anything that appears below the last row displaces the whole
+						 * conversation; the fix is that nothing appears: the line mounts into a
+						 * row that was already there.
+						 *
+						 * 29.4px is this row's own footprint - `GAP.item`'s 12px plus one
+						 * `text-mono-sm` line at 1.45 line-height (17.4px) - and `min-h-[1lh]`
+						 * rather than a number is what keeps the reserve glued to the thing it
+						 * reserves: the reserve is exactly one line of the line's own type, so a
+						 * change to that token moves both together. The reserved row is
+						 * otherwise empty - it paints no text when no turn is running and holds
+						 * no live region - so the idle pane is the same picture it was, one row
+						 * taller.
+						 *
+						 * This is the older-history slot's rule, one element down ("One
+						 * fixed-height slot for every state of both, so a state change above the
+						 * oldest row can never shift the conversation under the reader"), and it
+						 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
+						 * to a turn, and the failure surfaces replace the rows rather than sit
+						 * above them.
+						 */}
+						{transcript.records.length > 0 && !stale && !missing && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{working && (
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
+									/>
+								)}
 							</div>
 						)}
 
