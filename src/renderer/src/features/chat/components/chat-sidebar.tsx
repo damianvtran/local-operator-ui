@@ -167,6 +167,9 @@ import {
 	DEFAULT_SIDEBAR_VIEW,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
+	entityMore,
+	entityRows,
+	entitySectionGap,
 	groupRows,
 	isEntitySection,
 	isSectionShown,
@@ -5468,6 +5471,23 @@ export function ChatSidebar({
 		const key = catalogueScopeKey(kind, name);
 		const open = Boolean(query) || isOpen(key);
 		/*
+		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
+		 * catalogue's order untouched, running rows exempt, a search never bounded -
+		 * live in `chat-sidebar-view.ts` beside the ladder they share with the chats
+		 * list (see `entityRows`).
+		 *
+		 * IT IS TAKEN OVER THE ROWS THE GROUP DRAWS, which are already narrowed by the
+		 * query and partitioned by the archive rules - so the bound can never act as a
+		 * filter over a search answer, and a hit the reader is looking for cannot hide
+		 * behind a press.
+		 */
+		const page = entityRows(rows, {
+			loads: entityLoads[key] ?? 0,
+			currentId: selectedConversation,
+			searching: Boolean(query.trim()),
+		});
+		const shown = page.rows;
+		/*
 		 * THE GROUP'S BADGE AND ITS SENTENCES, both from the module rather than from a
 		 * condition here (`sidebar-scope-paging.ts` carries the rules and their
 		 * reasons). The badge reads the CENSUS when the daemon sent one, so a group
@@ -5493,6 +5513,66 @@ export function ChatSidebar({
 			held: catalogueScopes[key]?.ids.length ?? rows.length,
 			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
 		});
+		/*
+		 * THE GROUP'S OWN FOOT (`chat-sidebar-view.ts` words it and gives the reasons).
+		 *
+		 * IT READS `view` BESIDE IT, and that is why it lives here rather than beside the
+		 * bound: `view` is THIS GROUP's `groupChatsView` - the name shadows the sidebar's
+		 * own view inside `entity` - and both facts the foot needs from it (whether the
+		 * daemon still holds a cursor, and the size of the page behind it) only exist once
+		 * it has been computed.
+		 *
+		 * `total` is the same number the BADGE states rather than the rows held, which is
+		 * the whole point of the position: a reader comparing `10 of 41` with the badge
+		 * `41` is comparing one claim with itself. On the paged path the badge is the
+		 * census, so the position is taken against the census; on the withdrawn path both
+		 * are the rows the group holds.
+		 */
+		const groupTotal = groupPaging
+			? (scopeCensusTotal(catalogueCounts, kind, name) ?? rows.length)
+			: rows.length;
+		/*
+		 * HOW MANY ROWS THE PRESS WILL ADD, and the two sources are one expression
+		 * because the reader asked for one thing. When the bound is what withheld them
+		 * the number is the ladder's next step bounded by what is left in hand; when
+		 * everything in hand is already drawn and the daemon is still holding a cursor,
+		 * it is the page the fetch will bring (`view.addCount`, the store's own
+		 * `min(page, remaining)`), so the label stays honest about a number only the
+		 * daemon has - the chats list's foot states the same rule for the same reason.
+		 */
+		const ladderRung = entityLoads[key] ?? 0;
+		const ladderStep = pageLimit(ladderRung + 1) - pageLimit(ladderRung);
+		const foot = entityMore({
+			add:
+				page.hidden > 0
+					? Math.min(ladderStep, page.hidden)
+					: groupPaging && view.more
+						? view.addCount
+						: 0,
+			drawn: shown.length,
+			total: groupTotal,
+		});
+		/*
+		 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS AT
+		 * OR BEYOND THE ROWS IN HAND. One gesture, because the reader asked for one
+		 * thing - more chats - and which of the two happens is a fact about the daemon
+		 * (whether it can page) rather than a choice to put in front of them. This is
+		 * `pressPageMore`'s own shape one level down, and it replaces the bare cursor
+		 * press this control used to carry: with a bound in front of the rows, a press
+		 * that only fetched would bring rows the bound then hid.
+		 */
+		const pressEntityMore = () => {
+			const next = ladderRung + 1;
+			setEntityLoads((current) => ({ ...current, [key]: next }));
+			if (!groupPaging) return;
+			const held = catalogueScopes[key]?.ids.length ?? 0;
+			if (
+				catalogueScopes[key]?.nextCursor !== null &&
+				pageLimit(next) >= held
+			) {
+				pressShowMore(kind, name, key, held, view.addCount);
+			}
+		};
 		if (
 			query &&
 			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
@@ -5533,7 +5613,26 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
 							!staged && "hover:bg-row-hover",
 						)}
-						onClick={() => toggle(key)}
+						onClick={() => {
+							/*
+							 * CLOSING THE GROUP SPENDS ITS LADDER RUNG, and that is a decision
+							 * rather than tidiness. Closing already discards the group's loaded page
+							 * (`clearScope`, whose own note calls the next expansion "a fresh
+							 * question"), and a rung that outlived the disclosure would make a 41-chat
+							 * team draw 25 rows at a reader who had just asked to see the top of it -
+							 * the bound undone by a round trip through the control that exists to
+							 * apply it.
+							 */
+							if (open) {
+								setEntityLoads((current) => {
+									if (current[key] === undefined) return current;
+									const next = { ...current };
+									delete next[key];
+									return next;
+								});
+							}
+							toggle(key);
+						}}
 					>
 						{open ? (
 							<ChevronDown className="size-3.5" />
@@ -5649,8 +5748,29 @@ export function ChatSidebar({
 				{hub.notes[hubKey] && <HubRowNote note={hub.notes[hubKey]} />}
 				{open && (
 					<div>
-						{rows.map((row) => sessionRow(row, true))}
 						{/*
+						 * THE VIEWED CONVERSATION, FIRST WHEN THE BOUND WITHHELD IT, AND
+						 * LABELLED.
+						 *
+						 * It is drawn out of the catalogue's order on purpose, and the alternative
+						 * is refused rather than unconsidered: admitting it in place would mean
+						 * raising this group's bound until the row fits, which in a 41-chat team
+						 * draws 40 rows at a reader who asked for the top of it. One row is lifted
+						 * instead.
+						 *
+						 * WHY THE LABEL, when the row already wears the panel's `rowCurrent`
+						 * ground: a lifted row reads as a row the sort got wrong - `Team
+						 * conversation 35 · 1d` above `Team conversation 1 · 1h` is a broken list
+						 * unless something says why. The highlight says WHICH row it is; the label
+						 * says WHY it is at the top, which is the difference between an explained
+						 * exception and a corrupted order. It is the SAME wording the chats list
+						 * uses for its own lifted row (`sectionLabel` is that function, not a
+						 * second one), so the panel explains one situation one way - and it is
+						 * drawn only while the lift is, so a group the bound did not withhold
+						 * this row from pays nothing for it.
+						 */}
+						{page.lifted && sectionLabel("Current chat")}
+						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
 						 * It is drawn from `view.sentence` and never chosen here, because the
@@ -5774,7 +5894,7 @@ export function ChatSidebar({
 										</button>
 									</p>
 								</>
-							) : view.more ? (
+							) : foot ? (
 								<button
 									type="button"
 									/*
@@ -5782,6 +5902,13 @@ export function ChatSidebar({
 									 * `data-session-delete` already follow: the label is a copy string, so a
 									 * scene that reached this control by its text would be asserting a copy
 									 * edit, and the tail's own press is what the evidence frame has to make.
+									 *
+									 * `data-scope-more` is kept AND `data-entity-more` is added, rather than
+									 * one replacing the other: the first is what the paged path's own scenes
+									 * already select on, and re-pointing them at a new anchor in the same
+									 * change that moved the label would leave a broken scene looking like a
+									 * broken feature. The second names this control precisely for the frames
+									 * the bound is evidenced by, which no selector before it could do.
 									 *
 									 * `data-chat-row` IS THE KEYBOARD PATH (round 1, U2). The control sits at
 									 * the end of the group's own rows, so reaching it by Tab means passing
@@ -5791,25 +5918,28 @@ export function ChatSidebar({
 									 */
 									data-scope-more={key}
 									data-chat-row
-									aria-label={`Show ${view.addCount} more chats in ${name}`}
-									title={`Show ${view.addCount} more chats in ${name}`}
+									/*
+									 * The bound's own anchor, BESIDE `data-scope-more` rather than replacing
+									 * it: the paged path's scenes already select on that one, and re-pointing
+									 * them in the same change that moved the label would leave a broken scene
+									 * looking like a broken feature. This one is what the frames the bound is
+									 * evidenced by read.
+									 */
+									data-entity-more={key}
+									aria-label={`${foot.aria} in ${name}`}
+									title={`${foot.aria} in ${name}`}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
-									onClick={() =>
-										pressShowMore(
-											kind,
-											name,
-											key,
-											catalogueScopes[key]?.ids.length ?? rows.length,
-											view.addCount,
-										)
-									}
+									onClick={pressEntityMore}
 								>
 									{/*
 									 * WHAT THE PRESS WILL ADD, not the page size (round 1, D7): with 45
 									 * still to come beside a 70 badge, `Show 25 more` was a page size
-									 * dressed as a remainder.
+									 * dressed as a remainder. And the position beside it is the brief's
+									 * own rule (2026-09-27): "the count and the disclosure must agree",
+									 * so a reader who sees ten rows under a `41` badge can tell whether
+									 * they are looking at ten of forty-one or all of them.
 									 */}
-									{`Show ${view.addCount} more`}
+									{foot.label}
 								</button>
 							) : null)}
 					</div>
@@ -5993,6 +6123,26 @@ export function ChatSidebar({
 	 * a permanently longer column every launch afterwards.
 	 */
 	const [sectionCaps, setSectionCaps] = useState<Record<string, number>>({});
+	/*
+	 * HOW FAR ONE EXPANDED ENTITY'S OWN SESSIONS HAVE BEEN LOADED, per group.
+	 *
+	 * THE SAME LADDER AS THE CHATS LIST, not the eight-row cap beside it: the
+	 * operator's contract for this list is "starts with 10, then 25, then 50, and
+	 * then user can click to load more", and a group of chats is that list one
+	 * level down rather than the entity roster `cappedRows` bounds (which is a
+	 * list of AGENTS or TEAMS and keeps its own eight-row step).
+	 *
+	 * KEYED BY THE GROUP, so a reader who opens a second team does not also spend
+	 * the first team's rung - the same reason `sectionCaps` is keyed.
+	 *
+	 * RESET WHEN THE GROUP CLOSES, and this is a decision rather than tidiness:
+	 * closing a group already discards its loaded page (`clearScope`, whose own
+	 * note calls the next expansion "a fresh question"), and a rung that outlived
+	 * the disclosure would make reopening a 41-chat team draw 25 rows at a reader
+	 * who had asked to see the top of it. It is window state and never persisted,
+	 * for `sectionCaps`' reason: the question is about the moment.
+	 */
+	const [entityLoads, setEntityLoads] = useState<Record<string, number>>({});
 	const cappedRows = (key: string, rows: ReactNode[]) => {
 		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 		const hidden = rows.length - cap;
@@ -6671,8 +6821,8 @@ export function ChatSidebar({
 			{/*
 			 * NO `space-y-4` ON THE WRAPPER ANY MORE, and it is not a tidy-up: the
 			 * rhythm between two entity sections is CONDITIONAL on whether the one above
-			 * it draws rows (the teams section below carries the two values and the
-			 * measurement), and a parent `space-y-*` would set a `margin-top` on the
+			 * it draws rows (`entitySectionGap` carries the measurement and the reason),
+			 * and a parent `space-y-*` would set a `margin-top` on the
 			 * same element the child's class does - two declarations of one property,
 			 * settled by stylesheet order rather than by the decision.
 			 */}
@@ -6881,9 +7031,9 @@ export function ChatSidebar({
 					 *
 					 * `mt-4` and `mt-2` are the design's own two steps - the 16px section tier
 					 * and the 8px a label takes when the section above draws no rows to
-					 * separate - stated inline because this is the one site that takes the
-					 * conditional, and a query force-opens the section, which is the same
-					 * condition the rows' own gate reads.
+					 * separate - and they live in `entitySectionGap`: this is the only site
+					 * that takes the conditional, and a query force-opens the section, which
+					 * is the same condition the rows' own gate reads.
 					 *
 					 * AND THE CONDITION'S OTHER HALF IS THE VIEW GATE ITSELF (design round
 					 * 1, D1): `Agents` switched off in the popover leaves NO section above
@@ -6896,9 +7046,9 @@ export function ChatSidebar({
 					 */}
 					{isSectionShown(view, "teams") && (
 						<section
-							className={cn(
+							className={entitySectionGap(
 								isSectionShown(view, "agents") &&
-									(query || isOpen("agents", true) ? "mt-4" : "mt-2"),
+									(Boolean(query) || isOpen("agents", true)),
 							)}
 						>
 							{heading(
