@@ -59,6 +59,7 @@ import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
+	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 /*
@@ -596,8 +597,16 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * header (the QA hit-test read the header at rel 12 while a card
 					 * was live at rel 2.7). The strip's padding now starts at its sides
 					 * and bottom, and the header pins flush to the edge it pins to.
+					 *
+					 * AND THE SIDES AND BOTTOM ARE THE SUM, NOT NEW SPACING (operator,
+					 * 2026-09-30): the page no longer insets this region, so `px-9 pb-9`
+					 * carries what the strip used to sit inside - the 24px page gutter
+					 * plus its own 12 - and the strip's scrollbars now ride the VIEW's
+					 * own edges the way chat's transcript does. The pinned offsets
+					 * above are written against the strip itself, so none of them
+					 * moves.
 					 */
-					"relative flex min-h-0 flex-1 items-start overflow-auto px-3 pb-3",
+					"relative flex min-h-0 flex-1 items-start overflow-auto px-9 pb-9",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
@@ -810,6 +819,48 @@ const BoardCard: FC<BoardCardProps> = ({
 	 * addressable hook (focus handoff), not as display text.
 	 */
 	const displayName = projectDisplayName(project);
+	/*
+	 * WHETHER THE TITLE IS ACTUALLY CLIPPED, measured rather than assumed
+	 * (operator, 2026-09-30): the title line is `truncate`, and the tooltip
+	 * that reveals the full text belongs only on a title the column has really
+	 * cut - a panel repeating a fully visible title is noise, and a tab stop
+	 * that reveals nothing is worse.
+	 *
+	 * THE STATE FROM THE TOOLTIP'S OWN PRESENCE, and that is why this effect
+	 * re-runs on it (deps below). Giving the trigger a panel changes the tree
+	 * ABOVE the span, so React mounts a NEW span on the flip; a measure that
+	 * closed over the old node would then be reading a detached element (0 by
+	 * 0, so `false`) for the rest of the mount. Measured on this branch: the
+	 * capture's play read a 390px title in a 184px box whose own state still
+	 * said `false` - the detached-closure shape exactly. `isConnected` is the
+	 * same guard at the other end of the effect's life.
+	 *
+	 * THREE TRIGGERS, because each is a measured defect: the FRAME read, since
+	 * at effect time the element may not be laid out yet; the OBSERVER, for the
+	 * column widths that follow the strip's size; and `document.fonts.ready`,
+	 * for the case neither can see - the web font arriving widens the TEXT
+	 * without resizing the BOX, so no resize ever fires (the
+	 * `directory-indicator.tsx` lesson, re-earned here).
+	 */
+	const titleRef = useRef<HTMLSpanElement>(null);
+	const [titleClipped, setTitleClipped] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: both deps are TRIGGERS, not body reads - `displayName` re-measures a renamed card and `titleClipped` re-measures the span React mounts on the flip; the rendered box decides (the `directory-indicator.tsx` shape).
+	useEffect(() => {
+		const node = titleRef.current;
+		if (!node) return;
+		const measure = () => {
+			if (!node.isConnected) return;
+			setTitleClipped(node.scrollWidth - node.clientWidth > 0.5);
+		};
+		const frame = requestAnimationFrame(measure);
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		void document.fonts?.ready.then(measure).catch(() => {});
+		return () => {
+			cancelAnimationFrame(frame);
+			observer.disconnect();
+		};
+	}, [displayName, titleClipped]);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
 	/*
@@ -892,9 +943,38 @@ const BoardCard: FC<BoardCardProps> = ({
 		>
 			<div className="flex items-start justify-between gap-2">
 				<span className="min-w-0 flex-1">
-					<span className="block truncate text-body-sm font-medium text-ink">
-						{displayName}
-					</span>
+					{/*
+					 * THE CLIPPED TITLE HAS A SECOND DOOR (operator, 2026-09-30): hovering
+					 * the cut title reveals the full text, and a keyboard user reaches the
+					 * same panel because the span takes the tab stop exactly when the
+					 * tooltip exists (`titleClipped`) - never as a stop that reveals
+					 * nothing.
+					 *
+					 * A FOCUS STOP INSIDE THIS CARD IS THE CARD'S OWN RECORDED TRADE, not
+					 * a new one: its `role="button"` already carries two focusable doors
+					 * (the menu and the sessions popover) under the comment that states
+					 * the presentational-children cost and why it is accepted. The
+					 * alternative - putting the panel on the card root - would open the
+					 * full title on every hover of the card's facts, which is the noise
+					 * the truncated title alone does not create.
+					 *
+					 * Radix opens the panel on focus as well as hover, so no key handler
+					 * is needed here, and the card's own `openFromKeyboard` ignores
+					 * events whose target is a child, so Enter on this span cannot
+					 * navigate the card.
+					 */}
+					<Tooltip content={titleClipped ? displayName : null} side="top">
+						<span
+							ref={titleRef}
+							/* The harness's handle on the title line, in the `data-project-name`
+							   family; keyed by the project's key so a rig finds it by address. */
+							data-project-title={project.name}
+							tabIndex={titleClipped ? 0 : undefined}
+							className="block truncate text-body-sm font-medium text-ink"
+						>
+							{displayName}
+						</span>
+					</Tooltip>
 					{/*
 					 * The KEY stays the secondary line when a title carries the
 					 * identity: the title names the work, the key keeps it

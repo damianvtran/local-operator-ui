@@ -146,7 +146,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			className="flex min-h-0 flex-1 flex-col"
 			data-testid="project-timeline"
 		>
-			<div className="flex shrink-0 items-center justify-between gap-3 px-3 py-2">
+			<div className="flex shrink-0 items-center justify-between gap-3 px-9 py-2">
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
 					{failedDetails > 0
 						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
@@ -192,7 +192,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			</div>
 
 			{span && sections.dated.length > 0 ? (
-				<div className="min-h-0 flex-1 overflow-auto">
+				<div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
 					<div className="min-w-max">
 						<Axis
 							startMs={span.startMs}
