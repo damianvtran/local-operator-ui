@@ -2079,6 +2079,28 @@ export const BoardSticky: Story = {
 			);
 		}
 		/*
+		 * THE PIN HOLDS TO THE END OF THE SCROLL (design round 2, D2 = QA round
+		 * 1, Q2): the strip's child must stay content-height (`items-start`), or
+		 * the column row's sticky containing block ends after one screen and the
+		 * row drifts off — measured at −94.3px on the 6289px board. Scroll to
+		 * the very end and read the offset back; the row must still be pinned at
+		 * the scrollport's own top edge.
+		 */
+		strip.scrollTop = strip.scrollHeight;
+		await poll(
+			() => strip.scrollTop >= strip.scrollHeight - strip.clientHeight - 1,
+			"the strip at its scroll end",
+		);
+		const headerTop = document
+			.querySelector<HTMLElement>('[data-board-column="active"]')
+			?.getBoundingClientRect().top;
+		const stripTop = strip.getBoundingClientRect().top;
+		if (headerTop === undefined || Math.abs(headerTop - stripTop) > 0.5) {
+			throw new Error(
+				`the column row lost its pin at the scroll end: offset ${((headerTop ?? 0) - stripTop).toFixed(1)}`,
+			);
+		}
+		/*
 		 * THE TITLE DISPLAY, read off the live card: the fixture's titled row
 		 * shows its title as the primary line and its key as the muted
 		 * subtitle, while `data-project-name` stays the KEY (the addressable
@@ -2157,17 +2179,27 @@ export const Timeline: Story = {
 		</>
 	),
 	play: playOnce("timeline", async () => {
+		/*
+		 * ROWS BIND `project.name` (agent review R1-1, QA round 1, Q1): the row
+		 * hook is the project's NAME — `payments-migration` — not its id; the
+		 * first cut of this poll looked for `p1`, which no row ever carries, so
+		 * the assertion never ran. It polls the name now and reads it back.
+		 */
 		await poll(
-			() => document.querySelector('[data-project-name="p1"]') !== null,
+			() =>
+				document.querySelector('[data-project-name="payments-migration"]') !==
+				null,
 			"the titled timeline row",
 		);
-		const row = document.querySelector<HTMLElement>('[data-project-name="p1"]');
+		const row = document.querySelector<HTMLElement>(
+			'[data-project-name="payments-migration"]',
+		);
 		if (!row || !row.textContent.includes("Payments migration")) {
 			throw new Error(
 				"the timeline's titled row does not show its title (R1-1's case)",
 			);
 		}
-		if (row.dataset.projectName !== "p1") {
+		if (row.dataset.projectName !== "payments-migration") {
 			throw new Error(
 				"the timeline row's data-project-name is not the key anymore",
 			);
