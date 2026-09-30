@@ -1135,11 +1135,14 @@ const CONTROLS = [
 		 * merge into the ground entirely, and no single role fixes that at both ends
 		 * (over the four grounds `elevated` spans 0.00-11.64, `sunken` 0.44-14.88). The
 		 * old mark's own `warningWash` was not exempt either: its per-ground minima span
-		 * 0.87-2.27 across the fifty-nine, and the wash family as a whole runs
-		 * 0.53-25.83 — so a wash does not fix the deep rows either. (Scope note, review
-		 * round 1 F1: the narrower 0.87-2.27 belongs to `warningWash` alone, per ground,
-		 * and to the wash family only when read as its per-(wash, ground) minima,
-		 * 0.53-2.69; the family's whole span is 0.53-25.83.) What keeps the count legible is the numeral's own floor above;
+		 * 0.87-2.27 across the fifty-nine, and the wash family — all six roles
+		 * (`warningWash`, `successWash`, `dangerWash`, `infoWash`, `accentWash`,
+		 * `accentAltWash`) over the four grounds — runs 0.53-30.71, so a wash does not
+		 * fix the deep rows either. (Scope note, review round 1 F1 and round 2 F7: the
+		 * narrower 0.87-2.27 belongs to `warningWash` alone, per ground; the family's
+		 * per-(wash, ground) minima span 0.53-2.69 and its whole span is 0.53-30.71 —
+		 * 25.83 is the five-role reading, which drops `accentAltWash`, and that is why
+		 * the membership is named here rather than left to the reader.) What keeps the count legible is the numeral's own floor above;
 		 * what keeps it a MARK rather than plain label text is that a quiet row
 		 * draws nothing at all. The step is therefore a cue on the plain grounds and
 		 * absent on the deep ones, which is the same deal the sidebar's count lines
