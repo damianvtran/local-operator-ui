@@ -97,6 +97,7 @@ import {
 	groupByTeam,
 	listRowMeta,
 	progressAge,
+	projectDisplayName,
 	projectOverdue,
 	projectStatusMeta,
 	projectTeamName,
@@ -192,6 +193,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	 */
 	const [order, setOrder] = useState<string[]>(readBoardColumnOrder);
 	const columns = boardColumns(projects, order);
+	/*
+	 * THE BANDS: one per team over the WHOLE board (the same `groupByTeam` the
+	 * list's sections use), so every column-cell inside a band reads from the
+	 * shared `columns` derivation — one column order, one set of counts, and a
+	 * team's cards in one band at one scroll point (spec §2).
+	 */
+	const bands = groupByTeam(projects, projectTeamName);
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const [announcement, setAnnouncement] = useState("");
 	const stripRef = useRef<HTMLDivElement | null>(null);
@@ -540,7 +548,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			 * the operator's re-skin retires. The columns keep the canvas behind
 			 * them, so the well→card step is the ground ladder a board needs.
 			 */
-			className="@container flex min-h-0 flex-1 flex-col"
+			className="[container-type:size] flex min-h-0 flex-1 flex-col"
 			data-testid="project-board"
 		>
 			{/*
@@ -569,10 +577,18 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 				data-board-strip=""
 				className={cn(
 					/*
-					 * ONE SCROLLER, BOTH AXES (slice 3): a column that overflows is
-					 * reached by scrolling the strip, not by a bar of its own, and a
-					 * column shorter than its neighbours keeps its own height
-					 * (`items-start`) instead of stretching to the tallest.
+					 * ONE SCROLLER FOR THE BOARD, BOTH AXES: the strip is the surface's own
+					 * scroller (horizontal always, vertical over the sections); the columns
+					 * inside a section get their own bounded vertical scrollers under the
+					 * operator's section cap, not the board's.
+					 *
+					 * `items-start` IS LOAD-BEARING (design round 2, D2 = QA round 1, Q2):
+					 * without it the strip's single child stretches to the strip's own
+					 * client height, so the inner column's box ends after one screen and
+					 * every sticky inside it - the column row included - scrolls out of
+					 * range (measured as a row offset of -94.3px on a 6289px board). The
+					 * child must stay content-height for the sticky chain to hold to the
+					 * end of the scroll.
 					 *
 					 * NO TOP PADDING (round 1, Q2/U2): the column header pins at
 					 * `top-0`, and with `pt-3` the scrollport's own top edge sat 12px
@@ -581,7 +597,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * was live at rel 2.7). The strip's padding now starts at its sides
 					 * and bottom, and the header pins flush to the edge it pins to.
 					 */
-					"relative flex min-h-0 flex-1 items-start gap-3 overflow-auto px-3 pb-3",
+					"relative flex min-h-0 flex-1 items-start overflow-auto px-3 pb-3",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
@@ -593,109 +609,147 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 						className="pointer-events-none absolute top-3 bottom-3 w-0.5 rounded-full bg-accent"
 					/>
 				)}
-				{columns.map((column) => {
-					const meta = projectStatusMeta(column.status);
-					return (
-						<section
-							key={column.status}
-							data-board-column={column.status}
-							/*
-							 * The column is a well on the page canvas: with the frame's ground
-							 * retired, the sunken step is the boundary a column needs. No
-							 * `overflow-hidden`: the header and the team straps must be able
-							 * to stick, and a clipped well would freeze them mid-scroll.
-							 */
-							className="flex w-64 shrink-0 flex-col rounded-md bg-sunken"
-						>
-							<header
-								data-board-column-handle={column.status}
-								onPointerDown={(event) =>
-									onHeaderPointerDown(event, column.status)
-								}
-								onPointerMove={onHeaderPointerMove}
-								onPointerUp={onHeaderPointerUp}
-								onPointerCancel={onHeaderPointerCancel}
-								className={cn(
+				{/*
+				 * THE BOARD IS BANDS OF COLUMNS (the operator's ask, spec §2/§3): one
+				 * full-width header row pins at `top-0`, and beneath it each TEAM is a
+				 * band whose own header pins at `top-11` — so the two sticky layers
+				 * stay the same two constants, and the outgoing band header leaves as
+				 * the incoming one docks (at most one in the slot, naming the band
+				 * whose cards are passing under it).
+				 *
+				 * WHY THE COLUMN HEADERS MOVED INTO ONE ROW: with the team dimension
+				 * promoted to full-width bands, a column is a position, not a box —
+				 * its header belongs to the row every band shares, and its cards live
+				 * in one cell per band. The drag-reorder hooks (`data-board-column`,
+				 * `data-board-column-handle`) stay on these cells, so the reorder
+				 * still measures the columns' live rects — which are the same rects
+				 * the row has always painted.
+				 */}
+				<div className="flex w-max flex-col">
+					<div className="sticky top-0 z-30 flex gap-3">
+						{columns.map((column) => {
+							const meta = projectStatusMeta(column.status);
+							return (
+								<header
+									key={column.status}
+									data-board-column={column.status}
 									/*
-									 * The header PINS (top-0 in the strip's scroller) and its height
-									 * is fixed at 44 (`h-11`) so the team straps below pin flush at
-									 * `top-11` — the two offsets are one fact written twice. The
-									 * hairline under it retired with the frame's, and the radius
-									 * matches the well's so the corners do not square off.
+									 * The cell PINS as part of its row (the row is the sticky layer),
+									 * and its height is the fixed 44 (`h-11`) the band headers' `top-11`
+									 * offset is written against — the two constants stay one fact
+									 * written twice. The radius matches the well's so the corners do
+									 * not square off.
 									 */
-									"sticky top-0 z-20 flex h-11 shrink-0 cursor-grab items-center justify-between gap-2 rounded-t-md bg-sunken px-3 active:cursor-grabbing",
-									drag?.status === column.status && "opacity-85",
-								)}
-							>
-								<span className="flex min-w-0 flex-1 items-center gap-1.5">
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon-sm"
-										data-board-column-grip={column.status}
-										aria-label={`Move ${meta.label} column`}
-										aria-describedby={BOARD_MOVE_HINT_ID}
-										title={BOARD_MOVE_HINT}
-										className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
-										onKeyDown={(event) => onGripKeyDown(event, column.status)}
-									>
-										<GripVertical aria-hidden="true" />
-									</Button>
-									<span className="flex min-w-0 items-baseline gap-2">
-										<span className="truncate text-body-sm font-medium text-ink">
-											{meta.label}
-										</span>
-										{COLUMN_NOTE[column.status] && (
-											<span className="truncate text-meta text-ink-muted">
-												{COLUMN_NOTE[column.status]}
+									data-board-column-handle={column.status}
+									onPointerDown={(event) =>
+										onHeaderPointerDown(event, column.status)
+									}
+									onPointerMove={onHeaderPointerMove}
+									onPointerUp={onHeaderPointerUp}
+									onPointerCancel={onHeaderPointerCancel}
+									className={cn(
+										"flex h-11 w-64 shrink-0 cursor-grab items-center justify-between gap-2 rounded-t-md bg-sunken px-3 active:cursor-grabbing",
+										drag?.status === column.status && "opacity-85",
+									)}
+								>
+									<span className="flex min-w-0 flex-1 items-center gap-1.5">
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon-sm"
+											data-board-column-grip={column.status}
+											aria-label={`Move ${meta.label} column`}
+											aria-describedby={BOARD_MOVE_HINT_ID}
+											title={BOARD_MOVE_HINT}
+											className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
+											onKeyDown={(event) => onGripKeyDown(event, column.status)}
+										>
+											<GripVertical aria-hidden="true" />
+										</Button>
+										<span className="flex min-w-0 items-baseline gap-2">
+											<span className="truncate text-body-sm font-medium text-ink">
+												{meta.label}
 											</span>
-										)}
+											{COLUMN_NOTE[column.status] && (
+												<span className="truncate text-meta text-ink-muted">
+													{COLUMN_NOTE[column.status]}
+												</span>
+											)}
+										</span>
+									</span>
+									<span className="text-meta text-ink-muted">
+										{column.projects.length}
+									</span>
+								</header>
+							);
+						})}
+					</div>
+					{bands.map((band) => (
+						<section key={band.team ?? ""} className="flex flex-col">
+							{/*
+							 * THE BAND HEADER = the list's section header, fixed at 32 (`h-8`)
+							 * so the offset below the column row stays a single constant. It is
+							 * sticky WITHIN ITS OWN BAND's box, which is what makes the handoff
+							 * continuous: bands are stacked flush, so the outgoing header
+							 * leaves exactly as the incoming one docks.
+							 *
+							 * NAME AND COUNT ARE ONE STICKY UNIT (design round 1, D1): the count
+							 * rides INSIDE the stuck span so h-scrolling cannot strand it
+							 * off-viewport, and with a clamped long name the clamp's right edge
+							 * falls after the count instead of on top of the name's glyphs.
+							 * The span sticks LEFT while the band is h-scrolled (the board root
+							 * is a SIZE container — `cqw`/`cqh` are the scrollport's own
+							 * dimensions): the team stays readable without clipping at the
+							 * window edge.
+							 */}
+							<div
+								data-board-team={band.team ?? ""}
+								className="sticky top-11 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
+							>
+								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
+									<span className="truncate text-ink">
+										{band.team ?? NO_TEAM_LABEL}
+									</span>
+									<span className="shrink-0 text-ink-muted">
+										{band.items.length}
 									</span>
 								</span>
-								<span className="text-meta text-ink-muted">
-									{column.projects.length}
-								</span>
-							</header>
-							{column.projects.length === 0 ? (
-								<p className="px-3 py-4 text-meta text-ink-muted">
-									No projects here.
-								</p>
-							) : (
-								/*
-								 * The straps pin at `top-11` — under the column header, which is
-								 * 44px tall — and their ground is the well's own, so cards pass
-								 * under an opaque band rather than through it.
-								 */
-								<ul className="flex flex-col gap-2 p-2">
-									{groupByTeam(column.projects, projectTeamName).map(
-										(group) => (
-											/*
-											 * THE GROUP IS THE STRAP'S CONTAINING BLOCK (round 1,
-											 * Q1/U1): the strap pins within its own group's box — the
-											 * shape the list's sections use — so the next strap PUSHES
-											 * the previous out. A strap that is a sibling of its cards
-											 * has no box to stick inside: it stops at its own edge and
-											 * the incoming strap parks over it, which is the stacking
-											 * round 1 measured.
-											 */
-											<li
-												key={group.team ?? ""}
-												className="flex flex-col gap-2"
-												data-board-group={group.team ?? ""}
-											>
-												<div
-													className="sticky top-11 z-10 flex items-center gap-2 bg-sunken px-3 py-1 text-meta"
-													data-board-team={group.team ?? ""}
-												>
-													<span className="truncate text-ink-muted">
-														{group.team ?? NO_TEAM_LABEL}
-													</span>
-													<span className="shrink-0 text-ink-muted">
-														{group.items.length}
-													</span>
-												</div>
+							</div>
+							{/*
+							 * NO EMPTY-BAND SHAPE SHIPS HERE (design round 2, D4): an earlier draft
+							 * drew a flat line for a team with no tickets, but `groupByTeam`
+							 * omits empty groups by its own rule, so no team without tickets ever
+							 * reaches this map and the state is unrenderable - a branch nothing
+							 * can exercise is dead code, not a guard. The operator's "no empty
+							 * column space for a team with no tickets" is satisfied by the
+							 * omission itself: a zero-ticket team is not a section at all.
+							 *
+							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the section
+							 * never grows past the board viewport - every CELL is its own
+							 * bounded vertical scroller (`max-h` = one screen minus the pinned
+							 * row and this band's header, `100cqh - 92`), so a long queue
+							 * scrolls inside its column while a short one shrinks to content (a
+							 * max, not a height). Cells still cross-stretch to the well's
+							 * tallest, so the band stays one rectangle. NOTHING TRAPS THE
+							 * WHEEL: no `overscroll-behavior` anywhere on this path and no
+							 * `overflow: hidden` between the cells and the strip - a wheel over
+							 * a column that cannot scroll (or has hit its edge) chains to the
+							 * board's own scroller, which is how the next team comes into view.
+							 */}
+							<div className="flex gap-3 rounded-md bg-sunken py-2">
+								{columns.map((column) => {
+									const cards = band.items.filter(
+										(project) => project.status === column.status,
+									);
+									return (
+										<div
+											key={column.status}
+											data-board-cell={column.status}
+											className="flex max-h-[calc(100cqh-92px)] w-64 shrink-0 flex-col gap-2 overflow-y-auto px-2"
+										>
+											{cards.length > 0 && (
 												<ul className="flex flex-col gap-2">
-													{group.items.map((project) => (
+													{cards.map((project) => (
 														<li key={project.id}>
 															<BoardCard
 																project={project}
@@ -709,14 +763,14 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 														</li>
 													))}
 												</ul>
-											</li>
-										),
-									)}
-								</ul>
-							)}
+											)}
+										</div>
+									);
+								})}
+							</div>
 						</section>
-					);
-				})}
+					))}
+				</div>
 			</div>
 		</div>
 	);
@@ -747,6 +801,15 @@ const BoardCard: FC<BoardCardProps> = ({
 		project,
 		typeof navigator === "undefined" ? undefined : navigator.language,
 	);
+	/*
+	 * THE TITLE IS THE IDENTITY (grounded finding, this slice): the board, the
+	 * list and the timeline all rendered the machine KEY, while the detail sheet
+	 * rendered `projectDisplayName` — the same rule the sheet uses now reads on
+	 * every surface that names a project. Unset title falls back to the key
+	 * inside `projectDisplayName`; `data-project-name` keeps the KEY as the
+	 * addressable hook (focus handoff), not as display text.
+	 */
+	const displayName = projectDisplayName(project);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
 	/*
@@ -804,7 +867,7 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * AT pass is tracked as a follow-up, not assumed away here. */
 			role="button"
 			tabIndex={0}
-			aria-label={`Open ${project.name}`}
+			aria-label={`Open ${displayName}`}
 			onClick={openFromCard}
 			onKeyDown={openFromKeyboard}
 			/*
@@ -830,8 +893,20 @@ const BoardCard: FC<BoardCardProps> = ({
 			<div className="flex items-start justify-between gap-2">
 				<span className="min-w-0 flex-1">
 					<span className="block truncate text-body-sm font-medium text-ink">
-						{project.name}
+						{displayName}
 					</span>
+					{/*
+					 * The KEY stays the secondary line when a title carries the
+					 * identity: the title names the work, the key keeps it
+					 * addressable at a glance (and `data-project-name` keeps it
+					 * programmatically). Titleless projects render one line — the
+					 * fallback in `projectDisplayName`.
+					 */}
+					{project.title && (
+						<span className="mt-0.5 block truncate text-meta text-ink-muted">
+							{project.name}
+						</span>
+					)}
 					{project.description && (
 						<span className="mt-0.5 block truncate text-meta text-ink-muted">
 							{project.description}
@@ -844,7 +919,7 @@ const BoardCard: FC<BoardCardProps> = ({
 						 * page focuses this node by id after a move settles (see
 						 * `useMoveFocusHandoff`). */
 						data-project-menu={project.id}
-						aria-label={`Actions for ${project.name}`}
+						aria-label={`Actions for ${displayName}`}
 						disabled={busy}
 						/* THE CARD'S HANDLER MUST NOT SEE THIS PRESS (mouse or
 						 * keyboard): the trigger acts, the card does not navigate. Radix
@@ -952,13 +1027,16 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 	const detail = useProjectDetail(project.id, open);
 	const links = detail.data?.links ?? [];
 	const linkLabel = sessionsTriggerLabel(project);
+	/* Its own read of the identity rule: this popover is a sibling component,
+	 * not a child of the card, so the card's `displayName` is not in scope. */
+	const displayName = projectDisplayName(project);
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger
 				/* The sweep's own hook into the door, in the `data-project-name`
 				 * family this card already uses. */
 				data-project-sessions={project.id}
-				aria-label={`Sessions linked to ${project.name}`}
+				aria-label={`Sessions linked to ${displayName}`}
 				/* The card's handler must not see this press either: the door
 				 * opens the popover, the card does not navigate. */
 				onClick={(event) => event.stopPropagation()}
