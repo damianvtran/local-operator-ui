@@ -41,9 +41,19 @@ import type { FC } from "react";
  * The same words the indicator itself prints, so the thing being configured is
  * recognisable from the setting: a user who has seen "Server update 0.55.10" in
  * the chrome is looking for the row that governs it.
+ *
+ * ## One word for the app, on every surface
+ *
+ * The row labels, the band's own copy and this section's heading all say
+ * APPLICATION (reviews D3, D10): the block below sits under "Application updates
+ * and info", the settings sidebar's rail names it the same way, and a dozen other
+ * sentences in the app send the reader to "Settings, under Application updates" -
+ * so "App updates" here and "App update" in the band were two names for one thing
+ * inside a single screen, and the band's 110-odd characters of copy have the room
+ * (the band is 720px wide with its text using about 110px of it, measured).
  */
 const SURFACE_LABELS: Record<UpdateType, string> = {
-	[UpdateType.UI]: "App updates",
+	[UpdateType.UI]: "Application updates",
 	[UpdateType.BACKEND]: "Server updates",
 };
 
@@ -73,8 +83,14 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 					 * control itself or a screen reader hears three listboxes called
 					 * "Every release" with nothing saying which half of the app each one
 					 * governs.
+					 *
+					 * AND IT CARRIES THE VISIBLE VALUE (review D9). The trigger's visible text
+					 * is the selected option, so a name of "Announce application updates" alone
+					 * named a control the sighted user cannot see the like of - the same
+					 * label-in-name rule (WCAG 2.5.3) the band's own header cites, applied to
+					 * the one control on this page that did not follow it.
 					 */
-					aria-label={`Announce ${SURFACE_LABELS[type].toLowerCase()}`}
+					aria-label={`${SURFACE_LABELS[type]}: ${FOLLOWED_SEGMENT_COPY[followed].label}`}
 					className="w-full sm:w-56"
 					data-followed-segment={type}
 				>
@@ -106,10 +122,24 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 export const UpdateFollowing: FC = () => (
 	<div className={cn("flex flex-col gap-3")}>
 		<div>
-			<h3 className="text-body-sm text-ink">Update notifications</h3>
-			<p className="mt-0.5 text-meta text-ink-muted">
-				How much of a version change raises the update indicator in the window.
-				A check you run yourself always reports what it finds.
+			{/*
+			 * THE HEADING IS A HEADING (review D2). It was `text-body-sm`, the row labels'
+			 * own class, so three same-weight lines stacked before the first control and
+			 * the only thing distinguishing the block's top was a `gap-3` - which is the
+			 * step its neighbours use for a SECTION heading (`SettingsSection`'s own h2,
+			 * `mcp-management-section`'s inner h3), so the block now has a top rather
+			 * than a third label.
+			 */}
+			<h3 className="text-heading text-ink">Update notifications</h3>
+			{/*
+			 * WHAT THE READER SEES, NOT WHAT THE APP CALLS IT (review D6): "raises the
+			 * update indicator" named a component the user has never been shown. The
+			 * notice is the strip at the bottom of the window, and that is how the
+			 * sentence names it.
+			 */}
+			<p className="mt-1 text-meta text-ink-muted">
+				How much of a version change shows the update notice at the bottom of
+				the window. A check you run yourself always reports what it finds.
 			</p>
 		</div>
 		<div className="flex flex-col gap-3">
