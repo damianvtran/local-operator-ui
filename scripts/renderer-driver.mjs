@@ -27004,9 +27004,19 @@ async function sceneSidebarLazyChats(cdp) {
 		const label = await cdp.evaluate(
 			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
 		);
+		/*
+		 * THE LEADING CLAUSE, not the whole string (review round 1, F1): the control
+		 * renders `Show N more chats` now and may carry the position tail beside it
+		 * (` · X of Y`, `entityMore`), so the exact equality this scene shipped with
+		 * pins copy the app no longer draws. What the round is about is the COUNT the
+		 * press will add - the leading clause states it, and a stale tail may change
+		 * with it rather than fail a scene on a copy edit.
+		 */
 		check(
 			"Show more states the rows the press will ADD, not the page size (D7)",
-			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			String(label ?? "").startsWith(
+				`Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more chats`,
+			),
 			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
 		);
 		const lastPress = await verb(cdp, "press", {
