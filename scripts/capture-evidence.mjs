@@ -7305,6 +7305,69 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+
+	/*
+	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
+	 * implementation, not from a proposal.
+	 *
+	 * The stories drive the REAL path: a dispatched `contextmenu` at the row's own
+	 * box (the trigger) for the pointer states, a real `ContextMenu` keydown on the
+	 * row's button for the keyboard one, the real `openMenuRowId` hold, the pair's
+	 * real predicates (s1 pinned, s2 normal, s3 pin-unknown), and per-frame readouts
+	 * of the numbers each frame is read for, sampled from the DOM.
+	 *
+	 * THE HOVER IS PART OF THE MEASUREMENT, not decoration: the row's reveal and its
+	 * hover ground are `:hover`/`group-hover` until the menu takes the pointer, and
+	 * the hold is what replaces them while it is open. The story opens the menu
+	 * 250ms in - before the flyout's own 400ms dwell - so the clean frames carry no
+	 * flyout; `flyout-dwelled` waits 1800ms so the flyout has drawn and the frame
+	 * can show it suppressed; `flyout-alone` is its control (same hover, same dwell,
+	 * no menu), and `menu-closed` is the before/after partner of `pointer-open`
+	 * (same scene, same settle, no open).
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	["chat-sidebar-row-context-menu--keyboard-open", 780, 520],
+	[
+		"chat-sidebar-row-context-menu--pinned-row",
+		780,
+		520,
+		{ hover: '[data-session-row="s1"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--pin-state-unknown",
+		780,
+		520,
+		{ hover: '[data-session-row="s3"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--archive-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-dwelled",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-alone",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--menu-closed",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
 ];
 
 /**

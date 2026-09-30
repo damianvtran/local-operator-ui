@@ -228,6 +228,25 @@ test("the cap and the attribute the chord presses are one spelling", () => {
 	assert.equal(mod.chatRowActCap("pin", true), "⌘⇧P");
 	assert.equal(mod.chatRowActCap("archive", true), "⌘⇧A");
 	assert.equal(mod.chatRowActCap("pin", false), "Ctrl+Shift+P");
+	/*
+	 * THE JOINED SIBLING (spec §3): `KeyboardShortcut` splits its prop on `+`, so the
+	 * macOS cap the menu PRINTS needs the separators the handler's spelling does
+	 * not have - `⌘⇧P` fed to the component as-is renders as ONE cap three glyphs
+	 * wide - while the non-mac spelling already carries them. The property that
+	 * keeps the two from drifting: split the joined form on `+`, and the parts
+	 * concatenate back to the handler's spelling.
+	 */
+	assert.equal(mod.chatRowActCapJoined("pin", true), "⌘+⇧+P");
+	assert.equal(mod.chatRowActCapJoined("archive", true), "⌘+⇧+A");
+	assert.equal(mod.chatRowActCapJoined("pin", false), "Ctrl+Shift+P");
+	assert.equal(
+		mod.chatRowActCapJoined("pin", true).split("+").join(""),
+		mod.chatRowActCap("pin", true),
+	);
+	assert.equal(
+		mod.chatRowActCapJoined("pin", false).split("+").join(""),
+		mod.chatRowActCap("pin", false).split("+").join(""),
+	);
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.pin, "data-session-pin");
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.archive, "data-session-archive");
 });

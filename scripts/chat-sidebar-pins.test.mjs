@@ -590,10 +590,18 @@ test("the unpinned reveal is a display switch and cannot reflow the row it is no
 		`the reveal is a group-hover/group-focus-within display step: ${classes}`,
 	);
 	/*
-	 * AND THE REST HALF STATES `hidden` AND NOT `flex`, which is the cascade rule read
-	 * off the branch rather than off the whole class list: the PINNED branch legitimately
+	 * AND THE REST HALF STATES `hidden` AND NOT A BARE `flex`, which is the cascade rule
+	 * read off the branch rather than off the whole class list: the PINNED branch legitimately
 	 * declares `flex` (the mark is the state, D4), so the assertion is about the unpinned
 	 * one - the element's base plus the inner `cn` that is its rest state.
+	 *
+	 * THE ONE `flex` THE REST HALF MAY CARRY IS THE MENU HOLD, and it is GUARDED: while
+	 * this row's context menu is open the reveal is state rather than pointer state (the
+	 * menu's portal is modal, so the pointer cannot hold the group states), and the glyph
+	 * comes back as `menuOpen && "flex text-ink-muted"` - one display value per evaluated
+	 * list, because `cn`'s tailwind-merge resolves the pair and the guard is what keeps the
+	 * statement conditional rather than a tie. A bare `"flex"` here is the cascade bug this
+	 * test exists for.
 	 */
 	const rest = classes.slice(classes.indexOf(": cn("));
 	const restTokens = rest
@@ -601,10 +609,11 @@ test("the unpinned reveal is a display switch and cannot reflow the row it is no
 				.map((match) => match[1] ?? match[2] ?? match[3])
 				.flatMap((value) => value.split(/\s+/))
 		: [];
+	const bareFlex = [...rest.matchAll(/(?<!menuOpen && )"flex(?:\s|")/g)];
 	assert.equal(
-		restTokens.filter((token) => token === "flex").length,
+		bareFlex.length,
 		0,
-		`the rest state must not state \`flex\` beside the variant's own: ${classes}`,
+		`the rest state must not state a bare \`flex\` beside the variant's own - the only sanctioned one is the guarded \`menuOpen && "flex ..."\` hold: ${classes}`,
 	);
 	assert.ok(
 		restTokens.includes("hidden"),
@@ -672,8 +681,8 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	);
 	assert.match(
 		pairWrapper.slice(0, 400),
-		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
-		"the pair wrapper must be displayed on a pinned row and revealed on an unpinned one",
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		"the pair wrapper must be displayed on a pinned row or while its menu hold is on, and revealed on an unpinned one",
 	);
 });
 

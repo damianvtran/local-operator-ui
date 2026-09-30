@@ -1,0 +1,359 @@
+/**
+ * The chat row's context menu (#694), executable: the parity between the menu's
+ * items and the hover pair, the spelling the hold must NOT be authored with, and
+ * the structural half of the opener/focus contract.
+ *
+ *     node --test scripts/chat-sidebar-row-menu.test.mjs
+ *
+ * WHAT THIS FILE CAN AND CANNOT PROVE, because the split is the whole reason for
+ * its shape. The menu is Radix's primitive driven by React state; this
+ * repository's desktop suite has no DOM harness, so:
+ *
+ *   - the PREDICATE PARITY, the withheld-never-disabled rule and the opener's
+ *     structure are read off the shipped source, in the idiom
+ *     `chat-sidebar-archive.test.mjs` established, because "the item exists
+ *     exactly when the control does" and "no code path consumes the ambient
+ *     coordinates" are facts about the JSX and handlers that mount both;
+ *   - the CHORD SPELLINGS are executed in `chat-keyboard-regions.test.mjs`,
+ *     which is the file that owns `chatRowActCap` and its joined sibling;
+ *   - everything about PIXELS - the held reveal, the ground, the panel, the
+ *     flyout - is the frames' job (`docs/evidence/chat-sidebar-row-context-menu/`);
+ *     a green assertion about a class string is not evidence that anything moved.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+
+const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+const read = (relative) => readFileSync(relative, "utf8");
+/**
+ * Comments stripped, so a rule can never be satisfied by prose about the rule -
+ * the form `chat-sidebar-pins.test.mjs` documents: this change's own comments
+ * name the forbidden `data-[state` spelling twice, and the guard below has to
+ * read the code, not the note explaining why there is none in it.
+ */
+const code = (relative) =>
+	read(relative)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/.*$/gm, "$1");
+const between = (source, from, to) => {
+	const at = source.indexOf(from);
+	assert.notEqual(at, -1, `no source matches ${JSON.stringify(from)}`);
+	const end = source.indexOf(to, at + from.length);
+	assert.notEqual(
+		end,
+		-1,
+		`no source matches ${JSON.stringify(to)} after ${JSON.stringify(from)}`,
+	);
+	return source.slice(at, end);
+};
+
+const SIDEBAR_CODE = code(SIDEBAR);
+/** The menu's own items, as mounted. */
+const MENU = between(
+	SIDEBAR_CODE,
+	"<ContextMenuContent",
+	"</ContextMenuContent>",
+);
+
+test("the menu's items are drawn from the same predicates the pair reads", () => {
+	/*
+	 * §8's parity requirement, and it is the reason this test exists beside the
+	 * archive/pins files rather than inside either: the menu and the pair are two
+	 * surfaces for the same two acts, and a row whose menu offered an act its
+	 * control withheld (or the reverse) would be two answers to one question.
+	 * The pair's own gates are asserted present BEFORE the menu in the same file,
+	 * and the items reuse their two literals verbatim - `archiveEnabled` for the
+	 * archive act, `row.pinned !== undefined` for the pin (NOT `pinned`, which is
+	 * `=== true` and would offer Pin on a row whose pin state is unknown).
+	 */
+	const pair = SIDEBAR_CODE.slice(
+		0,
+		SIDEBAR_CODE.indexOf("<ContextMenuContent"),
+	);
+	assert.ok(
+		pair.includes("{row.pinned !== undefined && ("),
+		"the pin CONTROL's gate is no longer `row.pinned !== undefined`",
+	);
+	assert.ok(
+		pair.includes("{archiveEnabled && ("),
+		"the archive CONTROL's gate is no longer `archiveEnabled`",
+	);
+	const archiveItem = between(
+		MENU,
+		"{archiveEnabled && (",
+		"</ContextMenuItem>",
+	);
+	const pinItem = between(
+		MENU,
+		"{row.pinned !== undefined && (",
+		"</ContextMenuItem>",
+	);
+	assert.ok(
+		archiveItem.startsWith("{archiveEnabled && ("),
+		"the archive ITEM exists outside the capability gate the control reads",
+	);
+	assert.ok(
+		pinItem.startsWith("{row.pinned !== undefined && ("),
+		"the pin ITEM exists outside the pin-state gate the control reads",
+	);
+	/*
+	 * WITHHELD, NEVER DISABLED: an act the row cannot take is an absent row. There
+	 * is no `disabled` prop in the menu's JSX at all, so nobody can half-enable an
+	 * item the pair would have withheld.
+	 */
+	assert.equal(
+		MENU.includes("disabled"),
+		false,
+		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all",
+	);
+	/*
+	 * THE COPY AND THE ORDER. Sentence case, verb + object, and the pair's own
+	 * measured order (the archive glyph is `order-first` in the strip): archive
+	 * first, so the two surfaces present the same two acts in the same sequence
+	 * however they were opened.
+	 */
+	assert.ok(
+		archiveItem.includes(
+			'{archived ? "Unarchive conversation" : "Archive conversation"}',
+		),
+		"the archive item no longer words its act as the row/palette spelling",
+	);
+	assert.ok(
+		pinItem.includes('{pinned ? "Unpin conversation" : "Pin conversation"}'),
+		"the pin item no longer words its act as the pair's control does",
+	);
+	assert.ok(
+		MENU.indexOf('pressRowAct(row.session_id, "archive")') <
+			MENU.indexOf('pressRowAct(row.session_id, "pin")'),
+		"the menu no longer reads Archive then Pin",
+	);
+	/*
+	 * AND THE PRESS IS THE CONTROL'S OWN. `.click()` on the row's control takes the
+	 * same path as Enter on it - the guards, the store write and the focus
+	 * correction all arrive unchanged - so the item cannot reimplement a write
+	 * whose guards it does not know about.
+	 */
+	const press = between(SIDEBAR_CODE, "const pressRowAct = (", "};");
+	assert.ok(
+		press.includes("?.click()"),
+		"pressRowAct no longer presses the row's own control",
+	);
+	assert.ok(
+		press.includes("CHAT_ROW_ACT_ATTR[act]"),
+		"pressRowAct no longer resolves the control through the chord's own attribute table",
+	);
+});
+
+test("no rule on the row box is authored against `data-state`", () => {
+	/*
+	 * THE GUARD §3 REQUIRES (UX round, U-D3). The row's box is ALREADY a Radix
+	 * trigger - the shared Tooltip's - and carries the tooltip's `data-state`
+	 * while the flyout is drawn, which is exactly the state a right-click happens
+	 * in. A `ContextMenu.Trigger` on the same element writes the same attribute
+	 * with the menu's own values, so a rule authored against it holds or drops
+	 * depending on which component re-rendered last; the design record calls
+	 * `data-[state=open]:bg-row-hover` and `group-data-[state=open]:flex` defects
+	 * by name. The sidebar reads only ONE spelling for the held state -
+	 * `openMenuRowId`, through `menuOpen` - and this test is what keeps the other
+	 * one from being reintroduced silently.
+	 */
+	const boxAt = SIDEBAR_CODE.indexOf("data-session-row={row.session_id}");
+	assert.notEqual(boxAt, -1, "the row's box no longer carries its own id");
+	const classOpen = SIDEBAR_CODE.indexOf("className={cn(", boxAt);
+	const boxClasses = SIDEBAR_CODE.slice(
+		classOpen,
+		SIDEBAR_CODE.indexOf(")}", classOpen),
+	);
+	assert.equal(
+		boxClasses.includes("data-[state="),
+		false,
+		"the row's box authors a rule against `data-state`, the attribute two triggers share - author the hold against `openMenuRowId` instead",
+	);
+	/*
+	 * AND NOWHERE ELSE IN THIS PANEL, which is the stronger reading of the same
+	 * rule: the attribute's value on the row box is composed by two triggers, and
+	 * a rule shaped like the two above would read as a variant here no matter
+	 * which element it named. A future component with a legitimate use extends
+	 * this assertion with its reason - it is deliberately not spelled so an
+	 * exception can ride in unnoticed.
+	 */
+	assert.equal(
+		SIDEBAR_CODE.includes("data-[state="),
+		false,
+		"`data-[state=` appears in the sidebar's code",
+	);
+	/*
+	 * AND THE SANCTIONED SPELLING IS PRESENT, so the guard above cannot pass by
+	 * the hold being deleted: the ground on `!current` rows, and the reveal's
+	 * THREE authoring sites - the pin glyph, the archive glyph and the pair
+	 * wrapper - because a hold on the wrapper alone renders a `flex` box with
+	 * nothing in it.
+	 */
+	assert.ok(
+		boxClasses.includes('menuOpen && !current && "bg-row-hover"'),
+		"the held ground (`menuOpen && !current`) is gone or renamed",
+	);
+	assert.equal(
+		SIDEBAR_CODE.split('menuOpen && "flex text-ink-muted"').length - 1,
+		2,
+		"the held reveal no longer covers BOTH glyphs (the reveal is authored in three class strings, and the wrapper is not one of these two)",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes("pinned || menuOpen"),
+		"the pair wrapper no longer holds itself revealed while its menu is open",
+	);
+});
+
+test("the withdrawn panel carries no trigger, and the menu exists only where a capability does", () => {
+	/*
+	 * §4's byte-identity row: with NEITHER per-row capability there is no trigger
+	 * element, no attribute and no handler - the panel is the one it had before
+	 * this feature existed. The early return below is that panel; the trigger
+	 * lives only in the capable path after it.
+	 */
+	const withdrawn = between(
+		SIDEBAR_CODE,
+		"if (!pinsEnabled && !archiveEnabled) {",
+		"const bothControls =",
+	);
+	assert.equal(
+		withdrawn.includes("ContextMenu"),
+		false,
+		"the withdrawn panel carries a menu root or trigger",
+	);
+	assert.equal(
+		withdrawn.includes("data-session-menu-trigger"),
+		false,
+		"the withdrawn panel carries the menu's driver hook",
+	);
+	assert.equal(
+		withdrawn.includes("onKeyDown"),
+		false,
+		"the withdrawn panel carries the keyboard opener",
+	);
+	assert.ok(
+		withdrawn.includes("className={cn(rowBoxStyle, current && rowCurrent)}"),
+		"the withdrawn panel's box is no longer the pre-feature box",
+	);
+	/*
+	 * And the capable path carries all three: the hook, the opener, and the
+	 * asChild trigger inside the Tooltip (so the flyout keeps anchoring to the
+	 * box that does not shrink).
+	 */
+	assert.ok(
+		SIDEBAR_CODE.includes("data-session-menu-trigger"),
+		"no row carries the menu's driver hook any more",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes("onKeyDown={openRowMenuAtKeyboard}"),
+		"the box no longer answers the keyboard opener",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes(
+			"<ContextMenuTrigger asChild>{rowBox}</ContextMenuTrigger>",
+		),
+		"the box is no longer the trigger (asChild), so a wrapper element would have entered the list",
+	);
+});
+
+test("the keyboard opener synthesises its point and never reads the platform's", () => {
+	/*
+	 * §3's structural contract, which is what stands in for a platform
+	 * measurement the design round could not take: no code path on the keyboard
+	 * opener may consume `event.clientX/clientY`, and the point it dispatches is
+	 * the row's own box edge (`rect.left`, `rect.bottom - 1`). The dispatch is
+	 * the trigger's own `contextmenu`, so the primitive's own `handleOpen` stores
+	 * the point and sets `hasInteractedRef` before `open` - the "position is
+	 * indeterminate" path is unreachable by construction.
+	 */
+	const opener = SIDEBAR_CODE.slice(
+		SIDEBAR_CODE.indexOf("const openRowMenuAtKeyboard = (event"),
+		SIDEBAR_CODE.indexOf("const keyDown = (event"),
+	);
+	assert.ok(
+		opener.includes('event.key !== "ContextMenu"') &&
+			opener.includes('event.shiftKey && event.key === "F10"'),
+		"the opener no longer answers `ContextMenu` and `Shift+F10`",
+	);
+	assert.ok(
+		opener.includes("event.preventDefault()"),
+		"the opener no longer prevents the platform's default",
+	);
+	assert.equal(
+		opener.includes("event.clientX") || opener.includes("event.clientY"),
+		false,
+		"the keyboard opener consumes the ambient event's coordinates",
+	);
+	assert.ok(
+		opener.includes('new MouseEvent("contextmenu"'),
+		"the opener no longer dispatches the trigger's own contextmenu",
+	);
+	assert.ok(
+		opener.includes("clientX: rect.left") &&
+			opener.includes("clientY: rect.bottom - 1"),
+		"the synthesised point is no longer the row box's own edge",
+	);
+	/*
+	 * FOCUS, both edges of it: the keyboard path lands in the FIRST ITEM on open
+	 * (U-D4's minimum - focus visible, so a reader who pressed `Shift+F10` can act
+	 * without first pressing an arrow) and returns the caret to the row's button on
+	 * close; both prevent the primitive's default, and the pointer path takes no
+	 * focus either way (`menuOpenedByKeyboard` is the one splitter).
+	 */
+	const open = between(MENU, "onFocus={(event) => {", "onCloseAutoFocus");
+	assert.ok(
+		open.includes("if (!menuOpenedByKeyboard.current) return;"),
+		"the open-focus splitter is gone, so the pointer path would take item focus",
+	);
+	assert.ok(
+		open.includes("event.target !== event.currentTarget"),
+		"the focus redirect no longer restricts itself to the CONTAINER's own focus",
+	);
+	assert.ok(
+		open.includes('[role="menuitem"]'),
+		"the keyboard path no longer focuses the first item",
+	);
+	const close = between(
+		MENU,
+		"onCloseAutoFocus={(event) => {",
+		"}}\n\t\t\t\t>",
+	);
+	assert.ok(
+		close.includes("event.preventDefault()") &&
+			close.includes("[data-chat-row]") &&
+			close.includes("?.focus()"),
+		"the close-focus path no longer prevents the default and returns the caret to the row's button",
+	);
+	/*
+	 * AND THE LIST STANDS DOWN WHILE THE MENU IS OPEN (§6): the panel's keydown
+	 * answers an unknown target with `rows[0]`, so without this guard an arrow
+	 * pressed inside the open menu would move focus out of it to the first
+	 * conversation.
+	 */
+	const keyDown = SIDEBAR_CODE.slice(
+		SIDEBAR_CODE.indexOf("const keyDown = (event"),
+	);
+	assert.ok(
+		keyDown.indexOf("if (openMenuRowId !== null) return;") <
+			keyDown.indexOf("const target = event.target"),
+		"the panel's keydown no longer yields while a row's menu is open",
+	);
+	/*
+	 * THE MENU'S OWN SENTENCE (U-D5): the trigger adds no `aria-haspopup`, so the
+	 * menu is announced through this row's existing description channel - an
+	 * `sr-only` span the button's `aria-describedby` names, rendered whenever the
+	 * row carries the menu.
+	 */
+	assert.ok(
+		SIDEBAR_CODE.includes(
+			"menuEnabled ? rowMenuClauseId(row.session_id) : null",
+		),
+		"the row button's describedby list no longer names the menu clause",
+	);
+	assert.ok(
+		SIDEBAR_CODE.includes("{menuRemedy}"),
+		"the menu clause is no longer rendered beside the row's other remedies",
+	);
+});
