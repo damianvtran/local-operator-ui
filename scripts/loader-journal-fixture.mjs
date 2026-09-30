@@ -74,6 +74,27 @@ export const pruneHeavyShape = JSON.parse(
 );
 
 /**
+ * The operator's journal (`shape`, 1233 entries) with its disposal marker painted.
+ *
+ * The committed kind sequence records the marker at 1200 as a bare
+ * `custom:completion_attention`, which mints a `complete` marker - a row the
+ * reducer projects to nothing - so on its own the shape loses the "Stopped with an
+ * error" row the operator's screenshot shows. The real entry is
+ * `kind: error, cause: disposed`. This returns the same 1233 kinds with position
+ * 1200 naming that kind, so the journal the segments regressions run over has the
+ * terminal marker AND the `session_incident` the operator saw, in the order they
+ * saw them (answer 1196 -> marker 1200 -> incident 1201 -> two peer notes ->
+ * the reply at 1229).
+ */
+export function operatorKinds() {
+	const kinds = [...shape.kinds];
+	if (kinds[1200] !== "custom:completion_attention")
+		throw new Error(`position 1200 is ${kinds[1200]}, not the disposal marker`);
+	kinds[1200] = "custom:completion_attention:error";
+	return kinds;
+}
+
+/**
  * Expand a shape SPEC into the kind sequence `mintEntries` takes.
  *
  * The filler is laid down first and the measured rows are written over it, so
@@ -151,8 +172,21 @@ export function mintEntries(kinds, startAt = 0, prefix = "") {
 				head === "prune"
 					? { target: "x", notice: "x" }
 					: { custom_type: a, details: {} };
-			if (a === "completion_attention")
-				payload.details = { anchor: "x", kind: "complete" };
+			if (a === "completion_attention") {
+				/*
+				 * `custom:completion_attention[:<kind>]`. The bare form is the shape the
+				 * loader regressions were written against (a `complete` marker, which the
+				 * reducer projects to NOTHING, so it can sit on a page boundary without
+				 * adding a row). A third token names a marker the reducer DOES paint -
+				 * `error`, `interrupted`, `closed`, `retired` - with an anchor of its own,
+				 * because that anchor becomes the notice's record id and two of them must
+				 * not collide.
+				 */
+				payload.details =
+					b === undefined
+						? { anchor: "x", kind: "complete" }
+						: { anchor: `${prefix}marker-${n}`, kind: b };
+			}
 			out.push({ ...base, type: head, payload });
 		} else if (head === "compaction") {
 			/*
@@ -266,9 +300,18 @@ export const tokenOf = (entry) => {
 			const calls = Array.isArray(payload.tool_calls)
 				? payload.tool_calls.length
 				: 0;
+			/*
+			 * A durable text part is `{ text }` with NO `type` field (the reducer reads
+			 * `block.text`), while `mintEntries` writes `{ type: "text", text }`. The
+			 * inverse must accept both, or a journal that arrives in the real shape (the
+			 * rig's, the backend's) tokenises every text-bearing assistant as
+			 * `assistant:N:0` and a shape spec pinned against it "passes" on the wrong
+			 * thing. A part that names another type (an image) is not text.
+			 */
 			const hasText = (payload.content ?? []).some(
 				(part) =>
-					part?.type === "text" && String(part.text ?? "").trim().length > 0,
+					(part?.type === undefined || part.type === "text") &&
+					String(part?.text ?? "").trim().length > 0,
 			);
 			return `assistant:${calls}:${hasText ? 1 : 0}`;
 		}
@@ -285,6 +328,11 @@ export class FakeJournal {
 
 	static fromShape(kinds = shape.kinds) {
 		return new FakeJournal(mintEntries(kinds));
+	}
+
+	/** The operator's journal with its disposal marker painted (`operatorKinds`). */
+	static operator() {
+		return new FakeJournal(mintEntries(operatorKinds()));
 	}
 
 	/** A journal over a shape SPEC (see `kindsFor`). */
