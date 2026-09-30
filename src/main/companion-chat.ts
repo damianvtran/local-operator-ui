@@ -6,7 +6,6 @@ import {
 import {
 	COMPANION_CHAT_MAX_CHARS,
 	type CompanionChatMessage,
-	type CompanionChatSendResult,
 	type CompanionChatSnapshot,
 } from "../shared/companion-chat";
 import type { DesktopResponse } from "../shared/desktop-contract";
@@ -27,9 +26,7 @@ interface PendingSend extends TurnPosition {
 	text: string;
 }
 
-interface TurnWait extends TurnPosition {
-	requestId: string;
-	text: string;
+interface TurnWait extends PendingSend {
 	sawWorking: boolean;
 }
 
@@ -51,13 +48,14 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function result(reply: DesktopResponse): Record<string, unknown> {
-	const value = record(record(reply.body)?.result);
+	const body = record(reply.body);
+	const value = record(body?.result);
 	if (reply.status < 200 || reply.status >= 300 || !value) {
 		throw Object.assign(
 			new Error(
 				"The request could not be confirmed. Open the app for details.",
 			),
-			{ code: record(record(reply.body)?.detail)?.code },
+			{ code: record(body?.detail)?.code },
 		);
 	}
 	return value;
@@ -125,7 +123,6 @@ function transcript(
 
 export class CompanionChatService {
 	private state = initial(true);
-	private chiefOfStaff = true;
 	private generation = 0;
 	private readId = 0;
 	private disposed = false;
@@ -148,6 +145,10 @@ export class CompanionChatService {
 		};
 	}
 
+	private get chiefOfStaff(): boolean {
+		return this.state.destination === "chief-of-staff";
+	}
+
 	private current(generation: number): boolean {
 		return !this.disposed && generation === this.generation;
 	}
@@ -158,16 +159,36 @@ export class CompanionChatService {
 		this.options.onChange(this.snapshot);
 	}
 
-	newChat(): void {
-		if (this.disposed) return;
+	get canChangeConversation(): boolean {
+		return (
+			!this.disposed &&
+			!this.sending &&
+			!this.pending &&
+			!this.waiting &&
+			this.state.status !== "loading" &&
+			this.state.status !== "working"
+		);
+	}
+
+	private reset(chiefOfStaff = false): void {
 		this.generation++;
-		this.chiefOfStaff = false;
 		this.sending = false;
 		this.refreshing = null;
 		this.pending = null;
 		this.waiting = null;
 		this.createRequestId = randomUUID();
-		this.update(initial());
+		this.update(initial(chiefOfStaff));
+	}
+
+	chooseConversation(destination: "chief-of-staff" | "new-chat"): boolean {
+		if (
+			!this.canChangeConversation ||
+			(destination === "chief-of-staff" && this.chiefOfStaff)
+		)
+			return false;
+		this.reset(destination === "chief-of-staff");
+		if (this.chiefOfStaff) void this.refresh();
+		return true;
 	}
 
 	async open(sessionId?: string | null): Promise<void> {
@@ -184,7 +205,8 @@ export class CompanionChatService {
 			sessionId &&
 			(sessionId !== this.state.sessionId || this.chiefOfStaff)
 		) {
-			this.newChat();
+			if (!this.canChangeConversation) return;
+			this.reset();
 			this.update({ sessionId, status: "loading", canSend: false });
 		}
 		await this.refresh();
@@ -222,7 +244,7 @@ export class CompanionChatService {
 					canSend: false,
 					error:
 						error instanceof ChiefOfStaffUnavailable
-							? `${error.message} Open the app to continue, or start a new chat.`
+							? `${error.message} Open the app to continue.`
 							: "Could not reach the chief of staff. Open the app to continue.",
 				});
 			return false;
@@ -358,20 +380,15 @@ export class CompanionChatService {
 		return task;
 	}
 
-	async send(text: string): Promise<CompanionChatSendResult> {
-		const outcome = (accepted: boolean): CompanionChatSendResult => ({
-			accepted,
-			snapshot: this.snapshot,
-		});
-		if (this.disposed || this.sending || !this.state.canSend)
-			return outcome(false);
+	async send(text: string): Promise<boolean> {
+		if (this.disposed || this.sending || !this.state.canSend) return false;
 		if (
 			typeof text !== "string" ||
 			!text.trim() ||
 			text.length > COMPANION_CHAT_MAX_CHARS
 		) {
 			this.update({ error: "Write a message of 1 to 16,000 characters." });
-			return outcome(false);
+			return false;
 		}
 		if (this.pending && this.pending.text !== text) {
 			this.update({
@@ -379,7 +396,7 @@ export class CompanionChatService {
 				error:
 					"The earlier send may have arrived. Retry original or open the app before sending something different.",
 			});
-			return outcome(false);
+			return false;
 		}
 		const generation = this.generation;
 		this.sending = true;
@@ -391,7 +408,7 @@ export class CompanionChatService {
 			"Chat could not start. Your message is still here; try again or open the app.";
 		try {
 			if (this.chiefOfStaff && !(await this.resolveChief(generation)))
-				return outcome(false);
+				return false;
 			if (!this.state.sessionId) {
 				const created = result(
 					await this.options.requestDesktop({
@@ -400,7 +417,7 @@ export class CompanionChatService {
 						cwd: this.options.cwd,
 					}),
 				);
-				if (!this.current(generation)) return outcome(false);
+				if (!this.current(generation)) return false;
 				if (
 					typeof created.session_id !== "string" ||
 					!SESSION_ID.test(created.session_id)
@@ -409,7 +426,7 @@ export class CompanionChatService {
 				this.update({ sessionId: created.session_id });
 			}
 			const turn = await this.read(generation);
-			if (!this.current(generation) || !turn) return outcome(false);
+			if (!this.current(generation) || !turn) return false;
 			const intent = this.pending ?? {
 				text,
 				requestId: randomUUID(),
@@ -425,7 +442,7 @@ export class CompanionChatService {
 				text: intent.text,
 				mode: "prompt",
 			});
-			if (!this.current(generation)) return outcome(false);
+			if (!this.current(generation)) return false;
 			if (reply.status === 413 || reply.status === 422) {
 				this.pending = null;
 				failure =
@@ -439,13 +456,7 @@ export class CompanionChatService {
 				throw new Error("No admission receipt.");
 			accepted = true;
 			this.pending = null;
-			this.waiting = {
-				requestId: intent.requestId,
-				text: intent.text,
-				sawWorking: false,
-				epoch: intent.epoch,
-				generation: intent.generation,
-			};
+			this.waiting = { ...intent, sawWorking: false };
 			this.update({ status: "working", error: null, canSend: false });
 		} catch {
 			if (this.current(generation))
@@ -461,7 +472,7 @@ export class CompanionChatService {
 			}
 		}
 		if (accepted && this.current(generation)) void this.refresh();
-		return outcome(accepted && this.current(generation));
+		return accepted && this.current(generation);
 	}
 
 	dispose(): void {

@@ -15,7 +15,7 @@ import { COMPANION_CHAT_MAX_CHARS } from "../../shared/companion-chat";
 export interface CompanionChatProps {
 	snapshot: CompanionChatSnapshot;
 	onSend: (text: string) => Promise<boolean>;
-	onNewChat: () => void;
+	onShowConversations: (position: { x: number; y: number }) => Promise<boolean>;
 	onCollapse: () => void;
 	onExpand: () => void;
 	open: boolean;
@@ -24,7 +24,7 @@ export interface CompanionChatProps {
 export function CompanionChat({
 	snapshot,
 	onSend,
-	onNewChat,
+	onShowConversations,
 	onCollapse,
 	onExpand,
 	open,
@@ -33,12 +33,17 @@ export function CompanionChat({
 	const [sending, setSending] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [showQuestion, setShowQuestion] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
 	const composer = useRef<HTMLTextAreaElement>(null);
+	const conversationButton = useRef<HTMLButtonElement>(null);
 	const transcript = useRef<HTMLElement>(null);
 	const sendButton = useRef<HTMLButtonElement>(null);
 	const retryButton = useRef<HTMLButtonElement>(null);
 	const composing = useRef(false);
 	const inFlight = useRef(false);
+	const menuPending = useRef(false);
+	const openRef = useRef(open);
+	openRef.current = open;
 	const hintId = useId();
 	const errorId = useId();
 	const questionId = useId();
@@ -51,6 +56,10 @@ export function CompanionChat({
 		canSend && (pendingText === undefined || draft.trim() === pendingText);
 	const busy =
 		sending || snapshot.status === "working" || snapshot.status === "loading";
+	const destination = chiefOfStaff ? "Chief of staff" : snapshot.title;
+	const conversationLabel = `Choose conversation. Current: ${destination}`;
+	const canChangeConversation =
+		!busy && pendingText === undefined && !snapshot.activeQuestion;
 	const roles = snapshot.messages.map((message) => message.role);
 	const replyIndex = roles.lastIndexOf("assistant");
 	const reply = snapshot.messages[replyIndex];
@@ -99,6 +108,7 @@ export function CompanionChat({
 			!text ||
 			!canSend ||
 			(!retryOriginal && !draftCanSend) ||
+			menuPending.current ||
 			inFlight.current
 		)
 			return;
@@ -127,6 +137,31 @@ export function CompanionChat({
 		}
 	}
 
+	async function showConversations() {
+		if (!canChangeConversation || menuPending.current) return;
+		const bounds = conversationButton.current?.getBoundingClientRect();
+		if (!bounds) return;
+		menuPending.current = true;
+		setMenuOpen(true);
+		try {
+			if (await onShowConversations({ x: bounds.left, y: bounds.bottom })) {
+				setSendError(null);
+				setShowQuestion(false);
+			}
+		} catch {
+			setSendError("Could not open the conversation menu. Try again.");
+		} finally {
+			menuPending.current = false;
+			setMenuOpen(false);
+			if (
+				openRef.current &&
+				(document.activeElement === conversationButton.current ||
+					document.activeElement === document.body)
+			)
+				composer.current?.focus({ preventScroll: true });
+		}
+	}
+
 	return (
 		<section
 			className={cn(
@@ -141,7 +176,7 @@ export function CompanionChat({
 					!composing.current
 				) {
 					event.stopPropagation();
-					onCollapse();
+					if (!menuPending.current) onCollapse();
 				}
 			}}
 		>
@@ -301,27 +336,25 @@ export function CompanionChat({
 								<MessageCircle size={14} aria-hidden="true" />
 							</Button>
 						)}
-						{(snapshot.sessionId || chiefOfStaff) && (
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-sm"
-								className={cn("h-7 w-6")}
-								aria-label="New chat"
-								title={
-									chiefOfStaff ? "Start a separate conversation" : "New chat"
-								}
-								disabled={busy}
-								onClick={() => {
-									setSendError(null);
-									setShowQuestion(false);
-									onNewChat();
-									composer.current?.focus({ preventScroll: true });
-								}}
-							>
-								<Plus size={14} aria-hidden="true" />
-							</Button>
-						)}
+						<Button
+							ref={conversationButton}
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							className={cn("h-7 w-6")}
+							aria-label={conversationLabel}
+							aria-haspopup="menu"
+							aria-expanded={menuOpen}
+							title={
+								pendingText === undefined
+									? conversationLabel
+									: `${conversationLabel}. Retry original or open the app before switching.`
+							}
+							disabled={!canChangeConversation}
+							onClick={() => void showConversations()}
+						>
+							<Plus size={14} aria-hidden="true" />
+						</Button>
 						<Button
 							type="button"
 							variant="ghost"

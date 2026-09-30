@@ -33,7 +33,8 @@ const companion: CompanionBridge = {
 		return () => ipcRenderer.removeListener("companion:chat", receive);
 	},
 	sendMessage: (text) => ipcRenderer.invoke("companion:send", text),
-	newChat: () => ipcRenderer.send("companion:action", "new-chat"),
+	showChatMenu: (position) =>
+		ipcRenderer.invoke("companion:chat-menu", position),
 	collapseChat: () => ipcRenderer.send("companion:action", "collapse-chat"),
 	expandChat: () => ipcRenderer.send("companion:action", "expand-chat"),
 	openTask: () => ipcRenderer.send("companion:action", "open-task"),

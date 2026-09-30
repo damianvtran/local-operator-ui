@@ -70,7 +70,7 @@ async function mount(t, overrides = {}) {
 		snapshot: idle,
 		open: true,
 		onSend: async () => true,
-		onNewChat: () => {},
+		onShowConversations: async () => false,
 		onCollapse: () => {},
 		onExpand: () => {},
 		...overrides,
@@ -83,7 +83,12 @@ async function mount(t, overrides = {}) {
 	};
 	await render();
 	const input = host.querySelector("textarea");
-	const button = (label) => host.querySelector(`[aria-label="${label}"]`);
+	const button = (label) =>
+		host.querySelector(
+			label === "Choose conversation"
+				? '[aria-haspopup="menu"]'
+				: `[aria-label="${label}"]`,
+		);
 	const type = (value) =>
 		act(async () => {
 			Object.getOwnPropertyDescriptor(
@@ -133,7 +138,7 @@ test("collapse preserves drafts and pending sends cannot be duplicated", async (
 	});
 	assert.deepEqual(sent, ["Help me plan this"]);
 	assert.equal(input.readOnly, true);
-	assert.equal(button("New chat").disabled, true);
+	assert.equal(button("Choose conversation").disabled, true);
 	assert.equal(button("Send message").disabled, true);
 	await act(async () => pending.resolve(true));
 	await render({ snapshot: { ...idle, status: "working", canSend: false } });
@@ -262,7 +267,7 @@ test("a chat creation failure can open the app before a session exists", async (
 		onExpand: () => expanded++,
 	});
 	await type("Keep this draft");
-	assert.equal(button("New chat"), null);
+	assert.equal(button("Choose conversation").disabled, false);
 	assert.equal(button("Open chat in the full app").disabled, false);
 	await act(async () => button("Open chat in the full app").click());
 	assert.equal(expanded, 1);
@@ -465,7 +470,7 @@ test("pending approval blocks sending and opens the full app", async (t) => {
 	});
 	await render({ snapshot: { ...idle, status: "working", canSend: false } });
 	await type("A follow-up");
-	assert.equal(button("New chat").disabled, true);
+	assert.equal(button("Choose conversation").disabled, true);
 	await render({
 		snapshot: {
 			...idle,
@@ -490,22 +495,130 @@ test("the shared target is clear and a disabled chief of staff still allows a se
 			sessionId: null,
 			status: "error",
 			canSend: false,
-			error: "The chief of staff is switched off on this install.",
+			error: "The chief of staff is turned off.",
 		},
-		onNewChat: () => {
+		onShowConversations: async () => {
 			starts++;
+			return true;
 		},
 	});
 	assert.equal(input.placeholder, "Message chief of staff…");
 	assert.equal(input.getAttribute("aria-label"), "Message your chief of staff");
 	await type("Keep this draft");
 	assert.equal(button("Send message").disabled, true);
-	assert.equal(button("New chat").disabled, false);
-	await act(async () => button("New chat").click());
+	assert.equal(button("Choose conversation").disabled, false);
+	await act(async () => button("Choose conversation").click());
 	assert.equal(starts, 1);
 	await render({ snapshot: { ...idle, sessionId: null } });
 	assert.equal(input.value, "Keep this draft");
 	assert.equal(input.placeholder, "Ask anything…");
 	assert.equal(input.getAttribute("aria-label"), "Message Local Operator");
 	assert.equal(button("Send message").disabled, false);
+});
+
+for (const selected of [false, true]) {
+	test(`conversation menu ${selected ? "selection" : "dismissal"} preserves drafts and restores input focus`, async (t) => {
+		const menu = deferred();
+		const positions = [];
+		const { host, input, button, type, submit } = await mount(t, {
+			onSend: async () => false,
+			onShowConversations: (position) => {
+				positions.push(position);
+				return menu.promise;
+			},
+		});
+		await type("Keep my words");
+		await act(async () => submit());
+		const error = host.querySelector('[role="alert"]').textContent;
+		const trigger = button("Choose conversation");
+		assert.equal(trigger.title, "Choose conversation. Current: Local Operator");
+		trigger.getBoundingClientRect = () => ({ left: 18.5, bottom: 206.25 });
+		trigger.focus();
+		await act(async () => {
+			trigger.click();
+			trigger.click();
+		});
+		assert.deepEqual(positions, [{ x: 18.5, y: 206.25 }]);
+		assert.equal(trigger.getAttribute("aria-expanded"), "true");
+		assert.equal(input.value, "Keep my words");
+		await act(async () => menu.resolve(selected));
+		assert.equal(trigger.getAttribute("aria-expanded"), "false");
+		assert.equal(document.activeElement, input);
+		assert.equal(input.value, "Keep my words");
+		assert.equal(
+			host.querySelector('[role="alert"]')?.textContent ?? null,
+			selected ? null : error,
+		);
+	});
+}
+
+test("conversation menu never reclaims focus from a later control or collapsed chat", async (t) => {
+	for (const collapse of [false, true]) {
+		const menu = deferred();
+		const { render, button, input } = await mount(t, {
+			onShowConversations: () => menu.promise,
+		});
+		const trigger = button("Choose conversation");
+		trigger.focus();
+		await act(async () => trigger.click());
+		const expand = button("Open chat in the full app");
+		expand.focus();
+		if (collapse) await render({ open: false });
+		await act(async () => menu.resolve(false));
+		assert.equal(document.activeElement, expand);
+		assert.notEqual(document.activeElement, input);
+	}
+});
+
+test("uncertain sends and waiting turns keep navigation disabled", async (t) => {
+	let menus = 0;
+	const { render, button, type, input } = await mount(t, {
+		onShowConversations: async () => {
+			menus++;
+			return false;
+		},
+	});
+	await type("Draft for later");
+	for (const status of [
+		{ status: "loading" },
+		{ status: "working" },
+		{ pendingText: "Original message" },
+		{ activeQuestion: { id: "turn", text: "Awaiting response" } },
+	]) {
+		await render({ snapshot: { ...idle, ...status } });
+		assert.equal(button("Choose conversation").disabled, true);
+		await act(async () => button("Choose conversation").click());
+	}
+	assert.equal(menus, 0);
+	assert.equal(input.value, "Draft for later");
+	await render({ snapshot: { ...idle, destination: "chief-of-staff" } });
+	assert.equal(button("Choose conversation").disabled, false);
+	assert.equal(
+		button("Choose conversation").title,
+		"Choose conversation. Current: Chief of staff",
+	);
+});
+
+test("keys reaching the renderer during a native menu never send or collapse chat", async (t) => {
+	const menu = deferred();
+	let sent = 0;
+	let collapsed = 0;
+	const { button, type, key, input } = await mount(t, {
+		onShowConversations: () => menu.promise,
+		onSend: async () => {
+			sent++;
+			return true;
+		},
+		onCollapse: () => collapsed++,
+	});
+	await type("Still a draft");
+	await act(async () => button("Choose conversation").click());
+	await key();
+	await key({ key: "Escape" });
+	assert.equal(sent, 0);
+	assert.equal(collapsed, 0);
+	assert.equal(input.value, "Still a draft");
+	await act(async () => menu.resolve(false));
+	await key({ key: "Escape" });
+	assert.equal(collapsed, 1);
 });

@@ -5,8 +5,8 @@ import type {
 } from "./desktop-control-contract";
 
 export const CHIEF_OF_STAFF_COPY = {
-	missing: "This build doesn't have a chief-of-staff seat.",
-	disabled: "The chief of staff is switched off on this install.",
+	missing: "The chief of staff isn't available here.",
+	disabled: "The chief of staff is turned off.",
 	unreachable: "Couldn't reach the chief of staff.",
 	openFailed: "Couldn't open the chief-of-staff conversation.",
 } as const;

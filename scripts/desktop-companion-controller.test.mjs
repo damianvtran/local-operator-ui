@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import {
+import fs, {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -31,6 +32,7 @@ const bundle = buildSync({
 
 const UNAVAILABLE_CHARACTER = /no longer available/;
 const SAVE_FAILED = /could not be saved/;
+const IMPORT_FAILED = /Could not save/;
 
 const ok = (result) => ({ status: 200, body: { result } });
 
@@ -261,6 +263,8 @@ function fixture(t, { headless = true, preferences = {} } = {}) {
 	};
 	return {
 		companion,
+		preferencesPath,
+		libraryPath: join(directory, "skins"),
 		windows,
 		menus,
 		handlers,
@@ -295,6 +299,8 @@ function fixture(t, { headless = true, preferences = {} } = {}) {
 		trusted,
 		state: () => handlers.get("companion:get-state")(trusted()),
 		chat: () => handlers.get("companion:get-chat")(trusted()),
+		chatMenu: (event = trusted(), position = { x: 120, y: 64 }) =>
+			handlers.get("companion:chat-menu")(event, position),
 		send: (text, event = trusted()) =>
 			handlers.get("companion:send")(event, text),
 		action: (action, value, event = trusted()) =>
@@ -343,6 +349,7 @@ test("headless companion never presents or changes desktop workspaces", async (t
 	assert.deepEqual(window.presentations, []);
 	assert.equal(window.workspaces, undefined);
 	f.action("menu");
+	assert.equal(await f.chatMenu(), false);
 	assert.deepEqual(f.menus, []);
 	f.action("open");
 	assert.equal(f.chat().open, true);
@@ -366,6 +373,28 @@ test("visible companion presents once without focus and accepts the first click"
 	assert.equal(window.options.alwaysOnTop, true);
 	assert.equal(window.workspaces[1].skipTransformProcessType, true);
 	assert.equal(window.options.type, undefined);
+});
+
+test("re-show restores the selected character when bootstrap finished while hidden", async (t) => {
+	const f = fixture(t, { preferences: { character: "inky" } });
+	const window = f.windows[0];
+	await f.catalogue("answer");
+	f.companion.setEnabled(false);
+	for (const channel of ["get-state", "get-appearance", "get-chat"])
+		assert.equal(f.handlers.get(`companion:${channel}`)(f.trusted()), null);
+	window.emit("ready-to-show");
+	window.messages.length = 0;
+	f.companion.setEnabled(true);
+	assert.deepEqual(
+		window.messages.map(([channel]) => channel),
+		["companion:appearance", "companion:state", "companion:chat"],
+	);
+	assert.equal(window.messages[0][1].id, "inky");
+	assert.equal(window.messages[1][1].notifications[0].kind, "answer");
+	assert.deepEqual(window.messages[2][1], f.chat());
+	assert.equal(window.messages[2][1].open, false);
+	assert.equal(f.windows.length, 1);
+	assert.deepEqual(window.presentations, []);
 });
 
 test("IPC requires this companion's exact top-level document and rejects malformed actions", async (t) => {
@@ -397,6 +426,7 @@ test("IPC requires this companion's exact top-level document and rejects malform
 		for (const channel of ["get-state", "get-appearance", "get-chat"])
 			assert.equal(f.handlers.get(`companion:${channel}`)(event), null);
 		assert.equal(await f.send("Should not send", event), false);
+		assert.equal(await f.chatMenu(event), false);
 	}
 	window.webContents.mainFrame.url = "https://example.invalid/";
 	f.action("open");
@@ -433,6 +463,114 @@ test("IPC requires this companion's exact top-level document and rejects malform
 	for (const value of [null, {}, 42, ["text"]])
 		assert.equal(await f.send(value), false);
 	assert.deepEqual(f.desktopRequests, reads);
+});
+
+test("unrelated feed frames skip catalogue and chat reads while session changes and the safety poll still refresh", async (t) => {
+	const f = fixture(t);
+	await f.catalogue("idle");
+	f.action("open");
+	await settle();
+	const reads = [...f.desktopRequests];
+	for (const type of ["heartbeat", "authoring"]) {
+		f.companion.refresh({ type });
+		await f.flush();
+		assert.equal(f.requests.length, 0);
+	}
+	assert.deepEqual(f.desktopRequests, reads);
+	for (const type of [
+		"open",
+		"gap",
+		"catalogue",
+		"session_status",
+		"attention",
+		"notification",
+	]) {
+		f.companion.refresh({ type });
+		await f.flush();
+		assert.equal(f.requests.length, 1, type);
+		f.requests.shift().resolve(catalogue("answer"));
+		await settle();
+		assert.equal(f.state().notifications[0].kind, "answer");
+	}
+	assert.equal(f.intervals.size, 1);
+	for (const poll of f.intervals.values()) poll();
+	await f.flush();
+	assert.equal(f.requests.length, 1);
+	f.requests.shift().resolve({ status: 503 });
+	await settle();
+	assert.equal(f.state().mood, "offline");
+	f.companion.refresh();
+	await f.catalogue("idle");
+	assert.equal(f.state().mood, "idle");
+	f.companion.setEnabled(false);
+	f.companion.refresh({ type: "notification" });
+	await f.flush();
+	assert.equal(f.requests.length, 0);
+	assert.equal(f.intervals.size, 0);
+});
+
+test("the conversation menu cancels quietly and explicitly returns to the shared chief", async (t) => {
+	const f = fixture(t, { headless: false });
+	assert.equal(await f.chatMenu(), false, "collapsed chat has no menu");
+	f.action("open");
+	await settle();
+	const before = JSON.stringify(f.chat());
+	const requestCount = f.desktopRequests.length;
+	let choice = f.chatMenu();
+	let menu = f.menus.at(-1);
+	assert.deepEqual(
+		Array.from(menu.template, (item) => item.label),
+		["Chief of staff", "New chat"],
+	);
+	assert.equal(menu.template[0].enabled, false);
+	assert.ok(menu.template.every((item) => !item.type));
+	assert.equal(menu.popupOptions.x, 120);
+	assert.equal(menu.popupOptions.y, 64);
+	menu.popupOptions.callback();
+	assert.equal(await choice, false);
+	assert.equal(JSON.stringify(f.chat()), before);
+	assert.equal(f.desktopRequests.length, requestCount);
+	choice = f.chatMenu();
+	menu = f.menus.at(-1);
+	menu.template[1].click();
+	menu.popupOptions.callback();
+	assert.equal(await choice, true);
+	assert.equal(f.chat().snapshot.destination, undefined);
+	assert.equal(f.desktopRequests.length, requestCount, "New chat is lazy");
+	choice = f.chatMenu();
+	menu = f.menus.at(-1);
+	assert.equal(menu.template[0].enabled, true);
+	menu.template[0].click();
+	menu.popupOptions.callback();
+	assert.equal(await choice, true);
+	await settle();
+	assert.equal(f.chat().snapshot.destination, "chief-of-staff");
+	assert.equal(f.chat().snapshot.sessionId, "012345abcdef");
+	assert.equal(
+		f.desktopRequests.some(
+			(call) => call.op === "aida.control" || call.op === "sessions.create",
+		),
+		false,
+	);
+});
+
+test("a conversation menu cannot switch after sending begins or its window closes", async (t) => {
+	for (const block of ["send", "collapse", "hide"]) {
+		const f = fixture(t, { headless: false });
+		f.action("open");
+		await settle();
+		const choice = f.chatMenu();
+		const menu = f.menus.at(-1);
+		if (block === "send") assert.equal(await f.send("Keep my turn"), true);
+		else f.action(block === "hide" ? "hide" : "collapse-chat");
+		menu.template[1].click();
+		menu.popupOptions.callback();
+		assert.equal(await choice, false);
+		if (block !== "hide") {
+			assert.equal(f.chat().snapshot.destination, "chief-of-staff");
+			assert.equal(await f.chatMenu(), false);
+		}
+	}
 });
 
 test("catalogue reads coalesce and serialize, then reject responses from a disabled generation", async (t) => {
@@ -1181,6 +1319,136 @@ test("custom artwork can be replaced and removed through the shared character me
 	);
 });
 
+for (const replacement of ["new", "same", "existing", "full library"]) {
+	test(`failed preference save preserves artwork when replacing with ${replacement} artwork`, async (t) => {
+		const f = fixture(t);
+		const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
+		t.after(() => rmSync(source, { recursive: true, force: true }));
+		const image = await sharp({
+			create: { width: 2, height: 2, channels: 4, background: "red" },
+		})
+			.png()
+			.toBuffer();
+		const originalPath = join(source, "original.png");
+		const replacementPath = join(source, "replacement.png");
+		writeFileSync(originalPath, image);
+		writeFileSync(replacementPath, image);
+		f.companion.importCharacter(originalPath);
+		const original = f.companion.appearance;
+		if (replacement === "existing")
+			f.companion.importCharacter(replacementPath);
+		if (replacement === "full library") {
+			for (let i = 1; i < 64; i++) {
+				const path = join(source, `pet-${i}.png`);
+				writeFileSync(path, image);
+				f.companion.importCharacter(path);
+			}
+		}
+		f.companion.selectCharacter(original.id);
+		const choices = f.companion.characters;
+		const files = readdirSync(f.libraryPath);
+		const saved = readFileSync(join(f.libraryPath, `${original.id}.json`));
+		f.blockPreferenceWrites();
+		const path = replacement === "same" ? originalPath : replacementPath;
+		assert.throws(
+			() => f.companion.importCharacter(path, original.id),
+			SAVE_FAILED,
+		);
+		assert.equal(f.preferences().character, original.id);
+		assert.deepEqual(f.companion.appearance, original);
+		assert.deepEqual(f.companion.characters, choices);
+		assert.deepEqual(readdirSync(f.libraryPath), files);
+		assert.deepEqual(
+			readFileSync(join(f.libraryPath, `${original.id}.json`)),
+			saved,
+		);
+		assert.deepEqual(
+			structuredClone(f.companion.settings.characters).map(({ id, name }) => ({
+				id,
+				name,
+			})),
+			structuredClone(choices),
+		);
+		f.unblockPreferenceWrites();
+		f.companion.importCharacter(path, original.id);
+		assert.equal(f.preferences().character, f.companion.appearance.id);
+		assert.equal(
+			f.companion.characters.length,
+			choices.length - (replacement === "existing" ? 1 : 0),
+		);
+	});
+}
+
+for (const failure of ["old-artwork removal", "appearance publish"]) {
+	for (const rollbackFails of [false, true]) {
+		test(`failed ${failure} keeps a valid selection when preference rollback ${rollbackFails ? "fails" : "succeeds"}`, async (t) => {
+			const f = fixture(t);
+			const source = mkdtempSync(join(tmpdir(), "companion-replacement-"));
+			t.after(() => rmSync(source, { recursive: true, force: true }));
+			const image = await sharp({
+				create: { width: 2, height: 2, channels: 4, background: "red" },
+			})
+				.png()
+				.toBuffer();
+			const originalPath = join(source, "original.png");
+			const replacementPath = join(source, "replacement.png");
+			writeFileSync(originalPath, image);
+			writeFileSync(replacementPath, image);
+			f.companion.importCharacter(originalPath);
+			const original = f.companion.appearance;
+			const stored = join(f.libraryPath, `${original.id}.json`);
+			const publishError = new Error("Fixture cannot publish appearance");
+			if (failure === "old-artwork removal") {
+				const unlink = fs.unlinkSync;
+				t.mock.method(fs, "unlinkSync", (path) => {
+					if (path === stored) {
+						if (rollbackFails) f.blockPreferenceWrites();
+						throw new Error("Fixture cannot remove original artwork");
+					}
+					return unlink(path);
+				});
+			} else {
+				const contents = f.windows[0].webContents;
+				const send = contents.send;
+				let failed = false;
+				t.mock.method(contents, "send", (channel, ...args) => {
+					if (!failed && channel === "companion:appearance") {
+						failed = true;
+						if (rollbackFails) f.blockPreferenceWrites();
+						throw publishError;
+					}
+					return send(channel, ...args);
+				});
+			}
+			assert.throws(
+				() => f.companion.importCharacter(replacementPath, original.id),
+				failure === "old-artwork removal"
+					? IMPORT_FAILED
+					: (error) => error === publishError,
+			);
+			const selected = f.companion.appearance;
+			assert.equal(f.preferences().character, selected.id);
+			assert.equal(
+				JSON.parse(
+					readFileSync(join(f.libraryPath, `${selected.id}.json`), "utf8"),
+				).name,
+				selected.name,
+			);
+			assert.equal(
+				JSON.parse(readFileSync(stored, "utf8")).name,
+				original.name,
+			);
+			if (rollbackFails) {
+				assert.notEqual(selected.id, original.id);
+				assert.equal(f.companion.characters.length, 6);
+			} else {
+				assert.deepEqual(selected, original);
+				assert.equal(f.companion.characters.length, 5);
+			}
+		});
+	}
+}
+
 test("hiding retains the renderer but stops polling, rejects IPC and defeats a late ready event", async (t) => {
 	const f = fixture(t, { headless: false });
 	const window = f.windows[0];
@@ -1369,4 +1637,44 @@ test("closed settings renderers cannot roll back persisted choices and movement 
 	assert.equal(f.companion.settings.enabled, false);
 	assert.equal(f.preferences().character, "inky");
 	assert.equal(f.companion.settings.character, "inky");
+});
+
+test("keyboard conversation menus validate and anchor within the zoomed companion window", async (t) => {
+	const f = fixture(t, { headless: false });
+	f.action("open");
+	await settle();
+	for (const position of [
+		null,
+		[],
+		{},
+		{ x: "10", y: 10 },
+		{ x: Number.NaN, y: 10 },
+		{ x: 10, y: Number.POSITIVE_INFINITY },
+	]) {
+		assert.equal(await f.chatMenu(f.trusted(), position), false);
+	}
+	assert.equal(f.menus.length, 0);
+	const window = f.windows[0];
+	f.companion.changeZoom(window, "in");
+	const choice = f.chatMenu(f.trusted(), { x: 120, y: 64 });
+	let menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, Math.round(120 * window.zoomFactor));
+	assert.equal(menu.popupOptions.y, Math.round(64 * window.zoomFactor));
+	menu.popupOptions.callback();
+	assert.equal(await choice, false);
+	f.workArea({ x: 0, y: 0, width: 260, height: 240 });
+	f.companion.changeZoom(window, "in");
+	assert.ok(window.zoomFactor < 1);
+	const compact = f.chatMenu(f.trusted(), { x: 120, y: 64 });
+	menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, Math.round(120 * window.zoomFactor));
+	assert.equal(menu.popupOptions.y, Math.round(64 * window.zoomFactor));
+	menu.popupOptions.callback();
+	assert.equal(await compact, false);
+	const clamped = f.chatMenu(f.trusted(), { x: -10, y: Number.MAX_VALUE });
+	menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, 0);
+	assert.equal(menu.popupOptions.y, window.getBounds().height - 1);
+	menu.popupOptions.callback();
+	assert.equal(await clamped, false);
 });
