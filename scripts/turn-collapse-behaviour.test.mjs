@@ -72,6 +72,26 @@ const shims = {
 		unobserve() {}
 		disconnect() {}
 	},
+	/*
+	 * jsdom implements neither. The bar's press path mounts the transcript's own
+	 * rows, and one of those (the cross-session receipt row) observes mutations -
+	 * the same shim every other harness in `scripts/` carries.
+	 */
+	MutationObserver: window.MutationObserver,
+	/*
+	 * The focus manager the bar's press path reaches for walks tabbables with
+	 * `NodeFilter`; jsdom implements it on the window.
+	 */
+	NodeFilter: window.NodeFilter,
+	HTMLInputElement: window.HTMLInputElement,
+	IntersectionObserver: class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+		takeRecords() {
+			return [];
+		}
+	},
 	matchMedia: (query) => ({
 		matches: false,
 		media: query,
@@ -278,6 +298,15 @@ const noticeRecord = (id, over = {}) => ({
 	level: "warning",
 	complete: true,
 	...over,
+});
+
+/** One picture on a tool record, the shape `transcript-reducer.ts` composes. */
+const shotImage = (recordId, index, data = "iVBORw0KGgo=") => ({
+	recordId,
+	id: `${recordId}:${index}`,
+	data,
+	attachment: null,
+	mimeType: "image/png",
 });
 
 /** The reason a turn died: an error-level custom statement, pinned below the bar. */
@@ -1053,6 +1082,261 @@ test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", 
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:1"), "the peer receipt mounts on the press");
 	assert.ok(rowBox(mounted, "wake:1"), "the wake receipt mounts on the press");
+});
+
+test("a collapsed span that produced pictures keeps them under the bar", async (t) => {
+	/*
+	 * THE OPERATOR REPORT, as a behaviour, one fold level up from
+	 * `trace-fold-behaviour.test.mjs`'s case: the turned condensation unmounts
+	 * the rows a hidden span holds, so the pictures those rows would have
+	 * drawn have to ride the bar - and the strip is the bar's own, under its
+	 * line, gone the moment the reader presses it open (open, the rows draw
+	 * their own media and the strip would double it).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the row that would draw them is unmounted",
+	);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "and the pictures are on screen anyway");
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"2 images from this run",
+		"the strip names its set and its size",
+	);
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		2,
+		"one tile per picture, no count clause at two",
+	);
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/2 images/,
+		"and the count is a clause on the bar's own line",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		2,
+		"the bar is its disclosure plus the strip",
+	);
+
+	/* Pressing is what trades the strip for the rows that draw their own media. */
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"open, the strip goes",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "the press mounts the row again");
+});
+
+test("a span with no pictures is the bar it was: no strip, no clause", async (t) => {
+	/*
+	 * The overwhelmingly common case, pinned for the bar the way
+	 * `trace-fold-behaviour.test.mjs` pins it for the fold: an image-less run
+	 * must not grow a slot, a rule, an empty row or a count - the wrapper's
+	 * child count is the claim.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"no pictures, no strip",
+	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\d+ images?/,
+		"and no count clause either",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		1,
+		"the bar is its disclosure and nothing else",
+	);
+});
+
+test("the strip caps at four tiles and counts the rest", async (t) => {
+	/*
+	 * The pathological span: eight pictures cost one capped row - four tiles
+	 * and a `+4 more images` - which is the height bound `FOLD_MEDIA_LIMIT`
+	 * exists for, and the count is what keeps the row from pretending
+	 * otherwise. The count slot is also the ONLY route to the pictures past
+	 * the cap, so it is a control (U1), and that is asserted here against the
+	 * real bar.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 8 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "the strip renders");
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		5,
+		"four tiles and the count's own slot",
+	);
+	assert.match(
+		strip.textContent ?? "",
+		/\+4 more images/,
+		"and the count says how many are left, and of what",
+	);
+	/*
+	 * U1: it OPENS the bar rather than standing as text - the same toggle the
+	 * bar's own trigger runs, so pressing it reveals the rows (and with them
+	 * the pictures past the cap, at the row level where each is drawn in full).
+	 * The match is on the count's own words: the tiles inside the strip are
+	 * buttons too, and pointing at one of those would expand a picture instead
+	 * of opening the run.
+	 */
+	const more = [...strip.querySelectorAll("button")].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the count slot is a button, not inert text");
+	await click(more);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"pressing the count opens the run, putting the rows it stood for back",
+	);
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"8 images from this run",
+		"the set's size is still stated in full",
+	);
+});
+
+test("the group's clause drops only when it repeats the bar's number (D3/U6)", async (t) => {
+	/*
+	 * The drop branch of `soleImageGroup`, pinned rather than left to the
+	 * re-shot frame alone: a span whose ONLY image-bearing run is the whole
+	 * story (its count equals the bar's) does not print the same number twice
+	 * one line apart - the bar keeps the aggregate, the group row omits the
+	 * duplicate.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 3 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const group = bar(mounted)?.querySelector("[data-fold-ids]");
+	assert.ok(group, "the run's own fold mounts under the bar");
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/3 images/,
+		"the bar states the span's count",
+	);
+	assert.doesNotMatch(
+		group.textContent ?? "",
+		/\d+ images?/,
+		"and the group does not repeat the same number one line below",
+	);
+});
+
+test("a group holding only part of the span keeps its own clause (D3/U6, keep branch)", async (t) => {
+	/*
+	 * The keep branch: two image-bearing folds under one bar, neither carrying
+	 * the whole set - the numbers differ, so both levels state their own and
+	 * the suppression must NOT fire. The notice between the two runs is what
+	 * splits them (`foldRuns`: a non-call row breaks a run).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		noticeRecord("notice:1"),
+		toolRecord("tool:4"),
+		toolRecord("tool:5", {
+			images: [shotImage("tool:5", 0), shotImage("tool:5", 1)],
+		}),
+		toolRecord("tool:6"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const groups = [...(bar(mounted)?.querySelectorAll("[data-fold-ids]") ?? [])];
+	assert.equal(groups.length, 2, "two runs sit under the bar");
+	assert.deepEqual(
+		groups.map((node) => (node.textContent ?? "").match(/\d+ images?/)?.[0]),
+		["2 images", "2 images"],
+		"each group keeps its own count: neither repeats the bar's 4",
+	);
+});
+
+test("one press on the bar's count reaches the whole set (U8)", async (t) => {
+	/*
+	 * The round-2 UX finding: pressing `+N more images` on the bar opened the
+	 * bar, but the sole run inside drew the SAME capped strip, so pictures 5-8
+	 * cost a second press. The group that IS the span's whole image story now
+	 * renders `uncapped`, so the one press the reader made reaches every
+	 * picture - and no second count control is left to press.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:1", index),
+			),
+		}),
+		toolRecord("tool:2", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:2", index),
+			),
+		}),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the collapsed bar shows four tiles and the count control");
+	await click(more);
+	const groupStrip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(groupStrip, "the press opened the bar onto its group's strip");
+	assert.equal(
+		groupStrip.querySelectorAll("li").length,
+		8,
+		"and the group shows its WHOLE set: one press reached the rest",
+	);
+	assert.equal(
+		[...groupStrip.querySelectorAll("button")].filter((control) =>
+			/more images?/.test(control.textContent ?? ""),
+		).length,
+		0,
+		"with no second count control left to press",
+	);
 });
 
 test("a parked turn does not condense: the gate is half of the liveness", async (t) => {

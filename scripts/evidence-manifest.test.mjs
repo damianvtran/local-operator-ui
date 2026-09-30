@@ -1694,6 +1694,7 @@ const BRANCH_RECORDS = [
 	 */
 	"desktopStepDiagnosticsRestampNote",
 	/*
+
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
 	 * moved, one set's states re-captured - so a fold that started from main's
@@ -2261,6 +2262,139 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * Grown by the monitors CONTROLS pass (2026-09-29, slice 4b-ui B), this
+	 * branch's newest top-level record and the sibling of the entry above: it
+	 * states what the pass ADDED (four cancel-affordance surfaces, eight
+	 * frames) and RE-SHOT (the six at-rest states, twelve frames - the footer
+	 * sentence's retirement and the reserved action column move every one of
+	 * them), the two narrowed commands, the before half (the base commit's own
+	 * frames), and the one cost the frames carry rather than hide (the first
+	 * line's earlier truncation). It spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger - the rule the two entries beside it
+	 * follow.
+	 */
+	"monitorsControlsPass",
+	/*
+	 * And the fold record of that pass's rebase onto `origin/main` = `0738fa7eb3`,
+	 * listed for the list's own reason: a fold resolved from main's manifest copy
+	 * would drop the only statement of how the two conflicting paths (this
+	 * manifest and `package.json`'s test list) were resolved key by key, and of
+	 * which capture's head/capturedAt the merged block keeps. It quotes no
+	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
+	 *
+	 * RE-KEYED in the fold onto `a7b4f88a18`: main's copy already ships a note
+	 * under the plain name (the settings-rail lane's fold onto the same tip),
+	 * so this branch's record moved to `foldOnto0738fa7eb3MonitorControlsNote` -
+	 * the name this entry now carries.
+	 */
+	"foldOnto0738fa7eb3MonitorControlsNote",
+	/*
+	 * And the round-1 remediation's own record (agent review round 1's F1;
+	 * UX review round 1's U2-U8): the confirmation's busy window, the
+	 * interaction moved into the pane body so a refusal survives the
+	 * re-read's list churn, the narrowed retry boundary, the two row records
+	 * (`Cancelled`, `Cancel refused`), the at-rest 24px control and the
+	 * `Stop monitor` confirm. It is listed for the list's own reason: a fold
+	 * resolved from main's manifest copy would drop the only statement of
+	 * the two runs that re-took twenty-four frames, of the two new surfaces
+	 * and the ten re-shot states, and of why the marks exist at all. It
+	 * quotes no tree-hash pair - the re-stamp is written in the `docs/`-only
+	 * amendment after the content commit (the `roundOneRemediationRestampNote`
+	 * convention) - so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"monitorsControlsRound1Remediation",
+	/*
+	 * And the DESIGN round's own record (design review round 1's D1-D5): the facts
+	 * line rebuilt as yieldable boxes so the 320px floor cannot run text under the
+	 * action column, the `ink-dim` receipt, the `Stopping…` busy label, the pinned
+	 * confirmation width, and the corrected comment. It is listed for the list's
+	 * own reason: a fold resolved from main's manifest copy would drop the only
+	 * statement of the two narrowed runs, of the one new surface and the twelve
+	 * re-shot states, and of why the yield order exists at all. It quotes no
+	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"monitorsControlsDesignRound1",
+	/*
+	 * AND THE CONDENSED GROUP'S PICTURES PASS'S OWN (`feat/condensed-group-images`,
+	 * the operator report that a collapsed action group must still show what its
+	 * run produced): the two records of the pass that drew the strip under a
+	 * condensed group's header and of its round-1 remediation, and this branch's
+	 * fold record from the fold onto `origin/main` `0ab50df2a8` (the transcript
+	 * rail rework over #645's monitor renders). Their notes spell their identity
+	 * as bare tree SHAs, so none of them adds a name to the quoting ledger, and
+	 * they are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop the only statements of what each pass and fold moved. (The
+	 * retired `STAMP_BINDING_NOTES` registrations that carried the first two on
+	 * this branch's pre-#566 copies are gone with that list; these are what
+	 * `BRANCH_RECORDS` holds instead.)
+	 */
+	"condensedGroupMediaNote",
+	"condensedGroupMediaRoundOneNote",
+	"condensedGroupMediaFoldNote",
+	/*
+	 * And the SAME LANE'S SECOND LEVEL (`condensedTurnMediaNote`): the pass
+	 * that keeps a folded span's pictures under the condensed BAR, with its
+	 * three new `chat-turn-collapse--images*` cells and its declared
+	 * `chat-turn-collapse-images-before` half. Registered for the list's usual
+	 * reason - a fold resolved from main's copy would drop the only statement
+	 * of what the pass moved and of the two trees' difference the pair
+	 * measures - and its note spells its identity as bare SHAs, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"condensedTurnMediaNote",
+	/*
+	 * And the re-stamp that lands the pair over the frames tip, registered with
+	 * it for the same reason: a fold resolved from main's copy would drop the
+	 * statement that the walk at `3723d39830` is this file's own derivation.
+	 */
+	"condensedTurnMediaRestampNote",
+	"condensedGroupMediaFoldTwoNote",
+	"condensedPicturesRoundOneRemediationNote",
+	/*
+	 * The round-2 mini-pass (F1/F2, U8/U9) re-shot the count control's cells and
+	 * added the press cell its own note names. Registered for the list's usual
+	 * reason: a fold resolved from main's copy would drop the only statement of
+	 * what the pass moved and of the uncap's one-press claim the new cell
+	 * photographs.
+	 */
+	"condensedPicturesRoundTwoRemediationNote",
+	/*
+	 * And the pictures lane's fold onto the 0.31.21 release window
+	 * (`condensedPicturesFoldNote`): this file and the list above were the
+	 * fold's only conflicts, both resolved with main's records whole and
+	 * this branch's re-laid. Registered for the list's usual reason - a
+	 * fold resolved from main's copy would drop the only statement of what
+	 * the fold moved and what it did not - and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldNote",
+	/*
+	 * And the lane's SECOND fold (`condensedPicturesFoldNote`'s pair), onto the bundled-CPython runtime
+	 * (#568): this file was its one conflict, resolved with main's records whole and this branch's
+	 * re-laid. Registered for the list's usual reason, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldTwoNote",
+	/*
+	 * And the lane's THIRD fold, onto the rail's end-tick fix (#666): this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldThreeNote",
+	/*
+	 * And the lane's FOURTH fold, onto the settings-rail edge fix (#609): this file was its
+	 * one conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFourNote",
+	/*
+	 * And the lane's FIFTH fold, onto the closed-dispose/ben-trio train: this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFiveNote",
+	/*
+	 * And the lane's CONVERGENCE fold (`condensedPicturesFoldSixNote`), onto the condense-bar
+	 * spacing sibling (#653): three paths conflicted - this record, the transcript's entry union
+	 * and the behaviour suite's helpers - all resolved as unions, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldSixNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
@@ -2285,6 +2419,40 @@ const BRANCH_RECORDS = [
 	 */
 	"browserOauthPopupsRestampNote",
 	/*
+	 * And the fold onto `origin/main` = `7ba0ddce94` (the 0.31.21 release window: the
+	 * bump itself, the browser-OAuth-popups lane and the desktop-tests diagnostics),
+	 * listed for the list's own reason: the fold resolved two evidence files by hand
+	 * (this file's register and the manifest), and a later fold started from main's
+	 * copy would drop the record of that resolution. It quotes no tree-hash pair -
+	 * the pair is re-derived over the staged tree in the fold commit itself - so
+	 * `BRANCH_RECORDS` is where it belongs.
+	 *
+	 * RE-KEYED in the fold onto `a7b4f88a18` for the same collision as its sibling
+	 * above: main's copy ships a note under the plain name, so this branch's
+	 * record moved to `foldOnto7ba0ddce94MonitorControlsNote`.
+	 */
+	"foldOnto7ba0ddce94MonitorControlsNote",
+	/*
+	 * And THIS round's own (2026-09-29 recovery): the identity panel's pass
+	 * record, `identityMenuPass`, and this lane's three fold notes. The pass
+	 * record was never listed while the lane lived on its own branch - this
+	 * list's promise was one record short of true for it - and the fold notes
+	 * are the only statements of what each fold resolved; a fold resolved from
+	 * main's copy would drop them without a word, which is this list's whole
+	 * subject. The two notes this lane first wrote under plain fold names are
+	 * re-keyed with the `Identity` suffix because main's copy already ships
+	 * notes under both old names (the settings-rail lane's folds onto the same
+	 * tips - the same collision that lane re-keyed its own `A8ac7f673c` record
+	 * for). All four spell their identity as bare SHAs, so none adds a name to
+	 * the quoting ledger.
+	 */
+	"identityMenuPass",
+	"foldOnto7ba0ddce94IdentityNote",
+	"foldOnto6f284060IdentityNote",
+	"foldOnto65a3e97b8cIdentityNote",
+	"foldOnto29a9aa985cIdentityNote",
+	"foldOnto32c7bc34c9IdentityNote",
+	/*
 	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
 	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
 	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
@@ -2298,6 +2466,17 @@ const BRANCH_RECORDS = [
 	"python314RefreshRestampNote",
 	"python314RefreshFoldNote",
 	"python314RefreshSecondFoldNote",
+	/*
+	 * And the fold onto `origin/main` = `f9dbf8b455` (the rail-bottom-active lane
+	 * riding the bundled-interpreter refresh), listed for the list's own reason:
+	 * the fold resolved two evidence files by hand and had to prove the merged
+	 * changes paint no monitor surface (the rail is canonical-transcript-only and
+	 * the stories draw `TranscriptGround`). A later fold started from main's copy
+	 * would drop the only record of that resolution. It quotes no tree-hash pair -
+	 * the pair is re-derived over the staged tree in the fold commit itself - so
+	 * `BRANCH_RECORDS` is where it belongs.
+	 */
+	"foldOntof9dbf8b455Note",
 	/*
 	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
 	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
@@ -2387,8 +2566,134 @@ const BRANCH_RECORDS = [
 	 * registration rides beside.
 	 */
 	"condensedBarFoldElevenNote",
-];
+	/*
+	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
+	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
+	 * binding this file once held - the install path is not something the evidence
+	 * sweep renders, so it moved BOTH trees without
+	 * taking a frame, and the reader is owed the reason no still was owed. It is REPAIRED
+	 * in the same commit to name the SHAs its pass read rather than the tree pair, which
+	 * is the shape this file now enforces. `src/` moved for the install decision and the
+	 * scripts' environment build; `scripts/` for the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
+	/*
+	 * And the agent-review remediation's own record rides beside it
+	 * (`installProvisioningRemediationRestampNote`): the round moved both trees with no
+	 * frame - the launcher probe and its verdict cache, the failure-cause split, the three
+	 * scripts' TLS notes, and the suites that pin them - so a fold that started from
+	 * main's copy would drop the only statement of that.
+	 */
+	"installProvisioningRemediationRestampNote",
+	/*
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
+	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
+	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto0738fa7eb3InstallProvisioningNote",
+	/*
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
+	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
+	 * verified, this file conflicted alone, and a conflicting head produces no
+	 * pull-request runs - so the fold is repeated, and its record is registered for the
+	 * list's usual reason.
+	 */
+	"foldOnto49491865caInstallProvisioningNote",
+	/*
+	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
+	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
+	 * bundle - while this branch was being reviewed; the two evidence files conflicted
+	 * alone, resolved as unions the same way, and the test file merged additively.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
+	/*
+	 * And the SIXTH fold's own, beside them (`foldOnto65a3e97b8cNote`): main moved through
+	 * #554's condensed group images and the #653/#655/#668 trains while the session was
+	 * disposed; both evidence files conflicted, no name collided, and the resolution is the
+	 * usual union. Registered for the list's usual reason: a fold that started from main's
+	 * copy would drop it first.
+	 */
 
+	"foldOnto65a3e97b8cNote",
+	/*
+	 * And this branch's own folds' records beside them - `foldOntoa7b4f88a18Note`
+	 * (the name-collision fold), `foldOnto891ad1e983Note`, and the six latest,
+	 * `foldOnto65a3e97b8cMonitorControlsNote` (RE-KEYED at its fold: main's own
+	 * lane folded the same tip and ships a note under the shared name),
+	 * `foldOnto29a9aa985cNote`, `foldOnto32c7bc34c9Note` (registered now; it
+	 * shipped unlisted and the convergence review caught it), and
+	 * `foldOnto8ff4dd8a9bNote` - listed for the list's own reason: each resolved
+	 * two evidence files by hand, and a fold resolved from main's copy would drop
+	 * the lot. The notes quote no tree-hash pair (the pairs are re-derived over
+	 * the staged tree in each fold commit), so `BRANCH_RECORDS` is where they
+	 * belong.
+	 */
+	"foldOntoa7b4f88a18Note",
+	"foldOnto891ad1e983Note",
+	"foldOnto65a3e97b8cMonitorControlsNote",
+	"foldOnto29a9aa985cNote",
+	"foldOnto32c7bc34c9Note",
+	"foldOnto8ff4dd8a9bNote",
+	"foldOntocef1c9c535Note",
+	"foldOnto4703067935Note",
+	/*
+	 * And this LANE's newest top-level record: the setup window's rail states the
+	 * pair the file ships and the surface it re-shot, so a fold resolved from
+	 * main's copy would drop it first - the reason this list exists.
+	 */
+	"installerPanelRailNote",
+	/*
+	 * And the pass under it: the round-1 remediation of the same rail, which
+	 * re-shot the surface whole and is the record a fold resolved from main's
+	 * copy would drop first, for the same reason.
+	 */
+	"installerPanelRailRemediationNote",
+	/*
+	 * And this LANE'S newest: the round-2 remediation, which fixed the working
+	 * ring's token, re-shot the surface whole again, and added the motion pair
+	 * the turn had no frame of. It states the trees the pass read as bare SHAs,
+	 * so it adds no name to the quoting ledger.
+	 */
+	"installerPanelRailRoundTwoNote",
+	/*
+	 * And by THIS branch, whose records the merge of `origin/main` = `340cfc7f88` had to keep: its
+	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
+	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
+	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
+	 * resolved this file from main's copy would drop them first, which is the failure this list
+	 * exists to make loud.
+	 */
+	"foldOnto29a9aa985cMeasureDragNote",
+	"foldOnto340cfc7f88Note",
+	"foldOnto4703067935MeasureDragNote",
+	"foldOnto49491865caMeasureDragNote",
+	"foldOnto5ba0d0dc8aMeasureDragNote",
+	"foldOnto65a3e97b8cMeasureDragNote",
+	"foldOnto6f28406010MeasureDragNote",
+	"foldOnto8a03152c61MeasureDragNote",
+	"foldOnto8ff4dd8a9bMeasureDragNote",
+	"foldOntoa7b4f88a18MeasureDragNote",
+	"foldOntocef1c9c535MeasureDragNote",
+	"foldOntoe2394f9ff1Note",
+	"foldOntof9dbf8b455MeasureDragNote",
+];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),

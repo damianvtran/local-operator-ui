@@ -42,6 +42,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
+import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
 
@@ -86,6 +87,33 @@ export type TurnSummaryProps = {
 	onOpenChange: (open: boolean) => void;
 	/** The hidden rows' groups, mounted only while open (the fold's contract). */
 	children: ReactNode;
+	/**
+	 * The hidden span's pictures, drawn under the bar while it is collapsed.
+	 *
+	 * The rows inside a collapsed bar are unmounted (`Disclosure` renders
+	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * reader had to expand the bar to see the artifact, which is the cost
+	 * condensing exists to remove - `TraceFold`'s `condensedMedia` states the
+	 * same rule one fold down. The caller composes the node
+	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the hidden rows'
+	 * images), because the transcript is what knows a record's images; the fold
+	 * hands it THIS bar's own toggle so the strip's `+N more images` slot can
+	 * open the fold rather than be a dead end (UX round 1, U1).
+	 *
+	 * Render it ONLY while collapsed: open, every row draws its own media
+	 * (`TranscriptRow`'s `media`) and a strip here as well would put one
+	 * picture on screen twice.
+	 */
+	condensedMedia?: (expand: () => void) => ReactNode;
+	/**
+	 * How many pictures `condensedMedia` stands for, for the summary's own
+	 * clause. A number beside the node rather than something read out of it,
+	 * because the node is opaque here (the caller builds it) and because the
+	 * count is the part a 64px tile cannot carry - the same reason and the
+	 * same mechanism as `TraceFold`'s `mediaCount`. Zero or absent adds no
+	 * clause at all, which is what keeps a run with no pictures byte-identical.
+	 */
+	mediaCount?: number;
 };
 
 /** The `·` the line joins its facts with — a flex child, never nested text. */
@@ -106,6 +134,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	open,
 	onOpenChange,
 	children,
+	condensedMedia,
+	mediaCount = 0,
 }) => {
 	return (
 		<div
@@ -211,6 +241,22 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								{actionCount === 1 ? "1 action" : `${actionCount} actions`}
 							</span>
 						)}
+						{/*
+						 * How many pictures the span produced, as the count the strip cannot
+						 * carry at 64px. The strip's accessible name already states it, so
+						 * leaving the visible line silent would give a sighted reader strictly
+						 * less than a screen-reader user - the inversion design round 1 found
+						 * on the condensed group (D3). It costs no height (it joins the facts
+						 * the row already prints), and a run with no pictures adds no clause.
+						 */}
+						{foldMediaClause(mediaCount) !== null && (
+							<>
+								<Dot />
+								<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
+									{foldMediaClause(mediaCount)}
+								</span>
+							</>
+						)}
 						{stampTs !== null && (
 							/*
 							 * THE TURN'S ONE STAMP, re-homed from the foot this bar suppresses
@@ -239,6 +285,29 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 				 */}
 				<div className={cn("flex flex-col")}>{children}</div>
 			</Disclosure>
+			{/*
+			 * The hidden span's pictures, while the rows that would draw them are
+			 * unmounted.
+			 *
+			 * OUTSIDE the disclosure and below it, so the bar keeps its own pitch and
+			 * the strip is what the reader gains rather than something the bar's line
+			 * has to trade against; the block's rule still closes the whole block.
+			 * Only while condensed: open, every row draws its own media and rendering
+			 * both would show one picture twice.
+			 *
+			 * The 8px of bottom padding is what the strip's own top gap measures: with
+			 * the tiles sitting straight on the block's rule (1px), they read as
+			 * standing ON the line rather than inside the bar whose pictures they are
+			 * (design round 1, D1 - the same strip in the expanded state clears the
+			 * rule by 5-6px, so the rule follows the strip here rather than the old
+			 * bar height). A run with no pictures passes no node, so this wrapper
+			 * does not exist for it and the no-picture bar stays byte-identical.
+			 */}
+			{!open && condensedMedia && (
+				<div className={cn("pb-2")}>
+					{condensedMedia(() => onOpenChange(true))}
+				</div>
+			)}
 		</div>
 	);
 };
