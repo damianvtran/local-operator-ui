@@ -183,6 +183,7 @@ import {
 } from "./transcript-rows";
 import {
 	type RunCollapsePlan,
+	type SegmentPlan,
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
@@ -263,19 +264,25 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  * only when non-zero. `formatDuration` is the bar's own formatter, so the
  * sentence and the row cannot disagree about "20m30s".
  */
-function condenseSentence(plan: RunCollapsePlan): string {
+function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
-	if (plan.facts.durationS !== null) {
-		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	if (segment.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(segment.facts.durationS)}`);
 	}
-	if (plan.facts.actions > 0) {
+	if (segment.facts.actions > 0) {
 		parts.push(
-			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+			segment.facts.actions === 1
+				? "1 action"
+				: `${segment.facts.actions} actions`,
 		);
 	}
-	return parts.length === 0
-		? "Turn condensed."
-		: `Turn condensed: ${parts.join(", ")}.`;
+	/*
+	 * A labelled bar states its own kind first ("Followed up: 8 actions."): a
+	 * follow-up section appearing after the answer is not "the turn condensing",
+	 * and saying so would announce the answer's own turn twice.
+	 */
+	const lead = segment.label ?? "Turn condensed";
+	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
 }
 
 /**
@@ -981,7 +988,23 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			<div
 				ref={turnRef}
-				className={cn("relative w-full break-words text-ink")}
+				className={cn(
+					"relative w-full break-words text-ink",
+					/*
+					 * THE ANSWER'S OWN MARK (issue #665): a 2px rule in the margin the row
+					 * already has, on the turn's ELECTED answer only (`closesTurn` is the
+					 * segments module's election, so a post-dispose status reply never
+					 * wears it). `-ml-2` + `border-l-2` + `pl-1.5` net to zero, so the
+					 * prose box does not move: no second left edge, no second measure, no
+					 * card and no ground (docs/branding.md section 7 forbids each). It is
+					 * `ink-dim` because that role is already asserted at the 3:1 non-text
+					 * floor on every ground, so this adds no token and no contract row.
+					 * `data-turn-answer` is the hook rigs and tests read instead of a
+					 * class name.
+					 */
+					closesTurn && "-ml-2 border-l-2 border-ink-dim pl-1.5",
+				)}
+				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 				data-lo-truncated={record.truncated || undefined}
@@ -3225,31 +3248,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
 	useEffect(() => {
-		const collapsed = collapse.runs.filter((run) => run.collapses);
+		/*
+		 * The announcement's unit is the SEGMENT (a run can now hold several bars),
+		 * keyed by the same key the reader's expansion uses. Still ONE `<output>` for
+		 * the whole list: several bars per run make a live region per bar the
+		 * obvious wrong turn, and each new bar simply adds its sentence to the one.
+		 */
+		const collapsed = collapse.runs.flatMap((run) =>
+			run.segments.filter((segment) => segment.collapsed),
+		);
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
 			 * bars are what the conversation loaded with, not a settle. A pass
-			 * with no runs at all — a held or empty pane — leaves the
+			 * with no runs at all - a held or empty pane - leaves the
 			 * initialisation for the first pass that paints rows.
 			 */
 			if (collapse.runs.length > 0) {
 				announcedPlan.current = {
-					keys: new Set(collapsed.map((run) => run.key)),
+					keys: new Set(collapsed.map((segment) => segment.key)),
 					rowIds,
 				};
 			}
 			return;
 		}
 		const appeared = collapsed.filter(
-			(run) =>
-				!previous.keys.has(run.key) &&
-				run.recordIds.some((id) => previous.rowIds.has(id)),
+			(segment) =>
+				!previous.keys.has(segment.key) &&
+				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
 		announcedPlan.current = {
-			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			keys: new Set([
+				...previous.keys,
+				...collapsed.map((segment) => segment.key),
+			]),
 			rowIds,
 		};
 		if (appeared.length === 0) return;
@@ -3258,10 +3292,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
-	 * with one exception: a collapsed run's hidden groups move INSIDE its bar
-	 * (so they are merely unmounted while collapsed — the fold's own contract)
-	 * and the bar takes the FIRST hidden row's slot and gap. Pinned and tail
-	 * groups keep their places, so a collapse never reorders a visible row.
+	 * with one exception: a collapsed SEGMENT's hidden groups move INSIDE its bar
+	 * (so they are merely unmounted while collapsed - the fold's own contract)
+	 * and the bar takes the slot and gap of the segment's FIRST hidden group.
+	 * Pinned rows, the elected answer and the trailing statements keep their
+	 * places, so a collapse never reorders a visible row.
+	 *
+	 * THE WALK CONSUMES GROUPS STRICTLY IN ORDER, which is why a pinned row between
+	 * two hidden spans can no longer land after a bar that precedes it: each span
+	 * pushes its own bar the moment its first group is reached, and the pinned row
+	 * is pushed where the walk finds it. Sorting afterwards could not express that
+	 * (the two orders differ per expansion state); the partition is what fixes it.
 	 */
 	const chatEntries = useMemo(() => {
 		const indexOf = new Map<string, number>();
@@ -3273,23 +3314,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					group: SectionGroup;
 					suppressClosingLine: boolean;
 					/**
-					 * Whether this group renders directly under a collapsed run's
-					 * bar. The row beneath the bar's rule re-tiers at the render pass
-					 * (`atItemTierGroup`); this flag is the walk's half of that
-					 * decision, set where the bar is placed.
+					 * Whether this group renders below a bar of its run. The row beneath
+					 * the bar's rule re-tiers at the render pass (`atItemTierGroup`); this
+					 * flag is the walk's half of that decision, set where the bar is
+					 * placed.
 					 */
 					afterBar?: boolean;
 			  }
 			| {
 					kind: "bar";
-					plan: RunCollapsePlan;
+					segment: SegmentPlan;
+					/** The whole run's ids: the bar's long-standing `data-run-ids`. */
+					runIds: readonly string[];
 					children: SectionGroup[];
 					/**
-					 * The hidden span's pictures, computed HERE because the bar's children
+					 * The segment's pictures, computed HERE because the bar's children
 					 * are unmounted while it is collapsed and these are what they would
-					 * have shown. `plan.hidden` rather than the whole run: the bar shows
-					 * exactly what the collapse hides, and a pinned row that stays on
-					 * screen keeps drawing its own media.
+					 * have shown. The segment's own rows rather than the whole run: a bar
+					 * shows exactly what it hides, and a pinned row that stays on screen
+					 * keeps drawing its own media.
 					 */
 					images: TranscriptImage[];
 			  };
@@ -3321,55 +3364,54 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				continue;
 			}
-			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
-			const children: SectionGroup[] = [];
+			/* Which segment (index) each hidden row belongs to. */
+			const segmentOf = new Map<string, number>();
+			plan.segments.forEach((segment, index) => {
+				for (const id of segment.segmentIds) segmentOf.set(id, index);
+			});
 			/*
-			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
-			 * statement's gap was BUILT against its original neighbour - often a
-			 * tool row that has collapsed into the bar - so it arrives at the trace
-			 * tier and the collapse leaves it 2px under the rule, which the
-			 * operator read as the row hugging it. The SECOND report extended the
-			 * class: an incident row behind the memory statement hugged THAT row
-			 * by the same 2px, because only the first group was re-tiered. Every
-			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
-			 * so the statements under the rule sit at the block step, not the
-			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
-			 * read as statements of their own. Groups built at a wider tier (prose,
-			 * the closing answer) are handed back unchanged by the memoised
-			 * helper - the re-tier only ever fires on the trace tier.
+			 * The turn's ONE stamp lives on the bar that carries it, and that bar
+			 * withholds the answer's own closing line (`stampTs` is set only when
+			 * that bar is the run's sole pre-answer segment, so the totals it
+			 * states are the turn's). Any other shape keeps the foot: it is where
+			 * the turn's totals and stamp go when the bars state only parts.
 			 */
+			const footWithheld = plan.segments.some(
+				(segment) => segment.collapsed && segment.stampTs !== null,
+			);
+			const children = new Map<number, SectionGroup[]>();
 			let afterBar = false;
 			for (const group of groups) {
-				const hidden =
-					group.kind === "run"
-						? group.rows.every((row) => hiddenIds.has(row.record.id))
-						: hiddenIds.has(group.row.record.id);
-				if (hidden) {
-					children.push(group);
-					if (children.length === 1) {
-						/* The bar sits where the first hidden group did. */
+				const index = segmentOf.get(
+					group.kind === "run" ? group.rows[0].record.id : group.row.record.id,
+				);
+				const segment = index === undefined ? null : plan.segments[index];
+				if (segment !== null && index !== undefined && segment.collapsed) {
+					let held = children.get(index);
+					if (held === undefined) {
+						held = [];
+						children.set(index, held);
+						/* The bar sits where the segment's first hidden group did. */
 						entries.push({
 							kind: "bar",
-							plan,
-							children,
-							images: foldImages(plan.hidden),
+							segment,
+							runIds: plan.recordIds,
+							children: held,
+							images: foldImages(segment.rows),
 						});
 						afterBar = true;
 					}
+					held.push(group);
 					continue;
 				}
 				/*
-				 * Everything visible in a bar'd run renders with its closing line
-				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
-				 *
-				 * `afterBar` is deliberately NOT reset: see the comment above -
-				 * every visible group of a bar'd run, not only the first, is the
-				 * block below the bar.
+				 * A hidden group of a segment the focus hold stood open renders in
+				 * place, exactly as it did before this pass could collapse it.
 				 */
 				entries.push({
 					kind: "group",
 					group,
-					suppressClosingLine: true,
+					suppressClosingLine: footWithheld && segment === null,
 					afterBar,
 				});
 			}
@@ -4016,34 +4058,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
-											 * answer's, else the run's last row's), and both candidates
-											 * render as their own groups elsewhere in the same list — an
-											 * unprefixed key collided with one of them (two children, one
-											 * key) and React silently dropped one of the pair. The prefix
-											 * also states which collided: the replaced slot is not the bar.
+											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's; later segments append
+											 * `#<row>`), and the run's groups render as their own children
+											 * elsewhere in the same list - an unprefixed key collided with
+											 * one of them (two children, one key) and React silently
+											 * dropped one of the pair. The prefix also states which
+											 * collided: the replaced slot is not the bar.
 											 */
-											key={`turn-summary:${entry.plan.key}`}
-											recordIds={entry.plan.recordIds}
+											key={`turn-summary:${entry.segment.key}`}
+											recordIds={entry.runIds}
+											/*
+											 * The ids THIS bar hides. With several bars in a run, the
+											 * run's ids alone cannot say which bar holds a row, and the
+											 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
+											 * of the run for a row in the second - one unrequested
+											 * expansion per bar in between.
+											 */
+											segmentIds={entry.segment.segmentIds}
 											/*
 											 * The bar stands where the FIRST hidden row stood, so it
 											 * carries that row's identity: a lookup for the row finds the
 											 * bar that replaced its slot.
 											 */
-											anchorRecordId={entry.plan.hidden[0].record.id}
-											className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
-											durationS={entry.plan.facts.durationS}
-											actionCount={entry.plan.facts.actions}
+											anchorRecordId={entry.segment.firstId}
+											className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
+											durationS={entry.segment.facts.durationS}
+											actionCount={entry.segment.facts.actions}
 											/*
-											 * The count is a minimum while the run's head is cut (`N+ actions`):
-											 * see `TurnSummaryFacts.partial` - the bar says so in its own
-											 * vocabulary rather than stating a total it cannot know.
+											 * The count is a minimum while the segment's head is cut
+											 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
+											 * so in its own vocabulary rather than stating a total it
+											 * cannot know.
 											 */
-											partial={entry.plan.facts.partial}
-											title={entry.plan.facts.title}
-											stampTs={entry.plan.stampTs}
-											open={openRuns.has(entry.plan.key)}
-											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											partial={entry.segment.facts.partial}
+											title={entry.segment.facts.title}
+											stampTs={entry.segment.stampTs}
+											label={entry.segment.label}
+											completed={entry.segment.completed}
+											open={openRuns.has(entry.segment.key)}
+											onOpenChange={(next) =>
+												setRunOpen(entry.segment.key, next)
+											}
 											/*
 											 * The span's pictures, while the rows that draw them are
 											 * unmounted - the same composition and the same rule as
