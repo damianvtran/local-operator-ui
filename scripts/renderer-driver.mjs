@@ -10676,14 +10676,32 @@ async function sceneTranscriptRail(cdp) {
 				let refDist = Infinity;
 				for (const el of sc.querySelectorAll("[data-record-id]")) {
 					if (el === row || el.hasAttribute("data-turn-summary")) continue;
-					const top = el.getBoundingClientRect().top;
-					const dist = Math.abs(top + 11 - mid);
+					const r = el.getBoundingClientRect();
+					/*
+					 * Same-frame painted guard (QA round 2, Q-1): only rows fully
+					 * inside the scroller's visible band can be the reference. A
+					 * row below the fold reads empty paint - how the near-newest
+					 * clamp leg read 32 against its 238 - and a "reference" that
+					 * is not painted can only fail or pass vacuously.
+					 */
+					if (r.top < sr.top || r.bottom > sr.top + sc.clientHeight) {
+						continue;
+					}
+					const dist = Math.abs(r.top + 11 - mid);
 					if (dist < refDist) {
 						refDist = dist;
 						ref = el;
 					}
 				}
 				const rr2 = ref ? ref.getBoundingClientRect() : null;
+				/* The target's preceding row - painted whenever the target is,
+				 * so it backstops the reference at the clamps. */
+				const rowsAll = Array.from(
+					sc.querySelectorAll("[data-record-id]"),
+				).filter((el) => !el.hasAttribute("data-turn-summary"));
+				const rowIdx = rowsAll.indexOf(row);
+				const adj = rowIdx > 0 ? rowsAll[rowIdx - 1] : null;
+				const rr3 = adj ? adj.getBoundingClientRect() : null;
 				const active = document.querySelector('[data-mark-state="active"]');
 				return {
 					landed: row.getAttribute("data-record-id"),
@@ -10702,6 +10720,16 @@ async function sceneTranscriptRail(cdp) {
 					refBand: rr2
 						? { top: Math.round(rr2.top), height: Math.round(rr2.height) }
 						: null,
+					adjBand: rr3
+						? { top: Math.round(rr3.top), height: Math.round(rr3.height) }
+						: null,
+					/* The target's strip that is actually inside the scroller's
+					 * visible band: at the clamp the last row can sit past the
+					 * fold, and there is no ink to meter. */
+					visibleStrip: {
+						top: Math.round(Math.max(rr.top, sr.top)),
+						bottom: Math.round(Math.min(rr.bottom, sr.top + sc.clientHeight)),
+					},
 					activeTick: active ? active.getAttribute("data-checkpoint-id") : null,
 				};
 			})()`);
@@ -10778,12 +10806,13 @@ async function sceneTranscriptRail(cdp) {
 			await wait(700);
 			const settled = await anchorView(id);
 			const view = settled ?? atWash;
-			const targetPeak = atWash?.targetBand
-				? await rowPeakLuma(
-						`rail-jump-${name}`,
-						atWash.scrollerLeft,
-						atWash.targetBand,
-					)
+			const strip = atWash?.visibleStrip ?? null;
+			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
+			const targetPeak = targetVisible
+				? await rowPeakLuma(`rail-jump-${name}`, atWash.scrollerLeft, {
+						top: strip.top,
+						height: strip.bottom - strip.top,
+					})
 				: null;
 			const refPeak = atWash?.refBand
 				? await rowPeakLuma(
@@ -10792,9 +10821,25 @@ async function sceneTranscriptRail(cdp) {
 						atWash.refBand,
 					)
 				: null;
+			const adjPeak = atWash?.adjBand
+				? await rowPeakLuma(
+						`rail-jump-${name}`,
+						atWash.scrollerLeft,
+						atWash.adjBand,
+					)
+				: null;
+			/* Full ink is 200+ (unmasked 238, inside the fade 189): the first
+			 * reference that actually carries ink is the comparison; without one
+			 * the absolute bar still carries the check, and the note says so. */
+			const referencePeak =
+				refPeak !== null && refPeak >= 200
+					? refPeak
+					: adjPeak !== null && adjPeak >= 200
+						? adjPeak
+						: null;
 			note(
 				`landing ${name}`,
-				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetPeak ?? "none"}/${refPeak ?? "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetPeak ?? "none"}/${referencePeak ?? "none"} mid=${refPeak ?? "none"} adj=${adjPeak ?? "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
 			);
 			check(
 				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
@@ -10813,10 +10858,15 @@ async function sceneTranscriptRail(cdp) {
 			);
 			check(
 				`the ${name} landing's target reads at full ink, clear of the top fade`,
-				targetPeak !== null &&
-					refPeak !== null &&
-					Math.abs(targetPeak - refPeak) <= 4,
-				`target=${targetPeak} reference=${refPeak}`,
+				targetVisible
+					? targetPeak !== null &&
+							targetPeak >= 200 &&
+							(referencePeak === null ||
+								Math.abs(targetPeak - referencePeak) <= 4)
+					: expect === "clamp",
+				targetVisible
+					? `target=${targetPeak} reference=${referencePeak ?? "none"} (mid=${refPeak ?? "none"} adj=${adjPeak ?? "none"})`
+					: `no visible target strip (the clamp's last row sits past the fold): ${JSON.stringify(strip)}`,
 			);
 			check(
 				`the rail's active tick after the ${name} jump is the target`,

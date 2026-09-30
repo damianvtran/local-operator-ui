@@ -304,6 +304,20 @@ export function jumpToEntry(
 				 */
 				paintJumpHighlight(target);
 				void landOnTop(region, target).then(() => {
+					/*
+					 * RE-ASSERT AFTER THE SETTLE (QA round 2's fate call): the wash is
+					 * imperative DOM state, and a late mount commit - a page landing
+					 * while the windowed mount replaces the row - strips the
+					 * attribute before the reader sees it (measured: cold far jumps
+					 * over a second under load, 4/4). The settle resolve is the
+					 * landing; a target that lost its wash gets a fresh one here. One
+					 * that kept it is left alone, so a fast jump is not double-pulsed,
+					 * and a wash whose 1400ms ran out during a slow cold settle comes
+					 * back at the moment the reader actually arrives.
+					 */
+					if (target.isConnected && !target.hasAttribute(JUMP_HIGHLIGHT_ATTR)) {
+						paintJumpHighlight(target);
+					}
 					resolve("landed");
 				});
 			},

@@ -579,6 +579,46 @@ test("a newer settle supersedes an older one's loop (review round 2)", async () 
 	);
 });
 
+test("a wash stripped mid-settle is re-asserted at the landing (QA round 2)", async () => {
+	/*
+	 * The fate the QA round measured: a late mount commit replaces the row and
+	 * strips the wash before the reader sees it (cold far jumps >1s under load,
+	 * 4/4). The settle resolve is the landing, so a target with no wash gets a
+	 * fresh one there; this drives the strip explicitly.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	const timers = [];
+	const realSetTimeout = window.setTimeout;
+	window.setTimeout = (fn, ms) => {
+		timers.push({ fn, ms });
+		return timers.length;
+	};
+	try {
+		const pending = jumpToEntry(root, region, "u9");
+		// The wash paints at the reveal; wait for it, then strip it as the mount
+		// commit would, while the settle is still running.
+		for (let i = 0; i < 60 && !row.hasAttribute(JUMP_HIGHLIGHT_ATTR); i += 1) {
+			await new Promise((resolve) =>
+				window.requestAnimationFrame(() => resolve()),
+			);
+		}
+		assert.ok(row.hasAttribute(JUMP_HIGHLIGHT_ATTR), "the wash painted first");
+		row.removeAttribute(JUMP_HIGHLIGHT_ATTR);
+		const outcome = await pending;
+		assert.equal(outcome, "landed");
+		assert.ok(
+			row.hasAttribute(JUMP_HIGHLIGHT_ATTR),
+			"the wash is back at the landing",
+		);
+		assert.equal(timers.length, 2, "a second paint re-armed the timer");
+	} finally {
+		window.setTimeout = realSetTimeout;
+	}
+});
+
 test("a row behind a bar AND a fold: both open, outermost first", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">
