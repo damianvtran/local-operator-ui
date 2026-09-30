@@ -40,7 +40,7 @@
  * the values in them are invented.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { configure, expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import "../../styles/index.css";
 import { AgentHubPage } from "./agent-hub-page";
@@ -527,6 +527,21 @@ type Story = StoryObj;
 const CHECKING_ORGS = /Checking your organizations/;
 const NOT_IN_ORG = /you are not in one yet/;
 const ORGS_UNAVAILABLE = /organizations are unavailable on this backend/;
+/*
+ * A TEN-SECOND ASYNC BUDGET, NOT TESTING-LIBRARY'S ONE.
+ *
+ * Every state these plays wait on arrives through a stubbed read, and the hub's
+ * retry policy (`retryDesktopQuery`) spends one more attempt on any answer that
+ * carries a status - so an org refusal, which is the read this file stubs with a
+ * 403, is on screen about two round trips after the press rather than one. On a
+ * loaded fleet machine (measured 2026-09-29 at a load average of 45-115) the
+ * default second expires first: `org-plan-lapsed`'s play threw "Unable to find
+ * [data-testid=agent-hub-org-no-access]" and aborted the sweep. The budget is the
+ * rig's own settle order; it changes only how long a genuinely absent state takes
+ * to fail.
+ */
+configure({ asyncUtilTimeout: 10_000 });
+
 const CARD_DETAILS_NAME = /^View details for /;
 
 /**
@@ -538,7 +553,17 @@ const CARD_DETAILS_NAME = /^View details for /;
  */
 const chooseScope = async (name: string) => {
 	await screen.findByTestId("agent-hub-status");
-	await userEvent.click(await screen.findByRole("button", { name }));
+	/*
+	 * A LONGER WAIT THAN TESTING-LIBRARY'S SECOND. The scope chips are built from
+	 * `memberships.list`, which starts only after the capabilities answer says the
+	 * org operations exist - two stubbed round trips, and on a loaded fleet machine
+	 * the default 1s has been measured to expire before the chip exists (the play
+	 * threw "Unable to find role=button and name Minerva"). Ten seconds is the same
+	 * order as the rig's own settle budget.
+	 */
+	await userEvent.click(
+		await screen.findByRole("button", { name }, { timeout: 10_000 }),
+	);
 	releaseFocus();
 };
 
@@ -556,7 +581,42 @@ const releaseFocus = () => {
 	}
 };
 
-/** Press the Teams tab, and wait until it is the selected one. */
+/**
+ * Hold the rig's shutter until the state this frame claims is on screen.
+ *
+ * WITHOUT THIS THE RIG CAN PHOTOGRAPH A MID-PLAY FRAME. Its "is the story ready"
+ * poll is satisfied by the mounted page — Storybook's own chrome is gone, the
+ * fonts have resolved, the story root has elements — and it then measures the
+ * document and opens the shutter while this story's `play` is still pressing the
+ * scope chip and the Teams tab. Measured 2026-09-29: `agent-hub-page--org-teams`
+ * was photographed as the AGENTS view at the grid's 1444px document height,
+ * because the frame was taken between the scope press and the tab press, while
+ * `org-teams-empty` (same play, different timing) came out right — a race, not a
+ * layout defect.
+ *
+ * The latch the rig already honours is `documentElement.dataset.capturePending`:
+ * the hub's own stories set it on mount and clear it when the selector (and, when
+ * given, the text) the frame claims is in the DOM. The 20s bound is the rig's own
+ * reason for existing in reverse — a play that throws must not hold the shutter
+ * forever and silently ship the state it died in.
+ */
+const holdShutter = (until: string, text?: string) => {
+	document.documentElement.dataset.capturePending = "1";
+	const started = Date.now();
+	const timer = window.setInterval(() => {
+		const found = document.querySelector(until);
+		const matched =
+			Boolean(found) &&
+			(text === undefined || (found?.textContent ?? "").includes(text));
+		if (matched || Date.now() - started > 20_000) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}
+	}, 50);
+};
+
+/**
+ * Press the Teams tab, and wait until it is the selected one. */
 const openTeamsTab = async () => {
 	await userEvent.click(await screen.findByTestId("agent-hub-view-teams"));
 	await waitFor(() =>
@@ -621,6 +681,7 @@ export const Empty: Story = {
 export const LoadFailed: Story = {
 	render: () => {
 		installBridge({ records: 12, failList: true });
+		holdShutter('[data-testid="agent-hub-error"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -646,6 +707,7 @@ export const LoadFailed: Story = {
 export const EmptyCategory: Story = {
 	render: () => {
 		installBridge({ records: 12, filteredRecords: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -663,6 +725,7 @@ export const EmptyCategory: Story = {
 export const PageChangeKeepsTheGrid: Story = {
 	render: () => {
 		installBridge({ records: 12, holdAfterFirst: true });
+		holdShutter('[data-testid="agent-hub-updating"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -688,6 +751,7 @@ export const PageChangeKeepsTheGrid: Story = {
 export const ViewerStateUnknown: Story = {
 	render: () => {
 		installBridge({ records: 12, signedIn: true, failStatuses: true });
+		holdShutter('[data-testid="agent-hub-status-unknown"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -705,6 +769,7 @@ export const ViewerStateUnknown: Story = {
 export const SearchMiss: Story = {
 	render: () => {
 		installBridge({ records: 12, filteredRecords: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -724,6 +789,7 @@ export const SearchMiss: Story = {
 export const ScopeSwitched: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-search-scope"]', "Description");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -748,6 +814,7 @@ export const ScopeSwitched: Story = {
 export const SortedByName: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-sort"]', "Name (A to Z)");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -773,6 +840,7 @@ export const SortedByName: Story = {
 export const FocusedSearch: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter('[data-testid="agent-hub-search"]:focus');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -814,6 +882,7 @@ export const NarrowColumns: Story = {
 export const PagerFooter: Story = {
 	render: () => {
 		installBridge({ records: 4 });
+		holdShutter('[data-testid="agent-hub-pager"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -825,6 +894,7 @@ export const PagerFooter: Story = {
 export const PagerFooterNarrow: Story = {
 	render: () => {
 		installBridge({ records: 4, longCounts: true });
+		holdShutter('[data-testid="agent-hub-pager"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -912,6 +982,7 @@ export const OrgScopeSelected: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
+		holdShutter('[data-testid="agent-org-badge"]', "Minerva");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -962,6 +1033,7 @@ export const OrgScopeSelected: Story = {
 export const OrgEmpty: Story = {
 	render: () => {
 		installBridge({ records: 12, signedIn: true, orgs: ORGS, orgAgents: 0 });
+		holdShutter('[data-testid="agent-hub-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -988,6 +1060,7 @@ export const OrgPlanLapsed: Story = {
 			orgs: ORGS,
 			orgRefusal: "plan",
 		});
+		holdShutter('[data-testid="agent-hub-org-no-access"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1013,6 +1086,7 @@ export const OrgAccessRevoked: Story = {
 			orgs: ORGS,
 			orgRefusal: "no_access",
 		});
+		holdShutter('[data-testid="agent-hub-org-no-access"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1042,6 +1116,10 @@ export const OrgTeams: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
+		holdShutter(
+			'[data-testid="agent-hub-status"]',
+			"2 teams shared with Minerva",
+		);
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1066,6 +1144,7 @@ export const OrgTeamsEmpty: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			teams: [],
 		});
+		holdShutter('[data-testid="org-teams-empty"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1090,6 +1169,7 @@ export const OrgTeamsLoading: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			holdTeams: true,
 		});
+		holdShutter('[data-testid="org-teams-loading"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1111,6 +1191,7 @@ export const OrgTeamsPlanLapsed: Story = {
 			orgs: ORGS,
 			orgRefusal: "plan",
 		});
+		holdShutter('[data-testid="org-teams-error"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1134,6 +1215,7 @@ export const TeamsPublicScope: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
+		holdShutter('[data-testid="agent-hub-teams-public"]');
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1147,6 +1229,10 @@ export const TeamsPublicScope: Story = {
 export const TeamsSignedOut: Story = {
 	render: () => {
 		installBridge({ records: 12 });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Open settings to sign in",
+		);
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1165,6 +1251,10 @@ export const TeamsSignedOut: Story = {
 export const TeamsPublicLoading: Story = {
 	render: () => {
 		installBridge({ records: 12, signedIn: true, holdMemberships: true });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"Checking your organizations",
+		);
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1182,6 +1272,10 @@ export const TeamsPublicNone: Story = {
 			signedIn: true,
 			orgs: [ORGS[1]],
 		});
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"you are not in one yet",
+		);
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1195,6 +1289,10 @@ export const TeamsPublicNone: Story = {
 export const TeamsPublicUnavailable: Story = {
 	render: () => {
 		installBridge({ records: 6, signedIn: true, orgCapability: false });
+		holdShutter(
+			'[data-testid="agent-hub-teams-public"]',
+			"organizations are unavailable",
+		);
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1220,6 +1318,7 @@ export const TeamsPublicUnreadable: Story = {
 			orgs: ORGS,
 			failMembershipsTimes: 2,
 		});
+		holdShutter('[data-testid="agent-hub-teams-public"]', "could not be read");
 		return <AgentHubPage />;
 	},
 	play: async () => {
@@ -1242,6 +1341,7 @@ export const TeamsPublicUnreadable: Story = {
 export const PagerLastPage: Story = {
 	render: () => {
 		installBridge({ records: 4 });
+		holdShutter('[data-testid="agent-hub-pager"]', "Page 3 of 3");
 		return <AgentHubPage />;
 	},
 	play: async () => {

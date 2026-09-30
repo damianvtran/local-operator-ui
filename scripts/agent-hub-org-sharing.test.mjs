@@ -1062,9 +1062,15 @@ test("both refusal sections agree on severity, and both retries are filled contr
 		/variant="outline"/,
 		"the refusal retry is not an outlined control",
 	);
-	// C6: the roster's loading state is not silent.
-	assert.match(roster, /<span className="sr-only">Loading teams…<\/span>/);
+	/*
+	 * C6, REVISED by design round 1's N3: the roster's skeleton is `aria-hidden`
+	 * and carries no sentence of its own, because the page's `aria-live` status
+	 * line already says "Loading teams…" above it - the state is announced once, by
+	 * the region that then reports the count.
+	 */
+	assert.doesNotMatch(roster, /sr-only">Loading teams…/);
 	assert.match(roster, /aria-hidden="true" className="flex flex-col gap-2"/);
+	assert.match(page, /statusSentence = "Loading teams…"/);
 });
 
 test("the roster renders a coded pull refusal through the shared treatment", () => {
