@@ -171,6 +171,17 @@ test("the copy table is B6.4 (with the provider-error line re-worded), and an un
 		mod.hubErrorSentence(item({ error_class: "hub-item-missing" })),
 		"No longer available on the hub (or you lost access).",
 	);
+	// The two classes that are NOT in B6.4's table. `hub-error` is the one the
+	// backend raises for a failed FETCH as well as a failed write, so its sentence
+	// names neither direction (UX round 2, U12).
+	assert.equal(
+		mod.hubErrorSentence(item({ error_class: "no-credential" })),
+		"Sign in to Radient to update from the hub.",
+	);
+	assert.equal(
+		mod.hubErrorSentence(item({ error_class: "hub-error" })),
+		"The update didn't complete. Try again.",
+	);
 	const generic = mod.hubErrorSentence(
 		item({ error_class: "from-the-future" }),
 	);
