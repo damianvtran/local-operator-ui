@@ -555,6 +555,65 @@ test("a full library permits replacements and identical imports", (t) => {
 	assert.equal(new CompanionSkinLibrary(f.libraryPath).list().length, 67);
 });
 
+for (const failure of ["preference rollback", "candidate cleanup"]) {
+	test(`startup retains the selected artwork after full-library replacement fails during ${failure}`, (t) => {
+		const f = fixture(t);
+		const originals = [];
+		for (let i = 0; i < 64; i++)
+			originals.push(f.library.import(f.write({ name: `Pet ${i}` })));
+		const original = originals.sort((a, b) => a.id.localeCompare(b.id)).at(-1);
+		let candidate;
+		let candidateId;
+		let n = 0;
+		do {
+			candidate = {
+				version: 1,
+				name: `Replacement ${n++}`,
+				frames: { idle: dataUrl(f.idle) },
+				pixelated: false,
+			};
+			candidateId = savedId(candidate);
+		} while (
+			failure === "preference rollback"
+				? candidateId <= original.id
+				: candidateId >= original.id
+		);
+		const blocked = join(
+			f.libraryPath,
+			`${failure === "preference rollback" ? original.id : candidateId}.json`,
+		);
+		const unlink = fs.unlinkSync;
+		const mock = t.mock.method(fs, "unlinkSync", (path) => {
+			if (path === blocked) throw new Error("Fixture cannot remove artwork");
+			return unlink(path);
+		});
+		syncBuiltinESMExports();
+		t.after(() => {
+			mock.mock.restore();
+			syncBuiltinESMExports();
+		});
+		let selected = original.id;
+		assert.throws(
+			() =>
+				f.library.import(f.write({ name: candidate.name }), original.id, {
+					commit: (imported) => {
+						if (failure === "candidate cleanup")
+							throw new Error("Could not save selection");
+						selected = imported.id;
+					},
+					rollback: () => selected === original.id,
+				}),
+			SAVE_ERROR,
+		);
+		assert.equal(f.library.list().length, 69);
+		const expected = f.library.get(selected);
+		assert.ok(expected);
+		const loaded = new CompanionSkinLibrary(f.libraryPath, selected);
+		assert.equal(loaded.list().length, 68);
+		assert.deepEqual(loaded.get(selected), expected);
+	});
+}
+
 test("failed replacement or removal preserves the selected character", (t) => {
 	const f = fixture(t);
 	const original = f.library.import(f.manifest);

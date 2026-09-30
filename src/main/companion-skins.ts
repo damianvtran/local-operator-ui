@@ -450,7 +450,10 @@ export class CompanionSkinLibrary {
 	private readonly packs = new Map<string, IndexedPack>();
 	private cached: { id: string; pack: StoredPack } | null = null;
 
-	constructor(private readonly directory: string) {
+	constructor(
+		private readonly directory: string,
+		preferredId?: string,
+	) {
 		let names: string[];
 		try {
 			names = readdirSync(directory)
@@ -458,6 +461,12 @@ export class CompanionSkinLibrary {
 				.sort();
 		} catch {
 			return;
+		}
+		const preferredName = `${preferredId}.json`;
+		const preferredIndex = names.indexOf(preferredName);
+		if (preferredIndex > 0) {
+			names.splice(preferredIndex, 1);
+			names.unshift(preferredName);
 		}
 		const index = readIndex(directory);
 		const entries = names.slice(0, MAX_PACKS);
@@ -550,7 +559,14 @@ export class CompanionSkinLibrary {
 		return true;
 	}
 
-	import(manifestPath: string, replaceId?: string): CompanionAppearance {
+	import(
+		manifestPath: string,
+		replaceId?: string,
+		selection?: {
+			commit(appearance: CompanionAppearance): void;
+			rollback(): boolean;
+		},
+	): CompanionAppearance {
 		if (replaceId !== undefined && !this.packs.has(replaceId)) {
 			throw new Error("Choose a custom companion to replace.");
 		}
@@ -610,29 +626,61 @@ export class CompanionSkinLibrary {
 			throw error;
 		}
 		const id = identifier(pack);
-		const exists = this.packs.has(id);
-		if (!exists && !replaceId && this.packs.size >= MAX_PACKS) {
+		const previous = this.packs.get(id);
+		if (!previous && !replaceId && this.packs.size >= MAX_PACKS) {
 			throw new Error("The companion library is full (64 custom companions).");
 		}
+		const cached = this.cached;
+		const imported = appearance(id, pack);
+		const path = join(this.directory, `${id}.json`);
 		try {
-			mkdirSync(this.directory, { recursive: true, mode: 0o700 });
-			writeJson(join(this.directory, `${id}.json`), pack);
+			try {
+				mkdirSync(this.directory, { recursive: true, mode: 0o700 });
+				writeJson(path, pack);
+				this.packs.set(id, packMetadata(this.directory, id, pack.name));
+			} catch {
+				throw new Error(
+					"Could not save this companion to the app's companion library.",
+				);
+			}
+			this.cached = { id, pack };
+			// Save the selection while both packs exist, before removing the old artwork.
+			selection?.commit(imported);
 			if (replaceId && replaceId !== id) {
 				try {
 					this.remove(replaceId);
-				} catch (error) {
-					if (!exists) unlinkSync(join(this.directory, `${id}.json`));
-					throw error;
+				} catch {
+					throw new Error(
+						"Could not save this companion to the app's companion library.",
+					);
 				}
 			}
-		} catch {
-			throw new Error(
-				"Could not save this companion to the app's companion library.",
-			);
+		} catch (error) {
+			let restored = true;
+			try {
+				restored = selection?.rollback() ?? true;
+			} catch {
+				restored = false;
+			}
+			// If selection rollback fails, its saved ID still needs the imported file.
+			if (restored) {
+				if (previous) this.packs.set(id, previous);
+				else {
+					try {
+						unlinkSync(path);
+						this.packs.delete(id);
+					} catch (cleanupError) {
+						if ((cleanupError as NodeJS.ErrnoException).code === "ENOENT")
+							this.packs.delete(id);
+						// Keep a file that cannot be removed available for manual cleanup.
+					}
+				}
+				this.cached = cached;
+			}
+			this.writeIndex();
+			throw error;
 		}
-		this.packs.set(id, packMetadata(this.directory, id, pack.name));
-		this.cached = { id, pack };
 		this.writeIndex();
-		return appearance(id, pack);
+		return imported;
 	}
 }

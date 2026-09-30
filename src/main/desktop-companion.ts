@@ -71,7 +71,6 @@ export class DesktopCompanion {
 	constructor(private readonly options: CompanionOptions) {
 		this.onDisplayChanged = this.onDisplayChanged.bind(this);
 		this.onAction = this.onAction.bind(this);
-		this.skins = new CompanionSkinLibrary(options.skinsDirectory);
 		this.chat = new CompanionChatService({
 			requestDesktop: options.requestDesktop,
 			cwd: options.cwd,
@@ -84,6 +83,10 @@ export class DesktopCompanion {
 		} catch {
 			this.preferences = companionPreferences(null);
 		}
+		this.skins = new CompanionSkinLibrary(
+			options.skinsDirectory,
+			this.preferences.character,
+		);
 		ipcMain.handle("companion:get-state", (event) =>
 			this.trusted(event) ? this.state : null,
 		);
@@ -98,7 +101,7 @@ export class DesktopCompanion {
 		ipcMain.handle("companion:send", async (event, text: unknown) => {
 			if (!this.trusted(event) || !this.chatOpen || typeof text !== "string")
 				return false;
-			return (await this.chat.send(text)).accepted;
+			return this.chat.send(text);
 		});
 		ipcMain.handle("companion:chat-menu", (event, position: unknown) =>
 			this.trusted(event) ? this.showChatMenu(position) : false,
@@ -165,9 +168,20 @@ export class DesktopCompanion {
 	}
 
 	importCharacter(path: string, replaceId?: string): void {
-		const appearance = this.skins.import(path, replaceId);
-		if (!this.selectCharacter(appearance.id))
-			throw new Error("Companion settings could not be saved.");
+		const previous = this.preferences;
+		try {
+			this.skins.import(path, replaceId, {
+				commit: ({ id }) => {
+					if (!this.selectCharacter(id))
+						throw new Error("Companion settings could not be saved.");
+				},
+				rollback: () =>
+					this.preferences === previous || this.applyPreferences(previous),
+			});
+		} finally {
+			this.options.appearanceChanged();
+			this.publishSettings();
+		}
 	}
 
 	get characterMenu(): MenuItemConstructorOptions[] {

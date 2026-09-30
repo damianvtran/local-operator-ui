@@ -318,9 +318,6 @@ function Companion() {
 							return;
 						interaction.handlers.onPointerDown(event);
 						event.currentTarget.setPointerCapture(event.pointerId);
-						window.companion.setReducedMotion(
-							window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-						);
 						window.companion.drag("start");
 					}}
 					onPointerMove={(event) => {

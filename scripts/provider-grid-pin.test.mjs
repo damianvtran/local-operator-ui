@@ -97,7 +97,7 @@ const bundle = await build({
 		"react/jsx-runtime",
 		"@tanstack/react-query",
 	],
-	loader: { ".css": "empty" },
+	loader: { ".css": "empty", ".webp": "empty" },
 	jsx: "automatic",
 	/*
 	 * The onboarding modules this file imports for `STEP_PANEL_WIDTH` resolve

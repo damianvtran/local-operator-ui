@@ -105,7 +105,7 @@ function fixture({ chiefOfStaff = false } = {}) {
 			throw new Error(`Unexpected operation ${input.op}`);
 		},
 	});
-	if (!chiefOfStaff) service.newChat();
+	if (!chiefOfStaff) service.chooseConversation("new-chat");
 	return {
 		service,
 		calls,
@@ -126,7 +126,7 @@ test("chat creates lazily with defaults and displays accepted prose", async () =
 	await f.service.refresh();
 	assert.equal(f.calls.length, 0);
 	const sent = await f.service.send("Hello");
-	assert.equal(sent.accepted, true);
+	assert.equal(sent, true);
 	assert.deepEqual(Object.keys(f.calls[0]).sort(), ["cwd", "op", "requestId"]);
 	assert.equal(f.calls[0].cwd, "/a/known/directory");
 	assert.equal(f.messages()[0].mode, "prompt");
@@ -159,13 +159,14 @@ test(
 		});
 		const poll = f.service.refresh();
 		const sent = await f.service.send("Hello");
-		assert.equal(sent.accepted, true);
-		assert.equal(sent.snapshot.status, "working");
-		assert.deepEqual(sent.snapshot.activeQuestion, {
+		assert.equal(sent, true);
+		const snapshot = f.service.snapshot;
+		assert.equal(snapshot.status, "working");
+		assert.deepEqual(snapshot.activeQuestion, {
 			id: f.messages()[0].requestId,
 			text: "Hello",
 		});
-		sent.snapshot.activeQuestion.text = "Cannot change the active question";
+		snapshot.activeQuestion.text = "Cannot change the active question";
 		assert.equal(f.service.snapshot.activeQuestion.text, "Hello");
 		assert.equal(reads, 3);
 		oldRead.resolve(frame({ history: [row("old", "assistant", "Old reply")] }));
@@ -188,8 +189,8 @@ test("lost creation reuses its request ID", async () => {
 			throw new Error("timeout");
 		}
 	});
-	assert.equal((await f.service.send("Hello")).accepted, false);
-	assert.equal((await f.service.send("Revised draft")).accepted, true);
+	assert.equal(await f.service.send("Hello"), false);
+	assert.equal(await f.service.send("Revised draft"), true);
 	const creates = f.calls.filter((call) => call.op === "sessions.create");
 	assert.deepEqual(creates[0], creates[1]);
 });
@@ -208,16 +209,16 @@ test("uncertain delivery permits only an exact retry with the same identity", as
 				return fail(input);
 		});
 		const first = await f.service.send("Do this once");
-		assert.equal(first.accepted, false);
-		assert.equal(first.snapshot.sessionId, ID);
-		assert.equal(first.snapshot.pendingText, "Do this once");
-		assert.equal(first.snapshot.activeQuestion, undefined);
+		assert.equal(first, false);
+		assert.equal(f.service.snapshot.sessionId, ID);
+		assert.equal(f.service.snapshot.pendingText, "Do this once");
+		assert.equal(f.service.snapshot.activeQuestion, undefined);
 		await f.service.refresh();
 		assert.equal(f.service.snapshot.pendingText, "Do this once");
 		const count = f.calls.length;
-		assert.equal((await f.service.send("Different task")).accepted, false);
+		assert.equal(await f.service.send("Different task"), false);
 		assert.equal(f.calls.length, count);
-		assert.equal((await f.service.send("Do this once")).accepted, true);
+		assert.equal(await f.service.send("Do this once"), true);
 		assert.equal(f.service.snapshot.pendingText, undefined);
 		assert.deepEqual(f.messages()[0], f.messages()[1]);
 		assert.equal(
@@ -235,9 +236,9 @@ test("definite refusals allow edits with a new request ID", async () => {
 				return receipt({}, status);
 			}
 		});
-		assert.equal((await f.service.send("/unsupported")).accepted, false);
+		assert.equal(await f.service.send("/unsupported"), false);
 		assert.equal(f.service.snapshot.pendingText, undefined);
-		assert.equal((await f.service.send("A plain prompt")).accepted, true);
+		assert.equal(await f.service.send("A plain prompt"), true);
 		assert.notEqual(f.messages()[0].requestId, f.messages()[1].requestId);
 	}
 });
@@ -249,17 +250,17 @@ test("conversation changes during creation cannot abandon or duplicate the origi
 		input.op === "sessions.create" ? creating.promise : undefined,
 	);
 	const first = f.service.send("Original task");
-	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("new-chat"), false);
 	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
-	assert.equal((await f.service.send("Duplicate task")).accepted, false);
+	assert.equal(await f.service.send("Duplicate task"), false);
 	creating.resolve(receipt({ session_id: ID }));
-	assert.equal((await first).accepted, true);
+	assert.equal(await first, true);
 	await f.service.refresh();
 	assert.deepEqual(
 		f.messages().map((call) => call.text),
 		["Original task"],
 	);
-	assert.equal(f.service.newChat(), true);
+	assert.equal(f.service.chooseConversation("new-chat"), true);
 });
 
 test("fresh gates and silent owners stop an uncertain retry before delivery", async () => {
@@ -275,7 +276,7 @@ test("fresh gates and silent owners stop an uncertain retry before delivery", as
 		});
 		await f.service.send("One task");
 		f.setFrame(frame(options));
-		assert.equal((await f.service.send("One task")).accepted, false);
+		assert.equal(await f.service.send("One task"), false);
 		assert.equal(f.service.snapshot.canSend, false);
 		assert.equal(f.messages().length, 1);
 	}
@@ -326,8 +327,8 @@ test("accepted work needs its own terminal turn, including after an owner change
 			input.op === "sessions.message" ? admitted(input) : undefined,
 		);
 		const sent = await f.service.send("My exact task");
-		assert.equal(sent.accepted, true);
-		assert.equal(sent.snapshot.status, "working");
+		assert.equal(sent, true);
+		assert.equal(f.service.snapshot.status, "working");
 		await f.service.refresh();
 		f.setFrame(
 			frame({
@@ -357,7 +358,7 @@ test("read error outcomes remain visible and permit another prompt", async () =>
 	await f.service.open(ID);
 	assert.equal(f.service.snapshot.status, "error");
 	assert.equal(f.service.snapshot.canSend, true);
-	assert.equal((await f.service.send("Try a smaller task")).accepted, true);
+	assert.equal(await f.service.send("Try a smaller task"), true);
 });
 
 test("an old poll failure cannot replace newer chat state", async () => {
@@ -376,7 +377,7 @@ test("an old poll failure cannot replace newer chat state", async () => {
 	await new Promise((resolve) => setImmediate(resolve));
 	pending.reject(new Error("old poll timed out"));
 	await oldPoll;
-	assert.equal((await send).accepted, true);
+	assert.equal(await send, true);
 	await f.service.refresh();
 	assert.equal(f.service.snapshot.status, "idle");
 	assert.equal(f.service.snapshot.error, null);
@@ -404,7 +405,7 @@ test("session changes and disposal discard late reads", async () => {
 test("invalid drafts stay local and snapshots cannot mutate state", async () => {
 	const f = fixture();
 	for (const text of ["", "   ", "x".repeat(16_001)])
-		assert.equal((await f.service.send(text)).accepted, false);
+		assert.equal(await f.service.send(text), false);
 	assert.equal(f.calls.length, 0);
 	const snapshot = f.service.snapshot;
 	snapshot.messages.push({ id: "fake", role: "assistant", text: "injected" });
@@ -500,17 +501,17 @@ test("pet chat reads and sends to the shared chief of staff; New chat is explici
 	await f.service.open();
 	assert.equal(f.service.snapshot.sessionId, ID);
 	assert.equal(f.service.snapshot.messages[0].text, "From the shortcut");
-	assert.equal((await f.service.send("From the pet")).accepted, true);
+	assert.equal(await f.service.send("From the pet"), true);
 	await f.service.refresh();
 	assert.equal(f.messages()[0].sessionId, ID);
 	assert.equal(
 		f.calls.some((call) => call.op === "sessions.create"),
 		false,
 	);
-	f.service.newChat();
+	f.service.chooseConversation("new-chat");
 	assert.equal(f.service.snapshot.sessionId, null);
 	const before = f.calls.length;
-	assert.equal((await f.service.send("A separate task")).accepted, true);
+	assert.equal(await f.service.send("A separate task"), true);
 	assert.equal(f.calls[before].op, "sessions.create");
 });
 
@@ -523,11 +524,11 @@ test("disabled chief-of-staff preserves the draft route and recovers without a n
 	await f.service.open();
 	assert.equal(f.service.snapshot.canSend, false);
 	assert.ok(f.service.snapshot.error.includes(CHIEF_OF_STAFF_COPY.disabled));
-	assert.equal((await f.service.send("Keep my draft")).accepted, false);
+	assert.equal(await f.service.send("Keep my draft"), false);
 	assert.equal(f.messages().length, 0);
 	enabled = true;
 	await f.service.refresh();
-	assert.equal((await f.service.send("Keep my draft")).accepted, true);
+	assert.equal(await f.service.send("Keep my draft"), true);
 	assert.equal(
 		f.calls.some(
 			(call) => call.op === "aida.control" || call.op === "sessions.create",
@@ -543,27 +544,27 @@ test("the pet rechecks the seat before sending, and keeps an uncertain send on i
 	f.handle((input) =>
 		input.op === "aida.status" ? receipt(seat({ enabled })) : undefined,
 	);
-	assert.equal((await f.service.send("Not while disabled")).accepted, false);
+	assert.equal(await f.service.send("Not while disabled"), false);
 	assert.equal(f.messages().length, 0);
 	enabled = true;
 	await f.service.refresh();
 	f.handle((input) => {
 		if (input.op === "sessions.message") throw new Error("receipt lost");
 	});
-	assert.equal((await f.service.send("Only once")).accepted, false);
+	assert.equal(await f.service.send("Only once"), false);
 	const first = f.messages()[0];
 	f.handle((input) =>
 		input.op === "aida.status"
 			? receipt(seat({ session_id: OTHER_ID }))
 			: undefined,
 	);
-	assert.equal((await f.service.send("Only once")).accepted, false);
+	assert.equal(await f.service.send("Only once"), false);
 	assert.equal(f.service.snapshot.sessionId, ID);
 	assert.equal(f.service.snapshot.pendingText, "Only once");
 	assert.equal(f.messages().length, 1);
 	f.handle(() => undefined);
 	await f.service.refresh();
-	assert.equal((await f.service.send("Only once")).accepted, true);
+	assert.equal(await f.service.send("Only once"), true);
 	assert.deepEqual(f.messages()[1], first);
 });
 
@@ -575,7 +576,7 @@ test("conversation changes wait for chief-of-staff resolution", async () => {
 	);
 	const opened = f.service.open();
 	await new Promise((resolve) => setImmediate(resolve));
-	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("new-chat"), false);
 	await f.service.open(OTHER_ID);
 	assert.equal(f.service.snapshot.sessionId, null);
 	pending.resolve(receipt(seat()));
@@ -591,7 +592,7 @@ test("an explicit return to the chief of staff shares the existing conversation 
 	assert.equal(f.service.snapshot.destination, "chief-of-staff");
 	assert.equal(f.service.snapshot.sessionId, ID);
 	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
-	assert.equal(f.service.newChat(), true);
+	assert.equal(f.service.chooseConversation("new-chat"), true);
 	assert.equal(f.service.snapshot.sessionId, null);
 	assert.equal(f.service.chooseConversation("chief-of-staff"), true);
 	await f.service.refresh();
@@ -613,14 +614,14 @@ test("switching cannot lose an uncertain send or its retry identity", async () =
 	f.handle((input) => {
 		if (input.op === "sessions.message") throw new Error("receipt lost");
 	});
-	assert.equal((await f.service.send("Only once")).accepted, false);
+	assert.equal(await f.service.send("Only once"), false);
 	const snapshot = f.service.snapshot;
-	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("new-chat"), false);
 	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
 	await f.service.open(OTHER_ID);
 	assert.deepEqual(f.service.snapshot, snapshot);
 	f.handle(() => undefined);
-	assert.equal((await f.service.send("Only once")).accepted, true);
+	assert.equal(await f.service.send("Only once"), true);
 	assert.deepEqual(f.messages()[1], f.messages()[0]);
 });
 
@@ -629,9 +630,9 @@ test("an admitted turn blocks navigation until it settles", async () => {
 	f.handle((input) =>
 		input.op === "sessions.message" ? admitted(input) : undefined,
 	);
-	assert.equal((await f.service.send("Still working")).accepted, true);
+	assert.equal(await f.service.send("Still working"), true);
 	await f.service.refresh();
-	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("new-chat"), false);
 	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
 	f.setFrame(frame({ generation: 1, last_turn_outcome: "completed" }));
 	await f.service.refresh();

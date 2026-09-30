@@ -449,7 +449,6 @@ const faceHabits: Record<
 			"shy nibble",
 		],
 		after: {
-			"right wink": ["bashful"],
 			bashful: ["soft smile", "smitten"],
 			smitten: ["little smile"],
 			"little pout": ["sheepish"],
@@ -461,7 +460,6 @@ const faceHabits: Record<
 		after: {
 			curious: ["bashful", "amazed"],
 			bashful: ["little smile", "smitten"],
-			smitten: ["giggle"],
 			whistling: ["content", "little smile"],
 			blep: ["content", "soft smile"],
 		},
@@ -476,7 +474,6 @@ const faceHabits: Record<
 			"blep",
 		],
 		after: {
-			puzzled: ["goofy"],
 			goofy: ["warm", "little smile"],
 			mischievous: ["content", "little smile"],
 			"left wink": ["cat smile"],
