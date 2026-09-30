@@ -368,7 +368,8 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 const ROW = "src/renderer/src/features/chat/components/composer-status-row.tsx";
-const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const COMPOSER =
+	"src/renderer/src/shared/components/composer/message-input.tsx";
 // Named for the band's own file in the round-1 findings; `COMPOSER` is the
 // historical name for the same file in this suite's earlier assertions.
 const MESSAGE_INPUT = COMPOSER;

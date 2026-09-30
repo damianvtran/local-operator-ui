@@ -14,6 +14,10 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
+	type MessageInputHandle,
+	composerHoldsFocusUntouched,
+} from "@shared/components/composer/message-input";
+import {
 	hasPendingSend,
 	pendingSendForView,
 	retainsPendingSend,
@@ -129,10 +133,6 @@ import { ChatContent } from "./chat-content";
 import type { HeaderIdentityData } from "./chat-header-identity";
 import { headerIdentityControlsShown } from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
-import {
-	type MessageInputHandle,
-	composerHoldsFocusUntouched,
-} from "./message-input";
 import {
 	deriveRunDetails,
 	mcpErrorTexts,
