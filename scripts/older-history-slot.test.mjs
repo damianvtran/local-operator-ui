@@ -60,6 +60,14 @@ export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/tra
 	write: false,
 	mainFields: ["module", "main"],
 	conditions: ["import"],
+	// The app's config loader reads `import.meta.env` at import time; an empty
+	// object is the established stand-in (`backend-error-surfaces.test.mjs`).
+	// This bundle needs it because its `stdin` entry re-exports
+	// `CanonicalTranscript`, whose import graph reaches `@shared/config` through
+	// the answer action row; the sibling bundles that stop short of that module
+	// do not need it. Without the define this file dies at import, before a
+	// single assertion runs, with `Cannot read properties of undefined`.
+	define: { "import.meta.env": "{}" },
 	jsx: "automatic",
 	alias: {
 		"@renderer": "./src/renderer/src",
