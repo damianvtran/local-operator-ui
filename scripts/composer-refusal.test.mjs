@@ -34,7 +34,8 @@ const code = (path) =>
 		.replace(/\/\*[\s\S]*?\*\//g, " ")
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
-const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const COMPOSER =
+	"src/renderer/src/shared/components/composer/message-input.tsx";
 const STACK =
 	"src/renderer/src/features/chat/components/measured-suggestion-stack.tsx";
 const CONTRAST = "scripts/contrast-contract.mjs";

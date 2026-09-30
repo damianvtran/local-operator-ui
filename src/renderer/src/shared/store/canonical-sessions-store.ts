@@ -122,9 +122,21 @@ export type CanonicalSessionRow = {
 	 * has an index signature, so without a declaration here every read of these two
 	 * keys is `unknown` and the next reader casts - and `row.subagents_queued === 0`
 	 * over `unknown` is exactly where a `null` {"does not report"} becomes a `0`
-	 * {"none"}. The renderer draws no count of its own: the numbers reach the user
-	 * inside `status.label` (see `chat-session-status.tsx`), and this declaration
-	 * exists so the keys are typed wherever someone does read them.
+	 * {"none"}.
+	 *
+	 * THE RENDERER NOW READS THESE TWO FIELDS, and anyone reading the paragraph
+	 * that used to stand here ("the renderer draws no count of its own: the numbers
+	 * reach the user inside `status.label`") should know why it changed rather
+	 * than "fixing" the read away. `status.label` carries the counts on ONE code
+	 * only - `delegating`, the rung the catalogue reaches when nothing louder is
+	 * true - so on every other rung they were on the row and nowhere on screen,
+	 * and a session that had finished its own turn while its children still worked
+	 * read as done (the operator's report, 2026-09-29). `features/chat/
+	 * chat-session-subagents.ts` is the one reader: it draws a mark and composes a
+	 * sentence from these fields on the rungs `status.label` cannot speak for, and
+	 * deliberately composes NOTHING on `delegating`, where the label already says
+	 * it. So the label remains the counts' channel wherever it has them, and this
+	 * is the channel for everywhere it does not.
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;

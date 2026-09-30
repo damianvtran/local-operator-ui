@@ -25,6 +25,7 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -90,10 +91,12 @@ import {
 	effortDisplay,
 	effortLadder,
 	effortLevel,
+	fastModeState,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import { fastPickerOptions } from "./fast-picker-options";
 import { catalogueListing } from "./model-catalogue-listing";
 import {
 	effortCommandSucceeded,
@@ -197,18 +200,31 @@ export function useEntities<T = Record<string, unknown>>(
 	name?: string,
 	enabled = true,
 ) {
-	return useQuery({
-		queryKey: ["desktop", "entities", sessionId, command, name ?? ""],
-		queryFn: () =>
-			desktopResult<Entities<T>>({
-				op: "commands.entities",
-				sessionId,
-				command,
-				name: name || undefined,
-			}),
-		enabled,
-		staleTime: 15_000,
-	});
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: ["desktop", "entities", sessionId, command, name ?? ""],
+			queryFn: () =>
+				desktopResult<Entities<T>>({
+					op: "commands.entities",
+					sessionId,
+					command,
+					name: name || undefined,
+				}),
+			/*
+			 * `provided &&`: the shared composer reaches this query through
+			 * `useSlashCompletion`'s argument rows, and it must be callable in
+			 * documents that mount no `QueryClientProvider` (the mini view). The
+			 * fallback client must not fetch there (see
+			 * `useOptionalQueryClient`), and an unanswered entity list is already a
+			 * supported state - the rows simply offer nothing. In the app
+			 * `provided` is always true, so this is a no-op.
+			 */
+			enabled: enabled && provided,
+			staleTime: 15_000,
+		},
+		client,
+	);
 }
 
 // ------------------------------------------------------------------ model
@@ -2579,6 +2595,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 
 export const FastPicker: FC<PickerContext> = ({
 	sessionId,
+	canonical,
 	onClose,
 	action,
 }) => {
@@ -2587,16 +2604,26 @@ export const FastPicker: FC<PickerContext> = ({
 	const premium = Boolean(
 		(action.data as { premium_pricing?: boolean }).premium_pricing,
 	);
-	const options: PickerOption[] = [
-		{
-			value: "on",
-			label: "On",
-			description:
-				"Priority processing. Billed at premium rates where the provider offers it.",
-			disabled: premium && !acknowledged,
-		},
-		{ value: "off", label: "Off", description: "Standard processing." },
-	];
+	/*
+	 * The dial comes off the same `effective_model ?? selected_model` spec the
+	 * `/fast` row's slot states, through this file's held-aware
+	 * `runningFrontend` so a held pane answers with the copy the strip paints —
+	 * the option the picker marks is the dial the row just advertised, one read
+	 * for two surfaces (UX round 1, U2).
+	 */
+	const dial = fastModeState(
+		runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model,
+	);
+	/*
+	 * The premium gate stays here rather than in the builder: it is the
+	 * picker's own acknowledgement state, not a property of the dial.
+	 */
+	const options: PickerOption[] = fastPickerOptions(dial).map((option) =>
+		option.value === "on" && premium && !acknowledged
+			? { ...option, disabled: true }
+			: option,
+	);
 	return (
 		<PickerHost
 			open
