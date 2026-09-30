@@ -150,48 +150,52 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 							)}
 						</Button>
 					</Tooltip>
-				) : isPlaying ? (
-					<Tooltip key={action} content="Stop">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Stop"
-							className={cn(
-								"text-ink-dim hover:bg-accent-wash hover:text-accent",
-							)}
-							onClick={handleSpeak}
-						>
-							<Square aria-hidden="true" />
-						</Button>
-					</Tooltip>
 				) : (
 					<Tooltip
 						key={action}
 						content={
-							isLoading
-								? "Loading"
-								: !canEnableSpeechFeature
-									? speechUnavailableReason
-									: "Speak aloud"
+							isPlaying
+								? "Stop"
+								: isLoading
+									? "Loading"
+									: !canEnableSpeechFeature
+										? speechUnavailableReason
+										: "Speak aloud"
 						}
 					>
 						{/*
-						 * A disabled button fires no pointer events, so the tooltip needs a
-						 * wrapper that does - the same wrapper, for the same reason, as the
-						 * selection strip's.
+						 * ONE ELEMENT FOR BOTH OF THE SPEAK STATES, deliberately. A playing row
+						 * used to render `<Button>` where the resting one renders
+						 * `<span><Button/></span>`, so the swap replaced the DOM subtree and a
+						 * reader who had tabbed to Speak lost focus to the body at the moment
+						 * the button became the stop control. The two branches now differ only
+						 * in what they paint and what they do, so the node survives the swap.
+						 *
+						 * The wrapper span is what makes the DISABLED tooltip reachable: a
+						 * disabled button fires no pointer events, so the reason needs a parent
+						 * that does - the same wrapper, for the same reason, as the selection
+						 * strip's.
 						 */}
 						<span className={cn("flex")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={isLoading ? "Loading speech" : "Speak aloud"}
+								aria-label={
+									isPlaying
+										? "Stop"
+										: isLoading
+											? "Loading speech"
+											: "Speak aloud"
+								}
 								className={cn(
 									"text-ink-dim hover:bg-accent-wash hover:text-accent",
 								)}
 								onClick={handleSpeak}
-								disabled={isLoading || !canEnableSpeechFeature}
+								disabled={!isPlaying && (isLoading || !canEnableSpeechFeature)}
 							>
-								{isLoading ? (
+								{isPlaying ? (
+									<Square aria-hidden="true" />
+								) : isLoading ? (
 									<Spinner size="xs" />
 								) : (
 									<Volume2 aria-hidden="true" />

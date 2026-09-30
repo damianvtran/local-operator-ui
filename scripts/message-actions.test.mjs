@@ -22,6 +22,11 @@
  *    site, because "the press copies" is not a claim a source scan can carry.
  * 4. THE FAILURE PATH - a refused write leaves the label alone. `Copied` on a
  *    press the browser discarded is the one outcome this row must not produce.
+ * 5. THE MOUNT GATE - the row appears only where the transcript's `isQuotable`
+ *    says there are words to copy. Asserted by RENDERING the real transcript
+ *    with an answer still streaming and with an answer whose whole body is
+ *    reply markup, because a gate read off the source is a gate a single
+ *    constant in `quote-model.ts` can bypass without failing anything.
  *
  * WHAT THIS FILE DOES NOT PROVE: how the row looks in any theme, where its box
  * sits against the answer's (that is a DOM measurement -
@@ -35,9 +40,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+/** One alias for the static renders below, so their shape stays readable. */
+const h = React.createElement;
 
 /*
  * React reads this flag to decide whether `act`'s warning applies. Without it
@@ -83,6 +93,9 @@ const bundle = await build({
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			export { answerActionsFor, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
+			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
+			export { useSpeechStore } from "@shared/store/speech-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -91,13 +104,20 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 	alias: {
+		"@renderer": "./src/renderer/src",
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
 		"@assets": "./src/renderer/src/assets",
 	},
 	mainFields: ["module", "main"],
 	conditions: ["import"],
-	external: ["react", "react/jsx-runtime", "react-dom"],
+	external: [
+		"react",
+		"react/jsx-runtime",
+		"react-dom",
+		"react-dom/server",
+		"@tanstack/react-query",
+	],
 	plugins: [
 		{
 			/*
@@ -148,15 +168,30 @@ test("copy is always offered, and it is first", () => {
 	assert.deepEqual(mod.answerActionsFor({ agentId: "c1" }), ["copy", "speak"]);
 });
 
-test("the row is capped at two actions, and Quote is not one of them", () => {
+test("the row is capped at two actions, and Quote is not one of them", async () => {
 	for (const agentId of [undefined, "c1"]) {
-		const actions = mod.answerActionsFor({ agentId });
-		assert.ok(actions.length <= 2, `cap: got ${actions.length}`);
 		assert.ok(
-			!actions.includes("quote"),
-			"Quote is raised by the selection, never by this row",
+			mod.answerActionsFor({ agentId }).length <= 2,
+			"the model caps the row at two",
 		);
 	}
+	/*
+	 * Read off the RENDER, because the model's own answer cannot fail this: the
+	 * list is typed `("copy" | "speak")[]`, so asserting "no quote" against it
+	 * asserts the compiler. What the cap protects is the line's width and the
+	 * slot #694 will want, and both are facts about which buttons are on the
+	 * DOM - a third action added to the row shows up here and nowhere else.
+	 */
+	const { dom, unmount } = await mount();
+	const labels = [
+		...dom.window.document.querySelectorAll("[data-lo-answer-actions] button"),
+	].map((node) => node.getAttribute("aria-label"));
+	assert.deepEqual(
+		labels,
+		["Copy", "Speak aloud"],
+		"exactly two controls, in that order, with no Quote among them",
+	);
+	await unmount();
 });
 
 /* ------------------------------------------------- what Copy writes */
@@ -234,6 +269,24 @@ const mount = async ({
 	});
 	globalThis.HTMLElement = dom.window.HTMLElement;
 	globalThis.Node = dom.window.Node;
+	/*
+	 * The EVENT CLASSES, for the same realm reason as `navigator` above: this
+	 * runtime's own `Event` is a different class from JSDOM's, so a component
+	 * that constructs one (Radix's tooltip does, on focus) hands jsdom's
+	 * `dispatchEvent` a value it refuses - `parameter 1 is not of type 'Event'`
+	 * - and React unmounts the tree. Wiring the constructors alongside the rest
+	 * of the realm is what makes a real `focus()` observable here.
+	 */
+	for (const name of [
+		"Event",
+		"CustomEvent",
+		"MouseEvent",
+		"KeyboardEvent",
+		"FocusEvent",
+		"PointerEvent",
+	]) {
+		if (dom.window[name]) globalThis[name] = dom.window[name];
+	}
 	globalThis.__speechConfigured = speechConfigured;
 
 	const written = [];
@@ -262,11 +315,24 @@ const mount = async ({
 		dom.window.document.querySelector(
 			`[data-lo-answer-actions] button[aria-label="${label}"]`,
 		);
-	return { dom, written, button, root };
+	/*
+	 * Teardown handed back WITH the mount rather than kept as a file-scope
+	 * helper: `root.unmount()` is what runs the component's effect cleanups (a
+	 * helper that only dropped the body's HTML would leave the tree mounted and
+	 * prove nothing about the unmount path), and a bound handle cannot be read
+	 * before it exists.
+	 */
+	const unmount = async () => {
+		await act(async () => {
+			root.unmount();
+		});
+		dom.window.document.body.innerHTML = "";
+	};
+	return { dom, written, button, root, unmount };
 };
 
 test("the row is a toolbar with the actions as its leftmost content", async () => {
-	const { dom, button } = await mount();
+	const { dom, button, unmount } = await mount();
 	const toolbar = dom.window.document.querySelector("[data-lo-answer-actions]");
 	assert.ok(toolbar, "the toolbar is in the DOM");
 	assert.equal(toolbar.getAttribute("role"), "toolbar");
@@ -281,16 +347,11 @@ test("the row is a toolbar with the actions as its leftmost content", async () =
 		),
 		"the icons are hidden from the accessibility tree; the accessible name is the label",
 	);
-	await act(async () => root_unmount(dom));
+	await unmount();
 });
 
-/* The mount's own teardown, kept in one place so every case leaves nothing. */
-const root_unmount = async (dom) => {
-	dom.window.document.body.innerHTML = "";
-};
-
 test("a press copies the answer and says so, then stops saying so", async () => {
-	const { dom, written, button } = await mount();
+	const { dom, written, button, unmount } = await mount();
 	await act(async () => {
 		button("Copy").dispatchEvent(
 			new dom.window.MouseEvent("click", { bubbles: true }),
@@ -315,11 +376,11 @@ test("a press copies the answer and says so, then stops saying so", async () => 
 	});
 	assert.ok(button("Copy"), "the label has returned to Copy");
 	assert.equal(button("Copied"), null);
-	await act(async () => root_unmount(dom));
+	await unmount();
 });
 
 test("a refused write does not claim success", async () => {
-	const { dom, written, button } = await mount({ refuseWrite: true });
+	const { dom, written, button, unmount } = await mount({ refuseWrite: true });
 	await act(async () => {
 		button("Copy").dispatchEvent(
 			new dom.window.MouseEvent("click", { bubbles: true }),
@@ -328,7 +389,7 @@ test("a refused write does not claim success", async () => {
 	assert.deepEqual(written, [], "nothing reached the clipboard");
 	assert.ok(button("Copy"), "the label is unchanged");
 	assert.equal(button("Copied"), null, "a failed press must not claim success");
-	await act(async () => root_unmount(dom));
+	await unmount();
 });
 
 test("Speak is offered when there is an agent to speak with, and disabled when speech is not configured", async () => {
@@ -346,7 +407,7 @@ test("Speak is offered when there is an agent to speak with, and disabled when s
 		true,
 		"and it says so with its state rather than by hiding, so the reason in its tooltip can reach the reader",
 	);
-	await act(async () => root_unmount(off.dom));
+	await off.unmount();
 });
 
 /* ------------------------------------------------------- the wiring */
@@ -386,4 +447,268 @@ test("one clipboard call site: the row uses copyTarget and adds no second implem
 		!ROW_SOURCE.includes("ClipboardItem"),
 		"and no rich-clipboard variant either: the row copies plain text, like /copy",
 	);
+});
+
+/* ---------------------------------------------------------- the mount gate */
+
+/**
+ * The transcript's OWN gate, rendered rather than read.
+ *
+ * Round 1's finding: forcing `isQuotable` to `true` in `quote-model.ts` left
+ * this file 10/10, because every case here mounted the ROW directly - a rig
+ * cannot see a gate that lives in the parent. What the reviewer mutated is
+ * therefore asserted where it actually lives: the real `CanonicalTranscript`,
+ * with answers whose quotability differs for each of the gate's three reasons.
+ */
+const GATE_TS = 1_760_000_000_000;
+
+const gateUser = (id, text) => ({
+	kind: "user",
+	id,
+	ts: GATE_TS,
+	text,
+	images: [],
+});
+
+const gateAnswer = (id, text, extra = {}) => ({
+	kind: "assistant",
+	id,
+	ts: GATE_TS + 1_000,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: null,
+	error: false,
+	...extra,
+});
+
+const transcriptMarkup = (records) =>
+	renderToStaticMarkup(
+		h(
+			QueryClientProvider,
+			{
+				client: new QueryClient({
+					defaultOptions: { queries: { retry: false } },
+				}),
+			},
+			h(mod.CanonicalTranscript, {
+				transcript: {
+					...mod.EMPTY_TRANSCRIPT,
+					records,
+					index: new Map(records.map((row, at) => [row.id, at])),
+				},
+				frontend: null,
+				gate: null,
+				waiting: false,
+				starting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef: { current: null },
+				isSmallView: false,
+				status: "live",
+				failure: null,
+				awaitingHydration: false,
+				onReconnect: () => {},
+				conversationId: "story-conversation",
+			}),
+		),
+	);
+
+/** How many action rows the markup carries. */
+const actionRowsIn = (html) =>
+	(html.match(/data-lo-answer-actions/g) ?? []).length;
+
+test("a settled answer carries the row, and the row is the transcript's own", () => {
+	const html = transcriptMarkup([
+		gateUser("u1", "Is the March import finished?"),
+		gateAnswer("a1", "It finished with the same four invoices outstanding."),
+	]);
+	assert.equal(actionRowsIn(html), 1, "the settled answer carries one row");
+});
+
+/*
+ * The gate's two arms, and which one discriminates WHAT.
+ *
+ * The streaming arm pins the COMPOSITE the shipped tree states twice: a
+ * streaming answer is not a closing answer at all (`closingAnswerIds` says an
+ * unfinished answer closes a turn "without being an answer"), and it is not
+ * quotable either - so it stays green if only one of the two rules moves, and
+ * it fails if the row is mounted per-answer rather than per-turn.
+ *
+ * The EMPTY-BODY arm below is the one that discriminates the quotability gate
+ * on its own: with `isQuotable` forced to `true` - round 1's mutation - that
+ * fixture grows a row and this file goes red. Nothing else here does.
+ */
+test("an answer still receiving deltas carries none", () => {
+	/*
+	 * The mutation this pins: `isQuotable` returning `true` unconditionally
+	 * paints a row here, and the count goes to two - a control whose press
+	 * would stage a half-sentence the reader never saw finished.
+	 */
+	const html = transcriptMarkup([
+		gateUser("u1", "Is the March import finished?"),
+		gateAnswer("a1", "It finished with the same four invoices outstanding."),
+		gateUser("u2", "And the April file?"),
+		gateAnswer("a2", "The April loader read the header and the first", {
+			streaming: true,
+			complete: false,
+			ts: GATE_TS + 5_000,
+		}),
+	]);
+	assert.equal(
+		actionRowsIn(html),
+		1,
+		"only the settled answer carries a row, not the one being written",
+	);
+});
+
+/*
+ * The chain, stated once: `isQuotable` is asked with the SAME
+ * `remainingContent` the prose renders, so a body that is only reply markup
+ * has nothing to offer and mounts no control - the failure `quote-model`
+ * documents at length (a press that can only be raised by a highlight the
+ * row has no words for is a silent no-op).
+ */
+test("an answer whose whole body is reply markup carries none", () => {
+	const html = transcriptMarkup([
+		gateUser("u1", "Is the March import finished?"),
+		gateAnswer("a1", "<reply-to>Is the March import finished?</reply-to>"),
+	]);
+	assert.equal(
+		actionRowsIn(html),
+		0,
+		"a body with no words in it has nothing to copy, so the row is absent",
+	);
+});
+
+/* ------------------------------------------------------- the copy's timer */
+
+test("unmounting the row clears the feedback timer the press armed", async () => {
+	/*
+	 * A timer that outlives its row would flip a button React has already let
+	 * go of. The wrap below is the observation: the press arms exactly one
+	 * timer and the unmount path clears THAT id - `root.unmount()` rather than
+	 * an emptied body, because only the former runs the effect cleanup.
+	 */
+	const armed = [];
+	const cleared = [];
+	const realSetTimeout = globalThis.setTimeout;
+	const realClearTimeout = globalThis.clearTimeout;
+	globalThis.setTimeout = (fn, ms, ...rest) => {
+		const id = realSetTimeout(fn, ms, ...rest);
+		armed.push(id);
+		return id;
+	};
+	globalThis.clearTimeout = (id, ...rest) => {
+		cleared.push(id);
+		return realClearTimeout(id, ...rest);
+	};
+	try {
+		const { dom, button, unmount } = await mount();
+		await act(async () => {
+			button("Copy").dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		assert.equal(armed.length, 1, "the press armed one feedback timer");
+		await unmount();
+		assert.ok(
+			cleared.includes(armed[0]),
+			"the unmount cleared the timer the press armed",
+		);
+	} finally {
+		globalThis.setTimeout = realSetTimeout;
+		globalThis.clearTimeout = realClearTimeout;
+	}
+});
+
+/* ------------------------------------------------------------ the speech arm */
+
+test("a configured service arms Speak, and the press reaches it", async () => {
+	/*
+	 * The store's own `playSpeech` is replaced BEFORE the mount, not after:
+	 * the row captures the function it renders with, so a wrapper installed
+	 * once the tree is up is never the one the press reaches.
+	 */
+	const calls = [];
+	const playSpeech = mod.useSpeechStore.getState().playSpeech;
+	mod.useSpeechStore.setState({
+		playSpeech: async (...args) => {
+			calls.push(args);
+			return playSpeech(...args);
+		},
+	});
+	try {
+		const { dom, button, unmount } = await mount({ speechConfigured: true });
+		const speak = button("Speak aloud");
+		assert.ok(speak, "Speak is present when an agent id resolves");
+		assert.equal(
+			speak.disabled,
+			false,
+			"and it is ENABLED once the credential probe reports a key - the arm no frame in this set photographs",
+		);
+		/*
+		 * The press is observed at the store's own entry point rather than at
+		 * `loadingMessageId`: `playSpeech` sets that field and then clears it when
+		 * the fetch it starts fails, and this rig has no Speech service - so reading
+		 * it after the `act` window would read the cleared value rather than the
+		 * call. What is asserted is the call itself: this answer's id, the
+		 * conversation, and the text the reader can see.
+		 */
+		await act(async () => {
+			speak.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		assert.deepEqual(
+			calls,
+			[["a1", "c1", "Four were late, and the oldest is 41 days behind."]],
+			"the press reached the speech store keyed by THIS answer, with the visible text",
+		);
+		await unmount();
+	} finally {
+		mod.useSpeechStore.setState({ playSpeech });
+	}
+});
+
+test("the control survives the swap to Stop, so focus stays in the row", async () => {
+	/*
+	 * Round 1's M3: the playing branch used to render a different element
+	 * shape from the resting one, so the swap replaced the DOM node and a
+	 * reader who had tabbed to Speak lost focus to the body at the moment the
+	 * button became the stop control. Same node, same focus, new label.
+	 */
+	const { dom, button, unmount } = await mount({ speechConfigured: true });
+	const labels = () =>
+		[...dom.window.document.querySelectorAll("[data-lo-answer-actions] button")]
+			.map((node) => node.getAttribute("aria-label"))
+			.join(", ");
+	const speak = button("Speak aloud");
+	assert.ok(speak, "the resting control is there to focus");
+	speak.focus();
+	assert.equal(
+		dom.window.document.activeElement,
+		speak,
+		"the control holds focus before the turn starts playing",
+	);
+	await act(async () => {
+		mod.useSpeechStore.setState({ playingMessageId: "a1" });
+	});
+	const stop = button("Stop");
+	assert.ok(stop, `the control is now the stop control (labels: ${labels()})`);
+	assert.equal(
+		stop,
+		speak,
+		"and it is the SAME node rather than a replacement",
+	);
+	assert.equal(
+		dom.window.document.activeElement,
+		stop,
+		"so focus never leaves the row",
+	);
+	await unmount();
+	mod.useSpeechStore.setState({
+		playingMessageId: null,
+		loadingMessageId: null,
+	});
 });

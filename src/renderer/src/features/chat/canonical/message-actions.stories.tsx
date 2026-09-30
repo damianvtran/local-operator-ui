@@ -404,6 +404,26 @@ export const BarSuppressed: Story = {
 	render: () => <Frame state={finishedTurn([CALL_A, CALL_B])} height={640} />,
 };
 
+/**
+ * The MINIMUM action case: one call, so the turn's own foot would read
+ * `Worked for 12.5s · 1 action` if that caption could stand beside the actions.
+ *
+ * Design round 1's D1 asked for a state that paints the caption BESIDE the row,
+ * and this frame is the answer rather than a restatement of the request. The app
+ * cannot paint that composition: `planRun` hides every non-pinned row of a
+ * turn's prefix, `staysVisibleWhileCollapsed` is false for every `tool` record,
+ * so a turn with ANY call gives the run something to hide and the run collapses;
+ * a collapsed run withholds the caption AND the stamp from the closing line
+ * (`suppressClosingLine`) because the bar states both. The reverse case - a turn
+ * with no calls - has `foot.actions === 0`, so the caption is absent by its own
+ * gate. One call is therefore the tightest test of the claim: the bar reads
+ * `1 action` above, and the line under the answer carries the actions alone.
+ * The set's README states the chain in full.
+ */
+export const OneCallTurn: Story = {
+	render: () => <Frame state={finishedTurn([CALL_A])} height={560} />,
+};
+
 /** The narrow column and the small view: one line, buttons intact, caption truncating. */
 export const Narrow: Story = {
 	render: () => (
