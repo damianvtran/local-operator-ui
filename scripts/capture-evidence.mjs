@@ -3063,6 +3063,24 @@ export const STORIES = [
 	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
 	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
 	/*
+	 * The rows that OWN subagents while the primary mark says something else
+	 * (the operator's report, 2026-09-29). Same pair of widths and the same
+	 * reason the delegating pair above carries them: the second frame is the
+	 * 240px floor `ui-preferences-store.ts` clamps to, where the longest title is
+	 * truncated hardest and the new mark has the least room beside it.
+	 *
+	 * The roster deliberately includes the delegating arm's own row as its last
+	 * entry - the one state whose primary mark already IS the subagent mark - so
+	 * the frames answer the question a reader will have about it (why is there no
+	 * second glyph there) on the same surface, rather than in prose alone.
+	 */
+	["chat-sidebar-status-feed--subagent-rows-running", 720, 660],
+	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
+	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
+	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
+	["chat-sidebar-status-feed--subagent-selected-row", 720, 660],
+	["chat-sidebar-status-feed--subagent-archived-row", 720, 660],
+	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
 	 * same pixels and the defect design D2 found (the control 632px above the
