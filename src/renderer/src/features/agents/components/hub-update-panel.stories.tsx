@@ -338,11 +338,17 @@ export const UpdateUnderAnOpenEditor: Story = {
 	}),
 	play: async () => {
 		await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
-		const box = (await screen.findByLabelText(
-			"Instructions",
-		)) as HTMLTextAreaElement;
-		await userEvent.clear(box);
-		await userEvent.type(box, "Half a sentence I had not saved.");
+		/*
+		 * A CLICK-DRIVEN EDIT, not typed text: `userEvent.type` into this suite's
+		 * controlled textarea leaves the DOM value set but never reaches React's
+		 * `onChange` (measured while writing this story: the field reads the typed
+		 * sentence immediately after typing and has reverted by the next render),
+		 * so a keystroke here would assert nothing about the page's own state. The
+		 * delegate switch is a real unsaved edit and a real state change.
+		 */
+		await userEvent.click(
+			await screen.findByLabelText("May delegate to subagents"),
+		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Update from the hub" }),
 		);
