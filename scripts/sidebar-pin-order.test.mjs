@@ -682,19 +682,25 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	// both row states (round 2, D7 + U6): a current held row keeps its own selected fill,
 	// so "you are here" survives the gesture.
 	assert.match(source, /dragging && rowDragging,/);
-	// AND THE NON-FILL HALF OF THE HELD STATE: a 1px inset ring, merged after the ground.
-	// It is what tells a held row apart from the row under the pointer, in the state the
-	// first attempt got wrong (`rowDraggingCurrent` painted the hover fill, which is
-	// exactly what the drop target wears - measured in both palettes).
+	// AND THE NON-FILL HALF OF THE HELD STATE, merged after the ground: a 1px OUTLINE,
+	// inset by 1px. It is what tells a held row apart from the row under the pointer, in
+	// the state the first attempt got wrong (`rowDraggingCurrent` painted the hover fill,
+	// which is exactly what the drop target wears - measured in both palettes).
+	// WHY AN OUTLINE AND NOT AN INSET `ring-1` (design round 3, D10): a box-shadow on the
+	// row's box is painted UNDER its children, and the current row's own button carries an
+	// opaque `bg-row-selected` - measured on the frames, the mark was 60.2% visible on a
+	// non-current held row and 5.3% on the current one. An outline paints after the
+	// element's descendants, so the child cannot cover it, and the -1px offset keeps it
+	// inside the row's own rounded box (no layout shift, nothing hanging outside).
 	assert.match(
 		source,
-		/export const rowDraggingMark = "ring-1 ring-inset ring-ink-dim";/,
+		/export const rowDraggingMark =\s*"outline outline-1 outline-offset-\[-1px\] outline-ink-dim";/,
 	);
 	assert.match(source, /dragging && rowDraggingMark,/);
 	assert.equal(
 		source.includes("rowDraggingCurrent"),
 		false,
-		"the held state is not a second fill: it is the row's own ground plus the ring",
+		"the held state is not a second fill: it is the row's own ground plus the mark",
 	);
 	/*
 	 * AND IT IS RESTATED AT THE HOVER VARIANT (round 1, D1 and U1; measured on the frames

@@ -531,7 +531,7 @@ export const rowCurrent =
  * `hover:bg-row-hover`, and the pointer that armed the drag stays inside the captured row
  * for the whole gesture - Chromium keeps `:hover` on the capture target's ancestors while
  * the button is held - so the dragged row painted exactly the fill a merely hovered row
- * paints (measured `#302D2A` dark / `#EDECE8` light, i.e. `--lo-row-hover`, against the
+ * paints (measured `#302D29` dark / `#EDECE7` light, i.e. `--lo-row-hover`, against the
  * intended `#372F24` / `#EBE7D8`). The restatement is `rowCurrent`'s own idiom, and like
  * `rowCurrent` it only works because the box merges it LAST: `cn` is tailwind-merge, so
  * the last class of a group wins, and the box states its plain `hover:bg-row-hover` after
@@ -553,20 +553,31 @@ export const rowDragging =
  * palettes, same run: held current `rgb(48,45,41)` light `rgb(237,236,231)` - the hover
  * role - against the drop target's own hover ground, one reading for two rows.
  *
- * WHY A RING AND NOT A THIRD ROW ROLE. The panel's ladder has two row steps and
+ * WHY A MARK AND NOT A THIRD ROW ROLE. The panel's ladder has two row steps and
  * `rowSelected` is spoken for by the current row, so a third step would have to be
  * authored against the palette's own floors (`docs/branding.md` sec. 3) for a state that is
- * transient by definition. The ring carries ONLY the fact that this row is held: it does
- * not restate what the row's role already says, it reads the same role in both palettes
- * (`ink-dim`, the role the panel's own rounded-row ring uses), and it is INSET - painted
- * inside the row's `rounded-md` box, so there is no layout shift and nothing to clip,
- * which is the constraint `docs/branding.md` states for a ring that must sit inside its
- * container.
+ * transient by definition. The mark carries ONLY the fact that this row is held: it does
+ * not restate what the row's role already says, and it reads the `ink-dim` role, so each
+ * palette resolves it from its own value.
+ *
+ * WHY AN OUTLINE AND NOT AN INSET RING (design round 3, D10, measured on the frames). The
+ * mark began as `ring-1 ring-inset ring-ink-dim`, a box-shadow on the row's box, and it
+ * does not render there: the CURRENT row's own button carries `rowCurrent`'s opaque
+ * `bg-row-selected` and is a CHILD of that box, so the child's fill paints over the
+ * parent's inset shadow everywhere the button reaches. Measured on the committed frames, the
+ * ink in the box's 3px border band was **60.2%** on a held row that is not current (a
+ * complete outline) against **5.3%** on the held current row - a fragment along the right
+ * edge, i.e. the one state round 2's D7 was filed about rendered the mark it was fixed with
+ * almost nowhere. An OUTLINE is painted after the element's descendants, so it is not
+ * covered by the button's fill; `-1px` of `outline-offset` keeps it INSIDE the row's
+ * `rounded-md` box, so there is no layout shift and it is not ink that hangs outside the
+ * box (the clipping constraint `docs/branding.md` states).
  *
  * The ground underneath is the row's own role and does not change: `rowDragging` while
  * the row is not the current one, `rowCurrent` while it is.
  */
-export const rowDraggingMark = "ring-1 ring-inset ring-ink-dim";
+export const rowDraggingMark =
+	"outline outline-1 outline-offset-[-1px] outline-ink-dim";
 
 import {
 	type FocusedSlot,
@@ -2816,7 +2827,7 @@ export function ChatSidebar({
 	 *
 	 * One step per FRAME while the pointer is inside the edge zone, rather than on a
 	 * timer, because the frame is what redraws the row boxes the DROP is measured
-	 * against - a `setInterval` fast enough to feel right would outrun the layout and
+	 * against - a repeating timer fast enough to feel right would outrun the layout and
 	 * the same step would be re-applied to stale boxes. The board's own loop, one axis
 	 * over.
 	 *
@@ -4816,7 +4827,7 @@ export function ChatSidebar({
 				/*
 				 * THE DRAGGED ROW'S OWN MARK (issue #697, item 5). It is on the BOX and not on
 				 * the grip, because the claim is about the whole row the reader is moving; the
-				 * ground step it draws is `rowDragging`'s and the ring is `rowDraggingMark`'s
+				 * ground step it draws is `rowDragging`'s and the outline is `rowDraggingMark`'s
 				 * (both carry their own notes, including why the held state is not a fill).
 				 */
 				data-dragging={dragging ? "" : undefined}
@@ -4871,13 +4882,15 @@ export function ChatSidebar({
 					 * while the captured pointer sits inside the row. The SAME ground for a current
 					 * held row is the point rather than an omission: it is that row's own resting
 					 * fill, so "you are here" survives the gesture, and the held state is carried by
-					 * `rowDraggingMark`'s ring instead of by a second fill (round 2, D7 + U6).
+					 * `rowDraggingMark`'s outline instead of by a second fill (round 2, D7 + U6).
 					 */
 					dragging && rowDragging,
 					/*
 					 * The non-fill half of the held state, and it is what keeps a held row distinct
 					 * from the row merely under the pointer - the two can be adjacent on screen.
-					 * Merged after the ground so a later rule cannot drop it.
+					 * Merged after the ground so a later rule cannot drop it. The mark is an
+					 * OUTLINE rather than an inset ring because the current row's own button paints
+					 * an opaque fill over its parent's box-shadow (round 3, D10).
 					 */
 					dragging && rowDraggingMark,
 				)}
