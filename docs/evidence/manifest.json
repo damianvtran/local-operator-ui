@@ -50,7 +50,7 @@
   "consoleWiringRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the commit under this one (`fix(console): fail the host's start on a missing option, and pin the app's call site`), which moves BOTH trees this file binds: `srcTree` `74d1e6c7b243ac9f3c243b96583ada696a4cdc96` -> `dbd528375` and `scriptsTree` `53009c85995c10c91d23c6649c615f5afe819dc9` -> `2cc5622c9`, each read back with `git rev-parse HEAD:src`/`HEAD:scripts` AT that commit and then written in an amendment that moves `docs/` only, so the values stay true. The same two values were re-derived once more by the rebase onto `60c1dc615` (main's move), because a stamp describes the tree it ships in and the rebased tree is a different tree; this is the third such re-derivation on this branch and the last one is always the tip's. NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted and `scripts/capture-evidence.mjs` is not in the delta, so `frames` (8,158), `surfaces` (802), `themes` (12) and `capturedAt` stand as main's own arithmetic, and `head` stays main's. WHAT THAT COMMIT IS, so a later reader is not left to guess from a red suite: a wiring guard for the console host's option surface - `CONSOLE_REQUIRED_OPTIONS`/`CONSOLE_DEFAULTED_OPTIONS` declared beside the options themselves, a runtime throw in `startConsoleHost` that names any option a caller did not supply, and a desktop cell (`scripts/console-wiring.mjs` read by `scripts/console-host.test.mjs`) that fails when a declared option is classified by neither ledger or is not forwarded by the app's single construction site. THE SITE IT GUARDS is the one a built app's console host was dropped through on the capture-view branch, where `consoleCaptureUrl` and `preloadPath` never reached `startConsoleHost` and `console_screenshot` answered `capture_unavailable` for every surface, including the offscreen case the missing view exists for.",
   "consolePackRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the two commits under this one (`fix(console): find the pty spawn-helper where each platform's build puts it`, then `fix(console): require the pty spawn-helper only where the platform forks one`, the round-1 rework that corrected it), on a branch folded onto main's move to `23457d0aa` (#398, which rewrote this file). BOTH TREES ARE RE-DERIVED FROM THE FOLDED TIP rather than carried from the pre-fold branch: `srcTree` db6dd2790 -> ce567a15f - the same value the pre-fold tip carried, because #398 moves no file under `src/` and this branch's `src/` delta is unchanged by the fold - and `scriptsTree` 5e3423e9a -> c94496814, which moves because #398 added a script of its own. Each was read back with `git rev-parse HEAD:src`/`HEAD:scripts` AT the folded tip and then written in a `docs/`-only commit that follows it, so the values stay true. NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted and `scripts/capture-evidence.mjs` is not in this branch's delta, so `frames`, `surfaces`, `themes`, `capturedAt` and `countsMean` stand as main's own arithmetic. WHAT THIS BRANCH IS, so a later reader is not left to guess from a red suite: the repair of a release-blocking packaging defect, in `scripts/console-pack.mjs`, `src/main/console/pty.ts` and their tests. The pty `spawn-helper` is a macOS-only artifact in node-pty (`binding.gyp` declares that target inside `['OS==\"mac\"', {...}]` alone, and `src/unix/pty.cc` execs it only under `#if defined(__APPLE__)`, taking `forkpty(3)` everywhere else), so the guard now REQUIRES one only on darwin and reports the absence as the expected state on linux and win32 - which is the state the v0.29.12 Linux publish died on, in `afterPack` and AFTER `@electron/rebuild` had finished cleanly, because that guard demanded a helper Linux cannot have. Where a helper does exist it is searched in node-pty's own loader order (`build/Release`, `build/Debug`, `prebuilds/<platform>-<arch>`) and every copy present is healed, since the directory the loader takes is the one `posix_spawn` execs. NOTHING VISUAL IS INVOLVED: no rendered surface and no interaction flow changes, so no frame in this file is meant to cover it.",
   "rigScanReceiversRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the commit that extends the rig scan #407 landed (`d109863e2`) to the alternate receivers of the same window-focus request: `scripts/window-mode.test.mjs`'s `LEAVES_THE_PAGE` gains the WindowProxy family (`self`, `top`, `parent`, `defaultView`, `frames[n]`) beside the `window.` spelling and the two CDP spellings, together with the optional-chaining (`window?.focus()`) and bracket (`window[\"focus\"]()`) spellings of the same call, and a `SPELLINGS` self-check asserts the pattern fires on each of the thirteen. `scriptsTree` `53009c85995c10c91d23c6649c615f5afe819dc9` (main's own, from #407's re-stamp) -> `ae32da04d`, read back with `git rev-parse HEAD:scripts`; `srcTree` stays `6fba2a52d`, which is main's own, because this delta moves no file under `src/`. NOTHING ELSE MOVED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, and `scripts/capture-evidence.mjs` is not in the delta, so `STORIES` and `THEMES` are untouched and `frames` (8,158), `surfaces` (802), `themes` (12), `capturedAt` and `head` (`4271c27c6`, still an ancestor of this tip) are main's own arithmetic rather than anything this commit measured. NO FRAME IS CLAIMED TO COVER THIS DELTA. WHAT THIS COMMIT IS, so that a later reader does not read it as the repair: hardening of a ban, not a fix. No spelling of that request exists under any scanned tree today - measured rather than assumed, because the five receiver spellings were appended to a rig and PASSED the pre-extension pattern on `d109863e2` while failing this one - and the activation measured on the operator's machine was never attributed to a rig's request by anything here.",
-  "dirtyWorkingTree": true,
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-09-24T14:27:58.712Z",
   "wireVocabularyRestampNote": "RE-STAMPED, AND THE ONE STATE THIS CHANGE REPAINTS IS RE-SHOT. This is the composer reading the wire's own argument vocabulary and the leading line (`fix/wire-argument-shape-vocabulary`), in the round-1 remediation that aligned its tokeniser and its shape arms with the endpoint's own admission rule, and then, in round two, with the endpoint's own SEPARATOR CLASS: Python separates on U+001C-U+001F and U+0085 and does not separate on U+FEFF, while JavaScript's \\s is the other way round on all six, so `slash-token.ts` now spells the class out once and both modules read that one definition (QA round 2, Q2-1). The change moves `src/` (the planner, its pins and the contract's row type) and `scripts/` (the composer suite's fixtures and the scene's paint table), so BOTH TREES MOVE WITH IT: `srcTree` 6fba2a52dd97e28c0125bc1a888c36c646978d85 -> c8993c7bba6d9e224e7d66eadc22404688f59259 and `scriptsTree` ae32da04dd9d1d27d6013e4e4857600d19a4fc95 -> d30af0625957e8e9cdc33db1f5902f85e811aa04, re-derived from the tree this commit ships rather than from the head the fold started at. The base moved under the branch twice while the round was finishing - `origin/main` = `d109863e2` (#407, the scan that forbids `window.focus()` outright) and then `305efc363` (#406, which extends that same scan to the call's alternate receivers) - and each fold's only conflict was this file, so main's side is taken as the base each time and this note re-lays on top of it, exactly as the fold notes around it do. Both folds move `scripts/` and neither moves `src/`, so the rig scan is what the `scriptsTree` halves of this record are about.\n\n`head` names the commit the capture ran at, which is this file's own convention rather than a re-pointing: the fold notes above keep the same meaning, and the two tree stamps name the tree that SHIPS. The re-shot frames land in the commit after this one, named by `partialCapture.refreshedAtHead`, because a commit cannot name itself.\n\nONE STATE WAS RE-CAPTURED RATHER THAN MERELY RE-STAMPED, and it is the only one this change paints differently. `chat-slash-highlight/name-instruction-multiline` was shot while the planner answered `send` for a draft whose instruction spans lines, so its stills depicted the interaction the leading-line rule removes; at this tree the same draft plans `reassemble`, so the app paints the `command /team` run and Enter stages the draft on one line. The twelve frames were re-taken from this tree in one narrowed run of the repository's own rig (`node scripts/capture-evidence.mjs <origin> --only=name-instruction-multiline --allow-backend`), and its own record of that run is the count `partialCapture.refreshedFrames` now carries. NO OTHER FRAME MOVED: the eleven other states in this set, and every other set, are untouched, because nothing in this change adds or edits a `className`, a style, a colour role, a theme call or any component's markup - only which drafts carry a run.",
   "frames": 11685,
@@ -1307,6 +1307,21 @@
       "agent-hub-page--org-teams-varied-narrow",
       "agent-hub-page--org-teams-expanded",
       "agent-hub-page--org-teams-expanded-narrow",
+      "chat-markdown-tables-before--operator-shape",
+      "chat-markdown-tables-before--long-prose",
+      "chat-markdown-tables-before--long-tokens",
+      "chat-markdown-tables-before--many-columns",
+      "chat-markdown-tables-before--few-rows",
+      "chat-markdown-tables--operator-shape",
+      "chat-markdown-tables--long-prose",
+      "chat-markdown-tables--long-tokens",
+      "chat-markdown-tables--many-columns",
+      "chat-markdown-tables--few-rows",
+      "chat-markdown-tables--three-shas",
+      "chat-markdown-tables--giant-token",
+      "chat-markdown-tables--three-shas-linked",
+      "chat-markdown-tables--user-turn",
+      "chat-markdown-tables--code-in-cells",
       "mesh-tab--scopes-shared-top",
       "mesh-tab--scopes-shared-top-narrow",
       "mesh-tab--scopes-nested",
@@ -1351,7 +1366,8 @@
       "tokyoNight",
       "tokyoNightDay",
       "tron",
-      "vaporwave"
+      "vaporwave",
+      "githubLight"
     ],
     "addedFrames": 20,
     "addedSurfaces": [
@@ -1739,6 +1755,29 @@
       "agent-hub-page/teams-public-unreadable",
       "agent-hub-page/teams-signed-out",
       "chat-tool-rows/sessions-ops",
+      "chat-markdown-tables-before/operator-shape@1280",
+      "chat-markdown-tables-before/long-prose",
+      "chat-markdown-tables-before/long-tokens@1280",
+      "chat-markdown-tables-before/many-columns@1280",
+      "chat-markdown-tables-before/few-rows",
+      "chat-markdown-tables-before/operator-shape@920",
+      "chat-markdown-tables-before/long-tokens@920",
+      "chat-markdown-tables-before/many-columns@920",
+      "chat-markdown-tables/operator-shape@1280",
+      "chat-markdown-tables/long-prose",
+      "chat-markdown-tables/long-tokens@1280",
+      "chat-markdown-tables/many-columns@1280",
+      "chat-markdown-tables/few-rows",
+      "chat-markdown-tables/three-shas@1280",
+      "chat-markdown-tables/giant-token",
+      "chat-markdown-tables/operator-shape@920",
+      "chat-markdown-tables/long-tokens@920",
+      "chat-markdown-tables/many-columns@920",
+      "chat-markdown-tables/three-shas@920",
+      "chat-markdown-tables/three-shas-linked@1280",
+      "chat-markdown-tables/user-turn",
+      "chat-markdown-tables/code-in-cells",
+      "chat-markdown-tables/three-shas-linked@920",
       "mesh-tab/reach-states-list",
       "mesh-tab/scopes-narrow",
       "mesh-tab/scopes-declared",
@@ -8399,6 +8438,16 @@
       "why": "The after half, same states, same input, one variable changed: the lane spans the field's content column (`lane {x:439,w:762,h:36}` against the before half's `{x:526,w:112,h:24}`), the levels come from the normalized time-domain pipeline so the input's loud/quiet/gap structure is legible across the frame, and the keys render as `KeyboardShortcut` caps in the label row that survives both states - the placeholder no longer names them (agent/design/UX round 1, F1/D1/U1). `narrow-empty-field` is the same state at the app's 800 px floor - the run asked for 760 and the window clamps to `WINDOW_MIN_WIDTH`, which it logs (lane `{x:104,w:648,h:36}` in a 696 px box). Taken with the same rig revision and command as the before half (see the set's README), so the pair reads as the component's delta and nothing else's.",
       "capturedAt": "2026-09-30T00:37:12.000Z",
       "capturedAtHead": "f1cbaf469b381d1b173780d1280bbe951719ba4c"
+    },
+    {
+      "path": "chat-markdown-tables-before",
+      "frames": 32,
+      "surfaces": 8,
+      "themes": 4,
+      "source": "scripts/capture-evidence.mjs against a Storybook dev server on :6157, run from this tree with the fix NOT yet written - the story's title temporarily suffixed `before` and the matching temporary STORIES rows added for the run, both restored to the committed head afterwards. `--allow-backend` was passed (with `--theme-settle-ms=180000`): the operator's live daemon answers on :1111 and must not be stopped for a capture, and this story is a static fixture (`frontend={null} gate={null}`) that never contacts the backend, so the guard's concern - surfaces that render a server's replies - does not apply; the rig's own theme and paint guards ran over every frame. Four themes (`localOperatorDark`, `localOperatorLight`, `obsidian`, `githubLight`): the claim is GEOMETRY, which no palette moves. The exact command, the state list and the restore procedure are in the set's README.",
+      "why": "The BREAKING half of the markdown-table width fix. The after frames show tables rendering with word-whole cells and a scrolling wrapper - but only the before frames show WHAT was wrong: `#684 (1a)` rendered as `#6|84|(1a|)` and `MERGED f11952f1d2` as `MERG|ED|f11952|f1d2`, at 48px and 71px columns, because `word-break: break-word` let auto layout price a column down to one character. The before state cannot be re-derived by a sweep, because a sweep photographs the current tree, where the cells' min-content is their longest word.",
+      "capturedAt": "2026-09-30T14:04:13.818Z",
+      "capturedAtHead": "fb565e2b8af1d2aa575fb5f5e5b02ac8e2aa3e9d"
     }
   ],
   "remediationRecord": {
@@ -8980,6 +9029,35 @@
     "qaRoundNineSceneInstrument": "QA ROUND 9 ON THE ROUND-8 INSTRUMENT, and the finding of the round that was MAJOR. Q9-1: the focus-reveal block added in design round 8 focused the LAST conversation row, which made the browser scroll the region (`scrollTop 1075` on a 40-conversation store), and the press below then aimed at `pins[0]`'s STORED box - 416px above the viewport, `elementFromPoint` answering null - so the write never reached the backend and four checks failed for a reason of the scene's own making. The fix: the caret row and the press row are both taken from the rows ALREADY inside the region's window (a hoisted `visibleUnpinnedRows` plus a new `whollyInside`, so a partially visible row cannot make the browser scroll as the caret lands), the caret is moved by a REAL CDP Tab from the row's own button, the pin that is read is the one the CARET holds rather than one at an index, and the region is read back and asserted unchanged. The press reads what a click at its point would ACT on (the U3 instrument) before pressing. A/B on one rig, one daemon and one 40-conversation store: pre-fix scene 21 passed / 4 failed; fixed scene 84 / 0; fixed scene with only the focus block removed 76 / 0. And because a scene change can move the pixels it photographs: the pre-fix and fixed scenes were both run against the same daemon and the same 4-conversation store, and 12 of the 13 frames are byte-identical, the thirteenth differing by 66 pixels in one `2x33` box at `1098,1531` - the composer's caret, the same box this file's `reproducibility` field records. AND THE CHECK DISCRIMINATES, by a named mutation rather than by argument: with the pin control's `group-focus-within:opacity-100` removed from `chat-sidebar.tsx` (a hover-only control) and the app rebuilt, the same scene on the same 40-conversation store reports 49 passed / 1 failed, and the failing reading is the focus check with EVERY opacity `0` while the caret is verifiably ON the pin (`{\"onButton\":true,\"inRow\":true}` then `{\"onPin\":true,\"subject\":\"Pin “Sweep 035”\"}`) - so what fails is the reveal and not the instrument, which is the property the round asked for. The source edit was reverted and the tree rebuilt before this commit."
   },
   "captureOrigin": {
+    "chatMarkdownTablesPass": {
+      "note": "THE MARKDOWN-TABLE WIDTH PASS (2026-09-30, `fix/markdown-table-widths`). Two narrowed runs of the repository's own rig against Storybook dev servers started from this worktree: the BEFORE half first (:6157), from this tree with the fix not yet written, the story's title temporarily suffixed `before` and the matching temporary STORIES rows added for the run (32 frames, the declared `chat-markdown-tables-before` set), then the fix was committed and the AFTER half was re-read from the same fixtures (:6271, 44 frames, `chat-markdown-tables/`). WHAT THE AFTER SETS SHOW, from the set's own re-readings: no cell breaks inside a token anywhere; both controls byte-identical to the before capture (0.0px per column); `three-shas` scrolls inside `.lo-md-table-scroll` (wrapper 1133 in 810 of measure, and the page does not overflow); the 263-character digest wraps to three lines in-cell instead of a 2081.8px single line. ONE MEASURED DEVIATION from the design consult's prototype numbers is recorded in the after set's README: the prototype page ran a 14px root (cells at 12.25px), while the app renders cells at 14px, so `#684 (1a)` measures 63.2px against the story's 61.5px content box and wraps at the space - left for the design round rather than adjusted here. The after capture ran on a clean code tree; the before capture ran over the uncommitted temporary story edits, as its README states.",
+      "head": "d5e5261d0841f6ee2bae08d9417cc83da1b9134c",
+      "capturedAt": "2026-09-30T15:11:10.230Z",
+      "srcTree": "55c6963cb416628eb771ffda9bdb573fbb42c62a",
+      "scriptsTree": "165f1dce01ecd41517d1d908d3348808cfe2dcaa",
+      "dirtyWorkingTree": false,
+      "framesAdded": 76,
+      "commands": [
+        "node_modules/.bin/storybook dev -p 6157 --no-open --quiet  (the BEFORE half's server, from this worktree)",
+        "node scripts/capture-evidence.mjs http://localhost:6157 --only=chat-markdown-tables-before --themes=localOperatorDark,localOperatorLight,obsidian,githubLight --allow-backend --theme-settle-ms=180000  -> 32 frames (the fix not yet written; the story's title temporarily suffixed `before`)",
+        "node_modules/.bin/storybook dev -p 6271 --no-open --quiet  (the AFTER half's server)",
+        "node scripts/capture-evidence.mjs http://localhost:6271 --only=chat-markdown-tables --themes=localOperatorDark,localOperatorLight,obsidian,githubLight --allow-backend --theme-settle-ms=180000  -> 44 frames"
+      ],
+      "framesAddedNote": "76 frames across the two halves - the before set's 32 (8 entries x 4 themes) and the after set's 44 (11 entries x 4 themes). Every directory is new on this branch; the state lists and the numbers are in each set's README.",
+      "roundOneRemediation": {
+        "note": "ROUND 1'S REMEDIATION ADDED THREE STATES TO THIS SET (agent review UX-1, design D1, QA Q3), captured in a narrowed run of the same rig over the same Storybook server at :6311: `three-shas-linked` (the mixed keyboard case - an overflowing wrapper that also holds focusable descendants) at 1280 and 920, `user-turn` (the reported table in the user bubble) and `code-in-cells` (code spans in cells) at 1280. Sixteen frames, every directory new; nothing already committed was re-taken. THE KEYBOARD OUTCOME IS IN THE AFTER SET'S README: on the mixed case Tab does not stop on the wrapper - it reaches the links, and with a link focused the arrow keys scroll the wrapper through its whole range (measured to `scrollWidth - clientWidth`), so nothing is stranded. These states are the fix's own behaviours, registered AFTER-half only like the two edge states. The set's counts in this file are re-derived at this commit from the shipped file and the walk over `docs/evidence`.",
+        "head": "3db7de2ecfae0623c5864c68d39b1725d97f521c",
+        "capturedAt": "2026-09-30T18:11:59.510Z",
+        "srcTree": "508bb4500922a512948b907935d51048e3595837",
+        "scriptsTree": "9a9d3197660cbcb0bfa1bb9a2bc3a0818f28b08a",
+        "dirtyWorkingTree": false,
+        "framesAdded": 16,
+        "commands": [
+          "node_modules/.bin/storybook dev -p 6311 --no-open --quiet  (from this worktree)",
+          "node scripts/capture-evidence.mjs http://localhost:6311 --only=chat-markdown-tables --dirs=three-shas-linked,user-turn,code-in-cells --themes=localOperatorDark,localOperatorLight,obsidian,githubLight --allow-backend --theme-settle-ms=180000  -> 16 frames"
+        ]
+      }
+    },
     "mathCurrencyPass": {
       "note": "THE MATH-CURRENCY PASS (2026-09-28, `fix/currency-math`). Two narrowed runs of the repository's own rig on one Storybook child (`node_modules/.bin/storybook dev -p 6188 --no-open --quiet`): the BEFORE half first, from this tree with the pre-change pipeline and the story's title temporarily suffixed `before` (8 frames, the declared `chat-math-currency-before` set), then the fix was written and the AFTER half was re-read from the same fixtures (8 frames, `chat-math-currency`). The story is new in this change; the before half is the only place the reported mangling is on file, and the after frames differ from it on three of the four states - the cost report by 57,131 of 389,120 pixels at `localOperatorDark` (45,498 light), pandoc's pair by 6,824 (9,571), the price-ahead-of-a-span state by 4,754 (4,208) - while the CONTROL state is byte-identical (AE 0, both themes): the guards moved nothing they were not aimed at, and the measured pair claims are the set's own.",
       "head": "0f23c76de5b28f979e85accb031720948320527f",
