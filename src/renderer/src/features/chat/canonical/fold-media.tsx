@@ -340,7 +340,12 @@ export const FoldMedia = ({
 						 * the symbol's position in the row.
 						 */
 						aria-label={`+${more} more image${more === 1 ? "" : "s"}`}
-						title={`${more} more image${more === 1 ? "" : "s"}`}
+						/*
+						 * The SAME sentence as the name, `+` included: the pointer reader
+						 * meets the same string a speech user reads off the screen, and the
+						 * visible label is a substring of both (WCAG 2.5.3).
+						 */
+						title={`+${more} more image${more === 1 ? "" : "s"}`}
 					>
 						{`+${more}`}
 					</Button>
