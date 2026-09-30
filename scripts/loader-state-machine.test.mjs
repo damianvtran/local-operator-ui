@@ -781,6 +781,22 @@ test("the reader's chain and a rail jump share one bound", () => {
 	);
 });
 
+test("the invisible-reveal chain shares the same bound as a rail jump", () => {
+	/*
+	 * R3's second half (loader-continuity 1b): the chain that answers an invisible
+	 * reveal is bounded by `MAX_CHAIN_INVISIBLE`, and that number is
+	 * `JUMP_MAX_PAGES` for the reason the walk's is - a reader's act and a rail
+	 * jump must not disagree about how far one ask may travel. Asserted in the one
+	 * suite that bundles BOTH modules, so the pin cannot be satisfied by a copy of
+	 * the number on either side.
+	 */
+	assert.equal(
+		paging.MAX_CHAIN_INVISIBLE,
+		model.JUMP_MAX_PAGES,
+		"the invisible-reveal chain and a rail jump walk the same budget",
+	);
+});
+
 test("the completion walk walks a head-cut run to its head, in one open", async () => {
 	const journal = FakeJournal.fromShape(shape.kinds);
 	const reader = new Reader(m, journal).open();
