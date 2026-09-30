@@ -90,10 +90,12 @@ import {
 	effortDisplay,
 	effortLadder,
 	effortLevel,
+	fastModeState,
 	modelSelector,
 	specUnresolved,
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import { fastPickerOptions } from "./fast-picker-options";
 import { catalogueListing } from "./model-catalogue-listing";
 import {
 	effortCommandSucceeded,
@@ -2579,6 +2581,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 
 export const FastPicker: FC<PickerContext> = ({
 	sessionId,
+	canonical,
 	onClose,
 	action,
 }) => {
@@ -2587,16 +2590,26 @@ export const FastPicker: FC<PickerContext> = ({
 	const premium = Boolean(
 		(action.data as { premium_pricing?: boolean }).premium_pricing,
 	);
-	const options: PickerOption[] = [
-		{
-			value: "on",
-			label: "On",
-			description:
-				"Priority processing. Billed at premium rates where the provider offers it.",
-			disabled: premium && !acknowledged,
-		},
-		{ value: "off", label: "Off", description: "Standard processing." },
-	];
+	/*
+	 * The dial comes off the same `effective_model ?? selected_model` spec the
+	 * `/fast` row's slot states, through this file's held-aware
+	 * `runningFrontend` so a held pane answers with the copy the strip paints —
+	 * the option the picker marks is the dial the row just advertised, one read
+	 * for two surfaces (UX round 1, U2).
+	 */
+	const dial = fastModeState(
+		runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model,
+	);
+	/*
+	 * The premium gate stays here rather than in the builder: it is the
+	 * picker's own acknowledgement state, not a property of the dial.
+	 */
+	const options: PickerOption[] = fastPickerOptions(dial).map((option) =>
+		option.value === "on" && premium && !acknowledged
+			? { ...option, disabled: true }
+			: option,
+	);
 	return (
 		<PickerHost
 			open
