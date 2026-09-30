@@ -613,7 +613,7 @@ const StatusCluster = ({
 		? (deliveryWord ?? null)
 		: failedLike
 			? (deliveryWord ?? OUTCOME_LABEL[outcome])
-		: null;
+			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
 	/*
 	 * The word the row STATES and the words it SPEAKS are not the same sentence for
@@ -629,9 +629,7 @@ const StatusCluster = ({
 			? (SEND_DELIVERY_LABEL[deliveryState] ?? null)
 			: null;
 	const title =
-		partial && deliveryState
-			? SEND_DELIVERY_TITLE[deliveryState]
-			: undefined;
+		partial && deliveryState ? SEND_DELIVERY_TITLE[deliveryState] : undefined;
 	/*
 	 * The outcome MARK: the interrupted slashed circle, or the partial state's own
 	 * shape. Its ink used to be hueless (`ink-dim`) because the word carried the

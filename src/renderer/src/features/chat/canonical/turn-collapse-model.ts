@@ -47,12 +47,12 @@
  * session's shared outcome predicate the day it lands.
  */
 
+import { isPartialDelivery } from "../components/trace/tool-row-model";
 import {
 	type FoldableAction,
 	foldSummary,
 	workedSeconds,
 } from "./trace-fold-model";
-import { isPartialDelivery } from "../components/trace/tool-row-model";
 import {
 	type TranscriptRecord,
 	isInterruptedFault,

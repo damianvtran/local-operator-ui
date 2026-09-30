@@ -3521,3 +3521,139 @@ export const UserAttachments: Story = {
 		/>
 	),
 };
+
+/* ------------------------------------------------------- send deliveries */
+
+/**
+ * A tool-call-only assistant record, for spacing rows without prose.
+ *
+ * Prose between two `send` rows is load-bearing here: a run of three or more
+ * consecutive actions FOLDS (branding § 7), so a column of four sends would come
+ * out as one `4 calls` bar and photograph nothing. The prose is also the honest
+ * shape — a model hands work out one message at a time, saying why between them.
+ */
+const prose = (id: string, text: string): TranscriptRecord => ({
+	kind: "assistant",
+	id,
+	ts: TS,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: null,
+	error: false,
+});
+
+/**
+ * The four `send` delivery states, as the core states them in
+ * `details.delivery.state`, with the result text §A.5 fixes for each.
+ *
+ * ONE builder, four stories: the collapsed, expanded, narrow and light frames
+ * must be the same four rows or a difference between two of them is the fixture
+ * rather than the design. The result strings are the core's own (the incident's
+ * `mailbox` sentence, the retry-exhausted `unconfirmed` hedge, the refusal), so
+ * the expansion shows what the row will carry once the core PR lands; the
+ * durations are the real ones the design measured (0.4s a steered delivery,
+ * 5.1s the incident's single 5s window, 16.2s the retry budget's worst case,
+ * 0.1s a refusal).
+ *
+ * WHAT TO LOOK FOR, because this is the design review:
+ *
+ * - `delivered` is silent, exactly as it was: the ledger's success draws nothing.
+ * - `mailbox` and `unconfirmed` wear the WARNING word and a mark of their own
+ *   (`mailbox` / a dashed circle) on the PLAIN ground — never the danger wash,
+ *   and never the silent tick, which is the incident's own complaint.
+ * - The three states are distinguishable with the colour turned off: three
+ *   different words and three different shapes.
+ * - `failed` keeps the danger pathway and the word `not delivered`, which is the
+ *   fact (`Sent ... failed` read as a statement about the message).
+ * - The word never truncates and never wraps: the summary above it is the half
+ *   that goes first.
+ */
+const sendDeliveryRows = (): TranscriptRecord[] => [
+	prose("send:prose:0", "Handing the version bump to the release owner."),
+	tool({
+		id: "send:delivered",
+		toolName: "send",
+		args: {
+			target: "release-owner",
+			message: "v0.31.26 is cut — tag it once CI is green.",
+			wake: true,
+		},
+		output: "→ release-owner (pid 48213): delivered mid-turn (steered)",
+		durationS: 0.4,
+		delivery: "delivered",
+	}),
+	prose("send:prose:1", "Now the one that sat in a busy terminal."),
+	tool({
+		id: "send:mailbox",
+		toolName: "send",
+		args: {
+			target: "night-audit",
+			message: "Re-run the flaky shard before you promote.",
+			wake: true,
+		},
+		output:
+			"→ night-audit (pid 51120): delivered to its mailbox (id peer-9c1f2ab30d4e4f0a8b7c6d5e4f3a2b10) — the wake was not acknowledged within 5s after 3 attempts. It will read the message on its next turn; do not send it again.",
+		durationS: 5.1,
+		delivery: "mailbox",
+	}),
+	prose("send:prose:2", "And the send whose loop never turned at all."),
+	tool({
+		id: "send:unconfirmed",
+		toolName: "send",
+		args: {
+			target: "night-audit",
+			message: "Second copy, in case the first one never landed.",
+			wake: true,
+		},
+		output:
+			'→ night-audit (pid 51120): delivery UNCONFIRMED (id peer-1a2b3c4d5e6f708192a3b4c5d6e7f809) — no answer within 5s after 3 attempts and the message is not yet in its transcript. It may still arrive once its loop turns. Check with sessions(op="peek", …) before resending; sending again may deliver it twice.',
+		durationS: 16.2,
+		delivery: "unconfirmed",
+	}),
+	prose("send:prose:3", "This one cannot receive peer messages at all."),
+	tool({
+		id: "send:failed",
+		toolName: "send",
+		args: {
+			target: "ghost-session",
+			message: "Ping when the audit finishes.",
+			wake: true,
+		},
+		output:
+			"could not deliver to ghost-session: this session cannot receive peer messages. Nothing was delivered (id peer-5f4e3d2c1b0a99887766554433221100) — fix the cause or retry the send.",
+		durationS: 0.1,
+		isError: true,
+		delivery: "failed",
+	}),
+];
+
+/** The four delivery states on one column, collapsed: the row the operator
+ * actually saw during the incident, beside the three it now has to be told
+ * apart from. */
+export const SendDeliveries: Story = {
+	render: () => <Frame height={420} records={sendDeliveryRows()} />,
+};
+
+/**
+ * The same four, expanded — the only place the result TEXT is read, and the
+ * place the incident's real defect lived: the amber two show their sentence as
+ * an ordinary result, where the failed one keeps the Error block.
+ */
+export const SendDeliveriesOpen: Story = {
+	render: () => <Frame height={980} openRows records={sendDeliveryRows()} />,
+};
+
+/** The same four at 390px, where the word and the summary compete for the row:
+ * the summary truncates first and the word is never cut. */
+export const SendDeliveriesNarrow: Story = {
+	render: () => (
+		<Frame width="390px" height={420} records={sendDeliveryRows()} />
+	),
+};
+
+/** The same four under a light palette, where `warning` is the closer call. */
+export const SendDeliveriesLight: Story = {
+	args: { theme: "localOperatorLight" },
+	render: () => <Frame height={420} records={sendDeliveryRows()} />,
+};
