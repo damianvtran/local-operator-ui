@@ -78,7 +78,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
@@ -233,8 +233,30 @@ export const TraceFold = ({
 				);
 	const durationText = spanS === null ? "" : formatSettledDuration(spanS);
 
+	/*
+	 * The fold's root, held so the strip's `+N` press can hand focus to THIS
+	 * fold's own trigger (UX round 1, U2): that press unmounts the strip and the
+	 * control the reader just activated, and focus on a removed node falls to
+	 * `<body>`, from where the next Tab restarts at the document's first stop. The
+	 * trigger stays mounted, owns the open state and is what closes the group
+	 * again, so it is where the reader should land. The primitive does not expose
+	 * its button, and the trigger is the first `aria-expanded` control in the
+	 * root by construction (the strip renders after the disclosure).
+	 */
+	const rootRef = useRef<HTMLDivElement>(null);
+	const revealFromStrip = () => {
+		rootRef.current
+			?.querySelector<HTMLElement>("button[aria-expanded]")
+			?.focus();
+		onOpenChange(true);
+	};
+
 	return (
-		<div className={className} data-fold-ids={recordIds.join(" ")}>
+		<div
+			ref={rootRef}
+			className={className}
+			data-fold-ids={recordIds.join(" ")}
+		>
 			<Disclosure
 				/*
 				 * CONTROLLED, because the app closes this fold as well as the reader
@@ -424,7 +446,7 @@ export const TraceFold = ({
 			 * The fold's own toggle is handed to the node so its count slot can open
 			 * the fold (`FoldMedia`'s `onRevealMore`).
 			 */}
-			{!open && condensedMedia && condensedMedia(() => onOpenChange(true))}
+			{!open && condensedMedia && condensedMedia(revealFromStrip)}
 		</div>
 	);
 };
