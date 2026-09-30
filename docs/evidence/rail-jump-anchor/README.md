@@ -62,8 +62,11 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
 BEFORE = `origin/main` at `f9dbf8b455`; AFTER = the branch's anchored build.
 The probe focuses the exact tick and presses Enter (the density-safe route),
 captures the wash-instant still (the design frame), and reads the target row's
-top relative to the scroller's top (`offset`), its peak text luma against a
-same-frame painted reference row - from a POST-SETTLE capture, so a scroller
+top relative to the scroller's top (`offset`), its band's luma RANGE (max-min,
+ink contrast; the ink EXTREME anchors the comparison - light-on-dark reads as
+the max, dark-on-light as the min, and the majority extreme is the band's
+ground) against a same-frame inked reference row - from a POST-SETTLE capture,
+so a scroller
 repaint lagging the DOM's landing cannot read a red for a property that holds
 (UX round 1's U1) - the rail's active tick, and a 400ms sample of the arrival
 wash's DOM lifetime (`fate`). The wash is re-asserted at the settle resolve
@@ -73,34 +76,38 @@ arrives, and a fast jump's single wash is left alone. The card step opens a
 completion's card, reads it, holds through a settle window and re-reads (the
 frozen-text pin), then closes and reopens.
 
-## The numbers (scroller viewport 694px, row height 22px)
+## The numbers (scroller viewport 694px, row height 54px - the action row composes onto the closing line)
 
 | case | before offset | after offset | after luma (target/ref) | after scrollTop | active tick |
 |---|---|---|---|---|---|
-| deep-cold (`n0131`, cold load) | 335.6 | **24.1** | 238/238 | -10649.5 | n0131 |
-| warm (same row re-jumped) | 335.6 | **24.1** | 238/238 | -10649.5 | n0131 |
-| very-top (`n0001`, the oldest) | 169 | **24** | 238/238 | -31957 | n0001 |
-| near-newest (`n0200`, the clamp case) | 655.6 | 655.6 | 238/none* | 0 | n0200 |
+| deep-cold (`n0131`, cold load) | 335.6 | **24.1** | 206/206 (ink 238) | -13717.5 | n0131 |
+| warm (same row re-jumped) | 335.6 | **24.1** | 206/206 (ink 238) | -13717.5 | n0131 |
+| very-top (`n0001`, the oldest) | 169 | **24** | 206/none* (ink 238) | -40745 | n0001 |
+| near-newest (`n0200`, the clamp case) | 655.6 | 655.6 | 207/none (ink 238) | 0 | n0200 |
 
 Short viewport (`--window-size 1380x650`, scroller 444px):
 
 | case | before offset | after offset | after luma (target/ref) | after scrollTop | active tick |
 |---|---|---|---|---|---|
-| deep-cold | 210.6 | **24.1** | 238/238 | -10899.5 | n0131 |
-| warm | 210.6 | **24.1** | 238/238 | -10899.5 | n0131 |
-| very-top | 169 | **24** | 238/238 | -32207 | n0001 |
-| near-newest | 405.6 | 405.6 | 238/238 | 0 | n0200 |
+| deep-cold | 210.6 | **24.1** | 206/206 (ink 238) | -13967.5 | n0131 |
+| warm | 210.6 | **24.1** | 206/206 (ink 238) | -13967.5 | n0131 |
+| very-top | 169 | **24** | 206/206 (ink 238) | -40995 | n0001 |
+| near-newest | 373.6 | 373.6 | 207/none (ink 238) | 0 | n0200 |
 
-*At the tall viewport the settled frame's visible band holds no painted
-reference row for this leg (mid/adj both read 32 - the rows near the fold),
-so the check carries on its absolute full-ink bar (238 against the 200
-threshold) and the note names it (`reference=none`); the short viewport has a
-painted reference and compares 238/238.
+*At the tall viewport the settled frame's visible band holds no INKED
+reference row for this leg (the mid band's range is 10 and the preceding row's
+1 - ground only, no text strokes), so the check carries on its absolute
+full-ink bar (207 against the 180 threshold) and the note names it
+(`reference=none`, `ink=238`); the near-newest leg is `none` at both viewports
+for the same reason.
 
 Light palette (`--theme localOperatorLight`, default viewport): the same four
-offsets (24.1/24.1/24/655.6), luma 237/237, 238/237, 237/237, 237/237 — the
-fade blends toward the light canvas, and the target still reads at the
-reference row's ink.
+offsets (24.1/24.1/24/623.6), luma 207/221, 207/221, 207/none, 207/none - the
+ink anchor is the text's own dark extreme (30), shared exactly with the
+reference (30) on the first two legs, and the two `none` legs are ground-only
+bands, where the absolute bar carries the check. The light palette is why the
+comparison anchors on the ink rather than the range: light grounds run 237 and
+251 (both full ink) and their ranges differ by that ground alone.
 
 Reading the numbers: BEFORE's deep-cold readings are `(viewport − row)/2` —
 335.6 = (694−22)/2, 210.6 = (444−22)/2 — the row's centre met the viewport's
