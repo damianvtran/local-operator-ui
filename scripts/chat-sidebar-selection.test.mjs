@@ -365,6 +365,7 @@ const carriesGround = (classes) => classes.includes("bg-row-selected");
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+const rowDragging = literalOf(SIDEBAR, "rowDragging");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -421,6 +422,14 @@ const CURRENT = [
 			revealArmed: true,
 			rowBoxStyle,
 			rowCurrent,
+			/*
+			 * THE DRAG'S OWN TWO TERMS (issue #697): the box now reads `dragging` for the
+			 * `data-dragging` mark and `rowDragging` for the fill it steps to. `false` is
+			 * the state this entry is about - no gesture is running, so the box must
+			 * resolve to exactly the class list it had before the drag existed.
+			 */
+			dragging: false,
+			rowDragging,
 			current: true,
 			// Both per-row capabilities present: the box the ground is asserted on is
 			// carried while EITHER control is mounted, and this is the delivered
@@ -509,6 +518,29 @@ const CURRENT = [
 				SIDEBAR,
 				"aria-label={archiveControlLabel(label, archived)}",
 			),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
+	},
+	{
+		/*
+		 * The pinned row's DRAG HANDLE (issue #697): the pair's own shape one control
+		 * over - revealed by the pointer, `tabIndex={-1}`, and carrying
+		 * `hover:bg-row-hover` guarded `!current`, because it sits inside a row's box
+		 * exactly as the pair does. The grip is a SIBLING of the row's button, so the
+		 * pointer can reach it without leaving the row, which is why the guard is the
+		 * pointer's step rather than a new rule.
+		 *
+		 * Resolved FORWARD from the control's own attribute (the pair's shape again):
+		 * the attribute precedes the `className` in the source, so a forward search
+		 * lands on this control's expression and not on the one below it. `ground:
+		 * false` for the pair's reason - the element that owns the ground is the ROW
+		 * BOX, and this entry exists so the `!current` guard is exercised on a control
+		 * that can sit inside a current row.
+		 */
+		what: "the pinned row's drag handle",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-pin-grip\n"),
 		stubs: { current: true },
 		ground: false,
 		notCurrent: { current: false },
@@ -951,7 +983,11 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// pointer, and both are resolved by their own `CURRENT` entries above -
 				// the count is what forced those entries to exist rather than a promise
 				// that somebody wrote them.
-				"hover:bg-row-hover": 16,
+				// SEVENTEEN (issue #697, 2026-09-30). The pin DRAG HANDLE adds one: it is the
+				// pair's own shape one control over (revealed by the pointer, guarded
+				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
+				// a pinned row's box like every other control counted here.
+				"hover:bg-row-hover": 17,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own

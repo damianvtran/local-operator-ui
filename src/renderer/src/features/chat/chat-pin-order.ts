@@ -215,6 +215,100 @@ export function movePinnedOrder(
 }
 
 /**
+ * The order after a DRAG, expressed as the sequence of single-step swaps rule 2
+ * already defines (issue #697, item 5).
+ *
+ * WHY THIS IS NOT `movePinnedOrder` CALLED IN A LOOP BY THE CALLER. A drop can
+ * move a row four places at once, and the two things that make a drop correct are
+ * properties of the WHOLE sequence rather than of any one step: the stored order
+ * is materialized ONCE (so a dormant stored id keeps its slot rather than being
+ * re-materialized against a half-moved list on every step), and the sequence is
+ * the *same* set of transpositions the keyboard's repeated chords make, so a drag
+ * and four presses of `\u2318\u21e7\u2191` cannot produce two different stored arrays from the
+ * same start. Doing it here also keeps the caller to ONE store write per drop,
+ * which is what makes a drag a preference write rather than a render loop.
+ *
+ * `targetShownIndex` is the row's own final index among the SHOWN rows (zero-based),
+ * not an insertion slot in a list that still holds the dragged row: the caller
+ * computes it by counting the shown rows whose midpoint the pointer has passed,
+ * EXCLUDING the dragged row itself (`pinDragSlot` below is that count). A target
+ * equal to the row's current position returns null - the drop that lands where it
+ * started writes nothing and announces nothing, the board's own rule for the same
+ * gesture.
+ *
+ * WHAT IT CANNOT DO, stated because a drag makes it reachable: a target that is
+ * not a whole number, or one past either end, is clamped rather than refused (a
+ * pointer dragged above the first row or below the last means "the end", which is
+ * the one reading a clamp and a refusal agree on). A row the drawn order does not
+ * contain is refused, the same way `movePinnedOrder` refuses one.
+ */
+export function movePinnedOrderTo(
+	knownIds: readonly string[],
+	order: readonly string[],
+	shownIds: readonly string[],
+	id: string,
+	targetShownIndex: number,
+): string[] | null {
+	const at = shownIds.indexOf(id);
+	if (at < 0 || shownIds.length === 0) return null;
+	const target = Math.max(
+		0,
+		Math.min(shownIds.length - 1, Math.round(targetShownIndex)),
+	);
+	if (target === at) return null;
+	const addressable = [
+		...shownIds.filter((entry) => !knownIds.includes(entry)),
+		...knownIds,
+	];
+	const next = pinnedOrder(addressable, order);
+	/*
+	 * One shown step per iteration, and it is the SAME swap `movePinnedOrder`
+	 * performs - the neighbour is read off `shownIds`, which is the drawn order, so
+	 * a hidden id sitting between two shown rows is stepped over rather than
+	 * displaced (rule 2).
+	 */
+	for (let step = at; step !== target; ) {
+		step += step < target ? 1 : -1;
+		const neighbour = shownIds[step];
+		const from = next.indexOf(id);
+		const to = next.indexOf(neighbour);
+		if (neighbour === undefined || from < 0 || to < 0) return null;
+		next[from] = neighbour;
+		next[to] = id;
+	}
+	return next;
+}
+
+/**
+ * Where a drop would land: the dragged row's final index among the SHOWN pinned
+ * rows, from the row boxes the pointer has crossed (issue #697, item 5).
+ *
+ * Geometry in, a number out - which is the whole reason it is here rather than in
+ * the component: a midpoint comparison is a rule (the row the pointer is over is
+ * the row AFTER the drop, up to that row's own middle) and a rule this repository
+ * keeps where `node --test` can drive it. The component's job is to hand over the
+ * boxes the PINNED section draws, in drawn order, which is why the boxes carry
+ * their ids: the count is over rows, not over array positions the caller would
+ * have to line up itself.
+ *
+ * The dragged row is skipped rather than counted, because it is not a candidate
+ * for where it lands - counting it would make a row dragged one place down report
+ * the position it already holds.
+ */
+export function pinDragSlot(
+	boxes: readonly { id: string; top: number; bottom: number }[],
+	draggedId: string,
+	y: number,
+): number {
+	let slot = 0;
+	for (const box of boxes) {
+		if (box.id === draggedId) continue;
+		if (y > (box.top + box.bottom) / 2) slot += 1;
+	}
+	return slot;
+}
+
+/**
  * The order after an id leaves the pinned set (rule 4).
  *
  * A no-op when the id was never ranked, so the common unpin (of a pin nobody has
