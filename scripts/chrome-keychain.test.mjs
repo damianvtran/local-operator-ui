@@ -380,6 +380,12 @@ const CHROME_LAUNCH_SITES = [
 		"plays the composer's slash-popup gestures with real key events and presses, and records what the composer dispatched",
 	),
 	guarded(
+		"scripts/composer-cluster-proof.mjs",
+		"spawn",
+		1,
+		"plays the composer cluster's gestures with real key events - the draft-safe recall walk, the `$` list's open/accept/send, and the qualified /theme submit - and photographs what the composer dispatched",
+	),
+	guarded(
 		"scripts/usage-real-evidence.mjs",
 		"spawn",
 		1,
