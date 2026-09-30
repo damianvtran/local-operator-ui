@@ -1579,6 +1579,33 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
 	const [result, setResult] = useState<PickerResult | null>(null);
+	/*
+	 * The theme a fully-qualified argument NAMES, resolved at render so the FIRST
+	 * paint can already be the confirmation (issue #676).
+	 *
+	 * A `/theme <id>` that resolves had the double-selection defect the report
+	 * names: the inline list already WAS the selection gesture, and this dialog
+	 * then painted the whole table again under the applied receipt, as if nothing
+	 * had been chosen. The fix is deliberately NOT to make the inline pick run —
+	 * a modal opened by an inline pick is the pattern `picker-registry.tsx`'s
+	 * `runs: false` rejects on purpose — but to make THIS dialog a confirmation
+	 * when the argument already names the choice: `options` is omitted (the
+	 * host's no-list shape) and the existing result line says what was applied.
+	 * A bare `/theme` keeps the full picker; so does an argument that does NOT
+	 * resolve, because choosing from the table is then exactly what the user
+	 * needs (beside the warning that says so).
+	 */
+	const requested = useMemo(() => {
+		const wanted = action.args.trim();
+		if (!wanted) return null;
+		return (
+			Object.values(themes).find(
+				(theme) =>
+					theme.id.toLowerCase() === wanted.toLowerCase() ||
+					theme.name.toLowerCase() === wanted.toLowerCase(),
+			) ?? null
+		);
+	}, [action.args]);
 	const options = useMemo<PickerOption[]>(
 		() =>
 			Object.values(themes).map((theme) => ({
@@ -1596,28 +1623,31 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 	useEffect(() => {
 		const wanted = action.args.trim();
 		if (!wanted) return;
-		const match = Object.values(themes).find(
-			(theme) =>
-				theme.id.toLowerCase() === wanted.toLowerCase() ||
-				theme.name.toLowerCase() === wanted.toLowerCase(),
-		);
-		if (match) {
-			setTheme(match.id as ThemeName);
-			setResult({ tone: "success", text: `Theme: ${match.name}` });
+		if (requested) {
+			setTheme(requested.id as ThemeName);
+			setResult({ tone: "success", text: `Theme: ${requested.name}` });
 		} else {
 			setResult({
 				tone: "warning",
 				text: `No desktop theme named "${wanted}".`,
 			});
 		}
-	}, [action.args, setTheme]);
+	}, [action.args, requested, setTheme]);
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title="Theme"
 			description="Desktop theme. The terminal keeps its own tui.theme setting."
-			options={options}
+			/*
+			 * THE CONFIRMATION SHAPE (issue #676): no `options` at all while the
+			 * argument names the theme, so the host draws its no-list body and the
+			 * result line is the whole of the dialog's content. Omitting the array
+			 * rather than emptying it is the distinction the host itself draws
+			 * (`hasList = options !== undefined`): an empty list would still draw a
+			 * search field, a listbox and an empty-state sentence.
+			 */
+			options={requested ? undefined : options}
 			onPick={(value, option) => {
 				setTheme(value as ThemeName);
 				setResult({ tone: "success", text: `Theme: ${option.label}` });
