@@ -205,6 +205,14 @@ export type ConfigRunHandle = {
 	results: RunResult[];
 	/** What the run answered, so the summary can show it (U3). */
 	answer: string;
+	/**
+	 * A refused Stop, while the run is still live (UX review round 3, U1).
+	 *
+	 * THE STRIP CANNOT INFER THIS FROM `status`. A refusal leaves the run in
+	 * exactly the state a successful press was about to change, so the only
+	 * evidence is the reason the interrupt call gave.
+	 */
+	stopError: string | null;
 	start: (text: string, about: RunTarget | null) => Promise<void>;
 	stop: () => Promise<void>;
 	/** Re-send a request whose message call failed, on the run it already made. */
@@ -610,13 +618,20 @@ export function useConfigRun(): ConfigRunHandle {
 		try {
 			await interruptTurn(sessionId, crypto.randomUUID());
 		} catch (caught) {
+			/*
+			 * A REFUSED STOP DOES NOT END THE RUN (UX review round 3, U1).
+			 *
+			 * This used to go through `fail`, which renders the settled error shape:
+			 * Stop and the elapsed time vanished, Dismiss was the only control, and
+			 * the strip claimed the run had stopped while its turn ran on. The strip
+			 * owns the sentence ("the stop did not take"); this carries only what the
+			 * refusal said, so the two are not welded into one string and a silent
+			 * refusal still gets a truthful line.
+			 */
 			useConfigRunStore
 				.getState()
-				.fail(
-					userFacingMessage(
-						caught,
-						"The configuration run could not be stopped.",
-					),
+				.stopFailed(
+					userFacingMessage(caught, "The run did not acknowledge the request."),
 				);
 		}
 	};
@@ -636,6 +651,7 @@ export function useConfigRun(): ConfigRunHandle {
 		sessionId: store.sessionId,
 		topic: store.topic,
 		error: store.error,
+		stopError: store.stopError,
 		draft: store.draft,
 		setDraft: store.setDraft,
 		about: store.about,

@@ -142,7 +142,20 @@ function RunStrip({
 					: run.status === "stopped"
 						? "Stopped"
 						: run.status === "error"
-							? "Stopped with an error"
+							? /*
+								 * TWO DIFFERENT FAILURES, TWO HEADINGS (UX review round 3,
+								 * U2). "Stopped with an error" described a stopped run, and
+								 * it was shown over the settle-read failure whose own body
+								 * says the run FINISHED — a heading contradicting the
+								 * sentence under it. The refused-stop case that shared this
+								 * title no longer reaches the error state at all (U1), so
+								 * the split is by what actually happened: nothing was sent
+								 * (`canRetry`) versus a run that ran and then could not be
+								 * read back.
+								 */
+								run.canRetry
+								? "Stopped with an error"
+								: "Finished with an error"
 							: "";
 
 	return (
@@ -211,6 +224,27 @@ function RunStrip({
 					Another configuration run was already going, so this page attached to
 					it. Your request was not sent — it is still in the box.
 				</p>
+			) : null}
+			{/*
+			 * THE STOP THAT DID NOT TAKE (UX review round 3, U1).
+			 *
+			 * A refused interrupt used to render the settled error shape: the live
+			 * Stop and the elapsed time vanished, Dismiss was the only control left,
+			 * and the strip said the run had stopped — while it went on writing
+			 * definitions. The strip keeps its live shape in that case (Stop still
+			 * pressable, the clock still running) and says what happened here, with
+			 * the refusal's own reason under it when the backend gave one.
+			 */}
+			{run.stopError ? (
+				<div
+					className="mt-2 border-danger-border border-t pt-2"
+					data-testid="config-stop-refused"
+				>
+					<p className="text-body-sm text-danger">
+						The stop did not take — the run is still going.
+					</p>
+					<p className="mt-0.5 text-meta text-ink-muted">{run.stopError}</p>
+				</div>
 			) : null}
 			{watching ? (
 				<div className="mt-2 border-hairline border-t pt-2">

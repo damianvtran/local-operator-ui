@@ -76,6 +76,18 @@ export type ConfigRunStore = {
 	about: RunTarget | null;
 	error: string | null;
 	/**
+	 * A Stop the backend REFUSED, while the run is still going.
+	 *
+	 * WHY THIS IS NOT `error` (UX review round 3, U1). Folding a refused stop into
+	 * the error state rendered the settled shape for a run that had NOT stopped:
+	 * the live Stop control and the elapsed time both disappeared, so Dismiss was
+	 * the only control left while the run went on writing definitions. A refused
+	 * interrupt RPC is not the run stopping, so the status stays `running` (Stop
+	 * stays pressable, the elapsed keeps counting) and this carries the reason the
+	 * refusal gave, which the strip shows under its own sentence.
+	 */
+	stopError: string | null;
+	/**
 	 * The request was never delivered to the run, so re-sending it is safe.
 	 *
 	 * WHY THIS IS A FLAG RATHER THAN "sessionId is set". The id survives every
@@ -114,6 +126,8 @@ export type ConfigRunStore = {
 	acceptDraft: () => void;
 	noteTouched: (target: RunTarget) => void;
 	stopping: () => void;
+	/** The interrupt was refused: the run is still going, and the strip says so. */
+	stopFailed: (message: string) => void;
 	settle: (
 		results: RunResult[],
 		status: "done" | "stopped",
@@ -141,6 +155,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	draft: "",
 	about: null,
 	error: null,
+	stopError: null,
 	unsent: false,
 	startedAt: null,
 	settledAt: null,
@@ -159,6 +174,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			status: "running",
 			topic,
 			error: null,
+			stopError: null,
 			startedAt: Date.now(),
 			settledAt: null,
 			touched: [],
@@ -179,8 +195,24 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 
 	stopping: () =>
 		set((state) =>
-			state.status === "running" ? { status: "stopping" } : state,
+			/*
+			 * A second press clears the previous refusal: the operator has asked
+			 * again, so the old sentence is no longer what happened last.
+			 */
+			state.status === "running"
+				? { status: "stopping", stopError: null }
+				: state,
 		),
+
+	stopFailed: (message) =>
+		/*
+		 * THE RUN KEEPS GOING, AND THE STRIP KEEPS ITS CONTROLS (UX review round 3,
+		 * U1). `running` rather than `error`, deliberately: the stop did not take,
+		 * so Stop must still be pressable and the elapsed must keep counting —
+		 * a supervised run the operator can no longer cancel is the failure this
+		 * whole state exists to prevent.
+		 */
+		set({ status: "running", stopError: message }),
 
 	settle: (results, status, answer) =>
 		set(() => ({
@@ -200,6 +232,8 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 				created: result.created,
 			})),
 			sessionId: null,
+			// A run that settled has nothing left to refuse: the stop is moot.
+			stopError: null,
 			// `before` is spent by the diff it was taken for.
 			before: null,
 			// Nothing to re-send once the run has finished.
@@ -219,16 +253,17 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 		 * transport, a refused Stop), so re-sending it would run it twice. Only
 		 * `failUnsent` marks a request that never left.
 		 */
-		set({ status: "error", error: message, unsent: false }),
+		set({ status: "error", error: message, unsent: false, stopError: null }),
 
 	failUnsent: (message) =>
-		set({ status: "error", error: message, unsent: true }),
+		set({ status: "error", error: message, unsent: true, stopError: null }),
 
 	dismiss: () =>
 		set({
 			status: "idle",
 			sessionId: null,
 			error: null,
+			stopError: null,
 			unsent: false,
 			topic: "",
 			touched: [],
