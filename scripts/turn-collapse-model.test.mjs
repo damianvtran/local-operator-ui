@@ -233,7 +233,7 @@ test("a completed run collapses over its in-between rows, bar at the first hidde
 	assert.equal(run.facts.title, "Ran 1 command");
 });
 
-test("narration-only in-betweens collapse and say only how long they took", () => {
+test("narration-only in-betweens collapse and state no duration: no call measured any work", () => {
 	// §5 case 3: prose between the user row and the answer hides; no action clause.
 	const plan = planOf([
 		user("u1"),
@@ -253,7 +253,11 @@ test("narration-only in-betweens collapse and say only how long they took", () =
 	);
 	assert.equal(run.facts.actions, 0);
 	assert.equal(run.facts.title, null, "no actions, no hover sentence");
-	assert.equal(run.facts.durationS, 4, "opening ts to the settled answer");
+	assert.equal(
+		run.facts.durationS,
+		null,
+		"the duration is WORKED time (the foot's quantity): no call, nothing to state",
+	);
 });
 
 test("a steer stays inside the expansion and its rows count in the run's totals", () => {
@@ -717,72 +721,85 @@ test("the pin list is one predicate, and every kind is decided by it", () => {
 
 /* ----------------------------- the duration ------------------------------ */
 
-test("Took is the wall span: opening user row to the latest end instant", () => {
+test("Took is the WORKED time: the seconds the span's own calls reported, summed (D1)", () => {
 	/*
-	 * §4.4's composition, each source exercised: an assistant states when it
-	 * SETTLED (the `settledAt` the reducer stamps; `ts` for a durable row,
-	 * whose commit instant is its completion), a tool states when it ENDED
-	 * (`endedAt`; `ts` when a durable row cannot date itself), everything else
-	 * states its `ts`.
+	 * One quantity on both sides of the answer (design review round 1 on #708,
+	 * D1): the bar states what the foot states, `workedSeconds`. Model time, queue
+	 * time and the answer's own settle instant are not in it - the wall span the
+	 * first cut stated was 16.7x the foot's figure on the operator-shaped journal.
 	 */
 	const plan = planOf([
 		user("u1", { ts: 1_000 }),
-		tool("t1", { ts: 1_100, endedAt: 3_500 }, "turn"),
-		answer("a1", { ts: 2_000, settledAt: 4_500 }),
+		tool("t1", { ts: 1_100, endedAt: 3_500, durationS: 2.5 }, "turn"),
+		tool("t2", { ts: 4_000, endedAt: 90_000, durationS: 1 }, "item"),
+		answer("a1", { ts: 2_000, settledAt: 4_500_000 }),
 	]);
 	assert.equal(
 		plan.runs[0].facts.durationS,
 		3.5,
-		"the latest end is the answer's settled moment, not its stream start",
-	);
-
-	const toolLast = planOf([
-		user("u1", { ts: 1_000 }),
-		answer("a1", { ts: 2_000, settledAt: 2_500 }),
-		tool("t2", { ts: 2_600, endedAt: 9_000 }, "item"),
-	]);
-	assert.equal(
-		toolLast.runs[0].facts.durationS,
-		8,
-		"a tool ending last takes the end",
+		"2.5s + 1s reported by the calls; the answer settling hours later adds nothing",
 	);
 });
 
-test("a span under a second, or one the clocks contradict, states nothing", () => {
+test("a span whose calls reported under a second, or nothing, states no duration", () => {
 	const under = planOf([
 		user("u1", { ts: 1_000 }),
-		tool("t1", { ts: 1_100, endedAt: 1_999 }, "turn"),
-		answer("a1", { ts: 1_999, settledAt: 1_999 }),
+		tool("t1", { ts: 1_100, durationS: 0.999 }, "turn"),
+		answer("a1", { ts: 1_999 }),
 	]);
-	assert.equal(under.runs[0].facts.durationS, null, "999ms is not `1s`");
+	assert.equal(under.runs[0].facts.durationS, null, "0.999s is not `1s`");
 
 	const exact = planOf([
 		user("u1", { ts: 1_000 }),
-		tool("t1", { ts: 1_100, endedAt: 2_000 }, "turn"),
-		answer("a1", { ts: 2_000, settledAt: 2_000 }),
+		tool("t1", { ts: 1_100, durationS: 1 }, "turn"),
+		answer("a1", { ts: 2_000 }),
 	]);
 	assert.equal(exact.runs[0].facts.durationS, 1, "a full second is shown");
 
-	const reversed = planOf([
-		user("u1", { ts: 2_000 }),
-		answer("a1", { ts: 1_000, settledAt: 1_000 }),
+	const unreported = planOf([
+		user("u1", { ts: 1_000 }),
+		tool("t1", { ts: 1_100, durationS: null }, "turn"),
+		answer("a1", { ts: 9_000 }),
 	]);
 	assert.equal(
-		reversed.runs[0].facts.durationS,
+		unreported.runs[0].facts.durationS,
 		null,
-		"an earlier end is not a negative span",
+		"a call that reported no figure contributes none, and a span of them states none",
 	);
 });
 
-test("a durable run still dates itself: ts is the commit, and the span holds", () => {
-	// The restored state (§5 case 13): no `settledAt` anywhere, and the number
-	// must match the live one — that is the whole reason `settledAt` exists.
+test("the bars and the foot state ONE quantity: the pre-answer bars sum to the turn's figure (D1)", () => {
+	/*
+	 * The reconciliation the reader is invited to make: with a pinned row
+	 * splitting the work, the action counts of the bars add up to the turn's, and
+	 * so must the durations. Three bars of 60s, 30s and 10s of reported work.
+	 */
 	const plan = planOf([
 		user("u1", { ts: 1_000 }),
-		tool("t1", { ts: 2_000 }, "turn"),
-		answer("a1", { ts: 4_000 }),
+		tool("t1", { ts: 2_000, durationS: 60 }, "turn"),
+		row("c1", "compaction", { text: "Context compacted", ts: 3_000 }, "item"),
+		tool("t2", { ts: 4_000, durationS: 30 }, "item"),
+		row("c2", "compaction", { text: "Context compacted", ts: 5_000 }, "item"),
+		tool("t3", { ts: 6_000, durationS: 10 }, "item"),
+		answer("a1", { ts: 99_999_000, settledAt: 99_999_000 }),
 	]);
-	assert.equal(plan.runs[0].facts.durationS, 3);
+	const run = plan.runs[0];
+	const bars = run.segments.filter((segment) => !segment.afterAnswer);
+	assert.deepEqual(
+		bars.map((segment) => segment.facts.durationS),
+		[60, 30, 10],
+	);
+	assert.equal(
+		bars.reduce((sum, segment) => sum + (segment.facts.durationS ?? 0), 0),
+		run.facts.durationS,
+		"bars sum to the turn's figure",
+	);
+	assert.equal(run.facts.durationS, 100);
+	assert.equal(
+		bars.reduce((sum, segment) => sum + segment.facts.actions, 0),
+		run.facts.actions,
+		"and so do the counts",
+	);
 });
 
 /* ------- the completion walk's bound and gates (1b, spec section 7) ------- */
@@ -1271,7 +1288,7 @@ const finishedTurns = (turns, toolsPerTurn) => {
  */
 const headCutRows = () => [
 	...Array.from({ length: 100 }, (_, i) =>
-		tool(`hc${i}`, { ts: TS + i }, "trace"),
+		tool(`hc${i}`, { ts: TS + i, durationS: 2 }, "trace"),
 	),
 	user("u2", { ts: TS + 10_000 }),
 	answer("a2", { ts: TS + 11_000 }),
@@ -1505,7 +1522,7 @@ test("the completed-run allowance is capped, and never applies to a head-cut run
 	assert.equal(WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA, 720);
 	const huge = [
 		...Array.from({ length: 60 }, (_, i) =>
-			tool(`ht${i}`, { ts: TS + i }, "trace"),
+			tool(`ht${i}`, { ts: TS + i, durationS: 2 }, "trace"),
 		),
 		// 900 rows of one run AFTER the head-cut request: the enclosing run's extra exceeds the cap.
 		user("hu", { ts: TS + 1_000 }),
@@ -1652,7 +1669,7 @@ test("alignWalkRunKey: null for a headed run, a live run, and a bar the reader h
 	const headed = [
 		user("hu", { ts: TS }),
 		...Array.from({ length: 100 }, (_, i) =>
-			tool(`ht${i}`, { ts: TS + i }, "trace"),
+			tool(`ht${i}`, { ts: TS + i, durationS: 2 }, "trace"),
 		),
 		answer("ha", { ts: TS + 900_000 }),
 	];
@@ -1745,11 +1762,11 @@ test("the facts carry `partial` exactly while the run's head is cut (design D1)"
 		true,
 		"a head-cut run states a MINIMUM: `N+ actions`, and no `Took`",
 	);
-	assert.equal(cut.facts.durationS, null, "and no wall span to state either");
+	assert.equal(cut.facts.durationS, null, "and no duration to state either");
 	const headed = [
 		user("hu", { ts: TS }),
 		...Array.from({ length: 100 }, (_, i) =>
-			tool(`ht${i}`, { ts: TS + i }, "trace"),
+			tool(`ht${i}`, { ts: TS + i, durationS: 2 }, "trace"),
 		),
 		answer("ha", { ts: TS + 900_000 }),
 	];
