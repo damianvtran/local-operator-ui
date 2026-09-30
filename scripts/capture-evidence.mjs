@@ -5173,9 +5173,9 @@ export const STORIES = [
 	 * panel with its check on the current rung.
 	 */
 	["projects-tab--board-window-populated", 1280, 900],
-	["projects-tab--board-window-24h", 1280, 900],
-	["projects-tab--board-window-30d", 1280, 900],
-	["projects-tab--board-window-90d", 1280, 900],
+	["projects-tab--board-window-24-h", 1280, 900],
+	["projects-tab--board-window-30-d", 1280, 900],
+	["projects-tab--board-window-90-d", 1280, 900],
 	["projects-tab--board-window-all", 1280, 900],
 	["projects-tab--board-window-empty", 1280, 900],
 	["projects-tab--board-window-widened", 1280, 900],
