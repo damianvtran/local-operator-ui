@@ -291,6 +291,35 @@ const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
  */
 
 /**
+ * Rows the window-top snap may extend by to reach a run the store has PROVEN
+ * COMPLETE (loader-continuity 1b, the open frame).
+ *
+ * WHY A SECOND BOUND EXISTS. The bar's facts are computed over the MOUNTED
+ * window, so the snap's ordinary bound (`WINDOW_ALIGN_MAX_EXTRA`, three durable
+ * pages) decides how tall a run can be and still state its own count at open.
+ * Measured on the operator's journal: the run is 642 rows, the ordinary snap
+ * cannot reach it, and the open frame therefore shows 18 actions and no `Took`
+ * for a settled turn the reader cannot complete without a gesture — symptom 1
+ * itself ("the full set of condensed messages don't load"), with 1a's correct
+ * tail guard refusing the widen that could have fixed it.
+ *
+ * WHAT MAKES THE BIGGER REACH SAFE, given that bound was chosen deliberately: a
+ * run this tall is COLLAPSED, and a collapsed run unmounts the rows its bar
+ * hides (`planRun`'s hidden span), so the cost of including the whole run is the
+ * plan computation and the handful of rows the collapse leaves visible — not the
+ * 642 rows. The reader following the tail sees no motion: the extension is
+ * entirely above their place, and the anchor hold is what keeps it there.
+ *
+ * WHY IT REACHES THIS FAR. 720 rows is the widen's own reach
+ * (`WIDEN_MAX_STEPS` x the 60-row `WINDOW_STEP`) and about what
+ * `ALIGN_WALK_MAX_PAGES` pages of history hold, so the snap and the walk that
+ * proves the rows are in the store agree on how tall a run one open may
+ * complete. A run taller than this keeps the ordinary snap and its honest
+ * partial statement — the bar still condenses, it simply cannot state the whole
+ * run's count without the reader's own gesture.
+ */
+export const WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA = 720;
+/**
  * The window's top edge, snapped UP to the opening of the run it lands in.
  *
  * Returns the size unchanged when the edge already sits on a boundary, when
@@ -298,6 +327,16 @@ const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
  * `windowTopRunIsHeadCut` case), or when the snap would add more than
  * `maxExtra` rows (a run taller than the bound keeps the shipped cut
  * behaviour rather than mounting itself unbounded).
+ *
+ * `completedRunMaxExtra` is the allowance above, and it is a SEPARATE bound
+ * because it answers a different question: `maxExtra` bounds an ordinary snap
+ * (a window edge a few rows inside a run), while this one covers a run the store
+ * has PROVEN COMPLETE — the run's own opening row is in the list, which for a
+ * tail-first, contiguous page load means every row of the run is in the store.
+ * Reaching that row is what lets a settled turn state its true action count and
+ * its `Took` clause with no reader gesture; the completion walk (this branch) is
+ * what puts the row within reach, and before it only the first two pages were
+ * ever fetched, so a run this tall could not get here at all.
  *
  * A snapped window top is a run boundary BY CONSTRUCTION, so every run the
  * list hands to `runsOf` opens with its own user row and every completed one
@@ -308,19 +347,46 @@ export function snapWindowToRunBoundary(
 	rows: Row[],
 	windowSize: number,
 	maxExtra: number,
+	completedRunMaxExtra = 0,
 ): number {
 	const total = rows.length;
 	if (total <= windowSize) return windowSize;
 	const top = total - windowSize;
-	const runs = runsOf(rows);
-	const enclosing = runs.find(
-		(run) => run.openingIndex <= top && top <= run.endIndex,
-	);
-	if (enclosing === undefined) return windowSize;
-	if (!enclosing.opensWithUserRow) return windowSize;
+	const enclosing = windowTopRun(rows, windowSize);
+	if (enclosing === null) return windowSize;
 	const extra = top - enclosing.openingIndex;
-	if (extra <= 0 || extra > maxExtra) return windowSize;
+	/*
+	 * `opensWithUserRow` is the PROOF, not a formality: pages load tail-first and
+	 * contiguously, so a run whose opening row is in the list is a run whose every
+	 * row is in the store. Only such a run may use the bigger allowance; a
+	 * head-cut run refuses both, because there is no boundary to land on yet.
+	 */
+	const bound = enclosing.opensWithUserRow
+		? Math.max(maxExtra, completedRunMaxExtra)
+		: 0;
+	if (extra <= 0 || extra > bound) return windowSize;
 	return windowSize + extra;
+}
+
+/**
+ * The run the window's top edge lands in, or null when the window covers the
+ * whole list (or the edge lands between runs).
+ *
+ * Extracted so the three consumers that need DIFFERENT things from the same
+ * question — the snap (the run's opening index), the head-cut test (whether that
+ * opening row is loaded) and the walk's per-run budget (the run's stable key) —
+ * ask it once. A second copy of `top = total - windowSize` beside this one is
+ * how these three would drift apart.
+ */
+export function windowTopRun(rows: Row[], windowSize: number): TurnRun | null {
+	const total = rows.length;
+	if (total <= windowSize) return null;
+	const top = total - windowSize;
+	return (
+		runsOf(rows).find(
+			(run) => run.openingIndex <= top && top <= run.endIndex,
+		) ?? null
+	);
 }
 
 /**
@@ -335,15 +401,7 @@ export function windowTopRunIsHeadCut(
 	rows: Row[],
 	windowSize: number,
 ): boolean {
-	const total = rows.length;
-	if (total <= windowSize) return false;
-	const top = total - windowSize;
-	const runs = runsOf(rows);
-	const enclosing = runs.find(
-		(run) => run.openingIndex <= top && top <= run.endIndex,
-	);
-	if (enclosing === undefined) return false;
-	return !enclosing.opensWithUserRow;
+	return windowTopRun(rows, windowSize)?.opensWithUserRow === false;
 }
 
 /**

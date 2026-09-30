@@ -183,6 +183,7 @@ import {
 import {
 	type RunCollapsePlan,
 	WIDEN_MAX_STEPS,
+	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
 	collapsePlan,
 	snapWindowToRunBoundary,
@@ -2248,7 +2249,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * window without an effect.
 	 */
 	const alignSize = useMemo(
-		() => snapWindowToRunBoundary(rows, windowSize, WINDOW_ALIGN_MAX_EXTRA),
+		() =>
+			snapWindowToRunBoundary(
+				rows,
+				windowSize,
+				WINDOW_ALIGN_MAX_EXTRA,
+				// The COMPLETED-RUN allowance (1b/A): a run whose own opening row is in the
+				// store may be snapped all the way to that row, so a settled turn states its
+				// true action count and its `Took` clause at open. See the constant's note for
+				// why the reach is safe (a collapsed run unmounts what its bar hides) and why
+				// the bound is the widen's own.
+				WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+			),
 		[rows, windowSize],
 	);
 	const visible = useMemo(
