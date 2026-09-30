@@ -1182,6 +1182,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * that cannot resolve the id mints fresh rather than failing the send.
 			 */
 			draftId: sessionId.optional(),
+			/*
+			 * The DEVICE to create the conversation on (`features.peers`): the mesh route's
+			 * own field, sent only when the user actually picked one, so the body of an
+			 * ordinary create is unchanged. Omitted means this device.
+			 *
+			 * THE DIRECTORY RULE THAT COMES WITH IT, which is why the app must not offer this
+			 * choice without saying so: a remote create carries an explicit `cwd` and an EMPTY
+			 * one resolves to that device's home rather than to this project, so a pane with a
+			 * peer destination names the directory it will use.
+			 *
+			 * `--yolo` and friends are NOT here because the peer's own route refuses them: a
+			 * remote create that let this machine run tools unattended on another one is the
+			 * thing the route declines to express.
+			 */
+			peer: meshId.optional(),
 		})
 		.strict(),
 	/*
@@ -4708,6 +4723,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 * report a mistake nobody made.
 					 */
 					...(request.cwd !== undefined ? { cwd: request.cwd } : {}),
+					/*
+					 * THE DEVICE THE PANE PICKED (`features.peers`), and it is omitted for every
+					 * draft nobody aimed at a peer - the same additive rule `target`, `model` and
+					 * `draft_id` follow, so an ordinary create is byte-for-byte what it was.
+					 *
+					 * THIS LINE IS THE WHOLE OF THE HEADER CONTROL'S CREATE PATH. The schema above
+					 * accepted `peer` and the store passed it down, but the body is composed HERE,
+					 * field by field, and this file never mapped it - so "start a new chat and send
+					 * it to another device" posted `{request_id, cwd}` while the chip said
+					 * `New on build-box`, and the conversation was created locally with the chip
+					 * then relabelled `On this device` (UX round 1, U1 - a silent success that
+					 * reports the wrong machine).
+					 */
+					...(request.peer ? { peer: request.peer } : {}),
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
 					// Omitted, not nulled, when the pane has no minted id: see the field's
