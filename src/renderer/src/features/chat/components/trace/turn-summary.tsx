@@ -41,6 +41,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
+import { CircleCheck } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
@@ -59,6 +60,13 @@ export type TurnSummaryProps = {
 	 * bar by the row they are looking for.
 	 */
 	recordIds: readonly string[];
+	/**
+	 * The ids THIS bar hides (`data-segment-ids`). A run can carry several bars
+	 * once its hidden span is partitioned, and `recordIds` names the whole run on
+	 * each, so the reveal walk needs the bar's own set to open the right one.
+	 * Optional for the fixtures and stories that draw one bar per run.
+	 */
+	segmentIds?: readonly string[];
 	/**
 	 * The FIRST hidden row's id: the bar occupies that row's slot, and carries
 	 * its identity so a lookup for the row finds the bar that replaced it.
@@ -96,6 +104,19 @@ export type TurnSummaryProps = {
 	 * rule the foot's stamp follows).
 	 */
 	stampTs: number | null;
+	/**
+	 * The word ahead of the clauses for a bar that is not the ordinary
+	 * work-before-the-answer one (`Woken`, `Followed up`, `Peer note`, ...), or
+	 * null/absent for the ordinary bar, whose copy is unchanged.
+	 */
+	label?: string | null;
+	/**
+	 * A settled follow-up section: the bar carries a completion mark after its
+	 * label. It is the "closed-disposal receipt" without a card - "that is over" -
+	 * and `success` ink because the checkpoint rail already paints `complete` in
+	 * the same role.
+	 */
+	completed?: boolean;
 	/** Controlled open state — the transcript owns the reader's expansion. */
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -139,6 +160,7 @@ const Dot: FC = () => (
 
 export const TurnSummary: FC<TurnSummaryProps> = ({
 	recordIds,
+	segmentIds,
 	anchorRecordId,
 	className,
 	durationS,
@@ -146,6 +168,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	partial = false,
 	title,
 	stampTs,
+	label = null,
+	completed = false,
 	open,
 	onOpenChange,
 	children,
@@ -200,6 +224,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			className={cn("border-b border-hairline pb-3", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
+			data-segment-ids={segmentIds?.join(" ")}
+			data-segment-complete={completed ? "true" : undefined}
 			data-record-id={anchorRecordId}
 		>
 			<Disclosure
@@ -260,6 +286,36 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						className={cn("flex min-w-0 flex-1 items-center gap-2")}
 						title={title ?? undefined}
 					>
+						{label !== null && (
+							/*
+							 * The bar's KIND, ahead of its facts, in the facts' own ink: no
+							 * new ground, no icon of its own, no second edge. It exists so
+							 * that several bars in one turn read as sections of it (the
+							 * follow-up after a disposal says so) instead of as separate
+							 * turns.
+							 */
+							<span
+								className={cn("shrink-0 text-body-sm text-ink-muted")}
+								data-segment-label=""
+							>
+								{label}
+							</span>
+						)}
+						{completed && (
+							/*
+							 * THE COMPLETION MARK. `success` on `canvas` is asserted by the
+							 * contrast contract's GRAPHICS table (the same pair the checkpoint
+							 * rail paints for `complete`). It is decoration - the label already
+							 * says what happened - so it is hidden from AT.
+							 */
+							<CircleCheck
+								aria-hidden={true}
+								className={cn("size-3.5 shrink-0 text-success")}
+							/>
+						)}
+						{label !== null && (durationS !== null || actionCount > 0) && (
+							<Dot />
+						)}
 						{durationS !== null && (
 							<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
 								Took {formatDuration(durationS)}

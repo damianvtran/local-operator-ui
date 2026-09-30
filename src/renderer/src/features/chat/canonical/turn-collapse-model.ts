@@ -31,6 +31,16 @@
  * `alignWalkDecision`) stay as refinements that bring the head in when it is
  * cheap; neither is a precondition any more.
  *
+ * SEGMENTS, NOT ONE BAR (issue #665). A run's hidden rows are partitioned into
+ * ordered disjoint SEGMENTS by `turn-segments.ts`, one bar each, around the rows
+ * that must stay on screen: the pinned rows, the ELECTED ANSWER (the last
+ * response cycle's close, not the last message emitted) and the trailing
+ * statements. A bar therefore never precedes a pinned row that happened before
+ * it, and a reply written after the session was disposed is a labelled follow-up
+ * bar BELOW the answer instead of a row that takes the answer's place. The
+ * run-level `facts` are the TURN's (through the answer); each segment carries its
+ * own.
+ *
  * EVERYTHING ELSE — counts, failure classification, the hover sentence — is
  * reused from the shipped fold vocabulary (`foldSummary`, `ledgerName`) or
  * stated in ONE function (`isFailedCall`) whose body swaps to the sibling
@@ -42,7 +52,21 @@ import {
 	type TranscriptRecord,
 	isInterruptedFault,
 } from "./transcript-reducer";
-import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
+import {
+	type Row,
+	type TurnRun,
+	isStatementRow,
+	ledgerName,
+	paintsSomething,
+	runsOf,
+} from "./transcript-rows";
+import {
+	type SegmentSpan,
+	boundaryKindOf,
+	labelOfSegment,
+	partitionRun,
+	segmentIsCompleted,
+} from "./turn-segments";
 
 /**
  * Whether a record stays on screen while its run is collapsed.
@@ -79,16 +103,14 @@ import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
  * `job_result`), info notices, subagent-end lines.
  */
 export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
-	switch (record.kind) {
-		case "compaction":
-			return true;
-		case "notice":
-			return record.complete === true;
-		case "custom":
-			return record.level === "error";
-		default:
-			return false;
-	}
+	/*
+	 * THE PIN LIST IS THE BOUNDARY VOCABULARY (`boundaryKindOf`): the same
+	 * predicate the classifier reads to decide a turn is over, so a marker that
+	 * ends a turn is always also a marker that stays on screen - the two rules
+	 * used to be copies, and the `closed`/`retired` receipts were the case that
+	 * could have drifted between them.
+	 */
+	return boundaryKindOf(record) !== null;
 }
 
 /**
@@ -186,24 +208,95 @@ function endInstant(record: TranscriptRecord): number {
 }
 
 /**
- * One run's plan: what the bar says, and what it hides.
+ * One SEGMENT of a run: a maximal contiguous span of hidden rows and the one bar
+ * that stands in for it (issue #665).
+ *
+ * A run's hidden rows used to be ONE bar taking the first hidden row's slot, so a
+ * pinned row (a compaction, a stop marker, an incident) between two hidden spans
+ * rendered AFTER a bar that preceded it and jumped when the bar opened. Each span
+ * is now its own bar in its own slot, in document order, and the pinned rows keep
+ * the slots they had - expanding any bar reorders nothing.
+ */
+export type SegmentPlan = {
+	/**
+	 * The reader's expansion key for THIS bar (the value `openRuns` holds).
+	 *
+	 * WHICH END OF THE SPAN IS THE STABLE ONE decides the key, and it differs by
+	 * side of the answer, because rows only ever arrive at two places: ABOVE the
+	 * loaded head (a page landing) and at the TAIL (a live turn).
+	 *
+	 * - a span BEFORE the answer can grow upward when a page lands - the head-cut
+	 *   span is exactly that - so its FIRST row is not stable, but its LAST row (the
+	 *   row before the visible one that ends it) never changes. The span nearest the
+	 *   answer keeps the run's own key (`TurnRun.key`, the answer's id), which is
+	 *   what every persisted expansion already names; each earlier one is
+	 *   `<run key>#<its last row>`.
+	 * - a span AFTER the answer grows at the tail while the follow-up is being
+	 *   written and never upward, so its FIRST row is the stable one:
+	 *   `<run key>#<its first row>`.
+	 */
+	key: string;
+	/** The hidden rows, in order. */
+	rows: Row[];
+	/** `rows[0]`'s id: the bar's slot and its `data-record-id`. */
+	firstId: string;
+	/** This segment's ids (the bar's `data-run-ids`, so the reveal opens the right bar). */
+	segmentIds: string[];
+	/** The bar's margin tier. See `segmentGap`. */
+	gap: Row["gap"];
+	/** After the answer: a follow-up section (commentary), not work towards it. */
+	afterAnswer: boolean;
+	/** The word ahead of the clauses (`Woken`, `Followed up`, ...), or null. */
+	label: string | null;
+	/** A settled follow-up: the bar carries the completion mark. */
+	completed: boolean;
+	/**
+	 * Whether this bar renders (the run condenses AND the focus hold did not stand
+	 * this span open). False means its rows are simply drawn in place.
+	 */
+	collapsed: boolean;
+	/**
+	 * The turn's ONE stamp, when this bar is the one that carries it: the answer's
+	 * instant, on the run's SOLE pre-answer bar (a bar that states the turn's whole
+	 * work - the shipped shape, where the bar replaces the answer's foot). With
+	 * several pre-answer bars (a pinned row splits the work) no bar states the
+	 * turn's totals, so none stamps and the answer's foot keeps the totals and the
+	 * stamp. A follow-up bar never stamps - the answer is dated once.
+	 */
+	stampTs: number | null;
+	facts: TurnSummaryFacts;
+};
+
+/**
+ * One run's plan: what its bars say, and what they hide.
  */
 export type RunCollapsePlan = {
-	/** The run's stable identity: its opening user row's record id. */
+	/** The run's stable identity: its closing answer's record id (else its last row's). */
 	key: string;
 	/** The partition span, in `visible`-row indices. */
 	run: TurnRun;
-	/** Whether the bar renders for this run. */
+	/** Whether ANY bar renders for this run. */
 	collapses: boolean;
-	/** Every row of the run, in order (the bar's `data-run-ids`). */
+	/** Every row of the run, in order. */
 	recordIds: string[];
-	/** The rows the bar hides, in order. Empty when nothing is hidden. */
+	/** The rows the bars hide (all segments), in order. Empty when nothing is hidden. */
 	hidden: Row[];
-	/** The bar's margin tier: the FIRST hidden row's gap (the fold's own rule). */
+	/** The first bar's margin tier. */
 	gap: Row["gap"];
+	/**
+	 * The TURN's facts: what the run did up to and including its ELECTED ANSWER.
+	 * Commentary after the answer is not the turn's work, so a follow-up's tool
+	 * calls are counted on their own bar and never in this figure - which is what
+	 * made the operator's `97 actions` state a total that mixed the answer's work
+	 * with the post-dispose chatter.
+	 */
 	facts: TurnSummaryFacts;
-	/** The closing answer's instant, for the bar's stamp; null when none. */
+	/** The elected answer's record id, or null when the run handed none over. */
+	answerId: string | null;
+	/** The answer's instant, for the turn's one stamp; null when none. */
 	stampTs: number | null;
+	/** Ordered, disjoint bars (see `SegmentPlan`). */
+	segments: SegmentPlan[];
 };
 
 export type CollapsePlan = {
@@ -217,30 +310,31 @@ export type CollapsePlan = {
  * is the newest run's UNSETTLEDNESS, and the caller composes it from both
  * halves of that fact: the working line's predicate (a turn being written) and
  * the reader gate (a turn PARKED on a question). The gate half exists because
- * the working line stands down while a question is pending — that stand-down is
- * deliberate (`WorkingLine` yields to the dock) — so a rule that read only the
+ * the working line stands down while a question is pending - that stand-down is
+ * deliberate (`WorkingLine` yields to the dock) - so a rule that read only the
  * working line condensed a parked turn, then un-condensed it when the call
  * resumed: a bar appearing and vanishing with no reader action, stating `Took`
  * and counts of a turn that had handed over no answer (the live rig's
  * `parked on the approval` note).
  *
- * The tail — rows the bar must NOT hide — is the run's closing answer and
- * everything after it: the collapse summarises the PREFIX of the turn, and the
- * row the reader is being handed stays where it is. Hidden rows are everything
- * between the opening user row and that tail that is not pinned; for a
- * head-cut run they start at the run's first LOADED row, which is exactly what
- * makes an end-loaded bar describe only rows on hand.
+ * WHAT STAYS PUT is decided by the segments module (`partitionRun`): the pinned
+ * rows, the ELECTED ANSWER and the run's trailing statements. Everything else in
+ * the span hides, as one bar per contiguous span. For a head-cut run the first
+ * span starts at the run's first LOADED row, which is exactly what makes an
+ * end-loaded bar describe only rows on hand.
  *
  * THE FOCUS HOLD (`options.focusHold` / `options.openRuns`). A collapse is a
- * transition the reader did not initiate, and it UNMOUNTS rows — a reader
+ * transition the reader did not initiate, and it UNMOUNTS rows - a reader
  * whose keyboard focus sits inside a row this pass would hide loses focus to
  * the body. The caller passes the record id holding focus inside the
- * transcript (or null) and the keys of the runs the reader has opened; a run
- * that would hide the focused row and is NOT open simply does not collapse
- * this pass. The plan still states what it WOULD hide, and the next pass —
- * focus moved on — folds it. Deliberately narrower than "no collapse while
- * focused": a bar over a run the reader is not in cannot disturb them, and a
- * reader already looking at the rows (the run is open) is not mid-transition.
+ * transcript (or null) and the keys of the bars the reader has opened
+ * (`openRuns` holds SEGMENT keys; a run's nearest-to-answer segment keeps the
+ * run's own key, so a pre-segment expansion still names a real bar); a segment
+ * that would hide the focused row and is NOT open simply does not collapse this
+ * pass. The plan still states what it WOULD hide, and the next pass - focus
+ * moved on - folds it. Deliberately narrower than "no collapse while focused":
+ * a bar over a run the reader is not in cannot disturb them, and a reader
+ * already looking at the rows (the bar is open) is not mid-transition.
  */
 export function collapsePlan(
 	rows: Row[],
@@ -262,22 +356,15 @@ export function collapsePlan(
 	const focusHold = options.focusHold ?? null;
 	const openRuns = options.openRuns ?? NO_OPEN_RUNS;
 	return {
-		runs: runs.map((run, index) => {
-			const planned = planRun(
+		runs: runs.map((run, index) =>
+			planRun(
 				rows,
 				run,
 				index === runs.length - 1 && options.live,
-			);
-			if (
-				focusHold !== null &&
-				planned.collapses &&
-				!openRuns.has(planned.key) &&
-				planned.hidden.some((row) => row.record.id === focusHold)
-			) {
-				return { ...planned, collapses: false };
-			}
-			return planned;
-		}),
+				focusHold,
+				openRuns,
+			),
+		),
 	};
 }
 
@@ -476,11 +563,15 @@ export function alignWalkRunKey(
 	const cut = plan.runs.find(
 		(run) =>
 			!run.run.opensWithUserRow &&
-			run.collapses &&
-			// A bar the reader has OPEN is a header, not a partial statement: its rows
-			// are painted, so there is nothing for a walk to complete (the same
-			// `openRuns` treatment `paintedRows` gives it).
-			!options.openRuns?.has(run.key),
+			// THE RUN, not one bar: a head-cut run can hold several (a pinned row at
+			// its loaded edge splits the first span), and the walk exists to bring in
+			// the run's head whichever bar states the partial figure. A run whose every
+			// condensed bar the reader has OPEN paints its rows, so its bars are
+			// headers rather than partial statements (the `openRuns` treatment
+			// `paintedRows` gives them) and owes no walk.
+			run.segments.some(
+				(segment) => segment.collapsed && !options.openRuns?.has(segment.key),
+			),
 	);
 	return cut?.key ?? null;
 }
@@ -543,13 +634,16 @@ export function paintedRows(
 	});
 	let hidden = 0;
 	for (const run of plan.runs) {
-		/*
-		 * An OPEN run paints the rows its bar hides - the render mounts the bar's
-		 * children when `open` is set - so it is not hidden for this count, the
-		 * same treatment the component gives it.
-		 */
-		if (run.collapses && !options.openRuns?.has(run.key)) {
-			hidden += run.hidden.length;
+		for (const segment of run.segments) {
+			/*
+			 * An OPEN bar paints the rows it hides - the render mounts the bar's
+			 * children when `open` is set - so they are not hidden for this count, the
+			 * same treatment the component gives it. Counted per SEGMENT because a run
+			 * can hold several bars and the reader opens them one at a time.
+			 */
+			if (segment.collapsed && !options.openRuns?.has(segment.key)) {
+				hidden += segment.rows.length;
+			}
 		}
 	}
 	return visible.length - hidden;
@@ -743,44 +837,31 @@ export function alignWalkStateFor(
 	return { key, spent: 0, halted: false };
 }
 
-function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
-	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
+/** The span's gap tier: see the comment at its one call site. */
+function segmentGap(first: Row, precededByVisibleRow: boolean): Row["gap"] {
 	/*
-	 * Where the tail starts: the closing answer and everything after it stays put
-	 * (the collapse summarises the PREFIX of the turn, not its hand-over). A run
-	 * with no closing answer — the interrupted/dead residual cases — has no tail,
-	 * so every non-pinned row after the opening one is eligible to hide.
+	 * A bar that follows a VISIBLE row (a pinned marker, a previous bar's answer)
+	 * is a block boundary of its own, so it takes the block step rather than the
+	 * ledger's hairline: built against its old neighbour - often a tool row that
+	 * has collapsed - its first hidden row arrives at the trace tier, which would
+	 * leave the bar hugging the marker above it by 2px. The bar that follows the
+	 * opening user row keeps that row's turn gap (the shipped rule).
 	 */
-	let tailFrom = run.endIndex + 1;
-	if (run.closingAnswerId !== null) {
-		const at = runRows.findIndex(
-			(row) => row.record.id === run.closingAnswerId,
-		);
-		if (at !== -1) tailFrom = run.openingIndex + at;
-	}
-	const hidden: Row[] = [];
-	/*
-	 * The span starts just after the opening USER row — or at the list's own
-	 * beginning for a run whose head is cut off, where the first row is simply
-	 * the oldest one loaded and nothing before it is knowable. A head-cut run
-	 * CAN collapse now (the end-loaded rule), which is exactly why the duration
-	 * gate below refuses to read `start` there: this position is the loaded
-	 * span's edge, not the turn's own beginning.
-	 */
-	const spanFrom = run.opensWithUserRow
-		? run.openingIndex + 1
-		: run.openingIndex;
-	for (let index = spanFrom; index <= run.endIndex; index += 1) {
-		if (index >= tailFrom) break;
-		const row = rows[index];
-		if (staysVisibleWhileCollapsed(row.record)) continue;
-		hidden.push(row);
-	}
+	return precededByVisibleRow && first.gap === "trace" ? "item" : first.gap;
+}
 
+function factsOf(
+	rows: readonly Row[],
+	options: {
+		partial: boolean;
+		durationFrom: number | null;
+		durationTo: number;
+	},
+): TurnSummaryFacts {
 	const actions: FoldableAction[] = [];
 	let failed = 0;
 	let firstFailedId: string | null = null;
-	for (const row of runRows) {
+	for (const row of rows) {
 		if (row.record.kind !== "tool") continue;
 		const failedHere = isFailedCall(row.record);
 		actions.push({ name: ledgerName(row.record), failed: failedHere });
@@ -789,54 +870,171 @@ function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 			firstFailedId ??= row.record.id;
 		}
 	}
+	const span =
+		options.durationFrom === null
+			? 0
+			: options.durationTo - options.durationFrom;
+	return {
+		/*
+		 * Shown iff the span is at least a second - never a `0s` claim (§4.4) - AND
+		 * the span's head is REAL: a head-cut span's start is its first LOADED row,
+		 * and a duration stated from there would be a number the turn never had
+		 * (the honesty half of the end-loaded rule). `durationFrom === null` is that
+		 * case.
+		 */
+		durationS:
+			options.durationFrom !== null && span >= 1000 ? span / 1000 : null,
+		actions: actions.length,
+		/*
+		 * The count is a MINIMUM for exactly the reason the duration is absent: the
+		 * rows above the loaded span are unknown, so `actions.length` is what has
+		 * been LOADED of this turn. The bar says so (`N+ actions`).
+		 */
+		partial: options.partial,
+		failed,
+		firstFailedId,
+		title: actions.length > 0 ? foldSummary(actions) : null,
+	};
+}
 
-	const start = rows[run.openingIndex].record.ts;
-	let end = start;
-	for (const row of runRows) end = Math.max(end, endInstant(row.record));
-	const span = end - start;
+function planRun(
+	rows: Row[],
+	run: TurnRun,
+	live: boolean,
+	focusHold: string | null,
+	openRuns: ReadonlySet<string>,
+): RunCollapsePlan {
+	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
+	const records = runRows.map((row) => row.record);
+	/*
+	 * The span starts just after the opening USER row - or at the list's own
+	 * beginning for a run whose head is cut off, where the first row is simply
+	 * the oldest one loaded and nothing before it is knowable. A head-cut run
+	 * CAN collapse (the end-loaded rule), which is exactly why the duration gate
+	 * refuses to read `start` there: this position is the loaded span's edge, not
+	 * the turn's own beginning.
+	 */
+	const from = run.opensWithUserRow ? 1 : 0;
+	const partition = partitionRun(records, {
+		from,
+		paints: paintsSomething,
+		isStatement: isStatementRow,
+		pinned: staysVisibleWhileCollapsed,
+	});
+	const answerAt = partition.answer?.closeIndex ?? null;
+	const answerId = answerAt === null ? null : records[answerAt].id;
+	const openedAt = run.opensWithUserRow ? records[0].ts : null;
 
-	const closingRow =
-		run.closingAnswerId === null
-			? null
-			: (runRows.find((row) => row.record.id === run.closingAnswerId) ?? null);
+	/* The pre-answer span nearest the answer keeps the run's own key. */
+	let nearest = -1;
+	partition.segments.forEach((span, i) => {
+		if (answerAt === null || span.to < answerAt) nearest = i;
+	});
 
+	const preAnswerCount = partition.segments.filter(
+		(span) => answerAt === null || span.to < answerAt,
+	).length;
+	const collapsible =
+		partition.segments.length > 0 &&
+		(run.opensWithUserRow || run.closingAnswerId !== null) &&
+		!live;
+
+	const segments: SegmentPlan[] = partition.segments.map(
+		(span: SegmentSpan, i): SegmentPlan => {
+			const segRows = runRows.slice(span.from, span.to + 1);
+			const afterAnswer = answerAt !== null && span.from > answerAt;
+			const key =
+				i === nearest
+					? run.key
+					: afterAnswer
+						? `${run.key}#${segRows[0].record.id}`
+						: `${run.key}#${segRows[segRows.length - 1].record.id}`;
+
+			/*
+			 * The wall span: from the opening user row (when this span starts right
+			 * after it) or the span's own first row, to the latest end instant in the
+			 * span - extended over the ANSWER when it is the row that follows, because
+			 * the turn "took" until it answered (the shipped `Took` figure). A span
+			 * whose head is the loaded edge states no duration.
+			 */
+			const headLoaded = !(span.from === 0 && !run.opensWithUserRow);
+			const startsTurn = run.opensWithUserRow && span.from === from;
+			const durationFrom = !headLoaded
+				? null
+				: startsTurn
+					? (openedAt ?? segRows[0].record.ts)
+					: segRows[0].record.ts;
+			let end = durationFrom ?? segRows[0].record.ts;
+			for (const row of segRows) end = Math.max(end, endInstant(row.record));
+			/*
+			 * A span BEFORE the answer ran until the next thing that stayed on screen
+			 * (the answer, or a pinned marker): the turn "took" until it produced
+			 * that row. It is the shipped `Took` for the ordinary bar, whose span ran
+			 * through the answer, and it keeps the figure continuous when a marker
+			 * splits the work into two bars.
+			 */
+			if (!afterAnswer && span.to + 1 < records.length) {
+				end = Math.max(end, endInstant(records[span.to + 1]));
+			}
+
+			const collapsedHere =
+				collapsible &&
+				!(
+					focusHold !== null &&
+					!openRuns.has(key) &&
+					segRows.some((row) => row.record.id === focusHold)
+				);
+			return {
+				key,
+				rows: segRows,
+				firstId: segRows[0].record.id,
+				segmentIds: segRows.map((row) => row.record.id),
+				gap: segmentGap(segRows[0], span.from > from),
+				afterAnswer,
+				label: labelOfSegment(partition.cycles, span, answerAt),
+				completed: segmentIsCompleted(records, span, answerAt),
+				collapsed: collapsedHere,
+				stampTs:
+					i === nearest && answerAt !== null && preAnswerCount === 1
+						? records[answerAt].ts
+						: null,
+				facts: factsOf(segRows, {
+					partial: !headLoaded,
+					durationFrom,
+					durationTo: end,
+				}),
+			};
+		},
+	);
+
+	/* The turn's own totals: the run through its answer, commentary excluded. */
+	const turnRows = answerAt === null ? runRows : runRows.slice(0, answerAt + 1);
+	let turnEnd = records[0].ts;
+	for (const row of turnRows) {
+		turnEnd = Math.max(turnEnd, endInstant(row.record));
+	}
+	const hidden = segments.flatMap((segment) => segment.rows);
 	return {
 		key: run.key,
 		run,
 		/*
-		 * The bar exists iff there is something to hide, this is not the run a
-		 * live turn is being written in, and the run can be honestly summarised:
-		 * its opening user row is on hand, OR its closing answer is (the
-		 * end-loaded rule — the bar then describes exactly the loaded span; see
-		 * the header). The focus hold is already applied by `collapsePlan`.
+		 * A bar renders iff there is something to hide, this is not the run a live
+		 * turn is being written in, and the run can be honestly summarised: its
+		 * opening user row is on hand, OR its closing answer is (the end-loaded
+		 * rule - the bar then describes exactly the loaded span; see the header).
+		 * The focus hold is applied per segment above.
 		 */
-		collapses:
-			hidden.length > 0 &&
-			(run.opensWithUserRow || run.closingAnswerId !== null) &&
-			!live,
+		collapses: segments.some((segment) => segment.collapsed),
 		recordIds: runRows.map((row) => row.record.id),
 		hidden,
-		/* The fold's placement rule: the bar takes the first hidden row's slot+gap. */
-		gap: hidden[0]?.gap ?? "item",
-		facts: {
-			/*
-			 * Shown iff the span is at least a second — never a `0s` claim (§4.4) —
-			 * AND the span is the run's REAL one: a head-cut run's `start` is its
-			 * first LOADED row, and a duration stated from there would be a number
-			 * the turn never had (the honesty half of the end-loaded rule).
-			 */
-			durationS: run.opensWithUserRow && span >= 1000 ? span / 1000 : null,
-			actions: actions.length,
-			/*
-			 * The count is a MINIMUM for exactly the reason the duration is absent: the
-			 * rows above the loaded span are unknown, so `actions.length` is what has
-			 * been LOADED of this turn. The bar says so (`N+ actions`).
-			 */
+		gap: segments[0]?.gap ?? "item",
+		facts: factsOf(turnRows, {
 			partial: !run.opensWithUserRow,
-			failed,
-			firstFailedId,
-			title: actions.length > 0 ? foldSummary(actions) : null,
-		},
-		stampTs: closingRow?.record.ts ?? null,
+			durationFrom: openedAt,
+			durationTo: turnEnd,
+		}),
+		answerId,
+		stampTs: answerAt === null ? null : records[answerAt].ts,
+		segments,
 	};
 }
