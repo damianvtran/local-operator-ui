@@ -67,7 +67,7 @@ the one design named first and it is the one applied.
 | File | What it is |
 |---|---|
 | `band-focus--localOperator{Dark,Light}.png` | The **shipped** story `common-updatequietindicator--app-update`, Tab-focused, on the story's own ground. |
-| `band-focus-at-window-edge--localOperator{Dark,Light}.png` | The same shipped component in a **scratch story** that reproduces the shell's box (`h-screen` + `overflow: hidden`, the band its last in-flow child). The window's bottom edge **is** in this frame (row 799). |
+| `band-focus-at-window-edge--localOperator{Dark,Light}.png` | The same shipped component in the **capture rig's own scratch box** - NOT a story in the tree, so no story id names it (design D12) - that reproduces the shell's box (`h-screen` + `overflow: hidden`, the band its last in-flow child). The window's bottom edge **is** in this frame (row 799). |
 | `*-CROP--*.png` | Nearest-neighbour crops of the ring (4× for the shipped story, 6× for the edge pair). |
 | `geometry.json` | The measured boxes, the outline, and the green-pixel row profiles. |
 

@@ -124,6 +124,12 @@ draws around the card that this rig does not draw at the same head — verified 
 the rig's and not the code's on a build of the pre-remediation commit, which behaves
 the same way. The card's box, radius, content and at-rest geometry are unchanged.
 
+**Reproducibility of that frame (design D13).** The head's own take of
+`server-update-offered` is published beside the set, in **`head-take/`**, with the
+single-story rig that made it and a README stating what it can and cannot be compared
+to (a different rig, so not pixel-comparable with `after/`). `after/` keeps the
+round-2 take design accepted as the shipped frame.
+
 ### Frames still owed, and why
 
 - **The band under a real transcript and a real sidebar, a `:hover` on the band,

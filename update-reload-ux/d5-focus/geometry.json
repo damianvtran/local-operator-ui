@@ -85,7 +85,7 @@
    }
   },
   "band-focus-at-window-edge--localOperatorDark": {
-   "story": "common-updatequietindicator--at-window-edge",
+   "story": "(none - the capture rig's own scratch box: h-screen + overflow-hidden column, the shipped band as its last in-flow child; no story of this name exists in the tree)",
    "theme": "localOperatorDark",
    "file": "band-focus-at-window-edge--localOperatorDark.png",
    "focusVisible": true,
@@ -125,7 +125,7 @@
    }
   },
   "band-focus-at-window-edge--localOperatorLight": {
-   "story": "common-updatequietindicator--at-window-edge",
+   "story": "(none - the capture rig's own scratch box: h-screen + overflow-hidden column, the shipped band as its last in-flow child; no story of this name exists in the tree)",
    "theme": "localOperatorLight",
    "file": "band-focus-at-window-edge--localOperatorLight.png",
    "focusVisible": true,
