@@ -74,7 +74,11 @@ export type TurnSummaryProps = {
 	anchorRecordId: string;
 	/** The bar's margin: the first hidden row's gap tier. */
 	className?: string;
-	/** The run's wall span in seconds (§4.4), or null to omit the clause. */
+	/**
+	 * The span's WORKED seconds (the calls' own reported time, summed - the SAME
+	 * quantity the turn's foot states as `Worked for ...`, so a ladder's bars add up
+	 * to it), or null to omit the clause.
+	 */
 	durationS: number | null;
 	/** Tool rows in the run; zero omits the clause. */
 	actionCount: number;
@@ -88,7 +92,7 @@ export type TurnSummaryProps = {
 	 * reachable whenever the head cannot be fetched (a run taller than the walk's
 	 * allowance, a backend whose earlier pages are gone). The bar is the turn's only
 	 * size statement, so the honest shape is the count followed by `+`, with the
-	 * duration clause absent (there is no wall span to state either) and the same
+	 * duration clause absent (there is no duration to state either) and the same
 	 * claim in words for a pointer or a screen reader.
 	 */
 	partial?: boolean;
@@ -106,15 +110,18 @@ export type TurnSummaryProps = {
 	stampTs: number | null;
 	/**
 	 * The word ahead of the clauses for a bar that is not the ordinary
-	 * work-before-the-answer one (`Woken`, `Followed up`, `Peer note`, ...), or
-	 * null/absent for the ordinary bar, whose copy is unchanged.
+	 * work-before-the-answer one: what opened the section (`Wake`, `Peer message`,
+	 * `Job result`) or that it holds the reader's own message (`Steered`); null or
+	 * absent for the ordinary bar, whose copy is unchanged. The set lives in
+	 * `turn-segments.ts` (`labelOfSegment`).
 	 */
 	label?: string | null;
 	/**
-	 * A settled follow-up section: the bar carries a completion mark after its
-	 * label. It is the "closed-disposal receipt" without a card - "that is over" -
-	 * and `success` ink because the checkpoint rail already paints `complete` in
-	 * the same role.
+	 * A section of the turn that ran to a real end: the bar carries a completion
+	 * mark after its label - "that finished", the closed-disposal receipt without a
+	 * card - and `success` ink because the checkpoint rail already paints `complete`
+	 * in the same role. Set on every labelled bar that settled and was not cut off
+	 * by a stop marker, on either side of the answer (`segmentIsCompleted`).
 	 */
 	completed?: boolean;
 	/** Controlled open state — the transcript owns the reader's expansion. */

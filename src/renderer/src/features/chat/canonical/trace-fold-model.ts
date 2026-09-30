@@ -732,6 +732,39 @@ export const foldMediaClause = (count: number): string | null => {
 	return `${count} image${count === 1 ? "" : "s"}`;
 };
 
+/**
+ * THE ONE DEFINITION OF "HOW LONG THE WORK TOOK": the seconds a call itself
+ * reported, summed (design review round 1 on #708, D1).
+ *
+ * The turn's foot (`Worked for 8m17s`) and every condensed bar (`Took 4m43s`) state
+ * THIS quantity - model time, queueing and waiting for the reader are not in it -
+ * because a ladder shows both on one screen and the action counts on them
+ * reconcile exactly (236 + 101 + 78 = 415), which invites the reader to add the
+ * durations too. The bars used to state a wall span (opening row to the latest end
+ * instant) beside a foot stating this sum, and on the operator-shaped journal the
+ * two were 16.7x apart with nothing on screen to say why. Both sides now call the
+ * two functions below, so bars + the rest of the turn add up to the foot within
+ * the rounding of each printed figure (`formatDuration` floors), and no third
+ * derivation can reappear beside them. The words differ (`Took` / `Worked for`)
+ * and are the design round's to judge; the quantity does not.
+ *
+ * A call that reported nothing contributes nothing, and a span in which NO call
+ * reported a figure states none (null) - never a `0s` claim.
+ */
+export function workedSecondsOf(row: Row): number | null {
+	return row.record.kind === "tool" ? row.record.durationS : null;
+}
+
+/** The sum of `workedSecondsOf` over rows; null when no row reported one. */
+export function workedSeconds(rows: readonly Row[]): number | null {
+	let total: number | null = null;
+	for (const row of rows) {
+		const seconds = workedSecondsOf(row);
+		if (typeof seconds === "number") total = (total ?? 0) + seconds;
+	}
+	return total;
+}
+
 /** What a finished turn's foot line reports (§E3). */
 export type TurnFoot = {
 	actions: number;

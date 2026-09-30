@@ -399,70 +399,126 @@ export function partitionRun(
 
 /**
  * What a segment's bar says about itself ahead of its clauses, or null for the
- * ordinary work-before-the-answer bar (whose copy - `Took ...`, `N actions` - is
- * unchanged and needs no word).
+ * ordinary bar (whose copy - `Took ...`, `N actions` - is unchanged and needs no
+ * word).
+ *
+ * ONE WORD PER CONCEPT, IN THE APP'S OWN NOUNS (design review round 1 on #708,
+ * D2/D3). The first cut split the same trigger by position (`Woken` before the
+ * answer, `Followed up` after; `Noted` / `Peer note`) and mixed three grammatical
+ * registers. Position is already visible - the bar is above or below the answer -
+ * so the word names only WHAT OPENED the cycle, as the noun the rest of the app
+ * uses: the TUI's own labels for these rows are `wake` and `peer`, and the receipt
+ * row prints the sender rather than a sentence about it.
  *
  * THE WORD COMES FROM THE CYCLE THE SEGMENT ENDS IN, not from any trigger row
  * that happens to lie inside it. A long user-opened turn is full of `job_result`
  * receipts between its steps; reading "the last trigger in the span" labelled that
  * whole bar `Job result`, which is not what it is. A cycle's INITIATORS are only
- * what preceded its first step, so a mid-work receipt cannot name the bar, and a
- * cycle the reader's own request opened is the ordinary bar.
+ * what preceded its first step, so a mid-work receipt cannot name the bar.
  *
- * | cycle opened by      | before the answer | after the answer |
- * |----------------------|-------------------|------------------|
- * | user (or head-cut)   | none              | Followed up      |
- * | wake / monitor       | Woken             | Followed up      |
- * | peer / hub           | Noted             | Peer note        |
- * | job result           | Job result        | Job result       |
+ * | what the bar hides                         | label          |
+ * |--------------------------------------------|----------------|
+ * | a user row of the reader's own (a steer)   | Steered        |
+ * | a cycle opened by a wake / monitor prompt  | Wake           |
+ * | a cycle opened by a peer / hub message     | Peer message   |
+ * | a cycle opened by a job result             | Job result     |
+ * | anything else (the reader's own request)   | none           |
  *
- * A segment after the answer with no cycle of its own (work that never closed) is
- * still a follow-up: position alone says it happened after the hand-over.
+ * `Steered` COMES FIRST AND IS THE REASON THIS TAKES THE RECORDS (agent review
+ * round 1 on #708, R1-2). A steer is an ordinary user row inside a run, and the
+ * partition hides it with the work it steered (pinning it would split every
+ * steered turn into two bars - more reshaping than the segments change should
+ * carry). A reader's OWN message disappearing behind an unlabelled bar is the
+ * failure, so the bar must say so, and the word outranks the others because it is
+ * the one row in the span the reader wrote. A follow-up the reader opened with a
+ * visible message needs no word: the message above the bar already says it.
  */
 export function labelOfSegment(
+	records: readonly TranscriptRecord[],
 	cycles: readonly TurnCycle[],
 	span: SegmentSpan,
-	answerCloseIndex: number | null,
 ): string | null {
-	const after = answerCloseIndex !== null && span.from > answerCloseIndex;
+	for (let i = span.from; i <= span.to; i += 1) {
+		if (records[i].kind === "user") return "Steered";
+	}
 	const cycle = cycles.find(
 		(candidate) =>
 			candidate.start <= span.to && span.to <= candidate.closeIndex,
 	);
-	const opener = cycle?.initiators.at(-1) ?? null;
+	/*
+	 * A CYCLE THAT NEVER CLOSED (a follow-up that died mid-work, or is still
+	 * running) has no entry in `cycles` - a cycle is defined by its close - so its
+	 * opener is read the same way a cycle's initiators are: the triggers between
+	 * the previous close and the first step row.
+	 */
+	let opener: TriggerKind | null = cycle?.initiators.at(-1) ?? null;
+	if (cycle === undefined) {
+		const previous = cycles.filter(
+			(candidate) => candidate.closeIndex < span.from,
+		);
+		for (
+			let i = (previous.at(-1)?.closeIndex ?? -1) + 1;
+			i <= span.to && records[i].kind !== "tool";
+			i += 1
+		) {
+			opener = triggerOf(records[i]) ?? opener;
+		}
+	}
 	switch (opener) {
 		case "wake":
 		case "monitor_prompt":
-			return after ? "Followed up" : "Woken";
+			return "Wake";
 		case "peer":
 		case "hub_message":
-			return after ? "Peer note" : "Noted";
+			return "Peer message";
 		case "job_result":
 			return "Job result";
 		default:
-			return after ? "Followed up" : null;
+			return null;
 	}
 }
 
 /**
- * Is this segment a COMPLETED piece of follow-up work: entirely after the answer
- * and settled to its last row?
+ * Did this segment RUN TO A REAL END: does its bar earn the completion mark?
  *
- * The checkmark it earns is the disposal receipt the operator asked for, said
- * without a card: "that is over". A segment before the answer is never marked (the
- * answer below it is the statement that it finished), and a segment whose last row
- * is still streaming or still running is not over.
+ * WHAT THE MARK SAYS, AND WHERE IT APPEARS (design review round 1 on #708, D4;
+ * agent review R1-3). The mark says "this section finished" - the closed-disposal
+ * receipt without a card. It is carried by every bar that is a SECTION of the turn
+ * rather than the ordinary work under the answer: a bar after the answer, and a
+ * labelled bar (`Wake`, `Peer message`, `Job result`, `Steered`) before it. The
+ * ordinary unlabelled bar sits directly above the answer, and the answer IS the
+ * statement that it finished, so a mark there would be constant on every condensed
+ * turn in the transcript (the default state the design was approved without one)
+ * and carry no information. The rule is therefore the same on both sides of the
+ * answer; only the constant case is exempt.
+ *
+ * COMPLETION NEEDS A REAL CLOSER. The segment's last row must be a settled
+ * assistant message or a finished call. A span whose last row is a bare receipt (a
+ * wake, a peer row) has nothing that finished, and the mark on it read `Wake ✓`
+ * over a receipt alone (the reviewer's repros). And a segment CUT OFF by a stop
+ * marker or an incident (the next row is a terminal boundary) ended in that state,
+ * not in success: a green mark over `Stopped with an error` would be a false
+ * receipt, so the cut-off bar is the one that carries none.
  */
 export function segmentIsCompleted(
 	records: readonly TranscriptRecord[],
 	span: SegmentSpan,
 	answerCloseIndex: number | null,
+	labelled: boolean,
 ): boolean {
-	if (answerCloseIndex === null || span.from <= answerCloseIndex) return false;
+	if (answerCloseIndex === null) return false;
+	const afterAnswer = span.from > answerCloseIndex;
+	if (!afterAnswer && !labelled) return false;
 	const last = records[span.to];
-	if (last.kind === "assistant") return !last.streaming;
-	if (last.kind === "tool") return last.phase === "done";
-	return true;
+	const settled =
+		last.kind === "assistant"
+			? !last.streaming
+			: last.kind === "tool"
+				? last.phase === "done"
+				: false;
+	if (!settled) return false;
+	const next = span.to + 1 < records.length ? records[span.to + 1] : null;
+	return next === null || boundaryKindOf(next) !== "terminal";
 }
 
 /**
@@ -486,6 +542,32 @@ export function violationsOf(
 	const owner = new Map<number, number>();
 	partition.segments.forEach((segment, s) => {
 		if (segment.from > segment.to) problems.push(`segment ${s} is empty`);
+		/*
+		 * A SEGMENT ABOVE THE SPAN (agent review round 1 on #708, R1-1). `from` is
+		 * the first row a span may hold - just below the run's opening user row, or
+		 * the loaded edge - and the cover loop below starts there, so a segment that
+		 * swallowed the opening row was invisible to it.
+		 */
+		if (segment.from < options.from) {
+			problems.push(
+				`segment ${s} starts at row ${segment.from}, above the span's first row ${options.from}`,
+			);
+		}
+		/*
+		 * MAXIMALITY: one bar per CONTIGUOUS hidden span. A hidden row right after a
+		 * segment that is not part of it means one span was split into two adjacent
+		 * bars (two stacked bars with nothing between them, and a press that opens
+		 * half a span). The ownership check above catches a row in TWO segments and
+		 * the cover check a row in none; only this catches a row split ACROSS them.
+		 */
+		if (
+			segment.to + 1 < records.length &&
+			!partition.visible.has(segment.to + 1)
+		) {
+			problems.push(
+				`segment ${s} is not maximal: row ${segment.to + 1} is hidden too`,
+			);
+		}
 		if (s > 0 && segment.from <= partition.segments[s - 1].to) {
 			problems.push(`segment ${s} overlaps or precedes segment ${s - 1}`);
 		}
