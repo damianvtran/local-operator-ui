@@ -7283,9 +7283,22 @@ export function ChatSidebar({
 								 * It lives OUTSIDE the button because `aria-label` owns the button's
 								 * name; nothing reads this span as the act's label.
 								 */}
-								<span id={draftWhyId(row.key)} className="sr-only">
-									{SENDING_DISCARD_WHY}
-								</span>
+								{/*
+								 * RENDERED ONLY WHILE IT APPLIES (QA round 2, Q2-3). The span is not
+								 * `aria-hidden`, so an `sr-only` sentence standing beside a live control is IN
+								 * the accessibility tree: the row kept announcing "Sending - this draft can be
+								 * discarded when the send settles" after the send had already been refused, while
+								 * its own Discard was enabled and its `title` said the discard was available -
+								 * two surfaces, one send, opposite claims, and the reader who cannot see the
+								 * button is the one who cannot check. The gate is the SAME `row.pending` the
+								 * press and the description read (this file's own "one state, read once" rule),
+								 * so the three cannot disagree.
+								 */}
+								{row.pending && (
+									<span id={draftWhyId(row.key)} className="sr-only">
+										{SENDING_DISCARD_WHY}
+									</span>
+								)}
 								{/*
 								 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
 								 * deletion on hover"). Revealed by the row's hover or focus, the
@@ -7536,10 +7549,18 @@ export function ChatSidebar({
 						>
 							Clear all
 						</button>
-						{/* The why the control points at while inapplicable (D7/U6): the trash's sibling, above. */}
-						<span id={CLEAR_ALL_WHY_ID} className="sr-only">
-							{CLEAR_ALL_WHY}
-						</span>
+						{/*
+						 * The why the control points at while inapplicable (D7/U6): the trash's
+						 * sibling, above - and gated on the SAME predicate for the same reason
+						 * (QA round 2, Q2-3: the sentence stood in the panel's accessibility tree
+						 * beside an enabled `Clear all`, telling a reader the sends had not
+						 * settled when every one of them had).
+						 */}
+						{clearableDraftRows.length === 0 && (
+							<span id={CLEAR_ALL_WHY_ID} className="sr-only">
+								{CLEAR_ALL_WHY}
+							</span>
+						)}
 					</div>
 				</section>
 			)}
