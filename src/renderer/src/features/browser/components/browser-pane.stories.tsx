@@ -349,7 +349,7 @@ const CompositionGround: FC<{
 			isBrowserPaneOpen: paneOpen,
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
-			browserPanelWidth: panelWidth,
+			rightSlotWidth: panelWidth,
 		});
 	}, [paneOpen, panelWidth]);
 	return (
