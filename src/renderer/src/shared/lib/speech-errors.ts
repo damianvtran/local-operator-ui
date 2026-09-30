@@ -36,15 +36,23 @@ export const SPEECH_FAILURE_DETAIL_PREFIX = "[speech]";
  * describing itself; the reader is owed what happened and what to do).
  */
 export const SPEECH_FAILURE_COPY =
-	"Couldn't read this message aloud. Try again.";
+	"Couldn't speak this message aloud. Try again.";
 
 /**
  * The reader's sentence for a playback failure (autoplay refused, a decode
  * failure on a returned blob). Playback fails locally, so no daemon sentence
  * can cover it.
+ *
+ * DELIBERATELY THE SAME SENTENCE as the fetch arm (copy review round 2, C3):
+ * the two arms were `read` and `play` where the button says `speak` (four names
+ * for one feature in the module whose whole point is ending name drift), and
+ * the reader cannot act on the pipeline stage that failed anyway - the raw
+ * detail that distinguishes the arms is already on the console under
+ * `[speech]`. One sentence keeps one vocabulary and loses nothing a reader
+ * could use.
  */
 export const SPEECH_PLAYBACK_COPY =
-	"Couldn't play this message's audio. Try again.";
+	"Couldn't speak this message aloud. Try again.";
 
 /**
  * The `detail` sentences the speech route answers with, verbatim from

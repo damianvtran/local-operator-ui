@@ -270,6 +270,7 @@ const STUB_RECT = {
 const reset = () => {
 	mod.useSpeechStore.setState({
 		audioCache: new Map(),
+		heardKeys: new Set(),
 		loadingKey: null,
 		playingKey: null,
 		error: null,

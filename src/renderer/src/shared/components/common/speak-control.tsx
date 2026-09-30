@@ -31,8 +31,9 @@
  *
  * WHY THE CLIP DISCLOSES: a press that silently reads a prefix of what the
  * reader pointed at makes the transcript disagree with the audio. The info
- * toast ("Reading the first N characters") is the one channel the app already
- * speaks through, and it is raised HERE so no surface can forget it.
+ * toast (`Reading the first 10,000 characters. The rest of this message is
+ * not read aloud.`) is the one channel the app already speaks through, and it
+ * is raised HERE so no surface can forget it.
  *
  * `active` is the hook's half of the action rows' hover reveal: a row fades
  * at rest, but a press that is loading or playing owes the reader a visible
@@ -91,7 +92,7 @@ export type SpeakControlOptions = {
 };
 
 export type SpeakControl = {
-	/** The button's accessible name, including the state (`Stop`, `Loading speech`). */
+	/** The button's accessible name, including the state (`Stop`, `Loading speech. Press again to cancel.`). */
 	label: string;
 	/** The tooltip sentence: state first, then the gate's reason. */
 	tooltip: string;
@@ -100,6 +101,15 @@ export type SpeakControl = {
 	disabled: boolean;
 	/** Loading or playing: an action row must stay visible while this holds. */
 	active: boolean;
+	/**
+	 * The gate's disabled REASON when there is one to state - the shared
+	 * table's sentence, never the affordance label. `null` on the arms whose
+	 * tooltip is not a reason (the `available === false` state says `Speak
+	 * aloud` about a button that has nothing to act on, and repeating the
+	 * button's own name as its description helps no one; agent review round 2,
+	 * NIT-2). The button binds its description node off exactly this field.
+	 */
+	reason: string | null;
 	press: () => void;
 };
 
@@ -109,13 +119,24 @@ export function useSpeakControl({
 	play,
 	available = true,
 }: SpeakControlOptions): SpeakControl {
-	const { dismiss, stopSpeech, loadingKey, playingKey, audioCache } =
+	const { dismiss, stopSpeech, loadingKey, playingKey, audioCache, heardKeys } =
 		useSpeechStore();
 	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 
 	const isPlaying = key !== null && playingKey === key;
 	const isLoading = key !== null && loadingKey === key;
 	const hasAudio = key !== null && audioCache.has(key);
+	/*
+	 * `Replay speech` is a claim about the reader's experience, and the claim is
+	 * only true for audio this session actually played (UX round 2, U-r2-3): a
+	 * response that landed for a press the reader cancelled is cached but was
+	 * never heard, so its resting control still offers `Speak aloud` - pressing
+	 * it is a cache hit, not a second billed call either way.
+	 */
+	const canReplay = hasAudio && key !== null && heardKeys.has(key);
+	const reason = canUseRadientSpeech
+		? null
+		: speechUnavailableReason("speaking-aloud", speechBlock);
 	/*
 	 * The gate blocks only the IDLE press. Loading is cancellable (a press
 	 * during it cancels, below) and playing is the Stop control, so neither may
@@ -128,32 +149,30 @@ export function useSpeakControl({
 	/*
 	 * The ladder from `message-controls.tsx`, kept whole: playing answers
 	 * first (the button is the Stop control), then loading, then the configured
-	 * answer - `Replay speech` for words this session has already fetched, so a
+	 * answer - `Replay speech` for words this session has already HEARD, so a
 	 * second press reads as the replay it is.
 	 */
 	const label = isPlaying
 		? "Stop"
 		: isLoading
-			? "Loading speech"
-			: hasAudio
+			? "Loading speech. Press again to cancel."
+			: canReplay
 				? "Replay speech"
 				: "Speak aloud";
 	const tooltip = isPlaying
 		? "Stop"
 		: isLoading
 			? /*
-				 * The SAME sentence as the button's accessible name (copy review round
+				 * THE SAME sentence as the button's accessible name (copy review round
 				 * 1, C3): the two ladders drifted on exactly this rung, and the name is
 				 * the string a screen-reader or speech-input user has to say on its
-				 * own, so the shorter "Loading" - which reads as the app being busy
-				 * rather than this button - is the wrong end to align from.
+				 * own. The clause names the cancel because U2 made this rung the one
+				 * place the reader can take a slow read back (copy review round 2, C2) -
+				 * the spinner beside it is `aria-hidden`, so the name is also the only
+				 * place a screen-reader user learns the app is busy.
 				 */
-				"Loading speech"
-			: !canUseRadientSpeech
-				? speechUnavailableReason("speaking-aloud", speechBlock)
-				: hasAudio
-					? "Replay speech"
-					: "Speak aloud";
+				"Loading speech. Press again to cancel."
+			: (reason ?? (canReplay ? "Replay speech" : "Speak aloud"));
 
 	const press = () => {
 		if (isPlaying) {
@@ -179,12 +198,15 @@ export function useSpeakControl({
 			 * The disclosure, once per press THAT SHORTENS THE READ, and only for
 			 * the press that first shortens it (copy review round 1, C7): a replay
 			 * has already been told. The count is localised the way every other
-			 * character count in the app is (C2), and the sentence names what the
-			 * reader is NOT getting, because the toast is the only disclosure that
-			 * a truncation happened at all.
+			 * character count in the app is (C2), and the remainder clause STATES the
+			 * fact rather than a reason (copy review round 2, C1): "too long" read as
+			 * a claim about the tail - false whenever the tail is one character long,
+			 * which is exactly the message that trips the cap - while the cap is a
+			 * property of the PRESS, and one sentence has to be true of every
+			 * remainder.
 			 */
 			showInfoToast(
-				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest is too long to read aloud.`,
+				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest of this message is not read aloud.`,
 			);
 		}
 		play({ text });
@@ -196,6 +218,7 @@ export function useSpeakControl({
 		isPlaying,
 		isLoading,
 		disabled,
+		reason,
 		active: isPlaying || isLoading,
 		press,
 	};
@@ -253,18 +276,24 @@ export type SpeakButtonProps = {
 export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => {
 	/*
 	 * The disabled state's reason needs a non-pointer path (design review round
-	 * 1, D2): the tooltip is the only place the sentence lives, and a disabled
-	 * button takes no focus, so a keyboard or screen-reader reader met a control
-	 * that was off with no stated reason. The wrapper carries the description
-	 * and a visually-hidden twin of the tooltip sentence; safe on every surface
-	 * because they all render this one component.
+	 * 1, D2; design round 2, D7): the tooltip is the only place the sentence
+	 * lives, and a disabled button takes no focus. The wrapper carries the
+	 * description and a visually-hidden twin of the reason - and, because a
+	 * description bound to a node nobody can focus reaches only a browse-mode
+	 * reader, the wrapper also TAKES FOCUS on the arm where the sentence is a
+	 * reason, so a keyboard reader tabbing through meets it too. On the arm
+	 * whose tooltip is not a reason (nothing to act on) there is no description
+	 * and no tab stop: a focusable wrapper around a control with nothing to say
+	 * is furniture (agent review round 2, NIT-2).
 	 */
 	const reasonId = useId();
+	const described = control.disabled && control.reason !== null;
 	return (
 		<Tooltip content={control.tooltip} side={side}>
 			<span
 				className={cn("flex")}
-				aria-describedby={control.disabled ? reasonId : undefined}
+				tabIndex={described ? 0 : undefined}
+				aria-describedby={described ? reasonId : undefined}
 			>
 				<Button
 					variant="ghost"
@@ -286,9 +315,9 @@ export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => {
 						<Volume2 aria-hidden="true" />
 					)}
 				</Button>
-				{control.disabled && (
+				{described && (
 					<span id={reasonId} className="sr-only">
-						{control.tooltip}
+						{control.reason}
 					</span>
 				)}
 			</span>

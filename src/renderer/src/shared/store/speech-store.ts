@@ -32,6 +32,14 @@
  * words must replay it, not buy it a second time (agent review round 1,
  * MINOR-1).
  *
+ * TWO PRESSES OF ONE KEY NEVER PAY TWICE (agent review round 2, MINOR-1): a
+ * press that arrives while the same key's synthesis is still on the wire joins
+ * that fetch instead of issuing a second billed request, and `heardKeys` marks
+ * the keys playback has actually started for - the datum the resting label
+ * reads beside the cache, so audio fetched but never heard (a cancelled press
+ * whose response landed) is offered as `Speak aloud`, not as a `Replay` of an
+ * experience that did not happen (UX round 2, U-r2-3).
+ *
  * FAILED PRESSES ARE BILLING-VISIBLE and must never look like nothing
  * happened: the catch both records `error` (the store's own test surface) and
  * raises the app's one error channel, so every surface that presses this store
@@ -119,6 +127,14 @@ export const fetchAgentSpeech =
 type SpeechState = {
 	/** Utterances by key, most recently used last. Capped; see the header. */
 	audioCache: Map<string, Blob>;
+	/**
+	 * The keys this session has actually HEARD - playback started for them at
+	 * least once. The resting control's label reads this beside the cache: a
+	 * response that arrived for a press the reader cancelled is cached (the
+	 * synthesis was paid for) but was never heard, so offering `Replay speech`
+	 * for it would name an experience that did not happen (UX round 2, U-r2-3).
+	 */
+	heardKeys: Set<string>;
 	/** The key whose fetch is in flight, or null. */
 	loadingKey: string | null;
 	/** The key whose audio is playing, or null. */
@@ -134,7 +150,8 @@ type SpeechState = {
 
 type SpeechActions = {
 	/**
-	 * Speak `key`, fetching through `fetcher` on a cache miss.
+	 * Speak `key`, fetching through `fetcher` on a cache miss - or joining the
+	 * same key's in-flight fetch, when a press raced one that is still out.
 	 *
 	 * The primitive every surface ends at: message surfaces through
 	 * `playSpeech`, selection surfaces directly with a `selectionSpeechKey`.
@@ -170,9 +187,43 @@ const capCache = (cache: Map<string, Blob>): void => {
 	}
 };
 
+/**
+ * One in-flight fetch per key (agent review round 2, MINOR-1): a press that
+ * arrives while this key's synthesis is still out AWAITS that promise instead
+ * of issuing a second billed request for identical text.
+ *
+ * WHY THIS WINDOW EXISTS AT ALL: U2's cancel lets the response land and be
+ * cached - the synthesis is paid the moment the request is issued - but the
+ * cache is only written when it LANDS, so a reader who cancels a slow read
+ * and then presses again after the cancel (the exact moment U2 creates) used
+ * to miss the cache and pay for the same words twice. The entry is dropped
+ * the instant it settles; after that the cache is the dedupe.
+ *
+ * Module scope beside `capCache` rather than store state: it is a fact about
+ * requests currently on the wire, not something a surface renders, and no
+ * action but `speak` reads it. `dismiss` deliberately does NOT clear it - the
+ * whole point is that the abandoned press's synthesis is still joinable.
+ */
+const inflight = new Map<string, Promise<Blob | null>>();
+
+const fetchOnce = (
+	key: string,
+	fetcher: () => Promise<Blob | null>,
+): Promise<Blob | null> => {
+	let pending = inflight.get(key);
+	if (pending === undefined) {
+		pending = fetcher().finally(() => {
+			inflight.delete(key);
+		});
+		inflight.set(key, pending);
+	}
+	return pending;
+};
+
 export const useSpeechStore = create<SpeechState & SpeechActions>(
 	(set, get) => ({
 		audioCache: new Map(),
+		heardKeys: new Set(),
 		loadingKey: null,
 		playingKey: null,
 		error: null,
@@ -199,7 +250,12 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 					cache.set(key, audioBlob);
 					set({ audioCache: cache });
 				} else {
-					const fetched = await fetcher();
+					/*
+					 * `fetchOnce`, not `fetcher`, so a re-press that races this key's
+					 * still-out response joins it rather than paying again (agent review
+					 * round 2, MINOR-1).
+					 */
+					const fetched = await fetchOnce(key, fetcher);
 					if (!fetched) {
 						throw new Error(
 							"Speech generation failed, no audio data received.",
@@ -275,11 +331,19 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 					URL.revokeObjectURL(audioUrl);
 					return;
 				}
+				/*
+				 * Playback is starting, so from this press on the key is `heard` - the
+				 * stamp that keeps the resting label honest for audio the reader never
+				 * got to hear (UX round 2, U-r2-3).
+				 */
+				const heard = new Set(get().heardKeys);
+				heard.add(key);
 				set({
 					playingKey: key,
 					loadingKey: null,
 					audioElement,
 					currentUrl: audioUrl,
+					heardKeys: heard,
 				});
 			} catch (err) {
 				if (get().generation !== generation) return;
