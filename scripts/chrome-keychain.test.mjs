@@ -368,6 +368,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs scroll-driven history paging in the real renderer",
 	),
 	guarded(
+		"scripts/scroll-shift-evidence.mjs",
+		"spawn",
+		1,
+		"the per-frame instrument for the transcript's foot-row shift and the fold rounds - boots a private headless Chrome over CDP against the packaged page and samples scrollTop, scrollHeight, clientHeight and the leading edge every animation frame",
+	),
+	guarded(
 		"scripts/sidebar-resort-geometry.mjs",
 		"spawn",
 		1,
@@ -390,6 +396,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"plays the composer's slash-popup gestures with real key events and presses, and records what the composer dispatched",
+	),
+	guarded(
+		"scripts/composer-cluster-proof.mjs",
+		"spawn",
+		1,
+		"plays the composer cluster's gestures with real key events - the draft-safe recall walk, the `$` list's open/accept/send, and the qualified /theme submit - and photographs what the composer dispatched",
 	),
 	guarded(
 		"scripts/usage-real-evidence.mjs",

@@ -24,11 +24,12 @@ import {
 	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
+	checkpointLeadLabel,
 	checkpointMarkState,
 	checkpointNamingPending,
 	checkpointSummary,
-	checkpointTitle,
 	checkpointTurnCount,
+	checkpointTurnLabel,
 } from "./checkpoint-model";
 
 /**
@@ -163,10 +164,26 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 	const outcome = checkpoint.outcome;
 	const OutcomeIcon = outcome ? OUTCOME_ICONS[outcome] : null;
 	const summary = checkpointSummary(checkpoint);
+	const name =
+		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
 	return (
 		<>
+			{/*
+			 * STRUCTURAL IDENTITY FIRST (issue #680's vocabulary item, design D3):
+			 * the lead line is the SAME "Turn N of M" builder the tick's accessible
+			 * name leads with, and a ready name rides ON that line after a dot
+			 * separator in muted ink (design round 1's D2: one line fewer keeps the
+			 * named, summarised card inside its height budget). The summary is
+			 * clamped to two lines for the same reason.
+			 */}
 			<p className={cn("text-body-sm font-medium text-ink")}>
-				{checkpointTitle(checkpoint)}
+				{checkpointTurnLabel(checkpoint.turn, turnCount)}
+				{name && (
+					<>
+						<span aria-hidden="true">{" \u00b7 "}</span>
+						<span className={cn("font-normal text-ink-muted")}>{name}</span>
+					</>
+				)}
 			</p>
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
@@ -175,13 +192,13 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 			)}
 			{summary && (
 				<p
-					className={cn("line-clamp-3 break-words text-body-sm text-ink-muted")}
+					className={cn("line-clamp-2 break-words text-body-sm text-ink-muted")}
 				>
 					{summary}
 				</p>
 			)}
-			<div className={cn("flex items-center gap-1.5 text-ink-dim text-meta")}>
-				{outcome && OutcomeIcon && (
+			{outcome && OutcomeIcon && (
+				<div className={cn("flex items-center gap-1.5 text-ink-dim text-meta")}>
 					<span className={cn("flex items-center gap-1", OUTCOME_INK[outcome])}>
 						<OutcomeIcon
 							aria-hidden="true"
@@ -189,10 +206,8 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 						/>
 						{CHECKPOINT_OUTCOME_LABELS[outcome]}
 					</span>
-				)}
-				{outcome && <span aria-hidden="true">&middot;</span>}
-				<span>{`Turn ${checkpoint.turn} of ${turnCount}`}</span>
-			</div>
+				</div>
+			)}
 		</>
 	);
 };
@@ -288,6 +303,15 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
+	/*
+	 * THE CARD'S TEXT IS FROZEN AT OPEN (issue #680): the snapshot of the entry
+	 * the card was opened for, so the naming warm that fires on the same
+	 * gesture cannot swap the summary mid-hover. The warmed text is what the
+	 * NEXT hover shows.
+	 */
+	const [cardEntry, setCardEntry] = useState<Checkpoint | null>(null);
+	const checkpointsRef = useRef(checkpoints);
+	checkpointsRef.current = checkpoints;
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
 	const frameRef = useRef<HTMLDivElement | null>(null);
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,13 +331,25 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const openCard = useCallback(
 		(id: string, delayMs: number) => {
 			clearTimers();
-			if (delayMs <= 0) {
+			const open = () => {
 				setOpenCardId(id);
+				/*
+				 * The snapshot is taken HERE, at the moment the card opens - the
+				 * `checkpoints` array may already hold the warmed text or may land
+				 * it a frame later, and only this capture decides what the card
+				 * says while it is open (issue #680's mid-hover swap).
+				 */
+				setCardEntry(
+					checkpointsRef.current.find((entry) => entry.id === id) ?? null,
+				);
+			};
+			if (delayMs <= 0) {
+				open();
 				return;
 			}
 			openTimer.current = setTimeout(() => {
 				openTimer.current = null;
-				setOpenCardId(id);
+				open();
 			}, delayMs);
 		},
 		[clearTimers],
@@ -347,6 +383,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		previewRef.current = null;
 		setPreviewId(null);
 		setOpenCardId(null);
+		setCardEntry(null);
 	}, [sessionId, clearTimers]);
 
 	/*
@@ -398,21 +435,29 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	useEffect(() => {
 		onHoverRef.current = onHover;
 	});
-	const labels = useMemo(
-		() =>
-			new Map(
-				checkpoints.map((entry) => [entry.id, checkpointAriaLabel(entry)]),
-			),
-		[checkpoints],
-	);
 	const turnCount = useMemo(
 		() => checkpointTurnCount(checkpoints),
 		[checkpoints],
 	);
+	const labels = useMemo(
+		() =>
+			new Map(
+				checkpoints.map((entry) => [
+					entry.id,
+					checkpointAriaLabel(entry, turnCount),
+				]),
+			),
+		[checkpoints, turnCount],
+	);
 
+	/*
+	 * The card renders the OPEN-TIME snapshot (`cardEntry`), not a live lookup:
+	 * a live read is what swapped the summary mid-hover when the naming warm
+	 * landed (issue #680). The anchor and the open id stay live - a tick's
+	 * remount is not a text swap.
+	 */
 	const activeCheckpoint =
-		(openCardId && checkpoints.find((entry) => entry.id === openCardId)) ||
-		null;
+		openCardId && cardEntry?.id === openCardId ? cardEntry : null;
 	const anchorEl = (openCardId && tickElements.current.get(openCardId)) || null;
 	const anchorRef = useMemo(() => ({ current: anchorEl }), [anchorEl]);
 	const cardOpen = activeCheckpoint !== null && anchorEl !== null;
@@ -678,7 +723,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 						aria-label={
 							activeCheckpoint.kind === "user"
 								? "Your message"
-								: checkpointTitle(activeCheckpoint)
+								: checkpointLeadLabel(activeCheckpoint, turnCount)
 						}
 						// Radix's focus-scope defaults assume a press-opened popover.
 						// This one opens from a hover/focus gesture on a mark whose own
@@ -706,7 +751,15 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 							}
 						}}
 						className={cn(
-							"pointer-events-none max-h-[100px] w-[300px] max-w-[300px] overflow-hidden",
+							/*
+							 * THE CAP FITS THE WORST STACK (design round 1's D2): the merged
+							 * identity line plus a two-line summary plus the outcome row is
+							 * ~139px of content against 34px of padding, and the design's
+							 * measured direction is that 100px clipped the outcome row - the
+							 * card's only colour and its state cue - silently. 176px is the
+							 * design's own number for the stack.
+							 */
+							"pointer-events-none max-h-[176px] w-[300px] max-w-[300px] overflow-hidden",
 							"flex flex-col gap-2",
 						)}
 					>

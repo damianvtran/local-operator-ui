@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import { test } from "node:test";
+import { build } from "esbuild";
 import {
 	FakeJournal,
 	PAGE_LIMIT,
@@ -732,5 +734,193 @@ test("the prune-heavy fixture IS the measured journal's structure, not a paraphr
 		journal.length,
 		spec.entries - dropped.length,
 		"the fold may take spend rows and nothing else",
+	);
+});
+
+/* ---------- the completion walk: a settled turn completes itself (1b) ---------- */
+
+/*
+ * WHAT THIS PINS. The open-time alignment used to spend a fixed two pages
+ * (`ALIGN_FETCH_MAX`) and stop, so a turn whose head lay further up the journal
+ * could never state its own action count: the operator's bar read "97 actions"
+ * against a run of 423 calls, and the count only grew as pages arrived by hand.
+ * The walk replaces the flat budget with a bounded walk that runs only while
+ * the window's top run is head-cut, the reader follows the tail and has given no
+ * recent input, no page is in flight, and every page so far applied. `bounded`
+ * here means `ALIGN_WALK_MAX_PAGES` (pinned equal to `JUMP_MAX_PAGES` so the
+ * reader's chain and a rail jump cannot disagree).
+ *
+ * The rows are the REAL row model (`buildRows` over the reducer's records), so
+ * the walk is gated on the same head-cut test the render pass uses.
+ */
+const bundleModule = async (contents) => {
+	const out = await build({
+		stdin: { contents, resolveDir: process.cwd() },
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		tsconfig: resolve(process.cwd(), "tsconfig.web.json"),
+	});
+	return import(
+		`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString("base64")}`
+	);
+};
+
+const model = await bundleModule(`
+	export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";
+	export { buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";
+	export { JUMP_MAX_PAGES } from "./src/renderer/src/features/chat/canonical/reveal-record";
+`);
+
+test("the reader's chain and a rail jump share one bound", () => {
+	assert.equal(
+		model.ALIGN_WALK_MAX_PAGES,
+		model.JUMP_MAX_PAGES,
+		"a rail jump and the open-time walk must not disagree about how far one act may walk",
+	);
+});
+
+test("the invisible-reveal chain shares the same bound as a rail jump", () => {
+	/*
+	 * R3's second half (loader-continuity 1b): the chain that answers an invisible
+	 * reveal is bounded by `MAX_CHAIN_INVISIBLE`, and that number is
+	 * `JUMP_MAX_PAGES` for the reason the walk's is - a reader's act and a rail
+	 * jump must not disagree about how far one ask may travel. Asserted in the one
+	 * suite that bundles BOTH modules, so the pin cannot be satisfied by a copy of
+	 * the number on either side.
+	 */
+	assert.equal(
+		paging.MAX_CHAIN_INVISIBLE,
+		model.JUMP_MAX_PAGES,
+		"the invisible-reveal chain and a rail jump walk the same budget",
+	);
+});
+
+test("one act's bounds are the same number, wherever they are stated", () => {
+	/*
+	 * The four bounds that must not disagree, asserted in the one suite that bundles
+	 * BOTH modules (agent review round 1, R1-4: `WIDEN_MAX_STEPS` claimed to be "the
+	 * bound the reveal chain already uses" and was pinned by nothing).
+	 *
+	 *   - `JUMP_MAX_PAGES` and `ALIGN_WALK_MAX_PAGES` — a rail jump and the
+	 *     open-time walk (already pinned above);
+	 *   - `MAX_CHAIN_INVISIBLE` — the invisible-reveal chain;
+	 *   - `WIDEN_MAX_STEPS` — the widen's own search;
+	 *   - `MAX_ACT_ASKS` — the SUM one act may buy across every door (QA round 1,
+	 *     Q-4: fifteen asks for one notch against a stated bound of twelve).
+	 */
+	assert.equal(
+		paging.MAX_ACT_ASKS,
+		paging.MAX_CHAIN_INVISIBLE,
+		"the act's ask budget is the chain's bound, not a second number",
+	);
+	assert.equal(
+		model.WIDEN_MAX_STEPS,
+		paging.MAX_CHAIN_WIDEN,
+		"the widen's search and the reveal chain's own widen bound agree",
+	);
+	assert.equal(
+		model.WIDEN_MAX_STEPS,
+		paging.MAX_CHAIN_INVISIBLE,
+		"and they are all one act's worth of travel",
+	);
+});
+
+test("the completion walk walks a head-cut run to its head, in one open", async () => {
+	const journal = FakeJournal.fromShape(shape.kinds);
+	const reader = new Reader(m, journal).open();
+	/*
+	 * The open's loaded set is ONE head-cut run (54 rows of the journal's long
+	 * leading turn), so the window is inside it at any size below that — the
+	 * state the walk exists to resolve. The window is 30 rather than the
+	 * component's 60 so the case does not silently stop exercising the cut the
+	 * day the fixture's tail page gains a few rows.
+	 */
+	const rows = model.buildRows(reader.transcript.records, []);
+	/*
+	 * THE TRIGGER IS THE BAR (round 1's retarget): a condensed run whose opening
+	 * user row is not in the store. The fixture opens on exactly that - a cut run's
+	 * tail that still closes with its answer, so the bar paints a partial count.
+	 */
+	assert.ok(
+		model.alignWalkRunKey(rows, { live: false }) !== null,
+		"the fixture opens with a condensed, head-cut bar - otherwise this case proves nothing",
+	);
+	let pages = 0;
+	let spent = 0;
+	let halted = false;
+	for (let i = 0; i < 40; i += 1) {
+		const cut =
+			model.alignWalkRunKey(model.buildRows(reader.transcript.records, []), {
+				live: false,
+			}) !== null;
+		const decision = model.alignWalkDecision(spent, {
+			hasMore: reader.transcript.hasMore,
+			loadingOlder: false,
+			headCut: cut,
+			mayWalk: true,
+			halted,
+		});
+		if (!decision.fetch) break;
+		spent = decision.spent;
+		const outcome = await reader.loadOlder();
+		pages += 1;
+		if (outcome.kind !== "applied") {
+			halted = true;
+			break;
+		}
+	}
+	assert.ok(
+		pages > 2,
+		`the whole head is walked, not two pages (got ${pages})`,
+	);
+	assert.ok(
+		pages <= model.ALIGN_WALK_MAX_PAGES,
+		`and never past the bound (${pages} > ${model.ALIGN_WALK_MAX_PAGES})`,
+	);
+});
+
+test("the completion walk stops on a non-applied page, and never walks off the tail", async () => {
+	const journal = FakeJournal.fromShape(shape.kinds);
+	const reader = new Reader(m, journal).open();
+	let spent = 0;
+	let halted = false;
+	const step = async (over = {}) => {
+		const decision = model.alignWalkDecision(spent, {
+			hasMore: reader.transcript.hasMore,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: true,
+			halted,
+			...over,
+		});
+		if (!decision.fetch) return decision;
+		spent = decision.spent;
+		const outcome = await reader.loadOlder();
+		if (outcome.kind !== "applied") halted = true;
+		return { ...decision, outcome };
+	};
+	await step();
+	reader.failNext = 1;
+	const failed = await step();
+	assert.equal(failed.outcome.kind, "failed", "the failing page is asked");
+	assert.equal(halted, true, "and the walk is halted by it");
+	assert.equal(
+		(await step()).fetch,
+		false,
+		"a halted walk asks for nothing more, however much is left",
+	);
+	/* The reader is not at the tail: the pages would land off screen. */
+	assert.equal(
+		model.alignWalkDecision(0, {
+			hasMore: true,
+			loadingOlder: false,
+			headCut: true,
+			mayWalk: false,
+			halted: false,
+		}).fetch,
+		false,
+		"a reader who scrolled away is never walked on their behalf",
 	);
 });
