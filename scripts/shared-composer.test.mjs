@@ -548,7 +548,16 @@ test("onDictationStateChange reports the take's start and end", async () => {
 	mic.next = async () => fakeStream();
 	const states = [];
 	const frame = await mount({
-		recordingProbe: { hasRadientApiKey: true, isUnavailable: false },
+		/*
+		 * The probe is the host's read now, carrying the shared capability and the
+		 * copy's class (`canUseRadientSpeech` + `speechBlock` — see
+		 * `@shared/lib/speech-gate`; issue #674). A live capability is what this
+		 * case needs, so the block is inert.
+		 */
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
 		onDictationStateChange: (active) => states.push(active),
 	});
 
