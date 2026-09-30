@@ -211,6 +211,16 @@ const profileFields = z
 		tools: z.array(z.string().min(1).max(128)).max(256).optional(),
 		effort: z.string().max(64).optional(),
 		delegate: z.boolean().optional(),
+		/*
+		 * The action class (`reactive` | `proactive`), the field the Class control
+		 * writes. An ENUM rather than a free string, because the route takes a
+		 * `Literal` and a spelling this schema let through would be a 422 the
+		 * caller could not tell from a bug — the same reasoning `scheduleUnit`
+		 * above states. Optional like every other field here: an omitted key means
+		 * "leave the class alone" on an update, which is what lets the control send
+		 * the class and nothing else.
+		 */
+		action_class: z.enum(["reactive", "proactive"]).optional(),
 	})
 	.strict();
 const teamFields = z

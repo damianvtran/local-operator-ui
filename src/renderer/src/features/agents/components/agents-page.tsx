@@ -73,6 +73,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { ConfigComposer } from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
 import { useConfigRun } from "../config-run/use-config-run";
+import { classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
 	DetailSkeleton,
@@ -989,6 +990,22 @@ function Roster({
 										{row.members.length === 1
 											? "1 member"
 											: `${row.members.length} members`}
+									</Badge>
+								) : null}
+								{/*
+								 * THE CLASS, IN THE LIST, as a statement rather than a control.
+								 *
+								 * Only a PROACTIVE row says anything: reactive is the absent value
+								 * on the wire and the state an agent is in unless somebody chose
+								 * otherwise, so a "Reactive" badge on thirty rows would be thirty
+								 * repetitions of the default and would bury the one badge that is
+								 * worth noticing. The word is the backend's own and matches the
+								 * detail pane's control, so the list and the pane cannot drift into
+								 * two names for one fact.
+								 */}
+								{isProfile && classOf(row) === "proactive" ? (
+									<Badge variant="neutral" data-testid="roster-row-proactive">
+										Proactive
 									</Badge>
 								) : null}
 								{row.description ? (

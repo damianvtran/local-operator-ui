@@ -4256,6 +4256,49 @@ export const STORIES = [
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
 	["shell-app-shell--agents", 800, 800],
+	/*
+	 * THE CLASS CONTROL, on the Agents view (`agent-class.stories.tsx`).
+	 *
+	 * WHY THESE SIX AND NOT ONE. The brief asks for the four states a reader meets
+	 * on the page — loading, empty, error, populated — and the populated state is
+	 * two: the class an agent is in and the class the switch produces, which are
+	 * only judgeable as a PAIR. So `reactive` and `proactive` are the two ends the
+	 * section renders, `switched-on` and `switch-refused` are the same pair
+	 * reached by PRESSING the control (the round trip, and the revert), and
+	 * `loading`/`empty` are the page states the section has to behave itself in.
+	 *
+	 * THE TWO PRESS ROWS PRESS THE CLASS SWITCH THROUGH THE INPUT PIPELINE, not
+	 * with a script call: `element.click()` is treated as keyboard-ish by Blink
+	 * for `:focus-visible`, so a programmatic switch would photograph a focus ring
+	 * a mouse user never sees on the one control these frames exist to judge (the
+	 * same distinction the credential-pill pressed row above states). The story
+	 * holds `data-capture-pending` until the pressed state has SETTLED, which is
+	 * what keeps the shutter off the pending window.
+	 */
+	["agents-class--reactive", 1280, 1000],
+	["agents-class--proactive", 1280, 1000],
+	/*
+	 * The packaged starter: a shipped agent nobody has installed, which is the
+	 * one state where the switch writes an INSTALL first (the profile route
+	 * updates a row, and a starter has none) and the only state that carries the
+	 * third sentence under the control. Twelve frames, and the state a fresh
+	 * install's chief of staff is actually in.
+	 */
+	["agents-class--packaged-starter", 1280, 1000],
+	[
+		"agents-class--switched-on",
+		1280,
+		1000,
+		{ press: '[data-testid="agent-class-switch"]' },
+	],
+	[
+		"agents-class--switch-refused",
+		1280,
+		1000,
+		{ press: '[data-testid="agent-class-switch"]' },
+	],
+	["agents-class--loading", 1280, 1000],
+	["agents-class--empty", 1280, 1000],
 	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
