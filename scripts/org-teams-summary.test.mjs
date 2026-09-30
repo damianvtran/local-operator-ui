@@ -260,6 +260,33 @@ test("the announcement is bounded at rest and whole once the row is open", () =>
 		lib.announcedDescription("x".repeat(3_000), false).length,
 		lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
 	);
+	/*
+	 * The near miss (scoped-confirm round 2): a description that OPENS with a short
+	 * token and then runs on has its only space near the edge, and backing off to it
+	 * announced "ID…" (3 characters) and "Sanctions…" (10) - almost the whole text
+	 * hidden behind an ellipsis, which reads as an empty description. The bound is
+	 * still respected; the cut just stops being clever when the boundary is too
+	 * early to be a word boundary worth having.
+	 */
+	for (const nearMiss of ["ID ", "Sanctions "]) {
+		const announced = lib.announcedDescription(
+			`${nearMiss}${"x".repeat(400)}`,
+			false,
+		);
+		assert.equal(
+			announced.length,
+			lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
+			`${JSON.stringify(nearMiss)} keeps the character cut`,
+		);
+		assert.ok(
+			announced.startsWith(nearMiss.trimEnd()),
+			"and still announces the words it has",
+		);
+		assert.ok(
+			announced.length > 100,
+			"a near-edge boundary must not collapse the announcement",
+		);
+	}
 	assert.equal(
 		lib.announcedDescription(long, true),
 		long,
@@ -657,7 +684,9 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 			 * M4 (agent review round 2): the bound above measures the sr-only copy
 			 * alone, so it stayed green when the `aria-hidden` on the visible element
 			 * was stripped - and with it stripped the NAME carries the description
-			 * twice, measured 358 -> 3,957 characters. This asserts the property that
+			 * twice: measured 358 -> 3,976 characters on THIS fixture (the review's
+			 * own fixture measured 3,957, and the two differ only in their name,
+			 * composition and provenance lengths). This asserts the property that
 			 * actually matters: the accessible name the reader hears is bounded, so
 			 * removing either half of the pair turns it red.
 			 */
