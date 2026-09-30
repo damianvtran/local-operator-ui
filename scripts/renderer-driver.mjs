@@ -16685,34 +16685,46 @@ async function sceneApprovalBadges(cdp) {
 		let conversation = null;
 		if (BACKEND) {
 			/*
-			 * THE PRESS IS GUARDED, the way the scene's own newer call sites guard it
-			 * (`Boolean(document.querySelector(...))` at :26152 and `visible(...)` at
-			 * :30728): `[data-tour-tag="chat-all-chats"]` has no home in `src/` at this
-			 * head, so an unguarded press threw `nothing matches ... after 10000ms` and
-			 * took the whole `--backend` half - and every claim after it - down with it
-			 * (QA round 1, Q4). The header half is still the backend's to provide
-			 * (`session_catalogue`); a run whose catalogue renders no such row now says
-			 * so and carries on to the rail half, which is this scene's subject.
+			 * A CONVERSATION HAS TO BE OPEN for the header half, and the app's own path to
+			 * one is three steps: the run's backend must HAVE one, the list must paint its
+			 * row, and the row must be pressed. This block got it wrong twice - the press
+			 * `[data-tour-tag="chat-all-chats"]` had no home in `src/` at this head, so it
+			 * threw and took the whole `--backend` half down with it (QA round 1, Q4), and
+			 * a row that has not painted yet cannot be pressed, so a merely GUARDED press
+			 * still left `activeSessionId: null` and the header half unreachable while the
+			 * run looked fine (QA round 2, Q5). The shape now is the one the file's newer
+			 * scenes already use (`:26235`, `:30806`/`:30811`): create the conversation on
+			 * this run's own backend, press the disclosure only if the app rendered it,
+			 * then WAIT for the row and press it - with an expiry that is REPORTED rather
+			 * than passed over in silence.
 			 */
-			const allChats = await cdp.evaluate(
-				`Boolean(document.querySelector('[data-tour-tag="chat-all-chats"]'))`,
-			);
-			if (allChats) {
+			const created = await createBackendSession();
+			note("a conversation on this run's own backend", JSON.stringify(created));
+			if (await drawnSelector(cdp, '[data-tour-tag="chat-all-chats"]')) {
 				await verb(cdp, "press", {
 					selector: '[data-tour-tag="chat-all-chats"]',
 				});
-				await verb(cdp, "press", {
-					selector: '[data-tour-tag="chat-session-row"]',
-				});
-				const live = await verb(cdp, "state");
-				conversation = live.activeSessionId ?? null;
-				note("state (chat, conversation open)", JSON.stringify(live));
-			} else {
-				note(
-					"no conversation row",
-					"the catalogue rendered no chat-all-chats row, so the header half is not reachable in this run; the rail half is asserted below",
-				);
 			}
+			const rowSelector = '[data-tour-tag="chat-session-row"]';
+			let rowPressed = false;
+			const rowDeadline = Date.now() + 20_000;
+			while (Date.now() < rowDeadline) {
+				if (await drawnSelector(cdp, rowSelector)) {
+					await verb(cdp, "press", { selector: rowSelector });
+					rowPressed = true;
+					break;
+				}
+				await wait(500);
+			}
+			reading(
+				"the conversation row painted and was opened for the header half",
+				rowPressed,
+				`${rowSelector} never appeared within 20s`,
+			);
+			await wait(600);
+			const live = await verb(cdp, "state");
+			conversation = live.activeSessionId ?? null;
+			note("state (chat, conversation open)", JSON.stringify(live));
 		} else {
 			note(
 				"no conversation",

@@ -51,9 +51,10 @@ conflation. The worst over the fifty-nine is 2.02, and the row in
 Every frame is the **built app in `headless` window mode** taken by
 `scripts/renderer-driver.mjs --scene approval-badges` (the rail half needs no
 backend; the header half is skipped without one, which is why no `chat-header`
-claim appears here; QA round 1's Q4 repaired the conversation-opening press, which
-had thrown on a selector today's sidebar does not render, so a `--backend` run now
-reaches the header half instead of failing before it) and by the committed
+claim appears here; QA rounds 1 and 2 between them repaired its
+a conversation-open step — the disclosure press it threw on has no home in today's
+sidebar, and the row it presses has to be WAITED for rather than pressed blind — so
+a `--backend` run reaches the header half instead of failing before it) and by the committed
 `chat-sidebar-ack-and-selection` rig for Aida's row (a REAL mock-provider
 completion, the same path that set's own frames use). PNG, not WebP, on purpose:
 `check-evidence.mjs`'s frame walker counts `.webp` only, so a rig-driven set cannot
@@ -92,7 +93,8 @@ The counts are the no-backend run's, which is what these frames are: without
 the crowded state. An earlier revision of this file described the with-backend
 counts (three and thirteen) under frames that show two and twelve — QA round 1 Q2.
 With a backend the same scene runs at three and thirteen and additionally opens a
-conversation for the header half.
+conversation for the header half (verified after the round-2 repair: 47 PASS / 0
+FAIL against the stub backend, the header badge reading 1 of 3 live).
 
 ### What the scene measured, on this head
 
