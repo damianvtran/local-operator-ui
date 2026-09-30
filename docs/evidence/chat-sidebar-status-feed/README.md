@@ -406,11 +406,15 @@ differs by the indicator and by nothing else; on the baseline, a busy row with t
 running children draws one spinner and the sidebar says nothing about them.
 
 **The two widths are the point, not a courtesy.** One mark costs the title
-18-22px (`size-3.5` plus `ml-1`, on top of the row's own `gap-1`), and
+**22px**, measured box-to-box in the frames (14px glyph + the row's own 4px
+`gap-1` + `ml-1`'s 4px), 8px between two marks, and a truncated row carrying both
+loses **41px** of title - and
 `docs/design/sidebar-row-space.md` §2 states this row's invariant as "the title's
 leading edge never moves; what moves is the title's clip" — which is why the
 indicator sits AFTER the title rather than in the leading cluster. The 240px
-frames are where that clip pays hardest.
+frames are where that clip pays hardest, and the worst cell in the set is the
+bound row at 240, where a trailing statement and a time leave the title ~3.8
+characters (design D3, recorded as a follow-up rather than fixed here).
 
 **Recorded gap.** The spec's S15 cell (a NESTED row, filed under its agent) is
 not photographed: this fixture's profile catalogue renders the Agents section's
