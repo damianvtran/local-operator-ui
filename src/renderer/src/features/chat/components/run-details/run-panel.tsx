@@ -96,6 +96,18 @@ export type RunPanelProps = {
 	/** Whether `subagent_transcript` negotiated (`§ 10.2`). */
 	childrenOpenable: boolean;
 	/**
+	 * Whether the SESSION's stream is down (`status !== "live"`), for the child
+	 * reader's older-history row.
+	 *
+	 * Threaded from the component that holds the canonical session handle rather
+	 * than read here: this pane paints a child's page, and a child's page is a
+	 * file behind a read-only GET with no stream of its own to be down
+	 * (`run-child-reader.tsx`). The value is the SAME predicate the parent's own
+	 * transcript applies to its slot, so the two rows cannot disagree about the
+	 * transport — which is the asymmetry design round 1's D2 measured.
+	 */
+	olderTransportDown: boolean;
+	/**
 	 * The child whose reader is open, or `null` for the roster view.
 	 *
 	 * CONTROLLED rather than local state, and that is `§ 3.4`'s requirement rather
@@ -153,6 +165,7 @@ export const RunPanel = ({
 	sessionId,
 	pulses,
 	childrenOpenable,
+	olderTransportDown,
 	paneWidth,
 	readerChildId,
 	onReaderChildChange,
@@ -923,6 +936,8 @@ export const RunPanel = ({
 					key={row.id}
 					row={row}
 					sessionId={sessionId}
+					/* The session's own transport truth, threaded to the reader's slot (D2). */
+					olderTransportDown={olderTransportDown}
 					/*
 					 * The child-scoped attachment scope, gated on the SAME capability the
 					 * transcript route negotiated under: this reader's page is read over

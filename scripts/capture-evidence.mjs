@@ -3092,6 +3092,56 @@ export const STORIES = [
 	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
 	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
 	/*
+	 * The rows that OWN subagents while the primary mark says something else
+	 * (the operator's report, 2026-09-29). Same pair of widths and the same
+	 * reason the delegating pair above carries them: the second frame is the
+	 * 240px floor `ui-preferences-store.ts` clamps to, where the longest title is
+	 * truncated hardest and the new mark has the least room beside it.
+	 *
+	 * The roster deliberately includes the delegating arm's own row as its last
+	 * entry - the one state whose primary mark already IS the subagent mark - so
+	 * the frames answer the question a reader will have about it (why is there no
+	 * second glyph there) on the same surface, rather than in prose alone.
+	 */
+	["chat-sidebar-status-feed--subagent-rows-running", 720, 660],
+	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
+	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
+	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
+	/*
+	 * THE OTHER STORY THAT CAN SILENTLY NO-OP (review round 2's MINOR). Its
+	 * subject is a SELECTED row, and "selected" is a prop the story passes rather
+	 * than a state the row reaches on its own - so a story that spelled that prop
+	 * wrong would photograph two resting rows and still look like evidence. The
+	 * guard is the row's own hook: `data-chat-row` is the attribute every harness
+	 * addresses a row by, and `aria-current="page"` is what the current row
+	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
+	 *
+	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
+	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
+	 * the frame claimed the operator's own case and drew two resting rows. The
+	 * story passes the bare id now, and this entry is what keeps that true.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-selected-row",
+		720,
+		660,
+		{ expectPresent: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
+	 * version typed no query at all - the play's label lookup matched two elements
+	 * and died - so the rig photographed the unarchived twin and wrote the frame
+	 * without complaint. The selector is the row's own archive attribute, so the
+	 * rig now refuses to write these frames unless an archived row is on screen.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-archived-row",
+		720,
+		660,
+		{ expectPresent: '[data-session-archived="true"]' },
+	],
+	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
 	 * same pixels and the defect design D2 found (the control 632px above the
@@ -5151,6 +5201,49 @@ export const STORIES = [
 			expectSentence: "Moving Active column",
 		},
 	],
+	/*
+	 * The scroll chain (operator refinement): the wheel delivered at ONE
+	 * trusted point over a column that cannot scroll (the quiet `planning`
+	 * cell) must reach the board, and over a column that CAN scroll (the
+	 * `active` queue) must first exhaust that cell and then reach the board —
+	 * each entry asserts its own reading before the shutter.
+	 */
+	[
+		"projects-tab--board-scroll-chain",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="planning"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'document.querySelector("[data-board-strip]").scrollTop > 200',
+				message:
+					"the wheel over a non-scrollable column did not advance the board (the wheel is trapped in the column)",
+			},
+		},
+	],
+	[
+		"projects-tab--board-scroll-edge",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="active"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'(() => { const strip = document.querySelector("[data-board-strip]"); const cell = document.querySelector(\'[data-board-strip] section [data-board-cell="active"]\'); return strip.scrollTop > 200 && cell.scrollTop >= cell.scrollHeight - cell.clientHeight - 1; })()',
+				message:
+					"the wheel over the active column did not exhaust the cell and then advance the board",
+			},
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
@@ -5809,7 +5902,7 @@ export const STORIES = [
 	   measures at the app's own 800px minimum window. Sized to the boards. */
 	["chat-older-history-slot--every-state", 900, 460],
 	["chat-older-history-slot--app-minimum-width", 900, 720],
-	["chat-older-history-slot--one-hidden-row", 900, 260],
+	["chat-older-history-slot--windowed-sentence", 900, 260],
 	/* The transport-down branch: a failure the reader cannot answer is not
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
@@ -8853,28 +8946,34 @@ const main = async () => {
 			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
 			 * state - the same argument the `hold` arm states.
 			 */
+			/*
+			 * The point resolver both gesture options share: a selector's centre
+			 * once it has a painted box, or a named failure. A gesture that
+			 * finds nothing must fail the capture rather than photograph a
+			 * state the gesture never reached.
+			 */
+			const pointAt = async (selector, what) => {
+				for (let i = 0; i < 100; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(selector)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (result.value) return result.value;
+					await sleep(150);
+				}
+				throw new Error(
+					`${story} @ ${theme}: the ${what} selector \`${selector}\` never appeared (15s) - a gesture that finds nothing must fail rather than photograph the settled state`,
+				);
+			};
 			if (options?.drag) {
-				const point = async (selector) => {
-					for (let i = 0; i < 100; i++) {
-						const { result } = await cdp.send("Runtime.evaluate", {
-							returnByValue: true,
-							expression: `(() => {
-								const el = document.querySelector(${JSON.stringify(selector)});
-								if (!el) return null;
-								const r = el.getBoundingClientRect();
-								if (r.width === 0 || r.height === 0) return null;
-								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-							})()`,
-						});
-						if (result.value) return result.value;
-						await sleep(150);
-					}
-					throw new Error(
-						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
-					);
-				};
-				const from = await point(options.drag.from);
-				const to = await point(options.drag.to);
+				const from = await pointAt(options.drag.from, "drag");
+				const to = await pointAt(options.drag.to, "drag");
 				const mouse = (type, x, y, buttons) =>
 					cdp.send("Input.dispatchMouseEvent", {
 						type,
@@ -8908,6 +9007,54 @@ const main = async () => {
 				 * leaves stories without such a mechanism untouched.
 				 */
 				if (options.drag.settleMs) await sleep(options.drag.settleMs);
+			}
+
+			/*
+			 * A TRUSTED WHEEL, for the scroll-chain stories (operator
+			 * refinement): a play's synthetic wheel cannot scroll a container
+			 * (untrusted events skip the default action), so the gesture has
+			 * to come through CDP. Ticks are delivered at ONE point, which is
+			 * the case under test: a column that cannot scroll (or has hit
+			 * its edge) must let the wheel chain to the board's own scroller.
+			 */
+			if (options?.wheel) {
+				const at = await pointAt(options.wheel.at, "wheel");
+				const times = options.wheel.times ?? 5;
+				const deltaY = options.wheel.deltaY ?? 240;
+				const settleMs = options.wheel.settleMs ?? 120;
+				for (let i = 0; i < times; i += 1) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: at.x,
+						y: at.y,
+						deltaX: 0,
+						deltaY,
+						button: "none",
+						buttons: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(settleMs);
+				}
+			}
+
+			/*
+			 * THE GESTURE'S OWN CLAIM, checked in-page after it lands and
+			 * before the shutter: an expression that must read exactly `true`,
+			 * with the failure naming what was expected and what was read. A
+			 * wheel that a column swallowed fails here rather than shipping a
+			 * frame that claims a scroll the board never made.
+			 */
+			if (options?.expect) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: options.expect.expression,
+				});
+				if (result.value !== true) {
+					throw new Error(
+						`${story} @ ${theme}: ${options.expect.message} (read ${JSON.stringify(result.value)})`,
+					);
+				}
 			}
 
 			/*

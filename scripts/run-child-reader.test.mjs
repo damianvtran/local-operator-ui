@@ -178,6 +178,12 @@ const renderReader = ({ job = {}, page = fixtures.childPage() } = {}) => {
 				sessionId: "parent-session",
 				pulse: 0,
 				live: false,
+				/*
+				 * The pane's own stream is not down in these fixtures: the reader's slot is
+				 * asserted in its transport-up shape here, and the down shape is the pair
+				 * `scripts/older-history-slot.test.mjs` renders.
+				 */
+				olderTransportDown: false,
 				previewPage: page,
 				attachmentScope: null,
 				onUnopenable: () => {},
