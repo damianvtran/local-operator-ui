@@ -85,13 +85,18 @@ const Stage: FC<{
 /**
  * The window edge the band lives on.
  *
- * A ground and a width rather than a bare component: the band's whole claim is
- * that it costs one row at the bottom of the window and paints over nothing, and
- * neither of those can be seen against a transparent canvas.
+ * A ground and a width rather than a bare component: the band's claim is that it
+ * sits at the BOTTOM of the window and takes its own row, and neither can be seen
+ * against a transparent canvas.
+ *
+ * NOTHING ELSE IS DRAWN BESIDE IT, deliberately. An earlier version put a
+ * `bg-surface` block above the band to suggest the shell, and the "at rest" and
+ * "below the followed segment" frames then showed a filled rectangle where the
+ * claim is that there is NOTHING - a frame that looks like a reserved row is
+ * evidence for the opposite of what it was taken for.
  */
 const Frame: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className="flex h-40 w-180 flex-col justify-end bg-canvas">
-		<div className="h-12 bg-surface" />
 		{children}
 	</div>
 );
