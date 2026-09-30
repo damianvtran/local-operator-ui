@@ -36,19 +36,28 @@ One primitive gained a variant, and one call site uses it.
   hovered or current row it merges into the ground and the NUMERAL is the whole
   mark. A quiet row draws nothing, so presence is the signal.
 
-The measurement the operator compared: the old bordered mark's wash stepped
-ΔE00 5.22 off `surface` in the dark brand palette and 5.44 in the light; the new
-fill steps 2.02 and 2.5. Same ground, roughly half the separation.
+The measurement the operator compared, stated in the palettes where the comparison
+was made: the old bordered mark's `warningWash` stepped ΔE00 5.22 off `surface` in
+the dark brand palette and 5.44 in the light; the new `elevated` fill steps **3.29**
+and **2.50**. Same ground, roughly half the separation. (Both pairs are quoted from
+`localOperatorDark` / `localOperatorLight` specifically. An earlier revision of this
+file paired the brand palettes' 5.22/5.44 with **2.02**, which is the *fleet worst*
+— `arcade`'s own step — not the brand palette's; design round 1 D1 caught the
+conflation. The worst over the fifty-nine is 2.02, and the row in
+`contrast-contract.mjs` states it beside the brand pair.)
 
 ## The frames
 
 Every frame is the **built app in `headless` window mode** taken by
 `scripts/renderer-driver.mjs --scene approval-badges` (the rail half needs no
 backend; the header half is skipped without one, which is why no `chat-header`
-claim appears here) and by the committed `chat-sidebar-ack-and-selection` rig for
-Aida's row (a REAL mock-provider completion, the same path that set's own frames
-use). PNG, not WebP, on purpose: `check-evidence.mjs`'s frame walker counts
-`.webp` only, so a rig-driven set cannot be mistaken for frames a sweep produced.
+claim appears here; QA round 1's Q4 repaired the conversation-opening press, which
+had thrown on a selector today's sidebar does not render, so a `--backend` run now
+reaches the header half instead of failing before it) and by the committed
+`chat-sidebar-ack-and-selection` rig for Aida's row (a REAL mock-provider
+completion, the same path that set's own frames use). PNG, not WebP, on purpose:
+`check-evidence.mjs`'s frame walker counts `.webp` only, so a rig-driven set cannot
+be mistaken for frames a sweep produced.
 
 | Directory | Tree | What it is |
 | --- | --- | --- |
@@ -69,11 +78,19 @@ move the pixels".
 | Frame | State |
 | --- | --- |
 | `approval-badges-none-*` | nothing pending — neither surface draws a badge |
-| `approval-badges-two-three-*` | three live requests, expanded rail |
+| `approval-badges-two-three-*` | two live requests, expanded rail |
 | `approval-badges-collapsed-*` | the same count in the 56px strip |
 | `approval-badges-collapsed-tooltip-*` | the strip's tooltip open on the row |
-| `approval-badges-collapsed-two-digits-*` | thirteen live requests — a two-digit count |
+| `approval-badges-collapsed-two-digits-*` | twelve live requests — a two-digit count |
 | `approval-badges-rail-current-*` | the browser row is the current destination (`row-selected`) |
+| `approval-badges-three-digits-*` | **128** pending, staged through the seam (below) — a three-digit count |
+
+The counts are the no-backend run's, which is what these frames are: without
+`--backend` the scene raises the two requests no conversation owns and ten more for
+the crowded state. An earlier revision of this file described the with-backend
+counts (three and thirteen) under frames that show two and twelve — QA round 1 Q2.
+With a backend the same scene runs at three and thirteen and additionally opens a
+conversation for the header half.
 
 ### What the scene measured, on this head
 
@@ -93,11 +110,14 @@ run is the proof.** On `before/` it fails exactly the two claims that describe
 the change —
 
 - `the mark is borderless and ringless: its box is its whole boundary` — FAIL
-- `the numeral is the count family's: 11px, weight 400, muted ink` — FAIL
+- `the numeral is the count family's: 11px, weight 400, ink-dim on elevated` — FAIL
 
 — while every geometry claim (row height, rail width, label position, rail-edge
 clearance) PASSES on both trees, because the restyle moves nothing. The `after/`
-run is 0 FAIL of 31 checks.
+run reports 0 FAIL in each theme (the check total is 32 in the dark theme and 31 in
+the light — the extra is `no process from this run outlived its boot`, which
+degrades to a note when the probe cannot measure; QA round 1 Q3). The staged
+three-digit step adds two more checks to each theme's run.
 
 The scene's rail readings were **re-derived in this change** because the scene
 had outlived its tree: it read the rail's container with `closest('nav')`, which
@@ -106,6 +126,29 @@ matches nothing on today's sidebar (it renders `[data-sidebar-shell]` docked and
 clearance claims compared against nothing; and it pinned a 48px strip and a 32px
 row that are 56px and 30px now. The claims are unchanged; the readings describe
 the tree the frames are of.
+
+### The three-digit state, and why it needs a seam
+
+The operator asked to see the mark at one, two and three digits. One and two are
+live states; three is **not reachable on this control** — the consent queue caps at
+16 — so the scene stages it through the armed dev driver's `stageLiveConsents` verb:
+pending requests published through the store's own path, granting and deciding
+nothing, with the numeral, the mark's geometry and the row's accessible name all the
+shipped code. It is disclosed because it is the one state a real run cannot produce
+(QA round 1, Q1: the verb had no caller, so an earlier revision of this file claimed
+a three-digit frame the instrument could not take). At 128 the count renders uncapped
+and the mark stays inside the rail's right edge.
+
+### The selected row, deliberately
+
+On `row-selected` the disc's prominence is not the same in both palettes: measured
+ΔE00 2.19 (dark) against 7.00 (light) from the tokens, 2.21 against 6.41 in the
+frames. That asymmetry is **a decision rather than a side effect** (design round 1,
+D2): the numeral carries the mark in both (the `ink-dim` floor is 5.01:1 fleet-wide),
+the light palette shows *more* mark than the dark and never less, and evening it up
+would need a per-ground fill the role system does not have — re-shooting the whole
+set to trade one theme's subtlety for another's. The chosen direction keeps it: a
+whisper on the dark selected row, a soft chip on the light one.
 
 ### The alternative (`alternatives/`)
 

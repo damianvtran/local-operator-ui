@@ -598,7 +598,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							{/*
 							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge is
 							 * the `attentionQuiet` register rather than the bordered `attention`
-							 * mark - borderless, a `surface` whisper instead of the warning
+							 * mark - borderless, an `elevated` whisper instead of the warning
 							 * wash, and the count family's own `ink-dim` / `text-meta-sm`
 							 * numeral, so it reads with the sidebar's team-count lines. The
 							 * header's globe keeps the bordered mark: it sits in a glyph
