@@ -4615,6 +4615,35 @@ export const STORIES = [
 	["agent-hub-page--org-plan-lapsed", 1280, 900],
 	["agent-hub-page--org-access-revoked", 1280, 900],
 	/*
+	 * The hub's browse bar and Teams view (operator report, 2026-09-29: teams were
+	 * a roster under the grid, the scope a select, the pager an off-centre box).
+	 * `org-teams` is the same id as before and now photographs the promoted Teams
+	 * tab over a POPULATED grid; the rest are new states of the same surface:
+	 * the roster's empty and loading arms, the plan refusal read from the Teams
+	 * view, the PUBLIC-scope explanation (teams are organization-only, so it is a
+	 * state and not a list) in its signed-in and signed-out shapes, and the pager
+	 * footer at both widths - one row of cards keeps it inside the frame.
+	 */
+	["agent-hub-page--org-teams-empty", 1280, 900],
+	["agent-hub-page--org-teams-loading", 1280, 900],
+	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
+	["agent-hub-page--teams-public-scope", 1280, 900],
+	["agent-hub-page--teams-signed-out", 1280, 900],
+	/*
+	 * Round 1's remediation states: the public Teams view's other four reasons
+	 * (the pending read that used to be misreported as "none", the settled empty
+	 * read, the unavailable backend and the failed memberships read) and the pager
+	 * on its last page, where focus has moved to Previous.
+	 */
+	["agent-hub-page--teams-public-loading", 1280, 900],
+	["agent-hub-page--teams-public-none", 1280, 900],
+	["agent-hub-page--teams-public-unavailable", 1280, 900],
+	["agent-hub-page--teams-public-unreadable", 1280, 900],
+	["agent-hub-page--pager-last-page", 1280, 900],
+	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
+	["agent-hub-page--pager-footer", 1280, 900],
+	["agent-hub-page--pager-footer-narrow", 920, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
@@ -4757,6 +4786,94 @@ export const STORIES = [
 		741,
 		760,
 	],
+	/* A 41-conversation team expanded: TEN rows and the foot naming the next rung and the position. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{ dir: "group-bound/ten" },
+	],
+	/* The same team after ONE real press on the foot: twenty-five rows drawn. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-one",
+		741,
+		900,
+		{ dir: "group-bound/after-one" },
+	],
+	/* After TWO presses: the third rung exceeds what the team holds, so the group is fully drawn and the foot is gone. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-two",
+		741,
+		900,
+		{ dir: "group-bound/after-two" },
+	],
+	/* The viewed conversation sits below the bound, so it is lifted to the head of the group rather than admitted in place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-lifted",
+		741,
+		900,
+		{ dir: "group-bound/current-lifted" },
+	],
+	/* The lift gone again: after two real presses the ladder has drawn past the viewed row, which settles in its catalogue place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-settled",
+		741,
+		900,
+		{ dir: "group-bound/current-settled" },
+	],
+	/* A busy row below the bound is drawn anyway (it costs no quota), and the foot counts it. */
+	[
+		"chat-sidebar-view-menu--group-bound-running-exempt",
+		741,
+		900,
+		{ dir: "group-bound/running-exempt" },
+	],
+	/* The foot under a real pointer: the idle -> hover ink step, with `:hover` asserted before the shutter. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{
+			hover: '[data-entity-more="team:minervadev"]',
+			hoverSettleMs: 900,
+			dir: "group-bound/foot-hover",
+		},
+	],
+	/*
+	 * WITHDRAWN — `group-bound/search-finds-unloaded` HAS NO FRAME, deliberately.
+	 *
+	 * The claim it would carry (a query reaches a row the bound has not loaded) is
+	 * the one the operator named, and it is asserted in
+	 * `scripts/chat-sidebar-view.test.mjs` ("a query is never bounded: the bound
+	 * cannot hide a hit"). Its FRAME could not be made reproducible: capturing the
+	 * same story on one clean tree six times produced two distinct end states, the
+	 * diff spanning the whole panel rather than one label, and a settle-wait plus
+	 * an assertion on the story's own facts did not remove it. A frame that
+	 * photographs one of two states under a caption that claims one is worse than
+	 * no frame, so the story stays in Storybook for a human to look at and is NOT
+	 * captured here. Re-add this row only with a story whose state is pinned.
+	 */
+	/* BEFORE the spacing fix: Agents collapsed above Teams expanded, at this branch's head. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/agents-collapsed-teams-expanded" },
+	],
+	/* BEFORE the spacing fix: both sections collapsed. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap-before/both-collapsed" },
+	],
+	/* BEFORE the spacing fix: both sections expanded, the case a shortened constant would tighten unasked. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/both-expanded" },
+	],
 	[
 		"chat-sidebar-view-menu--band-resting",
 		741,
@@ -4766,6 +4883,27 @@ export const STORIES = [
 			hoverSettleMs: 900,
 			dir: "band-search-hover",
 		},
+	],
+	/* AFTER the spacing fix: Agents collapsed above Teams expanded, the operator's own case. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap/agents-collapsed-teams-expanded" },
+	],
+	/* AFTER the spacing fix: both sections collapsed - the last-section-on-screen case. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap/both-collapsed" },
+	],
+	/* AFTER the spacing fix: both expanded, which must be pixel-identical to the before frame. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap/both-expanded" },
 	],
 	[
 		"chat-sidebar-view-menu--band-resting",
@@ -9444,6 +9582,28 @@ const main = async () => {
 			if (!prepared) {
 				throw new Error(
 					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
+				);
+			}
+			/*
+			 * A STORY'S OWN SHUTTER LATCH THAT EXPIRED IS A REFUSAL, NOT A FRAME.
+			 *
+			 * `data-capture-pending` is how a story holds the shutter until the state
+			 * its play produced is on screen (`agent-hub.stories.tsx`'s `holdShutter`,
+			 * and `docs-library.stories.tsx`'s `HubHold`). Clearing it on a TIMEOUT
+			 * without a word hands the shutter back mid-play and files whatever was on
+			 * screen — the state the latch exists to avoid photographing. The story
+			 * sets `data-capture-failed` in that seat, and this is the check that makes
+			 * the marker mean something for THIS rig: `capture-docs-library.mjs` has
+			 * read it since its own scenes grew latches, and the evidence sweep did
+			 * not, so an expired latch was silent here (agent review round 2, N1).
+			 */
+			const latch = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: 'document.documentElement.dataset.captureFailed || ""',
+			});
+			if (latch.result.value) {
+				throw new Error(
+					`${story} @ ${theme}: the story's shutter latch expired — ${latch.result.value}. The play did not put the state this frame claims on screen, and the frame was refused rather than taken mid-flight.`,
 				);
 			}
 			/*

@@ -65,6 +65,10 @@ const CARD_TAKES_STATUS = /status\?: AgentViewerStatus/;
 const CARD_TAKES_UNKNOWN_STATE = /viewerStateKnown\?: boolean/;
 const PER_CARD_READ = /useAgent(Like|Favourite|Download)(Count)?Query/;
 const TS_OR_TSX = /\.tsx?$/;
+const PAGE_TEAMS_READ = /useOrgTeamsQuery\(\{ tenantId: orgScopeId \}\)/;
+const ROSTER_TEAMS_READ = /useOrgTeamsQuery\(\{ tenantId \}\)/;
+const TEAMS_NEEDS_TENANT = /enabled: enabled && !!tenantId/;
+const TEAMS_STALE_WINDOW = /staleTime: 5 \* 60 \* 1000/;
 
 // The shipped query module and its key builder, bundled in memory so the test
 // runs the code the app runs rather than a restatement of its key shape.
@@ -468,4 +472,29 @@ test("the batched op is in both closed vocabularies the request passes through",
 		STATUSES_OP,
 	);
 	assert.match(read("src/shared/desktop-contract.ts"), STATUSES_OP);
+});
+
+/*
+ * The Teams tab's reads, pinned as composition.
+ *
+ * 4. THE TEAMS READ IS ONE READ PER ORG-SCOPE ENTRY AND NONE IN THE PUBLIC SCOPE.
+ *    The tab count needs the read before the tab is opened, so it rides scope
+ *    entry; the roster calls the SAME hook with the SAME key, so React Query
+ *    shares one request between the two observers. Source-anchored (one
+ *    `useOrgTeamsQuery` call in the page, disabled without a tenant, no focus
+ *    refetch), with the counts themselves measured off a rendered page by
+ *    `scripts/hub-round-trips.mjs`.
+ */
+test("the page issues one teams read per org scope and none without a tenant", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	assert.equal(page.split("useOrgTeamsQuery(").length - 1, 1);
+	assert.match(page, PAGE_TEAMS_READ);
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	assert.match(roster, ROSTER_TEAMS_READ);
+	const hook = read(`${HOOKS_DIR}/use-org-teams-query.ts`);
+	assert.match(hook, TEAMS_NEEDS_TENANT);
+	assert.match(hook, FOCUS_REFETCH_IS_OFF);
+	assert.match(hook, TEAMS_STALE_WINDOW);
 });

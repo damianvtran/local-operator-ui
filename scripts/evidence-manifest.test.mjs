@@ -2262,6 +2262,36 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote`, `sidebarLoadMoreFoldTwoNote`,
+	 * `sidebarLoadMoreFoldThreeNote`, `sidebarLoadMoreFoldFourNote`,
+	 * `sidebarLoadMoreFoldFiveNote`, `sidebarLoadMoreFoldSixNote`,
+	 * `sidebarLoadMoreFoldSevenNote`, `sidebarLoadMoreFoldEightNote`,
+	 * `sidebarLoadMoreFoldNineNote` and `sidebarLoadMoreFoldTenNote` are the
+	 * folds `feat/sidebar-load-more` made while open - the second folded a #557
+	 * that had already folded itself onto the same base as the first, the third
+	 * folded #655's closed-dispose train, the fourth the 0.31.22 release over
+	 * #554's condensed-group images, the fifth #560's install-provisioning
+	 * resilience over the settings-rail fold train, the sixth the landing
+	 * fold (#699's board time window over the #698/#695/#662/#700 trains, this
+	 * branch's fold to mergeable), the seventh #697's pinned-order drag,
+	 * which landed minutes later, the eighth #702's loader walk, the ninth
+	 * #701's row context menu, and the tenth #594's scroll anchor. The notes name each manifest resolution and
+	 * re-derivation, including the one semantic conflict (both lanes fixing the
+	 * collapsed-section gap in parallel, resolved to one tested mechanism).
+	 * Registered here because a fold resolved by a resolver starting from main's
+	 * copy is where they would drop uncaught.
+	 */
+	"sidebarLoadMoreFoldNote",
+	"sidebarLoadMoreFoldTwoNote",
+	"sidebarLoadMoreFoldThreeNote",
+	"sidebarLoadMoreFoldFourNote",
+	"sidebarLoadMoreFoldFiveNote",
+	"sidebarLoadMoreFoldSixNote",
+	"sidebarLoadMoreFoldSevenNote",
+	"sidebarLoadMoreFoldEightNote",
+	"sidebarLoadMoreFoldNineNote",
+	"sidebarLoadMoreFoldTenNote",
+	/*
 	 * Grown by the monitors CONTROLS pass (2026-09-29, slice 4b-ui B), this
 	 * branch's newest top-level record and the sibling of the entry above: it
 	 * states what the pass ADDED (four cancel-affordance surfaces, eight
@@ -2787,6 +2817,36 @@ const BRANCH_RECORDS = [
 	 * And THE #702 FOLD'S - the fourth fold's record (same reason).
 	 */
 	"foldOnte78e4395ebNote",
+	/*
+	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
+	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldNote",
+	/*
+	 * Grown by the second convergence fold (2026-09-30): it states what the lift moved and what it did not, and it spells its identity
+	 * as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldTwoNote",
+	/*
+	 * Grown by the recording-display pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (four frames - the
+	 * composer's two recording states, empty field and with draft, in both the
+	 * before and the after half) and the two commands that produced the halves,
+	 * and it spells its identity as bare SHAs, so it adds no name to the
+	 * quoting ledger.
+	 */
+	"sttRecordingDisplayPass",
+	/*
+	 * Grown by the third convergence fold (2026-09-30): it states what the fold moved,
+	 * what it restored and what it did not, and it spells its identity as bare SHAs, so
+	 * it adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldThreeNote",
+	"sttRecordingDisplayFoldFourNote",
+	"sttRecordingDisplayFoldFiveNote",
+	"sttRecordingDisplayFoldSixNote",
+	"sttRecordingDisplayFoldSevenNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
