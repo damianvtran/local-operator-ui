@@ -542,21 +542,31 @@ export const rowDragging =
 	"bg-row-selected text-ink hover:bg-row-selected hover:text-ink";
 
 /**
- * The dragged row's ground when the row is ALSO the one the reader is in.
+ * The HELD row's own mark, and it is deliberately NOT a fill (design round 2, D7 + UX
+ * round 2, U6).
  *
- * WHY THIS IS NOT `rowDragging`: the current row's RESTING fill is `rowSelected`, so
- * `rowDragging` would paint a held current row exactly as it paints when nothing is
- * happening - the same substitution `rowCurrent` exists to stop, one state over (design
- * round 1, D5c, which asked for the frame and the reading). The palette has two row
- * roles, and the selected one is spoken for by "this is the conversation you are in",
- * so the held state takes the OTHER step while a row is current: a colour step that is
- * distinct from the row's own resting fill, and distinct from every other row in the
- * panel, because a current row is the one row that never wears `rowHover` - its box
- * drops the hover ground for exactly the reason above. Same merge-order rule as
- * `rowDragging`: it is merged last so the hover variant cannot take it back.
+ * WHY A FILL COULD NOT CARRY THIS STATE. The first attempt at it gave a held row that is
+ * ALSO the current one the `rowHover` ground, and that is exactly the fill the row under
+ * the pointer wears: the two are on screen together for the whole gesture (the row boxes
+ * are contiguous, so a drag pointer is always over some row), and the held row also LOST
+ * the selected fill that says "this is the conversation you are in". Measured in both
+ * palettes, same run: held current `rgb(48,45,41)` light `rgb(237,236,231)` - the hover
+ * role - against the drop target's own hover ground, one reading for two rows.
+ *
+ * WHY A RING AND NOT A THIRD ROW ROLE. The panel's ladder has two row steps and
+ * `rowSelected` is spoken for by the current row, so a third step would have to be
+ * authored against the palette's own floors (`docs/branding.md` sec. 3) for a state that is
+ * transient by definition. The ring carries ONLY the fact that this row is held: it does
+ * not restate what the row's role already says, it reads the same role in both palettes
+ * (`ink-dim`, the role the panel's own rounded-row ring uses), and it is INSET - painted
+ * inside the row's `rounded-md` box, so there is no layout shift and nothing to clip,
+ * which is the constraint `docs/branding.md` states for a ring that must sit inside its
+ * container.
+ *
+ * The ground underneath is the row's own role and does not change: `rowDragging` while
+ * the row is not the current one, `rowCurrent` while it is.
  */
-export const rowDraggingCurrent =
-	"bg-row-hover text-ink hover:bg-row-hover hover:text-ink";
+export const rowDraggingMark = "ring-1 ring-inset ring-ink-dim";
 
 import {
 	type FocusedSlot,
@@ -2630,14 +2640,16 @@ export function ChatSidebar({
 	/**
 	 * The row's own name, for the three sentences that have to name it.
 	 *
-	 * ONE SPELLING, and it searches the FULL rows rather than the pinned set: the chord's
+	 * ONE SPELLING, and it searches `matching` rather than the local pages: the chord's
 	 * no-target answer (UX round 1, U4) names a row that is, by definition, NOT in `pinned` -
-	 * it is the row the reader pressed the chord on and nothing happened. The fallback is the
-	 * row render's own ("Untitled chat").
+	 * it is the row the reader pressed the chord on and nothing happened - and a search answer
+	 * can carry a PINNED row this client's page does not have (`chat-search.ts`'s synthesised
+	 * hits, which `matching` carries and `[...listed, ...heldRows]` does not). Reading the two
+	 * local arrays here named those rows "Untitled chat" while they were on screen by name
+	 * (round 2, M2). The fallback is the row render's own ("Untitled chat").
 	 */
 	const rowLabel = (id: string): string =>
-		[...listed, ...heldRows].find((row) => row.session_id === id)?.title ||
-		"Untitled chat";
+		matching.find((row) => row.session_id === id)?.title || "Untitled chat";
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -4271,13 +4283,24 @@ export function ChatSidebar({
 							 * row found a NAMED BUTTON whose activation did nothing - while the row's own
 							 * copy says the chords are the keyboard path. It is a pointer-only affordance,
 							 * so it is hidden from the accessibility tree and its `title` serves the
-							 * sighted pointer alone. The REVEAL is untouched: the grip still appears when
-							 * the keyboard is inside the row, because the cluster is one group and hiding
-							 * one member of it under focus would move the others.
+							 * sighted pointer alone.
+							 *
+							 * WHICH IS WHY IT REVEALS ON HOVER ONLY (agent review round 2, N1). The grip used to
+							 * come out under `group-focus-within` too, so a sighted keyboard reader walking the
+							 * row watched a handle appear that they can neither focus nor operate - the two
+							 * decisions pointed opposite ways, and the reveal yields rather than the AT-hiding,
+							 * because the alternative is putting a control back into a row whose whole model is
+							 * one stop plus chords. The PAIR keeps its own `group-focus-within` term: it is
+							 * operable from the keyboard (the chords press it) and it is the single-pointer path
+							 * WCAG 2.5.7 asks for.
 							 *
 							 * TWO TERMS THE PAIR DOES NOT CARRY, both from round 1 (design D2 and D3).
-							 * (a) THE SHED: the grip is drawn above `279px` of PANEL and shed at or below it
-							 * (`@max-[279px]/chatsidebar:hidden`; the container is the panel root). Measured
+							 * (a) THE SHED: the grip is DRAWN at 279px of panel and above, and SHED at 278 and
+							 * below - the numbers QA measured on a 277/278/279/280/281 sweep. The class that
+							 * decides it is `@max-[263px]/chatsidebar:hidden!`, not a 279px query: the container
+							 * is the panel root, `p-2` sits INSIDE the width the panel setting names, and a
+							 * container query reads the container's content box, so the query's number is the
+							 * panel minus 16 (see the class's own note below). Measured
 							 * at the 240 clamp with all five controls revealed, the title had 40px of the
 							 * row's 208; the pair's own 56px is the part WCAG 2.5.7 asks for - a
 							 * single-pointer path to the reorder - and the grip's 28px is an accelerator
@@ -4315,11 +4338,15 @@ export function ChatSidebar({
 										"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
 										"text-ink-dim",
 										"group-hover:flex group-hover:text-ink-muted",
-										"group-focus-within:flex group-focus-within:text-ink-muted",
 										/*
-										 * The shed, one class, at the one break design round 1 measured (D2): at
-										 * or below 279px of panel the grip is inside the cluster's width but
-										 * outside its budget, and the pair is the member that stays.
+										 * NO `group-focus-within` TERM ON THIS CONTROL (agent review round 2, N1): the
+										 * grip is `aria-hidden` and unfocusable, so revealing it for the keyboard would
+										 * offer a sighted keyboard reader a handle they cannot operate. The pair below
+										 * keeps its own term, because the chords press it.
+										 *
+										 * The shed, one class, at the one break design round 1 measured (D2): the
+										 * grip is drawn at 279px of panel and above and shed at 278 and below, and the
+										 * pair is the member that stays.
 										 *
 										 * 263 AND NOT 279, and the 16px is the panel's own padding: the container
 										 * is the panel root, whose `p-2` sits INSIDE the width the panel setting
@@ -4330,8 +4357,8 @@ export function ChatSidebar({
 										 *
 										 * THE `!` IS LOAD-BEARING, and it is the one thing the deleted shed did
 										 * differently: that query hid a WRAPPER, whose own display nothing else
-										 * claimed, while this one hides the control itself - which the reveal
-										 * rules already set (`group-hover:flex`, `group-focus-within:flex`).
+										 * claimed, while this one hides the control itself - whose reveal the
+										 * `group-hover:flex` above already sets.
 										 * Those compile to TWO-class selectors (`.group:hover .x`) and a
 										 * container query's rule is one class, so the hover rule won the
 										 * cascade and the grip stayed drawn at 240 with the pointer in the row -
@@ -4789,8 +4816,8 @@ export function ChatSidebar({
 				/*
 				 * THE DRAGGED ROW'S OWN MARK (issue #697, item 5). It is on the BOX and not on
 				 * the grip, because the claim is about the whole row the reader is moving; the
-				 * ground step it draws is `rowDragging`'s (see its note for why a colour rather
-				 * than the board's opacity).
+				 * ground step it draws is `rowDragging`'s and the ring is `rowDraggingMark`'s
+				 * (both carry their own notes, including why the held state is not a fill).
 				 */
 				data-dragging={dragging ? "" : undefined}
 				onBlur={keepFlyoutWhileFocusStaysInRow}
@@ -4839,11 +4866,20 @@ export function ChatSidebar({
 					 * `rowCurrent` is merged last for the same reason, and the drag ground has to
 					 * outrank that too, because a current row's resting fill IS the selected step.
 					 *
-					 * A row the pointer has left mid-drag is still the row being dragged, and both
-					 * variants restate their ground at `hover:` so the variant cannot take it back
-					 * while the captured pointer sits inside the row.
+					 * A row the pointer has left mid-drag is still the row being dragged, and the
+					 * variant restates its ground at `hover:` so the hover rule cannot take it back
+					 * while the captured pointer sits inside the row. The SAME ground for a current
+					 * held row is the point rather than an omission: it is that row's own resting
+					 * fill, so "you are here" survives the gesture, and the held state is carried by
+					 * `rowDraggingMark`'s ring instead of by a second fill (round 2, D7 + U6).
 					 */
-					dragging && (current ? rowDraggingCurrent : rowDragging),
+					dragging && rowDragging,
+					/*
+					 * The non-fill half of the held state, and it is what keeps a held row distinct
+					 * from the row merely under the pointer - the two can be adjacent on screen.
+					 * Merged after the ground so a later rule cannot drop it.
+					 */
+					dragging && rowDraggingMark,
 				)}
 			>
 				{rowButton}
@@ -7055,7 +7091,7 @@ export function ChatSidebar({
 			 *
 			 * THE CONTAINER COMES BACK FOR ONE MEMBER (design round 1, D2, measured at the 240 clamp;
 			 * issue #697). "One rule at every width" is still the rule for the ACTS - the pin, the
-			 * archive and the move pair are drawn at every width - but the GRIP sheds at or below 279px
+			 * archive and the move pair are drawn at every width - but the GRIP sheds at or below 278px
 			 * of panel, because at the clamp the revealed cluster left the title 40px of the row's 208
 			 * with the grip in it, and the pair's own 56px is the part WCAG 2.5.7 asks for while the
 			 * grip's 28px is an accelerator for a gesture the arrows already perform. The name is the
