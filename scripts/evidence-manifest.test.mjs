@@ -2672,6 +2672,47 @@ const BRANCH_RECORDS = [
 	 * so it adds no name to the quoting ledger.
 	 */
 	"installerPanelRailRoundTwoNote",
+	/*
+	 * And by THIS branch, whose records the merge of `origin/main` = `340cfc7f88` had to keep: its
+	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
+	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
+	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
+	 * resolved this file from main's copy would drop them first, which is the failure this list
+	 * exists to make loud.
+	 */
+	"foldOnto29a9aa985cMeasureDragNote",
+	"foldOnto340cfc7f88Note",
+	"foldOnto4703067935MeasureDragNote",
+	"foldOnto49491865caMeasureDragNote",
+	"foldOnto5ba0d0dc8aMeasureDragNote",
+	"foldOnto65a3e97b8cMeasureDragNote",
+	"foldOnto6f28406010MeasureDragNote",
+	"foldOnto8a03152c61MeasureDragNote",
+	"foldOnto8ff4dd8a9bMeasureDragNote",
+	"foldOntoa7b4f88a18MeasureDragNote",
+	"foldOntocef1c9c535MeasureDragNote",
+	"foldOntoe2394f9ff1Note",
+	"foldOntof9dbf8b455MeasureDragNote",
+	/*
+	 * And THIS branch's re-keyed fold record (`foldOnto0738fa7eb3RestoreBoundaryNote`, re-keyed at the
+	 * fold onto `65a3e97b8c` because main already ships a note under the bare name, and registered here
+	 * per agent review round 4, F-r4-2): it states this lane's own reading of that fold, the fold that
+	 * re-laid it kept it byte-exact, and a fold that started from main's copy would drop it first -
+	 * the list's usual reason.
+	 */
+	"foldOnto0738fa7eb3RestoreBoundaryNote",
+	/*
+	 * And THIS branch's own product record (`browserRestoreBoundaryPass`), written by the restore-boundary
+	 * pass: it carries the before/after runs' readings and the stamps' provenance, so a fold that started
+	 * from main's copy would drop it first - the list's usual reason (agent review round 5, Q-3).
+	 */
+	"browserRestoreBoundaryPass",
+	/*
+	 * And this branch's first fold's own record (`foldOnto48b4b90b66Note`): the merge onto
+	 * `origin/main` = `48b4b90b66` resolved this file and states what moved and what did not,
+	 * registered beside the others for the list's usual reason (agent review round 5, Q-3).
+	 */
+	"foldOnto48b4b90b66Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

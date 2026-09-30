@@ -112,10 +112,33 @@ export interface PersistedEntry {
 
 /** One restored tab.
  *
- * NO `nonce` and NO `handedTo` (design 7.2, 7.3). `owner` is recorded for the
- * diagnostics and for nothing else: a restore always comes back `user`-owned,
- * because re-granting drive authority to whoever's token was on disk is the
- * fail-open the capability model exists to prevent. */
+ * NO `nonce` and NO `handedTo` (design 7.2, 7.3): a restore always comes back
+ * `user`-owned in the REGISTRY, because re-granting drive authority to
+ * whoever's token was on disk is the fail-open the capability model exists to
+ * prevent.
+ *
+ * `owner` IS NOT DIAGNOSTICS ANY MORE (2026-09-29). It now decides
+ * restorability: `readSession` skips an agent-owned row that was not the active
+ * tab at the capture that wrote it, which is what ends the accumulation of
+ * abandoned agent tabs across restarts (the localhost cruft the operator's
+ * strip collected). Two properties of the rule are load bearing enough to
+ * state here:
+ *
+ * - THE HAND-OVER EXCEPTION: a USER tab sitting under hand-over at the quit is
+ *   `owner: "agent"` in the registry (`registry.handOver`), so `captureTabs`
+ *   writes such a row as `user` - otherwise the skip would lose the user's own
+ *   tab. The row records who owns the TAB, not who held its handle, and "who
+ *   owns the tab" is the owner pinned BEFORE the hand-over (`TabRecord.handed-
+ *   From`), not `handedTo`: an AGENT tab re-handed to a second session also
+ *   carries `handedTo`, and writing that one as the user's would launder agent
+ *   cruft past the sweep (round-1 m-2).
+ * - THE LAUNDERING BOUNDARY: only a row written by a quit that still saw the
+ *   tab as agent-owned can be caught. A restored tab is created `user`-owned,
+ *   so one capture after a restore rewrites the row as `user` and it is
+ *   indistinguishable from a tab the user opened. The fix is forward-looking:
+ *   it stops feeding the file; rows already laundered by earlier cycles are not
+ *   recovered by an owner check.
+ */
 export interface PersistedTab {
 	owner: TabOwner;
 	active: boolean;
@@ -299,6 +322,27 @@ function boundTabs(tabs: PersistedTab[]): {
 }
 
 /**
+ * Whether the next launch will restore this row. THE one spelling of the rule,
+ * used by the reader and by the quit-time capture's population count
+ * (`commitStopCapture`): the two sides must describe the same population or the
+ * refusal threshold moves with whatever the reader skips (review round 1, m-2
+ * made the failed mark agree; the agent skip joined it on 2026-09-29).
+ *
+ * Two ways a row is skipped:
+ * - `lastLoadFailed`: the tab was showing a load failure at the capture (the
+ *   2026-09-28 accumulation fix);
+ * - an agent-owned row that was NOT the active tab at the capture. The active
+ *   carve-out keeps the one agent tab the user was plausibly looking at when
+ *   they quit; everything else agent-owned is cruft the restore boundary
+ *   sweeps. `PersistedTab.owner` states the hand-over exception and the
+ *   laundering boundary.
+ */
+function restorableRow(row: PersistedTab): boolean {
+	if (row.lastLoadFailed === true) return false;
+	return !(row.owner === "agent" && row.active !== true);
+}
+
+/**
  * Read the restorable tabs, or an empty list.
  *
  * ONE `try`/`catch` around the whole read, and a log line rather than a throw
@@ -337,18 +381,34 @@ export function readSession(
 		const sane = file.tabs
 			.map(saneTab)
 			.filter((tab): tab is PersistedTab => tab !== null);
-		// A ROW FLAGGED AS FAILED IS NOT RESTORED (2026-09-28, the accumulation fix):
-		// a tab whose page refused to load is a dead end, and restoring it would
-		// recreate the dead end - then persist it again at quit - until a user
-		// closed it by hand. The skip runs AFTER sanitisation and BEFORE the cap,
-		// so a dead row neither restores nor consumes one of `MAX_RESTORED_TABS`
-		// slots, and the count in the log line is the number of rows that would
-		// otherwise have come back.
-		const restorableRows = sane.filter((tab) => tab.lastLoadFailed !== true);
-		const dead = sane.length - restorableRows.length;
+		// TWO KINDS OF ROW ARE NOT RESTORED, EACH WITH ITS OWN COUNTED LOG LINE,
+		// and both skips run AFTER sanitisation and BEFORE the cap, so a skipped
+		// row neither restores nor consumes one of `MAX_RESTORED_TABS` slots, and
+		// each count is the number of rows that would otherwise have come back.
+		//
+		// 1. A ROW FLAGGED AS FAILED (2026-09-28): a tab whose page refused to
+		//    load is a dead end, and restoring it would recreate the dead end -
+		//    then persist it again at quit - until a user closed it by hand.
+		const unflagged = sane.filter((tab) => tab.lastLoadFailed !== true);
+		const dead = sane.length - unflagged.length;
 		if (dead > 0) {
 			log(
 				`[browser] ${dead} recorded tab(s) were showing a load failure when the session ended; not restored`,
+			);
+		}
+		// 2. AN AGENT-OWNED ROW THAT WAS NOT THE ACTIVE TAB (2026-09-29): an
+		//    agent's abandoned tab used to come back as a user tab at every
+		//    launch, and each launch's capture re-wrote it, so the file (and the
+		//    strip) accumulated cruft the operator could only close by hand. The
+		//    active-tab carve-out keeps the ONE agent tab the user was plausibly
+		//    looking at when they quit; the rest are decided here, at the restore
+		//    boundary, rather than by a liveness guess at runtime (there is no
+		//    safe session-death signal; see the design doc).
+		const restorableRows = unflagged.filter(restorableRow);
+		const agentSkipped = unflagged.length - restorableRows.length;
+		if (agentSkipped > 0) {
+			log(
+				`[browser] ${agentSkipped} recorded tab(s) were opened by an agent and were not active at the quit; not restored`,
 			);
 		}
 		const { kept, dropped } = boundTabs(restorableRows);
@@ -390,15 +450,16 @@ export function readSession(
  * content this function refused (review round 3, B2's MAJOR). A caller that asked
  * and then wrote anyway was the defect, so there is no longer such a caller.
  *
- * BOTH COUNTS ARE RESTORABLE ROWS (review round 1, m-2). `readSession` excludes
- * the rows whose tab was showing a load failure at the capture, so the capture
- * side has to exclude them too: otherwise a disk record with F flagged rows
- * shifted the refusal boundary down by F while the capture side still counted
- * those rows, and the corner the reviewer measured went the wrong way - record =
- * 5 healthy + 1 flagged, quit-time capture = 4 healthy + 1 flagged was ACCEPTED
- * (5 !< 6), losing one restorable tab's recovery, where the guard's own
- * one-sided bias says refuse exactly there. The caller filters on the same mark
- * the reader does, so the two sides count the same thing.
+ * BOTH COUNTS ARE RESTORABLE ROWS (review round 1, m-2; widened 2026-09-29).
+ * `readSession` excludes the rows whose tab was showing a load failure at the
+ * capture AND the agent-owned rows that were not active, so the capture side
+ * excludes them too: otherwise a disk record with F skipped rows shifted the
+ * refusal boundary down by F while the capture side still counted those rows,
+ * and the corner the reviewer measured went the wrong way - record = 5 healthy
+ * + 1 skipped, quit-time capture = 4 healthy + 1 skipped was ACCEPTED (5 !< 6),
+ * losing one restorable tab's recovery, where the guard's own one-sided bias
+ * says refuse exactly there. The caller filters with the reader's own predicate
+ * (`restorableRow` - the one spelling), so the two sides count the same thing.
  */
 export function stopSnapshotDecision(
 	rows: number,
@@ -480,9 +541,24 @@ export function captureTabs(
 		const mark = failedTabIds.has(record.tabId)
 			? { lastLoadFailed: true as const }
 			: {};
+		// THE OWNER THE ROW RECORDS IS THE TAB'S, NOT ITS HANDLE'S — AND "THE
+		// TAB'S" IS WHAT IT WAS BEFORE THE HAND-OVER (2026-09-29; key corrected in
+		// round 1, m-2): a user tab sitting under hand-over at the quit is
+		// `owner: "agent"` in the registry (`registry.handOver`), and `readSession`
+		// skips agent rows that were not active — so writing the registry's owner
+		// verbatim would LOSE THE USER'S OWN TAB at the next restore. The key is
+		// `handedFrom`, the owner pinned at the first hand-over; `handedTo` alone
+		// cannot stand in for it, because `handOver` also accepts an AGENT tab
+		// (re-handed to a second session), and writing THAT one as the user's would
+		// launder agent cruft past the sweep (round 1, m-2 — reproduced from the
+		// review's own mutation). A hand-over is a live capability (nonce + session)
+		// that a restore deliberately never carries (design 7.3), so the row records
+		// the user's tab as the user's.
+		const owner: TabOwner =
+			record.handedFrom === "user" ? "user" : record.owner;
 		if (entries.some(restorable)) {
 			captured.push({
-				owner: record.owner,
+				owner,
 				active: record.tabId === activeTabId,
 				...mark,
 				entries,
@@ -493,7 +569,7 @@ export function captureTabs(
 		const restored = record.restoreRow;
 		if (restored) {
 			captured.push({
-				owner: record.owner,
+				owner,
 				active: record.tabId === activeTabId,
 				...mark,
 				entries: restored.entries,
@@ -597,11 +673,17 @@ export class BrowserSessionStore {
 	 * rather than a note, and the test beside it drives the length condition
 	 * explicitly instead of a representative sequence. */
 	commitStopCapture(rows: PersistedTab[]): { write: boolean; reason: string } {
-		// RESTORABLE ROWS ON BOTH SIDES (review round 1, m-2): `readSession` drops the
-		// flagged rows, so the capture side drops them too - the counts have to describe
-		// the same population or the guard's threshold moves with the dead-tab count.
+		// RESTORABLE ROWS ON BOTH SIDES (review round 1, m-2; widened 2026-09-29):
+		// `readSession` drops the flagged rows AND the non-active agent rows, so the
+		// capture side drops them too (`restorableRow`) - the counts have to describe
+		// the same population or the guard's threshold moves with whatever the reader
+		// skips. The agent clause matters for the same reason the failed one did: a
+		// durable record full of abandoned agent rows would make the capture side's
+		// count look bigger than the population it protects, the decision would refuse
+		// less often, and a short capture it should have refused could truncate a USER
+		// tab's recovery.
 		const decision = stopSnapshotDecision(
-			rows.filter((row) => row.lastLoadFailed !== true).length,
+			rows.filter(restorableRow).length,
 			readSession(this.path, this.log).length,
 		);
 		if (decision.write) {
