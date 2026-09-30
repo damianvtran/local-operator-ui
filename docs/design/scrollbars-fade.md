@@ -153,13 +153,24 @@ this document's decision and are the ones to implement.
 | State | `--lo-sb` | What the reader sees | What set it |
 | --- | --- | --- | --- |
 | **idle** (after the hold) | 0 | no thumb at all; the bar still occupies its 8 px, so nothing moves | timer expiry |
-| **pointer in the container** | 1 | thumb fades in over 120 ms and stays while the pointer is inside | `pointerover` resolving to a scroller |
-| **pointer in the 8 px strip / on the thumb** | 1 | the same; the thumb itself also takes native `:hover` so it is solid under the cursor | `pointerover` (memo probe 10: the strip's target is the scroller) |
+| **pointer in the container** | 1 for the hold | thumb fades in over 120 ms and leaves when the hold expires — a *stationary* pointer produces no further qualifying event, so § 2.3 governs, not the pointer's presence (design review round 1, D2; the earlier wording promised it "stays while the pointer is inside", which is not what ships) | `pointerover` resolving to a scroller |
+| **pointer in the 8 px strip / on the thumb** | 1 for the hold | the same, and while the pointer is **directly on the thumb** the pseudo-element's native `:hover` keeps it painted even after `--lo-sb` reaches 0 (measured on the palette's thumb: 3041 of 3216 pixels in the thumb's own band painted at rest+hold, `--lo-sb` 0 at that moment) | `pointerover` (memo probe 10: the strip's target is the scroller) |
 | **active scrolling** (wheel, trackpad momentum, thumb drag, touch, keyboard) | 1, timer re-armed | revealed, and *kept* revealed for the hold after the last event | `scroll` (capture, passive) |
-| **keyboard** | 1 for the hold | scrolling keys reveal exactly like the wheel; `Tab` onto the scroller itself gives one blip (§ 4) | `scroll`, or `:focus-visible` |
+| **keyboard arrival (no scroll)** | 1 for the hold | a `Tab` onto a scroller reveals it for the ordinary hold, cold — nothing needs to have been scrolled or hovered first (§ 3). A focus the browser does not call keyboard-driven (`:focus-visible`) reveals nothing | `focusin` in the module, gated on `:focus-visible` |
+| **keyboard scrolling** | 1, timer re-armed | exactly like the wheel, through the same hold | `scroll` |
 | **programmatic scroll** (anchor correction, `scrollTo`, a jump) | 1 | revealed — see § 2.4 | `scroll` |
 | **reduced motion** | 0 → 1 instantly | no fade either way: the reveal is a step | `styles/index.css:1064-1069` caps `transition-duration` at 0.01 ms |
 | **forced colors** | 1 always | the thumb does not fade at all (design call, § 5.3) | `forced-colors` media query |
+
+Two nuances are **accepted, not fixed**, and are recorded here because a reader
+will meet them: moving the pointer *within one element* (the scroller's own
+gutter → its bar) fires no new `pointerover`, so it does not re-reveal — a
+`pointermove` re-arm would put a per-event handler on the scroll path's surface
+and the perf lane's constraint is per-event cost (design round 1, U4); and a
+press-and-hold on the thumb keeps the *native* pressed thumb painted while
+`--lo-sb` falls, which is the same pseudo-element `:hover` measured above and the
+reason a drag never loses its handle (UX round 1's held-drag frames; Q5's reading
+was of the strip, not of the thumb).
 
 ### 2.3 What resets the timer, exactly
 
@@ -205,18 +216,33 @@ spec exists to prevent.
 ## 3. Focus and accessibility
 
 **Decision: keyboard scrolling reveals through the `scroll` path, and a
-`:focus-visible` blip covers the case where a reader has *arrived at* a scroller
-without moving it. `:focus-within` is rejected.**
+**`focusin` reveal in the module** covers the case where a reader has *arrived
+at* a scroller without moving it. `:focus-within` is rejected.**
 
 - Keyboard scrolling fires `scroll`, so PageUp/PageDown/arrows/Space reveal the
   bar through the same hold as the wheel (memo S2: PageDown revealed, faded at
   ≈2.0 s). Nothing extra is needed for the common path.
-- `:focus-visible` matched on a real `Tab` and did not match on a mouse click
-  (memo probe 5), which is the discriminator we want: a tab-focus blip is a
-  keyboard reader's cue that this region scrolls, and it does not fire for
-  pointers.
-- The blip is `--lo-sb: 1 → 0` over the hold, once, and then it is over: no
-  permanent state, which is requirement 1.
+- **The arrival cue is an event, not a rule.** It was reviewed as a
+  `:focus-visible` *animation* keyed on the attribute, and review round 1 found
+  that shape could not fire where it was needed — on a scroller nothing had
+  touched there is no attribute to match (M1/Q1/D1/U1, measured: `animationName:
+  none`, `--lo-sb: 0` for a cold Tab) — and that where it did fire it took
+  `animation-name` (and reset `animation-timeline`) from the transcript's own
+  scroll-linked top fade (U2, 7,645 / 26,279 / 3,286-pixel bands). It is now a
+  third door in `scrollbar-activity.ts` (`focusin`), driving the same attribute,
+  the same hold and the same transition as the wheel, and the stylesheet carries
+  **no `animation` at all** — an assertion in the suite, not a promise.
+- `:focus-visible` is still the discriminator, asked once per focus: `Tab` onto
+  a scroller reveals it; a click into one does not. A programmatic focus that the
+  browser does not classify as keyboard-driven reveals nothing either, which is
+  the same rule seen from the other side.
+- The reveal is held for the ordinary hold and then falls at 180 ms. There is no
+  second, longer fade behind it: with the animation gone, an idle focused
+  scroller has nothing left to replay (U3's ≈4050 ms).
+- **Measured on the app's own frame** (the scene's keyboard arm, run cold before
+  any pointer or wheel touches the palette): `active`, `--lo-sb: 1`, 3193 of 5888
+  strip pixels in the thumb's colour with nothing scrolled, `animation-name`
+  unchanged across the focus, and back to `idle` / 0 pixels at +2.7 s.
 - **`:focus-within` is rejected** because it is permanent while focus stays
   inside the container — the memo's probe 5 kept matching it at 3 s, i.e. that
   variant never returned to idle. A transcript, a sidebar
@@ -457,7 +483,8 @@ inventory). This document does not restate those numbers as its own.
 6. **The spreadsheet grid internals and the CodeMirror `.cm-scroller`** are
    unconfirmed (§ 6.3): the coder should record, per surface, which rule painted,
    and whether the shared mechanism reached it.
-7. **`transition-colors` vs `transition: --lo-sb`.** A scroller carrying its own
+7. **`transition-colors` vs `transition: --lo-sb`** — *resolved in review round 1:
+   the census is empty and is now an assertion.* A scroller carrying its own
    `transition-property` utility replaces the fade with a pop (memo probe 6's
    `tw` case). The memo's grep found no same-line `overflow-auto` + `transition`
    in the renderer, but that grep is not exhaustive — a census belongs in the
@@ -481,6 +508,42 @@ inventory). This document does not restate those numbers as its own.
     surface at implementation review rather than trusting this line.
 
 ---
+
+### 9.1 What review round 1 settled, and what it left standing
+
+- **The no-overflow scroller (Q7).** The module marks any element whose computed
+  `overflow` is `auto`/`scroll`, whether or not it currently overflows — the
+  alternative is `scrollHeight > clientHeight`, a layout read inside a handler
+  that fires for every element the pointer crosses, which is exactly what the
+  mechanism is built to avoid. A marked element with nothing to scroll paints
+  nothing (its bar has no length), so the cost is one inert attribute; the claim
+  that such an element "receives no attribute" was wrong and is corrected here
+  and in the evidence README.
+- **The `<pre>` that swallows a hover (U5, deferred).** Every code block in the
+  transcript is an `overflow-x: auto` element that usually does not overflow, and
+  it is the *innermost* computed-overflow element under the pointer, so hovering
+  code does not reveal the transcript's own bar (a wheel still does: the `scroll`
+  event lands on the log). Skipping it needs the same `scrollWidth`/`scrollHeight`
+  read Q7 above rejects, so it is deferred and recorded rather than half-fixed.
+- **The thumb under the pointer (D3, measured).** The design's "solid under the
+  cursor" holds past the hold: with the pointer parked on the thumb and the state
+  at `idle`/`--lo-sb: 0`, 3041 of 3216 pixels in the thumb's own band are still
+  the thumb's colour (the scene's thumb arm, three frames: rest 0, arrival 3041,
+  past-hold 3041). A reader reaching for the thumb does not lose it.
+- **The palette's own scrim (D5, pre-existing).** The palette's bottom
+  `from-elevated to-transparent` overlay paints over the last ~24 px of the
+  revealed thumb. It predates this change, the idle state hides nothing, and it
+  is left as it is — recorded so the next reader does not read it as a fade bug.
+- **Radius and the contrast contract (D6, deferred).** `docs/branding.md:673`
+  still says 2 px where the code paints 4 (the operator kept the look), and
+  `scripts/contrast-contract.mjs` still has no scrollbar row (§ 9.3). Both are
+  changes to documents and gates this PR does not own; they are `deferred —` in
+  the PR thread rather than silently half-done here.
+- **The undo manager's second lock.** The scope guard is structural (§ 9.4), and
+  in addition `undo-manager.ts` now ignores `data-lo-scrollbar` the way it
+  already ignored `data-highlight` — the guard prevents the write, this makes the
+  write harmless if a future shape defeats the guard. The editor root carries
+  `data-undo-scope`, which is what the guard walks up to find.
 
 ## Appendix: the surface list, in one line for the PR body
 
