@@ -696,6 +696,7 @@ const TEAMS: ReusableTeam[] = [
 	{
 		id: "t1",
 		name: "atlas",
+		label: "Atlas Payments",
 		description: "The payments platform team",
 		manager: "manager",
 		members: [{ role: "coder", count: 2, kind: "agent" }],

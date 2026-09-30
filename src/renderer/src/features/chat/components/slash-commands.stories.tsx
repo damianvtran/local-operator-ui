@@ -293,12 +293,17 @@ const MODELS = [
 	}),
 ];
 
-/** Team rows, REAL-SHAPED: `Team.model_dump(mode="json")` plus `value`. */
+/**
+ * Team rows, REAL-SHAPED: `Team.model_dump(mode="json")` plus `value`. One
+ * carries the optional `label` (the display name) and the rest do not, so the
+ * frames pin the label-first row beside the slug fallback.
+ */
 const TEAMS = [
 	{
 		id: "t1",
 		name: "delivery",
 		value: "delivery",
+		label: "Platform Delivery",
 		description: "Ships the release",
 	},
 	{

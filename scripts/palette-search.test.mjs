@@ -616,6 +616,45 @@ test("a chat row opens its session and says which agent owns it", () => {
 	assert.equal(row.hint, "Architect");
 });
 
+test("a labelled team's hint reads as its label; the slug is the fallback", () => {
+	/*
+	 * The binding hint is human text, so a TEAM resolved through the map the
+	 * palette hook builds from the team catalogue reads as its label; a slug
+	 * the map does not hold, or a caller with no map at all (the capability is
+	 * off, the list is still landing), keeps the pre-labels string. An AGENT
+	 * binding never consults the map.
+	 */
+	const labels = new Map([["lopdev", "Local Operator Dev"]]);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s1", binding: { agent: null, team: "lopdev" } },
+			labels,
+		).hint,
+		"Local Operator Dev",
+	);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s2", binding: { agent: null, team: "minerva" } },
+			labels,
+		).hint,
+		"minerva",
+	);
+	assert.equal(
+		buildChatItem({
+			session_id: "s3",
+			binding: { agent: null, team: "lopdev" },
+		}).hint,
+		"lopdev",
+	);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s4", binding: { agent: "coder", team: null } },
+			labels,
+		).hint,
+		"coder",
+	);
+});
+
 test("an untitled conversation still has a name", () => {
 	assert.equal(
 		buildChatItem({ session_id: "abc", title: "  " }).name,

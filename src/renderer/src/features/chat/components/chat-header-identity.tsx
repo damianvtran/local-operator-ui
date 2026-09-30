@@ -63,6 +63,7 @@
  */
 
 import { useTeams } from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { Spinner } from "@shared/components/common/spinner";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
@@ -99,16 +100,19 @@ export type HeaderIdentityData = {
  * One `commands.entities` row, in the fields both menus render.
  *
  * The same shape `destination-pickers.tsx`'s `ProfileRow` reads (`value`,
- * `name`, `kind`, `description`); re-declared here as the subset this surface
- * uses rather than importing the picker's wider type, because a menu row and a
- * picker row genuinely read different fields and widening this one would
- * invite the copy of a rule the picker already owns.
+ * `name`, `kind`, `description`, and the team-only `label`); re-declared here
+ * as the subset this surface uses rather than importing the picker's wider
+ * type, because a menu row and a picker row genuinely read different fields
+ * and widening this one would invite the copy of a rule the picker already
+ * owns.
  */
 type HeaderEntityRow = {
 	value: string;
 	name?: string;
 	kind?: string;
 	description?: string;
+	/** A team's free-text display name, when the row carries one. */
+	label?: string;
 };
 
 /**
@@ -278,7 +282,15 @@ const IdentityControl: FC<IdentityControlProps> = ({
 		() =>
 			items.map((row) => ({
 				value: row.value,
-				label: row.name ?? row.value,
+				/*
+				 * The row's READABLE name: a labelled team shows its label; every
+				 * other row (agents, and teams without one) shows what it always
+				 * did. `value` beside it stays the slug the switch sends.
+				 */
+				label: teamDisplayName({
+					name: row.name ?? row.value,
+					label: row.label,
+				}),
 				description: row.description,
 				meta: row.kind,
 				current: row.value === menuValue(current),
@@ -326,9 +338,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					onPointerDown={markSwap}
 					/*
 					 * The accessible name states the role and the action and still
-					 * CONTAINS the visible label (`lopdev`, `No team`), so voice
-					 * control keeps working and the ellipsised glyph never stands
-					 * alone. The visible strings stay sentence-case and quiet.
+					 * CONTAINS the visible label (the team's name or label, `No team`),
+					 * so voice control keeps working and the ellipsised glyph never
+					 * stands alone. The visible strings stay sentence-case and quiet.
 					 */
 					aria-label={`${triggerLabel}: ${label}. ${
 						assigned

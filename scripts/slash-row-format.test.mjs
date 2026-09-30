@@ -332,6 +332,41 @@ test("profile rows take their detail from the profile kind", () => {
 	assert.equal(rows[1].current, true);
 });
 
+test("a labelled team reads by its label, keeps its slug findable, and writes the slug", () => {
+	/*
+	 * The label split's row rule, from the branch that serves /team's list: the
+	 * DISPLAY is the label, `value` - what a pick writes and a run sends - is
+	 * the slug, and the slug is republished as an ALIAS so the team's actual
+	 * key keeps FINDING the row while the row shows its label (`matchChoices`
+	 * scores name and aliases, and the alias arm is pinned in
+	 * `slash-rank.test.mjs`).
+	 */
+	const rows = argumentRows(
+		"team",
+		[
+			{
+				name: "lopdev",
+				value: "lopdev",
+				label: "Local Operator Dev",
+				description: "Builds and ships local-operator itself.",
+			},
+		],
+		null,
+	);
+	assert.equal(rows[0].name, "Local Operator Dev");
+	assert.equal(rows[0].value, "lopdev");
+	assert.deepEqual(rows[0].aliases, ["lopdev"]);
+	// A row without a label (every agent, and any team from a backend that
+	// predates the field) keeps today's shape exactly: no alias, name as was.
+	const agents = argumentRows(
+		"agent",
+		[{ name: "coder", value: "coder" }],
+		null,
+	);
+	assert.equal(agents[0].name, "coder");
+	assert.equal(agents[0].aliases, undefined);
+});
+
 test("theme rows come from the renderer's own table shape", () => {
 	const rows = argumentRows(
 		"theme",
