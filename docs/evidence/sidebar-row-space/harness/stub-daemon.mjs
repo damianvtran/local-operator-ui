@@ -521,9 +521,16 @@ const route = (method, pathname, query, body) => {
 	 * stand-in for a daemon that HAS the pin store, and a capability without its
 	 * route would make a press answer 503 while the panel drew the control.
 	 */
+	/*
+	 * EVERY MUTATION BELOW ACTS ON `served`, NOT ON `conversations`, and the
+	 * distinction cost a whole scene run to find: `--catalogue` swaps in the large
+	 * fixture, so a route reading the six-row array answered about a row the client
+	 * had never asked about - the app took the answer as truth, reverted the row, and
+	 * a press that plainly worked looked like a control that did nothing.
+	 */
 	const pinMatch = pathname.match(/^\/v1\/desktop\/sessions\/([^/]+)\/pin$/);
 	if (method === "POST" && pinMatch) {
-		const row = conversations.find((entry) => entry.id === pinMatch[1]);
+		const row = served.find((entry) => entry.id === pinMatch[1]);
 		if (!row) {
 			return { status: 404, body: { detail: "No such conversation." } };
 		}
@@ -534,7 +541,7 @@ const route = (method, pathname, query, body) => {
 		/^\/v1\/desktop\/sessions\/([^/]+)\/archive$/,
 	);
 	if (method === "POST" && archiveMatch) {
-		const row = conversations.find((entry) => entry.id === archiveMatch[1]);
+		const row = served.find((entry) => entry.id === archiveMatch[1]);
 		if (!row) {
 			return { status: 404, body: { detail: "No such conversation." } };
 		}
@@ -559,7 +566,7 @@ const route = (method, pathname, query, body) => {
 	}
 	const deleteMatch = pathname.match(/^\/v1\/desktop\/sessions\/([^/]+)$/);
 	if (method === "DELETE" && deleteMatch) {
-		const at = conversations.findIndex((entry) => entry.id === deleteMatch[1]);
+		const at = served.findIndex((entry) => entry.id === deleteMatch[1]);
 		if (at === -1) {
 			return { status: 404, body: { detail: "No such conversation." } };
 		}
@@ -584,7 +591,7 @@ const route = (method, pathname, query, body) => {
 		return ok({ session_id: deleteMatch[1], deleted: true });
 	}
 	if (method === "GET" && deleteMatch) {
-		const row = conversations.find((entry) => entry.id === deleteMatch[1]);
+		const row = served.find((entry) => entry.id === deleteMatch[1]);
 		return row
 			? ok(row)
 			: { status: 404, body: { detail: "No such conversation." } };
@@ -662,6 +669,28 @@ const pagedCatalogue = () => {
 };
 /** The rows this process serves: the six-conversation fixture, or the large one. */
 const served = CATALOGUE > 0 ? pagedCatalogue() : conversations;
+
+/*
+ * `--pins <id[,id...]>` (evidence set `pinned-reorder`): the ids PINNED AT BOOT, as an
+ * explicit list rather than the fixture's own one-pin default.
+ *
+ * WHY IT REPLACES THE FIXTURE'S OWN FLAGS rather than adding to them: every claim a
+ * reorder makes is a claim about the SEGMENT's membership and its order, so a run that
+ * asked for three pins and was handed four would photograph a section nobody asked for
+ * - and the fourth row's own slot would be a variable in the numbers the frames are
+ * read for. `pinned` is therefore set on exactly the named ids and cleared on the rest.
+ *
+ * INERT WITHOUT THE FLAG, which is this file's rule for every lever it has grown
+ * (`--catalogue` and its arm did the same): without it, `served` is exactly the fixture
+ * the `sidebar-row-space` and `sidebar-lazy-chats` sets were photographed over.
+ */
+const PIN_IDS = (arg("pins", "") || "")
+	.split(",")
+	.map((id) => id.trim())
+	.filter(Boolean);
+if (PIN_IDS.length > 0) {
+	for (const row of served) row.pinned = PIN_IDS.includes(row.id);
+}
 
 /**
  * The per-scope census the paged route reports under `with_counts`.
