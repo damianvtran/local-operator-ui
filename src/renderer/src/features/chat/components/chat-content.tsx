@@ -83,6 +83,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import type { Message } from "../types/message";
+import { ArchiveConversationDialog } from "./archive-conversation-dialog";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
@@ -737,21 +738,37 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
+		const requestArchiveConfirm = useCanonicalSessionsStore(
+			(state) => state.requestArchiveConfirm,
+		);
 		/*
-		 * The header's archive press, in the same register as the other two routes
+		 * The header's archive press, in the same register as the other routes
 		 * (UX round 1, U2): the pane's menu item, the row's control and a typed
 		 * `/archive` are ONE act. The pane stays open either way - archiving hides, it
 		 * does not close - and the Undo all three offer is raised by the STORE, in the
 		 * update that settles the write (design round 8, D27): raising it here instead
 		 * put the accepted departure and the band that answers it in two commits, and the
 		 * commit between them is where the list's extent dips below the reader's position.
+		 *
+		 * AND THE ACT GAINED A QUESTION (2026-09-30, D1): the header's item STAGES the
+		 * candidate now instead of writing, exactly as `/delete` stages one, so all five
+		 * doors end in the pane's one `ArchiveConversationDialog`. The two halves of this
+		 * callback are therefore different acts rather than one write with a flag: the
+		 * RESTORE still writes straight through - unarchive never confirms, on this
+		 * surface or any other - while the ARCHIVE only asks. `fromRow: false` is what
+		 * says the reader was not standing in the list, so the caret goes back to the
+		 * menu that shut rather than to a successor row.
 		 */
 		const archiveFromHeader = useCallback(
-			async (next: boolean) => {
+			(next: boolean) => {
 				if (!sessionId) return;
-				await setSessionArchived(sessionId, next, agentName);
+				if (!next) {
+					void setSessionArchived(sessionId, false, agentName);
+					return;
+				}
+				requestArchiveConfirm({ sessionId, fromRow: false });
 			},
-			[sessionId, agentName, setSessionArchived],
+			[sessionId, agentName, setSessionArchived, requestArchiveConfirm],
 		);
 		const requestSessionDelete = useCanonicalSessionsStore(
 			(state) => state.requestSessionDelete,
@@ -1367,8 +1384,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * The conversation's own actions, offered only where they can act: a draft
 						 * (`sessionId` undefined) has no conversation to archive and no route to
 						 * delete with, so the menu and the pill are absent rather than disabled.
-						 * `onSetArchived` is the same desired-state write the row's control makes,
-						 * so the header and the row cannot drift about what a press means.
+						 * `onSetArchived` is the row's own act reached from the header's door - one
+						 * store path for both (see `archiveFromHeader`), so the header and the row
+						 * cannot drift about what a press means - and since 2026-09-30 that path
+						 * ASKS first for the archive half and writes straight through for the
+						 * restore.
 						 */}
 						<ChatHeader
 							agentName={agentName}
@@ -1401,7 +1421,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							archiveEnabled={archiveEnabled}
 							archived={archived}
 							onSetArchived={
-								sessionId ? (next) => void archiveFromHeader(next) : undefined
+								sessionId ? (next) => archiveFromHeader(next) : undefined
 							}
 							deleteEnabled={deleteEnabled}
 							onRequestDelete={
@@ -1486,6 +1506,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								hasSubagentRuns={(runDetails?.lineage.length ?? 0) > 0}
 							/>
 						)}
+						{/*
+						 * The one ARCHIVE confirmation, beside the delete one and for the same
+						 * reason: this component owns the conversation the question names
+						 * (`title`, the fallback when the store holds no row for the candidate).
+						 * It renders nothing while no candidate is staged, and all five doors
+						 * reach it by staging one.
+						 *
+						 * GATED ON THE CAPABILITY rather than rendered unconditionally, like the
+						 * delete dialog above it: a panel built without the archive store has no
+						 * door that can stage a candidate, so the component would be dead code
+						 * on that backend (and `chat-sidebar-archive.test.mjs` holds the
+						 * fail-closed reading of the same gate, one subtree over).
+						 */}
+						{archiveEnabled && <ArchiveConversationDialog title={agentName} />}
 						{/* Chat Options Sidebar */}
 						{!canonical && (
 							<ChatOptionsSidebar
