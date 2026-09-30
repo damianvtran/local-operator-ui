@@ -10769,6 +10769,32 @@ async function sceneTranscriptRail(cdp) {
 			const rowsBefore = await evaluate(
 				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
 			);
+			/*
+			 * A per-frame settle sampler (QA round 5's 1/5 clamp-end miss): every
+			 * animation frame from before the press until the settle resolves
+			 * records [ms, scrollTop, targetOffset], so a landing that exits
+			 * short can be read frame by frame instead of argued about.
+			 */
+			await evaluate(`(() => {
+				window.__anchorSamples = [];
+				window.__anchorSamplerOn = true;
+				const t0 = performance.now();
+				const tick = () => {
+					if (!window.__anchorSamplerOn) return;
+					const reg = document.querySelector('[role="log"]');
+					const row = document.querySelector('[data-record-id="${id}"]:not([data-turn-summary])');
+					if (reg && row) {
+						window.__anchorSamples.push([
+							Math.round(performance.now() - t0),
+							Math.round(reg.scrollTop * 10) / 10,
+							Math.round((row.getBoundingClientRect().top - reg.getBoundingClientRect().top) * 10) / 10,
+						]);
+					}
+					window.requestAnimationFrame(tick);
+				};
+				window.requestAnimationFrame(tick);
+				return true;
+			})()`);
 			const jump = await jumpVia(id);
 			const atWash = await anchorView(id);
 			await capture(cdp, `rail-jump-${name}`);
@@ -10807,6 +10833,12 @@ async function sceneTranscriptRail(cdp) {
 			await wait(700);
 			const settled = await anchorView(id);
 			const view = settled ?? atWash;
+			const samples = await evaluate(`(() => {
+				window.__anchorSamplerOn = false;
+				const all = window.__anchorSamples || [];
+				const head = all.slice(0, 300);
+				return { n: all.length, head, last: all.length > 300 ? all.slice(-8) : [] };
+			})()`);
 			/*
 			 * The luma reads come from a POST-SETTLE capture (UX round 1's U1):
 			 * the wash-instant still above is the design frame, but a tall
@@ -10853,6 +10885,12 @@ async function sceneTranscriptRail(cdp) {
 					: adjPeak !== null && adjPeak >= 200
 						? adjPeak
 						: null;
+			if (name === "very-top") {
+				note(
+					`settle frames ${name}`,
+					`n=${samples?.n ?? 0} head=${JSON.stringify(samples?.head ?? [])} tail=${JSON.stringify(samples?.last ?? [])}`,
+				);
+			}
 			note(
 				`landing ${name}`,
 				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetPeak ?? "none"}/${referencePeak ?? "none"} mid=${refPeak ?? "none"} adj=${adjPeak ?? "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
