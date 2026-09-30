@@ -27,11 +27,16 @@
  * Assigning `scrollTop` rather than adding to it keeps this idempotent: the
  * measurement already includes the region's current scroll position, and each
  * end of the result is held by a DIFFERENT guard rather than by one clamp.
- * `Math.max(0, …)` below holds the LOW end, so a target above the region's
- * content top assigns 0 rather than a negative `scrollTop` — a value no box can
- * hold. The HIGH end is left to the browser, which clamps at
- * `scrollHeight - clientHeight`; this helper cannot know that value, because the
- * region may still grow after the assignment.
+ * The LOW end is the AXIS'S, the same rule `scrollRegionToCenter` names below:
+ * in a normal scroller the origin is the top edge, so a target above the
+ * region's content top assigns 0 rather than a negative `scrollTop` - a value
+ * no box can hold. In a `flex-col-reverse` scroller the origin is the BOTTOM -
+ * the newest row sits at 0 and the oldest at a negative bound (the measured
+ * contract in `use-scroll-paging.ts`) - so a top-anchored offset there
+ * legitimately runs negative, while a positive one clamps at 0 because
+ * nothing exists past the newest row to render. The HIGH end is left to the
+ * browser, which clamps at `scrollHeight - clientHeight`; this helper cannot
+ * know that value, because the region may still grow after the assignment.
  *
  * PRECONDITION: the region must be the target's containing scroll box, or an
  * ancestor of it. The arithmetic resolves the target's position against THIS
@@ -58,13 +63,30 @@
 export const scrollRegionToTop = (
 	region: HTMLElement,
 	target: HTMLElement,
+	axis: "normal" | "reversed" = "normal",
+	insetPx = 0,
 ): void => {
 	const offset =
 		region.scrollTop +
 		target.getBoundingClientRect().top -
 		region.getBoundingClientRect().top -
 		region.clientTop;
-	region.scrollTop = Math.max(0, offset);
+	/*
+	 * The parameter is explicit rather than sniffed from computed styles, for
+	 * the reason `scrollRegionToCenter` gives: there is exactly one reversed
+	 * scroller in the renderer (the canonical transcript), its shape is a fact
+	 * of the DOM contract its own hook documents, and the jump's anchored
+	 * landing (issue #680) is the caller that names it.
+	 *
+	 * `insetPx` lands the target's top BELOW the region's top by that much: the
+	 * jump's caller passes the transcript's top-fade depth, because a row
+	 * anchored at 0px sits inside the mask's ramp and reads dimmed (design
+	 * round 1's D1, measured 189 against 238 unmasked ink). Default 0 keeps the
+	 * helper's original place-the-top-at-the-top meaning for its other callers.
+	 */
+	const anchored = offset - insetPx;
+	region.scrollTop =
+		axis === "reversed" ? Math.min(0, anchored) : Math.max(0, anchored);
 };
 
 /**
