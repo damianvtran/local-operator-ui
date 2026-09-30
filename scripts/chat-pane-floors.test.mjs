@@ -54,6 +54,10 @@ import { build } from "esbuild";
 const ROOT = process.cwd();
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
 const LAYOUT = "src/renderer/src/features/chat/chat-sidebar-layout.ts";
+// The run pane's floor DECLARATION, which lives in the store since the
+// #677 review (D2): the slot's resolver holds the shared width to it and
+// cannot import the component that consumes it.
+const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
 
 const read = (file) => readFileSync(file, "utf8");
 
@@ -177,6 +181,7 @@ test("§B1's floor is APPLIED, and the test no longer allows otherwise", () => {
 
 test("the right pane's capacity is the row minus the column's floor, measured", () => {
 	const source = read(CONTENT);
+	const prefs = read(PREFS);
 	/*
 	 * The measurement itself, pinned as a SHAPE: the floor is read back from the
 	 * element's computed style (with the constant as the unparseable fallback), and
@@ -199,7 +204,12 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	 * overlay ... it obeys the same 480 floor and closes itself rather than squeezing
 	 * the chat below it") is a decision about `capacity < this`.
 	 */
-	const panelFloor = /const RUN_PANEL_MIN_PX = (\d+);/.exec(source);
+	/*
+	 * The floor's DECLARATION is read from the store since the #677 review
+	 * (D2) - the resolver compares against it - and `chat-content.tsx` keeps
+	 * the use the rule below argues from (`runPanelResizable`).
+	 */
+	const panelFloor = /export const RUN_PANEL_MIN_PX = (\d+);/.exec(prefs);
 	assert.ok(
 		panelFloor,
 		"`RUN_PANEL_MIN_PX` is gone: §I's third rule is a comparison against it",
