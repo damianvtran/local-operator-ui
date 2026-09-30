@@ -21,8 +21,9 @@
  * and on exit, so the run cannot leave the tree half-reverted. Only that one
  * file differs between the two trees in what this frame renders.
  *
- * Raw CDP against ONE private headless Chrome, a scratch profile and
- * `--use-mock-keychain`, the process group killed by exact pid on exit.
+ * Raw CDP against ONE private headless Chrome over a scratch profile, its argv
+ * routed through the shared keychain helper (one launch per run, not one per
+ * state), the process group killed by exact pid on exit.
  */
 
 import { spawn, spawnSync } from "node:child_process";
