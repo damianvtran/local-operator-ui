@@ -1159,12 +1159,22 @@ test("the strip is capped at one row, and says how many it is not showing", asyn
 		);
 		assert.equal(
 			more.getAttribute("aria-label"),
-			"4 more images",
+			"+4 more images",
 			"and the accessible name is the full sentence - the count's honest carrier, noun included",
+		);
+		assert.ok(
+			(more.getAttribute("aria-label") ?? "").includes(
+				more.textContent ?? "\u0000",
+			),
+			"WCAG 2.5.3 (label in name): the visible label is a SUBSTRING of the accessible name, so a speech user reading `+4` off the screen can match the control",
+		);
+		assert.ok(
+			(more.getAttribute("title") ?? "").includes(more.textContent ?? "\u0000"),
+			"and the pointer reader's sentence contains it too",
 		);
 		assert.equal(
 			more.getAttribute("title"),
-			"4 more images",
+			"+4 more images",
 			"the pointer reader gets the same sentence rather than a bare +4",
 		);
 		await api.click(more);
@@ -1268,8 +1278,8 @@ test("a tile whose bytes never came shows the receipt, bounded to the tile", asy
 		);
 		/*
 		 * U5: the same sentence reaches the pointer reader as the tile's tooltip -
-		 * at 66px there is no room for it as prose, and the glyph alone reads as
-		 * "still loading".
+		 * at 78px there is no room for it as prose (it was a 66px tile before the
+		 * polish pass grew it), and the glyph alone reads as "still loading".
 		 */
 		assert.match(
 			receipt.getAttribute("title") ?? "",
@@ -1540,8 +1550,12 @@ test("the compact label is a function of the count alone; the name is the senten
 		assert.equal(more.textContent, "+1");
 		assert.equal(
 			more.getAttribute("aria-label"),
-			"1 more image",
-			"the noun agrees with the count in the name",
+			"+1 more image",
+			"the noun agrees with the count in the name, and the name contains the visible `+1` (WCAG 2.5.3)",
+		);
+		assert.ok(
+			(more.getAttribute("aria-label") ?? "").includes("+1"),
+			"containment pinned at the singular too",
 		);
 	});
 });

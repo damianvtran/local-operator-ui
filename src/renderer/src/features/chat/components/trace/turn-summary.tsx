@@ -139,8 +139,9 @@ export type TurnSummaryProps = {
 	 * same rule one fold down. The caller composes the node
 	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the hidden rows'
 	 * images), because the transcript is what knows a record's images; the fold
-	 * hands it THIS bar's own toggle so the strip's `+N more images` slot can
-	 * open the fold rather than be a dead end (UX round 1, U1).
+	 * hands it THIS bar's own toggle so the strip's `+N` slot (named and titled
+	 * `N more images`) can open the fold rather than be a dead end (UX round 1,
+	 * U1).
 	 *
 	 * Render it ONLY while collapsed: open, every row draws its own media
 	 * (`TranscriptRow`'s `media`) and a strip here as well would put one

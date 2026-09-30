@@ -1221,7 +1221,7 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 test("the strip caps at four tiles and counts the rest", async (t) => {
 	/*
 	 * The pathological span: eight pictures cost one capped row - four tiles
-	 * and a `+4` (named `4 more images`) - which is the height bound `FOLD_MEDIA_LIMIT`
+	 * and a `+4` (named `+4 more images`) - which is the height bound `FOLD_MEDIA_LIMIT`
 	 * exists for, and the count is what keeps the row from pretending
 	 * otherwise. The count slot is also the ONLY route to the pictures past
 	 * the cap, so it is a control (U1), and that is asserted here against the
@@ -1251,7 +1251,7 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	);
 	assert.equal(
 		count?.getAttribute("aria-label"),
-		"4 more images",
+		"+4 more images",
 		"and its accessible name carries the count and the noun in full",
 	);
 	/*
@@ -1275,6 +1275,53 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 		strip.getAttribute("aria-label"),
 		"8 images from this run",
 		"the set's size is still stated in full",
+	);
+});
+
+test("pressing the bar's count hands focus to the bar's trigger, not to <body> (U2)", async (t) => {
+	/*
+	 * UX round 1, U2's SECOND CALLER (agent review round 1, R1-3): the press
+	 * unmounts the strip and the control with it, so a keyboard reader's focus
+	 * would land on `<body>` and the next Tab would restart at the document's
+	 * first stop. `TurnSummary.revealFromStrip` hands it to the bar's own trigger,
+	 * which stays mounted and closes the block again - and this drives that
+	 * through the REAL transcript, not through a host that plays the caller.
+	 *
+	 * The pre-fix WIRING is exercised in `chat-image-expand.test.mjs`'s own
+	 * CONTROL ARM (the same mechanism, mounted with the old `() => open(true)`
+	 * shape): this file's bundle entry pulls a module that MEASURES a console
+	 * width at import time, and jsdom has no canvas - so a hand-mounted bar here
+	 * fails to load rather than failing to hand over focus, which is a worse
+	 * instrument than the one that already exists there.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 8 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "the strip renders on the collapsed bar");
+	const count = strip.querySelector("li:last-child button");
+	await act(async () => {
+		count.focus();
+	});
+	assert.equal(document.activeElement, count, "the reader is on the count");
+	await click(count);
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"the press opened the block and the strip - with the control - unmounted",
+	);
+	const trigger = barTrigger(mounted);
+	assert.equal(trigger.getAttribute("aria-expanded"), "true");
+	assert.equal(
+		document.activeElement,
+		trigger,
+		"focus continues from where the reader pressed: the bar's trigger, not <body>",
 	);
 });
 
