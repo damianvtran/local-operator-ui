@@ -120,6 +120,23 @@ const inSentence = (label: string): string =>
 	label.charAt(0).toLowerCase() + label.slice(1);
 
 /**
+ * The card's lead line, visibly and to assistive tech: the structural identity
+ * with a ready name appended after a dot - "Turn N of M · <name>", or plain
+ * "Turn N of M" while naming is pending. ONE builder for the two, so the
+ * label cannot lead with the bare name while the visible line leads with the
+ * turn (review round 2's NIT).
+ */
+export function checkpointLeadLabel(
+	checkpoint: Checkpoint,
+	turnCount: number,
+): string {
+	const label = checkpointTurnLabel(checkpoint.turn, turnCount);
+	const name =
+		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
+	return name ? `${label} · ${name}` : label;
+}
+
+/**
  * The completion checkpoint's fallback title: its name, or `Turn N`.
  *
  * `Turn N` is the FALLBACK rather than a placeholder to be replaced later

@@ -153,6 +153,34 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 	);
 });
 
+test("the card's lead label is the turn with a dot-name (review round 2)", () => {
+	/* The visible line and the tooltip's label share one builder, so the label
+	 * cannot lead with the bare name while the visible line leads with the
+	 * turn. */
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "pending", name: null, summary: null },
+			}),
+			7,
+		),
+		"Turn 3 of 7",
+	);
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "ready", name: "Fix the build", summary: "s" },
+			}),
+			7,
+		),
+		"Turn 3 of 7 · Fix the build",
+	);
+});
+
 test("the card's title and summary fall back honestly while naming is pending", () => {
 	assert.equal(
 		model.checkpointTitle(
