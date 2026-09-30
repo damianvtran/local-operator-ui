@@ -200,7 +200,16 @@ export function MiniSheet({
 					{MINI_COPY.sheetUnavailable}
 				</p>
 			) : (
-				<div className="min-h-0 flex-1 overflow-y-auto py-0.5">
+				/*
+				 * THE LIST IS CAPPED, THE WINDOW IS NOT (design R2's sheet question). The
+				 * frame grows to fit its content up to `MINI_VIEW_MAX_HEIGHT` and main clamps
+				 * there, so a catalogue longer than the cap must scroll INSIDE the sheet
+				 * instead of asking for a window the clamp will refuse - otherwise the rows
+				 * past the ceiling are painted outside the frame, the defect this pass
+				 * exists to remove. A whole number of reading rows (`max-h-64` = 256px) keeps
+				 * the sheet comfortably inside the ceiling on the smallest supported display.
+				 */
+				<div className="max-h-64 min-h-0 flex-1 overflow-y-auto py-0.5">
 					{rows.map((row, index) => (
 						<button
 							key={row.value}
