@@ -1836,6 +1836,17 @@ const rendererBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
+	 * renderer's own `@shared` alias is what resolves it - the same aliasing
+	 * every sibling harness carries, and the reason a bare resolveDir is not
+	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
+	 * specifiers are relative and must keep resolving the way they do.
+	 */
+	alias: {
+		"@shared/hooks/use-optional-query-client":
+			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
+	},
 });
 const {
 	listSessionVariables,
