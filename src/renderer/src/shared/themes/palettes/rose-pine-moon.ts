@@ -101,6 +101,12 @@ export const rosePineMoon: ThemeDefinition = {
 		inkDisabled: "#6e6a86",
 
 		hairline: "#414057",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.86:1 there against `hairline`'s 1.72:1.
+
+		hairlineStrong: "#46455C",
 		borderControl: "#8f8ba9",
 
 		accent: "#eaaca9",
