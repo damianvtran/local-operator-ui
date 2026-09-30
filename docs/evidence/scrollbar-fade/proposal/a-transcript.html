@@ -1,0 +1,144 @@
+<!doctype html><meta charset=utf-8><title>scrollbars fade — transcript</title>
+<link rel=stylesheet href=proposal.css>
+<h1>A · Transcript (chat) — vertical thumb</h1>
+<p class=sub>States at 1440-class pane width. Each tile is the same content at 210px so the bar is genuinely overflowing. Thumb colour = --color-control, alpha = the fade value only.</p>
+<h2>the four reveal states</h2><div class=row><div class=tile><div class=cap><b>idle</b> · 2.2 s after the last qualifying event</div><div class=frame><div data-theme=dark data-still=0 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap><b>pointer over the container</b> · reveal 120 ms</div><div class=frame><div data-theme=dark data-still=1 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap><b>active scroll</b> · wheel / drag / keyboard all re-arm the hold</div><div class=frame><div data-theme=dark data-still=1 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap><b>keyboard focus</b> · <span class=kbd>Tab</span> lands on the scroller → 180 ms blip, then idle</div><div class=frame><div data-theme=dark data-still=1 style="height:210px;overflow-y:auto;outline:2px solid var(--c-accent);outline-offset:-2px" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div></div><h2>the envelope, and what a re-engage does</h2><div class=row><div class=tile><div class=cap>fade-out envelope <b>t+0 ms</b></div><div class=frame><div data-theme=dark data-still=1 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap>fade-out envelope <b>t+90 ms</b></div><div class=frame><div data-theme=dark data-still=.7 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap>fade-out envelope <b>t+150 ms</b></div><div class=frame><div data-theme=dark data-still=.45 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap>fade-out envelope <b>t+180 ms</b></div><div class=frame><div data-theme=dark data-still=0 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap><b>re-engage at t+90 ms</b> → target 1 again; the transition resumes from 0.7, it does not restart from 0</div><div class=frame><div data-theme=dark data-still=.7 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div></div><h2>palette axis, and the transcript mask</h2><div class=row><div class=tile><div class=cap>light palette · idle</div><div class=frame><div data-theme=light data-still=0 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap>light palette · revealed</div><div class=frame><div data-theme=light data-still=1 style="height:210px;overflow-y:auto" class="scroll "><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div><div class=tile><div class=cap><b>transcript top mask + thumb</b> · the mask paints over the bar's top 24 px (documented, unchanged)</div><div class=frame><div data-theme=dark data-still=1 style="height:210px;overflow-y:auto" class="scroll dissolve"><div class=content>
+<div class=msg>Can you check whether the scrollbars fade in this build?</div>
+<div class=tool>Ran <b>pnpm check-themes</b> · 2.4s</div>
+<div class=prose>The thumb is painted at rest today: <span class=pill>--color-control</span> on every theme, 8px wide, no idle state.</div>
+<div class=tool>Ran <b>pnpm check-evidence</b> · 41s</div>
+<div class=prose>That is what this change removes — the bar stays 8px, the paint fades.</div>
+<div class=tool>Read <b>styles/index.css</b> · 0.3s</div>
+<div class=prose>The top 24px of the container is dissolved by the transcript mask, which also softens the scrollbar's own track there.</div>
+<div class=tool>Ran <b>pnpm test:desktop</b> · 96s</div>
+<div class=prose>Nothing below this line is reachable without scrolling.</div>
+</div></div></div></div></div>
+<h2>the fade envelope, as paint</h2>
+<p class=sub>Four swatches of the thumb's own paint expression, on the transcript ground. Left: literal percentages. Right: the same values through <code>calc(var(--lo-sb)*100%)</code> — this is the diagnostic that says whether the registered-property form paints at all in the engine that rendered this page.</p>
+<div class=row style="align-items:flex-start">
+ <div class=tile><div class=cap>literal <code>color-mix(in srgb, #837c6d X%, transparent)</code></div>
+  <div class=frame><div data-theme=dark style="padding:10px;display:flex;gap:10px;align-items:center">
+   <div style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,#837c6d 100%,transparent)"></div>
+   <div style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,#837c6d 70%,transparent)"></div>
+   <div style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,#837c6d 45%,transparent)"></div>
+   <div style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,#837c6d 0%,transparent)"></div>
+   <span class=pill>100 · 70 · 45 · 0 %</span></div></div></div>
+ <div class=tile><div class=cap>registered property <code>calc(var(--lo-sb)*100%)</code> on a colour-mixed swatch</div>
+  <div class=frame><div data-theme=dark data-still=1 style="padding:10px;display:flex;gap:10px;align-items:center">
+   <div style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent)"></div>
+   <div data-still=.7 style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent)"></div>
+   <div data-still=.45 style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent)"></div>
+   <div data-still=0 style="width:8px;height:56px;border-radius:4px;background-color:color-mix(in srgb,var(--c-control) calc(var(--lo-sb)*100%),transparent)"></div>
+   <span class=pill>--lo-sb 1 · .7 · .45 · 0</span></div></div></div>
+</div>
+<div class=fade>PROPOSAL RENDER — standalone HTML/CSS made for the design note; not a capture of the app. Opened locally, screenshotted, reaped.</div>
