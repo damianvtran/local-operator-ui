@@ -201,9 +201,16 @@ type CloseFocusPending = {
  * The loading gate is per TAB and that is the §8.3 fix: it used to be
  * `loading && tab.active`, where `loading` was the active tab's state, so a
  * background tab that was loading showed no spinner — including an agent's, which
- * is the only signal a parked tab can give. */
+ * is the only signal a parked tab can give.
+ *
+ * A FAILED TAB NEVER SPINS (round-1 design D1). A restore-death tab is still
+ * loading underneath — the hung request is alive, only the bounded wait expired —
+ * so a spinner and the red `Failed` chip used to sit on one row saying opposite
+ * things. The chip carries the verdict; the glyph falls back to the static marks,
+ * and a page that does commit past the wait re-arms the spinner through the
+ * ordinary clear (`did-start-loading`/`did-navigate` delete the mark). */
 const TabMark: FC<{ tab: BrowserTabView }> = ({ tab }) => {
-	if (tab.loading) {
+	if (tab.loading && !tab.failed) {
 		return (
 			<RotateCw
 				aria-hidden
