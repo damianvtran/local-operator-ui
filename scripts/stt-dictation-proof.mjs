@@ -1221,19 +1221,24 @@ try {
 
 	/*
 	 * THE CAPTURE LEG'S OWN MICROPHONE, built PAGE-SIDE when `LO_PROOF_AUDIO_FILE`
-	 * is set: an `<audio>` element looping the WAV, routed through a
-	 * `MediaStreamAudioDestinationNode`, with `getUserMedia` overridden to answer
-	 * the app's audio requests with a FRESH destination stream per call - a
-	 * stopped stream cannot restart, and the app stops its stream when a take
-	 * ends, so one shared stream would go silent after the first frame. The click
-	 * that focused the composer has already given the page its activation, and
-	 * the launch carries the autoplay switch; both are what let the element play.
+	 * is set: the WAV decoded into an `AudioBuffer` and looped through an
+	 * `AudioBufferSourceNode` into a `MediaStreamAudioDestinationNode`, with
+	 * `getUserMedia` overridden to answer the app's audio requests with a FRESH
+	 * destination stream per call - a stopped stream cannot restart, and the app
+	 * stops its stream when a take ends, so one shared stream would go silent
+	 * after the first frame.
 	 *
-	 * A BLOB URL, not a `data:` URI: the app's own CSP allows `blob:` for
-	 * `media-src` and not `data:`, and a data URI's element never plays - the
-	 * failure is silent from the rig's side (measured 2026-09-29: both engages
-	 * refused with the override rejecting inside the app's catch, while a
-	 * CSP-free probe page played the same bytes).
+	 * THE ROUTE IS WEBAUDIO RATHER THAN AN `<audio>` ELEMENT (measured
+	 * 2026-09-29): this leg used to loop a blob-URL element, and on a renderer
+	 * that cannot open an OUTPUT device its `element.play()` promise never
+	 * settled - Chromium logged "The AudioContext encountered an error from the
+	 * audio device or the WebAudio renderer", the app's first `getUserMedia`
+	 * never resolved, and the one-recorder-at-a-time guard refused every later
+	 * press, which is exactly how three consecutive capture runs failed with
+	 * zero flips. A destination node needs no output device: the samples go to
+	 * the stream, not to the speakers. (A blob URL, not a `data:` URI, was the
+	 * old route's CSP constraint - `media-src` allows `blob:` and not `data:` -
+	 * and the old route's element is no longer needed at all.)
 	 */
 	const installSyntheticMicrophone = async (filePath) => {
 		const base64 = readFileSync(filePath).toString("base64");
@@ -1243,7 +1248,6 @@ try {
 					const media = navigator.mediaDevices;
 					window.__loProofRealGetUserMedia =
 						window.__loProofRealGetUserMedia ?? media.getUserMedia.bind(media);
-					window.__loProofMicElements = window.__loProofMicElements ?? [];
 					const bytes = Uint8Array.from(atob(${JSON.stringify(base64)}), (c) =>
 						c.charCodeAt(0),
 					);
@@ -1251,23 +1255,30 @@ try {
 						if (!constraints || !constraints.audio)
 							return window.__loProofRealGetUserMedia(constraints);
 						try {
-							for (const old of window.__loProofMicElements.splice(0)) {
-								old.element.pause();
-								old.element.removeAttribute("src");
-								old.element.load();
-								URL.revokeObjectURL(old.url);
-							}
 							const context = new AudioContext();
 							if (context.state === "suspended") await context.resume();
-							const url = URL.createObjectURL(
-								new Blob([bytes], { type: "audio/wav" }),
-							);
-							const element = new Audio(url);
-							element.loop = true;
-							await element.play();
+							/*
+							 * THE WAV IS DECODED AND ROUTED IN WEBAUDIO, NOT PLAYED
+							 * THROUGH AN AUDIO ELEMENT (measured 2026-09-29, three
+							 * consecutive runs on this host): element.play() never
+							 * settled - its promise stayed pending for the whole run -
+							 * whenever the renderer could not open an OUTPUT device
+							 * (Chromium's "The AudioContext encountered an error from the
+							 * audio device or the WebAudio renderer"), which took the
+							 * first engage down with it and left every later press
+							 * refused by the app's one-recorder-at-a-time guard. A
+							 * MediaStreamAudioDestinationNode needs no output device -
+							 * the samples go to the stream, not to the speakers - and a
+							 * decoded AudioBufferSourceNode loops the same bytes the
+							 * element played before, so the recording gets the same input.
+							 */
+							const buffer = await context.decodeAudioData(bytes.buffer.slice(0));
 							const destination = context.createMediaStreamDestination();
-							context.createMediaElementSource(element).connect(destination);
-							window.__loProofMicElements.push({ element, url });
+							const source = context.createBufferSource();
+							source.buffer = buffer;
+							source.loop = true;
+							source.connect(destination);
+							source.start();
 							return destination.stream;
 						} catch (error) {
 							window.__loProofMicError = String(error);
