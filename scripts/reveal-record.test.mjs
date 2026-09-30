@@ -463,6 +463,122 @@ test("a reader's gesture during the settle stops the re-apply", async () => {
 	);
 });
 
+test("a scroll key during the settle stops the re-apply (review round 2)", async () => {
+	/*
+	 * The keyboard arm of the yield set: the rail's own jump is a keyboard
+	 * gesture (focus a tick, Enter), so the next press is a scroll key more
+	 * often than not - and a settle that ignores it yanks the view out from
+	 * under the reader exactly like an ignored wheel would.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	window.dispatchEvent(
+		new window.KeyboardEvent("keydown", { key: "PageDown", bubbles: true }),
+	);
+	const outcome = await pending;
+	assert.equal(outcome, "landed", "the jump still resolves");
+	assert.ok(
+		assigned <= 2,
+		`the loop stopped touching scrollTop (assigned ${assigned})`,
+	);
+});
+
+test("a newer settle supersedes an older one's loop (review round 2)", async () => {
+	/*
+	 * Two jumps in flight (a rapid tick-then-tick, or a rail jump ahead of a
+	 * search hit): A's page never answers the re-measure, so its loop writes
+	 * one scrollTop per frame, and B's page settles normally. Without the
+	 * generation token A keeps spending its budget alongside B, visibly
+	 * contending for the anchor; with it A stops on its next frame check.
+	 */
+	const { window, region, root } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assignedA = 0;
+	let valueA = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => valueA,
+		set: (next) => {
+			assignedA += 1;
+			valueA = next;
+		},
+	});
+	const pendingA = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assignedA === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	/* Let A enter its loop (its first apply plus a couple of frames). */
+	for (let i = 0; i < 3; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	const aBefore = assignedA;
+	/* B: a second region whose page moves with the scroll, so it settles. */
+	const regionB = window.document.createElement("div");
+	const rootB = window.document.createElement("div");
+	rootB.innerHTML = `<div data-record-id="u8"></div>`;
+	regionB.appendChild(rootB);
+	window.document.body.appendChild(regionB);
+	measure(regionB, { top: 100, height: 600 });
+	Object.defineProperty(regionB, "clientTop", { value: 1 });
+	Object.defineProperty(regionB, "clientHeight", { value: 600 });
+	Object.defineProperty(regionB, "scrollTop", { value: -600, writable: true });
+	const rowB = rootB.querySelector('[data-record-id="u8"]');
+	rowB.getBoundingClientRect = () => {
+		const top = -1400 - regionB.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const pendingB = jumpToEntry(rootB, regionB, "u8");
+	/* Enough frames for a loop that ignored the supersede to spend its budget. */
+	for (let i = 0; i < 14; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	const [outA, outB] = await Promise.all([pendingA, pendingB]);
+	assert.equal(outA, "landed", "the superseded jump still resolves");
+	assert.equal(outB, "landed");
+	assert.ok(
+		assignedA <= aBefore + 1,
+		`the superseded settle stopped touching its region (${aBefore} -> ${assignedA})`,
+	);
+});
+
 test("a row behind a bar AND a fold: both open, outermost first", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">

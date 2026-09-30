@@ -217,7 +217,14 @@ async function landOnTop(
 	region: HTMLElement,
 	target: HTMLElement,
 ): Promise<void> {
-	const generation = (settleGeneration += 1);
+	/*
+	 * `settleGeneration += 1` is its own statement, not an assignment expression:
+	 * the repo's Biome rates `noAssignInExpressions` an error (review round 2's
+	 * BLOCKER - the inherited warnings elsewhere were why the first round went
+	 * green), and the two lines say the same thing.
+	 */
+	settleGeneration += 1;
+	const generation = settleGeneration;
 	scrollRegionToTop(region, target, "reversed", JUMP_ANCHOR_INSET_PX);
 	const SCROLL_KEYS = new Set([
 		"ArrowUp",

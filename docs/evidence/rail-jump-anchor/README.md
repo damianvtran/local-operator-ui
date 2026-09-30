@@ -101,10 +101,14 @@ reads at FULL ink (238 against the same-frame reference; 189 was the dimmed
 reading the design round rejected) — at both viewports and both palettes, cold
 and warm, with the rail's active tick on the target in every leg.
 
-The probe's own checks: **after = 17 checks PASSED, rc=0 on all three passes**
-(default, short, light); before = rc=1 with exactly the three anchor checks
-failing per pass (the near-newest clamp check passes on both, by rule — it has
-no anchor to reach).
+The probe's own checks (the CURRENT probe runs **14 checks per pass**: offset,
+peak-ink-vs-reference and active-tick for the four legs, plus the two card
+steps): **after = 14 PASSED, rc=0 on all three passes** (default, short,
+light). The BEFORE column is round 1's measurement, taken under the EARLIER
+probe revision — 17 checks then (the same four legs, offset-only), rc=1 with
+exactly the three anchor checks failing per pass, the near-newest clamp check
+passing on both by rule — and the before frames therefore show the pre-anchor
+build under that revision, not a re-run of today's checks.
 
 ## Frames
 

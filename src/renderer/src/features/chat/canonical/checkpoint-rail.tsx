@@ -24,10 +24,10 @@ import {
 	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
+	checkpointLeadLabel,
 	checkpointMarkState,
 	checkpointNamingPending,
 	checkpointSummary,
-	checkpointTitle,
 	checkpointTurnCount,
 	checkpointTurnLabel,
 } from "./checkpoint-model";
@@ -723,7 +723,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 						aria-label={
 							activeCheckpoint.kind === "user"
 								? "Your message"
-								: checkpointTitle(activeCheckpoint)
+								: checkpointLeadLabel(activeCheckpoint, turnCount)
 						}
 						// Radix's focus-scope defaults assume a press-opened popover.
 						// This one opens from a hover/focus gesture on a mark whose own
