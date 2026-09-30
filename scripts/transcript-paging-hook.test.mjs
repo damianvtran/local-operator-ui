@@ -416,6 +416,59 @@ test("the failed row follows olderFailed, and clears the moment it does", () => 
  * The order is what makes it observable: the switch is committed but its frames
  * have not run when the old page settles, so the continuation is still unspent.
  */
+/*
+ * Loader-continuity round 2, R2-1 - the same hazard as R1-4, one step smaller.
+ * The ask's own outcome carries an epoch guard (above); the two rAF
+ * continuations a landing schedules did NOT, so a landing observed across a
+ * session change wrote the NEW conversation's policy state. Two frames wide
+ * rather than a round trip, and benign in direction - it cannot clear
+ * `continuation`, which is `true` for a freshly reset state - but it can clear
+ * the new conversation's failure budget and set `pageWidenOwed` on rows that are
+ * not its own, which is a widen nobody asked for.
+ *
+ * WHERE THE DEBT IS OBSERVABLE. `decide` refuses a bare continuation when the
+ * scroller can scroll (`geo.scrollable && !(pageWidenOwed && widen)`) and spends
+ * one when `pageWidenOwed` is set. So on a SCROLLABLE pane holding rows back, the
+ * new conversation's own state spends nothing and the state a stale landing wrote
+ * spends exactly one widen - the difference `widenCalls` reads.
+ */
+test("a landing observed across a session change cannot hand the new conversation a rule-6 widen", async () => {
+	let settleAsk;
+	const hook = mountHook({
+		hiddenRows: 0,
+		onLoadOlderOutcome: () =>
+			new Promise((resolve) => {
+				settleAsk = resolve;
+			}),
+	});
+	try {
+		// Scrollable (1400 > 800) and at the hard top: distance = 1400 - 800 - 600 = 0,
+		// so the reader's own push buys the page without waiting out the debounce.
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.ok(settleAsk, "the hard-top push bought its page");
+
+		// The page lands `applied`, which schedules the landing continuation; it has
+		// not run yet when the reader changes conversation.
+		settleAsk({ kind: "applied", newRecords: 12, exhausted: false });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.setSessionKey("session-b");
+		// Rows the NEW conversation is holding back. The stale continuation reads this
+		// and settles the FRESH state with `hiddenRowsAfter > 0` - rule 6's debt.
+		hook.setHiddenRows(6);
+		hook.flushFrames(8);
+		assert.equal(
+			hook.widenCalls,
+			0,
+			"the previous conversation's landing owes the new one nothing",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
 test("a stale outcome from the conversation the reader left cannot cancel the new one's continuation", async () => {
 	const asks = [];
 	let settleFirst;

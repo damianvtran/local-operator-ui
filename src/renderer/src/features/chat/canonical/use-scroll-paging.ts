@@ -501,8 +501,18 @@ export function useScrollPaging({
 				// not depend on knowing how many frames React needs. The cap is a
 				// guard against a widen that legitimately reveals nothing (the
 				// window already held every row), which must still settle.
+				// The epoch guard R1-4 put on the ask's outcome, carried onto the rAF
+				// continuation the outcome schedules (loader-continuity round 2, R2-1). The
+				// session-change reset has already replaced the policy state by the time
+				// this frame runs, so settling here would clear the NEW conversation's
+				// failure budget and set `pageWidenOwed` on rows that are not its own -
+				// a widen nobody asked for. Captured at dispatch, compared at the write,
+				// dropped on mismatch; nothing needs handing on, because the reset armed
+				// its own continuation.
+				const widenedFor = sessionEpoch.current;
 				let waited = 0;
 				const awaitCommit = () => {
+					if (sessionEpoch.current !== widenedFor) return;
 					if (
 						live.current.hiddenRows !== before ||
 						waited >= COMMIT_WAIT_FRAMES
@@ -566,8 +576,14 @@ export function useScrollPaging({
 				 * many frames React needs, and the cap is the same guard the widen path
 				 * uses: a page that legitimately mounts nothing must still settle.
 				 */
+				// The same guard as the widen path's `awaitCommit` above, and the same
+				// hazard at the other end of the ask (loader-continuity round 2, R2-1):
+				// this is the continuation that carries `hiddenRowsAfter`, which is what a
+				// stale landing would hand the new conversation as rule 6's debt.
+				const landedFor = sessionEpoch.current;
 				let waited = 0;
 				const awaitLanding = () => {
+					if (sessionEpoch.current !== landedFor) return;
 					const after = live.current.hiddenRows;
 					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
 						state.current = noteSettled(state.current, {
