@@ -330,6 +330,7 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	web_read: { noun: "page", plural: "pages" },
 	list_variables: { noun: "variable lookup", plural: "variable lookups" },
 	read_variable: { noun: "variable read", plural: "variable reads" },
+	sessions: { noun: "session", plural: "sessions" },
 };
 
 export function foldCounts(actions: FoldableAction[]): string {
