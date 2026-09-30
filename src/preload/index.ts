@@ -13,6 +13,7 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
+import type { CompanionSettingsAPI } from "../shared/companion-settings";
 import type {
 	DesktopMediaRequest,
 	DesktopRequest,
@@ -53,6 +54,20 @@ import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
 const api = {
+	companionSettings: {
+		get: () => ipcRenderer.invoke("companion-settings:get"),
+		update: (change) => ipcRenderer.invoke("companion-settings:update", change),
+		import: () => ipcRenderer.invoke("companion-settings:import"),
+		onChanged: (listener) => {
+			const handler = (
+				_event: IpcRendererEvent,
+				settings: Parameters<typeof listener>[0],
+			) => listener(settings);
+			ipcRenderer.on("companion-settings:changed", handler);
+			return () =>
+				ipcRenderer.removeListener("companion-settings:changed", handler);
+		},
+	} satisfies CompanionSettingsAPI,
 	desktop: {
 		request: (request: DesktopRequest) =>
 			ipcRenderer.invoke("desktop-request", request),

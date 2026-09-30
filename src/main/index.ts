@@ -66,6 +66,7 @@ import {
 	type ConsentAttentionPayload,
 } from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
+import { registerCompanionSettings } from "./companion-settings";
 import { consoleCaptureUrlFor } from "./console/capture-url";
 import { DesktopCompanion } from "./desktop-companion";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
@@ -464,7 +465,7 @@ function createApplicationMenu(): void {
 					id: "desktop-companion",
 					label: "Desktop companion",
 					type: "checkbox",
-					checked: desktopCompanion?.enabled ?? true,
+					checked: desktopCompanion?.enabled ?? false,
 					click: (item) => desktopCompanion?.setEnabled(item.checked),
 				},
 				{
@@ -815,6 +816,7 @@ function createWindow(
 	if (process.platform !== "darwin") {
 		mainWindow.on("closed", () => {
 			miniView?.dispose();
+			disposeCompanionSettings?.();
 			desktopCompanion?.dispose();
 			desktopCompanion = null;
 		});
@@ -1249,6 +1251,7 @@ const telemetryWebPreferences = {
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
 let desktopCompanion: DesktopCompanion | null = null;
+let disposeCompanionSettings: (() => void) | null = null;
 const applicationWindows = new WeakSet<BrowserWindow>();
 
 /*
@@ -3290,6 +3293,7 @@ app
 			mainWindow.on("closed", () => {
 				// Hidden companion windows must not hold a headless QA process open.
 				if (windowLaunch.mode === "headless") {
+					disposeCompanionSettings?.();
 					desktopCompanion?.dispose();
 					desktopCompanion = null;
 				}
@@ -3711,8 +3715,20 @@ app
 				if (item) item.checked = enabled;
 			},
 			appearanceChanged: createApplicationMenu,
+			settingsChanged: () => {
+				if (desktopCompanion && mainWindow && !mainWindow.isDestroyed())
+					mainWindow.webContents.send(
+						"companion-settings:changed",
+						desktopCompanion.settings,
+					);
+			},
 			report: (message) => logger.info(message),
 		});
+		disposeCompanionSettings = registerCompanionSettings(
+			() => mainWindow,
+			rendererUrl,
+			desktopCompanion,
+		);
 		createApplicationMenu();
 
 		app.on("activate", () => {
@@ -3978,6 +3994,7 @@ app.on("before-quit", async (event) => {
 	quitState.begin();
 	// Electron closes windows before will-quit. Dispose synchronously so closing
 	// the pet during app shutdown does not persist a user's "hide companion" choice.
+	disposeCompanionSettings?.();
 	const companion = desktopCompanion;
 	desktopCompanion = null;
 	companion?.dispose();

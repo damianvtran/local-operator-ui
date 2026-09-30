@@ -292,11 +292,31 @@ test("corrupt preferences cannot move a window to nonfinite coordinates", () => 
 			character: "hoodie",
 			position: { x: Number.POSITIVE_INFINITY, y: 3 },
 		}),
-		{ enabled: false, character: "hoodie" },
+		{ enabled: false, introduced: true, character: "hoodie" },
 	);
 	assert.deepEqual(
 		companionPreferences({ position: { x: -400.4, y: 50.8 } }).position,
 		{ x: -400, y: 51 },
 	);
 	assert.equal(companionPreferences(null).character, "sprout");
+});
+
+test("preference migration preserves existing choices without opting new installs in", () => {
+	assert.deepEqual(companionPreferences(null), {
+		enabled: false,
+		introduced: false,
+		character: "sprout",
+	});
+	for (const enabled of [true, false]) {
+		assert.deepEqual(companionPreferences({ enabled, character: "pixel" }), {
+			enabled,
+			introduced: true,
+			character: "pixel",
+		});
+		assert.equal(
+			companionPreferences({ enabled, introduced: false }).introduced,
+			false,
+		);
+	}
+	assert.equal(companionPreferences({ enabled: "true" }).enabled, false);
 });

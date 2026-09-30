@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,12 +29,19 @@ const bundle = buildSync({
 	external: ["electron"],
 }).outputFiles[0].text;
 
+const UNAVAILABLE_CHARACTER = /no longer available/;
+const SAVE_FAILED = /could not be saved/;
+
 const ok = (result) => ({ status: 200, body: { result } });
 
-function fixture(t, { headless = true, preferences } = {}) {
+function fixture(t, { headless = true, preferences = {} } = {}) {
 	const directory = mkdtempSync(join(tmpdir(), "companion-controller-"));
 	const preferencesPath = join(directory, "preferences.json");
-	if (preferences) writeFileSync(preferencesPath, JSON.stringify(preferences));
+	if (preferences)
+		writeFileSync(
+			preferencesPath,
+			JSON.stringify({ enabled: true, ...preferences }),
+		);
 	const handlers = new Map();
 	const ipcMain = new EventEmitter();
 	ipcMain.handle = (name, handler) => handlers.set(name, handler);
@@ -168,6 +181,9 @@ function fixture(t, { headless = true, preferences } = {}) {
 	let admitted = false;
 	const opened = [];
 	const visibility = [];
+	let settingsChanges = 0;
+	let publishingBroken = false;
+	const writtenChoices = [];
 	const companion = new module.exports.DesktopCompanion({
 		url: "file:///test/companion.html",
 		preload: "/test/companion.js",
@@ -209,6 +225,11 @@ function fixture(t, { headless = true, preferences } = {}) {
 		openChat: (id) => opened.push(id),
 		visibilityChanged: (enabled) => visibility.push(enabled),
 		appearanceChanged: () => {},
+		settingsChanged: () => {
+			if (publishingBroken) throw new Error("Fixture closed renderer");
+			settingsChanges++;
+			writtenChoices.push(JSON.parse(readFileSync(preferencesPath, "utf8")));
+		},
 		report: () => {},
 	});
 	t.after(() => {
@@ -249,6 +270,15 @@ function fixture(t, { headless = true, preferences } = {}) {
 		desktopRequests,
 		opened,
 		visibility,
+		settingsChanges: () => settingsChanges,
+		writtenChoices,
+		breakPublishing: () => {
+			publishingBroken = true;
+		},
+		breakPersistence: () => rmSync(directory, { recursive: true, force: true }),
+		blockPreferenceWrites: () => mkdirSync(`${preferencesPath}.tmp`),
+		unblockPreferenceWrites: () =>
+			rmSync(`${preferencesPath}.tmp`, { recursive: true, force: true }),
 		intervals,
 		timeouts,
 		flush,
@@ -1136,6 +1166,11 @@ test("custom artwork can be replaced and removed through the shared character me
 	const remove = f.companion.characterMenu.find(
 		(item) => item.label === "Remove character",
 	);
+	f.blockPreferenceWrites();
+	assert.throws(() => f.companion.removeCharacter(replaced), SAVE_FAILED);
+	assert.equal(f.companion.appearance.id, replaced);
+	assert.equal(f.companion.characters.length, 5);
+	f.unblockPreferenceWrites();
 	remove.click();
 	assert.equal(f.companion.appearance.id, "sprout");
 	assert.equal(f.preferences().character, "sprout");
@@ -1250,4 +1285,88 @@ test("disposal unregisters IPC and display observers without disabling the next 
 	assert.equal(f.screen.listenerCount("display-metrics-changed"), 0);
 	assert.equal(f.intervals.size, 0);
 	assert.equal(f.timeouts.size, 0);
+});
+
+test("fresh installs stay off until an explicit choice, and settings do not start agents", (t) => {
+	const f = fixture(t, { preferences: null });
+	assert.equal(f.companion.enabled, false);
+	assert.equal(f.preferences().introduced, false);
+	assert.equal(f.windows.length, 0);
+	assert.equal(f.intervals.size, 0);
+	f.companion.updateSettings({ character: "inky" });
+	assert.equal(f.preferences().introduced, true);
+	assert.equal(f.companion.settings.character, "inky");
+	assert.equal(f.windows.length, 0);
+	f.companion.updateSettings({ enabled: true });
+	assert.equal(f.windows.length, 1);
+	assert.equal(f.intervals.size, 1);
+	assert.equal(f.companion.enabled, true);
+	assert.deepEqual(f.desktopRequests, []);
+	f.companion.updateSettings({ enabled: false });
+	assert.equal(f.intervals.size, 0);
+	assert.equal(f.windows[0].hidden, true);
+	assert.ok(f.settingsChanges() >= 4);
+	const restarted = fixture(t, { preferences: f.preferences() });
+	assert.equal(restarted.windows.length, 0);
+	assert.equal(restarted.companion.settings.character, "inky");
+	assert.equal(restarted.companion.settings.introduced, true);
+});
+
+test("declining introduction stays hidden and invalid characters cannot partially enable", (t) => {
+	const f = fixture(t, { preferences: null });
+	f.companion.updateSettings({ introduced: true });
+	assert.equal(f.companion.settings.introduced, true);
+	assert.equal(f.windows.length, 0);
+	assert.throws(
+		() => f.companion.updateSettings({ enabled: true, character: "missing" }),
+		UNAVAILABLE_CHARACTER,
+	);
+	assert.equal(f.companion.enabled, false);
+	assert.equal(f.windows.length, 0);
+});
+
+test("a combined choice persists together and a failed write leaves the invitation and window unchanged", (t) => {
+	const f = fixture(t, { preferences: null });
+	f.companion.updateSettings({
+		enabled: true,
+		character: "inky",
+		introduced: true,
+	});
+	assert.ok(
+		f.writtenChoices
+			.slice(1)
+			.every(
+				(choice) =>
+					choice.enabled && choice.introduced && choice.character === "inky",
+			),
+	);
+	const broken = fixture(t, { preferences: null });
+	const before = structuredClone(broken.companion.settings);
+	const writes = broken.settingsChanges();
+	broken.breakPersistence();
+	assert.throws(
+		() =>
+			broken.companion.updateSettings({
+				enabled: true,
+				character: "inky",
+				introduced: true,
+			}),
+		SAVE_FAILED,
+	);
+	assert.deepEqual(structuredClone(broken.companion.settings), before);
+	assert.equal(broken.settingsChanges(), writes);
+	assert.equal(broken.windows.length, 0);
+});
+
+test("closed settings renderers cannot roll back persisted choices and movement does not republish previews", (t) => {
+	const f = fixture(t);
+	const changes = f.settingsChanges();
+	f.action("nudge", "ArrowLeft");
+	assert.equal(f.settingsChanges(), changes);
+	f.breakPublishing();
+	f.companion.updateSettings({ enabled: false, character: "inky" });
+	assert.equal(f.preferences().enabled, false);
+	assert.equal(f.companion.settings.enabled, false);
+	assert.equal(f.preferences().character, "inky");
+	assert.equal(f.companion.settings.character, "inky");
 });

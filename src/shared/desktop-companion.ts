@@ -171,6 +171,7 @@ export function companionStateFromCatalogue(body: unknown): CompanionState {
 
 export interface CompanionPreferences {
 	enabled: boolean;
+	introduced: boolean;
 	character: string;
 	/** Intended position at 100% size; temporary chat/work-area clamping is not saved. */
 	position?: { x: number; y: number };
@@ -180,7 +181,11 @@ export function companionPreferences(value: unknown): CompanionPreferences {
 	const saved = record(value);
 	const point = record(saved?.position);
 	return {
-		enabled: typeof saved?.enabled === "boolean" ? saved.enabled : true,
+		enabled: saved?.enabled === true,
+		introduced:
+			typeof saved?.introduced === "boolean"
+				? saved.introduced
+				: typeof saved?.enabled === "boolean",
 		character:
 			typeof saved?.character === "string" ? saved.character : "sprout",
 		...(typeof point?.x === "number" &&

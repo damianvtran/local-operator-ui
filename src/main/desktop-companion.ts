@@ -5,6 +5,10 @@ import type {
 	IpcMainInvokeEvent,
 	MenuItemConstructorOptions,
 } from "electron";
+import type {
+	CompanionSettings,
+	CompanionSettingsChange,
+} from "../shared/companion-settings";
 import {
 	BUILTIN_COMPANIONS,
 	type CompanionAppearance,
@@ -36,6 +40,7 @@ interface CompanionOptions {
 	openChat(sessionId: string | null): void;
 	visibilityChanged(enabled: boolean): void;
 	appearanceChanged(): void;
+	settingsChanged?(): void;
 	report(message: string): void;
 }
 
@@ -98,7 +103,7 @@ export class DesktopCompanion {
 		screen.on("display-added", this.onDisplayChanged);
 		screen.on("display-removed", this.onDisplayChanged);
 		screen.on("display-metrics-changed", this.onDisplayChanged);
-		this.setEnabled(this.preferences.enabled);
+		this.setEnabled(this.preferences.enabled, false);
 	}
 
 	get enabled(): boolean {
@@ -110,19 +115,55 @@ export class DesktopCompanion {
 	get appearance(): CompanionAppearance {
 		return this.skins.get(this.preferences.character) ?? BUILTIN_COMPANIONS[0];
 	}
+	get settings(): CompanionSettings {
+		const selected = this.appearance;
+		return {
+			enabled: this.enabled,
+			introduced: this.preferences.introduced,
+			character: selected.id,
+			characters: this.characters.map(({ id, name }) => {
+				const appearance = id === selected.id ? selected : null;
+				return {
+					id,
+					name,
+					...(appearance?.frames?.idle
+						? { frames: { idle: appearance.frames.idle } }
+						: {}),
+					...(appearance?.pixelated ? { pixelated: true } : {}),
+				};
+			}),
+		};
+	}
 
-	selectCharacter(id: string): void {
-		if (!this.characters.some((item) => item.id === id)) return;
-		this.preferences.character = id;
-		this.save();
-		this.options.appearanceChanged();
-		if (this.window && !this.window.isDestroyed())
-			this.window.webContents.send("companion:appearance", this.appearance);
+	updateSettings(change: CompanionSettingsChange): void {
+		if (
+			change.character !== undefined &&
+			!this.characters.some(({ id }) => id === change.character)
+		)
+			throw new Error("This companion is no longer available.");
+		if (
+			!this.applyPreferences({
+				...this.preferences,
+				...change,
+				introduced: true,
+			})
+		)
+			throw new Error("Companion settings could not be saved.");
+	}
+
+	selectCharacter(id: string): boolean {
+		if (!this.characters.some((item) => item.id === id)) return false;
+		return this.applyPreferences({
+			...this.preferences,
+			character: id,
+			introduced: true,
+		});
 	}
 
 	importCharacter(path: string, replaceId?: string): void {
 		const appearance = this.skins.import(path, replaceId);
-		this.selectCharacter(appearance.id);
+		if (!this.selectCharacter(appearance.id))
+			throw new Error("Companion settings could not be saved.");
 	}
 
 	get characterMenu(): MenuItemConstructorOptions[] {
@@ -159,13 +200,25 @@ export class DesktopCompanion {
 	}
 
 	removeCharacter(id: string): void {
-		if (!this.skins.remove(id)) return;
-		if (this.preferences.character === id)
-			this.selectCharacter(BUILTIN_COMPANIONS[0].id);
-		else this.options.appearanceChanged();
+		if (BUILTIN_COMPANIONS.some((character) => character.id === id)) return;
+		const previous = this.preferences;
+		const selected = previous.character === id;
+		if (selected && !this.selectCharacter(BUILTIN_COMPANIONS[0].id))
+			throw new Error("Companion settings could not be saved.");
+		try {
+			if (!this.skins.remove(id)) {
+				if (selected) this.applyPreferences(previous);
+				return;
+			}
+		} catch (error) {
+			if (selected) this.applyPreferences(previous);
+			throw error;
+		}
+		this.options.appearanceChanged();
+		this.publishSettings();
 	}
 
-	private async chooseCharacter(replaceId?: string): Promise<void> {
+	async chooseCharacter(replaceId?: string): Promise<void> {
 		if (this.disposed || this.options.headless) return;
 		try {
 			const chosen = await dialog.showOpenDialog({
@@ -206,29 +259,49 @@ export class DesktopCompanion {
 		);
 	}
 
-	setEnabled(enabled: boolean): void {
-		if (this.disposed) return;
-		const wasEnabled = this.preferences.enabled;
-		this.preferences.enabled = enabled;
-		this.save();
-		this.options.visibilityChanged(enabled);
-		if (!enabled) {
+	setEnabled(enabled: boolean, introduced = true): boolean {
+		return this.applyPreferences({
+			...this.preferences,
+			enabled,
+			introduced: this.preferences.introduced || introduced,
+		});
+	}
+
+	private applyPreferences(next: CompanionPreferences): boolean {
+		if (this.disposed) return false;
+		const previous = this.preferences;
+		this.preferences = next;
+		if (!this.save()) {
+			this.preferences = previous;
+			this.options.visibilityChanged(previous.enabled);
+			this.options.appearanceChanged();
+			return false;
+		}
+		if (previous.character !== next.character) {
+			this.options.appearanceChanged();
+			if (this.window && !this.window.isDestroyed())
+				this.window.webContents.send("companion:appearance", this.appearance);
+		}
+		this.publishSettings();
+		this.options.visibilityChanged(next.enabled);
+		if (!next.enabled) {
 			this.cancelDrop();
 			this.stopPolling();
 			this.dragOrigin = null;
 			this.layoutChat(false);
 			this.chatOpen = false;
 			this.window?.hide();
-			return;
+			return true;
 		}
 		if (this.window && !this.window.isDestroyed()) {
-			if (wasEnabled) return;
+			if (previous.enabled) return true;
 			this.present();
 		} else {
 			this.createWindow();
 		}
 		this.poll = setInterval(() => this.refresh(), 5000);
 		this.refresh();
+		return true;
 	}
 
 	private createWindow(): void {
@@ -685,15 +758,25 @@ export class DesktopCompanion {
 		}
 	}
 
-	private save(): void {
+	private publishSettings(): void {
+		try {
+			this.options.settingsChanged?.();
+		} catch {
+			this.options.report("Companion settings could not be published");
+		}
+	}
+
+	private save(): boolean {
 		try {
 			const path = this.options.preferencesPath;
 			writeFileSync(`${path}.tmp`, JSON.stringify(this.preferences), {
 				mode: 0o600,
 			});
 			renameSync(`${path}.tmp`, path);
+			return true;
 		} catch {
 			this.options.report("Companion preferences could not be saved");
+			return false;
 		}
 	}
 

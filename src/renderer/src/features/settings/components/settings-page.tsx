@@ -1,4 +1,5 @@
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
+import { CompanionSettingsPanel } from "@features/companion/companion-settings";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
@@ -1224,6 +1225,7 @@ export const SettingsPage: FC = () => {
 						>
 							<div className="flex flex-col gap-4">
 								<ThemeSelector />
+								<CompanionSettingsPanel />
 								{/*
 								 * The reasoning preference's only control.
 								 *

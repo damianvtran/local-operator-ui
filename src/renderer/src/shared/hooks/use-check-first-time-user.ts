@@ -107,6 +107,7 @@ export const useCheckFirstTimeUser = () => {
 	}, [isFirstTimeUser, isOnboardingActive, activateOnboarding]);
 
 	return {
+		decision,
 		isFirstTimeUser,
 		isOnboardingActive,
 		activateOnboarding,

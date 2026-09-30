@@ -6,6 +6,7 @@ import type {
 	BackendUpdateErrorReport,
 } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type { CompanionSettingsAPI } from "../shared/companion-settings";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -42,6 +43,7 @@ declare global {
 		 */
 		__loDevDriver?: DevDriverBridge;
 		api: {
+			companionSettings: CompanionSettingsAPI;
 			/**
 			 * Whether THIS launch may report to PostHog.
 			 *

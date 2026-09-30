@@ -17,6 +17,7 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
+import { CompanionWelcome } from "@features/companion/companion-welcome";
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
@@ -133,7 +134,8 @@ const App: FC = () => {
 		pathname.startsWith("/chat") || pathname.startsWith("/browser");
 
 	// Check if this is a first-time user
-	const { isOnboardingActive } = useCheckFirstTimeUser();
+	const { isOnboardingActive, decision: firstTimeDecision } =
+		useCheckFirstTimeUser();
 	const {
 		isLowCreditsDialogOpen,
 		openRadientConsole,
@@ -626,6 +628,10 @@ const App: FC = () => {
 					<ModelsInitializer />
 
 					<OnboardingModal open={isOnboardingActive} />
+					<CompanionWelcome
+						decision={firstTimeDecision}
+						onboardingActive={isOnboardingActive}
+					/>
 
 					{/* The one "connect a model provider" dialog every surface opens
 					    through `useConnectProviderStore` (empty chat, composer line,
