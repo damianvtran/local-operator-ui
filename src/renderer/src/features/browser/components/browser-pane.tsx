@@ -49,7 +49,7 @@ import { BrowserSurface } from "./browser-surface";
  * a `useState` here reverted the lens to "This conversation" on every switch while
  * the pane itself stayed open at the width the user had dragged. The slot belongs
  * to the window, so its lens is the slot's state (`browserPaneScope`, beside
- * `isBrowserPaneOpen` and `browserPanelWidth`) and only the content follows the
+ * `isBrowserPaneOpen` and `rightSlotWidth`) and only the content follows the
  * conversation.
  *
  * TWO SCOPES GO DOWN, AND THE SWITCH MOVES ONLY ONE (spec 7.2; QA round 1's Q1 and
