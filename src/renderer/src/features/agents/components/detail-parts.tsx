@@ -248,11 +248,21 @@ export function EditFooter({
 		onConfirmingChange?.(next);
 	};
 
+	/*
+	 * The deps are the three values the effect actually reads rather than the
+	 * callback's identity: `requestConfirming` is rebuilt on every render, so
+	 * listing it would re-run this effect on every render of a form whose whole
+	 * point is to be typed into. Reading the two stable pieces directly says what
+	 * the effect depends on (`onConfirmingChange` is a `useState` setter at every
+	 * call site).
+	 */
 	useEffect(() => {
 		// A footer that is no longer in a confirming state (the edit ended, the
 		// draft became clean) must not come back mid-confirmation.
-		if (!dirty) requestConfirming(false);
-	}, [dirty]);
+		if (dirty) return;
+		if (!isControlled) setUncontrolledConfirming(false);
+		onConfirmingChange?.(false);
+	}, [dirty, isControlled, onConfirmingChange]);
 
 	return (
 		// `-mx-6` cancels the scroller's SIDE padding so the bar spans the pane's
