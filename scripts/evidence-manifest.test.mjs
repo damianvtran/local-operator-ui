@@ -2405,6 +2405,15 @@ const BRANCH_RECORDS = [
 	"foldOnto78b9c84c8fNote",
 	"scrollShiftRestampNote",
 	/*
+	 * And the fold onto `efca9e16fc` (#696's update/reload drain and #699's
+	 * board time-window over the loader-continuity train): registered for the
+	 * list's own reason - a fold resolved from main's manifest copy would drop
+	 * the only statement of how the two conflicted paths (this file and
+	 * package.json's test list) were resolved, and of the pair and lead being
+	 * re-derived over the folded tree. It quotes no tree-hash pair.
+	 */
+	"foldOntoefca9e16fcNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
