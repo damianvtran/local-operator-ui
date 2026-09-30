@@ -223,7 +223,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					 * (see the header), so a source that never arrives leaves nothing
 					 * to size it: QA round 1 induced the failure and measured the layer
 					 * at 1152x38 — a strip of label text on an empty scrim, for a
-					 * canonical row the single word "Screenshot". `min-h-16 min-w-64`
+					 * canonical row a label like "Image 2". `min-h-16 min-w-64`
 					 * is the floor the fallback draws inside, and it is `AttachmentFrame`'s
 					 * own floor unit and the `sunken` ground the caller's copy brings.
 					 * No spinner, for the frame's own reason: the ground already says
