@@ -187,8 +187,8 @@ import {
 	alignWalkDecision,
 	alignWalkRunKey,
 	alignWalkStateFor,
-	initialAlignWalkState,
 	collapsePlan,
+	initialAlignWalkState,
 	snapWindowToRunBoundary,
 	widenTarget,
 } from "./turn-collapse-model";
