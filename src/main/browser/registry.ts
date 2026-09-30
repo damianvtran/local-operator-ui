@@ -68,6 +68,22 @@ export interface TabRecord {
 	nonce: string | null;
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
+	/**
+	 * The owner this tab had BEFORE its first hand-over — "user" for a tab the
+	 * user opened, "agent" for one an agent did — pinned at that moment and never
+	 * rewritten by later re-hands; null while the tab has never been handed over.
+	 *
+	 * WHY IT HAS TO BE ITS OWN FIELD (review round 1, m-2): the quit-time capture
+	 * decides which rows may be skipped as agent cruft at the restore boundary,
+	 * and `handedTo` cannot answer "was this the user's tab?" — `handOver`
+	 * supports re-handing an AGENT tab to another session (the cap does not
+	 * change), so a predicate keyed on `handedTo !== null` would write an agent's
+	 * tab as the user's and launder it past the sweep. This field is the
+	 * pre-hand-over fact the capture keys on (`session-store.ts`);
+	 * `revokeHandOver` clears it with the capability, so the next hand-over pins
+	 * the owner again from whatever the tab is then.
+	 */
+	handedFrom: TabOwner | null;
 	restored: boolean;
 	/**
 	 * The `session.json` row a restored tab was allocated from, kept until the tab
@@ -254,6 +270,7 @@ export class TabRegistry {
 			homeSessionId: restored ? null : (options.sessionId ?? null),
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
+			handedFrom: null,
 			restored,
 			restoreRow: options.restoreRow,
 			createdAt: Date.now(),
@@ -426,6 +443,11 @@ export class TabRegistry {
 		// would make the cap visible as "this host is already driving 8 agent tabs"
 		// for the one action that does not add one.
 		if (record.owner !== "agent") this.assertAgentCapacity();
+		// Pin what the tab was BEFORE this first hand-over, for the restore
+		// boundary's capture: a re-hand must not move it, so an agent's tab that is
+		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
+		// capture keys on this, not on `handedTo`).
+		if (record.handedFrom === null) record.handedFrom = record.owner;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
 		// NOT, and deliberately: a hand-over changes who may drive a tab, not the
@@ -458,6 +480,9 @@ export class TabRegistry {
 		record.owner = "user";
 		record.sessionId = record.homeSessionId;
 		record.handedTo = null;
+		// The pinned pre-hand-over owner goes with the capability: the next
+		// hand-over pins it again from whatever the tab is then.
+		record.handedFrom = null;
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
 		this.onChanged();

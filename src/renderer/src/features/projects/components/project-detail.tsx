@@ -17,7 +17,10 @@
  * back to `name` — the backend's own precedence), and when a title is set the
  * addressing key sits under it in the machine voice. Every route, verb and
  * filename still addresses the project by `name`; this screen decides only
- * what a reader sees first.
+ * what a reader sees first. AND IT WRAPS: a long title is never ellipsised
+ * (operator, 2026-09-30) — the header carries the whole title the author gave
+ * the project, because a clipped one is exactly how the title "did not show
+ * up as the main ticket title".
  *
  * THE PROGRESS SECTION IS CONDITIONAL, and the condition states a rule: a
  * project whose history has entries shows them in the feed, whose newest entry
@@ -274,7 +277,14 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	};
 
 	return (
-		<div className="mx-auto flex min-h-0 w-full max-w-200 flex-1 flex-col gap-8 overflow-y-auto">
+		/*
+		 * THE COLUMN IS THE CONTENT, NOT THE SCROLLER (operator, 2026-09-30). The
+		 * scroll region is the page's own view (`projects-page.tsx` wraps this
+		 * screen), so the column here is only a centred measurement - and it is
+		 * the page that reserves the gutter, which is why nothing in this file
+		 * names the scrollbar.
+		 */
+		<div className="mx-auto flex w-full max-w-200 flex-col gap-8">
 			<header className="flex flex-col gap-4">
 				<button
 					type="button"
@@ -288,7 +298,23 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				<div className="flex flex-wrap items-start justify-between gap-4">
 					<div className="flex min-w-0 flex-col gap-1.5">
 						<div className="flex flex-wrap items-center gap-2">
-							<h1 className="min-w-0 truncate text-display text-ink">
+							{/*
+							 * THE TITLE WRAPS; IT IS NEVER CLIPPED (operator, 2026-09-30 - a long
+							 * title arrived ellipsised). It used to be `truncate`, a
+							 * single-line `text-overflow: ellipsis` clip; the header's job is
+							 * to show the whole title the user gave the project, so it wraps
+							 * at word boundaries (`break-words` keeps an unbroken run from
+							 * overflowing) and the badges beside it flow as the row wraps.
+							 */}
+							<h1
+								/* The rig's handle on the header, in the same family as the board
+								   card's title line: `data-project-title` keyed by the project's key,
+								   so a capture claim can name THIS heading rather than the first
+								   `h1` in a document that has several (sheet, shell and the
+								   storybook placeholder). */
+								data-project-title={project.name}
+								className="min-w-0 break-words text-display text-ink"
+							>
 								{displayName}
 							</h1>
 							<ProjectStatusBadge status={project.status} />

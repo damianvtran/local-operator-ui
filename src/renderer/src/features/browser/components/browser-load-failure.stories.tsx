@@ -77,3 +77,29 @@ export const UnmappedCode: Story = {
 		</div>
 	),
 };
+
+/**
+ * THE DESTINATION EVERY RESTORE-DEATH FAILED CHIP OPENS (round-1 design D2):
+ * the app started this tab's load at relaunch, no page ever committed, and the
+ * bounded wait expired — the `ERR_FAILED (restore)` mark `host.ts` records. The
+ * sentence is the timeout's ("The site did not answer in time."), because that
+ * is what this wait expiring means; the machine line keeps the description for
+ * a bug report. This frame is the panel the reviewer could not photograph from
+ * the harness run, where the chip is the visible half and this is the surface
+ * behind it.
+ */
+export const RestoreUnanswered: Story = {
+	args: {
+		failure: {
+			code: -2,
+			description: "ERR_FAILED (restore)",
+			url: "http://127.0.0.1:3417/stall-0",
+		},
+		onRetry: () => {},
+	},
+	render: (args) => (
+		<div className="h-96 bg-canvas">
+			<BrowserLoadFailure {...args} />
+		</div>
+	),
+};
