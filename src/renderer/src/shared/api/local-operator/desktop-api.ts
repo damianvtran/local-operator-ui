@@ -202,6 +202,21 @@ export class DesktopControlError extends Error {
 	 * field the more precise of them.
 	 */
 	readonly retryAfterMs?: number;
+	/**
+	 * The refusal body's own object, when the backend sent one.
+	 *
+	 * KEPT (additively) for the one caller that needs a field BEYOND the code and
+	 * the sentence: a configuration run's single-flight refusal answers 409 with
+	 * the ACTIVE run's `session_id`, and the UI has to re-attach to that id rather
+	 * than error. Without this field the id would be unrecoverable — the error
+	 * carries only the machine code and the message — and the only alternative
+	 * would be parsing an id out of prose the backend owns and may reword (the
+	 * mistake `interrupt-turn.ts` records for the old Stop control).
+	 *
+	 * Typed `unknown` on purpose: this is a transport class, not a vocabulary, and
+	 * a caller that reads it owns the narrowing (see `activeRunIdFromRefusal`).
+	 */
+	readonly detail?: unknown;
 
 	constructor(
 		status: number | null,
@@ -209,6 +224,7 @@ export class DesktopControlError extends Error {
 		cause?: unknown,
 		code?: string,
 		retryAfterMs?: number,
+		detail?: unknown,
 	) {
 		super(message);
 		this.name = "DesktopControlError";
@@ -216,6 +232,7 @@ export class DesktopControlError extends Error {
 		this.cause = cause;
 		this.code = code;
 		this.retryAfterMs = retryAfterMs;
+		this.detail = detail;
 	}
 }
 
@@ -358,6 +375,9 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 				Number.isFinite(envelope.detail.retry_after_ms)
 				? envelope.detail.retry_after_ms
 				: undefined,
+			// The body object itself, for the one caller that needs a field beyond the
+			// code and the sentence (see the field's own note).
+			typeof envelope?.detail === "object" ? envelope.detail : undefined,
 		);
 	}
 	return envelope?.result as T;
