@@ -198,6 +198,33 @@ export const MAX_CHAIN_FETCH = 4;
 export const MAX_CHAIN_INVISIBLE = 12;
 
 /**
+ * The most round trips ONE ACT may buy, summed over every door that can spend
+ * without fresh input.
+ *
+ * WHY A SUM AND NOT JUST EACH DOOR'S OWN BOUND (QA round 1, Q-4 — measured, not
+ * reasoned). Each door already had a bound: the unscrollable pane's chain
+ * `MAX_CHAIN_FETCH`, the invisible-reveal chain `MAX_CHAIN_INVISIBLE`, rule 6's
+ * owed widen (local, so no round trip). But they are doors on the SAME act, and
+ * an act can walk through more than one: on the tall-run journal one real wheel
+ * notch produced FIFTEEN `sessions.history` asks against a stated bound of
+ * twelve, because the pane's first pages ran the short-content chain and the
+ * reveals that landed kept the invisible chain open behind it. A bound that only
+ * holds per door is not a bound the reader can rely on, and the number they can
+ * rely on is the one this file states: one act, one chain's worth.
+ *
+ * It is `MAX_CHAIN_INVISIBLE` by construction rather than a second number — the
+ * quantity being bounded is the same one (an act's worth of history), and the
+ * tests pin the equality so the two cannot drift apart.
+ *
+ * WIDENS ARE NOT COUNTED. A widen reveals rows the transcript already has; it
+ * costs no round trip, and the local growth path stays bounded by
+ * `MAX_CHAIN_WIDEN`. The align WALK is not counted either: it is a different
+ * actor (the app completing a settled turn's own bar at open, bounded per run by
+ * `ALIGN_WALK_MAX_PAGES`) and it never spends on a reader's act.
+ */
+export const MAX_ACT_ASKS = MAX_CHAIN_INVISIBLE;
+
+/**
  * Growth below which a reveal is INVISIBLE to the reader, in px.
  *
  * A floor rather than a fraction alone: a short window (a narrow side panel)
@@ -309,6 +336,13 @@ export type PagingState = {
 	chainFetch: number;
 	chainWiden: number;
 	/**
+	 * Round trips this ACT has bought, across every door — the reader's own
+	 * demand, the unscrollable pane's short-content chain, and the
+	 * invisible-reveal chain. Bounded by `MAX_ACT_ASKS`; reset when a new act
+	 * opens (`noteInput`), never by a settle.
+	 */
+	actAsks: number;
+	/**
 	 * Consecutive reveals the reader could not SEE, in the current act.
 	 *
 	 * Distinct from `chainFetch`, which counts the pages an act bought: a chain
@@ -374,6 +408,7 @@ export const initialPagingState = (): PagingState => ({
 	chainFetch: 0,
 	chainWiden: 0,
 	chainInvisible: 0,
+	actAsks: 0,
 });
 
 /** The prefetch zone for a viewport of this height. See `ZONE_FRACTION`. */
@@ -418,6 +453,11 @@ export const noteInput = (
 				input.at - state.lastInputAt >= GESTURE_GAP_MS
 					? false
 					: state.actFetchSpent,
+			// A new act starts with its whole ask budget (see `MAX_ACT_ASKS`); a
+			// reversal INSIDE one act keeps what it has spent, exactly as
+			// `actFetchSpent` does above.
+			actAsks:
+				input.at - state.lastInputAt >= GESTURE_GAP_MS ? 0 : state.actAsks,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
@@ -462,6 +502,11 @@ export const noteInput = (
 	const base: PagingState = {
 		...state,
 		actFetchSpent: gestureEnded ? false : state.actFetchSpent,
+		/*
+		 * The act's ask budget refills where the act's fetch budget does — a new act
+		 * is a new question, and `MAX_ACT_ASKS` is a fact about the act.
+		 */
+		actAsks: gestureEnded ? 0 : state.actAsks,
 		// The travel record belongs to the latch's own act; a notch that opens a
 		// new act starts a new question, and the release it guards is one per
 		// latch rather than one per reader.
@@ -485,6 +530,7 @@ export const noteInput = (
 			// An explicit ask is its own act: whatever the previous gesture spent
 			// says nothing about the click the reader just made.
 			actFetchSpent: false,
+			actAsks: 0,
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
@@ -599,6 +645,12 @@ const spend = (
 		actFetchSpent: action === "fetch" ? true : state.actFetchSpent,
 		chainWiden: action === "widen" ? state.chainWiden + 1 : state.chainWiden,
 		chainFetch: action === "fetch" ? state.chainFetch + 1 : state.chainFetch,
+		/*
+		 * The ACT's own ask count, summed across every door (a fetch from the reader's
+		 * demand and one from a chain are the same thing to the backend and to the
+		 * reader's data allowance). A widen is not a round trip and does not count.
+		 */
+		actAsks: action === "fetch" ? state.actAsks + 1 : state.actAsks,
 		// `chainInvisible` is NOT advanced here: it counts what the reader SAW
 		// (a settle), not what was spent. A spend is evidence of nothing.
 		chainInvisible: state.chainInvisible,
@@ -848,9 +900,19 @@ export const decide = (
 		 * was - gesture after gesture, no change on screen. `chainInvisible > 0`
 		 * is what distinguishes this continuation from the ordinary one a
 		 * landing mints, and the counter is bounded by `MAX_CHAIN_INVISIBLE`.
+		 *
+		 * `MAX_CHAIN_FETCH` IS DELIBERATELY NOT CONSULTED HERE (agent review round
+		 * 1, R1-5): the invisible chain's own counter is the authority for it, and
+		 * the round-1 chain's bound would refuse a legitimate reveal too early.
+		 * What DOES bound the sum is `asksLeft` below - the act's own budget, which
+		 * every door shares, and which is the reason the asymmetry is safe rather
+		 * than a hole (QA round 1, Q-4: fifteen asks for one notch, measured).
 		 */
+		const asksLeft = state.actAsks < MAX_ACT_ASKS;
 		const invisibleOwed =
-			state.chainInvisible > 0 && state.chainInvisible < MAX_CHAIN_INVISIBLE;
+			asksLeft &&
+			state.chainInvisible > 0 &&
+			state.chainInvisible < MAX_CHAIN_INVISIBLE;
 		if (
 			geo.scrollable &&
 			!(state.pageWidenOwed && growth === "widen") &&
@@ -866,7 +928,8 @@ export const decide = (
 				? state.chainWiden < MAX_CHAIN_WIDEN
 				: invisibleOwed
 					? state.failures < MAX_AUTO_ATTEMPTS
-					: state.chainFetch < MAX_CHAIN_FETCH &&
+					: asksLeft &&
+						state.chainFetch < MAX_CHAIN_FETCH &&
 						state.failures < MAX_AUTO_ATTEMPTS;
 		if (bound) {
 			return spend(
