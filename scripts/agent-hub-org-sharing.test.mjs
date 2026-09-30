@@ -1069,7 +1069,11 @@ test("both refusal sections agree on severity, and both retries are filled contr
 	 * the region that then reports the count.
 	 */
 	assert.doesNotMatch(roster, /sr-only">Loading teams…/);
-	assert.match(roster, /aria-hidden="true" className="flex flex-col gap-2"/);
+	// The skeleton is three rows of the settled row's own box (`org-teams-summary.test.mjs`).
+	assert.match(
+		roster,
+		/aria-hidden="true"\s+className="flex flex-col divide-y divide-hairline"\s+data-testid="org-teams-loading"/,
+	);
 	assert.match(page, /statusSentence = "Loading teams…"/);
 });
 
