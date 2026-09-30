@@ -63,6 +63,7 @@ const {
 	effortDisplay,
 	effortQueryModel,
 	effortState,
+	fastModeState,
 	formatContextTokens,
 	formatCost,
 	formatWindow,
@@ -663,6 +664,40 @@ test("the effort VALUE is title-cased for display, and the raw level is untouche
 		}).label,
 		"high",
 		"the state's label stays the raw lowercase level",
+	);
+});
+
+/* ---- 7b. the fast dial: the tri-state the badge and the row share ------- */
+
+test("the fast dial is a tri-state, and `nothing` is not an OFF", () => {
+	// Mirrors `_fast_label` (defined in `local_operator/tui/app.py`; its word is
+	// what `tui/widgets/status_line.py`'s `fast` segment paints): a segment
+	// exists only when the model HAS the tier, so a spec that reports none
+	// answers `null` — an `off` there would claim a dial the model does not
+	// have. The badge and the row both call this; each passes the spec it shows
+	// (the chip's path `pendingModel ?? inForce`, the row's the spec in force),
+	// so outside an unconfirmed switch they read the same fields.
+	assert.equal(fastModeState(null), null);
+	assert.equal(fastModeState(undefined), null);
+	assert.equal(fastModeState({}), null);
+	// "No tier" is `!== true` on purpose: absent, `false`, `null` and a
+	// non-boolean from a damaged frame are all the same fact to report.
+	assert.equal(fastModeState({ supports_fast_mode: false }), null);
+	assert.equal(fastModeState({ supports_fast_mode: null }), null);
+	assert.equal(fastModeState({ supports_fast_mode: "yes" }), null);
+	// With the tier present the dial is ON or OFF — and `off` is a state, not
+	// `null`, because the row may print it while the badge stays hidden.
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: false }),
+		"off",
+	);
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: null }),
+		"off",
+	);
+	assert.equal(
+		fastModeState({ supports_fast_mode: true, fast_mode: true }),
+		"on",
 	);
 });
 

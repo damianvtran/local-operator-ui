@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -43,6 +44,63 @@ const bundle = await build({
 const progress = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The installer PANEL, bundled so a test can read what it renders.
+ *
+ * Same idiom as the contract bundle above, and `scripts/canvas-goals.test.mjs`'s
+ * terms, with the three things a renderer component needs that the contract does
+ * not: React stays external so the bundle shares ONE copy with this file's own
+ * imports (two copies and every render throws on an invalid hook call), the two
+ * `@`-aliases and the png the identity block imports are declared by hand because
+ * esbuild cannot read tsconfig paths, and `lucide-react` stays external because its
+ * icons are a real dependency rather than something to inline.
+ *
+ * WHY RENDER AT ALL. An earlier version of the rail's assertions read the panel's
+ * SOURCE text, and one of them matched an expression 24 characters away from the
+ * element it was named after - so it stayed green with the connector hidden and
+ * green again with the connector made unconditional (both mutation-tested by the
+ * reviewer). An assertion about what a step's completion does to the rule under it
+ * has to watch the rendered PAIR; see the two rail tests below for what that buys.
+ */
+const panelBundle = await build({
+	stdin: {
+		contents: `
+			import { createElement } from "react";
+			import { renderToStaticMarkup } from "react-dom/server";
+			import { InstallPanel } from "./src/renderer/src/features/installer/components/installer-panel";
+			export const renderPanel = (props) =>
+				renderToStaticMarkup(createElement(InstallPanel, props));
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	platform: "node",
+	format: "esm",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@assets": "./src/renderer/src/assets",
+	},
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		"lucide-react",
+	],
+	loader: { ".css": "empty", ".png": "dataurl" },
+	jsx: "automatic",
+	write: false,
+});
+const panelBundlePath = new URL(
+	"./_install-progress-panel.bundle.mjs",
+	import.meta.url,
+);
+await writeFile(panelBundlePath, panelBundle.outputFiles[0].text);
+const { renderPanel } = await import(panelBundlePath.href);
+await unlink(panelBundlePath);
 /**
  * One of the main process's dependency-free leaves, bundled on its own.
  *
@@ -520,6 +578,288 @@ test("the window, the story and the capture tuple agree on one size", () => {
 	);
 });
 
+const PHASE_ORDER = ["python", "environment", "components", "verify"];
+const noop = () => {};
+
+/** The panel's props for a run state, with the paths a story does not exercise off. */
+const panelProps = (overrides) => ({
+	phase: null,
+	installed: false,
+	failure: null,
+	onCancel: noop,
+	onRetry: noop,
+	...overrides,
+});
+
+/** A rendered failure, through the same sentence the main process falls back to. */
+const failureFor = (phase) => ({
+	phase,
+	reason: progress.installFailureSentence(phase),
+	detail: null,
+	exitCode: 1,
+});
+
+/** The rail's `<li>` chunks, in order, out of a rendered panel. */
+function railRows(markup) {
+	const list = markup.slice(markup.indexOf("<ol"), markup.indexOf("</ol>"));
+	return list
+		.split("<li")
+		.slice(1)
+		.map((chunk) => chunk.slice(0, chunk.indexOf("</li>")));
+}
+
+/**
+ * A row's connector classes, or null when the row draws no rule.
+ *
+ * Matched on `origin-top`, which is the rule's own transform origin rather than a
+ * string in a comment about it - the whole point of rendering.
+ */
+function connectorOf(row) {
+	const span = row.match(/<span[^>]*class="([^"]*\borigin-top\b[^"]*)"/);
+	return span ? span[1].split(/\s+/) : null;
+}
+
+/** A row's marker classes: the first element carrying the marker's own colour role. */
+function markerOf(row) {
+	const elements = [...row.matchAll(/<(?:span|svg)[^>]*class="([^"]*)"/g)].map(
+		(match) => match[1],
+	);
+	const marker = elements.find((classes) =>
+		/bg-accent|border-control|border-t-accent|text-danger/.test(classes),
+	);
+	return marker ? marker.split(/\s+/) : null;
+}
+
+/*
+ * The three utilities that suppress an element's visibility in this codebase. A
+ * rule that keeps its `scale-y-100` and gains one of these is a rule the path
+ * never draws, which is exactly the mutation a source-shaped assertion missed.
+ */
+const SUPPRESSES_VISIBILITY = ["hidden", "invisible", "opacity-0"];
+
+test("the rail draws a rule only under a step that finished", () => {
+	/*
+	 * The invariant the whole redesign rests on: a connector is whole exactly when
+	 * the step above it finished, and no other state can fill it. Read from the
+	 * rendered rows against an expectation derived from the payload - never from the
+	 * source, because the source version of this assertion matched an expression 24
+	 * characters away from the element it named and stayed green both with the
+	 * connector hidden and with it made unconditional (review P2, both mutation-tested).
+	 */
+	const runs = [
+		{ phase: "python", drawn: [false, false, false] },
+		{ phase: "components", drawn: [true, true, false] },
+		{ phase: "verify", drawn: [true, true, true] },
+		{ phase: null, drawn: [false, false, false] },
+		{ phase: "verify", installed: true, drawn: [true, true, true] },
+	];
+	for (const { phase, installed = false, drawn } of runs) {
+		const rows = railRows(renderPanel(panelProps({ phase, installed })));
+		assert.equal(
+			rows.length,
+			4,
+			`a rail of four steps rendered ${rows.length} rows`,
+		);
+		drawn.forEach((expected, index) => {
+			const classes = connectorOf(rows[index]);
+			assert.ok(classes, `row ${index + 1} draws no rule at all`);
+			assert.deepEqual(
+				classes.filter((name) => SUPPRESSES_VISIBILITY.includes(name)),
+				[],
+				`row ${index + 1}'s rule is suppressed rather than scaled`,
+			);
+			assert.equal(
+				classes.includes("scale-y-100"),
+				expected,
+				`row ${index + 1}'s rule disagrees with the step above it (phase ${phase}, installed ${installed})`,
+			);
+		});
+		/*
+		 * The last row draws no rule of its own: what reaches the terminus is drawn by
+		 * the terminus, so the two cannot disagree about whether the run finished.
+		 */
+		assert.equal(
+			connectorOf(rows[3]),
+			null,
+			"the last row draws a rule as well",
+		);
+	}
+});
+
+test("the rail's markers follow the run's own state", () => {
+	/*
+	 * The grammar, as rendered: a finished step is the accent fill, the running one
+	 * is the ring that turns, a waiting one is the control-weight ring, and the
+	 * failed one is the alert glyph. The waiting ring's WEIGHT is pinned here rather
+	 * than left to a comment because it is a measured fix: at 1px on 8px it rendered
+	 * 2.76:1 darkest in the light themes, under the 3:1 floor the sole boundary of a
+	 * control has to clear (design D4), so a change back to `border` is a regression
+	 * this test should refuse.
+	 */
+	const rows = railRows(renderPanel(panelProps({ phase: "components" })));
+	for (const [index, row] of rows.entries()) {
+		assert.ok(markerOf(row), `row ${index + 1} renders no marker at all`);
+	}
+	assert.ok(
+		markerOf(rows[0]).includes("bg-accent"),
+		"a finished step is not filled",
+	);
+	assert.ok(
+		markerOf(rows[2]).includes("animate-install-turn"),
+		"the running step's marker does not turn",
+	);
+	assert.ok(
+		!markerOf(rows[2]).includes("bg-accent"),
+		"the running step is drawn as a finished one",
+	);
+	/*
+	 * And the RUNNING ring's stroke is pinned for the same reason the waiting
+	 * ring's weigh is, one block down: design round 2's D7 - the working mark
+	 * shipped in the faintest border token and measured 1.22:1 against the
+	 * waiting rings' 3.13-3.42:1, so the mark that says "working" was the
+	 * faintest object in the column. `border-control` is the floor; the accent
+	 * quadrant is the one channel telling the two rings apart besides the turn.
+	 */
+	for (const name of ["border-2", "border-control", "border-t-accent"]) {
+		assert.ok(
+			markerOf(rows[2]).includes(name),
+			`a running ring no longer draws the floored stroke (missing ${name})`,
+		);
+	}
+	for (const name of ["border-2", "border-control"]) {
+		assert.ok(
+			markerOf(rows[3]).includes(name),
+			`a waiting ring no longer clears its floor (missing ${name})`,
+		);
+	}
+});
+
+test("the rail claims work is happening only while it is", () => {
+	/*
+	 * Two compositions, one rule, and this rail has got each of them wrong once:
+	 *
+	 *  - the head mark exists exactly when work is happening AND no step is known;
+	 *  - a failure that named no phase also leaves `phase === null`, so a gate on the
+	 *    phase alone painted a turning "work is happening" mark above four hollow
+	 *    rings on a screen that said setup had stopped (review P1). That state is why
+	 *    this renders a payload instead of trusting a gate, and why it pins the
+	 *    finished rail's terminus glyph in the same breath: a state that says "done"
+	 *    and a state that says "working" must not be able to render at once.
+	 */
+	const turning = (markup) =>
+		(markup.match(/animate-install-turn/g) ?? []).length;
+
+	const unannounced = renderPanel(panelProps({}));
+	assert.equal(turning(unannounced), 1, "no mark while work is unannounced");
+	assert.ok(
+		unannounced.indexOf("animate-install-turn") < unannounced.indexOf("<li"),
+		"the unannounced mark is not at the rail's head",
+	);
+	/*
+	 * The head mark draws the same ring the running step does (design round 2,
+	 * D7: both sites were `hairline`, both are `control` now), so the stroke is
+	 * pinned here as well - a single-site pin would stay green while this one
+	 * regressed.
+	 */
+	const headMark = unannounced
+		.slice(0, unannounced.indexOf("<li"))
+		.match(/class="([^"]*animate-install-turn[^"]*)"/);
+	assert.ok(headMark, "the unannounced head mark renders no element");
+	for (const name of ["border-2", "border-control", "border-t-accent"]) {
+		assert.ok(
+			headMark[1].split(/\s+/).includes(name),
+			`the head mark no longer draws the floored stroke (missing ${name})`,
+		);
+	}
+
+	const running = renderPanel(panelProps({ phase: "components" }));
+	assert.equal(
+		turning(running),
+		1,
+		"the running rail draws more than one mark",
+	);
+	assert.ok(
+		railRows(running)[2].includes("animate-install-turn"),
+		"the mark is not on the running step's row",
+	);
+
+	for (const phase of [null, "components"]) {
+		const failed = renderPanel(
+			panelProps({ phase, failure: failureFor(phase) }),
+		);
+		assert.equal(
+			turning(failed),
+			0,
+			`a failure still claims work is happening (${phase})`,
+		);
+	}
+
+	const finished = renderPanel(
+		panelProps({ phase: "verify", installed: true }),
+	);
+	assert.equal(turning(finished), 0, "the finished rail is still working");
+	assert.ok(
+		finished.includes("text-success"),
+		"the finished rail ends in nothing rather than in a glyph",
+	);
+	/* And the terminus is the only glyph: the four rows are still dots. */
+	for (const row of railRows(finished)) {
+		assert.ok(
+			!row.includes("text-success"),
+			"a row carries the terminus glyph",
+		);
+	}
+});
+
+test("the panel states distance in steps, never as a fraction of the run", () => {
+	/*
+	 * The rail replaced a bar whose fill was `indexOf(phase)/4`. That expression is
+	 * the defect this change exists to remove, so it is pinned rather than described
+	 * in a comment: `python` is the whole of a cold run's opening minutes and nothing
+	 * is behind it, so the bar claimed 0% for all of them while `components` claimed
+	 * exactly 50% for the longest step in the run - the same lie in two places,
+	 * because the panel knows stage BOUNDARIES and publishes nothing inside one.
+	 *
+	 * WHAT THE FIRST VERSION OF THIS TEST MISSED (review P3). It banned
+	 * `/percent|style=\{\{\s*width/`, which fails on a COMMENT that merely says
+	 * "percent" and passes on a fraction reintroduced the likelier way in a
+	 * Tailwind-classed component: a width utility (`w-1/2`). So this reads the code
+	 * with its comments stripped - prose about fractions is not a fraction - and it
+	 * bans the arbitrary-value route too, because that is how the connector's own
+	 * `scale-y-*` would carry one.
+	 */
+	const panel = readFileSync(
+		"src/renderer/src/features/installer/components/installer-panel.tsx",
+		"utf8",
+	);
+	const code = panel
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/^[ \t]*\/\/.*$/gm, "");
+	const fractionSpellings = [
+		[/percent/i, "a percentage"],
+		[/%\]/, "an arbitrary-value percentage"],
+		[/style=\{\{\s*width/, "an inline width"],
+		[/\bw-\d+\/\d+/, "a fractional width utility"],
+	];
+	for (const [pattern, what] of fractionSpellings) {
+		assert.ok(
+			!pattern.test(code),
+			`the installer panel sizes a progress element with ${what}`,
+		);
+	}
+	/*
+	 * And the same ban on what it RENDERS, in each state the run passes through: a
+	 * fraction assembled at runtime is a fraction the source never spells.
+	 */
+	for (const phase of [...PHASE_ORDER, null]) {
+		const markup = renderPanel(panelProps({ phase }));
+		assert.ok(
+			!/\bw-\d+\/\d+/.test(markup),
+			`a rendered row is sized as a fraction of the run (phase ${phase})`,
+		);
+	}
+});
+
 test("the window and the main process name the same channels", () => {
 	const main = readFileSync("src/main/backend/backend-installer.ts", "utf8");
 	const renderer = readFileSync(
@@ -697,6 +1037,65 @@ test("an unreachable index is not reported as a missing file", async () => {
 			new Error("OSError: [Errno 28] No space left on device"),
 		),
 		/disk space/,
+	);
+});
+
+test("a certificate verdict separates trust from expiry, and neither claims the other's remedy", async () => {
+	/*
+	 * Review round 1's R1-3: the verification entry used to carry a bare
+	 * `SSLError` alternative, so EVERY SSL-shaped failure - an expired
+	 * certificate, a proxy answering plain HTTP, an aborted handshake - was
+	 * answered with "ask IT for the root certificate", which only one of the
+	 * three causes deserves. The three strings below are the reviewer's own
+	 * reproductions, in their shapes; `null` is the honest answer for the two
+	 * that are not trust problems, because the app's generic sentence is true of
+	 * them and the certificate remedy is not.
+	 */
+	const causes = await bundleLeaf("./src/main/backend/setup-failure-causes.ts");
+	// The verification words still get the store remedy - uv's spelling and
+	// pip's, the two clients the install path actually runs.
+	assert.match(
+		causes.setupFailureCause(
+			new Error("uv: invalid peer certificate: UnknownIssuer"),
+		),
+		/root certificate/,
+	);
+	assert.match(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1006)'))",
+			),
+		),
+		/root certificate/,
+	);
+	// An expired certificate goes to the clock instead, and the ORDER is the
+	// mechanism: the raw text carries `CERTIFICATE_VERIFY_FAILED` too, so only
+	// the expiry entry sitting above the verification one can answer first.
+	assert.match(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1006)'))",
+			),
+		),
+		/date and time/,
+	);
+	// The two SSL shapes that are neither a trust problem nor an expiry fall
+	// through to the generic cause rather than borrowing the certificate remedy.
+	assert.equal(
+		causes.setupFailureCause(
+			new Error("SSLError(1, '[SSL: WRONG_VERSION_NUMBER]')"),
+		),
+		null,
+		"a proxy answering plain HTTP is not a certificate the user can add",
+	);
+	assert.equal(
+		causes.setupFailureCause(
+			new Error(
+				"SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol'))",
+			),
+		),
+		null,
+		"an aborted handshake is not a certificate the user can add either",
 	);
 });
 

@@ -1694,6 +1694,7 @@ const BRANCH_RECORDS = [
 	 */
 	"desktopStepDiagnosticsRestampNote",
 	/*
+
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
 	 * moved, one set's states re-captured - so a fold that started from main's
@@ -2365,6 +2366,26 @@ const BRANCH_RECORDS = [
 	 */
 	"browserOauthPopupsRestampNote",
 	/*
+	 * And THIS round's own (2026-09-29 recovery): the identity panel's pass
+	 * record, `identityMenuPass`, and this lane's three fold notes. The pass
+	 * record was never listed while the lane lived on its own branch - this
+	 * list's promise was one record short of true for it - and the fold notes
+	 * are the only statements of what each fold resolved; a fold resolved from
+	 * main's copy would drop them without a word, which is this list's whole
+	 * subject. The two notes this lane first wrote under plain fold names are
+	 * re-keyed with the `Identity` suffix because main's copy already ships
+	 * notes under both old names (the settings-rail lane's folds onto the same
+	 * tips - the same collision that lane re-keyed its own `A8ac7f673c` record
+	 * for). All four spell their identity as bare SHAs, so none adds a name to
+	 * the quoting ledger.
+	 */
+	"identityMenuPass",
+	"foldOnto7ba0ddce94IdentityNote",
+	"foldOnto6f284060IdentityNote",
+	"foldOnto65a3e97b8cIdentityNote",
+	"foldOnto29a9aa985cIdentityNote",
+	"foldOnto32c7bc34c9IdentityNote",
+	/*
 	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
 	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
 	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
@@ -2467,8 +2488,98 @@ const BRANCH_RECORDS = [
 	 * registration rides beside.
 	 */
 	"condensedBarFoldElevenNote",
+	/*
+	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
+	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
+	 * binding this file once held - the install path is not something the evidence
+	 * sweep renders, so it moved BOTH trees without
+	 * taking a frame, and the reader is owed the reason no still was owed. It is REPAIRED
+	 * in the same commit to name the SHAs its pass read rather than the tree pair, which
+	 * is the shape this file now enforces. `src/` moved for the install decision and the
+	 * scripts' environment build; `scripts/` for the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
+	/*
+	 * And the agent-review remediation's own record rides beside it
+	 * (`installProvisioningRemediationRestampNote`): the round moved both trees with no
+	 * frame - the launcher probe and its verdict cache, the failure-cause split, the three
+	 * scripts' TLS notes, and the suites that pin them - so a fold that started from
+	 * main's copy would drop the only statement of that.
+	 */
+	"installProvisioningRemediationRestampNote",
+	/*
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
+	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
+	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto0738fa7eb3InstallProvisioningNote",
+	/*
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
+	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
+	 * verified, this file conflicted alone, and a conflicting head produces no
+	 * pull-request runs - so the fold is repeated, and its record is registered for the
+	 * list's usual reason.
+	 */
+	"foldOnto49491865caInstallProvisioningNote",
+	/*
+	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
+	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
+	 * bundle - while this branch was being reviewed; the two evidence files conflicted
+	 * alone, resolved as unions the same way, and the test file merged additively.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
+	/*
+	 * And the SIXTH fold's own, beside them (`foldOnto65a3e97b8cNote`): main moved through
+	 * #554's condensed group images and the #653/#655/#668 trains while the session was
+	 * disposed; both evidence files conflicted, no name collided, and the resolution is the
+	 * usual union. Registered for the list's usual reason: a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"foldOnto65a3e97b8cNote",
+	/*
+	 * And this LANE's newest top-level record: the setup window's rail states the
+	 * pair the file ships and the surface it re-shot, so a fold resolved from
+	 * main's copy would drop it first - the reason this list exists.
+	 */
+	"installerPanelRailNote",
+	/*
+	 * And the pass under it: the round-1 remediation of the same rail, which
+	 * re-shot the surface whole and is the record a fold resolved from main's
+	 * copy would drop first, for the same reason.
+	 */
+	"installerPanelRailRemediationNote",
+	/*
+	 * And this LANE'S newest: the round-2 remediation, which fixed the working
+	 * ring's token, re-shot the surface whole again, and added the motion pair
+	 * the turn had no frame of. It states the trees the pass read as bare SHAs,
+	 * so it adds no name to the quoting ledger.
+	 */
+	/*
+	 * And THIS branch's re-keyed fold record (`foldOnto0738fa7eb3RestoreBoundaryNote`, re-keyed at the
+	 * fold onto `65a3e97b8c` because main already ships a note under the bare name, and registered here
+	 * per agent review round 4, F-r4-2): it states this lane's own reading of that fold, the fold that
+	 * re-laid it kept it byte-exact, and a fold that started from main's copy would drop it first -
+	 * the list's usual reason.
+	 */
+	"foldOnto0738fa7eb3RestoreBoundaryNote",
 ];
-
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),
