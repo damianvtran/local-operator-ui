@@ -27,7 +27,7 @@ rules it currently follows are built on the reservation that is going away.
 
 Panel widths are written through the divider's own action (`setSidebarWidth`),
 because a row's width is the user's preference (`chatSidebarWidth`, clamped
-240..360, default 280) and not a function of the window. Contrast this with
+**220..320**, default **260**) and not a function of the window. Contrast this with
 `docs/evidence/session-archive/README.md`'s "the shipped 320px panel" - that
 record corrected itself to 280, and 320 is a width the panel really can be put
 at, so all three are photographed here.
@@ -51,8 +51,8 @@ Measured on the committed frames, identical in both palettes:
 
 | Panel | Row box | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 240 (clamp min) | 224 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
-| 280 (default) | 264 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 240 (a below-default step) | 224 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
+| 280 (widened past the default) | 264 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
 | 320 | 304 | 248 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
 
 What that costs, at rest, inside the 264px row:
@@ -114,7 +114,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **68** | **80** | **120** | at 280px and above: the archive, the grip, the move pair, then the mark (136px). At or below 279px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
+| **pinned** | hover / focus-within | **68** | **80** | **120** | at 280px and above: the archive, the grip, the move pair, then the mark (136px). At or below 278px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -129,9 +129,11 @@ first time.
 is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on an
 unpinned row, `24` at rest on a pinned one, `52` under the pointer on an unpinned
 row and `108` under the pointer on a PINNED one - the archive, the move pair and
-the mark, 4 x 24 + 3 x 4 (issue #693; that is the cluster at or below 279px, where the
-grip is shed); at 240/280/320 the row box is 224/264/304. Above 279px a pinned row's
-revealed cluster is `136` (issue #697).
+the mark, 4 x 24 + 3 x 4 (issue #693; that is the cluster at or below a 278px panel, where
+the grip is shed); at 240/280/320 the row box MEASURED on the shipped DOM is
+208/248/288, the numbers the evidence JSON carries (the 224/264/304 these lines used to
+state is the panel minus its own 16px of `p-2`, one box further out). At 279px and above
+a pinned row's revealed cluster is `136` (issue #697).
 
 **THE FIFTH CONTROL, AND WHAT THE GRIP COSTS (issue #697, measured).** The pinned row's
 revealed cluster grew again when the drag handle arrived: `archive + grip + move up + move
@@ -150,7 +152,7 @@ indicator's own width is not part of this arithmetic (it is a 2px line inside th
 coordinates, drawn only while a gesture runs).
 
 **ROUND 1 CHANGED TWO OF THESE NUMBERS (design D2 and D3, 2026-09-30).** The 40px at the
-240 clamp was judged too expensive and the grip now sheds at or below a 279px panel (263 in
+240 clamp was judged too expensive and the grip now sheds at or below a 278px panel (263 in
 the container query's own arithmetic - see §8), so
 the 240 column is **68px** - the pair's own cost - and 40px survives only as the reading
 that motivated the shed (§8's round-1 subsection). The grip is also drawn only when at
@@ -441,7 +443,7 @@ directories; and the narrow steps of `scripts/renderer-driver.mjs`'s
 (`scripts/chat-sidebar-archive.test.mjs`: the D10 shared-control test and the
 container-query test both read text that will no longer exist).
 
-### Reinstated for ONE member (round 1, 2026-09-30, PR #697): the grip alone sheds at 279
+### Reinstated for ONE member (round 1, 2026-09-30, PR #697): the grip alone sheds below 279
 
 The rule above is about the ACTS and it stands unchanged: the pin, the archive and the
 move pair are drawn at every width. The **grip** is the one exception, and it is the
@@ -460,14 +462,50 @@ reveal rules are two-class selectors (`group-hover:flex`), so a one-class contai
 lost the cascade and the grip stayed drawn at the clamp with the pointer inside the row.
 The frames of both states are committed
 (`docs/evidence/pinned-reorder/grip-hover-240`: grip absent; `grip-hover-280/320`: drawn).
-Drag is unavailable at or below 279px; the pair reorders there, and the reader can widen
-the panel to drag.
+**The width this leaves the drag at is a product fact, and it is stated plainly (design round
+2, D8).** A panel the user has never resized opens at the **260** default
+(`SIDEBAR_DEFAULT_WIDTH`) and the overlay sheet is a fixed 260 as well, and both are below the
+shed's break - so **at the default width the reorder path is the move pair plus the keyboard
+chords, and there is no drag handle**; the handle is drawn once the docked panel is widened
+to 279 or more. The headline claim still holds, because reordering is available at EVERY width
+- the pair is drawn at every width and is WCAG 2.5.7's single-pointer path - and the DRAG is
+the width-gated accelerator. Moving the break down to cover the default was measured and
+rejected: with the grip drawn the title gets `panel - 200` and shed it gets `panel - 172`, so a
+break at 259 would put a **60px** title on the default, i.e. WORSE than the 68px the clamp
+minimum carries, and a reader widening the panel from 240 to 260 would watch the title shrink
+8px before it grew again at 279. The 260 default has its own frame in the evidence set
+(`docs/evidence/pinned-reorder/grip-hover-260`: the grip absent, the cluster 108px, the title
+88px under the pointer and 146px at rest), because 240/280/320 bracket the default without
+ever photographing it.
 
 The grip is drawn only when **at least two pinned rows are shown** as well (design D3,
 whose premise held up: measured, a one-row drag can be started, always lands on slot 0 and
 writes nothing), and it is `aria-hidden` because it is pointer-only (agent review R5). The
 pair still answers with the boundary sentence in the single-pin state, which is why the
 pair is not shed with it.
+
+### Round 2 (PR #697, design D7 + UX U6, agent N1): the held row is marked by a ring, not a fill
+
+**THE HELD ROW'S CUE MOVED OFF THE TWO FILLS THE LADDER HAS.** A held row that is ALSO the
+current one used to take the `rowHover` ground, and that is the exact fill the row under the
+pointer wears: the two are on screen together for the whole gesture (row boxes are contiguous,
+so a drag pointer is always over some row), and the held row also LOST the `rowSelected` fill
+that says "this is the conversation you are in". Measured in both palettes: held current
+`rgb(48,45,41)` dark / `rgb(237,236,231)` light - the hover role - against the drop target's own
+hover ground, one reading for two rows.
+
+The held state is now carried by a **1px inset ring** off `[data-dragging]`
+(`ring-1 ring-inset ring-ink-dim`) and the fill underneath is the row's own role, unchanged: the
+drag's `rowSelected` step. A held row is therefore distinct from a merely hovered one in both
+row states, and "you are here" survives the gesture. Inset rather than a border, so there is no
+layout shift and nothing to clip; a role rather than a hex, so both palettes get it from one
+declaration (`ink-dim` is the role the panel's own rounded-row ring reads).
+
+**AND THE GRIP REVEALS ON HOVER ONLY (agent review round 2, N1).** It is `aria-hidden` and
+`tabIndex={-1}`, so a `group-focus-within` term was showing a sighted keyboard reader a handle
+they can neither focus nor operate - the two decisions pointed opposite ways and the reveal
+yields. The PAIR keeps its own focus-within term: the chords press it, and it is the 2.5.7
+single-pointer path.
 
 ## 9. Accessibility (D10)
 

@@ -608,7 +608,7 @@ test("the pair is a row control: one stop per row, a chord, and a live region", 
  * mid-gesture and the order after a drop are the driver's (`pinned-reorder`), and
  * a class string that looks right is not a row that moved.
  */
-test("the grip is a drag handle: pointer-only, revealed like the pair, and one write per drop", () => {
+test("the grip is a drag handle: pointer-only, hover-revealed, and one write per drop", () => {
 	const source = SOURCE(SIDEBAR);
 	const at = source.indexOf("data-session-pin-grip");
 	assert.notEqual(at, -1, "the grip is not in the sidebar");
@@ -620,9 +620,20 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 		false,
 		"the grip must not join the arrow ring",
 	);
-	// Revealed by the row's pointer or its focus, exactly as the pair is.
-	assert.match(grip, /group-hover:flex/);
-	assert.match(grip, /group-focus-within:flex/);
+	/*
+	 * REVEALED BY THE POINTER, AND BY THE POINTER ONLY (agent review round 2, N1). The
+	 * grip used to carry the pair's `group-focus-within` term as well, and that is the one
+	 * thing this test asserted differently before this round: the control is `aria-hidden`
+	 * and `tabIndex={-1}`, so revealing it for the keyboard showed a sighted keyboard
+	 * reader a handle they can neither focus nor operate. The PAIR keeps its own term, and
+	 * that half is asserted below on the pair's own class list.
+	 */
+	assert.match(grip, /"group-hover:flex group-hover:text-ink-muted",/);
+	assert.equal(
+		/"group-focus-within:flex/.test(grip),
+		false,
+		"the grip is not focus-revealed: it is AT-inert, so the keyboard has nothing to do with it",
+	);
 	// A cursor, never a transform: nothing in the control lifts, scales or fades.
 	assert.match(grip, /cursor-grab/);
 	assert.equal(/opacity-|scale-|translate-|shadow-/.test(grip), false);
@@ -667,28 +678,37 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 	// disagree about which row is being moved.
 	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
 	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
-	// The ground is merged LAST, after `rowCurrent`, and it swaps rung when the row is
-	// also the current one (round 1, D1 and D5c).
+	// The held row's ground is merged LAST, after `rowCurrent`, and it is ONE ground for
+	// both row states (round 2, D7 + U6): a current held row keeps its own selected fill,
+	// so "you are here" survives the gesture.
+	assert.match(source, /dragging && rowDragging,/);
+	// AND THE NON-FILL HALF OF THE HELD STATE: a 1px inset ring, merged after the ground.
+	// It is what tells a held row apart from the row under the pointer, in the state the
+	// first attempt got wrong (`rowDraggingCurrent` painted the hover fill, which is
+	// exactly what the drop target wears - measured in both palettes).
 	assert.match(
 		source,
-		/dragging && \(current \? rowDraggingCurrent : rowDragging\),/,
+		/export const rowDraggingMark = "ring-1 ring-inset ring-ink-dim";/,
+	);
+	assert.match(source, /dragging && rowDraggingMark,/);
+	assert.equal(
+		source.includes("rowDraggingCurrent"),
+		false,
+		"the held state is not a second fill: it is the row's own ground plus the ring",
 	);
 	/*
 	 * AND IT IS RESTATED AT THE HOVER VARIANT (round 1, D1 and U1; measured on the frames
 	 * and on a live run). A bare `bg-row-selected` loses to the row box's own
 	 * `hover:bg-row-hover`, and the pointer that armed the drag never leaves the captured
 	 * row - so the shipped constant painted the dragged row exactly like a merely hovered
-	 * one (`#302D2A` dark against the intended `#372F24`). The CURRENT spelling is the same
-	 * step swapped to the other row role, because a current row's resting fill already IS
-	 * the selected one.
+	 * one (`#302D2A` dark against the intended `#372F24`). Round 2 removed the SECOND
+	 * spelling this comment used to describe (a held CURRENT row taking the other row
+	 * role), because that role is the hover fill too; the ground is now one constant and
+	 * the held state's second half is the ring.
 	 */
 	assert.match(
 		source,
 		/export const rowDragging =\s*"bg-row-selected text-ink hover:bg-row-selected hover:text-ink";/,
-	);
-	assert.match(
-		source,
-		/export const rowDraggingCurrent =\s*"bg-row-hover text-ink hover:bg-row-hover hover:text-ink";/,
 	);
 	// The indicator exists only during the drag, is inert, and lives in the section
 	// the rows are drawn in (so it scrolls with them).

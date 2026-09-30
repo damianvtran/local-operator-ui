@@ -956,7 +956,7 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 	 * the file is where the shed would go back"). What went back is NOT the pair shed:
 	 * the pin, the archive and the move pair are still drawn at every width, and the
 	 * shared 24px menu, its anchor and the two constants stay retired. What sheds at or
-	 * below a 279px panel is the GRIP alone - 28px of the revealed cluster, an
+	 * below a 278px panel is the GRIP alone - 28px of the revealed cluster, an
 	 * accelerator for a gesture the arrows already perform, leaving the pair as WCAG
 	 * 2.5.7's single-pointer path. So the assertion flips from "the name is absent" to
 	 * "the name is present and exactly one class reads it", which is the property that

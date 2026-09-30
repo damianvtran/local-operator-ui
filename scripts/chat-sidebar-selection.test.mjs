@@ -987,13 +987,16 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// pair's own shape one control over (revealed by the pointer, guarded
 				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
 				// a pinned row's box like every other control counted here.
-				// EIGHTEEN (PR #697's round-1 remediation, D1/D5c). The dragged row's ground
-				// needs a SECOND spelling: on the row the reader is IN, the selected step is
-				// already that row's resting fill, so `rowDragging` cannot say "held" there
-				// and `rowDraggingCurrent` takes the other row role instead. Both are
-				// constants rather than classes in a JSX expression, so no `CURRENT` entry
-				// can resolve them - the count is the honest place for both.
-				"hover:bg-row-hover": 18,
+				// SEVENTEEN AGAIN (PR #697's round-2 remediation, design D7 + UX U6): the
+				// EIGHTEENTH literal round 1 added - `rowDraggingCurrent`'s hover half - is
+				// GONE, and the held state no longer has a second fill at all. That constant
+				// gave the held row the `row-hover` role while it was also the current one,
+				// and that is the fill the row under the pointer wears, so two rows on screen
+				// read alike (measured in both palettes). The held cue is now a 1px INSET
+				// RING (`rowDraggingMark`), which is not a ground role and so is not counted
+				// here - the ground underneath is the row's own, `rowDragging`'s selected
+				// step, and that spelling is still the literal PLUS ONE below.
+				"hover:bg-row-hover": 17,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
