@@ -240,7 +240,7 @@ export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;
 	anchor_id: string | null;
-	kind: "complete" | "error" | "interrupted" | null;
+	kind: "complete" | "error" | "interrupted" | "closed" | "retired" | null;
 	unseen: boolean;
 	revision: [number, number];
 	/** False for a live owner that has not negotiated completion receipts. */
@@ -444,6 +444,22 @@ export type CanonicalModel = {
 	reasoning_default_effort?: string | null;
 	/** Whether the model reasons at all, with or without a ladder. */
 	reasoning?: boolean | null;
+	/**
+	 * Whether this route can serve the model on its FAST tier, and whether the
+	 * session's fast dial is ON (`ModelSpec.supports_fast_mode` / `.fast_mode`,
+	 * `local_operator/harness/types.py`; `/fast` flips the second).
+	 *
+	 * OPTIONAL like every field below `model_id`, and for the same reason: the
+	 * pair landed after the spec dump this contract first described, so an older
+	 * owner omits both. `supports_fast_mode !== true` therefore means "no tier to
+	 * report", and every reader shows NOTHING for it rather than an OFF state it
+	 * cannot vouch for — the one tri-state every surface takes from
+	 * `fastModeState` (`session-status/session-model.ts`): the strip's badge and
+	 * the `/fast` row's slot both read that helper, so they cannot disagree
+	 * about a session's dial.
+	 */
+	supports_fast_mode?: boolean | null;
+	fast_mode?: boolean | null;
 	/** The active budget. `max_context_window` retains provider provenance. */
 	context_window?: number | null;
 	max_context_window?: number | null;
@@ -532,13 +548,18 @@ export type PendingDesktopGate = {
  * conversation the user is already in. This is what the presence claim
  * advertises — the backend's `delivers(kind)` reads it, and a claim that
  * advertises nothing makes every completion someone else's to raise.
+ *
+ * `retired` joins `interrupted` in staying OUT of this set (agent review round
+ * 2, NIT-1): both are CUT receipts rather than a completed or failed turn —
+ * the per-session bridge raises the cut for the session the user is in, and
+ * the feed's claim covers turns that finished, cleanly or not.
  */
 export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
 
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
-	kind: "complete" | "error" | "interrupted" | "ask" | "approval";
+	kind: "complete" | "error" | "interrupted" | "retired" | "ask" | "approval";
 	title: string;
 	/** Short state category ("Complete", "Needs attention"). */
 	status: string;

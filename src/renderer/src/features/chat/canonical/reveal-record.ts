@@ -318,10 +318,10 @@ const highlightTimers = new WeakMap<HTMLElement, number>();
  * again after `JUMP_HIGHLIGHT_MS`.
  *
  * Reduced motion does not cancel the highlight — the stylesheet holds the wash
- * still for the same window instead (`prefers-reduced-motion: no-preference`
- * gates only the animation, the same split `.lo-install-sweep` documents),
- * because the flash is information before it is motion: without it a reduced-
- * motion reader arrives somewhere with no cue at all.
+ * still for the same window instead (only the animation is gated on
+ * `prefers-reduced-motion: no-preference`; the `[data-jump-highlight]` ground
+ * sits outside it), because the flash is information before it is motion:
+ * without it a reduced-motion reader arrives somewhere with no cue at all.
  */
 export function paintJumpHighlight(target: HTMLElement): void {
 	const running = highlightTimers.get(target);
