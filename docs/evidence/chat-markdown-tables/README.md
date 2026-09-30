@@ -49,6 +49,22 @@ committed capture's own
   own behaviours rather than the reported reproduction. The before half has the
   five reproduction states alone (its README says so).
 
+## Round 1's remediation states (AFTER-only)
+
+- **`three-shas-linked`** (UX-1): `three-shas`'s chain with its Repo cells as
+  real links - the mixed case the keyboard question turns on (an overflowing
+  wrapper that also holds focusable descendants). Captured at both rungs; its
+  Tab walk is in section "Keyboard".
+- **`user-turn`** (design D1): the reported table inside a user record - the
+  fit-content `max-w-[85%]` bubble, a different container geometry from the
+  810px answer column. Captured at 1280. The PROJECTS surface's update body is
+  deliberately NOT photographed: it shares this stylesheet and the same wrapper
+  module (the suite renders it in jsdom), and standing its sheet up for the rig
+  needs the projects surface's own scaffolding - recorded as a deferral rather
+  than paid here.
+- **`code-in-cells`** (QA Q3): code spans inside cells, the `td code`
+  override's live case. Captured at 1280.
+
 ## vs the prototype's numbers (design open question 2) - one mismatch, explained
 
 | state | prototype (design note) | real story (after) | verdict |
@@ -101,15 +117,40 @@ where the columns re-price wholesale); once rows are landing, moves stay under
 measure 56-63px). Boundaries follow longer words as they arrive; they do not
 jitter.
 
-## Keyboard (design note section 2; UX consult Q1)
+NOT IN THIS SET, DELIBERATELY, and the same for round 1's focus-ring frame: the
+three mid-stream frames were taken by a temporary prefix-typing harness that
+was removed after the probe, so nothing committed could reproduce or extend
+them, and they live with the session record rather than in `docs/evidence/`
+(the readings above are their record). The one criterion this rig cannot
+measure is named rather than implied: scrollbar flicker - every run passes
+`--hide-scrollbars` (no switch turns it off) and Storybook draws overlay
+scrollbars besides, so the app's permanent 8px thumb, the thing that would
+flicker, is in no frame; the column numbers above are the settled record, and
+the thumb's behaviour is left to the real app (QA round 1's captures, section
+"Scrollbars").
 
-Tab walks with real key events at 1280x900:
+## Keyboard (design note section 2; UX consult Q1; round 1's UX-1)
+
+Tab walks with real key events at 1280x900 (`Input.dispatchKeyEvent`, the same
+Tab dispatch the repository's own rig uses for `tabTo`; focus starts on the
+body). The transcript's own region (`tabindex="0"`, `role="log"`) is the walk's
+first stop; the entries below name the table's own:
 
 - `three-shas` (scrolls; no focusable descendants): Tab reaches
   `DIV.lo-md-table-scroll` itself - the wrapper is a tab stop and arrows scroll
-  it.
-- `long-tokens` (contains anchors): Tab reaches the two links inside the cells;
-  the wrapper is not its own stop.
+  it (`0 -> 11 -> 50 -> 87` over three presses).
+- `long-tokens` (contains anchors; does not overflow): Tab reaches the two
+  links inside the cells; the wrapper is not its own stop - and since it does
+  not scroll, this state cannot tell "links suppress the stop" from "there is
+  nothing to scroll".
+- `three-shas-linked` (THE MIXED CASE: contains anchors AND overflows): Tab
+  does NOT stop on the wrapper - it reaches the two links in the cells (then
+  the message foot's copy control). With a link focused, ArrowRight scrolls the
+  WRAPPER: `0 -> 11 -> 50 -> 96 -> ... -> 323`, and 323 is the wrapper's whole
+  range (`scrollWidth 1133 - clientWidth 810`), so every column past the cut is
+  keyboard-reachable. The focused link scrolls out of view rather than pinning
+  the scroll, and nothing is stranded - round 1's UX-1 question is settled by
+  measurement, not by prose.
 - `operator-shape` (fits): the wrapper is not in the tab order at all.
 
 No `tabindex`/`role` was added - this is Chromium's own scrollable-only
@@ -131,6 +172,14 @@ not by the Storybook preview) does not render in Storybook at all. Rather than
 fake a bar into a frame, the affordance is recorded here as numbers, plus the
 cut fourth column the frames themselves show (`Gr`, `2C` at the right edge).
 
+THE FRAMES CANNOT SHOW THE APP'S PERMANENT SCROLLBAR - Storybook does not mount
+it and the rig captures with `--hide-scrollbars` - so the affordance record for
+the real app is QA round 1's captures: session `7f2effe0c556` scratchpad
+`qa712/` (`app-wrapper-0/1/2.png` and `app-measure.json` for the computed
+`::-webkit-scrollbar` readings, `rigC/out/C-three-shas-*.png` and
+`rigC/out/C-ring-*.png` for the visible thumb, the ring and the arrow-scroll
+walk).
+
 ## How they were taken
 
 ```sh
@@ -140,11 +189,16 @@ node scripts/capture-evidence.mjs http://localhost:6271 \
   --allow-backend --theme-settle-ms=180000
 ```
 
-- 44 frames: 11 entries x 4 themes - seven states at 1280x900 (the five
-  reported shapes plus `three-shas` and `giant-token`) and four of them also at
-  920x900 (`operator-shape`, `long-tokens`, `many-columns`, `three-shas`).
-  Captured at head `d5e5261d08` (the fix commit) with a clean code tree; the
-  run records `dirtyWorkingTree: false`.
+- The fix's capture: 44 frames - 11 entries x 4 themes - seven states at
+  1280x900 (the five reported shapes plus `three-shas` and `giant-token`) and
+  four of them also at 920x900 (`operator-shape`, `long-tokens`, `many-columns`,
+  `three-shas`). Captured at head `d5e5261d08` (the fix commit) with a clean
+  code tree; the run records `dirtyWorkingTree: false`.
+- Round 1's remediation added four entries (16 frames) in a narrowed run of the
+  same rig over the same server: `--only=chat-markdown-tables
+  --dirs=three-shas-linked,user-turn,code-in-cells`, captured at `3db7de2ecf`
+  (`three-shas-linked` at both rungs; `user-turn` and `code-in-cells` at 1280).
+  The set is now 60 frames: 15 entries x 4 themes.
 - `--allow-backend` because the operator's live daemon answers on :1111 and
   must not be stopped for a capture, and this story is a static fixture
   (`frontend={null} gate={null}`) that never contacts the backend; the rig's
@@ -164,12 +218,15 @@ widths) with a one-off session script - this file is the record, the same shape
 as the before half's `MEASUREMENTS.md`.
 
 **Stamps this pass read.** `git rev-parse HEAD:src` =
-`55c6963cb416628eb771ffda9bdb573fbb42c62a`; `git rev-parse HEAD:scripts` =
-`165f1dce01ecd41517d1d908d3348808cfe2dcaa`.
+`508bb4500922a512948b907935d51048e3595837`; `git rev-parse HEAD:scripts` =
+`9a9d3197660cbcb0bfa1bb9a2bc3a0818f28b08a` (both re-read at `3db7de2ecf`, the
+commit the remediation capture ran against; the stamps are docs-only since, so
+they are the pair the manifest ships).
 
 **Not here.** The manifest's `supplementary` declaration for the before set and
-the re-stamp over the fold are the lane's last step; this set's own frames are
-swept (no supplementary entry, and no extra note machinery).
+the re-stamp over the fold LANDED in `8fb37eeb37`; round 1's remediation
+re-stamps once more in its own docs-only commit (this set's frames are swept:
+no supplementary entry, no extra note machinery).
 
 **Open, for the design round.** (1) The `#684 (1a)` word wrap above (1.7px
 short of single-line at the app's type size, every theme). (2) The
