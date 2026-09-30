@@ -478,6 +478,165 @@ export const BOARD_COLUMNS = [
 export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 
 /**
+ * The board's time window: the recency a card must carry to be drawn.
+ *
+ * ONE TABLE OWNS THE LADDER. Every form the window takes lives on its row -
+ * the stored token (`value`), the control's own words (`label`), the phrase
+ * the empty-window sentence embeds (`phrase`), and the arithmetic (`seconds`)
+ * - so the control, the filter and the copy cannot drift apart about what
+ * "last 30 days" is called or how far back it reaches.
+ *
+ * ROLLING WINDOWS, NOT CALENDAR ONES: `seconds` is a lookback from the
+ * reader's own clock (the page hands in its one `nowMs`, the same instant the
+ * age labels run on), not a day boundary - a "last 24 hours" that reset at
+ * midnight would sit empty at 00:01 and read as a broken board.
+ *
+ * The predicate is INCLUSIVE at the boundary, and `all` carries no arithmetic
+ * at all (`seconds: null`): it is the absence of a predicate, which is also
+ * why the value an unreadable token falls back to is `7d` and never `all` - a
+ * window nothing can vouch for must not silently widen to everything.
+ *
+ * `updated_at` is epoch SECONDS (the wire's units), so the comparison divides
+ * the clock once (`nowMs / 1000`) rather than multiplying every row's stamp.
+ * A card's PRINTED progress age is a different stamp (`progress_updated_at`),
+ * deliberately not what this filters on.
+ */
+export const BOARD_WINDOWS = [
+	{
+		value: "24h",
+		label: "Last 24 hours",
+		phrase: "the last 24 hours",
+		seconds: 86_400,
+	},
+	{
+		value: "7d",
+		label: "Last 7 days",
+		phrase: "the last 7 days",
+		seconds: 604_800,
+	},
+	{
+		value: "30d",
+		label: "Last 30 days",
+		phrase: "the last 30 days",
+		seconds: 2_592_000,
+	},
+	{
+		value: "90d",
+		label: "Last 90 days",
+		phrase: "the last 90 days",
+		seconds: 7_776_000,
+	},
+	{ value: "all", label: "All time", phrase: null, seconds: null },
+] as const;
+
+export type BoardWindow = (typeof BOARD_WINDOWS)[number]["value"];
+
+/** The window a fresh session - or an unrecognised stored value - reads. */
+export const DEFAULT_BOARD_WINDOW: BoardWindow = "7d";
+
+/**
+ * The default's own row, resolved once. `find` cannot miss for a typed caller
+ * - `BoardWindow` IS this table's value union - so the cast is the compiler
+ * being told what the union already proves; the fallback keeps
+ * `boardWindowMeta`'s return type total instead of widening it with
+ * `undefined` at every call site.
+ */
+const DEFAULT_BOARD_WINDOW_ENTRY = BOARD_WINDOWS.find(
+	(entry) => entry.value === DEFAULT_BOARD_WINDOW,
+) as (typeof BOARD_WINDOWS)[number];
+
+/**
+ * The ladder row behind a window token. An unrecognised value reads as the
+ * default's row rather than as `all`: a window nothing can vouch for narrows
+ * the board (7d), it never opens it.
+ */
+export function boardWindowMeta(value: string): (typeof BOARD_WINDOWS)[number] {
+	return (
+		BOARD_WINDOWS.find((entry) => entry.value === value) ??
+		DEFAULT_BOARD_WINDOW_ENTRY
+	);
+}
+
+/** Whether a stored token is one of the ladder's values. */
+export function isBoardWindow(value: string): value is BoardWindow {
+	return BOARD_WINDOWS.some((entry) => entry.value === value);
+}
+
+/**
+ * The board's rows for a window: the listing narrowed to the ones whose
+ * `updated_at` is inside the lookback, or the listing itself at `all`.
+ *
+ * A SEPARATE derivation rather than a filter in place, because the listing
+ * feeds three surfaces: `projects` stays whole for the List view and the
+ * timeline's fan-out (deliberately - the window is the BOARD's preference),
+ * and only the board reads this. `all` returns the input by reference, which
+ * is the "no predicate" the design states rather than a no-op filter.
+ */
+export function boardWindowProjects(
+	projects: DesktopProject[],
+	window: BoardWindow,
+	nowMs: number,
+): DesktopProject[] {
+	const entry = boardWindowMeta(window);
+	if (entry.seconds === null) return projects;
+	return projects.filter(
+		(project) => nowMs / 1000 - project.updated_at <= entry.seconds,
+	);
+}
+
+/**
+ * The empty-window state's heading - `Nothing changed in the last 7 days.` -
+ * or `null` at `all`.
+ *
+ * The null is the state's own unreachability stated in code: `all` is no
+ * predicate, so a non-empty listing cannot narrow to nothing under it, and
+ * the one value whose heading could not be true never gets one.
+ */
+export function boardWindowEmptyHeading(window: BoardWindow): string | null {
+	const entry = boardWindowMeta(window);
+	if (entry.seconds === null) return null;
+	return `Nothing changed in ${entry.phrase}.`;
+}
+
+/**
+ * Where the user's board window is stored, in the same layout-choice key
+ * style as the column order below (`projects-board-window`): a preference
+ * kept between sessions, read with a guarded fallback so a locked store reads
+ * as the default rather than as a broken board.
+ */
+export const PROJECTS_BOARD_WINDOW_STORAGE_KEY = "projects-board-window";
+
+/**
+ * The stored window, or the default for anything else - a missing key, a
+ * locked store, a token another build wrote. The same rule `readProjectsView`
+ * applies: an unrecognised value reads as the default, never as "show
+ * everything".
+ */
+export function readBoardWindow(): BoardWindow {
+	try {
+		const stored = localStorage.getItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY);
+		if (stored !== null && isBoardWindow(stored)) return stored;
+	} catch {
+		/* storage unavailable: the default is the honest answer */
+	}
+	return DEFAULT_BOARD_WINDOW;
+}
+
+/**
+ * Persist the window; a failed write must not fail the change. The session
+ * keeps the switch either way - the page holds it in state, and only a
+ * remount re-reads the store (the guarded-read rule above then decides what
+ * that remount sees).
+ */
+export function writeBoardWindow(window: BoardWindow): void {
+	try {
+		localStorage.setItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY, window);
+	} catch {
+		/* storage unavailable: the change stands for this session */
+	}
+}
+
+/**
  * Where the user's own column order is stored, in the app's layout-choice key
  * style (`projects-view`, `chat-sidebar-disclosures`): a preference kept
  * between sessions, read with guarded fallbacks so a locked store reads as the
