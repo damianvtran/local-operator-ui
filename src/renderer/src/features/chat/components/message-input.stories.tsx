@@ -24,6 +24,10 @@ import {
 } from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
+import {
+	type PickerContext,
+	ThemePicker,
+} from "../pickers/destination-pickers";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
 import type { SlashCommandMeta } from "./slash-commands";
@@ -133,6 +137,22 @@ const slashCommand = (
  * `logout`, which made the frame show `log`: a number the real registry cannot
  * produce, and an ambiguity case easier than the one users meet.
  */
+/*
+ * The `$` list's vocabulary, answered by the fixture for the cluster story:
+ * three rows, and the third is what `hide` looks like from THIS surface — the
+ * list never filters the vocabulary, because `hide` keeps a skill out of the
+ * MODEL's routing, not out of the user's own invocation (issue #664's own
+ * contract: naming it explicitly is exactly the case `hide` describes).
+ */
+const SKILL_ROWS = [
+	{ name: "research", description: "Research a question against the codebase" },
+	{
+		name: "release-notes",
+		description: "Draft release notes from merged pull requests",
+	},
+	{ name: "secret-ritual", description: "Hidden from routing; invoke by name" },
+];
+
 const SLASH_COMMANDS: SlashCommandMeta[] = [
 	slashCommand(
 		"analytics",
@@ -244,7 +264,11 @@ const storyWindow = window as any;
 storyWindow.api = {
 	...storyWindow.api,
 	desktop: {
-		request: async (request: { op: string; command?: string }) => {
+		request: async (request: {
+			op: string;
+			command?: string;
+			name?: string;
+		}) => {
 			if (request.op === "capabilities")
 				return {
 					status: 200,
@@ -253,7 +277,7 @@ storyWindow.api = {
 							desktop_contract: 1,
 							desktop_available: true,
 							desktop_auth: "bearer",
-							features: { commands: 1, session_catalogue: 1 },
+							features: { commands: 1, session_catalogue: 1, catalogues: 1 },
 						},
 					},
 				};
@@ -270,10 +294,33 @@ storyWindow.api = {
 						},
 					},
 				};
+			if (request.op === "skills.list")
+				return {
+					status: 200,
+					body: {
+						result: {
+							data: {
+								skills: SKILL_ROWS,
+								scope: "discoverable",
+								/*
+								 * The detail is the runtime resolver's own output, a STRING, which is
+								 * one of the two envelopes `readSkillBody` accepts. It carries a
+								 * frontmatter block deliberately: that is what a real SKILL.md starts
+								 * with, and `skillBodyHasContent` has to see through it for the send
+								 * to fire.
+								 */
+								detail: request.name
+									? `---\nname: ${request.name}\ndescription: Fixture\n---\n\n# ${request.name}\n\nFollow the fixture body for this request.`
+									: null,
+								warning_count: 0,
+							},
+						},
+					},
+				};
 			return {
 				status: 503,
 				body: {
-					detail: `The slash-gesture fixture answers capabilities, commands.list and commands.entities only; ${request.op} is not one of them.`,
+					detail: `The slash-gesture fixture answers capabilities, commands.list, commands.entities and skills.list only; ${request.op} is not one of them.`,
 				},
 			};
 		},
@@ -570,6 +617,119 @@ const SlashGestureHarness = () => {
 };
 
 export const SlashEnter: Story = { render: () => <SlashGestureHarness /> };
+
+/**
+ * The composer cluster's three surfaces (issues #673, #664, #676), on the
+ * PRODUCTION composer over the fixture desk bridge above.
+ *
+ * WHY A DRIVEN STORY AND NOT A STILL. Each claim is about what a KEY does to a
+ * state that only exists mid-gesture: a draft under the caret when ArrowUp is
+ * pressed, a `$` token the list opens from, the Enter that sends an expanded
+ * payload. `scripts/composer-cluster-proof.mjs` drives real key events into
+ * this story over raw CDP and reads three things back:
+ *
+ * - the DRAFT (`textarea.value`), for #673's rule: an empty box recalls, a
+ *   draft survives the key at any caret position;
+ * - `[data-sent]`, the payload `onSendMessage` was handed — for #664 the sent
+ *   text IS the claim, and it is the only place the `invoke.py` expansion is
+ *   visible as bytes;
+ * - the mounted `/theme` dialog, for #676: the story mounts the REAL
+ *   `ThemePicker` with the dispatcher's own action shape when the command
+ *   dispatches, so the frame shows the component the app mounts (the dispatch
+ *   itself is recorded beside it, and the real dispatcher's route is QA's
+ *   live walk).
+ *
+ * The submitted-message log is seeded on mount because the recall walks the
+ * STORE's history, not a prop: two entries, so ArrowUp can be taken twice and
+ * ArrowDown returns.
+ */
+const ComposerClusterHarness = () => {
+	const [sent, setSent] = useState<string[]>([]);
+	const [dispatched, setDispatched] = useState<string[]>([]);
+	const [themeArgs, setThemeArgs] = useState<string | null>(null);
+	useEffect(() => {
+		const store = useConversationInputStore.getState();
+		/*
+		 * Seed ONCE, and only into an empty log: the store persists to
+		 * localStorage across this story's page reloads (one per proof case),
+		 * and an unguarded mount effect appends a second pair on every case -
+		 * non-consecutive duplicates the store's own dedup deliberately does not
+		 * swallow - so the walk would grow a history the case never typed and
+		 * the BEFORE/AFTER records could not be compared.
+		 */
+		if (store.inputByConversation.story?.submittedMessages?.length) return;
+		store.addSubmittedMessage("story", "the release checklist, please");
+		store.addSubmittedMessage("story", "run the migration again please");
+	}, []);
+	return (
+		<div
+			className={cn(
+				"relative flex h-screen flex-col justify-end gap-3 bg-canvas p-6",
+			)}
+		>
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story"
+				sessionStatus={SESSION_READINGS}
+				paneHasSession={true}
+				onSendMessage={async (text) => {
+					setSent((previous) => [...previous, String(text)]);
+					return true;
+				}}
+				onSlashCommand={async (invocation) => {
+					setDispatched((previous) => [
+						...previous,
+						`/${invocation.name}${invocation.args ? ` ${invocation.args}` : ""}`,
+					]);
+					if (invocation.name === "theme") setThemeArgs(invocation.args ?? "");
+					return "consumed";
+				}}
+			/>
+			{themeArgs !== null && (
+				<ThemePicker
+					{...({
+						action: {
+							kind: "native_action",
+							destination: "appearance",
+							session_id: "",
+							args: themeArgs,
+							fields: [],
+							data: {},
+						},
+						spec: { name: "theme", destination: "appearance" },
+						sessionId: "",
+						canonical: {},
+						commands: [],
+						onClose: () => setThemeArgs(null),
+						note: () => {},
+						dispatch: () => {},
+						rebind: () => {},
+					} as unknown as PickerContext)}
+				/>
+			)}
+			<div className={cn("flex flex-col gap-1")}>
+				<span className={cn("font-mono text-ink-dim text-mono-sm")}>sent</span>
+				<p
+					data-sent=""
+					className={cn("font-mono text-body-sm text-ink whitespace-pre-wrap")}
+				>
+					{sent.length > 0 ? sent.join("\n---\n") : "none"}
+				</p>
+				<span className={cn("font-mono text-ink-dim text-mono-sm")}>
+					dispatched
+				</span>
+				<p data-dispatched="" className={cn("font-mono text-body-sm text-ink")}>
+					{dispatched.length > 0 ? dispatched.join(", ") : "none"}
+				</p>
+			</div>
+		</div>
+	);
+};
+
+export const ComposerCluster: Story = {
+	render: () => <ComposerClusterHarness />,
+};
 
 /*
  * THE INTERRUPT'S OWN SURFACE: the control, its absence, and what a press that

@@ -363,6 +363,21 @@ export type DesktopFeature =
 	 */
 	| "session_interrupt"
 	/**
+	 * Conversational configuration: `sessions.create` accepting a `purpose`
+	 * (`agents-config`), which makes the backend start a SUPERVISED BACKGROUND
+	 * RUN that edits this device's agent and team registries without ever
+	 * entering the operator's conversation.
+	 *
+	 * ITS OWN KEY, for the reason every key in this union is: a backend that
+	 * predates the field validates the create body with `extra="forbid"` and
+	 * answers a masked 422, so an un-gated composer would report a malformed
+	 * request for a request the app deliberately made — and could not tell
+	 * "update the backend" from "the app is broken". Absent here means the
+	 * composer is not rendered at all and the structured editor is the only
+	 * path, with one honest line saying why (the `session_interrupt` precedent).
+	 */
+	| "agents_config"
+	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see
 	 * arch §4.2).
