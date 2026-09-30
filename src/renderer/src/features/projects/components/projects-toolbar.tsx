@@ -49,14 +49,17 @@ import {
 	type FilterFacetKey,
 	type FilterOptionValue,
 	type FilterState,
-	activeFacetCount,
+	activeSelectionCount,
 	filterOptionLabel,
 	isFilterEmpty,
 	toggleFilterValue,
 } from "../project-filters";
 import type { SortSpec } from "../project-sort";
 import { sortColumnLabel, sortDirectionWords } from "../project-sort";
-import { ProjectFiltersPanel } from "./project-filters-panel";
+import {
+	FilterPopoverScroll,
+	ProjectFiltersPanel,
+} from "./project-filters-panel";
 
 /* ------------------------------------------------------- search controls -- */
 
@@ -72,8 +75,22 @@ export type ProjectsSearchControlsProps = {
 	todayMs: number;
 	/** `12 of 74 projects` (or the Board's windowed count); `null` hides the line. */
 	resultText: string | null;
+	/**
+	 * The class that reveals the count at the width its own row can hold it
+	 * (see the count's comment): List and Timeline reveal at 37rem of
+	 * container, the Board at 47rem, whose row also carries the window
+	 * control. The default is the List/Timeline constant.
+	 */
+	countRevealClass?: string;
 	/** The board's window select, when the Board is the view. */
 	trailing?: ReactNode;
+	/**
+	 * The listing read FAILED: the Filters door closes (design §2.3 — filtering
+	 * a set that failed to load is meaningless), while the field stays enabled
+	 * so a reader's query survives the retry (and a later success answers it).
+	 * Disabled changes colour, never opacity (branding §2).
+	 */
+	disabled?: boolean;
 	/** The page's handle for `/`, ⌘F and the body's Clear all. */
 	searchFieldRef: RefObject<HTMLInputElement>;
 };
@@ -87,11 +104,13 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	onClearAll,
 	todayMs,
 	resultText,
+	countRevealClass = "@[37rem]:inline",
 	trailing,
+	disabled = false,
 	searchFieldRef,
 }) => {
 	const [filtersOpen, setFiltersOpen] = useState(false);
-	const activeCount = activeFacetCount(filters);
+	const activeCount = activeSelectionCount(filters);
 	/*
 	 * The count ANNOUNCED is the settled one (the ux round's N4 fold, 300 ms
 	 * trailing): the visible line answers every keystroke, but a live region
@@ -156,36 +175,58 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 			</div>
 			<Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
 				<PopoverTrigger asChild>
-					{/* Radix puts aria-haspopup and aria-expanded on this button; the
+					{/*
+					    Radix puts aria-haspopup and aria-expanded on this button; the
 					    content is a dialog-role popover, which is why the design's
 					    `aria-haspopup="menu"` sketch is not reproduced — a menu is
-					    not what opens here. */}
-					<Button variant="secondary" size="sm" data-project-filters-button="">
+					    not what opens here. Disabled with the failed read (R2).
+					*/}
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={disabled}
+						data-project-filters-button=""
+					>
 						<ListFilter size={14} aria-hidden="true" />
 						Filters
 						{activeCount > 0 && <Badge variant="neutral">{activeCount}</Badge>}
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent
-					align="end"
-					aria-label="Filters"
-					className="max-h-[min(70vh,32rem)] w-80 overflow-y-auto overscroll-contain p-0"
-				>
-					<ProjectFiltersPanel
-						projects={projects}
-						state={filters}
-						query={query}
-						todayMs={todayMs}
-						onToggle={(facet, value) =>
-							onFiltersChange(toggleFilterValue(filters, facet, value))
-						}
-						onClearAll={onClearAll}
-					/>
+				<PopoverContent align="end" aria-label="Filters" className="w-80 p-0">
+					<FilterPopoverScroll>
+						<ProjectFiltersPanel
+							projects={projects}
+							state={filters}
+							query={query}
+							todayMs={todayMs}
+							onToggle={(facet, value) =>
+								onFiltersChange(toggleFilterValue(filters, facet, value))
+							}
+							onClearAll={onClearAll}
+						/>
+					</FilterPopoverScroll>
 				</PopoverContent>
 			</Popover>
 			{showCount && resultText !== null && (
+				/*
+				 * SHED BELOW THE ROW'S OWN FIT WIDTH (U7): the count is the one item
+				 * in this cluster that appears on the first keystroke, and below its
+				 * fit width it pushed the cluster past the row — the first character
+				 * wrapped the switcher row (32 -> 72px on the List) and moved the
+				 * content below down with it, the same jump U1 was raised to remove.
+				 * The reveal is the MEASURED fit boundary per row: the List/Timeline
+				 * row fits the count from 592px of container (572 wrapped, 592 fit),
+				 * the Board's from 752px (732 wrapped, 752 fit) because it carries
+				 * the window control as well; the page passes the Board's constant
+				 * down. Below the boundary the row stays single-line in state 0 AND
+				 * state 1. The sr-only announcement above stays unconditional — the
+				 * shed is a layout decision, not an information one.
+				 */
 				<span
-					className="whitespace-nowrap text-meta text-ink-dim"
+					className={cn(
+						"hidden whitespace-nowrap text-meta text-ink-dim",
+						countRevealClass,
+					)}
 					data-project-count=""
 				>
 					{resultText}

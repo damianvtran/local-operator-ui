@@ -20,8 +20,8 @@
 
 import { Button, Checkbox, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import type { FC } from "react";
-import { useId, useMemo } from "react";
+import type { FC, ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	FACET_LABELS,
@@ -64,6 +64,55 @@ export type ProjectFiltersPanelProps = {
 		spec: SortSpec | null;
 		onChange: (spec: SortSpec | null) => void;
 	};
+};
+
+/**
+ * The scrollable sheet both popover entry points put inside their
+ * `PopoverContent`, with the app's own "there is more below" mark.
+ *
+ * WHY A FADE AND NOT A CAP TUNED TO THE ROW RHYTHM (design round 1, D3): the
+ * cap cannot land in a padding band for every content — the option sets are
+ * data-dependent — and a row cut through its checkbox reads as a rendering
+ * defect rather than as "scroll for more". So the last visible row dissolves
+ * instead: the same 20px bottom mask the `/` picker's panel body carries
+ * (`picker-host.tsx`, whose comment states the rule — pinned on a row edge is
+ * not available where heights vary), applied only while there IS more below,
+ * so the LAST row at the scroll's end is never dimmed for nothing.
+ *
+ * THE CAP IS STATED HERE, once, for both callers: `min(70vh, 32rem)`. It is
+ * taller than the option-list family (`max-h-72`/`max-h-96`) on purpose —
+ * nine facets over an 800px listing, and the cap exists to keep the panel
+ * inside the viewport, not to make nine sections scroll by default. The mask
+ * is measured on scroll (and on mount, and whenever the panel re-renders —
+ * toggling a facet changes no row height, but a refetch can), because
+ * `scrollHeight` is not a state CSS can read.
+ */
+export const FilterPopoverScroll: FC<{ children: ReactNode }> = ({
+	children,
+}) => {
+	const ref = useRef<HTMLDivElement>(null);
+	const [moreBelow, setMoreBelow] = useState(false);
+	const measure = () => {
+		const node = ref.current;
+		if (!node) return;
+		setMoreBelow(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
+	};
+	/* Re-measured after every render of the panel: cheap (two reads) and the
+	 * only thing that catches a content change (a refetch's option rows). */
+	useEffect(measure);
+	return (
+		<div
+			ref={ref}
+			onScroll={measure}
+			className={cn(
+				"max-h-[min(70vh,32rem)] overflow-y-auto overscroll-contain",
+				moreBelow &&
+					"[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]",
+			)}
+		>
+			{children}
+		</div>
+	);
 };
 
 /** One checkbox row: the control, its label and the count it would admit. */

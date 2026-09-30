@@ -1043,6 +1043,58 @@ export const NarrowColumns: Story = {
 	render: () => page({ view: "list", projects: THREE }),
 };
 
+/**
+ * U7's fix, measured rather than described: at this width the count is SHED
+ * (it is the one item that appears on the first keystroke), so typing cannot
+ * wrap the switcher row or move the list — the same invariance U1 holds at
+ * wide widths, held at the narrow end where `flex-wrap` used to break it. The
+ * play takes both readings around the keystroke — the switcher row's height
+ * and the list's top — and fails on any move; it also asserts the shed itself,
+ * because a count that stayed visible here is the shape the bug returns in.
+ */
+export const NarrowSearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("narrow-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		const row = () => document.querySelector("[data-project-search-row]");
+		const list = () => document.querySelector('[data-testid="project-list"]');
+		const before = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-name]").length < 12,
+			"the rows to narrow to the matches",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count !== null && getComputedStyle(count).display !== "none") {
+			throw new Error("the count did not shed at this width");
+		}
+		const after = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		if (Math.abs(before.row - after.row) > 0.5) {
+			throw new Error(
+				`the switcher row moved on the first keystroke: ${before.row}px -> ${after.row}px`,
+			);
+		}
+		if (Math.abs(before.top - after.top) > 0.5) {
+			throw new Error(
+				`the list top moved on the first keystroke: ${before.top}px -> ${after.top}px`,
+			);
+		}
+	}),
+};
+
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = {
 	render: () => page({ view: "list", projects: MANY }),
@@ -1126,6 +1178,50 @@ export const FilterChips: Story = {
 };
 
 /**
+ * D2a's composition, pinned in pixels and in order: a FACET chip and the SORT
+ * chip TOGETHER — the chips row's documented shape (`FACET_ORDER`'s chips
+ * first, the sort pushed last, one `flex flex-wrap` container). The play reads
+ * the rendered order rather than the source's: `Status · Active` first,
+ * `Sort: Status` after it.
+ */
+export const FilterAndSortChips: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("filter-and-sort-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		const chips = [...document.querySelectorAll("[data-project-chip]")].map(
+			(node) => node.textContent ?? "",
+		);
+		if (!chips[0]?.startsWith("Status · Active")) {
+			throw new Error(`the facet chip is not first: ${chips[0]}`);
+		}
+		if (!chips[1]?.startsWith("Sort: Status")) {
+			throw new Error(`the sort chip is not last: ${chips[1]}`);
+		}
+	}),
+};
+
+/**
  * A stored column sort, at rest: the strip's Status header carries the
  * direction glyph and `aria-sort`, and the sort chip names it — the U6 door
  * that stays reachable when the column itself has been shed.
@@ -1187,6 +1283,44 @@ export const SortedNullsLast: Story = {
 		);
 		if (rows().join(",") !== expected.join(",")) {
 			throw new Error(`the sort landed as: ${rows().join(",")}`);
+		}
+	}),
+};
+
+/**
+ * D2b's composition: a sort whose column has been SHED by the narrow width —
+ * U6's whole reason for existing. At this width the strip hides Target and
+ * Estimate (the container's own shed), so the header itself is unreachable;
+ * the sort chip is the only door, and the play asserts both halves: the shed
+ * column's button has no layout box, and the chip names the sort it cannot
+ * otherwise show.
+ */
+export const SortedShedColumn: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "estimate", direction: "desc" },
+		}),
+	play: playOnce("sorted-shed-column", async () => {
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the sort chip",
+		);
+		const header = document.querySelector<HTMLElement>(
+			'[data-project-column="estimate"]',
+		);
+		if (header === null) {
+			throw new Error("the estimate header did not render");
+		}
+		if (header.offsetParent !== null) {
+			throw new Error("the estimate column did not shed at this width");
+		}
+		const chip = document.querySelector("[data-project-chip]");
+		if (!chip?.textContent?.startsWith("Sort: Estimate")) {
+			throw new Error(
+				`the shed column's chip does not name it: ${chip?.textContent}`,
+			);
 		}
 	}),
 };
@@ -2121,6 +2255,56 @@ export const BoardSearchActive: Story = {
 			() => document.querySelector("[data-project-count]") !== null,
 			"the board's count line",
 		);
+	}),
+};
+
+/**
+ * R1's state, pinned rather than argued: on the Board, a search whose matches
+ * ALL fall outside the window. The no-match block still wins (U5) — the search
+ * DID match — and the window is what hid the matches, so the block carries the
+ * window's own recovery, `Show all time`, beneath Clear all. The play asserts
+ * the block, both actions, and the count's own words (`0 of 12 in window`,
+ * U10): the denominator is the window's population and the sentence says so.
+ */
+export const BoardSearchOffWindow: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-off-window", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"batch-old",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count?.textContent?.trim() !== "0 of 12 in window") {
+			throw new Error(
+				`the within-window count reads: ${count?.textContent?.trim() ?? "absent"}`,
+			);
+		}
+		const labels = [...document.querySelectorAll("button")].map((node) =>
+			node.textContent?.trim(),
+		);
+		if (!labels.includes("Show all time")) {
+			throw new Error(
+				"the within-window no-match block does not offer Show all time",
+			);
+		}
 	}),
 };
 

@@ -598,15 +598,21 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * was live at rel 2.7). The strip's padding now starts at its sides
 					 * and bottom, and the header pins flush to the edge it pins to.
 					 *
-					 * AND THE SIDES AND BOTTOM ARE THE SUM, NOT NEW SPACING (operator,
-					 * 2026-09-30): the page no longer insets this region, so `px-9 pb-9`
-					 * carries what the strip used to sit inside - the 24px page gutter
-					 * plus its own 12 - and the strip's scrollbars now ride the VIEW's
-					 * own edges the way chat's transcript does. The pinned offsets
-					 * above are written against the strip itself, so none of them
-					 * moves.
+					 * AND THE SIDES ARE THE PAGE GUTTER, FLUSH WITH THE TITLE (operator,
+					 * 2026-09-30, board-first feedback): the board's left edge lines up with
+					 * the line the title block and the tab row begin on - and with the
+					 * app's other pages' boxes, measured at x=24 like the schedules page's
+					 * own rows - so the strip carries `px-6`: the 24px gutter exactly,
+					 * NOT the 24+12 the strips carried while the page still inset this
+					 * region. (The strip's scrollbars ride the VIEW's own edges the way
+					 * chat's transcript does; the padding moves content, not the bar.)
+					 * The right gutter is the same 24 once the board is scrolled
+					 * to its end, and the bottom keeps `pb-9` (24 + 12): nothing aligns
+					 * below the last row, and the extra step is the tail the grid had
+					 * before the full-bleed change. The pinned offsets above are written
+					 * against the strip itself, so none of them moves.
 					 */
-					"relative flex min-h-0 flex-1 items-start overflow-auto px-9 pb-9",
+					"relative flex min-h-0 flex-1 items-start overflow-auto px-6 pb-9",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
