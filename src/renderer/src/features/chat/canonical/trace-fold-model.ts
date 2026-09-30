@@ -53,6 +53,7 @@
  */
 
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
+import type { TranscriptImage } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
@@ -329,6 +330,7 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	web_read: { noun: "page", plural: "pages" },
 	list_variables: { noun: "variable lookup", plural: "variable lookups" },
 	read_variable: { noun: "variable read", plural: "variable reads" },
+	sessions: { noun: "session", plural: "sessions" },
 };
 
 export function foldCounts(actions: FoldableAction[]): string {
@@ -636,6 +638,100 @@ export function foldRuns(
 	flush();
 	return groups;
 }
+
+/**
+ * The images a run produced, in row order.
+ *
+ * A folded run UNMOUNTS the rows that would show these, so the artifacts a turn
+ * produced went with them: the reader had to expand the group to see the
+ * screenshot a command wrote, which is the cost condensing was supposed to
+ * remove. This is which of them the condensed group has to carry instead.
+ *
+ * ONLY TOOL ROWS CONTRIBUTE, and that is the whole rule rather than a filter
+ * that happens to be here. A run is a run of ACTIONS (§E2) and an action's
+ * images are its product - the screenshot a shell command wrote, the frame a
+ * browser call captured. A row that is not an action breaks a run rather than
+ * joining it (`foldRuns`' `isFoldable`), so no other kind of record can be
+ * inside one; the test is stated anyway so the claim is checkable against the
+ * record union rather than inferred from the caller's options.
+ */
+export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
+	const images: TranscriptImage[] = [];
+	for (const row of rows) {
+		if (row.record.kind === "tool") images.push(...row.record.images);
+	}
+	return images;
+};
+
+/**
+ * How many tiles a condensed group's strip draws in its one row.
+ *
+ * THE ROW IS THE BUDGET, and the number is measured rather than chosen: a tile is
+ * 98px on an 8px gutter (`gap-2`, and eight ground pixels between the tile boxes
+ * in the committed frames, which put them at x52/158/264/370), and the last slot
+ * is the `+N more` TEXT rather than a picture: the count takes the slot the FIFTH
+ * picture would have had, which is why the cap is 5 slots. Five slots are 4x98 + 3x8 + the count's
+ * own ink + one 8px gap, which the committed eight-picture frame measures at 472px
+ * end to end (its `+4 more` is 48px of ink), and the narrowest column this strip
+ * renders in was measured at 576px (a 640px window: `max-w-[760px]` minus the
+ * transcript's own `p-8`) with the live window at 638px - so the row holds at
+ * every width this surface reaches, and the height is 91px for any count.
+ *
+ * Capping at all is what makes that claim unconditional: without it a run of 25-30
+ * pictures costs ~391px, which is past the ~338.7px an EXPANDED group costs - the
+ * one case where condensing would be the taller choice (design review round 1, D3).
+ */
+export const FOLD_MEDIA_LIMIT = 5;
+
+/**
+ * How many tiles the strip draws, and how many the `+N more` slot stands for.
+ *
+ * When the run produced more than a row can hold, the LAST slot is the count
+ * itself rather than a fifth picture: the row stays one row either way, and the
+ * reader is told how many they are not seeing instead of being left to infer it
+ * from a clipped row. The count is also in the condensed header
+ * (`foldMediaClause`) and in the strip's own accessible name, so no reader - with
+ * or without a pointer - has to count tiles to learn it.
+ *
+ * `uncapped` is the U8 escape: the spanning bar's sole image-bearing group
+ * shows its whole set, because the `+N more images` press that opened the bar
+ * has already asked for it - see the option's own comment.
+ */
+export const foldMediaSlots = (
+	count: number,
+	{ uncapped = false } = {},
+): { shown: number; more: number } =>
+	uncapped
+		? /* The caller asked for every picture (U8): the bar's own children's case
+		   when the group IS the span's whole image story - the reader pressed
+		   `+N more images` on the bar, and making them press a second time for a
+		   group that holds the same set is the dead end the round-2 UX pass
+		   found. The cap still bounds every strip the reader has NOT asked to
+		   expand. */
+			{ shown: Math.max(count, 0), more: 0 }
+		: count <= FOLD_MEDIA_LIMIT
+			? { shown: Math.max(count, 0), more: 0 }
+			: {
+					shown: FOLD_MEDIA_LIMIT - 1,
+					more: count - (FOLD_MEDIA_LIMIT - 1),
+				};
+
+/**
+ * The condensed header's clause for the media a run produced, or `null` for a run
+ * that produced none.
+ *
+ * The strip is a PRESENCE CUE rather than a reader of the pictures - a 64px tile
+ * cannot carry a label or a chart's axis, and the frames say so - so the count
+ * belongs in the text layer, where it is legible at any tile size and reachable
+ * without a pointer. It is also what keeps the sighted reader from getting less
+ * than the screen-reader user, whose `aria-label` on the strip has carried the
+ * count since the first cut (design review round 1, D3). A run with no pictures
+ * gets no clause, which is what keeps that header byte-identical.
+ */
+export const foldMediaClause = (count: number): string | null => {
+	if (count <= 0) return null;
+	return `${count} image${count === 1 ? "" : "s"}`;
+};
 
 /** What a finished turn's foot line reports (§E3). */
 export type TurnFoot = {

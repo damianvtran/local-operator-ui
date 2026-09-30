@@ -1,5 +1,13 @@
 import { useEffect, useRef } from "react";
 
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+
+import {
+	type AudioLevelState,
+	INITIAL_AUDIO_LEVEL_STATE,
+	advanceAudioLevel,
+} from "./audio-recording-levels";
+
 /**
  * Props for the AudioRecordingIndicator component
  */
@@ -9,18 +17,21 @@ type AudioRecordingIndicatorProps = {
 
 const BUFFER_SIZE = 120; // Number of bars in the waveform
 const MIN_BAR_HEIGHT = 2; // Minimum height of a bar in pixels
-const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
-const FRAMES_TO_SKIP = 4; // Throttle visual updates
+const MAX_BAR_HEIGHT = 34; // Maximum height of a bar in pixels
+const FRAMES_TO_SKIP = 4; // Throttle the visual updates to ~15/s
+const QUIET_BAR_MARGIN = 0.5; // Heights within this of MIN read as no signal
 
 /*
- * THE WAVEFORM'S BOX, in the strip below the field (see the render). Bounded
- * rather than `flex-1`: the treatment is an affordance ANCHORED to the composer,
- * not a second surface - a full-width waveform is what the washed panel this
- * replaced already was, and the width it would take is the width the draft
- * above it is read against. `h-6` is `MAX_BAR_HEIGHT`'s own size, so a loud
- * frame cannot be clipped by the canvas it is drawn into.
+ * THE WAVEFORM'S LANE, spanning the composer's content width (see the render).
+ * Full width on purpose, and it is the operator's feedback this direction
+ * answers (via Aida, 2026-09-29 - the report read the old bounded strip, `w-28`,
+ * as a partial line that ends mid-row): the lane IS the recording state's own
+ * surface now, and the composer grows to hold it for as long as the take lasts.
+ * `h-9` is `MAX_BAR_HEIGHT` plus the 1px breathing room a full-scale bar keeps
+ * from each edge, so the loudest frame cannot be clipped by the canvas it is
+ * drawn into.
  */
-const WAVEFORM_CLASS = "block h-6 w-28 shrink-0 text-accent";
+const WAVEFORM_CLASS = "block h-9 w-full text-accent";
 
 /*
  * The recording pulse, kept in-component: `styles/**` is shared infrastructure
@@ -76,15 +87,22 @@ export const AudioRecordingIndicator = ({
 	const mediaStreamRef = useRef<MediaStream | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
 	const analyserRef = useRef<AnalyserNode | null>(null);
-	// `WebAudio`'s `getByteFrequencyData` takes a view over a plain
-	// `ArrayBuffer` (`Uint8Array<ArrayBuffer>`), not a `Uint8Array` over
-	// `ArrayBufferLike`: a SharedArrayBuffer-backed view is not a writable
-	// destination the analyser will fill. This buffer is only ever created by
-	// the `new Uint8Array(frequencyBinCount)` call below, so stating that in
-	// the ref's type is the whole requirement -- nothing here can produce a
-	// shared-buffer view.
-	const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+	/*
+	 * `getFloatTimeDomainData` takes a view over a plain `ArrayBuffer`
+	 * (`Float32Array<ArrayBuffer>`), not a `Float32Array` over
+	 * `ArrayBufferLike`: a SharedArrayBuffer-backed view is not a writable
+	 * destination the analyser will fill. This buffer is only ever created by
+	 * the `new Float32Array(fftSize)` call below, so stating that in the ref's
+	 * type is the whole requirement -- nothing here can produce a
+	 * shared-buffer view.
+	 *
+	 * A float view, where the treatment this replaced took bytes: the level is
+	 * the window's RMS, and 8-bit samples quantize quiet speech into the same
+	 * few levels the old display failed to show.
+	 */
+	const dataArrayRef = useRef<Float32Array<ArrayBuffer> | null>(null);
 	const heightsRef = useRef<number[]>(Array(BUFFER_SIZE).fill(MIN_BAR_HEIGHT));
+	const levelStateRef = useRef<AudioLevelState>(INITIAL_AUDIO_LEVEL_STATE);
 	const frameCountRef = useRef(0);
 
 	useEffect(() => {
@@ -100,31 +118,49 @@ export const AudioRecordingIndicator = ({
 			return;
 		}
 
-		// A canvas 2D context cannot resolve `var()`, so the accent has to be read
-		// back as a computed value. Reading `color` rather than the custom property
-		// is what removes the need for a literal fallback: the element carries
-		// `text-accent`, and `color` always computes to a real colour, whereas a
-		// custom property read returns "" before the theme is applied.
-		const accent = getComputedStyle(canvas).color;
-
-		// Resize canvas to match its container
-		const resizeCanvas = () => {
+		/*
+		 * The lane's box is not a constant: the field's column changes when the
+		 * sidebar collapses or a panel is dragged, and a bitmap sized once at mount
+		 * stretches its last frame into whatever box it lands in. So EVERY draw
+		 * re-checks the bitmap against the box it is painted into (design review
+		 * round 1, D3). A window-resize listener misses every other way the column
+		 * can move, and the draw loop is already running at the only rate that
+		 * matters.
+		 */
+		const syncCanvasToBox = () => {
 			const { width, height } = canvas.getBoundingClientRect();
 			const dpr = window.devicePixelRatio || 1;
-			canvas.width = width * dpr;
-			canvas.height = height * dpr;
-			ctx.scale(dpr, dpr);
+			const w = Math.max(1, Math.round(width * dpr));
+			const h = Math.max(1, Math.round(height * dpr));
+			if (canvas.width !== w || canvas.height !== h) {
+				// Assigning width/height resets the context, transform included,
+				// which is why the scale is re-applied here - the only place it is.
+				canvas.width = w;
+				canvas.height = h;
+				ctx.scale(dpr, dpr);
+			}
 		};
-		resizeCanvas();
-		window.addEventListener("resize", resizeCanvas);
 
-		// Initialize buffer
+		// Initialize buffer and level memory
 		heightsRef.current = Array(BUFFER_SIZE).fill(MIN_BAR_HEIGHT);
+		levelStateRef.current = INITIAL_AUDIO_LEVEL_STATE;
 		frameCountRef.current = 0;
 
 		// Draw waveform based on heightsRef
 		const drawWaveform = () => {
+			syncCanvasToBox();
 			const { width, height } = canvas.getBoundingClientRect();
+			/*
+			 * A canvas 2D context cannot resolve `var()`, so the accent has to be
+			 * read back as a computed value - PER DRAW, because a theme swap rebinds
+			 * the custom properties mid-take and a value cached at mount would leave
+			 * the bars in the retired theme's accent (design review round 1, D7).
+			 * Reading `color` rather than the custom property is what removes the
+			 * need for a literal fallback: the element carries `text-accent`, and
+			 * `color` always computes to a real colour, whereas a custom property
+			 * read returns "" before the theme is applied.
+			 */
+			const accent = getComputedStyle(canvas).color;
 			ctx.clearRect(0, 0, width, height);
 			const barWidth = width / BUFFER_SIZE;
 			const spacingRatio = 0.4;
@@ -138,8 +174,10 @@ export const AudioRecordingIndicator = ({
 				const barHeight = h;
 				const y = centerY - barHeight / 2;
 
-				// Use different color for bars with zero/minimal data
-				const isMinimalData = h <= MIN_BAR_HEIGHT;
+				// The muted tint marks bars with no signal: the level pipeline's
+				// zero (and the release's vanishing tail) rather than a height a
+				// quiet-but-live bar could reach.
+				const isMinimalData = h <= MIN_BAR_HEIGHT + QUIET_BAR_MARGIN;
 				ctx.fillStyle = isMinimalData
 					? `color-mix(in srgb, ${accent} 30%, transparent)`
 					: accent;
@@ -151,22 +189,30 @@ export const AudioRecordingIndicator = ({
 			});
 		};
 
-		// Update loop: fetch audio data, update heights, and draw
+		/*
+		 * Update loop: read the analyser's time-domain window, run it through the
+		 * level pipeline, and draw. The window's RMS is the loudness the bars
+		 * show - not the frequency average the old display used, whose value for
+		 * speech stayed near the floor whatever was said.
+		 */
 		const updateLoop = () => {
 			if (analyserRef.current && dataArrayRef.current) {
-				analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+				analyserRef.current.getFloatTimeDomainData(dataArrayRef.current);
 				let sum = 0;
 				const data = dataArrayRef.current;
 				for (let i = 0; i < data.length; i++) {
-					sum += data[i];
+					sum += data[i] * data[i];
 				}
-				const avg = data.length ? sum / data.length : 0;
-				const newHeight = Math.max(
-					MIN_BAR_HEIGHT,
-					(avg / 255) * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) + MIN_BAR_HEIGHT,
-				);
+				const rms = data.length ? Math.sqrt(sum / data.length) : 0;
 				frameCountRef.current += 1;
+				// The pipeline advances one bar per PUSH, not per frame: its decay
+				// and release are per-tick rates, and a per-frame advance would
+				// make them drift with the display's refresh rate.
 				if (frameCountRef.current > FRAMES_TO_SKIP) {
+					const step = advanceAudioLevel(levelStateRef.current, rms);
+					levelStateRef.current = step.state;
+					const newHeight =
+						MIN_BAR_HEIGHT + step.level * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT);
 					heightsRef.current.shift();
 					heightsRef.current.push(newHeight);
 					frameCountRef.current = 0;
@@ -190,24 +236,32 @@ export const AudioRecordingIndicator = ({
 				const audioCtx = new AudioContextClass();
 				audioContextRef.current = audioCtx;
 				const analyser = audioCtx.createAnalyser();
-				analyser.fftSize = 64;
-				analyser.smoothingTimeConstant = 0.6;
+				/*
+				 * The time-domain window, `fftSize` samples (~23 ms at 44.1 kHz): long
+				 * enough that a frame's RMS reads as speech loudness rather than as
+				 * one cycle of the waveform's phase. `smoothingTimeConstant` is not
+				 * set: it shapes the FREQUENCY data's smoothing, and this pipeline
+				 * reads raw samples - the smoothing lives in the level reducer's
+				 * release now, where it is testable.
+				 */
+				analyser.fftSize = 1024;
 				analyserRef.current = analyser;
 				const source = audioCtx.createMediaStreamSource(stream);
 				source.connect(analyser);
-				dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+				dataArrayRef.current = new Float32Array(analyser.fftSize);
 				updateLoop();
 			} catch (error) {
 				console.warn(
 					"Could not access microphone for waveform visualization:",
 					error,
 				);
-				// Fallback to random animation
+				// Fallback to a random animation. Deliberately NOT through the level
+				// pipeline: it is fed a made-up band rather than an amplitude, and
+				// normalizing a random walk would just pin it to the lane's top.
 				const randomLoop = () => {
-					const randH = Math.max(
-						MIN_BAR_HEIGHT,
-						Math.random() * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) + MIN_BAR_HEIGHT,
-					);
+					const randLevel = 0.15 + Math.random() * 0.75;
+					const randH =
+						MIN_BAR_HEIGHT + randLevel * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT);
 					frameCountRef.current += 1;
 					if (frameCountRef.current > FRAMES_TO_SKIP) {
 						heightsRef.current.shift();
@@ -222,7 +276,6 @@ export const AudioRecordingIndicator = ({
 		})();
 
 		return () => {
-			window.removeEventListener("resize", resizeCanvas);
 			if (animationFrameRef.current) {
 				cancelAnimationFrame(animationFrameRef.current);
 			}
@@ -255,12 +308,25 @@ export const AudioRecordingIndicator = ({
 		 * press - the operator's report, and the thing the composer's field now
 		 * stays mounted to prevent.
 		 *
-		 * What is left is the state's WHOLE visual, and it is deliberately
-		 * small: one line, anchored to the field's leading edge, no border, no
-		 * wash, no minimum height a text row would not have had anyway. The
-		 * controls live in the row below (`Confirm recording`/`Cancel recording`),
-		 * where the interrupt-slot geometry already reserves their boxes; this
-		 * strip is a status line and carries no control.
+		 * Since the redesign (operator feedback via Aida, 2026-09-29) the state
+		 * reads as a LANE ACROSS THE COMPOSER rather than a strip anchored to its
+		 * leading edge: the waveform takes the field's own content column (`px-2`,
+		 * the same inset the draft text above it is read at - design review round
+		 * 1, D2), the label row sits over it, and the whole block stays borderless
+		 * composer chrome - no wash, no border, the same step of ground the box
+		 * itself uses. The draft still stays where it was; the lane grows the box
+		 * for as long as the take lasts.
+		 *
+		 * The label row is the ONLY place the affordance is named. It used to live
+		 * in the field's placeholder, which could speak it only while the field
+		 * was EMPTY - so the empty-field state said it twice and the with-draft
+		 * state, the common case, said it nowhere (agent/design/UX round 1,
+		 * F1/D1/U1; the placeholder now keeps only the state's name). The keys
+		 * render as `KeyboardShortcut` caps, the house idiom for a key named in a
+		 * sentence (design/UX round 1, D8/U5). The controls keep their own row
+		 * below (`Confirm recording`/`Cancel recording`), where the interrupt-slot
+		 * geometry already reserves their boxes; this block is a status and
+		 * carries no control.
 		 *
 		 * The dot keeps its pulsing ring (its own comment above records what each
 		 * half is for under `prefers-reduced-motion`), and the word is still the
@@ -269,15 +335,40 @@ export const AudioRecordingIndicator = ({
 		 */
 		<div
 			data-recording-indicator=""
-			className="mt-1 flex items-center gap-2 px-2 text-accent [min-height:1.5rem]"
+			className="mt-2 flex w-full min-w-0 flex-col gap-2 px-2 text-accent"
 		>
 			<style>{PULSE_KEYFRAMES}</style>
-			<span className="relative block size-2 shrink-0" aria-hidden="true">
-				<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
-				<span className="block size-2 rounded-full bg-accent" />
-			</span>
-			<span className="font-medium text-body-sm text-accent">Recording</span>
-			<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+			<div className="flex min-w-0 items-center gap-2">
+				<span className="relative block size-2 shrink-0" aria-hidden="true">
+					<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
+					<span className="block size-2 rounded-full bg-accent" />
+				</span>
+				<span className="shrink-0 font-medium text-body-sm text-accent">
+					Recording
+				</span>
+				<span className="ml-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
+					<span className="flex items-center gap-1">
+						<KeyboardShortcut shortcut="Enter" />
+						confirms
+					</span>
+					<span aria-hidden="true">·</span>
+					<span className="flex items-center gap-1">
+						<KeyboardShortcut shortcut="Esc" />
+						cancels
+					</span>
+				</span>
+			</div>
+			{/*
+			 * The canvas holds a graphic with no name of its own: the state and the
+			 * keys both live in the row above, so the subtree is hidden wholesale.
+			 * The wrapper - rather than `aria-hidden` on the canvas itself - is what
+			 * satisfies `noAriaHiddenOnFocusable`, whose canvas model treats the
+			 * element as focusable; the sibling `WaveformAnimation` hides its own
+			 * drawing behind the same shape of wrapper.
+			 */}
+			<div aria-hidden="true">
+				<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+			</div>
 		</div>
 	);
 };

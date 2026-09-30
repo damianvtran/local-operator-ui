@@ -29,6 +29,61 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 	],
 	[
 		/*
+		 * THE CLOCK, OR A CERTIFICATE THAT REALLY EXPIRED - the two this text cannot
+		 * tell apart, and it goes ABOVE the verification entry because the raw text of
+		 * a python expiry failure carries `CERTIFICATE_VERIFY_FAILED` as well as
+		 * "certificate has expired", so the entry below would otherwise answer first.
+		 *
+		 * WHY IT EXISTS (review round 1, R1-3): the verification entry used to carry a
+		 * bare `SSLError` alternative, and every SSL-shaped failure matched it -
+		 * including this one and the two that are not trust problems at all - so the
+		 * user was told to "ask IT for the root certificate" for an expired
+		 * certificate. A wrong clock is the one cause on this list the user can fix
+		 * alone, and nothing in the previous sentence mentioned it.
+		 */
+		/certificate has expired|certificate is not yet valid|not valid at this time/i,
+		"Local Operator read the package index's certificate as expired or not yet valid. A wrong clock is the usual cause - check this machine's date and time and retry; if the clock is right, the certificate itself has expired and the index's operator has to renew it.",
+	],
+	[
+		/*
+		 * THE INSPECTED CONNECTION, and it goes above the unreachable-index entry
+		 * for the reason that entry's own note gives for its own position: a TLS
+		 * failure IS a network failure to the reader, and the general sentence that
+		 * follows ("check the connection and retry") is the wrong remedy for it -
+		 * the connection works for every other application on the machine, and
+		 * retrying it never helps.
+		 *
+		 * BOTH CLIENTS' WORDS ARE MATCHED, because both are on the install path and
+		 * they fail with different sentences for the same cause: uv says
+		 * `invalid peer certificate: UnknownIssuer`, pip says
+		 * `SSLError(SSLCertVerificationError(...))` / "There was a problem
+		 * confirming the ssl certificate" (both captured against a deliberately
+		 * untrusted local CA on macOS, not quoted from memory). Neither
+		 * sentence matched anything in this table before, so the user got the
+		 * app's generic words with no remedy in them at all.
+		 *
+		 * THE PATTERN IS THE VERIFICATION WORDS ONLY (review round 1, R1-3): a bare
+		 * `SSLError` also carried `SSLError(1, '[SSL: WRONG_VERSION_NUMBER]')` - a
+		 * proxy answering plain HTTP - and `SSLEOFError` - a handshake that was
+		 * aborted early - and answering either with a certificate remedy is
+		 * misdirection. Those now fall through to the generic cause instead.
+		 *
+		 * THE REMEDY NAMES THE STORE, and it is true of BOTH clients as they ship
+		 * (review round 1, R1-2): uv needs `--system-certs`/`UV_SYSTEM_CERTS`, which
+		 * the three install scripts now pass, and pip has read the platform store BY
+		 * DEFAULT since 24.2 (`truststore`; both pips these installs produce are
+		 * newer - uv's seed ships 26.x and the bundled interpreter's ensurepip 25.x)
+		 * - so a root added to the store is trusted by the uv path AND by the pip
+		 * fallback, and the sentence is not asking the user to do something that then
+		 * fails. The three scripts' notes that said the pip fallback "resolves
+		 * against certifi" were true only of pip before 24.2 and are corrected
+		 * beside this.
+		 */
+		/invalid peer certificate|UnknownIssuer|SSLCertVerificationError|CERTIFICATE_VERIFY_FAILED|certificate verify failed|problem confirming the ssl certificate|certificate is not trusted/i,
+		"Local Operator could not verify the package index's secure connection, which is usually a network that inspects it (a corporate proxy or firewall). Ask IT for the root certificate and add it to your system certificate store - this app already trusts that store - then retry.",
+	],
+	[
+		/*
 		 * THE UNREACHABLE INDEX, and it goes above the file one on purpose.
 		 *
 		 * pip's "Could not find a version that satisfies the requirement" matched the

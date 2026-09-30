@@ -2,11 +2,16 @@ import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { formatByteSize } from "@shared/lib/format-bytes";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import {
+	NOTICE_SURFACES,
+	useUpdateNoticeStore,
+} from "@shared/store/update-notice-store";
 import { notesForOffer } from "@shared/utils/server-release-notes";
 import {
 	serverUpdateFailureReason,
@@ -20,7 +25,7 @@ import {
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
-import { AlertTriangle, Check, Copy } from "lucide-react";
+import { AlertTriangle, Check, Copy, X } from "lucide-react";
 import {
 	type HTMLAttributes,
 	type ReactNode,
@@ -85,29 +90,38 @@ const skewKey = (notice: {
 const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
 
 /**
- * The cost of the restart for a server that is UP and behind the install: this
- * press is what takes it offline, and the wait is what it costs.
+ * The bound the DRAINING phase states: the rebuild install leg is the one press
+ * that still waits for the fleet, and this fragment is how long it may wait.
  *
- * IT NO LONGER PRICES DROPPED WORK. The press drains the fleet first
- * (`backend/fleet-drain.ts`), so what a reader gives up is the time the running
- * turns take to finish - stated, because a panel that promises a prompt restart
- * and then holds the button for minutes is the silence this component keeps
- * removing - and nothing in flight is cut off.
- *
- * AND IT NOW STATES THE BOUND THE PRESS IMPOSES (design D3). The offer used to
- * price the wait without saying how long it could be, so the ten-minute wait -
- * and the refusal that can follow it - appeared only AFTER the press, one batch
- * later, when neither could be withdrawn. `RESTART_DRAIN_BOUND` is the same
- * sentence fragment the draining phase carries, so the promise before the press
- * and the promise during it cannot drift into two numbers.
- *
- * AND THE SUBJECT IS NAMED (design D4). "It waits for the turns..." followed
- * three clauses about the server and read as the SERVER waiting; "The restart
- * waits" is the actor the press actually starts.
+ * IT USED TO BOUND THE SKEW PRESS'S OWN WAIT TOO (design D3), stated before the
+ * press; the operator's directive of 2026-09-29 removed the restart-leg drains
+ * ("we don't need to wait for all sessions to drain and turn over... on idle they
+ * should switch over"), so the one frame this fragment now feeds is the draining
+ * phase itself - `Waiting for the turns running on this machine to finish. The
+ * app waits up to ten minutes for them...` - which the rebuild route reaches.
+ * The number is still the gate's own `FLEET_DRAIN_BUDGET_MS`, and
+ * `scripts/update-fleet-drain.test.mjs` still holds this copy to it.
  */
 const RESTART_DRAIN_BOUND =
-	"The app waits up to ten minutes for the turns running on this machine to finish, then stops rather than cutting a turn short, so nothing in flight is cut off";
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. ${RESTART_DRAIN_BOUND}.`;
+	"The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off";
+
+/**
+ * The cost of the restart for a server that is UP and behind the install: this
+ * press is what takes it offline, and the outage is what it costs.
+ *
+ * IT NO LONGER PRICES DROPPED WORK, AND NO LONGER PRICES A WAIT. It priced
+ * dropped work before the fleet gate existed, then the ten-minute drain bound
+ * once the gate did; the operator's directive of 2026-09-29 removed the wait
+ * from the restart legs - a daemon bounce cuts no turns, because runtimes are
+ * detached and converge onto the new build at their own next idle - so what is
+ * left to state is the outage, the promise that nothing in flight is cut off
+ * (still the harness truth for a bounce), and the fleet effect this press does
+ * have: sessions that are still working move onto the new build when they next
+ * stop or go idle. The sentence is asserted in `update-affirmation.test.mjs` as
+ * the same one the restart phase's sibling carries, so the two cannot drift
+ * apart.
+ */
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. Nothing in flight is cut off, and sessions that are still working move onto the new build when they next stop or go idle.`;
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
@@ -115,8 +129,10 @@ const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes
  * come back - which is the half the two arms share.
  *
  * IT DOES NOT CLAIM DROPPED WORK. It used to, and the claim is not available any
- * more: the press drains the fleet before it restarts anything, so a server in this
- * state went offline over an idle machine.
+ * more: a daemon bounce cuts no turns (runtimes are detached, each in its own
+ * process group, and converge onto the new build at their own next idle), which
+ * is also why the operator's directive of 2026-09-29 removed the restart-leg
+ * drains - there is no wait left to price here either.
  */
 const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
 
@@ -429,11 +445,45 @@ export const UpdateContainer = ({
 	className,
 	tone = "notice",
 	role,
+	onClose,
+	closeLabel = "Close release details",
+	children,
 	...props
 }: HTMLAttributes<HTMLDivElement> & {
 	tone?: "notice" | "failed";
 	role?: "status" | "alert";
+	/**
+	 * Present on a panel that is a RELEASE DETAIL rather than a state the user
+	 * entered: it draws a close control, answers Escape, and takes focus when it
+	 * opens (review U1/U2). Absent on every other panel here, because those are
+	 * things the app is telling the user rather than a view they opened - their
+	 * exits are the decisions their own copy names ("Update later", "Install now").
+	 */
+	onClose?: () => void;
+	/**
+	 * The close control's accessible name; it names the panel it dismisses, which
+	 * is why it is a prop rather than a bare "Close" - this card shares the corner
+	 * with the failure panels. The name lives on the BUTTON alone: an `aria-label`
+	 * on the container as well would put the close control's words on the card's own
+	 * `role="status"` region, which is a different statement about a different node.
+	 */
+	closeLabel?: string;
 }) => {
+	const cardRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!onClose) return;
+		/*
+		 * FOCUS GOES IN WITH THE CARD (review U2). The band's own item unmounts as this
+		 * opens (the detail IS the notice, one step louder), so the press that opened
+		 * it left focus on the document body: a keyboard or screen-reader user got no
+		 * cue that a panel had appeared, and a Tab from there starts over. `tabIndex
+		 * ={-1}` because the card is a focus TARGET, not a tab stop. The hand-back on
+		 * close is the band's item's own, in the component that owns the store - the
+		 * card cannot see the row it returns to.
+		 */
+		cardRef.current?.focus();
+	}, [onClose]);
+
 	/*
 	 * This card is `fixed top-4 right-4`, so it paints over the top-right of the
 	 * content area — which over the browser route is the native view, and a native
@@ -456,22 +506,96 @@ export const UpdateContainer = ({
 	 * `p-4` is what keeps the focus outlines off the scroll edge: `overflow-y: auto`
 	 * makes the cross axis compute to `auto` too, and a ring drawn AT the card's
 	 * padding box would be clipped by it - 16px of padding is wider than the ring.
+	 * It lives on the inner scrolling box rather than on the card itself, for the
+	 * reason the close control's own note gives (review U12): the exit has to stay
+	 * put while the notes move, so the cap and the clip moved one level down and
+	 * this box became the one that never scrolls.
 	 */
 	useSuppressBrowserView(true, "update-notice");
 	return (
 		<div
 			/* The drag-strip opt-out; see the note above. */
 			data-titlebar-no-drag=""
+			{...(onClose ? { "data-release-detail": "" } : {})}
+			ref={cardRef}
+			/*
+			 * A focus target that is not a tab stop, on the panels that take focus
+			 * (review U2): the same -1 the settings sections use for a jump that must land
+			 * on them without adding a stop to the page's tab order.
+			 */
+			tabIndex={onClose ? -1 : undefined}
 			role={role ?? (tone === "failed" ? "alert" : "status")}
+			onKeyDown={
+				onClose
+					? (event) => {
+							/*
+							 * ESCAPE IS THE EXIT THAT IS NOT A DECISION (review U1). The press-opened
+							 * card used to have two exits, and both of them decided something: "Update
+							 * later" records a per-version deferral (so the band stays away until the
+							 * NEXT release) and "Download update" commits. A reader who only wanted to
+							 * read the notes could not get back to the quiet state they came from. The
+							 * handler is the card's own rather than the document's, deliberately: focus
+							 * is moved into the card when it opens, so Escape reaches it - and while a
+							 * Radix dialog is up, that dialog's own Escape handling stays the only
+							 * responder, which a document-level listener would have stolen.
+							 */
+							if (event.key !== "Escape") return;
+							event.stopPropagation();
+							onClose();
+						}
+					: undefined
+			}
 			className={cn(
 				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
-				"max-h-[calc(100vh-2rem)] overflow-y-auto",
-				"rounded-lg bg-elevated p-4 shadow-overlay",
+				"rounded-lg bg-elevated shadow-overlay",
 				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
 				className,
 			)}
 			{...props}
-		/>
+		>
+			{onClose ? (
+				/*
+				 * THE VISIBLE CLOSE CONTROL (review U1). Icon-only, so it needs a name - and the
+				 * name says which panel it dismisses rather than a bare "Close", because this
+				 * card shares the corner with the failure panels.
+				 *
+				 * AND IT SITS OUTSIDE THE SCROLLER (review U12), which is why the card is two
+				 * boxes. It used to be an absolutely-positioned child of the scrolling
+				 * element, and an abspos child of a scroll container scrolls WITH it - so on a
+				 * card taller than its own cap the exit travelled with the notes: measured on
+				 * the shipped card at a 300px viewport, `beforeY 24 (visible) -> afterY -20
+				 * (NOT visible)`, which left a reader who had scrolled to the bottom of a long
+				 * release with no visible way out (`sticky` cannot help here, because it needs
+				 * an in-flow element). So the scrolling moved to the inner box and this control
+				 * is positioned against the card, which never scrolls. Escape always worked;
+				 * this is the pointer and Tab path that had no reachable target.
+				 */
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					onClick={onClose}
+					aria-label={closeLabel}
+					className="absolute top-2 right-2 z-10"
+				>
+					<X aria-hidden="true" />
+				</Button>
+			) : null}
+			{/*
+			 * THE SCROLLING BOX, one level in so the control above can stay put. Everything
+			 * the cap and the clip already did is here - `max-h`, the `overflow-y-auto`
+			 * that makes the cross axis compute to `auto` too, and the `p-4` that keeps
+			 * focus outlines off the scroll edge - so the card's own box, its radius and
+			 * its geometry at rest are unchanged, and the scrollbar still sits on the
+			 * card's trailing edge because this box spans the card exactly.
+			 */}
+			<div
+				data-release-detail-scroll=""
+				className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg p-4"
+			>
+				{children}
+			</div>
+		</div>
 	);
 };
 
@@ -769,7 +893,10 @@ const serverRestartsWithInstall = (
  * `restartsServer` beside it) and says what happens to the server the reader is
  * talking to:
  *
- * - app-owned: the wait and the restart, before the press (review U3).
+ * - app-owned: the restart, before the press (review U3; the wait left this arm
+ *   with the restart-leg drains, 2026-09-29, so the sentence now names the
+ *   idle-switch instead - sessions still working move onto the new build when
+ *   they next stop or go idle).
  * - adopted: the install moves, the server keeps serving the old build until it
  *   restarts on its own, and nothing in flight is dropped.
  * - unstated (an older main process sends no reading): see
@@ -784,8 +911,33 @@ const managedCostSentence = (info: {
 	}
 	return (
 		info.remedy ??
-		"The app updates this install, waits for the turns running on this machine to finish, and then restarts the server it started, so nothing in flight is cut off."
+		"The app updates this install and then restarts the server it started, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle."
 	);
+};
+
+/**
+ * The success notice's second line, when it has one (design §2a, 2026-09-29).
+ *
+ * The operator's own sentence, in the family's idle-switch voice: sessions still
+ * on the old build move onto the new build when they next stop or go idle. N >= 2
+ * reads "N sessions ... they will", N = 1 reads "1 session ... it will", and
+ * N = 0 draws NOTHING - the notice stays exactly today's. A null count is "not
+ * measured" (the producer had no readable fleet snapshot, or the re-engage never
+ * ran) and draws the numberless sentence, which cannot be false; an absent field
+ * reads as null for the same reason, so an older producer keeps a true sentence
+ * rather than an invented zero.
+ */
+const completionSessionsLine = (
+	count: number | null | undefined,
+): string | null => {
+	if (typeof count !== "number") {
+		return "Sessions that are still running the old build will move onto the new build when they next stop or go idle.";
+	}
+	if (count === 0) return null;
+	if (count === 1) {
+		return "1 session is still running the old build; it will move onto the new build when it next stops or goes idle.";
+	}
+	return `${count} sessions are still running the old build; they will move onto the new build when they next stop or go idle.`;
 };
 
 const backendVersionSentence = ({
@@ -963,22 +1115,25 @@ export const UpdateNotification = ({
 			waitedMs: number;
 			command: string | null;
 			credentialsRefused: boolean;
-			/**
-			 * Whether the install had already landed when the refusal was composed.
-			 *
-			 * The restart-leg refusals happen after the build is on disk and only the
-			 * bounce was held back, so the heading keys on this rather than claiming the
-			 * update never started (design round 2, D6). Optional, so an older producer's
-			 * report still renders - as the install-less arm, which is the arm whose
-			 * sentence an absent field has always accompanied.
-			 */
-			installLanded?: boolean;
 		};
 	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
 		useState<BackendUpdateInfo | null>(null);
 	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
+	/**
+	 * How many sessions were still on the old build when the last success
+	 * completion landed, or null when the producer could not measure it (design
+	 * §2d, 2026-09-29).
+	 *
+	 * Read from the completion payload's `sessionsOnOldBuild` when the success
+	 * notice paints: >= 1 draws the second line, 0 draws none, and null - or a
+	 * producer too old to send the field - draws the numberless sentence
+	 * (`completionSessionsLine`). Kept beside the completion flag because the
+	 * notice is the only surface that reads it.
+	 */
+	const [backendUpdateSessionsOnOldBuild, setBackendUpdateSessionsOnOldBuild] =
+		useState<number | null>(null);
 	/**
 	 * The two readings a finished - or refused - update left behind.
 	 *
@@ -1145,6 +1300,32 @@ export const UpdateNotification = ({
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
+	/*
+	 * The unsolicited notice's own state (issue #672). The OFFER stays in this
+	 * component - it is what the card draws - and this store holds the facts the
+	 * other half needs: which surfaces have a release waiting, what each is being
+	 * read against, and whether the detail is open. The indicator is drawn in the
+	 * window's own chrome (`ChatLayout`), so the two halves sit on either side of
+	 * the tree and cannot share component state.
+	 *
+	 * `detailOpen` is what the two offer cards below are gated on: the fixed card
+	 * is now the answer to a question somebody asked - an explicit check from
+	 * Settings, or a press on the indicator - while the app's own periodic news is
+	 * the quiet band. Everything a user deliberately entered (a download in
+	 * flight, the ready-to-install state, a failure, the by-hand panel) is NOT
+	 * gated and reads exactly as it did.
+	 */
+	const detailOpen = useUpdateNoticeStore((state) => state.detailOpen);
+	const noteQuietOffer = useUpdateNoticeStore((state) => state.noteQuietOffer);
+	const clearQuietOffer = useUpdateNoticeStore(
+		(state) => state.clearQuietOffer,
+	);
+	const clearSurface = useUpdateNoticeStore((state) => state.clearSurface);
+	const closeDetail = useUpdateNoticeStore((state) => state.closeDetail);
+	const noteRunningVersion = useUpdateNoticeStore(
+		(state) => state.noteRunningVersion,
+	);
+
 	// Keep a ref to the latest backendUpdateInfo for use in event handlers
 	const backendUpdateInfoRef = useRef<BackendUpdateInfo | null>(null);
 	useEffect(() => {
@@ -1157,6 +1338,92 @@ export const UpdateNotification = ({
 			.then((version) => setAppVersion(version))
 			.catch(() => setAppVersion("unknown"));
 	}, []);
+
+	/*
+	 * The version the app channel is being read AGAINST, for the indicator's
+	 * segment gate.
+	 *
+	 * Pushed here rather than captured where an offer arrives, and that is the
+	 * whole reason the gate is derived at read time (see the store's header): the
+	 * launch check can offer a release before this IPC read answers, and a verdict
+	 * stamped in at that moment would be decided against `"unknown"` - an
+	 * unorderable reading, so a real update would stay silent for the session.
+	 * This effect re-runs when the read lands, and the indicator picks the offer up
+	 * with no re-raise.
+	 */
+	useEffect(() => {
+		noteRunningVersion(UpdateType.UI, appVersion);
+	}, [appVersion, noteRunningVersion]);
+
+	/*
+	 * THE CARD HANDS FOCUS BACK ITSELF (review U2), and it lives HERE because this
+	 * component owns the store the band reads: the effect runs in the commit that
+	 * closed the detail, so the band's item is already in the DOM by the time a
+	 * passive effect can query for it - which the card, unmounting, cannot do for
+	 * itself. The band's item for the surface is the landmark the press came from; a
+	 * detail opened by a check under a segment that withholds the item has none, and
+	 * there the focus simply leaves the card (the settings control the user pressed
+	 * is a fixed landmark on that route and keeps its own focus).
+	 */
+	const openDetailsRef = useRef<readonly UpdateType[]>([]);
+	useEffect(() => {
+		const open = NOTICE_SURFACES.filter((type) => detailOpen[type]);
+		/*
+		 * THE SURFACE WHOSE DETAIL JUST CLOSED, not the first item in the band
+		 * (reviews R10 and UX U11, found independently). The selector used to be
+		 * unscoped, so with both surfaces offering the hand-back landed on whichever
+		 * item `NOTICE_SURFACES` lists first (the app's) rather than the one the press
+		 * came from: focus stayed inside the band, but the reader's next Tab or Enter
+		 * then operated the OTHER surface's control - a defect in exactly the flow this
+		 * PR added. A SWITCH IS NOT A CLOSE, which is why this compares the two SETS
+		 * and not one boolean, and why it also requires that nothing remains open
+		 * (U13): when the detail moves from one surface to the other
+		 * (pressing the other band item), nothing is handed back - the press is the
+		 * reader's own and the card it opened has already taken focus.
+		 *
+		 * A DETAIL WITH NO ITEM TO RETURN TO STILL HAS NONE. A check opened under a
+		 * segment that withholds the band item (the loud path, which answers whatever
+		 * the preference says) finds no landmark here, and there the focus simply
+		 * leaves the card - the settings control the user pressed is a fixed landmark
+		 * on that route and keeps its own focus.
+		 *
+		 * `typeof document` GUARDED, and that is not defensive decoration: this
+		 * component is mounted by the repo's DOM-LESS desktop harnesses too
+		 * (`scripts/update-affirmation.test.mjs` is a hand-rolled renderer with no
+		 * jsdom), where a bare `document` in an effect is a ReferenceError thrown from
+		 * somebody else's click - which is how a fix in this file has broken another
+		 * suite before. The band simply is not there to focus in that world.
+		 */
+		const closed = openDetailsRef.current.filter(
+			(type) => !open.includes(type),
+		);
+		/*
+		 * A TRUE CLOSE ONLY: something closed AND nothing is open now (review U13).
+		 * `closed` alone is non-empty on a SWITCH too - the surface that gave way is
+		 * "closed" - and handing focus back then ejected it from the card the press
+		 * had just opened onto the band item of the surface it left (both directions
+		 * reproduced), the exact defect R10/U11 were raised about, in the path they
+		 * did not cover. On a switch the newly opened card's own focus effect has
+		 * already put focus where the reader wants it.
+		 *
+		 * `closed[0]` IS DETERMINISTIC AND ALSO UNREACHABLE AS AN ARBITRARY CHOICE
+		 * (review R15): the store lets one surface hold the detail (`openDetail`
+		 * closes the other), so at most one surface can close per batch; with two it
+		 * would be `NOTICE_SURFACES` order, since both arrays derive from it.
+		 */
+		if (
+			closed.length > 0 &&
+			open.length === 0 &&
+			typeof document !== "undefined"
+		) {
+			document
+				.querySelector<HTMLElement>(
+					`[data-update-indicator-open="${closed[0]}"]`,
+				)
+				?.focus();
+		}
+		openDetailsRef.current = open;
+	}, [detailOpen]);
 
 	/**
 	 * One verdict for one update-path message, on whichever channel it arrived.
@@ -1204,6 +1471,57 @@ export const UpdateNotification = ({
 	 * then check again, and with the suppression applied to every check that
 	 * remedy was inert for the rest of the session (reviews R3, U3).
 	 */
+	/**
+	 * Open the release detail for a surface that has a release waiting, if it has one.
+	 *
+	 * THE LOUD STEP, FOR CHECKS THAT HAVE NO VERDICT TO READ (review R2, issue #672).
+	 * The settings button reads `check-for-all-updates`' own verdict; the three
+	 * checks that call `checkForUpdates` get back the updater's raw result instead,
+	 * so their answer is the STORE's: main emits `update-available` when the check
+	 * finds a release and `update-not-available` when it does not, and only a check
+	 * the user asked for forwards that second event (a periodic check's forwarder is
+	 * swapped out in the main process), so a waiting offer here IS this check's
+	 * finding. Read with `getState()` rather than from the render's closure because
+	 * the answer must be the one that stands when the check SETTLES - the offer
+	 * arrives on its own event, after the render that started the check.
+	 *
+	 * Every user-pressed check has to take this step or it answers with silence: a
+	 * failure panel on "Breaking changes only" whose "Check for updates" press found
+	 * a patch release would drop the panel (the offer supersedes the failure notice)
+	 * and put the band away too, behind the segment gate - a press whose only visible
+	 * effect is that what the user was reading disappeared.
+	 */
+	const openDetailForWaitingOffer = useCallback((type: UpdateType) => {
+		const store = useUpdateNoticeStore.getState();
+		/*
+		 * THE OFFER IS THE LICENCE, not the verdict (review R9). A verdict reading
+		 * `available` is main's reading of the release feed, not a fact this renderer
+		 * holds: a version the user already DEFERRED still reads `available` there,
+		 * because the gate that decides whether the app speaks about it is
+		 * `shouldShowUpdate` on THIS side - so the deferral path never called
+		 * `noteQuietOffer`, no offer is recorded, and there is nothing on screen to
+		 * open. Opening anyway left a `detailOpen` with no offer behind it, and the
+		 * card's guards read `detailOpen` alone (`:2911`, `:3340`) - so the card the
+		 * user had already answered painted itself, unsolicited, on the next offer for
+		 * that surface. Requiring a recorded offer is also exactly the deferral rule,
+		 * because a deferred release is one whose offer was never recorded.
+		 */
+		if (store.offers[type] === null) return;
+		/*
+		 * AND ONE CARD AT A TIME (review R9b) - which is now the store's own rule
+		 * (review R14): `openDetail` closes the other surface as it opens this one, so
+		 * this step, the band's press and the settings button's check all inherit it
+		 * rather than each re-stating it. Both channels can report available in one
+		 * check - the whole point of the aggregate - and the two cards are
+		 * `fixed top-4 right-4 z-50` in a single early-return chain, so two open flags
+		 * painted one card and QUEUED the other. The surface that gives way keeps its
+		 * OFFER, so it comes back as a band item rather than disappearing. The last
+		 * one this check opens holds the card - "show what the press was about", the
+		 * band's rule too.
+		 */
+		store.openDetail(type);
+	}, []);
+
 	const checkForUpdates = useCallback(
 		async (options?: { manual?: boolean; keepFailure?: boolean }) => {
 			try {
@@ -1229,6 +1547,14 @@ export const UpdateNotification = ({
 						: { manual: options.manual },
 				);
 				if (options?.keepFailure === true) setError(null);
+				/*
+				 * And the verdict, for a check the user asked for - the same loud step the
+				 * settings button takes (review R2). The app channel is the only one this
+				 * check reads, so only its own surface can be opened by it.
+				 */
+				if (options?.manual === true) {
+					openDetailForWaitingOffer(UpdateType.UI);
+				}
 			} catch (err) {
 				/*
 				 * ONLY A CHECK THE USER ASKED FOR REPORTS (the operator's rule of
@@ -1264,7 +1590,7 @@ export const UpdateNotification = ({
 				setChecking(false);
 			}
 		},
-		[reportUpdateMessage],
+		[openDetailForWaitingOffer, reportUpdateMessage],
 	);
 
 	/**
@@ -1278,7 +1604,31 @@ export const UpdateNotification = ({
 		try {
 			setChecking(true);
 			setError(null);
-			await window.api.updater.checkForAllUpdates({ manual: true });
+			const verdict = await window.api.updater.checkForAllUpdates({
+				manual: true,
+			});
+			/*
+			 * THE SAME LOUD STEP AS THE SETTINGS BUTTON (review R2): a check the user
+			 * pressed reports what it found, on either channel, whatever the followed
+			 * segment says - and this one can find on BOTH, which is why it reads the
+			 * verdict rather than the store. The two panels that reach here (the by-hand
+			 * command panel and the backend failure panel) used to send the user to a
+			 * check whose own finding could not appear anywhere.
+			 *
+			 * THE VERDICT IS THE QUESTION, NOT THE ANSWER (review R9). It says what the
+			 * RELEASE FEED holds, not what this renderer is holding: a release the user
+			 * already deferred still reads `available` here, and opening a card for it
+			 * either painted something the user had answered (via a `detailOpen` left set
+			 * with no offer behind it) or queued a second card behind the first. So both
+			 * lines take the same helper the single-channel checks take, which requires a
+			 * recorded offer and keeps one card on screen.
+			 */
+			if (verdict.app === "available") {
+				openDetailForWaitingOffer(UpdateType.UI);
+			}
+			if (verdict.server === "available") {
+				openDetailForWaitingOffer(UpdateType.BACKEND);
+			}
 		} catch (err) {
 			// The same verdict as every other check producer (see
 			// `reportUpdateMessage`), on the message `updateMessageOf` unwraps.
@@ -1286,7 +1636,7 @@ export const UpdateNotification = ({
 		} finally {
 			setChecking(false);
 		}
-	}, [reportUpdateMessage]);
+	}, [openDetailForWaitingOffer, reportUpdateMessage]);
 
 	// Download the update
 	const downloadUpdate = useCallback(async () => {
@@ -1589,13 +1939,20 @@ export const UpdateNotification = ({
 			setBackendUpdateInfo(null);
 		}
 		/*
+		 * And the quiet indicator goes with the panel, unconditionally (issue #672).
+		 * A dismissal is a dismissal whether or not there were offer details to clear
+		 * - the failure panel's "Update later" reaches here with none - and a notice
+		 * the user just waved away must not still be sitting in the window's chrome.
+		 */
+		clearSurface(UpdateType.BACKEND);
+		/*
 		 * The box goes with the panel, and the error goes with the box - through the
 		 * same closer the toast's own dismissal uses. Unconditional rather than inside
 		 * the guard: the failure panel's "Update later" reaches here with no offer
 		 * details set, and it is still a dismissal (review R3-1).
 		 */
 		closeSnackbar();
-	}, [closeSnackbar, deferUpdate, backendUpdateInfo]);
+	}, [clearSurface, closeSnackbar, deferUpdate, backendUpdateInfo]);
 
 	/**
 	 * Dismiss a failed server update.
@@ -1617,10 +1974,13 @@ export const UpdateNotification = ({
 			setUpdateAvailable(false);
 			setUpdateDownloaded(false);
 		}
+		// The indicator is the same dismissal, for the same reason as the backend's
+		// (issue #672).
+		clearSurface(UpdateType.UI);
 		// Same reason as the backend deferral above: the box closes with the panel,
 		// and an error cannot outlive it (review R3-1).
 		closeSnackbar();
-	}, [closeSnackbar, deferUpdate, updateInfo]);
+	}, [clearSurface, closeSnackbar, deferUpdate, updateInfo]);
 
 	// Set up event listeners for update events
 	useEffect(() => {
@@ -1635,6 +1995,17 @@ export const UpdateNotification = ({
 					setUpdateAvailable(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
+					/*
+					 * The OFFER is recorded here and its volume is decided at read time
+					 * (`quietOfferShown`): the segment gate needs the version the app is
+					 * running, which on a cold launch has not been read yet, and a verdict
+					 * stamped in now would be a verdict about `"unknown"` (issue #672).
+					 *
+					 * Recorded on the offer's OWN event rather than on a check's, because
+					 * this listener is the only door a UI release comes through - the
+					 * periodic, launch and post-wake checks all arrive here.
+					 */
+					noteQuietOffer(UpdateType.UI, { version: info.version });
 				}
 			},
 		);
@@ -1644,6 +2015,17 @@ export const UpdateNotification = ({
 			window.api.updater.onUpdateNotAvailable(() => {
 				setUpdateAvailable(false);
 				setUpdateInfo(null);
+				/*
+				 * There is nothing to offer, so there is nothing to indicate and nothing
+				 * for a detail to draw - one call, because the two facts must move
+				 * together (the store's `clearSurface`).
+				 *
+				 * THIS EVENT IS ONLY EVER AN ANSWER. The main process swaps this
+				 * channel's forwarder out for a silent check, so a periodic check cannot
+				 * clear a notice out from under the reader (see `checkForUpdates` in
+				 * `update-service.ts`).
+				 */
+				clearSurface(UpdateType.UI);
 			});
 
 		// Frontend update downloaded
@@ -1655,6 +2037,14 @@ export const UpdateNotification = ({
 					setUpdateDownloaded(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
+					/*
+					 * The ready-to-install card takes the announcement over, and it renders
+					 * on its own state rather than on `detailOpen` - that is an in-flight
+					 * state the user entered, not news. So the indicator yields to it:
+					 * leaving the offer set would put the band and the card on screen for
+					 * one release.
+					 */
+					clearQuietOffer(UpdateType.UI);
 				}
 			});
 
@@ -1700,6 +2090,13 @@ export const UpdateNotification = ({
 				setUpdatingBackend(false);
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
+				/*
+				 * The by-hand panel REPLACES this one, so the quiet indicator goes with it
+				 * (issue #672): leaving the offer set would keep a band saying "server
+				 * update 0.55.10" under a panel whose whole point is that this app cannot
+				 * install it and the reader has a command to run instead.
+				 */
+				clearQuietOffer(UpdateType.BACKEND);
 			});
 
 		// The app refused to start an install, or a previous one never finished
@@ -1804,6 +2201,24 @@ export const UpdateNotification = ({
 					setBackendUpdateAvailable(true);
 					setBackendUpdateInfo(enhancedInfo);
 					/*
+					 * The quiet indicator's two inputs (issue #672): what is waiting, and what
+					 * the reader is running against it.
+					 *
+					 * `runningVersion` FIRST and the install second, because they are not the
+					 * same question: the build SERVING this conversation is what the reader is
+					 * using, while `currentVersion` is what is on disk - an adopted daemon
+					 * that trails a landed install is exactly the case where the offer is
+					 * real news for the person reading it. The panel's own sentence makes the
+					 * same distinction (`backendVersionSentence`).
+					 */
+					noteRunningVersion(
+						UpdateType.BACKEND,
+						enhancedInfo.runningVersion ?? enhancedInfo.currentVersion ?? null,
+					);
+					noteQuietOffer(UpdateType.BACKEND, {
+						version: enhancedInfo.latestVersion,
+					});
+					/*
 					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes
 					 * `installFailed` above: the check that just ran found the release again,
 					 * so "this update failed" is no longer the newest thing known and the
@@ -1824,6 +2239,22 @@ export const UpdateNotification = ({
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
 				const currentInfo = backendUpdateInfoRef.current;
+				/*
+				 * The indicator yields to the answer (issue #672). It is cleared
+				 * UNCONDITIONALLY rather than in the branch below, because the branch is
+				 * about the OFFER's own lifetime rule ("at or beyond the offer"): a notice
+				 * for a release the app no longer needs to nag about must go even when the
+				 * offer state itself is left alone.
+				 *
+				 * AND THE OPEN DETAIL GOES WITH IT (review R3). `clearQuietOffer` alone left
+				 * `detailOpen[BACKEND]` true, so the panel could not be the end of it: a
+				 * person who opened the server card and then ran a check that found the
+				 * install current had answered their own question, and the next start-up or
+				 * periodic offer would have rendered the card again with no band behind it -
+				 * the interruption #672 removes, arriving one step later. Clearing the offer
+				 * and not the detail is the state `clearSurface` exists to prevent.
+				 */
+				clearSurface(UpdateType.BACKEND);
 				setBackendUpdateAvailable((prev) => {
 					// At or beyond the offer, not equal to it: a release that moved on
 					// between the offer and the check is a server the app no longer needs
@@ -1899,6 +2330,8 @@ export const UpdateNotification = ({
 				answerBackendUpdateAttempt();
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
+				// The install landed, so there is no release waiting any more (issue #672).
+				clearSurface(UpdateType.BACKEND);
 				setChecking(false);
 				setUpdatingBackend(false);
 				setBackendUpdatePhase(null);
@@ -1959,12 +2392,29 @@ export const UpdateNotification = ({
 					return;
 				}
 
+				/*
+				 * THE FLEET COUNT RIDES THE TOAST (design §2d, 2026-09-29): the producer
+				 * samples it at the re-engage window's end, and the notice draws the
+				 * counted line when it says 1 or more, nothing at a measured zero, and
+				 * the numberless sentence when it could not measure (or an older producer
+				 * never sent it). The duration follows the line count: an arm that carries
+				 * the second line holds for 8 s - the app's own affirmation-toast
+				 * duration, not a new number - and N = 0 keeps today's 6 s (design §2e).
+				 */
+				const sessionsOnOldBuild =
+					typeof completion?.sessionsOnOldBuild === "number"
+						? completion.sessionsOnOldBuild
+						: null;
+				setBackendUpdateSessionsOnOldBuild(sessionsOnOldBuild);
 				setBackendUpdateCompleted(true);
 				setSnackbarOpen(true);
 
-				setTimeout(() => {
-					setBackendUpdateCompleted(false);
-				}, 6000);
+				setTimeout(
+					() => {
+						setBackendUpdateCompleted(false);
+					},
+					completionSessionsLine(sessionsOnOldBuild) === null ? 6000 : 8000,
+				);
 			});
 
 		/**
@@ -2091,6 +2541,10 @@ export const UpdateNotification = ({
 		answerBackendUpdateAttempt,
 		autoCheck,
 		checkForUpdates,
+		clearQuietOffer,
+		clearSurface,
+		noteQuietOffer,
+		noteRunningVersion,
 		reportUpdateMessage,
 		shouldShowUpdate,
 	]);
@@ -2347,7 +2801,7 @@ export const UpdateNotification = ({
 									 * its number; the repair says it is running, which is what the reader
 									 * watching a static panel needs to know.
 									 */
-									"The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
+									"The new build has landed. Nothing in flight was cut off - the turns running on this machine kept running - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
 								: backendUpdatePhase === "draining"
 									? /*
 										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
@@ -2356,7 +2810,7 @@ export const UpdateNotification = ({
 										 * two siblings carry (design D3), so the one phase whose length the reader
 										 * cannot see was the only one that did not say whether it could be stopped.
 										 */
-										"Waiting for the turns running on this machine to finish. The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off - and the update can't be interrupted while it waits."
+										`Waiting for the turns running on this machine to finish. ${RESTART_DRAIN_BOUND} - and the update can't be interrupted while it waits.`
 									: serverRestartsWithInstall(backendUpdateInfo)
 										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
@@ -2420,7 +2874,18 @@ export const UpdateNotification = ({
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => setInstallBlocked(null)}
+						onClick={() => {
+							setInstallBlocked(null);
+							/*
+							 * A dismissal is a dismissal (review R3), for the same reason the failure
+							 * panels' own dismissals already clear their surface: this panel is the
+							 * APP install's refusal (its remedy is a manual download of the bundle
+							 * main refused to install), so the surface it stands for is the app's -
+							 * and leaving `detailOpen[UI]` set would have the offer card reappear over
+							 * a decision the user just made.
+							 */
+							clearSurface(UpdateType.UI);
+						}}
 					>
 						{installBlocked.dismissLabel ?? "Update later"}
 					</Button>
@@ -2502,6 +2967,13 @@ export const UpdateNotification = ({
 						onClick={() => {
 							setManualUpdateRequired(false);
 							setManualUpdateInfo(null);
+							/*
+							 * The by-hand panel is the SERVER's own state, and its dismissal is a
+							 * dismissal of the server surface (review R3): without this, a card
+							 * opened for the offer before the panel replaced it stayed open in the
+							 * store and reappeared on the next periodic offer, unasked.
+							 */
+							clearSurface(UpdateType.BACKEND);
 						}}
 					>
 						Update later
@@ -2526,10 +2998,32 @@ export const UpdateNotification = ({
 		);
 	}
 
-	// If an update is available but not downloaded yet
-	if (updateAvailable && !updateDownloaded && updateInfo) {
+	/*
+	 * The app-offer card, now the LOUD half of a two-step notice (issue #672).
+	 *
+	 * It renders only while the detail is OPEN - which is what an explicit check
+	 * from Settings sets, and what a press on the quiet indicator sets - because
+	 * the app's own periodic news is the indicator's job now. This is the branch
+	 * that used to paint over the view several times a day; everything below it
+	 * (a download in flight, the ready-to-install state, the failure panels, the
+	 * install notices) is a state a user entered and is deliberately NOT gated.
+	 *
+	 * The DOWNLOADING half of this branch rides the same flag, and that is safe
+	 * rather than lucky: the only way to start a download is the button inside
+	 * this card, so the detail is open by construction before `downloading` is
+	 * ever true.
+	 */
+	if (
+		updateAvailable &&
+		!updateDownloaded &&
+		updateInfo &&
+		detailOpen[UpdateType.UI]
+	) {
 		return withErrorToast(
-			<UpdateContainer>
+			<UpdateContainer
+				onClose={() => closeDetail(UpdateType.UI)}
+				closeLabel="Close app update details"
+			>
 				<h2 className="mb-3 text-heading text-ink">Update available</h2>
 				<p className="mb-2 text-body text-ink-muted">
 					Version {updateInfo.version} is available. You are currently using
@@ -2583,9 +3077,22 @@ export const UpdateNotification = ({
 							Downloading: {Math.round(downloadProgress.percent)}%
 						</p>
 						<Progress value={downloadProgress.percent} className="mt-2" />
-						<p className="mt-1 text-mono-sm text-ink-dim">
-							{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
-							{Math.round(downloadProgress.total / 1024)} KB
+						<p
+							className="mt-1 text-mono-sm text-ink-dim"
+							/*
+							 * The exact byte counts live here rather than in the sentence (issue
+							 * #660): the line states the size a person reads (`21.5 MB of 45.1 MB`,
+							 * the same spelling the budget refusals use), and a reader who wants
+							 * the precise numbers - a bug report, a size comparison against a
+							 * release page - hovers for them. GROUPED, also for that reader
+							 * (review round 1, D6/U6): `524288 of 1048576` is a digit wall where
+							 * `524,288 of 1,048,576` is scannable, and an exact count that the
+							 * eye cannot hold is not the offer this tooltip makes.
+							 */
+							title={`${downloadProgress.transferred.toLocaleString()} of ${downloadProgress.total.toLocaleString()} bytes`}
+						>
+							{formatByteSize(downloadProgress.transferred)} of{" "}
+							{formatByteSize(downloadProgress.total)}
 						</p>
 					</ProgressContainer>
 				)}
@@ -2635,18 +3142,16 @@ export const UpdateNotification = ({
 				</UpdateActions>
 			</UpdateContainer>,
 			/*
-			 * The offer's own notice, in the wrapper's notice slot rather than beside
-			 * the error toast: the two share one pinned box, and the wrapper is where
-			 * that box is decided (UX U6).
+			 * NO NOTICE SLOT ON THIS CARD (review U3). It used to carry "A new update is
+			 * available: v0.30.1" in the wrapper's notice slot, and that sentence is now
+			 * redundant BY CONSTRUCTION: the card only ever appears as the answer to
+			 * something the user did (a press on the band, or an explicit check), and both
+			 * of those press moments are seconds or minutes after the offer arrived - so
+			 * the toast told the reader a thing they had just asked about, twice over the
+			 * card's own "Version 0.30.1 is available". The slot itself stays: the error
+			 * alert and the install-succeeded notice are the wrapper's own and are not
+			 * this card's news.
 			 */
-			<FloatingAlert
-				open={snackbarOpen}
-				autoHideDuration={6000}
-				onClose={closeSnackbar}
-				variant="info"
-			>
-				A new update is available: v{updateInfo.version}
-			</FloatingAlert>,
 		);
 	}
 
@@ -2790,27 +3295,26 @@ export const UpdateNotification = ({
 			return withErrorToast(
 				<UpdateContainer>
 					{/*
-					 * THE HEADING SAYS WHICH REFUSAL THIS IS (design round 2, D6). Two of the
-					 * three refusal sites happen AFTER the build landed - the restart was held
-					 * back, the install was not - and the sentence under this heading says so in
-					 * its own words, so a fixed "The update didn't start" made the frame
-					 * contradict itself in one paragraph. The producer knows which arm it is and
-					 * travels the fact as a field rather than leaving the renderer to infer it.
+					 * ONE HEADING, BECAUSE ONE REFUSAL REMAINS (design round 2, D6;
+					 * simplified 2026-09-29). It used to key on `installLanded`, because two
+					 * of the three refusal sites happened AFTER the build had landed - the
+					 * restart was held back, the install was not - and a fixed "The update
+					 * didn't start" contradicted the sentence under it. The operator's
+					 * directive removed the restart-leg drains, so the only refusal left is
+					 * the install-less one (the rebuild install leg's) and the heading is
+					 * fixed; "The update didn't finish restarting" went with its arm.
 					 *
-					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). These two
-					 * strings shipped un-contracted beside "The server update didn't finish" and
-					 * "The update wasn't installed" - the failure headings on this same surface,
-					 * and the two a reader meets a scroll apart. The file mixes both spellings
-					 * ("The server did not come back after the restart" is un-contracted), so this
-					 * is a consistency call rather than a correctness one, decided the way the
-					 * refusal's own neighbours are: one voice per panel. The story's own wait and
-					 * the capturer's claim both name this literal, so the three move together.
+					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). It
+					 * shipped un-contracted beside "The server update didn't finish" and
+					 * "The update wasn't installed" - the failure headings on this same
+					 * surface, and the two a reader meets a scroll apart. The file mixes
+					 * both spellings ("The server did not come back after the restart" is
+					 * un-contracted), so this is a consistency call rather than a
+					 * correctness one, decided the way the refusal's own neighbours are:
+					 * one voice per panel. The stories' own waits and the capturer's claims
+					 * name this literal, so they move together.
 					 */}
-					<UpdateHeading>
-						{refusal.installLanded
-							? "The update didn't finish restarting"
-							: "The update didn't start"}
-					</UpdateHeading>
+					<UpdateHeading>The update didn't start</UpdateHeading>
 					{/*
 					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
 					 * still working, and which. It used to sit in parentheses halfway down a
@@ -2938,7 +3442,11 @@ export const UpdateNotification = ({
 	}
 
 	// If a backend update is available
-	if (backendUpdateAvailable && backendUpdateInfo) {
+	if (
+		backendUpdateAvailable &&
+		backendUpdateInfo &&
+		detailOpen[UpdateType.BACKEND]
+	) {
 		/*
 		 * THE NOTES THIS OFFER MAY QUOTE, or null. `notesForOffer` owns the
 		 * question (its own module, so it is exercised by a test rather than by a
@@ -2950,7 +3458,10 @@ export const UpdateNotification = ({
 			backendUpdateInfo.latestVersion,
 		);
 		return withErrorToast(
-			<UpdateContainer>
+			<UpdateContainer
+				onClose={() => closeDetail(UpdateType.BACKEND)}
+				closeLabel="Close server update details"
+			>
 				<h2 className="mb-3 text-heading text-ink">Server update available</h2>
 				{/*
 				 * BOTH READINGS IN THE SENTENCE, when there are two. `currentVersion` is
@@ -3189,6 +3700,18 @@ export const UpdateNotification = ({
 
 	// If a backend update has been completed
 	if (backendUpdateCompleted) {
+		/*
+		 * THE FLEET NEWS RIDES THIS NOTICE (design §2b, 2026-09-29). The completion
+		 * is the popup's one moment with nothing else on screen, and the count is a
+		 * reading the attempt took - N sessions still on the old build, on their way
+		 * onto it when they next stop or go idle. N = 0 is today's toast; N >= 1 adds
+		 * the second line; an unmeasured count draws the numberless sentence (see
+		 * `completionSessionsLine`). The duration follows: a frame carrying the
+		 * second line holds for 8 s (design §2e), N = 0 keeps 6 s.
+		 */
+		const sessionsLine = completionSessionsLine(
+			backendUpdateSessionsOnOldBuild,
+		);
 		return withErrorToast(
 			null,
 			/*
@@ -3198,11 +3721,14 @@ export const UpdateNotification = ({
 			 */
 			<FloatingAlert
 				open={true}
-				autoHideDuration={6000}
+				autoHideDuration={sessionsLine === null ? 6000 : 8000}
 				onClose={() => setBackendUpdateCompleted(false)}
 				variant="success"
 			>
 				Server update completed successfully
+				{sessionsLine === null ? null : (
+					<p className="text-body-sm text-ink">{sessionsLine}</p>
+				)}
 			</FloatingAlert>,
 		);
 	}

@@ -95,6 +95,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 		compactingSince: 0,
 		viewEpoch: 0,
 		oldestId: null,
+		oldestTs: 0,
 		hasMore: false,
 		argsByCall: new Map(),
 	};

@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -176,6 +176,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
@@ -371,6 +372,19 @@ const TUI_PYTHON = argValue("--tui-python", null);
  * harness runs the scene once per theme.
  */
 const THEME = argValue("--theme", null);
+
+/**
+ * Which slice of `pinned-reorder`'s frame list a launch takes (`--pinned-state`):
+ * `three` | `many` | `single` | `keys`.
+ *
+ * WHY AN ARGUMENT RATHER THAN ONE LONG SCENE: three of the states are about how many
+ * rows the section holds, and the stand-in's fixture is per process - so the pins
+ * those states are made of have to be chosen when the stub is launched, not while the
+ * scene runs. `three` (the default) takes the gesture states, `many` the overflow and
+ * auto-scroll states, `single` the one-pin state. The frame names do not change
+ * between slices, which is what makes the three launches one evidence set.
+ */
+const PINNED_STATE = argValue("--pinned-state", "three");
 /*
  * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
  *
@@ -515,6 +529,18 @@ const [WINDOW_WIDTH, WINDOW_HEIGHT] = WINDOW_SIZE.split("x").map((n) =>
 if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	console.error(`--window-size expects WxH (got "${WINDOW_SIZE}")`);
 	process.exit(2);
+}
+
+if (process.argv.some((arg) => arg.startsWith("--window-size="))) {
+	/*
+	 * The space-separated form is the one `argValue` reads; the `=` form is
+	 * silently ignored otherwise - measured on issue #680's first short run,
+	 * which captured 1380x900 frames while claiming 900x650 (review round 1's
+	 * NIT 2). Loud, not fatal: the run is still useful at the default size.
+	 */
+	console.error(
+		"--window-size takes the space-separated form (--window-size 900x650); the = form is ignored",
+	);
 }
 
 /*
@@ -9774,6 +9800,163 @@ async function sceneFloors(cdp) {
  * The full command line (daemon, token, flags) is in
  * `docs/evidence/transcript-rail/README.md`.
  */
+/**
+ * THE HOVER TRACE: what a pointer sweep over the rail costs, in frames.
+ *
+ * WHY A TRACE AND NOT A STOPWATCH. The operator's report was "laggy", which is
+ * a claim about FRAME PACING under a gesture - not about how long one card
+ * takes to open. What this records is the renderer's own rAF timeline while a
+ * deterministic pointer walks the rail in two legs: a DWELL leg (six stations,
+ * long enough at each for the intent-delayed card to open and close - the
+ * open/close churn the report was about) and a SWEEP leg (forty steps at ~12ms,
+ * continuous movement over the marks). Per-frame deltas plus whether a card was
+ * up that frame are read back and reduced to p50/p95/max and long-frame counts.
+ *
+ * BOTH THE BEFORE AND THE AFTER HALF RUN THIS FUNCTION, from this same file,
+ * with only `process.cwd()` (the tree under test) differing - the identity is
+ * the measurement's bytes, not a re-implementation.
+ *
+ * WHY HEADLESS IS STILL A FAIR PLACE FOR IT: `window-mode.ts` turns
+ * `backgroundThrottling` OFF in both non-normal window modes, so a never-shown
+ * renderer keeps its frame cadence instead of dropping to a background 1 fps
+ * tick. What this does NOT measure: compositor/GPU cost of a shown window, the
+ * OS pointer path, or anything under `prefers-reduced-motion` (the trace runs
+ * the default motion arm). It is main-thread frame pacing under a gesture, and
+ * the note says so.
+ */
+async function railHoverTrace(cdp) {
+	const SESSION = "be1a9fef0001";
+	const rail = "[data-lo-checkpoint-rail]";
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	const ready = await waitForCondition(
+		cdp,
+		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && document.querySelectorAll("[data-checkpoint-id]").length >= 300; })()`,
+		30_000,
+	);
+	check(
+		"the density rail is up before the trace",
+		ready.ok,
+		JSON.stringify(ready),
+	);
+	await parkPointer(cdp);
+	const geometry = await cdp.evaluate(`(() => {
+		const rail = document.querySelector('${rail}');
+		if (!rail) return null;
+		const trace = { on: true, frames: [], mutations: 0, startedAt: 0 };
+		window.__railHoverTrace = trace;
+		/*
+		 * THE SECOND READING, and the discriminating one: frame pacing alone
+		 * cannot see render WORK that stays inside the frame budget, and both
+		 * builds fit there at this density (measured: no long frames on either).
+		 * The DOM mutations the rail produces during a gesture are what the
+		 * memoization claim changes - one preview flip repaints two marks
+		 * instead of every mark - so the trace counts them per leg too.
+		 */
+		const observer = new MutationObserver((records) => {
+			trace.mutations += records.length;
+		});
+		observer.observe(rail, {
+			subtree: true,
+			attributes: true,
+			childList: true,
+		});
+		let last = performance.now();
+		const tick = (now) => {
+			/*
+			 * BOTH HALVES DETECT THE CARD THE SAME WAY: the rework's card
+			 * carries data-checkpoint-card, the pre-rework one role=dialog, and
+			 * a sampler that only knew one of them would report a different
+			 * measurement per half - the asymmetry this trace exists to avoid.
+			 */
+			const card = document.querySelector('[role="dialog"], [data-checkpoint-card]');
+			trace.frames.push([Math.round((now - last) * 100) / 100, card ? 1 : 0]);
+			last = now;
+			if (trace.on) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		trace.startedAt = performance.now();
+		const rect = rail.getBoundingClientRect();
+		return {
+			cx: Math.round(rect.left + rect.width / 2),
+			top: Math.round(rect.top + 6),
+			bottom: Math.round(rect.bottom - 6),
+			ticks: document.querySelectorAll("[data-checkpoint-id]").length,
+		};
+	})()`);
+	if (!geometry) {
+		check("the rail is measurable for the trace", false, "no rail element");
+		return;
+	}
+	const leg = async (label, stations, dwellMs) => {
+		const start = Date.now();
+		await cdp.evaluate("window.__railHoverTrace.mutations = 0");
+		for (let i = 0; i < stations; i += 1) {
+			const y = Math.round(
+				geometry.top +
+					((geometry.bottom - geometry.top) * i) / (stations - 1 || 1),
+			);
+			await movePointer(cdp, geometry.cx, y);
+			await wait(dwellMs);
+		}
+		const mutations = await cdp.evaluate("window.__railHoverTrace.mutations");
+		note(
+			`hover trace leg ${label}`,
+			`stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start} mutations=${mutations}`,
+		);
+	};
+	/* The DWELL leg: long enough at each station for the card's intent delay. */
+	await leg("dwell", 6, 240);
+	/* The SWEEP leg: continuous movement, the gesture the report was about. */
+	await leg("sweep", 40, 12);
+	await parkPointer(cdp);
+	const trace = await cdp.evaluate(`(() => {
+		const trace = window.__railHoverTrace;
+		if (!trace) return null;
+		trace.on = false;
+		const startedAt = trace.startedAt;
+		const openFrames = trace.frames.filter(([, open]) => open === 1).length;
+		let firstOpen = null;
+		let t = 0;
+		let firstAt = startedAt;
+		for (const [dt, open] of trace.frames) {
+			firstAt += dt;
+			if (open === 1 && firstOpen === null) firstOpen = Math.round(firstAt - startedAt);
+		}
+		return {
+			frames: trace.frames.map(([dt]) => dt),
+			openFrames,
+			firstOpenMs: firstOpen,
+			mutations: trace.mutations,
+		};
+	})()`);
+	if (!trace || trace.frames.length === 0) {
+		check("the hover trace collected frames", false, JSON.stringify(trace));
+		return;
+	}
+	const sorted = [...trace.frames].sort((a, b) => a - b);
+	const at = (q) =>
+		sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+	const stats = {
+		frames: sorted.length,
+		ticks: geometry.ticks,
+		p50: Math.round(at(0.5) * 100) / 100,
+		p95: Math.round(at(0.95) * 100) / 100,
+		max: Math.round(sorted[sorted.length - 1] * 100) / 100,
+		over25ms: sorted.filter((dt) => dt > 25).length,
+		over50ms: sorted.filter((dt) => dt > 50).length,
+		cardUpFrames: trace.openFrames,
+		firstOpenMs: trace.firstOpenMs,
+	};
+	check(
+		"the hover trace collected a usable timeline",
+		stats.frames >= 60 && stats.over50ms >= 0,
+		JSON.stringify(stats),
+	);
+	note("rail hover trace", JSON.stringify(stats));
+}
+
 async function railPressProbe(cdp) {
 	const SESSION = "be1a9fef0001";
 	const rail = "[data-lo-checkpoint-rail]";
@@ -9868,7 +10051,7 @@ async function railPressProbe(cdp) {
 				await movePointer(cdp, box.centre.x, box.centre.y);
 				const card = await waitForCondition(
 					cdp,
-					`Boolean(document.querySelector("[role=dialog]"))`,
+					`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 					4_000,
 					25,
 				);
@@ -9951,6 +10134,223 @@ async function railPressProbe(cdp) {
 	await poll("after the SYNTHETIC press on the same tick", 6);
 }
 
+/**
+ * The reading cue's own probe: the matrix the bottom-tick fix is measured
+ * against, over the two fixtures whose tails differ in the one way that
+ * matters - the 6-turn one, whose last checkpoint sits INSIDE the final
+ * viewport (the state the operator hit), and the 200-turn one, whose tail
+ * exceeds a viewport (the control that already read correct).
+ *
+ * Run with `--scoped-case rail-cue-probe`. Every reading prints the active
+ * mark, the scroller's own numbers and the row at the reading line, so each
+ * frame carries the geometry that produced it.
+ */
+async function railCueProbe(cdp) {
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const read = async (label) => {
+		const value = await evaluate(`(() => {
+			const region = document.querySelector("[data-lo-canonical-transcript]");
+			if (!region) return { error: "no region" };
+			const rect = region.getBoundingClientRect();
+			const active = document.querySelector('[data-mark-state="active"]');
+			const ticks = Array.from(document.querySelectorAll("[data-checkpoint-id]"));
+			const tick = (el) => ({ id: el.getAttribute("data-checkpoint-id"), state: el.getAttribute("data-mark-state") });
+			const rows = Array.from(region.querySelectorAll("[data-record-id]")).map((el) => ({ id: el.getAttribute("data-record-id"), top: Math.round((el.getBoundingClientRect().top - rect.top) * 100) / 100, bottom: Math.round((el.getBoundingClientRect().bottom - rect.top) * 100) / 100 }));
+			const atLine = rows.filter((r) => r.top <= 1).pop() || null;
+			return {
+				active: active ? active.getAttribute("data-checkpoint-id") : null,
+				activeState: active ? active.getAttribute("data-mark-state") : null,
+				lastTick: ticks.length ? ticks[ticks.length - 1].getAttribute("data-checkpoint-id") : null,
+				ticks: ticks.length,
+				lastTicks: ticks.slice(-6).map(tick),
+				firstTicks: ticks.slice(0, 2).map(tick),
+				scrollTop: Math.round(region.scrollTop * 100) / 100,
+				scrollHeight: region.scrollHeight,
+				clientHeight: region.clientHeight,
+				max: region.scrollHeight - region.clientHeight,
+				regionBottom: Math.round(rect.bottom),
+				lastRow: rows[rows.length - 1] || null,
+				readingRow: atLine,
+				topRow: rows[0] || null,
+			};
+		})()`);
+		note(`read ${label}`, JSON.stringify(value));
+		return value;
+	};
+	const settle = () => wait(1200);
+	/**
+	 * A tick's centre as a pixel to sample, and its luma in a captured frame.
+	 *
+	 * The mask dims a dash without touching its computed styles, so the
+	 * end-tick acceptance is a PIXEL reading: the dash's own centre in the PNG
+	 * the capture wrote, scaled from the PNG's width against the viewport's,
+	 * averaged over a 3x3 patch so a sub-pixel offset cannot decide it.
+	 */
+	const tickPoint = async (id) =>
+		evaluate(
+			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+		);
+	const luma = async (label, point) => {
+		const file = join(FRAMES, `${label}.png`);
+		const meta = await sharp(file).metadata();
+		const scale = (meta.width ?? 0) / (await evaluate("window.innerWidth"));
+		const { data } = await sharp(file)
+			.extract({
+				left: Math.max(0, Math.round(point.x * scale) - 1),
+				top: Math.max(0, Math.round(point.y * scale) - 1),
+				width: 3,
+				height: 3,
+			})
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+		let sum = 0;
+		for (let i = 0; i < data.length; i += 3) {
+			sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+		}
+		return Math.round(sum / (data.length / 3));
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	/* The sparse fixture first: its last checkpoint is inside the final viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0003"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 12`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	const sparseBottom = await read("sparse-bottom");
+	await capture(cdp, "rail-cue-sparse-bottom");
+	const bottomPoints = {
+		end: await tickPoint("qn0006"),
+		rest: await tickPoint("qu0006"),
+	};
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -(r.scrollHeight - r.clientHeight); return r.scrollTop; })()`,
+	);
+	await settle();
+	const sparseTop = await read("sparse-top");
+	await capture(cdp, "rail-cue-sparse-top");
+	const topPoints = {
+		first: await tickPoint("qu0001"),
+		rest: await tickPoint("qn0001"),
+	};
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -Math.round((r.scrollHeight - r.clientHeight) / 2); return r.scrollTop; })()`,
+	);
+	await settle();
+	const sparseMid = await read("sparse-mid");
+	await capture(cdp, "rail-cue-sparse-mid");
+	const midPoints = { active: await tickPoint("qu0002") };
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = 0; return r.scrollTop; })()`,
+	);
+	await settle();
+	await read("sparse-bottom-again");
+	/* The density control: the same readings where the tail exceeds a viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0001"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	const densityBottom = await read("density-bottom");
+	await capture(cdp, "rail-cue-density-bottom");
+	const densityPoints = {
+		end: await tickPoint("n0200"),
+		rest: await tickPoint("u0200"),
+	};
+	/*
+	 * The arms' own checks (review round 1): one per state, so the run's
+	 * ALL CHECKS PASSED counts them rather than standing on nothing.
+	 */
+	check(
+		"the bottom tick is active at the bottom (6-turn fixture)",
+		sparseBottom.active === sparseBottom.lastTick,
+		`active=${sparseBottom.active} last=${sparseBottom.lastTick}`,
+	);
+	check(
+		"the first tick is active at the top (6-turn fixture)",
+		sparseTop.active === sparseTop.firstTicks[0].id,
+		`active=${sparseTop.active} first=${sparseTop.firstTicks[0].id}`,
+	);
+	check(
+		"mid-scroll keeps the line rule (6-turn fixture)",
+		sparseMid.active === "qu0002",
+		`active=${sparseMid.active}`,
+	);
+	check(
+		"the bottom tick is active at the bottom (402-mark fixture)",
+		densityBottom.active === densityBottom.lastTick,
+		`active=${densityBottom.active} last=${densityBottom.lastTick}`,
+	);
+	/*
+	 * THE END DASHES' LUMA (design round 2, D1's acceptance): with the track's
+	 * block padding, an end tick's dash must read at the ACTIVE luma - not the
+	 * dim of the mask's fade. The reference is the interior active mark in the
+	 * mid capture (same theme, one frame over) and a rest neighbour gives the
+	 * separation term; before the padding the end dash measured 77 against
+	 * 238, dimmer than its own rest neighbours.
+	 */
+	const activeRef = await luma("rail-cue-sparse-mid", midPoints.active);
+	const endBottom = await luma("rail-cue-sparse-bottom", bottomPoints.end);
+	const restBottom = await luma("rail-cue-sparse-bottom", bottomPoints.rest);
+	const firstTop = await luma("rail-cue-sparse-top", topPoints.first);
+	const endDensity = await luma("rail-cue-density-bottom", densityPoints.end);
+	const restDensity = await luma("rail-cue-density-bottom", densityPoints.rest);
+	note(
+		"luma",
+		JSON.stringify({
+			activeRef,
+			endBottom,
+			restBottom,
+			firstTop,
+			endDensity,
+			restDensity,
+		}),
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (6-turn fixture)",
+		Math.abs(endBottom - activeRef) <= 16,
+		`end=${endBottom} active=${activeRef}`,
+	);
+	check(
+		"the first dash at the top reads at the active luma (6-turn fixture)",
+		Math.abs(firstTop - activeRef) <= 16,
+		`first=${firstTop} active=${activeRef}`,
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (402-mark fixture)",
+		Math.abs(endDensity - activeRef) <= 16,
+		`end=${endDensity} active=${activeRef}`,
+	);
+	check(
+		"the end dashes read clear of their rest neighbours",
+		endBottom > restBottom + 40 && endDensity > restDensity + 40,
+		`end=${endBottom}/${endDensity} rest=${restBottom}/${restDensity}`,
+	);
+}
+
 async function sceneTranscriptRail(cdp) {
 	/*
 	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
@@ -9968,6 +10368,14 @@ async function sceneTranscriptRail(cdp) {
 		RAIL_CASE === "press-probe-hovers"
 	) {
 		await railPressProbe(cdp);
+		return;
+	}
+	if (RAIL_CASE === "hover-trace") {
+		await railHoverTrace(cdp);
+		return;
+	}
+	if (RAIL_CASE === "rail-cue-probe") {
+		await railCueProbe(cdp);
 		return;
 	}
 	const facts = await factsOf(cdp);
@@ -10235,6 +10643,442 @@ async function sceneTranscriptRail(cdp) {
 		`ticks=${tickCount}`,
 	);
 
+	/*
+	 * #680's landing probe: press ticks across the reach and read WHERE THEY
+	 * LAND - the washed row's top relative to the scroller's top (`offset`;
+	 * the fixed anchor is the top-fade depth, design round 1's D1), with the
+	 * scroller's own numbers, the landed row's peak ink against a mid-viewport
+	 * reference row, and the rail's active tick after the jump. Run with
+	 * `--scoped-case rail-jump-probe`; the before/after pair is the same
+	 * command against the pre-anchor and post-anchor builds, and each jump's
+	 * frame is captured under its case name. `--theme localOperatorLight` is
+	 * the light pass (D5).
+	 */
+	if (RAIL_CASE === "rail-jump-probe") {
+		/* The theme is named, not assumed: the light frame is this same probe
+		 * with `--theme localOperatorLight`. */
+		await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+		const anchorView = (id) =>
+			evaluate(`(() => {
+				const sc = document.querySelector('[role="log"]');
+				/*
+				 * The landed row, flash or not: the wash is the app's arrival cue, but
+				 * it is interactive-state (it can be replaced by a late mount commit
+				 * under load - the timeline below records when), while the LANDING is
+				 * the geometry this probe measures. The fallback reads the target's own
+				 * anchor row by id, skipping the collapsed bar that carries it as
+				 * data-turn-summary (the bar is not the row it stands for).
+				 */
+				const flashed = document.querySelector("[data-jump-highlight]");
+				const row =
+					flashed ??
+					document.querySelector(
+						'[data-record-id="${id}"]:not([data-turn-summary])',
+					);
+				if (!sc || !row) return null;
+				const sr = sc.getBoundingClientRect();
+				const rr = row.getBoundingClientRect();
+				/*
+				 * The reference row for the luma check: the loaded checkpoint row
+				 * nearest the scroller's vertical middle, i.e. one the top fade
+				 * cannot touch. Read in the same snapshot as the target's rect, so
+				 * one frame answers both.
+				 */
+				const mid = sr.top + sc.clientHeight / 2;
+				let ref = null;
+				let refDist = Infinity;
+				for (const el of sc.querySelectorAll("[data-record-id]")) {
+					if (el === row || el.hasAttribute("data-turn-summary")) continue;
+					const r = el.getBoundingClientRect();
+					/*
+					 * Same-frame painted guard (QA round 2, Q-1): only rows fully
+					 * inside the scroller's visible band can be the reference. A
+					 * row below the fold reads empty paint - how the near-newest
+					 * clamp leg read 32 against its 238 - and a "reference" that
+					 * is not painted can only fail or pass vacuously.
+					 */
+					if (r.top < sr.top || r.bottom > sr.top + sc.clientHeight) {
+						continue;
+					}
+					const dist = Math.abs(r.top + 11 - mid);
+					if (dist < refDist) {
+						refDist = dist;
+						ref = el;
+					}
+				}
+				const rr2 = ref ? ref.getBoundingClientRect() : null;
+				/* The target's preceding row - painted whenever the target is,
+				 * so it backstops the reference at the clamps. */
+				const rowsAll = Array.from(
+					sc.querySelectorAll("[data-record-id]"),
+				).filter((el) => !el.hasAttribute("data-turn-summary"));
+				const rowIdx = rowsAll.indexOf(row);
+				const adj = rowIdx > 0 ? rowsAll[rowIdx - 1] : null;
+				const rr3 = adj ? adj.getBoundingClientRect() : null;
+				const active = document.querySelector('[data-mark-state="active"]');
+				return {
+					landed: row.getAttribute("data-record-id"),
+					flashed: Boolean(flashed),
+					offset: Math.round((rr.top - sr.top) * 10) / 10,
+					scrollTop: Math.round(sc.scrollTop * 10) / 10,
+					maxNeg: Math.round((sc.scrollHeight - sc.clientHeight) * -1),
+					rowH: Math.round(rr.height),
+					viewport: sc.clientHeight,
+					rows: sc.querySelectorAll("[data-record-id]").length,
+					scrollerLeft: Math.round(sr.left),
+					targetBand: {
+						top: Math.round(rr.top),
+						height: Math.round(rr.height),
+					},
+					refBand: rr2
+						? { top: Math.round(rr2.top), height: Math.round(rr2.height) }
+						: null,
+					adjBand: rr3
+						? { top: Math.round(rr3.top), height: Math.round(rr3.height) }
+						: null,
+					/* The target's strip that is actually inside the scroller's
+					 * visible band: at the clamp the last row can sit past the
+					 * fold, and there is no ink to meter. */
+					visibleStrip: {
+						top: Math.round(Math.max(rr.top, sr.top)),
+						bottom: Math.round(Math.min(rr.bottom, sr.top + sc.clientHeight)),
+					},
+					activeTick: active ? active.getAttribute("data-checkpoint-id") : null,
+				};
+			})()`);
+		/*
+		 * A row band's luma stats (min, max) from the captured PNG: the x window
+		 * is the scroller's own left edge plus 520px (the fixture's rows draw
+		 * their text in the left half), the y window the row's own band. The
+		 * INK measurement is the RANGE (max - min), because ink's polarity flips
+		 * with the palette - light-on-dark reads as the max, dark-on-light as
+		 * the min - and a mask that dims the text shrinks the range in either
+		 * (design round 1 measured 238 -> 189 inside the fade in dark). The MAX
+		 * doubles as the band's GROUND, which is what tells reference classes
+		 * apart: light grounds run 237-251 and both are full ink, so a
+		 * peak-vs-peak comparison across rows of different grounds was unsound
+		 * (QA round 5's light-palette false red).
+		 */
+		const rowBandStats = async (label, scrollerLeft, band) => {
+			const file = join(FRAMES, `${label}.png`);
+			const meta = await sharp(file).metadata();
+			const inner = await evaluate("window.innerWidth");
+			const scale = (meta.width ?? 0) / inner;
+			const left = Math.max(0, Math.round((scrollerLeft + 8) * scale));
+			const top = Math.max(0, Math.round((band.top + 2) * scale));
+			const width = Math.max(
+				1,
+				Math.min((meta.width ?? 0) - left, Math.round(520 * scale)),
+			);
+			const height = Math.max(1, Math.round((band.height - 4) * scale));
+			const { data } = await sharp(file)
+				.extract({ left, top, width, height })
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+			let min = 255;
+			let max = 0;
+			const values = [];
+			for (let i = 0; i + 2 < data.length; i += 3) {
+				const value =
+					0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+				values.push(value);
+				if (value > max) max = value;
+				if (value < min) min = value;
+			}
+			/*
+			 * The counts at each extreme tell GROUND from INK without a palette
+			 * table: the band's ground is its majority value, and the ink is the
+			 * minority extreme - bright-on-dark in one palette, dark-on-light in
+			 * another, same numbers either way (QA round 5 measured a light band
+			 * as min 30 / max 251 and a dark one as min 33 / max 238).
+			 */
+			let minCount = 0;
+			let maxCount = 0;
+			for (const value of values) {
+				if (value <= min + 8) minCount += 1;
+				if (value >= max - 8) maxCount += 1;
+			}
+			return {
+				min: Math.round(min),
+				max: Math.round(max),
+				minCount,
+				maxCount,
+			};
+		};
+		const jumpCase = async (name, id, expect) => {
+			await washGone();
+			const rowsBefore = await evaluate(
+				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
+			);
+			/*
+			 * A per-frame settle sampler (QA round 5's 1/5 clamp-end miss): every
+			 * animation frame from before the press until the settle resolves
+			 * records [ms, scrollTop, targetOffset], so a landing that exits
+			 * short can be read frame by frame instead of argued about.
+			 */
+			await evaluate(`(() => {
+				window.__anchorSamples = [];
+				window.__anchorSamplerOn = true;
+				const t0 = performance.now();
+				const tick = () => {
+					if (!window.__anchorSamplerOn) return;
+					const reg = document.querySelector('[role="log"]');
+					const row = document.querySelector('[data-record-id="${id}"]:not([data-turn-summary])');
+					if (reg && row) {
+						window.__anchorSamples.push([
+							Math.round(performance.now() - t0),
+							Math.round(reg.scrollTop * 10) / 10,
+							Math.round((row.getBoundingClientRect().top - reg.getBoundingClientRect().top) * 10) / 10,
+						]);
+					}
+					window.requestAnimationFrame(tick);
+				};
+				window.requestAnimationFrame(tick);
+				return true;
+			})()`);
+			const jump = await jumpVia(id);
+			const atWash = await anchorView(id);
+			await capture(cdp, `rail-jump-${name}`);
+			/*
+			 * The flash's own timeline: the landing highlight lives 1400ms from
+			 * paint, and a late mount commit under load can replace the flashed
+			 * node - the very-top and near-newest legs were seen to lose the
+			 * attribute between jumpVia's read and this probe's. Sampling `fate`
+			 * (`lit` -> the marked node still flashed; `alive` -> same node, no
+			 * attribute; `gone` -> node replaced) turns "the highlight is gone"
+			 * into WHAT happened, which is the fact a fix needs.
+			 */
+			await evaluate("(() => { window.__probeRow = null; return true; })()");
+			const timeline = [];
+			for (let sample = 0; sample < 10; sample += 1) {
+				timeline.push(
+					await evaluate(
+						`(() => { const hl = document.querySelector("[data-jump-highlight]"); const sc = document.querySelector('[role="log"]'); if (!window.__probeRow && hl) window.__probeRow = hl; const row = window.__probeRow; const fate = row ? (row.isConnected ? (row.hasAttribute("data-jump-highlight") ? "lit" : "alive") : "gone") : "none"; return [${sample * 40}, hl ? 1 : 0, hl ? hl.getAttribute("data-record-id") : null, sc ? Math.round(sc.scrollTop) : null, fate]; })()`,
+					),
+				);
+				await wait(40);
+			}
+			/*
+			 * The wash is up NOW (jumpVia waits on its attribute), and its 1400ms
+			 * timer clears it - so the frame is captured and the first read taken
+			 * before the wait, while the highlight is guaranteed in the picture;
+			 * the settled read after the anchor's window is the landing number.
+			 * A slow cold jump's wash can expire before the settled read, which is
+			 * why the check falls back to the earlier one rather than reading
+			 * null on a landing that happened. The frame is taken AT the wash (the
+			 * first read, right after the jump resolves, before the timeline
+			 * sampling), so the before/after pair photographs the same instant of
+			 * the arrival cue the pre-anchor runs photographed; the luma reads
+			 * below use their own post-settle capture.
+			 */
+			await wait(700);
+			const settled = await anchorView(id);
+			const view = settled ?? atWash;
+			const samples = await evaluate(`(() => {
+				window.__anchorSamplerOn = false;
+				const all = window.__anchorSamples || [];
+				const head = all.slice(0, 300);
+				return { n: all.length, head, last: all.length > 300 ? all.slice(-8) : [] };
+			})()`);
+			/*
+			 * The luma reads come from a POST-SETTLE capture (UX round 1's U1):
+			 * the wash-instant still above is the design frame, but a tall
+			 * near-newest run had its still photograph a stale paint once (the
+			 * scroller repaint lagging the DOM's landing), and sampling a stale
+			 * frame can only read a red for a property that holds. The bands
+			 * come from the same settled snapshot this capture shows; the wash
+			 * instant is the fallback only when no settled read came back.
+			 */
+			await capture(cdp, `rail-jump-${name}-settled`);
+			const lumaView = settled ?? atWash;
+			const strip = lumaView?.visibleStrip ?? null;
+			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
+			const targetStats = targetVisible
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						{
+							top: strip.top,
+							height: strip.bottom - strip.top,
+						},
+					)
+				: null;
+			const refStats = lumaView?.refBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.refBand,
+					)
+				: null;
+			const adjStats = lumaView?.adjBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.adjBand,
+					)
+				: null;
+			const bandRange = (stats) => (stats ? stats.max - stats.min : null);
+			/* The ground is the majority extreme; the ink is the other one. */
+			const inkValue = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.min : stats.max;
+			const inkCount = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.minCount : stats.maxCount;
+			/* A band carries ink when it has real contrast AND a real minority
+			 * extreme (text strokes, not antialiasing noise). */
+			const carriesInk = (stats) =>
+				stats !== null && stats.max - stats.min >= 100 && inkCount(stats) >= 30;
+			const targetRange = bandRange(targetStats);
+			/*
+			 * Full ink is a RANGE of 180+ (dark full 206, inside the fade 156;
+			 * light full 207). The reference comparison runs only against a band
+			 * that CARRIES INK (contrast plus a real text minority): a blank
+			 * band's extremes are all ground - comparing against one was the
+			 * light-palette false red (QA round 5) - while a band on another
+			 * ground is another row class whose range still differs only by its
+			 * ground, so the comparison anchors on the INK extreme, not the
+			 * range. With no inked reference the absolute bar carries the check
+			 * and the note shows the candidates.
+			 */
+			const reference =
+				targetStats === null
+					? null
+					: ([refStats, adjStats].find(carriesInk) ?? null);
+			if (name === "very-top") {
+				note(
+					`settle frames ${name}`,
+					`n=${samples?.n ?? 0} head=${JSON.stringify(samples?.head ?? [])} tail=${JSON.stringify(samples?.last ?? [])}`,
+				);
+			}
+			note(
+				`landing ${name}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetRange ?? "none"}/${reference ? bandRange(reference) : "none"} ink=${targetStats ? inkValue(targetStats) : "none"}/${reference ? inkValue(reference) : "none"} mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
+			);
+			check(
+				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
+				view !== null &&
+					view.landed === id &&
+					(expect === "clamp"
+						? view.scrollTop === 0
+						: Math.abs(view.offset - 24) <= 1.5),
+				JSON.stringify({
+					jump: jump.landed,
+					focused: jump.focused,
+					hit: jump.hit,
+					view,
+					timeline,
+				}),
+			);
+			check(
+				`the ${name} landing's target reads at full ink, clear of the top fade`,
+				targetVisible
+					? targetRange !== null &&
+							targetRange >= 180 &&
+							carriesInk(targetStats) &&
+							(reference === null ||
+								Math.abs(inkValue(targetStats) - inkValue(reference)) <= 4)
+					: expect === "clamp",
+				targetVisible
+					? `target=${targetRange} (${targetStats?.min}-${targetStats?.max}) reference=${reference ? bandRange(reference) : "none"} (mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"})`
+					: `no visible target strip (the clamp's last row sits past the fold): ${JSON.stringify(strip)}`,
+			);
+			check(
+				`the rail's active tick after the ${name} jump is the target`,
+				view !== null && view.activeTick === id,
+				`active=${view?.activeTick} expected=${id}`,
+			);
+			return view;
+		};
+		const ids = await evaluate(`(() => {
+			const ticks = Array.from(document.querySelectorAll('${rail} [data-checkpoint-id]'));
+			const ns = ticks
+				.map((el) => el.getAttribute("data-checkpoint-id"))
+				.filter((id) => (id || "").startsWith("n"));
+			return {
+				first: ns[0] ?? null,
+				deep: ns[Math.floor(ns.length * 0.65)] ?? null,
+				count: ns.length,
+			};
+		})()`);
+		note("rail ids", JSON.stringify(ids));
+		/*
+		 * The deep leg FIRST - it walks the store back, so a deep read taken
+		 * after the near legs would be reading a store they warmed. The warm leg
+		 * is that same row re-jumped.
+		 */
+		await jumpCase("deep-cold", ids.deep, "anchor");
+		await jumpCase("warm", ids.deep, "anchor");
+		await jumpCase("very-top", ids.first, "anchor");
+		/* The newest completion: within a viewport of the end, so the anchor is
+		 * unreachable by construction - the documented clamp at max scroll. */
+		await jumpCase("near-newest", nearTick, "clamp");
+		/*
+		 * D4's card step: the text is frozen while the card is open. Open a
+		 * completion's card, read it, hold through a settle window and read
+		 * again - equal - then close and reopen. The store-side half (a warm
+		 * landing mid-hover) is pinned by the rail suite's own case; this is the
+		 * DOM-level half on the real app, and its frame carries the card.
+		 */
+		const cardText = () =>
+			evaluate(
+				`(() => { const card = document.querySelector("[data-checkpoint-card]"); return card ? card.textContent : null; })()`,
+			);
+		await washGone();
+		/*
+		 * The last jump already focused this tick; `focus()` on an already-active
+		 * element fires no focus event, so the card's own open path never runs.
+		 * Blur first, then focus, so the step exercises a real focus transition.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardFocus = await evaluate(
+			`(() => { const a = document.activeElement; return a ? (a.getAttribute("data-checkpoint-id") || a.tagName) : null; })()`,
+		);
+		const cardOpened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
+			5_000,
+		);
+		note(
+			"card step",
+			`active=${cardFocus ?? "none"} opened=${String(cardOpened.ok)}`,
+		);
+		const cardBefore = await cardText();
+		await wait(1600);
+		const cardAfter = await cardText();
+		await capture(cdp, "rail-jump-card-open");
+		check(
+			"the open card's text does not swap while it is open (issue #680, D4)",
+			cardOpened.ok && cardBefore !== null && cardBefore === cardAfter,
+			`before=${JSON.stringify(cardBefore)} after=${JSON.stringify(cardAfter)}`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(250);
+		/*
+		 * Same already-focused trap as the first open: Escape closes the card but
+		 * leaves the tick focused, so the refocus must be a real transition for
+		 * the second open to exercise the open path at all.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardAgain = await cardText();
+		check(
+			"the next open still renders a card",
+			cardAgain !== null && cardAgain.length > 0,
+			JSON.stringify(cardAgain),
+		);
+		return;
+	}
+
 	const themes = sceneThemes();
 	for (const theme of themes) {
 		check(
@@ -10263,12 +11107,12 @@ async function sceneTranscriptRail(cdp) {
 			await movePointer(cdp, userSpot.x, userSpot.y);
 			const cardUp = await waitForCondition(
 				cdp,
-				`Boolean(document.querySelector("[role=dialog]"))`,
+				`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 				4_000,
 				25,
 			);
 			const cardText = await evaluate(
-				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+				`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 			);
 			check(
 				`the user card shows the message text (${theme})`,
@@ -10291,12 +11135,12 @@ async function sceneTranscriptRail(cdp) {
 			await movePointer(cdp, completionSpot.x, completionSpot.y);
 			const cardUp = await waitForCondition(
 				cdp,
-				`Boolean(document.querySelector("[role=dialog]"))`,
+				`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 				4_000,
 				25,
 			);
 			const cardText = await evaluate(
-				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+				`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 			);
 			const text = cardText || "";
 			check(
@@ -10547,7 +11391,7 @@ async function sceneTranscriptRail(cdp) {
 			}),
 		);
 		const cardBeforeEscape = await evaluate(
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 		);
 		await pressChord(cdp, {
 			key: "Escape",
@@ -10555,7 +11399,7 @@ async function sceneTranscriptRail(cdp) {
 			virtualKeyCode: 27,
 		});
 		const cardAfterEscape = await evaluate(
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 		);
 		const focusAfterEscape = await activeTick();
 		check(
@@ -10628,6 +11472,19 @@ async function sceneTranscriptRail(cdp) {
 			await openFixture(SESSION_DEEP, "du0001", 600),
 			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
 		);
+		/*
+		 * THE TRACK AT ITS TOP END FIRST (round-1 re-shoot, measured): the rail
+		 * now follows the reader's active mark, so on a fresh open the frame sits
+		 * scrolled to the tail - the first `du` tick the scan can reach is a
+		 * RECENT one, and when this leg trusted the scan it pressed `du0296`,
+		 * which simply LANDED (rows 36->87, no toast). The refusal is about the
+		 * OLDEST tick, so the probe scrolls the rail's own track to its top end
+		 * first - the reader's own gesture for reaching it - and only then scans.
+		 */
+		await evaluate(
+			`(() => { const f = document.querySelector("[data-rail-frame]"); if (f) f.scrollTop = 0; return Boolean(f); })()`,
+		);
+		await wait(120);
 		const oldSpot = await tickSpot("du");
 		if (oldSpot) {
 			const refusalStart = Date.now();
@@ -10726,17 +11583,31 @@ async function sceneTranscriptRail(cdp) {
 		await movePointer(cdp, longBox.centre.x, longBox.centre.y);
 		const longCard = await waitForCondition(
 			cdp,
-			`Boolean(document.querySelector("[role=dialog] [data-checkpoint-card-text]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card] [data-checkpoint-card-text]"))`,
 			4_000,
 			25,
 		);
 		const bound = await evaluate(`(() => {
 			const el = document.querySelector("[data-checkpoint-card-text]");
-			return el ? { scrollH: el.scrollHeight, clientH: el.clientHeight } : null;
+			if (!el) return null;
+			const style = getComputedStyle(el);
+			return {
+				clamp: style.webkitLineClamp,
+				overflowY: style.overflowY,
+			};
 		})()`);
+		/*
+		 * A clamp CLIPS; it does not shrink scrollHeight. So the bounded
+		 * reading is the clamp's own two facts - three lines, and no scroll -
+		 * rather than an absence of overflow (measured: a working
+		 * line-clamp-3 reads clamp=3 with overflows=true).
+		 */
 		check(
-			`the long user card is bounded and scrolls internally (${theme})`,
-			longCard.ok && bound !== null && bound.scrollH > bound.clientH,
+			`the long user card is bounded by its clamp (${theme})`,
+			longCard.ok &&
+				bound !== null &&
+				bound.clamp === "3" &&
+				bound.overflowY === "hidden",
 			JSON.stringify(bound),
 		);
 		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
@@ -10755,12 +11626,12 @@ async function sceneTranscriptRail(cdp) {
 		await movePointer(cdp, outcomeBox.centre.x, outcomeBox.centre.y);
 		const outcomeCard = await waitForCondition(
 			cdp,
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 			4_000,
 			25,
 		);
 		const outcomeText = await evaluate(
-			`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+			`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 		);
 		check(
 			`the outcome card names the error outcome (${theme})`,
@@ -13133,6 +14004,1393 @@ async function scenePinsSearch(cdp) {
 
 const sceneThemes = () =>
 	THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
+
+/**
+ * The Pinned section's manual order, DRIVEN: what the drag handle costs at rest and
+ * under the pointer, what a drag looks like mid-gesture, and what it leaves behind
+ * (issue #697).
+ *
+ * WHY THIS SCENE EXISTS. Issue #693 gave the section an order the reader owns, moved
+ * by a pair of controls and by chords; #697 adds the gesture the operator asked for -
+ * a drag - and every one of its claims is a claim about PIXELS or about a GESTURE,
+ * neither of which a `node --test` file can reach: the grip is revealed by `:hover`
+ * (compositor state, which no dispatched event inside the page can enter), the
+ * indicator exists only between a press and a release, the dragged row's own ground is
+ * a class the browser paints, and "a multi-place drop is ONE write" is a fact about a
+ * commit and a store, not about a class string. `scripts/sidebar-pin-order.test.mjs`
+ * holds the MODEL (which array a drop resolves to, what a no-op drop does, how a slot
+ * is hit-tested); this scene holds what that model looks like on screen.
+ *
+ * WHAT A FRAME HERE PROVES, AND WHAT IT CANNOT.
+ *   - Every gesture goes through `Input.dispatchMouseEvent`, so it enters Chromium's
+ *     own pipeline and the element under it is found the way a hand's would be. It is
+ *     still synthetic: no pressure, no jitter, no trackpad momentum, so no frame says
+ *     "a real hand finds this".
+ *   - `captureSettled` is what makes a frame evidence at all (two consecutive
+ *     identical captures with no toast on screen), so a mid-drag frame is of a HELD
+ *     gesture - which is what a drag is - rather than of a moment that happened to
+ *     freeze.
+ *   - The rows these frames draw are the STAND-IN's (`stub-daemon.mjs`), not a real
+ *     store: `--pins` names the ids pinned at boot, so the section has the three pins a
+ *     reorder needs to be visible. No conversation is created, sent or opened here.
+ *   - A HEADLESS window never renders `:focus-visible` rings or carets, so the frames
+ *     that follow a keyboard move are about focus LOCATION only. This scene takes no
+ *     keyboard step at all: #693's chords are `pins`/`pins-search`'s subject, and this
+ *     change adds no key.
+ *   - The RELAUNCH step is a `Page.reload` against the same `--user-data-dir` profile,
+ *     not a second process: the order is a PERSISTED preference, and the claim is that
+ *     a fresh boot of the renderer rehydrates it (the row-space and `turn-collapse`
+ *     scenes' own restart step). A second process would say the same thing about the
+ *     same bytes and would cost one more app launch per palette.
+ *
+ * ONE LAUNCH PER PALETTE, with widths 240/280/320 driven through the store the panel
+ * already persists (`setSidebarWidth`) - the whole point of the 240 frame is that the
+ * revealed cluster's cost is FELT there first, and a width this scene labelled must be
+ * the width it photographed (`setSidebarWidth` reports the clamped value it applied).
+ *
+ * THE STATE ORDER IS PART OF THE EVIDENCE: the mutating steps run LAST (many pins, then
+ * a single pin), so every frame taken before them is of the panel the stand-in booted
+ * with. The drop itself is a real write to the stub, which is why the one launch per
+ * palette is also the reason two palettes cannot share a stub process.
+ */
+async function scenePinnedReorder(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		facts.visible === false && facts.focused === false,
+		`visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	if (THEME !== null) await verb(cdp, "setTheme", THEME);
+	await parkPointer(cdp);
+	const arrived = await waitForCondition(
+		cdp,
+		'document.querySelectorAll("[data-session-row]").length > 0',
+		20_000,
+	);
+	check(
+		"the stand-in's catalogue reached the panel",
+		arrived.ok === true,
+		JSON.stringify(arrived),
+	);
+	/*
+	 * THE SCENE'S OWN TWO NUMBERS, named rather than inlined.
+	 *
+	 * `PINNED_SETTLE_MS` is longer than the reveal's fade (`duration-base`), so a frame
+	 * taken after a pointer move is of the SETTLED reveal rather than of one caught
+	 * half-painted. `PINNED_MANY_COUNT` is twelve because that is past the point where the
+	 * pinned section's rows overflow the scroller at the default width: the many-pins
+	 * frames are about a section a drop has to be able to reach the bottom of.
+	 */
+	const PINNED_SETTLE_MS = 400;
+	const PINNED_MANY_COUNT = 12;
+	/*
+	 * THE STAND-IN'S FIXTURE, named here because three of the scene's claims are about
+	 * specific ids: the three the stub was launched with (`--pins`), the query that hides
+	 * exactly one of them, and the widths the width-sensitive states are photographed at.
+	 *
+	 * The query is a PREFIX of two of the three titles ("Chat 000", "Chat 005") and of
+	 * neither half of the third ("Chat 010"), which is what makes the filtered frames
+	 * show a HIDDEN pin rather than a shorter section - rule 2's second half.
+	 */
+	const PINNED_IDS = ["p000", "p005", "p010"];
+	const PINNED_QUERY = "Chat 00";
+	/*
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
+	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
+	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
+	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
+	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * the README called 280 "the default", which is not a width the app opens at.
+	 */
+	const PINNED_WIDTHS = [240, 260, 280, 320];
+	await wait(PINNED_SETTLE_MS);
+
+	/**
+	 * One reading of the pinned section, in the app's own geometry.
+	 *
+	 * Read from the DOM rather than inferred: the order the reader sees, the title box
+	 * each row gives up, which of the row's controls are PAINTED (a revealed control is
+	 * `display: none` at rest, so `getComputedStyle` is the honest answer and a class
+	 * list is not), the indicator's own y, the dragged row's mark, the live region's
+	 * sentence and what the store holds. This is the half-frame the pixels cannot carry:
+	 * a still shows the cluster, the numbers say what it cost.
+	 */
+	const readPinnedPanel = () =>
+		cdp.evaluate(`(() => {
+			const section = document.querySelector('[data-chat-section="pinned"]');
+			const box = (node) => {
+				const r = node.getBoundingClientRect();
+				return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+			};
+			const painted = (node) => {
+				if (!node) return false;
+				const style = getComputedStyle(node);
+				return style.display !== "none" && style.visibility !== "hidden" && node.getBoundingClientRect().width > 0;
+			};
+			const live = document.querySelector('[data-sidebar-pin-order-announcement]');
+			let stored = null;
+			/* A DIAGNOSIS HATCH: the whole persisted view and the store's own key list,
+			   because a null here after a drop that plainly re-ordered the section cannot
+			   be told apart from an absent write without them. */
+			let storedView = null;
+			let storeKeys = null;
+			try {
+				const key = Object.keys(window.localStorage).find((each) => each.startsWith('ui-preferences'));
+			const raw = key === undefined ? null : window.localStorage.getItem(key);
+				/* The view lives UNDER the store's own field, not at its root: reading pins
+			   off the root answered null on a section that plainly held an order (measured on
+			   this scene's first run), which would have made an unwritten drop and a written one
+			   read alike. */
+			const parsed = raw === null ? null : JSON.parse(raw);
+			const state = parsed === null ? null : (parsed.state ?? parsed);
+			storeKeys = {
+				all: Object.keys(window.localStorage),
+				stateKeys:
+					parsed === null
+						? null
+						: Object.keys(parsed.state ?? parsed).filter((key) =>
+								/json|pin|view|sidebar/i.test(key),
+							),
+				rawView:
+					parsed === null
+						? null
+						: JSON.stringify(parsed.state ?? parsed).slice(0, 400),
+			};
+			storedView = state === null ? null : (state.chatSidebarView ?? null);
+			stored = storedView?.pins ?? null;
+			} catch { stored = "unreadable"; }
+			if (!section) return { section: false, order: [], rows: [], indicator: null, dragging: [], announcement: live ? live.textContent : null, storedMiss: stored };
+			const rows = [...section.querySelectorAll("[data-session-row]")];
+			const rowBox = section.querySelector('[data-session-row]');
+			const indicator = section.querySelector('[data-session-pin-indicator]');
+			return {
+				section: true,
+				order: rows.map((node) => node.getAttribute("data-session-row")),
+				rows: rows.map((node) => {
+					const title = node.querySelector("[data-session-title]");
+					return {
+						id: node.getAttribute("data-session-row"),
+						box: box(node),
+						/* WHAT THE ROW IS PAINTED (round 1, D1 and D5c). The computed
+						   background is the only honest reading of a ground step: a class list
+						   says what was ASKED for, and round 1 measured a frame where the
+						   asked-for colour lost to a hover variant. NO BACKTICKS IN THIS
+						   COMMENT: it lives inside a template literal, and one would end the
+						   string early - measured, twice on this file. */
+						ground: getComputedStyle(node).backgroundColor,
+						/* THE HELD ROW'S NON-FILL CUE (round 2, D7 and U6; round 3, D10): a
+						   1px OUTLINE inset by 1px - an outline rather than an inset ring
+						   because the current row's own button paints an opaque fill over its
+						   parent's box-shadow, which left 5.3% of the mark visible on exactly
+						   the row round 2 was about. The computed outline is the honest
+						   reading of "is this row marked as held"; a merely hovered row
+						   carries none. NO BACKTICKS IN THIS COMMENT: it lives inside a
+						   template literal. */
+						mark: (() => {
+							const st = getComputedStyle(node);
+							return st.outlineStyle === "none"
+								? "none"
+								: st.outlineColor + " " + st.outlineStyle + " " + st.outlineWidth + " offset " + st.outlineOffset;
+						})(),
+						current:
+							node.querySelector("[data-chat-row][aria-current='page']") !== null,
+						title: title ? box(title) : null,
+						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
+						up: painted(node.querySelector("[data-session-move-up]")),
+						down: painted(node.querySelector("[data-session-move-down]")),
+						pin: painted(node.querySelector("[data-session-pin]")),
+						archive: painted(node.querySelector("[data-session-archive]")),
+						dragging: node.hasAttribute("data-dragging"),
+						tabIndexGrip: node.querySelector("[data-session-pin-grip]") ? node.querySelector("[data-session-pin-grip]").tabIndex : null,
+					};
+				}),
+				rowBox: rowBox ? box(rowBox) : null,
+				sectionBox: box(section),
+				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
+				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
+				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
+				/* #691's per-row mark (main's subagentMarks), counted here because this
+				   branch folds main's row render into the same sessionRow: the count is
+				   what says whether the fold can have moved these frames' pixels at all. */
+				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
+				announcement: live ? live.textContent : null,
+				stored: stored,
+				storedView: storedView,
+				storeKeys: storeKeys,
+			};
+		})()`);
+	const centreOf = (selector) =>
+		cdp.evaluate(`(() => {
+			const node = document.querySelector(${JSON.stringify(selector)});
+			if (!node) return null;
+			node.scrollIntoView({ block: "center", inline: "nearest" });
+			const r = node.getBoundingClientRect();
+			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height) };
+		})()`);
+
+	/** The title box the panel gives a row, keyed by id - § 3's own column. */
+	const titleWidths = (reading) =>
+		Object.fromEntries(
+			reading.rows.map((row) => [row.id, row.title?.w ?? null]),
+		);
+	const setWidth = async (width) => {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		await wait(PINNED_SETTLE_MS);
+		return applied;
+	};
+	/*
+	 * A REAL pointer over a row, which is the ONLY way to enter `group-hover` - a
+	 * dispatched `mouseover` inside the page proves a handler ran, not that the row
+	 * under the pointer changes.
+	 */
+	/**
+	 * Drive the panel's OWN search box, with the trusted input pipeline (the
+	 * `pins-search` scene's rule).
+	 *
+	 * WHY THE REAL FIELD AND NOT A STORE WRITE: the claim the filtered frames carry is
+	 * that the SECTION draws fewer rows while the stored order keeps the hidden id's
+	 * slot, so the query has to be one the panel itself filtered by. Writing the store
+	 * would photograph a list nobody asked for. Escape clears the field, which is the
+	 * field's own documented way back and the reason no second press is needed.
+	 */
+	const typePinnedQuery = async (query) => {
+		/*
+		 * THE FIELD IS FOCUSED IN THE PAGE, then typed into through the input pipeline
+		 * (the `pins-search` scene's own shape). A POINTER press would be the reader's
+		 * gesture, but this field is not drawn at rest: the panel raises it on a key, so
+		 * there is no box to press until it is there, and a press on a `0x0` box would
+		 * type into nothing. `document.activeElement` is checked rather than assumed,
+		 * because a query that never arrived would photograph the unfiltered list and
+		 * make the claim look satisfied.
+		 */
+		/*
+		 * THE PANEL'S OWN DOOR FIRST: the field is drawn only while the list is filtering
+		 * (`filterShown`), and the control the reader presses to open it carries the same
+		 * accessible name - which is why the CLICK is what raises the field and why the
+		 * wait below is for the input to EXIST rather than for it to become focusable
+		 * (the `pins-search` scene's own sequence, followed here step for step).
+		 */
+		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		const fieldThere = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			10_000,
+		);
+		check(
+			"the panel raises its search field",
+			fieldThere.ok === true,
+			JSON.stringify(fieldThere),
+		);
+		const focused = await cdp.evaluate(`(() => {
+			const field = document.querySelector('input[aria-label="Search chats and agents"]');
+			if (field === null) return false;
+			field.focus();
+			return document.activeElement === field;
+		})()`);
+		check(
+			"the search field takes the caret",
+			focused === true,
+			String(focused),
+		);
+		await wait(200);
+		if (query === "") {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "rawKeyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+		} else {
+			await cdp.send("Input.insertText", { text: query });
+		}
+		await wait(PINNED_SETTLE_MS);
+	};
+	const hoverRow = async (id) => {
+		const point = await centreOf(
+			`[data-session-row="${id}"][data-chat-row], [data-session-row="${id}"] [data-chat-row]`,
+		);
+		const target = point ?? (await centreOf(`[data-session-row="${id}"]`));
+		await movePointer(cdp, target.x, target.y);
+		await wait(PINNED_SETTLE_MS);
+		return target;
+	};
+	const pressAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+			clickCount: 1,
+		});
+	/*
+	 * A move with the BUTTON HELD (`buttons: 1`), which is what makes it a drag rather
+	 * than a hover: `movePointer` sends `buttons: 0`, and a drag that reported no button
+	 * down would photograph the sizer's own gesture, not the reader's.
+	 */
+	const dragMoveTo = async (x, y) => {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+		});
+	};
+	/* Escape, through the input pipeline: the drag's own cancel door, and now a press
+	   that the handler CLAIMS (round 1, U5) rather than one a Radix layer happened to. */
+	const sendEscape = async (target) => {
+		await target.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await target.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	};
+	const releaseAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x,
+			y,
+			button: "left",
+			buttons: 0,
+			clickCount: 1,
+		});
+	/**
+	 * A drag in steps, the way a hand makes one.
+	 *
+	 * The steps matter twice: a single jump from the grip to the target would arm the
+	 * gesture and land it in the same event (so no frame could be taken MID-drag), and
+	 * the site's own hit test walks the row boxes the pointer passes - which is the
+	 * behaviour the indicator is supposed to show.
+	 */
+	const dragGrip = async (id, target, { steps = 8 } = {}) => {
+		await hoverRow(id);
+		const grip = await centreOf(
+			`[data-session-row="${id}"] [data-session-pin-grip]`,
+		);
+		check(
+			`the grip is revealed under the pointer on ${id}`,
+			grip !== null && grip.w > 0 && grip.h > 0,
+			JSON.stringify(grip),
+		);
+		/*
+		 * A ROW TARGET IS RESOLVED AFTER THE HOVER, from the frame the drag measures in.
+		 * The first version of this scene aimed at a box read BEFORE the drag, and the row
+		 * boxes had moved between the two readings - so the pointer crossed no midpoint,
+		 * the hit test answered slot 0, and a drop that should have moved the row by one
+		 * place wrote nothing. The app's own log named it (`slot: 0` for a drag whose
+		 * indicator sat at the next row's edge), which is why the scene now re-reads the
+		 * panel it is about to drag in.
+		 */
+		let targetY = target;
+		if (typeof target === "string") {
+			const fresh = await readPinnedPanel();
+			const targetBox =
+				fresh.rows.find((row) => row.id === target)?.box ?? null;
+			check(
+				`the drag's target row ${target} is on screen`,
+				targetBox !== null,
+				JSON.stringify(fresh.order),
+			);
+			if (targetBox === null) return { grip, x: grip.x, y: target };
+			targetY = targetBox.y + targetBox.h - 2;
+		}
+		await pressAt(grip.x, grip.y);
+		for (let step = 1; step <= steps; step += 1) {
+			const y = Math.round(grip.y + ((targetY - grip.y) * step) / steps);
+			await dragMoveTo(grip.x, y);
+			await wait(40);
+		}
+		return { grip, x: grip.x, y: targetY };
+	};
+
+	/*
+	 * 1. ORDER BEFORE A MOVE - and the same three frames carry the ORIGIN/MAIN HALF's
+	 * reading, because at rest this change draws nothing the previous tree did not: the
+	 * grip, the pair and the indicator are all revealed or absent until a gesture
+	 * starts. `--main-tree` swaps the binary, not the scene.
+	 */
+	/*
+	 * WHICH SLICE OF THE FRAME LIST THIS LAUNCH TAKES (`--pinned-state`), because the
+	 * three states that are about the SECTION'S SIZE cannot share one stand-in: the
+	 * stub's fixture is per process (`--pins`), and the app's own pin presses are
+	 * answered by that fixture rather than by a store the scene can seed. So each
+	 * slice is one launch against a stub booted with the pins its own states are
+	 * about - the gesture states from three pins (the smallest section a reorder is
+	 * visible in), the many-pins and single-pin states from fixtures of their own.
+	 * The frames are named the same way in every slice, so the directory is one set.
+	 */
+	/*
+	 * A TYPO IN `--pinned-state` IS REFUSED RATHER THAN SILENTLY SHORT: the shared setup
+	 * above runs for every slice, so an unknown state would produce a launch that
+	 * photographed nothing and exited 0 - the failure mode this repo's own evidence rules
+	 * call a dead instrument.
+	 */
+	if (!["three", "many", "single", "keys"].includes(PINNED_STATE)) {
+		throw new Error(
+			`--pinned-state ${PINNED_STATE} is not a slice of this scene (three | many | single | keys)`,
+		);
+	}
+
+	if (PINNED_STATE === "three") {
+		const boot = await readPinnedPanel();
+		check(
+			"the stand-in's three pins are drawn in the catalogue's own order",
+			JSON.stringify(boot.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(boot.order),
+		);
+		/*
+		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
+		 * after these frames were first taken). The stand-in's rows carry no subagent
+		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
+		 * the whole set. Stated as a check rather than a note because a fixture that grew
+		 * a subagent count would start moving the row's layout, and this is where that
+		 * would be caught.
+		 */
+		check(
+			"the folded-in subagent mark draws nothing on the stand-in's rows",
+			boot.subagentMarks === 0,
+			`${boot.subagentMarks} marker(s) in the pinned section`,
+		);
+		check(
+			"no move control is painted at rest",
+			boot.rows.every((row) => row.grip === null && !row.up && !row.down),
+			JSON.stringify(
+				boot.rows.map((row) => ({
+					id: row.id,
+					grip: row.grip !== null,
+					up: row.up,
+				})),
+			),
+		);
+		/*
+		 * THE WIDTH TABLE this slice's frames are read as numbers: what each width's row box
+		 * is, what the title has at rest, and what it gives up under the pointer once the grip
+		 * joins the cluster.
+		 */
+		const widths = {};
+		for (const width of PINNED_WIDTHS) {
+			const applied = await setWidth(width);
+			await parkPointer(cdp);
+			const rest = await readPinnedPanel();
+			const before = await captureSettled(cdp, `order-before-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `order-before-${width}`, ...before }),
+			);
+			/*
+			 * The pointer is put on the SECOND pinned row: the middle one is the row where the
+			 * revealed cluster and the row's own title can both be read, and it is not a row at
+			 * either boundary.
+			 */
+			await hoverRow(PINNED_IDS[1]);
+			const hovered = await readPinnedPanel();
+			const hoverFrame = await captureSettled(cdp, `grip-hover-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `grip-hover-${width}`, ...hoverFrame }),
+			);
+			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
+			/*
+			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2, rounded to the measured edge
+			 * in round 2): the grip is DRAWN at a 279px panel and above and shed at 278 and
+			 * below - QA measured 277/278 shed and 279/280 drawn, which is what the shipped
+			 * `@max-[263px]/chatsidebar:hidden!` decides once the panel's own `p-2` is taken
+			 * off (the container query reads a content box 16px narrower than the panel) -
+			 * because at the 240 clamp the revealed cluster left the title 40px of the row's
+			 * 208. The PAIR STAYS at every width - it is WCAG 2.5.7's single-pointer
+			 * alternative - so the check is two claims, one per band, rather than one claim
+			 * with an exception.
+			 */
+			const gripExpected = width >= 279;
+			check(
+				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
+				(hoveredRow.grip !== null) === gripExpected &&
+					hoveredRow.up === true &&
+					hoveredRow.down === true &&
+					hoveredRow.archive === true &&
+					hoveredRow.pin === true,
+				JSON.stringify({ width, gripExpected, row: hoveredRow }),
+			);
+			check(
+				`${width}: the shed leaves the pair in place`,
+				hoveredRow.up === true && hoveredRow.down === true,
+				JSON.stringify({ width, up: hoveredRow.up, down: hoveredRow.down }),
+			);
+			check(
+				`${width}: the grip is out of the Tab ring`,
+				hoveredRow.tabIndexGrip === -1,
+				String(hoveredRow.tabIndexGrip),
+			);
+			check(
+				`${width}: the revealed cluster leaves the rest of the section alone`,
+				hovered.rows
+					.filter((row) => row.id !== PINNED_IDS[1])
+					.every((row) => row.grip === null && !row.up),
+				JSON.stringify(
+					hovered.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
+				),
+			);
+			widths[width] = {
+				applied,
+				panel: applied,
+				rowBox: rest.rowBox,
+				/* The hovered row's own ground and whether the grip is painted: the two
+				   readings round 1 (D1, D2) is about, kept as numbers because the frames show
+				   the symptom and these say which state painted what. */
+				hoverGround: hoveredRow.ground,
+				restGround: rest.rows.find((row) => row.id === PINNED_IDS[1])?.ground,
+				gripPainted: hoveredRow.grip !== null,
+				restTitles: titleWidths(rest),
+				hoverTitles: titleWidths(hovered),
+				hoveredCluster: {
+					grip: hoveredRow.grip,
+					up: hoveredRow.up,
+					down: hoveredRow.down,
+					archive: hoveredRow.archive,
+					pin: hoveredRow.pin,
+				},
+			};
+			note(
+				`geometry at ${width}`,
+				JSON.stringify({
+					row: rest.rowBox,
+					restTitle: rest.rows.find((row) => row.id === PINNED_IDS[1])?.title,
+					hoverTitle: hoveredRow.title,
+					grip: hoveredRow.grip,
+				}),
+			);
+		}
+		await setWidth(280);
+
+		/*
+		 * 2. THE DRAG, from the first pinned row to just past the second one's midpoint -
+		 * one place, so the drop is the smallest move the hit test can express.
+		 */
+		const second = (await readPinnedPanel()).rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
+		const grip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const midDrag = await readPinnedPanel();
+		const midFrame = await captureSettled(cdp, "drag-mid");
+		note("frame", JSON.stringify({ label: "drag-mid", ...midFrame }));
+		check(
+			"mid-drag: the dragged row carries the mark and the section draws the indicator",
+			midDrag.dragging.includes(PINNED_IDS[0]) && midDrag.indicator !== null,
+			JSON.stringify({
+				dragging: midDrag.dragging,
+				indicator: midDrag.indicator,
+			}),
+		);
+		check(
+			"mid-drag: nothing has been written yet",
+			JSON.stringify(midDrag.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(midDrag.order),
+		);
+		/*
+		 * D1'S OWN READING, MEASURED RATHER THAN JUDGED FROM THE FRAME (round 1, D1 and
+		 * U1). The bug was that the dragged row painted the same fill as a merely hovered
+		 * one - `#302D2A` dark against the intended `#372F24` - so the check is a
+		 * COMPARISON between two computed grounds taken in the same run and at the same
+		 * width: the hovered row's from the width loop above, the dragged row's here. The
+		 * numbers go into the geometry note because a still shows the symptom and the
+		 * computed colour says which state painted it.
+		 */
+		const midGround =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ground ?? null;
+		const hoverGround = widths[280]?.hoverGround ?? null;
+		check(
+			"mid-drag: the dragged row's ground is a step the hover does not paint",
+			midGround !== null && hoverGround !== null && midGround !== hoverGround,
+			JSON.stringify({ dragged: midGround, hovered: hoverGround }),
+		);
+		/*
+		 * AND THE HELD STATE CARRIES A RING AS WELL (round 2, D7 and U6): the ground alone
+		 * cannot say "held" in the current-row case, so the non-fill cue is what every held
+		 * row has, and the row under the pointer has none of it.
+		 */
+		const midMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ?? null;
+		const hoveredMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[1])?.mark ?? null;
+		check(
+			"mid-drag: the held row wears an inset outline and an unheld row wears none",
+			typeof midMark === "string" &&
+				midMark.includes("solid") &&
+				midMark.includes("offset -1px") &&
+				String(hoveredMark) === "none",
+			JSON.stringify({ held: midMark, other: hoveredMark }),
+		);
+		await releaseAt(grip.x, grip.y);
+		await wait(PINNED_SETTLE_MS);
+		const dropped = await readPinnedPanel();
+		const dropFrame = await captureSettled(cdp, "after-drop");
+		note("frame", JSON.stringify({ label: "after-drop", ...dropFrame }));
+		/*
+		 * THE HIT TEST'S OWN READING, printed because the first run of this scene left the
+		 * drop unwritten and every other reading was consistent with two different causes
+		 * (a slot of zero, or an id the drawn list does not hold): the pointer's target y,
+		 * the section's row boxes as the drop measures them, and the indicator's own y. A
+		 * line drawn at the section's top is slot 0 and says the hit test disagrees with the
+		 * pointer; a line drawn in the gap below the second row says the drop's input was
+		 * right and the fault is somewhere else.
+		 */
+		note(
+			"the drop's own geometry",
+			JSON.stringify({
+				targetY: grip.y,
+				boxes: second
+					? [
+							{ id: PINNED_IDS[1], y: second.box.y, h: second.box.h },
+							{
+								id: PINNED_IDS[2],
+								y: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.y,
+								h: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.h,
+							},
+						]
+					: null,
+				indicator: midDrag.indicator,
+				rowBox: midDrag.rowBox,
+				order: midDrag.order,
+			}),
+		);
+		note(
+			"the persisted app preferences after the drop",
+			JSON.stringify({
+				stored: dropped.stored,
+				view: dropped.storedView,
+				keys: dropped.storeKeys,
+			}),
+		);
+		const expectedOrder = [PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]];
+		check(
+			"the drop leaves the row one place down, with the third pin untouched",
+			JSON.stringify(dropped.order) === JSON.stringify(expectedOrder),
+			JSON.stringify(dropped.order),
+		);
+		check(
+			"the dragged row's mark is gone once the gesture ends",
+			dropped.dragging.length === 0 && dropped.indicator === null,
+			JSON.stringify({
+				dragging: dropped.dragging,
+				indicator: dropped.indicator,
+			}),
+		);
+		check(
+			"the live region says where the row went",
+			typeof dropped.announcement === "string" &&
+				/moved .* to position 2 of 3/i.test(dropped.announcement),
+			JSON.stringify(dropped.announcement),
+		);
+		check(
+			"the store holds the dropped order, and ONLY one write was made",
+			JSON.stringify(dropped.stored) === JSON.stringify(dropped.order),
+			JSON.stringify(dropped.stored),
+		);
+
+		/*
+		 * 3. RELAUNCH: a fresh boot of the renderer against the same profile must rehydrate
+		 * the arrangement the drop wrote (rule 6, and the acceptance criterion).
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		const backAgain = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			30_000,
+		);
+		await wait(PINNED_SETTLE_MS);
+		await parkPointer(cdp);
+		const relaunched = await readPinnedPanel();
+		const relaunchFrame = await captureSettled(cdp, "order-relaunch");
+		note(
+			"frame",
+			JSON.stringify({ label: "order-relaunch", ...relaunchFrame }),
+		);
+		check(
+			"a relaunch comes back with the reader's order, not the catalogue's",
+			backAgain.ok === true &&
+				JSON.stringify(relaunched.order) === JSON.stringify(expectedOrder),
+			JSON.stringify({ arrived: backAgain, order: relaunched.order }),
+		);
+
+		/*
+		 * 3b. THE FIRST SLOT'S LINE (round 1, design D5b). A drag held ABOVE the first
+		 * pinned row draws the line at the section's own top edge - the case most likely
+		 * to collide with the `Pinned chats` header, and the one no earlier frame showed.
+		 * Escape cancels it, so the order the drop wrote is still the order the checks
+		 * below read (and the cancel is the round-1 U5 path, exercised in a frame).
+		 */
+		const lastPinned = (await readPinnedPanel()).rows.at(-1);
+		await hoverRow(lastPinned.id);
+		/*
+		 * THE TARGET IS MEASURED AFTER THE HOVER, and that ordering is the same lesson
+		 * `dragGrip` records one screen up: the hover brings the row into view, so the
+		 * boxes read before it are not the boxes the drag measures in (measured on the
+		 * first run of this state: a target computed from the pre-hover geometry was 630,
+		 * inside the section, and the line landed at slot 2). ABOVE THE FIRST ROW and not
+		 * merely above the section: slot 0's line is drawn at that row's own top edge, and
+		 * the panel's heading sits between the section's box and its first row.
+		 */
+		const aboveFirst = (await readPinnedPanel()).rows[0].box.y - 6;
+		const topGrip = await centreOf(
+			`[data-session-row="${lastPinned.id}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed under the pointer at the last pinned row",
+			topGrip !== null && topGrip.w > 0,
+			JSON.stringify(topGrip),
+		);
+		await pressAt(topGrip.x, topGrip.y);
+		for (let step = 1; step <= 8; step += 1) {
+			const y = Math.round(topGrip.y + ((aboveFirst - topGrip.y) * step) / 8);
+			await dragMoveTo(topGrip.x, y);
+			await wait(40);
+		}
+		const topDrag = await readPinnedPanel();
+		const topFrame = await captureSettled(cdp, "drag-top");
+		note("frame", JSON.stringify({ label: "drag-top", ...topFrame }));
+		check(
+			"a drag held above the first pinned row draws its line at that row's top edge",
+			topDrag.indicator !== null &&
+				Math.abs(topDrag.indicator.y - topDrag.rows[0].box.y) <= 2 &&
+				topDrag.dragging.includes(lastPinned.id),
+			JSON.stringify({
+				indicator: topDrag.indicator,
+				firstRow: topDrag.rows[0],
+				rows: topDrag.rows.map((row) => row.box),
+				section: topDrag.sectionBox,
+				dragging: topDrag.dragging,
+				pointerY: aboveFirst,
+			}),
+		);
+		await sendEscape(cdp);
+		await releaseAt(topGrip.x, topGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const topCancelled = await readPinnedPanel();
+		check(
+			"the cancelled slot-0 drag wrote nothing and said so",
+			JSON.stringify(topCancelled.order) === JSON.stringify(expectedOrder) &&
+				topCancelled.indicator === null &&
+				/cancelled/i.test(String(topCancelled.announcement)),
+			JSON.stringify({
+				order: topCancelled.order,
+				announcement: topCancelled.announcement,
+			}),
+		);
+
+		/*
+		 * 4. A DROP UNDER A SEARCH FILTER: the query hides one of the three pins, and the
+		 * moved row steps over the VISIBLE neighbour while the hidden id keeps its stored
+		 * slot (rule 2's second half, which is the one a splice would break).
+		 */
+		/*
+		 * THE LIST IS PUT BACK AT ITS TOP FIRST, so the search states are a function of the
+		 * query rather than of how far the gestures above happened to scroll the list: the
+		 * drags and the slot-0 state bring rows into view with `scrollIntoView`, and a frame
+		 * whose scroll offset depends on the frames before it is a frame that moves when
+		 * anything upstream changes (measured on the first re-shoot of this set: the search
+		 * frames differed from the committed ones by a scroll offset and nothing else).
+		 */
+		await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop = 0",
+		);
+		await wait(PINNED_SETTLE_MS);
+		await typePinnedQuery(PINNED_QUERY);
+		await wait(PINNED_SETTLE_MS);
+		const filtered = await readPinnedPanel();
+		check(
+			`the query ${JSON.stringify(PINNED_QUERY)} hides the third pin and keeps two`,
+			filtered.order.length === 2 &&
+				filtered.order.includes(PINNED_IDS[0]) &&
+				filtered.order.includes(PINNED_IDS[1]),
+			JSON.stringify(filtered.order),
+		);
+		const filteredFrame = await captureSettled(cdp, "search-filtered");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-filtered", ...filteredFrame }),
+		);
+		const filteredSecond = filtered.rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
+		const filteredGrip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const filteredMid = await readPinnedPanel();
+		const filteredMidFrame = await captureSettled(cdp, "search-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-drag-mid", ...filteredMidFrame }),
+		);
+		check(
+			"mid-drag the filtered section draws the indicator and marks the row being moved",
+			filteredMid.indicator !== null &&
+				JSON.stringify(filteredMid.dragging) ===
+					JSON.stringify([PINNED_IDS[0]]),
+			JSON.stringify({
+				indicator: filteredMid.indicator,
+				dragging: filteredMid.dragging,
+			}),
+		);
+		await releaseAt(filteredGrip.x, filteredGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const filteredDropped = await readPinnedPanel();
+		const filteredDropFrame = await captureSettled(cdp, "search-after-drop");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-after-drop", ...filteredDropFrame }),
+		);
+		check(
+			"a filtered drop moves among the SHOWN rows and keeps the hidden id's slot",
+			JSON.stringify(filteredDropped.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0]]) &&
+				JSON.stringify(filteredDropped.stored) ===
+					JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]),
+			JSON.stringify({
+				shown: filteredDropped.order,
+				stored: filteredDropped.stored,
+			}),
+		);
+		await typePinnedQuery("");
+		await wait(PINNED_SETTLE_MS);
+
+		/*
+		 * 5. THE HELD CURRENT ROW (round 2, design D7 and UX round 2, U6), and it is the
+		 * state the first pass could not photograph.
+		 *
+		 * WHY IT IS ORDINARY AND NOT AN EDGE CASE: the pointer has to land on another row
+		 * for a drop to move anything, so "the conversation the reader is in is the one
+		 * being dragged" is the normal shape of the gesture - and it is where the first
+		 * attempt at the held cue broke, because it gave that row the HOVER fill, which is
+		 * exactly what the row under the pointer already paints. Two rows, one reading.
+		 *
+		 * THE ROUTE STATE IS REACHED THROUGH THE ROW'S OWN DOOR: the button inside the row
+		 * carries `data-chat-row`, and Enter on it is the sidebar's own way into a
+		 * conversation (UX round 2 walked it and read `aria-current=page` off the row). A
+		 * `.click()` from the evaluate hatch would be a page-level event the row hears
+		 * only if React happens to be listening; a real key on the focused button is the
+		 * reader's gesture, which is the standard this file's other gestures are held to.
+		 */
+		await hoverRow(PINNED_IDS[0]);
+		const door = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]`,
+		);
+		const focusedDoor = await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector('[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]');
+				if (el === null) return false;
+				el.focus();
+				return document.activeElement === el;
+			})()`,
+		);
+		const routeOf = () =>
+			cdp.evaluate(
+				`(() => ({ hash: location.hash, toasts: [...document.querySelectorAll('[data-sonner-toast]')].map((node) => node.textContent) }))()`,
+			);
+		/*
+		 * `keyDown` AND NOT `rawKeyDown`: a raw press delivers the key to the page without
+		 * running the browser's own default action, and the default action is what turns
+		 * Enter on a focused BUTTON into the click that opens the row (measured on this
+		 * scene's first run: the raw form left the route at `#/chat` and no row current,
+		 * while the pointer's press on the same element opened it).
+		 */
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				text: type === "keyDown" ? "\r" : undefined,
+				unmodifiedText: type === "keyDown" ? "\r" : undefined,
+				windowsVirtualKeyCode: 13,
+			});
+		}
+		await wait(PINNED_SETTLE_MS);
+		const afterEnter = await readPinnedPanel();
+		note(
+			"the row's own door, by keyboard",
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				route: await routeOf(),
+				rows: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+		/*
+		 * AND THE POINTER'S OWN DOOR, when the keyboard's did not take: the row's button is
+		 * the same element, and a real press is the gesture a reader makes. Both are tried
+		 * and the reading says which one the stand-in answered - a check that failed on the
+		 * keyboard alone would report the fixture rather than the app.
+		 */
+		let opened = afterEnter;
+		if (opened.rows.find((row) => row.id === PINNED_IDS[0])?.current !== true) {
+			await pressAt(door.x, door.y);
+			await releaseAt(door.x, door.y);
+			await wait(PINNED_SETTLE_MS);
+			opened = await readPinnedPanel();
+			note(
+				"the row's own door, by pointer",
+				JSON.stringify({
+					route: await routeOf(),
+					rows: opened.rows.map((row) => ({
+						id: row.id,
+						current: row.current,
+					})),
+				}),
+			);
+		}
+		check(
+			"the row's own door makes it the current one (a route the stand-in can hold)",
+			opened.rows.find((row) => row.id === PINNED_IDS[0])?.current === true,
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				afterEnter: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+				afterPointer: opened.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+
+		/*
+		 * THE DRAG, WITH THE POINTER PARKED OVER ANOTHER ROW - the mid-gesture position
+		 * this pass exists for.
+		 */
+		const currentRow = opened.rows.find((row) => row.id === PINNED_IDS[0]);
+		const otherRow = opened.rows.find((row) => row.id === PINNED_IDS[1]);
+		await hoverRow(PINNED_IDS[0]);
+		const currentGrip = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed on the current row too",
+			currentGrip !== null && currentGrip.w > 0,
+			JSON.stringify(currentGrip),
+		);
+		await pressAt(currentGrip.x, currentGrip.y);
+		for (let step = 1; step <= 6; step += 1) {
+			const y = Math.round(
+				currentGrip.y +
+					((otherRow.box.y + otherRow.box.h / 2 - currentGrip.y) * step) / 6,
+			);
+			await dragMoveTo(currentGrip.x, y);
+			await wait(40);
+		}
+		const currentMid = await readPinnedPanel();
+		const currentMidFrame = await captureSettled(cdp, "current-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "current-drag-mid", ...currentMidFrame }),
+		);
+		const heldRow = currentMid.rows.find((row) => row.id === PINNED_IDS[0]);
+		const targetRow = currentMid.rows.find((row) => row.id === PINNED_IDS[1]);
+		/*
+		 * THE TWO CLAIMS ROUND 2 FILED, EACH MEASURED RATHER THAN READ OFF A FRAME: the held
+		 * row keeps the SELECTED fill (so "you are here" survives the gesture) while the row
+		 * under the pointer paints the hover fill, and the two are told apart by the held
+		 * row's ring - a non-fill cue no hover state paints.
+		 */
+		check(
+			"the held current row keeps its own fill and is not painted as hovered",
+			heldRow?.dragging === true &&
+				heldRow.current === true &&
+				heldRow.ground !== targetRow?.ground &&
+				heldRow.ground === currentRow?.ground,
+			JSON.stringify({
+				held: { ground: heldRow?.ground, mark: heldRow?.mark },
+				target: { ground: targetRow?.ground, mark: targetRow?.mark },
+				restingCurrent: currentRow?.ground,
+			}),
+		);
+		check(
+			"the held row is marked by an inset outline the hovered row does not paint",
+			typeof heldRow?.mark === "string" &&
+				heldRow.mark.includes("solid") &&
+				heldRow.mark.includes("offset -1px") &&
+				targetRow?.mark === "none",
+			JSON.stringify({ held: heldRow?.mark, target: targetRow?.mark }),
+		);
+		await sendEscape(cdp);
+		await releaseAt(currentGrip.x, currentGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const currentCancelled = await readPinnedPanel();
+		check(
+			"cancelling the current-row drag writes nothing and leaves the order alone",
+			JSON.stringify(currentCancelled.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]) &&
+				currentCancelled.dragging.length === 0,
+			JSON.stringify({
+				order: currentCancelled.order,
+				dragging: currentCancelled.dragging,
+				announcement: currentCancelled.announcement,
+			}),
+		);
+
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				...widths,
+				round1: {
+					draggedGround: midGround,
+					hoverGround,
+					slot0Line: {
+						indicatorY: topDrag.indicator?.y ?? null,
+						sectionTop: topDrag.sectionBox.y,
+					},
+				},
+				round2: {
+					heldCurrent: {
+						ground: heldRow?.ground ?? null,
+						mark: heldRow?.mark ?? null,
+						restingGround: currentRow?.ground ?? null,
+					},
+					heldPlain: {
+						ground: midGround,
+						mark:
+							midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ??
+							null,
+					},
+					hoveredTarget: {
+						ground: targetRow?.ground ?? null,
+						mark: targetRow?.mark ?? null,
+					},
+				},
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "many") {
+		/*
+		 * MANY PINS: the section holds more rows than the scroller can show, which is the
+		 * state the auto-scroll and a drop past the fold are about. The pins are the
+		 * STAND-IN's (`--pins`), not the app's presses, and the reason is in the stub: its
+		 * pin route answers about the fixture it SERVES, so a scene that pinned rows by
+		 * pressing asked the daemon about rows it does not serve and the section stayed at
+		 * three however many times the mark was pressed (measured, then fixed on both sides).
+		 */
+		/*
+		 * AT 280, NOT AT THE PANEL'S 260 DEFAULT, and it is the shed's arithmetic (round 1,
+		 * D2): the grip is drawn only above a 279px panel, so at the default width this
+		 * slice's drag would have no handle to grab. The width is stated here rather than
+		 * left to the launch because the state is ABOUT the drag handle.
+		 */
+		await setWidth(280);
+		await parkPointer(cdp);
+		const many = await readPinnedPanel();
+		const manyFrame = await captureSettled(cdp, "many-pins");
+		note("frame", JSON.stringify({ label: "many-pins", ...manyFrame }));
+		check(
+			`the section holds at least the ${PINNED_MANY_COUNT} pins its frame is about, so its rows overflow the scroller`,
+			many.order.length >= PINNED_MANY_COUNT,
+			JSON.stringify({ pinned: many.order.length }),
+		);
+		/*
+		 * AND THE AUTO-SCROLL, photographed at the visible edge: a drag held inside the
+		 * scroller's bottom zone must scroll the list so a row past the fold is reachable.
+		 */
+		const firstMany = many.rows[0];
+		const scroller = many.panel;
+		const scrolled = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const autoDrag = await dragGrip(firstMany.id, scroller.y + scroller.h - 6, {
+			steps: 12,
+		});
+		await wait(700);
+		const dragged = await readPinnedPanel();
+		const autoFrame = await captureSettled(cdp, "many-pins-drag");
+		note("frame", JSON.stringify({ label: "many-pins-drag", ...autoFrame }));
+		const scrolledAfter = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		check(
+			"a drag held at the scroller's edge scrolls the list it is dragging in",
+			scrolledAfter > scrolled && dragged.indicator !== null,
+			JSON.stringify({ before: scrolled, after: scrolledAfter }),
+		);
+		/* Escape cancels: no write, and the order the drop left stands. */
+		const beforeCancel = dragged.order;
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await releaseAt(autoDrag.x, autoDrag.y);
+		await wait(PINNED_SETTLE_MS);
+		const cancelled = await readPinnedPanel();
+		check(
+			"a cancelled drag writes nothing at all",
+			JSON.stringify(cancelled.order) === JSON.stringify(beforeCancel) &&
+				cancelled.indicator === null,
+			JSON.stringify({ before: beforeCancel, after: cancelled.order }),
+		);
+		/*
+		 * AND A DROP, AT A SCROLLED LIST (agent review round 1, R3), taken after the cancel
+		 * above so the frames are unaffected: the post-commit correction anchored on the row
+		 * BELOW the moved one, and a downward drop moves that anchor too, so a plain
+		 * correction shifted the list by a whole row after the drop. A reorder now stands the
+		 * correction down, and the reading is the scroller across the drop: it has to stay
+		 * where the reader left it.
+		 */
+		const secondMany = (await readPinnedPanel()).rows[0];
+		const dropDrag = await dragGrip(
+			secondMany.id,
+			scroller.y + scroller.h - 6,
+			{
+				steps: 12,
+			},
+		);
+		await wait(700);
+		const scrolledBeforeDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const orderBeforeDrop = (await readPinnedPanel()).order;
+		await releaseAt(dropDrag.x, dropDrag.y);
+		await wait(PINNED_SETTLE_MS + 300);
+		const scrolledAfterDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const droppedMany = await readPinnedPanel();
+		check(
+			"a drop in a scrolled list leaves the scroll where the reader left it (R3)",
+			Math.abs(scrolledAfterDrop - scrolledBeforeDrop) <= 40 &&
+				droppedMany.indicator === null,
+			JSON.stringify({
+				before: scrolledBeforeDrop,
+				after: scrolledAfterDrop,
+				order: droppedMany.order,
+			}),
+		);
+		note(
+			"the scrolled drop",
+			JSON.stringify({
+				scrollBefore: scrolledBeforeDrop,
+				scrollAfter: scrolledAfterDrop,
+				orderBefore: orderBeforeDrop,
+				orderAfter: droppedMany.order,
+			}),
+		);
+
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "many",
+				pins: many.order.length,
+				scrollerTop: scroller.y,
+				scrollerHeight: scroller.h,
+				scrolledBefore: scrolled,
+				scrolledAfter,
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "keys") {
+		/*
+		 * THE KEYBOARD'S OWN PATH (round 1: QA's Q1 and UX's U3/R6/Q3), read where it is
+		 * cheap and no frame is needed. Two claims, both about what happens AFTER the
+		 * chord that moves a row:
+		 *
+		 * (a) THE CARET (Q1). After a move the caret has to be on the row's OWN button,
+		 *     because that is the arrow ring's stop list - parked on the pin mark it left
+		 *     the reader outside the ring, and the next bare arrow restarted at the
+		 *     panel's first stop (the `Agents` disclosure, measured by QA).
+		 * (b) THE REPEAT (U3/R6/Q3). A live region is read from its MUTATIONS: a second
+		 *     identical sentence inside the dwell has to be a fresh mutation, which is
+		 *     what the clear-then-set-across-a-frame does.
+		 */
+		await setWidth(280);
+		const keysBefore = await readPinnedPanel();
+		check(
+			"the keyboard slice has three pins to walk",
+			keysBefore.order.length === 3,
+			JSON.stringify(keysBefore.order),
+		);
+		const walker = keysBefore.order[1];
+		await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${walker}"] [data-chat-row]');
+			row.focus();
+			return document.activeElement === row;
+		})()`);
+		/* Count the region's mutations, so "is the same sentence audible twice" is a
+		   number rather than a promise. */
+		await cdp.evaluate(
+			"(() => {\n\t\t\tconst live = document.querySelector('[data-sidebar-pin-order-announcement]');\n\t\t\twindow.__pinMutations = 0;\n\t\t\tif (live === null) return false;\n\t\t\twindow.__pinObserver?.disconnect();\n\t\t\twindow.__pinObserver = new MutationObserver(() => { window.__pinMutations += 1; });\n\t\t\twindow.__pinObserver.observe(live, { childList: true, characterData: true, subtree: true });\n\t\t\treturn true;\n\t\t})()",
+		);
+		const chord = async (key, shift) => {
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key,
+					code: key === "ArrowUp" ? "ArrowUp" : "ArrowDown",
+					modifiers: shift ? 10 : 0,
+					windowsVirtualKeyCode: key === "ArrowUp" ? 38 : 40,
+				});
+			}
+			await wait(120);
+		};
+		await chord("ArrowUp", true);
+		const afterChord = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					pinMark: el?.hasAttribute?.("data-session-pin") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
+		check(
+			"a chord leaves the caret on the moved row's own button (Q1)",
+			afterChord.chatRow === true && afterChord.rowId === walker,
+			JSON.stringify(afterChord),
+		);
+		/* The bare arrow continues the walk from that row: the next stop is a row in the
+		   SAME section, never the panel's first stop. `afterArrow` reads the caret again
+		   just before the arrow, so the check's own detail names the row the walk started
+		   from and the one it landed on (Q1). */
+		const afterArrow = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
+		await chord("ArrowDown", false);
+		const walked = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				return { tag: el?.tagName ?? null, chatRow: el?.hasAttribute?.("data-chat-row") ?? false, id: el?.closest?.("[data-session-row]")?.getAttribute("data-session-row") ?? null };
+			})()`,
+		);
+		check(
+			"a bare arrow after the chord walks on inside the list (Q1)",
+			walked.chatRow === true && walked.id !== walker,
+			JSON.stringify({ before: afterArrow, after: walked }),
+		);
+		/* The boundary sentence, twice inside the dwell: the SECOND press has to reach the
+		   region as its own mutation (U3/R6/Q3). The row is walked to the section's top
+		   first, so both presses are boundary presses. */
+		for (let i = 0; i < 8; i += 1) await chord("ArrowUp", true);
+		const boundaryMutations = await cdp.evaluate(
+			"(() => { const n = window.__pinMutations; window.__pinMutations = 0; return n; })()",
+		);
+		await chord("ArrowUp", true);
+		await wait(400);
+		await chord("ArrowUp", true);
+		await wait(400);
+		const repeatMutations = await cdp.evaluate("window.__pinMutations");
+		check(
+			"the boundary answer reaches the region on a repeat press (U3/R6/Q3)",
+			boundaryMutations >= 1 && repeatMutations >= 1,
+			JSON.stringify({
+				toBoundary: boundaryMutations,
+				repeatInsideDwell: repeatMutations,
+				announcement: await cdp.evaluate(
+					"document.querySelector('[data-sidebar-pin-order-announcement]').textContent",
+				),
+			}),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "keys",
+				caret: afterChord,
+				walked,
+				mutationsToBoundary: boundaryMutations,
+				mutationsOnRepeat: repeatMutations,
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "single") {
+		/*
+		 * A SINGLE PIN: the state in which both move controls are inapplicable at once, and
+		 * the one the boundary sentence speaks about ("the only pinned chat"). The pin is the
+		 * stand-in's, for the many-pins state's reason.
+		 */
+		/*
+		 * AT 280, DELIBERATELY, so the frame says which rule hid the grip: at the panel's
+		 * 260 default BOTH rules would (the shed and the count), and the state this pair of
+		 * frames is evidence for is the COUNT one (design D3) - one row, so no second slot.
+		 */
+		await setWidth(280);
+		await parkPointer(cdp);
+		const single = await readPinnedPanel();
+		const singleFrame = await captureSettled(cdp, "single-pin");
+		note("frame", JSON.stringify({ label: "single-pin", ...singleFrame }));
+		check(
+			"the section is down to one pin, and both move controls are inapplicable",
+			single.order.length === 1,
+			JSON.stringify(single.order),
+		);
+		await hoverRow(single.order[0]);
+		const singleHover = await readPinnedPanel();
+		const singleRow = singleHover.rows[0];
+		const singleHoverFrame = await captureSettled(cdp, "single-pin-hover");
+		note(
+			"frame",
+			JSON.stringify({ label: "single-pin-hover", ...singleHoverFrame }),
+		);
+		/*
+		 * THE GRIP IS NOT OFFERED WITH ONE PIN (round 1, design D3; UX NIT1 corrected the
+		 * README's claim about it). With one row there is no second slot a drop could land
+		 * on - measured, a one-row drag can be started, always lands on slot 0 and writes
+		 * nothing - so the handle was an affordance for a gesture that cannot change
+		 * anything. The PAIR stays: it still answers with the boundary sentence, which is
+		 * the sentence this state's frame is about.
+		 */
+		check(
+			"the only pin draws its two arrows inapplicable and offers no grip",
+			singleRow.grip === null &&
+				singleRow.up === true &&
+				singleRow.down === true,
+			JSON.stringify(singleRow),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({ state: "single", pins: single.order.length }),
+		);
+	}
+
+	return [];
+}
 
 async function scenePins(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -17110,6 +19368,7 @@ async function sceneBtwAside(cdp) {
 					 * on the value, because the value is no longer in the class: the
 					 * measure resolves the --lo-chat-measure property, so that one number
 					 * serves the transcript and the composer together, and this selector used to
+
 					 * spell max-w-[900px]. It stopped matching when the value moved into
 					 * the property, which read as "the composer has no frame" - the two
 					 * readings this block exists to compare would both have been null and
@@ -17120,6 +19379,7 @@ async function sceneBtwAside(cdp) {
 					 * inside the template literal the rig sends to the page, so a backtick here
 					 * ends the string and the file stops parsing - which is exactly what the
 					 * first version of this comment did.
+
 					 */
 					const shared = Array.from(
 						document.querySelectorAll('[class*="chatcol:max-w-"]'),
@@ -24744,9 +27004,19 @@ async function sceneSidebarLazyChats(cdp) {
 		const label = await cdp.evaluate(
 			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
 		);
+		/*
+		 * THE LEADING CLAUSE, not the whole string (review round 1, F1): the control
+		 * renders `Show N more chats` now and may carry the position tail beside it
+		 * (` · X of Y`, `entityMore`), so the exact equality this scene shipped with
+		 * pins copy the app no longer draws. What the round is about is the COUNT the
+		 * press will add - the leading clause states it, and a stale tail may change
+		 * with it rather than fail a scene on a copy edit.
+		 */
 		check(
 			"Show more states the rows the press will ADD, not the page size (D7)",
-			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			String(label ?? "").startsWith(
+				`Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more chats`,
+			),
 			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
 		);
 		const lastPress = await verb(cdp, "press", {
@@ -29394,6 +31664,16 @@ async function assertBuildIsCurrent() {
  * settings rail and content where those exist. The frames are captures of the same
  * state, so the claim can be read as numbers and looked at as pixels.
  *
+ * SINCE 2026-09-27 IT ALSO MEASURES THE RUNG, and the two halves of that day's report
+ * together: the settings rail took `elevated` to separate it from the app sidebar
+ * ("a slightly different background shade to differentiate from the main sidebar"), so
+ * the lane must carry that rung across the rail's width from y0 down - the readings
+ * below assert the lane's resolved STOP LIST (colour/position pairs, read back off the
+ * computed gradient) against each column's painted ground - and every route column's
+ * RIGHT RULE was removed ("either make it extend all the way up or remove the right
+ * border"), because a rule cannot reach y0 from inside the clipped content column, so
+ * the scene refuses the hairline role anywhere in the lane.
+ *
  * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
  * there IS no lane above the columns, so the band there is a route's only drag surface
  * and its caption clearance, and a route's first box legitimately starts at the caption
@@ -29432,6 +31712,22 @@ async function sceneRouteTops(cdp) {
 		["projects", "/projects"],
 		["browser", "/browser"],
 	];
+	/*
+	 * The palette this run photographs, through the app's own preference (the same
+	 * block the other theme-parameterised scenes carry): this scene's before/after
+	 * sets are taken in `localOperatorDark` and `localOperatorLight`, and a run that
+	 * asked for one and got the other fails here rather than shipping a silent
+	 * monochrome set.
+	 */
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
 	const frames = [];
 	const readings = [];
 	/*
@@ -29486,6 +31782,9 @@ async function sceneRouteTops(cdp) {
 			 * is none, the band must be exactly the app sidebar's own width.
 			 */
 			const surfaceGround = roleGround("--lo-surface");
+			const elevatedGround = roleGround("--lo-elevated");
+			const canvasGround = roleGround("--lo-canvas");
+			const hairlineGround = roleGround("--lo-hairline");
 			/*
 			 * THE ROUTE'S OWN LEADING COLUMN, DERIVED FROM THE LAYOUT RATHER THAN
 			 * LOOKED UP BY THE HANDLE THE FIX ADDED. A rig that asks for the marker
@@ -29493,15 +31792,29 @@ async function sceneRouteTops(cdp) {
 			 * stops short, the marker does not exist, every reading comes back null,
 			 * and the guard passes by having nothing to check (measured on the base
 			 * tree, 2026-09-27). What is derived instead is the rule itself - a
-			 * full-height column standing on the surface role at the route's own left
-			 * edge - which holds on both trees, and which a route added later is
-			 * subject to without anybody remembering to mark it.
+			 * full-height column standing on a column rung of the ladder at the
+			 * route's own left edge, and narrower than the route it stands in (a
+			 * full-width box is a PANE, and the width term below refuses it - QA
+			 * round 2, Q1) - which holds on both trees, and which a route
+			 * added later is subject to without anybody remembering to mark it.
 			 *
-			 * Two levels, and those two conditions, because anything deeper is a card
+			 * SURFACE AND ELEVATED ARE BOTH RUNG GROUNDS the derivation accepts
+			 * (2026-09-27): the lane is a MIRROR of whatever rung it finds, so it has
+			 * to find both, and the settings rail moved one rung up. A canvas
+			 * column would be the content ground the lane already paints and is not
+			 * a distinct case. The browser pane's elevated arrived from #590 after
+			 * QA round 1 and is the case the width term exists for: a full-width
+			 * pane is refused rather than claimed as a column nobody registered.
+			 *
+			 * Two levels, and those three conditions - left edge, full height,
+			 * narrower than the route - because anything deeper is a card
 			 * rather than a column: schedules' own surface panels are neither
 			 * full-height nor at the route's left edge, and they must not be read as
 			 * columns here.
 			 */
+			const columnGrounds = [surfaceGround, elevatedGround];
+			const paintedGroundOf = (el) =>
+				el ? getComputedStyle(el).backgroundColor : null;
 			const columnAt = (el) => {
 				if (!el) return null;
 				const route = box(ownRoot);
@@ -29509,50 +31822,94 @@ async function sceneRouteTops(cdp) {
 				if (!route || !bounds) return null;
 				if (Math.abs(bounds.left - route.left) > 0.5) return null;
 				if (bounds.height < route.height - 0.5) return null;
+				/*
+				 * A FULL-WIDTH BOX IS A PANE, NOT A LEADING COLUMN (QA round 2, Q1).
+				 * #590 puts the browser pane's own box on elevated across the route's
+				 * whole width; the widened rung set would otherwise derive it as a
+				 * column nobody registered and red five checks on /browser for a panel
+				 * this change does not govern. A column is a strip narrower than its
+				 * route - the settings rail is 220px and the rosters 280px - so the
+				 * three real columns are still derived (their before-tree red is
+				 * untouched) and /browser keeps reading as the no-column control route
+				 * it is.
+				 */
+				if (bounds.width >= route.width - 0.5) return null;
 				return el;
 			};
 			const leading = (() => {
 				if (!ownRoot) return null;
-				if (getComputedStyle(ownRoot).backgroundColor === surfaceGround) {
+				if (columnGrounds.includes(paintedGroundOf(ownRoot))) {
 					return columnAt(ownRoot);
 				}
 				const first = ownRoot.firstElementChild;
 				if (!first) return null;
-				if (getComputedStyle(first).backgroundColor === surfaceGround) {
+				if (columnGrounds.includes(paintedGroundOf(first))) {
 					return columnAt(first);
 				}
 				for (const inner of first.children) {
-					if (getComputedStyle(inner).backgroundColor === surfaceGround) {
+					if (columnGrounds.includes(paintedGroundOf(inner))) {
 						return columnAt(inner);
 					}
 				}
 				return null;
 			})();
 			const registered = document.querySelector("[data-lane-leading-column]");
+			/*
+			 * The marker's VALUE is the rung the shell was asked to paint, resolved
+			 * through the same role probe the ladder grounds come from: the check that
+			 * reads it asks whether the rung the shell was HANDED is the rung the
+			 * column is actually PAINTED IN, which is the drift a stale value hides.
+			 */
+			const markerValue = registered
+				? registered.getAttribute("data-lane-leading-column")
+				: null;
+			const markerGround =
+				markerValue === "surface"
+					? surfaceGround
+					: markerValue === "elevated"
+						? elevatedGround
+						: null;
 			const laneStyle = lane ? getComputedStyle(lane) : null;
 			const gradient = laneStyle ? laneStyle.backgroundImage : "";
-			const stop = /([0-9.]+)px/.exec(gradient);
-			const rgbAt = gradient.indexOf("rgb");
-			const ground =
-				rgbAt >= 0
-					? gradient.slice(rgbAt, gradient.indexOf(")", rgbAt) + 1)
-					: null;
+			/*
+			 * THE LANE'S RESOLVED STOP LIST, as colour/position pairs: the inline
+			 * style spells the stops as custom properties and lengths, so only the
+			 * computed form proves the variables resolved, and the checks below read
+			 * the list rather than the first stop (the lane paints each column's rung
+			 * to its own edge since 2026-09-27, so "where does the band stop" became
+			 * "which colour before the edge, which after"). An empty list for a lane
+			 * that is not drawn, which every check reads as "no claim".
+			 */
+			const laneStops = [
+				...gradient.matchAll(/(rgba?\\([^)]*\\))\\s+([0-9.]+)px/g),
+			].map((match) => ({ colour: match[1], stop: Number(match[2]) }));
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
-				laneBandStop: stop ? Number(stop[1]) : null,
-				laneBandGround: ground,
+				laneStops,
 				band: box(band),
 				bandDisplay: band ? getComputedStyle(band).display : null,
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
 				route: box(ownRoot),
 				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
 				leadingColumn: box(leading),
+				leadingColumnGround: leading ? paintedGroundOf(leading) : null,
+				leadingColumnRule: leading
+					? getComputedStyle(leading).borderRightWidth
+					: null,
 				registeredColumn: box(registered),
-				surfaceGround: surfaceGround,
+				registeredRule: registered
+					? getComputedStyle(registered).borderRightWidth
+					: null,
+				markerValue,
+				markerGround,
+				surfaceGround,
+				elevatedGround,
+				canvasGround,
+				hairlineGround,
 				settingsRail: box(
 					document.querySelector('nav[aria-label="Settings sections"]'),
 				),
@@ -29610,23 +31967,37 @@ async function sceneRouteTops(cdp) {
 			);
 		}
 		/*
-		 * THE BAND REACHES EVERY GROUND BESIDE IT, which is the other half of the same
-		 * claim and the one the operator reported twice (2026-09-26, and again
-		 * 2026-09-27 as still true). A column of a route's own - the settings rail, the
-		 * agents list pane - stands on the `surface` ground, but it is INSIDE the
-		 * clipped content column and cannot paint above its own top edge: the lane's
-		 * band is the only thing that can carry its ground to y0, which is why the
-		 * shell has to be told about the column.
+		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
+		 * each column's OWN rung rather than an assumed `surface`: the settings rail
+		 * took `elevated` to separate it from the app sidebar, so the lane paints the
+		 * sidebar's width in `surface`, the rail's width in `elevated`, then `canvas` -
+		 * the rail is INSIDE the clipped content column and cannot paint above its own
+		 * top edge, so the lane is the only thing that can carry its rung to y0. The
+		 * operator reported the band half of this twice (2026-09-26, and again
+		 * 2026-09-27 as still true); the rung half is the same report's second
+		 * sentence - "a slightly different background shade to differentiate from the
+		 * main sidebar" - which fails if the lane paints anything but the rung the
+		 * column is actually standing on.
+		 *
+		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
+		 * is refused: no stop in the lane's resolved gradient may paint the hairline
+		 * role on any route. The operator's first sentence - "the right border doesn't
+		 * go all the way up ... either make it extend all the way up or remove the
+		 * right border" - is answered with the removal on every column, because each
+		 * boundary those rules drew is a tone step now, and a rule could only ever
+		 * begin at the lane's lower edge (nothing a route renders reaches y0), which
+		 * is the half-drawn edge being reported.
 		 *
 		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
 		 * page for the marker would make this guard pass on the unfixed tree - the
 		 * marker is not there, every reading comes back null, and a check with nothing
 		 * to check is a check that cannot fail (measured on the base tree: all six
 		 * routes "passed" as routes with no leading column). The rule is derived
-		 * instead, from the layout on both trees: a full-height column on the surface
-		 * role at the route's own left edge. The registration is then asked for
-		 * separately, so a column nobody handed over fails by name rather than quietly
-		 * becoming "no column here".
+		 * instead, from the layout on both trees: a full-height column on a column rung
+		 * of the ladder at the route's own left edge. The registration and the rung it
+		 * was handed are then asked for separately, so a column nobody handed over - or
+		 * one handed over on a stale rung - fails by name rather than quietly becoming
+		 * "no column here".
 		 *
 		 * The control is the routes that draw no such column (chat, schedules, agent
 		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
@@ -29636,9 +32007,33 @@ async function sceneRouteTops(cdp) {
 		for (const [, path, reading] of readings) {
 			if (!reading.lane || reading.laneDisplay === "none") continue;
 			const laneLeft = reading.lane.left;
+			/*
+			 * The lane's colour at an x in lane coordinates, read off the RESOLVED
+			 * stop list: each stop owns its colour from its own position to the next
+			 * stop's, which is what makes a sample either side of an edge a claim about
+			 * the ground CHANGING there rather than about a single stop existing.
+			 */
+			const laneColourAt = (x) => {
+				let colour = reading.laneStops[0]?.colour ?? null;
+				for (const stop of reading.laneStops) {
+					if (x >= stop.stop) colour = stop.colour;
+				}
+				return colour;
+			};
+			const sidebarEdge = reading.sidebar
+				? reading.sidebar.left + reading.sidebar.width - laneLeft
+				: null;
+			check(
+				`${path}: no rule is painted in the lane`,
+				reading.laneStops.every(
+					(stop) => stop.colour !== reading.hairlineGround,
+				),
+				`the lane's stops are ${reading.laneStops.map((s) => `${s.colour} ${s.stop}px`).join(", ")} against the hairline role's ${reading.hairlineGround}`,
+			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
 				const edge = column.left + column.width;
+				const laneEdge = edge - laneLeft;
 				check(
 					`${path}: the route's leading column is handed to the shell`,
 					reading.registeredColumn !== null &&
@@ -29646,24 +32041,56 @@ async function sceneRouteTops(cdp) {
 					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
 				);
 				check(
-					`${path}: the lane's band reaches the leading column's right edge (${edge}px)`,
-					reading.laneBandStop !== null &&
-						reading.laneBandStop >= edge - laneLeft - 0.5,
-					`the band stops at ${reading.laneBandStop} against a column ending at ${edge}`,
+					`${path}: the shell is handed the rung the column is painted in`,
+					reading.markerGround !== null &&
+						reading.markerGround === reading.leadingColumnGround,
+					`the marker says ${JSON.stringify(reading.markerValue)} (${reading.markerGround}) against a column painted ${reading.leadingColumnGround}`,
+				);
+				/*
+				 * SENTENCE ONE OF THE REPORT, IN THE RUNNING APP: "the right border
+				 * doesn't go all the way up ... either make it extend all the way up or
+				 * remove the right border" - answered with removal on every column.
+				 * Both elements are read because the rule lived on a different level per
+				 * route (the settings rail's wrapper, the rosters' own boxes), and this
+				 * check has to fail on the before tree for all three - which it does:
+				 * on `origin/main` the settings rail's wrapper and the rosters' boxes each
+				 * compute a 1px border-right-WIDTH here. (The width, not the style:
+				 * Tailwind's preflight leaves `border-right-style: solid` on every box, so
+				 * the style reads `solid` whether or not a rule is drawn, and only the
+				 * width separates 1px of rule from 0px of none.)
+				 */
+				check(
+					`${path}: neither the column nor its hand-over draws a right rule`,
+					reading.leadingColumnRule === "0px" &&
+						reading.registeredRule === "0px",
+					`column border-right-width ${reading.leadingColumnRule}, registered border-right-width ${reading.registeredRule} - a rule here can only begin at the lane's lower edge (y 32), not at y0`,
 				);
 				check(
-					`${path}: the band is painted in the surface role the column stands on`,
-					reading.laneBandGround !== null &&
-						reading.laneBandGround === reading.surfaceGround,
-					`the band paints ${reading.laneBandGround} against the surface role's ${reading.surfaceGround}`,
+					`${path}: the lane carries the column's own ground across its width`,
+					reading.leadingColumnGround !== null &&
+						laneColourAt((laneEdge + (column.left - laneLeft)) / 2) ===
+							reading.leadingColumnGround,
+					`mid-column the lane paints ${laneColourAt((laneEdge + (column.left - laneLeft)) / 2)} against the column's own ${reading.leadingColumnGround}`,
 				);
-			} else if (reading.sidebar) {
-				const edge = reading.sidebar.left + reading.sidebar.width;
 				check(
-					`${path}: with no leading column the band stops at the app sidebar's own edge (${edge}px)`,
-					reading.laneBandStop !== null &&
-						Math.abs(reading.laneBandStop - (edge - laneLeft)) < 0.5,
-					`the band stops at ${reading.laneBandStop} against a sidebar ending at ${edge}`,
+					`${path}: the lane's canvas resumes at the column's right edge (${edge}px)`,
+					laneColourAt(laneEdge - 1) === reading.leadingColumnGround &&
+						laneColourAt(laneEdge + 1) === reading.canvasGround,
+					`left of the edge ${laneColourAt(laneEdge - 1)}, right of it ${laneColourAt(laneEdge + 1)}, against the column's ${reading.leadingColumnGround} and canvas ${reading.canvasGround}`,
+				);
+				if (sidebarEdge !== null) {
+					check(
+						`${path}: the surface band still starts at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
+						laneColourAt(sidebarEdge - 1) === reading.surfaceGround,
+						`the lane paints ${laneColourAt(sidebarEdge - 1)} just left of the sidebar's edge, against the surface role's ${reading.surfaceGround}`,
+					);
+				}
+			} else if (sidebarEdge !== null) {
+				check(
+					`${path}: with no leading column the surface band stops at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
+					laneColourAt(sidebarEdge - 1) === reading.surfaceGround &&
+						laneColourAt(sidebarEdge + 1) === reading.canvasGround,
+					`left of the edge ${laneColourAt(sidebarEdge - 1)}, right of it ${laneColourAt(sidebarEdge + 1)}`,
 				);
 			}
 		}
@@ -30230,7 +32657,7 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * / `sent` frames are simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
- * a real ⌘⌥Space reaches the registrar (no synthetic OS chord crosses a
+ * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
  * headless run honestly — the registration half is unit-tested and the one
  * live press is a human step), focus returning to the operator's previous app,
  * anything about the microphone permission prompt (the dictating frame is
@@ -30958,7 +33385,7 @@ async function sceneMiniView(app, cdp) {
 					"(() => {",
 					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
 					"\tif (!electron) return false;",
-					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Space", status: ${JSON.stringify(status)} };`,
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Shift+Space", status: ${JSON.stringify(status)} };`,
 					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
 					"\t\tif (window.isDestroyed()) continue;",
 					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
@@ -31159,6 +33586,11 @@ async function main() {
 	if (SCENE === "btw-aside" && BACKEND === null) {
 		throw new Error(
 			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
+		);
+	}
+	if (SCENE === "pinned-reorder" && BACKEND === null) {
+		throw new Error(
+			"--scene pinned-reorder needs --backend: the section's rows and its reorder both come from a catalogue, and a run with no backend has no pin to drag",
 		);
 	}
 	if (SCENE === "pins-scroll" && BACKEND === null) {
@@ -31434,6 +33866,7 @@ async function main() {
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
+			else if (SCENE === "pinned-reorder") await scenePinnedReorder(cdp);
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
