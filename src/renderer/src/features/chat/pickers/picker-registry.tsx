@@ -24,6 +24,7 @@
 import type { FC } from "react";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
 import type { ArgumentSource } from "../components/slash-argument-rows";
 import { runMoveSessionFromDispatch } from "../move-session";
 import type { MoveRunContext } from "../move-session";
@@ -198,13 +199,14 @@ export type InlineArgumentSource = {
 	/**
 	 * Which source fills this list. The five entity ids are exactly the
 	 * commands the backend's `command-entities` route serves
-	 * (`desktop_catalogues.py:237-305`), and the `model`/`effort`/`approvals`/
+	 * (`desktop_catalogues.py:237-305`), the `model`/`effort`/`approvals`/
 	 * `team`/`agent` subset of what the backend advertises in
 	 * `native_action.data.entities` (`desktop_commands.py:51-65`). `theme` is
 	 * the one renderer-local source: the same `@shared/themes` table its dialog
-	 * reads. `scripts/slash-row-format.test.mjs` pins the five ids against that
-	 * advertised set, because a stale id renders an empty list rather than
-	 * failing.
+	 * reads. `providers`, `provider-accounts` and `mcp` are the SESSIONLESS
+	 * backend sources (the census, the stored accounts and the MCP catalog).
+	 * `scripts/slash-row-format.test.mjs` pins all three categories, because a
+	 * stale id renders an empty list rather than failing.
 	 */
 	source: InlineArgumentSourceId;
 	/**
@@ -219,6 +221,18 @@ export type InlineArgumentSource = {
 	 * "a name is chosen" is not "run it", it is "ready for the message".
 	 */
 	runs: boolean;
+	/**
+	 * The capability this list is LICENSED by; absent means unconditional (the
+	 * lists that predate capability negotiation). Resolved through
+	 * `effectiveInlineArgument` (`slash-argument-rows.ts`) so a backend that
+	 * does not advertise the feature sees no list, and every reader — the
+	 * fetch, both footer lines and the pick gate — reads the one answer.
+	 *
+	 * The census and accounts lists are `provider_catalogue`; the MCP lists are
+	 * `mcp_catalog` >= 2 (the same document gained `verbs` — the version floor
+	 * lives in `INLINE_REQUIRED_VERSIONS`).
+	 */
+	requires?: DesktopFeature;
 };
 
 export type InlineArgumentSourceId = ArgumentSource;
@@ -432,9 +446,38 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	/*
 	 * `/login` and `/logout` on a sessionless pane (issue #625): they read the
 	 * provider grid and the stored accounts, never the conversation.
+	 *
+	 * THE INLINE LISTS come from the same provider registry the TUI's pickers
+	 * read, over the sessionless routes (`provider_catalogue`'s licence: the
+	 * census rows and the two lists land together). `/login` runs on a pick —
+	 * choosing a provider IS the gesture, and its argument is the provider the
+	 * dialog would have been opened for. `/logout` deliberately does NOT run:
+	 * its rows remove a credential, the TUI's destructive gate only fires on
+	 * the keyboard, and a pointer click bypasses that gate by design — so the
+	 * per-list `runs: false` is the pointer's whole floor (spec §4.1).
 	 */
-	"auth.login": { kind: "picker", component: LoginPicker, sessionless: true },
-	"auth.logout": { kind: "picker", component: LogoutPicker, sessionless: true },
+	"auth.login": {
+		kind: "picker",
+		component: LoginPicker,
+		sessionless: true,
+		inline: {
+			source: "providers",
+			nameThenMessage: false,
+			runs: true,
+			requires: "provider_catalogue",
+		},
+	},
+	"auth.logout": {
+		kind: "picker",
+		component: LogoutPicker,
+		sessionless: true,
+		inline: {
+			source: "provider-accounts",
+			nameThenMessage: false,
+			runs: false,
+			requires: "provider_catalogue",
+		},
+	},
 	// Existing surfaces: navigate, never duplicate.
 	settings: {
 		kind: "navigate",
@@ -470,7 +513,23 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 */
 	accounts: { kind: "navigate", route: () => "/settings?section=providers" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
-	mcp: { kind: "picker", component: McpPicker },
+	mcp: {
+		kind: "picker",
+		component: McpPicker,
+		/*
+		 * The MCP catalog's own lists: the verbs, then their servers (the
+		 * document's `verbs` is the same `mcp_catalog` v2 contract this list is
+		 * licensed by). `runs: false` for the same reason `/logout`'s is — the
+		 * source contains destructive rows (`remove`, `logout`, `reauth`), and a
+		 * pointer pick may not run any of them (spec §4.1).
+		 */
+		inline: {
+			source: "mcp",
+			nameThenMessage: false,
+			runs: false,
+			requires: "mcp_catalog",
+		},
+	},
 };
 
 /**

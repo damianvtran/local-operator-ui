@@ -16,9 +16,14 @@
  * what this thing IS versus where it stands right now.
  */
 
+import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
+import type { McpCatalogVerb } from "../../../../../shared/desktop-control-contract";
+import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
+import { brandOf } from "../../providers/provider-catalog";
 import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
+import { compactPath } from "./trace/tool-row-model";
 
 /** The row a list renders. Mirrors `ArgumentChoice`. */
 export type ArgumentRow = {
@@ -115,14 +120,18 @@ export function shouldRunArgumentAction(
 /**
  * Where an argument list's rows come from.
  *
- * The two halves are named separately because they are two KINDS of source and
- * one name for both is how a reader comes to believe every id is a backend
- * route (round 1 NIT-2).
+ * The categories are named separately because they are different KINDS of source
+ * and one name for all of them is how a reader comes to believe every id is a
+ * backend route (round 1 NIT-2).
  *
- * `BackendArgumentSource` is a `commands.entities` command id, pinned against
+ * `EntityArgumentSource` is a `commands.entities` command id, pinned against
  * `desktop_catalogues.py:262-305` by `scripts/slash-row-format.test.mjs` — the
  * route answers exactly `model`, `effort`, `approvals`, `team` and `agent`, and
  * a stale id would silently render an empty list rather than fail.
+ *
+ * `SessionlessArgumentSource` is the pair of sessionless routes the composer
+ * now reads: the provider census and the stored-accounts list behind `/login`
+ * and `/logout`, and the sessionless MCP catalog behind `/mcp`.
  *
  * `RendererArgumentSource` is the half with no backend route, and it now holds
  * two sources that are the same KIND of thing for two different reasons:
@@ -139,12 +148,31 @@ export function shouldRunArgumentAction(
  *     not), which is exactly why this is a renderer source and not a sixth
  *     backend id.
  */
-export type BackendArgumentSource =
+export type EntityArgumentSource =
 	| "model"
 	| "effort"
 	| "approvals"
 	| "team"
 	| "agent";
+/**
+ * The sessionless backend sources: `/login` reads the provider census,
+ * `/logout` the stored accounts and `/mcp` the sessionless MCP catalog. None of
+ * the three routes is scoped to a conversation, which is what makes them a
+ * THIRD category: `commands.entities` (the entity ids above) cannot answer on a
+ * draft pane at all, the renderer-local pair never touches the transport, and
+ * these three answer from sessionless backend routes.
+ *
+ * Pinned by `scripts/slash-row-format.test.mjs` alongside the other two
+ * categories — a stale id renders an empty list rather than failing — and each
+ * one must have a `case` in `argumentRows`.
+ */
+export type SessionlessArgumentSource =
+	| "providers"
+	| "provider-accounts"
+	| "mcp";
+export type BackendArgumentSource =
+	| EntityArgumentSource
+	| SessionlessArgumentSource;
 export type RendererArgumentSource = "theme" | "title-refresh";
 export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
 
@@ -172,6 +200,74 @@ export function isRendererLocalSource(
 	source: ArgumentSource | undefined,
 ): boolean {
 	return source !== undefined && RENDERER_LOCAL_SOURCES.has(source);
+}
+
+/**
+ * The sources that answer WITH a backend round trip but WITHOUT a conversation.
+ *
+ * One set rather than three `source === "..."` comparisons in the hook that
+ * fills the rows (`slash-commands.tsx`): the same membership decides whether the
+ * entity query is allowed to run at all — `commands.entities` is session-bound,
+ * and a sessionless id reaching it would ask the wrong route for a list it does
+ * not serve — and the hook's own fetch branches are keyed off the same ids.
+ *
+ * Membership is a fact about WHICH ROUTE answers the source, not about which
+ * command uses it, so it lives beside the source union rather than in a command
+ * list.
+ */
+export const SESSIONLESS_BACKEND_SOURCES: ReadonlySet<ArgumentSource> = new Set(
+	["providers", "provider-accounts", "mcp"],
+);
+
+/** Whether this source's rows come from a sessionless backend route. */
+export function isSessionlessBackendSource(
+	source: ArgumentSource | undefined,
+): boolean {
+	return source !== undefined && SESSIONLESS_BACKEND_SOURCES.has(source);
+}
+
+/**
+ * The minimum version of a `requires` feature that licenses its inline list.
+ *
+ * v1 is the default (`desktopFeatureEnabled`'s own). The MCP inline lists are
+ * the `mcp_catalog` v2 contract — the same document gained `verbs`, and the
+ * server slot cannot be answered without them — so the bare key must not be
+ * enough for that one.
+ */
+const INLINE_REQUIRED_VERSIONS: Partial<Record<DesktopFeature, number>> = {
+	mcp_catalog: 2,
+};
+
+/**
+ * The inline list a destination may route through, or `undefined` when the
+ * backend does not license it — THE ONLY place that question is answered.
+ * `useSlashCompletion` resolves it once and every reader — the fetch, both
+ * footer lines and the pick gate, on the command row as much as the argument
+ * list — reads the same answer, so a feature-absent backend cannot have four
+ * surfaces disagree about whether a list exists.
+ *
+ * THE THREE TERMS MIRROR `desktopFeatureState` (`desktop-hooks.ts`): no
+ * capability answer and an unpaired plane both refuse, and a feature below its
+ * minimum version is `below-version` rather than licensed. They are restated
+ * here rather than imported because this module is bundled by the node tests
+ * (`scripts/slash-contract.test.mjs`), which run without a DOM and without
+ * React Query — `desktop-hooks.ts` imports both. A term added to the shared
+ * predicate must be added here too; the degrade cases in that test file are
+ * where a drift shows on this side.
+ */
+export function effectiveInlineArgument<
+	T extends { requires?: DesktopFeature },
+>(
+	inline: T | undefined,
+	capabilities: DesktopCapabilities | null | undefined,
+): T | undefined {
+	if (!inline?.requires) return inline;
+	const advertised = capabilities?.features?.[inline.requires] ?? 0;
+	const minimum = INLINE_REQUIRED_VERSIONS[inline.requires] ?? 1;
+	if (capabilities?.desktop_available !== true || advertised < minimum) {
+		return undefined;
+	}
+	return inline;
 }
 
 /**
@@ -369,6 +465,24 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	approvals: "Approvals",
 	team: "Teams",
 	agent: "Agents",
+	providers: "Providers",
+	/*
+	 * `/logout`'s list: the providers that hold stored credentials, one row each.
+	 * "Accounts" is the word the LogoutPicker and the accounts route already use
+	 * for the same stored credentials, so the two surfaces teach one vocabulary
+	 * for one thing (the spec's §5 copy rule: copy stays per-surface, but a
+	 * surface's own words do not drift between its list and its dialog).
+	 */
+	"provider-accounts": "Accounts",
+	/*
+	 * `/mcp`'s two slots read as one list across two keystrokes — the verbs, then
+	 * their servers, split on the argument exactly as the TUI's list is — so the
+	 * label names what the whole gesture is FOR: every verb description talks
+	 * about servers, and the second slot's rows ARE servers. A label naming only
+	 * the first slot ("Subcommands") would misdescribe the list a user is looking
+	 * at after one more keystroke.
+	 */
+	mcp: "Servers",
 	theme: "Themes",
 	/*
 	 * `/rename`'s list, and why it is not called "Titles".
@@ -581,6 +695,152 @@ function modelSelectorOf(row: ModelEntity): string {
 	return provider && modelId ? `${provider}/${modelId}` : "";
 }
 
+/** A census row, as `/v1/auth/providers` answers it (plus the additive fields). */
+type ProviderEntity = {
+	id?: unknown;
+	name?: unknown;
+	brand?: unknown;
+	search_aliases?: unknown;
+	state?: unknown;
+};
+
+/** A stored-credential row, as `/v1/auth/status` answers it. */
+type StoredCredentialEntity = {
+	provider?: unknown;
+	type?: unknown;
+	identity_label?: unknown;
+};
+
+/** A catalog server row, as far as the `/mcp` server slot reads it. */
+type McpServerEntity = {
+	name?: unknown;
+	status?: unknown;
+	actions?: unknown;
+	source?: { path?: unknown } | null;
+};
+
+const asAliases = (value: unknown): readonly string[] | undefined =>
+	Array.isArray(value)
+		? value.filter((alias): alias is string => typeof alias === "string")
+		: undefined;
+
+/**
+ * How a stored credential's `type` reads to a user about to lose it, verbatim
+ * from `_CREDENTIAL_KINDS` (`app.py:52541`). The whole removal digest is
+ * `remove <kind>`, and the same two words `/accounts` prints, so one credential
+ * does not have two names across two surfaces.
+ */
+const CREDENTIAL_KINDS: Record<string, string> = {
+	oauth: "oauth",
+	api_key: "api key",
+};
+
+/**
+ * The accounts route's sentinel for "no label found"
+ * (`/v1/auth/status`, `auth.py:230`: `email`, else `account_id`, else
+ * `org_name`, else this). A single stored credential whose label IS the
+ * sentinel has no identity to state, which is the same case the TUI's
+ * `credential_identity` renders as ``None``.
+ */
+const STORED_CREDENTIAL_FALLBACK = "Stored credential";
+
+/**
+ * The census's `state` enum in the words the TUI already prints —
+ * `_credential_state` (`app.py:43165`) — so `/provider` there and the
+ * composer's detail column here say one thing about one provider. The strings
+ * are the spec's §5 copy table, pinned by `scripts/slash-contract.test.mjs`.
+ */
+const PROVIDER_STATE_COPY: Record<string, string> = {
+	logged_in: "logged in",
+	env_key: "env key",
+	needs_login: "needs login",
+	local_ready: "configured server",
+	local_unconfigured: "configure server",
+};
+
+/** `_squashed` (`app.py:52585`): the ASCII half of a name, lowercased. */
+const SQUASHED_NON_ALNUM = /[^a-z0-9]+/g;
+
+function squashed(value: string): string {
+	return value.toLowerCase().replace(SQUASHED_NON_ALNUM, "");
+}
+
+/**
+ * The qualifier half of a provider row's description: the part of the
+ * registry's name the id does not already say — a port of `_provider_summary`
+ * (`app.py:52567`).
+ *
+ * The parenthetical when the name carries one (`ChatGPT Plus/Pro`), empty when
+ * the name is just the id in title case (an empty cell is the correct answer
+ * for `deepseek`), the name itself otherwise.
+ *
+ * Exported because it is a formatter of the same class as `formatWindow`:
+ * `scripts/slash-contract.test.mjs` pins it against the TUI's own vectors
+ * rather than leaving the two hosts free to drift.
+ */
+export function providerQualifier(providerId: string, name: string): string {
+	const trimmed = name.trim();
+	if (trimmed.endsWith(")") && trimmed.includes("(")) {
+		return trimmed.slice(trimmed.indexOf("(") + 1, -1).trim();
+	}
+	if (trimmed && squashed(trimmed) === squashed(providerId)) return "";
+	return trimmed;
+}
+
+/**
+ * The `actions` each `offers` policy admits — the catalog's server-slot filter
+ * (spec §3.2), read from `actions` rather than from any client-side server
+ * list: `oauth` admits every OAuth-capable row (signed out via `sign_in`,
+ * signed in via `reauth`/`sign_out`), `signed_in` only rows a logout can act
+ * on, and `all` is not in this table because it filters nothing.
+ */
+const MCP_OFFER_ACTIONS: Record<string, readonly string[]> = {
+	oauth: ["sign_in", "reauth", "sign_out"],
+	signed_in: ["sign_out"],
+};
+
+/**
+ * The catalog's status enum in the composer's own words. The detail column is
+ * machine voice (`argumentRowContent`), so these stay lowercase; `not_started`
+ * reads "not connected", the word the integrations page uses for the same
+ * state, and `needs_sign_in` reads "needs sign-in" rather than the TUI's
+ * `auth-required` because the composer has no room to teach the wire word.
+ */
+const MCP_STATUS_WORDS: Record<string, string> = {
+	connected: "connected",
+	connecting: "connecting",
+	needs_sign_in: "needs sign-in",
+	not_started: "not connected",
+	error: "error",
+};
+
+/**
+ * The detail column of a `/mcp <verb> <server>` row, per the TUI's per-verb
+ * notes (`app.py:47800-47815`): what the gesture will do to THIS server, in
+ * the server's own state. `remove` carries the SOURCE FILE (home-relative
+ * through the renderer's own `compactPath`) because a server imported from
+ * another tool's config cannot be removed by one key, and stating that on the
+ * row turns the refusal into something the user saw coming.
+ */
+function mcpServerDetail(verb: string, server: McpServerEntity): string {
+	const status = asText(server.status);
+	if (verb === "remove") return compactPath(asText(server.source?.path));
+	if (verb === "logout") {
+		return status === "connected"
+			? "stored credential · connected"
+			: "stored credential";
+	}
+	if (verb === "reauth") {
+		return status === "connected"
+			? "connected — will re-authorize"
+			: (MCP_STATUS_WORDS[status] ?? "");
+	}
+	// `login`, the only remaining verb with a server slot.
+	return status === "connected"
+		? "connected — will re-use"
+		: (MCP_STATUS_WORDS[status] ?? "");
+}
+
 /**
  * Shape a `commands.entities` payload into rows, discriminated on `command`.
  *
@@ -597,6 +857,15 @@ export function argumentRows(
 	command: ArgumentSource,
 	entities: readonly unknown[],
 	current: unknown,
+	/*
+	 * The two inputs only the sessionless `mcp` source reads: the typed argument
+	 * text, which decides WHICH slot the list is in — the TUI's own partition on
+	 * the first space (`app.py:47774`) — and the catalog document's `verbs`
+	 * table, which the verb slot renders and the server slot filters by. One
+	 * object because both arrive from the same document; every other case
+	 * ignores it.
+	 */
+	extras?: { argument?: string; verbs?: readonly McpCatalogVerb[] },
 ): ArgumentRow[] {
 	switch (command) {
 		case "model": {
@@ -680,6 +949,145 @@ export function argumentRows(
 				const value = asText((raw as ValueEntity).value);
 				return { value, name: value, current: current === value };
 			});
+		case "providers": {
+			/*
+			 * `/login`'s list: every loginable provider in registry order — the same
+			 * set the LoginPicker's grid shows, with where the user stands on each
+			 * (the census's `state`, in the TUI's own words) in the detail column.
+			 * The NAME is the backend's `brand` (falling back through `brandOf`'s
+			 * strip-parenthetical rule on an older row), because the id is what a
+			 * pick WRITES whereas the brand is what a reader picks by.
+			 */
+			return entities.map((raw) => {
+				const row = raw as ProviderEntity;
+				const id = asText(row.id);
+				const detail = PROVIDER_STATE_COPY[asText(row.state)];
+				return {
+					value: id,
+					name: brandOf({
+						id,
+						name: asText(row.name),
+						brand: asText(row.brand),
+					}),
+					description: providerQualifier(id, asText(row.name)),
+					detail: detail || undefined,
+					aliases: asAliases(row.search_aliases),
+				};
+			});
+		}
+		case "provider-accounts": {
+			/*
+			 * `/logout`'s list: providers holding at least one stored credential,
+			 * ONE ROW PER PROVIDER even when several credentials share it.
+			 *
+			 * The accounts route answers one row per credential, and the TUI's
+			 * logout branch (`_provider_choices`, `app.py:43030`) is explicit about
+			 * why the list groups them — "two rows for one outcome is a choice the
+			 * user cannot make correctly": `xai`/`xai-oauth` share one credential
+			 * row, and a multi-account provider's rows would all complete the same
+			 * `/logout <id>`. The account-level choice stays where it already is,
+			 * in `LogoutPicker`'s confirmation (spec §7.5). Because every row this
+			 * route answers IS a stored credential, a provider appears here only
+			 * when it holds at least one — `stored_credentials > 0` (§1.4) — and
+			 * env-only credentials cannot appear: they are not store rows.
+			 *
+			 * The detail is the TUI's removal digest: what the gesture REMOVES
+			 * (the kinds, through `_removal_detail`'s two-word mapping), then the
+			 * account's identity when there is exactly one (§1.2's rule). Every
+			 * row is `alert` because the TUI paints every row of this list in the
+			 * danger role, and the row arm of the keyboard gate reads the same bit
+			 * (spec §4.1).
+			 */
+			const groups = new Map<string, { kinds: string[]; labels: string[] }>();
+			for (const raw of entities) {
+				const row = raw as StoredCredentialEntity;
+				const provider = asText(row.provider);
+				if (!provider) continue;
+				const group = groups.get(provider) ?? { kinds: [], labels: [] };
+				group.kinds.push(asText(row.type));
+				group.labels.push(asText(row.identity_label));
+				groups.set(provider, group);
+			}
+			return [...groups.entries()].map(([provider, group]) => {
+				const kinds = new Set(
+					group.kinds
+						.map((kind) => CREDENTIAL_KINDS[kind] ?? kind)
+						.filter(Boolean),
+				);
+				const removal =
+					kinds.size === 1
+						? `remove ${[...kinds][0]}`
+						: `remove ${group.kinds.length} credentials`;
+				const identity =
+					group.labels.length === 1 &&
+					group.labels[0] !== STORED_CREDENTIAL_FALLBACK
+						? group.labels[0]
+						: "";
+				return {
+					value: provider,
+					name: provider,
+					detail: identity ? `${removal} · ${identity}` : removal,
+					alert: true,
+				};
+			});
+		}
+		case "mcp": {
+			/*
+			 * `/mcp`'s two slots, split on the TUI's own partition: with no space
+			 * typed yet the argument IS the verb slot, so the document's verbs are
+			 * offered — `list` first, because the destructive verbs below it should
+			 * not own the row a stray Enter lands on; once a verb is there the
+			 * argument is the SERVER slot, and the rows are `"<verb> <name>"`
+			 * compounds that complete the whole argument (the TUI draws the same
+			 * two-turn crank, `app.py:47755-47760`).
+			 *
+			 * WHICH servers depends on the verb's `offers` policy, read from each
+			 * row's `actions` rather than from any client list (§3.2); `add` and
+			 * `list` offer nothing — an added name is new by definition — so their
+			 * server slot is empty and the user just types.
+			 *
+			 * `alert` is LOAD-BEARING SAFETY, not colour: the keyboard gate reads
+			 * it (through `slashDestructive`) to make a fuzzy single survivor
+			 * complete instead of run, so a subsequence can never forget a
+			 * credential or delete a config entry the user did not name.
+			 */
+			const argument = extras?.argument ?? "";
+			const verbs = extras?.verbs ?? [];
+			const space = argument.indexOf(" ");
+			if (space === -1) {
+				return verbs.map((verb) => ({
+					value: verb.verb,
+					name: verb.verb,
+					description: verb.description,
+					alert: verb.destructive,
+				}));
+			}
+			const verb = argument.slice(0, space).toLowerCase();
+			const entry = verbs.find((candidate) => candidate.verb === verb);
+			if (!entry || entry.offers === null) return [];
+			const wanted =
+				entry.offers === "all" ? null : MCP_OFFER_ACTIONS[entry.offers];
+			if (entry.offers !== "all" && !wanted) return [];
+			return entities.flatMap((raw) => {
+				const server = raw as McpServerEntity;
+				const actions = Array.isArray(server.actions) ? server.actions : [];
+				if (
+					wanted &&
+					!actions.some((action) => wanted.includes(String(action)))
+				) {
+					return [];
+				}
+				const name = asText(server.name);
+				return [
+					{
+						value: `${entry.verb} ${name}`,
+						name: `${entry.verb} ${name}`,
+						detail: mcpServerDetail(entry.verb, server),
+						alert: entry.destructive,
+					},
+				];
+			});
+		}
 		case "theme":
 			return entities.map((raw) => {
 				const row = raw as ProfileEntity;

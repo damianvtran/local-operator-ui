@@ -298,6 +298,16 @@ export type DesktopFeature =
 	 */
 	| "mcp_catalog"
 	/**
+	 * The provider-catalogue contract: the census's additive row fields
+	 * (`brand`, `capabilities`, `state`, `identity`, `account_count`) AND the
+	 * licence for the composer's `/login` and `/logout` inline lists. Its own
+	 * key, in the `<subsystem>_catalogue` family: the provider grids and the
+	 * two pickers render fine against a backend without it — only the composer
+	 * lists and the optional row fields are gated by it, and both degrade to
+	 * what the older snapshot carries.
+	 */
+	| "provider_catalogue"
+	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
 	 * The reader is the ONE part of that panel that needs a route older backends

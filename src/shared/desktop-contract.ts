@@ -4146,6 +4146,32 @@ export type DesktopProvider = {
 	base_url: string | null;
 	/** See `ProviderMethod.suggested_model`; optional for older backends. */
 	suggested_model?: SuggestedModel | null;
+	/*
+	 * The additive fields of the provider-catalogue contract (`provider_catalogue`
+	 * capability), which both this app's composer and the TUI read. Optional
+	 * because a backend that predates the capability omits them: readers fall
+	 * back to what the older snapshot carried, and the composer's provider lists
+	 * are licensed by the capability itself.
+	 */
+	/** The clean title the backend owns: "OpenAI" for "OpenAI (ChatGPT Plus/Pro)". */
+	brand?: string;
+	/** The declared capability vocabulary (`chat`/`tts`/`stt`). */
+	capabilities?: string[];
+	/** The machine form of the TUI's three-plus-two credential states. */
+	state?:
+		| "logged_in"
+		| "env_key"
+		| "needs_login"
+		| "local_ready"
+		| "local_unconfigured";
+	/**
+	 * The stored account's label when the provider holds exactly ONE credential
+	 * row; `null` (or absent) otherwise — the account-level choice stays in
+	 * `LogoutPicker`.
+	 */
+	identity?: string | null;
+	/** Stored credential rows; the same count as `stored_credentials`, named for the logout rows. */
+	account_count?: number;
 };
 export type AuthOperation = {
 	id: string;
