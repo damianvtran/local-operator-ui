@@ -61,6 +61,19 @@ const gitOut = (args) => {
 		return execFileSync("git", args, {
 			cwd: ROOT,
 			stdio: ["ignore", "pipe", "ignore"],
+			/*
+			 * `git ls-tree -r --name-only HEAD -- docs/evidence` crossed Node's
+			 * 1 MiB spawnSync default at 14,162 frames (1,054,602 bytes, measured
+			 * 2026-09-30; review round 1, R-2): the throw was caught, the read
+			 * returned null, and the refresh tally's term 1 stood down
+			 * (`if (committed !== null)`), so the guard could not fail the very
+			 * under-claim it exists for. Same default-buffer trap the whole-tree
+			 * scans hit, closed the same way `no-websocket-plane.test.mjs` closes
+			 * it: a ceiling above every tree this repo's evidence walk can reach
+			 * (64 MiB now covers ~850k frames), so the read either answers or the
+			 * command itself is broken.
+			 */
+			maxBuffer: 64 * 1024 * 1024,
 		})
 			.toString()
 			.trim();
