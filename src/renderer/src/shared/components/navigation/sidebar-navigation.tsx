@@ -30,6 +30,7 @@ import {
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
@@ -945,6 +946,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{navItems.map(renderNavRow)}
 				</ul>
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{/*
+					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
+					 * (design consult §3.1): the icon, the gear, the avatar - the strip's
+					 * own `gap-1` column. Hidden draws nothing at all, so a row without
+					 * anything waiting renders exactly as it did before the icon existed.
+					 */}
+					<UpdateFootIcon />
 					{settingsGear}
 					<UserProfileSidebar expanded={false} />
 				</div>
@@ -1046,7 +1054,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 */}
 			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
 				<UserProfileSidebar expanded />
-				{settingsGear}
+				{/*
+				 * THE CLUSTER, AND WHY IT IS ONE CHILD (design consult §3.1): three
+				 * children under `justify-between` would spread the row - the icon
+				 * would float to the middle - so the icon and the gear are wrapped in
+				 * one `flex items-center gap-1` div and the row keeps its two-child
+				 * shape. The icon sits immediately left of the gear at the row's own
+				 * 4px step (the measured slot), and the gear stays the row's last stop.
+				 */}
+				<div className="flex items-center gap-1">
+					<UpdateFootIcon />
+					{settingsGear}
+				</div>
 			</div>
 		</div>
 	);
