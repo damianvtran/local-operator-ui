@@ -879,9 +879,13 @@ equally important**, and the interface must not present them as though they are.
   on, it is a 1px `hairline` (the decorative-rule role: it owes being seen, which
   the `turn answer rail` PERCEPTIBLE row asserts on `canvas`, and no 3:1 floor)
   with 12px of inner padding. The negative margin is exactly rule plus padding, so
-  the prose box is where it is with the rail off - no layout shift, no second left
-  edge, no second measure, no card and no ground, each of which this section
-  forbids. `data-turn-answer` is set from the election alone, in both states.
+  the prose box is where it is with the rail off: no layout shift and no second
+  MEASURE, which is what this section's "one left rail" rule governs. Stated
+  precisely, the rule itself is ink 13px left of the column edge, hanging in the
+  scroller's gutter - a hung mark, not a second edge for the text to resolve
+  against - and it is the one mark on the row that neither the ledger nor the bars
+  share. No card and no ground, as this section forbids. `data-turn-answer` is set
+  from the election alone, in both states.
 - **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
 text in the transcript — code, stdout and diffs share the treatment — opens
   behind the row's own disclosure, and an open block that fills the scroller
