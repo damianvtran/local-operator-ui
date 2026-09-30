@@ -1,7 +1,7 @@
 {
   "backend": "http://127.0.0.1:1139",
   "proxy": "http://127.0.0.1:8391",
-  "out": "/Users/damian/.local-operator/sessions/2955efce7468/scratchpad/stt-rec-7c2e/after",
+  "out": "/Users/damian/.local-operator/sessions/2955efce7468/scratchpad/stt-rec-7c2e/after3g",
   "steps": [
     {
       "step": "rig.radientUpstream",
@@ -68,15 +68,15 @@
     },
     {
       "step": "sessionA.combo.timestamps",
-      "t0": 7928,
-      "flip": 9395.79999999702
+      "t0": 16552.09999999404,
+      "flip": 18739.5
     },
     {
       "step": "sessionA.comboEngages",
       "ok": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 1468,
+      "latencyMs": 2187,
       "budgetMs": 9000,
       "cold": true
     },
@@ -103,15 +103,15 @@
     },
     {
       "step": "sessionA.space.timestamps",
-      "t0": 11919.29999999702,
-      "flip": 11950
+      "t0": 30187.70000000298,
+      "flip": 30207.5
     },
     {
       "step": "sessionA.spaceEngages",
       "ok": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 31,
+      "latencyMs": 20,
       "budgetMs": 6000,
       "cold": false
     },
@@ -133,13 +133,13 @@
     },
     {
       "step": "sessionA.transcriptLandedSpace",
-      "draft": "review the stt overhaul dictated words from the fake upstream."
+      "draft": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream."
     },
     {
       "step": "sessionA.sentBody",
       "body": {
-        "request_id": "df71b110-730b-4db4-ab6f-37400b63acb2",
-        "text": "review the stt overhaul dictated words from the fake upstream.",
+        "request_id": "d1f3c9aa-8067-4eef-b5da-eef32ecf9b6f",
+        "text": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream.",
         "images": [],
         "mode": "prompt"
       }
@@ -187,8 +187,8 @@
         "h": 64
       },
       "lane": {
-        "x": 431,
-        "w": 778,
+        "x": 439,
+        "w": 762,
         "h": 36
       },
       "field": {
@@ -235,8 +235,8 @@
         "h": 64
       },
       "lane": {
-        "x": 431,
-        "w": 778,
+        "x": 439,
+        "w": 762,
         "h": 36
       },
       "field": {
@@ -258,32 +258,32 @@
   "notes": [],
   "wire": [
     {
-      "at": 1790717314386,
-      "path": "/v1/desktop/sessions/80faabae53f9/messages",
+      "at": 1790728616274,
+      "path": "/v1/desktop/sessions/9c60a6928173/messages",
       "body": {
-        "request_id": "df71b110-730b-4db4-ab6f-37400b63acb2",
-        "text": "review the stt overhaul dictated words from the fake upstream.",
+        "request_id": "d1f3c9aa-8067-4eef-b5da-eef32ecf9b6f",
+        "text": "review the stt overhaul dictated words from the fake upstream. second dictation, also from the fake upstream.",
         "images": [],
         "mode": "prompt"
       }
     }
   ],
-  "sessionA": "80faabae53f9",
-  "sessionG": "1aa130fec6a3",
+  "sessionA": "9c60a6928173",
+  "sessionG": "3e4ddab6b40c",
   "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}",
   "radientCalls": [
     {
-      "at": 1790717311004,
+      "at": 1790728601106,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
-      "bytes": 12092,
+      "bytes": 72298,
       "authorized": true
     },
     {
-      "at": 1790717313728,
+      "at": 1790728611118,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
-      "bytes": 12092,
+      "bytes": 46868,
       "authorized": true
     }
   ]
