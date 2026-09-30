@@ -50,6 +50,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	writeFileSync,
@@ -60,6 +61,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 /*
  * The regex literals this module uses, hoisted to the top level: the
@@ -105,6 +107,13 @@ const RE_503 = /503/;
  */
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
 	/is running a Local Operator daemon this app has no key for/;
+/*
+ * What a launcher whose package is missing answers with, whichever way the
+ * interpreter words it. Top-level for the same reason as every `RE_` above: a
+ * literal inside a scope is rebuilt per call and `scripts/check-scripts-lint.mjs`
+ * holds every changed file in `scripts/` to biome without warnings.
+ */
+const RE_UNIMPORTABLE = /local_operator|ModuleNotFoundError/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
 const RE_THE_DAEMON_IS_RUNNING = /The daemon is running/;
 
@@ -125,7 +134,7 @@ const managers = new Set();
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts"; export { probeGlobalLauncher } from "./src/main/backend/owned-serve-launch.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -196,10 +205,14 @@ const bundle = await build({
 	],
 });
 
-const { BackendServiceManager, PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	BackendServiceManager,
+	PROBE_INTERVAL_MS,
+	DEGRADED_AFTER_FAILURES,
+	probeGlobalLauncher,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 after(async () => {
 	/*
@@ -1294,12 +1307,72 @@ test("an adopted daemon on another address is reported, and a landing on the con
  */
 const LAUNCHD_PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
 const ENTRY_POINT = "from local_operator.cli import main";
-/** A console script, as uv writes one: an interpreter shebang and the entry point. */
-const consoleScript = (interpreter) => `#!${interpreter}\n${ENTRY_POINT}\n`;
+/**
+ * A console script, as uv writes one: an interpreter shebang, the entry point on
+ * its own line, and the call - the LAST line is what makes the launcher print
+ * anything when the decision runs it, so a fixture without it answers with an
+ * empty string and proves nothing about which install the app is on.
+ */
+const consoleScript = (interpreter) =>
+	`#!${interpreter}\nimport sys\n${ENTRY_POINT}\nsys.exit(main())\n`;
+/*
+ * A STAND-IN BACKEND THAT ACTUALLY RUNS, and the fixture this decision now needs.
+ *
+ * The decision used to be an existence check, so a launcher whose shebang named
+ * `process.execPath` was enough here. It is not any more: the decision RUNS the
+ * launcher (`probeGlobalLauncher`), because a launcher can exist and still not be
+ * an install - its interpreter can be gone, or the package uninstalled under it -
+ * and a launcher in either state must not suppress provisioning.
+ *
+ * WHAT IT IS, deliberately: a faithful console script (an absolute interpreter
+ * shebang, the entry point on line two) whose interpreter is the machine's REAL
+ * `python3`, plus the `local_operator` package a launcher that works would find on
+ * its path. Nothing here stands in for an interpreter: a shell script used as a
+ * shebang interpreter is a second shebang for the kernel to resolve, and that
+ * shape fails with ENOEXEC before any of the code under test sees it (measured -
+ * it is why this is a real interpreter and a real package rather than a stub).
+ *
+ * The interpreter is taken from `sys.executable` rather than from PATH, so what
+ * the kernel execs is the binary and not a version manager's shim (pyenv's is
+ * itself a script, which is the same nesting problem one level down).
+ */
+const fixtureInterpreter = spawnSync(
+	"python3",
+	["-c", "import sys; print(sys.executable)"],
+	/*
+	 * `pythonChildEnv()`, not the ambient environment: this is a real interpreter,
+	 * and the harness contract is that a real interpreter inherits none of this
+	 * shell's python variables (`scripts/python-child-env.mjs` - an inherited
+	 * `PYTHONPYCACHEPREFIX` once mirrored 19 `.pyc` into the operator's installed
+	 * app). The site is registered in `scripts/python-bytecode-cache.test.mjs`.
+	 */
+	{ encoding: "utf8", env: pythonChildEnv() },
+).stdout.trim();
+/** Writes the package and returns the directory to put on `PYTHONPATH`. */
+const standInBackend = (dir) => {
+	const pkg = join(dir, "fixture-python");
+	mkdirSync(join(pkg, "local_operator"), { recursive: true });
+	writeFileSync(join(pkg, "local_operator", "__init__.py"), "");
+	writeFileSync(
+		join(pkg, "local_operator", "cli.py"),
+		'def main():\n    print("v9.9.9")\n',
+	);
+	return pkg;
+};
+/*
+ * AND THE LAUNCHER HAS TO BE EXECUTABLE, which nothing here needed while the
+ * decision was an existence check: `resolveCommandPath` searches with `existsSync`,
+ * so a 0o644 file resolves and then fails at the kernel. A real console script is
+ * always 0o755 (pip, uv and pipx all chmod theirs), so this is the fixture
+ * catching up with the shipping shape rather than a rule invented for the test.
+ */
+const writeLauncher = (path, interpreter) =>
+	writeFileSync(path, consoleScript(interpreter), { mode: 0o755 });
 
 test("the install is named without a shell, and the decision agrees with the spawn", async () => {
 	const savedPath = process.env.PATH;
 	const savedHome = process.env.HOME;
+	const savedPythonPath = process.env.PYTHONPATH;
 	/*
 	 * The PATH a GUI-launched app is given, and the home the electron stub hands
 	 * `app.getPath("home")` - the same one `homedir()` must answer, so an install
@@ -1315,7 +1388,9 @@ test("the install is named without a shell, and the decision agrees with the spa
 	managers.add(manager);
 	try {
 		mkdirSync(binDir, { recursive: true });
-		writeFileSync(shim, consoleScript(process.execPath));
+		const interpreter = fixtureInterpreter;
+		process.env.PYTHONPATH = standInBackend(binDir);
+		writeLauncher(shim, interpreter);
 
 		assert.equal(
 			spawnSync("/bin/sh", ["-c", "command -v local-operator"], {
@@ -1335,6 +1410,54 @@ test("the install is named without a shell, and the decision agrees with the spa
 			shim,
 			"and the spawn has to name the same script the decision counted",
 		);
+		/*
+		 * AND THE DECISION HAS TO HAVE RUN IT. The verdict is what makes the answer
+		 * above mean "this install works" rather than "a file is here", and it is the
+		 * first half of the fix this case now guards: the second half is the
+		 * missing-interpreter case below, where the same launcher must NOT suppress
+		 * provisioning.
+		 */
+		const verdict = await probeGlobalLauncher(shim, process.env);
+		assert.equal(verdict.usable, true);
+		assert.equal(
+			verdict.version,
+			"v9.9.9",
+			"the version the launcher printed is what the app's log names, so a user can tell which install the app is on",
+		);
+		assert.equal(verdict.interpreter, interpreter);
+		/*
+		 * AND THE SAME LAUNCHER WITH THE PACKAGE NOT INSTALLED, which is the other
+		 * half of the same defect and the one a `--version` probe exists to catch: the
+		 * interpreter runs, the entry point does not import, and every spawn after
+		 * this would fail. `PYTHONPATH` is emptied rather than the file edited, so the
+		 * launcher stays exactly the one that answered a moment ago.
+		 */
+		const unimportable = await probeGlobalLauncher(shim, {
+			...process.env,
+			PYTHONPATH: "",
+		});
+		assert.equal(
+			unimportable.usable,
+			false,
+			"an install whose package is not there is not an install either",
+		);
+		assert.match(unimportable.reason, RE_UNIMPORTABLE);
+
+		/*
+		 * THE LAUNCHER THAT EXISTS AND CANNOT RUN, which is the defect this change
+		 * fixes. A shim left behind by a removed tool environment resolves as a file
+		 * and fails on every spawn after it - and because the decision skipped
+		 * provisioning on that file's existence alone, the app died with "Failed to
+		 * start the Local Operator backend service. Please restart the application." on
+		 * a machine that could have installed its own backend instead.
+		 */
+		writeLauncher(shim, join(binDir, "gone", "python3"));
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			false,
+			"a launcher whose interpreter is gone is not an install, and must not stop the app preparing its own backend",
+		);
+		writeLauncher(shim, interpreter);
 
 		/*
 		 * The fallback name, for an install whose older console script is gone. The
@@ -1344,7 +1467,7 @@ test("the install is named without a shell, and the decision agrees with the spa
 		 * machine rather than about the rule.
 		 */
 		rmSync(shim, { force: true });
-		writeFileSync(lopShim, consoleScript(process.execPath));
+		writeLauncher(lopShim, interpreter);
 		const anotherInstall = ["/opt/homebrew/bin", "/usr/local/bin"].some((dir) =>
 			existsSync(join(dir, "local-operator")),
 		);
@@ -1392,6 +1515,157 @@ test("the install is named without a shell, and the decision agrees with the spa
 	} finally {
 		process.env.PATH = savedPath;
 		process.env.HOME = savedHome;
+		if (savedPythonPath === undefined) {
+			Reflect.deleteProperty(process.env, "PYTHONPATH");
+		} else {
+			process.env.PYTHONPATH = savedPythonPath;
+		}
+		rmSync(binDir, { recursive: true, force: true });
+		await manager.stop(false).catch(() => {});
+	}
+});
+
+/*
+ * THE PROBE'S TWO FAILURE DIRECTIONS, driven against the real module: the retry
+ * that keeps a loaded machine from reading as a broken install, and the release
+ * that keeps ONE bad reading from deciding both of the startup's call sites for
+ * the session.
+ *
+ * Both are the review round's R1-1; the reason a doubled timeout carries is its
+ * R1-4.
+ */
+
+/**
+ * A backend whose `--version` run is slow the way a loaded machine makes one
+ * slow, so the retry can be driven without a loaded machine.
+ *
+ * `sleepingRuns` is the number of invocations that sleep before answering: 1
+ * makes the FIRST attempt time out and the RETRY answer - the case the retry
+ * exists for - and a large number keeps every attempt at its ceiling, which is
+ * the case the bound exists for. Every invocation appends a line to `attemptLog`
+ * BEFORE it sleeps, so the log's line count is the number of runs: evidence
+ * about the probe rather than about the clock.
+ */
+const slowLauncherBackend = (dir, attemptLog, sleepingRuns) => {
+	const pkg = join(dir, "fixture-slow-launcher");
+	mkdirSync(join(pkg, "local_operator"), { recursive: true });
+	writeFileSync(join(pkg, "local_operator", "__init__.py"), "");
+	writeFileSync(
+		join(pkg, "local_operator", "cli.py"),
+		[
+			"import os, time",
+			"def main():",
+			`    log = ${JSON.stringify(attemptLog)}`,
+			"    ran = len(open(log).readlines()) if os.path.exists(log) else 0",
+			'    open(log, "a").write("ran\\n")',
+			`    if ran < ${sleepingRuns}:`,
+			"        time.sleep(30)",
+			'    print("v9.9.9")',
+			"",
+		].join("\n"),
+	);
+	return pkg;
+};
+
+test("a launcher probe that times out is retried once, and the retry can answer (R1-1)", async () => {
+	const root = mkdtempSync(join(tmpdir(), "launcher-probe-retry-"));
+	try {
+		const attemptLog = join(root, "attempts.log");
+		const pkg = slowLauncherBackend(root, attemptLog, 1);
+		const shim = join(root, "local-operator");
+		writeLauncher(shim, fixtureInterpreter);
+		const verdict = await probeGlobalLauncher(
+			shim,
+			pythonChildEnv({ extra: { PYTHONPATH: pkg } }),
+			process.platform,
+			5000,
+		);
+		assert.equal(
+			verdict.usable,
+			true,
+			"the second attempt answered: one timeout on a loaded machine is not a verdict",
+		);
+		assert.equal(verdict.version, "v9.9.9");
+		assert.equal(
+			readFileSync(attemptLog, "utf8").trim().split("\n").length,
+			2,
+			"the launcher ran exactly twice - the timeout and its single retry, not a loop",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a launcher that never answers is reported after its one retry, naming the run that did not answer (R1-1, R1-4)", async () => {
+	const root = mkdtempSync(join(tmpdir(), "launcher-probe-bound-"));
+	try {
+		const attemptLog = join(root, "attempts.log");
+		const pkg = slowLauncherBackend(root, attemptLog, 1_000_000);
+		const shim = join(root, "local-operator");
+		writeLauncher(shim, fixtureInterpreter);
+		const verdict = await probeGlobalLauncher(
+			shim,
+			pythonChildEnv({ extra: { PYTHONPATH: pkg } }),
+			process.platform,
+			2000,
+		);
+		assert.equal(verdict.usable, false);
+		assert.match(
+			verdict.reason,
+			/did not answer a --version probe within 2000 ms/,
+			"the reason names the operation that actually ran - a --version run - not the serve path's identity probe",
+		);
+		assert.doesNotMatch(verdict.reason, /identity probe/);
+		assert.equal(
+			readFileSync(attemptLog, "utf8").trim().split("\n").length,
+			2,
+			"a second timeout is the verdict: the retry is one attempt, not a loop",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a negative launcher verdict does not outlive the moment it measured (R1-1)", async () => {
+	const savedPath = process.env.PATH;
+	const savedHome = process.env.HOME;
+	const savedPythonPath = process.env.PYTHONPATH;
+	process.env.PATH = LAUNCHD_PATH;
+	process.env.HOME = HOME;
+	const binDir = join(HOME, ".local", "bin");
+	const shim = join(binDir, "local-operator");
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	try {
+		mkdirSync(binDir, { recursive: true });
+		writeLauncher(shim, fixtureInterpreter);
+		/*
+		 * The launcher's own bytes do not change across the two checks - the shim
+		 * is written once and never touched again - so a verdict reused across
+		 * them can only be the CACHED negative. That is the state the review asks
+		 * to remove: it is what serves "can not be used" to both call sites for
+		 * the whole session off one bad moment.
+		 */
+		process.env.PYTHONPATH = join(binDir, "fixture-not-installed-yet");
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			false,
+			"a launcher whose package cannot import is not an install",
+		);
+		process.env.PYTHONPATH = standInBackend(binDir);
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			true,
+			"the same launcher, a moment later, must be probed again - a negative held for the session is how a working install sits unused",
+		);
+	} finally {
+		process.env.PATH = savedPath;
+		process.env.HOME = savedHome;
+		if (savedPythonPath === undefined) {
+			Reflect.deleteProperty(process.env, "PYTHONPATH");
+		} else {
+			process.env.PYTHONPATH = savedPythonPath;
+		}
 		rmSync(binDir, { recursive: true, force: true });
 		await manager.stop(false).catch(() => {});
 	}
@@ -1996,6 +2270,15 @@ const ownedBundle = await build({
 								export const consoleInterpreter = () => process.execPath;
 								export const windowsInterpreterCandidates = async () => [];
 								export const windowsPathInterpreterCandidates = async () => [];
+								/*
+								 * The launcher-usability verdict, stubbed for the same reason the plan
+								 * above is: these cases are about the owned child, not about which
+								 * global install a machine has, and no case in this bundle asks the
+								 * question (checkLocalOperatorExists is stubbed wherever it would
+								 * matter). The negative answer is the honest stub for a fixture home
+								 * with no install in it.
+								 */
+								export const probeGlobalLauncher = async () => ({ usable: false, interpreter: null, reason: "this bundle stubs the launch plan" });
 								export const ownedServeLaunch = async (interpreters, port, env) => {
 									const childEnv = { ...env, FIXTURE_PORT: String(port), FIXTURE_CONFIG_ROOT: globalThis.__ownedFixtureRoot };
 									for (const key of Object.keys(childEnv)) {

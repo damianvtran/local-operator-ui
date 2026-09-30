@@ -43,7 +43,7 @@ const code = (path) =>
 
 const REGISTRY = "src/renderer/src/features/chat/pickers/picker-registry.tsx";
 const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
-const INPUT = "src/renderer/src/features/chat/components/message-input.tsx";
+const INPUT = "src/renderer/src/shared/components/composer/message-input.tsx";
 const PALETTE =
 	"src/renderer/src/features/command-palette/components/command-palette.tsx";
 const SOURCES =

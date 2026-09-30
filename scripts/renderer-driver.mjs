@@ -176,6 +176,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
@@ -10108,6 +10109,223 @@ async function railPressProbe(cdp) {
 	await poll("after the SYNTHETIC press on the same tick", 6);
 }
 
+/**
+ * The reading cue's own probe: the matrix the bottom-tick fix is measured
+ * against, over the two fixtures whose tails differ in the one way that
+ * matters - the 6-turn one, whose last checkpoint sits INSIDE the final
+ * viewport (the state the operator hit), and the 200-turn one, whose tail
+ * exceeds a viewport (the control that already read correct).
+ *
+ * Run with `--scoped-case rail-cue-probe`. Every reading prints the active
+ * mark, the scroller's own numbers and the row at the reading line, so each
+ * frame carries the geometry that produced it.
+ */
+async function railCueProbe(cdp) {
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const read = async (label) => {
+		const value = await evaluate(`(() => {
+			const region = document.querySelector("[data-lo-canonical-transcript]");
+			if (!region) return { error: "no region" };
+			const rect = region.getBoundingClientRect();
+			const active = document.querySelector('[data-mark-state="active"]');
+			const ticks = Array.from(document.querySelectorAll("[data-checkpoint-id]"));
+			const tick = (el) => ({ id: el.getAttribute("data-checkpoint-id"), state: el.getAttribute("data-mark-state") });
+			const rows = Array.from(region.querySelectorAll("[data-record-id]")).map((el) => ({ id: el.getAttribute("data-record-id"), top: Math.round((el.getBoundingClientRect().top - rect.top) * 100) / 100, bottom: Math.round((el.getBoundingClientRect().bottom - rect.top) * 100) / 100 }));
+			const atLine = rows.filter((r) => r.top <= 1).pop() || null;
+			return {
+				active: active ? active.getAttribute("data-checkpoint-id") : null,
+				activeState: active ? active.getAttribute("data-mark-state") : null,
+				lastTick: ticks.length ? ticks[ticks.length - 1].getAttribute("data-checkpoint-id") : null,
+				ticks: ticks.length,
+				lastTicks: ticks.slice(-6).map(tick),
+				firstTicks: ticks.slice(0, 2).map(tick),
+				scrollTop: Math.round(region.scrollTop * 100) / 100,
+				scrollHeight: region.scrollHeight,
+				clientHeight: region.clientHeight,
+				max: region.scrollHeight - region.clientHeight,
+				regionBottom: Math.round(rect.bottom),
+				lastRow: rows[rows.length - 1] || null,
+				readingRow: atLine,
+				topRow: rows[0] || null,
+			};
+		})()`);
+		note(`read ${label}`, JSON.stringify(value));
+		return value;
+	};
+	const settle = () => wait(1200);
+	/**
+	 * A tick's centre as a pixel to sample, and its luma in a captured frame.
+	 *
+	 * The mask dims a dash without touching its computed styles, so the
+	 * end-tick acceptance is a PIXEL reading: the dash's own centre in the PNG
+	 * the capture wrote, scaled from the PNG's width against the viewport's,
+	 * averaged over a 3x3 patch so a sub-pixel offset cannot decide it.
+	 */
+	const tickPoint = async (id) =>
+		evaluate(
+			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+		);
+	const luma = async (label, point) => {
+		const file = join(FRAMES, `${label}.png`);
+		const meta = await sharp(file).metadata();
+		const scale = (meta.width ?? 0) / (await evaluate("window.innerWidth"));
+		const { data } = await sharp(file)
+			.extract({
+				left: Math.max(0, Math.round(point.x * scale) - 1),
+				top: Math.max(0, Math.round(point.y * scale) - 1),
+				width: 3,
+				height: 3,
+			})
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+		let sum = 0;
+		for (let i = 0; i < data.length; i += 3) {
+			sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+		}
+		return Math.round(sum / (data.length / 3));
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	/* The sparse fixture first: its last checkpoint is inside the final viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0003"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 12`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	const sparseBottom = await read("sparse-bottom");
+	await capture(cdp, "rail-cue-sparse-bottom");
+	const bottomPoints = {
+		end: await tickPoint("qn0006"),
+		rest: await tickPoint("qu0006"),
+	};
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -(r.scrollHeight - r.clientHeight); return r.scrollTop; })()`,
+	);
+	await settle();
+	const sparseTop = await read("sparse-top");
+	await capture(cdp, "rail-cue-sparse-top");
+	const topPoints = {
+		first: await tickPoint("qu0001"),
+		rest: await tickPoint("qn0001"),
+	};
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -Math.round((r.scrollHeight - r.clientHeight) / 2); return r.scrollTop; })()`,
+	);
+	await settle();
+	const sparseMid = await read("sparse-mid");
+	await capture(cdp, "rail-cue-sparse-mid");
+	const midPoints = { active: await tickPoint("qu0002") };
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = 0; return r.scrollTop; })()`,
+	);
+	await settle();
+	await read("sparse-bottom-again");
+	/* The density control: the same readings where the tail exceeds a viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0001"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	const densityBottom = await read("density-bottom");
+	await capture(cdp, "rail-cue-density-bottom");
+	const densityPoints = {
+		end: await tickPoint("n0200"),
+		rest: await tickPoint("u0200"),
+	};
+	/*
+	 * The arms' own checks (review round 1): one per state, so the run's
+	 * ALL CHECKS PASSED counts them rather than standing on nothing.
+	 */
+	check(
+		"the bottom tick is active at the bottom (6-turn fixture)",
+		sparseBottom.active === sparseBottom.lastTick,
+		`active=${sparseBottom.active} last=${sparseBottom.lastTick}`,
+	);
+	check(
+		"the first tick is active at the top (6-turn fixture)",
+		sparseTop.active === sparseTop.firstTicks[0].id,
+		`active=${sparseTop.active} first=${sparseTop.firstTicks[0].id}`,
+	);
+	check(
+		"mid-scroll keeps the line rule (6-turn fixture)",
+		sparseMid.active === "qu0002",
+		`active=${sparseMid.active}`,
+	);
+	check(
+		"the bottom tick is active at the bottom (402-mark fixture)",
+		densityBottom.active === densityBottom.lastTick,
+		`active=${densityBottom.active} last=${densityBottom.lastTick}`,
+	);
+	/*
+	 * THE END DASHES' LUMA (design round 2, D1's acceptance): with the track's
+	 * block padding, an end tick's dash must read at the ACTIVE luma - not the
+	 * dim of the mask's fade. The reference is the interior active mark in the
+	 * mid capture (same theme, one frame over) and a rest neighbour gives the
+	 * separation term; before the padding the end dash measured 77 against
+	 * 238, dimmer than its own rest neighbours.
+	 */
+	const activeRef = await luma("rail-cue-sparse-mid", midPoints.active);
+	const endBottom = await luma("rail-cue-sparse-bottom", bottomPoints.end);
+	const restBottom = await luma("rail-cue-sparse-bottom", bottomPoints.rest);
+	const firstTop = await luma("rail-cue-sparse-top", topPoints.first);
+	const endDensity = await luma("rail-cue-density-bottom", densityPoints.end);
+	const restDensity = await luma("rail-cue-density-bottom", densityPoints.rest);
+	note(
+		"luma",
+		JSON.stringify({
+			activeRef,
+			endBottom,
+			restBottom,
+			firstTop,
+			endDensity,
+			restDensity,
+		}),
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (6-turn fixture)",
+		Math.abs(endBottom - activeRef) <= 16,
+		`end=${endBottom} active=${activeRef}`,
+	);
+	check(
+		"the first dash at the top reads at the active luma (6-turn fixture)",
+		Math.abs(firstTop - activeRef) <= 16,
+		`first=${firstTop} active=${activeRef}`,
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (402-mark fixture)",
+		Math.abs(endDensity - activeRef) <= 16,
+		`end=${endDensity} active=${activeRef}`,
+	);
+	check(
+		"the end dashes read clear of their rest neighbours",
+		endBottom > restBottom + 40 && endDensity > restDensity + 40,
+		`end=${endBottom}/${endDensity} rest=${restBottom}/${restDensity}`,
+	);
+}
+
 async function sceneTranscriptRail(cdp) {
 	/*
 	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
@@ -10129,6 +10347,10 @@ async function sceneTranscriptRail(cdp) {
 	}
 	if (RAIL_CASE === "hover-trace") {
 		await railHoverTrace(cdp);
+		return;
+	}
+	if (RAIL_CASE === "rail-cue-probe") {
+		await railCueProbe(cdp);
 		return;
 	}
 	const facts = await factsOf(cdp);
@@ -17298,6 +17520,7 @@ async function sceneBtwAside(cdp) {
 					 * on the value, because the value is no longer in the class: the
 					 * measure resolves the --lo-chat-measure property, so that one number
 					 * serves the transcript and the composer together, and this selector used to
+
 					 * spell max-w-[900px]. It stopped matching when the value moved into
 					 * the property, which read as "the composer has no frame" - the two
 					 * readings this block exists to compare would both have been null and
@@ -17308,6 +17531,7 @@ async function sceneBtwAside(cdp) {
 					 * inside the template literal the rig sends to the page, so a backtick here
 					 * ends the string and the file stops parsing - which is exactly what the
 					 * first version of this comment did.
+
 					 */
 					const shared = Array.from(
 						document.querySelectorAll('[class*="chatcol:max-w-"]'),
@@ -29582,6 +29806,16 @@ async function assertBuildIsCurrent() {
  * settings rail and content where those exist. The frames are captures of the same
  * state, so the claim can be read as numbers and looked at as pixels.
  *
+ * SINCE 2026-09-27 IT ALSO MEASURES THE RUNG, and the two halves of that day's report
+ * together: the settings rail took `elevated` to separate it from the app sidebar
+ * ("a slightly different background shade to differentiate from the main sidebar"), so
+ * the lane must carry that rung across the rail's width from y0 down - the readings
+ * below assert the lane's resolved STOP LIST (colour/position pairs, read back off the
+ * computed gradient) against each column's painted ground - and every route column's
+ * RIGHT RULE was removed ("either make it extend all the way up or remove the right
+ * border"), because a rule cannot reach y0 from inside the clipped content column, so
+ * the scene refuses the hairline role anywhere in the lane.
+ *
  * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
  * there IS no lane above the columns, so the band there is a route's only drag surface
  * and its caption clearance, and a route's first box legitimately starts at the caption
@@ -29620,6 +29854,22 @@ async function sceneRouteTops(cdp) {
 		["projects", "/projects"],
 		["browser", "/browser"],
 	];
+	/*
+	 * The palette this run photographs, through the app's own preference (the same
+	 * block the other theme-parameterised scenes carry): this scene's before/after
+	 * sets are taken in `localOperatorDark` and `localOperatorLight`, and a run that
+	 * asked for one and got the other fails here rather than shipping a silent
+	 * monochrome set.
+	 */
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
 	const frames = [];
 	const readings = [];
 	/*
@@ -29674,6 +29924,9 @@ async function sceneRouteTops(cdp) {
 			 * is none, the band must be exactly the app sidebar's own width.
 			 */
 			const surfaceGround = roleGround("--lo-surface");
+			const elevatedGround = roleGround("--lo-elevated");
+			const canvasGround = roleGround("--lo-canvas");
+			const hairlineGround = roleGround("--lo-hairline");
 			/*
 			 * THE ROUTE'S OWN LEADING COLUMN, DERIVED FROM THE LAYOUT RATHER THAN
 			 * LOOKED UP BY THE HANDLE THE FIX ADDED. A rig that asks for the marker
@@ -29681,15 +29934,29 @@ async function sceneRouteTops(cdp) {
 			 * stops short, the marker does not exist, every reading comes back null,
 			 * and the guard passes by having nothing to check (measured on the base
 			 * tree, 2026-09-27). What is derived instead is the rule itself - a
-			 * full-height column standing on the surface role at the route's own left
-			 * edge - which holds on both trees, and which a route added later is
-			 * subject to without anybody remembering to mark it.
+			 * full-height column standing on a column rung of the ladder at the
+			 * route's own left edge, and narrower than the route it stands in (a
+			 * full-width box is a PANE, and the width term below refuses it - QA
+			 * round 2, Q1) - which holds on both trees, and which a route
+			 * added later is subject to without anybody remembering to mark it.
 			 *
-			 * Two levels, and those two conditions, because anything deeper is a card
+			 * SURFACE AND ELEVATED ARE BOTH RUNG GROUNDS the derivation accepts
+			 * (2026-09-27): the lane is a MIRROR of whatever rung it finds, so it has
+			 * to find both, and the settings rail moved one rung up. A canvas
+			 * column would be the content ground the lane already paints and is not
+			 * a distinct case. The browser pane's elevated arrived from #590 after
+			 * QA round 1 and is the case the width term exists for: a full-width
+			 * pane is refused rather than claimed as a column nobody registered.
+			 *
+			 * Two levels, and those three conditions - left edge, full height,
+			 * narrower than the route - because anything deeper is a card
 			 * rather than a column: schedules' own surface panels are neither
 			 * full-height nor at the route's left edge, and they must not be read as
 			 * columns here.
 			 */
+			const columnGrounds = [surfaceGround, elevatedGround];
+			const paintedGroundOf = (el) =>
+				el ? getComputedStyle(el).backgroundColor : null;
 			const columnAt = (el) => {
 				if (!el) return null;
 				const route = box(ownRoot);
@@ -29697,50 +29964,94 @@ async function sceneRouteTops(cdp) {
 				if (!route || !bounds) return null;
 				if (Math.abs(bounds.left - route.left) > 0.5) return null;
 				if (bounds.height < route.height - 0.5) return null;
+				/*
+				 * A FULL-WIDTH BOX IS A PANE, NOT A LEADING COLUMN (QA round 2, Q1).
+				 * #590 puts the browser pane's own box on elevated across the route's
+				 * whole width; the widened rung set would otherwise derive it as a
+				 * column nobody registered and red five checks on /browser for a panel
+				 * this change does not govern. A column is a strip narrower than its
+				 * route - the settings rail is 220px and the rosters 280px - so the
+				 * three real columns are still derived (their before-tree red is
+				 * untouched) and /browser keeps reading as the no-column control route
+				 * it is.
+				 */
+				if (bounds.width >= route.width - 0.5) return null;
 				return el;
 			};
 			const leading = (() => {
 				if (!ownRoot) return null;
-				if (getComputedStyle(ownRoot).backgroundColor === surfaceGround) {
+				if (columnGrounds.includes(paintedGroundOf(ownRoot))) {
 					return columnAt(ownRoot);
 				}
 				const first = ownRoot.firstElementChild;
 				if (!first) return null;
-				if (getComputedStyle(first).backgroundColor === surfaceGround) {
+				if (columnGrounds.includes(paintedGroundOf(first))) {
 					return columnAt(first);
 				}
 				for (const inner of first.children) {
-					if (getComputedStyle(inner).backgroundColor === surfaceGround) {
+					if (columnGrounds.includes(paintedGroundOf(inner))) {
 						return columnAt(inner);
 					}
 				}
 				return null;
 			})();
 			const registered = document.querySelector("[data-lane-leading-column]");
+			/*
+			 * The marker's VALUE is the rung the shell was asked to paint, resolved
+			 * through the same role probe the ladder grounds come from: the check that
+			 * reads it asks whether the rung the shell was HANDED is the rung the
+			 * column is actually PAINTED IN, which is the drift a stale value hides.
+			 */
+			const markerValue = registered
+				? registered.getAttribute("data-lane-leading-column")
+				: null;
+			const markerGround =
+				markerValue === "surface"
+					? surfaceGround
+					: markerValue === "elevated"
+						? elevatedGround
+						: null;
 			const laneStyle = lane ? getComputedStyle(lane) : null;
 			const gradient = laneStyle ? laneStyle.backgroundImage : "";
-			const stop = /([0-9.]+)px/.exec(gradient);
-			const rgbAt = gradient.indexOf("rgb");
-			const ground =
-				rgbAt >= 0
-					? gradient.slice(rgbAt, gradient.indexOf(")", rgbAt) + 1)
-					: null;
+			/*
+			 * THE LANE'S RESOLVED STOP LIST, as colour/position pairs: the inline
+			 * style spells the stops as custom properties and lengths, so only the
+			 * computed form proves the variables resolved, and the checks below read
+			 * the list rather than the first stop (the lane paints each column's rung
+			 * to its own edge since 2026-09-27, so "where does the band stop" became
+			 * "which colour before the edge, which after"). An empty list for a lane
+			 * that is not drawn, which every check reads as "no claim".
+			 */
+			const laneStops = [
+				...gradient.matchAll(/(rgba?\\([^)]*\\))\\s+([0-9.]+)px/g),
+			].map((match) => ({ colour: match[1], stop: Number(match[2]) }));
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
-				laneBandStop: stop ? Number(stop[1]) : null,
-				laneBandGround: ground,
+				laneStops,
 				band: box(band),
 				bandDisplay: band ? getComputedStyle(band).display : null,
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
 				route: box(ownRoot),
 				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
 				leadingColumn: box(leading),
+				leadingColumnGround: leading ? paintedGroundOf(leading) : null,
+				leadingColumnRule: leading
+					? getComputedStyle(leading).borderRightWidth
+					: null,
 				registeredColumn: box(registered),
-				surfaceGround: surfaceGround,
+				registeredRule: registered
+					? getComputedStyle(registered).borderRightWidth
+					: null,
+				markerValue,
+				markerGround,
+				surfaceGround,
+				elevatedGround,
+				canvasGround,
+				hairlineGround,
 				settingsRail: box(
 					document.querySelector('nav[aria-label="Settings sections"]'),
 				),
@@ -29798,23 +30109,37 @@ async function sceneRouteTops(cdp) {
 			);
 		}
 		/*
-		 * THE BAND REACHES EVERY GROUND BESIDE IT, which is the other half of the same
-		 * claim and the one the operator reported twice (2026-09-26, and again
-		 * 2026-09-27 as still true). A column of a route's own - the settings rail, the
-		 * agents list pane - stands on the `surface` ground, but it is INSIDE the
-		 * clipped content column and cannot paint above its own top edge: the lane's
-		 * band is the only thing that can carry its ground to y0, which is why the
-		 * shell has to be told about the column.
+		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
+		 * each column's OWN rung rather than an assumed `surface`: the settings rail
+		 * took `elevated` to separate it from the app sidebar, so the lane paints the
+		 * sidebar's width in `surface`, the rail's width in `elevated`, then `canvas` -
+		 * the rail is INSIDE the clipped content column and cannot paint above its own
+		 * top edge, so the lane is the only thing that can carry its rung to y0. The
+		 * operator reported the band half of this twice (2026-09-26, and again
+		 * 2026-09-27 as still true); the rung half is the same report's second
+		 * sentence - "a slightly different background shade to differentiate from the
+		 * main sidebar" - which fails if the lane paints anything but the rung the
+		 * column is actually standing on.
+		 *
+		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
+		 * is refused: no stop in the lane's resolved gradient may paint the hairline
+		 * role on any route. The operator's first sentence - "the right border doesn't
+		 * go all the way up ... either make it extend all the way up or remove the
+		 * right border" - is answered with the removal on every column, because each
+		 * boundary those rules drew is a tone step now, and a rule could only ever
+		 * begin at the lane's lower edge (nothing a route renders reaches y0), which
+		 * is the half-drawn edge being reported.
 		 *
 		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
 		 * page for the marker would make this guard pass on the unfixed tree - the
 		 * marker is not there, every reading comes back null, and a check with nothing
 		 * to check is a check that cannot fail (measured on the base tree: all six
 		 * routes "passed" as routes with no leading column). The rule is derived
-		 * instead, from the layout on both trees: a full-height column on the surface
-		 * role at the route's own left edge. The registration is then asked for
-		 * separately, so a column nobody handed over fails by name rather than quietly
-		 * becoming "no column here".
+		 * instead, from the layout on both trees: a full-height column on a column rung
+		 * of the ladder at the route's own left edge. The registration and the rung it
+		 * was handed are then asked for separately, so a column nobody handed over - or
+		 * one handed over on a stale rung - fails by name rather than quietly becoming
+		 * "no column here".
 		 *
 		 * The control is the routes that draw no such column (chat, schedules, agent
 		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
@@ -29824,9 +30149,33 @@ async function sceneRouteTops(cdp) {
 		for (const [, path, reading] of readings) {
 			if (!reading.lane || reading.laneDisplay === "none") continue;
 			const laneLeft = reading.lane.left;
+			/*
+			 * The lane's colour at an x in lane coordinates, read off the RESOLVED
+			 * stop list: each stop owns its colour from its own position to the next
+			 * stop's, which is what makes a sample either side of an edge a claim about
+			 * the ground CHANGING there rather than about a single stop existing.
+			 */
+			const laneColourAt = (x) => {
+				let colour = reading.laneStops[0]?.colour ?? null;
+				for (const stop of reading.laneStops) {
+					if (x >= stop.stop) colour = stop.colour;
+				}
+				return colour;
+			};
+			const sidebarEdge = reading.sidebar
+				? reading.sidebar.left + reading.sidebar.width - laneLeft
+				: null;
+			check(
+				`${path}: no rule is painted in the lane`,
+				reading.laneStops.every(
+					(stop) => stop.colour !== reading.hairlineGround,
+				),
+				`the lane's stops are ${reading.laneStops.map((s) => `${s.colour} ${s.stop}px`).join(", ")} against the hairline role's ${reading.hairlineGround}`,
+			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
 				const edge = column.left + column.width;
+				const laneEdge = edge - laneLeft;
 				check(
 					`${path}: the route's leading column is handed to the shell`,
 					reading.registeredColumn !== null &&
@@ -29834,24 +30183,56 @@ async function sceneRouteTops(cdp) {
 					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
 				);
 				check(
-					`${path}: the lane's band reaches the leading column's right edge (${edge}px)`,
-					reading.laneBandStop !== null &&
-						reading.laneBandStop >= edge - laneLeft - 0.5,
-					`the band stops at ${reading.laneBandStop} against a column ending at ${edge}`,
+					`${path}: the shell is handed the rung the column is painted in`,
+					reading.markerGround !== null &&
+						reading.markerGround === reading.leadingColumnGround,
+					`the marker says ${JSON.stringify(reading.markerValue)} (${reading.markerGround}) against a column painted ${reading.leadingColumnGround}`,
+				);
+				/*
+				 * SENTENCE ONE OF THE REPORT, IN THE RUNNING APP: "the right border
+				 * doesn't go all the way up ... either make it extend all the way up or
+				 * remove the right border" - answered with removal on every column.
+				 * Both elements are read because the rule lived on a different level per
+				 * route (the settings rail's wrapper, the rosters' own boxes), and this
+				 * check has to fail on the before tree for all three - which it does:
+				 * on `origin/main` the settings rail's wrapper and the rosters' boxes each
+				 * compute a 1px border-right-WIDTH here. (The width, not the style:
+				 * Tailwind's preflight leaves `border-right-style: solid` on every box, so
+				 * the style reads `solid` whether or not a rule is drawn, and only the
+				 * width separates 1px of rule from 0px of none.)
+				 */
+				check(
+					`${path}: neither the column nor its hand-over draws a right rule`,
+					reading.leadingColumnRule === "0px" &&
+						reading.registeredRule === "0px",
+					`column border-right-width ${reading.leadingColumnRule}, registered border-right-width ${reading.registeredRule} - a rule here can only begin at the lane's lower edge (y 32), not at y0`,
 				);
 				check(
-					`${path}: the band is painted in the surface role the column stands on`,
-					reading.laneBandGround !== null &&
-						reading.laneBandGround === reading.surfaceGround,
-					`the band paints ${reading.laneBandGround} against the surface role's ${reading.surfaceGround}`,
+					`${path}: the lane carries the column's own ground across its width`,
+					reading.leadingColumnGround !== null &&
+						laneColourAt((laneEdge + (column.left - laneLeft)) / 2) ===
+							reading.leadingColumnGround,
+					`mid-column the lane paints ${laneColourAt((laneEdge + (column.left - laneLeft)) / 2)} against the column's own ${reading.leadingColumnGround}`,
 				);
-			} else if (reading.sidebar) {
-				const edge = reading.sidebar.left + reading.sidebar.width;
 				check(
-					`${path}: with no leading column the band stops at the app sidebar's own edge (${edge}px)`,
-					reading.laneBandStop !== null &&
-						Math.abs(reading.laneBandStop - (edge - laneLeft)) < 0.5,
-					`the band stops at ${reading.laneBandStop} against a sidebar ending at ${edge}`,
+					`${path}: the lane's canvas resumes at the column's right edge (${edge}px)`,
+					laneColourAt(laneEdge - 1) === reading.leadingColumnGround &&
+						laneColourAt(laneEdge + 1) === reading.canvasGround,
+					`left of the edge ${laneColourAt(laneEdge - 1)}, right of it ${laneColourAt(laneEdge + 1)}, against the column's ${reading.leadingColumnGround} and canvas ${reading.canvasGround}`,
+				);
+				if (sidebarEdge !== null) {
+					check(
+						`${path}: the surface band still starts at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
+						laneColourAt(sidebarEdge - 1) === reading.surfaceGround,
+						`the lane paints ${laneColourAt(sidebarEdge - 1)} just left of the sidebar's edge, against the surface role's ${reading.surfaceGround}`,
+					);
+				}
+			} else if (sidebarEdge !== null) {
+				check(
+					`${path}: with no leading column the surface band stops at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
+					laneColourAt(sidebarEdge - 1) === reading.surfaceGround &&
+						laneColourAt(sidebarEdge + 1) === reading.canvasGround,
+					`left of the edge ${laneColourAt(sidebarEdge - 1)}, right of it ${laneColourAt(sidebarEdge + 1)}`,
 				);
 			}
 		}

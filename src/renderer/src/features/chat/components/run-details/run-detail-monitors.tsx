@@ -35,12 +35,24 @@
  * the model's `alerting` flag (disabled, or mid-ladder), so the colour rule
  * lives in one place and the row only paints it.
  *
- * **Quiet, non-interactive rows.** A monitor is read here and cancelled by the
- * agent (`monitor({op:"cancel"})`) or from the CLI (`lop monitor cancel`) — the
- * design's own cancel-affordance paragraph splits those three paths, and the
- * desktop command route that will carry this pane's own control is a separate
- * slice. No hover ground, no pointer cursor, no button role, exactly the Wakes
- * rows' posture.
+ * **Rows with one control, and what an attempt leaves behind.** Each row carries
+ * a `Cancel monitor` control - VISIBLE AT REST rather than hover-revealed, and
+ * at the 24px hit floor (UX review round 1, U6: with the footer sentence retired
+ * nothing signalled cancellability, and the revealed control measured 51.6x20
+ * px) - which asks the pane body for the confirmation. The dialog and every
+ * record it leaves are the BODY's, not this section's: it is the desktop half of
+ * the design's cancel-affordance paragraph - the same DELETE
+ * `lop monitor cancel` takes - behind one confirmation, and a refusal renders in
+ * the dialog that asked (the `delete-conversation-dialog.tsx` rule) rather than
+ * vanishing into a toast. WHICH surface owns which state, and why: see
+ * `use-monitor-cancel.ts` (the list churns under the re-read a cancel fires, and
+ * a section-owned dialog died mid-refusal with it). The control column is also
+ * where an attempt says what it did: `Cancelled` once a receipt lands and the row
+ * waits for the re-read that drops it (U4), and `Cancel refused` after a refused
+ * attempt's sentence was dismissed, the whole sentence on `title`, cleared when
+ * the dialog opens on the row again (U8). A conversation a LIVE session owns
+ * refuses this route by design and answers the backend's own sentence, shown
+ * verbatim; the session's `monitor` tool remains the writer that may touch it.
  *
  * **Nothing here ticks.** The whole section takes the UNTIMED model, like the
  * plan and the wakes list: a monitor carries absolute instants (next due, last
@@ -49,6 +61,7 @@
  * relative age — see `MonitorRow`'s own note.
  */
 
+import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { ScanEye } from "lucide-react";
@@ -59,6 +72,7 @@ import {
 	monitorClause,
 	visibleMonitors,
 } from "./run-detail-model";
+import type { MonitorCancelSection } from "./use-monitor-cancel";
 
 /**
  * One armed monitor: when it next checks, how often, how it is doing, and what
@@ -76,10 +90,11 @@ import {
  * that slot IS the state. The clauses after it are the TUI band's own run
  * (`· every 60s · last check 9:25 AM EDT`) in the dim ink; the health tail
  * (`· 3 failed`, or the disabled reason) follows in the warning ink when there
- * is one. The yield order follows the wake row's recorded rule: the free-text
- * slot truncates first (it has a `title`), the numeric cadence never clips, and
- * the health tail truncates rather than pushing the row wide, also with its
- * whole text in a `title`.
+ * is one. The yield order follows the wake row's recorded rule - the free-text
+ * slots truncate (each with its whole text in a `title`) rather than pushing the
+ * row wide, and the numeric cadence never clips - but WHICH clause yields first
+ * is the `flex-shrink` weights' (design round 1, D1): the health tail first,
+ * then `last check`, then the due slot, with the cadence `shrink-0`.
  *
  * `ScanEye` is a MARK and not a state, one ink on every row, which is why it
  * does not change with health: the state ink is the slot's and the tail's, and
@@ -91,7 +106,16 @@ import {
  * all of the pane's row lists carry it, so a capture rig or a QA pass that can
  * address a child's row can address a watch's.
  */
-const MonitorRowView = ({ row }: { row: MonitorRow }) => {
+const MonitorRowView = ({
+	row,
+	cancel,
+}: {
+	row: MonitorRow;
+	/** The pane body's cancel interaction: the ask, and this row's own state. */
+	cancel: MonitorCancelSection;
+}) => {
+	/* The row's current cancel state, or undefined for the plain control. */
+	const cancelState = cancel.stateFor(row);
 	/*
 	 * The identity line: the name first — it is what the CLI's own listing
 	 * labels the row with (`f"{row['monitor_id']} {row['name']}"`) — and the
@@ -107,7 +131,7 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 	return (
 		<li
 			data-run-panel-row={row.id}
-			className={cn("flex items-start gap-2 px-3 py-0.5")}
+			className={cn("group/monitor flex items-start gap-2 px-3 py-0.5")}
 		>
 			<span className={cn("pt-0.5")}>
 				<span
@@ -150,14 +174,33 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 					>
 						{row.whenLabel}
 					</span>
+					{/*
+					 * The cadence and the `last check` instant are TWO spans, not one
+					 * `shrink-0` box (design round 1, D1): the box's min-content (~185px)
+					 * could not shrink at all, so at the pane's 320px floor it ran UNDER
+					 * the action column once the due slot and health tail had yielded to
+					 * zero (`Cancel` printed over `AM EDT`). The arm of the yield order
+					 * an item cannot absorb is the one failure mode the order has; the
+					 * split gives `last check` its own truncatable box, ranked BY WEIGHT
+					 * to yield after the health tail and before the due slot.
+					 */}
 					<span className={cn("shrink-0 text-ink-dim text-meta")}>
 						{`· ${row.interval}`}
-						{row.lastCheckLabel ? ` · ${row.lastCheckLabel}` : ""}
 					</span>
+					{row.lastCheckLabel && (
+						<span
+							className={cn(
+								"min-w-0 shrink-[3] truncate text-ink-dim text-meta",
+							)}
+							title={row.lastCheckLabel}
+						>
+							{`· ${row.lastCheckLabel}`}
+						</span>
+					)}
 					{row.healthLabel && (
 						<span
 							className={cn(
-								"min-w-0 truncate text-meta",
+								"min-w-0 shrink-[30] truncate text-meta",
 								row.alerting ? "text-warning" : "text-ink-dim",
 							)}
 							title={row.healthLabel}
@@ -179,6 +222,78 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 					</>
 				)}
 			</div>
+			{/*
+			 * The row's one control, VISIBLE AT REST in the ghost ink (U6) - the pane
+			 * is a management surface now, so the affordance is present rather than
+			 * hidden until hover. It is always in the layout, so the pointer arriving
+			 * moves nothing, and `h-6` (24px) is the HIT floor rather than the row's
+			 * own 20px rhythm: the dense rhythm would sit the control under the
+			 * minimum a pointer may be asked to hit. The danger wash on hover is the
+			 * wake line's own cancel ink, one list over; nothing lifts, and the focus
+			 * ring is the shared Button's own.
+			 *
+			 * The action column can YIELD (`min-w-0 shrink-[3]`) because at the pane's
+			 * 320px floor its content is the row's scarcest space: the refused record
+			 * runs up to its `max-w-40` there, and a `shrink-0` column that size is
+			 * what pushed the facts line out from under itself (design round 1, D1).
+			 * The control itself stays `shrink-0`, so its box never squishes; only
+			 * the record beside it truncates - its whole sentence is on `title`.
+			 *
+			 * The marks never unmount the control, because the dialog restores focus to
+			 * it on close: `Cancelled` is the control itself, disabled, once a receipt
+			 * lands and the row waits for the re-read that drops it (U4) - and that
+			 * word is the row's ONLY acknowledgement of a landed write, so it spends
+			 * `ink-dim` (D2: 5.25:1 dark / 6.14:1 light) instead of the floor-exempt
+			 * `ink-disabled` a dead control wears, while staying non-interactive all
+			 * the same (see the Button's `disabled:text-ink-dim` override); and
+			 * `Cancel refused` sits BESIDE the live control - the next attempt is what
+			 * clears it (U8) - with the whole sentence on `title`.
+			 */}
+			<div className={cn("flex min-w-0 shrink-[3] items-center gap-1.5")}>
+				{cancelState?.kind === "refused" && (
+					<span
+						className={cn("min-w-0 max-w-40 truncate text-meta text-ink-dim")}
+						title={cancelState.detail}
+						data-monitor-cancel-state="refused"
+					>
+						Cancel refused
+					</span>
+				)}
+				<Button
+					variant="ghost"
+					size="sm"
+					data-monitor-cancel={row.id}
+					data-monitor-cancel-state={
+						cancelState?.kind === "cancelled" ? "cancelled" : undefined
+					}
+					/*
+					 * The accessible name follows the control's job: an acting control names
+					 * the act and the row, and the disabled `Cancelled` mark lets its own
+					 * visible text be the name instead of being contradicted by the label.
+					 */
+					aria-label={
+						cancelState?.kind === "cancelled"
+							? undefined
+							: `Cancel monitor ${row.name}`
+					}
+					disabled={cancelState?.kind === "cancelled"}
+					onClick={() => cancel.request(row)}
+					className={cn(
+						"h-6 shrink-0 px-1.5 hover:bg-danger-wash hover:text-danger",
+						/*
+						 * D2: the disabled state of THIS control is not a dead control - it
+						 * is the row's `Cancelled` receipt, the only confirmation the write
+						 * landed, and a receipt is READ rather than operated. The shared
+						 * disabled ink is contractually floor-exempt (1.99:1 dark / 2.96:1
+						 * light) because it marks unavailable CONTROLS; this one spends
+						 * `ink-dim` (5.25:1 / 6.14:1) instead.
+						 */
+						"disabled:text-ink-dim",
+					)}
+				>
+					{cancelState?.kind === "cancelled" ? "Cancelled" : "Cancel"}
+				</Button>
+			</div>
 		</li>
 	);
 };
@@ -186,6 +301,7 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 export const RunDetailMonitors = ({
 	details,
 	sectionRef,
+	cancel,
 }: {
 	details: RunDetails;
 	/**
@@ -197,6 +313,15 @@ export const RunDetailMonitors = ({
 	 * Nothing here reads the ref; the section is simply where the node exists.
 	 */
 	sectionRef?: Ref<HTMLElement>;
+	/**
+	 * The pane body's cancel interaction (`use-monitor-cancel.ts`), threaded from
+	 * `run-details-panel.tsx`: the confirmation, the write and every record an
+	 * attempt leaves live in the body, above this section's mount gate, because
+	 * the list churns under the canonical re-read a cancel fires and a
+	 * section-owned dialog died mid-refusal with it. The section renders rows and
+	 * asks; it holds no state of its own.
+	 */
+	cancel: MonitorCancelSection;
 }) => {
 	const { rows, hidden } = visibleMonitors(details.monitors);
 	return (
@@ -225,7 +350,7 @@ export const RunDetailMonitors = ({
 			</div>
 			<ul className={cn("flex flex-col")}>
 				{rows.map((row) => (
-					<MonitorRowView key={row.id} row={row} />
+					<MonitorRowView key={row.id} row={row} cancel={cancel} />
 				))}
 				{/*
 				 * The overflow marker, and it is a STATEMENT rather than a control,
@@ -250,21 +375,14 @@ export const RunDetailMonitors = ({
 				)}
 			</ul>
 			{/*
-			 * WHO CAN ACT ON THIS LIST, said once, in the list's own voice — the
-			 * Wakes section's footer, for its reason: the rows are a readout and
-			 * deliberately not controls (the design's cancel-affordance paragraph
-			 * ships v1 cancel as the agent tool and the CLI; this pane's own control
-			 * is a separate slice), and before this section existed an armed monitor
-			 * was invisible, so this is the first surface where a reader forms the
-			 * intent to stop one. Leaving the flow to end in silence is the same
-			 * defect as a count with nothing behind it; the fix is copy rather than a
-			 * control this slice does not ship.
+			 * No footer sentence: the stopgap's copy - "To stop a monitor, ask the
+			 * agent to cancel it." - retired WITH the control it stood in for, and a
+			 * refusal that leaves the reader with no move is answered where it
+			 * happens, in the dialog the press opens. That dialog is the pane BODY's
+			 * (`use-monitor-cancel.ts`), not this section's: the list unmounts under
+			 * the canonical re-read a cancel fires, and the body is the level that
+			 * survives it.
 			 */}
-			{details.monitors.length > 0 && (
-				<p className={cn("px-3 pt-1 text-meta text-ink-dim")}>
-					To stop a monitor, ask the agent to cancel it.
-				</p>
-			)}
 		</section>
 	);
 };

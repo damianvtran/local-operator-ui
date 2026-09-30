@@ -62,6 +62,7 @@ const {
 	chosenByHandSurvives,
 	completionFor,
 	clickFooter,
+	commandRowSlot,
 	enterFooter,
 	extensionFor,
 	FLAG_LIST_SOURCES,
@@ -948,7 +949,7 @@ test("the Enter line names what the key actually does, in every state", () => {
  * restatement of it on trust.
  */
 const MESSAGE_INPUT = readFileSync(
-	"src/renderer/src/features/chat/components/message-input.tsx",
+	"src/renderer/src/shared/components/composer/message-input.tsx",
 	"utf8",
 );
 
@@ -2690,4 +2691,88 @@ test("the pre-flight refresh line is keyed on the POSTED argument (U2/D3)", () =
 			false,
 			`"${posted}" is a title, so nothing is spent`,
 		);
+});
+
+/*
+ * The COMMAND row's right-edge slot — the operator's `/fast` report.
+ *
+ * `value?` used to trail every optional command: parser jargon rendered in a
+ * control's clothing, describing what the parser ACCEPTS rather than anything
+ * the user needs. The class is gone — optional and parameterless rows show
+ * nothing — a REQUIRED row keeps its one line, and `/fast` shows its live dial
+ * (`currently on`/`currently off` off the spec in force; nothing when the model
+ * reports no tier). The dial's words are QUALIFIED so the slot states
+ * possession, not the result of the row's own "Enter runs /fast." action
+ * (design D1 / UX U1, round 1).
+ */
+test("the command row's slot is the dial's state, a requirement, or nothing", () => {
+	const command = (over) => ({
+		name: "fast",
+		description: "",
+		aliases: [],
+		arguments: "optional",
+		echo: false,
+		consumes_prompt: false,
+		destination: "session.fast",
+		execution: "owner",
+		...over,
+	});
+	// The dial row answers the spec's own tri-state: on, off, and NOTHING (not
+	// an `off`) for a model that reports no fast tier.
+	assert.equal(commandRowSlot(command({}), "on"), "currently on");
+	assert.equal(commandRowSlot(command({}), "off"), "currently off");
+	assert.equal(commandRowSlot(command({}), null), null);
+	assert.equal(commandRowSlot(command({}), undefined), null);
+	// The class the report is about: an optional command with no dial of its
+	// own shows no slot — and a stray state handed to one paints nothing.
+	assert.equal(
+		commandRowSlot(
+			command({ name: "team", destination: "session.team" }),
+			null,
+		),
+		null,
+	);
+	assert.equal(
+		commandRowSlot(
+			command({ name: "team", destination: "session.team" }),
+			"on",
+		),
+		null,
+	);
+	// A REQUIRED command keeps its requirement line (the one case where the
+	// user must supply something), and a parameterless command shows nothing.
+	assert.equal(
+		commandRowSlot(
+			command({ arguments: "required", destination: "session.rename" }),
+			null,
+		),
+		"needs a value",
+	);
+	assert.equal(
+		commandRowSlot(
+			command({ arguments: "none", destination: "providers" }),
+			"on",
+		),
+		null,
+	);
+	/*
+	 * And the CLASS cannot ride back in (agent review round 1, F2): the old
+	 * arm's exact source shape is not the contract — a reformatted or re-sited
+	 * reintroduction would pass that check — so this strips the comments (the
+	 * fix's own comments quote the placeholder on purpose) and holds BOTH
+	 * modules that decide and render the slot to the placeholder's absence from
+	 * the CODE.
+	 */
+	const stripComments = (source) =>
+		source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+	for (const file of [
+		"src/renderer/src/features/chat/components/slash-commands.tsx",
+		"src/renderer/src/features/chat/components/slash-contract.ts",
+	]) {
+		assert.doesNotMatch(
+			stripComments(readFileSync(file, "utf8")),
+			/value\?/,
+			`${file} must render no placeholder for optional rows`,
+		);
+	}
 });

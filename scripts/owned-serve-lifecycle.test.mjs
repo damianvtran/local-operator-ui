@@ -185,6 +185,7 @@ const {
 	INTERPRETER_RESOLUTION_WORST_MS,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
+	LAUNCHER_PROBE_WORST_MS,
 	READINESS_BUDGET_MS,
 	readinessPollDelayMs,
 } = bundle;
@@ -819,6 +820,7 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			INTERPRETER_RESOLUTION_WORST_MS,
 			OWNED_STOP_WORST_MS,
 			READINESS_POLL_INTERVAL_MS,
+			LAUNCHER_PROBE_WORST_MS,
 			setTimeout: (fn, ms) => {
 				const timer = { fn, ms, unref: () => {} };
 				timers.push(timer);
@@ -887,6 +889,7 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		// magnitude above them either. Asserting a bare `<= 60_000` is what forbade
 		// the correct bound and let the 60 s constant survive its own arithmetic.
 		const derived =
+			LAUNCHER_PROBE_WORST_MS +
 			INTERPRETER_RESOLUTION_WORST_MS +
 			OWNED_STOP_WORST_MS +
 			READINESS_POLL_INTERVAL_MS;
