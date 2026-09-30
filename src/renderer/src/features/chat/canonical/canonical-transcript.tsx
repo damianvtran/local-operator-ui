@@ -2371,14 +2371,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const openBar = useCallback(
 		(runKey: string, firstId: string, open: boolean) => {
-			if (open) {
-				const bar = barFor(firstId);
-				if (bar) {
-					pressedBar.current = {
-						id: firstId,
-						top: bar.getBoundingClientRect().top,
-					};
-				}
+			/*
+			 * RECORDED FOR A CLOSE AS WELL AS AN OPEN (QA round 2, QA-2). The open
+			 * was compensated first because that is where the defect was measured;
+			 * the close moves the viewport the other way by the same span and is
+			 * just as much the reader's press, so it takes the same record and the
+			 * same single write. One record per press, consumed by the next commit,
+			 * so the two movements cannot double-count each other - the open's write
+			 * is already spent, and acknowledged, before the close is pressed.
+			 */
+			const bar = barFor(firstId);
+			if (bar) {
+				pressedBar.current = {
+					id: firstId,
+					top: bar.getBoundingClientRect().top,
+				};
 			}
 			setRunOpen(runKey, open);
 		},
@@ -2864,8 +2871,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * A reader following live work sits at the bottom, so that is the most likely
 	 * place for the press.
 	 *
-	 * So the press records where the bar is, and the commit that mounts its
-	 * content moves the scroller by exactly how far the bar moved. Where the
+	 * So the press records where the bar is, and the commit that MOUNTS OR
+	 * UNMOUNTS its content moves the scroller by exactly how far the bar moved -
+	 * the close needs this as much as the open (QA round 2, QA-2: an un-
+	 * compensated close moved the reader about 2.5 span-lengths, the same defect
+	 * with the sign flipped). Where the
 	 * browser already held the bar (top, mid-transcript) the delta is zero and
 	 * this writes nothing, so it cannot fight the anchoring it complements. The
 	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
