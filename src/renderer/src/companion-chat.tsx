@@ -46,6 +46,7 @@ export function CompanionChat({
 		snapshot.status === "attention" ? null : (snapshot.error ?? sendError);
 	const canSend = snapshot.canSend && !sending;
 	const pendingText = snapshot.pendingText;
+	const chiefOfStaff = snapshot.destination === "chief-of-staff";
 	const draftCanSend =
 		canSend && (pendingText === undefined || draft.trim() === pendingText);
 	const busy =
@@ -249,9 +250,15 @@ export function CompanionChat({
 						maxLength={COMPANION_CHAT_MAX_CHARS}
 						readOnly={sending}
 						value={draft}
-						aria-label="Message Local Operator"
+						aria-label={
+							chiefOfStaff
+								? "Message your chief of staff"
+								: "Message Local Operator"
+						}
 						aria-describedby={error ? `${hintId} ${errorId}` : hintId}
-						placeholder="Ask anything…"
+						placeholder={
+							chiefOfStaff ? "Message chief of staff…" : "Ask anything…"
+						}
 						onChange={(event) => {
 							if (!inFlight.current) setDraft(event.target.value);
 						}}
@@ -294,14 +301,16 @@ export function CompanionChat({
 								<MessageCircle size={14} aria-hidden="true" />
 							</Button>
 						)}
-						{snapshot.sessionId && (
+						{(snapshot.sessionId || chiefOfStaff) && (
 							<Button
 								type="button"
 								variant="ghost"
 								size="icon-sm"
 								className={cn("h-7 w-6")}
 								aria-label="New chat"
-								title="New chat"
+								title={
+									chiefOfStaff ? "Start a separate conversation" : "New chat"
+								}
 								disabled={busy}
 								onClick={() => {
 									setSendError(null);

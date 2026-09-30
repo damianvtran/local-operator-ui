@@ -480,3 +480,32 @@ test("pending approval blocks sending and opens the full app", async (t) => {
 	assert.equal(expanded, true);
 	assert.equal(input.value, "A follow-up");
 });
+
+test("the shared target is clear and a disabled chief of staff still allows a separate chat", async (t) => {
+	let starts = 0;
+	const { render, input, button, type } = await mount(t, {
+		snapshot: {
+			...idle,
+			destination: "chief-of-staff",
+			sessionId: null,
+			status: "error",
+			canSend: false,
+			error: "The chief of staff is switched off on this install.",
+		},
+		onNewChat: () => {
+			starts++;
+		},
+	});
+	assert.equal(input.placeholder, "Message chief of staff…");
+	assert.equal(input.getAttribute("aria-label"), "Message your chief of staff");
+	await type("Keep this draft");
+	assert.equal(button("Send message").disabled, true);
+	assert.equal(button("New chat").disabled, false);
+	await act(async () => button("New chat").click());
+	assert.equal(starts, 1);
+	await render({ snapshot: { ...idle, sessionId: null } });
+	assert.equal(input.value, "Keep this draft");
+	assert.equal(input.placeholder, "Ask anything…");
+	assert.equal(input.getAttribute("aria-label"), "Message Local Operator");
+	assert.equal(button("Send message").disabled, false);
+});

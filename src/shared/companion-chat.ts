@@ -7,6 +7,7 @@ export interface CompanionChatMessage {
 }
 
 export interface CompanionChatSnapshot {
+	destination?: "chief-of-staff";
 	sessionId: string | null;
 	title: string;
 	messages: CompanionChatMessage[];

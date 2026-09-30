@@ -177,6 +177,10 @@ function fixture(t, { headless = true, preferences } = {}) {
 		cwd: directory,
 		requestDesktop: async (input) => {
 			desktopRequests.push(input);
+			if (input.op === "capabilities")
+				return ok({ desktop_available: true, features: { aida: 1 } });
+			if (input.op === "aida.status")
+				return ok({ enabled: true, session_id: "012345abcdef", paused: true });
 			if (input.op === "sessions.create")
 				return ok({ session_id: "012345abcdef" });
 			if (input.op === "sessions.message") {
@@ -297,7 +301,7 @@ function motion(window) {
 		.map(([, phase]) => phase);
 }
 
-test("headless companion never presents or changes desktop workspaces", (t) => {
+test("headless companion never presents or changes desktop workspaces", async (t) => {
 	const f = fixture(t);
 	const window = f.windows[0];
 	window.emit("ready-to-show");
@@ -313,7 +317,11 @@ test("headless companion never presents or changes desktop workspaces", (t) => {
 	f.action("open");
 	assert.equal(f.chat().open, true);
 	assert.deepEqual(window.presentations, []);
-	assert.deepEqual(f.desktopRequests, []);
+	await settle();
+	assert.deepEqual(
+		f.desktopRequests.map((request) => request.op),
+		["capabilities", "aida.status", "sessions.get"],
+	);
 });
 
 test("visible companion presents once without focus and accepts the first click", (t) => {
@@ -386,12 +394,15 @@ test("IPC requires this companion's exact top-level document and rejects malform
 	assert.deepEqual(window.position, position);
 	assert.deepEqual(f.opened, []);
 	assert.equal(await f.send("Chat is collapsed"), false);
+	assert.deepEqual(f.desktopRequests, []);
 	f.action("open");
+	await settle();
+	const reads = [...f.desktopRequests];
 	assert.equal(f.chat().open, true);
 	assert.deepEqual(f.opened, []);
 	for (const value of [null, {}, 42, ["text"]])
 		assert.equal(await f.send(value), false);
-	assert.deepEqual(f.desktopRequests, []);
+	assert.deepEqual(f.desktopRequests, reads);
 });
 
 test("catalogue reads coalesce and serialize, then reject responses from a disabled generation", async (t) => {
@@ -1005,12 +1016,14 @@ test("notifications include other agents and open the selected task without cons
 		],
 	);
 	f.action("open");
+	await settle();
+	const reads = [...f.desktopRequests];
 	assert.equal(f.chat().open, true);
 	picker.template[1].click();
 	assert.deepEqual(f.opened, ["approve"]);
 	assert.equal(f.chat().open, false);
 	assert.equal(f.state().notifications.length, 3);
-	assert.deepEqual(f.desktopRequests, []);
+	assert.deepEqual(f.desktopRequests, reads);
 	f.action("menu");
 	assert.equal(
 		f.menus.at(-1).template.find((item) => item.label === "Notifications (3)")
@@ -1138,6 +1151,8 @@ test("hiding retains the renderer but stops polling, rejects IPC and defeats a l
 	const window = f.windows[0];
 	const collapsed = window.getBounds();
 	f.action("open");
+	await settle();
+	const reads = [...f.desktopRequests];
 	f.action("hide");
 	assert.equal(window.destroyed, false);
 	assert.equal(window.hidden, true);
@@ -1152,7 +1167,7 @@ test("hiding retains the renderer but stops polling, rejects IPC and defeats a l
 	assert.equal(await f.send("Hidden pane cannot send"), false);
 	assert.deepEqual(window.presentations, presentations);
 	assert.deepEqual(f.opened, []);
-	assert.deepEqual(f.desktopRequests, []);
+	assert.deepEqual(f.desktopRequests, reads);
 	f.companion.setEnabled(true);
 	assert.equal(f.windows.length, 1);
 	assert.equal(window.hidden, false);
@@ -1173,8 +1188,8 @@ test("fleet changes never retarget inline chat or focus the window", async (t) =
 	assert.deepEqual(window.presentations, ["inactive"]);
 	f.action("open");
 	assert.deepEqual(window.presentations, ["inactive", "show", "focus"]);
-	assert.equal(f.chat().snapshot.sessionId, null);
-	assert.deepEqual(f.desktopRequests, []);
+	await settle();
+	assert.equal(f.chat().snapshot.sessionId, "012345abcdef");
 	assert.equal(await f.send("Hello from the pet"), true);
 	assert.equal(f.chat().snapshot.sessionId, "012345abcdef");
 	f.companion.refresh();
@@ -1192,7 +1207,7 @@ test("fleet changes never retarget inline chat or focus the window", async (t) =
 	assert.equal(
 		f.desktopRequests.filter((request) => request.op === "sessions.create")
 			.length,
-		1,
+		0,
 	);
 });
 

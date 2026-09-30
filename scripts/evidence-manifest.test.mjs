@@ -1347,6 +1347,7 @@ test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
  * next reads the note.
  */
 const BRANCH_RECORDS = [
+	"companionChiefOfStaffRestampNote",
 	"browserMarkRemovalPass",
 	"roundOneRemediationNote",
 	"roundTwoCaptureNote",

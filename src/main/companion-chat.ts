@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import {
+	ChiefOfStaffUnavailable,
+	resolveChiefOfStaff,
+} from "../shared/chief-of-staff";
+import {
 	COMPANION_CHAT_MAX_CHARS,
 	type CompanionChatMessage,
 	type CompanionChatSendResult,
@@ -30,9 +34,10 @@ interface TurnWait extends TurnPosition {
 }
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
-const initial = (): CompanionChatSnapshot => ({
+const initial = (chiefOfStaff = false): CompanionChatSnapshot => ({
+	destination: chiefOfStaff ? "chief-of-staff" : undefined,
 	sessionId: null,
-	title: "Companion chat",
+	title: chiefOfStaff ? "Chief of staff" : "Companion chat",
 	messages: [],
 	status: "idle",
 	error: null,
@@ -48,8 +53,11 @@ function record(value: unknown): Record<string, unknown> | null {
 function result(reply: DesktopResponse): Record<string, unknown> {
 	const value = record(record(reply.body)?.result);
 	if (reply.status < 200 || reply.status >= 300 || !value) {
-		throw new Error(
-			"The request could not be confirmed. Open the app for details.",
+		throw Object.assign(
+			new Error(
+				"The request could not be confirmed. Open the app for details.",
+			),
+			{ code: record(record(reply.body)?.detail)?.code },
 		);
 	}
 	return value;
@@ -116,7 +124,8 @@ function transcript(
 }
 
 export class CompanionChatService {
-	private state = initial();
+	private state = initial(true);
+	private chiefOfStaff = true;
 	private generation = 0;
 	private readId = 0;
 	private disposed = false;
@@ -152,6 +161,7 @@ export class CompanionChatService {
 	newChat(): void {
 		if (this.disposed) return;
 		this.generation++;
+		this.chiefOfStaff = false;
 		this.sending = false;
 		this.refreshing = null;
 		this.pending = null;
@@ -170,11 +180,53 @@ export class CompanionChatService {
 			});
 			return;
 		}
-		if (sessionId && sessionId !== this.state.sessionId) {
+		if (
+			sessionId &&
+			(sessionId !== this.state.sessionId || this.chiefOfStaff)
+		) {
 			this.newChat();
 			this.update({ sessionId, status: "loading", canSend: false });
 		}
 		await this.refresh();
+	}
+
+	private async resolveChief(generation: number): Promise<boolean> {
+		const readId = this.readId;
+		try {
+			const { sessionId } = await resolveChiefOfStaff(async (input) =>
+				result(await this.options.requestDesktop(input)),
+			);
+			if (!this.current(generation) || readId !== this.readId) return false;
+			if (sessionId !== this.state.sessionId) {
+				if (this.pending || this.waiting) {
+					this.update({
+						status: "error",
+						canSend: false,
+						error:
+							"The chief-of-staff conversation changed. Open the app to check your earlier message.",
+					});
+					return false;
+				}
+				this.update({
+					...initial(true),
+					sessionId,
+					status: "loading",
+					canSend: false,
+				});
+			}
+			return true;
+		} catch (error) {
+			if (this.current(generation) && readId === this.readId)
+				this.update({
+					status: "error",
+					canSend: false,
+					error:
+						error instanceof ChiefOfStaffUnavailable
+							? `${error.message} Open the app to continue, or start a new chat.`
+							: "Could not reach the chief of staff. Open the app to continue.",
+				});
+			return false;
+		}
 	}
 
 	private async read(generation: number): Promise<TurnPosition | null> {
@@ -248,7 +300,9 @@ export class CompanionChatService {
 				typeof frontend.conversation_title === "string" &&
 				frontend.conversation_title.trim()
 					? frontend.conversation_title.slice(0, 160)
-					: "Companion chat",
+					: this.chiefOfStaff
+						? "Chief of staff"
+						: "Companion chat",
 			messages,
 			status: unavailable
 				? "error"
@@ -274,12 +328,20 @@ export class CompanionChatService {
 	}
 
 	refresh(): Promise<void> {
-		if (this.disposed || !this.state.sessionId || this.sending)
+		if (
+			this.disposed ||
+			this.sending ||
+			(!this.chiefOfStaff && !this.state.sessionId)
+		)
 			return Promise.resolve();
 		if (this.refreshing) return this.refreshing;
 		const generation = this.generation;
-		const task = this.read(generation)
-			.then(() => {})
+		if (!this.state.sessionId)
+			this.update({ status: "loading", canSend: false });
+		const task = (async () => {
+			if (this.chiefOfStaff && !(await this.resolveChief(generation))) return;
+			await this.read(generation);
+		})()
 			.catch(() => {
 				if (this.current(generation))
 					this.update({
@@ -328,6 +390,8 @@ export class CompanionChatService {
 		let failure =
 			"Chat could not start. Your message is still here; try again or open the app.";
 		try {
+			if (this.chiefOfStaff && !(await this.resolveChief(generation)))
+				return outcome(false);
 			if (!this.state.sessionId) {
 				const created = result(
 					await this.options.requestDesktop({

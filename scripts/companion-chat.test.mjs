@@ -3,15 +3,20 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 const bundle = await build({
-	entryPoints: ["src/main/companion-chat.ts"],
+	stdin: {
+		contents:
+			'export { CompanionChatService } from "./src/main/companion-chat"; export * from "./src/shared/chief-of-staff";',
+		resolveDir: process.cwd(),
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
 });
-const { CompanionChatService } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { CompanionChatService, resolveChiefOfStaff, CHIEF_OF_STAFF_COPY } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 const ID = "abcdef123456";
 const OTHER_ID = "fedcba654321";
 const receipt = (result, status = 200) => ({
@@ -52,7 +57,22 @@ const frame = ({
 		},
 	});
 
-function fixture() {
+const capabilities = (overrides = {}) => ({
+	desktop_available: true,
+	desktop_contract: 1,
+	desktop_auth: "bearer",
+	features: { aida: 1, input_mode: 1 },
+	...overrides,
+});
+const seat = (overrides = {}) => ({
+	enabled: true,
+	session_id: ID,
+	paused: false,
+	greeted: true,
+	...overrides,
+});
+
+function fixture({ chiefOfStaff = false } = {}) {
 	const calls = [];
 	const changes = [];
 	let current = frame();
@@ -66,6 +86,9 @@ function fixture() {
 				const handled = await override(input);
 				if (handled !== undefined) return handled;
 			}
+			if (input.op === "capabilities") return receipt(capabilities());
+			if (input.op === "aida.status") return receipt(seat());
+			if (input.op === "aida.control") return receipt(seat({ session_id: ID }));
 			if (input.op === "sessions.create") return receipt({ session_id: ID });
 			if (input.op === "sessions.get") return current;
 			if (input.op === "sessions.message") {
@@ -82,6 +105,7 @@ function fixture() {
 			throw new Error(`Unexpected operation ${input.op}`);
 		},
 	});
+	if (!chiefOfStaff) service.newChat();
 	return {
 		service,
 		calls,
@@ -391,4 +415,178 @@ test("invalid drafts stay local and snapshots cannot mutate state", async () => 
 	const snapshot = f.service.snapshot;
 	snapshot.messages.push({ id: "fake", role: "assistant", text: "injected" });
 	assert.deepEqual(f.service.snapshot.messages, []);
+});
+
+test("the shared resolver uses the existing paused seat without resuming it", async () => {
+	const calls = [];
+	const caps = capabilities();
+	const target = await resolveChiefOfStaff(async (input) => {
+		calls.push(input);
+		if (input.op === "capabilities") return caps;
+		if (input.op === "aida.status") return seat({ paused: true });
+		throw new Error("No writes expected");
+	});
+	assert.equal(target.sessionId, ID);
+	assert.equal(target.capabilities, caps);
+	assert.deepEqual(calls, [{ op: "capabilities" }, { op: "aida.status" }]);
+});
+
+test("the shared resolver gates missing, unpaired, disabled and unreachable seats", async () => {
+	for (const [caps, state, reason, expectedCalls] of [
+		[capabilities({ features: {} }), seat(), "missing", ["capabilities"]],
+		[
+			capabilities({ features: { aida: 0 } }),
+			seat(),
+			"missing",
+			["capabilities"],
+		],
+		[
+			capabilities({ desktop_available: false }),
+			seat(),
+			"unreachable",
+			["capabilities"],
+		],
+		[null, seat(), "unreachable", ["capabilities"]],
+		[
+			capabilities(),
+			seat({ enabled: false }),
+			"disabled",
+			["capabilities", "aida.status"],
+		],
+		[capabilities(), null, "unreachable", ["capabilities", "aida.status"]],
+		[
+			capabilities(),
+			seat({ session_id: "invalid" }),
+			"openFailed",
+			["capabilities", "aida.status"],
+		],
+	]) {
+		const calls = [];
+		await assert.rejects(
+			() =>
+				resolveChiefOfStaff(async (input) => {
+					calls.push(input.op);
+					return input.op === "capabilities" ? caps : state;
+				}),
+			{ message: CHIEF_OF_STAFF_COPY[reason] },
+		);
+		assert.deepEqual(calls, expectedCalls);
+	}
+});
+
+test("first-use resolution only ensures the single seat, and handles a disabled race", async () => {
+	for (const disabled of [false, true]) {
+		const calls = [];
+		const target = resolveChiefOfStaff(async (input) => {
+			calls.push(input);
+			if (input.op === "capabilities") return capabilities();
+			if (input.op === "aida.status")
+				return seat({ session_id: null, paused: true });
+			if (disabled) throw { code: "aida_disabled" };
+			return seat({ paused: true });
+		});
+		if (disabled)
+			await assert.rejects(() => target, {
+				message: CHIEF_OF_STAFF_COPY.disabled,
+			});
+		else assert.equal((await target).sessionId, ID);
+		assert.deepEqual(calls, [
+			{ op: "capabilities" },
+			{ op: "aida.status" },
+			{ op: "aida.control", action: "open" },
+		]);
+	}
+});
+
+test("pet chat reads and sends to the shared chief of staff; New chat is explicit", async () => {
+	const f = fixture({ chiefOfStaff: true });
+	f.setFrame(
+		frame({ history: [row("quick-send", "user", "From the shortcut")] }),
+	);
+	await f.service.open();
+	assert.equal(f.service.snapshot.sessionId, ID);
+	assert.equal(f.service.snapshot.messages[0].text, "From the shortcut");
+	assert.equal((await f.service.send("From the pet")).accepted, true);
+	await f.service.refresh();
+	assert.equal(f.messages()[0].sessionId, ID);
+	assert.equal(
+		f.calls.some((call) => call.op === "sessions.create"),
+		false,
+	);
+	f.service.newChat();
+	assert.equal(f.service.snapshot.sessionId, null);
+	const before = f.calls.length;
+	assert.equal((await f.service.send("A separate task")).accepted, true);
+	assert.equal(f.calls[before].op, "sessions.create");
+});
+
+test("disabled chief-of-staff preserves the draft route and recovers without a new agent", async () => {
+	const f = fixture({ chiefOfStaff: true });
+	let enabled = false;
+	f.handle((input) =>
+		input.op === "aida.status" ? receipt(seat({ enabled })) : undefined,
+	);
+	await f.service.open();
+	assert.equal(f.service.snapshot.canSend, false);
+	assert.ok(f.service.snapshot.error.includes(CHIEF_OF_STAFF_COPY.disabled));
+	assert.equal((await f.service.send("Keep my draft")).accepted, false);
+	assert.equal(f.messages().length, 0);
+	enabled = true;
+	await f.service.refresh();
+	assert.equal((await f.service.send("Keep my draft")).accepted, true);
+	assert.equal(
+		f.calls.some(
+			(call) => call.op === "aida.control" || call.op === "sessions.create",
+		),
+		false,
+	);
+});
+
+test("the pet rechecks the seat before sending, and keeps an uncertain send on its original session", async () => {
+	const f = fixture({ chiefOfStaff: true });
+	await f.service.open();
+	let enabled = false;
+	f.handle((input) =>
+		input.op === "aida.status" ? receipt(seat({ enabled })) : undefined,
+	);
+	assert.equal((await f.service.send("Not while disabled")).accepted, false);
+	assert.equal(f.messages().length, 0);
+	enabled = true;
+	await f.service.refresh();
+	f.handle((input) => {
+		if (input.op === "sessions.message") throw new Error("receipt lost");
+	});
+	assert.equal((await f.service.send("Only once")).accepted, false);
+	const first = f.messages()[0];
+	f.handle((input) =>
+		input.op === "aida.status"
+			? receipt(seat({ session_id: OTHER_ID }))
+			: undefined,
+	);
+	assert.equal((await f.service.send("Only once")).accepted, false);
+	assert.equal(f.service.snapshot.sessionId, ID);
+	assert.equal(f.service.snapshot.pendingText, "Only once");
+	assert.equal(f.messages().length, 1);
+	f.handle(() => undefined);
+	await f.service.refresh();
+	assert.equal((await f.service.send("Only once")).accepted, true);
+	assert.deepEqual(f.messages()[1], first);
+});
+
+test("late default-seat resolution cannot retarget an explicit session or new chat", async () => {
+	for (const explicitSession of [false, true]) {
+		const f = fixture({ chiefOfStaff: true });
+		const pending = Promise.withResolvers();
+		f.handle((input) =>
+			input.op === "aida.status" ? pending.promise : undefined,
+		);
+		const opened = f.service.open();
+		await new Promise((resolve) => setImmediate(resolve));
+		if (explicitSession) await f.service.open(ID);
+		else f.service.newChat();
+		const snapshot = f.service.snapshot;
+		pending.resolve(receipt(seat({ session_id: OTHER_ID })));
+		await opened;
+		assert.deepEqual(f.service.snapshot, snapshot);
+	}
 });
