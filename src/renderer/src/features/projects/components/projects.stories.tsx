@@ -708,6 +708,20 @@ const TEAMS: ReusableTeam[] = [
 		manager: "manager",
 		members: [],
 	},
+	/*
+	 * The team the project fixtures actually name (`team: "platform"`): without
+	 * it in the catalogue the D5 frames would show the fallback, not the fix —
+	 * the list group heading and the detail's `Managed by` line resolve through
+	 * this roster, and a third row here is what makes them resolve at all.
+	 */
+	{
+		id: "t3",
+		name: "platform",
+		label: "Platform Delivery",
+		description: "Ships the platform releases",
+		manager: "manager",
+		members: [{ role: "reviewer", count: 1, kind: "agent" }],
+	},
 ];
 
 const AGENT_PROFILES: ReusableProfile[] = [

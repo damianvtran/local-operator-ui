@@ -224,6 +224,14 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	const items = rows.data?.entities ?? [];
 	const assigned = current !== null;
 	/*
+	 * Whether the visible name is a LABEL rather than the identity's own value
+	 * (design round 1, D1/D2/D3). `label` and `current` are the same string for
+	 * every row except a labelled team — whose `current` stays the slug the
+	 * switch sends — so this one comparison is what the chip's cap, tooltip and
+	 * face are all built from.
+	 */
+	const labelWon = assigned && label !== current;
+	/*
 	 * A stable id for the listbox, from the noun rather than `useId()`: only one
 	 * panel per noun can exist, the row ids are built from it, and a reader (or a
 	 * capture rig) can name a row without first reading the DOM. `useId()`'s
@@ -280,24 +288,39 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 */
 	const options = useMemo<PickerOption[]>(
 		() =>
-			items.map((row) => ({
-				value: row.value,
-				/*
-				 * The row's READABLE name: a labelled team shows its label; every
-				 * other row (agents, and teams without one) shows what it always
-				 * did. `value` beside it stays the slug the switch sends.
-				 */
-				label: teamDisplayName({
+			items.map((row) => {
+				const shown = teamDisplayName({
 					name: row.name ?? row.value,
 					label: row.label,
-				}),
-				description: row.description,
-				meta: row.kind,
-				current: row.value === menuValue(current),
-				/* While a switch is in flight every row is inert: a second switch would
-				 * be a second command against a session already answering one. */
-				disabled: busy,
-			})),
+				});
+				return {
+					value: row.value,
+					/*
+					 * The row's READABLE name: a labelled team shows its label; every
+					 * other row (agents, and teams without one) shows what it always
+					 * did. `value` beside it stays the slug the switch sends.
+					 */
+					label: shown,
+					/*
+					 * The slug rides the DESCRIPTION line when the label took the name
+					 * slot (design round 1, D2): the menu is where a switch is CHOSEN,
+					 * and the string every other surface addresses the team by
+					 * (`/team <slug>`) must be readable at the moment of choosing
+					 * rather than discovered after the composer fills.
+					 */
+					description:
+						shown !== row.value
+							? row.description
+								? `${row.value} · ${row.description}`
+								: row.value
+							: row.description,
+					meta: row.kind,
+					current: row.value === menuValue(current),
+					/* While a switch is in flight every row is inert: a second switch would
+					 * be a second command against a session already answering one. */
+					disabled: busy,
+				};
+			}),
 		[items, current, busy],
 	);
 
@@ -351,13 +374,36 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					}`}
 					title={
 						assigned
-							? `Switch ${kind === "team" ? "team" : "agent"}`
+							? /*
+								 * The identity in the tooltip, `Label (slug)` when the two differ
+								 * (design round 1, D2) — the one plain-text home for the slug
+								 * beside the sidebar row's tooltip, and the full label for a
+								 * capped chip too (D1). The ACTION words stay in the
+								 * `aria-label` above rather than repeating here.
+								 */
+								`${label}${labelWon ? ` (${current})` : ""}`
 							: kind === "team"
 								? "Assign a team"
 								: "Assign an agent"
 					}
 				>
-					<span className={cn("min-w-0 truncate")}>{label}</span>
+					<span
+						className={cn(
+							/*
+							 * `max-w` so the chip is BOUNDED (design round 1, D1): the box is
+							 * `shrink-0` and a label can be up to 80 characters, which beside
+							 * an agent chip and inside a one-line block pushed the identity
+							 * past the block's clip — a control present but not painted. A
+							 * label longer than the cap truncates here and reads whole in the
+							 * title above.
+							 */
+							"min-w-0 max-w-[24ch] truncate",
+							/* The human face for a label (D3); a slug keeps the machine face. */
+							labelWon && "font-sans",
+						)}
+					>
+						{label}
+					</span>
 					{/*
 					 * A glyph, not a rotating switch: the chevron is the app's
 					 * at-rest idiom for "this opens a menu" (the composer's directory

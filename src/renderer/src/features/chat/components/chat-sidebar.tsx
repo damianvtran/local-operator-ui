@@ -1262,7 +1262,10 @@ export function ChatSidebar({
 		[teams.data],
 	);
 	/** A team slug as a person reads it: its label, or the slug itself. */
-	const teamLabelFor = (name: string) => teamLabels.get(name) ?? name;
+	const teamLabelFor = useMemo(
+		() => (name: string) => teamLabels.get(name) ?? name,
+		[teamLabels],
+	);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
@@ -2250,8 +2253,24 @@ export function ChatSidebar({
 				pinFactValues,
 				archiveView,
 				bindingOfHit,
+				/*
+				 * The local label arm reads the same resolver the row slots render
+				 * with (round 1, R1-3c): a conversation drawn under a team's label
+				 * is found by that label's words, while the slug keeps matching
+				 * through the binding itself.
+				 */
+				teamLabelFor,
 			),
-		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
+		[
+			listed,
+			heldRows,
+			query,
+			hits,
+			pinFactValues,
+			archiveView,
+			bindingOfHit,
+			teamLabelFor,
+		],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -3519,6 +3538,11 @@ export function ChatSidebar({
 			pinFactValues,
 			archiveView,
 			bindingOfHit,
+			/* The same label arm as the live join (round 1, R1-3c): the
+			 * comparison has to price the stale answer against the local
+			 * fallback under ONE matching rule, or the line can claim a
+			 * difference that is only the two calls disagreeing. */
+			teamLabelFor,
 		);
 	}, [
 		answered,
@@ -3528,6 +3552,7 @@ export function ChatSidebar({
 		pinFactValues,
 		archiveView,
 		bindingOfHit,
+		teamLabelFor,
 		query,
 	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
@@ -5388,6 +5413,16 @@ export function ChatSidebar({
 		 * agents-route URL and every scope key below keep reading `name`.
 		 */
 		const displayName = kind === "team" ? teamLabelFor(name) : name;
+		/*
+		 * The tooltip the name span carries (design round 1, D2/D4): `Label (slug)`
+		 * when the two differ - the row truncates long labels, the slug is the
+		 * string every other surface addresses the team by, and hovering is how a
+		 * clipped name is read whole or recovered - and the plain name otherwise,
+		 * so even a truncated slug stays readable. The button's own title keeps
+		 * naming the ACTION it runs.
+		 */
+		const nameTitle =
+			displayName !== name ? `${displayName} (${name})` : displayName;
 		const open = Boolean(query) || isOpen(key);
 		/*
 		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
@@ -5590,7 +5625,9 @@ export function ChatSidebar({
 						title={`New chat with ${displayName}`}
 					>
 						<Icon className="size-4 shrink-0" />
-						<span className="min-w-0 flex-1 truncate">{displayName}</span>
+						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
+							{displayName}
+						</span>
 						<MessageSquarePlus
 							className={cn(
 								// `ink`, not `ink-muted`: this glyph names what the row

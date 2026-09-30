@@ -1450,9 +1450,32 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 			>
 				{value.current ? "●" : ""}
 			</span>
-			<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
+			<span
+				className={cn(
+					"min-w-0 shrink truncate text-body-sm text-ink",
+					/*
+					 * The human face for a label, the machine face for a slug (design
+					 * round 1, D3): monospace is machine voice, and once a team row
+					 * shows its label this span carries prose — the slug it addresses
+					 * by rides the adjacent token below instead.
+					 */
+					!value.slug && "font-mono",
+				)}
+			>
 				{value.name}
 			</span>
+			{value.slug && (
+				/*
+				 * THE SLUG BESIDE THE LABEL (design round 1, D2): the string every
+				 * surface addresses the team by (`/team <slug>`) and the one a
+				 * pick WRITES, drawn while the choice is being made rather than
+				 * discovered in the composer. Quiet and monospace because it IS
+				 * machine voice — the key, not prose.
+				 */
+				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+					{value.slug}
+				</span>
+			)}
 			{value.description && (
 				<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 					{value.description}
