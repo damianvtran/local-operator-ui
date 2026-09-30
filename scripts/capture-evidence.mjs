@@ -4640,6 +4640,7 @@ export const STORIES = [
 	["agent-hub-page--teams-public-unavailable", 1280, 900],
 	["agent-hub-page--teams-public-unreadable", 1280, 900],
 	["agent-hub-page--pager-last-page", 1280, 900],
+	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
 	["agent-hub-page--pager-footer", 1280, 900],
 	["agent-hub-page--pager-footer-narrow", 920, 900],
 	/*
@@ -9254,6 +9255,29 @@ const main = async () => {
 			if (!prepared) {
 				throw new Error(
 					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
+				);
+			}
+			/*
+			 * A STORY'S OWN SHUTTER LATCH THAT EXPIRED IS A REFUSAL, NOT A FRAME.
+			 *
+			 * `data-capture-pending` is how a story holds the shutter until the state
+			 * its play produced is on screen (`agent-hub.stories.tsx`'s `holdShutter`,
+			 * and `docs-library.stories.tsx`'s `HubHold`). Clearing it on a TIMEOUT
+			 * without a word hands the shutter back mid-play and files whatever was on
+			 * screen — the state the latch exists to avoid photographing. The story
+			 * sets `data-capture-failed` in that seat, and this is the check that makes
+			 * the marker mean something for THIS rig: `capture-docs-library.mjs` has
+			 * read it since its own scenes grew latches, and the evidence sweep did
+			 * not, so an expired latch was silent here (agent review round 2, N1).
+			 */
+			const latch = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression:
+					'document.documentElement.dataset.captureFailed || ""',
+			});
+			if (latch.result.value) {
+				throw new Error(
+					`${story} @ ${theme}: the story's shutter latch expired — ${latch.result.value}. The play did not put the state this frame claims on screen, and the frame was refused rather than taken mid-flight.`,
 				);
 			}
 			/*
