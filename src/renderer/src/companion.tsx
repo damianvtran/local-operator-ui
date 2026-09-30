@@ -18,7 +18,7 @@ import {
 	type CompanionAppearance,
 	isBuiltinCompanion,
 } from "../../shared/companion-skin";
-import { CompanionArt } from "./companion-art";
+import { CompanionArt, type CompanionReaction } from "./companion-art";
 import { CompanionChat } from "./companion-chat";
 import { useCompanionInteraction } from "./companion-interaction";
 import { useCompanionNotifications } from "./companion-notifications";
@@ -34,6 +34,28 @@ declare global {
 		companion: CompanionBridge;
 	}
 }
+
+const reactionMessages: Partial<Record<CompanionReaction, string>> = {
+	cuddle: "gives you a little hug.",
+	loved: "sends you a heart.",
+	starstruck: "lights up with delight.",
+	happy: "looks happy.",
+};
+const playHints = {
+	guess: {
+		label: "Left / Right",
+		description:
+			"Choose a side. Click left or right, or use Left or Right. Escape ends play.",
+	},
+	bounce: {
+		label: "Enter to bounce",
+		description: "Click or press Enter to keep the ball up. Escape ends play.",
+	},
+	snack: {
+		label: "Enter to share",
+		description: "Click or press Enter to offer the treat. Escape ends play.",
+	},
+};
 
 function syncTheme(): void {
 	try {
@@ -119,13 +141,13 @@ function Companion() {
 			["idle", "complete", "offline"].includes(state.mood),
 		appearance.id,
 	);
+	const playing = play.scene !== null;
 	const interaction = useCompanionInteraction(
 		state.mood,
-		chat.open || play.scene !== null,
+		chat.open || playing,
 		appearance.id,
-		chatEngaged || play.scene !== null,
+		chatEngaged || playing,
 	);
-	const playing = play.scene !== null;
 	useEffect(() => {
 		if (playing)
 			document
@@ -158,9 +180,7 @@ function Companion() {
 		state.mood !== "offline",
 	);
 	const notificationLabel = `${notifications.length} ${notifications.length === 1 ? "task" : "tasks"} with notifications${urgentCount ? `, ${urgentCount} ${urgentCount === 1 ? "needs" : "need"} you` : ""}`;
-	const sleeping =
-		reaction === "dozing" &&
-		(state.mood === "idle" || state.mood === "complete");
+	const sleeping = reaction === "dozing";
 	const [failedArt, setFailedArt] = useState({
 		id: appearance.id,
 		sources: [] as string[],
@@ -171,26 +191,26 @@ function Companion() {
 		appearance.frames?.[play.scene ? "idle" : state.mood],
 		appearance.frames?.idle,
 	].find((source) => source && !failedImages.includes(source));
-	const acknowledgment = play.scene
+	const reactionMessage = reactionMessages[reaction];
+	const acknowledgment = playing
 		? play.announcement
-		: reaction === "cuddle"
-			? `${appearance.name} gives you a little hug.`
-			: reaction === "loved"
-				? `${appearance.name} sends you a heart.`
-				: reaction === "starstruck"
-					? `${appearance.name} lights up with delight.`
-					: reaction === "happy"
-						? `${appearance.name} looks happy.`
-						: reaction === "found"
-							? `You found ${appearance.name}.`
-							: "";
-	const playHint = play.scene
-		? play.scene.kind === "guess"
-			? "Choose a side. Click left or right, or use Left or Right. Escape ends play."
-			: play.scene.kind === "bounce"
-				? "Click or press Enter to keep the ball up. Escape ends play."
-				: "Click or press Enter to offer the treat. Escape ends play."
-		: undefined;
+		: reaction === "found"
+			? `You found ${appearance.name}.`
+			: reactionMessage
+				? `${appearance.name} ${reactionMessage}`
+				: "";
+	const playHint = play.scene ? playHints[play.scene.kind] : undefined;
+	const petHint = sleeping
+		? "Sleeping. Click to wake."
+		: `${state.label}. Click to pet.`;
+	const characterHint =
+		playHint?.description ??
+		`${petHint} Use the chat button to talk. Drag or use arrow keys to move. Right-click for options.`;
+	const showMenu = () => {
+		play.cancel();
+		interaction.reset();
+		window.companion.showMenu();
+	};
 	useEffect(() => {
 		const unsubscribe = window.companion.onMotion(setMotion);
 		const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -283,13 +303,11 @@ function Companion() {
 					className={cn("companion-character")}
 					{...interaction.handlers}
 					data-reaction={reaction}
-					aria-label={`${appearance.name}. ${playHint ?? `${sleeping ? "Sleeping. Click to wake." : `${state.label}. Click to pet.`} Use the chat button to talk. Drag or use arrow keys to move. Right-click for options.`}`}
+					aria-label={`${appearance.name}. ${characterHint}`}
 					title={state.mood === "offline" ? state.label : undefined}
 					onContextMenu={(event) => {
 						event.preventDefault();
-						play.cancel();
-						interaction.reset();
-						window.companion.showMenu();
+						showMenu();
 					}}
 					onPointerDown={(event) => {
 						if (
@@ -336,12 +354,11 @@ function Companion() {
 						window.companion.drag("cancel");
 					}}
 					onClick={(event) => {
-						if (event.detail === 0) {
-							if (play.scene) play.tap();
-							else {
-								interaction.tap();
-								play.discover();
-							}
+						if (event.detail !== 0) return;
+						if (playing) play.tap();
+						else {
+							interaction.tap();
+							play.discover();
 						}
 					}}
 					onKeyDown={(event) => {
@@ -355,9 +372,7 @@ function Companion() {
 							(event.shiftKey && event.key === "F10")
 						) {
 							event.preventDefault();
-							play.cancel();
-							interaction.reset();
-							window.companion.showMenu();
+							showMenu();
 						}
 						if (event.key === "Escape") {
 							event.preventDefault();
@@ -436,11 +451,7 @@ function Companion() {
 					)}
 					{play.scene?.phase === "offer" && (
 						<span className={cn("companion-play-hint")} aria-hidden="true">
-							{play.scene.kind === "guess"
-								? "Left / Right"
-								: play.scene.kind === "bounce"
-									? "Enter to bounce"
-									: "Enter to share"}
+							{playHint?.label}
 						</span>
 					)}
 					{sleeping && !customImage && <CompanionDream character={character} />}
@@ -506,10 +517,8 @@ function Companion() {
 			<CompanionChat
 				snapshot={chat.snapshot}
 				open={chat.open}
-				onSend={(text) => window.companion.sendMessage(text)}
-				onShowConversations={(position) =>
-					window.companion.showChatMenu(position)
-				}
+				onSend={window.companion.sendMessage}
+				onShowConversations={window.companion.showChatMenu}
 				onCollapse={() => window.companion.collapseChat()}
 				onExpand={() => window.companion.expandChat()}
 			/>

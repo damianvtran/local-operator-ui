@@ -26,7 +26,6 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 	const nextToy = useRef(0);
 	const discoverAfter = useRef(0);
 	const completed = useRef(0);
-	const sparkled = useRef(false);
 	context.current = { available, characterId };
 
 	const clear = useCallback(() => {
@@ -65,8 +64,7 @@ export function useCompanionPlay(available: boolean, characterId: string) {
 	);
 	const finish = useCallback(
 		(round: CompanionPlayScene, message: string) => {
-			const shiny = ++completed.current === 3 && !sparkled.current;
-			if (shiny) sparkled.current = true;
+			const shiny = ++completed.current === 3;
 			update({ ...round, phase: "finish", shiny });
 			setAnnouncement(
 				shiny ? "A little sparkle. Same little friend." : message,
