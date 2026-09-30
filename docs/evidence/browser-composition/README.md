@@ -6,7 +6,7 @@ frame was painted under; the six frames of the first pass were committed under t
 they show instead, and were renamed in place - the bytes are untouched. Frames added since
 are named in their own sections below.
 
-Eleven frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
+Fourteen frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
 repository that photographs the browser feature the way a user meets it: the real
 chrome over a real page, in one frame, at the window size the app actually runs.
 
