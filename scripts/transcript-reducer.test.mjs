@@ -540,6 +540,60 @@ test("throughput: 5000 deltas over a 400-row transcript stays sub-millisecond pe
 	assert.equal(state.records.at(-1).text.length, n);
 });
 
+test("a durable completion marker paints error, interrupted and closed rows", () => {
+	// The OTHER producer of outcome rows: a `completion_attention` entry
+	// replayed from the journal (the shape the core actually writes — `type:
+	// "custom"`, details under `payload`, checked against the frozen 664a
+	// transcript). v2 (2026-09-29) adds the neutral `closed` closure beside the
+	// two incident kinds, and a `complete` marker must still project to nothing.
+	const marker = (kind) => ({
+		id: `m-${kind}`,
+		ts: 2,
+		type: "custom",
+		payload: {
+			custom_type: "completion_attention",
+			details: {
+				conversation_id: "session/123456abcdef",
+				token: "t1",
+				anchor: `completion-${kind}-anchor`,
+				kind,
+			},
+		},
+	});
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			marker("error"),
+			marker("interrupted"),
+			marker("closed"),
+			marker("complete"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const byId = new Map(records.map((record) => [record.id, record]));
+	assert.equal(
+		byId.get("completion-error-anchor").text,
+		"Stopped with an error",
+	);
+	assert.equal(byId.get("completion-error-anchor").level, "error");
+	assert.equal(byId.get("completion-interrupted-anchor").text, "Interrupted");
+	assert.equal(byId.get("completion-interrupted-anchor").level, "warning");
+	const closed = byId.get("completion-closed-anchor");
+	assert.equal(closed.kind, "notice");
+	assert.equal(closed.text, "Completed — runtime retired/disposed");
+	assert.equal(closed.level, "info", "the closure never wears danger ink");
+	assert.equal(
+		closed.complete,
+		true,
+		"the marker retires the working-line wait",
+	);
+	assert.equal(
+		byId.get("completion-complete-anchor"),
+		undefined,
+		"a completion marker projects to nothing",
+	);
+});
+
 // --- crash-recovered outcomes -------------------------------------------------
 //
 // `withRecoveredOutcome` is the only producer of the row for an outcome that
@@ -589,6 +643,81 @@ test("a crash-recovered outcome is rendered at its own anchor, and is ackable", 
 		).text,
 		"Stopped with an error",
 	);
+});
+
+test("a closed outcome synthesizes as an info receipt and retires like a stop", () => {
+	// v2 (2026-09-29): a disposal that caught a zero-work run publishes
+	// `closed`. The desktop must paint the receipt — never "Stopped with an
+	// error" — and the row keeps `complete` so the working-line ladder ends a
+	// wait for a runtime that has been disposed.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "closed" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(row.text, "Completed — runtime retired/disposed");
+	assert.equal(row.level, "info");
+	assert.equal(row.complete, true);
+});
+
+test("a durable retired marker paints the warning row", () => {
+	// The retire-for-build arm (2026-09-29; core kind `retired`, seed
+	// 7e797aaaf6e7): the same durable shape as the closure cell above, one tier
+	// apart — warning, never danger — and `complete: true` so the working-line
+	// wait retires beside the row.
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "m-retired",
+				ts: 2,
+				type: "custom",
+				payload: {
+					custom_type: "completion_attention",
+					details: {
+						conversation_id: "session/7e797aaaf6e7",
+						token: "t3",
+						anchor: "completion-retired-anchor",
+						kind: "retired",
+						cause: "runtime-retired",
+						reason:
+							"the runtime retired so the next engage would run a newer build",
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(records.length, 1);
+	assert.equal(records[0].kind, "notice");
+	assert.equal(
+		records[0].text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(records[0].level, "warning", "a cut for an update is warning");
+	assert.equal(records[0].complete, true, "the marker retires the wait");
+});
+
+test("a retired outcome synthesizes as a warning receipt", () => {
+	// Same synthesis path as the closure cell above; the retired arm must paint
+	// the warning tier — never danger, never the closure's info whisper.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "retired" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(
+		row.text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(row.level, "warning");
+	assert.equal(row.complete, true);
 });
 
 test("the recovered row survives its own acknowledgement", () => {
@@ -659,7 +788,11 @@ test("synthesis is idempotent and never overwrites a real durable row", () => {
 	);
 });
 
-test("only error and interrupted outcomes are synthesized", () => {
+test("only error, interrupted and closed outcomes are synthesized", () => {
+	// `closed` joined the synthesizable set in v2 (2026-09-29): a disposal's
+	// neutral closure is an outcome the transcript keeps a row for, exactly as
+	// it keeps one for an incident. `complete` still synthesizes nothing — a
+	// finished turn has its own rows.
 	for (const kind of ["complete", null, undefined, "weird"]) {
 		assert.equal(
 			rowFor(
@@ -5668,6 +5801,151 @@ test("a row a person typed is untouched, marker or no marker", () => {
 		1,
 	);
 	assert.equal(elsewhere.records.length, 1);
+});
+
+/*
+ * THE LEGACY HALF. Rows written before the marker existed carry no stamp to
+ * read, and core's own contract keeps the recogniser for exactly that
+ * (`docs/DESKTOP_API.md`: "An owner on an older build still sends these rows,
+ * which is why the marker (and the recogniser) remain the contract"). The
+ * operator's stored transcript (2026-09-29) held ten unstamped
+ * goal-continuation rows, painted as the user's own words; these pin the
+ * fallback that hides them on both arms - and the near-misses it must NOT
+ * touch.
+ *
+ * THE LITERALS BELOW ARE COPIED FROM THE PYTHON PRODUCERS, deliberately as
+ * literals rather than imported from `harness-chrome.ts`: the module's copy is
+ * a restatement (the renderer cannot import Python), so the day either side's
+ * wording moves, THIS is the alarm - an import would move with it and prove
+ * nothing. Producers: `session/goal_judge.py` (GOAL_CONTINUATION_HEAD/TAIL,
+ * `is_goal_continuation_instruction`) and `session/goal_loop.py`
+ * (LOOP_GOAL_PROMPT, LOOP_PROMPT, `is_loop_goal_instruction`), mirrored by
+ * `harness/rows.py::is_harness_chrome`.
+ */
+const goalContinuation = (goal) =>
+	`Continue working toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.`;
+
+const loopGoalPrompt = (goal) =>
+	`Work toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly.`;
+
+const LOOP_SELF_CONTINUATION =
+	"Continue working toward the standing goal. Make concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly and stop.";
+
+test("an unstamped goal-continuation row is chrome, live - no marker needed", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u10", goalContinuation("ship the goal-chrome fix")),
+		},
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"the fixed head and tail are the whole shape; the row predates the stamp",
+	);
+});
+
+test("...and on the durable arm, where stored transcripts read it back", () => {
+	/*
+	 * The row AND the turn it was driving, because the fix's claim is not just
+	 * "the row goes" - the conversation it continued must stay whole.
+	 */
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u11",
+				ts: 10,
+				type: "message",
+				payload: {
+					kind: "message",
+					...user("u11", goalContinuation("ship the goal-chrome fix")),
+				},
+			},
+			{
+				id: "a11",
+				ts: 11,
+				type: "message",
+				payload: {
+					kind: "message",
+					...assistant("a11", "Making concrete progress now."),
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((record) => record.id),
+		["a11"],
+		"the chrome row goes; the answer it drove stays",
+	);
+});
+
+test("the loop's fixed prompt and its goal family are recognised too", () => {
+	for (const text of [
+		LOOP_SELF_CONTINUATION,
+		loopGoalPrompt("keep the loop moving"),
+	]) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u12", text) },
+			1,
+		);
+		assert.deepEqual(
+			state.records,
+			[],
+			`loop chrome must not paint: ${text.slice(0, 32)}...`,
+		);
+	}
+});
+
+test("whitespace around a chrome row does not save it", () => {
+	/*
+	 * Core strips before matching because "the two hosts do not agree on what
+	 * they hand in" - a persisted prompt that gained a trailing newline must
+	 * not flip from hidden to painted on one surface only.
+	 */
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u13", `\n\n  ${goalContinuation("g")} \n`),
+		},
+		1,
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("near-misses are the user's own words and still paint", () => {
+	const nearMisses = [
+		// Opens with the head, never closes with the tail: the user's own words.
+		"Continue working toward this goal:\n\nship it",
+		// Quotes the tail inside a sentence of their own.
+		"I asked it to say \u201cMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.\u201d - does that read like the harness?",
+		// The whole continuation shape, then the user speaks.
+		`${goalContinuation("ship it")} Also, ping me when it lands.`,
+		// The fixed prompt plus one word of theirs is not the fixed prompt.
+		`${LOOP_SELF_CONTINUATION} Please.`,
+	];
+	for (const text of nearMisses) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u14", text) },
+			1,
+		);
+		assert.equal(
+			state.records.length,
+			1,
+			`must paint (${text.slice(0, 32)}...)`,
+		);
+		assert.equal(
+			state.records[0].text,
+			text,
+			"and it paints as typed, not as a recognised shape",
+		);
+	}
 });
 
 test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {

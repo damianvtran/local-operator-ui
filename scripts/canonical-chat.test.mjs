@@ -105,6 +105,29 @@ const bundle = await build({
 					contents: "export const queryClient = { getQueryData: () => null };",
 					loader: "js",
 				}));
+				/*
+				 * `desktop-hooks.ts` is reached by a RELATIVE path (the entry's own export
+				 * above), so the filter that stubs every `@shared` import of it never runs
+				 * for this module and the real file is parsed. It gained one import in the
+				 * shared-composer lift: the optional-client hook. Answered here as
+				 * "no provider", the fail-closed direction every legacy read in this suite
+				 * was written against.
+				 */
+				builder.onResolve(
+					{ filter: /@shared\/hooks\/use-optional-query-client/ },
+					() => ({
+						path: "optional-query-client",
+						namespace: "optional-query-fixture",
+					}),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "optional-query-fixture" },
+					() => ({
+						contents:
+							"export const useOptionalQueryClient = () => ({ client: { invalidateQueries: async () => {} }, provided: false });",
+						loader: "js",
+					}),
+				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const paintPendingSend = (identity, send) =>
 	globalThis.__canonicalEcho({ kind: "echo", identity, sessionId: identity, id: send.id, text: send.text, images: send.images });
@@ -1872,7 +1895,7 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"the page still threads a claim's verdict, so a second register can drift back in",
 	);
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	/*
@@ -2364,7 +2387,7 @@ test("one rule decides what the same message means, and the composer keeps no se
 	 * removed comparison is exactly what this change leaves behind.
 	 */
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	for (const gone of [
@@ -3023,7 +3046,7 @@ test("the box takes a returned message once, merged, and never inside a credenti
  */
 test("the notice is one sentence above the box, at most Retry and Clear, and nothing in it scrolls", () => {
 	const rendered = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	/*
@@ -3893,7 +3916,7 @@ test("the working-directory chip cannot unmount itself by committing an empty pa
 	const { readFile } = await import("node:fs/promises");
 
 	const composer = await readFile(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	// Comments quote the removed expression to explain why it went, so this
@@ -4283,7 +4306,7 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	const { join, dirname } = await import("node:path");
 
 	const composerPath =
-		"src/renderer/src/features/chat/components/message-input.tsx";
+		"src/renderer/src/shared/components/composer/message-input.tsx";
 	const composer = await readFile(composerPath, "utf8");
 	const slash = await readFile(
 		"src/renderer/src/features/chat/components/slash-commands.tsx",
@@ -4389,6 +4412,16 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// imports (the CHAT_* measure constants live in chat-measure.ts). Only
 	// the quoted strings of a short definition window are taken; a class
 	// constant here is a string or a cn() of strings.
+	//
+	// THE ALIASES ARE RESOLVED TOO, and since the shared-composer lift they are
+	// the only spellings the composer uses to reach chat's own modules
+	// (`@features/chat/chat-measure`, not `../chat-measure`): a resolver that
+	// only joined relative specifiers threw on the first UPPERCASE constant it
+	// met. The roots are the renderer's own bundler aliases.
+	const aliasRoots = {
+		"@features/": "src/renderer/src/features/",
+		"@shared/": "src/renderer/src/shared/",
+	};
 	const constCache = new Map();
 	const resolveConst = (name) => {
 		if (constCache.has(name)) return constCache.get(name);
@@ -4413,7 +4446,13 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 					!im[1].split(",").some((n) => n.trim().split(" as ").pop() === name)
 				)
 					continue;
-				const base = join(dirname(composerPath), im[2]);
+				const specifier = im[2];
+				const aliasRoot = Object.keys(aliasRoots).find((prefix) =>
+					specifier.startsWith(prefix),
+				);
+				const base = aliasRoot
+					? join(aliasRoots[aliasRoot], specifier.slice(aliasRoot.length))
+					: join(dirname(composerPath), specifier);
 				let moduleText = null;
 				for (const suffix of [".ts", ".tsx"]) {
 					try {
@@ -5072,7 +5111,7 @@ test("the submit path cannot re-decide what a draft is", async () => {
 		source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 	const composer = code(
 		await readFile(
-			"src/renderer/src/features/chat/components/message-input.tsx",
+			"src/renderer/src/shared/components/composer/message-input.tsx",
 			"utf8",
 		),
 	);
@@ -5193,7 +5232,7 @@ test("the submit path cannot re-decide what a draft is", async () => {
  */
 test("the composer clears no payload half of its own, so the echo is the only trigger", () => {
 	const rendered = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	const start = rendered.indexOf("const onSubmit = useMemo(");
@@ -5364,7 +5403,7 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 	 * every selector with `getInitialState()` on React's server path).
 	 */
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	assert.match(

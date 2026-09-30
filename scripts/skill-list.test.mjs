@@ -338,8 +338,13 @@ const code = (path) =>
  * leave every pure test green.
  */
 test("the shipped composer wires the `$` seams", () => {
+	/*
+	 * The shared composer's path, which is where the bootstrap lift (#683) moved
+	 * the component on the fold: the seams are the same ones, read from the file
+	 * that now ships them.
+	 */
 	const input = code(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	);
 	assert.match(input, /useSkillCompletion\(\{/, "the list state exists");
 	assert.match(

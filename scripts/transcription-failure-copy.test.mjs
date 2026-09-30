@@ -422,7 +422,7 @@ test("both call sites render the shared sentence and keep the raw error", async 
 	// Two call sites, one map. A re-inlined literal here is how the next cause
 	// reaches the user as "please try again".
 	for (const file of [
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
 	]) {
 		const source = await readFile(file, "utf8");

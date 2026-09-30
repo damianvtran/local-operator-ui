@@ -1,10 +1,10 @@
+import { MessageInput } from "@shared/components/composer/message-input";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent } from "@storybook/test";
 import { type ReactNode, useEffect } from "react";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
-import { MessageInput } from "./message-input";
 
 /*
  * THE COMPOSER BAND'S EMPTY-CHAT STATE, which is what the suggestion and tip

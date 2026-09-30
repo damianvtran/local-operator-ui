@@ -48,6 +48,7 @@ import {
 	BackendInstaller,
 	BackendServiceManager,
 	INTERPRETER_RESOLUTION_WORST_MS,
+	LAUNCHER_PROBE_WORST_MS,
 	LocalOperatorStartupMode,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
@@ -3832,10 +3833,13 @@ app.on("window-all-closed", () => {
  * Each term is the exported bound it comes from; changing any of them moves
  * this one.
  *
- * The console term is GONE rather than zeroed. It was two 5 s `where`/`which`
- * ceilings for naming the global launcher; that is now a synchronous search of
- * the installers' bin directories, so no wait is left to bound and a term for
- * one would hold this timer ten seconds past everything it actually waits on.
+ * The console term is no longer a `where`/`which` ceiling - naming the global
+ * launcher is a synchronous search of the installers' bin directories - but the
+ * launcher-USABILITY probe that replaced that question is not synchronous, and it
+ * sits on this path: `startOwned` awaits `checkLocalOperatorExists`, and
+ * `stop(false)` awaits the start promise that is inside it. So the term is the
+ * probe's own worst case, derived from its exported ceiling (`LAUNCHER_PROBE_WORST_MS`)
+ * rather than restated here.
  *
  * What it does NOT cover, stated because a bound that only holds while the
  * thread is free is not a bound: it is a timer, so it cannot fire while the
@@ -3845,6 +3849,7 @@ app.on("window-all-closed", () => {
  */
 const QUIT_FAILSAFE_MARGIN_MS = 5_000;
 const QUIT_CLEANUP_FAILSAFE_MS =
+	LAUNCHER_PROBE_WORST_MS +
 	INTERPRETER_RESOLUTION_WORST_MS +
 	OWNED_STOP_WORST_MS +
 	READINESS_POLL_INTERVAL_MS +

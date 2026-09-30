@@ -1,4 +1,5 @@
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import { MessageInput } from "@shared/components/composer/message-input";
 import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
@@ -29,7 +30,6 @@ import {
 } from "../pickers/destination-pickers";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
-import { MessageInput } from "./message-input";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
