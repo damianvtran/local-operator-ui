@@ -36,7 +36,10 @@
  * waiting items and vanished at one moved every row below it by 28px, under the
  * pointer, the moment the person pressed the first of two marks (design round 1,
  * D2). The heading is not sticky for this (the `action` slot pins the row; these
- * are ordinary children), so it costs no height and no pinned chrome.
+ * are ordinary children), so the CONTROLS cost no height and no pinned chrome.
+ * The caption lines under the heading are a separate matter and are handled in
+ * `HubSectionLines`: the poll-driven one reserves its own line (design round 2,
+ * D13), which is what keeps that claim true of the list as well.
  *
  * ## The failure belongs to the row
  *
@@ -99,6 +102,30 @@ const INK_BY_MARK: Record<HubMark["kind"], string> = {
 	updating: "text-ink-dim",
 	applied: "text-success",
 };
+
+/**
+ * The mark's glyph and its ink, for the surface a mark NAVIGATES TO.
+ *
+ * The detail panel echoes the same state the row's mark carries (design round 2,
+ * D12). It reads these two tables rather than keeping its own state-to-colour
+ * mapping, which is exactly how the sidebar and its destination drifted apart:
+ * one derivation, so a re-colouring of a mark re-colours its panel with it.
+ */
+export function HubStateIcon({
+	mark,
+	className,
+}: {
+	mark: HubMark;
+	className?: string;
+}) {
+	const Glyph = GLYPH_BY_MARK[mark.kind];
+	return (
+		<Glyph
+			aria-hidden="true"
+			className={cn("size-3.5 shrink-0", INK_BY_MARK[mark.kind], className)}
+		/>
+	);
+}
 
 export function HubUpdateMark({
 	item,
@@ -262,12 +289,21 @@ export function HubHeadingControls({
  * section only, and a link), the answer to "check now", the roll-up after "Update
  * all", and the refusal of "Update all". Draws NOTHING when there is nothing to say.
  *
- * These are ANSWERS to a press or a backend fact, not resting chrome, so none of
- * them is reserved space; every one of them appears BELOW a control the person
- * just pressed, or (sign-in) only while an item the backend cannot reach exists.
+ * `reserve` HOLDS THE LINE OPEN for the caller that can have one inserted by a
+ * POLL rather than by a press (design round 2, D13). The sign-in sentence appears
+ * because the backend started reporting `no-credential` for a linked item, which
+ * no user action caused - so without a reservation a poll could push every row
+ * below the heading down by one line, the same defect as the round-1 strip in a
+ * smaller dress. The placeholder is the caption's own type (`text-meta`, one
+ * line), `aria-hidden`, and is drawn only while the caption has NOTHING to say,
+ * so the real sentence lands in the space already held for it. The press-driven
+ * lines are deliberately not reserved: they appear under a control the person
+ * just pressed, and a press that moves the list under their own hand is the
+ * answer they asked for.
  */
 export function HubSectionLines({
 	kind,
+	reserve,
 	signIn,
 	signInHref,
 	rollup,
@@ -275,18 +311,26 @@ export function HubSectionLines({
 	onDismissRollup,
 }: {
 	kind: HubItemKind;
+	/** Draw (and hold) the caption's own line even when it has nothing to say. */
+	reserve?: boolean;
 	signIn: string | null;
 	signInHref: string;
 	rollup: string | undefined;
 	note: HubNote | undefined;
 	onDismissRollup: () => void;
 }) {
-	if (!signIn && !rollup && !note) return null;
+	if (!reserve && !signIn && !rollup && !note) return null;
 	return (
 		<div
 			data-hub-strip={kind}
 			className="flex flex-col gap-0.5 px-1 pb-1 text-meta text-ink-dim"
 		>
+			{reserve && !signIn && !rollup && !note && (
+				// The held line, in the caption's own type: an invisible non-breaking
+				// space so the poll-inserted sentence above lands in the space already
+				// held for it (design D13).
+				<p aria-hidden="true">{"\u00a0"}</p>
+			)}
 			{signIn && (
 				<p>
 					<Link

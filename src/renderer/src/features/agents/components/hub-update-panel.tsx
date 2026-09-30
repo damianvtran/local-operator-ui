@@ -39,12 +39,14 @@
  * it costs a user who never used the hub no pixels.
  */
 
+import { HubStateIcon } from "@features/chat/components/hub-update-mark";
 import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
 import {
 	type HubItemKind,
+	type HubMark,
 	type HubMergeRegion,
 	type HubMergeReport,
 	hubItemIndex,
@@ -53,6 +55,7 @@ import {
 	hubMarkFor,
 } from "@shared/api/local-operator/hub-updates";
 import { Button } from "@shared/components/ui/button";
+import { cn } from "@shared/lib/utils";
 import { useState } from "react";
 
 const asText = (value: unknown): string =>
@@ -61,6 +64,24 @@ const asText = (value: unknown): string =>
 		: typeof value === "string"
 			? value
 			: JSON.stringify(value, null, 2);
+
+/**
+ * The state's own border, so the box a mark reaches reads as the SAME state the
+ * mark carries (design round 2, D12). The marks spend ink on state and this panel
+ * is their destination, so a fault and a decision landing on the trivial state's
+ * chrome broke the thread exactly where the stakes are highest. `warning-border`
+ * for the decision, `danger-border` for the fault, the hairline for everything
+ * with nothing to do - the same two tokens `trace/tool-row.tsx` and
+ * `chat-status-strip.tsx` spend on their own state surfaces, one class each and
+ * no new pattern.
+ */
+const STATE_BORDER: Record<HubMark["kind"], string> = {
+	available: "border-hairline",
+	updating: "border-hairline",
+	applied: "border-hairline",
+	review: "border-warning-border",
+	failed: "border-danger-border",
+};
 
 /** The regions a person has to choose between: the two sides differ. */
 export function differingRegions(
@@ -170,14 +191,22 @@ export function HubUpdatePanel({
 		<section
 			data-testid="hub-update-panel"
 			aria-label="Hub update"
-			className="mb-6 max-w-3xl space-y-2 rounded-md border border-hairline p-3 text-body-sm"
+			className={cn(
+				"mb-6 max-w-3xl space-y-2 rounded-md border p-3 text-body-sm",
+				STATE_BORDER[mark.kind],
+			)}
 		>
-			<p className="text-ink">{hubMarkDetail(item, mark)}</p>
+			<p className="flex items-start gap-2 text-ink">
+				<HubStateIcon mark={mark} className="mt-0.5" />
+				<span className={cn(mark.kind === "failed" && "text-danger")}>
+					{hubMarkDetail(item, mark)}
+				</span>
+			</p>
 			{decision && unknownBaseline && (
 				<p className="text-meta text-ink-muted">
 					Nothing records what you changed on this device. Either choice adds
 					the hub's additions and deletes nothing of yours; where the two
-					versions differ, it decides which wording stays.
+					versions differ, your choice decides which wording stays.
 				</p>
 			)}
 			{decision && !unknownBaseline && (

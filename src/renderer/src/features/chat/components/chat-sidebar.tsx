@@ -3902,6 +3902,20 @@ export function ChatSidebar({
 	const hubLines = (kind: HubItemKind) => (
 		<HubSectionLines
 			kind={kind}
+			/*
+			 * HOLD THE CAPTION LINE OPEN where the hub is a live concern for this
+			 * person (design round 2, D13). The sign-in sentence arrives on a POLL -
+			 * the backend started reporting `no-credential` for a linked item - so
+			 * without the reservation that poll pushes every row below the heading
+			 * down one line with no user action behind it. Reserved when the hub
+			 * already tracks something, or when the account cannot reach it at all
+			 * (the sign-in line's own precondition, so it lands in held space). A user
+			 * with neither pays nothing.
+			 */
+			reserve={
+				kind === "agent" &&
+				(hubTracked || hubUpdates.data?.credential === "none")
+			}
 			signIn={kind === "agent" ? hubSignInLine(hubUpdates.data) : null}
 			signInHref="/settings?section=radient"
 			rollup={hub.rollups[kind]}

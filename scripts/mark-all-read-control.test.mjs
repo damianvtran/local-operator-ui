@@ -302,7 +302,11 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
-	"react-router-dom": "export const useNavigate = () => () => undefined;",
+	// `Link` as well as `useNavigate`: the hub mark draws the sign-in sentence as a
+	// link, and a stub that exports only the hook fails the BUNDLE rather than an
+	// assertion (agent review round 2, R2-1).
+	"react-router-dom":
+		"export const useNavigate = () => () => undefined;\nexport const Link = ({ children }) => children;",
 	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;

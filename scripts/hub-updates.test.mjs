@@ -146,10 +146,10 @@ test("the detail separates 'updates automatically' from 'needs you'", () => {
 	assert.doesNotMatch(needsYou, /automatically/);
 });
 
-test("the copy table is B6.4 verbatim, and an unknown class is generic", () => {
+test("the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic", () => {
 	assert.equal(
 		mod.hubErrorSentence(item({ error_class: "provider-error" })),
-		"Couldn't reach your model to merge this. Will retry; or retry now.",
+		"Couldn't reach the model that merges this. It retries on its own; press Retry to try now.",
 	);
 	assert.equal(
 		mod.hubErrorSentence(item({ error_class: "model-unavailable" })),
@@ -344,7 +344,7 @@ test("every non-success report has a sentence, and a plain success has none (U2)
 	// A subclass speaks with its parent's sentence; raw messages are never echoed.
 	assert.equal(
 		mod.hubClassSentence("provider-error/quota"),
-		"Couldn't reach your model to merge this. Will retry; or retry now.",
+		"Couldn't reach the model that merges this. It retries on its own; press Retry to try now.",
 	);
 	assert.doesNotMatch(
 		note({
@@ -458,11 +458,17 @@ test("the unknown-baseline acknowledgement and the preview reach the wire (R3/R5
 
 test("the hub's writes wait longer than the backend's 120 s merge (R2/U9)", () => {
 	const ms = (op) => mod.desktopRequestDeadlineMs(op);
-	// One item: the 120 s merge budget plus its network check and margin.
-	for (const op of ["hub.apply", "hub.retry"]) assert.ok(ms(op) > 120_000, op);
-	// Update-all is sequential over N items, so it is above one item's bound.
-	assert.ok(ms("hub.applyAll") > ms("hub.apply"));
-	assert.ok(ms("hub.check") > 20_000);
+	/*
+	 * THE NUMBERS, NOT AN INEQUALITY (agent review round 2, R2-4). `> 120_000`
+	 * passes a drift to 121 s and says nothing about apply-all vs a real item, so
+	 * the load-bearing values are asserted exactly: one item is the backend's
+	 * 120 s merge + 30 s + the move envelope's 15 s margin, and update-all is the
+	 * five worst-case merges its own comment promises.
+	 */
+	assert.equal(ms("hub.apply"), 165_000);
+	assert.equal(ms("hub.retry"), 165_000);
+	assert.equal(ms("hub.applyAll"), 825_000);
+	assert.equal(ms("hub.check"), 60_000);
 	// The store read keeps the control budget: it never touches the hub.
 	assert.equal(ms("hub.updates"), 20_000);
 	// The give-up is a human sentence that says nothing about seconds or "the server".
@@ -502,7 +508,22 @@ test("without a hub item nothing renders, and the sidebar has ONE action store (
 		"src/renderer/src/features/chat/components/hub-update-mark.tsx",
 	);
 	assert.match(mark, /if \(!offerAll && !onCheck\) return null;/);
-	assert.match(mark, /if \(!signIn && !rollup && !note\) return null;/);
+	/*
+	 * THE CAPTION LINE IS HELD WHEN THE CALLER ASKS (design round 2, D13). The
+	 * sign-in sentence arrives on a POLL, so an unreserved caption block let a
+	 * poll push every row below the heading down one line; `reserve` draws the
+	 * caption's own empty line while it has nothing to say. Both halves are
+	 * asserted, because either one alone is the bug back again.
+	 */
+	assert.match(
+		mark,
+		/if \(!reserve && !signIn && !rollup && !note\) return null;/,
+	);
+	assert.match(mark, /\{reserve && !signIn && !rollup && !note && \(/);
+	assert.match(
+		read("src/renderer/src/features/chat/components/chat-sidebar.tsx"),
+		/reserve=\{[\s\S]{0,120}?kind === "agent" &&/,
+	);
 	const panel = read(
 		"src/renderer/src/features/agents/components/hub-update-panel.tsx",
 	);

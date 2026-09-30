@@ -17,7 +17,15 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Plus, Users } from "lucide-react";
-import { type FormEvent, Suspense, lazy, useRef, useState } from "react";
+import {
+	type FormEvent,
+	Suspense,
+	lazy,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { HubUpdatePanel } from "./hub-update-panel";
 
@@ -54,10 +62,13 @@ function ProfileEditor({
 	profile,
 	creating,
 	onSaved,
+	onDirty,
 }: {
 	profile?: ReusableProfile;
 	creating: boolean;
 	onSaved: (name: string) => void;
+	/** Whether this form holds edits the person has not saved (agent review round 2, R2-5). */
+	onDirty: (dirty: boolean) => void;
 }) {
 	const [extending, setExtending] = useState(false);
 	const [editing, setEditing] = useState(creating);
@@ -75,6 +86,45 @@ function ProfileEditor({
 	const request = useRef<{ id: string; body: string } | null>(null);
 	const navigate = useNavigate();
 	const fresh = creating || extending;
+	/*
+	 * WHAT IS ON SCREEN VERSUS WHAT WAS SEEDED. The page needs this to say that a
+	 * hub merge which re-seeded the form replaced in-flight edits, rather than
+	 * letting the key change discard them silently (agent review round 2, R2-5).
+	 */
+	const seeded = profile
+		? {
+				name: profile.name,
+				kind: profile.kind,
+				description: profile.description ?? "",
+				instructions: profile.instructions ?? "",
+				tools: profile.tools?.join(", ") ?? "",
+				effort: profile.effort ?? "inherit",
+				delegate: profile.delegate ?? false,
+			}
+		: null;
+	const dirty =
+		editing &&
+		JSON.stringify({
+			name,
+			kind,
+			description,
+			instructions,
+			tools,
+			effort,
+			delegate,
+		}) !==
+			JSON.stringify(
+				seeded ?? {
+					name: "",
+					kind: "role",
+					description: "",
+					instructions: "",
+					tools: "",
+					effort: "inherit",
+					delegate: false,
+				},
+			);
+	useEffect(() => onDirty(dirty), [dirty, onDirty]);
 	const save = async (event: FormEvent) => {
 		event.preventDefault();
 		if (pending) return;
@@ -330,7 +380,13 @@ function ProfileEditor({
 function TeamEditor({
 	team,
 	onSaved,
-}: { team?: ReusableTeam; onSaved: (name: string) => void }) {
+	onDirty,
+}: {
+	team?: ReusableTeam;
+	onSaved: (name: string) => void;
+	/** Whether this form holds edits the person has not saved (agent review round 2, R2-5). */
+	onDirty: (dirty: boolean) => void;
+}) {
 	const [name, setName] = useState(team?.name ?? "");
 	const [description, setDescription] = useState(team?.description ?? "");
 	const [manager, setManager] = useState(team?.manager ?? "manager");
@@ -346,17 +402,29 @@ function TeamEditor({
 	const [error, setError] = useState<string | null>(null);
 	const request = useRef<{ id: string; body: string } | null>(null);
 	const navigate = useNavigate();
+	const fields = {
+		name,
+		description,
+		manager,
+		members: members.map(({ key: _key, ...member }) => member),
+		instructions,
+		project,
+	};
+	/* Same report as `ProfileEditor`: see the comment there. */
+	const dirty =
+		JSON.stringify(fields) !==
+		JSON.stringify({
+			name: team?.name ?? "",
+			description: team?.description ?? "",
+			manager: team?.manager ?? "manager",
+			members: team?.members ?? [],
+			instructions: team?.instructions ?? "",
+			project: team?.project ?? "",
+		});
+	useEffect(() => onDirty(dirty), [dirty, onDirty]);
 	const save = async (event: FormEvent) => {
 		event.preventDefault();
 		if (pending) return;
-		const fields = {
-			name,
-			description,
-			manager,
-			members: members.map(({ key: _key, ...member }) => member),
-			instructions,
-			project,
-		};
 		const body = JSON.stringify(fields);
 		if (request.current && request.current.body !== body) {
 			setError(
@@ -575,7 +643,48 @@ export function AgentsPage() {
 			}),
 		retry: false,
 	});
+	/*
+	 * A HUB UPDATE THAT LANDS UNDER AN OPEN EDITOR. The editors below re-seed by
+	 * key (`contentKey`), which is the remedy review round 1 asked for and what
+	 * closes the stale-write path. A re-seed also discards whatever the person had
+	 * typed, and the hub is the one thing that changes a definition with no action
+	 * taken in this pane - so when the key moves while an editor reports unsaved
+	 * edits, the page SAYS so instead of replacing them silently (agent review
+	 * round 2, R2-5).
+	 *
+	 * `dirtyRef` is written during render, not in an effect: the remount clears the
+	 * child's own report in an effect, effects run children-first, and reading the
+	 * state here would therefore already see `false` and lose the fact.
+	 */
+	const [lostEdits, setLostEdits] = useState(false);
+	const [editorDirty, setEditorDirty] = useState(false);
+	const dirtyRef = useRef(false);
+	dirtyRef.current = editorDirty;
+	const onEditorDirty = useCallback(
+		(dirty: boolean) => setEditorDirty(dirty),
+		[],
+	);
+	const seededKey = useRef<string | null>(null);
+	const detailKey = detail.data
+		? teamMode
+			? `${name}:${contentKey(detail.data)}`
+			: `${name}:${(detail.data as ReusableProfile).source}:${contentKey(detail.data)}`
+		: null;
+	useEffect(() => {
+		if (detailKey === null) {
+			seededKey.current = null;
+			return;
+		}
+		if (seededKey.current === null) {
+			seededKey.current = detailKey;
+			return;
+		}
+		if (seededKey.current === detailKey) return;
+		seededKey.current = detailKey;
+		if (dirtyRef.current) setLostEdits(true);
+	}, [detailKey]);
 	const saved = async (savedName: string) => {
+		setLostEdits(false);
 		await queryClient.invalidateQueries({ queryKey: ["desktop"] });
 		setParams({ kind: teamMode ? "team" : "agent", name: savedName });
 	};
@@ -691,9 +800,18 @@ export function AgentsPage() {
 					</div>
 				) : creating ? (
 					teamMode ? (
-						<TeamEditor key="create-team" onSaved={saved} />
+						<TeamEditor
+							key="create-team"
+							onSaved={saved}
+							onDirty={onEditorDirty}
+						/>
 					) : (
-						<ProfileEditor key="create-agent" creating onSaved={saved} />
+						<ProfileEditor
+							key="create-agent"
+							creating
+							onSaved={saved}
+							onDirty={onEditorDirty}
+						/>
 					)
 				) : name && detail.isLoading ? (
 					<p aria-live="polite">Loading details…</p>
@@ -705,11 +823,20 @@ export function AgentsPage() {
 							name={name}
 							enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
 						/>
+						{lostEdits && (
+							/* `output` carries the `status` role, which is what this is. */
+							<output className="mb-3 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+								The hub updated this definition while you were editing, and the
+								form below now shows the merged version. Edits you had not saved
+								were replaced.
+							</output>
+						)}
 						{teamMode ? (
 							<TeamEditor
 								key={`${name}:${contentKey(detail.data)}`}
 								team={detail.data as ReusableTeam}
 								onSaved={saved}
+								onDirty={onEditorDirty}
 							/>
 						) : (
 							<ProfileEditor
@@ -720,6 +847,7 @@ export function AgentsPage() {
 								profile={detail.data as ReusableProfile}
 								creating={false}
 								onSaved={saved}
+								onDirty={onEditorDirty}
 							/>
 						)}
 					</>
