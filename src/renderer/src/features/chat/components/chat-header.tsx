@@ -719,10 +719,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * half scrolled out of the clip) and blur never restored it. `clip`
 			 * clips exactly the same pixels but creates no scrollport, so focus has
 			 * nothing to move; the reserved slot and the geometry are unchanged.
+			 *
+			 * AND IT DOES NOT WRAP WHILE THE IDENTITY CONTROLS ARE HERE (UX round 1,
+			 * U2). `flex-wrap` collects lines from each item's HYPOTHETICAL size, so
+			 * a title that alone fits pushed the controls onto the clipped second
+			 * line however much shrink room the title had - measured at the operator's
+			 * own 49-character title, every chip is off the paint at the 560 band and
+			 * below (the topmost element at the chip's own centre is the band, and a
+			 * press opens nothing), and a 30-character title loses them at 480 and
+			 * below. A control that is not painted cannot be pressed, and no tooltip
+			 * can stand in for one - so while `identity` is what this slot holds, the
+			 * line does not wrap: the title yields instead (it truncates, and at the
+			 * narrowest widths it can yield entirely - the controls keep their own
+			 * room). The PATH and skeleton cases
+			 * keep the wrap-and-clip unchanged - the path is decoration dropped before
+			 * the title loses a word, the chip is a control and keeps its room.
 			 */}
 			<div
 				className={cn(
-					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
+					"flex h-5 min-w-0 flex-1 items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
+					!identity && "flex-wrap",
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
