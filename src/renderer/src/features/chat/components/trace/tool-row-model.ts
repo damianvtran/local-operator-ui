@@ -220,10 +220,17 @@ function sendSummary(args: Record<string, unknown>): string {
  * The `session ` prefix the send row spells is dropped here because the VERB
  * already carries the noun (`Stopped session session 5d3f2a9c` stutters); `pid`
  * keeps its marker, which the number alone would not say.
+ *
+ * `pid` reads through `numberFrom` for the reason `steps`/`head` do: the
+ * schema's lax int executes `"48213"` and `"48213.0"` as pid 48213, so a row
+ * painting `?` for a call that executed is the one disagreement this function
+ * exists to prevent - while a non-integer float, which the schema REFUSES,
+ * must not paint a `pid` at all and falls through to the address ladder
+ * (review round 1, R-3).
  */
 function sessionsAddress(args: Record<string, unknown>): string {
-	const pid = args.pid;
-	if (typeof pid === "number" && Number.isFinite(pid)) return `pid ${pid}`;
+	const pid = numberFrom(args.pid);
+	if (pid !== null && Number.isInteger(pid)) return `pid ${pid}`;
 	return scalarText(args.session) || scalarText(args.target) || "?";
 }
 
