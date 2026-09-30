@@ -16,6 +16,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { cn } from "@shared/lib/utils";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -30,6 +31,7 @@ import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
 import {
 	type TeamRecency,
+	announcedDescription,
 	kindLabel,
 	memberCount,
 	slotList,
@@ -381,7 +383,14 @@ export const OrgTeamsList: React.FC<{
 								 * member kinds and exact dates, so the list has no mixed
 								 * expandable/static rows and no height alternation.
 								 */
-								chevronClassName="text-ink-dim"
+								/*
+								 * `mt-1`, not the primitive's `FIRST_LINE_MARK` `mt-0.5`: a 14px
+								 * chevron beside a 21.7px name line sat 1.8px above the name's
+								 * centre with 2px of lead, and 4px puts it +0.2px. Passed through
+								 * `chevronClassName` - the prop the primitive exists for - so no
+								 * other caller's mark moves.
+								 */
+								chevronClassName="text-ink-dim mt-1"
 								/* The li owns the padding; the primitive's row is `min-h-6 py-0.5`. */
 								rowClassName="py-0"
 								/*
@@ -487,7 +496,7 @@ export const OrgTeamsList: React.FC<{
  * be `py-2.5`, which is off it. It is a constant because the skeleton has to be
  * the same box as the row it stands in for or the first paint moves a second time
  * when the list lands - the `agent-hub-pager-placeholder` / `min-h-13` rule, and
- * `scripts/org-teams-row.test.mjs` pins the pair. Change one, change both.
+ * `scripts/org-teams-summary.test.mjs` pins the pair. Change one, change both.
  */
 const ROW_BOX = "px-4 py-3";
 
@@ -602,6 +611,12 @@ const TeamProvenance = ({ team }: { team: HubTeam }) => {
  * detail surface to send it to. `break-words` holds in both states so an unbroken
  * token (a URL, a hash) wraps inside the column instead of widening the row. It is
  * rendered as plain text: it is untrusted author text, no markdown, no links.
+ *
+ * The description is also the row's one SELECTABLE text (`TEXT_SURFACE_PROPS` +
+ * `select-text`, the marker the primitive's drag guard reads): without it a drag
+ * across a sentence to copy it toggled the row instead, because the trigger owns
+ * the press (UX round 1, U5). The rest of the summary stays chrome, so a press on
+ * the name is still a row action.
  */
 const TeamSummary = ({
 	team,
@@ -622,14 +637,28 @@ const TeamSummary = ({
 				) : null}
 			</span>
 			{description ? (
-				<span
-					className={cn(
-						"mt-1 break-words text-body-sm text-ink-muted",
-						expanded ? "line-clamp-[12] whitespace-pre-line" : "line-clamp-2",
-					)}
-				>
-					{description}
-				</span>
+				<>
+					{/*
+					 * The visible description is `aria-hidden` and its text is announced
+					 * from the bounded copy below: the element carries the WHOLE string
+					 * even when two clamped lines are what is on screen, so the trigger's
+					 * name ran to 3,095 characters on the long row (UX round 1, U6). The
+					 * copy is sr-only, so it changes no pixel and no truncation.
+					 */}
+					<span
+						{...TEXT_SURFACE_PROPS}
+						aria-hidden="true"
+						className={cn(
+							"mt-1 select-text break-words text-body-sm text-ink-muted",
+							expanded ? "line-clamp-[12] whitespace-pre-line" : "line-clamp-2",
+						)}
+					>
+						{description}
+					</span>
+					<span className="sr-only">
+						{announcedDescription(description, expanded)}
+					</span>
+				</>
 			) : (
 				<span className="mt-1 text-body-sm text-ink-dim">No description</span>
 			)}
@@ -647,6 +676,23 @@ const TeamSummary = ({
  * `instructions` brief, which is detail-only (one `org_team.get` per team), the
  * wrong thing to skim before a pull, and would give every row a loading and an
  * error state of its own.
+ *
+ * ## Why it carries a label and its own air
+ *
+ * Without them the block read as a fifth summary line: the slot list repeated L3
+ * in the same grammar, 8px under it (UX round 1, U8/U9). The `Members` label makes
+ * it a block with a statement of its own, and `mt-1` on top of the primitive's own
+ * `mt-1` gives the 12px the spacing ramp uses between things that are not one
+ * thing - without a rule, which § 2's boundary test says earns nothing here.
+ *
+ * ## The one repeat, and why it survives
+ *
+ * `No members` is stated by L3 already, so the body omits it whenever it has
+ * something else to carry (the dates line, or a manager to list). It is kept only
+ * for the row that has no manager, no members AND no dates: there the disclosure
+ * would otherwise open onto nothing at all, and a chevron that reveals an empty
+ * box is worse than the repetition. The label makes it the block's own statement
+ * rather than a fifth summary line.
  */
 const TeamDetails = ({ team }: { team: HubTeam }) => {
 	const manager = team.manager?.trim();
@@ -655,39 +701,46 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 		dates.created ? `Created ${dates.created}` : null,
 		dates.updated ? `Updated ${dates.updated}` : null,
 	].filter((part) => part !== null);
+	const hasRoster = Boolean(manager) || team.members.length > 0;
 	return (
-		<>
-			<ul className="flex flex-col gap-0.5">
-				{manager ? (
-					<li className="flex items-baseline gap-1.5">
-						<span className="text-body-sm text-ink">{manager}</span>
-						<span className="text-ink-dim text-meta">Manager</span>
-					</li>
-				) : null}
-				{team.members.map((slot) => (
-					<li
-						key={`${slot.kind}:${slot.role}`}
-						className="flex items-baseline gap-1.5"
-					>
-						<span className="text-body-sm text-ink">{slot.role}</span>
-						<span className="text-ink-dim text-meta">
-							{kindLabel(slot.kind)}
-						</span>
-						{slot.count > 1 ? (
-							<span className="text-ink-dim text-meta tabular-nums">
-								×{slot.count}
-							</span>
+		<div className="mt-1 flex flex-col gap-2">
+			{hasRoster || dateParts.length === 0 ? (
+				<div className="flex flex-col gap-1">
+					<p className="text-ink-dim text-meta">Members</p>
+					<ul className="flex flex-col gap-0.5">
+						{manager ? (
+							<li className="flex items-baseline gap-1.5">
+								{/* `ink-muted`, not `ink`: a member outshouted the description it belongs to (design round 1, D1). */}
+								<span className="text-body-sm text-ink-muted">{manager}</span>
+								<span className="text-ink-dim text-meta">Manager</span>
+							</li>
 						) : null}
-					</li>
-				))}
-				{!manager && team.members.length === 0 ? (
-					<li className="text-ink-dim text-meta">No members</li>
-				) : null}
-			</ul>
+						{team.members.map((slot) => (
+							<li
+								key={`${slot.kind}:${slot.role}`}
+								className="flex items-baseline gap-1.5"
+							>
+								<span className="text-body-sm text-ink-muted">{slot.role}</span>
+								<span className="text-ink-dim text-meta">
+									{kindLabel(slot.kind)}
+								</span>
+								{slot.count > 1 ? (
+									<span className="text-ink-dim text-meta tabular-nums">
+										×{slot.count}
+									</span>
+								) : null}
+							</li>
+						))}
+						{!hasRoster ? (
+							<li className="text-ink-dim text-meta">No members</li>
+						) : null}
+					</ul>
+				</div>
+			) : null}
 			{dateParts.length > 0 ? (
 				<p className="text-ink-dim text-meta">{dateParts.join(" · ")}</p>
 			) : null}
-		</>
+		</div>
 	);
 };
 

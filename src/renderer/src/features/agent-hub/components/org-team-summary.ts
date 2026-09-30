@@ -1,5 +1,5 @@
 import type { HubTeam, HubTeamMember } from "@shared/api/radient/types";
-import { format, formatDistanceToNowStrict } from "date-fns";
+import { format, formatDistanceStrict } from "date-fns";
 
 /**
  * The facts the Teams roster prints about a team, derived from one `HubTeam`.
@@ -65,6 +65,32 @@ export const teamDescription = (team: HubTeam): string | null => {
 	return text === "" ? null : text;
 };
 
+/**
+ * How much of a description the summary ANNOUNCES.
+ *
+ * The resting row shows two clamped lines (about 220 characters at the roster's
+ * measure) but the DOM carries the whole string, so a screen reader read the
+ * entire text on focus - measured 3,095 characters on the long fixture row, which
+ * is a minute of speech for a list row. The announcement is bounded to roughly
+ * what is on screen; the full text is still one expand away, and the expansion is
+ * announced in full because opening it is the reader's own request for it.
+ */
+export const DESCRIPTION_ANNOUNCE_CHARS = 240;
+
+/**
+ * The description as the summary should ANNOUNCE it: bounded at rest, whole once
+ * the row is open. See `DESCRIPTION_ANNOUNCE_CHARS`.
+ */
+export const announcedDescription = (
+	description: string,
+	expanded: boolean,
+): string => {
+	if (expanded || description.length <= DESCRIPTION_ANNOUNCE_CHARS) {
+		return description;
+	}
+	return `${description.slice(0, DESCRIPTION_ANNOUNCE_CHARS).trimEnd()}…`;
+};
+
 /** A date the way the expanded body and the tooltip both print it. */
 export const formatTeamDate = (date: Date): string =>
 	format(date, "d MMM yyyy");
@@ -101,7 +127,17 @@ const recencyOf = (
 		// A seconds counter is noise on a list that does not tick.
 		when = "just now";
 	} else {
-		when = `${formatDistanceToNowStrict(date)} ago`;
+		/*
+		 * `formatDistanceStrict(date, new Date(now))`, NOT
+		 * `formatDistanceToNowStrict(date)`: the latter reads the REAL clock, so the
+		 * `now` parameter governed only the branch and the label while the distance
+		 * itself was measured against wall time. The suite's fixture is a synthetic
+		 * `now`, so the assertion `3 days ago` held only until wall time crossed the
+		 * half-day rounding boundary (measured: 13/13 at 20:47Z, 12/13 at 20:53Z on
+		 * 2026-09-30) - a test that fails by the calendar rather than by a change.
+		 * With `now` defaulting to `Date.now()` production behaviour is unchanged.
+		 */
+		when = `${formatDistanceStrict(date, new Date(now))} ago`;
 	}
 	return {
 		label,
