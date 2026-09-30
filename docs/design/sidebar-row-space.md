@@ -114,7 +114,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **40** | **80** | **120** | the archive, the grip, the move pair, then the mark (136px + the 4px row gap) - see #693 and #697 below. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
+| **pinned** | hover / focus-within | **68** | **80** | **120** | at 280px and above: the archive, the grip, the move pair, then the mark (136px). At or below 279px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -129,7 +129,9 @@ first time.
 is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on an
 unpinned row, `24` at rest on a pinned one, `52` under the pointer on an unpinned
 row and `108` under the pointer on a PINNED one - the archive, the move pair and
-the mark, 4 x 24 + 3 x 4 (issue #693); at 240/280/320 the row box is 224/264/304.
+the mark, 4 x 24 + 3 x 4 (issue #693; that is the cluster at or below 279px, where the
+grip is shed); at 240/280/320 the row box is 224/264/304. Above 279px a pinned row's
+revealed cluster is `136` (issue #697).
 
 **THE FIFTH CONTROL, AND WHAT THE GRIP COSTS (issue #697, measured).** The pinned row's
 revealed cluster grew again when the drag handle arrived: `archive + grip + move up + move
@@ -147,12 +149,26 @@ offers). What the code refuses is the same thing the pair refuses - an `order` c
 indicator's own width is not part of this arithmetic (it is a 2px line inside the section's own
 coordinates, drawn only while a gesture runs).
 
+**ROUND 1 CHANGED TWO OF THESE NUMBERS (design D2 and D3, 2026-09-30).** The 40px at the
+240 clamp was judged too expensive and the grip now sheds at or below a 279px panel (263 in
+the container query's own arithmetic - see §8), so
+the 240 column is **68px** - the pair's own cost - and 40px survives only as the reading
+that motivated the shed (§8's round-1 subsection). The grip is also drawn only when at
+least two pinned rows are SHOWN, so the single-pin and one-result-filtered states lose it
+entirely (there is no second slot to drop onto). The re-shot frames carry both: the
+`grip-hover-240` pair shows the grip ABSENT in both palettes, and `single-pin` /
+`single-pin-hover` show the pair and the mark alone. What did NOT change: the grip's 28px
+where it is drawn, the mark's position on the row's right edge, and one control's cost
+(28px) as the unit this table is arithmetic over.
+
 **THE FOURTH CONTROL, AND WHAT IT COSTS (issue #693).** A pinned row's revealed
 cluster grew from 52 to 108 when the pinned section became reorderable by hand:
 two arrow controls, `size-6`, drawn only on the rows that offer a move (a pinned
 row in the section arrangement). The title therefore pays for three revealed acts
-rather than one, and at the 240 clamp that is 84px of title under the pointer -
-about ten characters, with the pan (§5) carrying the rest. The narrower band is
+rather than one, and at the 240 clamp that is 84px of title under the pointer (before
+the grip, and on this document's earlier 224px row basis - the measured row is 208, so
+the same cluster leaves 68px there, which is the figure the frames carry) - about ten
+characters, with the pan (§5) carrying the rest. The narrower band is
 where this is felt first, and the pair is drawn only under the pointer or under
 focus: at rest the numbers in the table above are unchanged, which is the state
 the operator's own ask was about. A designer reviewing this surface should weigh
@@ -424,6 +440,34 @@ directories; and the narrow steps of `scripts/renderer-driver.mjs`'s
 `session-archive` scene with the assertions behind them
 (`scripts/chat-sidebar-archive.test.mjs`: the D10 shared-control test and the
 container-query test both read text that will no longer exist).
+
+### Reinstated for ONE member (round 1, 2026-09-30, PR #697): the grip alone sheds at 279
+
+The rule above is about the ACTS and it stands unchanged: the pin, the archive and the
+move pair are drawn at every width. The **grip** is the one exception, and it is the
+exception this section's own reasoning was willing to make - it is the only member of the
+cluster that is an ACCELERATOR rather than a path. The pair is WCAG 2.5.7's single-pointer
+alternative to the gesture; the grip is a faster way to do what the pair already does.
+Measured at the 240 clamp with all five controls revealed, the title had 40px of the row's
+208 (design round 1's D2 reading of `grip-hover-240`; §3); with the grip shed it has 68px,
+the pair's own cost. So ONE width query is back, in the name this section deleted:
+`@container/chatsidebar` on the panel root and `@max-[263px]/chatsidebar:hidden!` on the
+grip - one class, one control, one break. The number is 263 rather than 279 because a
+container query measures the container's CONTENT box and the panel root carries `p-2`: a
+280px panel reports 264, so a 279 in the query shed the grip at 280 as well (measured on
+this change's first re-shoot). The trailing `!` is the second measured correction - the
+reveal rules are two-class selectors (`group-hover:flex`), so a one-class container rule
+lost the cascade and the grip stayed drawn at the clamp with the pointer inside the row.
+The frames of both states are committed
+(`docs/evidence/pinned-reorder/grip-hover-240`: grip absent; `grip-hover-280/320`: drawn).
+Drag is unavailable at or below 279px; the pair reorders there, and the reader can widen
+the panel to drag.
+
+The grip is drawn only when **at least two pinned rows are shown** as well (design D3,
+whose premise held up: measured, a one-row drag can be started, always lands on slot 0 and
+writes nothing), and it is `aria-hidden` because it is pointer-only (agent review R5). The
+pair still answers with the boundary sentence in the single-pin state, which is why the
+pair is not shed with it.
 
 ## 9. Accessibility (D10)
 

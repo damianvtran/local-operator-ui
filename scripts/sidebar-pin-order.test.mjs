@@ -61,6 +61,12 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/chat-pin-order";',
 			'export { DEFAULT_SIDEBAR_VIEW, parseSidebarView } from "./src/renderer/src/features/chat/chat-sidebar-view";',
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			/* The Escape ladder's own predicate, so its rung for the drag cancel is
+			   driven rather than described (UX round 1, U5). */
+			'export { interruptEscapeApplies } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
+			/* The class merge the row box actually runs, so the ground steps are asserted
+			   against twMerge rather than against a comment (round 1, D1 and D5c). */
+			'export { cn } from "./src/renderer/src/shared/lib/utils";',
 		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
@@ -89,11 +95,14 @@ const {
 	pinDragSlot,
 	pinMoveBoundaryNote,
 	pinMoveNote,
+	pinMoveUntargetedNote,
 	pinnedOrder,
 	DEFAULT_SIDEBAR_VIEW,
 	parseSidebarView,
 	persistedUiPreferences,
 	useUiPreferencesStore,
+	interruptEscapeApplies,
+	cn,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -347,6 +356,23 @@ test("rule 5: a boundary cannot move, and says which boundary it is", () => {
 });
 
 /*
+ * THE THIRD ANSWER: A ROW WITH NO PAIR (UX round 1, U4; measured on a live run).
+ *
+ * A chord pressed on a row that is not pinned is CONSUMED - a modified arrow is this
+ * panel's chord namespace - but it is ANSWERED in the pair's own voice rather than
+ * leaving the region holding whatever sentence an earlier press left there, which the
+ * UX round measured as a sentence about a DIFFERENT row: stale, and untrue of the row
+ * under the caret.
+ */
+test("a chord on a row that is not pinned says so, by name", () => {
+	assert.equal(pinMoveUntargetedNote("Work"), "“Work” is not pinned.");
+	assert.equal(
+		pinMoveUntargetedNote("QA Chat 008"),
+		"“QA Chat 008” is not pinned.",
+	);
+});
+
+/*
  * THE MOVE'S OWN SENTENCE, in the family PR #618 gave its board columns ("Moved
  * QA column to position 2 of 3."): the position is 1-based and the total is the
  * number of rows the reader is looking at, not the size of the stored order.
@@ -545,7 +571,13 @@ test("the pair is a row control: one stop per row, a chord, and a live region", 
 	// The write goes through the view preference, and the row's own correction is
 	// what brings the caret and the line back (unpin's mechanism, not a new one).
 	assert.match(source, /setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/);
-	assert.match(source, /rememberMovedRow\(sessionId, follow, null\)/);
+	// The correction carries the MOVE's own two terms (round 1, Q1 and R3): the
+	// caret goes to the row's own button rather than to the pin mark, and the scroll
+	// correction stands down because an in-section swap moves the anchor row too.
+	assert.match(
+		source,
+		/rememberMovedRow\(sessionId, follow, null, "row", false\)/,
+	);
 	// An unpin forgets the slot, and only when the id was ranked at all.
 	assert.match(
 		source,
@@ -607,11 +639,22 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 		/if \(event\.button !== 0\) return;\n\t\tevent\.preventDefault\(\);\n\t\tevent\.stopPropagation\(\);/,
 	);
 	assert.match(source, /setPointerCapture\(event\.pointerId\)/);
-	// The drop is the model's, once, through the view preference.
+	// The drop is the model's, ONCE, through the view preference. The count is the
+	// assertion rather than a window around `dropPinnedRow`, because round 1 (U2/Q2)
+	// added a branch between the model call and the write - the no-op drop's own
+	// clear - and a window wide enough to span it would also span the chord's write.
 	assert.match(source, /movePinnedOrderTo\(/);
-	assert.match(
-		source,
-		/dropPinnedRow[\s\S]{0,600}?setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/,
+	/*
+	 * TWO WRITES IN THE FILE, which is one per GESTURE and no more: the chord and the
+	 * pair reach `movePinnedRow` (one write) and the drop reaches `dropPinnedRow` (one
+	 * write). Three would mean a path double-writes; one would mean a gesture that
+	 * cannot record its own arrangement.
+	 */
+	assert.equal(
+		(source.match(/setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/g) ?? [])
+			.length,
+		2,
+		"each gesture writes the order exactly once",
 	);
 	// A cancel writes nothing and says so; Escape is the cancel with no pointer.
 	assert.match(
@@ -624,10 +667,28 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 	// disagree about which row is being moved.
 	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
 	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
-	assert.match(source, /dragging && rowDragging,/);
+	// The ground is merged LAST, after `rowCurrent`, and it swaps rung when the row is
+	// also the current one (round 1, D1 and D5c).
 	assert.match(
 		source,
-		/export const rowDragging = "bg-row-selected text-ink";/,
+		/dragging && \(current \? rowDraggingCurrent : rowDragging\),/,
+	);
+	/*
+	 * AND IT IS RESTATED AT THE HOVER VARIANT (round 1, D1 and U1; measured on the frames
+	 * and on a live run). A bare `bg-row-selected` loses to the row box's own
+	 * `hover:bg-row-hover`, and the pointer that armed the drag never leaves the captured
+	 * row - so the shipped constant painted the dragged row exactly like a merely hovered
+	 * one (`#302D2A` dark against the intended `#372F24`). The CURRENT spelling is the same
+	 * step swapped to the other row role, because a current row's resting fill already IS
+	 * the selected one.
+	 */
+	assert.match(
+		source,
+		/export const rowDragging =\s*"bg-row-selected text-ink hover:bg-row-selected hover:text-ink";/,
+	);
+	assert.match(
+		source,
+		/export const rowDraggingCurrent =\s*"bg-row-hover text-ink hover:bg-row-hover hover:text-ink";/,
 	);
 	// The indicator exists only during the drag, is inert, and lives in the section
 	// the rows are drawn in (so it scrolls with them).
@@ -641,4 +702,174 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 	// The auto-scroll loop is armed with the drag and reaped with it.
 	assert.match(source, /requestAnimationFrame\(/);
 	assert.match(source, /cancelAnimationFrame\(pinDragAutoScrollRef\.current\)/);
+});
+
+/*
+ * ROUND 1's REMEDIATION, read off the shipped source for this suite's own reason: the
+ * sidebar cannot be rendered here, and each of these is a property that a measured frame
+ * or a live reading failed on the round-1 head - so the fix is pinned where it is
+ * written, and the frames and the driver's walk are what show it working.
+ */
+test("round 1's fixes are where they are written", () => {
+	const source = SOURCE(SIDEBAR);
+
+	// R1: the drop takes the GESTURE's own slot (written synchronously by the last
+	// move), and the doors bound once call the LATEST settle rather than the render
+	// their effect was created on.
+	assert.match(source, /dropPinnedRow\(live\.id, live\.slot\);/);
+	assert.match(source, /const settlePinDragRef = useRef\(settlePinDrag\);/);
+	assert.match(source, /settlePinDragRef\.current = settlePinDrag;/);
+	assert.match(
+		source,
+		/const end = \(\) => settlePinDragRef\.current\(true\);/,
+	);
+	assert.match(
+		source,
+		/const cancel = \(\) => settlePinDragRef\.current\(false\);/,
+	);
+	assert.match(source, /settlePinDragRef\.current\(false\);/);
+
+	// U2 + Q2: the no-op drop closes the gesture's opening sentence.
+	assert.match(
+		source,
+		/if \(next === null\) \{[\s\S]{0,900}?announcePinMove\(""\);/,
+	);
+
+	// Q1 + R3: a move's caret goes to the row's own ring stop, and the scroll
+	// correction is skipped for a reorder.
+	assert.match(source, /moved\.caret === "row"/);
+	assert.match(source, /else if \(moved\.anchorId !== null && moved\.scroll\)/);
+	assert.match(
+		source,
+		/rememberMovedRow\(sessionId, false, null, "row", false\)/,
+	);
+
+	// U3 + R6 + Q3: a repeat sentence is cleared and re-set across a frame, because a
+	// live region is read from its mutations and an identical string is not one.
+	assert.match(
+		source,
+		/const repeat = sentence !== "" && sentence === pinMoveHeldRef\.current;/,
+	);
+	assert.match(
+		source,
+		/requestAnimationFrame\(\(\) => \{[\s\S]{0,120}?setPinMoveAnnouncement\(sentence\);/,
+	);
+
+	// U4 + R4: the chord answers on a row with no pair.
+	assert.match(
+		source,
+		/announcePinMove\(pinMoveUntargetedNote\(rowLabel\(rowId\)\)\);/,
+	);
+
+	// D4: the row's flyout is suppressed while the drag is armed.
+	assert.match(source, /disabled=\{pinDrag !== null\}/);
+
+	// D2, D3, R5 and D6: the shed, the count, the control's a11y shape and its tooltip.
+	// 263 is the PANEL break (279) minus the panel root's own `p-2`: a container
+	// query measures the container's content box, so a 279 in the query shed the grip
+	// at a 280px panel too (measured on the first re-shoot). The `!` is the second
+	// correction: the reveal rules are two-class selectors (`group-hover:flex`), so a
+	// one-class container rule lost the cascade at the clamp.
+	assert.match(source, /"@max-\[263px\]\/chatsidebar:hidden!",/);
+	assert.match(source, /@container\/chatsidebar relative flex h-full/);
+	assert.match(source, /pinnedDrawnIds\.length >= 2 &&/);
+	assert.match(
+		source,
+		/aria-hidden="true"[\s\S]{0,120}?title="Drag to reorder · Esc cancels"/,
+	);
+	const grip = source.slice(
+		source.indexOf("data-session-pin-grip"),
+		source.indexOf("</button>", source.indexOf("data-session-pin-grip")),
+	);
+	assert.equal(
+		grip.includes("aria-label"),
+		false,
+		"the grip is pointer-only and must not be named to AT (R5)",
+	);
+
+	// R2: the three comments the reviewer measured as false no longer claim a
+	// per-frame indicator re-placement.
+	assert.equal(
+		/auto-scroll loop re-places the line\s*\n?\s*every frame/.test(source),
+		false,
+	);
+});
+
+/*
+ * ESCAPE MID-DRAG BELONGS TO THE DRAG (UX round 1, U5). The UX round measured the
+ * right OUTCOME - the drag cancels and a running turn is not interrupted - but could
+ * not attribute the claim: it was inherited from a Radix tooltip that happened to be
+ * open under the pointer. That tooltip is now suppressed for the whole gesture
+ * (design D4, same round), so the claim is stated by the handler that acts on the
+ * press, and the ladder in `use-interrupt-on-escape.ts` names the rung.
+ *
+ * BOTH HALVES ARE DRIVEN HERE: the predicate the interrupt listener consults (the
+ * shipped one, not a copy), and the shipped handler's own `preventDefault`.
+ */
+test("Escape mid-drag cancels the drag and cannot reach the turn", () => {
+	const idle = { sessionId: "s", busy: true, available: true };
+	const press = (defaultPrevented) => ({
+		key: "Escape",
+		defaultPrevented,
+		target: null,
+	});
+	// A press nobody has claimed still stops a running turn - the ladder's own rung.
+	assert.equal(interruptEscapeApplies(press(false), idle), true);
+	// The drag's claim (what the sidebar's listener now makes) takes the press away.
+	assert.equal(interruptEscapeApplies(press(true), idle), false);
+
+	const source = SOURCE(SIDEBAR);
+	const ladder = SOURCE(
+		"src/renderer/src/features/chat/hooks/use-interrupt-on-escape.ts",
+	);
+	assert.match(
+		ladder,
+		/\* 6\. THE PINNED ROW'S DRAG CANCEL \(issue #697; UX round 1, U5\)/,
+		"the drag cancel is a rung of the Escape ladder, written where the ladder is",
+	);
+	assert.match(
+		source,
+		/if \(event\.key !== "Escape"\) return;\n\t\t\tsettlePinDragRef\.current\(false\);\n\t\t\t[\s\S]{0,2200}?event\.preventDefault\(\);/,
+		"the drag's own handler claims the press it acted on",
+	);
+});
+
+/*
+ * THE GROUND STEPS SURVIVE THE MERGE (round 1, D1 and D5c).
+ *
+ * Both fixes are about ORDER in a class list, and the box's list is merged by `cn` -
+ * tailwind-merge, where the LAST class of a group wins. A comment cannot hold that: the
+ * pre-round-1 constant was a `bg-row-selected` sitting BEFORE the box's own
+ * `hover:bg-row-hover`, and it painted the hover step for the whole gesture. So the two
+ * claims are asserted against the shipped merge itself, on the class strings the
+ * component hands it.
+ */
+test("the drag's ground wins the merge, on both row states", () => {
+	// Non-current: `rowDragging` is merged after the box's hover step, and it restates its
+	// own ground at the hover variant - so neither the plain nor the hovered fill can
+	// take it back.
+	const plain = cn(
+		"hover:bg-row-hover",
+		"bg-row-selected font-medium text-ink hover:bg-row-selected",
+		"bg-row-selected text-ink hover:bg-row-selected hover:text-ink",
+	);
+	assert.ok(plain.includes("bg-row-selected"), plain);
+	assert.equal(
+		plain.includes("hover:bg-row-hover"),
+		false,
+		`the box's hover step survived the drag's ground: ${plain}`,
+	);
+	// Current: the selected rung is the row's RESTING fill, so the dragged variant takes
+	// the panel's other rung - and it has to beat `rowCurrent`'s own ground in the merge.
+	const current = cn(
+		"hover:bg-row-hover",
+		"bg-row-selected font-medium text-ink hover:bg-row-selected",
+		"bg-row-hover text-ink hover:bg-row-hover hover:text-ink",
+	);
+	assert.ok(current.includes("bg-row-hover"), current);
+	assert.equal(
+		current.includes("bg-row-selected"),
+		false,
+		`rowCurrent's ground outlived the dragged current row's: ${current}`,
+	);
 });
