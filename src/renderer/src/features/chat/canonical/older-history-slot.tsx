@@ -43,13 +43,35 @@ import type { FC } from "react";
  * focus survives, and the label is free to paint at a readable ink role rather
  * than at the disabled-control exemption.
  *
- * The affordance never leaves while there is history to fetch. Scrolling is the
- * fast path, not the only path: it stays a real, focusable, `Enter`-operable
- * button so the keyboard reaches it, so a reader who has learned to click it
- * keeps their habit, and so the scroll-paging latch has the deliberate act it
- * re-arms on (see `scroll-paging.ts`, rule 4). This mirrors the terminal UI's
- * `OlderHistoryNotice`, which was made a control for the same reason: the head
- * of the transcript must be operable and not merely descriptive.
+ * ## Which arms are a control and which are a statement
+ *
+ * The row is an operable control in TWO of its arms and a statement in the
+ * other two, and that split is deliberate rather than an oversight to be
+ * closed:
+ *
+ * - `idle` ("Load earlier messages") and `failed` ("Try again") render a real
+ *   `Button`: focusable, `Enter`-operable, a visible focus ring. These are the
+ *   states where the row is the only way forward — nothing is coming on its
+ *   own, or the last attempt failed — so a keyboard reader, and a reader who
+ *   has learned to click it, keeps a control to act on. The click is also the
+ *   deliberate act the scroll-paging latch re-arms on (see `scroll-paging.ts`,
+ *   rule 4). `loading` is the same `Button`, `aria-disabled` so it keeps focus.
+ * - `windowed` and `exhausted` render a plain statement (`<span>`), not a
+ *   control. In `windowed` the gesture IS the payload: the row appears while
+ *   the reader is already scrolling and the pump still owes them the local
+ *   widen, so the useful thing to say is what they are already doing and what
+ *   it will buy. A button there would offer a second way to do what the
+ *   scroll in flight is about to do. The keyboard reader's operable route out
+ *   of `windowed` is therefore the scroller's own keys, not this row: Home and
+ *   PageUp are read by the paging hook as input (`use-scroll-paging.ts`), Home
+ *   deliberately, so it re-arms the latch as a click would. `exhausted` has
+ *   nothing left to operate.
+ *
+ * Every arm keeps the SAME fixed box, control or statement, which is the
+ * invariant the height section above exists for. This mirrors the terminal
+ * UI's `OlderHistoryNotice` in the states where it is a control, and no
+ * further: the claim is not that the head of the transcript is always
+ * operable, only that it is whenever the row is the reader's sole route.
  */
 
 export type OlderHistoryState =
