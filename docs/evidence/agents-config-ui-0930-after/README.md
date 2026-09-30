@@ -73,3 +73,27 @@ else, so no `agent`/`team` tool call can be produced from it; the summary's rule
 for created/updated/read-only-touched are pinned instead by
 `scripts/agents-config-summary.test.mjs` (which is what found the read-vs-write
 defect in the touched set).
+
+---
+
+## Round 1 remediation — the blocker, walked on the real app (frames `blocker-*`)
+
+Four frames from a rig run against the same isolated backend as `scopeB-*`
+(the merged core, scratch HOME/config, its own port; the app built from the
+remediation head). Two custom agents were created through the app's own desktop
+bridge with instructions that name themselves, so a wrong-record write is
+readable in the pixels and in a read-back.
+
+| frame | state | what it shows |
+|---|---|---|
+| blocker-01-row-click-asks | dirty edit, another row clicked | the pane HEADING still reads `rig-alpha-0930`, the Instructions field still holds alpha's draft, and the question is on screen: "Discard your unsaved changes to this agent?" with Discard changes / Keep editing. Nothing was carried, nothing was written. |
+| blocker-02-after-discard | after Discard changes | the heading reads `rig-beta-0930`, the pane renders BETA'S own instructions, and alpha's draft text appears nowhere on it. |
+| blocker-03-tab-asks | dirty edit, Teams tab clicked | the same question, from the tab path. |
+| blocker-04-composer-not-stuck | after the edit ended | the docked composer is present, enabled, and carries its ordinary note — no "Finish or cancel your edit first". |
+
+Readings taken beside the frames, printed by the same run: the beta record's
+instructions read back through the app's own `profiles.get` are
+`"BETA-INSTRUCTIONS: keep this text exactly."` BEFORE the row click and the same
+string AFTER the discard — the draft was never written to it; `kept editing`
+left the operator on alpha with the draft intact; and the composer's own DOM
+read `{present: true, disabled: false, blocked: false}` once the edit had ended.
