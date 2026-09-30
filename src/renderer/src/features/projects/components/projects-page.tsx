@@ -21,6 +21,16 @@
  * second route element would duplicate both. The detail's own reads start only
  * once the gate opens, which is what keeps a below-version backend from
  * answering with the 404 the list already knows not to ask for.
+ *
+ * THE SEARCH CONTROLS NARROW ALL THREE VIEWS (design §2.7): the query joins
+ * the listing, the facets narrow the join, and the result is ONE derivation
+ * (`visibleProjects`) every view reads — a query that applied to one view
+ * would make the three disagree about what exists. Sorting is the LIST's alone
+ * (the Board's order is its columns, the Timeline's is the calendar), so the
+ * sort spec is applied inside `project-list.tsx`. The Board's own window stays
+ * an ADDITIONAL narrowing on top of the filters — `boardVisible` — so the
+ * board cannot show a row the search excluded, and its count reports matches
+ * within the window rather than ignoring it (U5).
  */
 
 import {
@@ -33,7 +43,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
 	DesktopProject,
@@ -47,6 +57,15 @@ import {
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
 import {
+	type FilterFacetKey,
+	type FilterOptionValue,
+	type FilterState,
+	NO_FILTERS,
+	applyFilters,
+	isFilterEmpty,
+	toggleFilterValue,
+} from "../project-filters";
+import {
 	type BoardWindow,
 	boardWindowEmptyHeading,
 	boardWindowProjects,
@@ -55,6 +74,14 @@ import {
 	refusalCopy,
 	writeBoardWindow,
 } from "../project-model";
+import { searchProjects } from "../project-search";
+import {
+	type SortSpec,
+	readProjectsSort,
+	sortAnnouncement,
+	writeProjectsSort,
+} from "../project-sort";
+import { todayUtcMs } from "../timeline-model";
 
 /**
  * The loading skeleton's row keys. A literal list rather than `Array.from`:
@@ -69,6 +96,10 @@ import { ProjectDetailScreen } from "./project-detail";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectList } from "./project-list";
 import { ProjectTimeline } from "./project-timeline";
+import {
+	ProjectsFilterChips,
+	ProjectsSearchControls,
+} from "./projects-toolbar";
 import {
 	type ProjectsView,
 	ProjectsViewSwitcher,
@@ -116,25 +147,80 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	);
 	const [editing, setEditing] = useState<DesktopProject | null>(null);
 	const [deleting, setDeleting] = useState<DesktopProject | null>(null);
+	/*
+	 * THE SEARCH CONTROLS ARE THE PAGE'S OWN STATE — the query joins the
+	 * listing and the facets narrow it, so the two cannot live in either
+	 * toolbar component (both the row's field and the chips row act on them).
+	 * The query is plain state rather than storage (a search is a session's
+	 * intent, not a preference); the filters and the sort persist through the
+	 * tab's guarded layout-choice idiom, like the view and the board window.
+	 */
+	const [query, setQuery] = useState("");
+	const [filters, setFilters] = useState<FilterState>(NO_FILTERS);
+	const [sort, setSort] = useState<SortSpec | null>(() => readProjectsSort());
+	/* The sentence a sort change feeds the live region; see `changeSort`. */
+	const [sortAnnouncementText, setSortAnnouncementText] = useState("");
+	/** The page's handle for `/`, ⌘F and the no-match body's Clear all. */
+	const searchFieldRef = useRef<HTMLInputElement>(null);
 	/* The caret's hand-back after a status move; see `moveTo` and the hook. */
 	const handOffFocus = useMoveFocusHandoff();
 	const projects = list.data ?? [];
+	/* The page's one day basis for the target facet's windows (UTC, the store's own). */
+	const todayMs = todayUtcMs(nowMs);
 	/*
-	 * THE WINDOW NARROWS THE BOARD ALONE (design memo §4). `projects` above
-	 * also feeds the List's rows and the timeline's fan-out, so the filtered
-	 * set is a SEPARATE derivation rather than an in-place filter - a shared
-	 * narrowed array would quietly shrink three surfaces from one preference.
-	 * The arithmetic is `updated_at` against the page's one clock, the same
-	 * `nowMs` the age labels read; `all` is the absence of a predicate, and a
-	 * window change writes nothing else (the stored column order and the
-	 * cards' own order are untouched).
+	 * ONE DERIVATION, THREE VIEWS (design §2.7): the query joins first — the
+	 * matched rows in the store's order — then the facets narrow, and every
+	 * view below reads THIS array. The LIST is the only view that re-orders it
+	 * (relevance under a query, an explicit sort otherwise), which is what
+	 * "sorting is not page-wide" means in practice; the Board and the Timeline
+	 * keep their own spatial order and just draw fewer objects.
+	 */
+	const visibleProjects = useMemo(
+		() => applyFilters(searchProjects(projects, query), filters, todayMs),
+		[projects, query, filters, todayMs],
+	);
+	/* Whether the toolbar's count and chips are live — its own "is a search on" predicate. */
+	const searchActive = query.trim() !== "" || !isFilterEmpty(filters);
+	/*
+	 * THE WINDOW NARROWS THE BOARD, ON TOP OF THE FILTERS (U5). `boardProjects`
+	 * is the board's underlying set — every row the window admits — and is the
+	 * count's DENOMINATOR; `boardVisible` is the window applied to the search
+	 * and filter set, which is what the board draws and what the count counts.
+	 * Keeping the two separate is what stops `12 of 74` from describing a
+	 * board that shows three cards.
 	 */
 	const boardProjects = useMemo(
 		() => boardWindowProjects(projects, boardWindow, nowMs),
 		[projects, boardWindow, nowMs],
 	);
+	const boardVisible = useMemo(
+		() => boardWindowProjects(visibleProjects, boardWindow, nowMs),
+		[visibleProjects, boardWindow, nowMs],
+	);
 	/* The empty-window heading; `null` at `all`, where the state is unreachable. */
 	const boardWindowHeading = boardWindowEmptyHeading(boardWindow);
+	/*
+	 * The toolbar's result line, per view: the List and the Timeline report
+	 * against the whole listing; the Board reports against its WINDOW (U5) —
+	 * "3 of 6 projects" is the only sentence true of a board that draws six
+	 * cards at most — and `null` (no query, no facet) renders nothing at all.
+	 */
+	const matchCount =
+		view === "board" ? boardVisible.length : visibleProjects.length;
+	const resultText = !searchActive
+		? null
+		: view === "board"
+			? `${boardVisible.length} of ${boardProjects.length} projects`
+			: `${visibleProjects.length} of ${projects.length} projects`;
+	const listReady = list.isSuccess && projects.length > 0;
+	/*
+	 * THE EMPTY-STATE PRECEDENCE, stated once (U5): with a search on and zero
+	 * matches the NO-MATCH block wins — over the board's empty-window state
+	 * included — and only with no search does an empty window get to name
+	 * itself. Loading and failure render first either way: a skeleton or an
+	 * error is not a search result.
+	 */
+	const noMatch = listReady && searchActive && matchCount === 0;
 	/*
 	 * THE RECOVERY HANDS THE CARET BACK (UX round 1, U3). "Show all time"
 	 * unmounts the button the press came from, so focus falls to the body - a
@@ -154,23 +240,90 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		node.focus();
 		setHandBackToWindow(false);
 	});
+	/*
+	 * `/` AND ⌘F FOCUS THE SEARCH FIELD (design §2.6). A document listener
+	 * because both chords are page-scoped and there is no widget for them to
+	 * live on; it stands down in an editable target, inside a dialog (a
+	 * popover is one), and while any modifier rides `/` — so Escape and every
+	 * printable key keep their ordinary meaning. Page-scoped on purpose: the
+	 * app's other ⌘F is the chat transcript's own find and lives on another
+	 * route.
+	 */
+	useEffect(() => {
+		if (!enabled || projectId) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			if (!target || target.isContentEditable) return;
+			if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+			if (target.closest('[role="dialog"]')) return;
+			const slash =
+				event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey;
+			const find =
+				(event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
+			if (!slash && !find) return;
+			event.preventDefault();
+			searchFieldRef.current?.focus();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [enabled, projectId]);
 	const details = useProjectMilestones(
 		view === "timeline" ? projects.map((project) => project.id) : [],
 		enabled,
 	);
-	const timelineItems = projects.map((project, index) => ({
+	/*
+	 * The detail reads stay keyed to the WHOLE listing (a filter change must
+	 * not refetch), so the view maps the FILTERED rows back onto them by id —
+	 * `details[index]` used to line up with `projects[index]`, an alignment the
+	 * moment one of the two arrays is filtered it no longer has.
+	 */
+	const detailById = new Map(
+		projects.map((project, index) => [project.id, details[index]]),
+	);
+	const timelineItems = visibleProjects.map((project) => ({
 		project,
-		milestones: details[index]?.data?.project.milestones ?? [],
+		milestones: detailById.get(project.id)?.data?.project.milestones ?? [],
 	}));
+	/*
+	 * The counts describe the rows ON SCREEN: a read that belongs to a filtered-
+	 * out project is not something this reader is waiting for.
+	 */
 	const pendingDetails =
-		view === "timeline" ? details.filter((query) => query.isLoading).length : 0;
+		view === "timeline"
+			? visibleProjects.filter(
+					(project) => detailById.get(project.id)?.isLoading,
+				).length
+			: 0;
 	const failedDetails =
-		view === "timeline" ? details.filter((query) => query.isError).length : 0;
+		view === "timeline"
+			? visibleProjects.filter((project) => detailById.get(project.id)?.isError)
+					.length
+			: 0;
 	/* The retry the timeline's toolbar offers: only the reads that failed. */
 	const retryDetails = () => {
 		for (const query of details) {
 			if (query.isError) void query.refetch();
 		}
+	};
+	/*
+	 * THE SORT'S ONE DOOR: every sort change — a column menu's radio, the sort
+	 * chip's removal — writes through the guarded store and announces itself in
+	 * the app's own words ("Sorted by Target, latest first." / "Sort
+	 * cleared."), which is the sentence the strip's `aria-sort` cannot say for
+	 * a reader who was not on the header when it changed.
+	 */
+	const changeSort = (next: SortSpec | null) => {
+		setSort(next);
+		writeProjectsSort(next);
+		setSortAnnouncementText(sortAnnouncement(next));
+	};
+	const toggleFilter = (facet: FilterFacetKey, value: FilterOptionValue) => {
+		setFilters((current) => toggleFilterValue(current, facet, value));
+	};
+	/* `Clear all`'s action wherever it sits: the query and every facet. */
+	const clearSearchAndFilters = () => {
+		setQuery("");
+		setFilters(NO_FILTERS);
 	};
 	const moveTo = (project: DesktopProject, status: string) => {
 		update.mutate(
@@ -285,32 +438,72 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				 * header's actions are the page's commands (refresh, new), while the
 				 * switcher is a mode of the BODY — and at the app's narrowest window the
 				 * two in one row would squeeze the subtitle to a stub.
+				 *
+				 * THE SEARCH CLUSTER JOINS THIS ROW (U1): the field, the Filters button,
+				 * the result count and — on the Board — the window control share the
+				 * switcher's line, so no NEW row mounts on the first keystroke; the chips
+				 * row below appears only when a facet or a sort is set. `flex-wrap`
+				 * carries the narrow case by wrapping the cluster under the tabs rather
+				 * than squeezing either.
 				 */}
-				<div className="flex shrink-0 items-center justify-between gap-3">
-					<ProjectsViewSwitcher
-						value={view}
-						onChange={(next) => {
-							setView(next);
-							writeProjectsView(next);
-						}}
-					/>
-					{/*
-					 * The window control is the BOARD's, so it appears only where the
-					 * board does: not in List/Timeline, and not over the store-empty
-					 * state (whose message already sends the reader to create a project
-					 * - a window over nothing has nothing to widen). It is otherwise
-					 * not data-gated, so a loading or failed read still shows the
-					 * reader's stored choice.
-					 */}
-					{view === "board" && !(list.isSuccess && list.data.length === 0) && (
-						<BoardWindowSelect
-							value={boardWindow}
+				<div className="flex shrink-0 flex-col gap-2">
+					<div className="flex flex-wrap items-center gap-3">
+						<ProjectsViewSwitcher
+							value={view}
 							onChange={(next) => {
-								setBoardWindow(next);
-								writeBoardWindow(next);
+								setView(next);
+								writeProjectsView(next);
 							}}
 						/>
-					)}
+						<ProjectsSearchControls
+							projects={projects}
+							query={query}
+							onQueryChange={setQuery}
+							filters={filters}
+							onFiltersChange={setFilters}
+							onClearAll={clearSearchAndFilters}
+							todayMs={todayMs}
+							resultText={resultText}
+							searchFieldRef={searchFieldRef}
+							trailing={
+								/*
+								 * The window control is the BOARD's, so it appears only where the
+								 * board does: not in List/Timeline, and not over the store-empty
+								 * state (whose message already sends the reader to create a project
+								 * - a window over nothing has nothing to widen). It is otherwise
+								 * not data-gated, so a loading or failed read still shows the
+								 * reader's stored choice.
+								 */
+								view === "board" &&
+								!(list.isSuccess && list.data.length === 0) ? (
+									<BoardWindowSelect
+										value={boardWindow}
+										onChange={(next) => {
+											setBoardWindow(next);
+											writeBoardWindow(next);
+										}}
+									/>
+								) : null
+							}
+						/>
+					</div>
+					<ProjectsFilterChips
+						filters={filters}
+						sort={sort}
+						onFiltersChange={setFilters}
+						onSortChange={changeSort}
+						onClearAll={clearSearchAndFilters}
+						searchFieldRef={searchFieldRef}
+					/>
+					{/*
+					 * ONE POLITE LIVE REGION for sort changes (U3): `aria-sort` states the
+					 * sort a reader lands on, but not the CHANGE, and a reader who was not
+					 * on the header when a chip cleared the sort would otherwise learn
+					 * nothing. `<output>` is this tree's own announcement element.
+					 */}
+					<output className="sr-only" aria-live="polite">
+						{sortAnnouncementText}
+					</output>
 				</div>
 			</div>
 
@@ -395,20 +588,62 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					</div>
 				)}
 
-				{list.isSuccess && list.data.length > 0 && view === "list" && (
+				{listReady && noMatch && (
+					/*
+					 * THE NO-MATCH STATE (design §2.3 as amended): the search stays
+					 * visible and editable above, this block says what happened and what
+					 * to do — and its subline names the pool v1 actually searches (U5/M3)
+					 * so a reader whose word lives in an update is told why it is not
+					 * found, rather than concluding the project does not exist.
+					 */
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+						<p className="text-heading text-ink">
+							{query.trim()
+								? `No projects match "${query.trim()}".`
+								: "No projects match."}
+						</p>
+						<p className="max-w-140 text-center text-body-sm text-ink-muted">
+							Searches names, descriptions, tags, owners and teams. Update text
+							will be searchable once server search ships.
+						</p>
+						<Button
+							variant="secondary"
+							onClick={() => {
+								clearSearchAndFilters();
+								/* The field itself never unmounts, so the handoff is direct
+								 * rather than the wait-for-commit kind: by the time the click
+								 * handler returns, the node it focuses is the same node the
+								 * next render shows. */
+								searchFieldRef.current?.focus();
+							}}
+						>
+							Clear all
+						</Button>
+					</div>
+				)}
+
+				{listReady && !noMatch && view === "list" && (
 					<ProjectList
-						projects={list.data}
+						projects={visibleProjects}
 						nowMs={nowMs}
 						onOpen={(project) => void navigate(`/projects/${project.id}`)}
+						sort={sort}
+						onSortChange={changeSort}
+						allProjects={projects}
+						filters={filters}
+						query={query}
+						todayMs={todayMs}
+						onToggleFilter={toggleFilter}
+						onClearFilters={clearSearchAndFilters}
 					/>
 				)}
 
-				{list.isSuccess &&
-					list.data.length > 0 &&
+				{listReady &&
+					!noMatch &&
 					view === "board" &&
-					boardProjects.length > 0 && (
+					boardVisible.length > 0 && (
 						<ProjectBoard
-							projects={boardProjects}
+							projects={boardVisible}
 							nowMs={nowMs}
 							onOpen={(project) => void navigate(`/projects/${project.id}`)}
 							onEdit={setEditing}
@@ -422,10 +657,10 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						/>
 					)}
 
-				{list.isSuccess &&
-					list.data.length > 0 &&
+				{listReady &&
+					!noMatch &&
 					view === "board" &&
-					boardProjects.length === 0 &&
+					boardVisible.length === 0 &&
 					boardWindowHeading !== null && (
 						/*
 						 * THE EMPTY WINDOW IS NOT "NO PROJECTS": the store holds rows; the
@@ -457,7 +692,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						</div>
 					)}
 
-				{list.isSuccess && list.data.length > 0 && view === "timeline" && (
+				{listReady && !noMatch && view === "timeline" && (
 					<ProjectTimeline
 						items={timelineItems}
 						nowMs={nowMs}
