@@ -38,6 +38,7 @@ import { remarkCredentialCitations } from "./credential-citation-remark";
 // `markdown-math-guarded.ts` carries the guarded tokenizer, its provenance
 // from `micromark-extension-math@3.1.0`, and the pandoc rules it implements.
 import remarkGuardedMath from "./markdown-math-guarded";
+import { MarkdownTable } from "./markdown-table";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
@@ -329,9 +330,16 @@ export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
  * for the transcript's rows - is the "second implementation of one thing" § 9
  * refuses, and because the links that need the new behaviour are exactly the
  * ones markdown produces.
+ *
+ * The `table` entry is the scroll wrapper the table-width fix needs
+ * (`markdown-table.tsx` carries the report): every table, in every markdown
+ * render, sits in a box that overflows safely instead of squeezing or pushing
+ * the page, and the entry lives on THIS map so the citations map below inherits
+ * it through its spread and no third map can be forgotten.
  */
 const MARKDOWN_COMPONENTS: Components = {
 	a: MarkdownAnchor,
+	table: MarkdownTable,
 	code: ({ node: _node, className, children, ...rest }) => {
 		const language = LANGUAGE_REGEX.exec(className ?? "")?.[1];
 

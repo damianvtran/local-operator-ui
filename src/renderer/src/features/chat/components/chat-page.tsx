@@ -101,6 +101,9 @@ import {
 	lockAnswerOutlived,
 	retryOfferedForFailureCode,
 } from "../composer-notice";
+import { ChatDeviceHold } from "../device/chat-device-hold";
+import { ChatDeviceNotice } from "../device/chat-device-notice";
+import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -3281,6 +3284,21 @@ function SessionPanel({
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
+					/*
+					 * THE DEVICE CONTROL'S TWO SURFACES, composed here because this is the one
+					 * place that knows both halves of the pane's identity: the live `sessionId`
+					 * and the `draftKey` a new chat is keyed on. Everything else they need -
+					 * the draft's own destination, this pane's move outcome, the mesh's reads -
+					 * is read inside them from the store that owns it.
+					 */
+					deviceSlot={
+						<ChatDeviceSlot
+							sessionId={sessionId ?? undefined}
+							draftKey={draftKey ?? undefined}
+						/>
+					}
+					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
+					deviceHold={<ChatDeviceHold sessionId={sessionId ?? undefined} />}
 					agentName={title}
 					description={
 						// `loaded` names the agent/team actually answering; without it an

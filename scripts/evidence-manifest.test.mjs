@@ -2069,6 +2069,18 @@ const BRANCH_RECORDS = [
 	 */
 	"quickSendRestampNote",
 	/*
+	 * And the chat device control's own (`feat/chat-move-control`), the record the
+	 * device-control pass wrote when it added `chat-device/` (36 frames over 18
+	 * stories, swept in this branch). It is listed for the list's own reason: a fold
+	 * resolved from main's copy would drop the only statement of which frames this
+	 * branch added, of what was deliberately NOT photographed, and of the local
+	 * uncommitted `.storybook/main.ts` line the sweep ran under - the same class the
+	 * twelfth fold committed against seven other records. It quotes no tree-hash
+	 * pair (the re-derived pair lives in `STAMP_BINDING_NOTES`' members), so it
+	 * belongs here and not there.
+	 */
+	"chatDeviceControlNote",
+	/*
 	 * And the fold's own (`sessionlessSlashFoldNote`), listed for the list's
 	 * usual reason: the note states what the fold moved and what it did not, and
 	 * a fold that started from main's copy would drop it.
