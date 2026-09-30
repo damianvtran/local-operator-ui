@@ -183,6 +183,29 @@ export type ScrollPagingHandle = {
 	 * about where they are.
 	 */
 	requestOlder: () => void;
+	/**
+	 * Whether the automatic COMPLETION WALK may ask for a page right now
+	 * (loader-continuity 1b, design spec section 7 clause b): the reader is
+	 * following the tail AND has given the pointer no reason to be answered —
+	 * no input for `SETTLE_MS` — AND the pane is actually following that tail
+	 * (`followingTail` in this module's own terms).
+	 *
+	 * WHY IT LIVES HERE. The walk is the one ask with no gesture behind it, so
+	 * it has to be authorised by the reader's POSITION rather than by their
+	 * demand, and the position is this module's: `followingTail` and the input
+	 * clock are derived from one number (`scrollTop`) and one ref
+	 * (`state.lastInputAt`), and a second copy of that derivation in the
+	 * transcript is exactly the "two authorities" this change removes. Read at
+	 * the MOMENT OF THE ASK rather than from a render-time snapshot: a
+	 * `followingTail` captured one commit ago would authorise a page the reader
+	 * has since scrolled away from.
+	 *
+	 * A tail-following reader is `scrollable` by construction, so the walk
+	 * cannot fire on the unscrollable pane the reveal chain (clause L) owns:
+	 * that pane has `scrollTop === 0`, which IS the tail, and the two would
+	 * otherwise both be asking.
+	 */
+	mayAutoWalk: () => boolean;
 };
 
 export function useScrollPaging({
@@ -927,5 +950,17 @@ export function useScrollPaging({
 						? "idle"
 						: "exhausted";
 
-	return { slotState, requestOlder };
+	/*
+	 * The completion walk's authorisation, in the module's own terms. See the
+	 * handle's docstring for why it reads the live geometry and the policy's own
+	 * clock instead of taking a snapshot: `state.current` is the same object
+	 * `decide` reduces, so "the reader has been quiet for `SETTLE_MS`" here
+	 * means exactly what it means to a spend.
+	 */
+	const mayAutoWalk = useCallback((): boolean => {
+		if (performance.now() - state.current.lastInputAt < SETTLE_MS) return false;
+		return measure()?.followingTail === true;
+	}, [measure]);
+
+	return { slotState, requestOlder, mayAutoWalk };
 }

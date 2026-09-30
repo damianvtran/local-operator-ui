@@ -28,7 +28,7 @@
  * nothing but the rows in the list, and a bar over a head-cut run states NO
  * duration rather than one fabricated from the first loaded row. The window
  * snap and the bounded align fetch (`snapWindowToRunBoundary`,
- * `alignFetchDecision`) stay as refinements that bring the head in when it is
+ * `alignWalkDecision`) stay as refinements that bring the head in when it is
  * cheap; neither is a precondition any more.
  *
  * EVERYTHING ELSE — counts, failure classification, the hover sentence — is
@@ -470,25 +470,59 @@ export function widenTarget(
 }
 
 /**
- * The alignment effect's whole decision, as a pure step: spend another page or
- * not, and the counter it leaves behind.
+ * Durable pages ONE open may walk at the alignment (loader-continuity 1b,
+ * design spec section 7).
  *
- * WHY IT IS A FUNCTION AND NOT FOUR GUARDS IN AN EFFECT (agent review round 1,
- * F2): the bound (`ALIGN_FETCH_MAX` pages per conversation) is the property
- * that keeps an open from walking an unbounded conversation into memory, and
- * inside an effect it could only be observed by re-mounting a component — a
- * harness whose own double-mount made the reading ambiguous (measured: the
- * per-instance cap of two read as three across a strict-mode remount, and the
- * counts stop either way). Here the table is decided by construction.
+ * WAS `ALIGN_FETCH_MAX = 2`, and two pages was the whole of the operator's
+ * symptom 1: a turn whose head lay further up the journal than two pages could
+ * never state its own size. Measured on the real-shape journal, the bar at open
+ * read "30 actions" against a run of 423 calls, and it only grew as pages
+ * arrived by hand ("97 actions" in the operator's own screenshot is the same
+ * fact, one fetch budget deeper). A settled turn must be able to COMPLETE ITS
+ * OWN CONDENSATION, and the honest quantity that bounds that is one act's worth
+ * of pages -- the same `JUMP_MAX_PAGES` a rail jump walks, whose own test pins
+ * the two equal so the reader's chain and the jump cannot disagree.
  */
-export function alignFetchDecision(
+export const ALIGN_WALK_MAX_PAGES = 12;
+
+/**
+ * Whether the completion walk spends one more page, and the counter it leaves.
+ *
+ * EVERY TERM IS A REASON TO STOP, and they are the design's section 7 clauses:
+ * the window's top run is still head-cut and the backend has more (there is
+ * something to complete), no page is in flight (the walk never queues behind
+ * itself), the reader is following the tail and has been quiet for the settle
+ * window (`mayWalk`, computed by the paging hook from the SAME geometry and
+ * input clock every other spend uses -- the walk must not re-derive them), and
+ * every page so far APPLIED (a non-`applied` outcome halts the walk rather than
+ * counting against it: one failure already owns the failed row, and a walk that
+ * kept asking would be the operator's "keeps loading in chunks" loop).
+ *
+ * WHY A PURE FUNCTION. The bound is the property that keeps an open from
+ * walking an unbounded conversation into memory, and inside an effect it could
+ * only be observed by re-mounting a component -- a harness whose own
+ * double-mount made the reading ambiguous (measured: a per-instance cap of two
+ * read as three across a strict-mode remount). Here the table is decided by
+ * construction.
+ */
+export function alignWalkDecision(
 	spent: number,
-	hasMore: boolean,
-	loadingOlder: boolean,
-	headCut: boolean,
-	max: number,
+	context: {
+		hasMore: boolean;
+		loadingOlder: boolean;
+		headCut: boolean;
+		mayWalk: boolean;
+		halted: boolean;
+	},
 ): { fetch: boolean; spent: number } {
-	if (spent >= max || loadingOlder || !hasMore || !headCut) {
+	if (
+		spent >= ALIGN_WALK_MAX_PAGES ||
+		context.halted ||
+		context.loadingOlder ||
+		!context.hasMore ||
+		!context.headCut ||
+		!context.mayWalk
+	) {
 		return { fetch: false, spent };
 	}
 	return { fetch: true, spent: spent + 1 };
