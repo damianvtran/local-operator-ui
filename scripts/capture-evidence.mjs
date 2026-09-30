@@ -2649,13 +2649,41 @@ export const STORIES = [
 	   ladder — the state ink the wakes rows deliberately lack), the cap and its
 	   marker one past the arm path's own eight, a description longer than its
 	   row, the pair with the wakes (`wakes-and-plan`'s sibling, in the order both
-	   surfaces draw: the wakes first), and the pane's 320px floor. */
+	   surfaces draw: the wakes first), the pane's 320px floor, and that floor with
+	   a dismissed refusal's record on it - the state design round 1's D1 collision
+	   was worst in, because the record widens the action column by a further
+	   ~90px on top of the plain floor's squeeze. */
 	["chat-run-panel--monitors-only", 1280, 700],
 	["chat-run-panel--monitors-health", 1280, 820],
 	["chat-run-panel--monitors-many", 1280, 820],
 	["chat-run-panel--monitor-long-description", 1280, 700],
 	["chat-run-panel--monitors-and-wakes", 1280, 820],
 	["chat-run-panel--monitors-floor-320", 1280, 700],
+	["chat-run-panel--monitors-floor-320-refusal-record", 1280, 700],
+	/*
+	 * The cancel affordance's own states (the design's cancel paragraph, Unit B):
+	 * the row control under the pointer, the control holding the point's
+	 * `:focus-visible` ring, the confirmation the press opens, the confirmation
+	 * after a refusal - the state where the dialog must stay open with the
+	 * backend's own sentence - and the two records an attempt leaves on the row
+	 * once its dialog is gone: the `Cancelled` settling mark a receipt buys, and
+	 * the quiet `Cancel refused` note a dismissed refusal leaves (the round-1
+	 * remediation's U4/U8 half). The hover goes through the rig's real pointer
+	 * (the wash is a real hover state, hence `hoverSettleMs`); the refused,
+	 * cancelled and refusal-record frames perform their own presses and hold the
+	 * shutter until the state lands.
+	 */
+	[
+		"chat-run-panel--monitor-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-monitor-cancel="m1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--monitor-cancel-focus", 1280, 820],
+	["chat-run-panel--monitor-cancel-confirm", 1280, 820],
+	["chat-run-panel--monitor-cancel-refused", 1280, 820],
+	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
+	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim

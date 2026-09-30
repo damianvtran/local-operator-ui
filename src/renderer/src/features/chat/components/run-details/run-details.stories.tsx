@@ -59,6 +59,7 @@ import { CANCELLED_BEFORE_START, mcpGrantInFlight } from "./run-detail-model";
 import * as fixtures from "./run-details.fixtures";
 import { RunPanel } from "./run-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
+import type { MonitorControls } from "./use-monitor-controls";
 
 const at = (iso: string) => new Date(iso);
 
@@ -130,6 +131,7 @@ const TranscriptGround = () => (
  * confirm ran the operation rather than only opening.
  */
 const presses: string[] = [];
+
 const mcpRemedy = (
 	overrides: Partial<McpRemedyControls> = {},
 ): McpRemedyControls => ({
@@ -151,6 +153,21 @@ const mcpRemedy = (
 });
 
 /**
+ * The pane's monitor controls, as `chat-page.tsx` passes them (design §12's
+ * desktop row).
+ *
+ * A still cannot cancel anything, so the photographed stories answer `ok`; the
+ * frame that is ABOUT the refusal injects the route's own sentence instead of
+ * reaching one.
+ */
+const monitorControls = (
+	overrides: Partial<MonitorControls> = {},
+): MonitorControls => ({
+	cancel: async () => ({ ok: true }),
+	...overrides,
+});
+
+/**
  * The pane, exactly as `chat-content.tsx` mounts it: a pinned-width wrapper with
  * the `border-l` seam, the shared divider (with its own label), and the real
  * `RunPanel` inside.
@@ -161,6 +178,7 @@ const RunPane = ({
 	mcpErrors = {},
 	mcpOperations = [],
 	remedy = mcpRemedy(),
+	controls = monitorControls(),
 	childrenOpenable = true,
 	readerChildId = null,
 	previewPage = null,
@@ -175,6 +193,7 @@ const RunPane = ({
 	/** The read's own `operations`, which is where a row's grant state comes from. */
 	mcpOperations?: readonly Record<string, unknown>[];
 	remedy?: McpRemedyControls;
+	controls?: MonitorControls;
 	childrenOpenable?: boolean;
 	readerChildId?: string | null;
 	previewPage?: DesktopChildTranscriptPage | null;
@@ -203,6 +222,7 @@ const RunPane = ({
 				mcpServers={deriveMcpServers(mcpServers, mcpErrors, mcpOperations)}
 				mcpGrantRunning={mcpGrantInFlight(mcpOperations)}
 				mcpRemedy={remedy}
+				monitorControls={controls}
 				sessionId={
 					(details.subagents.find((row) => row.childSessionId)
 						?.childSessionId as string | undefined) ?? "a1b2c3d4e5f6"
@@ -233,6 +253,7 @@ const ChatColumn = ({
 	mcpErrors = {},
 	mcpOperations = [],
 	remedy = mcpRemedy(),
+	controls = monitorControls(),
 	childrenOpenable = true,
 	openPanel = false,
 	readerChildId = null,
@@ -252,6 +273,7 @@ const ChatColumn = ({
 	/** The read's own `operations`, which is where a row's grant state comes from. */
 	mcpOperations?: readonly Record<string, unknown>[];
 	remedy?: McpRemedyControls;
+	controls?: MonitorControls;
 	childrenOpenable?: boolean;
 	openPanel?: boolean;
 	readerChildId?: string | null;
@@ -299,6 +321,7 @@ const ChatColumn = ({
 					mcpErrors={mcpErrors}
 					mcpOperations={mcpOperations}
 					remedy={remedy}
+					controls={controls}
 					childrenOpenable={childrenOpenable}
 					readerChildId={readerChildId}
 					previewPage={previewPage}
@@ -1396,6 +1419,226 @@ export const monitorsFloor320: Story = {
 			openPanel={true}
 		/>
 	),
+	decorators: [withCanvasClosed],
+};
+
+/*
+ * The cancel affordance (the design's cancel paragraph, this slice): one control
+ * per row, revealed on hover and on focus-within, behind the shared confirmation.
+ *
+ * Three stills and a flow: the control under the rig's real pointer, the control
+ * holding the keyboard's focus ring, the confirmation the press opens, and the
+ * confirmation after a REFUSAL - the state where the dialog must stay open with
+ * the backend's own sentence. The refused frame injects the route's own wording
+ * (`routes/desktop_monitors.py`'s owner-present refusal, verbatim), so the
+ * sentence photographed is the one the wire sends rather than a paraphrase.
+ */
+
+const MONITOR_CANCEL_SELECTOR = '[data-monitor-cancel="m1"]';
+
+/** The route's owner-present refusal, verbatim (`monitors/arm.py`). */
+const MONITOR_OWNER_REFUSAL =
+	"This conversation is open in a running session, which owns its monitors. Nothing was written. Retry in a moment, or change them from that session.";
+
+/**
+ * The control under the rig's real pointer - `{ hover: ... }` in
+ * `capture-evidence.mjs`, which asserts the element matches `:hover` before the
+ * shutter.
+ */
+export const MonitorCancelHover: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The control with the keyboard's focus ring on it.
+ *
+ * `focus({ focusVisible: true })` rather than a bare `focus()` - the
+ * `McpRemedyFocus` rule - because a programmatic focus is not treated as
+ * keyboard focus by Chromium's heuristic, and the frame this story exists for is
+ * the `:focus-visible` ring.
+ */
+const MonitorCancelFocusGround = () => {
+	useEffect(() => {
+		document
+			.querySelector<HTMLButtonElement>(MONITOR_CANCEL_SELECTOR)
+			?.focus({ focusVisible: true });
+	}, []);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const MonitorCancelFocus: Story = {
+	render: () => <MonitorCancelFocusGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The confirmation the row's control opens, reached by pressing the real
+ * control (`useClickAndWait`'s rule): a frame of a dialog opened by hand would
+ * be a frame of a state the app reaches by a different route.
+ */
+const MonitorCancelConfirmGround = () => {
+	useClickAndWait(MONITOR_CANCEL_SELECTOR, '[role="dialog"]');
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const MonitorCancelConfirm: Story = {
+	render: () => <MonitorCancelConfirmGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The confirmation after the route refused: it stays open with the backend's own
+ * sentence in the danger ink and hands the keyboard back to Keep
+ * (`delete-conversation-dialog.tsx`'s rule). The walk is the flow's two real
+ * presses - the row's control, then the dialog's confirm - against a controls
+ * object whose `cancel` answers the owner-present refusal.
+ */
+const MonitorCancelRefusedGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+		],
+		() =>
+			document
+				.querySelector('[role="dialog"]')
+				?.textContent?.includes(MONITOR_OWNER_REFUSAL) ?? false,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+			controls={monitorControls({
+				cancel: async () => ({ ok: false, detail: MONITOR_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const MonitorCancelRefused: Story = {
+	render: () => <MonitorCancelRefusedGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The receipt's acknowledgement, before the canonical re-read catches up: a
+ * cancel that LANDED closes the dialog and the row's control reads `Cancelled`
+ * at once (disabled, in place) - where the row used to linger 2.5-13 s with no
+ * acknowledgement at all (UX review round 1, U4). The walk is the confirm's own
+ * two presses, against controls whose cancel answers `ok`.
+ */
+const MonitorCancelCancelledGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="cancelled"]') !==
+			null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const MonitorCancelCancelled: Story = {
+	render: () => <MonitorCancelCancelledGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A refused attempt, DISMISSED: the row keeps the record - `Cancel refused`,
+ * with the whole sentence on `title` - beside the live control that is the next
+ * attempt which clears it (UX review round 1, U8). The walk is the flow's three
+ * real presses: the row's control, the confirm, then Keep (waited for until the
+ * refusal's own danger paragraph exists, so the dismissal cannot race the
+ * write's window).
+ */
+const MonitorCancelRefusalRecordGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+			{
+				waitFor: '[role="dialog"] p.text-danger',
+				press: "[data-cancel-action]",
+			},
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="refused"]') !==
+				null && document.querySelector('[role="dialog"]') === null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+			controls={monitorControls({
+				cancel: async () => ({ ok: false, detail: MONITOR_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const MonitorCancelRefusalRecord: Story = {
+	render: () => <MonitorCancelRefusalRecordGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A dismissed refusal at the pane's 320px floor: the state design round 1's D1
+ * collision was worst in, because the `Cancel refused` mark widens the action
+ * column by a further ~90px on top of the plain floor's squeeze. The walk is the
+ * refusal-record flow's own three presses, at the same 320 width the floor story
+ * uses, so the pair reads as the floor with and without the record.
+ */
+const MonitorsFloor320RefusalRecordGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+			{
+				waitFor: '[role="dialog"] p.text-danger',
+				press: "[data-cancel-action]",
+			},
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="refused"]') !==
+				null && document.querySelector('[role="dialog"]') === null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			width={320}
+			openPanel={true}
+			controls={monitorControls({
+				cancel: async () => ({ ok: false, detail: MONITOR_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const monitorsFloor320RefusalRecord: Story = {
+	render: () => <MonitorsFloor320RefusalRecordGround />,
 	decorators: [withCanvasClosed],
 };
 
