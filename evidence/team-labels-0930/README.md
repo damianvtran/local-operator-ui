@@ -11,9 +11,14 @@ half from this branch, and both halves come from a DISPOSABLE fixture tree
 | file | tree | state |
 | --- | --- | --- |
 | `before-sections.webp` / `after-sections.webp` | `origin/main` `ee5611a2e4` / the PR branch `a28e9abe0b` | the sidebar's Teams section: one team with a label (`release-crew` / `Release Engineering`) beside one without (`docs-pod`, the slug fallback) |
-| `before-header.webp` / `after-header.webp` | same | the chat header's identity chip, at rest, on a team-bound session |
-| `before-header-menu.webp` / `after-header-menu.webp` | same | the chip's team menu open (the `commands.entities` rows and the menu's current mark) |
-| `before-slash-teams.webp` / `after-slash-teams.webp` | same | the `/team` slash popup with `/team` typed: the first row is the labelled team, highlighted; the rest are slug fallbacks |
+| `before-header.webp` / `after-header.webp` | same / the PR branch `3f93b7941c` | the chat header's identity chip, at rest, on a team-bound session |
+| `before-header-menu.webp` / `after-header-menu.webp` | same / `3f93b7941c` | the chip's team menu open (the `commands.entities` rows and the menu's current mark) |
+| `before-slash-teams.webp` / `after-slash-teams.webp` | same / `3f93b7941c` | the `/team` slash popup with `/team` typed: the first row is the labelled team, highlighted; the rest are slug fallbacks |
+| `after-long-label.webp` | `3f93b7941c` | the chip against an eighty-character label at the 560 band — the cap truncates, the title reads whole (after-only: see below) |
+| `after-long-label-800.webp` | `3f93b7941c` | the same label at the app's own 800 minimum width |
+| `after-projects-list.webp` | `3f93b7941c` | the projects list's team group headings, resolved through the label lookup (after-only) |
+| `after-projects-detail.webp` | `3f93b7941c` | a project detail's `Managed by atlas · Platform Delivery` line (after-only) |
+| `after-projects-start-session.webp` | `3f93b7941c` | the start-session dialog over the same page: labelled team options, the page behind already resolved (after-only) |
 
 ## The fixture trick, and what each pair is allowed to claim
 
@@ -25,13 +30,16 @@ ignored extra property on the old code). One variable changes between the two
 columns: the renderer. A pair therefore shows exactly what the label split
 changed, and nothing else.
 
-WHAT A PAIR DOES NOT SHOW: the team PICKER dialog, the agents page's Teams
-roster and the projects start-session dialog also carry the change (they read
-the same `teamDisplayName` rule), but no capture-rig entry or story exists for
-any of them, so the PR's own unit cases are that claim's evidence and no frame
-here is a picture of those three surfaces. One theme (`localOperatorDark`),
-one size per story; a theme this branch does not photograph is a theme this
-pair says nothing about.
+WHAT A PAIR DOES NOT SHOW: the team PICKER dialog and the agents page's
+Teams roster also carry the change (they read the same `teamDisplayName`
+rule), but no capture-rig entry or story exists for either, so the PR's own
+unit cases are that claim's evidence and no frame here is a picture of those
+two surfaces. The projects surfaces (list headings, detail line,
+start-session dialog) were in the same position in round 1 and gained frames
+in round 1's remediation — after-only, for the reason the round-1 section
+below records. One theme (`localOperatorDark`), one size per story except the
+long-label pair; a theme this branch does not photograph is a theme this pair
+says nothing about.
 
 ## How they were taken
 
@@ -75,16 +83,55 @@ same commands produced a differing byte stream that did not recur in the two
 runs after it, so the receipt is the consecutive byte-identical runs rather
 than a claim of strict determinism.
 
+## Round-1 remediation re-captures (head `3f93b7941c`)
+
+The design/review/QA rounds asked for the chip to be bounded, the slug to be
+shown beside the label, and the projects surfaces to resolve team names. The
+three pairs' AFTER frames were re-captured at the remediation head through the
+same rig and the same commands as above (one storybook on `:6037`; runs:
+`--only=chat-header-identity--`, `--only=chat-slash-completion--argument-phase-teams`,
+`--only=projects-tab--list-teams-sticky`, `--only=projects-tab--detail`,
+`--only=projects-tab--start-session-dialog`, each `--themes=localOperatorDark`,
+each frame viewed before it was copied here), and `docs/evidence` was restored
+again (`git checkout -- docs/evidence && git clean -fd docs/evidence`).
+
+- The three pairs' BEFORE halves are unchanged (they are `origin/main`'s
+  renderer); only the AFTER column moved, and the moves are local: the header
+  pair differs on the title/chip line only (the title re-truncates around the
+  bounded chip's new width, the chip changes face), the menu pair across the
+  chip and the labelled row (its description line now leads with the slug),
+  the slash pair on its first row (label in the human face, slug token beside
+  it) plus lossy-WebP block noise below.
+- The long-label pair has NO before half, deliberately: on `origin/main`'s
+  renderer the story's `label` is an ignored property, so a before frame would
+  photograph the slug fallback rather than the overflow the cap removes. It is
+  after-only, and the rig's `expectAttribute` pins the trigger's `title` to
+  `Data Quality, Sanctions Screening and Regulatory Reporting (Global Markets
+  Desk) (data-quality)` at shutter time — the whole label plus the slug.
+- The projects frames are after-only for the same class of reason (the
+  fixtures that make labels resolvable are this branch's), and the story
+  fixtures gained the `platform` team the project rows actually name, so these
+  frames differ from round 1's project captures in their fixtures as well as
+  their code. They are pictures of the fixed surfaces, not a before/after
+  pair. The board's band headers and the timeline's group headers resolve
+  through the same prop and the same rule and are not photographed here.
+- Not capturable, declared: the sidebar entity row's tooltip is a native
+  `title` attribute, which never appears in a CDP screenshot. Its text is
+  `Label (slug)` when the two differ, pinned by the row's own tests.
+
 ## What the pairs show, in one line each
 
 - **sections**: `Release Engineering` against `release-crew`; the unlabelled
   `docs-pod` draws as its slug in both columns, which is the fallback claim as
   a picture.
-- **header chip**: `Local Operator Dev` against `lopdev`. A consequence the
-  design round may want to weigh: the chip is wider, so the title beside it
-  ellipsises one word earlier (`… uv on Windows` against `… uv on …`) — the
-  same header budget, differently spent, which is what a longer readable name
-  costs.
+- **header chip**: `Local Operator Dev` against `lopdev`, and at this head the
+  chip is BOUNDED (an 80-character label caps at `24ch` with the whole label
+  and the slug in its `title` — the rig asserts that title at shutter time,
+  and the long-label pair photographs the cap at 560 and at 800). The cap
+  changed a consequence round 1 recorded: the bounded, human-faced chip is
+  NARROWER than the uncapped mono one was, so at the 560 band the title keeps
+  a word it lost in round 1 (`… uv on Win…` where round 1's after read
+  `… uv on …`).
 - **header menu**: the menu row shows the label while the switch's value stays
   the slug (the check mark sits on the same row in both columns).
 - **slash popup**: `Platform Delivery` (highlighted first row) against
