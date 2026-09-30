@@ -1,6 +1,7 @@
 {
  "scene": "pinned-reorder",
  "theme": "localOperatorDark",
+ "fold": "re-shot on the folded tree (origin/main 9dd18ab318 folded into the branch); the pre-fold frames were compared against these: 23 of 32 byte-identical, the rest differing only OUTSIDE the sidebar (x >= 858 device px against the sidebar's 560) - see the README",
  "widths": [
   {
    "240": {

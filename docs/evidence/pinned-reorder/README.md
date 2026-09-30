@@ -104,6 +104,36 @@ file per palette. `measurements/` holds the per-palette geometry JSON the scene 
   step). A second process would say the same thing about the same bytes.
 - Every rig was reaped by exact pid; the stub's records and logs live outside the repo.
 
+## The fold, and what it did to these frames (origin/main `9dd18ab318`)
+
+The branch was folded onto main (`#691`'s subagent row marks, `#684`'s loader
+continuity, `#648`'s board bands) and this set was **re-shot on the folded tree**, so
+every committed frame is a picture of the tree the change lands on. That was not taken
+on trust: before replacing anything, the pre-fold frames were compared pixel by pixel
+against the new ones (`sharp`, raw RGBA, every channel, bounding box of what moved).
+
+| Verdict | Pairs |
+| --- | --- |
+| **byte-identical** | **23 of 32** |
+| differs only in the composer's caret, a **2x33px** strip at device y 1597-1629 | 7 |
+| differs in the chat column's rotating empty-state tip sentence and that caret | 2 (`after-drop`, both palettes) |
+
+**The differing pixels never touch the sidebar.** The leftmost differing device x across
+every pair is **858**; the sidebar's own pixels end at **560** (a 280px panel at
+`deviceScaleFactor: 2`). `order-relaunch` - the discriminating frame - is byte-identical
+in both palettes, and so are all three `order-before` widths, `drag-mid` and the
+search-filtered trio.
+
+Both classes of difference are the app's own, not the fold's, and the set proves it
+about itself: the caret strip is the between-run difference the `sidebar-row-space`
+README already names, and the tip line **rotates within a single launch** - hashing that
+line across this set's own committed frames gives five distinct values at one width, and
+the same five groupings appear in the pre-fold set. `#691`'s mark is separately disposed
+of by the scene itself, which counts `[data-subagent-mark]` inside the pinned section and
+asserts **zero**: the stand-in's rows carry no subagent counts, so the folded-in mark has
+nothing to draw here (and a fixture that grew one would fail that check rather than
+quietly move a frame).
+
 ## What these frames cannot show
 
 - **A real hand**: every gesture goes through `Input.dispatchMouseEvent`, so it enters
