@@ -301,3 +301,86 @@ does not touch, so it is unchanged by it: the stamps visible here are the child 
 **Three frames in this set look empty to a scan that starts below their sentence, and they are not (design round 1, D4).** `reader-pending`, `reader-gone` and `reader-unaddressed` each carry their own copy — `This subagent has no transcript on disk yet.`, `This subagent's session directory is no longer on disk.`, `This subagent's row carries no session id, so there is no conversation to open from here.` — near the TOP of the body, because the reader's absence arms are `QuietLine`s in a top-anchored body rather than foot rows; everything below the sentence is ground. Measured on the committed frames: ink deviation in the band `y 120–250` is 20.1 / 21.1 / 23.7 (text present, and three DIFFERENT strings — the files hash differently) and exactly **0.00** in `y 260–860`, which is the band that scan covered. No frame was dropped: each depicts its state, and the rows above now say where the copy sits.
 
 **`reader-childless` opens a FIXTURE page on a `queued` child** (design round 1's NIT), which the wire will usually not produce together — a child that has not started normally has no transcript file yet, i.e. § 10.1's `pending` rather than a ready page. Both facts the frame exists for are true of its row (status `queued`, a populated page) and the claim is about the FOOT: a queued child gets no line even when the row carries an activity string.
+
+## Re-taken for the monitor controls (slice 4b-ui B)
+
+**The Monitors section gained its row-level cancel, and the section's stopgap footer retired.** `docs/design/monitor-tool.md`'s cancel-affordance paragraph shipped v1 cancel as the agent tool and the CLI; this change adds the desktop half — a `Cancel monitor` control revealed on hover and on focus-within (the app's row idiom), one shared confirmation, the `monitors.cancel` DELETE op behind it, and a refusal rendered in the dialog that asked. The footer sentence ("To stop a monitor, ask the agent to cancel it.") went with it rather than staying beside the control.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its base `6083a5135e`:**
+
+```
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+
+node scripts/capture-evidence.mjs http://localhost:6051 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+```
+
+**Twenty frames: four new surfaces and six re-shot states.** Added: `monitor-cancel-hover` (the control under the rig's real pointer — `:hover` is browser state a story cannot set, and the rig asserts it before the shutter), `monitor-cancel-focus` (the keyboard's `:focus-visible` ring, `focus({focusVisible:true})` the way the MCP remedy's own frame does it), `monitor-cancel-confirm` (the dialog, opened by pressing the real control), and `monitor-cancel-refused` (the dialog after the route refused — the two-press flow driven by the story, the owner-present sentence injected verbatim from the core's `monitors/arm.py`). Re-shot: the six at-rest states, because the footer's removal and the reserved action column change every one of them.
+
+**The before half is this same diff.** The six re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff rather than a supplementary directory; the four new directories have no before because the control did not exist, and their affordance-absent state is what the six re-shot frames show.
+
+**One cost the frames carry rather than hide.** The reserved action column narrows each row's first line by about 54px, so the health tail truncates one clause earlier than in the base frames (the first row of `monitors-health` reads `3 fa…` where it read `3 failed`). That is the row's established degradation — the full string stays in the element's `title` and its screen-reader twin, the pair the section's own comment records for long reasons — and the alternative (an overlay that appears only on hover) would move a pointer target while the pointer is on it, which is why the action column lives in the layout.
+
+**A still cannot carry the write path, so the PR's e2e transcript does.** The cancel was exercised end to end against a locally booted isolated daemon of core main: arm/list/cancel through the app's own `desktopEndpoint` mapping, plus the 404 already-gone, the 422 malformed handle and the 503 owner-present refusals, and the on-disk transcript and index states.
+
+## Re-taken for the monitor controls' round-1 remediation
+
+**The cancel flow's first review round moved the interaction itself (agent review F1; UX review U2-U6, U8), and four of the six cancel states plus all six at-rest states were re-shot.** What changed, in the order the findings landed:
+
+- The `Cancel monitor` control now shows **at rest** (it was hover/focus-revealed) in a 24px box (`h-6`, overriding `size="sm"`'s 28px) — U6: with the stopgap footer retired, at rest nothing signalled cancellability, and the revealed control measured 51.6x20 px, under the hit floor. Every at-rest frame of the section was re-shot for this alone, because the control is in every one of them.
+- The confirmation's confirm reads **`Stop monitor`** (U7 — `Cancel` was doing both jobs) and pends while the write is in flight: disabled + `aria-busy` + the spinner + the busy label (written `Cancelling…` here, renamed `Stopping…` under `Stop monitor` by design round 1's D3), with every close path (Escape, outside click, the corner X) refused for that window — U3, one request per press against an answering writer. The `confirm` frame was re-shot; the `refused` frame was re-shot too (same dialog, same backend sentence, new label).
+- A receipt now acknowledges itself on the row — `Cancelled`, the control disabled in place — and a dismissed refusal leaves its record — `Cancel refused` beside the live control, the whole sentence on `title` — U4/U8. These are the two NEW surfaces: `monitor-cancel-cancelled`, `monitor-cancel-refusal-record`.
+- The retry policy no longer re-sends against an ANSWER (U3/F1): it is kept for a request nothing answered, and for the one 503 the core itself calls retryable (the contended lock). That is a fact about requests, not pixels — see the test note below.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its folded tip** (warm — the first attempts hit the preview's cold compile under the day's fleet load and a 10 s theme settle; `--theme-settle-ms=120000` is the budget the committed runs used, and the frames a failed attempt had already written were re-taken by the run that ships):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+```
+
+**Twenty-four frames: two new surfaces and ten re-shot states.** Added: `monitor-cancel-cancelled` (the two-press flow against an `ok` receipt — the row's control itself, disabled, reading `Cancelled`) and `monitor-cancel-refusal-record` (the flow's three presses — control, confirm, Keep — leaving the record beside the live control). Re-shot: the four earlier cancel states (`hover`, `focus`, `confirm`, `refused`) and the six at-rest states, because the control's at-rest visibility and 24px box move all ten.
+
+**One cost the new record carries rather than hides:** while `Cancel refused` stands, the action column is ~90px wider, so the refused row's first line yields one clause earlier (the first row of `monitor-cancel-refusal-record` reads `6. …` where `monitors-health` reads `6:27 AM EDT`), with the whole sentence on the record's `title`. It is the row's established yield order and it is transient — the next attempt against that row clears the record (U8).
+
+**The write's own facts are pinned by a DOM harness, not by a still.** `scripts/monitor-cancel-dialog.test.mjs` mounts the shipped pane body in jsdom and drives the real controls: the refusal surviving the list churn and its sentence still on screen (U2), one request per press with both buttons pended while it is in flight (U3), the immediate `Cancelled` mark and its ending at the re-read (U4), the clean reopen (U5), the record + the focus return + the session reset (U8). The retry discrimination is pinned in `scripts/monitor-controls.test.mjs` (retried: no answer at all, or the core's retryable contention 503; never an answered 503 — F1/U3).
+
+**The before half is this same diff**, as in the section above: the ten re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff; the two new directories have no before because the marks did not exist.
+
+## Re-taken for the monitor controls' design round 1
+
+**The design round found the row's first line unable to survive the pane's 320px floor with the control in it (design review round 1, D1), so every state whose frame carries a monitor row was re-shot, and one new surface was added.**
+
+- **D1 (major):** the cadence and the `last check` instant were ONE `shrink-0` span whose min-content (~185px) could not shrink: once the due slot and the health tail had yielded to zero at 320, the span ran text under the action column (`Cancel` printed over `AM EDT` in `monitors-floor-320`, and rows lost their due label entirely). The line is now built from yieldable boxes with weighted shrink: the health tail gives way first (`shrink-[30]`), then `last check` (`shrink-[3]`), then the due slot; the cadence never clips (`shrink-0`); the action column itself can yield (`min-w-0 shrink-[3]`) while the control stays `shrink-0`. The pair to read: `monitors-floor-320` (plain) and the new `monitors-floor-320-refusal-record` (the worst case — the record's ~90px widens the column further).
+- **D2 (minor):** `Cancelled` — the row's only acknowledgement of a landed write — moves from `ink-disabled` (1.99:1 dark / 2.96:1 light, floor-exempt for dead controls) to `ink-dim` (5.25:1 / 6.14:1) while staying non-interactive (`monitor-cancel-cancelled`).
+- **D3 (minor):** the busy label keeps the confirm's own verb — `Stopping…` under `Stop monitor` — instead of `Cancelling…` (in no still — the busy window is between presses; pinned in `scripts/monitor-cancel-dialog.test.mjs`).
+- **D4 (nit):** the confirmation's panel is width-pinned (`w-[26rem]`) so a refusal cannot re-centre the card and move the buttons under the pointer between the first press and the retry (`monitor-cancel-confirm` vs `monitor-cancel-refused` — same card box).
+- **D5 (nit):** the control's comment block now describes the shipped control (visible at rest, `h-6`), not the retired hover-reveal `h-5` design.
+
+**Two narrowed runs against a Storybook of this tree at its captured tip** (head `c35cbe3ce9`, warm):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320,monitors-floor-320-refusal-record,monitor-cancel-hover,monitor-cancel-focus,monitor-cancel-confirm,monitor-cancel-refused,monitor-cancel-cancelled,monitor-cancel-refusal-record \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+```
+
+**Twenty-six frames: one new surface (two frames) and twelve re-shot states.** Added: `monitors-floor-320-refusal-record` (the refusal-record flow's three presses at 320 — D1's worst case). Re-shot: the six at-rest states and the six cancel states, because the first line is respaced wherever it is drawn (the cadence is its own box now) and reordered at the floor. The second (narrow) run re-took the two floor states alone after the health tail's shrink weight was deepened from `6` to `30`, which is what removes the bare `…` sliver the first cut left on the disabled row.
+
+**What the pair shows.** At 320 the due slot now survives (`6:27 AM …` where the base frame lost it entirely), `last check` truncates before it, the health tail yields first, and with the record standing the row reads `6:27 A… · every 1m` — no text under the buttons in either floor state, both themes.
+

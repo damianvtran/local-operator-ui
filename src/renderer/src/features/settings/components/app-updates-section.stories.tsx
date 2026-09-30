@@ -1,9 +1,11 @@
 import { UpdateNotification } from "@shared/components/common/update-notification";
 import { apiConfig } from "@shared/config/api-config";
+import { UpdateType } from "@shared/store/deferred-updates-store";
+import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
+import { DEFAULT_FOLLOWED_SEGMENT } from "@shared/utils/update-segment";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { UpdateInfo } from "electron-updater";
-import type { FC } from "react";
-import { useLayoutEffect } from "react";
+import { type FC, type ReactNode, useLayoutEffect, useRef } from "react";
 import type { UpdateCheckVerdict } from "../../../../../main/update-check-verdict";
 import { AppUpdatesSection } from "./app-updates-section";
 
@@ -450,6 +452,36 @@ const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
 	);
 };
 
+/**
+ * Pin the notice store the frame is drawn from (design review round 1, D1).
+ *
+ * The followed segment PERSISTS (`update-notice-storage`), and Storybook's capture
+ * browser keeps one origin across stories - so a frame could inherit whichever
+ * setting the story before it staged. That is measured rather than hypothetical:
+ * the two `ServerUpdateOffered` frames shot for this change read "Skips patches and
+ * minors", the value the neighbouring `UpdateFollowing` stories set, while the
+ * shipped default is "Every release" - a frame of a state the product does not
+ * start in, in the very pair that exists to show the new control.
+ *
+ * Pinned during RENDER rather than in an effect, because effects run CHILD first:
+ * the section below reads the store as it draws, so an effect in this wrapper would
+ * land after the first frame had already been laid out. Guarded by a ref so the pin
+ * happens once per mount and cannot fight a story's own flow mid-walk, and the
+ * transient notices are cleared with it so one story's offer cannot appear in
+ * another's frame.
+ */
+const PinNoticeStore: FC<{ children: ReactNode }> = ({ children }) => {
+	const pinned = useRef(false);
+	if (!pinned.current) {
+		pinned.current = true;
+		const store = useUpdateNoticeStore.getState();
+		store.setFollowedSegment(UpdateType.UI, DEFAULT_FOLLOWED_SEGMENT);
+		store.setFollowedSegment(UpdateType.BACKEND, DEFAULT_FOLLOWED_SEGMENT);
+		store.resetNotices();
+	}
+	return <>{children}</>;
+};
+
 const meta = {
 	title: "Settings/App updates section",
 	component: AppUpdatesSection,
@@ -481,7 +513,11 @@ const meta = {
 					| null
 					| undefined,
 			});
-			return <Story />;
+			return (
+				<PinNoticeStore>
+					<Story />
+				</PinNoticeStore>
+			);
 		},
 	],
 } satisfies Meta<typeof AppUpdatesSection>;
@@ -516,6 +552,30 @@ export const ServerUpdateOffered: Story = {
 export const AllCurrent: Story = {
 	parameters: { verdict: ALL_CURRENT_VERDICT },
 	render: () => <ReportFrame expect={ALL_CURRENT_VERDICT.affirmation} />,
+};
+
+/**
+ * THE NEW CONTROL, WITH NOTHING OVER IT (design review round 1, D1).
+ *
+ * The pair above presses the real Check control, and the panel that press raises
+ * is `fixed top-4 right-4` - over the trailing edge of both rows, which is exactly
+ * where this branch's two select triggers sit (`sm:w-56`). So the "before/after"
+ * pair could not show the control it is evidence FOR, at any copy length: the
+ * card is over it by construction.
+ *
+ * This frame is the state the section is actually read in - no press, no panel, no
+ * snackbar - so both triggers, their values and the block heading are unobstructed.
+ * `press: false` still waits on `expect`, so the frame is a state whose sentence
+ * was READ rather than one taken early.
+ */
+export const FollowedControlVisible: Story = {
+	parameters: { verdict: ALL_CURRENT_VERDICT },
+	render: () => (
+		<ReportFrame
+			expect="shows the update notice at the bottom of the window"
+			press={false}
+		/>
+	),
 };
 
 /**
