@@ -68,7 +68,7 @@ kind, not only in place:
 - **The pair's target is 24px and appears after a reflow.** It is `display:
   none` at rest, and revealing it takes 56px out of the title
   (`pair children … :215w24`, `:243w24` against a 255px box). The menu's own
-  rows are the panel's content rows, not the strip's 31px targets: the shipped
+  rows are the panel's content rows, not the strip's 24 × 24 controls: the shipped
   panels measure **273 × 81** (two rows) and **273 × 46** (one row) -
   `pointer-open` and `pin-state-unknown` - and the pointer opens the menu over
   the whole row.
@@ -99,6 +99,22 @@ carve-out. Consequences worth stating:
 - `bg-elevated` is the top of the ground ramp, which is why the highlight is
   `accent-wash` and not a lighter ground — the reason is written at the top of
   `dropdown-menu.tsx` and is inherited rather than re-derived.
+- **The highlight's two steps are inherited, and one of them is known-short
+  (design round 1, D1).** The fill's step against the panel is under ΔE00 4 in
+  **13 of the 59 palettes** (tokyoNight 2.04 … tokyoNightStorm 3.98; the two
+  brand palettes read 12.79 and 6.84, which is why no frame in this set can
+  show the problem). It is inherited rather than introduced
+  (`dropdown-menu.tsx` draws the same pair) and `contrast-contract.mjs`
+  deliberately does not assert `accent-wash` as a fill, and the recorded
+  decision is **no primitive change in this PR**: if the pointer highlight must
+  carry in those palettes, the fix belongs in the primitive as its own small
+  change (the `borderControl` edge the picker and combobox marks took). What
+  the new `pointer-hover` frame adds beside the wash is measured and stated:
+  the item carries the `:focus-visible` outline too, because the primitive
+  moves focus onto the hovered item and Blink matches `:focus-visible` for
+  focus the browser did not move itself (probed: the ring draws after a real
+  click elsewhere and a real pointer re-entry), so the pointer and keyboard
+  states share the ring and differ in where focus lands.
 - **No new fill, border or role is introduced**, so nothing is added to
   `CONTROLS` in `scripts/contrast-contract.mjs`. Measured: the contract still
   holds unchanged — `29299 assertions across 59 themes, 0 consulted
@@ -127,11 +143,15 @@ bind in any of the measured states.
 | state | measured panel | items |
 |---|---|---|
 | archive + pin | **273 × 81** | 2 |
+| unarchive + pin (the archived row's widest label) | **288 × 81** | 2 |
 | archive alone (unknown pin state) | **273 × 46** | 1 |
 | pin alone (archive capability withheld) | **246 × 46** | 1 |
 
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
-label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. The floor exists so that a
+label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
+widest label the menu draws, and its state measures the widest panel:
+**288 × 81** (`archived-row`), the two extra characters showing up exactly
+there. The floor exists so that a
 one-short-item menu is not cramped; the width above it is the content's. A menu
 padded to a width it does not use would be the chrome §5 deletes — and the two
 measured widths differ by 27px, which is the amount of text that is actually
@@ -209,7 +229,12 @@ It synthesises them from the row's box and dispatches its own `contextmenu`:
    a few pixels past the sidebar column's inner edge is the accepted
    composition, not a collision: the anchor is the row's box and the panel is
    placed from it, and every menu in this surface has always drawn over the
-   column's edge rather than being re-anchored to avoid it.
+   column's edge rather than being re-anchored to avoid it. The keyboard
+   case's share of that straddle is measured and recorded (design round 1,
+   D4): the divider hairline sits at x 279 and the keyboard panel's outer
+   right edge is 286, so 7px of panel sit over the chat pane - a sliver rather
+   than a contest of the acceptance, kept so a future revisit of the
+   primitive's `align: start` placement starts from the number.
 
 Why synthesise rather than forward the platform's event: the installed
 primitive binds **no key handler at all** (U2 — `Primitive.span` at
@@ -265,13 +290,14 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | closed | not mounted | unchanged; the pair is `display: none` at rest | `flyout-alone` |
 | the row under the pointer, no menu | not mounted | reveal and hover ground as shipped | `menu-closed` |
 | open at the pointer, normal row | 2 rows, archive then pin, chords drawn | reveal held, hover ground held | `pointer-open` |
+| the same, the pointer moved onto the first item | 2 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
 | the same, hold rule **not** applied (the design round's control) | 2 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
 | open at the pointer, pinned row | 2 rows, item 2 reads `Unpin conversation` | pair already drawn at rest (the mark) | `pinned-row` |
 | open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
 | `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
 | `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
 | neither capability | **no menu** — no trigger element at all | panel byte-identical to the pre-feature one | — (assertion, not a frame) |
-| archived row | item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | — |
+| archived row | item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` |
 | current row | unchanged | **selected** ground kept, no hover ground added | — |
 
 ### Withheld, never disabled
@@ -452,14 +478,20 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
   Radix's context-menu trigger carries `data-state` and `data-disabled` and
   **no** `aria-haspopup` (`dist/index.mjs:87-88`), so the box gains no role and no
   announcement by itself. The shipped change therefore adds a row-scoped
-  `sr-only` clause - "Right-click or press Shift+F10 for its actions." -
-  riding the channel this row already uses for its remedies: an `sr-only` span
-  beside the row's button, pointed at by that button's `aria-describedby`
-  (`chat-sidebar.tsx`'s `ROW_MENU_CLAUSE` / `rowMenuClauseId`). The clause is
+  `sr-only` clause - "Right-click or press Shift+F10 for its actions", or
+  `Fn+Shift+F10` on macOS - riding the channel this row already uses for
+  its remedies: an `sr-only` span beside the row's button, pointed at by that
+  button's `aria-describedby` (`chat-sidebar.tsx`'s `rowMenuClause` /
+  `rowMenuClauseId`). The platform split is UX round 1's U2: an Apple keyboard
+  has no Menu key and sends F10 as a media key, the same qualifier
+  `chat-regions.ts` carries for F6. The clause is
   withheld with the menu itself, so the fully withdrawn panel has none. It
   names the menu and how to open it, and deliberately not the chords: those
   are printed inside the menu and stay in each item's accessible name, where
-  the acts are.
+  the acts are. It is announced PER ROW rather than once for the list, the
+  placement UX round 1's U4 accepts and records here: a reader who lands
+  mid-list never heard a list-level one, so the fact rides the row it belongs
+  to.
 
 ---
 
@@ -524,18 +556,18 @@ outside this change's flows.
 All read out of the DOM by the story itself, so a frame cannot claim a state the
 app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 
-| | `pointer-open` | `keyboard-open` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
-|---|---|---|---|---|---|
-| anchor point | 140,369 | 12,371 | 140,297 | 140,401 | 140,369 |
-| panel | 273 × 81 at 142,369 | 273 × 81 at 14,370 | 273 × 81 at 142,297 | 273 × 46 at 142,401 | 246 × 46 at 142,369 |
-| items | 2 | 2 | 2 (`Unpin conversation`) | 1 | 1 (`Pin conversation`) |
-| row | 255 × 32 at 12,340 | same (s2) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
-| ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
-| `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` |
-| pair | `flex` | `flex` | `flex` | `flex` | `not mounted` |
-| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | archive `flex:243w24` | — |
-| flyout | `absent` | `absent` | `absent` | `absent` | `absent` |
-| focus | menu; first item not highlighted | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
+| | `pointer-open` | `pointer-hover` | `keyboard-open` | `archived-row` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
+|---|---|---|---|---|---|---|---|
+| anchor point | 140,369 | 140,369 | 12,371 | 140,362 | 140,297 | 140,401 | 140,369 |
+| panel | 273 × 81 at 142,369 | 273 × 81 at 142,369 | 273 × 81 at 14,370 | 288 × 81 at 142,362 | 273 × 81 at 142,297 | 273 × 46 at 142,401 | 246 × 46 at 142,369 |
+| items | 2 | 2 | 2 | 2 (`Unarchive conversation`) | 2 (`Unpin conversation`) | 1 | 1 (`Pin conversation`) |
+| row | 255 × 32 at 12,340 | same (s2) | same (s2) | 255 × 32 at 12,333 (s4) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
+| ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
+| `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
+| pair | `flex` | `flex` | `flex` | `flex` | `flex` | `flex` | `not mounted` |
+| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | as `pointer-open` | archive `flex:243w24` | — |
+| flyout | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` |
+| focus | menu; first item not highlighted | **first item, `data-highlighted`** | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
 
 `rgb(48, 45, 41)` is `--lo-row-hover` (`#302D29`) in `localOperatorDark` exactly,
 and `rgb(237, 236, 231)` = `#EDECE7` in `localOperatorLight` — the frame's
@@ -562,8 +594,9 @@ the two `pair` lines to read.
 `docs/evidence/chat-sidebar-row-context-menu/` — **the shipped set**, captured
 from the built feature: the story drives the real trigger (a dispatched
 `contextmenu` at the row's own box for the pointer states, a real `ContextMenu`
-keydown on the row's button for the keyboard one), the real `openMenuRowId`
-hold, and the row's real predicates. 16 frames, `localOperatorDark` and
+keydown on the row's button for the keyboard one, the search block's own field
+and `Include archived` control for the archived row), the real `openMenuRowId`
+hold, and the row's real predicates. 20 frames, `localOperatorDark` and
 `localOperatorLight`, from:
 
 ```
@@ -573,10 +606,15 @@ node scripts/capture-evidence.mjs http://localhost:6747 --allow-backend \
   --themes=localOperatorDark,localOperatorLight
 ```
 
+(round 1's two remediation states were captured with the same command narrowed
+by `--dirs=pointer-hover,archived-row`, so no existing frame was re-taken.)
+
 | story | what it is |
 | --- | --- |
 | `pointer-open` | the menu at the pointer on a normal row, reveal and ground held |
+| `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, the app's focus ring (see § 2) |
 | `keyboard-open` | the keyboard opener: the anchor at the row's box edge, focus in the first item (`data-highlighted`, the app's focus ring) |
+| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |
 | `pinned-row` | `Unpin conversation`, on the row that draws its mark at rest |
 | `pin-state-unknown` | `pinned === undefined`: one row, and the row draws no pin |
 | `archive-withheld` | `session_archive` absent: one row, not a disabled one |

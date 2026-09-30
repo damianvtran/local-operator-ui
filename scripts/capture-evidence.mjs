@@ -7463,7 +7463,7 @@ export const STORIES = [
 			hoverChain: ['[data-session-row="s4"]'],
 			hoverChainSettleMs: 300,
 			expectAttribute: {
-				selector: '[data-session-row="s4"]',
+				selector: '[data-session-row="s4"] [data-session-archived]',
 				name: "data-session-archived",
 				equals: "true",
 			},
