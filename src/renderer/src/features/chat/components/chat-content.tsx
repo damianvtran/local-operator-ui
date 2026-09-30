@@ -94,6 +94,7 @@ import type { DirectoryWritePath } from "./directory-indicator";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import { QuestionDock } from "./trace/question-dock";
@@ -403,6 +404,13 @@ type ChatContentProps = {
 	 */
 	mcpRemedy: McpRemedyControls;
 	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), the same
+	 * threading as `mcpRemedy`: the Monitors section's confirmation and refusal
+	 * live in the section, and the write belongs to the level that owns the
+	 * session identity.
+	 */
+	monitorControls: MonitorControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -579,6 +587,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpServers = [],
 		mcpGrantRunning = false,
 		mcpRemedy,
+		monitorControls,
 		childrenOpenable = false,
 		/*
 		 * The composer's `@` affordance, folded by the page that owns both halves of
@@ -1489,7 +1498,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										startingSince={canonical.startingSince ?? null}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
+										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
+										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
+										/* The chat page is the one mount that owns the measure; the run pane's
+										 * child reader deliberately does not opt in (see the prop's note). */
+										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}
@@ -1983,9 +1997,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpServers={mcpServers}
 								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
+								monitorControls={monitorControls}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
+								/*
+								 * The session's own transport truth, and the SAME predicate the
+								 * transcript above hands its own slot (`status !== "live"`). The
+								 * child reader's page is a read-only GET with no stream of its
+								 * own, so its older-history row can only know this by being told,
+								 * and one transport must not be read two ways in one window
+								 * (design round 1, D2). A window with no canonical session has
+								 * no stream to be down — no child reader can be open in it —
+								 * and reads as live.
+								 */
+								olderTransportDown={
+									(canonical?.view.status ?? "live") !== "live"
+								}
 								/*
 								 * The pane's own width, in pixels: the box it is actually drawn in
 								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the

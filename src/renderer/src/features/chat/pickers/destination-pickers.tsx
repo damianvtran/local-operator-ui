@@ -50,12 +50,20 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	keepPreviousData,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { type FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
@@ -3184,35 +3192,157 @@ export const HelpPalette: FC<PickerContext> = ({
 
 // ---------------------------------------------------------------- reload
 
+/**
+ * The sentence's own head, in one place: the inline strip and the toast that
+ * carries the same failure once the dialog is gone must not disagree (review U6).
+ */
+const RELOAD_FAILURE_PREFIX = "The conversation could not be reopened";
+
+/**
+ * The sentence a successful reload leaves behind.
+ *
+ * Its own function because it now has TWO readers (issue #679): the result strip
+ * the dialog used to keep on screen after closing nothing, and the toast that
+ * carries it once the dialog is gone. Two spellings of one receipt is how the
+ * strip and the toast would come to disagree about what just happened.
+ *
+ * `subject` is the conversation's TITLE when the pane knows one (review U8): the
+ * toast is the only confirmation this action prints, and a raw session id is an
+ * opaque string the reader never typed and cannot match to anything on screen.
+ * The caller falls back to the id when there is no title to be had.
+ *
+ * AND IT SPEAKS THE READER'S LANGUAGE RATHER THAN THE BACKEND'S (reviews D8,
+ * U8). "live owner attached"/"cold (no owner running)" named an owner process -
+ * vocabulary from the daemon's own bookkeeping, and it read worse once the
+ * sentence became a six-second toast instead of a strip that stayed put. The row
+ * count is pluralised, because "1 recent rows" is how a receipt comes to look
+ * machine-written.
+ */
+export const reloadReceipt = (
+	subject: string,
+	cold: boolean,
+	recentRows: number,
+): string =>
+	`Reopened ${subject}: ${
+		cold
+			? "no session was running, so it was reopened from history"
+			: "reattached to the running session"
+	}, ${recentRows} recent ${recentRows === 1 ? "row" : "rows"}.`;
+
 export const ReloadPicker: FC<PickerContext> = ({
 	sessionId,
+	canonical,
 	onClose,
 	rebind,
 }) => {
-	const [result, setResult] = useState<PickerResult | null>(null);
+	/*
+	 * The title the receipt prefers, taken from the pane's own reading of the
+	 * session this picker is about (`frontend`, with the held copy across a
+	 * reconnect - the same pair every other reading in this file uses). Undefined on
+	 * a snapshot that never carried one, which is the fallback to the id.
+	 */
+	const subject = runningFrontend(canonical)?.conversation_title ?? sessionId;
 	const op = useOperation();
+	/*
+	 * THE READER MAY HAVE GONE (review U6). Escape dismisses this dialog, and the
+	 * request it started keeps running: the owner stops rendering the picker, so
+	 * nothing can report the outcome on a screen that no longer exists. A success
+	 * was toasted anyway (it has to be - the dialog that carried it is gone), which
+	 * made the two outcomes asymmetric in the one direction a reader cannot diagnose:
+	 * a reload that quietly did nothing. `closed` is set at unmount, which is the
+	 * only moment the dialog is definitively no longer there.
+	 */
+	const closed = useRef(false);
+	useEffect(
+		() => () => {
+			closed.current = true;
+		},
+		[],
+	);
+	/** The reason the last attempt threw, recorded where it is thrown. */
+	const failureText = useRef<string | null>(null);
 	const submit = useCallback(async () => {
+		failureText.current = null;
 		// Reopen the SAME identity: a fresh snapshot from the backend. Nothing
 		// is resubmitted; the stream re-subscribes and replays from scratch.
-		await op.perform(
-			() =>
-				desktopResult<{
-					payload: { cold: boolean; history: DesktopHistoryPage };
-				}>({
-					op: "sessions.get",
-					sessionId,
-				}),
-			(snapshot) => ({
+		const snapshot = await op.perform(
+			async () => {
+				/*
+				 * The thunk RECORDS THE REASON AND RETHROWS IT. `useOperation` owns the
+				 * strip's sentence - one spelling for every picker in this file - and catches
+				 * the error itself, so a caller that has to say something about a failure the
+				 * dialog is no longer there to show has to observe the error on the way past.
+				 */
+				try {
+					return await desktopResult<{
+						payload: { cold: boolean; history: DesktopHistoryPage };
+					}>({
+						op: "sessions.get",
+						sessionId,
+					});
+				} catch (error) {
+					failureText.current = errorText(error);
+					throw error;
+				}
+			},
+			(value) => ({
 				tone: "success",
-				text: `Reopened ${sessionId}: ${snapshot.payload.cold ? "cold (no owner running)" : "live owner attached"}, ${
-					snapshot.payload.history.entries.length
-				} recent rows.`,
+				text: reloadReceipt(
+					subject,
+					value.payload.cold,
+					value.payload.history.entries.length,
+				),
 			}),
-			"The conversation could not be reopened",
+			RELOAD_FAILURE_PREFIX,
 		);
+		/*
+		 * FAILURE KEEPS THE DIALOG (issue #679). `op.perform` answers `null` when the
+		 * call threw, and its own inline error line is the only carrier of the reason
+		 * a reload failed - elsewhere in this file that is the whole pattern. So the
+		 * failure path is deliberately nothing at all: the strip stays readable, the
+		 * person can press Reload again, and nothing was rebound.
+		 *
+		 * UNLESS THE DIALOG IS GONE (review U6), which is the same failure with nowhere
+		 * to land: the reader pressed Reload, dismissed the dialog while it ran, and
+		 * the reload failed. The inline strip cannot be read on a screen that has been
+		 * replaced by the transcript, so the SAME sentence goes out as an error toast -
+		 * one spelling, because the two carriers must not disagree about what happened
+		 * any more than the strip and the success receipt may.
+		 */
+		if (snapshot === null) {
+			if (closed.current && failureText.current !== null) {
+				showErrorToast(`${RELOAD_FAILURE_PREFIX}: ${failureText.current}`);
+			}
+			return;
+		}
+		/*
+		 * SUCCESS ENDS THE PICKER (issue #679). The reload has already replaced the
+		 * transcript the dialog was sitting over, and every neighbouring picker in
+		 * this file closes on pick, so leaving it up cost a mandatory extra press
+		 * (Done or Esc) and re-offered an action that had just run.
+		 *
+		 * THE REBIND IS SUCCESS-ONLY, and that is a decision rather than a tidy-up.
+		 * It used to run unconditionally, including when the snapshot could not be
+		 * read - and a rebind is the EFFECT of a reload: it tears the stream down and
+		 * re-attaches it to replay from scratch. Running it after a failed read
+		 * therefore re-subscribed a stream for a reload that did not happen, and the
+		 * one thing it bought the reader - the inline error saying the conversation
+		 * could not be reopened - was printed over a transcript that had just been
+		 * torn down and rebuilt for no reason. A failure changes nothing now.
+		 *
+		 * The receipt survives the dialog as a toast, because closing it would
+		 * otherwise be the end of the one confirmation this action ever prints.
+		 */
 		rebind(sessionId);
-		setResult(null);
-	}, [op, sessionId, rebind]);
+		showSuccessToast(
+			reloadReceipt(
+				subject,
+				snapshot.payload.cold,
+				snapshot.payload.history.entries.length,
+			),
+		);
+		onClose();
+	}, [onClose, op, rebind, sessionId, subject]);
 	return (
 		<PickerHost
 			open
@@ -3222,7 +3352,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 			onSubmit={submit}
 			submitLabel="Reload"
 			busy={op.busy}
-			result={op.result ?? result}
+			result={op.result}
 		/>
 	);
 };

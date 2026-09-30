@@ -81,8 +81,16 @@ let cursorOverlay: HTMLDivElement | null = null;
  * module reference), so the assignment is what gives the new node its cursor -
  * and stating it per drag is also what keeps a missed `mouseup` from leaving the
  * previous drag's cursor in place for the next one.
+ *
+ * EXPORTED for the second consumer: the conversation column's measure handle
+ * (`features/chat/components/chat-measure-handle.tsx`) drags a width the same
+ * way and would otherwise keep its own copy of this node and its teardown - two
+ * overlays for one pointer is exactly the defect the single module reference
+ * above exists to prevent.
  */
-const addResizeCursorOverlay = (cursor: "col-resize" | "row-resize"): void => {
+export const addResizeCursorOverlay = (
+	cursor: "col-resize" | "row-resize",
+): void => {
 	if (!cursorOverlay) {
 		cursorOverlay = document.createElement("div");
 		Object.assign(cursorOverlay.style, {
@@ -98,7 +106,7 @@ const addResizeCursorOverlay = (cursor: "col-resize" | "row-resize"): void => {
 	cursorOverlay.style.cursor = cursor;
 };
 
-const removeResizeCursorOverlay = (): void => {
+export const removeResizeCursorOverlay = (): void => {
 	if (cursorOverlay) {
 		document.body.removeChild(cursorOverlay);
 		cursorOverlay = null;

@@ -442,6 +442,25 @@ export const Failed: Story = {
 	),
 };
 
+/**
+ * A RESTORE-DEATH tab: the app started its load at relaunch, no page committed,
+ * and the bounded wait expired — so it is STILL loading underneath while it
+ * carries the verdict. Round-1 design D1's co-occurrence, the one the strip used
+ * to draw as a spinning arrow beside a red `Failed` chip; the tab mark is now
+ * static whenever the mark is present (and the spinner re-arms on the commit
+ * that clears it).
+ */
+export const FailedWhileLoading: Story = {
+	args: strip(
+		[
+			tab(1, "Dashboard"),
+			tab(2, "Stall 0", { failed: true, loading: true }),
+			tab(3, "Stall 1", { failed: true, loading: true }),
+		],
+		1,
+	),
+};
+
 /** A restored tab: a FRESH navigation to a remembered URL, so the chip pre-empts
  * the "why am I signed out" question (design 7.3). */
 export const Restored: Story = {
