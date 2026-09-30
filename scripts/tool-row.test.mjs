@@ -139,6 +139,116 @@ test("a send row leads with the delivery mode", () => {
 	assert.equal(summaryFromArgs("send", { message: "hi" }), "wake · ? · hi");
 });
 
+test("a sessions row names its operation, its address, and its window", () => {
+	/*
+	 * `sessions` is one tool with six ops (list/info/spawn/resume/stop/peek,
+	 * `docs/design/sessions-tool.md` §3.1), and it mirrors the TUI/phone's
+	 * shared summary (`sessions_row_summary`, `harness/rows.py`, sibling PR
+	 * `damianvtran/local-operator` #1825) in this row's own grammar: the verb
+	 * carries the op, the object everything else. The discriminator rule is
+	 * `send`'s, one layer down - the row sheds from the right, so `spawn`
+	 * carries its VISIBILITY first (both values; the default is spelled) and
+	 * a `stop` beside a `peek` on one session never reads the same.
+	 */
+	const row = (args) =>
+		toolRowLabel(
+			"sessions",
+			summaryFromArgs("sessions", args),
+			null,
+			false,
+			toolOp(args),
+		);
+
+	// A spawn with a name and a prompt: the visibility leads, the name is the
+	// subject. An omitted flag still reads `workstream` - the default is the
+	// fix this tool ships and must not be the field a narrow row drops.
+	assert.deepEqual(row({ op: "spawn", name: "night-audit", prompt: "go" }), {
+		verb: "Spawned session",
+		object: "workstream · night-audit",
+	});
+	// The ephemeral arm, prompt-only: no name, and the visibility still leads.
+	assert.deepEqual(
+		row({ op: "spawn", visibility: "ephemeral", prompt: "fix the shard" }),
+		{ verb: "Spawned session", object: "ephemeral · fix the shard" },
+	);
+	// Addressed ops take the resolver's own precedence: pid, then the exact
+	// session id, then the substring (`_sessions_address`).
+	assert.deepEqual(row({ op: "stop", target: "release-crew" }), {
+		verb: "Stopped session",
+		object: "release-crew",
+	});
+	assert.deepEqual(row({ op: "resume", session: "5d3f2a9c" }), {
+		verb: "Resumed session",
+		object: "5d3f2a9c",
+	});
+	assert.deepEqual(row({ op: "info", pid: 48213 }), {
+		verb: "Viewed session",
+		object: "pid 48213",
+	});
+	// An addressed op that names no address: `?`, never blank (the send rule).
+	assert.deepEqual(row({ op: "stop" }), {
+		verb: "Stopped session",
+		object: "?",
+	});
+	// peek: the address, then the window. `query` outranks `steps` because the
+	// tool keeps `steps` as the match window's SIZE - `last 6` would be a read
+	// this call never makes, and the search term would be dropped.
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: 12 }), {
+		verb: "Peeked at session",
+		object: "night-audit · last 12",
+	});
+	assert.deepEqual(
+		row({ op: "peek", target: "night-audit", query: "flaky", steps: 6 }),
+		{
+			verb: "Peeked at session",
+			object: "night-audit · search flaky · 6 around",
+		},
+	);
+	assert.deepEqual(row({ op: "peek", target: "night-audit", digest: true }), {
+		verb: "Peeked at session",
+		object: "night-audit · digest",
+	});
+	// A call that names no window must not claim one (the tool's default
+	// applies, and the row must not invent a `last 12`).
+	assert.deepEqual(row({ op: "peek", target: "night-audit" }), {
+		verb: "Peeked at session",
+		object: "night-audit",
+	});
+	// The lax ints: a string `steps` executes exactly like its number (the
+	// hub/wait lesson, QA Q1b), and a non-numeric string is not a window.
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: "12" }), {
+		verb: "Peeked at session",
+		object: "night-audit · last 12",
+	});
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: "many" }), {
+		verb: "Peeked at session",
+		object: "night-audit",
+	});
+	// list: the scope markers ride the object; a bare listing names nothing.
+	assert.deepEqual(
+		row({ op: "list", include_stored: true, query: "release" }),
+		{ verb: "Listed sessions", object: "stored · release" },
+	);
+	assert.deepEqual(row({ op: "list" }), {
+		verb: "Listed sessions",
+		object: "",
+	});
+	// The running half is the present participle, as everywhere else.
+	assert.equal(toolVerb("sessions", "spawn").running, "Spawning session");
+	assert.equal(toolVerb("sessions", "peek").running, "Peeking at session");
+	// An operation this build does not know takes the GENERIC verb, and the
+	// selector token does not leak into the object (the agent precedent): the
+	// call is named, nothing is guessed.
+	assert.deepEqual(row({ op: "frobnicate" }), {
+		verb: "Called",
+		object: "sessions",
+	});
+	assert.deepEqual(row({ op: "frobnicate", target: "x" }), {
+		verb: "Called",
+		object: "sessions x",
+	});
+});
+
 test("a whole-token absolute path is shortened against home", () => {
 	assert.equal(compactPath("/Users/damian/notes.md"), "~/notes.md");
 	assert.equal(compactPath("/home/damian/src/app.ts"), "~/src/app.ts");
@@ -360,10 +470,11 @@ test("the project family names every operation, and the milestone flag decides a
 		{ verb: "Removed milestone", object: "ship-v2" },
 	);
 	// Every op the installed build accepts names its call: `Called` is what a
-	// row says when it does NOT know, and none of these are that. The four
+	// row says when it does NOT know, and none of these are that. The five
 	// meta tools whose ops the tables key on are all covered EXHAUSTIVELY here
-	// (review round 1, R1-2): a typo or a dropped entry in any of them used to
-	// fall to `Called` with nothing failing.
+	// (review round 1, R1-2; `sessions` added by the trace-sessions lane): a
+	// typo or a dropped entry in any of them used to fall to `Called` with
+	// nothing failing.
 	for (const [tool, ops] of Object.entries({
 		agent: [
 			"list",
@@ -386,6 +497,7 @@ test("the project family names every operation, and the milestone flag decides a
 			"unlink",
 			"milestone",
 		],
+		sessions: ["list", "info", "spawn", "resume", "stop", "peek"],
 	})) {
 		for (const op of ops) {
 			assert.notEqual(
@@ -539,6 +651,28 @@ test("the project pair carries its glyphs, and the two fallbacks stay distinct",
 	assert.equal(toolIcon("project_delete").displayName, "Trash2");
 	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
 	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
+});
+
+test("the sessions glyph is the second window, not the wrench or a copy", () => {
+	/*
+	 * PR C's desk half (sibling `damianvtran/local-operator` #1825): a
+	 * `sessions` row used to lead with the generic wrench. The TUI picked
+	 * nf-fa-window_restore - two windows, "a second window opened beside this
+	 * one" - and this table mirrors the SEMANTIC in lucide's vocabulary:
+	 * `PictureInPicture2` is the one mark that draws two windows. It must not
+	 * take either fallback and must not duplicate its nearest neighbours:
+	 * `task`/`agent` (work handed to a child) and `send` (a note to a peer) -
+	 * a peer session is a window of its own that this session watches rather
+	 * than owns. The category follows the tool family (coordination, the same
+	 * `meta` lane `project` and `console` sit in).
+	 */
+	assert.equal(toolIcon("sessions").displayName, "PictureInPicture2");
+	// Case-insensitive, because a tool name is model-controlled.
+	assert.equal(toolIcon("Sessions").displayName, "PictureInPicture2");
+	assert.notEqual(toolIcon("sessions").displayName, "Wrench");
+	assert.notEqual(toolIcon("sessions").displayName, "Users");
+	assert.notEqual(toolIcon("sessions").displayName, "Send");
+	assert.equal(toolCategory("sessions"), "meta");
 });
 
 /* ------------------------------------------------------- the media relay */
