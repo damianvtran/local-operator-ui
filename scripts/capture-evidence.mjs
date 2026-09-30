@@ -5601,6 +5601,23 @@ export const STORIES = [
 	/* The no-dates callout, expanded over a dated chart: the collapsed line the
 	 * other timeline frames hold, opened to its names. */
 	["projects-tab--timeline-callout-expanded", 1280, 900],
+	/*
+	 * The round-1 remediation's own states. `board-search-off-window` is R1's
+	 * case photographed: the Board under a search whose matches ALL fall
+	 * outside the window — the no-match block keeps U5's precedence and gains
+	 * the window's own recovery (`Show all time`) beneath Clear all; its play
+	 * asserts the block, both actions and the count's `in window` words (U10).
+	 * `filter-and-sort-chips` is D2a's composition (facet chip first, sort
+	 * chip last, the order read off the rendered row); `sorted-shed-column` is
+	 * D2b's, at 560 where the sorted column itself is gone and the chip is the
+	 * only door; `narrow-search-active` is U7's, at 560, where the play takes
+	 * the switcher row's height and the list's top either side of the first
+	 * keystroke and fails if either moves (the count sheds instead).
+	 */
+	["projects-tab--board-search-off-window", 1280, 900],
+	["projects-tab--filter-and-sort-chips", 1280, 900],
+	["projects-tab--sorted-shed-column", 560, 600],
+	["projects-tab--narrow-search-active", 560, 600],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on

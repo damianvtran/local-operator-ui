@@ -32,8 +32,9 @@ const { filters } = await import(
 const {
 	FACET_ORDER,
 	FACET_LABELS,
+	FIXED_VOCABULARY_FACETS,
 	NO_FILTERS,
-	activeFacetCount,
+	activeSelectionCount,
 	applyFilters,
 	clearFilterFacet,
 	facetOptions,
@@ -327,7 +328,7 @@ test("toggle and clear helpers are immutable and typed per facet", () => {
 	assert.deepEqual(state.status, ["active", "planning"]);
 	assert.deepEqual(state.team, [null]);
 	assert.deepEqual(state.progress, ["stale"]);
-	assert.equal(activeFacetCount(state), 3);
+	assert.equal(activeSelectionCount(state), 4);
 	assert.equal(isFilterFacetActive(state, "tags"), false);
 	assert.equal(isFilterEmpty(state), false);
 
@@ -335,7 +336,7 @@ test("toggle and clear helpers are immutable and typed per facet", () => {
 	assert.deepEqual(state.status, ["planning"]);
 	state = clearFilterFacet(state, "status");
 	assert.deepEqual(state.status, []);
-	assert.equal(activeFacetCount(state), 2);
+	assert.equal(activeSelectionCount(state), 2);
 	assert.equal(
 		isFilterEmpty(
 			clearFilterFacet(clearFilterFacet(state, "team"), "progress"),
@@ -390,8 +391,13 @@ test("option counts answer over every OTHER facet, so a click means what it says
 	assert.deepEqual(
 		status.options.map((o) => [o.label, o.count, o.selected]),
 		[
+			["Planning", 0, false],
 			["Active", 2, true],
+			["QA", 0, false],
+			["Validation", 0, false],
 			["Done", 2, false],
+			["Paused", 0, false],
+			["Archived", 0, false],
 		],
 	);
 });
@@ -419,11 +425,25 @@ test("options are what is present, in canonical order, and a selected value surv
 		project("c", { status: "weird" }),
 		project("d", { tags: ["zeta", "alpha"] }),
 	];
-	/* Status: only present values, model order, an unknown vocabulary value last. */
+	/*
+	 * Status, a FIXED vocabulary (D5): the whole model always renders — zeros
+	 * included — so an option the current data has none of is still
+	 * discoverable, and an unknown status a newer backend wrote sorts after
+	 * the seven known ones.
+	 */
 	const status = facetOptions("status", rows, NO_FILTERS, TODAY, "");
 	assert.deepEqual(
-		status.options.map((o) => o.label),
-		["Planning", "Active", "Done", "weird"],
+		status.options.map((o) => [o.label, o.count]),
+		[
+			["Planning", 1],
+			["Active", 1],
+			["QA", 0],
+			["Validation", 0],
+			["Done", 1],
+			["Paused", 0],
+			["Archived", 0],
+			["weird", 1],
+		],
 	);
 	/* Tags: alphabetical. */
 	const tags = facetOptions("tags", rows, NO_FILTERS, TODAY, "");
@@ -432,7 +452,9 @@ test("options are what is present, in canonical order, and a selected value surv
 		["alpha", "zeta"],
 	);
 	/* A selected value stays visible (and removable) even when the population
-	 * no longer contains it. */
+	 * no longer contains it, and PRESENT-DERIVED options drop at count 0 (D5's
+	 * other half — Team is derived, so `ghost` survives only as the selection
+	 * and nothing else is invented). */
 	const vanished = facetOptions(
 		"team",
 		rows,
@@ -472,9 +494,10 @@ test("facet sections are every facet in order, each with its own options", () =>
 		sections.map((section) => section.label),
 		FACET_ORDER.map((facet) => FACET_LABELS[facet]),
 	);
-	/* A facet nothing matches still renders its section — its options are the
-	 * ones the population carries (plus the selection), never hidden — and a
-	 * selected value that no longer matches anything stays visible at count 0. */
+	/* A facet nothing matches still renders — and a FIXED vocabulary renders
+	 * WHOLE (D5): every model status shows, the selected one included, while a
+	 * selected value that no longer matches anything stays visible at count 0
+	 * (the present-derived rule, pinned above). */
 	const empty = facetSections(
 		[project("a")],
 		{ ...NO_FILTERS, status: ["archived"] },
@@ -485,8 +508,75 @@ test("facet sections are every facet in order, each with its own options", () =>
 	assert.deepEqual(
 		status.options.map((o) => [o.label, o.count, o.selected]),
 		[
+			["Planning", 0, false],
 			["Active", 1, false],
+			["QA", 0, false],
+			["Validation", 0, false],
+			["Done", 0, false],
+			["Paused", 0, false],
 			["Archived", 0, true],
 		],
 	);
+});
+
+test("the zero-count rule splits fixed vocabularies from present-derived facets (D5)", () => {
+	/*
+	 * The adjudicated rule, pinned once here: a FIXED-vocabulary facet renders
+	 * every option its model knows, counts included (`Overdue` is askable in a
+	 * week where nothing is overdue); a PRESENT-DERIVED facet keeps only what
+	 * the population carries, so an option with nothing behind it does not
+	 * masquerade as vocabulary. The fixed set is asserted first, so the
+	 * classification in `FIXED_VOCABULARY_FACETS` and the behaviour cannot
+	 * drift apart.
+	 */
+	assert.deepEqual([...FIXED_VOCABULARY_FACETS].sort(), [
+		"estimate",
+		"live",
+		"milestones",
+		"progress",
+		"status",
+		"target",
+	]);
+	const rows = [
+		project("a", { status: "active", team: "platform" }),
+		project("b", { status: "done", team: "atlas" }),
+	];
+	const target = facetOptions("target", rows, NO_FILTERS, TODAY, "");
+	assert.deepEqual(
+		target.options.map((o) => [o.label, o.count]),
+		[
+			["No target date", 2],
+			["Overdue", 0],
+			["Due within 7 days", 0],
+			["Due within 30 days", 0],
+		],
+	);
+	const estimate = facetOptions("estimate", rows, NO_FILTERS, TODAY, "");
+	assert.deepEqual(
+		estimate.options.map((o) => o.label),
+		["No estimate", "Points", "Days"],
+	);
+	/* Present-derived: the query scopes the population to one row, and the
+	 * team the other row carries disappears instead of showing a 0. */
+	const scoped = facetOptions("team", rows, NO_FILTERS, TODAY, "platform");
+	assert.deepEqual(
+		scoped.options.map((o) => [o.label, o.count]),
+		[["platform", 1]],
+	);
+});
+
+test("the Filters badge counts selected OPTIONS, not facets (U9)", () => {
+	/*
+	 * `Status · Active +1` with a badge of 1 told a reader nothing about how
+	 * many options were narrowing; the badge now counts the options themselves.
+	 */
+	let state = NO_FILTERS;
+	assert.equal(activeSelectionCount(state), 0);
+	state = toggleFilterValue(state, "status", "active");
+	state = toggleFilterValue(state, "status", "paused");
+	assert.equal(activeSelectionCount(state), 2);
+	state = toggleFilterValue(state, "team", null);
+	assert.equal(activeSelectionCount(state), 3);
+	state = clearFilterFacet(state, "status");
+	assert.equal(activeSelectionCount(state), 1);
 });
