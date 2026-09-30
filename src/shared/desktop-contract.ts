@@ -1080,8 +1080,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.create"),
 			requestId,
-			cwd: z.string().min(1).max(4096),
+			/*
+			 * OPTIONAL ONLY FOR A `purpose` CREATE, and the pair is enforced below by
+			 * the union's own `superRefine` rather than by two union members: a
+			 * `discriminatedUnion` accepts one member per `op` value, and a `.refine`
+			 * on a member would make it a `ZodEffects` the union refuses (the same
+			 * constraint `agent.publish`'s pairing rule states).
+			 *
+			 * WHY A CONFIGURATION RUN OMITS IT AT ALL. `cwd` exists so a conversation
+			 * has a folder to work in, and this app has always refused an empty one
+			 * precisely because it would resolve to "a directory the user never named".
+			 * A configuration run edits this device's registries and holds no file
+			 * tools at all, so its cwd is not authority — and the renderer cannot name
+			 * one honestly: it would have to invent a path it cannot verify exists.
+			 * The backend resolves it (to the config directory) when `purpose` is set.
+			 */
+			cwd: z.string().min(1).max(4096).optional(),
 			target: target.optional(),
+			/*
+			 * WHAT KIND OF SESSION THIS IS, when it is not a conversation the operator
+			 * asked for: `agents-config` starts a supervised configuration run (the
+			 * Agents page's composer), which the backend stamps as a hidden origin and
+			 * admits through the desktop door for watch/events/messages/interrupt
+			 * without ever listing it as one of the operator's conversations.
+			 *
+			 * A LITERAL, so a typo is a compile error on this side and a 422 on a
+			 * backend that does not know the value. It is capability-gated before it is
+			 * ever sent (`agents_config`), because a backend older than this field
+			 * validates the create body with `extra="forbid"` and would report a
+			 * malformed request for a request the app deliberately made.
+			 */
+			purpose: z.literal("agents-config").optional(),
 			/*
 			 * OMITTED when the user never picked anything, so the body is the one
 			 * this op sent before the draft's chips could open: making them
@@ -2574,6 +2603,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * A CONVERSATION NEEDS A FOLDER; A CONFIGURATION RUN DOES NOT.
+		 *
+		 * The rule lives here rather than on the member because the two fields are
+		 * one decision (`cwd` is required UNLESS `purpose` names a run), and this is
+		 * the same place the publication pair is checked for the same reason: a
+		 * request that could reach the wire half-specified would be answered with a
+		 * 422 the app composed itself. `cwd` is checked by presence rather than by
+		 * truthiness because an empty string is already refused by the field's own
+		 * `min(1)`.
+		 */
+		if (request.op === "sessions.create" && request.purpose === undefined) {
+			if (request.cwd === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"A conversation needs a working directory: only a configuration run (`purpose`) may omit `cwd`.",
+					path: ["cwd"],
+				});
+			}
+			return;
+		}
+		if (request.op === "sessions.create" && request.purpose !== undefined) {
+			/*
+			 * A RUN EDITS THIS DEVICE'S REGISTRIES, and this op has no `peer` field to
+			 * refuse: the create schema cannot express a peer session at all, so
+			 * "local only" is a property of the wire rather than a rule to check here.
+			 * Stated so the next reader does not add a check that can never fire.
+			 */
+			return;
+		}
 		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
 			return;
 		}
@@ -4455,12 +4515,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					cwd: request.cwd,
+					/*
+					 * OMITTED, not nulled, for a configuration run: the backend resolves the
+					 * folder itself (see the field's own note), and sending an empty string
+					 * would be a different request from the one this feature means to make —
+					 * it would trip the `min(1)` on the backend's own `cwd` validator and
+					 * report a mistake nobody made.
+					 */
+					...(request.cwd !== undefined ? { cwd: request.cwd } : {}),
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
 					// Omitted, not nulled, when the pane has no minted id: see the field's
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
+					...(request.purpose ? { purpose: request.purpose } : {}),
 				},
 			};
 		case "sessions.preview":
