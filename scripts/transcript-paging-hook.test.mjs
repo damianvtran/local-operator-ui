@@ -129,6 +129,22 @@ function mountHook(options = {}) {
 	// this one.
 	let hiddenRows = options.hiddenRows ?? 1;
 	const onLoadOlder = options.onLoadOlder ?? (async () => false);
+	/*
+	 * Asks the PUMP dispatched, whichever loader form the case supplied. Counted
+	 * here rather than by the case's own callback so the invisible-reveal cases
+	 * can assert on the chain without knowing which form they exercised.
+	 */
+	let asked = 0;
+	const countedLoadOlder = async () => {
+		asked += 1;
+		return onLoadOlder();
+	};
+	const countedOutcome = options.onLoadOlderOutcome
+		? () => {
+				asked += 1;
+				return options.onLoadOlderOutcome();
+			}
+		: undefined;
 	let handle = null;
 	let olderFailed = options.olderFailed ?? false;
 	let sessionKey = options.sessionKey ?? "synthetic-session";
@@ -141,12 +157,10 @@ function mountHook(options = {}) {
 			onWiden: () => {
 				widenCalls++;
 			},
-			onLoadOlder,
+			onLoadOlder: countedLoadOlder,
 			// Only passed when a case supplies it, so the cases written before the
 			// outcome-aware pump exercise the boolean path unchanged.
-			...(options.onLoadOlderOutcome
-				? { onLoadOlderOutcome: options.onLoadOlderOutcome }
-				: {}),
+			...(countedOutcome ? { onLoadOlderOutcome: countedOutcome } : {}),
 			olderFailed,
 			loadingOlder: false,
 			rowCount,
@@ -210,6 +224,10 @@ function mountHook(options = {}) {
 		},
 		get widenCalls() {
 			return widenCalls;
+		},
+		/** Asks the pump dispatched, whichever loader form the case supplied. */
+		get asked() {
+			return asked;
 		},
 		/** The completion walk's authorisation, as the transcript reads it (1b). */
 		mayAutoWalk: () => handle.mayAutoWalk(),
@@ -500,6 +518,100 @@ test("a stale outcome from the conversation the reader left cannot cancel the ne
 			asks.length,
 			2,
 			"the new conversation still auto-continues: the old page's outcome is not its",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * The DOM half's half of the visible reveal (loader-continuity 1b): `growthPx`.
+ *
+ * The policy cannot know whether a landing changed anything on screen - the
+ * extent lives in the scroller - so the hook measures `scrollHeight` at the
+ * dispatch and again at the settle and hands the policy the difference. These
+ * two cases are the wiring: an extent that did NOT move inside a transcript
+ * with more behind it leaves the act unanswered (the pump asks again by
+ * itself), and an extent that moved ends the chain (one ask per act).
+ *
+ * The extent is the real DOM property here, read through the hook's own
+ * `measure()`, so a hook that passed a constant would fail the second case
+ * while the first still passed.
+ */
+const askable = (extra = {}) =>
+	mountHook({
+		hiddenRows: 0,
+		hasMore: true,
+		onLoadOlderOutcome: async () => ({
+			kind: "applied",
+			newRecords: 12,
+			exhausted: false,
+		}),
+		...extra,
+	});
+
+test("an invisible landing is followed by another ask without input", async () => {
+	// Hard top of a scrollable pane: 1400 - 800 - 600 = 0.
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.ok(hook.asked >= 1, "the hard-top push buys its page");
+		/*
+		 * The page lands and the extent does NOT move: the reader saw nothing, so
+		 * the pump asks again on its own. Driven to a standstill rather than one
+		 * round, because the assertion is about the CHAIN and the chain is what
+		 * has to stop: an unbounded one would leave the frames below queued when
+		 * the harness tears its globals down.
+		 */
+		let last = -1;
+		for (let round = 0; round < 30 && hook.asked !== last; round += 1) {
+			last = hook.asked;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.asked > 1,
+			`an invisible reveal must chain (asked ${hook.asked})`,
+		);
+		assert.ok(
+			hook.asked <= 12,
+			`and the chain must stop (asked ${hook.asked})`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * CONTRACT PIN, NOT A REGRESSION (operator rule: a test that cannot fail is not
+ * evidence - the round-3 reviewer caught exactly this shape). This case passes on
+ * the pristine tree too, because a reveal that DID grow the extent was already
+ * answering the act before 1b. It is here so the refund added above cannot become
+ * unconditional: the discriminating half is the invisible case, which fails
+ * before the change ("an invisible reveal must chain (asked 1)"). Relabelled
+ * rather than deleted because a fix that refunds on EVERY settle would pass the
+ * invisible case and silently break rule 2 for a visible one.
+ */
+test("a visible landing answers the act: the chain stops there (contract pin)", async () => {
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.asked, 1, "one act, one round trip");
+		// The page lands and DOES move the extent: the reader can see it, so the
+		// next reveal needs a gesture of their own (rule 2 for a scrollable pane).
+		hook.setScrollHeight(2400);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.flushFrames(12);
+		assert.equal(
+			hook.asked,
+			1,
+			"a visible reveal answers the act; nothing more is spent",
 		);
 	} finally {
 		hook.close();
