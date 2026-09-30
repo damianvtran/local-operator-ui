@@ -918,6 +918,7 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	closesTurn,
+	answerRail,
 	foot = null,
 	closingLineSuppressed = false,
 	conversationId,
@@ -925,6 +926,14 @@ const AssistantRow = memo(function AssistantRow({
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	closesTurn: boolean;
+	/**
+	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
+	 * down (see `CanonicalTranscript`'s `answerRail`): it is one query answering
+	 * one question about one row, so a subscription per assistant row would
+	 * N cache reads for it, and a prop keeps every memoised row's identity stable
+	 * until the reader actually flips the switch.
+	 */
+	answerRail: boolean;
 	/** §E3's foot line data, on the row that closes the turn. */
 	foot?: TurnFoot | null;
 	/**
@@ -937,13 +946,6 @@ const AssistantRow = memo(function AssistantRow({
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
-	/*
-	 * Read here rather than threaded through `TranscriptRow`: the query is the
-	 * Settings page's own cache entry (one fetch, shared by every row), and a
-	 * prop would change every memoised row's props for a setting only the
-	 * elected answer reads.
-	 */
-	const railOn = useTurnAnswerRail();
 	/*
 	 * Which link on this turn the toolbar is about, if any. One subject per row,
 	 * decided by one hook (`use-link-subject.ts`), for the reason that file gives:
@@ -994,7 +996,7 @@ const AssistantRow = memo(function AssistantRow({
 					 * the hook rigs and tests read instead of a class name, and it is set
 					 * from the election alone so it does not depend on the setting.
 					 */
-					turnAnswerMarkClass(closesTurn, railOn),
+					turnAnswerMarkClass(closesTurn, answerRail),
 				)}
 				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
@@ -1917,6 +1919,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * `outputFallbackLine`, and why dropping this prop would silently restore the
 	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
 	 */
+	answerRail = false,
 	foot = null,
 	closingLineSuppressed = false,
 	labelPending = false,
@@ -1928,6 +1931,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/**
+	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
+	 * query, for the reason `labelPending` documents below: the rows are
+	 * memoised, and the value changes only when the reader flips the switch.
+	 */
+	answerRail?: boolean;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
 	/** The run above carries a bar; see `AssistantRow`'s copy of this prop. */
@@ -1970,6 +1979,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
+					answerRail={answerRail}
 					foot={foot}
 					closingLineSuppressed={closingLineSuppressed}
 					conversationId={conversationId}
@@ -2167,6 +2177,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * flip the pane's empty state.
 	 */
 	const hide = useCrossSessionHidden();
+	/*
+	 * ONE read of the rail setting for the whole transcript, handed to the rows as
+	 * a boolean prop: the elected answer is the only row that consumes it, so a
+	 * hook per assistant row would subscribe to the Settings query once per row
+	 * for one fact (agent review round 1, R4).
+	 */
+	const answerRail = useTurnAnswerRail();
 	const shownRecords = useMemo(
 		() => visibleRecords(painted.records, hide),
 		[painted.records, hide],
@@ -3648,6 +3665,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						}
 						closingLineSuppressed={suppressClosingLine}
 						undelivered={undelivered}
+						answerRail={answerRail}
 					/>
 				))}
 			</TraceFold>
@@ -3672,6 +3690,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				closingLineSuppressed={suppressClosingLine}
 				undelivered={undelivered}
+				answerRail={answerRail}
 			/>
 		);
 
