@@ -20,9 +20,8 @@ export function useCompanionInteraction(
 ) {
 	const [hovered, setHovered] = useState(false);
 	const [focused, setFocused] = useState(false);
-	const [pressed, setPressed] = useState(false);
-	const [dragging, setDragging] = useState<
-		"grabbed" | "dragging" | "struggling" | null
+	const [pointerReaction, setPointerReaction] = useState<
+		"pressed" | "grabbed" | "dragging" | "struggling" | null
 	>(null);
 	const [dozing, setDozing] = useState(false);
 	const [delight, setDelight] = useState<CompanionTimedReaction | null>(null);
@@ -274,8 +273,7 @@ export function useCompanionInteraction(
 			const wasSleeping = preserveSleep && sleeping.current;
 			cleanup();
 			sleeping.current = wasSleeping;
-			setPressed(false);
-			setDragging(null);
+			setPointerReaction(null);
 			setDelight(null);
 			setDozing(wasSleeping);
 			setHovered(false);
@@ -403,23 +401,23 @@ export function useCompanionInteraction(
 		};
 	}, [cleanup, reset, wake]);
 
+	const dragging = pointerReaction === "pressed" ? null : pointerReaction;
 	const reaction: CompanionReaction =
 		dragging ??
 		delight ??
-		(pressed
-			? "pressed"
-			: dozing && (mood === "idle" || mood === "complete")
-				? "dozing"
-				: hovered || focused
-					? "curious"
-					: "rest");
+		pointerReaction ??
+		(dozing && (mood === "idle" || mood === "complete")
+			? "dozing"
+			: hovered || focused
+				? "curious"
+				: "rest");
 	return {
 		reaction,
 		gaze,
 		tap,
 		wake,
 		reset,
-		isEngaged: hovered || (focused && !dozing) || pressed || dragging !== null,
+		isEngaged: hovered || (focused && !dozing) || pointerReaction !== null,
 		handlers: {
 			onFocus: (event: FocusEvent<HTMLButtonElement>) => {
 				const keyboard =
@@ -479,7 +477,7 @@ export function useCompanionInteraction(
 					finding,
 					waking,
 				};
-				setPressed(true);
+				setPointerReaction("pressed");
 				look(event);
 				timers.current.hold = window.setTimeout(() => {
 					timers.current.hold = 0;
@@ -515,14 +513,14 @@ export function useCompanionInteraction(
 					clear("hold");
 					cancelAmbient();
 					setDelight(null);
-					setDragging("grabbed");
+					setPointerReaction("grabbed");
 					timers.current.hold = window.setTimeout(() => {
 						timers.current.hold = 0;
 						if (origin.current !== gesture) return;
-						setDragging("dragging");
+						setPointerReaction("dragging");
 						timers.current.hold = window.setTimeout(() => {
 							timers.current.hold = 0;
-							if (origin.current === gesture) setDragging("struggling");
+							if (origin.current === gesture) setPointerReaction("struggling");
 						}, 950);
 					}, 250);
 				}
@@ -540,8 +538,7 @@ export function useCompanionInteraction(
 					return null;
 				origin.current = null;
 				clear("hold");
-				setPressed(false);
-				setDragging(null);
+				setPointerReaction(null);
 				if (gesture.moved) {
 					wake();
 					play("landing");

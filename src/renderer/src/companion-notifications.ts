@@ -17,9 +17,9 @@ export function useCompanionNotifications(
 	const until = useRef(0);
 	const lastStart = useRef(Number.NEGATIVE_INFINITY);
 	const reducedMotion = useRef(false);
-	const remember = useCallback((notice: CompanionNotification) => {
-		recent.current.delete(notice.key);
-		recent.current.add(notice.key);
+	const remember = useCallback((key: string) => {
+		recent.current.delete(key);
+		recent.current.add(key);
 		if (recent.current.size > 128)
 			recent.current.delete(recent.current.values().next().value as string);
 	}, []);
@@ -73,10 +73,9 @@ export function useCompanionNotifications(
 			const arrivals = current.filter(
 				(notice) => !active.current.get(notice.key)?.noticed,
 			);
-			const reminders = current.filter((notice) => {
-				const due = active.current.get(notice.key)?.remindAt;
-				return due !== null && due !== undefined && due <= now;
-			});
+			const reminders = [...active.current.values()].filter(
+				(entry) => entry.remindAt !== null && entry.remindAt <= now,
+			);
 			if (arrivals.length || reminders.length) {
 				const cooldown = lastStart.current + 20_000 - now;
 				if (cooldown > 0) {
@@ -84,16 +83,13 @@ export function useCompanionNotifications(
 					return;
 				}
 				for (const notice of arrivals) {
-					remember(notice);
+					remember(notice.key);
 					active.current.set(notice.key, {
 						noticed: true,
 						remindAt: reducedMotion.current ? null : now + 90_000,
 					});
 				}
-				for (const notice of reminders) {
-					const entry = active.current.get(notice.key);
-					if (entry) entry.remindAt = null;
-				}
+				for (const entry of reminders) entry.remindAt = null;
 				setAnnouncement(
 					arrivals.length
 						? `${arrivals.length} new task notification${arrivals.length === 1 ? "" : "s"}.`
@@ -105,10 +101,9 @@ export function useCompanionNotifications(
 				later(1400);
 				return;
 			}
-			const deadlines = current.flatMap((notice) => {
-				const due = active.current.get(notice.key)?.remindAt;
-				return due === null || due === undefined ? [] : [due];
-			});
+			const deadlines = [...active.current.values()].flatMap(({ remindAt }) =>
+				remindAt === null ? [] : [remindAt],
+			);
 			if (deadlines.length) later(Math.min(...deadlines) - now);
 		},
 		[remember, settle],
@@ -116,7 +111,7 @@ export function useCompanionNotifications(
 	const acknowledge = useCallback(() => {
 		for (const notice of context.current.notifications) {
 			if (notice.kind === "complete") continue;
-			remember(notice);
+			remember(notice.key);
 			active.current.set(notice.key, { noticed: true, remindAt: null });
 		}
 		settle();

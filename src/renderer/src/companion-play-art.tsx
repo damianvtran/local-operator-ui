@@ -281,6 +281,12 @@ export function CompanionPlayArt({
 	);
 }
 
+const dreamMarks = {
+	inky: "M-8 0q8-9 14 0q-6 9-14 0Zm0 0-4-4v8ZM2-1h.1",
+	hoodie: "m0-8 2 5 6 1-5 4 1 6-4-3-5 3 1-6-4-4 6-1Z",
+	pixel: "m-7-5 5 5-5 5M1 5h6",
+};
+
 export function CompanionDream({
 	character,
 }: { character: BuiltinCompanionCharacter }) {
@@ -297,20 +303,10 @@ export function CompanionDream({
 			<g transform="translate(17 11) scale(.65)">
 				{character === "sprout" ? (
 					<Seed />
-				) : character === "inky" ? (
-					<path
-						className={cn("companion-play-dream-mark")}
-						d="M-8 0q8-9 14 0q-6 9-14 0Zm0 0-4-4v8ZM2-1h.1"
-					/>
-				) : character === "hoodie" ? (
-					<path
-						className={cn("companion-play-dream-mark")}
-						d="m0-8 2 5 6 1-5 4 1 6-4-3-5 3 1-6-4-4 6-1Z"
-					/>
 				) : (
 					<path
 						className={cn("companion-play-dream-mark")}
-						d="m-7-5 5 5-5 5M1 5h6"
+						d={dreamMarks[character]}
 					/>
 				)}
 			</g>

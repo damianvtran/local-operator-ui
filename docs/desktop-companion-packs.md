@@ -7,29 +7,18 @@ Click the pet to say hi; use its chat button or right-click **Chat** to talk in 
 same chief-of-staff conversation as Quick send. The **+** menu offers **New chat**
 for a separate conversation using your default model, or **Chief of staff** to return.
 Switching keeps your unsent draft; a pending send must settle before you can switch.
-Showing the pet never enables or resumes
-the chief of staff. Drag to move it, or use the arrow keys while it has focus. In chat,
-Enter sends; Shift+Enter adds a line. Escape collapses the input; drafts survive collapsing and hiding, but not
-quitting. Use **Open app** for approvals, attachments, model selection, or history.
-Right-click for character choices, Hide, and Open task in app.
-When a task needs attention, the alert button opens that task directly.
+Showing the pet never enables or resumes the chief of staff.
 
-Brush back and forth over their head or tap a few times for a little heart reaction.
-Pick them up to see them dangle and wriggle; releasing gives them a short fall and
-a soft landing. All companions sleep after 90 quiet seconds, including after completed
-tasks. Click or move them to wake them; passing the pointer over them lets them sleep.
-They stay awake while you use chat and can sleep beside an unattended reply.
-During peekaboo, approach to get a little peek,
-then click to find them. Quiet moments bring little dances and a full curl-up at bedtime.
-Morning brings a stretch, daytime brings a character-specific diversion, and late night
-brings a yawn. A little extra affection can reveal a surprise. These use your local clock
-and give way to chat or work. Reduced motion skips idle antics, keeps reactions still,
-and disables the drop.
+Drag to move the pet, or use the arrow keys while it has focus. In chat, Enter sends,
+Shift+Enter adds a line, and Escape collapses the input. Drafts survive collapsing and
+hiding, but not quitting. Right-click to hide, change characters, or open the app.
+The alert button opens a task that needs attention. Use **Open app** for approvals,
+attachments, model selection, or history.
 
-A few playful taps can uncover a treat, a bouncing ball, or a hidden seed.
-Click the pet or press Enter for treats and bounces; choose a hand by clicking a side
-or pressing Left or Right. Escape, dragging, chat, and incoming work end play.
-Reduced motion lets you bounce at your own pace. Long naps sometimes bring tiny dreams.
+Companions sleep when quiet; click or move them to wake them. Idle animations and
+play give way to chat and work. During play, click or press Enter to interact, and
+use Left or Right to choose a side. Escape, dragging, or opening chat ends play.
+Reduced motion disables movement and blinking and lets you play at your own pace.
 
 ## Custom characters
 
@@ -74,9 +63,7 @@ the same relative folders and filenames. A single-image character only needs its
 Include any artist credit or license in a separate text file; the pack JSON accepts
 only the fields shown above.
 
-The bundled Sprout, Hoodie, and Pixel artwork, including their peekaboo, play, and nap sheets and Hoodie's pickup sheet, was generated with Codex image
-generation on 2026-09-22. Their colors and ambient motion are part of the artwork;
-controls use the app theme. Reduced motion disables movement and blinking.
-
-Inky was adapted from user-provided artwork with Codex image generation on
-2026-09-23, including pickup, peekaboo, play, and nap sheets.
+The bundled Sprout, Hoodie, and Pixel artwork and sprite sheets were generated with
+Codex image generation on 2026-09-22. Inky was adapted from user-provided artwork
+with Codex image generation on 2026-09-23. Artwork keeps its own colors; controls
+use the app theme.
