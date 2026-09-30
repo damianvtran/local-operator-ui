@@ -152,6 +152,9 @@ export const tokyoNight: ThemeDefinition = {
 		 * lands at 1.20:1 against `elevated` at its tightest.
 		 */
 		hairline: "#3F4664",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.83:1 there against `hairline`'s 1.69:1.
+		hairlineStrong: "#444B6A",
 		// The comment blue lightened again. The old theme used it at 30 percent
 		// alpha for both the decorative rule and the input boundary, which put
 		// every input at about 1.3:1.

@@ -64,6 +64,8 @@ import {
 	meshGeometry,
 	zoomAbout,
 } from "./mesh-positions";
+import { openingLevels, prefixGroups, scopeStacks } from "./mesh-scope";
+import { MeshScopeLayer } from "./mesh-scope-layer";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
@@ -185,11 +187,41 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const lastViewport = useRef<{ width: number; height: number } | null>(null);
 
 	/*
+	 * THE BOUNDARIES COME FIRST, because a boundary's label is now part of the GEOMETRY: a
+	 * row that OPENS an enclosure stack reserves the stack's whole band above itself
+	 * (design review round 1, D2; round 2's NEST + STAGGER; `scopeOpenGap` in
+	 * `mesh-positions.ts`), so the layout is a function of the slots AND of how many levels
+	 * each of them opens. `scopeStacks` is that seam - computed from the same groups the
+	 * layer draws, so the reserved band and the drawn labels cannot point at two different
+	 * rows.
+	 *
+	 * `mesh-scope.ts` owns the three tiers and the six things it refuses to draw; this memo
+	 * only keeps the arithmetic off the render path - a pan writes a style, it does not
+	 * rebuild the grouping - and the dependency list is the two inputs the grouping is a
+	 * function of, so a poll that answers the same catalogue does not recompute it.
+	 */
+	const scopes = useMemo(
+		() => prefixGroups(graph.devices, graph.selfDeviceId),
+		[graph.devices, graph.selfDeviceId],
+	);
+	/*
+	 * The stacks are keyed on the same pair, so poll-to-poll they are reference-stable
+	 * for the geometry memo below, and the layer draws the SAME objects the layout priced
+	 * - one grouping, two readers.
+	 */
+	const stacks = useMemo(
+		() => scopeStacks(scopes, slots.devices),
+		[scopes, slots],
+	);
+	/*
 	 * The geometry is keyed on the SLOT MAP, which is reference-stable across a poll
 	 * that changed nothing (see `useMeshSlots`), so a poll cannot re-solve the
 	 * layout and cannot move a node.
 	 */
-	const geometry = useMemo(() => meshGeometry(slots), [slots]);
+	const geometry = useMemo(
+		() => meshGeometry(slots, openingLevels(stacks)),
+		[slots, stacks],
+	);
 
 	/*
 	 * THE DROP CONTEXT IS BUILT FROM WHAT THE CANVAS DREW, once per graph: the verdict
@@ -792,6 +824,35 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]",
 			)}
 		>
+			{/*
+			 * THE GROUND IS A SIBLING OF THE WORLD LAYER, NEVER A CHILD OF IT, and that is the
+			 * whole of the ground's design. `scale(k)` lives on the world, so a texture inside it
+			 * would be scaled with the content: at k = 0.25 the dots become sub-pixel mush that
+			 * aliases into grey noise, and at k = 3 they become 3 px blobs that read as a RULER the
+			 * graph is supposed to align to. As a sibling the pitch is 24 px at every zoom -
+			 * measured off the pixels at k = 1.0 and k = 0.61, thirty dot columns centre-to-centre
+			 * at 24.0 px in both, because `background-size` is a length and not a scaled one.
+			 *
+			 * IT STILL PANS. `backgroundPosition` is bound to the same `tx`/`ty` the world is
+			 * translated by, because a field that stayed put while the nodes moved would read as
+			 * content sliding under a sticker - the field would stop being a PLACE. The cost is one
+			 * more property on the same style write a pan already performs, so "one style write per
+			 * frame" still holds.
+			 *
+			 * IT IS NOT BEHIND ANYTHING ELSE. Not on the page ground, not on the summary band, not
+			 * under the loading skeleton, the error alert, the empty state or the list view, and
+			 * never inside a node's own fill - a card on a textured ground is separated BY the
+			 * texture, so letting it through would blur the node/ground boundary the whole layout
+			 * depends on. This element is inside the canvas well and nowhere else.
+			 */}
+			<div
+				data-mesh-ground=""
+				aria-hidden="true"
+				className="mesh-ground pointer-events-none absolute inset-0"
+				style={{
+					backgroundPosition: `${transform.tx}px ${transform.ty}px`,
+				}}
+			/>
 			<div
 				data-mesh-world=""
 				className="absolute top-0 left-0"
@@ -802,6 +863,11 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 					height: geometry.bounds.height,
 				}}
 			>
+				{/*
+				 * THE BOUNDARIES GO UNDER THE EDGES, so a membership line crosses the frame of an
+				 * enclosure rather than being clipped by it.
+				 */}
+				<MeshScopeLayer stacks={stacks} geometry={geometry} />
 				<MeshEdgeLayer
 					edges={graph.edges}
 					geometry={geometry}

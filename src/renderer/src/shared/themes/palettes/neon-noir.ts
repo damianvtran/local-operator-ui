@@ -190,6 +190,9 @@ export const neonNoir: ThemeDefinition = {
 		 * lands at 1.22:1 against `elevated` at its tightest.
 		 */
 		hairline: "#3B414B",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.70:1 there against `hairline`'s 1.57:1.
+		hairlineStrong: "#404650",
 		// The TUI `edge-hi` 3A414E lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the

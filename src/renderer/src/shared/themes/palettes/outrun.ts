@@ -157,6 +157,9 @@ export const outrun: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 5.11.
 		 */
 		hairline: "#323762",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.64:1 there against `hairline`'s 1.52:1.
+		hairlineStrong: "#373C67",
 		// The TUI `edge-hi` 343B6E lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
