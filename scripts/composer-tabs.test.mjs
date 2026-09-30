@@ -131,6 +131,16 @@ const bundle = await build({
 	// React stays external so the bundle shares ONE copy with this file's own
 	// imports. Two copies give the component a different React than the server
 	// renderer uses, and every render throws on an invalid hook call.
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
 	external: [
 		"react",
 		"react-dom",

@@ -452,7 +452,7 @@ test("a snapshot never carries a nonce or a hand-over, whatever the tab's owner 
 	);
 	assert.ok(
 		raw.includes('"owner": "agent"'),
-		"the owner is recorded for the diagnostics",
+		"the owner is recorded, and it is what `readSession` decides restorability on (2026-09-29)",
 	);
 });
 
@@ -461,8 +461,17 @@ test("a restored tab comes back user-owned, with a fresh id and no capability", 
 	const store = new BrowserSessionStore({ dir, debounceMs: 5 });
 	store.record([
 		{
+			// An abandoned agent tab's row: SKIPPED at the next restore (2026-09-29,
+			// the second accumulation fix — the owner decides restorability now).
 			owner: "agent",
 			active: false,
+			entries: [{ url: "http://127.0.0.1:9/abandoned", title: "Cruft" }],
+			activeIndex: 0,
+		},
+		{
+			// The carve-out: the agent tab that WAS active at the quit comes back.
+			owner: "agent",
+			active: true,
 			entries: [
 				{ url: "https://one.example/", title: "One" },
 				{ url: "https://two.example/", title: "Two" },
@@ -472,9 +481,15 @@ test("a restored tab comes back user-owned, with a fresh id and no capability", 
 	]);
 	store.flush();
 	const tabs = readSession(store.filePath);
-	assert.equal(tabs.length, 1);
-	// `owner: "agent"` is recorded, and the restore path ignores it: this is the
-	// half a reader of the design has to be able to check.
+	assert.equal(
+		tabs.length,
+		1,
+		"the abandoned agent row is not restored; the active one is",
+	);
+	// The surviving row keeps its recorded owner, and the reason is the half a
+	// reader of the design has to be able to check: the file's `owner` now DECIDES
+	// restorability (the host suite pins the rule and its hand-over exception),
+	// while the RECORD a restore makes is the user's regardless (design 7.3).
 	assert.equal(tabs[0].owner, "agent");
 	assert.equal(tabs[0].activeIndex, 1);
 	assert.equal(tabs[0].entries.length, 2);
@@ -836,6 +851,49 @@ test("a quit-time capture is compared restorable-row to restorable-row, so a fla
 	);
 
 	const short = [...sessionRows(4, "live"), flagged(sessionRows(1, "dead")[0])];
+	const decision = store.commitStopCapture(short);
+	assert.equal(
+		decision.write,
+		false,
+		`four restorable < five restorable, so the record is kept: ${decision.reason}`,
+	);
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		5,
+		"and the refusal is binding on the flush that follows",
+	);
+});
+
+test("the quit-time guard's parity extends to the agent skip, so an abandoned agent row cannot loosen the refusal (2026-09-29)", () => {
+	/*
+	 * THE SAME CORNER THE m-2 TEST ABOVE MEASURED, one skip later. The durable read
+	 * now also drops the non-active agent rows, so a record carrying them would move
+	 * the refusal boundary while the capture side still counted them: record = 5
+	 * restorable + 1 abandoned agent row (durable count 5) vs quit-time capture = 4
+	 * restorable + 1 abandoned agent row (raw count 5) must REFUSE - a capture's raw
+	 * count is not the population the guard protects, and without `restorableRow` on
+	 * both sides it would accept and could truncate a restorable tab's recovery.
+	 */
+	const dir = join(root, "session-stop-agent-parity");
+	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
+	const abandoned = (row) => ({ ...row, owner: "agent", active: false });
+	const durable = [
+		...sessionRows(5, "kept"),
+		abandoned(sessionRows(1, "cruft")[0]),
+	];
+	store.record(durable);
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		5,
+		"five restorable rows durable; the abandoned agent row is refused a restore",
+	);
+
+	const short = [
+		...sessionRows(4, "live"),
+		abandoned(sessionRows(1, "cruft")[0]),
+	];
 	const decision = store.commitStopCapture(short);
 	assert.equal(
 		decision.write,
@@ -3264,6 +3322,13 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 	assert.equal(
 		loadFailureSentence("ERR_NAME_NOT_RESOLVED"),
 		"That address does not resolve. Check the spelling.",
+	);
+	// The restore boundary's own mark shares the timeout's sentence (round-1
+	// U3/D2): the bounded wait expiring IS what it means, and falling to the
+	// generic copy would hide the one thing the app knows about the cause.
+	assert.equal(
+		loadFailureSentence("ERR_FAILED (restore)"),
+		"The site did not answer in time.",
 	);
 });
 

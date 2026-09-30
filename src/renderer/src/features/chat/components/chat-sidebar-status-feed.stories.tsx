@@ -1,7 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen } from "@storybook/test";
+import { screen, userEvent } from "@storybook/test";
 import { type FC, useEffect, useState, useSyncExternalStore } from "react";
 import { unreadAckableCount, unreadMarkKind } from "../mark-all-read";
 import { ChatSidebar } from "./chat-sidebar";
@@ -81,13 +81,26 @@ type WireRow = {
 	 * `null` is "this build does not report", and it is a different answer from
 	 * `0` - a runtime older than the fields omits them or sends `null`, and a
 	 * fixture that folded either into `0` would photograph "no subagents" about a
-	 * session nobody could ask. The renderer draws neither number: they reach the
-	 * screen inside `status.label` (`delegating` is the code that carries them), so
-	 * a row renders the same with and without them, which is what makes them
-	 * honest WIRE fields rather than fixture decoration.
+	 * session nobody could ask.
+	 *
+	 * THE ROWS BELOW THAT CARRY THEM ARE NOT DECORATION, and this note replaces
+	 * the one that said the opposite ("a row renders the same with and without
+	 * them"): the sidebar reads these two fields directly now
+	 * (`features/chat/chat-session-subagents.ts`), because `status.label` carries
+	 * the counts on the `delegating` rung alone and the rungs above it - a live
+	 * turn, an unseen completion, an attached session, an armed wake - had no way
+	 * to say that children were still at work. `subagent-rows-*` exists to
+	 * photograph exactly those rows.
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/**
+	 * The catalogue's archive flag, which the row's leading mark reads. Declared
+	 * here because the acceptance list needs one cell with BOTH conditional marks
+	 * on it (the leading `Archive` mark and the post-title indicator), and a
+	 * fixture that could not say `archived` could not photograph that pair.
+	 */
+	archived?: boolean;
 };
 
 /** One row in `sessions.list`'s own wire field names, as the backend sends it. */
@@ -654,7 +667,15 @@ const Page: FC<{
 	readoutRows?: number;
 	sidebarWidth?: number;
 	tooltips?: boolean;
-}> = ({ readoutRows, sidebarWidth = 360, tooltips = false }) => (
+	/**
+	 * The selected conversation, for the frames that must photograph a row on the
+	 * `rowSelected` ground. It is the row's own id prefixed the way the sidebar's
+	 * caller spells it (`session/<id>`), because that is what the row compares -
+	 * a story that passed the bare id would select nothing and the frame would
+	 * silently be a picture of the unselected state.
+	 */
+	selected?: string;
+}> = ({ readoutRows, sidebarWidth = 360, tooltips = false, selected }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
 		{/*
 		 * The width is a parameter because the panel is resizable between the app's
@@ -668,7 +689,7 @@ const Page: FC<{
 			style={{ width: `${sidebarWidth}px` }}
 		>
 			<ChatSidebar
-				selectedConversation={undefined}
+				selectedConversation={selected}
 				onSelectConversation={() => undefined}
 				onStageDraft={() => undefined}
 			/>
@@ -2778,6 +2799,490 @@ export const DelegatingRowDefault: Story = {
 	play: async () => {
 		await catalogueSettled(5);
 		await sleep(300);
+	},
+};
+
+/*
+ * ------------------------------------------ rows that OWN subagents while the
+ *                                                   primary mark says something
+ *                                                                      else
+ *
+ * THE OPERATOR'S REPORT (2026-09-29): a session "not displaying the icon where
+ * they're done but they still have running subagents, so it just looks like
+ * they're inactive in the sidebar".
+ *
+ * The delegation pair above cannot draw it. Both of its rows carry the
+ * `delegating` code, which is the ONE rung whose label already spells the counts
+ * - so it is the one rung where the presence was never invisible. Every rung
+ * ABOVE it (a live turn, an unseen completion, an attached session, an armed
+ * wake) draws a mark of its own and, until this change, said nothing at all
+ * about the children still at work. That is what these rosters photograph.
+ *
+ * The counts ride the wire rows exactly as `sessions.list` sends them.
+ */
+const SCHEDULED = { code: "scheduled", label: "Wake scheduled" };
+/** The session ids these rosters draw, one per cell of the spec's own list. */
+const CELL_BUSY_BOTH = "a10000000001";
+const CELL_BUSY = "a10000000002";
+const CELL_DONE = "a10000000003";
+const CELL_OPEN = "a10000000004";
+const CELL_QUEUE = "a10000000005";
+const CELL_IDLE = "a10000000006";
+const CELL_FAILED = "a10000000007";
+const CELL_WEDGED = "a10000000008";
+const CELL_DELEG_BOTH = "a10000000009";
+const CELL_DELEG_RUNNING = "a10000000010";
+const CELL_DELEG_QUEUED = "a10000000011";
+const CELL_NULL = "a10000000012";
+const CELL_ZERO_BUSY = "a10000000016";
+const CELL_NULL_IDLE = "a10000000017";
+const CELL_ZERO = "a10000000013";
+const CELL_NESTED = "a10000000015";
+/** The agent the nested cell is filed under. */
+const CELL_NESTED_AGENT = "quarterly-revenue-auditor";
+
+/**
+ * The roster the LIVE rungs draw, built once so the width pair differs by
+ * viewport only.
+ *
+ * WHY TWO ROSTERS RATHER THAN ONE. The sidebar draws a PAGE of chats - ten, then
+ * twenty-five, then fifty (`chat-sidebar-view.ts`'s ladder) - with a "Show N more
+ * chats" control under it. One roster carrying every acceptance cell would put
+ * five of them behind that control, and the five it hides are the quietest ones,
+ * which is exactly where a reviewer would look hardest. Splitting by the ladder's
+ * own partition keeps every cell on screen with no interaction, and it happens to
+ * be the honest partition anyway: the rungs the catalogue ranks above
+ * `delegating` all carry a RUNNING code, and the resting ones do not.
+ *
+ * The titles are the delegating pair's own lengths rather than new filler: the
+ * 240px frame's job is to show the longest title truncated hardest BESIDE the
+ * indicator, and a shorter title in the comparison frame would be a comparison of
+ * two things.
+ */
+const subagentRunningRoster = (): WireRow[] => [
+	// S2 - the worst case the width debate is about: three glyphs and a queue.
+	wireRow(
+		CELL_BUSY_BOTH,
+		"Reconcile the supplier ledger against the quarterly revenue model",
+		1_760_003_900,
+		BUSY,
+		15,
+		{ agent: null, team: null },
+		undefined,
+		{ subagents_running: 2, subagents_queued: 1 },
+	),
+	// S1 - a working row: spinner plus the accent mark.
+	wireRow(
+		CELL_BUSY,
+		"Migrate the deploy script",
+		1_760_003_800,
+		BUSY,
+		14,
+		{ agent: null, team: null },
+		undefined,
+		{ subagents_running: 2, subagents_queued: 0 },
+	),
+	// S7b - the amber wedged primary, same rule: it keeps its hue and the mark
+	// sits beside it.
+	wireRow(
+		CELL_WEDGED,
+		"Backfill the metrics table",
+		1_760_003_500,
+		WEDGED_SILENT,
+		11,
+		undefined,
+		undefined,
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S8 - no double draw: the primary `Share2` plus the queued glyph, and
+	// NOTHING of the running half.
+	wireRow(
+		CELL_DELEG_BOTH,
+		"Audit the vendor list",
+		1_760_003_100,
+		DELEGATING,
+		7,
+		undefined,
+		undefined,
+		{ subagents_running: 2, subagents_queued: 1 },
+	),
+	// S9 - THE REGRESSION CELL: a delegating row with nothing queued must render
+	// exactly as it does today. Compare against the committed
+	// `delegating-row-default/` frames: one `Share2`, accent, 16px, no second
+	// glyph and no added clause.
+	wireRow(
+		CELL_DELEG_RUNNING,
+		"Reconcile the supplier ledger",
+		1_760_003_000,
+		{ code: "delegating", label: "1 subagent running" },
+		6,
+		undefined,
+		undefined,
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S10 - the existing queued-only delegating spelling, now with its glyph.
+	wireRow(
+		CELL_DELEG_QUEUED,
+		"Backfill the metrics table by hand",
+		1_760_002_900,
+		DELEGATING_QUEUED,
+		5,
+		undefined,
+		undefined,
+		{ subagents_running: 0, subagents_queued: 2 },
+	),
+	// S11a - `null` is "this build does not report", not zero: no mark, no
+	// clause, byte-identical to today.
+	wireRow(
+		CELL_NULL,
+		"Untitled migration scratchpad",
+		1_760_002_800,
+		BUSY,
+		4,
+		undefined,
+		undefined,
+		{ subagents_running: null, subagents_queued: null },
+	),
+	// S11b - the OTHER half of the same cell: a REPORTED zero on a working row,
+	// which must render identically to the null above. Both are here because the
+	// acceptance list asks for the pair on a busy row AND on an idle one, and the
+	// two answers have to agree on both rungs (review MINOR 2).
+	wireRow(
+		CELL_ZERO_BUSY,
+		"Scratch notes on the vendor schema",
+		1_760_002_750,
+		BUSY,
+		3,
+		undefined,
+		undefined,
+		{ subagents_running: 0, subagents_queued: 0 },
+	),
+];
+
+export const SubagentRowsRunning: Story = {
+	render: () => {
+		/*
+		 * The archived cell (S13) needs the archive capability, and it is on in
+		 * every story here rather than only in the one that draws the mark: a
+		 * fixture whose capability differs between the two halves of a width pair
+		 * would make the pair a comparison of two builds.
+		 */
+		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
+		entities = null;
+		roster = subagentRunningRoster();
+		return <Page sidebarWidth={280} readoutRows={8} />;
+	},
+	play: async () => {
+		await catalogueSettled(8);
+		await sleep(400);
+	},
+};
+
+export const SubagentRowsRunningMinimum: Story = {
+	render: () => {
+		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
+		entities = null;
+		roster = subagentRunningRoster();
+		return <Page sidebarWidth={240} readoutRows={8} />;
+	},
+	play: async () => {
+		await catalogueSettled(8);
+		await sleep(400);
+	},
+};
+
+/**
+ * The roster the RESTING rungs draw: every code the catalogue ranks above
+ * `delegating` that is not itself a running code, which is the whole defect -
+ * these rows drew their own quiet mark and said nothing about the children still
+ * at work.
+ */
+const subagentRestingRoster = (): WireRow[] => [
+	// S4 - the operator's letter case: the turn finished and its check stands,
+	// while the children it started are still working.
+	wireRow(
+		CELL_DONE,
+		"Quarterly revenue model",
+		1_760_003_700,
+		COMPLETE,
+		13,
+		undefined,
+		unseenAt(CELL_DONE),
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S3 - a resting `ink-dim` primary beside a loud indicator.
+	wireRow(
+		CELL_OPEN,
+		"Draft the migration runbook",
+		1_760_003_600,
+		OPEN,
+		12,
+		undefined,
+		undefined,
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S5 - queued-only, non-delegating: the "must not read as idle" case. Nothing
+	// is running, so the glyph is the only thing on the row saying work is owed.
+	wireRow(
+		CELL_QUEUE,
+		"Sweep the vendor list overnight",
+		1_760_003_400,
+		SCHEDULED,
+		10,
+		undefined,
+		undefined,
+		{ subagents_running: 0, subagents_queued: 2 },
+	),
+	// S6 - the resting ring plus the accent mark.
+	wireRow(
+		CELL_IDLE,
+		"Archive the launch checklist",
+		1_760_003_300,
+		IDLE,
+		9,
+		undefined,
+		undefined,
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S7a - a loud failure primary keeps its hue with the indicator beside it.
+	wireRow(
+		CELL_FAILED,
+		"Regenerate the vendor import",
+		1_760_003_200,
+		FAILED,
+		8,
+		undefined,
+		unseenAt(CELL_FAILED),
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+	// S11c - a reported zero on a RESTING row, the fourth quarter of the compat
+	// cell; S11d below is the same row with counts this build cannot read.
+	wireRow(
+		CELL_ZERO,
+		"Notes on the vendor schema",
+		1_760_002_700,
+		IDLE,
+		3,
+		undefined,
+		undefined,
+		{ subagents_running: 0, subagents_queued: 0 },
+	),
+	// S11d - `null` on a resting row. Nothing about the mark is a function of the
+	// code, so this pair is what says so in pixels rather than in prose.
+	wireRow(
+		CELL_NULL_IDLE,
+		"Vendor schema, second pass",
+		1_760_002_650,
+		IDLE,
+		2,
+		undefined,
+		undefined,
+		{ subagents_running: null, subagents_queued: null },
+	),
+	// S15 - a nested row: the indicator is a state of the SESSION, so a row filed
+	// under its agent carries it too, at the section's own indent.
+	wireRow(
+		CELL_NESTED,
+		"Quarterly vendor reconciliation",
+		1_760_002_500,
+		OPEN,
+		1,
+		{ agent: CELL_NESTED_AGENT, team: null },
+		undefined,
+		{ subagents_running: 1, subagents_queued: 0 },
+	),
+];
+
+const RESTING_ROSTER_ROWS = 8;
+
+export const SubagentRowsResting: Story = {
+	render: () => {
+		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
+		/*
+		 * NO ENTITY CATALOGUE, and that is a measured limit of this fixture rather
+		 * than an oversight: with `entities` set the sidebar's Agents section still
+		 * renders its EMPTY state (the offer line names the profile, so the read
+		 * landed - the section lists installed agents and this fixture's catalogue
+		 * has none), which is the state the committed `completion-reordered`
+		 * frames show too. So the nested cell below renders as the FLAT row the
+		 * list draws, and the nested under-an-agent frame is recorded as a gap in
+		 * the PR rather than faked here.
+		 */
+		entities = null;
+		roster = subagentRestingRoster();
+		return <Page sidebarWidth={280} readoutRows={RESTING_ROSTER_ROWS} />;
+	},
+	play: async () => {
+		await catalogueSettled(RESTING_ROSTER_ROWS);
+		await sleep(400);
+	},
+};
+
+export const SubagentRowsRestingMinimum: Story = {
+	render: () => {
+		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
+		/*
+		 * NO ENTITY CATALOGUE, and that is a measured limit of this fixture rather
+		 * than an oversight: with `entities` set the sidebar's Agents section still
+		 * renders its EMPTY state (the offer line names the profile, so the read
+		 * landed - the section lists installed agents and this fixture's catalogue
+		 * has none), which is the state the committed `completion-reordered`
+		 * frames show too. So the nested cell below renders as the FLAT row the
+		 * list draws, and the nested under-an-agent frame is recorded as a gap in
+		 * the PR rather than faked here.
+		 */
+		entities = null;
+		roster = subagentRestingRoster();
+		return <Page sidebarWidth={240} readoutRows={RESTING_ROSTER_ROWS} />;
+	},
+	play: async () => {
+		await catalogueSettled(RESTING_ROSTER_ROWS);
+		await sleep(400);
+	},
+};
+
+/*
+ * S12 - THE OPERATOR'S EXACT CASE: the row is SELECTED (they had opened it), it
+ * owns two running subagents, and it must not read as inactive while its own
+ * pane works. The unselected twin beside it is what makes the pair readable: the
+ * accent mark is measured on `rowSelected` here, the ground the operator's own
+ * screenshot is on, and the twin says the mark is not an artefact of that ground.
+ */
+const CELL_SELECTED = "b20000000001";
+const CELL_TWIN = "b20000000002";
+
+export const SubagentSelectedRow: Story = {
+	render: () => {
+		fixtures();
+		/*
+		 * NO DRAFT IS STAGED, and that has to be SAID rather than assumed. The
+		 * canonical store persists `activeDraftKey` (`partialize` names it), so a
+		 * profile that staged a draft in any earlier story hydrates the key here -
+		 * and the row's own definition of current is
+		 * `selectedConversation === row.session_id && !activeDraftKey`
+		 * (`chat-sidebar.tsx`). An inherited key therefore suppresses the
+		 * `rowSelected` ground this frame exists to photograph, while the frame
+		 * still claims "the operator's own selected row": MEASURED, with a hydrated
+		 * `draft:<uuid>` both rows painted resting and this entry's own guard
+		 * (`[data-chat-row][aria-current="page"]`) refused to write the frame.
+		 * Stated in the story rather than fixed in the rig because the app's own
+		 * rule is the thing under test, and a story that needs "no draft" has to
+		 * establish it the way the app does.
+		 */
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		entities = null;
+		roster = [
+			wireRow(
+				CELL_SELECTED,
+				"Migrating MUI dashboard to Tailwind and shadcn",
+				1_760_003_900,
+				BUSY,
+				2,
+				undefined,
+				undefined,
+				{ subagents_running: 2, subagents_queued: 0 },
+			),
+			wireRow(
+				CELL_TWIN,
+				"Reconcile the supplier ledger against the quarterly revenue model",
+				1_760_003_800,
+				BUSY,
+				1,
+				undefined,
+				undefined,
+				{ subagents_running: 2, subagents_queued: 0 },
+			),
+		];
+		return <Page sidebarWidth={280} readoutRows={2} selected={CELL_SELECTED} />;
+	},
+	play: async () => {
+		await catalogueSettled(2);
+		await sleep(500);
+	},
+};
+
+/*
+ * S13 - the archived row, which needs the search block to be widened to exist on
+ * screen at all: `chat-archived.ts`'s `visibleRows` FILTERS archived rows out of
+ * the at-rest list whenever the capability is on (the panel deliberately has no
+ * Archived section - the docstring there says why), so the only way a reader ever
+ * sees one is the search block's own `Include archived` control over a query.
+ * That is the path this story walks, through the real controls: type a query,
+ * then tick the box.
+ *
+ * The cell exists because the row carries TWO CONDITIONAL MARKS in different
+ * slots - the leading `Archive` glyph and the post-title indicator - and a change
+ * that adds the second should show that neither displaces the other. The
+ * unarchived twin below it is the control: same query, same row shape, one mark.
+ */
+const CELL_ARCHIVED = "b30000000001";
+const CELL_ARCHIVED_TWIN = "b30000000002";
+
+export const SubagentArchivedRow: Story = {
+	render: () => {
+		fixtures({ features: { completion_ack_bulk: 1, session_archive: 1 } });
+		entities = null;
+		roster = [
+			wireRow(
+				CELL_ARCHIVED,
+				"Old supplier ledger reconciliation",
+				1_760_003_900,
+				OPEN,
+				2,
+				undefined,
+				undefined,
+				{ archived: true, subagents_running: 2, subagents_queued: 0 },
+			),
+			wireRow(
+				CELL_ARCHIVED_TWIN,
+				"Reconcile the supplier ledger",
+				1_760_003_800,
+				OPEN,
+				1,
+				undefined,
+				undefined,
+				{ subagents_running: 1, subagents_queued: 0 },
+			),
+		];
+		return <Page sidebarWidth={280} readoutRows={2} />;
+	},
+	play: async () => {
+		await catalogueSettled(2);
+		/*
+		 * THE BAND'S BUTTON AND THE FIELD SHARE ONE ACCESSIBLE NAME, and a
+		 * `findByLabelText` cannot see past that: the search control opens the field
+		 * and the field is itself labelled "Search chats and agents", so the lookup
+		 * matched two elements and the play died before a character was typed - which
+		 * is why the first version of this story photographed the unarchived twin and
+		 * nothing else (QA round 1, Q-1, and design D1 on the same frame).
+		 *
+		 * ROLES separate them, and they are the surface's own: the band control is a
+		 * BUTTON that opens the field, the field is a TEXTBOX. The order is the
+		 * reader's - open the search, type the query, then tick the control the query
+		 * reveals (the checkbox is not rendered until there is a query to scope it
+		 * to).
+		 */
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Search chats and agents" }),
+		);
+		const box = await screen.findByRole("textbox", {
+			name: "Search chats and agents",
+		});
+		await userEvent.type(box, "ledger");
+		await userEvent.click(
+			await screen.findByRole("checkbox", { name: "Include archived" }),
+		);
+		/*
+		 * AND THE STORY FAILS LOUDLY IF THE ROW NEVER ARRIVES. The capture entry for
+		 * this story carries `expectPresent: '[data-session-archived="true"]'`, so
+		 * the rig refuses to write a frame without an archived row in it - the
+		 * guard that turns this whole class of silent no-op into a failed run rather
+		 * than a picture of the wrong state.
+		 */
+		await until("the archived row", () =>
+			Boolean(document.querySelector('[data-session-archived="true"]')),
+		);
+		await sleep(400);
 	},
 };
 

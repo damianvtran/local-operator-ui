@@ -554,6 +554,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 		compactingSince: 0,
 		viewEpoch: 0,
 		oldestId: null,
+		oldestTs: 0,
 		hasMore: false,
 		argsByCall: new Map(),
 	};
@@ -729,6 +730,8 @@ const AppShell: FC<{
 										sessionId="3f9c1a2b4d5e"
 										pulses={{}}
 										childrenOpenable
+										/* No session stream behind this board: the transport-up case. */
+										olderTransportDown={false}
 										paneWidth={slotWidth}
 										readerChildId={null}
 										previewPage={null}
