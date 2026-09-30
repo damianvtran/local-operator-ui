@@ -126,7 +126,14 @@ export const ProjectList: FC<ProjectListProps> = ({
 			data-testid="project-list"
 		>
 			<div
-				className="flex shrink-0 items-center gap-3 px-3 py-2 text-meta text-ink-muted"
+				/*
+				 * 36px, not 12: the page no longer insets this region, so the strip
+				 * restates the sum it used to sit inside - the 24px page gutter plus
+				 * the 12 the columns below carry - and stays flush with the scrolled
+				 * rows. The scroller itself (`ul` below) carries the 24 as its own
+				 * padding, so its bar rides the VIEW's edge, not an inset's.
+				 */
+				className="flex shrink-0 items-center gap-3 px-9 py-2 text-meta text-ink-muted"
 				aria-hidden="true"
 			>
 				{COLUMNS.map((column) => (
@@ -135,7 +142,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 					</span>
 				))}
 			</div>
-			<ul className="min-h-0 flex-1 overflow-y-auto">
+			<ul className="min-h-0 flex-1 overflow-y-auto px-6">
 				{groups.map((group) => (
 					<li key={group.team ?? ""}>
 						<div
