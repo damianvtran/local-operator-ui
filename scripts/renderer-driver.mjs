@@ -14202,8 +14202,6 @@ async function scenePinnedReorder(cdp) {
 							node.querySelector("[data-chat-row][aria-current='page']") !== null,
 						title: title ? box(title) : null,
 						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
-						up: painted(node.querySelector("[data-session-move-up]")),
-						down: painted(node.querySelector("[data-session-move-down]")),
 						pin: painted(node.querySelector("[data-session-pin]")),
 						archive: painted(node.querySelector("[data-session-archive]")),
 						dragging: node.hasAttribute("data-dragging"),
@@ -14474,13 +14472,9 @@ async function scenePinnedReorder(cdp) {
 		);
 		check(
 			"no move control is painted at rest",
-			boot.rows.every((row) => row.grip === null && !row.up && !row.down),
+			boot.rows.every((row) => row.grip === null),
 			JSON.stringify(
-				boot.rows.map((row) => ({
-					id: row.id,
-					grip: row.grip !== null,
-					up: row.up,
-				})),
+				boot.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
 			),
 		);
 		/*
@@ -14512,30 +14506,19 @@ async function scenePinnedReorder(cdp) {
 			);
 			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
 			/*
-			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2, rounded to the measured edge
-			 * in round 2): the grip is DRAWN at a 279px panel and above and shed at 278 and
-			 * below - QA measured 277/278 shed and 279/280 drawn, which is what the shipped
-			 * `@max-[263px]/chatsidebar:hidden!` decides once the panel's own `p-2` is taken
-			 * off (the container query reads a content box 16px narrower than the panel) -
-			 * because at the 240 clamp the revealed cluster left the title 40px of the row's
-			 * 208. The PAIR STAYS at every width - it is WCAG 2.5.7's single-pointer
-			 * alternative - so the check is two claims, one per band, rather than one claim
-			 * with an exception.
+			 * THE GRIP IS DRAWN AT EVERY WIDTH NOW (2026-09-30). Round 1's shed - the grip
+			 * alone, absent at or below a 278px panel because the FIVE-control cluster left
+			 * the 240 clamp a 40px title - is deleted with the arrow pair that made the
+			 * cluster five wide, so these frames' meaning changes rather than their pixels
+			 * alone: `grip-hover-240` used to be the frame that showed the shed, and it now
+			 * shows the same cluster as every other width.
 			 */
-			const gripExpected = width >= 279;
 			check(
-				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
-				(hoveredRow.grip !== null) === gripExpected &&
-					hoveredRow.up === true &&
-					hoveredRow.down === true &&
+				`${width}: the pointer reveals the grip, the archive and the mark on one row`,
+				hoveredRow.grip !== null &&
 					hoveredRow.archive === true &&
 					hoveredRow.pin === true,
-				JSON.stringify({ width, gripExpected, row: hoveredRow }),
-			);
-			check(
-				`${width}: the shed leaves the pair in place`,
-				hoveredRow.up === true && hoveredRow.down === true,
-				JSON.stringify({ width, up: hoveredRow.up, down: hoveredRow.down }),
+				JSON.stringify({ width, row: hoveredRow }),
 			);
 			check(
 				`${width}: the grip is out of the Tab ring`,
@@ -14546,7 +14529,7 @@ async function scenePinnedReorder(cdp) {
 				`${width}: the revealed cluster leaves the rest of the section alone`,
 				hovered.rows
 					.filter((row) => row.id !== PINNED_IDS[1])
-					.every((row) => row.grip === null && !row.up),
+					.every((row) => row.grip === null),
 				JSON.stringify(
 					hovered.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
 				),
@@ -14565,8 +14548,6 @@ async function scenePinnedReorder(cdp) {
 				hoverTitles: titleWidths(hovered),
 				hoveredCluster: {
 					grip: hoveredRow.grip,
-					up: hoveredRow.up,
-					down: hoveredRow.down,
 					archive: hoveredRow.archive,
 					pin: hoveredRow.pin,
 				},
@@ -15356,7 +15337,7 @@ async function scenePinnedReorder(cdp) {
 		const singleFrame = await captureSettled(cdp, "single-pin");
 		note("frame", JSON.stringify({ label: "single-pin", ...singleFrame }));
 		check(
-			"the section is down to one pin, and both move controls are inapplicable",
+			"the section is down to one pin",
 			single.order.length === 1,
 			JSON.stringify(single.order),
 		);
@@ -15373,14 +15354,18 @@ async function scenePinnedReorder(cdp) {
 		 * README's claim about it). With one row there is no second slot a drop could land
 		 * on - measured, a one-row drag can be started, always lands on slot 0 and writes
 		 * nothing - so the handle was an affordance for a gesture that cannot change
-		 * anything. The PAIR stays: it still answers with the boundary sentence, which is
-		 * the sentence this state's frame is about.
+		 * anything.
+		 *
+		 * THE ARROW PAIR THAT USED TO SIT BESIDE IT IS DELETED (2026-09-30), and with it
+		 * this frame's old reading (`up`/`down` drawn inapplicable). The boundary sentence
+		 * is the row menu's two Move items' now, and this scene does not open a menu: that
+		 * claim is asserted in `scripts/sidebar-pin-order.test.mjs`, which drives the
+		 * predicate and the writer the items read. What the frame still proves is the
+		 * grip's own count rule.
 		 */
 		check(
-			"the only pin draws its two arrows inapplicable and offers no grip",
-			singleRow.grip === null &&
-				singleRow.up === true &&
-				singleRow.down === true,
+			"the only pin offers no grip",
+			singleRow.grip === null,
 			JSON.stringify(singleRow),
 		);
 		note(

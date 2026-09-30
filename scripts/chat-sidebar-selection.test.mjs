@@ -550,43 +550,6 @@ const CURRENT = [
 	},
 	{
 		/*
-		 * The pinned row's MOVE PAIR (issue #693): the row's third and fourth sibling
-		 * controls, and the first that exist only in one of the row's two states. They
-		 * are row surfaces for the same reason the pin and the archive are - they sit
-		 * INSIDE a row's box and answer the pointer - so `hover:bg-row-hover` is their
-		 * sanctioned ground and the `!current` guard is what keeps the pointer from
-		 * replacing the mark that says where the reader is.
-		 *
-		 * BOTH ARE LISTED, each resolved through its own `cn(...)`, and they are the
-		 * reason the two class lists are spelled out per control rather than shared
-		 * through one constant: this file resolves an ELEMENT's own class expression,
-		 * so a constant would be one list no entry here could measure - exactly the
-		 * blindness this table exists to remove. The pair's own two lists are kept
-		 * identical by the two entries below, each of which fails on its own if the
-		 * list it reads stops being a row surface.
-		 *
-		 * Resolved FORWARD from each control's own attribute, the archive entry's own
-		 * shape: the attribute precedes the `className` in the source, so a forward
-		 * search lands on this control's expression and not on the one above it.
-		 */
-		what: "the pinned row's move-up control",
-		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-move-up\n"),
-		stubs: { current: true },
-		ground: false,
-		notCurrent: { current: false },
-	},
-	{
-		/* The pair's other half: the same list, the same two guards, one glyph down. */
-		what: "the pinned row's move-down control",
-		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-move-down\n"),
-		stubs: { current: true },
-		ground: false,
-		notCurrent: { current: false },
-	},
-	{
-		/*
 		 * The draft row's BOX, added with the sidebar's own discard act (operator,
 		 * 2026-09-26: "Each one should have a deletion on hover"). Same shape and
 		 * same reason as the conversation row's box above: `rowStyle`'s own `hover:`
@@ -986,6 +949,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// pointer, and both are resolved by their own `CURRENT` entries above -
 				// the count is what forced those entries to exist rather than a promise
 				// that somebody wrote them.
+				// FIFTEEN (2026-09-30). The arrow pair is DELETED - its acts are the
+				// two Move items in the row's menu now, and those are MENU rows: they
+				// render in the menu's portal, take the menu's own highlight ground, and
+				// can never sit inside the row that opened them. So the count comes back
+				// DOWN by two, and the two `CURRENT` entries that resolved them went with
+				// them: an entry is for a row SURFACE, which is the thing this table is a
+				// list of.
 				// SEVENTEEN (issue #697, 2026-09-30). The pin DRAG HANDLE adds one: it is the
 				// pair's own shape one control over (revealed by the pointer, guarded
 				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
@@ -999,7 +969,7 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// OUTLINE (`rowDraggingMark`), which is not a ground role and so is not counted
 				// here - the ground underneath is the row's own, `rowDragging`'s selected
 				// step, and that spelling is still the literal PLUS ONE below.
-				"hover:bg-row-hover": 17,
+				"hover:bg-row-hover": 15,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
@@ -1024,11 +994,12 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// foot for the drafts group and can never sit inside a current row; it
 				// paints NOTHING here rather than taking a row state, which is why no
 				// expression has to resolve it.
-				// PLUS TWO (issue #693): the move pair's controls still the same step while
-				// they are inapplicable - the first and last pinned rows - and they are the
-				// one case in this panel where a ROW control can be inapplicable, so the
-				// reset lives with the control rather than in the pair's own `hidden`
-				// reveal. Resolved by their `CURRENT` entries above.
+				// PLUS TWO (issue #693, re-pointed 2026-09-30): the two inapplicable-row
+				// resets are the row MENU's Move items now - the arrow controls that used to
+				// carry them are deleted. Same two literals, a different surface: a menu row
+				// renders in the menu's portal, so it can never sit inside the current row
+				// and no `CURRENT` entry can or should resolve it. The refusal still has to
+				// LOOK like a refusal, which is why the pair is kept.
 				"hover:bg-transparent": 3,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
