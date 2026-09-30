@@ -83,7 +83,20 @@ function collapsedGateContaining(
 	];
 	for (const [selector, attr] of shapes) {
 		for (const node of root.querySelectorAll<HTMLElement>(selector)) {
-			if (!containsId(node, attr, id)) continue;
+			/*
+			 * A run can carry several bars, and `data-run-ids` names the WHOLE run on
+			 * each of them: it would match the first bar for a row that lives in the
+			 * third. `data-segment-ids` names exactly what THIS bar hides, so it
+			 * decides when present; a bar without it (the pre-segment shape, and the
+			 * fold, which has one span) falls back to the id list it always had.
+			 */
+			const own = node.getAttribute("data-segment-ids");
+			if (
+				own !== null
+					? !own.split(" ").includes(id)
+					: !containsId(node, attr, id)
+			)
+				continue;
 			const trigger = node.querySelector<HTMLElement>("button[aria-expanded]");
 			if (trigger?.getAttribute("aria-expanded") === "false") return node;
 		}

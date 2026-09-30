@@ -183,13 +183,23 @@ type BridgeBehaviour = {
 	 * 403 a stranger gets. The page must render neither as an outage.
 	 */
 	orgRefusal?: "plan" | "no_access";
-	/** Teams for `org_teams.list`. */
+	/**
+	 * Teams for `org_teams.list`, in the list form's real shape (`HubTeam`): the
+	 * manager is a field of its own and `members` are the OTHER slots, so a fixture
+	 * that lists the manager in both would render it twice. Optional fields are
+	 * optional here because the sparse row is the state that proves the omissions.
+	 */
 	teams?: {
 		id: string;
 		name: string;
+		description?: string;
+		manager?: string;
 		project: string;
 		version: string;
 		members: { role: string; kind: string; count: number }[];
+		account_metadata?: { name: string; email: string };
+		created_date?: string;
+		updated_at?: string;
 	}[];
 	/** Never settle the teams read, so the Teams view stays in its loading state. */
 	holdTeams?: boolean;
@@ -971,23 +981,181 @@ const ORGS = [
 	},
 ];
 
+/**
+ * A timestamp `days` whole days and three hours ago.
+ *
+ * The 3-hour offset keeps every relative time mid-unit ("3 days", never the edge
+ * of "2 days"), so two captures a few minutes apart cannot flip a label. Computed
+ * at render, like the agent fixtures' own times.
+ */
+const ago = (days: number) =>
+	new Date(Date.now() - (days * 86_400_000 + 3 * 3_600_000)).toISOString();
+
+/** The two-row roster: the before/after pair for the operator's "too bare" report. */
 const TEAMS = [
 	{
 		id: "team-hub-1",
 		name: "Adverse media desk",
+		description:
+			"Screens onboarding subjects for adverse media and hands cases to compliance with a cited summary and a recommended outcome.",
+		manager: "lead-screener",
 		project: "Onboarding",
 		version: "1.2.0",
 		members: [
-			{ role: "manager", kind: "role", count: 1 },
 			{ role: "screener", kind: "role", count: 3 },
+			{ role: "analyst", kind: "specialist", count: 1 },
 		],
+		account_metadata: { name: "Ana Perez", email: "ana@example.com" },
+		created_date: ago(41),
+		updated_at: ago(3),
 	},
 	{
 		id: "team-hub-2",
 		name: "Quarterly close",
+		description:
+			"Reconciles the ledgers, chases the open items and drafts the close memo for the controller.",
+		manager: "controller",
 		project: "Finance",
 		version: "0.4.0",
 		members: [{ role: "analyst", kind: "specialist", count: 1 }],
+		account_metadata: { name: "Sam Okonkwo", email: "sam@example.com" },
+		created_date: ago(90),
+		updated_at: ago(12),
+	},
+];
+
+/*
+ * The nine-row fixture: one row per way the data can be awkward. Each row is a
+ * claim a frame can check - (a) the whole anatomy, (b) a long description with a
+ * newline, a 90-character unbroken token and a 64-character name, (c) a nine-slot
+ * roster, (d) every optional field absent at once, (e) no manager and one
+ * member, (f) a description past the expanded ceiling, (g) a manager with no
+ * roster, (h) a stamp in the future, (i) an unusable `updated_at` with a usable
+ * creation date.
+ */
+const LONG_DESCRIPTION = `${"Watches the supplier register for sanctions, adverse media and ownership changes, and writes one dated finding per supplier so a reviewer can act on it without re-reading the sources. ".repeat(3).trim()}\nSecond paragraph: a hit is never closed automatically. ${"x".repeat(90)} ends the paragraph.`;
+const VERY_LONG_DESCRIPTION = `${"This team keeps a running brief of every regulatory change that touches the desk, grouped by regime and dated, and it never rewrites history. ".repeat(21).trim()}`;
+const VARIED_TEAMS = [
+	{ ...TEAMS[0], id: "team-varied-a" },
+	{
+		id: "team-varied-b",
+		name: "Supplier due diligence and continuous monitoring in all regions.",
+		description: LONG_DESCRIPTION,
+		manager: "diligence-lead",
+		project: "Third-party risk",
+		version: "2.0.1",
+		members: [
+			{ role: "sanctions-screener", kind: "role", count: 2 },
+			{ role: "adverse-media-reader", kind: "specialist", count: 1 },
+		],
+		account_metadata: { name: "Priya Raman", email: "priya@example.com" },
+		created_date: ago(120),
+		updated_at: ago(5),
+	},
+	{
+		id: "team-varied-c",
+		name: "Full desk",
+		description:
+			"A whole desk in one document: intake, screening, review, escalation and reporting.",
+		manager: "desk-lead",
+		project: "Operations",
+		version: "3.1.0",
+		members: [
+			{ role: "intake-coordinator", kind: "role", count: 1 },
+			{ role: "sanctions-screener", kind: "role", count: 3 },
+			{ role: "second-line-reviewer", kind: "role", count: 2 },
+			{ role: "escalation-officer", kind: "role", count: 1 },
+			{ role: "regulatory-reporter", kind: "specialist", count: 1 },
+			{ role: "records-archivist", kind: "specialist", count: 1 },
+			{ role: "data-quality-checker", kind: "specialist", count: 2 },
+			{ role: "client-liaison", kind: "role", count: 1 },
+			{ role: "internal-auditor", kind: "specialist", count: 1 },
+		],
+		account_metadata: { name: "Sam Okonkwo", email: "sam@example.com" },
+		created_date: ago(200),
+		updated_at: ago(30),
+	},
+	{
+		id: "team-varied-d",
+		name: "Scratch team",
+		description: "",
+		manager: "",
+		project: "",
+		version: "",
+		members: [],
+		created_date: "",
+		updated_at: "",
+	},
+	{
+		id: "team-varied-e",
+		name: "Solo reviewer",
+		description: "One reviewer, no manager.",
+		manager: "",
+		project: "Onboarding",
+		version: "1.0.0",
+		members: [{ role: "reviewer", kind: "role", count: 1 }],
+		account_metadata: { name: "Dana Whitfield", email: "dana@example.com" },
+		created_date: ago(9),
+		updated_at: ago(2),
+	},
+	{
+		id: "team-varied-f",
+		name: "Regulatory watch",
+		description: VERY_LONG_DESCRIPTION,
+		manager: "watch-lead",
+		project: "Compliance",
+		version: "1.1.0",
+		members: [{ role: "analyst", kind: "specialist", count: 2 }],
+		account_metadata: { name: "Ana Perez", email: "ana@example.com" },
+		created_date: ago(300),
+		updated_at: ago(60),
+	},
+	/*
+	 * (g)-(i): the three recency and composition arms that are rules rather than
+	 * data - a manager with no roster (L3 says `No members`, the opened body must
+	 * not repeat it), a stamp in the FUTURE (clock skew: an absolute date, never
+	 * "-2 days ago"), and an unusable `updated_at` with a usable creation date (the
+	 * label changes to `created`). Each is a rendering no other row can show.
+	 */
+	{
+		id: "team-varied-g",
+		name: "Watch lead, no roster",
+		description:
+			"Owns the escalation path and fills the roster in per engagement.",
+		manager: "watch-lead",
+		project: "Operations",
+		version: "0.9.0",
+		members: [],
+		account_metadata: { name: "Dana Whitfield", email: "dana@example.com" },
+		created_date: ago(30),
+		updated_at: ago(6),
+	},
+	{
+		id: "team-varied-h",
+		name: "Ahead of its time",
+		description: "Dated from a machine whose clock runs fast; the row says so.",
+		manager: "timekeeper",
+		project: "Lab",
+		version: "1.0.0",
+		members: [{ role: "analyst", kind: "role", count: 1 }],
+		account_metadata: { name: "Priya Raman", email: "priya@example.com" },
+		created_date: ago(14),
+		// A future stamp: 20 days ahead of now.
+		updated_at: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+	},
+	{
+		id: "team-varied-i",
+		name: "Only a creation date",
+		description:
+			"Published once and never touched since; the row says created, not updated.",
+		manager: "archivist",
+		project: "Records",
+		version: "1.0.0",
+		members: [{ role: "archivist", kind: "specialist", count: 1 }],
+		account_metadata: { name: "Sam Okonkwo", email: "sam@example.com" },
+		created_date: ago(80),
+		// Unusable: the line falls back to `created` and says so.
+		updated_at: "not a date",
 	},
 ];
 
@@ -1168,6 +1336,95 @@ export const OrgTeams: Story = {
 		);
 	},
 };
+
+/** The roster at 920: the width where L3 and L4 truncate and Pull must stay on the right. */
+export const OrgTeamsNarrow: Story = {
+	...OrgTeams,
+};
+
+/** The nine-row fixture: every awkward shape the roster has to survive, at rest. */
+export const OrgTeamsVaried: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: VARIED_TEAMS,
+		});
+		holdShutter(
+			'[data-testid="agent-hub-status"]',
+			"9 teams shared with Minerva",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams");
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
+				"9 teams shared with Minerva",
+			),
+		);
+	},
+};
+
+/** The nine-row fixture at 920. */
+export const OrgTeamsVariedNarrow: Story = { ...OrgTeamsVaried };
+
+/**
+ * Rows (b), (c) and (f) of the nine-row fixture, opened by pressing their triggers
+ * the way a person does: the un-clamped description, the 12-line ceiling and its
+ * ellipsis, the slot list with kinds - and the `Members` label over them - and the
+ * exact dates, with more than one row open at once.
+ */
+export const OrgTeamsExpanded: Story = {
+	...OrgTeamsVaried,
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: VARIED_TEAMS,
+		});
+		/*
+		 * The LAST row the play opens, by its own position in the fixture
+		 * (`VARIED_TEAMS[5]` is the sixth `<li>`): by the time IT is expanded the
+		 * other two are, so the shutter cannot open on a half-played frame. A
+		 * `querySelector` for any expanded trigger would match row (b) first and the
+		 * latch would never see the third row open.
+		 */
+		holdShutter(
+			'[data-testid="org-teams"] > ul > li:nth-child(6) button[aria-expanded="true"]',
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams");
+		for (const name of [VARIED_TEAMS[1], VARIED_TEAMS[2], VARIED_TEAMS[5]]) {
+			const row = (await screen.findByText(name.name)).closest("li");
+			if (!row) throw new Error(`no row for ${name.name}`);
+			await userEvent.click(
+				row.querySelector("button[aria-expanded]") as HTMLElement,
+			);
+		}
+		await waitFor(() =>
+			expect(
+				document.querySelectorAll(
+					'[data-testid="org-teams"] button[aria-expanded="true"]',
+				),
+			).toHaveLength(3),
+		);
+		releaseFocus();
+	},
+};
+
+/** The nine-row fixture, opened, at 920. */
+export const OrgTeamsExpandedNarrow: Story = { ...OrgTeamsExpanded };
 
 /** An organization that has shared no teams: the Teams view's empty sentence. */
 export const OrgTeamsEmpty: Story = {
