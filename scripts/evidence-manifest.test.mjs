@@ -2579,6 +2579,11 @@ const BRANCH_RECORDS = [
 	 */
 	"sttRecordingDisplayFoldNote",
 	/*
+	 * Grown by the second convergence fold (2026-09-30): it states what the lift moved and what it did not, and it spells its identity
+	 * as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldTwoNote",
+	/*
 	 * Grown by the recording-display pass (2026-09-29), this branch's newest
 	 * top-level record: it states what the pass ADDED (four frames - the
 	 * composer's two recording states, empty field and with draft, in both the
