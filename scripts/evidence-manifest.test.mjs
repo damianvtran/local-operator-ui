@@ -2842,6 +2842,11 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntobbffb9a8a9Note",
 	/*
+	 * And the fourth fold, onto `20ccfd4512` (#685's rail-jump anchor over
+	 * #682's stt display), the R-4 fold of review round 1 - same reason again.
+	 */
+	"foldOnto20ccfd4512Note",
+	/*
 	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
 	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
 	 * adds no name to the quoting ledger.
