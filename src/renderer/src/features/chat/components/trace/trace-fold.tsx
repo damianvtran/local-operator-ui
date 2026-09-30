@@ -79,6 +79,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
+import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
 
@@ -125,6 +126,39 @@ export type TraceFoldProps = {
 	/** The fold's own margin: the gap tier its first row arrived with (D8). */
 	className?: string;
 	/**
+	 * Media the run produced, drawn UNDER the condensed header.
+	 *
+	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
+	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * reader had to expand the group to see the artifact, which is the cost
+	 * condensing exists to remove. This is the fold's own copy of the principle
+	 * #537 applied to metadata — the condensed state carries the facts the rows
+	 * would have carried.
+	 *
+	 * Render it ONLY while condensed, and that is what the prop asks of its
+	 * caller rather than something this component can check: open, the rows draw
+	 * their own media (`TranscriptRow`'s `media`) and a strip here as well would
+	 * put one picture on screen twice. The caller composes it
+	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
+	 * rather than this file importing it, because the fold is a trace-tier
+	 * component and the transcript is what knows a record's images; the fold
+	 * hands the node its own toggle, so the strip's `+N more images` slot can
+	 * open this fold instead of being a dead end (UX round 1, U1).
+	 */
+	condensedMedia?: (expand: () => void) => ReactNode;
+	/**
+	 * How many pictures `condensedMedia` stands for, for the header's own clause.
+	 *
+	 * A number beside the node rather than something read out of it, because the
+	 * node is opaque here (the caller builds it) and because the COUNT is the part
+	 * a 64px tile cannot carry: the strip is a presence cue, so the reader has to
+	 * be told the number in text - legible at any tile size, reachable without a
+	 * pointer, and the same fact the strip's accessible name already states
+	 * (design review round 1, D3). Zero or absent adds no clause at all, which is
+	 * what keeps a run with no pictures byte-identical.
+	 */
+	mediaCount?: number;
+	/**
 	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
 	 * because a collapsed fold UNMOUNTS its rows, so a reader (or a future
 	 * affordance) cannot find a row by its `data-record-id` until the fold
@@ -164,6 +198,8 @@ export const TraceFold = ({
 	open,
 	onOpenChange,
 	className,
+	condensedMedia,
+	mediaCount = 0,
 	recordIds,
 	children,
 }: TraceFoldProps) => {
@@ -297,6 +333,44 @@ export const TraceFold = ({
 						 * failure count is noise at a glance, and the rows (red,
 						 * behind the fold) carry the state. */}
 						{/*
+						 * How many pictures the run produced, as the count the strip cannot
+						 * carry at 64px - and the reason this clause is here at all is the
+						 * inversion the design round found: the strip's accessible name
+						 * stated the count while the visible header said nothing, so a
+						 * sighted reader got strictly less than a screen-reader user
+						 * (design review round 1, D3). It costs no height: it joins the
+						 * facts the header already prints.
+						 *
+						 * IT DOES COST WIDTH, and that is written down here rather than found
+						 * again later: this span is `shrink-0`, so while a call is in flight
+						 * the clause is paid for out of the live clause - the row's only
+						 * truncating element - and `Running git push origin
+						 * feat/condensed-group-images` loses its tail to `…group-…` (design
+						 * review round 2, D5, measured on the long-name pair). It stands for
+						 * now because both ways to give the characters back change what this
+						 * surface's committed frames show - withholding the clause while
+						 * live, or shortening it to `· 1 img` - and the frames are the
+						 * evidence a reviewer reads, so that is a change taken with a
+						 * capture of `image-live` and `long-name` in both palettes rather
+						 * than folded into a comment round. No reader is left without the
+						 * count in the meantime: the strip renders in this same condensed
+						 * window and states it itself - countable while the pictures fit,
+						 * `+N more` past the cap.
+						 */}
+						{foldMediaClause(mediaCount) !== null && (
+							<>
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+								<span className={cn("shrink-0 text-ink-muted text-meta")}>
+									{foldMediaClause(mediaCount)}
+								</span>
+							</>
+						)}
+						{/*
 						 * The run's own clock, as the sentence's last fact (`3 shell · 1
 						 * python · 1 failed · 15s`), matching the foot line's register. It is
 						 * the WALL-CLOCK SPAN (first start to last completion), rendered in the
@@ -340,6 +414,17 @@ export const TraceFold = ({
 				 */}
 				<div className={cn("flex flex-col")}>{children}</div>
 			</Disclosure>
+			{/*
+			 * The run's pictures, while the rows that would draw them are unmounted.
+			 *
+			 * OUTSIDE the disclosure and below it, so the header keeps its own 24px
+			 * pitch and the strip is what the reader gains rather than something the
+			 * header now has to trade against. Only while condensed: open, every row
+			 * draws its own media and rendering both would show one picture twice.
+			 * The fold's own toggle is handed to the node so its count slot can open
+			 * the fold (`FoldMedia`'s `onRevealMore`).
+			 */}
+			{!open && condensedMedia && condensedMedia(() => onOpenChange(true))}
 		</div>
 	);
 };

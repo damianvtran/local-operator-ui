@@ -21,16 +21,26 @@
  * 2. **`retain` and `release` come in pairs, and only an effect may call them**,
  *    because only an effect can also run the cleanup that pays the reference
  *    back.
- * 3. **The last `release` revokes.** Bytes are immutable and cheap to refetch;
- *    parking every URL a long session has ever shown is the larger cost.
+ * 3. **The last `release` revokes - at the end of the task, and not at all if
+ *    a `retain` lands first.** Bytes are immutable and cheap to refetch, so
+ *    nothing is parked: the deferral is one microtask, and it exists so a fold
+ *    can hand a blob from one holder to another INSIDE one commit instead of
+ *    re-reading bytes that were on screen a moment ago (see `release`).
  *
  * The KEY is the caller's: a content digest for a transcript attachment (which
  * recurs across rows and sessions), `path:mtime` for a file (so an edited file
  * is a different entry rather than a stale picture).
  */
 
-/** key -> { url, refs }. Module-level because surviving an unmount is the point. */
-const cache = new Map<string, { url: string; refs: number }>();
+/**
+ * key -> { url, refs, revoking }. Module-level because surviving an unmount is
+ * the point. `revoking` is the deferred-release flag: true while a revoke for
+ * this entry is queued and still cancellable (rule 3).
+ */
+const cache = new Map<
+	string,
+	{ url: string; refs: number; revoking: boolean }
+>();
 
 /** Build a blob URL for bytes. The caller decides the key it is filed under. */
 export function createBlobUrl(bytes: BlobPart, mimeType: string): string {
@@ -53,6 +63,10 @@ export function retain(key: string): string | null {
 	const entry = cache.get(key);
 	if (!entry) return null;
 	entry.refs += 1;
+	// The cancelling half of rule 3: this may be a queued-revoke entry whose
+	// last holder left within the same task (the fold swap), and handing it to
+	// the new holder is exactly what the deferral is for.
+	entry.revoking = false;
 	return entry.url;
 }
 
@@ -73,15 +87,45 @@ export function publish(key: string, url: string): void {
 		URL.revokeObjectURL(url);
 		return;
 	}
-	cache.set(key, { url, refs: 0 });
+	cache.set(key, { url, refs: 0, revoking: false });
 }
 
-/** Give a reference back, revoking the URL when the last holder leaves. */
+/**
+ * Give a reference back, revoking the URL when the last holder leaves.
+ *
+ * WHY THE REVOKE IS DEFERRED RATHER THAN IMMEDIATE. A fold swap hands one
+ * picture from one holder to another inside ONE React commit: opening a
+ * condensed group or a bar unmounts the strip that showed a digest and mounts
+ * the rows that show it again, and the departing holder's `release` runs
+ * before the incoming holder's `retain` in the same effect flush. Revoking
+ * synchronously at zero therefore revoked bytes that were about to be
+ * re-shown, and every fold flip re-read them over IPC - measured as one
+ * digest, three reads across condense -> open -> close, with the reserved box
+ * painted for the fetch's duration (agent review round 1, M1; QA's Q1). A
+ * microtask is the whole window this needs: the handoff happens within one
+ * task's flush, and a microtask runs after it. A `retain` in that window
+ * cancels the revoke, so the entry is handed over rather than dropped.
+ *
+ * The cost stays bounded: only URLs released within the last microtask
+ * linger, so "the last release revokes" still holds on every human timescale
+ * - this is a handover, not a parking lot.
+ */
 export function release(key: string): void {
 	const entry = cache.get(key);
 	if (!entry) return;
 	entry.refs -= 1;
 	if (entry.refs > 0) return;
-	URL.revokeObjectURL(entry.url);
-	cache.delete(key);
+	if (entry.revoking) return;
+	entry.revoking = true;
+	queueMicrotask(() => {
+		// A retain between the release and this callback means the entry has
+		// changed hands - the swap this exists for. Leave it to its new holder.
+		if (!entry.revoking || entry.refs > 0) return;
+		URL.revokeObjectURL(entry.url);
+		// The key may have been re-published since this revoke was queued
+		// (a fresh fetch landing for a digest that had gone cold): only this
+		// ENTRY's URL is revoked, and the map is only cleared while it still
+		// holds that entry.
+		if (cache.get(key) === entry) cache.delete(key);
+	});
 }

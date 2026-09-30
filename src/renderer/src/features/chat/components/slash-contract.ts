@@ -18,6 +18,7 @@
  * a value-level cycle out of a type-only dependency. Anything with the same
  * shape satisfies it, and the component's own rows are assignable to it.
  */
+import type { FastModeState } from "../session-status/session-model";
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
 import { slashContext } from "./slash-token";
@@ -329,6 +330,46 @@ export function slashDestructive(
 		DESTRUCTIVE_COMMANDS.has((argumentCommand ?? "").toLowerCase()) ||
 		alert === true
 	);
+}
+
+/**
+ * The right-edge slot a COMMAND row shows, or `null` for no slot at all.
+ *
+ * WHAT IT REPLACED. A `value?` placeholder used to sit on every command whose
+ * registry row declared anything but `none` for `arguments`, and the operator
+ * report is what that reads like: `/fast` trailed a literal "value?" — parser
+ * jargon rendered in a control's clothing, describing what the parser ACCEPTS
+ * rather than anything the user needs to see. It is gone from the CLASS (every
+ * optional and parameterless command), not renamed for one of them.
+ *
+ * What remains, in order:
+ *
+ *  - `/fast`'s live dial — `currently on`/`currently off`, off the spec in
+ *    force (`fastModeState`, `session-model.ts`): the row states the session's
+ *    own dial, which is the one fact a user reads before flipping it. The
+ *    words are qualified because a bare `on`/`off` beside the row's own
+ *    "Enter runs /fast." footer reads as the RESULT of pressing it rather
+ *    than as the state it starts from (design D1 / UX U1): the slot states
+ *    possession, not outcome. `null` when the model reports no fast tier,
+ *    because a model without the dial has no state to state.
+ *  - `needs a value` on a REQUIRED command — the one case where the user must
+ *    supply something before the command can run.
+ *
+ * `fastState` arrives on the row only for the destination below (the hook
+ * attaches it there), but the destination is read here as well so a stray
+ * state on another row could never paint a slot the row did not earn.
+ */
+export function commandRowSlot(
+	command: {
+		arguments: "none" | "optional" | "required";
+		destination: string;
+	},
+	fastState: FastModeState | undefined,
+): string | null {
+	if (command.destination === "session.fast" && fastState != null)
+		return fastState === "on" ? "currently on" : "currently off";
+	if (command.arguments === "required") return "needs a value";
+	return null;
 }
 
 /**
