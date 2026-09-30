@@ -33,10 +33,16 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/components/skill-rank";
 			export { skillCompletionFor } from "./src/renderer/src/features/chat/components/skill-completion";
 			export {
+				SKILL_EMPTY_ATTACHED,
+				SKILL_EMPTY_DRAFT,
+				SKILL_MISS_LINE,
 				SKILL_PHASE_LABEL,
+				SKILL_TRANSIENT_REASON,
+				SKILL_UNAVAILABLE_REASON,
 				skillClickFooter,
 				skillEnterFooter,
 				skillKeyIntent,
+				skillNotice,
 				skillRowId,
 			} from "./src/renderer/src/features/chat/components/skill-contract";
 		`,
@@ -50,12 +56,18 @@ const bundle = await build({
 const bundlePath = new URL(`./_skill-list-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	SKILL_EMPTY_ATTACHED,
+	SKILL_EMPTY_DRAFT,
+	SKILL_MISS_LINE,
 	SKILL_PHASE_LABEL,
+	SKILL_TRANSIENT_REASON,
+	SKILL_UNAVAILABLE_REASON,
 	hasLowercaseEvidence,
 	skillClickFooter,
 	skillCompletionFor,
 	skillEnterFooter,
 	skillKeyIntent,
+	skillNotice,
 	skillRowId,
 	skillSuggestions,
 	skillToken,
@@ -323,6 +335,122 @@ test("the popup's copy and ids are the contract's own", () => {
 });
 
 /* ------------------------------------------------------------------ */
+/* The no-rows notice: durable > transient > empty > miss              */
+/* ------------------------------------------------------------------ */
+
+/** The fixture defaults: an enabled backend, a folder, a leading token. */
+const noticeOf = (over = {}) =>
+	skillNotice({
+		feature: "enabled",
+		hasCwd: true,
+		attached: true,
+		leading: true,
+		hasQuery: false,
+		rowsCount: 0,
+		vocabularyNonEmpty: false,
+		query: "success",
+		...over,
+	});
+
+test("the notice copy, one ratified string per state", () => {
+	assert.equal(
+		SKILL_UNAVAILABLE_REASON,
+		"This backend cannot serve the skill catalogue. Update the backend and try again.",
+	);
+	assert.equal(SKILL_TRANSIENT_REASON, "Skills aren't available right now.");
+	assert.equal(SKILL_EMPTY_ATTACHED, "No skills found — see /skills");
+	assert.equal(SKILL_EMPTY_DRAFT, "No skills found.");
+	assert.equal(SKILL_MISS_LINE, "No skills match.");
+});
+
+test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () => {
+	// Available: rows answer for themselves.
+	assert.equal(noticeOf({ rowsCount: 3 }), null);
+	// Settled-empty vocabulary, attached: the pointer may be followed.
+	assert.deepEqual(noticeOf(), { kind: "empty", text: SKILL_EMPTY_ATTACHED });
+	// The same state on a draft drops the pointer clause — `/skills` is refused
+	// without a conversation, and a dead end is worse than a shorter sentence.
+	assert.deepEqual(noticeOf({ attached: false }), {
+		kind: "empty",
+		text: SKILL_EMPTY_DRAFT,
+	});
+	// A TYPED query against an empty vocabulary takes the same empty state
+	// (one state, not two: there is no vocabulary for "match" to lack).
+	assert.deepEqual(noticeOf({ hasQuery: true }), {
+		kind: "empty",
+		text: SKILL_EMPTY_ATTACHED,
+	});
+});
+
+test("durable outranks everything and fires with no query at all", () => {
+	assert.deepEqual(noticeOf({ feature: "below-version" }), {
+		kind: "durable",
+		text: SKILL_UNAVAILABLE_REASON,
+	});
+	// It outranks the states it can coexist with: a fired query's error, an
+	// empty vocabulary, a typed miss.
+	assert.equal(
+		noticeOf({ feature: "below-version", query: "error" }).kind,
+		"durable",
+	);
+	assert.equal(
+		noticeOf({
+			feature: "below-version",
+			vocabularyNonEmpty: true,
+			hasQuery: true,
+		}).kind,
+		"durable",
+	);
+	// And it is a LEADING-token notice: an inline `$` mid-sentence is money or a
+	// shell variable, not a backend report (the money-guard rule).
+	assert.equal(noticeOf({ feature: "below-version", leading: false }), null);
+});
+
+test("transient covers unpaired and a fired query's error; everything else is quiet", () => {
+	assert.deepEqual(noticeOf({ feature: "unpaired" }), {
+		kind: "transient",
+		text: SKILL_TRANSIENT_REASON,
+	});
+	assert.deepEqual(noticeOf({ query: "error" }), {
+		kind: "transient",
+		text: SKILL_TRANSIENT_REASON,
+	});
+	// Transient outranks empty and miss.
+	assert.equal(
+		noticeOf({ query: "error", vocabularyNonEmpty: true, hasQuery: true }).kind,
+		"transient",
+	);
+	// A capability answer that never arrived asserts neither cause...
+	assert.equal(noticeOf({ feature: "unknown" }), null);
+	assert.equal(noticeOf({ feature: "unknown", query: "error" }), null);
+	// ... and transient, like its siblings, attaches to leading tokens only.
+	assert.equal(noticeOf({ query: "error", leading: false }), null);
+	// Loading is quiet — the notice arrives with the answer, and so does the ink.
+	assert.equal(noticeOf({ query: "pending" }), null);
+	// Rows were served: a background refetch's failure does not replace them.
+	assert.equal(noticeOf({ query: "error", rowsCount: 2 }), null);
+	// No folder staged (mid-edit): no query is fired, so nothing has failed yet.
+	assert.equal(noticeOf({ hasCwd: false }), null);
+});
+
+test("the miss is unchanged, and it keeps the evidence it always had", () => {
+	assert.deepEqual(noticeOf({ vocabularyNonEmpty: true, hasQuery: true }), {
+		kind: "miss",
+		text: SKILL_MISS_LINE,
+	});
+	// The miss may attach to an INLINE token — a settled non-empty vocabulary
+	// and a typed query are positive evidence the user meant a skill, wherever
+	// the token sits (#690's behaviour, unchanged).
+	assert.deepEqual(
+		noticeOf({ vocabularyNonEmpty: true, hasQuery: true, leading: false }),
+		{ kind: "miss", text: SKILL_MISS_LINE },
+	);
+	// A settled non-empty vocabulary with NO typed query and no rows cannot
+	// arise (the empty query lists the catalogue); the selector stays quiet.
+	assert.equal(noticeOf({ vocabularyNonEmpty: true, hasQuery: false }), null);
+});
+
+/* ------------------------------------------------------------------ */
 /* The wiring                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -390,16 +518,44 @@ test("the shipped composer wires the `$` seams", () => {
 	const picker = code(
 		"src/renderer/src/features/chat/components/skill-picker.tsx",
 	);
-	assert.match(picker, /No skills match\./, "the miss is stated");
 	assert.match(
 		picker,
-		/rows\.length > 0 \|\| hasQuery/,
-		"and the listbox stays up for a no-match query",
+		/skillNotice\(\{/,
+		"the no-rows line comes from the state machine",
 	);
 	assert.match(
 		picker,
-		/enabled: active && Boolean\(sessionId\) && provided/,
-		"the vocabulary read is provider-gated (QA round 1, Q-1)",
+		/rows\.length > 0 \|\| notice !== null/,
+		"and the listbox stays up when there is something to say",
+	);
+	assert.match(
+		picker,
+		/enabled: active && provided && skillCwd\.length > 0/,
+		"the vocabulary read is provider-gated and needs a folder (QA round 1, Q-1)",
+	);
+	assert.match(
+		picker,
+		/desktopFeatureState\(capabilities\.data, "skill_catalogue"\)/,
+		"the gate reads the sessionless key's STATE (durable/transient/quiet)",
+	);
+	assert.match(
+		picker,
+		/\{ op: "skills\.list", cwd: skillCwd \}/,
+		"and the read is sessionless — the composer's own folder",
+	);
+	/*
+	 * THE SEND SEAM (F-1 closed): the expansion gate no longer needs a session,
+	 * and the body read addresses the same folder the list read.
+	 */
+	assert.match(
+		input,
+		/if \(invocation && skillReadProvided\)/,
+		"the expansion gate is sessionless",
+	);
+	assert.match(
+		input,
+		/readSkillBody\(\s*skillReadClient,\s*cwd \?\? "",\s*invocation\.name,/,
+		"and the body read travels with the composer's folder",
 	);
 	assert.match(
 		picker,

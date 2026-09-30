@@ -16,6 +16,13 @@
  * skills included), the accept gesture reassembles the draft exactly as the
  * TUI's picker does, and the SUBMISSION half is `skill-invocation.ts`.
  *
+ * THE VOCABULARY IS SESSIONLESS (the `skill_catalogue` contract): the read
+ * travels with the composer's own FOLDER — the staged cwd on a draft, the
+ * session's cwd once attached — so one cache entry per folder serves both
+ * panes, and a first message can invoke a skill before any session exists.
+ * Where the answer cannot be had, the list SAYS SO rather than opening
+ * nothing: `skill-contract.ts` owns the four no-rows states and their copy.
+ *
  * WHERE IT STANDS DOWN, stated in one place: the `$` token is suppressed while
  * a SLASH context is live at the caret (a recognised command owns the rest of
  * its line; see `skill-token.ts` for why the desktop keeps that claim total),
@@ -25,7 +32,7 @@
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
-	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
@@ -42,9 +49,11 @@ import {
 } from "react";
 import {
 	SKILL_PHASE_LABEL,
+	type SkillNotice,
 	skillClickFooter,
 	skillEnterFooter,
 	skillKeyIntent,
+	skillNotice,
 	skillRowId,
 } from "./skill-contract";
 import { skillSuggestions } from "./skill-rank";
@@ -76,6 +85,21 @@ export type SkillCompletionState = {
 	rows: SkillCatalogRow[];
 	/** The full discovered vocabulary (unfiltered), for the submit-side parse. */
 	vocabulary: SkillCatalogRow[];
+	/**
+	 * Whether the vocabulary answer may be believed: the query has answered and
+	 * is not in error. The `$` ink reads this (`skill-highlight.ts`) so a loading
+	 * or errored read paints no claims and no dim flash — one predicate, beside
+	 * the vocabulary itself, so the ink and the list cannot disagree about
+	 * whether the answer has arrived (`spec-reconciliation.md` §2).
+	 */
+	settled: boolean;
+	/**
+	 * What the list says when no row can be offered, or null. It drives the
+	 * `open` predicate's third arm, so a bare `$` over an unreachable or empty
+	 * vocabulary opens the shell and states the fact rather than nothing
+	 * (`skill-contract.ts` owns the state machine and its copy).
+	 */
+	notice: SkillNotice | null;
 	open: boolean;
 	active: number;
 	listId: string;
@@ -88,8 +112,21 @@ export type SkillCompletionState = {
 type SkillListArgs = {
 	text: string;
 	caret: number;
-	/** The session whose cwd the vocabulary is discovered from, or undefined. */
-	sessionId?: string;
+	/**
+	 * The folder the vocabulary is discovered from — the pane's OWN cwd, which on
+	 * a draft is the staged directory `sessions.create` will receive, so the
+	 * draft and the session it becomes read the same vocabulary. Empty (a folder
+	 * mid-edit) means no query and a quiet list; the route resolves the literal
+	 * `~` the staged default carries.
+	 */
+	cwd?: string;
+	/**
+	 * Whether this pane can address a SESSION — the page's own `paneHasSession`,
+	 * which is exactly the gate `/skills` is refused behind (`slash-dispatch.ts`).
+	 * It decides the EMPTY notice's wording only: the pointer clause is dropped
+	 * where it cannot be followed (UX v2 §1).
+	 */
+	attached: boolean;
 	/** The recognised slash vocabulary, for the claim that suppresses `$`. */
 	commandNames: ReadonlySet<string>;
 	argumentWords: readonly string[];
@@ -100,7 +137,8 @@ type SkillListArgs = {
 export function useSkillCompletion({
 	text,
 	caret,
-	sessionId,
+	cwd,
+	attached,
 	commandNames,
 	argumentWords,
 	enabled,
@@ -124,11 +162,31 @@ export function useSkillCompletion({
 	 * reason the slash hook reads `commands`: a backend that predates the op is
 	 * a list that does not open rather than a 422 per keystroke.
 	 */
-	const catalogues = desktopFeatureEnabled(capabilities.data, "catalogues");
-	const active = enabled && catalogues;
+	const skillCwd = cwd ?? "";
+	/*
+	 * `skill_catalogue`, the capability the SESSIONLESS read declares
+	 * (`local_operator/server/routes/capabilities.py`, beside `catalogues`). The
+	 * tri-state is read rather than the boolean projection because the states are
+	 * different sentences: `below-version` is the durable update-the-backend
+	 * notice and fires NO query at all; `unpaired` is the transient one (a
+	 * credential fact, and one a retry can change); `unknown` is quiet, because
+	 * no capability answer has arrived to assert either. A released backend that
+	 * predates the key would 422 a sessionless call, which is why the question
+	 * is asked before the call rather than discovered as an error
+	 * (`desktop-hooks.ts` carries the union's own reasoning).
+	 */
+	const feature = desktopFeatureState(capabilities.data, "skill_catalogue");
+	const active = enabled && feature === "enabled";
+	/*
+	 * The token is derived from `enabled` alone, NOT from `active`: the durable
+	 * notice has to attach to a `$` on a backend that will never answer a query,
+	 * and the token is local parsing — no network, no vocabulary — so the one
+	 * gate it keeps is the capture's (its keys must not surface a list over a
+	 * mask).
+	 */
 	const token = useMemo(
-		() => (active ? skillToken(text, caret) : null),
-		[active, text, caret],
+		() => (enabled ? skillToken(text, caret) : null),
+		[enabled, text, caret],
 	);
 	const leading = useMemo(
 		() => (token ? skillTokenIsLeading(text, token) : false),
@@ -150,24 +208,22 @@ export function useSkillCompletion({
 		[text, caret, commandNames, argumentWords],
 	);
 	/*
-	 * The vocabulary, from the same op and cache key the `/skills` panel reads,
-	 * so the list the user browses is the list they type into. `sessionId` is
-	 * undefined on a draft pane, and the op needs a session's cwd to discover
-	 * from — that is a fact about the route, not a policy: no session, no rows.
+	 * The vocabulary, from the sessionless catalogue read: one op, one cache key
+	 * per FOLDER — shared by drafts and sessions, so the rows a draft shows are
+	 * the rows the session it becomes will read (risk 2's `~`-vs-absolute
+	 * refetch is the one transition this cannot share). The query is
+	 * provider-gated (`provided`, see the client note above), needs an actual
+	 * folder to discover from (mid-edit is empty), and fires only when the
+	 * capability says this backend can answer it at all.
 	 */
 	const skillsQuery = useQuery(
 		{
-			queryKey: ["desktop", "skills", sessionId],
+			queryKey: ["desktop", "skills", "catalogue", skillCwd],
 			queryFn: () =>
 				desktopResult<{
-					data: { skills: SkillCatalogRow[] };
-				}>({ op: "skills.list", sessionId: sessionId ?? "" }),
-			/*
-			 * `provided &&`: beside the capability (`active`) and the session
-			 * fact, the provider is the second half of "can this surface ask at
-			 * all" - see the client comment above.
-			 */
-			enabled: active && Boolean(sessionId) && provided,
+					data: { skills: SkillCatalogRow[]; version?: string };
+				}>({ op: "skills.list", cwd: skillCwd }),
+			enabled: active && provided && skillCwd.length > 0,
 			staleTime: 30_000,
 		},
 		client,
@@ -230,20 +286,68 @@ export function useSkillCompletion({
 
 	const activeIndex = Math.min(state.active, Math.max(rows.length - 1, 0));
 	/*
-	 * A QUERY WITH NO MATCHES STILL OPENS, SAYING THE MISS (design round 1, D3).
-	 * `$zzz` used to unmount the listbox silently where the sibling `/` palette
-	 * renders "No commands match." in the same place - the two lists share one
-	 * corner of the composer and answer the same way now. A bare `$` (no query)
-	 * stays closed, as its `@` sibling is: there is nothing to say about an
-	 * empty query.
+	 * THE NO-ROWS STATES, and the one predicate they feed (spec-reconciliation
+	 * §2). `$` used to open nothing at all in three states the operator named: a
+	 * draft pane, an older build, an empty or unreachable vocabulary — no list,
+	 * no sentence, no path from "nothing happened" to "why". Now a leading
+	 * token always opens SOMETHING: rows, or one non-selectable line in the same
+	 * shell (`skill-contract.ts` owns the state machine and its copy; the order
+	 * is durable > transient > empty > miss). The miss arm keeps #690's
+	 * behaviour — a typed query over a settled vocabulary — and what is gone is
+	 * opening on a raw `hasQuery`: a listbox saying "No skills match." against a
+	 * vocabulary that never arrived is the dishonesty these states replace,
+	 * and an inline `$` keeps the money guard's silence.
+	 *
+	 * `active &&`: the query only runs while the capability and the caller's own
+	 * enablement allow it, so "the answer arrived" is only meaningful under the
+	 * same gate the list reads. `isSuccess` and not `!isLoading`: a refetch keeps
+	 * `status: "success"` with the previous data in hand, and blanking a
+	 * settled vocabulary mid-refetch would flicker the ink the flag exists to
+	 * steady.
 	 */
 	const hasQuery = token !== null && token.query.trim() !== "";
-	const open = state.open && tokenKey !== null && (rows.length > 0 || hasQuery);
+	const settled = active && skillsQuery.isSuccess;
+	const notice = useMemo(
+		() =>
+			token === null || claimed
+				? null
+				: skillNotice({
+						feature,
+						hasCwd: skillCwd.length > 0,
+						attached,
+						leading,
+						hasQuery,
+						rowsCount: rows.length,
+						vocabularyNonEmpty: choices.length > 0,
+						query: skillsQuery.isError
+							? "error"
+							: skillsQuery.isSuccess
+								? "success"
+								: "pending",
+					}),
+		[
+			token,
+			claimed,
+			feature,
+			skillCwd,
+			attached,
+			leading,
+			hasQuery,
+			rows.length,
+			choices.length,
+			skillsQuery.isError,
+			skillsQuery.isSuccess,
+		],
+	);
+	const open =
+		state.open && tokenKey !== null && (rows.length > 0 || notice !== null);
 	return {
 		token,
 		leading,
 		rows,
 		vocabulary: choices,
+		settled,
+		notice,
 		open,
 		active: activeIndex,
 		listId,
@@ -258,14 +362,17 @@ export function useSkillCompletion({
 }
 
 /**
- * The body a `$name` invocation injects, read from the same op and cache key
- * the `/skills` detail panel reads.
+ * The body a `$name` invocation injects, read through the SESSIONLESS
+ * catalogue op — the same one the list's vocabulary comes from.
  *
- * `skills.list` with `name` answers the resolved SKILL.md — the runtime's own
- * `skill://` resolver output, reference listing included — which is the exact
- * string `invoke.py:render_invocation` wraps. A body that cannot be read
- * answers `null`: the CALLER then sends the user's text as written rather than
- * swallowing the request (the harness's own trade for an unreadable body).
+ * `skills.list` with `cwd` and `name` answers the resolved SKILL.md — the
+ * runtime's own `skill://` resolver output, reference listing included — which
+ * is the exact string `invoke.py:render_invocation` wraps. Reading it against
+ * the composer's own folder is what makes a FIRST-MESSAGE invocation possible:
+ * the old read addressed a session, so a draft's `$name` could never expand.
+ * A body that cannot be read answers `null`: the CALLER then sends the user's
+ * text as written rather than swallowing the request (the harness's own trade
+ * for an unreadable body).
  *
  * The detail field is read in both shapes it has been seen in — the resolver's
  * plain string, and the `{ body }`/`{ text }` object its route wrapper has
@@ -274,16 +381,16 @@ export function useSkillCompletion({
  */
 export async function readSkillBody(
 	queryClient: QueryClient,
-	sessionId: string,
+	cwd: string,
 	name: string,
 ): Promise<string | null> {
 	try {
 		const result = await queryClient.fetchQuery({
-			queryKey: ["desktop", "skills", sessionId, name],
+			queryKey: ["desktop", "skills", "catalogue", cwd, name],
 			queryFn: () =>
 				desktopResult<{ data: { detail: unknown } }>({
 					op: "skills.list",
-					sessionId,
+					cwd,
 					name,
 				}),
 			staleTime: 30_000,
@@ -348,9 +455,20 @@ export function SkillSuggestionsPopup({
 				style={{ maxHeight: `${MAX_VISIBLE_ROWS * ROW_PITCH}px` }}
 			>
 				{state.rows.length === 0 ? (
-					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						No skills match.
-					</div>
+					/*
+					 * THE NO-ROWS LINE, from the shared state machine
+					 * (`skill-contract.ts`): the miss, the empty state's two wordings, or
+					 * the durable/transient sentences — never a silent empty shell. It is
+					 * non-selectable by construction: it holds no `role`, the arrow keys
+					 * clamp against an empty row list, and the footer renders only with an
+					 * active row, so the notice cannot advertise a gesture there is
+					 * nothing to complete (UX v2 §2).
+					 */
+					state.notice && (
+						<div className="px-3 py-2 text-body-sm text-ink-muted">
+							{state.notice.text}
+						</div>
+					)
 				) : (
 					<ul>
 						{state.rows.map((row, index) => (

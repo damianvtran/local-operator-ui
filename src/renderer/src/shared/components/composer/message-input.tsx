@@ -306,6 +306,11 @@ import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom
  * which component modules cannot be.
  */
 import { skillCompletionFor } from "@features/chat/components/skill-completion";
+/*
+ * The `$` INK, a pure builder beside the slash one and merged below the plan
+ * gate rather than inside it (`skill-highlight.ts` states the gates).
+ */
+import { skillHighlightRuns } from "@features/chat/components/skill-highlight";
 import {
 	parseSkillInvocation,
 	renderSkillInvocation,
@@ -2365,16 +2370,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				const skillNames = skillNamesRef.current;
 				const invocation = parseSkillInvocation(message, skillNames);
 				/*
-				 * `credentialSessionId`, not the pane id: the composer's own "a session
-				 * the host can resolve" predicate (a draft pane's id is not one), and
-				 * `skills.list` resolves the vocabulary from that session's cwd. The same
-				 * predicate the skill LIST reads, so the vocabulary the popup shows and
-				 * the vocabulary this parse reads are one answer.
+				 * THE SESSIONLESS BODY READ (#690's draft-pane finding, closed): the read
+				 * travels with the composer's OWN folder — the staged cwd on a first
+				 * message, the session's cwd once attached — so a `$skill` expands on a
+				 * first message exactly as it does in a live one. The parse still reads
+				 * the TYPED line before anything splices it, and the vocabulary it
+				 * resolves against is the same sessionless answer the list shows.
 				 */
-				if (invocation && credentialSessionId && skillReadProvided) {
+				if (invocation && skillReadProvided) {
 					const body = await readSkillBody(
 						skillReadClient,
-						credentialSessionId,
+						cwd ?? "",
 						invocation.name,
 					);
 					if (body !== null && skillBodyHasContent(body)) {
@@ -2504,11 +2510,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// did not read it would keep sending the value captured at mount.
 				inputModeForSend,
 				// The `$skill` expansion (issue #664): the cache a body is read
-				// through, and the note surface for a skill that cannot be loaded.
-				// The VOCABULARY itself rides `skillNamesRef` (see its declaration)
-				// because the send memo is built before the hook that fetches it.
+				// through, the folder the read addresses (the sessionless seam
+				// reads `cwd`, not a session), and the note surface for a skill
+				// that cannot be loaded. The VOCABULARY itself rides
+				// `skillNamesRef` (see its declaration) because the send memo is
+				// built before the hook that fetches it.
 				skillReadClient,
 				skillReadProvided,
+				cwd,
 				onSlashNote,
 			],
 		);
@@ -2657,20 +2666,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		});
 
 		/*
-		 * THE `$skill` LIST (issue #664), the third member of the popup family and
-		 * gated the same ways the other two are: off while a masked capture owns the
-		 * box (its keys never reach a popup, and a `$` inside a secret must not paint
-		 * a list over the mask), and off on a pane with no resolvable session —
-		 * `skills.list` discovers from a session's cwd, so no session is no
-		 * vocabulary, not a policy (`credentialSessionId`'s predicate is the one that
-		 * says a draft pane's id is not a session the host can resolve). The claim
-		 * that suppresses it while a slash context is live at the caret is the hook's
+		 * THE `$skill` LIST (issue #664), the third member of the popup family. Its
+		 * vocabulary is the SESSIONLESS catalogue read, so it answers from the
+		 * composer's OWN folder — the staged cwd on a draft, the session's cwd once
+		 * attached — and a first message can invoke a skill before any session
+		 * exists (that is #690's draft-pane finding, closed). It is off while a
+		 * masked capture owns the box (its keys never reach a popup, and a `$`
+		 * inside a secret must not paint a list over the mask), and where the
+		 * answer cannot be had it states why rather than opening nothing
+		 * (`skill-contract.ts` owns the states and their copy). The claim that
+		 * suppresses it while a slash context is live at the caret is the hook's
 		 * own (`skill-token.ts` documents why the desktop keeps that claim total).
+		 *
+		 * `attached` is the page's `paneHasSession` — the ONE predicate `/skills`
+		 * is refused behind (`slash-dispatch.ts`) — because the empty notice may
+		 * only carry the `/skills` pointer where the pointer can be followed.
 		 */
 		const skills = useSkillCompletion({
 			text: newMessage,
 			caret,
-			sessionId: credentialSessionId,
+			cwd,
+			attached: paneHasSession,
 			commandNames: slash.commandNames,
 			argumentWords: slash.argumentWords,
 			enabled: !isTyping(capture),
@@ -3784,7 +3800,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			slash.open,
 			slash.matches.length,
 		]);
-		const highlighting = highlightPaints(slashRuns);
+		/*
+		 * THE `$skill` INK, merged AFTER the plan gate above rather than through it —
+		 * and the order is load-bearing, not tidiness. A `$research fix this` draft
+		 * goes to the model on Enter (`plan.kind` is `send`), so `runsMatchingPlan`
+		 * blanks every run of it: a skill run merged before the gate would blank
+		 * exactly the primary case this tint exists for. The merge below appends the
+		 * `$` runs to the gated slash runs, and the two families cannot overlap by
+		 * construction — a paintable skill token must be LEADING (whitespace-only
+		 * before it), while a slash run needs its `/` word before anything a claim
+		 * could leave it, so at most one family can hold the draft's first token.
+		 *
+		 * The four inputs are the ones `skill-highlight.ts` judges on: the draft, the
+		 * vocabulary the popup reads (one vocabulary, no second request), whether
+		 * that answer is settled, and whether the list is open on the token — which
+		 * suppresses the UNRESOLVED ink only (a resolved name paints through, see
+		 * `spec-reconciliation.md` §2).
+		 */
+		const skillRuns = useMemo(() => {
+			if (composing) return [];
+			return skillHighlightRuns({
+				draft: newMessage,
+				vocabulary: skills.vocabulary,
+				settled: skills.settled,
+				picking: skills.open,
+			});
+		}, [newMessage, composing, skills.vocabulary, skills.settled, skills.open]);
+		const composerRuns = useMemo(
+			() => [...slashRuns, ...skillRuns],
+			[slashRuns, skillRuns],
+		);
+		const highlighting = highlightPaints(composerRuns);
 
 		/**
 		 * Carry out a plan that is not a plain send, and decide what the box holds
@@ -7001,7 +7047,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 */}
 							<ComposerHighlight
 								draft={newMessage}
-								runs={slashRuns}
+								runs={composerRuns}
 								textareaRef={textareaRef}
 								fieldClassName={composerTextBox(isSmallView)}
 								refused={isInputDisabled}

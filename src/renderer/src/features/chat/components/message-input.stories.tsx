@@ -259,6 +259,20 @@ const MODEL_ROWS = [
 	},
 ];
 
+/*
+ * The composer-cluster story's SCENARIO knobs, in the two dimensions the
+ * `skill-*` proof rows need and no other story declares: the vocabulary the
+ * fixture serves (`empty`), a failing skills read (`broken`), and a backend
+ * that predates the sessionless key (`old-backend`). The driver sets them per
+ * case through the story's args (`scripts/composer-cluster-proof.mjs`), and
+ * the default is the shipped shape so every other consumer of this bridge is
+ * unaffected. ONE mutable slot rather than per-story bridges because the desk
+ * bridge is module-level and the page reloads between cases — a fresh module
+ * per case, so the slot cannot leak across them.
+ */
+type ClusterSkillFixture = "default" | "empty" | "broken" | "old-backend";
+let clusterSkillFixture: ClusterSkillFixture = "default";
+
 /* biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object, the same cast the preview makes. */
 const storyWindow = window as any;
 storyWindow.api = {
@@ -277,7 +291,19 @@ storyWindow.api = {
 							desktop_contract: 1,
 							desktop_available: true,
 							desktop_auth: "bearer",
-							features: { commands: 1, session_catalogue: 1, catalogues: 1 },
+							features: {
+								commands: 1,
+								session_catalogue: 1,
+								catalogues: 1,
+								/*
+								 * The sessionless skills read: present by default, absent in the
+								 * `old-backend` scenario — which is the state the durable notice
+								 * exists for (no query fires, the list says why).
+								 */
+								...(clusterSkillFixture === "old-backend"
+									? {}
+									: { skill_catalogue: 1 }),
+							},
 						},
 					},
 				};
@@ -294,13 +320,24 @@ storyWindow.api = {
 						},
 					},
 				};
-			if (request.op === "skills.list")
+			if (request.op === "skills.list") {
+				/*
+				 * The wire readback the durable scenario asserts on: NO query may fire
+				 * when `skill_catalogue` is absent (`storyWindow.__skillListCalls` is
+				 * read by `scripts/composer-cluster-proof.mjs`).
+				 */
+				storyWindow.__skillListCalls = (storyWindow.__skillListCalls ?? 0) + 1;
+				if (clusterSkillFixture === "broken")
+					return {
+						status: 503,
+						body: { detail: "the skills fixture is broken for this scenario" },
+					};
 				return {
 					status: 200,
 					body: {
 						result: {
 							data: {
-								skills: SKILL_ROWS,
+								skills: clusterSkillFixture === "empty" ? [] : SKILL_ROWS,
 								scope: "discoverable",
 								/*
 								 * The detail is the runtime resolver's own output, a STRING, which is
@@ -317,6 +354,7 @@ storyWindow.api = {
 						},
 					},
 				};
+			}
 			return {
 				status: 503,
 				body: {
@@ -642,8 +680,15 @@ export const SlashEnter: Story = { render: () => <SlashGestureHarness /> };
  * The submitted-message log is seeded on mount because the recall walks the
  * STORE's history, not a prop: two entries, so ArrowUp can be taken twice and
  * ArrowDown returns.
+ *
+ * `pane` picks the two hosts the `$` states are read on: `session` (the
+ * shipped harness — a pane that addresses a session, so the empty notice may
+ * carry the `/skills` pointer) and `draft` (no session status, no pane
+ * session — the pane a first message is written on, where the sessionless
+ * read must answer and the pointer clause is dropped). `cwd` is the staged
+ * literal the draft default carries (`~`), which is what the route resolves.
  */
-const ComposerClusterHarness = () => {
+const ComposerClusterHarness = ({ pane = "session" }: { pane?: string }) => {
 	const [sent, setSent] = useState<string[]>([]);
 	const [dispatched, setDispatched] = useState<string[]>([]);
 	const [themeArgs, setThemeArgs] = useState<string | null>(null);
@@ -671,8 +716,9 @@ const ComposerClusterHarness = () => {
 				isLoading={false}
 				messages={NONEMPTY}
 				conversationId="story"
-				sessionStatus={SESSION_READINGS}
-				paneHasSession={true}
+				cwd="~"
+				sessionStatus={pane === "draft" ? undefined : SESSION_READINGS}
+				paneHasSession={pane !== "draft"}
 				onSendMessage={async (text) => {
 					setSent((previous) => [...previous, String(text)]);
 					return true;
@@ -728,7 +774,29 @@ const ComposerClusterHarness = () => {
 };
 
 export const ComposerCluster: Story = {
-	render: () => <ComposerClusterHarness />,
+	/*
+	 * The scenario knobs are read through a local signature, the same shape
+	 * `SlashHighlightGeometry`'s `narrowTo` uses, and they are DECLARED here on
+	 * purpose: Storybook drops URL args a story's argTypes do not carry
+	 * (`ArgsStore.updateFromPersisted` filters by them, and argTypes are
+	 * inferred from these defaults), so an undeclared `skillFixture:empty`
+	 * never reaches the render — measured, not assumed: the first proof run
+	 * recorded the default fixture for every scenario case. The driver appends
+	 * them to the iframe URL's `args` (`skillFixture:empty`, `pane:draft` —
+	 * `scripts/composer-cluster-proof.mjs`).
+	 */
+	args: { skillFixture: "default", pane: "session" },
+	render: (args: { skillFixture?: string; pane?: string }) => {
+		clusterSkillFixture =
+			(args.skillFixture as ClusterSkillFixture) ?? "default";
+		/*
+		 * The scenario the page actually ran under, readable by the proof driver
+		 * (`READ_STATE.scenario`): evidence of which fixture a frame shows, rather
+		 * than an inference from the picture.
+		 */
+		storyWindow.__clusterArgsSeen = `${args.skillFixture ?? "default"}:${args.pane ?? "session"}`;
+		return <ComposerClusterHarness pane={args.pane} />;
+	},
 };
 
 /*
