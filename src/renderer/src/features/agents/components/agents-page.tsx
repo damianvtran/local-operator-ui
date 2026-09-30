@@ -32,6 +32,7 @@
  * chooses the configured default, and the strip names it.
  */
 
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -227,10 +228,13 @@ export function AgentsPage() {
 			 */}
 			<aside
 				ref={laneLeadingColumn}
-				className={cn(
-					"flex w-72 shrink-0 flex-col gap-3 bg-surface p-4",
-					selected && "max-[999px]:hidden",
-				)}
+				// The narrow-width rule rides a data attribute rather than a `cn`
+				// expression so this element keeps a plain class literal: it is the
+				// ground the roster's row states are painted on, and the row-surface
+				// guard reads that literal (`data-open` is true only while a definition
+				// is open, which is exactly when the roster steps aside for the detail).
+				data-open={selected ? "true" : undefined}
+				className="flex w-72 shrink-0 flex-col gap-3 bg-surface p-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
 				<h1 className="text-heading">Agents and teams</h1>
@@ -308,9 +312,7 @@ export function AgentsPage() {
 										size="sm"
 										aria-pressed={scope === value}
 										onClick={() => setScope(value)}
-										className={cn(
-											scope === value && "bg-surface text-ink hover:bg-surface",
-										)}
+										className={cn(scope === value && rowCurrent)}
 									>
 										{SCOPE_LABEL[value]}
 									</Button>
@@ -337,7 +339,7 @@ export function AgentsPage() {
 					) : (
 						<Roster
 							rows={rows}
-							selected={creating ? null : selected}
+							name={creating ? null : selected}
 							teamMode={teamMode}
 							markedKeys={new Set(marks.map(targetKey))}
 							onOpen={(rowName) => go({ name: rowName })}
@@ -581,19 +583,20 @@ function EmptyPane({
  */
 function Roster({
 	rows,
-	selected,
+	name,
 	teamMode,
 	markedKeys,
 	onOpen,
 }: {
 	rows: readonly (ReusableProfile | ReusableTeam)[];
-	selected: string | null;
+	/** The definition the page is showing, or null. */
+	name: string | null;
 	teamMode: boolean;
 	markedKeys: Set<string>;
 	onOpen: (name: string) => void;
 }) {
 	const refs = useRef(new Map<string, HTMLButtonElement>());
-	const [focused, setFocused] = useState<string | null>(selected);
+	const [focused, setFocused] = useState<string | null>(name);
 
 	const move = (from: string, delta: number) => {
 		const index = rows.findIndex((row) => row.name === from);
@@ -630,12 +633,19 @@ function Roster({
 								else refs.current.delete(row.name);
 							}}
 							type="button"
-							aria-current={row.name === selected ? "true" : undefined}
+							aria-current={row.name === name ? "true" : undefined}
 							tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
 							data-testid={`roster-row-${row.name}`}
 							className={cn(
 								"flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
-								row.name === selected && "bg-row-selected",
+								/*
+								 * The selected row names the SHARED role rather than painting a
+								 * state of its own: the roster is one of the app's row surfaces, and
+								 * a second "which one is open" idiom here is how the sidebar and this
+								 * list come to disagree. Hover and selection are colour steps; nothing
+								 * lifts, scales or translates.
+								 */
+								row.name === name && rowCurrent,
 							)}
 							onFocus={() => setFocused(row.name)}
 							onClick={() => onOpen(row.name)}
@@ -656,12 +666,7 @@ function Roster({
 							}}
 						>
 							<span className="flex w-full items-center gap-2">
-								<span
-									className={cn(
-										"truncate text-body-sm",
-										row.name === selected ? "font-medium text-ink" : "text-ink",
-									)}
-								>
+								<span className="truncate text-body-sm text-ink">
 									{row.name}
 								</span>
 								{marked ? (
