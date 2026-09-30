@@ -54,7 +54,10 @@ import {
 } from "./config-run-store";
 import {
 	type CatalogueSnapshot,
+	RUN_TOOL_NAMES,
+	type RunToolRow,
 	diffCatalogue,
+	projectRunToolRow,
 	snapshotCatalogue,
 } from "./summary";
 
@@ -97,16 +100,6 @@ export function activeRunIdFromRefusal(error: unknown): string | null {
 	return typeof id === "string" && id.length > 0 ? id : null;
 }
 
-/** The tool rows this feature reads, and nothing else on the wire is consulted. */
-const RUN_TOOLS = new Set(["agent", "team"]);
-
-type ToolRow = {
-	toolName: string;
-	args: Record<string, unknown> | null;
-	phase: string;
-	ts: number;
-};
-
 /**
  * One tool row's own words for what it is doing, when it names a definition.
  *
@@ -118,46 +111,6 @@ type ToolRow = {
  * absent. A strip that said "Updating something" would be worse than one that
  * only shows the elapsed time.
  */
-function projectToolRow(row: ToolRow): {
-	verb: string;
-	target: RunTarget | null;
-} {
-	const op = typeof row.args?.op === "string" ? row.args.op : null;
-	const name = typeof row.args?.name === "string" ? row.args.name : null;
-	const kind: "agent" | "team" = row.toolName === "team" ? "team" : "agent";
-	const target = name ? { kind, name } : null;
-	switch (op) {
-		case "create":
-			return {
-				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
-				target,
-			};
-		case "update":
-			return {
-				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
-				target,
-			};
-		case "install":
-			return {
-				verb: name ? `Installing ${name}` : "Installing an agent",
-				target,
-			};
-		case "list":
-		case "search":
-		case "show":
-			return {
-				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
-				target: null,
-			};
-		default:
-			return {
-				verb:
-					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
-				target,
-			};
-	}
-}
-
 /** The elapsed time of a run, ticking only while it is live. */
 function useElapsed(startedAt: number | null, live: boolean): number {
 	const [now, setNow] = useState(() => Date.now());
@@ -192,7 +145,13 @@ export type ConfigRunHandle = {
 	step: string | null;
 	elapsed: string;
 	/** Live activity, for the Watch panel (the run's own tool rows). */
-	activity: { verb: string; target: RunTarget | null; ts: number }[];
+	activity: {
+		verb: string;
+		target: RunTarget | null;
+		/** Whether this call writes the registry rather than reading it. */
+		writes: boolean;
+		ts: number;
+	}[];
 	/** The settled summary. Empty until the run settles. */
 	results: RunResult[];
 	start: (text: string, about: RunTarget | null) => Promise<void>;
@@ -231,11 +190,11 @@ export function useConfigRun(): ConfigRunHandle {
 		const records = stream.transcript?.records ?? [];
 		return records
 			.filter(
-				(record): record is (typeof records)[number] & ToolRow =>
-					record.kind === "tool" && RUN_TOOLS.has(record.toolName),
+				(record): record is (typeof records)[number] & RunToolRow =>
+					record.kind === "tool" && RUN_TOOL_NAMES.has(record.toolName),
 			)
 			.map((record) => ({
-				...projectToolRow({
+				...projectRunToolRow({
 					toolName: record.toolName,
 					args: (record.args ?? null) as Record<string, unknown> | null,
 					phase: record.phase,
@@ -245,12 +204,14 @@ export function useConfigRun(): ConfigRunHandle {
 			}));
 	}, [stream.transcript]);
 
-	// The touched set accumulates as the run works, so the strip can name rows the
-	// operator will see in the list before the run has finished writing them.
+	// The touched set accumulates as the run WRITES, so the strip can name rows the
+	// operator will see in the list before the run has finished writing them - and
+	// so a definition the run only READ never reaches the settle-time diff, where
+	// it would have been reported as an update that changed nothing.
 	useEffect(() => {
 		if (!live) return;
 		for (const row of activity) {
-			if (row.target) store.noteTouched(row.target);
+			if (row.target && row.writes) store.noteTouched(row.target);
 		}
 	}, [activity, live, store]);
 

@@ -27,6 +27,92 @@ import type {
 } from "@shared/api/local-operator/profile-hooks";
 import type { RunChange, RunResult, RunTarget } from "./config-run-store";
 
+/**
+ * The tool rows this feature reads, and nothing else on the wire is consulted.
+ *
+ * BOTH registry tools, because those are the only two the run's declared
+ * inventory holds (`agent`, `team`); a row for anything else is a tool the run
+ * should not have and is deliberately not projected.
+ */
+export const RUN_TOOL_NAMES: ReadonlySet<string> = new Set(["agent", "team"]);
+
+/** One tool row of the run's own transcript, as this projection reads it. */
+export type RunToolRow = {
+	toolName: string;
+	args: Record<string, unknown> | null;
+	phase: string;
+	/** The row's own instant, for ordering the strip's steps. */
+	ts: number;
+};
+
+/**
+ * One tool row's own words for what it is doing, when it names a definition.
+ *
+ * WHICH FRAMES NAME A TOOL CALL AND ITS TARGET IS A SPIKE ITEM ON THE BACKEND
+ * SIDE (design consult § 8 Q4), so this projection is deliberately tolerant: it
+ * reads the argument names the tools' OWN schemas use (`op`, `name` — the row's
+ * arguments are the call's arguments, and `AgentParams`/`TeamParams` are what
+ * produced them), and it reports nothing rather than guessing when they are
+ * absent. A strip that said "Updating something" would be worse than one that
+ * only shows the elapsed time.
+ *
+ * IT ALSO CLASSIFIES THE CALL, and that half is not cosmetic: the run's
+ * inventory includes `list`/`show`/`search`, so a summary built from every row
+ * that NAMES a definition would report a definition the run merely LOOKED UP as
+ * "updated, changed nothing". A read paints a step line and nothing else.
+ */
+export function projectRunToolRow(row: RunToolRow): {
+	verb: string;
+	target: RunTarget | null;
+	/** Whether this call WRITES the registry rather than reading it. */
+	writes: boolean;
+} {
+	const op = typeof row.args?.op === "string" ? row.args.op : null;
+	const name = typeof row.args?.name === "string" ? row.args.name : null;
+	const kind: "agent" | "team" = row.toolName === "team" ? "team" : "agent";
+	const target = name ? { kind, name } : null;
+	switch (op) {
+		case "create":
+			return {
+				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
+				target,
+				writes: true,
+			};
+		case "update":
+			return {
+				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
+				target,
+				writes: true,
+			};
+		case "install":
+			return {
+				verb: name ? `Installing ${name}` : "Installing an agent",
+				target,
+				writes: true,
+			};
+		case "list":
+		case "search":
+		case "show":
+			return {
+				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
+				target,
+				writes: false,
+			};
+		default:
+			/*
+			 * An op this projection cannot read counts as a WRITE: the failure
+			 * direction is to report a change nobody made over hiding one the operator
+			 * will see in the list.
+			 */
+			return {
+				verb:
+					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
+				target,
+				writes: true,
+			};
+	}
+}
+
 /** One definition's diffable fields, canonicalised to strings. */
 type Signature = Record<string, string>;
 
