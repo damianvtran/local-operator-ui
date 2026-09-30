@@ -1,3 +1,4 @@
+import type { ComposerSendError } from "@shared/components/composer/message-input";
 import { SEND_FAILURE_COPY } from "@shared/store/canonical-sessions-store";
 import type { LateDeliveryBox } from "@shared/store/conversation-input-store";
 import {
@@ -7,7 +8,6 @@ import {
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
 } from "../../../../shared/desktop-contract";
-import type { ComposerSendError } from "./components/message-input";
 
 /**
  * The composer's notice, decided in ONE place and testable without the pane.
