@@ -1067,6 +1067,13 @@ export const SearchIdle: Story = {
 export const SearchActive: Story = {
 	render: () => page({ view: "list", projects: MANY }),
 	play: playOnce("search-active", async () => {
+		/* The field mounts with the page; a play that types into a missing
+		 * node reads as a broken story rather than a slow boot. */
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
 		await userEvent.type(
 			need<HTMLInputElement>('input[aria-label="Search projects"]'),
 			"migration",
@@ -1243,6 +1250,11 @@ export const ColumnMenuOpen: Story = {
 export const NoMatch: Story = {
 	render: () => page({ view: "list", projects: MANY }),
 	play: playOnce("no-match", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
 		await userEvent.type(
 			need<HTMLInputElement>('input[aria-label="Search projects"]'),
 			"zzznothing",
@@ -2096,6 +2108,11 @@ export const BoardSearchActive: Story = {
 			],
 		}),
 	play: playOnce("board-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
 		await userEvent.type(
 			need<HTMLInputElement>('input[aria-label="Search projects"]'),
 			"migration",
