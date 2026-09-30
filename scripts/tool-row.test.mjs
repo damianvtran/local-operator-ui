@@ -185,6 +185,22 @@ test("a sessions row names its operation, its address, and its window", () => {
 		verb: "Viewed session",
 		object: "pid 48213",
 	});
+	// The lax spellings the schema executes read as the pid they execute as -
+	// a string that coerces, and the `.0` float - while a non-integer float,
+	// which the schema REFUSES, paints no pid at all and falls through to the
+	// address ladder (review round 1, R-3).
+	assert.deepEqual(row({ op: "stop", pid: "48213" }), {
+		verb: "Stopped session",
+		object: "pid 48213",
+	});
+	assert.deepEqual(row({ op: "info", pid: "48213.0" }), {
+		verb: "Viewed session",
+		object: "pid 48213",
+	});
+	assert.deepEqual(row({ op: "stop", pid: 48213.5 }), {
+		verb: "Stopped session",
+		object: "?",
+	});
 	// An addressed op that names no address: `?`, never blank (the send rule).
 	assert.deepEqual(row({ op: "stop" }), {
 		verb: "Stopped session",
