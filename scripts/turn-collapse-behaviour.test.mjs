@@ -1860,3 +1860,105 @@ test("D5: a turn still running keeps every row while the turns above it wear the
 		assert.ok(rowBox(mounted, id), `${id} stays mounted while the turn runs`);
 	}
 });
+
+/* --------------- the mark's name, and the close's compensation -------------- */
+
+test("QA-1: the completion mark is in the bar's accessible name, and only where it is earned", async (t) => {
+	/*
+	 * The mark itself is `aria-hidden` decoration, so without this the fact it
+	 * states is unavailable to a screen-reader user. It travels as words in the
+	 * trigger's own content (the button carries no `aria-label`, so its content
+	 * IS its accessible name), not as a second live region.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+		noticeRecord("marker:1", {
+			ts: TS + 3_000,
+			text: "Stopped with an error",
+			level: "error",
+		}),
+		peerRecord("peer:1", { ts: TS + 4_000 }),
+		toolRecord("tool:2", { ts: TS + 5_000 }),
+		answerRecord("answer:2", {
+			ts: TS + 6_000,
+			settledAt: TS + 6_000,
+			text: "Status note.",
+		}),
+	]);
+	const bars = barsOf(mounted);
+	const nameOf = (node) => node.querySelector("button")?.textContent ?? "";
+	assert.match(nameOf(bars[1]), /completed/, "the marked bar says so in words");
+	assert.doesNotMatch(
+		nameOf(bars[0]),
+		/completed/,
+		"the unmarked bar claims nothing",
+	);
+	assert.equal(
+		bars[1].querySelector(".sr-only")?.getAttribute("aria-hidden"),
+		null,
+		"the words are in the name, not hidden from AT",
+	);
+});
+
+test("QA-2: closing a bar returns the reader's place, one acknowledged write per movement", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+	]);
+	const region = mounted.container.querySelector(
+		"[data-lo-canonical-transcript]",
+	);
+	assert.ok(region, "the scroller is mounted");
+	const summary = bar(mounted);
+	/*
+	 * The measured close: the span's rows unmount and the bar drops back down the
+	 * viewport by the span's length (QA round 2 measured ~2.5 span-lengths of
+	 * drift on a real press). Stated here as a 320px step, so the compensation is
+	 * read as an exact number.
+	 */
+	/*
+	 * The bar's position follows the DISCLOSURE's own state, as it does in the
+	 * browser: a press flips `aria-expanded` synchronously, and the commit that
+	 * mounts (or unmounts) the span is what moves the bar.
+	 */
+	const isOpen = () =>
+		summary.querySelector("button")?.getAttribute("aria-expanded") === "true";
+	summary.getBoundingClientRect = () => {
+		const top = isOpen() ? -20 : 300;
+		return { top, bottom: top + 33, left: 0, right: 0, width: 0, height: 33 };
+	};
+	region.scrollTop = 0;
+	/*
+	 * Counted from here, so the seed above is not a movement: what the assertions
+	 * count is what the reader's two presses move, and the values are the offsets
+	 * the component assigns (`scrollTop += moved`).
+	 */
+	const writes = [];
+	let held = region.scrollTop;
+	Object.defineProperty(region, "scrollTop", {
+		configurable: true,
+		get: () => held,
+		set: (value) => {
+			writes.push(value);
+			held = value;
+		},
+	});
+	await click(barTrigger(mounted));
+	await click(barTrigger(mounted)); // re-press: the same button closes it
+	assert.equal(
+		writes.length,
+		2,
+		`one write per movement; got ${JSON.stringify(writes)}`,
+	);
+	assert.deepEqual(
+		writes,
+		[-320, 0],
+		"the open writes where the bar moved to, the close writes the reader's place back",
+	);
+	assert.equal(region.scrollTop, 0, "the reader's place is returned to them");
+});
