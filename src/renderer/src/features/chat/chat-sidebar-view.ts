@@ -28,10 +28,24 @@
  *
  * WHERE THE OPTIONS STOP. `groupBy` and `orderBy` change how rows are ARRANGED
  * on screen; neither re-orders the catalogue, which owns the order the backend
- * sends (`desktop-session-contract.ts`). A "manual" ordering - drag a row where
- * you want it - is deliberately absent: the wire carries no rank for a
- * conversation, so a manual order would be a client-side illusion that survives
- * neither a relaunch nor the terminal.
+ * sends (`desktop-session-contract.ts`). A "manual" ordering of the WHOLE list -
+ * drag a row out of its section and into another - is deliberately absent: the
+ * wire carries no rank for a conversation, and a cross-section drag would have to
+ * invent one for rows the catalogue sorts by recency.
+ *
+ * WHAT CHANGED (issue #693, 2026-09-30). `pins` is a manual order, and the
+ * sentence above used to refuse one outright on the grounds that it "would
+ * survive neither a relaunch nor the terminal". The relaunch half was the weaker
+ * half: it is a fact about where the order is STORED, and this is the store the
+ * reader's own view already lives in (`ui-preferences-storage`, validated on
+ * read by `parseSidebarView`), so the order survives a relaunch exactly as the
+ * section order does. The terminal half is true and is now the SCOPE rather than
+ * the objection: the order is a permutation of the pinned ids this app knows,
+ * applied by `chat-pin-order.ts` to the Pinned section's rows only - the TUI
+ * keeps its own catalogue order, `sessions.pin` stays a boolean with no rank
+ * beside it, and nothing in this file re-orders what the backend sent. A
+ * desktop-local arrangement of one section is a preference; a rank the two
+ * surfaces disagree about would be a claim, which is why there is no wire field.
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
@@ -149,6 +163,19 @@ export type SidebarView = {
 	hidden: SidebarSectionKey[];
 	/** The user's order: a permutation of `SIDEBAR_SECTIONS`. */
 	order: SidebarSectionKey[];
+	/**
+	 * The Pinned section's manual row order: a permutation of the pinned
+	 * conversation ids the client has ranked (issue #693).
+	 *
+	 * EMPTY IS THE DEFAULT AND IS NOT AN ARRANGEMENT: an empty array means nobody
+	 * has moved a pinned row yet, and the section then draws the catalogue's own
+	 * order passed through (`chat-pin-order.ts` rule 1). It holds SESSION IDS rather
+	 * than rows, so a stored entry outlives the row it names - the materialization
+	 * drops an id the client no longer has rather than rendering it, which is why
+	 * this field is allowed to go stale and why the parser can do no more than
+	 * demand strings.
+	 */
+	pins: string[];
 	groupBy: SidebarGroupBy;
 	/**
 	 * Which clock the time sections and the row labels read.
@@ -166,6 +193,7 @@ export type SidebarView = {
 export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	hidden: [],
 	order: [...SIDEBAR_SECTIONS],
+	pins: [],
 	groupBy: "section",
 	basis: "active",
 	orderBy: "active-first",
@@ -709,6 +737,17 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * tampered `1e9` would ask the list for a page larger than the catalogue it is
  * paging (the store already caps a list read at 500 rows, which is the honest
  * bound and is stated in the sidebar's own note when it is hit).
+ *
+ * `pins` IS CHECKED FOR SHAPE AND FOR NOTHING ELSE, and that is the honest bound
+ * rather than a gap: its entries are conversation ids, which are the BACKEND's to
+ * issue, so this module cannot enumerate the set the way it enumerates
+ * `SIDEBAR_SECTIONS`. So an entry that is not a non-empty string is dropped, a
+ * duplicate is dropped, and an id that names a conversation this client no longer
+ * has is KEPT - only the panel knows which rows exist (`chat-pin-order.ts`
+ * materializes against the ids it is drawing and drops the rest there). Dropping
+ * unknown ids here would be this parser guessing at a fact it does not hold, and
+ * the guess would be wrong in the one direction that loses an arrangement: a
+ * pinned chat outside the loaded page is still pinned.
  */
 export function parseSidebarView(value: unknown): SidebarView {
 	if (typeof value !== "object" || value === null) return DEFAULT_SIDEBAR_VIEW;
@@ -746,5 +785,23 @@ export function parseSidebarView(value: unknown): SidebarView {
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
-	return { hidden, order, groupBy, basis, orderBy, loads };
+	const pins: string[] = [];
+	/*
+	 * THE DEDUPE IS A SET because this array is unbounded and the loop is reached on
+	 * every render of every mounted reader of the view (agent review round 1, R7):
+	 * `pins.includes` per entry makes the parse quadratic in a persisted list nothing
+	 * here caps. The array is still what is returned - the ORDER of the stored
+	 * entries is the arrangement - so only the membership test moves.
+	 */
+	const ranked = new Set<string>();
+	if (Array.isArray(raw.pins)) {
+		for (const entry of raw.pins) {
+			if (typeof entry !== "string") continue;
+			if (entry.length === 0) continue;
+			if (ranked.has(entry)) continue;
+			ranked.add(entry);
+			pins.push(entry);
+		}
+	}
+	return { hidden, order, groupBy, basis, orderBy, loads, pins };
 }
