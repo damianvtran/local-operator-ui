@@ -398,6 +398,46 @@ test("a row behind a collapsed bar: the bar opens, the row anchors, the flash la
 	}
 });
 
+test("a row in the SECOND of a run's bars opens that bar, not the first (segments)", async () => {
+	/*
+	 * A run's hidden span is partitioned into several bars, and each carries the
+	 * WHOLE run's ids in `data-run-ids` (the existing contract) plus its own in
+	 * `data-segment-ids`. Reading only the run's ids matched the FIRST bar for a row
+	 * living in the second, so the reveal opened the wrong bar and then, finding the
+	 * row still absent, had to open the next one: one unrequested expansion per bar
+	 * in between. `data-segment-ids` decides when present.
+	 */
+	const { root, region } = makeDom(`
+		<div data-turn-summary data-run-ids="u9 t1 t2 c9" data-segment-ids="t1" data-record-id="t1">
+			<button id="first" aria-expanded="false">first</button>
+		</div>
+		<div data-turn-summary data-run-ids="u9 t1 t2 c9" data-segment-ids="t2" data-record-id="t2">
+			<button id="second" aria-expanded="false">second</button>
+		</div>
+	`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const opened = [];
+	for (const id of ["first", "second"]) {
+		const trigger = root.querySelector(`#${id}`);
+		trigger.addEventListener("click", () => {
+			opened.push(id);
+			trigger.setAttribute("aria-expanded", "true");
+			if (id === "second") {
+				const row = document.createElement("div");
+				row.setAttribute("data-record-id", "t2");
+				measure(row, { top: -800, height: 100 });
+				root.appendChild(row);
+			}
+		});
+	}
+	assert.equal(await jumpToEntry(root, region, "t2"), "landed");
+	assert.deepEqual(
+		opened,
+		["second"],
+		"only the bar that holds the row opened",
+	);
+});
+
 /*
  * The settle's two bounds, driven directly: the frame budget, and the reader.
  * Both use a row that NEVER answers the re-measure (a static rect is a page

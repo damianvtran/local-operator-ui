@@ -845,11 +845,24 @@ equally important**, and the interface must not present them as though they are.
   a fold — and nothing condenses while a call in it is still running, nor
   while the turn waits on the reader's own gate (an approval or question parks
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
-  also carries one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`)
-  — EXCEPT a turn that has condensed to its own summary bar: there the foot
-  stands down and the bar IS the line (its own stamp replaces the foot's, one
-  stamp per turn), so the agent-output tier reads as two levels — the turn's
-  single bar, then the runs' folds inside it once opened. The fold is a
+  also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
+  turn that has condensed to ONE summary bar: there the foot stands down and the
+  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
+  in place, around the rows that stay on screen (a compaction, a stop or incident
+  marker, the turn's answer). When a pinned row splits the work into several
+  bars, no single bar states the turn, so the foot keeps the totals and the
+  stamp and the bars state their parts. **Bars and foot state ONE quantity**:
+  the seconds the calls themselves reported, summed (`Took` on a bar, `Worked
+  for` on the foot), so a ladder's bars add up to the foot's figure the way
+  their action counts do; a span with no reported work states no duration. A bar
+  that is not the ordinary work-under-the-answer one is named by what it holds,
+  in the app's own nouns and one word per concept — `Wake`, `Peer message`,
+  `Job result`, or `Steered` when the reader's own message is inside — and
+  carries a `success` check when that section ran to a real end (never on a bar
+  a stop marker cut off, never on the ordinary bar the answer already vouches
+  for). The agent-output tier therefore reads as two levels — the turn's bars,
+  then the runs' folds inside them once opened. The fold is a
   VIEW: it hides rows and never reorders them, so the placement rule a few lines
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
   tier a 40-step turn is 40 lines, which is the "every internal step at equal
