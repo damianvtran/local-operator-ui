@@ -47,7 +47,11 @@
  * session's shared outcome predicate the day it lands.
  */
 
-import { type FoldableAction, foldSummary } from "./trace-fold-model";
+import {
+	type FoldableAction,
+	foldSummary,
+	workedSeconds,
+} from "./trace-fold-model";
 import {
 	type TranscriptRecord,
 	isInterruptedFault,
@@ -155,11 +159,15 @@ export function isFailedCall(record: TranscriptRecord): boolean {
 /**
  * The bar's facts, in the order a reader needs them.
  *
- * `durationS` is the WALL span (§4.4): opening user row to the latest end
- * instant in the run, null when the span is under a second or the clocks
- * disagree. It is deliberately NOT the foot's quantity — the foot SUMS tool
- * seconds and excludes model time, while "Took" is wall clock — and only one
- * of the two is ever on screen for a run (the bar suppresses the foot).
+ * `durationS` is the WORKED time (`workedSeconds`, `trace-fold-model.ts`): the
+ * seconds the span's own calls reported, summed - the SAME quantity the turn's
+ * foot states as `Worked for ...`. It used to be a wall span (opening row to the
+ * latest end instant), and a ladder of bars beside the foot showed two different
+ * quantities 16.7x apart on the operator-shaped journal, with action counts that
+ * reconciled exactly inviting the reader to reconcile the durations too (design
+ * review round 1 on #708, D1). `Took` (bar) and `Worked for` (foot) are one
+ * quantity in two places: the pre-answer bars sum to the foot within rounding.
+ * A span whose calls reported nothing, or whose head is not loaded, states none.
  */
 export type TurnSummaryFacts = {
 	durationS: number | null;
@@ -186,26 +194,6 @@ export type TurnSummaryFacts = {
 	/** The fold-style class sentence (`foldSummary`), or null with no actions. */
 	title: string | null;
 };
-
-/**
- * The latest instant a row states, for the run's span (§4.4).
- *
- * Assistant → its `settledAt` (stamped by the reducer when the record
- * settles), falling back to `ts`; durable rows have no `settledAt` and their
- * `ts` IS the completion commit. Tool → `endedAt`, falling back to `ts`
- * (durable tool rows carry `duration_s` and no stamps, so their commit instant
- * is the honest end). Anything else → its `ts`.
- */
-function endInstant(record: TranscriptRecord): number {
-	switch (record.kind) {
-		case "assistant":
-			return record.settledAt ?? record.ts;
-		case "tool":
-			return record.endedAt ?? record.ts;
-		default:
-			return record.ts;
-	}
-}
 
 /**
  * One SEGMENT of a run: a maximal contiguous span of hidden rows and the one bar
@@ -246,7 +234,7 @@ export type SegmentPlan = {
 	gap: Row["gap"];
 	/** After the answer: a follow-up section (commentary), not work towards it. */
 	afterAnswer: boolean;
-	/** The word ahead of the clauses (`Woken`, `Followed up`, ...), or null. */
+	/** The word ahead of the clauses (`Wake`, `Peer message`, `Steered`, ...), or null. */
 	label: string | null;
 	/** A settled follow-up: the bar carries the completion mark. */
 	completed: boolean;
@@ -279,9 +267,22 @@ export type RunCollapsePlan = {
 	collapses: boolean;
 	/** Every row of the run, in order. */
 	recordIds: string[];
-	/** The rows the bars hide (all segments), in order. Empty when nothing is hidden. */
+	/**
+	 * The rows the bars hide (all segments), in order. Empty when nothing is hidden.
+	 *
+	 * KEPT, NOT CONSUMED BY `src/` (agent review round 1 on #708, R1-4): the renderer
+	 * reads `segments[*]`, `recordIds` and `segment.stampTs`. `hidden`, `gap`,
+	 * `answerId` and `stampTs` are the run-level restatement the model's own suites
+	 * (`turn-collapse-model.test.mjs`, `turn-segments.test.mjs`) and the evidence
+	 * rigs read as the run's whole-turn contract - ~40 assertions written against
+	 * the pre-segments plan that still state the turn, not a bar. They are derived
+	 * from `segments` in this one function and never independently, so they cannot
+	 * drift; deleting them would move those assertions from "the turn" to "flatten
+	 * the bars" for no consumer's benefit. Do not add a `src/` reader without
+	 * asking whether it wants a bar's value instead.
+	 */
 	hidden: Row[];
-	/** The first bar's margin tier. */
+	/** The first bar's margin tier (kept for the same reason as `hidden`). */
 	gap: Row["gap"];
 	/**
 	 * The TURN's facts: what the run did up to and including its ELECTED ANSWER.
@@ -291,9 +292,9 @@ export type RunCollapsePlan = {
 	 * with the post-dispose chatter.
 	 */
 	facts: TurnSummaryFacts;
-	/** The elected answer's record id, or null when the run handed none over. */
+	/** The elected answer's record id, or null when the run handed none over (kept for the suites, see `hidden`). */
 	answerId: string | null;
-	/** The answer's instant, for the turn's one stamp; null when none. */
+	/** The answer's instant, for the turn's one stamp; null when none (kept for the suites, see `hidden`). */
 	stampTs: number | null;
 	/** Ordered, disjoint bars (see `SegmentPlan`). */
 	segments: SegmentPlan[];
@@ -854,8 +855,8 @@ function factsOf(
 	rows: readonly Row[],
 	options: {
 		partial: boolean;
-		durationFrom: number | null;
-		durationTo: number;
+		/** Whether the span's own head is loaded (see the duration's gate below). */
+		headLoaded: boolean;
 	},
 ): TurnSummaryFacts {
 	const actions: FoldableAction[] = [];
@@ -870,20 +871,17 @@ function factsOf(
 			firstFailedId ??= row.record.id;
 		}
 	}
-	const span =
-		options.durationFrom === null
-			? 0
-			: options.durationTo - options.durationFrom;
+	const worked = workedSeconds(rows);
 	return {
 		/*
-		 * Shown iff the span is at least a second - never a `0s` claim (§4.4) - AND
-		 * the span's head is REAL: a head-cut span's start is its first LOADED row,
-		 * and a duration stated from there would be a number the turn never had
-		 * (the honesty half of the end-loaded rule). `durationFrom === null` is that
-		 * case.
+		 * Shown iff the span's calls reported at least a second - never a `0s`
+		 * claim (§4.4) - AND the span's head is REAL: a head-cut span holds only the
+		 * rows that happen to be loaded, so a sum over them is a fragment of the
+		 * turn's work stated as if it were the turn's (the honesty half of the
+		 * end-loaded rule, the same reason its count carries `+`).
 		 */
 		durationS:
-			options.durationFrom !== null && span >= 1000 ? span / 1000 : null,
+			options.headLoaded && worked !== null && worked >= 1 ? worked : null,
 		actions: actions.length,
 		/*
 		 * The count is a MINIMUM for exactly the reason the duration is absent: the
@@ -923,7 +921,6 @@ function planRun(
 	});
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;
-	const openedAt = run.opensWithUserRow ? records[0].ts : null;
 
 	/* The pre-answer span nearest the answer keeps the run's own key. */
 	let nearest = -1;
@@ -951,32 +948,13 @@ function planRun(
 						: `${run.key}#${segRows[segRows.length - 1].record.id}`;
 
 			/*
-			 * The wall span: from the opening user row (when this span starts right
-			 * after it) or the span's own first row, to the latest end instant in the
-			 * span - extended over the ANSWER when it is the row that follows, because
-			 * the turn "took" until it answered (the shipped `Took` figure). A span
-			 * whose head is the loaded edge states no duration.
+			 * A span whose head is the loaded edge (the head-cut run's first span) states
+			 * no duration; every other span states the worked time of ITS OWN rows, so
+			 * the pre-answer bars add up to the foot's figure.
 			 */
 			const headLoaded = !(span.from === 0 && !run.opensWithUserRow);
-			const startsTurn = run.opensWithUserRow && span.from === from;
-			const durationFrom = !headLoaded
-				? null
-				: startsTurn
-					? (openedAt ?? segRows[0].record.ts)
-					: segRows[0].record.ts;
-			let end = durationFrom ?? segRows[0].record.ts;
-			for (const row of segRows) end = Math.max(end, endInstant(row.record));
-			/*
-			 * A span BEFORE the answer ran until the next thing that stayed on screen
-			 * (the answer, or a pinned marker): the turn "took" until it produced
-			 * that row. It is the shipped `Took` for the ordinary bar, whose span ran
-			 * through the answer, and it keeps the figure continuous when a marker
-			 * splits the work into two bars.
-			 */
-			if (!afterAnswer && span.to + 1 < records.length) {
-				end = Math.max(end, endInstant(records[span.to + 1]));
-			}
 
+			const label = labelOfSegment(records, partition.cycles, span);
 			const collapsedHere =
 				collapsible &&
 				!(
@@ -991,28 +969,20 @@ function planRun(
 				segmentIds: segRows.map((row) => row.record.id),
 				gap: segmentGap(segRows[0], span.from > from),
 				afterAnswer,
-				label: labelOfSegment(partition.cycles, span, answerAt),
-				completed: segmentIsCompleted(records, span, answerAt),
+				label,
+				completed: segmentIsCompleted(records, span, answerAt, label !== null),
 				collapsed: collapsedHere,
 				stampTs:
 					i === nearest && answerAt !== null && preAnswerCount === 1
 						? records[answerAt].ts
 						: null,
-				facts: factsOf(segRows, {
-					partial: !headLoaded,
-					durationFrom,
-					durationTo: end,
-				}),
+				facts: factsOf(segRows, { partial: !headLoaded, headLoaded }),
 			};
 		},
 	);
 
 	/* The turn's own totals: the run through its answer, commentary excluded. */
 	const turnRows = answerAt === null ? runRows : runRows.slice(0, answerAt + 1);
-	let turnEnd = records[0].ts;
-	for (const row of turnRows) {
-		turnEnd = Math.max(turnEnd, endInstant(row.record));
-	}
 	const hidden = segments.flatMap((segment) => segment.rows);
 	return {
 		key: run.key,
@@ -1030,8 +1000,7 @@ function planRun(
 		gap: segments[0]?.gap ?? "item",
 		facts: factsOf(turnRows, {
 			partial: !run.opensWithUserRow,
-			durationFrom: openedAt,
-			durationTo: turnEnd,
+			headLoaded: run.opensWithUserRow,
 		}),
 		answerId,
 		stampTs: answerAt === null ? null : records[answerAt].ts,

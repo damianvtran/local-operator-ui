@@ -149,6 +149,7 @@ import {
 	foldImages,
 	foldRuns,
 	turnFeet,
+	workedSecondsOf,
 } from "./trace-fold-model";
 import {
 	TRANSCRIPT_DRAG_SLOP_PX,
@@ -278,7 +279,7 @@ function condenseSentence(segment: SegmentPlan): string {
 		);
 	}
 	/*
-	 * A labelled bar states its own kind first ("Followed up: 8 actions."): a
+	 * A labelled bar states its own kind first ("Wake: 8 actions."): a
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
@@ -2361,6 +2362,70 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		},
 		[sessionId],
 	);
+	/*
+	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
+	 *
+	 * The disclosure idiom is "the row you press stays and its content appears
+	 * under it". The browser's scroll anchoring gives that everywhere except at
+	 * the bottom of this transcript: the scroller is `flex-col-reverse` and pinned
+	 * at `scrollTop = 0`, so growing content is added ABOVE the pinned tail and
+	 * the pressed bar is pushed off the top (measured: y 272 to -348, the scroller
+	 * unmoved, with 620px of opened span between the reader and the bar's label).
+	 * A reader following live work sits at the bottom, so that is the most likely
+	 * place for the press.
+	 *
+	 * So the press records where the bar is, and the commit that mounts its
+	 * content moves the scroller by exactly how far the bar moved. Where the
+	 * browser already held the bar (top, mid-transcript) the delta is zero and
+	 * this writes nothing, so it cannot fight the anchoring it complements. The
+	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
+	 * tail and more negative moves content DOWN - `scroll-paging` states the
+	 * contract), and it is one assignment in the layout phase, so no frame paints
+	 * the bar off-screen first.
+	 */
+	const pressedBar = useRef<{ id: string; top: number } | null>(null);
+	/*
+	 * Found by comparing the attribute rather than by a selector: a record id is
+	 * arbitrary text, and escaping it for a selector is a second thing to get wrong
+	 * (and `CSS.escape` is absent from the test DOM).
+	 */
+	const barFor = useCallback(
+		(id: string): Element | null => {
+			const bars = containerRef.current?.querySelectorAll(
+				"[data-turn-summary]",
+			);
+			for (const bar of bars ?? []) {
+				if (bar.getAttribute("data-record-id") === id) return bar;
+			}
+			return null;
+		},
+		[containerRef],
+	);
+	const openBar = useCallback(
+		(runKey: string, firstId: string, open: boolean) => {
+			if (open) {
+				const bar = barFor(firstId);
+				if (bar) {
+					pressedBar.current = {
+						id: firstId,
+						top: bar.getBoundingClientRect().top,
+					};
+				}
+			}
+			setRunOpen(runKey, open);
+		},
+		[barFor, setRunOpen],
+	);
+	useLayoutEffect(() => {
+		const pressed = pressedBar.current;
+		if (pressed === null) return;
+		pressedBar.current = null;
+		const region = containerRef.current;
+		const bar = barFor(pressed.id);
+		if (!region || !bar) return;
+		const moved = bar.getBoundingClientRect().top - pressed.top;
+		if (Math.abs(moved) >= 1) region.scrollTop += moved;
+	});
 	const total = rows.length;
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
@@ -2608,8 +2673,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return turnFeet(visible, {
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			/*
+			 * The SAME quantity every condensed bar states (`workedSecondsOf`): one
+			 * definition, so the bars of a ladder add up to this figure (#708 D1).
+			 */
+			durationOf: workedSecondsOf,
 			isAction: (row) => row.record.kind === "tool",
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
@@ -3432,9 +3500,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const children = new Map<number, SectionGroup[]>();
 			let afterBar = false;
 			for (const group of groups) {
-				const index = segmentOf.get(
-					group.kind === "run" ? group.rows[0].record.id : group.row.record.id,
-				);
+				/*
+				 * A GROUP IS HIDDEN ONLY IF EVERY ROW OF IT IS IN ONE SEGMENT (agent
+				 * review round 1 on #708, R1-5; the pre-segments code checked `every`).
+				 * A segment is a maximal contiguous span and a run group is a run of
+				 * contiguous tool rows, so a group cannot straddle a boundary today - but
+				 * that invariant lives in two other files, and if a boundary is ever
+				 * drawn mid-group, reading only the FIRST row would swallow the group's
+				 * visible rows into the bar without a sound. A mixed group renders in
+				 * place instead: visible rows stay visible.
+				 */
+				const groupRows = group.kind === "run" ? group.rows : [group.row];
+				const first = segmentOf.get(groupRows[0].record.id);
+				const index = groupRows.every(
+					(member) => segmentOf.get(member.record.id) === first,
+				)
+					? first
+					: undefined;
 				const segment = index === undefined ? null : plan.segments[index];
 				if (segment !== null && index !== undefined && segment.collapsed) {
 					let held = children.get(index);
@@ -4158,7 +4240,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											completed={entry.segment.completed}
 											open={openRuns.has(entry.segment.key)}
 											onOpenChange={(next) =>
-												setRunOpen(entry.segment.key, next)
+												openBar(entry.segment.key, entry.segment.firstId, next)
 											}
 											/*
 											 * The span's pictures, while the rows that draw them are
