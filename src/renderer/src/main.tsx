@@ -9,6 +9,7 @@ import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { config, telemetryEnabled } from "@shared/config";
+import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
@@ -36,6 +37,22 @@ const posthogOptions: Partial<PostHogConfig> = {
  * A no-op in every normal launch; `docs/agent-driver.md` is the contract.
  */
 installDevDriver();
+
+/*
+ * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half
+ * is `<GlobalScrollbarStyles />` below, and the pair is deliberately split: the
+ * paint keys on an attribute this module writes, so no component has to know
+ * anything about activity and a theme switch never re-renders either of them.
+ *
+ * At module scope rather than in the render tree for the same reason as the
+ * driver above: the listeners belong to the document, not to a mounted
+ * component, and they must cover the first screen — a render-triggered install
+ * would miss a scroll that happens before the effect runs. The returned
+ * uninstall is discarded on purpose: a launch that wants the scrollbar at rest
+ * permanently is a different product decision, and hot reload replaces the
+ * module rather than calling it.
+ */
+installScrollbarActivity();
 
 document.addEventListener("DOMContentLoaded", () => {
 	/*

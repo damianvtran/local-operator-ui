@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -25643,6 +25643,843 @@ async function runSlashCommand(cdp, command) {
  * exercised by hand or not exercised, and this note is so a reader does not read
  * the list of probed surfaces as the list of all surfaces.
  */
+/**
+ * The elements the browser would give a scrollbar, with everything a claim about
+ * them needs: which axes scroll, the box, whether there is anything to scroll,
+ * and what the fade's own state is on each one right now.
+ *
+ * `overflow` is the discriminator and not `scrollHeight > clientHeight`, for the
+ * same reason the module itself uses it: a container with `overflow: auto` and
+ * nothing to scroll IS a scroller (it is what the module marks and what the CSS
+ * styles), and the census has to agree with the mechanism or the two would be
+ * measuring different sets.
+ */
+const SCROLLER_CENSUS = `(() => {
+	const overflowing = (el) => {
+		const style = getComputedStyle(el);
+		return (
+			/^(auto|scroll)$/.test(style.overflowX) ||
+			/^(auto|scroll)$/.test(style.overflowY)
+		);
+	};
+	const out = [];
+	for (const el of document.querySelectorAll("*")) {
+		if (!overflowing(el)) continue;
+		const rect = el.getBoundingClientRect();
+		if (rect.width < 8 || rect.height < 8) continue;
+		const style = getComputedStyle(el);
+		out.push({
+			tag: el.tagName.toLowerCase(),
+			tourTag: el.getAttribute("data-tour-tag"),
+			cls: String(el.className || "").slice(0, 64),
+			ox: style.overflowX,
+			oy: style.overflowY,
+			x: Math.round(rect.x),
+			y: Math.round(rect.y),
+			w: Math.round(rect.width),
+			h: Math.round(rect.height),
+			xOverflow: el.scrollWidth - el.clientWidth,
+			yOverflow: el.scrollHeight - el.clientHeight,
+			fade: el.getAttribute("data-lo-scrollbar"),
+			loSb: style.getPropertyValue("--lo-sb").trim(),
+		});
+	}
+	return {
+		route: location.hash,
+		viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
+		scrollers: out,
+	};
+})()`;
+
+/**
+ * Read the paint out of one captured frame's scrollbar strip.
+ *
+ * WHY PIXELS AND NOT A COMPUTED STYLE. `--lo-sb` says what the CSS asked for;
+ * the thumb's pixels say what the compositor painted, which is the half a broken
+ * `color-mix(...)` would leave wrong while every computed value still read
+ * perfectly. `docs/design/scrollbars-fade.md` § 1.1 measured the defect this way
+ * (a column of `txt:-` samples through the thumb), and this is that reading
+ * against the frames this scene commits.
+ *
+ * `strip` is in DEVICE pixels and is derived from the element's own box times
+ * the device pixel ratio the page reports, so a frame that is not the size the
+ * page says would be caught by the size assertion rather than silently sampled
+ * at the wrong coordinates.
+ */
+async function stripReading(file, strip, target) {
+	let sharp;
+	try {
+		({ default: sharp } = await import("sharp"));
+	} catch {
+		return null;
+	}
+	const { data, info } = await sharp(file)
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	if (info.width !== strip.frameWidth || info.height !== strip.frameHeight) {
+		return {
+			sizeMismatch: `${info.width}x${info.height} against a page that says ${strip.frameWidth}x${strip.frameHeight}`,
+		};
+	}
+	const channels = info.channels;
+	let sampled = 0;
+	let near = 0;
+	let red = 0;
+	let green = 0;
+	let blue = 0;
+	for (let y = strip.y0; y < strip.y1; y += 1) {
+		for (let x = strip.x0; x < strip.x1; x += 1) {
+			const at = (y * info.width + x) * channels;
+			const r = data[at];
+			const g = data[at + 1];
+			const b = data[at + 2];
+			sampled += 1;
+			red += r;
+			green += g;
+			blue += b;
+			if (
+				Math.abs(r - target[0]) <= 20 &&
+				Math.abs(g - target[1]) <= 20 &&
+				Math.abs(b - target[2]) <= 20
+			) {
+				near += 1;
+			}
+		}
+	}
+	return {
+		sampled,
+		near,
+		mean: [red, green, blue].map((sum) => Math.round(sum / sampled)),
+		size: `${info.width}x${info.height}`,
+	};
+}
+
+/**
+ * The vertical or horizontal scrollbar strip of a box, in device pixels.
+ *
+ * THE BAND IS INSET FROM BOTH WALLS OF THE BAR AND BOTH ENDS OF ITS LENGTH, and
+ * that is a measurement, not tidiness. The browser tab strip carries a 1 CSS px
+ * bottom rule painted in the SAME role the thumb paints (`--lo-border-control`,
+ * rows 151-152 of the active frame, `#837c6d` exactly), so a band flush with the
+ * element's bottom edge reads that rule as thumb pixels in every state — which is
+ * what the first run of this scene did: 4092 of 32736 pixels "near the thumb's
+ * colour" in the frozen state. Inset by one CSS px it reads the thumb's own band
+ * (rows 137-150, `[82,77,68]` while awake and `[29,27,25]` at rest, measured).
+ * The length is inset by 8 CSS px at each end for the thumb's radius.
+ */
+function stripOf(box, axis, dpr, viewport) {
+	const frameWidth = Math.round(viewport.width * dpr);
+	const frameHeight = Math.round(viewport.height * dpr);
+	const frame = { frameWidth, frameHeight };
+	if (axis === "y") {
+		return {
+			...frame,
+			x0: Math.round((box.x + box.width - 7) * dpr),
+			x1: Math.round((box.x + box.width - 3) * dpr),
+			y0: Math.round((box.y + 8) * dpr),
+			y1: Math.round((box.y + box.height - 8) * dpr),
+		};
+	}
+	return {
+		...frame,
+		x0: Math.round((box.x + 8) * dpr),
+		x1: Math.round((box.x + box.width - 8) * dpr),
+		y0: Math.round((box.y + box.height - 7) * dpr),
+		y1: Math.round((box.y + box.height - 3) * dpr),
+	};
+}
+
+/** One wheel notch, through Chromium's own input pipeline. */
+async function wheelAt(cdp, x, y, delta) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseWheel",
+		x,
+		y,
+		deltaX: delta.x,
+		deltaY: delta.y,
+	});
+}
+
+/**
+ * Pick the scroller this run will measure on the axis asked for: the one with the
+ * most overflow, inside the viewport, and keep it as a page reference so every
+ * later read is of the SAME element rather than of a re-selection that could pick
+ * something else.
+ */
+const SCROLLBAR_TARGET = (axis, prefer) => `(() => {
+	const wanted = ${JSON.stringify(axis)};
+	const preferred = ${JSON.stringify(prefer ?? null)};
+	const overflowing = (el) => {
+		const style = getComputedStyle(el);
+		return wanted === "y"
+			? /^(auto|scroll)$/.test(style.overflowY)
+			: /^(auto|scroll)$/.test(style.overflowX);
+	};
+	const overflowOf = (el) =>
+		wanted === "y"
+			? el.scrollHeight - el.clientHeight
+			: el.scrollWidth - el.clientWidth;
+	let best = null;
+	const consider = (el) => {
+		if (!overflowing(el)) return;
+		const over = overflowOf(el);
+		if (over < 40) return;
+		const rect = el.getBoundingClientRect();
+		if (rect.width < 80 || rect.height < 40) return;
+		if (rect.left < 0 || rect.top < 0) return;
+		if (rect.right > innerWidth || rect.bottom > innerHeight) return;
+		if (best === null || over > best.over) best = { over, el, rect };
+	};
+	/*
+	 * A NAMED SURFACE WINS WHEN IT QUALIFIES. The widest scroller on a route can
+	 * be a container whose content the app is still replacing (the first run of
+	 * this scene measured one: 293px of overflow that the route's own failed query
+	 * collapsed to 0 between two reads, which is a frame of a state no reader ever
+	 * sees). A caller that knows which surface it is making a claim about names
+	 * it; the widest-scroller rule is the fallback that keeps the mechanism claim
+	 * honest for surfaces nobody has named.
+	 */
+	let named = null;
+	if (preferred !== null) {
+		const el = document.querySelector(preferred);
+		if (el !== null) {
+			consider(el);
+			named = best === null ? null : el;
+		}
+	}
+	if (named === null) {
+		for (const el of document.querySelectorAll("*")) consider(el);
+	}
+	if (best === null) return null;
+	window.__loScrollbarFade = best.el;
+	const style = getComputedStyle(best.el);
+	return {
+		over: best.over,
+		tag: best.el.tagName.toLowerCase(),
+		tourTag: best.el.getAttribute("data-tour-tag"),
+		cls: String(best.el.className || "").slice(0, 70),
+		rect: {
+			x: Math.round(best.rect.x),
+			y: Math.round(best.rect.y),
+			width: Math.round(best.rect.width),
+			height: Math.round(best.rect.height),
+		},
+		centre: {
+			x: Math.round(best.rect.x + best.rect.width / 2),
+			y: Math.round(best.rect.y + best.rect.height / 2),
+		},
+		fade: best.el.getAttribute("data-lo-scrollbar"),
+		loSb: style.getPropertyValue("--lo-sb").trim(),
+		dpr: devicePixelRatio,
+		viewport: { width: innerWidth, height: innerHeight },
+	};
+})()`;
+
+/** The marked scroller's own state, read fresh for every assertion. */
+const SCROLLBAR_STATE = `(() => {
+	const el = window.__loScrollbarFade;
+	if (!el) return null;
+	const style = getComputedStyle(el);
+	const rect = el.getBoundingClientRect();
+	return {
+		fade: el.getAttribute("data-lo-scrollbar"),
+		loSb: style.getPropertyValue("--lo-sb").trim(),
+		barWidth: el.offsetWidth - el.clientWidth,
+		barHeight: el.offsetHeight - el.clientHeight,
+		xOverflow: el.scrollWidth - el.clientWidth,
+		yOverflow: el.scrollHeight - el.clientHeight,
+		scrollLeft: el.scrollLeft,
+		scrollTop: el.scrollTop,
+		rect: {
+			x: Math.round(rect.x),
+			y: Math.round(rect.y),
+			width: Math.round(rect.width),
+			height: Math.round(rect.height),
+		},
+	};
+})()`;
+
+/**
+ * The hold, read out of the module that owns it.
+ *
+ * NOT WRITTEN DOWN HERE. `SCROLLBAR_HOLD_MS` is the shipped constant, and a wait
+ * built from a second copy of it would keep passing after the first one moved —
+ * the same reason the palette expectation is read from the generated stylesheet
+ * rather than typed in. A rename makes this fail loudly instead of waiting the
+ * wrong length of time and calling the result a product finding.
+ */
+function shippedScrollbarHoldMs() {
+	const source = readFileSync(
+		new URL(
+			"../src/renderer/src/shared/lib/scrollbar-activity.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const match = /export const SCROLLBAR_HOLD_MS = (\d+);/.exec(source);
+	if (match === null) {
+		throw new Error(
+			"SCROLLBAR_HOLD_MS is not where this scene expects it, in src/renderer/src/shared/lib/scrollbar-activity.ts",
+		);
+	}
+	return Number(match[1]);
+}
+
+const SCROLLBAR_HOLD_MS_FOR_SCENE = shippedScrollbarHoldMs();
+
+/*
+ * `--scene scrollbar-fade`: the app-wide scrollbar fade, proved on the app's own
+ * scrollers in the running renderer (design: `docs/design/scrollbars-fade.md`).
+ *
+ * WHAT A UNIT TEST CANNOT ASK. `scripts/scrollbar-activity.test.mjs` pins the
+ * state machine — when the attribute is written, when it is deliberately not,
+ * what the sweep drops. Neither that file nor a static read of the stylesheet can
+ * answer whether the PAINT follows: whether `color-mix(in srgb, var(--color-control)
+ * calc(var(--lo-sb) * 100%), transparent)` puts the thumb's own colour on the
+ * glass at `--lo-sb: 1` and nothing at `0`, in this Chromium, at the geometry the
+ * app ships. So this scene drives a real wheel through Chromium's own input
+ * pipeline and then reads the FRAME's pixels in the scrollbar's own strip — the
+ * reading `docs/design/scrollbars-fade.md` § 1.1 took of the defect.
+ *
+ * THE TWO SURFACES ARE PICKED BY THE DOM, NOT BY A SELECTOR I WROTE DOWN, and
+ * that is deliberate: the claim is about the MECHANISM, which has to hold for
+ * every scroller the app will ever render, not only for the two that happened to
+ * have a stable `data-tour-tag` on the day this ran. Each act takes the scroller
+ * with the most overflow on its axis — inside the viewport, so its strip is
+ * readable — records WHO that was (tag, class, box) in the run's own output, and
+ * holds it as a page reference so every later read is of the same element. The
+ * frame and the identity travel together, so a reader can see which surface the
+ * picture is of.
+ *
+ * THE ACTS, per axis: the resting state; a real wheel; the state and the pixels
+ * while it is awake; a burst of twelve wheels inside the hold (which must write
+ * the attribute zero times, the no-flicker rule); and the state and pixels again
+ * once the hold has expired. Then the two media arms the stylesheet carries:
+ * reduced motion, whose blanket `transition-duration: 0.01ms !important` caps the
+ * fade, and forced colours, where the bar is pinned visible.
+ */
+/**
+ * The perf arm: what the fade costs the renderer on a real surface, and what
+ * listeners it is holding to do it.
+ *
+ * WHY IT IS IN THE SCENE AND NOT ONLY IN THE MEMO. The mechanism's cost was
+ * measured in the architect's hidden probes (memo § F: 300 wheel events cost
+ * 2.5-2.8 ms of `ScriptDuration` against 0.0 without the module, `LayoutCount` 0
+ * in both, ~49 recalcs and 4.5 ms for a fade). Those probes are not this app:
+ * this arm re-reads the same counters off the app's own renderer through
+ * `Performance.getMetrics`, over the surface the act above just drove, so the
+ * number on the PR is a reading of this build rather than a quotation. It is a
+ * DELTA across the burst and it is reported as one: the app is doing other work
+ * in the same window (the transition, React, the queries), and a delta is the
+ * only shape of this number that means anything.
+ *
+ * `LayoutCount` is the one that is a claim rather than a measurement: the fade
+ * changes paint only, so a layout in that window would be the regression this
+ * change is forbidden to cause, and it is asserted at zero.
+ *
+ * THE LISTENER INVENTORY is read from the document's own listener list
+ * (`DOMDebugger.getEventListeners`), not from the module's source: the source
+ * says what was registered, the document says what is attached. Both are worth
+ * having, and the unit suite pins the source half.
+ */
+async function scrollbarPerfArm(cdp, { centre, delta }) {
+	/*
+	 * The reply is the raw CDP message (`{ id, result }`), so the handle is one
+	 * level deeper than a bare `send()` looks: `result.result.objectId`. The first
+	 * run of this arm passed `undefined` and reported the inventory as unavailable
+	 * - which is the failure mode the note below is for.
+	 */
+	const listeners = await cdp
+		.send("Runtime.evaluate", { expression: "document" })
+		.then((handle) =>
+			cdp.send("DOMDebugger.getEventListeners", {
+				objectId: handle?.result?.result?.objectId,
+				depth: 0,
+			}),
+		)
+		.then((reply) => reply?.result ?? { listeners: [] })
+		.catch((error) => ({
+			error: String(error?.message ?? JSON.stringify(error)),
+		}));
+	if (listeners?.error) {
+		note("document listener inventory unavailable", listeners.error);
+	} else {
+		const relevant = (listeners.listeners ?? [])
+			.filter((entry) =>
+				["scroll", "pointerover", "pointerdown"].includes(entry.type),
+			)
+			.map((entry) => ({
+				type: entry.type,
+				capture: entry.useCapture === true,
+				passive: entry.passive === true,
+				line: entry.lineNumber,
+				column: entry.columnNumber,
+			}));
+		note(
+			"document listeners the fade's own event types have on this page",
+			JSON.stringify(relevant),
+		);
+		const ours = (type) =>
+			relevant.filter(
+				(entry) => entry.type === type && entry.capture && entry.passive,
+			).length;
+		check(
+			"the module's three listeners are attached: one each, capture phase, passive",
+			ours("scroll") === 1 &&
+				ours("pointerover") === 1 &&
+				ours("pointerdown") === 1,
+			`capture+passive counts — scroll ${ours("scroll")}, pointerover ${ours("pointerover")}, pointerdown ${ours("pointerdown")}`,
+		);
+		check(
+			"and every scroll listener on the document is capture phase, as the app's own are",
+			relevant
+				.filter((entry) => entry.type === "scroll")
+				.every((entry) => entry.capture === true),
+			JSON.stringify(relevant.filter((entry) => entry.type === "scroll")),
+		);
+		/*
+		 * The inventory is deliberately COMPLETE rather than filtered to the
+		 * module's own three: this page carries a second, non-capture `pointerdown`
+		 * listener that is not this change's (it is registered from another script
+		 * in the bundle), and a check that only counted the shape the module
+		 * registers would have hidden it. A reader gets to see everything the fade
+		 * shares the document with.
+		 */
+		note(
+			"(the inventory above is every document listener of those three types, this change's or not)",
+		);
+	}
+
+	await cdp.send("Performance.enable");
+	const read = async () =>
+		Object.fromEntries(
+			((await cdp.send("Performance.getMetrics"))?.result?.metrics ?? []).map(
+				(metric) => [metric.name, metric.value],
+			),
+		);
+	const before = await read();
+	check(
+		"the renderer's performance counters are readable",
+		Object.keys(before).length > 0,
+		`Performance.getMetrics answered ${Object.keys(before).length} counters`,
+	);
+	/*
+	 * 300 wheels, alternating direction against the palette's own end stop: each
+	 * one moves a list that has room in that direction, which is what fires a real
+	 * `scroll` event for the module to answer. A burst all in one direction would
+	 * measure one scroll and 299 no-ops.
+	 */
+	for (let notch = 0; notch < 300; notch += 1) {
+		await wheelAt(
+			cdp,
+			centre.x,
+			centre.y,
+			notch % 2 === 0 ? delta : { x: -delta.x, y: -delta.y },
+		);
+	}
+	const after = await read();
+	const deltaOf = (name) =>
+		Math.round(((after[name] ?? 0) - (before[name] ?? 0)) * 1000) / 1000;
+	const perf = {
+		events: 300,
+		scriptDurationMs: deltaOf("ScriptDuration") * 1000,
+		taskDurationMs: deltaOf("TaskDuration") * 1000,
+		recalcStyleCount: deltaOf("RecalcStyleCount"),
+		layoutCount: deltaOf("LayoutCount"),
+	};
+	note(
+		"perf across 300 wheel events (deltas from Performance.getMetrics)",
+		JSON.stringify(perf),
+	);
+	/*
+	 * THE READING ABOVE IS NOT ASSERTED AT ZERO, AND THE GEOMETRY IS WHY. A window
+	 * with 300 wheels in it contains the app's own scroll work as well as the fade:
+	 * measured on this head, `LayoutCount` moved 0 in one run, 0 in the next and 2
+	 * in the one after — the palette re-rendering rows as they scroll, which is not
+	 * something a paint change can cause and not something this scene can charge to
+	 * this change. A check that read 0 twice and 2 once would be a flake wearing a
+	 * verdict's clothes. What the fade could break is asserted instead, and exactly:
+	 * the bar's geometry is identical in rest, awake and expired (the act above,
+	 * where the only thing that changed is the thumb's paint), and `LayoutCount`
+	 * over the FADE'S OWN window — the module's timer expiring, with no input at
+	 * all — is asserted at zero below.
+	 */
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 800);
+	await wheelAt(cdp, centre.x, centre.y, delta);
+	// Past the fade-in, so the window below holds the expiry and the fade-out only.
+	await wait(700);
+	const armed = await read();
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 500);
+	const afterSweep = await read();
+	const sweep = {
+		window: `${SCROLLBAR_HOLD_MS_FOR_SCENE + 500}ms with no input in it`,
+		recalcStyleCount:
+			Math.round(
+				(afterSweep.RecalcStyleCount - armed.RecalcStyleCount) * 1000,
+			) / 1000,
+		layoutCount:
+			Math.round((afterSweep.LayoutCount - armed.LayoutCount) * 1000) / 1000,
+		scriptDurationMs:
+			Math.round((afterSweep.ScriptDuration - armed.ScriptDuration) * 1e6) /
+			1000,
+	};
+	note(
+		"perf across the module's own expiry and fade-out, with no input in the window",
+		JSON.stringify(sweep),
+	);
+	check(
+		"the fade's own window — one timer expiry and one fade-out — changes no layout",
+		sweep.layoutCount === 0,
+		`LayoutCount moved ${sweep.layoutCount} over ${sweep.window}`,
+	);
+}
+
+async function sceneScrollbarFade(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await wait(900);
+
+	/*
+	 * The census is the scene's own record of what it could have measured, and it
+	 * is committed with the frames: it is what tells a later reader whether the
+	 * surface a frame shows was the app's, and whether the route still renders it.
+	 */
+	const census = await cdp.evaluate(SCROLLER_CENSUS);
+	note(
+		"scroller census (/chat)",
+		JSON.stringify(
+			{
+				viewport: census.viewport,
+				scrollers: census.scrollers.map((one) => ({
+					tag: one.tag,
+					tourTag: one.tourTag,
+					ox: one.ox,
+					oy: one.oy,
+					box: `${one.x},${one.y} ${one.w}x${one.h}`,
+					overflow: `${one.xOverflow}x${one.yOverflow}`,
+					fade: one.fade,
+					loSb: one.loSb,
+				})),
+			},
+			null,
+			2,
+		),
+	);
+
+	const control = await cdp.evaluate(
+		`(() => getComputedStyle(document.documentElement).getPropertyValue("--lo-border-control").trim())()`,
+	);
+	const targetRgb = (() => {
+		const hex = /^#([0-9a-f]{6})$/i.exec(control);
+		if (hex === null) return null;
+		const value = Number.parseInt(hex[1], 16);
+		return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+	})();
+	check(
+		"the theme resolves the thumb's own role to a colour",
+		targetRgb !== null,
+		`--lo-border-control reads ${JSON.stringify(control)}`,
+	);
+
+	/*
+	 * THE VERTICAL SURFACE IS THE COMMAND PALETTE'S OWN LIST
+	 * (`#command-palette-results`, `max-h-96 overflow-y-auto`). Two reasons, and
+	 * both are about the claim rather than about convenience. It is the surface
+	 * `docs/design/scrollbars-fade.md` § 1.1 measured the defect on — its committed
+	 * before frame is this palette's browse state — so the pair a reader compares is
+	 * one surface. And its rows are the app's own commands, so it is STABLE with no
+	 * backend, where the widest scroller on a backend-gated route is not: the first
+	 * run of this scene picked one of those (293px of overflow on `/agent-hub`) and
+	 * the route's own failed query collapsed it to 0 between the wheel and the read,
+	 * which is a frame of a state no reader ever sees.
+	 */
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	await wait(700);
+	/*
+	 * The hold is waited out before the resting frame: a press is a real pointer
+	 * event, and a frame taken inside the hold would photograph an awake bar under
+	 * a caption that calls it rest. The assertion below is what makes that a
+	 * measurement rather than a hope.
+	 */
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const actOne = await scrollbarAct(cdp, {
+		axis: "y",
+		label: "vertical",
+		delta: { x: 0, y: 420 },
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical act", JSON.stringify(actOne));
+
+	await scrollbarPerfArm(cdp, {
+		centre: actOne === null ? { x: 690, y: 458 } : actOne.target.centre,
+		delta: { x: 0, y: 420 },
+	});
+
+	// Escape, dispatched as a real key event rather than by calling the handler.
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	await wait(400);
+
+	/*
+	 * THE HORIZONTAL ACT IS THE BROWSER TAB STRIP (design note § 6.1), reached
+	 * through the app's own route and its own new-tab control rather than through
+	 * the chat pane's trigger, which needs a conversation and therefore a backend.
+	 * Tabs are opened until the strip genuinely overflows: a horizontal scroller
+	 * with nothing to scroll paints no bar, so the act's own precondition is a
+	 * positive `scrollWidth - clientWidth`.
+	 */
+	await verb(cdp, "navigate", "/browser");
+	await wait(900);
+	for (let opened = 0; opened < 12; opened += 1) {
+		const pressed = await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-new-tab"]',
+		}).catch(() => null);
+		if (pressed === null) break;
+		await wait(250);
+	}
+	const tabs = await cdp.evaluate(
+		"(() => document.querySelectorAll('[data-tour-tag=\"browser-tab\"]').length)()",
+	);
+	note("tabs open in the strip", String(tabs));
+	// Same reason as the palette's: those presses were real pointer events.
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+
+	/*
+	 * TOWARD THE START, not toward the end: opening thirteen tabs leaves the strip
+	 * scrolled to its right-hand end (the app scrolls the new tab into view), so a
+	 * positive wheel there moves nothing and the bar stays asleep — which the first
+	 * run of this act reported as a wake failure that was the harness's own doing.
+	 */
+	const actTwo = await scrollbarAct(cdp, {
+		axis: "x",
+		label: "horizontal",
+		delta: { x: -420, y: 0 },
+		targetRgb,
+	});
+	note("horizontal act", JSON.stringify(actTwo));
+
+	/*
+	 * REDUCED MOTION. `styles/index.css` caps `transition-duration` at 0.01ms for
+	 * everyone who asks, and the cap is read off the scroller's own computed style
+	 * rather than argued: the duration is the mechanism this change adds, so the
+	 * media query's effect on it is the whole claim.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+	});
+	const capped = await cdp.evaluate(
+		"(() => getComputedStyle(window.__loScrollbarFade).transitionDuration)()",
+	);
+	/*
+	 * Chromium's own serialization of the capped duration is seconds, so `0.01ms`
+	 * comes back as `1e-05s` and a string comparison against the stylesheet's
+	 * spelling would fail on a correct build. The claim is numeric: the fade's
+	 * duration collapses to the blanket cap, so both directions are a step rather
+	 * than a ramp.
+	 */
+	const cappedSeconds = Number.parseFloat(capped);
+	check(
+		"reduced motion caps the fade's duration",
+		Number.isFinite(cappedSeconds) && cappedSeconds <= 0.0001,
+		`the scroller's computed transition-duration reads ${JSON.stringify(capped)}`,
+	);
+
+	/*
+	 * FORCED COLOURS. The design's call is that the fade is suppressed there and
+	 * the bar is simply solid — the platform overrides our colour anyway (the
+	 * mechanism memo's probe read the thumb's red channel at 0 while the layout
+	 * stayed 8px), so a high-contrast reader never has to hunt for it. The state
+	 * that is asserted is the CSS half: the property is pinned at 1 with no
+	 * attribute write in play.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "forced-colors", value: "active" }],
+	});
+	const forced = await cdp.evaluate(SCROLLBAR_STATE);
+	check(
+		"forced colors pins the bar visible, whatever the attribute says",
+		forced !== null && Number(forced.loSb) === 1,
+		JSON.stringify(forced),
+	);
+	await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+}
+
+/**
+ * One axis' worth of the fade: rest, a real wheel, awake, a burst that must write
+ * nothing, and rest again.
+ *
+ * The three frames this writes are the ones a reader looks at, so every claim has
+ * both halves beside it — the state the app reported AND the pixels the frame
+ * holds — and the pixels are read from the strip the element's own box names.
+ */
+async function scrollbarAct(
+	cdp,
+	{ axis, label, delta, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`a ${label} scroller with something to scroll is on screen`,
+		target !== null,
+		target === null
+			? "no scroller with more than 40px of overflow on that axis, inside the viewport"
+			: `${target.tag} ${target.over}px of overflow at ${JSON.stringify(target.rect)}`,
+	);
+	if (target === null) return null;
+	note(`${label} target`, JSON.stringify(target));
+
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = async (label_, file) =>
+		targetRgb === null ? null : await stripReading(file, strip, targetRgb);
+
+	const restingState = await cdp.evaluate(SCROLLBAR_STATE);
+	const restingFrame = await capture(cdp, `${label}-idle-dark`);
+	const restingPixels = await sample("idle", restingFrame.path);
+	check(
+		`${label}: at rest the bar is idle and paints nothing`,
+		(restingState.fade === null || restingState.fade === "idle") &&
+			restingState.loSb === "0" &&
+			restingPixels !== null &&
+			restingPixels.near < 0.02 * restingPixels.sampled,
+		`attribute=${JSON.stringify(restingState.fade)} --lo-sb=${restingState.loSb}; strip ${JSON.stringify(restingPixels?.mean ?? null)} with ${restingPixels?.near ?? "?"} of ${restingPixels?.sampled ?? "?"} px near the thumb's colour`,
+	);
+
+	await wheelAt(cdp, target.centre.x, target.centre.y, delta);
+	// Past the 120ms fade-in, and well inside the 2200ms hold.
+	await wait(400);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-active-dark`);
+	const awakePixels = await sample("active", awakeFrame.path);
+	/*
+	 * The wheel has to have SCROLLED THE APP, not merely been dispatched: a wheel
+	 * over an element that has nothing left to scroll moves nothing, fires no
+	 * `scroll` event, and would leave the bar asleep for a reason that has nothing
+	 * to do with the module. The offset it moved is the proof.
+	 */
+	const moved =
+		axis === "y"
+			? awakeState.scrollTop - restingState.scrollTop
+			: awakeState.scrollLeft - restingState.scrollLeft;
+	const asked = axis === "y" ? delta.y : delta.x;
+	check(
+		`${label}: the wheel scrolls the app`,
+		Math.sign(moved) === Math.sign(asked) &&
+			awakeState.yOverflow === restingState.yOverflow &&
+			awakeState.xOverflow === restingState.xOverflow,
+		`${axis === "y" ? "scrollTop" : "scrollLeft"} moved ${moved}px for a ${asked}px wheel (overflow ${restingState.xOverflow}x${restingState.yOverflow} at rest, ${awakeState.xOverflow}x${awakeState.yOverflow} while awake)`,
+	);
+	check(
+		`${label}: the wheel wakes the bar`,
+		awakeState.fade === "active" && Number(awakeState.loSb) === 1,
+		`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb}`,
+	);
+	check(
+		`${label}: the thumb is painted while awake`,
+		awakePixels !== null &&
+			awakePixels.near > 0.3 * awakePixels.sampled &&
+			awakePixels.near > restingPixels.near,
+		`${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour, against ${restingPixels?.near ?? "?"} at rest; strip mean ${JSON.stringify(awakePixels?.mean ?? null)}`,
+	);
+
+	/*
+	 * THE NO-FLICKER RULE, measured rather than asserted in prose: a burst of
+	 * twelve real wheels inside the hold must write the attribute ZERO times,
+	 * because a write per event restarts the transition and that restart is the
+	 * flicker. The observer is the app's own DOM API on the scroller the module
+	 * marked — not the module's internals.
+	 */
+	const watched = await cdp.evaluate(`(() => {
+		const el = window.__loScrollbarFade;
+		window.__loScrollbarFadeWrites = [];
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				if (record.attributeName === "data-lo-scrollbar") {
+					window.__loScrollbarFadeWrites.push(el.getAttribute("data-lo-scrollbar"));
+				}
+			}
+		});
+		observer.observe(el, { attributes: true, attributeFilter: ["data-lo-scrollbar"] });
+		window.__loScrollbarFadeObserver = observer;
+		return true;
+	})()`);
+	check(`${label}: the write watcher is on the scroller`, watched === true);
+	for (let notch = 0; notch < 12; notch += 1) {
+		await wheelAt(cdp, target.centre.x, target.centre.y, delta);
+		await wait(60);
+	}
+	const writes = await cdp.evaluate(
+		"(() => { window.__loScrollbarFadeObserver.disconnect(); return window.__loScrollbarFadeWrites.length; })()",
+	);
+	check(
+		`${label}: twelve wheels inside the hold write the attribute zero times`,
+		writes === 0,
+		`${writes} attribute write(s) during the burst`,
+	);
+
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const idleState = await cdp.evaluate(SCROLLBAR_STATE);
+	const idleFrame = await capture(cdp, `${label}-idle-after-dark`);
+	const idlePixels = await sample("idle again", idleFrame.path);
+	check(
+		`${label}: the hold expires and the bar goes back to rest`,
+		idleState.fade === "idle" && Number(idleState.loSb) === 0,
+		`attribute=${JSON.stringify(idleState.fade)} --lo-sb=${idleState.loSb}`,
+	);
+	check(
+		`${label}: and nothing is painted once it has`,
+		idlePixels !== null && idlePixels.near < 0.1 * idlePixels.sampled,
+		`${idlePixels?.near ?? "?"} of ${idlePixels?.sampled ?? "?"} strip pixels are the thumb's colour; strip mean ${JSON.stringify(idlePixels?.mean ?? null)}`,
+	);
+
+	/*
+	 * THE GUTTER DOES NOT MOVE (memo probe 1 / §E): the classic bar is 8px in
+	 * idle, awake and after, so nothing on screen shifts when the thumb appears.
+	 */
+	const bars = [restingState, awakeState, idleState].map((state) =>
+		axis === "y" ? state.barWidth : state.barHeight,
+	);
+	check(
+		`${label}: the bar's geometry is the same in every state`,
+		bars.every((width) => width === 8),
+		`${axis === "y" ? "offsetWidth-clientWidth" : "offsetHeight-clientHeight"} read ${JSON.stringify(bars)} across rest, awake and expired`,
+	);
+
+	return {
+		target,
+		strip,
+		restingState,
+		awakeState,
+		idleState,
+		frames: {
+			idle: restingFrame.path,
+			active: awakeFrame.path,
+			idleAfter: idleFrame.path,
+		},
+		pixels: {
+			idle: restingPixels,
+			active: awakePixels,
+			idleAfter: idlePixels,
+		},
+		writes,
+	};
+}
+
 async function sceneHitZones(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -33862,6 +34699,7 @@ async function main() {
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
