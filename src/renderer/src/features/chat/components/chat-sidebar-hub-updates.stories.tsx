@@ -837,10 +837,38 @@ export const RetryReadyToUpdate: Story = {
 		await userEvent.click(mark);
 		await screen.findByText(/It is ready to update/);
 		// The row is now an OFFER: pressing again updates, which is what the
-		// sentence tells the person to do.
+		// sentence tells the person to do. Under the defect this assertion is the
+		// one that failed - the mark stayed `failed` and every press re-retried.
 		const again = await screen.findByTestId("hub-mark-agent-coder");
 		expect(again.getAttribute("data-hub-mark")).toBe("available");
-		await userEvent.click(again);
+	},
+};
+
+/**
+ * The press after that sentence: the update the person was told to take, taken
+ * (UX round 2, U10). Same scenario as `RetryReadyToUpdate`, carried one press
+ * further, so the pair reads as the two halves of the same flow.
+ */
+export const RetryThenApplies: Story = {
+	render: () => {
+		installBridge({
+			autoAgents: false,
+			retryOutcome: { outcome: "would-merge" },
+			items: [
+				{
+					kind: "agent",
+					name: "coder",
+					state: "failed",
+					error_class: "provider-error",
+				},
+			],
+		});
+		return <Page />;
+	},
+	play: async () => {
+		await userEvent.click(await screen.findByTestId("hub-mark-agent-coder"));
+		await screen.findByText(/It is ready to update/);
+		await userEvent.click(await screen.findByTestId("hub-mark-agent-coder"));
 		await waitFor(() => {
 			expect(screen.queryByTestId("hub-mark-agent-coder")).toBeNull();
 		});
