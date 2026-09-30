@@ -13734,6 +13734,10 @@ async function scenePinnedReorder(cdp) {
 				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
 				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
 				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
+				/* #691's per-row mark (main's subagentMarks), counted here because this
+				   branch folds main's row render into the same sessionRow: the count is
+				   what says whether the fold can have moved these frames' pixels at all. */
+				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
 				announcement: live ? live.textContent : null,
 				stored: stored,
 				storedView: storedView,
@@ -13940,6 +13944,20 @@ async function scenePinnedReorder(cdp) {
 			"the stand-in's three pins are drawn in the catalogue's own order",
 			JSON.stringify(boot.order) === JSON.stringify(PINNED_IDS),
 			JSON.stringify(boot.order),
+		);
+		/*
+		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
+		 * after these frames were first taken). The stand-in's rows carry no subagent
+		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
+		 * the whole set. Stated as a check rather than a note because a fixture that grew
+		 * a subagent count would start moving the row's layout, and this is where that
+		 * would be caught.
+		 */
+		check(
+			"the folded-in subagent mark draws nothing on the stand-in's rows",
+			boot.subagentMarks === 0,
+			`${boot.subagentMarks} marker(s) in the pinned section`,
 		);
 		check(
 			"no move control is painted at rest",
