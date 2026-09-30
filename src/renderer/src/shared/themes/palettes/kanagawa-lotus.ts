@@ -107,6 +107,12 @@ export const kanagawaLotus: ThemeDefinition = {
 		inkDisabled: "#8A8980",
 
 		hairline: "#C2BA8E",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.53:1 there against `hairline`'s 1.19:1.
+
+		hairlineStrong: "#ABA480",
 		borderControl: "#716E61",
 
 		// crystalBlue, deepened for ink on this paper — the same hue family as
