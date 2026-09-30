@@ -157,6 +157,9 @@ export const matrix: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 7.14.
 		 */
 		hairline: "#263F2D",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.59:1 there against `hairline`'s 1.48:1.
+		hairlineStrong: "#2A4431",
 		// The TUI `edge-hi` 2A4A33 lifted in L* until it clears 3:1 on `elevated`; the
 		// TUI bounded nothing with it.
 		/*

@@ -133,6 +133,9 @@ export const alucard: ThemeDefinition = {
 		 * `sunken` is the tightest ground at ΔE00 4.12.
 		 */
 		hairline: "#D8D3C2",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.51:1 there against `hairline`'s 1.19:1.
+		hairlineStrong: "#C1BCA9",
 		borderControl: "#6C664B",
 
 		accent: "#644AC9",

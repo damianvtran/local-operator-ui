@@ -17,7 +17,7 @@
 
 import { Button, Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ShieldAlert } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
 import {
 	type MoveDestination,
@@ -26,6 +26,12 @@ import {
 } from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
+import {
+	REACH_INK,
+	SUSPECT_WORDS,
+	deviceReach,
+	reachWords,
+} from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import { deviceSessionTotal } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
@@ -236,6 +242,7 @@ export const MeshList: FC<MeshListProps> = ({
 							const total = held
 								? deviceSessionTotal(held, device.sessionCount)
 								: (device.sessionCount ?? 0);
+							const reach = deviceReach(device);
 							return (
 								<li
 									key={device.id}
@@ -276,22 +283,45 @@ export const MeshList: FC<MeshListProps> = ({
 											{device.label}
 										</button>
 										{/*
-										 * The state IN WORDS on every row (the canvas's stripe and this
-										 * row's badge are one claim): an unreachable device carries the
-										 * backend's own reason, and the resting state carries its stat
-										 * line rather than the word "reachable", which says nothing a
-										 * reader needs on a healthy mesh.
+										 * The state IN WORDS on every row, WITH THE INK FROM THE ONE TABLE
+										 * THAT DEFINES IT (agent review round 1, M1; design D1; UX U1/U2).
+										 * The classes used to key on `device.state`, which files
+										 * `not-attempted` and `unanswered` under one `unreachable` - so a
+										 * device this app never dialled wore the failure hue one click
+										 * from a canvas that had spent the redesign separating the two.
+										 * `REACH_INK[deviceReach(device)]` is the node's own table, so the
+										 * two presentations cannot disagree again; the resting state still
+										 * carries its stat line rather than the word "reachable".
+										 *
+										 * THE SUSPECT OVERLAY IS NOT "A REACH STATE", so it does not take a
+										 * word out of the reach vocabulary: it rides the node's own
+										 * non-colour channel (`ShieldAlert`) plus a badge, because the row
+										 * has no stripe to hang the override on and colour is never the
+										 * only channel (`branding.md` § 2). Keying the words on
+										 * `deviceReach` alone would have dropped the fact entirely - the
+										 * reason the old cell reached for "identity suspect" instead.
 										 */}
 										<span
 											className={cn(
-												"shrink-0 text-meta",
-												device.state === "unreachable" && "text-warning",
-												device.state === "suspect" && "text-danger",
-												device.state === "self" && "text-accent",
-												device.state === "reachable" && "text-ink-muted",
+												"flex shrink-0 items-center gap-1 text-meta",
+												REACH_INK[reach],
 											)}
+											data-mesh-reach={reach}
 										>
-											{deviceStatLine(device, nowSeconds)}
+											{device.suspect && (
+												<ShieldAlert
+													aria-hidden="true"
+													className="size-3.5 shrink-0 text-danger"
+												/>
+											)}
+											{device.suspect
+												? reachWords(reach)
+												: deviceStatLine(device, nowSeconds)}
+											{device.suspect && (
+												<span className="shrink-0 rounded-sm border border-danger px-1 text-danger">
+													{SUSPECT_WORDS}
+												</span>
+											)}
 										</span>
 										<span className="shrink-0 text-meta text-ink-dim">
 											{membership?.role ? `${membership.role} · ` : ""}

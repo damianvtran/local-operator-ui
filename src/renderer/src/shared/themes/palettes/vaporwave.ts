@@ -186,6 +186,9 @@ export const vaporwave: ThemeDefinition = {
 		 * lands at 1.21:1 against `elevated` at its tightest.
 		 */
 		hairline: "#483D65",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.73:1 there against `hairline`'s 1.60:1.
+		hairlineStrong: "#4E426B",
 		// The TUI `edge-hi` 4C3F6C lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
