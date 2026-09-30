@@ -37,6 +37,7 @@
 
 import {
 	BrowserWindow,
+	type IpcMainEvent,
 	type IpcMainInvokeEvent,
 	app,
 	ipcMain,
@@ -45,10 +46,13 @@ import {
 import {
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_HEIGHT,
+	MINI_VIEW_MAX_HEIGHT,
+	MINI_VIEW_RESIZE,
 	MINI_VIEW_SUMMONED,
 	MINI_VIEW_WIDTH,
 	type MiniViewSummonedPayload,
 	isMiniViewDismissReason,
+	isMiniViewResizePayload,
 } from "../shared/mini-view";
 import { windowChromeArgumentFor } from "../shared/window-chrome";
 import type { WindowChromeMode } from "../shared/window-chrome";
@@ -121,9 +125,11 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		width: MINI_VIEW_WIDTH,
 		height: MINI_VIEW_HEIGHT,
 		/*
-		 * Sized in content, not window, terms: the design fixes the COMPOSER at
-		 * 640x168 and the frames are captured and reviewed at that size, so the
-		 * page's viewport is the number that must be exact on every platform.
+		 * Sized in content, not window, terms, and the content size is now the
+		 * BASE of a measured range rather than the whole story: the restyle's
+		 * chrome (previews, the readings strip, the picker sheet) asks for more
+		 * through `MINI_VIEW_RESIZE` below, and this call is what makes the
+		 * page's viewport the number every frame is captured at.
 		 */
 		useContentSize: true,
 		show: false,
@@ -183,6 +189,52 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 	}
 
 	void window.loadURL(options.url);
+
+	/*
+	 * THE MEASURED RESIZE (design R2's mechanism). The frame is the only thing
+	 * that can measure its own content, so it sends what it needs and this
+	 * handler is the only thing that may grant it: the height is clamped to
+	 * [base, `MINI_VIEW_MAX_HEIGHT`] and to the display's work area (minus a
+	 * margin), the WIDTH never moves, and the TOP EDGE is held so growth goes
+	 * downward from where the summon put the window. If a growth would cross
+	 * the work area's bottom the window is lifted just enough to fit.
+	 *
+	 * Fire-and-forget (`ipcMain.on`): the renderer re-measures on every layout
+	 * settle and there is no answer to await; the clamp is this side's, and a
+	 * request that changes nothing is a no-op rather than a round trip.
+	 */
+	const onResize = (event: IpcMainEvent, payload: unknown): void => {
+		if (
+			window.isDestroyed() ||
+			event.sender !== window.webContents ||
+			event.senderFrame !== window.webContents.mainFrame
+		) {
+			return;
+		}
+		if (!isMiniViewResizePayload(payload)) return;
+		const area = screen.getDisplayMatching(window.getBounds()).workArea;
+		/* The margin keeps a fully grown frame off the work area's edges. */
+		const ceiling = Math.max(
+			MINI_VIEW_HEIGHT,
+			Math.min(MINI_VIEW_MAX_HEIGHT, area.height - 64),
+		);
+		const height = Math.max(
+			MINI_VIEW_HEIGHT,
+			Math.min(Math.round(payload.height), ceiling),
+		);
+		const bounds = window.getContentBounds();
+		if (bounds.height === height) return;
+		window.setContentSize(MINI_VIEW_WIDTH, height);
+		const bottom = bounds.y + height;
+		if (bottom > area.y + area.height) {
+			window.setPosition(
+				bounds.x,
+				Math.max(area.y, area.y + area.height - height),
+			);
+		}
+	};
+	ipcMain.removeListener(MINI_VIEW_RESIZE, onResize);
+	ipcMain.on(MINI_VIEW_RESIZE, onResize);
 
 	let disposed = false;
 
@@ -285,13 +337,19 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			screen.getCursorScreenPoint(),
 		);
 		const area = display.workArea;
+		/*
+		 * The window's CURRENT content height, not the base: a frame grown for a
+		 * preview or a sheet keeps its height across hides (the renderer
+		 * reconciles it on the next summon), and centring it on the base would
+		 * float it a sheet's worth too high on the display.
+		 */
+		const height = window.isDestroyed()
+			? MINI_VIEW_HEIGHT
+			: window.getContentBounds().height;
 		const x = Math.round(area.x + (area.width - MINI_VIEW_WIDTH) / 2);
-		const desiredY = area.y + area.height / 3 - MINI_VIEW_HEIGHT / 2;
+		const desiredY = area.y + area.height / 3 - height / 2;
 		const y = Math.round(
-			Math.min(
-				Math.max(desiredY, area.y),
-				area.y + area.height - MINI_VIEW_HEIGHT,
-			),
+			Math.min(Math.max(desiredY, area.y), area.y + area.height - height),
 		);
 		window.setPosition(x, y);
 	}
@@ -299,6 +357,7 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 	function dispose(): void {
 		if (disposed) return;
 		disposed = true;
+		ipcMain.removeListener(MINI_VIEW_RESIZE, onResize);
 		ipcMain.removeHandler(MINI_VIEW_DISMISS);
 		if (!window.isDestroyed()) window.destroy();
 	}

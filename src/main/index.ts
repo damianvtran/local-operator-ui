@@ -32,8 +32,10 @@ import {
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import {
+	MINI_VIEW_DIALOG,
 	MINI_VIEW_REGISTRATION,
 	MINI_VIEW_REGISTRATION_GET,
+	type MiniViewDialogPayload,
 } from "../shared/mini-view";
 import {
 	OPEN_CATALOGUE_FLAG,
@@ -2760,24 +2762,52 @@ app
 			}
 		});
 
-		ipcMain.handle("show-open-dialog", async (_, options) => {
-			if (!mainWindow) {
+		ipcMain.handle("show-open-dialog", async (event, options) => {
+			/*
+			 * THE DIALOG BELONGS TO THE WINDOW THAT ASKED (mini restyle, risk R3).
+			 * The handler used to parent every picker to `mainWindow`, so a file
+			 * picker opened from the mini view sheared onto the MAIN window while
+			 * the mini - which hides itself on blur by design - read the focus
+			 * change as "the user left" and dismissed out from under its own
+			 * dialog. Parenting to the sender's window makes the sheet part of the
+			 * mini, and the broadcast latch below covers the platforms and
+			 * situations where focus still moves.
+			 */
+			const parent = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
+			if (!parent) {
 				logger.error(
-					"Cannot show open dialog: mainWindow is not available.",
+					"Cannot show open dialog: no window can own it.",
 					LogFileType.BACKEND,
 				);
 				return { canceled: true, filePaths: [] };
 			}
-			const result = await dialog.showOpenDialog(
-				mainWindow,
-				withRememberedDirectory(
-					"open-file",
-					options,
-					pickerFallbackDirectory(),
-				),
-			);
-			rememberPickedDirectory("open-file", result.filePaths);
-			return result;
+			/* The mini window, pinned in a local: `miniView` is module state and the
+			   awaits below invalidate the narrowing. */
+			const mini = miniView;
+			const fromMini =
+				mini !== null &&
+				!mini.window.isDestroyed() &&
+				event.sender === mini.window.webContents;
+			const dialogPayload: MiniViewDialogPayload = { open: true };
+			if (fromMini)
+				mini.window.webContents.send(MINI_VIEW_DIALOG, dialogPayload);
+			try {
+				const result = await dialog.showOpenDialog(
+					parent,
+					withRememberedDirectory(
+						"open-file",
+						options,
+						pickerFallbackDirectory(),
+					),
+				);
+				rememberPickedDirectory("open-file", result.filePaths);
+				return result;
+			} finally {
+				if (fromMini && mini !== null && !mini.window.isDestroyed())
+					mini.window.webContents.send(MINI_VIEW_DIALOG, {
+						open: false,
+					} satisfies MiniViewDialogPayload);
+			}
 		});
 
 		// --- Directory Selection IPC Handler ---

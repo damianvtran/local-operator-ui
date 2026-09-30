@@ -45,6 +45,34 @@ export const MINI_VIEW_REGISTRATION = "mini-view:registration";
 export const MINI_VIEW_REGISTRATION_GET = "mini-view:registration-get";
 
 /**
+ * The mini renderer -> main: the CONTENT height this frame needs right now.
+ *
+ * The mini restyle put real chrome into the frame the fixed 640x168 box never
+ * had - the readings strip, attachment previews, a compact picker sheet - and
+ * a fixed height cannot hold all of it at once without either clipping a
+ * control or reserving dead space in every other state. So the frame MEASURES
+ * itself (a ResizeObserver on its root) and asks main for the height it wants;
+ * main clamps (`MINI_VIEW_HEIGHT`..`MINI_VIEW_MAX_HEIGHT`, and to the display's
+ * work area) and calls `setContentSize`, which is the same measure -> IPC ->
+ * resize mechanism the design's risk R2 named. The WIDTH never moves: the
+ * composer is laid out for 640 and the design review reads frames at it.
+ */
+export const MINI_VIEW_RESIZE = "mini-view:resize";
+
+/**
+ * Main -> the mini renderer: a native dialog opened on this window, or closed.
+ *
+ * WHY THE RENDERER NEEDS TO HEAR IT. The composer's attach button opens the
+ * file picker through the generic `show-open-dialog` IPC, and on macOS the
+ * dialog can take focus away from the mini window - whose blur handler hides
+ * it by design ("losing focus" is dismiss reason one). Without this signal,
+ * clicking Attach would dismiss the very window the dialog belongs to. The
+ * mini's frame latches its blur guard while `open` is true and releases it
+ * when the dialog answers.
+ */
+export const MINI_VIEW_DIALOG = "mini-view:dialog";
+
+/**
  * Whether the global shortcut is live, and why not when it is not.
  *
  * `registered` is the only state in which pressing the chord opens the mini
@@ -150,14 +178,60 @@ export function isMiniViewRegistrationState(
 }
 
 /**
- * The mini view's fixed size, in DIP. One pair of numbers, because THREE
- * consumers depend on them agreeing: the main process sizes the window, the
- * renderer lays its composer out to those bounds, and the evidence scene
- * photographs at that size. 640 x 168 is the design's figure: one composer row
- * that grows to four lines plus one hint row, never resized.
+ * The mini view's size, in DIP. One set of numbers, because THREE consumers
+ * depend on them agreeing: the main process sizes the window, the renderer
+ * lays its frame out to those bounds, and the evidence scene photographs it.
+ *
+ * `MINI_VIEW_WIDTH` x `MINI_VIEW_HEIGHT` is the BASE: the box the window is
+ * created at and the floor the measure-driven resize (see `MINI_VIEW_RESIZE`)
+ * may never go below. The restyle's chrome (previews, the readings strip, the
+ * picker sheet) grows the height on demand, up to `MINI_VIEW_MAX_HEIGHT` - the
+ * ceiling that keeps a quick-send surface from turning into a full-height
+ * panel over the user's work.
  */
 export const MINI_VIEW_WIDTH = 640;
 export const MINI_VIEW_HEIGHT = 168;
+export const MINI_VIEW_MAX_HEIGHT = 560;
+
+/**
+ * The payload the mini renderer sends with a resize request.
+ *
+ * A number of DIP rather than a boolean pair of "grow/shrink": the frame owns
+ * WHAT it needs (it is the only thing that can measure its own content) and
+ * main owns WHAT IS ALLOWED (the clamp and the display's work area), so the
+ * only fact that crosses is the request.
+ */
+export interface MiniViewResizePayload {
+	height: number;
+}
+
+/** Whether a value off the wire has the resize payload's shape. */
+export function isMiniViewResizePayload(
+	value: unknown,
+): value is MiniViewResizePayload {
+	return (
+		value !== null &&
+		typeof value === "object" &&
+		typeof (value as { height?: unknown }).height === "number" &&
+		Number.isFinite((value as { height: number }).height)
+	);
+}
+
+/** The payload main sends around a native dialog the mini opened. */
+export interface MiniViewDialogPayload {
+	open: boolean;
+}
+
+/** Whether a value off the wire has the dialog payload's shape. */
+export function isMiniViewDialogPayload(
+	value: unknown,
+): value is MiniViewDialogPayload {
+	return (
+		value !== null &&
+		typeof value === "object" &&
+		typeof (value as { open?: unknown }).open === "boolean"
+	);
+}
 
 /**
  * The shipped hotkey default, in the STORED grammar (`primary+alt+shift+space`).

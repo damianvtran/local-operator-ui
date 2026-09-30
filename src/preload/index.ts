@@ -22,13 +22,17 @@ import type {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
+	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_REGISTRATION,
 	MINI_VIEW_REGISTRATION_GET,
+	MINI_VIEW_RESIZE,
 	MINI_VIEW_SUMMONED,
+	type MiniViewDialogPayload,
 	type MiniViewDismissReason,
 	type MiniViewRegistrationState,
 	type MiniViewSummonedPayload,
+	isMiniViewDialogPayload,
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
@@ -1140,6 +1144,31 @@ const api = {
 		/** This window -> main: put the mini window away, naming the act. */
 		dismiss: (reason: MiniViewDismissReason): Promise<void> =>
 			ipcRenderer.invoke(MINI_VIEW_DISMISS, reason),
+		/**
+		 * This window -> main: the content height this frame needs (design R2's
+		 * measure -> IPC -> resize). Fire-and-forget by design: the frame measures
+		 * on every layout settle, there is no answer to await, and main owns the
+		 * clamp - see `MINI_VIEW_RESIZE` in `src/shared/mini-view.ts`.
+		 */
+		resize: (height: number): void => {
+			ipcRenderer.send(MINI_VIEW_RESIZE, { height });
+		},
+		/**
+		 * Main -> this window: a native dialog the window opened is up, or answered.
+		 * The frame latches its blur-hide guard for the duration (see
+		 * `MINI_VIEW_DIALOG`).
+		 */
+		onDialog: (
+			callback: (payload: MiniViewDialogPayload) => void,
+		): (() => void) => {
+			const handler = (_event: IpcRendererEvent, payload: unknown) => {
+				if (isMiniViewDialogPayload(payload)) callback(payload);
+			};
+			ipcRenderer.on(MINI_VIEW_DIALOG, handler);
+			return () => {
+				ipcRenderer.removeListener(MINI_VIEW_DIALOG, handler);
+			};
+		},
 		/** Main -> every renderer: the live global-shortcut state. */
 		onRegistration: (
 			callback: (state: MiniViewRegistrationState) => void,

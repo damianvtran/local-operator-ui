@@ -30849,6 +30849,10 @@ async function sceneMiniView(app, cdp) {
 		"src/shared/mini-view.ts",
 		"MINI_VIEW_HEIGHT",
 	);
+	const maxHeight = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_MAX_HEIGHT",
+	);
 
 	/*
 	 * The sentences the assertions read are read from the copy module for the
@@ -30872,9 +30876,29 @@ async function sceneMiniView(app, cdp) {
 	};
 	const hintSentence = copySentence("hint");
 	const recordingSentence = copySentence("recording");
-	const dictationStopSentence = copySentence("dictationStop");
-	const dictationStartSentence = copySentence("dictationStart");
 	const sentSentence = copySentence("sent");
+	/*
+	 * The mic control's three faces come from the SHARED composer's own labels
+	 * (`message-input.tsx`), read as text for the same reason every other string
+	 * here is: a hardcoded "Start recording" would keep passing after the
+	 * composer renamed it. The frame's `recording` sentence above is still the
+	 * mini's own - it is what the frame's status line says while a take is live.
+	 */
+	const composerLabels = readFileSync(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+	const composerLabel = (name) => {
+		const match = composerLabels.match(new RegExp(`aria-label="${name}"`));
+		if (!match) {
+			throw new Error(
+				`the shared composer no longer declares aria-label="${name}"; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		return name;
+	};
+	const dictationStartSentence = composerLabel("Start recording");
+	const dictationStopSentence = composerLabel("Confirm recording");
 	/*
 	 * The invalid-state sentence is the registrationCopy arm the toast probe
 	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
@@ -30962,10 +30986,20 @@ async function sceneMiniView(app, cdp) {
 		owned?.mini?.visible === false && owned?.mini?.focused === false,
 		JSON.stringify(owned?.mini),
 	);
+	/*
+	 * THE WIDTH IS THE INVARIANT NOW, and the height is a RANGE (design R2). The
+	 * window is CREATED at the base pair; a frame with real chrome then measures
+	 * itself and asks main for the height it needs (clamped to the ceiling), so
+	 * asserting the base height after that would fail on a window that is
+	 * working exactly as designed. What must hold at every moment: the content
+	 * WIDTH is the fixed base - the composer is laid out for 640 and the design
+	 * reads frames at it - and the height never leaves [base, ceiling].
+	 */
 	check(
-		"the app's own creation used the design's fixed content size",
+		"the app's own window carries the fixed width inside the height range",
 		owned?.mini?.bounds?.width === width &&
-			owned?.mini?.bounds?.height === height,
+			owned?.mini?.bounds?.height >= height &&
+			owned?.mini?.bounds?.height <= maxHeight,
 		JSON.stringify(owned?.mini?.bounds),
 	);
 	check(
@@ -30997,12 +31031,27 @@ async function sceneMiniView(app, cdp) {
 
 		const select = (tag) =>
 			`document.querySelector('[data-tour-tag="${tag}"]')`;
+		/*
+		 * THE SHARED COMPOSER'S OWN CONTROLS (restyle, 2026-09-29). The mini document
+		 * no longer draws a private textarea, mic or Send button: it mounts
+		 * `@shared/components/composer`, so the scene addresses the composer's own
+		 * accessible names - the same handles a screen reader and the chat's own
+		 * suites use. The frame's own anchors (`mini-frame`, `mini-seat`,
+		 * `mini-composer-status`) stay as they were.
+		 */
+		const composerField = `document.querySelector('textarea[aria-label="Message"]')`;
+		const composerSend = `document.querySelector('button[aria-label="Send message"]')`;
+		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
+		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
+		const composerAlert = `document.querySelector('[role="alert"]')`;
 		const pageState = await mini.evaluate(
-			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${select("mini-composer-input")}?.placeholder ?? null, sendDisabled: ${select("mini-composer-send")}?.disabled ?? null })`,
+			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${composerField}?.placeholder ?? null, sendDisabled: ${composerSend}?.disabled ?? null })`,
 		);
 		check(
-			"the mini document rendered at the app's fixed viewport",
-			pageState?.width === width && pageState?.height === height,
+			"the mini document rendered at the fixed viewport width",
+			pageState?.width === width &&
+				pageState?.height >= height &&
+				pageState?.height <= maxHeight,
 			JSON.stringify(pageState),
 		);
 		check(
@@ -31094,11 +31143,18 @@ async function sceneMiniView(app, cdp) {
 				].join("\n"),
 			);
 			const dpr = record?.viewport?.dpr ?? 1;
+			/*
+			 * THE WIDTH IS PINNED PER FRAME, the height only bounded: every still
+			 * must be of a window at the design's width (so two themes and two
+			 * states are comparable), while the measured resize may legitimately
+			 * have grown the window for the state being photographed.
+			 */
 			check(
-				`the ${label} frame was captured at actual size`,
+				`the ${label} frame was captured at the fixed width`,
 				record?.ok === true &&
 					record?.pixels?.width === width * dpr &&
-					record?.pixels?.height === height * dpr,
+					(record?.pixels?.height ?? 0) >= height * dpr &&
+					(record?.pixels?.height ?? 0) <= maxHeight * dpr,
 				JSON.stringify(record),
 			);
 			/*
@@ -31148,8 +31204,8 @@ async function sceneMiniView(app, cdp) {
 		 */
 		const settleMini = async () => {
 			const record = await mini.evaluate(`(async () => {
-				const box = ${select("mini-composer-input")};
-				const send = ${select("mini-composer-send")};
+				const box = ${composerField};
+				const send = ${composerSend};
 				const read = () =>
 					box && send
 						? [
@@ -31179,22 +31235,50 @@ async function sceneMiniView(app, cdp) {
 			return record;
 		};
 
+		/*
+		 * TYPE INTO AN EMPTY BOX. The shared composer's draft is STORE-BACKED and
+		 * persists across reloads, so a walk that typed over whatever the last
+		 * state left would photograph a concatenation - and `Input.insertText`
+		 * appends at the caret rather than replacing. The box is emptied first
+		 * through the page's own selection, then the text is inserted, so each
+		 * state's draft is exactly the string this walk names.
+		 */
 		const type = async (text) => {
-			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
+			await mini.evaluate(
+				`(() => { const box = ${composerField}; box.focus(); box.select(); return true; })()`,
+			);
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Backspace",
+				code: "Backspace",
+				windowsVirtualKeyCode: 8,
+			});
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Backspace",
+				code: "Backspace",
+				windowsVirtualKeyCode: 8,
+			});
 			await mini.send("Input.insertText", { text });
-			return mini.evaluate(`${select("mini-composer-input")}.value`);
+			return mini.evaluate(`${composerField}.value`);
 		};
 
 		/* ---- the resting state ------------------------------------------------- */
+		const restingLine = await mini.evaluate(
+			`${select("mini-composer-status")}?.textContent ?? null`,
+		);
+		check(
+			"the resting frame says the hint rather than a notice",
+			restingLine === hintSentence,
+			`status=${JSON.stringify(restingLine)} hint=${JSON.stringify(hintSentence)}`,
+		);
 		await captureMini("mini-view-empty");
 
 		/* ---- a draft ----------------------------------------------------------- */
 		const draft = "Lunch at one tomorrow? Book the room if it is free.";
 		const typed = await type(draft);
 		check("the draft reached the box", typed === draft, JSON.stringify(typed));
-		const sendDisabled = await mini.evaluate(
-			`${select("mini-composer-send")}.disabled`,
-		);
+		const sendDisabled = await mini.evaluate(`${composerSend}.disabled`);
 		check(
 			"Send became available once there was a draft",
 			sendDisabled === false,
@@ -31212,116 +31296,263 @@ async function sceneMiniView(app, cdp) {
 		].join("\n");
 		await type(longDraft);
 		const growth = await mini.evaluate(
-			`(() => { const box = ${select("mini-composer-input")}; const frame = document.body.getBoundingClientRect(); return { scrolls: box.scrollHeight > box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height) }; })()`,
+			`(() => { const box = ${composerField}; const frame = document.body.getBoundingClientRect(); const bounds = window.__lopMiniSceneWindow?.getContentBounds?.() ?? null; return { scrolls: box.scrollHeight > box.clientHeight || box.scrollHeight >= box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height), contentHeight: bounds?.height ?? null, contentWidth: bounds?.width ?? null }; })()`,
 		);
+		/*
+		 * THE RESIZE CONTRACT (design R2), replacing the old "the window never
+		 * moves" assertion. The restyle grows the frame for its chrome, so what
+		 * must hold is the PAIR: the WIDTH is the fixed base in every state (the
+		 * composer is laid out for 640 and the design reads frames at it), and
+		 * the HEIGHT stays inside [base, ceiling] - a long draft may push the
+		 * window taller, and must never push it past the ceiling that keeps a
+		 * quick-send surface from becoming a panel.
+		 */
 		check(
-			"a long draft scrolls inside the fixed box rather than growing the window",
-			growth?.scrolls === true &&
-				growth?.bodyWidth === width &&
-				growth?.bodyHeight === height,
+			"a long draft keeps the fixed width and stays inside the height range",
+			growth?.bodyWidth === width &&
+				growth?.bodyHeight >= height &&
+				growth?.bodyHeight <= maxHeight &&
+				(growth?.contentHeight ?? growth?.bodyHeight) <= maxHeight,
 			JSON.stringify(growth),
 		);
 		await captureMini("mini-view-long");
 
+		/* ---- the seat's name, and the compact sheet ---------------------------- */
+		/*
+		 * THE NAME IS RESOLVED, NEVER LITERAL (operator directive, 2026-09-29).
+		 * The frame's "To:" line and the box's placeholder both render the name
+		 * the seat resolution answered with, so this asserts the SHAPE (a
+		 * non-empty name after "To: ") and that the placeholder names the same
+		 * one - a literal role in either would fail the second half, because the
+		 * frame interpolates one value into both.
+		 */
+		const seatLine = await mini.evaluate(
+			`${select("mini-seat")}?.textContent ?? null`,
+		);
+		const namedPlaceholder = await mini.evaluate(
+			`${composerField}?.placeholder ?? null`,
+		);
+		const seatName =
+			typeof seatLine === "string" && seatLine.startsWith("To: ")
+				? seatLine.slice("To: ".length).trim()
+				: "";
+		check(
+			"the frame addresses the seat by its resolved name",
+			seatName.length > 0 && !seatName.includes("chief of staff"),
+			`seat line=${JSON.stringify(seatLine)}`,
+		);
+		check(
+			"the placeholder names the same resolved name",
+			typeof namedPlaceholder === "string" &&
+				seatName.length > 0 &&
+				namedPlaceholder.includes(seatName),
+			`placeholder=${JSON.stringify(namedPlaceholder)} seat=${JSON.stringify(seatName)}`,
+		);
+		note("the seat's resolved name", seatName);
+		if (BACKEND) {
+			/*
+			 * THE NAME CONTRACT, CROSS-CHECKED against the source that owns it
+			 * (operator directive, 2026-09-29): the frame renders the name
+			 * `aida.status` answers with - the same field the sidebar, the resume
+			 * picker and the splash resolve - so the two must agree at the same
+			 * moment. A literal in the frame, or a second source, would show up
+			 * here as a mismatch rather than passing a shape check.
+			 */
+			const named = await daemonPost("/v1/desktop/aida", { op: "status" });
+			const resolvedName = named?.json?.result?.name ?? null;
+			check(
+				"the frame renders the name the backend resolves, not a literal",
+				typeof resolvedName === "string" &&
+					resolvedName.length > 0 &&
+					seatName === resolvedName,
+				`frame=${JSON.stringify(seatName)} backend=${JSON.stringify(resolvedName)}`,
+			);
+		}
+
+		/*
+		 * THE COMPACT SHEET (design R2's picker-fit question). The model chip
+		 * dispatches its command through the composer's `sessionStatus.onCommand`
+		 * - the same route `/model` typed takes - and the frame opens its own
+		 * in-frame sheet because a dialog cannot fit the window. Clicking the
+		 * chip is the real door; the sheet's presence is the assertion.
+		 */
+		if (BACKEND) {
+			const chipClicked = await mini.evaluate(
+				`(() => { const chip = document.querySelector('[data-lo-session-strip] button[aria-label^="Model:"]'); if (!chip) return false; chip.click(); return true; })()`,
+			);
+			check(
+				"the readings strip offers a model chip to press",
+				chipClicked === true,
+				`chipClicked=${chipClicked}`,
+			);
+			const sheetOpen = await pollMini(
+				`Boolean(${select("mini-sheet")})`,
+				(value) => value === true,
+				"the compact sheet",
+				8_000,
+			);
+			check(
+				"the chip opened the frame's own compact sheet",
+				sheetOpen.ok,
+				JSON.stringify(sheetOpen.value),
+			);
+			await captureMini("mini-view-sheet");
+			const sheetRows = await mini.evaluate(
+				`document.querySelectorAll('[data-tour-tag="mini-sheet"] [role="option"]').length`,
+			);
+			note("the sheet's rows", String(sheetRows));
+			/* Esc closes the SHEET, not the window: the frame's ladder owns that. */
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			const sheetClosed = await pollMini(
+				`!${select("mini-sheet")}`,
+				(value) => value === true,
+				"the sheet's dismissal on Escape",
+				8_000,
+			);
+			check(
+				"Escape closed the sheet rather than the window",
+				sheetClosed.ok,
+				JSON.stringify(sheetClosed.value),
+			);
+		} else {
+			/*
+			 * NO SEAT, NO SHEET: the chip's command addresses a session, and a run
+			 * with no backend has none - the frame says so in its own note line
+			 * instead of opening an empty list. Disclosed here rather than
+			 * asserted away, and the with-backend run is where this state is
+			 * photographed.
+			 */
+			const chipPressed = await mini.evaluate(
+				`(() => { const chip = document.querySelector('[data-lo-session-strip] button[aria-label^="Model:"]'); if (!chip) return "no-chip"; chip.click(); return "pressed"; })()`,
+			);
+			note("the model chip without a backend", String(chipPressed));
+		}
+
 		/* ---- dictating (a fake recorder; see the constant) --------------------- */
-		await mini.send("Page.addScriptToEvaluateOnNewDocument", {
-			source: MINI_FAKE_RECORDER_SOURCE,
-		});
-		await mini.send("Page.reload");
-		const remounted = await pollMini(
-			`Boolean(${select("mini-composer-input")})`,
-			(value) => value === true,
-			"the composer remounted",
-		);
-		check(
-			"the composer remounted after the reload",
-			remounted.ok,
-			JSON.stringify(remounted.value),
-		);
 		/*
-		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
-		 * box, an Enter that wrongly sent would file a message missing the spoken
-		 * words — so the walk below presses exactly that key and asserts the draft
-		 * stayed.
+		 * THE MIC NEEDS A LIVE CREDENTIAL PROBE. The composer gates its dictation
+		 * on the Radient key (`recordingProbe`), which is a read from the backend:
+		 * with no daemon the probe cannot answer, the control is disabled by
+		 * design, and a walk that pressed it would be asserting a state this run
+		 * cannot produce. Disclosed rather than asserted away - the with-backend
+		 * run is where the recording state is photographed.
 		 */
-		const recordingDraft = "Draft kept while dictating";
-		const draftBeforeMic = await type(recordingDraft);
-		check(
-			"the box holds a draft while the recording starts",
-			draftBeforeMic === recordingDraft,
-			JSON.stringify(draftBeforeMic),
-		);
-		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
-		const recordingState = await pollMini(
-			`${select("mini-composer-status")}.textContent`,
-			(text) => text === recordingSentence,
-			"the recording state",
-		);
-		check(
-			"the mic press put the surface into recording",
-			recordingState.ok,
-			JSON.stringify(recordingState.value),
-		);
-		const stopLabel = await mini.evaluate(
-			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
-		);
-		check(
-			"the mic control now offers to stop",
-			stopLabel === dictationStopSentence,
-			`aria-label=${JSON.stringify(stopLabel)}`,
-		);
-		await captureMini("mini-view-dictating");
-		/*
-		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
-		 * Enter must not send: it stops the recording (stop → transcribe →
-		 * append), and no send path may hide the window while a recording is
-		 * live. The pre-press reading is the new guard — Send disabled while
-		 * recording — and the post-press reading is that no in-flight state
-		 * ever appeared: the textarea is never disabled by a send and the
-		 * draft is byte-identical.
-		 */
-		const beforeEnter = await mini.evaluate(
-			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
-		);
-		check(
-			"Send is disabled while a recording is live",
-			beforeEnter?.sendDisabled === true &&
-				beforeEnter?.mic === dictationStopSentence,
-			JSON.stringify(beforeEnter),
-		);
-		await mini.send("Input.dispatchKeyEvent", {
-			type: "keyDown",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
-		await mini.send("Input.dispatchKeyEvent", {
-			type: "keyUp",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
-		const recordingEnded = await pollMini(
-			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
-			(value) => value === dictationStartSentence,
-			"the recording to end via Enter",
-			8_000,
-		);
-		const afterEnter = await mini.evaluate(
-			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
-		);
-		check(
-			"Enter confirmed the recording instead of sending",
-			recordingEnded.ok &&
-				afterEnter?.text === recordingDraft &&
-				afterEnter?.status !== sentSentence,
-			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
-		);
+		if (BACKEND) {
+			await mini.send("Page.addScriptToEvaluateOnNewDocument", {
+				source: MINI_FAKE_RECORDER_SOURCE,
+			});
+			await mini.send("Page.reload");
+			const remounted = await pollMini(
+				`Boolean(${composerField})`,
+				(value) => value === true,
+				"the composer remounted",
+			);
+			check(
+				"the composer remounted after the reload",
+				remounted.ok,
+				JSON.stringify(remounted.value),
+			);
+			/*
+			 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+			 * box, an Enter that wrongly sent would file a message missing the spoken
+			 * words — so the walk below presses exactly that key and asserts the draft
+			 * stayed.
+			 */
+			const recordingDraft = "Draft kept while dictating";
+			const draftBeforeMic = await type(recordingDraft);
+			check(
+				"the box holds a draft while the recording starts",
+				draftBeforeMic === recordingDraft,
+				JSON.stringify(draftBeforeMic),
+			);
+			await mini.evaluate(`${composerMicStart}.click(); true`);
+			const recordingState = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === recordingSentence,
+				"the recording state",
+			);
+			check(
+				"the mic press put the surface into recording",
+				recordingState.ok,
+				JSON.stringify(recordingState.value),
+			);
+			const stopLabel = await mini.evaluate(
+				`${composerMicConfirm}?.getAttribute("aria-label") ?? null`,
+			);
+			check(
+				"the mic control now offers to stop",
+				stopLabel === dictationStopSentence,
+				`aria-label=${JSON.stringify(stopLabel)}`,
+			);
+			await captureMini("mini-view-dictating");
+			/*
+			 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+			 * Enter must not send: it stops the recording (stop → transcribe →
+			 * append), and no send path may hide the window while a recording is
+			 * live. The pre-press reading is the new guard — Send disabled while
+			 * recording — and the post-press reading is that no in-flight state
+			 * ever appeared: the textarea is never disabled by a send and the
+			 * draft is byte-identical.
+			 */
+			const beforeEnter = await mini.evaluate(
+				`({ sendDisabled: ${composerSend}.disabled, mic: ${composerMicConfirm}?.getAttribute("aria-label") ?? null })`,
+			);
+			check(
+				"Send is disabled while a recording is live",
+				beforeEnter?.sendDisabled === true &&
+					beforeEnter?.mic === dictationStopSentence,
+				JSON.stringify(beforeEnter),
+			);
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+			});
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+			});
+			const recordingEnded = await pollMini(
+				`${composerMicStart}?.getAttribute("aria-label") ?? null`,
+				(value) => value === dictationStartSentence,
+				"the recording to end via Enter",
+				8_000,
+			);
+			const afterEnter = await mini.evaluate(
+				`({ text: ${composerField}.value, disabled: ${composerField}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+			);
+			check(
+				"Enter confirmed the recording instead of sending",
+				recordingEnded.ok &&
+					afterEnter?.text === recordingDraft &&
+					afterEnter?.status !== sentSentence,
+				JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+			);
+		} else {
+			note(
+				"the dictation walk needs a backend (the credential probe gates the mic)",
+				"skipped",
+			);
+		}
 
 		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
 		await mini.send("Page.reload");
 		await pollMini(
-			`Boolean(${select("mini-composer-input")})`,
+			`Boolean(${composerField})`,
 			(value) => value === true,
 			"the composer remounted",
 		);
@@ -31376,9 +31607,9 @@ async function sceneMiniView(app, cdp) {
 					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
 				);
 				await wait(150);
-				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+				await mini.evaluate(`${composerSend}.click(); true`);
 				const inFlight = await pollMini(
-					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
+					`({ editable: !${composerField}.disabled, sendDisabled: ${composerSend}.disabled })`,
 					(value) => value?.editable === false,
 					"the in-flight state",
 					6_000,
@@ -31439,11 +31670,18 @@ async function sceneMiniView(app, cdp) {
 				),
 			);
 		} else {
-			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			await mini.evaluate(`${composerSend}.click(); true`);
+			/*
+			 * THE REFUSAL IS THE COMPOSER'S NOW, and that is the restyle's own
+			 * point: the shared composer renders a failed send against itself
+			 * (`sendError`, `role="alert"`) rather than through a host's private
+			 * status line, so the mini and the chat cannot say two different
+			 * things about one refusal. The frame's line stays the resting hint,
+			 * which is why this polls the alert and not the status row.
+			 */
 			const refused = await pollMini(
-				`${select("mini-composer-status")}.textContent`,
-				(text) =>
-					typeof text === "string" && text !== "" && text !== hintSentence,
+				`${composerAlert}?.textContent ?? null`,
+				(text) => typeof text === "string" && text.trim().length > 0,
 				"the refusal sentence",
 			);
 			check(
@@ -31452,7 +31690,7 @@ async function sceneMiniView(app, cdp) {
 				JSON.stringify(refused.value),
 			);
 			const after = await mini.evaluate(
-				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+				`({ text: ${composerField}.value, retry: Boolean(${composerAlert}), sendDisabled: ${composerSend}.disabled })`,
 			);
 			check(
 				"the refusal kept the draft: nothing was lost to the failure",
@@ -31481,8 +31719,8 @@ async function sceneMiniView(app, cdp) {
 			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
 		);
 		const summonedFocus = await pollMini(
-			"document.activeElement?.dataset?.tourTag ?? null",
-			(value) => value === "mini-composer-input",
+			'document.activeElement?.getAttribute?.("aria-label") ?? null',
+			(value) => value === "Message",
 			"the summon focused the composer",
 		);
 		check(

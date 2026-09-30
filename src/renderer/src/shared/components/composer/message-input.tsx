@@ -714,6 +714,19 @@ export type MessageInputProps = {
 	 */
 	isHydrating?: boolean;
 	/**
+	 * This host has NO transcript at all, so the empty-chat prompt is never drawn.
+	 *
+	 * THE MINI VIEW'S OWN FACT, and the reason it is not `isHydrating`: that prop
+	 * says "a page is still owed" (a moment), while a transcriptless host owes no
+	 * page in any state - the composer is a send box and the host paints
+	 * everything around it. `messages: []` alone would render the greeting, the
+	 * brand mark and the suggestion chips (the empty chat's splash), which a
+	 * hotkey-summoned quick-send view must not claim. This suppresses the splash
+	 * and bottom-anchors the box; the transcript-bearing hosts keep their
+	 * splash by leaving it off.
+	 */
+	transcriptless?: boolean;
+	/**
 	 * Whether the `@` affordance may be offered at all — see
 	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
 	 * closed.
@@ -1407,6 +1420,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdPendingAccepted,
 			isSmallView = false,
 			isHydrating = false,
+			transcriptless = false,
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
@@ -1608,7 +1622,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * itself stays docked at the band's foot in every state (§G2), which is what
 		 * keeps the first send from moving it.
 		 */
-		const bandCentred = messages.length === 0 && !isHydrating;
+		const bandCentred =
+			!transcriptless && messages.length === 0 && !isHydrating;
 
 		/*
 		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
