@@ -18,6 +18,7 @@ import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
+import { installConversationInputSync } from "./shared/store/conversation-input-sync";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
@@ -36,6 +37,14 @@ const posthogOptions: Partial<PostHogConfig> = {
  * A no-op in every normal launch; `docs/agent-driver.md` is the contract.
  */
 installDevDriver();
+
+/*
+ * The draft store's cross-document sync (risk R5): the mini view's document is
+ * the second writer of `conversation-input-store`, and this listener is how the
+ * two copies converge. Module scope for the same reason `installDevDriver` is:
+ * it must outlive every render, and it must exist even if React fails to mount.
+ */
+installConversationInputSync();
 
 document.addEventListener("DOMContentLoaded", () => {
 	/*

@@ -6,10 +6,11 @@
  * snapshot the table rather than scrape JSX. Two rules are load-bearing and
  * stated here because both have bitten this product before:
  *
- * - NAME-FREE (design D11). No sentence names the seat's persona. The rename
- *   slice is in flight for the main surfaces, and a copy module sitting on the
- *   hot path must not be a document that slice has to find. "The chief of
- *   staff" is a role, not a name — that is the whole point of the seat.
+ * - THE SEAT'S NAME IS RESOLVED, NEVER LITERAL (operator directive, 2026-09-29):
+ *   the "To:" line, the placeholder and both failure sentences render
+ *   `aida.status`'s `name` through `resolveSeatName`, so a rename lands with no
+ *   code change. The pre-restyle "name-free" rule is superseded: the seat has a
+ *   user-facing identity now, and these sentences address her.
  * - SENTENCE CASE, no exclamation marks, no emojis (branding § 7). The voice
  *   is the app's: state the fact, then the next move.
  *
@@ -22,41 +23,37 @@
 import type { MiniViewPlatform } from "../../../shared/mini-view";
 import { formatQuickSendDisplay } from "../../../shared/mini-view";
 
-/**
- * The two composer failures the existing surfaces already spell.
- *
- * REUSED VERBATIM rather than re-worded. The permission sentence is the
- * composer's own (`message-input.tsx:5090-5092`, shown there as a toast), and
- * `Dictation is not available on this device.` is its no-MediaRecorder arm;
- * the design asks the mini view to reuse them so one machine state does not
- * read as two different facts depending on the surface. They live here so a
- * later edit finds both copies beside each other.
+/*
+ * The two composer failures the pre-restyle mini used to spell itself — the
+ * permission sentence and the no-MediaRecorder arm — are GONE FROM HERE. The
+ * shared composer owns the dictation now (`message-input.tsx`), including
+ * both sentences, and a second copy here would be the drift this module's own
+ * docstring warns about: one machine state reading as two facts depending on
+ * the surface.
  */
-export const MICROPHONE_DENIED_COPY =
-	"Error accessing microphone. Please ensure microphone permissions are granted.";
-export const DICTATION_UNAVAILABLE_COPY =
-	"Dictation is not available on this device.";
 
 export const MINI_COPY = {
-	/** The header's reader-facing label for the seat. Role, never a name. */
-	seatLabel: "To: the chief of staff",
+	/**
+	 * The header's reader-facing label for the seat. ROLE-FREE BY THE RENAME
+	 * RULE (operator, 2026-09-29): every seat sentence renders the resolved
+	 * display name, so a rename lands with no code change. `Aida` is the same
+	 * fallback every other display site uses (`sidebar-navigation.tsx`:
+	 * `aida.data?.name ?? "Aida"`), kept here as a resolver rather than a
+	 * literal so the four sentences below cannot drift from each other.
+	 */
+	seatLabel: (name: string) => `To: ${name}`,
 	/** The composer's placeholder; sentence case, an invitation not an order. */
-	placeholder: "Message your chief of staff",
-	/** Send button and its in-flight replacement. */
-	send: "Send",
+	placeholder: (name: string) => `Message ${name}`,
+	/** The "Sent" flash, before the window puts itself away. */
 	sent: "Sent",
-	retry: "Retry",
 	/** The hint row, replacing nothing — it is the resting line of the surface. */
 	hint: "Enter sends, Shift+Enter adds a line, Esc hides",
-	/** Dictation states. */
+	/** Dictation states. The mic control's own labels are the composer's. */
 	recording: "Recording. Press the stop button when you're done.",
-	transcribing: "Transcribing.",
-	dictationStart: "Dictate a message",
-	dictationStop: "Stop dictation",
 	/** The seat could not be resolved. */
 	seatMissing: "This build doesn't have a chief-of-staff seat.",
 	seatOpenFailed: "Couldn't open the chief-of-staff conversation.",
-	seatUnreachable: "Couldn't reach the chief of staff.",
+	seatUnreachable: (name: string) => `Couldn't reach ${name}.`,
 	/**
 	 * Paired with a pre-admission refusal, so the reader knows the draft was
 	 * not the thing that failed.
@@ -67,9 +64,47 @@ export const MINI_COPY = {
 	 * retrying could duplicate it — so the copy points at the conversation
 	 * rather than offering a control that might send twice.
 	 */
-	postAdmission:
-		"That didn't reach the chief of staff — check the conversation.",
+	postAdmission: (name: string) =>
+		`That didn't reach ${name} — check the conversation.`,
+	/** The compact sheets' titles (model/effort), driven by the strip's chips. */
+	sheetModel: "Model for this conversation",
+	sheetEffort: "Reasoning effort",
+	/** Shown while a sheet reads the backend's list. */
+	sheetLoading: "Reading the list…",
+	/** When the backend cannot be asked (a failed `commands.entities`). */
+	sheetFailed: "Couldn't read the list. Press to try again.",
+	/** The command surface is off, so no chip opens a sheet. */
+	sheetUnavailable: "This backend can't switch that here.",
+	/** A pick that the owner refused. */
+	switchFailed: "That didn't switch:",
+	/** The context chip's readout, off the same snapshot the strip reads. */
+	contextLine: (used: string, window: string | null, estimated: boolean) =>
+		`Context: ${used}${
+			window ? ` of ${window}` : ""
+		} tokens${estimated ? " (estimated)" : ""}.`,
+	contextLineNoReading: "Context: no reading yet.",
+	/** A control that reached the mini but has no quick-send presentation. */
+	controlUnavailable: "That control isn't available in quick send.",
+	/** The cwd chip's read-only reason (quick send never moves a directory). */
+	cwdReadOnly: "Quick send follows the conversation's directory.",
 } as const;
+
+/**
+ * The seat's display name, resolved from the ONE source the app already keeps:
+ * `aida.status`'s `name` (`DesktopAidaState.name`), the same read the seat
+ * resolution performs, with the same `"Aida"` fallback every other display
+ * site uses (see the contract's note at `desktop-control-contract.ts`).
+ *
+ * THE GUARD IS DELIBERATE: `name ?? "Aida"` at the sibling sites treats an
+ * empty string as a name, which would render "To: " and "Message " — a blank
+ * where the operator asked for a name. A blank or whitespace value falls back
+ * to the default instead; the rename lane owns refusing empty renames, and
+ * this side must not depend on that refusal to render a sentence.
+ */
+export function resolveSeatName(name: string | null | undefined): string {
+	const trimmed = typeof name === "string" ? name.trim() : "";
+	return trimmed === "" ? "Aida" : trimmed;
+}
 
 /**
  * The macOS registration boundary (design §G.5's honesty clause; QA round 1, Q2).
