@@ -335,11 +335,16 @@ test("profile rows take their detail from the profile kind", () => {
 test("a labelled team reads by its label, keeps its slug findable, and writes the slug", () => {
 	/*
 	 * The label split's row rule, from the branch that serves /team's list: the
-	 * DISPLAY is the label, `value` - what a pick writes and a run sends - is
-	 * the slug, and the slug is republished as an ALIAS so the team's actual
-	 * key keeps FINDING the row while the row shows its label (`matchChoices`
-	 * scores name and aliases, and the alias arm is pinned in
-	 * `slash-rank.test.mjs`).
+	 * DISPLAY is the label — through `teamDisplayName`, the app's one statement
+	 * of that rule — `value` - what a pick writes and a run sends - is the slug,
+	 * and the slug is republished as an ALIAS so the team's actual key keeps
+	 * FINDING the row while the row shows its label (`matchChoices` scores name
+	 * and aliases, and the alias arm is pinned in `slash-rank.test.mjs`).
+	 *
+	 * The `slug` field is the display-side twin of that alias (design round 1,
+	 * D2/D3): the popup draws it as the quiet mono token beside the label, and
+	 * its presence is what tells the renderer the name is prose. Round 1's R1-2
+	 * is pinned below: the rule is the SHARED one, trim included.
 	 */
 	const rows = argumentRows(
 		"team",
@@ -355,9 +360,11 @@ test("a labelled team reads by its label, keeps its slug findable, and writes th
 	);
 	assert.equal(rows[0].name, "Local Operator Dev");
 	assert.equal(rows[0].value, "lopdev");
+	assert.equal(rows[0].slug, "lopdev");
 	assert.deepEqual(rows[0].aliases, ["lopdev"]);
 	// A row without a label (every agent, and any team from a backend that
-	// predates the field) keeps today's shape exactly: no alias, name as was.
+	// predates the field) keeps today's shape exactly: no alias, no slug token,
+	// name as was.
 	const agents = argumentRows(
 		"agent",
 		[{ name: "coder", value: "coder" }],
@@ -365,6 +372,37 @@ test("a labelled team reads by its label, keeps its slug findable, and writes th
 	);
 	assert.equal(agents[0].name, "coder");
 	assert.equal(agents[0].aliases, undefined);
+	assert.equal(agents[0].slug, undefined);
+});
+
+test("a padded or whitespace-only label goes through the shared trim rule", () => {
+	/*
+	 * Round 1's R1-2. This row used to replicate `label || name` WITHOUT
+	 * `teamDisplayName`'s trim, so a padded label rendered padded where every
+	 * other surface trims it, and a whitespace-only label - the exact case the
+	 * helper's docblock calls load-bearing - blanked the row instead of falling
+	 * back to the slug. The helper is the one statement of the rule; this test
+	 * pins that the popup's rows are read through it.
+	 */
+	const rows = argumentRows(
+		"team",
+		[{ name: "lopdev", value: "lopdev", label: "  Local Operator Dev  " }],
+		null,
+	);
+	assert.equal(rows[0].name, "Local Operator Dev");
+	assert.deepEqual(rows[0].aliases, ["lopdev"]);
+	assert.equal(rows[0].slug, "lopdev");
+
+	const blank = argumentRows(
+		"team",
+		[{ name: "lopdev", value: "lopdev", label: "   " }],
+		null,
+	);
+	assert.equal(blank[0].name, "lopdev");
+	// A label that cannot win leaves the row in its unlabelled shape: no alias
+	// to publish, and no slug token to draw.
+	assert.equal(blank[0].aliases, undefined);
+	assert.equal(blank[0].slug, undefined);
 });
 
 test("theme rows come from the renderer's own table shape", () => {

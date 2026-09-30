@@ -4,9 +4,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
+import { teamDisplayName } from "./team-display";
 
 /** Reusable instructions, never a conversation or a legacy agent history. */
 export type ReusableProfile = {
@@ -235,4 +236,33 @@ export function useTeams(enabled: boolean) {
 		retry: retryDesktopQuery,
 		staleTime: 10_000,
 	});
+}
+
+/**
+ * The slug->label resolver for surfaces that carry only a binding's SLUG.
+ *
+ * WHY A HOOK AND NOT ONE MORE INLINE MAP. The rule is read from a growing set
+ * of surfaces — the draft title, the session rows' team slots, the project
+ * pages' team lines and group headings, the `/info` panel's Active row, the
+ * session-search haystack — and each one used to re-derive it from
+ * `useTeams(...).data` with its own three-line memo. That is how one of them
+ * eventually disagrees with the others, which is the same defect
+ * `teamDisplayName` exists to prevent one layer down; this hook is that
+ * module's read-side twin, sharing the same query key and therefore the same
+ * cache entry the sidebar's own fetch populates.
+ *
+ * A resolver rather than a map because both call shapes are then one line: a
+ * lookup for a known slug, or a `map()` over rows. A slug the catalogue cannot
+ * resolve — the gate is off, the list is still landing, the team was deleted —
+ * answers with the slug itself, which is exactly what those surfaces drew
+ * before labels existed, so nothing here can blank a name.
+ */
+export function useTeamLabelFor(enabled: boolean): (slug: string) => string {
+	const teams = useTeams(enabled);
+	return useMemo(() => {
+		const labels = new Map(
+			(teams.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+		);
+		return (slug: string) => labels.get(slug) ?? slug;
+	}, [teams.data]);
 }
