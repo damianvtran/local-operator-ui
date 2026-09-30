@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
+			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,9 +28,8 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, SETTLE_MS, MAX_ACT_ASKS } = await import(
-	new URL(`file://${bundlePath}`).href
-);
+const { useScrollPaging, ANCHOR_HOLD_MS, SETTLE_MS, MAX_ACT_ASKS } =
+	await import(new URL(`file://${bundlePath}`).href);
 const { createRoot } = await import("react-dom/client");
 
 after(() => {
@@ -205,6 +204,17 @@ function mountHook(options = {}) {
 		rowCount++;
 		render();
 	};
+	/*
+	 * A NON-INPUT viewport motion (round 1, R1-1): the held row dragged `px` down
+	 * the viewport by something that is not a reader gesture - a browser re-clamp,
+	 * a re-anchor - carrying the `scroll` event such a motion emits and no input.
+	 * It arms the settle re-read, and it is never attributed to the reader (no
+	 * `pointerdown` opened the drag window).
+	 */
+	const viewportMotion = (px) => {
+		anchorTop += px;
+		act(() => scroller.dispatchEvent(new window.Event("scroll")));
+	};
 	const close = () => {
 		for (const id of pendingFrames.keys()) cancelFrame(id);
 		act(() => root.unmount());
@@ -270,6 +280,7 @@ function mountHook(options = {}) {
 		requestReveal,
 		readerInput,
 		growAboveAnchor,
+		viewportMotion,
 	};
 }
 
@@ -372,6 +383,110 @@ test("a rule-6 debt landed inside the debounce is re-decided at the settle", asy
 	}
 });
 
+/*
+ * THE STANDING READER-HOLD (fold rounds, 2026-09-27). The reveal-armed hold
+ * above was bounded to the reveal's settling window, so the case the operator's
+ * report names - a layout change with NO reveal behind it, like a fold's body
+ * collapsing - found no sample and dragged every settled row in one frame
+ * (measured on the rig: `rows moved 228` at a turn end, and a 217px viewport
+ * jump away from the tail). The invariant now: while the reader is away from
+ * the tail, the place their last gesture left the scroll at is held across
+ * layout changes, refreshed once the gesture settles, and dropped again when
+ * they return to the tail.
+ */
+test("after the reader's gesture settles, a later layout change is corrected again", async () => {
+	// `hasMore: false` and no hidden rows: no page can be dispatched, so no
+	// fetch-armed `holdAnchor` exists and any correction here is the STANDING
+	// sample's - the thing this test is about.
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		hook.setScrollTop(-200);
+		hook.readerInput();
+		// The gesture settles: the rearm fires on its own timer (the same
+		// SETTLE_MS the policy debounces input with), and nothing about the
+		// settle itself may move the reader.
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		assert.equal(hook.scrollTop, -200, "the settle itself writes nothing");
+		// A collapse-shaped change: the extent shrinks and the held row is
+		// dragged down 24px. The correction must land it back where the reader
+		// left it.
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-176,
+			"the standing sample absorbs the change after a settle",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a layout change at the tail is not fought - the tail follows", async () => {
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		// Establish the standing sample away from the tail...
+		hook.setScrollTop(-200);
+		hook.readerInput();
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		// ...then the reader returns to the newest end and content changes. The
+		// tail gate must both refuse the correction and drop the sample: at the
+		// tail the newest content is pinned, and holding anything there would
+		// fight the following the transcript wants.
+		hook.setScrollTop(0);
+		hook.growAboveAnchor();
+		assert.equal(hook.scrollTop, 0, "no correction is written at the tail");
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * Round 1, R1-1: the reveal hold's expiry hand-over.
+ *
+ * The reveal-armed hold is FINITE, and past its window the reader's place has
+ * to convert to a STANDING sample - that hand-over is what lets a motion the
+ * hold missed (anything non-input: a browser re-clamp, a re-anchor) become the
+ * new place rather than being reverted by the next correction. The guard in
+ * `refreshReaderHold` read only `Number.isFinite(until)`, so an EXPIRED hold
+ * kept returning: the expiry arm's hand-over was a no-op and the settle re-read
+ * was blocked, and the next correction added the motion's own size back. This
+ * case pins the adopted reading: `-26` (the grow's 24 absorbed against the
+ * post-motion place) where the blocked reading ends `-2` (pre-motion sample, so
+ * the correction undoes the motion too).
+ */
+test("an expired reveal hold hands over at the settle, and the later grow adopts the post-motion place", async () => {
+	const hook = mountHook();
+	try {
+		hook.requestReveal();
+		assert.equal(
+			hook.widenCalls,
+			1,
+			"the real Home listener armed a reveal, so the finite hold exists",
+		);
+		// Past the hold's window: `ANCHOR_HOLD_MS` is over and the finite sample
+		// is still in `anchor.current` (only input, the tail gate or a switch
+		// clears it early).
+		await new Promise((resolve) => setTimeout(resolve, ANCHOR_HOLD_MS + 100));
+		// A non-input viewport motion with a `scroll` event: the held row is
+		// dragged 24px down the viewport and the settle re-read is armed.
+		hook.viewportMotion(24);
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		// A later layout change. The correction must absorb ITS 24px against the
+		// post-motion place - `-50 + 24` lands at `-26` - rather than against the
+		// pre-motion sample the expired hold kept, which would undo the motion
+		// too and land at `-2`.
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-26,
+			"the standing hand-over adopts the post-motion place, so the grow corrects only its own 24px",
+		);
+	} finally {
+		hook.close();
+	}
+});
 /*
  * THE FAILED ROW HAS ONE OWNER: THE SESSION HOOK (loader-continuity R2).
  *
