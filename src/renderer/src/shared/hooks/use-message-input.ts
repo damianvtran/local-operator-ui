@@ -349,6 +349,13 @@ export const composerPlaceholder = (state: {
 	 * would be the composer arguing with the transcript.
 	 */
 	noProvider?: boolean;
+	/**
+	 * The host's own sentence for the INVITATION slot, when it has one (the mini
+	 * view's copy of the idle line). Only the invitation: every state sentence
+	 * below still outranks it, because those describe facts about the box rather
+	 * than an invitation to use it.
+	 */
+	idle?: string;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
@@ -358,7 +365,7 @@ export const composerPlaceholder = (state: {
 	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
 	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
 	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;
-	return COMPOSER_PLACEHOLDER.idle;
+	return state.idle ?? COMPOSER_PLACEHOLDER.idle;
 };
 
 /**
