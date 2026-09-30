@@ -2424,6 +2424,40 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesFoldSixNote",
 	/*
+	 * And this lane's own - the scroll-shift fix's record (the reserved foot row,
+	 * the fold's open state and the standing reader-hold) and the note for its
+	 * latest fold here (`78b9c84c8f`), registered for the same completeness
+	 * reason: a fold that started from main's copy would drop them first. Both
+	 * spell their identity as bare SHAs, so they add no name to the quoting
+	 * ledger.
+	 */
+	"foldOnto78b9c84c8fNote",
+	"scrollShiftRestampNote",
+	/*
+	 * And the fold onto `efca9e16fc` (#696's update/reload drain and #699's
+	 * board time-window over the loader-continuity train): registered for the
+	 * list's own reason - a fold resolved from main's manifest copy would drop
+	 * the only statement of how the two conflicted paths (this file and
+	 * package.json's test list) were resolved, and of the pair and lead being
+	 * re-derived over the folded tree. It quotes no tree-hash pair.
+	 */
+	"foldOntoefca9e16fcNote",
+	/*
+	 * And the fold onto `e78e4395eb` (the loader-walk lane: `mayAutoWalk`,
+	 * `MAX_ACT_ASKS` and its paging cases): registered for the list's own
+	 * reason - a fold resolved from main's copy would drop how the two
+	 * conflicted paths (this file and the paging test's four-symbol header)
+	 * were resolved and the pair re-derived over the folded tree.
+	 */
+	"foldOntoe78e4395ebNote",
+	/*
+	 * And the fold onto `34ac02d33c` (#701's row-context menu): registered for
+	 * the list's own reason - a fold resolved from main's copy would drop how
+	 * the two conflicted paths (this file and package.json's test list) were
+	 * resolved and the pair re-derived over the folded tree.
+	 */
+	"foldOnto34ac02d33Note",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
