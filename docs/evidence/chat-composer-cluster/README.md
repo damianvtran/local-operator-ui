@@ -4,6 +4,14 @@ Three operator reports about the composer, and one driver run twice over the
 same story — the production `MessageInput` over the file's fixture desk bridge —
 so each pair is two frames of the SAME keystrokes on two trees.
 
+RE-SHOT ON THE FOLDED HEAD: main's #683 (the shared-composer lift) moved the
+component to `shared/components/composer/` mid-lane, so both halves were shot
+again on the folded tree, the base half from the same trio of disabled gates.
+The readings are the pair's two `result.json`s and are unchanged from the
+pre-fold shoot; eight of the sixteen frames' bytes moved (sub-pixel raster
+noise), and the states they show are identical — the lift changed nothing these
+three surfaces photograph.
+
 The reports:
 
 - **#673** — ArrowUp in a box holding a draft swapped the draft for a history

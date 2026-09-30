@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/composer-cluster-proof.mjs",
-  "at": "2026-09-29T23:46:05.570Z",
+  "at": "2026-09-30T02:25:24.919Z",
   "cases": [
     {
       "name": "history-empty-recalls",
@@ -36,7 +36,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/history-empty-recalls.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/history-empty-recalls.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -55,7 +55,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/history-draft-survives-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/history-draft-survives-arrowup.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -97,7 +97,7 @@
           "dialogRows": 0
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/history-draft-multiline-arrowup.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/history-draft-multiline-arrowup.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -118,7 +118,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/skill-list-opens.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/skill-list-opens.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -137,7 +137,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/skill-accepted-reassembles.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/skill-accepted-reassembles.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -156,7 +156,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/skill-send-expands.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/skill-send-expands.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -175,7 +175,7 @@
         "dialogRows": 0
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/theme-qualified-confirms.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/theme-qualified-confirms.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -254,7 +254,7 @@
         "dialogRows": 59
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after/theme-bare-keeps-the-grid.png",
+      "frame": "/Users/damian/.local-operator/sessions/961a550ea2e2/scratchpad/frames-after2/theme-bare-keeps-the-grid.png",
       "verdict": "PASS",
       "mismatches": []
     }
