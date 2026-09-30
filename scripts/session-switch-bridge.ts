@@ -54,7 +54,25 @@ export type DurableEntry = DesktopHistoryPage["entries"][number];
 export type TranscriptStep =
 	| { kind: "user"; text: string }
 	| { kind: "assistant"; text: string }
-	| { kind: "tool"; name: string; output: string };
+	| { kind: "tool"; name: string; output: string }
+	| {
+			/**
+			 * A CONSECUTIVE RUN of tool executions: one turn's calls with nothing painting
+			 * between them, which is exactly the shape the transcript's aggregation tier
+			 * (§E2) folds into one summary line (`Explored 4 files, 1 search`).
+			 *
+			 * Added for the fold/scroll-anchor rounds (2026-09-27): the scroll-shift
+			 * harness needs a conversation that ALREADY holds a folded run, because the
+			 * operator's repro is "expand an action group while the conversation updates"
+			 * and no fixture held one. Each call is emitted the way a real turn stores
+			 * it - an assistant stub carrying the `tool_calls` id (invisible: the stub
+			 * has no text, and a textless assistant row paints nothing) paired with the
+			 * `tool` entry that becomes the row - so the run's rows are consecutive and
+			 * their arguments are recoverable through the same map the live path uses.
+			 */
+			kind: "toolRun";
+			calls: Array<{ name: string; output: string }>;
+	  };
 
 /**
  * How long the scripted owner takes per operation, and how long a fresh stream
@@ -229,9 +247,54 @@ export function historyPage(
 	const entries: DurableEntry[] = [];
 	const base = 1_760_000_000;
 	let toolIndex = 0;
-	steps.forEach((step, index) => {
+	let index = 0;
+	for (const step of steps) {
 		const ts = base + index;
 		const id = `${sessionId}-e${index}`;
+		index += 1;
+		if (step.kind === "toolRun") {
+			// Half the step's own second is spent on the run, so its calls stay
+			// STRICTLY inside this step's slot: a later step's entry must never sort
+			// before an earlier call's result.
+			const slot = 0.5 / Math.max(step.calls.length, 1);
+			for (let k = 0; k < step.calls.length; k += 1) {
+				const call = step.calls[k];
+				toolIndex += 1;
+				const callId = `call-${sessionId}-${toolIndex}`;
+				const at = ts + k * slot;
+				entries.push({
+					id: `${id}-stub-${k}`,
+					ts: at,
+					type: "message",
+					payload: {
+						kind: "message",
+						role: "assistant",
+						content: [],
+						tool_calls: [
+							{
+								id: callId,
+								name: call.name,
+								arguments: JSON.stringify({ command: call.output }),
+							},
+						],
+					},
+				});
+				entries.push({
+					id: `${id}-${k}`,
+					ts: at + slot / 2,
+					type: "message",
+					payload: {
+						kind: "message",
+						role: "tool",
+						tool_call_id: callId,
+						tool_name: call.name,
+						content: [{ type: "text", text: call.output }],
+						provider_payload: { duration_s: 0.4 },
+					},
+				});
+			}
+			continue;
+		}
 		if (step.kind === "user") {
 			entries.push({
 				id,
@@ -243,7 +306,7 @@ export function historyPage(
 					content: [{ type: "text", text: step.text }],
 				},
 			});
-			return;
+			continue;
 		}
 		if (step.kind === "assistant") {
 			entries.push({
@@ -257,7 +320,7 @@ export function historyPage(
 					stop_reason: "endTurn",
 				},
 			});
-			return;
+			continue;
 		}
 		toolIndex += 1;
 		const callId = `call-${sessionId}-${toolIndex}`;
@@ -291,7 +354,7 @@ export function historyPage(
 				provider_payload: { duration_s: 0.4 },
 			},
 		});
-	});
+	}
 	return { entries, has_more: false, cursor_missing: false };
 }
 
