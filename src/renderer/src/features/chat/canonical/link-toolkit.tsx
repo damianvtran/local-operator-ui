@@ -82,6 +82,7 @@
 import {
 	SpeakButton,
 	useSpeakControl,
+	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
@@ -179,11 +180,19 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	const { text: highlight } = useHighlightText(turnRef);
 	const { speak } = useSpeechStore();
 	const speakText = highlight ?? linkText();
+	const speakKey =
+		speakText === null
+			? null
+			: selectionSpeechKey(conversationId, clipForSpeech(speakText).text);
+	/*
+	 * The dismissal contract (UX round 1, U1): when this key goes away - the
+	 * highlight cleared (the subject falls back to the link's own text), or the
+	 * whole toolbar unmounted - the audio that key owns goes with it; this
+	 * toolbar is that audio's only Stop.
+	 */
+	useSpeakDismissal(speakKey);
 	const speakControl = useSpeakControl({
-		key:
-			speakText === null
-				? null
-				: selectionSpeechKey(conversationId, clipForSpeech(speakText).text),
+		key: speakKey,
 		getText: () => quoteSelectionIn(turnRef.current)?.text ?? linkText(),
 		play: ({ text }) =>
 			speak(

@@ -22,6 +22,16 @@
  * generation is stale returns before it touches the audio element, and a stale
  * failure reports nothing (the newer press owns the state).
  *
+ * DISMISSAL IS NOT A PRESS. A selection toolbar can be taken away - the reader
+ * clicks away, presses Escape, drags a new highlight - and the audio it started
+ * must not outlive the only control that owned it. `dismiss(key)` stops this
+ * key's playback and CANCELS an in-flight fetch so its response can never
+ * start playing for a dismissed subject (UX review round 1, U1). A superseded
+ * response is still CACHED even when its playback is suppressed: the synthesis
+ * was paid for the moment it was requested, and a later press of the same
+ * words must replay it, not buy it a second time (agent review round 1,
+ * MINOR-1).
+ *
  * FAILED PRESSES ARE BILLING-VISIBLE and must never look like nothing
  * happened: the catch both records `error` (the store's own test surface) and
  * raises the app's one error channel, so every surface that presses this store
@@ -42,6 +52,11 @@
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import {
+	SPEECH_FAILURE_DETAIL_PREFIX,
+	SPEECH_PLAYBACK_COPY,
+	speechFailureCopy,
+} from "@shared/lib/speech-errors";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { create } from "zustand";
 
@@ -71,6 +86,19 @@ const fnv1a = (input: string): string => {
  * whatever string identifies the speaking context on the surface), and `text`
  * is the text as it will be sent - clip FIRST, so the key, the cache entry and
  * the request all describe the same characters.
+ *
+ * THE KEY COVERS TEXT AND SCOPE, NOTHING ELSE (agent review round 1, NIT-3,
+ * scoped to documentation). Every other request parameter is fixed
+ * server-side today - the daemon's route pins provider, voice and settings -
+ * so two presses of the same words really are the same utterance. The day a
+ * parameter gains a caller (the `language_code` on `AgentSpeechRequest` is
+ * the one already plumbed), this key must grow a component for it: a cache
+ * hit must never replay audio synthesised for a different language. The
+ * 32-bit hash's collision surface (~1e-6 at a hundred distinct highlights in
+ * one conversation) is accepted on the same round: a collision replays
+ * another utterance within this scope, and the remedy - storing the text
+ * beside the blob and comparing on a hit - is the upgrade this comment
+ * reserves the place for.
  */
 export const selectionSpeechKey = (scope: string, text: string): string =>
 	`sel:${scope}:${fnv1a(text)}`;
@@ -113,6 +141,13 @@ type SpeechActions = {
 	 */
 	speak: (key: string, fetcher: () => Promise<Blob | null>) => Promise<void>;
 	stopSpeech: () => void;
+	/**
+	 * Abandon this key's press: stop it if it is playing, and cancel an
+	 * in-flight fetch so its response cannot start playing for a subject the
+	 * reader has dismissed. The fetched audio is still cached; see the header's
+	 * dismissal paragraph.
+	 */
+	dismiss: (key: string) => void;
 	/**
 	 * A message's own words, kept for its existing callers and tests. A press
 	 * whose key is already cached replays that entry without a fetch.
@@ -171,17 +206,20 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 						);
 					}
 					/*
-					 * A PRESS THAT LANDED AFTER THIS ONE OWNS THE STATE (`generation`):
-					 * this response was superseded while the fetch was in flight, so it
-					 * must not start playing - and must not overwrite the newer press's
-					 * loading slot on its way out.
+					 * THE CACHE WRITE COMES FIRST, BEFORE THE PRESS-ORDER CHECK, and that
+					 * order is the point: the synthesis was paid for the moment this fetch
+					 * was issued, so a response that lost the press race (agent review
+					 * round 1, MINOR-1 - this check used to sit above the write) must still
+					 * be kept for a later replay. What the check suppresses is the PLAYBACK
+					 * below, never the cache: the next press of these same words is a cache
+					 * hit, not a second billed call.
 					 */
-					if (get().generation !== generation) return;
 					audioBlob = fetched;
 					const cache = new Map(get().audioCache);
 					cache.set(key, fetched);
 					capCache(cache);
 					set({ audioCache: cache });
+					if (get().generation !== generation) return;
 				}
 
 				if (get().generation !== generation) return;
@@ -198,6 +236,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 				};
 				audioElement.onerror = () => {
 					URL.revokeObjectURL(audioUrl);
+					const wasCurrent = get().audioElement === audioElement;
 					set((state) =>
 						state.audioElement === audioElement
 							? {
@@ -208,6 +247,18 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 								}
 							: {},
 					);
+					if (!wasCurrent) return;
+					/*
+					 * THE PLAYBACK HALF OF "NO SILENT FAILURES" (copy review round 1,
+					 * C1): a press that fetched and then failed to play used to return to
+					 * rest with nothing said. Same channel as the fetch path; the element's
+					 * own detail has no reader sentence, so the sentence is fixed and the
+					 * detail stays in the console.
+					 */
+					console.error(
+						`${SPEECH_FAILURE_DETAIL_PREFIX} playback failed for ${key}`,
+					);
+					showErrorToast(SPEECH_PLAYBACK_COPY);
 				};
 
 				await audioElement.play();
@@ -238,9 +289,13 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 				/*
 				 * THE READER'S HALF OF A FAILED PRESS (`toast-manager`'s one channel,
 				 * the same one `copyTarget` uses): whatever the surface, the failure
-				 * is visible rather than a press that did nothing.
+				 * is visible rather than a press that did nothing. `error` keeps the
+				 * raw detail for the surfaces' own tests; the TOAST carries the
+				 * designed sentence - the daemon's refusals verbatim, everything else
+				 * mapped (`speech-errors.ts`) so a support diagnostic never reads as
+				 * copy (UX round 1 U3 / copy round 1 C5).
 				 */
-				showErrorToast(errorMessage);
+				showErrorToast(speechFailureCopy(err));
 			}
 		},
 
@@ -258,6 +313,24 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 				if (currentUrl) URL.revokeObjectURL(currentUrl);
 			}
 			set({ playingKey: null, audioElement: null, currentUrl: null });
+		},
+
+		dismiss: (key) => {
+			const { loadingKey, playingKey, generation } = get();
+			/*
+			 * CANCEL AN IN-FLIGHT FETCH, do not await it: bumping the generation
+			 * makes the response stale so it can never start playing for a subject
+			 * the reader has dismissed (UX review round 1, U1's in-flight half), and
+			 * clearing the slot now returns the control to resting immediately. The
+			 * response still lands and is still cached - the synthesis is paid either
+			 * way, and `speak`'s own comment owns that rule.
+			 */
+			if (loadingKey === key) {
+				set({ generation: generation + 1, loadingKey: null });
+			}
+			if (playingKey === key) {
+				get().stopSpeech();
+			}
 		},
 
 		playSpeech: async (messageId, agentId, inputText) => {

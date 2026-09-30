@@ -838,7 +838,12 @@ const UserRow = memo(function UserRow({
 				 * no words has nothing to copy.
 				 */}
 				{isQuotable(record, remainingContent) && (
-					<AnswerActionRow kind="user" bodyText={remainingContent} />
+					<AnswerActionRow
+						kind="user"
+						bodyText={remainingContent}
+						revealId={record.id}
+						revealAt={record.ts}
+					/>
 				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
@@ -1142,6 +1147,8 @@ const AssistantRow = memo(function AssistantRow({
 							bodyText={remainingContent}
 							agentId={conversationId}
 							speechId={record.id}
+							revealId={record.id}
+							revealAt={record.ts}
 						/>
 					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (

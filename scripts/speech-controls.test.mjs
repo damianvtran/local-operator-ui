@@ -102,13 +102,20 @@ const CLIPBOARD_GLYPH = /clipboard/;
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
+			export {
+				AnswerActionRow,
+				ROW_ARRIVAL_RECENT_MS,
+			} from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			export {
 				ANSWER_ACTIONS_LABEL,
 				USER_ACTIONS_LABEL,
 				COPY_FEEDBACK_MS,
 			} from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { SPEECH_MAX_CHARS } from "@shared/lib/speech-clip";
+			export {
+				SPEECH_FAILURE_COPY,
+				SPEECH_PLAYBACK_COPY,
+			} from "@shared/lib/speech-errors";
 			export { useSpeechStore, messageSpeechKey } from "@shared/store/speech-store";
 		`,
 		resolveDir: process.cwd(),
@@ -252,6 +259,7 @@ const mount = async ({
 	relay = "ok",
 	role = "answer",
 	bodyText = "Four were late, and the oldest is 41 days behind.",
+	reveal = null,
 } = {}) => {
 	resetStore();
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
@@ -329,6 +337,14 @@ const mount = async ({
 						detail: "Speech is temporarily unavailable.",
 					};
 				}
+				if (relay === "raw") {
+					return {
+						status: 502,
+						kind: "error",
+						detail:
+							"Speech generation failed upstream: Upstream responded 503 with no body.",
+					};
+				}
 				return {
 					kind: "bytes",
 					mimeType: "audio/mpeg",
@@ -357,6 +373,8 @@ const mount = async ({
 				kind: role,
 				agentId: role === "user" ? undefined : "c1",
 				speechId: role === "user" ? undefined : "a1",
+				revealId: reveal?.id,
+				revealAt: reveal?.at,
 			}),
 		);
 	});
@@ -428,22 +446,61 @@ test("the row fades at rest, with the reveal and the touch rule in its classes",
 	await unmount();
 });
 
-test("loading and playing pin the row visible, and the labels follow", async () => {
-	const { row, button, press, unmount } = await mount();
+test("loading and playing pin the row visible, and a loading press cancels (U2)", async () => {
+	const { dom, button, press, row, unmount } = await mount();
 	await act(async () => {
 		mod.useSpeechStore.setState({ loadingKey: mod.messageSpeechKey("a1") });
 	});
 	assert.ok(button("Loading speech"), "the loading state names itself");
 	assert.equal(
 		button("Loading speech").disabled,
-		true,
-		"and cannot be pressed again",
+		false,
+		"and stays pressable: the same control takes the fetch back (UX round 1, U2)",
 	);
 	assert.equal(
 		row().classList.contains("opacity-0"),
 		false,
 		"a loading press pins the row",
 	);
+	/*
+	 * C3: the tooltip and the accessible name are ONE sentence on the loading
+	 * rung now. The panel is opened the way a reader opens it - focus on the
+	 * trigger - and read from the rendered `role="tooltip"` node, the same
+	 * instrument the disabled-reason case below uses.
+	 */
+	const loadingTrigger = button("Loading speech").parentElement;
+	let loadingTooltip = null;
+	const loadingTooltips = new Set();
+	for (
+		let attempt = 0;
+		attempt < 200 && loadingTooltip === null;
+		attempt += 1
+	) {
+		loadingTrigger.dispatchEvent(
+			new dom.window.FocusEvent("focusin", { bubbles: true, cancelable: true }),
+		);
+		// eslint-disable-next-line no-await-in-loop
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		for (const panel of dom.window.document.querySelectorAll(
+			'[role="tooltip"]',
+		)) {
+			const text = (panel.textContent ?? "").trim();
+			loadingTooltips.add(text);
+			if (text === "Loading speech") loadingTooltip = panel;
+		}
+	}
+	assert.ok(
+		loadingTooltip,
+		`the loading tooltip must read "Loading speech"; saw ${JSON.stringify([...loadingTooltips])}`,
+	);
+
+	await press("Loading speech");
+	assert.equal(
+		mod.useSpeechStore.getState().loadingKey,
+		null,
+		"the second press cancelled the pending fetch",
+	);
+	assert.ok(button("Speak aloud"), "and the control is back at rest");
 
 	await act(async () => {
 		mod.useSpeechStore.setState({
@@ -527,8 +584,73 @@ test("an over-cap answer is clipped at a sentence end, disclosed, and sent as th
 	);
 	assert.deepEqual(
 		toasts().infos,
-		[`Reading the first ${expected.length} characters`],
-		"the clip is disclosed in the app's own sentence",
+		[
+			`Reading the first ${expected.length.toLocaleString("en-US")} characters. The rest is too long to read aloud.`,
+		],
+		"the clip is disclosed once, with the count localised (copy round 1, C2)",
+	);
+	const fetchesBeforeReplay = requests().length;
+	await press("Stop");
+	await press("Replay speech");
+	assert.equal(
+		toasts().infos.length,
+		1,
+		"a replay does not re-disclose a clip already shown (copy round 1, C7)",
+	);
+	assert.equal(
+		requests().length,
+		fetchesBeforeReplay,
+		"and the replay is a cache hit, not a second billed call",
+	);
+	await unmount();
+});
+
+test("an unmapped upstream diagnostic is mapped for the reader, detail to the console (U3/C5)", async () => {
+	const { press, unmount } = await mount({ relay: "raw" });
+	const logged = [];
+	const original = console.error;
+	console.error = (...args) => {
+		logged.push(args.join(" "));
+	};
+	try {
+		await press("Speak aloud");
+	} finally {
+		console.error = original;
+	}
+	assert.deepEqual(
+		toasts().errors,
+		[mod.SPEECH_FAILURE_COPY],
+		"a support diagnostic never reads as copy",
+	);
+	assert.ok(
+		logged.some((line) => line.includes("Upstream responded 503")),
+		"the raw detail goes to the console",
+	);
+	await unmount();
+});
+
+test("a playback failure raises the error toast through the same channel (C1)", async () => {
+	const { button, press, unmount } = await mount();
+	await press("Speak aloud");
+	assert.ok(button("Stop"), "the press is playing before the failure");
+	const element = fakeAudios.at(-1);
+	const original = console.error;
+	console.error = () => {};
+	try {
+		await act(async () => {
+			element.onerror();
+		});
+	} finally {
+		console.error = original;
+	}
+	assert.deepEqual(
+		toasts().errors,
+		[mod.SPEECH_PLAYBACK_COPY],
+		"a fetched-then-unplayable press must not look like nothing happened",
+	);
+	assert.ok(
+		button("Replay speech"),
+		"and the control returns to rest - the audio is cached, so the rest is Replay speech",
 	);
 	await unmount();
 });
@@ -591,17 +713,87 @@ test("the disabled control explains itself through its tooltip", async () => {
 		found,
 		`the tooltip must read "${expected}"; saw ${JSON.stringify([...seen])}`,
 	);
+	/*
+	 * And the same sentence has a NON-POINTER path (design round 1, D2): the
+	 * wrapper names a description node whose text is the tooltip's own sentence,
+	 * so a reader who cannot open a tooltip still gets the reason.
+	 */
+	const describedBy = trigger.getAttribute("aria-describedby");
+	assert.ok(describedBy, "the disabled wrapper names a description");
+	const described = dom.window.document.getElementById(describedBy);
+	assert.ok(described, "the description node exists");
+	assert.equal(
+		(described.textContent ?? "").trim(),
+		expected,
+		"and carries the tooltip's sentence verbatim",
+	);
 	await unmount();
+});
+
+test("a fresh arrival reveals itself once; an old record never flashes (U4)", async () => {
+	const now = Date.now();
+	const fresh = await mount({ reveal: { id: "arrive-fresh", at: now } });
+	assert.ok(
+		fresh.row().hasAttribute("data-lo-arrive"),
+		"a newly arrived turn's row wears the reveal attribute",
+	);
+	await act(async () => {
+		fresh
+			.row()
+			.dispatchEvent(
+				new fresh.dom.window.Event("animationend", { bubbles: true }),
+			);
+	});
+	assert.equal(
+		fresh.row().hasAttribute("data-lo-arrive"),
+		false,
+		"the animation ending drops it: the resting state is where it ends",
+	);
+	await fresh.unmount();
+
+	const again = await mount({ reveal: { id: "arrive-fresh", at: now } });
+	assert.equal(
+		again.row().hasAttribute("data-lo-arrive"),
+		false,
+		"once per record even across remounts (the pane windows rows in and out)",
+	);
+	await again.unmount();
+
+	const old = await mount({
+		reveal: {
+			id: "arrive-old",
+			at: now - mod.ROW_ARRIVAL_RECENT_MS - 60_000,
+		},
+	});
+	assert.equal(
+		old.row().hasAttribute("data-lo-arrive"),
+		false,
+		"a historical record does not flash: the reveal is about arrival, not mounting",
+	);
+	await old.unmount();
+
+	const bare = await mount();
+	assert.equal(
+		bare.row().hasAttribute("data-lo-arrive"),
+		false,
+		"a row mounted without a reveal id never arrives",
+	);
+	await bare.unmount();
 });
 
 /* ---------------------------------- 4. the user row's copy arm */
 
 test("a user row offers Copy alone, fades like the answer row, and copies the user's text", async () => {
-	const { row, button, press, written, unmount } = await mount({
+	const { row, press, written, unmount } = await mount({
 		role: "user",
 		bodyText: "Is the March import finished?",
 	});
 	const rowEl = row();
+	assert.equal(
+		rowEl.getAttribute("aria-label"),
+		"Your message actions",
+		"the possessive names whose message the toolbar acts on (copy round 1, C6)",
+	);
 	assert.equal(rowEl.getAttribute("aria-label"), mod.USER_ACTIONS_LABEL);
 	assert.equal(rowEl.getAttribute("data-lo-answer-actions"), null);
 	for (const className of REVEAL_TOKENS) {

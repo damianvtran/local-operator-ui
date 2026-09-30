@@ -36,11 +36,11 @@ export type ActionRowRole = "answer" | "user";
  * `quote-model.ts` already names for an empty body.
  *
  * A USER TURN OFFERS COPY ALONE: the operator asked for a copy affordance on
- * affordance on their own messages, and Speak on a user row would read the
- * reader's own words back at them - the message surfaces speak what the AGENT
- * said. The user arm ignores `agentId` entirely rather than inferring a Speak
- * from it, so a later caller that threads an id through the user row cannot
- * quietly re-enable a control this ruling removes.
+ * their own messages, and Speak on a user row would read the reader's own words
+ * back at them - the message surfaces speak what the AGENT said. The user arm
+ * ignores `agentId` entirely rather than inferring a Speak from it, so a later
+ * caller that threads an id through the user row cannot quietly re-enable a
+ * control this ruling removes.
  *
  * The SECOND half of speech's gate - whether a speech credential is configured -
  * is deliberately NOT in this list. It is read by the control itself
@@ -72,13 +72,20 @@ export function answerActionsFor({
 export const ANSWER_ACTIONS_LABEL = "Answer actions";
 
 /** The user row's own label: the buttons act on the reader's message. */
-export const USER_ACTIONS_LABEL = "Message actions";
+export const USER_ACTIONS_LABEL = "Your message actions";
 
 /**
- * The reveal treatment every action row wears at rest: hidden, inert and
- * invisible, until the row it belongs to is hovered or holds focus - with the
- * touch exception, where a hover can never arrive and the row must simply
- * stay visible.
+ * The reveal treatment every action row wears at rest: invisible to the eye and
+ * inert to the pointer, until the row it belongs to is hovered or holds focus -
+ * with the touch exception, where a hover can never arrive and the row must
+ * simply stay visible.
+ *
+ * NOT `inert`, AND THAT IS DELIBERATE (design round 1, D4 - the first comment
+ * said "inert", the DOM is not). The row stays in the accessibility tree and in
+ * the tab order at rest: `group-focus-within` reveals it the moment one of its
+ * buttons takes focus, and that tab stop IS the keyboard reader's path to the
+ * row. `inert` or `visibility: hidden` would delete the path along with the
+ * flicker. What the rest state actually is: pointer-inert only.
  *
  * OPACITY ONLY, and that is the load-bearing half: the row keeps its place in
  * the layout in both states, so revealing it moves nothing. `pointer-events`
@@ -88,7 +95,11 @@ export const USER_ACTIONS_LABEL = "Message actions";
  *
  * `pinned` is the state half (loading, playing, copied): the reader's own
  * press must not fade out from under them, so the row graduates to plain
- * `opacity-100` and stops depending on the pointer.
+ * `opacity-100` and stops depending on the pointer. That plain value is also
+ * NOT pointer-inert - unlike the rest set - and that is right here: the pinned
+ * control is the Stop button and must stay clickable with the pointer parked
+ * away (the sibling `composer-status-row.tsx` keeps its busy control
+ * `pointer-events-none` because nothing there is clickable).
  */
 export const ACTION_ROW_REVEAL_CLASSES =
 	"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100";

@@ -19,6 +19,15 @@
  * visible, because a state must not fade out from under the reader who caused
  * it.
  *
+ * A NEW ARRIVAL SHOWS ITSELF ONCE. A row mounting for a message that just
+ * arrived (inside `ROW_ARRIVAL_RECENT_MS`) wears `data-lo-arrive` for one
+ * animation - fade in, hold, fade out; the keyframe and its media gates are in
+ * `styles/index.css` - so the control is discoverable without a hover (UX
+ * review round 1, U4 - the operator's item). It is silenced when the turn is
+ * already hovered or focused, runs at most once per record id per session
+ * (`ARRIVED`), and its resting state is where it ends: nothing here can leave
+ * the row permanently visible.
+ *
  * ONE COMPONENT, TWO KINDS. `kind` decides what the row offers
  * (`answerActionsFor`), which marker it carries and what its accessible name
  * is; an answer row offers Copy + Speak, a user row offers Copy alone. The
@@ -77,21 +86,66 @@ export type AnswerActionRowProps = {
 	agentId?: string;
 	/** This row's key in the speech store. */
 	speechId?: string;
+	/**
+	 * The record id this row belongs to, for the one-time arrival reveal. A row
+	 * mounted without it (tests, a story surface) simply never arrives.
+	 */
+	revealId?: string;
+	/** The record's own timestamp; the arrival reveal's recency window reads it. */
+	revealAt?: number;
 };
+
+/**
+ * Whether the pointer or the keyboard is already on the row's turn.
+ *
+ * Walks the ancestors for `:hover` - a descendant's hover makes its ancestors
+ * match - and checks `document.activeElement` containment for focus. NOT
+ * `element.closest(":hover, :focus-within")`, which reads the same in a
+ * browser but lies in jsdom: with nothing focused, `activeElement` is the
+ * body, and jsdom's matcher then reports `:focus-within` on every ancestor,
+ * so the guard would answer "the reader is here" in every mounted test.
+ */
+const readerIsOn = (element: Element): boolean => {
+	let node: Element | null = element;
+	while (node !== null) {
+		if (node.matches(":hover")) return true;
+		node = node.parentElement;
+	}
+	return element.contains(element.ownerDocument.activeElement);
+};
+
+/**
+ * How recently a record must have arrived for its row to reveal itself.
+ * Wide on purpose: the desktop's normal configuration has the owner's clock
+ * and this renderer's on the same host, and a remote session that cannot prove
+ * recency simply gets no flash rather than a stale one.
+ */
+export const ROW_ARRIVAL_RECENT_MS = 90_000;
+
+/** Records that have had their one arrival reveal, per session. */
+const ARRIVED = new Set<string>();
+
+/** Slack over the keyframe's 1.8s, after which the attribute is dropped anyway. */
+const ROW_ARRIVAL_FALLBACK_MS = 2600;
 
 export const AnswerActionRow = memo(function AnswerActionRow({
 	bodyText,
 	kind = "answer",
 	agentId,
 	speechId,
+	revealId,
+	revealAt,
 }: AnswerActionRowProps) {
 	const [copied, setCopied] = useState(false);
+	const [arriving, setArriving] = useState(false);
 	/*
 	 * The reset timer is held in a ref rather than in state: the button is
 	 * re-rendered per delta on a live row, and a timer id in state would re-render
 	 * it a second time for a fact nothing paints.
 	 */
 	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const revealRef = useRef<HTMLDivElement | null>(null);
+	const arrivalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const { playSpeech } = useSpeechStore();
 	const speechControl = useSpeakControl({
@@ -116,6 +170,42 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		};
 	}, []);
 
+	/*
+	 * The arrival reveal's decision, once per record (see the header). The
+	 * one-time set is consulted FIRST and written before any of the bail-outs,
+	 * so a row that arrived while the pointer was already on its turn cannot
+	 * flash later when the pointer leaves.
+	 */
+	useEffect(() => {
+		if (!revealId || revealAt === undefined) return;
+		if (ARRIVED.has(revealId)) return;
+		ARRIVED.add(revealId);
+		if (Date.now() - revealAt > ROW_ARRIVAL_RECENT_MS) return;
+		/*
+		 * Pointer or keyboard already on the turn: the hover/focus reveal is on
+		 * display already, and a flash would fight it.
+		 */
+		if (revealRef.current !== null && readerIsOn(revealRef.current)) return;
+		setArriving(true);
+	}, [revealId, revealAt]);
+
+	/*
+	 * The attribute's deadline. `animationend` normally drops it (the render
+	 * below); this is the belt for the gates that mean no animation ran at all
+	 * (reduced motion, a touch context), where no `animationend` will ever
+	 * arrive.
+	 */
+	useEffect(() => {
+		if (!arriving) return;
+		arrivalTimer.current = setTimeout(() => {
+			arrivalTimer.current = null;
+			setArriving(false);
+		}, ROW_ARRIVAL_FALLBACK_MS);
+		return () => {
+			if (arrivalTimer.current !== null) clearTimeout(arrivalTimer.current);
+		};
+	}, [arriving]);
+
 	const handleCopy = async () => {
 		/*
 		 * `Copied` is set ONLY on a true answer. `copyTarget` is the canonical
@@ -137,6 +227,9 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		<div
 			role="toolbar"
 			aria-label={kind === "user" ? USER_ACTIONS_LABEL : ANSWER_ACTIONS_LABEL}
+			ref={revealRef}
+			onAnimationEnd={() => setArriving(false)}
+			{...(arriving ? { "data-lo-arrive": "" } : {})}
 			/*
 			 * The marker names the ROLE, not the component: the transcript's own
 			 * tests and rigs count answer rows (`data-lo-answer-actions`) as a fact
@@ -158,7 +251,18 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		>
 			{actions.map((action) =>
 				action === "copy" ? (
-					<Tooltip key={action} content={copied ? "Copied" : "Copy"}>
+					/*
+					 * `side="bottom"` is design round 1's D5: the tooltip at `top`
+					 * opened over the turn's own last prose line (measured against the
+					 * frame pair); below is the stamp band, quieter ground to cover.
+					 * The design delta verifies it against frames and reverts if the
+					 * stamp band reads worse.
+					 */
+					<Tooltip
+						key={action}
+						content={copied ? "Copied" : "Copy"}
+						side="bottom"
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
@@ -176,7 +280,7 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 						</Button>
 					</Tooltip>
 				) : (
-					<SpeakButton key={action} control={speechControl} />
+					<SpeakButton key={action} control={speechControl} side="bottom" />
 				),
 			)}
 		</div>

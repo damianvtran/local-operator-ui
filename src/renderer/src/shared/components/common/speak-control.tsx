@@ -37,6 +37,15 @@
  * `active` is the hook's half of the action rows' hover reveal: a row fades
  * at rest, but a press that is loading or playing owes the reader a visible
  * Stop, so the surface PINS the row visible while `active` holds.
+ *
+ * TWO PRESSES THE FIRST LADDER BLOCKED. A press while LOADING cancels the
+ * fetch and returns the control to rest (UX review round 1, U2): the store's
+ * generation counter already made a superseding press safe, and a slow read
+ * the reader regrets must be takeable-back from the same control that started
+ * it. A press while PLAYING still stops. And a surface that DISMISSES its
+ * subject - a selection toolbar whose highlight is cleared - calls
+ * `useSpeakDismissal` below, so its audio cannot outlive its only Stop (UX
+ * round 1, U1).
  */
 
 import { Spinner } from "@shared/components/common/spinner";
@@ -48,6 +57,7 @@ import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import { Square, Volume2 } from "lucide-react";
+import { useEffect, useId } from "react";
 
 /** What a press hands its surface: the text as it will be sent. */
 export type SpeakRequest = {
@@ -99,13 +109,21 @@ export function useSpeakControl({
 	play,
 	available = true,
 }: SpeakControlOptions): SpeakControl {
-	const { stopSpeech, loadingKey, playingKey, audioCache } = useSpeechStore();
+	const { dismiss, stopSpeech, loadingKey, playingKey, audioCache } =
+		useSpeechStore();
 	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 
 	const isPlaying = key !== null && playingKey === key;
 	const isLoading = key !== null && loadingKey === key;
 	const hasAudio = key !== null && audioCache.has(key);
-	const disabled = isLoading || !canUseRadientSpeech || !available;
+	/*
+	 * The gate blocks only the IDLE press. Loading is cancellable (a press
+	 * during it cancels, below) and playing is the Stop control, so neither may
+	 * be disabled into un-pressability - the old ladder disabled the loading
+	 * state, which made a slow read impossible to take back (UX round 1, U2).
+	 */
+	const disabled =
+		!isPlaying && !isLoading && (!canUseRadientSpeech || !available);
 
 	/*
 	 * The ladder from `message-controls.tsx`, kept whole: playing answers
@@ -123,7 +141,14 @@ export function useSpeakControl({
 	const tooltip = isPlaying
 		? "Stop"
 		: isLoading
-			? "Loading"
+			? /*
+				 * The SAME sentence as the button's accessible name (copy review round
+				 * 1, C3): the two ladders drifted on exactly this rung, and the name is
+				 * the string a screen-reader or speech-input user has to say on its
+				 * own, so the shorter "Loading" - which reads as the app being busy
+				 * rather than this button - is the wrong end to align from.
+				 */
+				"Loading speech"
 			: !canUseRadientSpeech
 				? speechUnavailableReason("speaking-aloud", speechBlock)
 				: hasAudio
@@ -135,12 +160,32 @@ export function useSpeakControl({
 			stopSpeech();
 			return;
 		}
+		if (isLoading) {
+			/*
+			 * U2's cancel: the same control that started the fetch takes it back.
+			 * `dismiss` bumps the store's generation, so the response can never
+			 * start playing, and returns to rest now rather than at the response's
+			 * leisure.
+			 */
+			if (key !== null) dismiss(key);
+			return;
+		}
 		if (disabled) return;
 		const raw = getText();
 		if (raw === null || raw.trim().length === 0) return;
 		const { text, clipped } = clipForSpeech(raw);
-		if (clipped) {
-			showInfoToast(`Reading the first ${text.length} characters`);
+		if (clipped && !hasAudio) {
+			/*
+			 * The disclosure, once per press THAT SHORTENS THE READ, and only for
+			 * the press that first shortens it (copy review round 1, C7): a replay
+			 * has already been told. The count is localised the way every other
+			 * character count in the app is (C2), and the sentence names what the
+			 * reader is NOT getting, because the toast is the only disclosure that
+			 * a truncation happened at all.
+			 */
+			showInfoToast(
+				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest is too long to read aloud.`,
+			);
 		}
 		play({ text });
 	};
@@ -154,6 +199,37 @@ export function useSpeakControl({
 		active: isPlaying || isLoading,
 		press,
 	};
+}
+
+/**
+ * A selection surface's dismissal contract: when the KEY this control speaks
+ * for goes away - the highlight is cleared, the highlight moves, the subject
+ * stops being the subject - the audio that key owns goes with it.
+ *
+ * WHY THIS LIVES BESIDE THE CONTROL RATHER THAN IN EACH TOOLBAR (branding § 9):
+ * both selection toolbars need exactly this rule, and a second copy of it is
+ * how the two drifted before. The rule is KEY-SCOPED and that scoping is the
+ * safety: only the dismissed key's playback is stopped and only its in-flight
+ * fetch is cancelled, so a selection dismissal can never take down a message
+ * row's audible read.
+ *
+ * Called at the TOP of the toolbar's render path with the CURRENT highlight's
+ * key or `null`. The effect's cleanup runs when that value changes (the
+ * highlight moved) and when the toolbar unmounts (the highlight cleared, the
+ * row windowed away), which are exactly the moments the reader's dismissal
+ * becomes true; the hook renders nothing and subscribes to nothing.
+ */
+export function useSpeakDismissal(key: string | null): void {
+	useEffect(() => {
+		if (key === null) return;
+		return () => {
+			/*
+			 * Via `getState()` so the cleanup cannot hold a stale closure over
+			 * anything but the key it was registered for.
+			 */
+			useSpeechStore.getState().dismiss(key);
+		};
+	}, [key]);
 }
 
 export type SpeakButtonProps = {
@@ -174,29 +250,48 @@ export type SpeakButtonProps = {
  * The wrapper span is what makes the DISABLED tooltip reachable: a disabled
  * button fires no pointer events, so the reason needs a parent that does.
  */
-export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => (
-	<Tooltip content={control.tooltip} side={side}>
-		<span className={cn("flex")}>
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label={control.label}
-				className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
-				onClick={control.press}
-				disabled={control.disabled}
+export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => {
+	/*
+	 * The disabled state's reason needs a non-pointer path (design review round
+	 * 1, D2): the tooltip is the only place the sentence lives, and a disabled
+	 * button takes no focus, so a keyboard or screen-reader reader met a control
+	 * that was off with no stated reason. The wrapper carries the description
+	 * and a visually-hidden twin of the tooltip sentence; safe on every surface
+	 * because they all render this one component.
+	 */
+	const reasonId = useId();
+	return (
+		<Tooltip content={control.tooltip} side={side}>
+			<span
+				className={cn("flex")}
+				aria-describedby={control.disabled ? reasonId : undefined}
 			>
-				{control.isPlaying ? (
-					<Square aria-hidden="true" />
-				) : control.isLoading ? (
-					/*
-					 * The spinner is hidden from the accessibility tree, so the button's
-					 * own name is what says the app is busy.
-					 */
-					<Spinner size="xs" />
-				) : (
-					<Volume2 aria-hidden="true" />
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={control.label}
+					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					onClick={control.press}
+					disabled={control.disabled}
+				>
+					{control.isPlaying ? (
+						<Square aria-hidden="true" />
+					) : control.isLoading ? (
+						/*
+						 * The spinner is hidden from the accessibility tree, so the button's
+						 * own name is what says the app is busy.
+						 */
+						<Spinner size="xs" />
+					) : (
+						<Volume2 aria-hidden="true" />
+					)}
+				</Button>
+				{control.disabled && (
+					<span id={reasonId} className="sr-only">
+						{control.tooltip}
+					</span>
 				)}
-			</Button>
-		</span>
-	</Tooltip>
-);
+			</span>
+		</Tooltip>
+	);
+};

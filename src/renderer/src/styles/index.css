@@ -859,6 +859,31 @@
 			background-color: transparent;
 		}
 	}
+
+	/* ---- the action rows' arrival reveal (UX round 1, U4) ------------------
+	 * A NEWLY arrived turn's action row shows itself briefly - fade in, hold, fade
+	 * out - so a first-time reader learns the control is there without hovering
+	 * every turn. `message-actions-row.tsx` owns WHEN (once per record per
+	 * session, a recency window, silenced by hover/focus); this file owns how it
+	 * looks. The resting state IS the `to` keyframe, so a document that never
+	 * paints, or a reader whose reduced motion lands the animation on its final
+	 * frame, sees the row exactly where the reveal classes leave it - never
+	 * permanently visible.
+	 */
+	@keyframes row-arrive {
+		0% {
+			opacity: 0;
+		}
+		12% {
+			opacity: 1;
+		}
+		78% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
 }
 
 @layer base {
@@ -888,6 +913,19 @@
 	@media (prefers-reduced-motion: no-preference) {
 		[data-jump-highlight] {
 			animation: jump-highlight 1.4s ease-out 1 both;
+		}
+	}
+	/*
+	 * The action rows' arrival reveal (the keyframe's comment, in the theme).
+	 * Gated on `no-preference` AND `hover: hover` rather than cancelled under
+	 * reduced motion: a reduced-motion reader asked not to be moved, and a touch
+	 * reader's rows are always visible already (the reveal's own `(hover: none)`
+	 * exception), so the flash there would be motion with nothing left to
+	 * discover.
+	 */
+	@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+		[data-lo-arrive] {
+			animation: row-arrive 1.8s ease-in-out 1 both;
 		}
 	}
 	/*
