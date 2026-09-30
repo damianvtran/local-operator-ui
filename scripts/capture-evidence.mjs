@@ -5518,6 +5518,36 @@ export const STORIES = [
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
+	/*
+	 * The search, filters and sorting round (PR-A). The pair `search-idle` /
+	 * `search-active` is the no-new-row claim in two frames: the first puts the
+	 * field, the Filters button and no count on the switcher row with nothing
+	 * typed, the second types a query and the result line appears INSIDE that
+	 * row while the rows narrow under it — no new row mounts on the first
+	 * keystroke (U1). `filters-open` is the complete popover; `filter-chips`
+	 * the chips row (U1's state 2) with the count still up top. The pair
+	 * `column-menu-open` / `sorted-nulls-last` asserts before the shutter:
+	 * taking Target's sort radio lands `aria-sort=descending` (a date column's
+	 * first direction) with the menu still open, and the Estimate sort's
+	 * rendered order puts the three estimates first, descending (unit, value),
+	 * with the two nulls after them. `no-match` is the state U5/M3 fixed the
+	 * copy for; `board-search-active` is U5's windowed count on the board
+	 * (`10 of 12` at the default week); `default-board` is the default-view
+	 * flip's own frame — nothing stored, so the page derives the board.
+	 */
+	["projects-tab--search-idle", 1280, 900],
+	["projects-tab--search-active", 1280, 900],
+	["projects-tab--filters-open", 1280, 900],
+	["projects-tab--filter-chips", 1280, 900],
+	["projects-tab--column-menu-open", 1280, 900],
+	["projects-tab--sorted-status", 1280, 900],
+	["projects-tab--sorted-nulls-last", 1280, 900],
+	["projects-tab--no-match", 1280, 900],
+	["projects-tab--board-search-active", 1280, 900],
+	["projects-tab--default-board", 1280, 900],
+	/* The no-dates callout, expanded over a dated chart: the collapsed line the
+	 * other timeline frames hold, opened to its names. */
+	["projects-tab--timeline-callout-expanded", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
