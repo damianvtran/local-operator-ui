@@ -16,8 +16,8 @@
  *
  * The shape here is the remedy for each of those, in the same order: a read view
  * that is prose rather than disabled inputs; an Edit mode with its own Save and
- * Cancel; a footer that confirms before discarding; a request id that is
- * released by a DEFINITIVE refusal and only held for an ambiguous one; a save
+ * Cancel; a footer that confirms before discarding; a save that mints a FRESH
+ * request id per attempt, so no refusal can lock the form; a save
  * that sends the changed fields alone, with a banner when the record moved under
  * the draft; and a Duplicate that takes the FETCHED record, clears the error,
  * focuses the name, and suggests a name that cannot collide.
@@ -64,6 +64,8 @@ import {
 	ReadBlock,
 	Section,
 	SourceChip,
+	consumeHeadingFocus,
+	requestHeadingFocus,
 	useEscapeToCancel,
 } from "./detail-parts";
 
@@ -312,7 +314,28 @@ export function AgentDetail({
 	 */
 	useEffect(() => {
 		onDirtyChange?.(editing && dirty);
+		/*
+		 * AND THE REPORT IS WITHDRAWN WHEN THIS PANE GOES AWAY. The page holds the
+		 * last report it heard, so a dirty pane that unmounted — cancelling a
+		 * create, duplicating from a dirty edit, switching to a tab with nothing
+		 * selected — left `editDirty` true with no editor open, and the docked
+		 * composer stayed blocked on "Finish or cancel your edit first" until a
+		 * reload (review round 1, M1 / D1). A cleanup is the one hook that runs on
+		 * the way out.
+		 */
+		return () => onDirtyChange?.(false);
 	}, [onDirtyChange, editing, dirty]);
+
+	/*
+	 * A PANE OPENED BY A CREATE TAKES THE FOCUS ITSELF. The create form hands the
+	 * caret over deliberately (see `requestHeadingFocus`): after a successful
+	 * Create the page navigated and focus fell to `body`, so a keyboard user lost
+	 * their place (QA round 1, Q7 / UX U8).
+	 */
+	useEffect(() => {
+		if (!consumeHeadingFocus()) return;
+		requestAnimationFrame(() => headingRef.current?.focus());
+	}, []);
 
 	/*
 	 * A RE-SEED HAPPENS ONLY WHEN THE DRAFT IS CLEAN. An outside write (the
@@ -360,9 +383,16 @@ export function AgentDetail({
 	/*
 	 * ESCAPE ASKS THE SAME QUESTION THE CANCEL BUTTON ASKS. It used to call
 	 * `cancel` outright, so the keyboard path discarded a dirty draft silently
-	 * while the pointer path asked - the asymmetry U3 is about.
+	 * while the pointer path asked - the asymmetry U3 is about. And while the
+	 * question is OPEN, Escape closes it the way it closes every other dismissable
+	 * layer: the second press means "keep editing", not "ask me again" (review
+	 * round 1, UX nit).
 	 */
 	const requestCancel = () => {
+		if (confirmDiscard) {
+			setConfirmDiscard(false);
+			return;
+		}
 		if (dirty) setConfirmDiscard(true);
 		else cancel();
 	};
@@ -374,6 +404,22 @@ export function AgentDetail({
 		const changed = changedFields(base, draft);
 		if (Object.keys(changed).length === 0) {
 			cancel();
+			return;
+		}
+		/*
+		 * AN EMPTY INSTRUCTIONS FIELD IS REFUSED HERE, not sent. The backend answers
+		 * `profiles.update` with 200 and IGNORES an empty `instructions` (its own
+		 * `min_length` is enforced on create), so the write used to be reported as
+		 * "Saved." while the read view still showed the old text (review round 1,
+		 * UX nit). A field the save will discard is a field the form must not
+		 * pretend to save.
+		 */
+		if (
+			typeof changed.instructions === "string" &&
+			!changed.instructions.trim()
+		) {
+			setError("Give the agent instructions.");
+			setErrorField("instructions");
 			return;
 		}
 		setPending(true);
@@ -412,18 +458,30 @@ export function AgentDetail({
 			 * validation refusal — the next attempt compared a corrected body
 			 * against the old one and refused to send anything: "retry it unchanged
 			 * or reload the profile to reconcile", a form that dead-locks on its own
-			 * first error. The guard exists for the ONE outcome that is genuinely
-			 * ambiguous (a transport failure, where the write may have landed), and
-			 * it must not be extended to outcomes the backend has definitively
-			 * answered. This pane therefore keeps no id at all for a definitive
-			 * refusal — a fresh `requestId` per attempt — and holds one only while
-			 * the outcome is unknown, where the copy asks the operator what only
-			 * they can answer.
+			 * first error.
+			 *
+			 * WHAT THIS PANE DOES INSTEAD, stated exactly, because the first draft of
+			 * this comment claimed more than the code did (agent review round 1, m3):
+			 * every attempt mints a FRESH `requestId`, and no id is ever carried
+			 * across attempts. There is therefore nothing for a refusal to lock, and
+			 * the receipt journal's "repeat the body byte-for-byte" rule is not used
+			 * here — it is the wrong tool for a form a person is editing, where the
+			 * next attempt is deliberately DIFFERENT text. The one outcome that is
+			 * genuinely ambiguous (a transport failure, where the write may have
+			 * landed) is reported as such in words, and the operator is asked what
+			 * only they can answer: whether it landed.
 			 */
+			/*
+			 * A 408 IS NOT DEFINITIVE EITHER (review round 1, m3). The request timed
+			 * out, which says nothing about whether it was received — the same
+			 * ambiguity as a dropped connection, and the same answer.
+			 */
+			const status = (caught as { status?: unknown })?.status;
 			const definitive =
-				typeof (caught as { status?: unknown })?.status === "number" &&
-				(caught as { status: number }).status >= 400 &&
-				(caught as { status: number }).status < 500;
+				typeof status === "number" &&
+				status !== 408 &&
+				status >= 400 &&
+				status < 500;
 			setUnconfirmed(!definitive);
 			if (!definitive) {
 				showErrorToast(
@@ -485,12 +543,13 @@ export function AgentDetail({
 						>
 							{profile.name}
 						</h2>
+						{/*
+						 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
+						 * box ~130 px below, which is the same sentence twice on one screen
+						 * (design review round 1, D10). The box keeps it, because the box is
+						 * titled by the question the sentence answers.
+						 */}
 						<AgentChips profile={profile} />
-						{profile.description ? (
-							<p className="max-w-prose text-body-sm text-ink-muted">
-								{profile.description}
-							</p>
-						) : null}
 					</div>
 					{/*
 					 * ONE PRIMARY ACTION ABOVE THE FOLD (design D5). Every control here
@@ -677,6 +736,7 @@ export function AgentDetail({
 							</div>
 						</Section>
 						<EditFooter
+							submit
 							confirming={confirmDiscard}
 							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
@@ -869,12 +929,14 @@ export function AgentCreate({
 	initial,
 	takenNames,
 	effortTiers,
+	onDirtyChange,
 	onSaved,
 	onCancel,
 }: {
 	initial?: ReusableProfile | null;
 	takenNames: readonly string[];
 	effortTiers: readonly string[];
+	onDirtyChange?: (dirty: boolean) => void;
 	onSaved: (name: string) => void;
 	onCancel: () => void;
 }) {
@@ -904,6 +966,18 @@ export function AgentCreate({
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
 	const nameRef = useRef<HTMLInputElement>(null);
+	const instructionsRef = useRef<HTMLTextAreaElement>(null);
+
+	/*
+	 * A HALF-TYPED NEW RECORD IS A DRAFT TOO (UX U9). Leaving it by clicking a
+	 * roster row discarded the name and the instructions with no question, which
+	 * the edit form has always asked about. The page's navigation guard reads
+	 * this, so a create is protected by the same rule as an edit.
+	 */
+	useEffect(() => {
+		onDirtyChange?.(Boolean(name.trim() || draft.instructions.trim()));
+		return () => onDirtyChange?.(false);
+	}, [onDirtyChange, name, draft.instructions]);
 
 	/*
 	 * NAME FOCUS ON MOUNT (UX U9): the old Extend/Create left focus on `body`, so a
@@ -921,6 +995,35 @@ export function AgentCreate({
 			setError("Give the agent a name.");
 			setErrorField("name");
 			nameRef.current?.focus();
+			return;
+		}
+		/*
+		 * THE TWO REFUSALS THE FORM CAN ANSWER ITSELF, in the field's own words.
+		 *
+		 * Name grammar and a taken name were checked for the suggested name only;
+		 * a hand-typed `coder` created a second `coder` that SHADOWED the built-in
+		 * (QA round 1, Q4). Empty instructions reached the wire and came back as the
+		 * contract's own "Invalid desktop operation." — the most likely first
+		 * failure on this form, and the only one with no field marked (Q3/U4/D5).
+		 */
+		if (/[\\/\s]/.test(name.trim())) {
+			setError("Names cannot contain spaces or slashes.");
+			setErrorField("name");
+			nameRef.current?.focus();
+			return;
+		}
+		if (takenNames.includes(name.trim())) {
+			setError(
+				`An agent called “${name.trim()}” already exists. Choose another name, or open the existing one to change it.`,
+			);
+			setErrorField("name");
+			nameRef.current?.focus();
+			return;
+		}
+		if (!draft.instructions.trim()) {
+			setError("Give the agent instructions.");
+			setErrorField("instructions");
+			instructionsRef.current?.focus();
 			return;
 		}
 		setPending(true);
@@ -945,6 +1048,11 @@ export function AgentCreate({
 				},
 			});
 			showSuccessToast(`Created ${result.name}.`);
+			/*
+			 * The pane the page is about to open takes the caret (QA round 1, Q7): the
+			 * create form cannot focus a heading that does not exist yet.
+			 */
+			requestHeadingFocus();
 			onSaved(result.name);
 		} catch (caught) {
 			const copy = refusalCopy(
@@ -1102,6 +1210,7 @@ export function AgentCreate({
 					</div>
 				</Section>
 				<EditFooter
+					submit
 					dirty={Boolean(name.trim() || draft.instructions)}
 					pending={pending}
 					saveLabel={initial ? "Create the copy" : "Create agent"}

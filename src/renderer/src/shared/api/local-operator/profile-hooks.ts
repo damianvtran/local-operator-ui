@@ -52,18 +52,23 @@ export type ChatTarget = { kind: "agent" | "team"; name: string };
  * One definition's detail, refreshed by the authoring frame AND by a
  * configuration run's own settle.
  *
- * WHY THE DETAIL OWNS ITS OWN AUTHORING SUBSCRIPTION rather than relying on the
- * list's. The frame's invalidation of `["desktop","profile"]` as a PREFIX does
- * reach this key, but only while the hook that owns that effect is MOUNTED — and
- * the reported defect (UX exploration U6) is exactly a case where it was not
- * enough: an open detail kept rendering the pre-write text for 14 s+ while the
- * lists refreshed in ~4 s. Two independent reasons it can be missed, and the
- * subscription here closes both: a run's write can land while the page is
- * showing a detail whose LIST query is disabled (the page only enables the
- * mounted tab's list), and a query that a user has been reading for minutes is
- * `staleTime: 0` but has no active refetch of its own until something
- * invalidates it. A detail that is on screen is the surface the operator is
- * actually reading, so it subscribes rather than borrows.
+ * WHAT IS TRUE HERE, stated without the overclaim the first version carried
+ * (agent review round 1, m4): the frame's invalidation of `["desktop", kind]`
+ * as a PREFIX already reaches this hook's key, and the subscription that does
+ * that lives in `useProfiles`/`useTeams` — which run it whether or not their own
+ * query is `enabled`. So the detail does NOT depend on the subscription below to
+ * be refreshed; the list's effect is what refreshes it in practice, and the
+ * 14 s symptom the design consult reported is not explained by a missing
+ * subscription.
+ *
+ * WHY IT STAYS ANYWAY. `useAuthoringRefresh` is a no-op while the revision has
+ * not moved, and the cost of the duplicate is one already-scheduled
+ * invalidation (`invalidateQueries` on an unmounted-or-fresh key does no
+ * request). What it buys is that this hook is CORRECT ON ITS OWN: a caller that
+ * reads a detail without mounting the list query — a future pane, a story, a
+ * test — still follows the frame, rather than silently relying on a sibling
+ * component being on screen. The gap it closes is real for that caller and
+ * merely redundant for the page.
  */
 export function useProfileDetail(name: string | null, enabled: boolean) {
 	useAuthoringRefresh("profiles");

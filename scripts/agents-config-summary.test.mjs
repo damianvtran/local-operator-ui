@@ -149,6 +149,50 @@ test("a definition the run only read never reaches the summary", () => {
 	assert.deepEqual([...RUN_TOOL_NAMES], ["agent", "team"]);
 });
 
+test("a write that failed, was skipped, or never ran is not a change", () => {
+	/*
+	 * REVIEW ROUND 1, M4. `agent create name=reviewer` against an existing name is
+	 * REFUSED, and `install` on an already-installed agent is a no-op — both rows
+	 * name a definition, both are `writes: true` by op, and neither changed
+	 * anything. Counting them produced "Updated reviewer: its settings changed.
+	 * The list does not show instructions, so open it to see what was written."
+	 * on the one surface whose whole job is to say exactly what changed.
+	 *
+	 * The three ways a call can fail to land are distinct facts on the record and
+	 * each is checked on its own: the tool errored, the harness said it would
+	 * never run, or the turn died with it still in flight.
+	 */
+	const write = (extra) =>
+		projectRunToolRow({
+			toolName: "agent",
+			args: { op: "create", name: "reviewer" },
+			phase: "done",
+			ts: 1,
+			...extra,
+		});
+	assert.equal(write({ isError: true }).writes, false);
+	assert.equal(write({ notRunReason: "duplicate_id" }).writes, false);
+	assert.equal(write({ neverSent: true }).writes, false);
+	assert.equal(write({}).writes, true);
+	// And an unsettled call is not a change yet: composing and queued rows have
+	// no outcome at all, and a `running` one has not returned.
+	for (const phase of ["composing", "queued", "running"]) {
+		assert.equal(
+			projectRunToolRow({
+				toolName: "team",
+				args: { op: "update", name: "release-crew" },
+				phase,
+				ts: 2,
+			}).writes,
+			false,
+			`${phase} has not landed`,
+		);
+	}
+	// The step line is still painted for a failed call: the Watch list is where
+	// "it tried and was refused" belongs, and it is not the summary's business.
+	assert.equal(write({ isError: true }).verb, "Creating agent reviewer");
+});
+
 test("a touched definition whose list fields did not move is an update with nothing visible", () => {
 	// The common instruction-only edit: `profile_catalogue` builds detail-free, so
 	// the list cannot show the change. The strip owes the honest sentence, which

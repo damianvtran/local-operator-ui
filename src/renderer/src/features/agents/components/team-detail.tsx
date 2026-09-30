@@ -52,6 +52,8 @@ import {
 	FieldLabel,
 	ReadBlock,
 	Section,
+	consumeHeadingFocus,
+	requestHeadingFocus,
 	useEscapeToCancel,
 } from "./detail-parts";
 
@@ -151,6 +153,14 @@ export function TeamDetail({
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
+
+	/* A pane opened by a Create takes the caret itself (QA Q7) — see the note on
+	 * the handoff in `detail-parts`.
+	 */
+	useEffect(() => {
+		if (!consumeHeadingFocus()) return;
+		requestAnimationFrame(() => headingRef.current?.focus());
+	}, []);
 	const navigate = useNavigate();
 
 	const dirty = creating
@@ -161,6 +171,11 @@ export function TeamDetail({
 	// composer, so a configuration run cannot write over typing.
 	useEffect(() => {
 		onDirtyChange?.((creating || editing) && dirty);
+		/*
+		 * AND WITHDRAWN ON THE WAY OUT — see the agent pane's note (review round 1,
+		 * M1): a stale `true` locks the composer with no editor open.
+		 */
+		return () => onDirtyChange?.(false);
 	}, [onDirtyChange, creating, editing, dirty]);
 
 	useEffect(() => {
@@ -186,6 +201,10 @@ export function TeamDetail({
 
 	// Escape asks what Cancel asks - see the agent pane's note (UX U3).
 	const requestCancel = () => {
+		if (confirmDiscard) {
+			setConfirmDiscard(false);
+			return;
+		}
 		if (dirty) setConfirmDiscard(true);
 		else cancel();
 	};
@@ -194,6 +213,35 @@ export function TeamDetail({
 	const save = async (event?: FormEvent) => {
 		event?.preventDefault();
 		if (pending) return;
+		/*
+		 * THE REFUSALS THE FORM CAN ANSWER ITSELF (QA round 1, Q3; design D5).
+		 * A bare "New team" with nothing filled reached the wire and came back as
+		 * the contract's own "Invalid desktop operation." — the same class of
+		 * developer-voiced refusal the agent form used to answer, and the most
+		 * likely first failure here.
+		 */
+		if (creating && !name.trim()) {
+			setError("Give the team a name.");
+			setErrorField("name");
+			return;
+		}
+		if (creating && /[\\/\s]/.test(name.trim())) {
+			setError("Names cannot contain spaces or slashes.");
+			setErrorField("name");
+			return;
+		}
+		if (creating && (teams ?? []).some((row) => row.name === name.trim())) {
+			setError(
+				`A team called “${name.trim()}” already exists. Open it to change it, or choose another name.`,
+			);
+			setErrorField("name");
+			return;
+		}
+		if (creating && !draft.instructions.trim()) {
+			setError("Give the team instructions.");
+			setErrorField("instructions");
+			return;
+		}
 		setPending(true);
 		setError(null);
 		setErrorField(null);
@@ -222,7 +270,12 @@ export function TeamDetail({
 			setDraft(next);
 			setEditing(false);
 			onSaved(result.name);
-			showSuccessToast(`Saved ${result.name}.`);
+			/*
+			 * "CREATED" FOR A CREATE, "SAVED" FOR AN EDIT (review round 1, UX nit):
+			 * the agent form already said Created, so the same act had two names.
+			 */
+			showSuccessToast(`${creating ? "Created" : "Saved"} ${result.name}.`);
+			if (creating) requestHeadingFocus();
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
@@ -560,6 +613,7 @@ export function TeamDetail({
 							/>
 						</Section>
 						<EditFooter
+							submit
 							confirming={confirmDiscard}
 							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
@@ -577,9 +631,27 @@ export function TeamDetail({
 							title="Manager"
 							description="The agent that leads the chat."
 						>
-							<Button variant="link" onClick={() => onOpenAgent(draft.manager)}>
-								{draft.manager}
-							</Button>
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									variant="link"
+									onClick={() => onOpenAgent(draft.manager)}
+								>
+									{draft.manager}
+								</Button>
+								{/*
+								 * THE MANAGER GETS THE SAME "Not found" CHIP THE MEMBERS DO (QA round
+								 * 1, Q6). The edit view already marked a dangling manager, so the read
+								 * view was the one place a missing manager still read as a working
+								 * link that navigates nowhere.
+								 */}
+								{!managerOptions(agents, teams).some(
+									(option) => option.id === draft.manager,
+								) ? (
+									<Badge variant="warning" data-testid="team-manager-missing">
+										Not found
+									</Badge>
+								) : null}
+							</div>
 						</Section>
 						<Section title="Members">
 							<ul className="space-y-1">

@@ -2632,6 +2632,24 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			 * "local only" is a property of the wire rather than a rule to check here.
 			 * Stated so the next reader does not add a check that can never fire.
 			 */
+			/*
+			 * AND IT CARRIES NONE OF A CONVERSATION'S OWN FIELDS (agent review round
+			 * 1, n3). The backend resolves a run's cwd, model and target itself and
+			 * refuses a body that also states them
+			 * (`agents_config_client_fields`), so a caller that sent both would be
+			 * refused on the wire for a request this schema had let through — the
+			 * refusal the app composed itself, one layer later than it could have
+			 * been. `draftId` is in the list for the same reason: it names a pane's
+			 * conversation draft, and a run has no pane.
+			 */
+			for (const field of ["cwd", "target", "model", "draftId"] as const) {
+				if (request[field] === undefined) continue;
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `A configuration run resolves its own \`${field}\`: send \`purpose\` alone.`,
+					path: [field],
+				});
+			}
 			return;
 		}
 		if (request.op !== "agent.publish" && request.op !== "agent.republish") {

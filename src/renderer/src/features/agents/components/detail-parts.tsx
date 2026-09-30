@@ -161,13 +161,25 @@ export function ReadBlock({
  */
 export function SourceChip({
 	source,
-}: { source: "builtin" | "installed" | "custom" }) {
+	/**
+	 * `text` is the roster's rendering: a dim 12 px word rather than a bordered
+	 * box, which read as a control beside the outline chips and squeezed the
+	 * description onto a second line (design review round 1, D11).
+	 */
+	appearance = "chip",
+}: {
+	source: "builtin" | "installed" | "custom";
+	appearance?: "chip" | "text";
+}) {
 	const label =
 		source === "builtin"
 			? "Built-in"
 			: source === "installed"
 				? "Installed"
 				: "Custom";
+	if (appearance === "text") {
+		return <span className="shrink-0 text-meta text-ink-dim">{label}</span>;
+	}
 	// `neutral` for every source on purpose: this is a statement of fact, not a
 	// warning, and a colour step per source would rank three equally valid states.
 	return <Badge variant="neutral">{label}</Badge>;
@@ -217,6 +229,7 @@ export function EditFooter({
 	saveLabel = "Save changes",
 	pendingLabel = "Saving…",
 	dirtyHint,
+	submit,
 	confirming,
 	onConfirmingChange,
 }: {
@@ -227,6 +240,16 @@ export function EditFooter({
 	saveLabel?: string;
 	pendingLabel?: string;
 	dirtyHint?: string;
+	/**
+	 * Whether the primary button SUBMITS the surrounding form.
+	 *
+	 * The `Button` primitive defaults to `type="button"` (deliberately: an
+	 * untyped button inside a form submits it), and every pane here is a `<form>`
+	 * with a wired `onSubmit` — so pressing Enter in the Name field of a new agent
+	 * did nothing at all, silently (UX U7). Opting the primary in gives the form
+	 * the submitter it was missing.
+	 */
+	submit?: boolean;
 	/**
 	 * The discard confirmation, CONTROLLED when a caller owns another way into it.
 	 *
@@ -241,6 +264,7 @@ export function EditFooter({
 	onConfirmingChange?: (next: boolean) => void;
 }) {
 	const [uncontrolledConfirming, setUncontrolledConfirming] = useState(false);
+	const primaryRef = useRef<HTMLButtonElement>(null);
 	const isControlled = confirming !== undefined;
 	const isConfirming = isControlled ? confirming : uncontrolledConfirming;
 	const requestConfirming = (next: boolean) => {
@@ -272,7 +296,13 @@ export function EditFooter({
 			data-testid="edit-footer"
 			className="sticky bottom-0 z-10 -mx-6 mt-6 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas px-6 py-3"
 		>
-			<Button variant="primary" onClick={onSave} disabled={pending}>
+			<Button
+				ref={primaryRef}
+				type={submit ? "submit" : undefined}
+				variant="primary"
+				onClick={submit ? undefined : onSave}
+				disabled={pending}
+			>
 				{pending ? pendingLabel : saveLabel}
 			</Button>
 			{isConfirming ? (
@@ -283,7 +313,18 @@ export function EditFooter({
 					<Button variant="danger" onClick={onCancel}>
 						Discard changes
 					</Button>
-					<Button variant="ghost" onClick={() => requestConfirming(false)}>
+					<Button
+						variant="ghost"
+						onClick={() => {
+							requestConfirming(false);
+							/*
+							 * "KEEP EDITING" PUTS THE CARET BACK. Dismissing the question used to
+							 * drop focus to `body`, so the operator's next keystroke went nowhere
+							 * (UX U8, review round 1).
+							 */
+							primaryRef.current?.focus();
+						}}
+					>
 						Keep editing
 					</Button>
 				</>
@@ -301,6 +342,32 @@ export function EditFooter({
 			) : null}
 		</div>
 	);
+}
+
+/**
+ * A FOCUS HANDOFF BETWEEN TWO PANES, for the one transition React cannot see.
+ *
+ * After a successful Create the page navigates to the new record, which mounts a
+ * DIFFERENT component; the create form cannot focus a heading that does not
+ * exist yet, and the pane that mounts has no way to know it was opened by a
+ * create rather than a click. Focus therefore fell to `body` on that path while
+ * the edit-save path focused the heading correctly (QA round 1, Q7 / UX U8).
+ *
+ * A module-scope flag rather than a prop or a context, because the two ends are
+ * siblings under a route the create changes; the flag is consumed exactly once,
+ * on the next pane's mount, and a stray flag is harmless (the next pane focuses
+ * its heading, which is what a keyboard user wants anyway).
+ */
+let headingFocusPending = false;
+
+export function requestHeadingFocus(): void {
+	headingFocusPending = true;
+}
+
+export function consumeHeadingFocus(): boolean {
+	const pending = headingFocusPending;
+	headingFocusPending = false;
+	return pending;
 }
 
 /**

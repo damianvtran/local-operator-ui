@@ -59,8 +59,16 @@ import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Plus, Search, Users } from "lucide-react";
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Bot, Plus, Search, Users } from "lucide-react";
+import {
+	Suspense,
+	lazy,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { ConfigComposer } from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
@@ -88,6 +96,16 @@ type Scope = "all" | "custom" | "installed" | "builtin";
 
 /** The settings keys that name an effort tier: `subagents.models.<tier>`. */
 const EFFORT_TIER_KEY = /^subagents\.models\.([^.]+)$/;
+
+/**
+ * The tiers the harness will honour, in the operator's vocabulary.
+ *
+ * Mirrors `CANONICAL_EFFORT_TIERS` (`harness/subagent.py`) and its companion
+ * narrowing in `read_effort_tier_selectors`: the tool schema and the launch path
+ * both filter to these three, so a picker that offered a fourth would be
+ * offering a value the save refuses.
+ */
+const CANONICAL_EFFORT_TIERS: readonly string[] = ["lo", "med", "hi"];
 
 const SCOPE_LABEL: Record<Scope, string> = {
 	all: "All",
@@ -127,10 +145,32 @@ export function AgentsPage() {
 
 	const profileDetail = useProfileDetail(teamMode ? null : name, detailEnabled);
 	const teamDetail = useTeamDetail(teamMode ? name : null, detailEnabled);
+	/*
+	 * THE RECORD BEING DUPLICATED, FETCHED RATHER THAN LOOKED UP IN THE LIST.
+	 * The form used to be seeded from the roster row, and a roster row carries no
+	 * `instructions` (`profile_catalogue` builds with `detail=False`) — so
+	 * Duplicate opened a form that had the name and an EMPTY instructions box,
+	 * and pressing Create refused with the field-level copy for input the user
+	 * never had (QA round 1, Q3). This is the same detail read the pane uses.
+	 */
+	const duplicateDetail = useProfileDetail(
+		teamMode ? null : duplicateOf,
+		Boolean(duplicateOf),
+	);
 
 	const [search, setSearch] = useState("");
 	const [scope, setScope] = useState<Scope>("all");
 	const [editDirty, setEditDirty] = useState(false);
+	/**
+	 * A navigation the operator has asked for while an edit is dirty.
+	 *
+	 * THE PANES ARE KEYED BY RECORD, so opening another row remounts the detail
+	 * and the draft goes with the unmount — which is correct and is also why it
+	 * must not happen silently. Both review rounds found the opposite failure
+	 * (the draft FOLLOWED the click and Save wrote it onto the next row); the
+	 * fix is the key, and this is the question that goes with it (D1/U1/Q1).
+	 */
+	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
 	const clearMark = useConfigRunStore((state) => state.clearMark);
@@ -138,8 +178,16 @@ export function AgentsPage() {
 	/*
 	 * The effort tiers a profile may name, read from the backend's own settings:
 	 * `subagents.models.*` is what `agent_tool.py` validates an effort against, so
-	 * the picker offers exactly the values a save will accept — a free text field
+	 * only the values a save will accept — a free text field
 	 * here is how `turbo-9000` got typed and refused later (U2).
+	 *
+	 * ONLY THE TIERS THAT ARE ACTUALLY CONFIGURED, AND ONLY THE CANONICAL THREE
+	 * (review round 1, m5). The backend validates against
+	 * `configured_effort_tiers()`: a tier whose selector is empty is refused on
+	 * save ("no tiers are configured under subagents.models"), and a key outside
+	 * `lo|med|hi` is never offered to the tool at all. Listing a key the harness
+	 * would reject is the picker steering the operator into a guaranteed failure,
+	 * which is the same defect class as the free-text field it replaced.
 	 */
 	const settings = useQuery({
 		queryKey: ["desktop", "settings", "effort-tiers"],
@@ -153,6 +201,11 @@ export function AgentsPage() {
 	const effortTiers = useMemo(
 		() =>
 			(settings.data?.settings ?? [])
+				.filter((row) => {
+					const tier = row.key.match(EFFORT_TIER_KEY)?.[1];
+					if (!tier || !CANONICAL_EFFORT_TIERS.includes(tier)) return false;
+					return typeof row.value === "string" && row.value.trim().length > 0;
+				})
 				.map((row) => row.key.match(EFFORT_TIER_KEY)?.[1])
 				.filter((tier): tier is string => Boolean(tier)),
 		[settings.data],
@@ -168,20 +221,98 @@ export function AgentsPage() {
 	);
 	const rows = teamMode ? teamRows : agentRows;
 	const selected = name ?? null;
+	/*
+	 * The page forgets a dirty report from a pane that is no longer mounted.
+	 * The panes report `false` on unmount as well (see `AgentDetail`), and this is
+	 * the page-side half of the same rule: a stale `true` here locks the composer
+	 * with "Finish or cancel your edit first" while nothing is open, and the only
+	 * way out was a reload (review round 1, M1 / D1).
+	 */
+	useEffect(() => {
+		setEditDirty(false);
+		setPendingNav(null);
+	}, [selected, creating, teamMode]);
 
-	const go = (next: {
-		kind?: "agent" | "team";
-		name?: string | null;
-		create?: "agent" | "team" | null;
-	}) => {
-		const search = new URLSearchParams();
-		const kind = next.kind ?? (teamMode ? "team" : "agent");
-		if (kind === "team") search.set("kind", "team");
-		if (next.name) search.set("name", next.name);
-		if (next.create !== null && next.create !== undefined)
-			search.set("create", next.create);
-		setParams(search);
-	};
+	const go = useCallback(
+		(next: NavIntent) => {
+			const search = new URLSearchParams();
+			const kind = next.kind ?? (teamMode ? "team" : "agent");
+			if (kind === "team") search.set("kind", "team");
+			if (next.name) search.set("name", next.name);
+			if (next.create !== null && next.create !== undefined)
+				search.set("create", next.create);
+			if (next.duplicate) search.set("duplicate", next.duplicate);
+			setParams(search);
+		},
+		[teamMode, setParams],
+	);
+
+	/**
+	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
+	 *
+	 * Every roster click, tab switch, "Add manually" and link between a team and
+	 * its agents goes through here. A dirty draft used to be discarded with no
+	 * question (U9) or — worse, after the key was missing — carried onto the next
+	 * record (D1/U1/Q1). Neither is acceptable, so the question is asked once, in
+	 * the pane the operator is looking at.
+	 */
+	const requestGo = useCallback(
+		(next: NavIntent) => {
+			if (editDirty) {
+				setPendingNav(next);
+				return;
+			}
+			go(next);
+		},
+		[editDirty, go],
+	);
+
+	/*
+	 * ESCAPE LEAVES A DEFINITION AT NARROW WIDTHS, where the roster is hidden and
+	 * there was no way back at all (review round 1, U5/D6). The panes' own Escape
+	 * (cancel the edit) runs first and marks the key handled, so this never
+	 * discards an edit without the question. Above 1000 px the roster is visible
+	 * and Escape stays what it was.
+	 */
+	useEffect(() => {
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			if (!window.matchMedia("(max-width: 999px)").matches) return;
+			if (!selected && !creating) return;
+			event.preventDefault();
+			requestGo({ name: null });
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [requestGo, selected, creating]);
+
+	/*
+	 * THE TARGET FOLLOWS THE SELECTION (review round 1, U6 / D2).
+	 *
+	 * `about` and the seeded draft live in a module-scope store, so they outlived
+	 * the row they named: open `reviewer`, press "Ask for a change", click `scout`
+	 * (or switch to Teams) and the composer still said "About agent reviewer" with
+	 * the placeholder `Change reviewer…` — a run pointed at an agent that is not on
+	 * screen, which is the same wrong-record failure as the carried draft, one
+	 * layer down.
+	 *
+	 * The SEEDED draft goes with the target, and only the seeded one: text the
+	 * operator typed is theirs, and deleting it because they clicked a row would
+	 * be a worse bug than the stale chip.
+	 */
+	useEffect(() => {
+		const state = useConfigRunStore.getState();
+		const about = state.about;
+		if (!about) return;
+		const kind = teamMode ? "team" : "agent";
+		if (selected && about.kind === kind && about.name === selected) return;
+		run.setAbout(null);
+		if (
+			state.draft.trim() === `Change the ${about.kind} ${about.name}:`.trim()
+		) {
+			run.setDraft("");
+		}
+	}, [selected, teamMode, run]);
 
 	/*
 	 * A ROW THAT WAS MARKED IS UNMARKED BY BEING OPENED — the one-time mark the
@@ -211,6 +342,15 @@ export function AgentsPage() {
 
 	const detailError = teamMode ? teamDetail.error : profileDetail.error;
 	const listError = teamMode ? teams.error : profiles.error;
+
+	/*
+	 * Whether the main column is showing the nothing-selected pane — which leads
+	 * with its OWN composer (design § 5). Rendering the docked one beside it too
+	 * put two composers, two strips and two of every id on screen (M3/D3/U2/Q8).
+	 */
+	const showsEmptyPane =
+		catalogueEnabled && !listError && !creating && !selected;
+
 	const detailLoading = teamMode
 		? teamDetail.isLoading
 		: profileDetail.isLoading;
@@ -242,7 +382,7 @@ export function AgentsPage() {
 				<Tabs
 					value={teamMode ? "team" : "agent"}
 					onValueChange={(next) =>
-						go({ kind: next as "agent" | "team", name: null })
+						requestGo({ kind: next as "agent" | "team", name: null })
 					}
 				>
 					<TabsList aria-label="Browse definitions by type" className="w-full">
@@ -341,8 +481,15 @@ export function AgentsPage() {
 							rows={rows}
 							name={creating ? null : selected}
 							teamMode={teamMode}
-							markedKeys={new Set(marks.map(targetKey))}
-							onOpen={(rowName) => go({ name: rowName })}
+							marked={
+								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+							}
+							/*
+							 * THROUGH THE GUARD, never straight to the route: a dirty draft on the
+							 * row being left has to be asked about (D1/U1/Q1), and the pane is
+							 * keyed by record, so the navigation IS the discard.
+							 */
+							onOpen={(rowName) => requestGo({ name: rowName })}
 						/>
 					)}
 				</div>
@@ -350,7 +497,7 @@ export function AgentsPage() {
 				<Button
 					variant="secondary"
 					disabled={!catalogueEnabled}
-					onClick={() => go({ create: teamMode ? "team" : "agent" })}
+					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
 					<Plus className="size-4" />
 					{teamMode ? "Add team manually" : "Add agent manually"}
@@ -370,13 +517,48 @@ export function AgentsPage() {
 				 * the sections kept scrolling through beneath the bar (measured in the
 				 * edit-mode frames). The footer supplies the spacing instead.
 				 */}
+				{/*
+				 * THE WAY BACK AT NARROW WIDTHS (design review round 1, D6 / UX U5).
+				 * Below 1000 px the roster is `display:none` while a definition is open,
+				 * and the pane's only controls were New chat / Edit / Duplicate / Ask —
+				 * there was no Back at all, so the sole exit was the rail's icon, which
+				 * lands on the empty pane rather than the list. Escape does the same thing
+				 * for the keyboard (see the page's own handler).
+				 */}
+				{selected || creating ? (
+					<div className="flex shrink-0 items-center border-hairline border-b px-4 py-2 min-[1000px]:hidden">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => requestGo({ name: null })}
+						>
+							<ArrowLeft className="size-4" />
+							Back to the list
+						</Button>
+					</div>
+				) : null}
 				<div className="min-h-0 flex-1 overflow-auto p-6 pb-0">
 					{!catalogueEnabled ? (
-						<Alert variant="warning" className="max-w-xl">
-							<AlertTitle>Reusable agents need a newer backend</AlertTitle>
+						/*
+						 * THREE STATES, THREE TITLES. While the capabilities read is in flight
+						 * the page used to shout "needs a newer backend" over a body that said
+						 * "Connecting…" — a fault the body denied (design review round 1, D7).
+						 * Connecting is neutral; only an ANSWERED `false` is a version claim.
+						 */
+						<Alert
+							variant={capabilities.isLoading ? "neutral" : "warning"}
+							className="max-w-xl"
+						>
+							<AlertTitle>
+								{capabilities.isLoading
+									? "Connecting to the backend"
+									: capabilities.error
+										? "The backend could not be reached"
+										: "Reusable agents need a newer backend"}
+							</AlertTitle>
 							<AlertDescription>
 								{capabilities.isLoading
-									? "Connecting to the backend…"
+									? "Loading what this backend can do…"
 									: capabilities.error
 										? capabilities.error.message
 										: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
@@ -422,7 +604,17 @@ export function AgentsPage() {
 							retrying={profileDetail.isFetching || teamDetail.isFetching}
 						/>
 					) : creating && teamMode ? (
+						/*
+						 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
+						 * two panes share a component with the read/edit panes below, so React
+						 * reconciled one INTO the other and a "New team" form opened holding
+						 * the last team that was merely VIEWED — name, manager and members —
+						 * while the same reuse let a dirty draft ride a roster click onto the
+						 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
+						 * each record its own instance.
+						 */
 						<TeamDetail
+							key="team:create"
 							agents={profiles.data}
 							teams={teams.data}
 							askEnabled={run.enabled}
@@ -433,18 +625,27 @@ export function AgentsPage() {
 							}}
 							onCancelCreate={() => go({ name: null })}
 							onOpenAgent={(agentName) =>
-								go({ kind: "agent", name: agentName })
+								requestGo({ kind: "agent", name: agentName })
 							}
 							onAskAgent={(prompt) => {
 								run.setAbout({ kind: "team", name: name ?? "" });
 								run.setDraft(prompt);
 							}}
 						/>
+					) : creating && duplicateOf && duplicateDetail.isLoading ? (
+						/*
+						 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
+						 * draft once, on mount, so a form mounted before the duplicate's own read
+						 * landed would keep the empty instructions it was born with.
+						 */
+						<DetailSkeleton />
 					) : creating ? (
 						<AgentCreate
-							initial={duplicateSource(duplicateOf, profiles.data)}
+							key="agent:create"
+							initial={duplicateDetail.data ?? null}
 							takenNames={(profiles.data ?? []).map((row) => row.name)}
 							effortTiers={effortTiers}
+							onDirtyChange={setEditDirty}
 							onSaved={(savedName) => {
 								void refreshAll();
 								go({ name: savedName });
@@ -453,6 +654,7 @@ export function AgentsPage() {
 						/>
 					) : teamMode && teamDetail.data ? (
 						<TeamDetail
+							key={`team:${teamDetail.data.name}`}
 							team={teamDetail.data}
 							agents={profiles.data}
 							teams={teams.data}
@@ -463,7 +665,7 @@ export function AgentsPage() {
 								go({ name: savedName });
 							}}
 							onOpenAgent={(agentName) =>
-								go({ kind: "agent", name: agentName })
+								requestGo({ kind: "agent", name: agentName })
 							}
 							onAskAgent={(prompt) => {
 								run.setAbout({
@@ -475,6 +677,7 @@ export function AgentsPage() {
 						/>
 					) : !teamMode && profileDetail.data ? (
 						<AgentDetail
+							key={`agent:${profileDetail.data.name}`}
 							profile={profileDetail.data}
 							teams={teams.data}
 							effortTiers={effortTiers}
@@ -484,15 +687,12 @@ export function AgentsPage() {
 								void refreshAll();
 								go({ name: savedName });
 							}}
-							onDuplicate={(profile) => {
-								const search = new URLSearchParams({
-									kind: "agent",
-									create: "agent",
-									duplicate: profile.name,
-								});
-								setParams(search);
-							}}
-							onOpenTeam={(teamName) => go({ kind: "team", name: teamName })}
+							onDuplicate={(profile) =>
+								requestGo({ create: "agent", duplicate: profile.name })
+							}
+							onOpenTeam={(teamName) =>
+								requestGo({ kind: "team", name: teamName })
+							}
 							onAskAgent={(prompt) => {
 								run.setAbout({
 									kind: "agent",
@@ -507,24 +707,75 @@ export function AgentsPage() {
 						<EmptyPane
 							teamMode={teamMode}
 							run={run}
-							onAddManually={() => go({ create: teamMode ? "team" : "agent" })}
+							onAddManually={() =>
+								requestGo({ create: teamMode ? "team" : "agent" })
+							}
 						/>
 					)}
 				</div>
-				<div className="shrink-0 border-hairline border-t bg-canvas p-4">
-					<ConfigComposer
-						run={run}
-						about={run.about}
-						onClearAbout={() => run.setAbout(null)}
-						blockedReason={
-							editDirty ? "Finish or cancel your edit first." : null
-						}
-					/>
-				</div>
+				{/*
+				 * THE QUESTION A DIRTY DRAFT EARNS, asked in the pane that owns it:
+				 * every roster click, tab switch and "Add manually" lands here first when
+				 * an edit is unsaved (D1/U1/Q1), with the same words the edit footer uses.
+				 */}
+				{pendingNav ? (
+					<div
+						className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
+						role="alertdialog"
+						aria-label="Discard your unsaved changes?"
+					>
+						<span className="text-body-sm text-ink">
+							{teamMode
+								? "Discard your unsaved changes to this team?"
+								: "Discard your unsaved changes to this agent?"}
+						</span>
+						<Button
+							variant="danger"
+							onClick={() => {
+								setEditDirty(false);
+								go(pendingNav);
+								setPendingNav(null);
+							}}
+						>
+							Discard changes
+						</Button>
+						<Button variant="ghost" onClick={() => setPendingNav(null)}>
+							Keep editing
+						</Button>
+					</div>
+				) : null}
+				{/*
+				 * THE DOCKED COMPOSER, ONLY WHERE THE HERO IS NOT (D3/U2/Q8). The empty
+				 * pane already leads with one, and rendering both put two textareas, two
+				 * `aria-live` strips and two Stop buttons on screen with DUPLICATE ids —
+				 * so `<label for>` bound to the first only and a screen reader read every
+				 * state change twice. One composer, one placement.
+				 */}
+				{showsEmptyPane ? null : (
+					<div className="shrink-0 border-hairline border-t bg-canvas p-4">
+						<ConfigComposer
+							run={run}
+							about={run.about}
+							onClearAbout={() => run.setAbout(null)}
+							blockedReason={
+								editDirty ? "Finish or cancel your edit first." : null
+							}
+						/>
+					</div>
+				)}
 			</main>
 		</div>
 	);
 }
+
+/** Where the page can navigate to: one view of the same route. */
+type NavIntent = {
+	kind?: "agent" | "team";
+	name?: string | null;
+	create?: "agent" | "team" | null;
+	/** The name a "Duplicate as new agent" form starts from. */
+	duplicate?: string;
+};
 
 /**
  * The nothing-selected pane.
@@ -585,14 +836,14 @@ function Roster({
 	rows,
 	name,
 	teamMode,
-	markedKeys,
+	marked,
 	onOpen,
 }: {
 	rows: readonly (ReusableProfile | ReusableTeam)[];
 	/** The definition the page is showing, or null. */
 	name: string | null;
 	teamMode: boolean;
-	markedKeys: Set<string>;
+	marked: Map<string, boolean>;
 	onOpen: (name: string) => void;
 }) {
 	const refs = useRef(new Map<string, HTMLButtonElement>());
@@ -622,9 +873,7 @@ function Roster({
 		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-1">
 			{rows.map((row) => {
 				const isProfile = "source" in row;
-				const marked = markedKeys.has(
-					`${teamMode ? "team" : "agent"}:${row.name}`,
-				);
+				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
 				return (
 					<li key={row.name}>
 						<button
@@ -669,14 +918,28 @@ function Roster({
 								<span className="truncate text-body-sm text-ink">
 									{row.name}
 								</span>
-								{marked ? (
+								{/*
+								 * THE SOURCE CHIP SITS WITH THE NAME and reads as a statement, not a
+								 * control (design review round 1, D11): as a bordered box on the second
+								 * line it looked like the actionable outline chips next to it, and it
+								 * took the room the description needed (about 25 characters were
+								 * visible before).
+								 */}
+								{isProfile ? (
+									<SourceChip source={row.source} appearance="text" />
+								) : null}
+								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
-										Updated
+										{/*
+										 * A CREATED ROW IS NEW, not Updated (design review round 1, D8):
+										 * the badge followed "this row was marked", and the strip next to it
+										 * said Created, so the two disagreed about the same fact.
+										 */}
+										{mark ? "New" : "Updated"}
 									</Badge>
 								) : null}
 							</span>
 							<span className="flex w-full flex-wrap items-center gap-1.5">
-								{isProfile ? <SourceChip source={row.source} /> : null}
 								{"members" in row ? (
 									<Badge variant="neutral">
 										{row.members.length === 1
@@ -728,20 +991,4 @@ function teamsFilter(
 			row.name.toLowerCase().includes(needle) ||
 			(row.description ?? "").toLowerCase().includes(needle),
 	);
-}
-
-/**
- * The record a duplicate starts from.
- *
- * READ FROM THE LIST, not from whatever the detail pane was showing: the point of
- * U9/U10 is that a copy must not inherit an unsaved draft or a failed attempt's
- * values. The list is the backend's own view of the record, and if the name is
- * not in it (removed elsewhere) the create simply starts blank.
- */
-function duplicateSource(
-	name: string | null,
-	profiles: readonly ReusableProfile[] | undefined,
-): ReusableProfile | null {
-	if (!name) return null;
-	return (profiles ?? []).find((row) => row.name === name) ?? null;
 }
