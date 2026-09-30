@@ -1694,6 +1694,7 @@ const BRANCH_RECORDS = [
 	 */
 	"desktopStepDiagnosticsRestampNote",
 	/*
+
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
 	 * moved, one set's states re-captured - so a fold that started from main's
@@ -2552,8 +2553,26 @@ const BRANCH_RECORDS = [
 	 * copy would drop it first.
 	 */
 	"foldOnto65a3e97b8cNote",
+	/*
+	 * And this LANE's newest top-level record: the setup window's rail states the
+	 * pair the file ships and the surface it re-shot, so a fold resolved from
+	 * main's copy would drop it first - the reason this list exists.
+	 */
+	"installerPanelRailNote",
+	/*
+	 * And the pass under it: the round-1 remediation of the same rail, which
+	 * re-shot the surface whole and is the record a fold resolved from main's
+	 * copy would drop first, for the same reason.
+	 */
+	"installerPanelRailRemediationNote",
+	/*
+	 * And this LANE'S newest: the round-2 remediation, which fixed the working
+	 * ring's token, re-shot the surface whole again, and added the motion pair
+	 * the turn had no frame of. It states the trees the pass read as bare SHAs,
+	 * so it adds no name to the quoting ledger.
+	 */
+	"installerPanelRailRoundTwoNote",
 ];
-
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),
