@@ -949,7 +949,7 @@ test("the Enter line names what the key actually does, in every state", () => {
  * restatement of it on trust.
  */
 const MESSAGE_INPUT = readFileSync(
-	"src/renderer/src/features/chat/components/message-input.tsx",
+	"src/renderer/src/shared/components/composer/message-input.tsx",
 	"utf8",
 );
 
