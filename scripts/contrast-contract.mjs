@@ -2705,7 +2705,14 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "transcript quote toolkit floating shell",
 		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
-		must: "z-10 flex h-8 items-center rounded-md border border-hairline bg-elevated px-1",
+		/*
+		 * Verbatim, so it tracks the shell as written: the speak-aloud round added
+		 * the second control (Speak beside Quote) and with it the pair's `gap-0.5`
+		 * - the anatomy the link toolbar's own multi-button strip already carries.
+		 * The boundary this row protects is the `border border-hairline
+		 * bg-elevated` ground, which is unchanged.
+		 */
+		must: "z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{
