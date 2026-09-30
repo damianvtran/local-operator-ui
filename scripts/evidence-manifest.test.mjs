@@ -2841,6 +2841,35 @@ const BRANCH_RECORDS = [
 	 * same reason a third time, which is exactly what this list is for.
 	 */
 	"foldOntobbffb9a8a9Note",
+	 * Grown by the recording-display pass's convergence fold (2026-09-29): it states what
+	 * the fold moved and what it did not, and it spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldNote",
+	/*
+	 * Grown by the second convergence fold (2026-09-30): it states what the lift moved and what it did not, and it spells its identity
+	 * as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldTwoNote",
+	/*
+	 * Grown by the recording-display pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (four frames - the
+	 * composer's two recording states, empty field and with draft, in both the
+	 * before and the after half) and the two commands that produced the halves,
+	 * and it spells its identity as bare SHAs, so it adds no name to the
+	 * quoting ledger.
+	 */
+	"sttRecordingDisplayPass",
+	/*
+	 * Grown by the third convergence fold (2026-09-30): it states what the fold moved,
+	 * what it restored and what it did not, and it spells its identity as bare SHAs, so
+	 * it adds no name to the quoting ledger.
+	 */
+	"sttRecordingDisplayFoldThreeNote",
+	"sttRecordingDisplayFoldFourNote",
+	"sttRecordingDisplayFoldFiveNote",
+	"sttRecordingDisplayFoldSixNote",
+	"sttRecordingDisplayFoldSevenNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
