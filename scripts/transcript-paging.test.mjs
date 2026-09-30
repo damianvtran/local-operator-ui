@@ -46,6 +46,7 @@ const {
 	decide,
 	initialPagingState,
 	isExhausted,
+	noteAborted,
 	noteFailed,
 	noteInput,
 	noteSettled,
@@ -983,7 +984,9 @@ test("a page that lands while the reader is still pushing still owes its widen",
 	// exactly what a reader still pushing at the wall produces — so a page that
 	// landed with rows held back left the reader pinned with those rows one widen
 	// away and nothing coming until their next act. Measured: the reader sat at
-	// the hard top for 869ms with the slot reading "100 earlier messages above".
+	// the hard top for 869ms with the slot reading "100 earlier messages above"
+	// (the windowed sentence then carried a count; it states none since design
+	// round 1's D1).
 	let state = wheelUp(initialPagingState(), 0);
 	const spent = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
 	assert.equal(spent.action, "fetch");
@@ -1540,4 +1543,43 @@ test("a demand the tail refuses stays armed and outside its spend window", () =>
 		true,
 		"inside the zone the same demand is spendable",
 	);
+});
+
+/*
+ * `noteAborted`: a page that was neither applied nor failed (the session changed
+ * while it was in flight, or there was nothing to ask for). The pump used to read
+ * every non-applied outcome as `false` and call `noteFailed`, so a healthy
+ * conversation that merely lost a race counted toward the three-strikes budget
+ * that switches the automatic path off.
+ */
+test("noteAborted releases the pump without counting a failure", () => {
+	const state = wheelUp(initialPagingState(), 0);
+	const spent = decide(state, geo(), SETTLE_MS + 1);
+	assert.equal(spent.action, "fetch");
+	assert.equal(spent.state.busy, true);
+	const failed = noteFailed(spent.state);
+	const aborted = noteAborted(spent.state);
+	assert.equal(aborted.busy, false, "the reveal is over");
+	assert.equal(aborted.failures, 0, "and it was not a failure");
+	assert.equal(failed.failures, 1, "the contrast: a real failure counts");
+	assert.equal(aborted.armed, false);
+	assert.equal(aborted.deliberate, false);
+	assert.equal(aborted.retained, false);
+	assert.equal(
+		aborted.continuation,
+		false,
+		"nothing landed, nothing to continue",
+	);
+	assert.equal(aborted.pageWidenOwed, false, "nothing landed, nothing owed");
+});
+
+test("noteAborted keeps failures already counted and never exhausts the budget", () => {
+	let state = noteFailed(noteFailed(initialPagingState()));
+	for (let i = 0; i < 10; i++) state = noteAborted({ ...state, busy: true });
+	assert.equal(
+		state.failures,
+		2,
+		"aborts neither add to nor forgive the count",
+	);
+	assert.equal(isExhausted(state), false);
 });

@@ -35,6 +35,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
+import type { LoadOlderOutcome } from "../../canonical/load-older";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
@@ -61,8 +62,17 @@ export type ChildTranscriptHandle = {
 	/** A FRESH transcript state, never the parent's: see `applyHistoryPage`'s note. */
 	transcript: TranscriptState;
 	loadingOlder: boolean;
+	/**
+	 * The last "load earlier" ask FAILED and nothing has been applied since - the
+	 * child reader's own copy of what `CanonicalSessionView.olderFailed` is for the
+	 * parent. `CanonicalTranscript` paints the failed row from it, and it is the
+	 * only thing that can: the pump no longer keeps a failed flag of its own.
+	 */
+	olderFailed: boolean;
 	/** Resolves `false` rather than rejecting, per the paging contract. */
 	loadOlder: () => Promise<boolean>;
+	/** The same ask, answering what happened (`LoadOlderOutcome`); never rejects. */
+	loadOlderDetailed: () => Promise<LoadOlderOutcome>;
 };
 
 export function useChildTranscript({
@@ -78,10 +88,38 @@ export function useChildTranscript({
 	pulse: number;
 	live: boolean;
 }): ChildTranscriptHandle {
-	const [transcript, setTranscript] =
+	const [transcript, setTranscriptState] =
 		useState<TranscriptState>(EMPTY_TRANSCRIPT);
 	const [state, setState] = useState<ChildTranscriptState>("loading");
 	const [loadingOlder, setLoadingOlder] = useState(false);
+	const [olderFailed, setOlderFailed] = useState(false);
+
+	/*
+	 * The transcript as the LATEST write left it, readable outside a render.
+	 *
+	 * Every write goes through `setTranscript` below, which computes the next value
+	 * from this ref and only then hands it to React. That is what lets
+	 * `loadOlderDetailed` report `newRecords`/`exhausted` from the page it applied:
+	 * the numbers used to be assigned inside a `setState` updater, which React runs
+	 * eagerly only when its queue is empty, so a report read on the next line could
+	 * be the initial zero (loader-continuity round 1, R1-5). The writers are all
+	 * event-handler/async paths that run one at a time on the main thread, so the
+	 * ref is never behind the state it mirrors.
+	 */
+	const transcriptRef = useRef<TranscriptState>(EMPTY_TRANSCRIPT);
+	const setTranscript = useCallback(
+		(
+			update:
+				| TranscriptState
+				| ((previous: TranscriptState) => TranscriptState),
+		) => {
+			const next =
+				typeof update === "function" ? update(transcriptRef.current) : update;
+			transcriptRef.current = next;
+			setTranscriptState(next);
+		},
+		[],
+	);
 
 	/*
 	 * The identity a read belongs to. `applyHistoryPage` MERGES, so a page that
@@ -93,6 +131,17 @@ export function useChildTranscript({
 	const key = `${sessionId ?? ""}:${childId ?? ""}`;
 	const keyRef = useRef(key);
 	keyRef.current = key;
+	/*
+	 * A per-VIEW generation of that key, bumped whenever it changes, for the same
+	 * reason the parent's loader has one (round 1, R1-3): a page still out for
+	 * child A when the reader goes A -> B -> A matches A by key, lands on A's freshly
+	 * reset transcript (`oldestId` null) and seeds its cursor from a deep page,
+	 * leaving the rows between it and the tail unreachable. Comparing the epoch
+	 * makes "the same child" mean "the same visit to it".
+	 */
+	const epochRef = useRef({ key, epoch: 0 });
+	if (epochRef.current.key !== key)
+		epochRef.current = { key, epoch: epochRef.current.epoch + 1 };
 
 	// The last tail read, for the 1 Hz cap. Ref rather than state: it decides
 	// whether to schedule a read, and changing it must not re-render the reader.
@@ -117,21 +166,23 @@ export function useChildTranscript({
 	/**
 	 * Merge one page into the reader's own state.
 	 *
-	 * `hasMore` is RESTORED rather than taken from the page on a tail read: a
-	 * tail page's `has_more: false` is a statement about the tail, not about the
-	 * rows already paged in above it, and taking it literally would leave the
-	 * reader unable to load earlier rows after the first pulse — the "load
-	 * earlier" affordance would vanish under a reader who had just used it.
-	 * `oldestId` needs no such care: `applyHistoryPage` already keeps the oldest
-	 * entry it knows rather than the page's own first row.
+	 * This used to RESTORE `hasMore` after every merge, because a tail page's
+	 * `has_more: false` is a statement about the tail, not about the rows already
+	 * paged in above it, and `applyHistoryPage` took it literally - the "load
+	 * earlier" affordance vanished under a reader who had just used it. The
+	 * reducer now owns that rule (a tail-type read moves neither the cursor nor
+	 * `hasMore` unless it reaches strictly older), so the restore is redundant -
+	 * and it would be WRONG for a continuation: `previous.hasMore || ...` forces
+	 * `true` back over the final page's honest `has_more: false`, and a child
+	 * could then never reach its start. `pagedBefore` is passed only by the
+	 * older-page ask; every tail read leaves it undefined.
 	 */
 	const merge = useCallback(
-		(previous: TranscriptState, page: DesktopChildTranscriptPage) => {
-			const merged = applyHistoryPage(previous, page);
-			return merged.hasMore === previous.hasMore
-				? merged
-				: { ...merged, hasMore: previous.hasMore || merged.hasMore };
-		},
+		(
+			previous: TranscriptState,
+			page: DesktopChildTranscriptPage,
+			options?: { pagedBefore?: string },
+		) => applyHistoryPage(previous, page, options),
 		[],
 	);
 
@@ -161,7 +212,7 @@ export function useChildTranscript({
 			if (keyRef.current !== requested) return;
 			setState("error");
 		}
-	}, [childId, merge, sessionId]);
+	}, [childId, merge, sessionId, setTranscript]);
 
 	/** Schedule a tail read, coalescing to one per second. */
 	const scheduleTail = useCallback(() => {
@@ -181,6 +232,13 @@ export function useChildTranscript({
 	// the two are one effect rather than two that could disagree about whether
 	// anything has been fetched.
 	useEffect(() => {
+		// A failure - and an in-flight flag - belong to the child they happened on.
+		// The flag matters because a request abandoned by a switch never clears it
+		// (its `finally` only writes for the view that is still on screen), so
+		// without this the NEW child opens showing "Loading earlier messages" with
+		// nothing out.
+		setOlderFailed(false);
+		setLoadingOlder(false);
 		if (!sessionId || !childId) {
 			setTranscript(EMPTY_TRANSCRIPT);
 			setState("loading");
@@ -192,7 +250,7 @@ export function useChildTranscript({
 		setState("loading");
 		void readTail();
 		return clearTimer;
-	}, [childId, clearTimer, readTail, sessionId]);
+	}, [childId, clearTimer, readTail, sessionId, setTranscript]);
 
 	// The pulse: one read per beat, capped — and only while the child is LIVE.
 	//
@@ -232,11 +290,13 @@ export function useChildTranscript({
 		return () => window.clearInterval(timer);
 	}, [childId, live, readTail, sessionId]);
 
-	const loadOlder = useCallback(async (): Promise<boolean> => {
-		if (!sessionId || !childId) return false;
-		const requested = `${sessionId}:${childId}`;
-		const before = transcript.oldestId;
-		if (!transcript.hasMore || !before) return false;
+	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
+		if (!sessionId || !childId) return { kind: "nothing-to-load" };
+		const epoch = epochRef.current.epoch;
+		const stillHere = () => epochRef.current.epoch === epoch;
+		const held = transcriptRef.current;
+		const before = held.oldestId;
+		if (!held.hasMore || !before) return { kind: "nothing-to-load" };
 		setLoadingOlder(true);
 		try {
 			const page = await desktopResult<DesktopChildTranscriptPage>({
@@ -246,18 +306,59 @@ export function useChildTranscript({
 				beforeId: before,
 				limit: PAGE_LIMIT,
 			});
-			// A page that resolves after the reader moved describes a transcript
-			// that is no longer on screen.
-			if (keyRef.current !== requested) return false;
+			// A page that resolves after the reader moved (or left and came back)
+			// describes a transcript that is no longer on screen.
+			if (!stillHere()) return { kind: "stale" };
 			setState(page.state);
-			setTranscript((previous) => merge(previous, page));
-			return true;
+			/*
+			 * The same continuation rule as the parent's loader, and the same
+			 * guard: `pagedBefore` is asserted only while the cursor is still where
+			 * this ask started, so a tail read that landed while the page was out
+			 * cannot have the cursor dragged to a position the reader has left
+			 * (loader-continuity R1/R4). Without it, a page of only silent or
+			 * already-held rows left the cursor where it was and the next ask
+			 * repeated this one. Read from the ref, at the moment of the merge, so
+			 * the guard sees a tail read that landed while the page was out.
+			 */
+			const previous = transcriptRef.current;
+			const merged = merge(
+				previous,
+				page,
+				previous.oldestId === before ? { pagedBefore: before } : undefined,
+			);
+			setTranscript(merged);
+			setOlderFailed(false);
+			return {
+				kind: "applied",
+				newRecords: Math.max(
+					0,
+					merged.records.length - previous.records.length,
+				),
+				exhausted: !merged.hasMore,
+			};
 		} catch {
-			return false;
+			// Only a request that failed for the view still on screen is a failure the
+			// reader can act on; a rejection for one they left says nothing about this
+			// one, exactly as `stale` does not.
+			if (!stillHere()) return { kind: "stale" };
+			setOlderFailed(true);
+			return { kind: "failed", reason: "request" };
 		} finally {
-			if (keyRef.current === requested) setLoadingOlder(false);
+			if (stillHere()) setLoadingOlder(false);
 		}
-	}, [childId, merge, sessionId, transcript.hasMore, transcript.oldestId]);
+	}, [childId, merge, sessionId, setTranscript]);
+	const loadOlder = useCallback(
+		async (): Promise<boolean> =>
+			(await loadOlderDetailed()).kind === "applied",
+		[loadOlderDetailed],
+	);
 
-	return { state, transcript, loadingOlder, loadOlder };
+	return {
+		state,
+		transcript,
+		loadingOlder,
+		olderFailed,
+		loadOlder,
+		loadOlderDetailed,
+	};
 }
