@@ -75,6 +75,16 @@ export { CANCELLED_BEFORE_START, deriveRunDetails } from "./src/renderer/src/fea
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
 	external: [
 		"react",
 		"react-dom",
@@ -168,6 +178,12 @@ const renderReader = ({ job = {}, page = fixtures.childPage() } = {}) => {
 				sessionId: "parent-session",
 				pulse: 0,
 				live: false,
+				/*
+				 * The pane's own stream is not down in these fixtures: the reader's slot is
+				 * asserted in its transport-up shape here, and the down shape is the pair
+				 * `scripts/older-history-slot.test.mjs` renders.
+				 */
+				olderTransportDown: false,
 				previewPage: page,
 				attachmentScope: null,
 				onUnopenable: () => {},
