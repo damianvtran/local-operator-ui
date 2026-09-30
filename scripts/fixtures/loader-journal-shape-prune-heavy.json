@@ -1,0 +1,78 @@
+{
+	"source": "STRUCTURE of one real 2228-entry conversation journal - the operator's SECOND report of the 'I can't scroll past that' class, whose red failure row came from the lost-race half rather than from a broken paging path. Every number here was measured off that journal and is a COUNT, a POSITION or a TYPE: no text, ids or timestamps were copied, and the entries between the measured positions are deterministic filler minted from `filler` below.",
+	"entries": 2228,
+	"grammar": "custom:<custom_type> | message:<custom_type> (a message-typed custom row) | user | assistant:<tool_calls>:<has_text 0|1> | tool | prune | compaction | compaction:<rows_back> (a durable compaction row whose `first_kept_entry_id` names the entry that many rows earlier in the journal). Consumed by scripts/loader-journal-fixture.mjs, which mints synthetic ids, instants and text.",
+	"droppableByCompactFile": "custom:session_spend.v1 (compact_file keeps only the newest)",
+	"compactions": [
+		{
+			"at": 415,
+			"keptBack": 242
+		},
+		{
+			"at": 598,
+			"keptBack": 85
+		},
+		{
+			"at": 923,
+			"keptBack": 218
+		},
+		{
+			"at": 1274,
+			"keptBack": 55
+		},
+		{
+			"at": 1715,
+			"keptBack": 296
+		},
+		{
+			"at": 1891,
+			"keptBack": 106
+		}
+	],
+	"pruneRows": [1950],
+	"spendRows": [
+		1887, 1893, 1898, 1903, 1909, 1913, 1918, 1919, 1927, 1931, 1934, 1939,
+		1943, 1947, 1951, 1958, 1963, 1968, 1972, 1978, 1982, 1985, 1992, 1996,
+		2000, 2006, 2011, 2016, 2021, 2025, 2030, 2035, 2038, 2039, 2047, 2056,
+		2060, 2066, 2069, 2072, 2076, 2080, 2084, 2088, 2097, 2102, 2107, 2112,
+		2117, 2120, 2124, 2129, 2133, 2139, 2143, 2149, 2155, 2158, 2162, 2168,
+		2172, 2176, 2183, 2187, 2192, 2197, 2200, 2203, 2207, 2210, 2211, 2217,
+		2221, 2225
+	],
+	"pageBoundaries": {
+		"limit": 100,
+		"kinds": [
+			"tool",
+			"tool",
+			"custom:completion_attention",
+			"message:job_result",
+			"tool",
+			"assistant:2:0",
+			"tool",
+			"tool",
+			"tool",
+			"custom:todo_snapshot",
+			"tool",
+			"tool",
+			"tool",
+			"message:hub_message",
+			"assistant:2:0",
+			"assistant:1:0",
+			"assistant:1:0",
+			"tool",
+			"assistant:1:0",
+			"tool",
+			"assistant:2:0",
+			"tool"
+		]
+	},
+	"filler": [
+		"user",
+		"assistant:1:0",
+		"tool",
+		"custom:todo_snapshot",
+		"message:job_result",
+		"assistant:1:1",
+		"tool"
+	]
+}
