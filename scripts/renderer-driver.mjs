@@ -10801,31 +10801,47 @@ async function sceneTranscriptRail(cdp) {
 			 * null on a landing that happened. The frame is taken AT the wash (the
 			 * first read, right after the jump resolves, before the timeline
 			 * sampling), so the before/after pair photographs the same instant of
-			 * the arrival cue the pre-anchor runs photographed.
+			 * the arrival cue the pre-anchor runs photographed; the luma reads
+			 * below use their own post-settle capture.
 			 */
 			await wait(700);
 			const settled = await anchorView(id);
 			const view = settled ?? atWash;
-			const strip = atWash?.visibleStrip ?? null;
+			/*
+			 * The luma reads come from a POST-SETTLE capture (UX round 1's U1):
+			 * the wash-instant still above is the design frame, but a tall
+			 * near-newest run had its still photograph a stale paint once (the
+			 * scroller repaint lagging the DOM's landing), and sampling a stale
+			 * frame can only read a red for a property that holds. The bands
+			 * come from the same settled snapshot this capture shows; the wash
+			 * instant is the fallback only when no settled read came back.
+			 */
+			await capture(cdp, `rail-jump-${name}-settled`);
+			const lumaView = settled ?? atWash;
+			const strip = lumaView?.visibleStrip ?? null;
 			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
 			const targetPeak = targetVisible
-				? await rowPeakLuma(`rail-jump-${name}`, atWash.scrollerLeft, {
-						top: strip.top,
-						height: strip.bottom - strip.top,
-					})
-				: null;
-			const refPeak = atWash?.refBand
 				? await rowPeakLuma(
-						`rail-jump-${name}`,
-						atWash.scrollerLeft,
-						atWash.refBand,
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						{
+							top: strip.top,
+							height: strip.bottom - strip.top,
+						},
 					)
 				: null;
-			const adjPeak = atWash?.adjBand
+			const refPeak = lumaView?.refBand
 				? await rowPeakLuma(
-						`rail-jump-${name}`,
-						atWash.scrollerLeft,
-						atWash.adjBand,
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.refBand,
+					)
+				: null;
+			const adjPeak = lumaView?.adjBand
+				? await rowPeakLuma(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.adjBand,
 					)
 				: null;
 			/* Full ink is 200+ (unmasked 238, inside the fade 189): the first
