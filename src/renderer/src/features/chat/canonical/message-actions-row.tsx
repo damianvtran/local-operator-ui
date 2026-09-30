@@ -28,8 +28,8 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { useSpeechStore } from "@shared/store/speech-store";
 import { cn } from "@shared/lib/utils";
+import { useSpeechStore } from "@shared/store/speech-store";
 import { Check, ClipboardCopy, Square, Volume2 } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { copyTarget } from "../utils/link-open";
@@ -138,7 +138,9 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 							variant="ghost"
 							size="icon-sm"
 							aria-label={copied ? "Copied" : "Copy"}
-							className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+							className={cn(
+								"text-ink-dim hover:bg-accent-wash hover:text-accent",
+							)}
 							onClick={handleCopy}
 						>
 							{copied ? (
@@ -154,7 +156,9 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 							variant="ghost"
 							size="icon-sm"
 							aria-label="Stop"
-							className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+							className={cn(
+								"text-ink-dim hover:bg-accent-wash hover:text-accent",
+							)}
 							onClick={handleSpeak}
 						>
 							<Square aria-hidden="true" />
