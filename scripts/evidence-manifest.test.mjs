@@ -2681,6 +2681,7 @@ const BRANCH_RECORDS = [
 	 * exists to make loud.
 	 */
 	"foldOnto29a9aa985cMeasureDragNote",
+	"foldOnto340cfc7f88Note",
 	"foldOnto4703067935MeasureDragNote",
 	"foldOnto49491865caMeasureDragNote",
 	"foldOnto5ba0d0dc8aMeasureDragNote",
