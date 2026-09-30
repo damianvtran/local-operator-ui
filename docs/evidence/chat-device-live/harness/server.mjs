@@ -15,8 +15,9 @@
  * admission on `sessions.create`/`transfer` (the round-1 QA block still stands), so a
  * real daemon refuses this path before anything can be measured.
  */
-import { appendFileSync, existsSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { dirname } from "node:path";
 
 const PORT = Number(process.env.RIG_PORT ?? 24321);
 const WIRE = process.env.RIG_WIRE ?? "/tmp/rig-wire.jsonl";
@@ -26,6 +27,15 @@ const SELF = "d_peer_mbp0001";
 const BUILD = "d_peer_buildbox";
 const PIXEL = "d_peer_pixelbit";
 
+/*
+ * THE WIRE'S OWN DIRECTORY FIRST. The harness spawns this endpoint before it
+ * creates its scratch tree, so on a fresh scratchpad this truncate was the rig's
+ * first write and the run died here (`ENOENT ... wire.jsonl`) before the harness
+ * could mkdir anything. Creating the directory this file is about to write into
+ * is the smallest way the rig stays runnable from a clean scratchpad, which is
+ * what its own header promises.
+ */
+mkdirSync(dirname(WIRE), { recursive: true });
 writeFileSync(WIRE, "");
 
 const member = (over) => ({
