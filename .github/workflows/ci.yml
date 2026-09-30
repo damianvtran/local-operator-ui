@@ -666,11 +666,13 @@ jobs:
           version: '10.29.2'
 
       - name: Build and pack
+        # Inert OAuth fixtures let forks run the same packaging/startup checks.
+        # This smoke test does not authenticate or publish its tarball.
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
-          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ci-smoke.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: ci-smoke-not-a-secret
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-0000-0000-000000000000'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-0000-0000-000000000000'
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is

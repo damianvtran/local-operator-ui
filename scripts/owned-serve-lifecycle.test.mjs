@@ -195,13 +195,18 @@ const children = [];
 const detachedPorts = [];
 /** Every squatter server this file opens, so none outlives a failing assertion. */
 const squatters = new Set();
+const allocatedPorts = new Set();
 async function freePort() {
-	const s = createServer();
-	s.listen(0, "127.0.0.1");
-	await once(s, "listening");
-	const port = s.address().port;
-	await new Promise((r) => s.close(r));
-	return port;
+	for (;;) {
+		const s = createServer();
+		s.listen(0, "127.0.0.1");
+		await once(s, "listening");
+		const port = s.address().port;
+		await new Promise((r) => s.close(r));
+		if (allocatedPorts.has(port)) continue;
+		allocatedPorts.add(port);
+		return port;
+	}
 }
 async function response(port) {
 	const r = await fetch(`http://127.0.0.1:${port}/health`, {
@@ -411,6 +416,47 @@ test("failed startup is stopped even before readiness; stopped start cannot spaw
 	assert.equal(await start, false);
 	assert.equal(pending.process, null);
 });
+
+for (const interruption of ["exit", "stop"]) {
+	test(
+		`a child that ${interruption === "exit" ? "exits" : "stops"} during registration cannot announce readiness`,
+		{ timeout: 15_000 },
+		async (t) => {
+			const m = await manager();
+			const registering = Promise.withResolvers();
+			const release = Promise.withResolvers();
+			t.after(() => release.resolve());
+			const identify = m.ownedDaemonIdentity.bind(m);
+			m.ownedDaemonIdentity = async (child) => {
+				const identity = await identify(child);
+				registering.resolve(child);
+				await release.promise;
+				return identity;
+			};
+			let readyCount = 0;
+			const pushed = [];
+			m.onBackendReady(() => readyCount++);
+			m.onStatusChange((snapshot) => pushed.push(snapshot));
+			const starting = m.start();
+			const child = await registering.promise;
+			const exit = once(child, "exit");
+			let stopping;
+			if (interruption === "stop") stopping = m.stop(true);
+			else child.kill("SIGTERM");
+			await exit;
+			release.resolve();
+			assert.equal(await starting, false);
+			await stopping;
+			assert.equal(readyCount, 0);
+			assert.equal(m.process, null);
+			assert.equal(m.getStatusSnapshot().owned, false);
+			assert.equal(
+				pushed.some((snapshot) => snapshot.owned),
+				false,
+			);
+		},
+	);
+}
 
 test("startup timeout and early exit clean actual children without claiming running", async () => {
 	const early = await manager("early");
