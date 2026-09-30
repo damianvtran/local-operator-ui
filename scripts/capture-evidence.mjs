@@ -5664,16 +5664,111 @@ export const STORIES = [
 	   test beside `install-install-progress.test.mjs` reads those two numbers
 	   against this tuple so a third copy of the size cannot drift again (design
 	   D15 - a story at one size while the window said another is exactly what the
-	   1380x800 set was). SIX states, because a user can be left in six: the
-	   mounted entry, an indeterminate first frame, the long download, a failure
-	   with a recognised cause, a failure WITHOUT one (the composition the code
-	   calls the common case, whose only specific line is the machine one below the
-	   sentence - design D12), and the settled panel. One frame of DEFAULT was all
-	   this surface had, which is why the failure state could have shipped as a
-	   dialog nobody had looked at. */
+	   1380x800 set was). EIGHT states, because a user can be left in eight and
+	   three of them had never been photographed: the mounted entry, the FIRST
+	   phase (`python`, which is the whole of a cold run's opening minutes and the
+	   state a fill-based progress affordance reads as nothing at all), the long
+	   download, the LAST phase (`verify`, whose smoke probe is the longest runway
+	   of any step and the one that can still fail after a successful pip), a failure
+	   that happened BEFORE the first marker - so the payload names no phase at all,
+	   which the validator accepts and `installFailureSentence(null)` is written for,
+	   and which the rail used to contradict with a turning "work is happening" mark
+	   over four hollow rings - a failure with a recognised cause, a failure WITHOUT
+	   one (the composition the code calls the common case, whose only specific line
+	   is the machine one below the sentence - design D12), and the settled panel.
+	   One frame of DEFAULT was all this surface had, which is why the failure state
+	   could have shipped as a dialog nobody had looked at.
+
+	   THE `indeterminate` ROW IS GONE, FOLDED INTO `default`, because the two were
+	   byte-identical in all twelve themes (measured across the whole frame, 0
+	   differing pixels - review 6): `phase: null` IS the state the entry mounts in,
+	   so a second row documented no state of its own while the tuple declared it as
+	   one. What the pair proved - that the props path and the mount path agree - is
+	   recorded in the stories file, where the measurement belongs.
+
+	   THE TWO reduced-motion ROWS are this surface's animation seen the way a user
+	   who asked for less motion sees it (design D5; the repo's convention, as in
+	   `chat-composer-band` and `chat-run-panel`). The rig answers
+	   `prefers-reduced-motion: reduce` at CAPTURE time, so the panel's own duration
+	   cap applies and both working marks rest frozen on their first frame - and the
+	   frames are the proof of that: every keyframe in this surface is written so its
+	   RESTING state is the visible one, and until these rows existed nothing on this
+	   surface showed it. `mid-install` carries the running step's ring and
+	   `default` the rail's head mark, which are the two places the panel moves; they
+	   get their own directories rather than a ninth state because they are the same
+	   payloads under a different preference, not different states.
+
+	   AND THEY ARE BYTE-IDENTICAL TO THEIR COUNTERPARTS - 12 of 12 themes each, by
+	   md5 - which is a measurement, not an oversight, and it is the same identity
+	   the repo's other reduced-motion set has (`activity-chips-reduced-motion`
+	   against `activity-chips`, verified the same way). It is also what the property
+	   MEANS here: every still this rig takes is already an animation-declined frame
+	   (it injects `animation: none` before the shutter), so "the preference changes
+	   nothing in the picture" is exactly the claim that the resting state is the
+	   visible one - the one thing a reduced-motion user must not lose. A row whose
+	   frames DIFFERED from its counterpart would mean the panel renders something
+	   under one preference that it does not render under the other, which is the
+	   defect these rows exist to catch.
+
+	   AND THE MOTION PAIR IS THE ONE EXCEPTION TO THAT DECLINED SHUTTER (design
+	   round 2, D9): `mid-install-motion-1` and `-2` take the same story through
+	   the rig's `{ liveMotion, phaseMs }` option - whose hold pauses the CSS
+	   animation the mark carries and sets its `currentTime` - half of the 1.8s
+	   `install-turn` cycle apart, so the ring's accent quadrant is recorded at a
+	   SECOND position and the turn can be checked from the committed set rather
+	   than only from a live probe. They prove the shipped stylesheet turns this
+	   ring in the built Storybook; they do not prove anything about a live app
+	   or about reduced motion (the two rows above are that claim's frames). The
+	   `motionSelector` value is what locates the rail's mark - the composer's
+	   default selector would hold nothing here. */
 	["installer-installercontent--default", 640, 480],
-	["installer-installercontent--indeterminate", 640, 480],
+	[
+		"installer-installercontent--default",
+		640,
+		480,
+		{ dir: "unannounced-reduced-motion", reducedMotion: true },
+	],
+	["installer-installercontent--first-stage", 640, 480],
 	["installer-installercontent--mid-install", 640, 480],
+	[
+		"installer-installercontent--mid-install",
+		640,
+		480,
+		{ dir: "reduced-motion", reducedMotion: true },
+	],
+	/*
+	 * The turn at a second position, one pair for `mid-install` (design round 2,
+	 * D9; the set's note above says what the pair proves and what it does not).
+	 * `phaseMs` 900 is half of the 1.8s cycle; 0 is the resting frame every
+	 * other still of this set already shows, so the two are the same story,
+	 * theme and rig, half a turn apart. See the rig's `{ liveMotion }` note for
+	 * why the hold exists and why only a tuple whose subject IS the motion may
+	 * take it.
+	 */
+	[
+		"installer-installercontent--mid-install",
+		640,
+		480,
+		{
+			dir: "mid-install-motion-1",
+			liveMotion: true,
+			phaseMs: 0,
+			motionSelector: '[class~="animate-install-turn"]',
+		},
+	],
+	[
+		"installer-installercontent--mid-install",
+		640,
+		480,
+		{
+			dir: "mid-install-motion-2",
+			liveMotion: true,
+			phaseMs: 900,
+			motionSelector: '[class~="animate-install-turn"]',
+		},
+	],
+	["installer-installercontent--verifying", 640, 480],
+	["installer-installercontent--failure-before-phase", 640, 480],
 	["installer-installercontent--failure", 640, 480],
 	["installer-installercontent--failure-fallback", 640, 480],
 	["installer-installercontent--installed", 640, 480],
@@ -8013,13 +8108,16 @@ const main = async () => {
 			 */
 			/*
 			 * `{ liveMotion: true }` is the ONE exception to that rule, and it exists
-			 * because exactly one claim in this repository is about motion itself: the
-			 * composer's running-state mark spins (`motion-safe:animate-spin`), and with
-			 * the blanket override above no pair of frames can ever show it - two
-			 * shutters of one story are byte-identical by construction. A tuple that
-			 * asks for live motion therefore gets no ANIMATION override, and the two
-			 * tuples that take it differ in the phase the hold pins each mark to: same
-			 * story, same theme, same rig, half a turn apart.
+			 * because two of this repository's claims are about motion itself: the
+			 * composer's running-state mark spins (`motion-safe:animate-spin`), and the
+			 * setup window's rail turns (`animate-install-turn`), and with the blanket
+			 * override above no pair of frames can ever show either - two shutters of
+			 * one story are byte-identical by construction. A tuple that asks for live
+			 * motion therefore gets no ANIMATION override, and the tuples that take it
+			 * differ in the phase the hold pins each mark to: same story, same theme,
+			 * same rig, half a turn apart. The SELECTOR is the one part they cannot
+			 * share: `motionSelector` names the elements whose animation is the
+			 * subject, defaulting to the composer's row-scoped mark.
 			 *
 			 * TRANSITIONS ARE STILL FROZEN in that branch, and every OTHER animation
 			 * is finished before the shutter, because dropping the blanket override
@@ -8048,6 +8146,17 @@ const main = async () => {
 			 * (round 3's M1'). One function with two call sites, so the two checks
 			 * cannot drift, and the failure says which one fired.
 			 */
+			/*
+			 * The element(s) whose animation is the subject, per tuple: the
+			 * composer's mark is found through its row and its `motion-safe:animate-spin`
+			 * token, the setup window's through `animate-install-turn` (design round 2,
+			 * D9 - the rail's second position had no frame a reviewer could check). The
+			 * default keeps the composer's selector so its two tuples read exactly as
+			 * they did, and the same value is checked in both places below.
+			 */
+			const motionSelector =
+				options?.motionSelector ??
+				'[data-composer-status-row] [class~="motion-safe:animate-spin"]';
 			const assertPhaseHeld = async (when) => {
 				if (!options?.liveMotion || typeof options?.phaseMs !== "number") {
 					return;
@@ -8055,10 +8164,8 @@ const main = async () => {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: `(() => {
-						const row = document.querySelector('[data-composer-status-row]');
-						if (!row) return 'no-row';
 						const marks = [
-							...row.querySelectorAll('[class~="motion-safe:animate-spin"]'),
+							...document.querySelectorAll(${JSON.stringify(motionSelector)}),
 						];
 						if (marks.length === 0) return 'no-mark';
 						const animations = marks.flatMap((mark) => mark.getAnimations());
@@ -8072,7 +8179,7 @@ const main = async () => {
 				const wanted = `paused@${options.phaseMs}`;
 				if (held.split(" , ").some((entry) => entry !== wanted)) {
 					throw new Error(
-						`${story} @ ${theme}: liveMotion with phaseMs=${options.phaseMs} does not hold ${when} (${held}, wanted ${wanted}). The mark is found by the class TOKEN it carries - motion-safe:animate-spin - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
+						`${story} @ ${theme}: liveMotion with phaseMs=${options.phaseMs} does not hold ${when} (${held}, wanted ${wanted}). The mark is found by the selector the tuple declares - ${motionSelector} - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
 					);
 				}
 			};
@@ -9696,14 +9803,17 @@ const main = async () => {
 						 * the phase outright, and re-running lands on it every time. No
 						 * backticks in here: this comment lives inside a template literal.
 						 */
-						const row = document.querySelector('[data-composer-status-row]');
-						/* EVERY mark in the row, not the first one: a band with two
-						   running chips carries two, and holding one leaves the other
-						   spinning freely - caught by re-running the capture and finding
-						   the un-held mark had moved. */
-						const marks = row
-							? [...row.querySelectorAll('[class~="motion-safe:animate-spin"]')]
-							: [];
+						/* EVERY mark the tuple's selector matches, not the first one: a
+						   band with two running chips carries two, and holding one leaves
+						   the other spinning freely - caught by re-running the capture and
+						   finding the un-held mark had moved. The selector is per-tuple,
+						   the same value the phase-hold assertion reads: the composer's
+						   mark lives under its row, the setup rail's carries the
+						   install-turn token (no backticks in here: this block is inside
+						   a template literal). */
+						const marks = [
+							...document.querySelectorAll(${JSON.stringify(motionSelector)}),
+						];
 						const held = new Set();
 						for (const mark of marks) {
 							for (const animation of mark.getAnimations()) {

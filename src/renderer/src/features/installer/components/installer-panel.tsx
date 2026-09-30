@@ -1,5 +1,4 @@
 import logo from "@assets/icon.png";
-import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
@@ -14,8 +13,8 @@ import {
 } from "../../../../../shared/install-progress";
 
 /**
- * The installer panel: one centred column, four named phases, one line of
- * detail, and the way out.
+ * The installer panel: one centred column, the four steps as a single rail, one
+ * line of detail, and the way out.
  *
  * ## What this replaced, and why
  *
@@ -27,17 +26,44 @@ import {
  * which says anything about the install actually running behind it.
  *
  * So the carousel is gone rather than restyled, and the identity block is the
- * mark, the name, and one sentence. What is left is the thing the screen is for:
- * which of four phases is running, what it already did, and what it is doing
- * now. `InstallPhase` is the main process's own vocabulary, so the stepper
- * cannot drift from the work.
+ * mark, the name, and one sentence.
  *
- * ## The indeterminate state is real, not a loading placeholder
+ * WHAT THE PHASES DO NOT SAY, AND WHY THIS PANEL RECONSTRUCTS. `InstallPhase`
+ * is the main process's own vocabulary, so no row can name a step that does not
+ * exist - but "behind the announced phase" is not the same as "ran": the
+ * scripts do not announce every phase on every run. `python` is never announced
+ * on win32/linux at all (the managed-Python search is macOS-only), and both it
+ * and `environment` are guarded by their own "the venv/toolchain already exists"
+ * test on all three platforms, so a rerun that reuses one announces neither.
+ * `phaseState` can only compare indices, so such a run paints one or two rows
+ * `done` for steps that never ran. The error is in the idle direction - a row
+ * that looks finished, never a liveness mark on a run that stopped - and it is
+ * not a regression (the bar this replaced reconstructed by index the same way).
+ * Closing it needs one more field on the wire (the set the run announced) and a
+ * third marker state, so it is recorded on the PR rather than guessed at here:
+ * the renderer cannot know what was not announced. See `phaseState` below.
  *
- * The window shows every step BEFORE the announced one as complete, which is
- * what lets a window that mounts late reconstruct the truth from a single
- * message. Before a step has completed there is no fraction to show, and the bar
- * says so by moving rather than by filling - see `ProgressBar`.
+ * ## One rail, not a bar and a list
+ *
+ * The screen used to state the same fact twice: a 1px horizontal bar whose fill
+ * was `indexOf(phase)/4`, and directly under it a four-row list of the same four
+ * phases. Two objects, one fact - and the bar was the worse of the two, because
+ * a continuous fill claims a FRACTION: it sat at exactly 50% for the whole of
+ * `components`, which is the longest step in the run, so the one thing the
+ * screen said during the minutes a user is most likely to conclude the app has
+ * hung was a number that was not moving.
+ *
+ * WHAT THIS PANEL KNOWS, AND WHAT IT THEREFORE SHOWS. The install reports stage
+ * BOUNDARIES and nothing else: the scripts print one marker per phase
+ * (`shared/install-progress.ts`), and the gap between two of them is the
+ * expected shape rather than a stall. No byte count and no time estimate cross
+ * that boundary at all. So the only determinate thing on this screen is how many
+ * stages are behind us, and the rail is drawn to say exactly that and no more: a
+ * connector is `accent` only when the step above it is COMPLETE, so the fill can
+ * only ever end at a stage boundary - there is no state in which it stops
+ * part-way through one. Within a stage the panel is indeterminate by
+ * construction, and it says so with motion at the running step rather than with
+ * a fraction it does not have.
  *
  * ## Structure
  *
@@ -52,68 +78,6 @@ export type InstallPanelProps = {
 	failure: InstallFailure | null;
 	onCancel: () => void;
 	onRetry: () => void;
-};
-
-/**
- * The 1px track and its fill.
- *
- * `sunken` is the one ground role recessed below `canvas`, which is what a track
- * is; the fill is `accent`, the app's single accent spent on the one thing on
- * this screen that states progress. `rounded-xs` is the 2px step the contract
- * reserves for "bars too small to carry 6" - the same role the scrollbar thumb
- * takes.
- *
- * THE FILL IS EARNED, NOT ASSUMED. Width used to be `indexOf(phase)/4`, which is
- * 0% for the whole of the first phase - and on a first run the first phase is
- * where the window spends its first minutes, so the measured first-run frame was
- * an EMPTY TRACK with no sweep for 2m37s (UX U9, design D4). Nothing has
- * COMPLETED there, so the honest state is the indeterminate one, whatever has
- * been announced: the bar becomes determinate once a phase is behind it.
- *
- * The indeterminate form is a moving segment rather than a static full bar,
- * because a full bar and a finished bar are the same picture. Its keyframes live
- * in `styles/index.css` next to the placeholder pulse; the STATIC half of that
- * state - the 35% segment a reduced-motion user gets - lives outside the
- * `no-preference` query there, because declining the motion must not decline the
- * state (design D4 again: declining it produced the empty bar this comment's
- * predecessor claimed it avoided).
- */
-const ProgressBar: React.FC<{
-	phase: InstallPhase | null;
-	installed: boolean;
-}> = ({ phase, installed }) => {
-	const completed = installed
-		? INSTALL_PHASES.length
-		: Math.max(INSTALL_PHASES.indexOf(phase as InstallPhase), 0);
-	const percent = (completed / INSTALL_PHASES.length) * 100;
-	/*
-	 * Indeterminate covers two states, and they are the same fact: nothing has
-	 * finished yet - whether because no marker has arrived, or because the first
-	 * one has and its phase is still running.
-	 */
-	const moving = !installed && completed === 0;
-	return (
-		<div
-			className="h-0.5 w-full overflow-hidden rounded-xs bg-sunken"
-			// Decorative: the status line below carries the same fact in words, and
-			// the ordered list carries the position. A progressbar role here would
-			// announce the same thing a third time.
-			aria-hidden="true"
-		>
-			<div
-				className={cn(
-					"h-full rounded-xs bg-accent",
-					// `duration-fast` and not `slow`: `width` is not on section 5's
-					// transitionable list, and the step the contract reserves for
-					// entrances (240ms) is the wrong one for a value that changes while
-					// the user is already looking at it.
-					"transition-[width] duration-fast ease-out-quart",
-					moving && "lo-install-sweep",
-				)}
-				style={{ width: `${percent}%` }}
-			/>
-		</div>
-	);
 };
 
 /** How one phase row reads: its marker and its ink both follow from this. */
@@ -148,62 +112,165 @@ function phaseState(
 		: "waiting";
 }
 
-/** One phase row: its marker, its name, and its state for a screen reader. */
+/**
+ * The rail's own two facts, and the reason it is the only progress object here.
+ *
+ * THE MARKER GRAMMAR IS FOUR SHAPES IN ONE 16px BOX, so no row moves when the
+ * running step does: a hollow ring for a step that has not started, a filled
+ * accent dot for one that is finished, a ring that turns for the one running,
+ * and the failure glyph where it failed. Every state is legible with the motion
+ * declined, which is what the global duration cap guarantees it will be for some
+ * users.
+ *
+ * STROKE WEIGHT IS A CORRECTNESS PROPERTY HERE, NOT A TASTE ONE. The waiting ring
+ * used to be a 1px stroke on an 8px disc, and it measured 2.76:1 at its darkest
+ * pixel in the light themes: a token that computes 3.51:1 rendered almost
+ * entirely as antialiased edge, on what is now the only progress object on the
+ * screen (review 2, design D4). It is drawn at 2px, in `control` - the same
+ * weight AND the same stroke the running ring carries on its three quiet sides
+ * - because the two are told apart by colour and by motion and by nothing else:
+ * under `hairline` the running ring measured 1.22:1 against this ring's
+ * 3.13-3.42:1 on the committed frames, so the mark that says "working" was the
+ * faintest object in the column while the mark that says "not yet" was the
+ * loudest (design round 2, D7) - and at 12px, so the token's contrast survives
+ * to the eye. The
+ * finished dot is a 10px fill for the reason the earlier round found: a small
+ * disc bounded by the faintest line weight is a dot nobody can see.
+ *
+ * WHY THE RUNNING MARKER TURNS RATHER THAN BREATHES. The previous round reused
+ * `--animate-pulse-visible`, the app's SKELETON cadence - a breath with no
+ * direction, whose 0.7 floor took the running ring to 2.88:1 in the light
+ * themes, under the 3.51:1 of the waiting rings it has to be told apart from,
+ * for part of every cycle (design D3). It also replaced two directional
+ * gestures (the old spinner arc, the old travelling segment) with one
+ * non-directional one, on the one mark whose whole job is to say "working".
+ *
+ * So this is the app's own indeterminate grammar - `Spinner`'s ring with a
+ * single `accent` quadrant, where the gap is what makes a rotation legible - at
+ * a slower cadence, because this mark turns for minutes rather than for a
+ * request, and in `control` rather than `Spinner`'s `hairline`: this ring is the
+ * only progress object on its screen, where `Spinner` annotates a busy one
+ * (design round 2, D7). Rotation spends no contrast at all: the accent quadrant
+ * is at full strength in every phase of the turn, and the ring's other three
+ * sides are the same `control` the waiting rings carry, so the running mark is
+ * never dimmer than the waiting ones.
+ *
+ * WHY THERE IS STILL NO CHECK ON A FINISHED STEP. A finished step used to carry
+ * a `success` Check beside a bar filled in `accent`: two colours, two objects,
+ * one fact. The rail states a finished STEP once, in `accent`, as a filled dot
+ * and a whole connector - the same colour the app already spends on progress -
+ * and the shapes carry the rest. The one check on this screen is at the rail's
+ * foot, once, where the path closes, and it is the one `success` mark in the
+ * column (see `StageRail`): a glyph per row said "step 4" rather than "the run is
+ * over", which is the fact a terminal shape has to state.
+ *
+ * Nothing here is spin-in-place decoration: it is the state a waiting user reads
+ * as "working", on the one screen where the alternative is deciding the app has
+ * hung. Under `prefers-reduced-motion` the duration cap freezes the turn and the
+ * ring rests at its first frame - `control` ring, accent quadrant at the top, at
+ * full opacity - the same resting-state discipline `Spinner` documents.
+ */
+const PhaseMarker: React.FC<{ state: PhaseState }> = ({ state }) => {
+	if (state === "failed")
+		return <CircleAlert size={16} className="text-danger" aria-hidden="true" />;
+	if (state === "active")
+		return (
+			<span
+				aria-hidden="true"
+				className="size-3 animate-install-turn rounded-full border-2 border-control border-t-accent"
+			/>
+		);
+	if (state === "done")
+		return (
+			<span aria-hidden="true" className="size-2.5 rounded-full bg-accent" />
+		);
+	return (
+		<span
+			aria-hidden="true"
+			className="size-3 rounded-full border-2 border-control"
+		/>
+	);
+};
+
+/**
+ * One step: its marker, the connector to the step below it, and its name.
+ *
+ * THE ROW IS A FIXED 20px (`h-5`) AND THE LABEL IS CENTRED IN IT, because the
+ * rail is now a continuous line and its geometry has to be arithmetic rather
+ * than emergent. The two label steps are 21.7px and 19.5px tall
+ * (`--text-body`/1.55 against `--text-body-sm`/1.5), so a row sized by its own
+ * text would be 2.2px taller when the running step arrived on it - and a
+ * connector drawn between rows of two heights is 2px short of the next marker
+ * on half the rows. Pinning the row makes the connector length exact
+ * (20px row + 16px gap - 16px marker = the connector's `h-5`) and means nothing
+ * in this column moves when the running step moves.
+ *
+ * THE CONNECTOR SAYS ONE THING: the step above it finished. It is `accent` only
+ * for a `done` step, so the fill cannot be read as a fraction - there is no
+ * state in which it stops inside a step. It is drawn by `transform`, over
+ * `origin-top`, at `duration-slow` (240ms): a step completing reads as the path
+ * advancing rather than as a repaint. For those 240ms the rule IS partial, which
+ * is honest - a completion that starts at a real boundary (the step below) and
+ * ends at a real one (the marker above) - and is a different object from the
+ * fraction this design removed, which stopped at no boundary at all.
+ */
 const PhaseRow: React.FC<{
 	phase: InstallPhase;
 	state: PhaseState;
-}> = ({ phase, state }) => {
-	/*
-	 * The marker is the only element that changes shape between states, and every
-	 * variant is the same 16px box: a step that grew when it became current would
-	 * move the three rows under it, which is the one thing a stepper must not do
-	 * while the user is reading it.
-	 */
-	const marker =
-		state === "done" ? (
-			<Check size={16} className="text-success" aria-hidden="true" />
-		) : state === "failed" ? (
-			<CircleAlert size={16} className="text-danger" aria-hidden="true" />
-		) : state === "active" ? (
-			/*
-			 * Unlabelled on purpose: the row's own text is the live statement, and a
-			 * labelled spinner beside it would announce the same fact twice.
-			 *
-			 * This is the spinner the app already owns, whose ring is `hairline` with
-			 * one `accent` quadrant. Beside the bar it is the second accent, which is
-			 * what the accent budget allows - and the bar keeps the fill.
-			 */
-			<Spinner size="sm" />
-		) : (
-			// `border-control`, not `hairline`: an 8px disc filled with the faintest
-			// line weight is a dot nobody can see on the light themes.
-			<span
-				className="size-2 rounded-full border border-control"
-				aria-hidden="true"
-			/>
-		);
-
+	last: boolean;
+}> = ({ phase, state, last }) => {
 	return (
 		<li
 			aria-current={state === "active" ? "step" : undefined}
-			className="flex items-center gap-3"
+			className="flex h-5 items-center gap-3"
 		>
-			<span className="flex size-4 shrink-0 items-center justify-center">
-				{marker}
+			<span className="relative flex size-4 shrink-0 items-center justify-center">
+				<PhaseMarker state={state} />
+				{!last && (
+					/*
+					 * FROM 0 TO 1 AT THE ENTRANCE DURATION, over `origin-top`, so a step finishing
+					 * reads as the line reaching the next marker rather than as a repaint,
+					 * and this is the only motion on the screen that reports a completion
+					 * (the other two are the rail's two working marks, which report that the
+					 * run is alive). For the length of that transition the rule is genuinely
+					 * partial - see the note above on why that is not a fraction - and when
+					 * the animation is declined the cap lands it on `scale-y-100`, i.e. on
+					 * the state the frame is actually in, rather than on a half-drawn line.
+					 *
+					 * Nothing is drawn AHEAD of the run - there is deliberately no
+					 * `sunken` groove here. A track would be a second, quieter statement
+					 * of the same four stops the markers already are, and the previous
+					 * round measured what a recessed track looks like on this ground when
+					 * it is the only progress object on the screen (#1d1b19 on #22201c,
+					 * 1.06:1 - design D4). The markers carry the stops; the line carries
+					 * what has been walked.
+					 */
+					<span
+						aria-hidden="true"
+						className={cn(
+							"absolute top-full left-1/2 h-5 w-0.5 origin-top -translate-x-1/2 rounded-xs bg-accent",
+							"transition-transform duration-slow ease-out-quart",
+							state === "done" ? "scale-y-100" : "scale-y-0",
+						)}
+					/>
+				)}
 			</span>
 			<span
 				className={cn(
 					/*
-					 * The active row is one step up from its neighbours (`text-body`
-					 * against `text-body-sm`). Design round 1 measured the live step as
-					 * the third thing the eye found - after the name and the paragraph -
-					 * on a screen whose entire content is that step (D7). The step is a
-					 * type-size change on a row that already exists, not chrome, and it
-					 * cannot move anything: the row's box is set by the 16px marker.
+					 * EVERY ROW IS THE SAME TYPE STEP, AND THAT IS LOAD-BEARING. The live
+					 * step used to be lifted to `text-body font-medium` (design D7, which
+					 * measured it as the third thing the eye found on a screen whose whole
+					 * content is that step). The rail's rows are now `w-fit`, so a row that
+					 * changes SIZE or WEIGHT changes the width of the block - and the block is
+					 * centred, so the whole column would jiggle sideways every time the live
+					 * step moved, twice per install. What lifts the live step instead costs no
+					 * width: the only ink-step in the column that is not muted, the only turning
+					 * ring on the screen, and the sentence under the rail that is about it.
 					 */
-					state === "active" ? "text-body" : "text-body-sm",
+					"text-body-sm",
 					state === "active"
-						? "font-medium text-ink"
+						? "text-ink"
 						: state === "failed"
 							? "text-danger"
 							: state === "done"
@@ -226,6 +293,122 @@ const PhaseRow: React.FC<{
 	);
 };
 
+/**
+ * The four steps, the path between them, the mark for a run that has not named a
+ * step yet, and - once the run is over - the glyph the path ends in.
+ *
+ * THE HEAD MARK IS THE PANEL'S SECOND PIECE OF MOTION, and it exists because of
+ * the one window where the panel knows work is happening but not WHERE.
+ * `phase === null` is that window: the setup window is created before the managed
+ * runtime is prepared (`backend-installer.ts` says why), so its first painted
+ * frames have no marker to name - and the previous round measured what they
+ * looked like when the only progress object was a bar with nothing in it (design
+ * D4, UX U9/U12).
+ *
+ * THE HEAD MARK AND THE RUNNING MARKER ARE THE SAME OBJECT: the app's own
+ * indeterminate ring, at the rail's head when no step is known and on the running
+ * step's row once one is. The previous round drew the head as a 2px x 12px accent
+ * rule - geometrically the connector, and in this rail a rule has exactly one
+ * meaning, "the step above it finished" (design D2). There is no step above the
+ * head, so the head is a MARK, not a rule, and the rail's grammar stays three
+ * things: a rule means walked, a ring means here, a dot means done.
+ *
+ * WHY A MARK BEFORE THE FIRST STEP RATHER THAN A SEGMENT TRAVELLING THE RAIL.
+ * A travelling segment was written here first, and its own reduced-motion parking
+ * exposes why it is the wrong object: parked anywhere on a 128px rail it spans a
+ * marker on each side of itself, and an accent rule that joins two steps is the
+ * DETERMINATE claim this whole redesign exists to remove - measured in the frame,
+ * where it reads as "these two are done" in the one state where nothing at all is
+ * known. A mark arriving at the rail's head claims exactly what is true - the run
+ * has started and has reached no step - and it stays legible with the animation
+ * declined, because rotation rests at full opacity on its first frame.
+ *
+ * THE TERMINUS IS THE ONLY CHECK ON THE SCREEN, AND ONLY AT THE END. The rail used
+ * to end in nothing: `verifying` -> `installed` was +2.3% accent ink, the same
+ * three connectors and one 8px marker changing ring to dot, while the sentence
+ * that said so sat under the rail and the only button was disabled at 2.72:1 - so
+ * the moment the whole screen exists for had no shape of its own (design D1,
+ * which measured the pre-redesign panel spending 797px of accent on the same
+ * moment). A check the user has been trained by every other installer to read is
+ * drawn once, below the last step, in the app's `success` role - the one place in
+ * this column where the colour says the run ended well rather than that it is
+ * still moving - so no ROW claims a fifth state; the rule that reaches it is
+ * whole in the same frame, since the glyph is only rendered once the install
+ * finished.
+ *
+ * `w-fit` rather than a full-width list with centred rows: the rows are
+ * left-aligned inside a block that is itself centred, which is how a stepper
+ * reads as one column of steps. NO OUTER MARGIN HERE - `docs/branding.md` § 5
+ * puts the gap on the container, and the panel below owns it (review N3).
+ */
+const StageRail: React.FC<{
+	phase: InstallPhase | null;
+	installed: boolean;
+	failure: InstallFailure | null;
+}> = ({ phase, installed, failure }) => {
+	const failedAt = failure?.phase ?? null;
+	/*
+	 * A FAILURE IS NOT AN UNANNOUNCED RUN. Both look like `phase === null` from
+	 * here, so this gate has to consult the failure itself: a thrown failure before
+	 * the first milestone carries `phase: null` (`reportInstallFailure` sends
+	 * `lastPhase`, which starts null), and the previous round's gate on `failedAt`
+	 * alone could not see it - it painted a turning "work is happening" ring above
+	 * four hollow rings and a block that said setup stopped (review P1).
+	 */
+	const unannounced = !installed && failure === null && phase === null;
+	return (
+		<div className="relative flex w-fit flex-col">
+			<ol className="flex w-fit flex-col gap-4">
+				{unannounced && (
+					/*
+					 * TWO PIXELS ABOVE THE FIRST MARKER'S RING, on the marker axis. At
+					 * `top-0` a mark small enough to read as "not a step" touches the first
+					 * ring, and a bead resting on a ring is a rendering artefact to the eye;
+					 * five pixels up (the previous geometry) it read as a tick floating above
+					 * the list rather than the path arriving at it (review 9). The gap is
+					 * measured from the ring, not from the 16px marker box: `-top-2.5` puts
+					 * this ring's bottom edge 2px above the marker's own top edge.
+					 */
+					<span
+						aria-hidden="true"
+						className="animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-control border-t-accent"
+					/>
+				)}
+				{INSTALL_PHASES.map((entry, index) => (
+					<PhaseRow
+						key={entry}
+						phase={entry}
+						state={phaseState(entry, phase, failedAt, installed)}
+						last={index === INSTALL_PHASES.length - 1}
+					/>
+				))}
+			</ol>
+			{installed && (
+				<span className="relative mt-4 flex size-4 shrink-0 items-center justify-center">
+					{/*
+					 * The rule that reaches the terminus is drawn HERE rather than by the
+					 * fourth row (`last`), so the two cannot disagree: the glyph and the rule
+					 * that arrives at it are the same state, in the same frame.
+					 *
+					 * THE COLUMN'S ONE `success`, and the two roles are deliberate (design
+					 * round 2, D8): everything that says WHERE the run is - the walked
+					 * connectors, the finished dots, the turning quadrant - is `accent`, and
+					 * the single glyph that says the run ENDED WELL is the app's outcome
+					 * role. On the two brand palettes the roles sit ~14 units apart; on the
+					 * others they diverge, and that divergence is the grammar rather than a
+					 * defect: progress is not an outcome.
+					 */}
+					<span
+						aria-hidden="true"
+						className="absolute -top-4 left-1/2 h-4 w-0.5 -translate-x-1/2 rounded-xs bg-accent"
+					/>
+					<Check size={16} className="text-success" aria-hidden="true" />
+				</span>
+			)}
+		</div>
+	);
+};
+
 export const InstallPanel: React.FC<InstallPanelProps> = ({
 	phase,
 	installed,
@@ -233,7 +416,6 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 	onCancel,
 	onRetry,
 }) => {
-	const failedAt = failure?.phase ?? null;
 	const reasonRef = useRef<HTMLParagraphElement | null>(null);
 
 	/*
@@ -250,23 +432,29 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 	}, [failure]);
 
 	/*
-	 * One live line for a flow that is otherwise silent.
-	 *
-	 * A screen reader used to hear the initial state once and then nothing for
-	 * minutes - not the move to the next phase, not the failure - because every
-	 * statement on this screen was either visible-but-unannounced or `sr-only`
-	 * inside a list item nobody was prompted to re-read (UX U8). One polite region
-	 * carrying the phase's own sentence is three or four announcements over a whole
-	 * install, which is exactly the amount of interruption this flow has earned.
+	 * One line for a flow that is otherwise silent. See the `<output>` below for
+	 * why there is exactly one, and why the label is only in it for a screen
+	 * reader.
 	 */
-	const liveStatus = installed
+	const liveDetail = installed
 		? // The sentence the whole screen was waiting for. Leaving the phase's own
 			// "what happens next" here said "Starting the backend once to check it comes
 			// up" over a check that had already passed.
 			"Setup complete."
 		: phase === null
 			? "Getting started."
-			: `${INSTALL_PHASE_LABELS[phase]}: ${INSTALL_PHASE_DETAILS[phase]}`;
+			: INSTALL_PHASE_DETAILS[phase];
+	/*
+	 * The stage's name, for the live region alone.
+	 *
+	 * It is not rendered visibly any more: the rail's running row names the stage
+	 * one line above this sentence, and printing it twice was the same habit the
+	 * bar and the list had. A screen reader still gets it, because a live region is
+	 * heard OUT OF CONTEXT - "The packages it runs on, and the longest step." alone
+	 * is a fragment with no subject.
+	 */
+	const liveLabel =
+		installed || phase === null ? null : INSTALL_PHASE_LABELS[phase];
 
 	return (
 		/*
@@ -307,22 +495,54 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 			 * the bottom of a 480px window, which is a non-resizable window with no
 			 * scrollbar - and in the finished state it is a duration promise sitting
 			 * under a full bar (design D17).
+			 *
+			 * ON THE FINISHED STATE THE LINE STAYS IN THE FLOW, `invisible`, so its height
+			 * is kept. Removing it outright moved the panel's own column: measured on the
+			 * frames, the logo went 25 -> 61 and the first marker 170 -> 176 between the
+			 * running states and `installed`, because this column is vertically centred
+			 * and the shortest state sets the offset (review 8). A settle at the one moment
+			 * the screen should be still is motion nobody asked for, and an invisible
+			 * element is a shape the reader cannot see rather than a sentence they are told
+			 * and should not act on - `visibility: hidden` also keeps it out of the
+			 * accessibility tree, so nothing is announced that is not on the screen.
+			 *
+			 * The failure state is the exception, and it is a measured one: that
+			 * composition is the tallest the panel has, and reserving this line's height
+			 * there pushed the buttons past the bottom of the window (the measurement the
+			 * paragraph above records). A failure re-forms the whole block under the rail
+			 * anyway, so there is no still composition there to hold.
 			 */}
-			{!failure && !installed && (
-				<p className="mt-2 text-body text-ink-muted">
+			{!failure && (
+				<p
+					className={cn(
+						"mt-2 text-body text-ink-muted",
+						installed && "invisible",
+					)}
+				>
 					This takes a few minutes the first time, on this computer.
 				</p>
 			)}
 
-			<div className="mt-8 w-full">
-				<ProgressBar phase={phase} installed={installed} />
+			{/*
+			 * The rail's own gap, owned here rather than by the rail: branding section 5
+			 * - a component does not own its outer margin, its container does (review
+			 * N3, which is why the rail no longer ships `mt-8`).
+			 */}
+			<div className="mt-8">
+				<StageRail phase={phase} installed={installed} failure={failure} />
 			</div>
 
 			{/*
 			 * The line that changes. `<output>` is the element with an implicit
 			 * `role="status"` and `aria-live="polite"` - the whole of what a screen reader
 			 * needs to follow this without being interrupted by it, and the reason
-			 * `prompt()`-style prose is not used for it.
+			 * `prompt()`-style prose is not used for it. A screen reader used to hear the
+			 * initial state once and then nothing for minutes - not the move to the next
+			 * phase, not the failure - because every statement on this screen was either
+			 * visible-but-unannounced or `sr-only` inside a list item nobody was prompted
+			 * to re-read (UX U8). One polite region carrying the phase's own sentence is
+			 * three or four announcements over a whole install, which is exactly the
+			 * amount of interruption this flow has earned.
 			 */}
 			{!failure && (
 				<output
@@ -332,26 +552,12 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					 * panel would move when a phase's own sentence grew, which is the one kind
 					 * of motion section 5's "an arrival must not move anything" forbids.
 					 */
-					className="mt-3 block min-h-10 text-body-sm text-ink-muted"
+					className="mt-4 block min-h-10 text-body-sm text-ink-muted"
 				>
-					{liveStatus}
+					{liveLabel && <span className="sr-only">{liveLabel}: </span>}
+					{liveDetail}
 				</output>
 			)}
-
-			{/*
-			 * `w-fit mx-auto` rather than a full-width list with centred rows: the rows
-			 * are left-aligned inside a block that is itself centred, which is how a
-			 * stepper reads as one column of steps.
-			 */}
-			<ol className="mx-auto mt-6 flex w-fit flex-col gap-2.5">
-				{INSTALL_PHASES.map((entry) => (
-					<PhaseRow
-						key={entry}
-						phase={entry}
-						state={phaseState(entry, phase, failedAt, installed)}
-					/>
-				))}
-			</ol>
 
 			{failure ? (
 				/*
