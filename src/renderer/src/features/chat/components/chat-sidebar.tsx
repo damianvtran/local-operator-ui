@@ -53,6 +53,7 @@ import {
 	FileText,
 	FolderPlus,
 	GripVertical,
+	Hourglass,
 	LoaderCircle,
 	type LucideIcon,
 	MessageSquarePlus,
@@ -60,6 +61,7 @@ import {
 	Pin,
 	Plus,
 	Search,
+	Share2,
 	SlidersHorizontal,
 	Trash2,
 	UserPlus,
@@ -131,6 +133,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
+import { subagentClause, subagentMarks } from "../chat-session-subagents";
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SIDEBAR_SECTION_ROWS,
@@ -3255,6 +3258,36 @@ export function ChatSidebar({
 			agentOpened: agentOpenedRow(row),
 		});
 		const pinned = row.pinned === true;
+		/*
+		 * THE SUBAGENT INDICATOR (the operator's report, 2026-09-29).
+		 *
+		 * One derivation, two independent glyphs, and it is here rather than in
+		 * `ChatSessionStatus` for the reason the design spec gives: the mark sits
+		 * AFTER the title so the title's leading edge never moves. A mark in the
+		 * leading cluster would push the title 18-36px right and back every time a
+		 * count crossed zero, and on an active fleet that is every few minutes -
+		 * content motion in the row's primary reading line, which
+		 * `docs/design/sidebar-row-space.md` §2 states as the invariant this row is
+		 * not allowed to break ("The row's box, its height, and the title's leading
+		 * edge never move; what moves is the title's clip").
+		 *
+		 * What that costs: on a long title the mark lands after the ellipsis, so a
+		 * crowded sidebar draws it at one consistent column instead of a ragged one.
+		 *
+		 * Nothing here is interactive and nothing is focusable: the mark adds no
+		 * press target, no hover affordance and no stop to the tab walk. The words
+		 * ride the row's own accessible name and tooltip (below), which is what
+		 * keeps the pointer and screen-reader channels no narrower than the pixels.
+		 */
+		const marks = subagentMarks(row);
+		/*
+		 * THE SENTENCE, computed once beside the marks because THREE call sites read
+		 * it - the row's `sr-only` name, the question of whether that name needs a
+		 * span at all, and the tooltip's own line - and this is a per-row derivation
+		 * in a list that re-renders on every feed frame. One value, so the three
+		 * cannot disagree about whether a row has anything to say.
+		 */
+		const subagentSentence = subagentClause(row);
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -3384,6 +3417,17 @@ export function ChatSidebar({
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
 					{unreadMarkKind(row) !== null ? ", unread" : ""}
 					{archived ? ", archived" : ""}
+					{/*
+					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
+					 * reads, and gated by it in exactly the same way: empty on a `delegating`
+					 * row (whose label already spells the counts) and empty with no counts.
+					 * The pointer channel may never be narrower than the name channel, and
+					 * this is the line that keeps it that way - the mark itself is
+					 * `aria-hidden` and carries no `title` (a nested `title` inside the row's
+					 * button would shadow the row's own tooltip, which is review round 1's
+					 * MINOR 1 on this exact slot).
+					 */}
+					{subagentSentence}
 					{/*
 					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
 					 * them: the flags are what the row IS and this is what the app is DOING
@@ -3561,6 +3605,51 @@ export function ChatSidebar({
 				 * reasoning for each.
 				 */}
 				<ChatRowTitle text={row.title || "Untitled chat"} />
+				{/*
+				 * THE SUBAGENT INDICATOR, immediately after the title and before the
+				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
+				 * every element here is `shrink-0`, so none of them can be truncated
+				 * away, and the title's clip is the only thing that pays.
+				 *
+				 * TWO GLYPHS, INDEPENDENTLY DRAWN, because they are two facts: a child at
+				 * work (`Share2`, the app's own "delegated work" mark, accent - the same
+				 * glyph and ink the `delegating` rung's primary mark wears) and a child
+				 * waiting for capacity (`Hourglass`, muted). The delegating row is the one
+				 * place they interact: its primary mark already IS the running mark, so
+				 * `subagentMarks` suppresses the running half there and the queued glyph
+				 * still draws - `Share2` carries "subagents are at work", not "none of
+				 * them has started".
+				 *
+				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
+				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
+				 * row's own `sr-only` sentence and its tooltip, both from
+				 * `subagentClause`, which is the repo's "one predicate, several channels"
+				 * rule.
+				 *
+				 * `data-subagent-mark` is the hook this change's own tests and the
+				 * evidence rigs address the mark by, following the row's existing
+				 * convention (`data-session-time`, `data-session-archived`).
+				 *
+				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ml-1` on top of
+				 * it makes the gap before each glyph 8px and one mark cost 22px rather
+				 * than the spec's 18px. `ml-1` is the spec's explicit class list and is
+				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
+				 * the one-word fix that restores the spec's own arithmetic.
+				 */}
+				{marks.running && (
+					<Share2
+						aria-hidden="true"
+						data-subagent-mark="running"
+						className="ml-1 size-3.5 shrink-0 text-accent"
+					/>
+				)}
+				{marks.queued && (
+					<Hourglass
+						aria-hidden="true"
+						data-subagent-mark="queued"
+						className="ml-1 size-3.5 shrink-0 text-ink-muted"
+					/>
+				)}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
@@ -3646,6 +3735,21 @@ export function ChatSidebar({
 					(trailing === "team" || trailing === "none") && (
 						<span className="sr-only">, {openedBySentence(row)}</span>
 					)}
+				{/*
+				 * THE SUBAGENT CLAUSE, and it belongs here rather than beside the glyphs
+				 * for a reason worth stating: this is the row's SENTENCE, and its order is
+				 * the order a reader hears the row in - state, title, why the row is on
+				 * screen, the attribution, then this - with the time last. The glyphs are a
+				 * second channel for the same fact, not a second fact.
+				 *
+				 * `subagentClause` returns "" on a `delegating` row, whose `status.label`
+				 * already spells the counts (the backend folds them in, and the status
+				 * `sr-only` renders that label verbatim) - so the presence is announced
+				 * exactly once on every row, whichever channel owns it.
+				 */}
+				{subagentSentence !== "" && (
+					<span className="sr-only">{subagentSentence}</span>
+				)}
 				{/*
 				 * THE RELATIVE TIME (§C1): right-aligned `text-mono-sm` in `ink-dim`, the
 				 * row's last element. It is NOT one of `rowTrailingStatement`'s

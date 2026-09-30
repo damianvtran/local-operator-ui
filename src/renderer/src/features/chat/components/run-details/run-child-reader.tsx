@@ -29,7 +29,10 @@
  * - `gate` is `null` and `waiting` is `false`: a child has no pending question,
  *   and this reader deliberately carries no way to answer one anyway (§ 5.6).
  * - `status` is a static `"live"`, `error` is `null`. The reader's own state is
- *   the absence lines below, not the stream's connection status.
+ *   the absence lines below, not the stream's connection status. The one place
+ *   that would otherwise read that static value as a claim about the TRANSPORT —
+ *   the older-history row's `Try again` — takes the pane's own stream status
+ *   instead, through `olderTransportDown` (design round 1, D2).
  *
  * **The result is the child's LAST MESSAGE, and this page paints it as nothing
  * else.** The foot used to carry its own `Result` block built from
@@ -100,6 +103,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../../canonical/canonical-transcript";
+import type { LoadOlderOutcome } from "../../canonical/load-older";
 import { TAIL_EPS_PX } from "../../canonical/scroll-paging";
 import {
 	EMPTY_TRANSCRIPT,
@@ -148,6 +152,26 @@ export type RunChildReaderProps = {
 	pulse: number;
 	/** Whether the child is still open (running or queued). */
 	live: boolean;
+	/**
+	 * Whether the SESSION's stream is down, for the older-history row's retry.
+	 *
+	 * Required rather than defaulted, and it is the same assertion the pane
+	 * already makes for the parent's own transcript (`canonical-transcript.tsx`
+	 * reads its `status !== "live"`): the slot drops a `Try again` while the
+	 * transport is down, because a retry that cannot succeed must not be painted
+	 * beside the transcript's own notice (`older-history-slot.tsx`).
+	 *
+	 * This reader CANNOT derive it, and that is why it is a prop. Its own page is
+	 * a file behind a read-only GET rather than a stream, so the `status` it hands
+	 * `CanonicalTranscript` is a static `"live"` (above) — true about the child,
+	 * and silent about the transport. A child page that fails while the backend is
+	 * down would then paint the red fault and its useless retry while the parent's
+	 * identical failure went quiet, which is the asymmetry design round 1's D2
+	 * measured. The pane owns the session handle and therefore the only truthful
+	 * answer; a caller with no stream behind it (the story boards, the evidence
+	 * rig's scripted backend) says so by passing `false`.
+	 */
+	olderTransportDown: boolean;
 	/**
 	 * A page to paint INSTEAD of fetching one — the story and test seam.
 	 *
@@ -432,6 +456,7 @@ export const RunChildReader = ({
 	sessionId,
 	pulse,
 	live,
+	olderTransportDown,
 	previewPage = null,
 	attachmentScope,
 	measuredAtMs,
@@ -483,6 +508,17 @@ export const RunChildReader = ({
 		: fetched.transcript;
 	const loadingOlder = usingPreview ? false : fetched.loadingOlder;
 	const loadOlder = usingPreview ? async () => false : fetched.loadOlder;
+	/*
+	 * The outcome-aware ask and the failed-row flag, passed exactly as the parent
+	 * pane passes its own (`chat-content.tsx`). Without them the transcript's slot
+	 * can never read "failed" here, and a child page that throws is counted against
+	 * the pump's automatic budget with nothing on screen to say so (round 1, R1-2).
+	 * A preview has nothing to load, so it reports `nothing-to-load` and never fails.
+	 */
+	const loadOlderDetailed = usingPreview
+		? async (): Promise<LoadOlderOutcome> => ({ kind: "nothing-to-load" })
+		: fetched.loadOlderDetailed;
+	const olderFailed = usingPreview ? false : fetched.olderFailed;
 
 	/*
 	 * The launch turn, reconciled (`§5.1`). Applied to the READER's own record
@@ -967,6 +1003,8 @@ export const RunChildReader = ({
 							workingLine={workingLine}
 							loadingOlder={loadingOlder}
 							onLoadOlder={loadOlder}
+							onLoadOlderOutcome={loadOlderDetailed}
+							olderFailed={olderFailed}
 							containerRef={containerRef}
 							/*
 							 * The pane is 420px by default and the reader is its own column, so the
@@ -986,6 +1024,11 @@ export const RunChildReader = ({
 							 */
 							isSmallView={false}
 							status="live"
+							/*
+							 * The transport truth the static `status` above cannot carry: the pane's
+							 * own stream status, threaded rather than re-derived (D2).
+							 */
+							olderTransportDown={olderTransportDown}
 							failure={null}
 							/*
 							 * The reader's question, answered by this reader's own state: this
