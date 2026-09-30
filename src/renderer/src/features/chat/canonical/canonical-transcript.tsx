@@ -183,7 +183,7 @@ import {
 import {
 	type RunCollapsePlan,
 	WIDEN_MAX_STEPS,
-	alignFetchDecision,
+	alignWalkDecision,
 	collapsePlan,
 	snapWindowToRunBoundary,
 	widenTarget,
@@ -247,17 +247,8 @@ const JUMP_MOUNT_HEADROOM_ROWS = 16;
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
-/**
- * Durable pages one open may fetch to bring a cut run's head into the loaded
- * rows (`windowTopRunIsHeadCut`).
- *
- * The first automatic follow-up load, bounded: an open must not walk an
- * unbounded conversation into memory. SINCE THE END-LOADED RULE (operator
- * report, 2026-09-29) the bound no longer decides whether a completed turn
- * folds — a run whose head stays cut still condenses from its loaded span —
- * only whether its bar gains the head row and the real duration clause.
- */
-const ALIGN_FETCH_MAX = 2;
+/* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
+ * beside the decision that spends it.) */
 
 /**
  * What a bar's appearance says out loud (the settle announcement's sentence).
@@ -2187,9 +2178,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// belongs to the previous transcript.
 	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
-	/* Durable pages this conversation's open has spent aligning the window's
-	 * top edge onto a loaded run boundary. See the alignment effect below. */
-	const alignFetches = useRef(0);
+	/* Durable pages this conversation's open has walked aligning the window's
+	 * top edge onto a loaded run boundary, and whether the walk must stop. See
+	 * the alignment effect below. One ref rather than two: the two facts are
+	 * reset together and read together. */
+	const alignWalk = useRef({ spent: 0, halted: false });
 	/* The settle announcement's own memory — see the effect beside the collapse
 	 * plan. `keys` are the bars already stated (or absorbed silently, when they
 	 * were window-entered rather than settled); `rowIds` are every row the
@@ -2201,7 +2194,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
-		alignFetches.current = 0;
+		alignWalk.current = { spent: 0, halted: false };
 		announcedPlan.current = null;
 	}
 	/*
@@ -2290,31 +2283,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		() => shareInFlight(onLoadOlder),
 		[onLoadOlder],
 	);
-	/*
-	 * The alignment's load half: when the edge sits inside a run whose head the
-	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
-	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
-	 * not already in flight — and let the snap do the rest when it lands.
-	 *
-	 * SINCE THE END-LOADED RULE (operator report, 2026-09-29) this is a
-	 * REFINEMENT, not the fix: a run whose head is farther than the bound still
-	 * condenses from its loaded span, so the bound no longer decides whether a
-	 * completed turn folds — only whether its bar gains the head row and the
-	 * real duration. The bound still exists because its old reason does: an open
-	 * must not walk an unbounded conversation into memory.
-	 */
-	useEffect(() => {
-		const decision = alignFetchDecision(
-			alignFetches.current,
-			transcript.hasMore,
-			loadingOlder,
-			windowTopRunIsHeadCut(rows, alignSize),
-			ALIGN_FETCH_MAX,
-		);
-		if (!decision.fetch) return;
-		alignFetches.current = decision.spent;
-		void walkLoadOlder();
-	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2598,7 +2566,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder } = useScrollPaging({
+	const { slotState, requestOlder, mayAutoWalk } = useScrollPaging({
 		containerRef,
 		sessionKey: sessionId,
 		hiddenRows: hidden,
@@ -2617,6 +2585,60 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// reader furthest. `visible.length` changes on both growth paths.
 		rowCount: visible.length,
 	});
+
+	/*
+	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
+	 * settled turn finishes its own condensation instead of waiting for the
+	 * reader to scroll the head in page by page.
+	 *
+	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
+	 * snap has no boundary to land on and the bar can only describe the loaded
+	 * span — no real action count, no `Took` clause. The walk fetches that head,
+	 * one page per invocation, for as long as the decision's clauses hold: the
+	 * run is still cut AND the backend has more, no page is in flight, every
+	 * page so far applied, and the reader is following the tail with no recent
+	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
+	 * re-derivation here).
+	 *
+	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
+	 * dependency list is the walk's clock: a landing changes `rows` and flips
+	 * `loadingOlder`, so the effect re-runs by itself exactly once per page —
+	 * the same shape the flat two-page budget had, with the pages counted
+	 * instead of capped at two. A loop inside the effect would walk the whole
+	 * bound in one commit and hand the reader twelve pages of history as one
+	 * uninterruptible act.
+	 *
+	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
+	 * already owns the failed row and the automatic retry budget (rule G), and a
+	 * walk that kept asking through a failure is the operator's "keeps loading in
+	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
+	 * rest of it on a session change — the reader's next act re-arms everything.
+	 */
+	useEffect(() => {
+		const decision = alignWalkDecision(alignWalk.current.spent, {
+			hasMore: Boolean(transcript.hasMore),
+			loadingOlder,
+			headCut: windowTopRunIsHeadCut(rows, alignSize),
+			mayWalk: mayAutoWalk(),
+			halted: alignWalk.current.halted,
+		});
+		alignWalk.current.spent = decision.spent;
+		if (!decision.fetch) return;
+		void walkLoadOlder().then((applied) => {
+			// A walk page that did not apply halts the walk. `applied` is the
+			// boolean form of the SAME single-flight ask the reader's own pump
+			// uses (`createOlderLoader`), so the walk and a gesture can never be
+			// waiting on two pages at once.
+			if (!applied) alignWalk.current.halted = true;
+		});
+	}, [
+		rows,
+		alignSize,
+		loadingOlder,
+		transcript.hasMore,
+		walkLoadOlder,
+		mayAutoWalk,
+	]);
 
 	/*
 	 * §D7's near path, wired to the rail's ticks: ensure the row is reachable
