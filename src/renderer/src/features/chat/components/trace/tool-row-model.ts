@@ -207,6 +207,114 @@ function sendSummary(args: Record<string, unknown>): string {
 }
 
 /**
+ * The one thing an addressed `sessions` call acts on, in the resolver's order.
+ *
+ * `pid`, then the exact session id, then the name/cwd substring - the same
+ * precedence the tool's own resolver uses (`docs/design/sessions-tool.md` §3.2
+ * in `damianvtran/local-operator`, and the TUI's `_sessions_address`), so the
+ * row cannot disagree with the call about WHICH session it names. `?` rather
+ * than blank when an addressed op names no address: the row is painted before
+ * the call settles, and a blank slot reads as though the next field were the
+ * target (the send row's rule).
+ *
+ * The `session ` prefix the send row spells is dropped here because the VERB
+ * already carries the noun (`Stopped session session 5d3f2a9c` stutters); `pid`
+ * keeps its marker, which the number alone would not say.
+ *
+ * `pid` reads through `numberFrom` for the reason `steps`/`head` do: the
+ * schema's lax int executes `"48213"` and `"48213.0"` as pid 48213, so a row
+ * painting `?` for a call that executed is the one disagreement this function
+ * exists to prevent - while a non-integer float, which the schema REFUSES,
+ * must not paint a `pid` at all and falls through to the address ladder
+ * (review round 1, R-3).
+ */
+function sessionsAddress(args: Record<string, unknown>): string {
+	const pid = numberFrom(args.pid);
+	if (pid !== null && Number.isInteger(pid)) return `pid ${pid}`;
+	return scalarText(args.session) || scalarText(args.target) || "?";
+}
+
+/**
+ * The peek row's window, in the op's own words (`last 12` / `first 20`).
+ *
+ * Mirrors `_sessions_peek_window` (`harness/rows.py`, sibling PR
+ * `damianvtran/local-operator` #1825) and the tool's own validation: `query` is
+ * tested FIRST because it is the discriminator that survives beside `steps` -
+ * the tool keeps `steps` as the SIZE of the match window (`query` + `steps=6`
+ * reads six steps around the match, not the tail), so asking for `steps` first
+ * would paint `last 6`, a read the call never makes, and drop the search term.
+ * Numbers arrive as numeric strings in the wild too (the tools' lax ints), so
+ * `numberFrom` feeds the renderers either spelling. Empty when the call names
+ * no window: the tool's default applies, and the row must not claim a value
+ * nobody read (the `hub` peek count's rule, one tool over).
+ */
+function sessionsPeekWindow(args: Record<string, unknown>): string {
+	const query = scalarText(args.query);
+	if (query) {
+		const steps = numberFrom(args.steps);
+		return steps !== null && Number.isInteger(steps) && steps >= 0
+			? `search ${query} · ${steps} around`
+			: `search ${query}`;
+	}
+	const steps = numberFrom(args.steps);
+	if (steps !== null && Number.isInteger(steps) && steps >= 0)
+		return `last ${steps}`;
+	const head = numberFrom(args.head);
+	if (head !== null && Number.isInteger(head) && head >= 0)
+		return `first ${head}`;
+	if (args.digest === true) return "digest";
+	const before = scalarText(args.before_id);
+	if (before) return `before ${before}`;
+	const around = scalarText(args.around_id);
+	return around ? `around ${around}` : "";
+}
+
+/**
+ * `sessions`' summary: the discriminator leads, and the verb carries the op.
+ *
+ * The TUI and the phone draw ONE shared sentence for this tool
+ * (`sessions_row_summary`, `harness/rows.py`; sibling PR
+ * `damianvtran/local-operator` #1825) whose own doc says why the op leads: both
+ * rows shed from the right, and `stop` and `peek` on one session painted
+ * byte-identical rows without it. THIS row's grammar is verb + object, so the
+ * op lives in the verb (`Spawned session`) and the object carries everything
+ * else: `spawn` its visibility FIRST - both values, the default spelled -
+ * because the invisible disposition is the incident the tool exists to
+ * prevent, and an omitted flag must not be the one thing a narrow row drops
+ * (the `send` row's discriminator rule, one layer down); the addressed ops
+ * their target; `peek` its window; `list` its `stored`/`query` markers.
+ *
+ * Null for an operation this build does not know, so the call falls through to
+ * the generic scan (`Called sessions <scalars>`, the `agent` precedent, which
+ * never guesses a neighbouring claim). Empty string when a known op names
+ * nothing (a bare `list`): the caller reads it as the tool's own name, and a
+ * bare name keeps an empty object rather than echoing itself.
+ */
+function sessionsSummary(args: Record<string, unknown>): string | null {
+	const op = toolOp(args);
+	if (op === "spawn") {
+		const visibility = scalarText(args.visibility) || "workstream";
+		const name = scalarText(args.name) || scalarText(args.prompt);
+		return [visibility, name].filter(Boolean).join(" · ");
+	}
+	if (op === "stop" || op === "resume" || op === "info")
+		return sessionsAddress(args);
+	if (op === "peek") {
+		return [sessionsAddress(args), sessionsPeekWindow(args)]
+			.filter(Boolean)
+			.join(" · ");
+	}
+	if (op === "list") {
+		const parts: string[] = [];
+		if (args.include_stored === true) parts.push("stored");
+		const query = scalarText(args.query);
+		if (query) parts.push(query);
+		return parts.join(" · ");
+	}
+	return null;
+}
+
+/**
  * One-line summary of WHAT the call is acting on.
  *
  * `_summary_from_args` (tool_card.py:492-515): identity arguments first, in
@@ -221,6 +329,13 @@ export function summaryFromArgs(
 	const name = toolName.trim();
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
+	// Case-folded like every other lookup in this module: the name is
+	// model-controlled, and `Sessions` must not lose its discriminator to the
+	// generic scan.
+	if (name.toLowerCase() === "sessions") {
+		const summary = sessionsSummary(args);
+		if (summary !== null) return summary || name;
+	}
 	/*
 	 * The operation selector is not an object, once a verb table reads it.
 	 *
@@ -556,6 +671,7 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	project: "meta",
 	team_delete: "meta",
 	project_delete: "meta",
+	sessions: "meta",
 };
 
 /**
@@ -875,6 +991,23 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 			settled: "Previewed rename",
 			running: "Previewing rename",
 		},
+	},
+	sessions: {
+		// The `sessions` tool's six ops (`tools/builtin.py`, the design note
+		// `docs/design/sessions-tool.md` §3.1): a lifecycle ladder whose rungs
+		// differ materially - reading a listing, inspecting, spawning,
+		// resuming, stopping, peeking - which is why the verb is keyed by op
+		// rather than the name alone (the operator's 2026-09-27 report's rule).
+		// Every verb carries the noun the way `agent`'s rows do, because the
+		// object column then never has to say `session` twice; `peek` keeps the
+		// family's act-word (`hub`/`jobs` say `Peeked at`) with the noun beside
+		// it so the row reads as the read it is.
+		list: { settled: "Listed sessions", running: "Listing sessions" },
+		info: { settled: "Viewed session", running: "Viewing session" },
+		spawn: { settled: "Spawned session", running: "Spawning session" },
+		resume: { settled: "Resumed session", running: "Resuming session" },
+		stop: { settled: "Stopped session", running: "Stopping session" },
+		peek: { settled: "Peeked at session", running: "Peeking at session" },
 	},
 };
 
