@@ -2703,6 +2703,26 @@ const BRANCH_RECORDS = [
 	"foldOntocef1c9c535MeasureDragNote",
 	"foldOntoe2394f9ff1Note",
 	"foldOntof9dbf8b455MeasureDragNote",
+	/*
+	 * And THIS branch's re-keyed fold record (`foldOnto0738fa7eb3RestoreBoundaryNote`, re-keyed at the
+	 * fold onto `65a3e97b8c` because main already ships a note under the bare name, and registered here
+	 * per agent review round 4, F-r4-2): it states this lane's own reading of that fold, the fold that
+	 * re-laid it kept it byte-exact, and a fold that started from main's copy would drop it first -
+	 * the list's usual reason.
+	 */
+	"foldOnto0738fa7eb3RestoreBoundaryNote",
+	/*
+	 * And THIS branch's own product record (`browserRestoreBoundaryPass`), written by the restore-boundary
+	 * pass: it carries the before/after runs' readings and the stamps' provenance, so a fold that started
+	 * from main's copy would drop it first - the list's usual reason (agent review round 5, Q-3).
+	 */
+	"browserRestoreBoundaryPass",
+	/*
+	 * And this branch's first fold's own record (`foldOnto48b4b90b66Note`): the merge onto
+	 * `origin/main` = `48b4b90b66` resolved this file and states what moved and what did not,
+	 * registered beside the others for the list's usual reason (agent review round 5, Q-3).
+	 */
+	"foldOnto48b4b90b66Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
