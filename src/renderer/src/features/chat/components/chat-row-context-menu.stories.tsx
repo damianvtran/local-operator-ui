@@ -444,7 +444,9 @@ const Readout: FC<{ sessionId: string }> = ({ sessionId }) => {
 										? "[archive]"
 										: child.hasAttribute("data-session-pin")
 											? "[pin]"
-											: "";
+											: child.hasAttribute("data-session-pin-move")
+												? `[${child.getAttribute("data-session-pin-move")}]`
+												: "";
 									const box = child.getBoundingClientRect();
 									return `${child.tagName.toLowerCase()}${hook}:${
 										getComputedStyle(child).display

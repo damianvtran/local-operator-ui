@@ -60,7 +60,7 @@ numbers below are what the final frames read.
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
 | `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
-| `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest — re-shot at the #697 fold with its revealed move pair (both arrows boundary-inked while one pinned row is shown), the pair held under the open menu |
+| `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest — re-shot at the #697 fold with its revealed move pair (both arrows boundary-inked while one pinned row is shown), the pair held under the open menu. Evidence basis: the hold's five clauses are the code plus the suite's five-clause assertion, and the grip-under-menu combination is code-and-test only — the grip is shed at this width, so no frame photographs it |
 | `pin-state-unknown` | s3, `pinned === undefined`: one row, and the row draws no pin control |
 | `archive-withheld` | `session_archive` absent: one row (`Pin conversation`), not a disabled one |
 | `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |

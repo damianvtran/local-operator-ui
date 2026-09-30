@@ -4567,6 +4567,7 @@ export function ChatSidebar({
 							<button
 								type="button"
 								data-session-move-up
+								data-session-pin-move="up"
 								tabIndex={-1}
 								aria-disabled={!up}
 								/*
@@ -4607,6 +4608,7 @@ export function ChatSidebar({
 							<button
 								type="button"
 								data-session-move-down
+								data-session-pin-move="down"
 								tabIndex={-1}
 								aria-disabled={!down}
 								aria-label={`Move “${label}” down`}
