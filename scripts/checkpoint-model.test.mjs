@@ -116,8 +116,8 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 	/* 2026-09-28 14:32 LOCAL, the unit the journal itself carries. */
 	const ts = new Date(2026, 8, 28, 14, 32).getTime() / 1000;
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ ts })),
-		"Jump to your message, 2:32 PM",
+		model.checkpointAriaLabel(checkpoint({ ts }), 2),
+		"Jump to your message in turn 1 of 2, 2:32 PM",
 	);
 	assert.equal(
 		model.checkpointAriaLabel(
@@ -126,8 +126,9 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 				turn: 3,
 				naming: { state: "ready", name: "Fix the build", summary: "s" },
 			}),
+			7,
 		),
-		"Jump to completion: Fix the build",
+		"Jump to turn 3 of 7, Fix the build",
 	);
 	assert.equal(
 		model.checkpointAriaLabel(
@@ -136,18 +137,47 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 				turn: 3,
 				naming: { state: "pending", name: null, summary: null },
 			}),
+			7,
 		),
-		"Jump to completion: Turn 3",
+		"Jump to turn 3 of 7",
 	);
 	/* No naming field at all is the same fallback, not a blank. */
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ kind: "completion", turn: 3 })),
-		"Jump to completion: Turn 3",
+		model.checkpointAriaLabel(checkpoint({ kind: "completion", turn: 3 }), 7),
+		"Jump to turn 3 of 7",
 	);
 	/* A zero/garbage ts drops the time half rather than printing 12:00 AM. */
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ ts: 0 })),
-		"Jump to your message",
+		model.checkpointAriaLabel(checkpoint({ ts: 0 }), 4),
+		"Jump to your message in turn 1 of 4",
+	);
+});
+
+test("the card's lead label is the turn with a dot-name (review round 2)", () => {
+	/* The visible line and the tooltip's label share one builder, so the label
+	 * cannot lead with the bare name while the visible line leads with the
+	 * turn. */
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "pending", name: null, summary: null },
+			}),
+			7,
+		),
+		"Turn 3 of 7",
+	);
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "ready", name: "Fix the build", summary: "s" },
+			}),
+			7,
+		),
+		"Turn 3 of 7 · Fix the build",
 	);
 });
 

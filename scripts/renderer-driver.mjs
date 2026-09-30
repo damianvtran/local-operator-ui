@@ -531,6 +531,18 @@ if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	process.exit(2);
 }
 
+if (process.argv.some((arg) => arg.startsWith("--window-size="))) {
+	/*
+	 * The space-separated form is the one `argValue` reads; the `=` form is
+	 * silently ignored otherwise - measured on issue #680's first short run,
+	 * which captured 1380x900 frames while claiming 900x650 (review round 1's
+	 * NIT 2). Loud, not fatal: the run is still useful at the default size.
+	 */
+	console.error(
+		"--window-size takes the space-separated form (--window-size 900x650); the = form is ignored",
+	);
+}
+
 /*
  * The app's own output, read as patterns rather than as literals inside the
  * checks that use them: `useTopLevelRegex` asks for that, and two of these are
@@ -10630,6 +10642,442 @@ async function sceneTranscriptRail(cdp) {
 		dense.ok && tickCount >= 267,
 		`ticks=${tickCount}`,
 	);
+
+	/*
+	 * #680's landing probe: press ticks across the reach and read WHERE THEY
+	 * LAND - the washed row's top relative to the scroller's top (`offset`;
+	 * the fixed anchor is the top-fade depth, design round 1's D1), with the
+	 * scroller's own numbers, the landed row's peak ink against a mid-viewport
+	 * reference row, and the rail's active tick after the jump. Run with
+	 * `--scoped-case rail-jump-probe`; the before/after pair is the same
+	 * command against the pre-anchor and post-anchor builds, and each jump's
+	 * frame is captured under its case name. `--theme localOperatorLight` is
+	 * the light pass (D5).
+	 */
+	if (RAIL_CASE === "rail-jump-probe") {
+		/* The theme is named, not assumed: the light frame is this same probe
+		 * with `--theme localOperatorLight`. */
+		await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+		const anchorView = (id) =>
+			evaluate(`(() => {
+				const sc = document.querySelector('[role="log"]');
+				/*
+				 * The landed row, flash or not: the wash is the app's arrival cue, but
+				 * it is interactive-state (it can be replaced by a late mount commit
+				 * under load - the timeline below records when), while the LANDING is
+				 * the geometry this probe measures. The fallback reads the target's own
+				 * anchor row by id, skipping the collapsed bar that carries it as
+				 * data-turn-summary (the bar is not the row it stands for).
+				 */
+				const flashed = document.querySelector("[data-jump-highlight]");
+				const row =
+					flashed ??
+					document.querySelector(
+						'[data-record-id="${id}"]:not([data-turn-summary])',
+					);
+				if (!sc || !row) return null;
+				const sr = sc.getBoundingClientRect();
+				const rr = row.getBoundingClientRect();
+				/*
+				 * The reference row for the luma check: the loaded checkpoint row
+				 * nearest the scroller's vertical middle, i.e. one the top fade
+				 * cannot touch. Read in the same snapshot as the target's rect, so
+				 * one frame answers both.
+				 */
+				const mid = sr.top + sc.clientHeight / 2;
+				let ref = null;
+				let refDist = Infinity;
+				for (const el of sc.querySelectorAll("[data-record-id]")) {
+					if (el === row || el.hasAttribute("data-turn-summary")) continue;
+					const r = el.getBoundingClientRect();
+					/*
+					 * Same-frame painted guard (QA round 2, Q-1): only rows fully
+					 * inside the scroller's visible band can be the reference. A
+					 * row below the fold reads empty paint - how the near-newest
+					 * clamp leg read 32 against its 238 - and a "reference" that
+					 * is not painted can only fail or pass vacuously.
+					 */
+					if (r.top < sr.top || r.bottom > sr.top + sc.clientHeight) {
+						continue;
+					}
+					const dist = Math.abs(r.top + 11 - mid);
+					if (dist < refDist) {
+						refDist = dist;
+						ref = el;
+					}
+				}
+				const rr2 = ref ? ref.getBoundingClientRect() : null;
+				/* The target's preceding row - painted whenever the target is,
+				 * so it backstops the reference at the clamps. */
+				const rowsAll = Array.from(
+					sc.querySelectorAll("[data-record-id]"),
+				).filter((el) => !el.hasAttribute("data-turn-summary"));
+				const rowIdx = rowsAll.indexOf(row);
+				const adj = rowIdx > 0 ? rowsAll[rowIdx - 1] : null;
+				const rr3 = adj ? adj.getBoundingClientRect() : null;
+				const active = document.querySelector('[data-mark-state="active"]');
+				return {
+					landed: row.getAttribute("data-record-id"),
+					flashed: Boolean(flashed),
+					offset: Math.round((rr.top - sr.top) * 10) / 10,
+					scrollTop: Math.round(sc.scrollTop * 10) / 10,
+					maxNeg: Math.round((sc.scrollHeight - sc.clientHeight) * -1),
+					rowH: Math.round(rr.height),
+					viewport: sc.clientHeight,
+					rows: sc.querySelectorAll("[data-record-id]").length,
+					scrollerLeft: Math.round(sr.left),
+					targetBand: {
+						top: Math.round(rr.top),
+						height: Math.round(rr.height),
+					},
+					refBand: rr2
+						? { top: Math.round(rr2.top), height: Math.round(rr2.height) }
+						: null,
+					adjBand: rr3
+						? { top: Math.round(rr3.top), height: Math.round(rr3.height) }
+						: null,
+					/* The target's strip that is actually inside the scroller's
+					 * visible band: at the clamp the last row can sit past the
+					 * fold, and there is no ink to meter. */
+					visibleStrip: {
+						top: Math.round(Math.max(rr.top, sr.top)),
+						bottom: Math.round(Math.min(rr.bottom, sr.top + sc.clientHeight)),
+					},
+					activeTick: active ? active.getAttribute("data-checkpoint-id") : null,
+				};
+			})()`);
+		/*
+		 * A row band's luma stats (min, max) from the captured PNG: the x window
+		 * is the scroller's own left edge plus 520px (the fixture's rows draw
+		 * their text in the left half), the y window the row's own band. The
+		 * INK measurement is the RANGE (max - min), because ink's polarity flips
+		 * with the palette - light-on-dark reads as the max, dark-on-light as
+		 * the min - and a mask that dims the text shrinks the range in either
+		 * (design round 1 measured 238 -> 189 inside the fade in dark). The MAX
+		 * doubles as the band's GROUND, which is what tells reference classes
+		 * apart: light grounds run 237-251 and both are full ink, so a
+		 * peak-vs-peak comparison across rows of different grounds was unsound
+		 * (QA round 5's light-palette false red).
+		 */
+		const rowBandStats = async (label, scrollerLeft, band) => {
+			const file = join(FRAMES, `${label}.png`);
+			const meta = await sharp(file).metadata();
+			const inner = await evaluate("window.innerWidth");
+			const scale = (meta.width ?? 0) / inner;
+			const left = Math.max(0, Math.round((scrollerLeft + 8) * scale));
+			const top = Math.max(0, Math.round((band.top + 2) * scale));
+			const width = Math.max(
+				1,
+				Math.min((meta.width ?? 0) - left, Math.round(520 * scale)),
+			);
+			const height = Math.max(1, Math.round((band.height - 4) * scale));
+			const { data } = await sharp(file)
+				.extract({ left, top, width, height })
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+			let min = 255;
+			let max = 0;
+			const values = [];
+			for (let i = 0; i + 2 < data.length; i += 3) {
+				const value =
+					0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+				values.push(value);
+				if (value > max) max = value;
+				if (value < min) min = value;
+			}
+			/*
+			 * The counts at each extreme tell GROUND from INK without a palette
+			 * table: the band's ground is its majority value, and the ink is the
+			 * minority extreme - bright-on-dark in one palette, dark-on-light in
+			 * another, same numbers either way (QA round 5 measured a light band
+			 * as min 30 / max 251 and a dark one as min 33 / max 238).
+			 */
+			let minCount = 0;
+			let maxCount = 0;
+			for (const value of values) {
+				if (value <= min + 8) minCount += 1;
+				if (value >= max - 8) maxCount += 1;
+			}
+			return {
+				min: Math.round(min),
+				max: Math.round(max),
+				minCount,
+				maxCount,
+			};
+		};
+		const jumpCase = async (name, id, expect) => {
+			await washGone();
+			const rowsBefore = await evaluate(
+				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
+			);
+			/*
+			 * A per-frame settle sampler (QA round 5's 1/5 clamp-end miss): every
+			 * animation frame from before the press until the settle resolves
+			 * records [ms, scrollTop, targetOffset], so a landing that exits
+			 * short can be read frame by frame instead of argued about.
+			 */
+			await evaluate(`(() => {
+				window.__anchorSamples = [];
+				window.__anchorSamplerOn = true;
+				const t0 = performance.now();
+				const tick = () => {
+					if (!window.__anchorSamplerOn) return;
+					const reg = document.querySelector('[role="log"]');
+					const row = document.querySelector('[data-record-id="${id}"]:not([data-turn-summary])');
+					if (reg && row) {
+						window.__anchorSamples.push([
+							Math.round(performance.now() - t0),
+							Math.round(reg.scrollTop * 10) / 10,
+							Math.round((row.getBoundingClientRect().top - reg.getBoundingClientRect().top) * 10) / 10,
+						]);
+					}
+					window.requestAnimationFrame(tick);
+				};
+				window.requestAnimationFrame(tick);
+				return true;
+			})()`);
+			const jump = await jumpVia(id);
+			const atWash = await anchorView(id);
+			await capture(cdp, `rail-jump-${name}`);
+			/*
+			 * The flash's own timeline: the landing highlight lives 1400ms from
+			 * paint, and a late mount commit under load can replace the flashed
+			 * node - the very-top and near-newest legs were seen to lose the
+			 * attribute between jumpVia's read and this probe's. Sampling `fate`
+			 * (`lit` -> the marked node still flashed; `alive` -> same node, no
+			 * attribute; `gone` -> node replaced) turns "the highlight is gone"
+			 * into WHAT happened, which is the fact a fix needs.
+			 */
+			await evaluate("(() => { window.__probeRow = null; return true; })()");
+			const timeline = [];
+			for (let sample = 0; sample < 10; sample += 1) {
+				timeline.push(
+					await evaluate(
+						`(() => { const hl = document.querySelector("[data-jump-highlight]"); const sc = document.querySelector('[role="log"]'); if (!window.__probeRow && hl) window.__probeRow = hl; const row = window.__probeRow; const fate = row ? (row.isConnected ? (row.hasAttribute("data-jump-highlight") ? "lit" : "alive") : "gone") : "none"; return [${sample * 40}, hl ? 1 : 0, hl ? hl.getAttribute("data-record-id") : null, sc ? Math.round(sc.scrollTop) : null, fate]; })()`,
+					),
+				);
+				await wait(40);
+			}
+			/*
+			 * The wash is up NOW (jumpVia waits on its attribute), and its 1400ms
+			 * timer clears it - so the frame is captured and the first read taken
+			 * before the wait, while the highlight is guaranteed in the picture;
+			 * the settled read after the anchor's window is the landing number.
+			 * A slow cold jump's wash can expire before the settled read, which is
+			 * why the check falls back to the earlier one rather than reading
+			 * null on a landing that happened. The frame is taken AT the wash (the
+			 * first read, right after the jump resolves, before the timeline
+			 * sampling), so the before/after pair photographs the same instant of
+			 * the arrival cue the pre-anchor runs photographed; the luma reads
+			 * below use their own post-settle capture.
+			 */
+			await wait(700);
+			const settled = await anchorView(id);
+			const view = settled ?? atWash;
+			const samples = await evaluate(`(() => {
+				window.__anchorSamplerOn = false;
+				const all = window.__anchorSamples || [];
+				const head = all.slice(0, 300);
+				return { n: all.length, head, last: all.length > 300 ? all.slice(-8) : [] };
+			})()`);
+			/*
+			 * The luma reads come from a POST-SETTLE capture (UX round 1's U1):
+			 * the wash-instant still above is the design frame, but a tall
+			 * near-newest run had its still photograph a stale paint once (the
+			 * scroller repaint lagging the DOM's landing), and sampling a stale
+			 * frame can only read a red for a property that holds. The bands
+			 * come from the same settled snapshot this capture shows; the wash
+			 * instant is the fallback only when no settled read came back.
+			 */
+			await capture(cdp, `rail-jump-${name}-settled`);
+			const lumaView = settled ?? atWash;
+			const strip = lumaView?.visibleStrip ?? null;
+			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
+			const targetStats = targetVisible
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						{
+							top: strip.top,
+							height: strip.bottom - strip.top,
+						},
+					)
+				: null;
+			const refStats = lumaView?.refBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.refBand,
+					)
+				: null;
+			const adjStats = lumaView?.adjBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.adjBand,
+					)
+				: null;
+			const bandRange = (stats) => (stats ? stats.max - stats.min : null);
+			/* The ground is the majority extreme; the ink is the other one. */
+			const inkValue = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.min : stats.max;
+			const inkCount = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.minCount : stats.maxCount;
+			/* A band carries ink when it has real contrast AND a real minority
+			 * extreme (text strokes, not antialiasing noise). */
+			const carriesInk = (stats) =>
+				stats !== null && stats.max - stats.min >= 100 && inkCount(stats) >= 30;
+			const targetRange = bandRange(targetStats);
+			/*
+			 * Full ink is a RANGE of 180+ (dark full 206, inside the fade 156;
+			 * light full 207). The reference comparison runs only against a band
+			 * that CARRIES INK (contrast plus a real text minority): a blank
+			 * band's extremes are all ground - comparing against one was the
+			 * light-palette false red (QA round 5) - while a band on another
+			 * ground is another row class whose range still differs only by its
+			 * ground, so the comparison anchors on the INK extreme, not the
+			 * range. With no inked reference the absolute bar carries the check
+			 * and the note shows the candidates.
+			 */
+			const reference =
+				targetStats === null
+					? null
+					: ([refStats, adjStats].find(carriesInk) ?? null);
+			if (name === "very-top") {
+				note(
+					`settle frames ${name}`,
+					`n=${samples?.n ?? 0} head=${JSON.stringify(samples?.head ?? [])} tail=${JSON.stringify(samples?.last ?? [])}`,
+				);
+			}
+			note(
+				`landing ${name}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetRange ?? "none"}/${reference ? bandRange(reference) : "none"} ink=${targetStats ? inkValue(targetStats) : "none"}/${reference ? inkValue(reference) : "none"} mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
+			);
+			check(
+				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
+				view !== null &&
+					view.landed === id &&
+					(expect === "clamp"
+						? view.scrollTop === 0
+						: Math.abs(view.offset - 24) <= 1.5),
+				JSON.stringify({
+					jump: jump.landed,
+					focused: jump.focused,
+					hit: jump.hit,
+					view,
+					timeline,
+				}),
+			);
+			check(
+				`the ${name} landing's target reads at full ink, clear of the top fade`,
+				targetVisible
+					? targetRange !== null &&
+							targetRange >= 180 &&
+							carriesInk(targetStats) &&
+							(reference === null ||
+								Math.abs(inkValue(targetStats) - inkValue(reference)) <= 4)
+					: expect === "clamp",
+				targetVisible
+					? `target=${targetRange} (${targetStats?.min}-${targetStats?.max}) reference=${reference ? bandRange(reference) : "none"} (mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"})`
+					: `no visible target strip (the clamp's last row sits past the fold): ${JSON.stringify(strip)}`,
+			);
+			check(
+				`the rail's active tick after the ${name} jump is the target`,
+				view !== null && view.activeTick === id,
+				`active=${view?.activeTick} expected=${id}`,
+			);
+			return view;
+		};
+		const ids = await evaluate(`(() => {
+			const ticks = Array.from(document.querySelectorAll('${rail} [data-checkpoint-id]'));
+			const ns = ticks
+				.map((el) => el.getAttribute("data-checkpoint-id"))
+				.filter((id) => (id || "").startsWith("n"));
+			return {
+				first: ns[0] ?? null,
+				deep: ns[Math.floor(ns.length * 0.65)] ?? null,
+				count: ns.length,
+			};
+		})()`);
+		note("rail ids", JSON.stringify(ids));
+		/*
+		 * The deep leg FIRST - it walks the store back, so a deep read taken
+		 * after the near legs would be reading a store they warmed. The warm leg
+		 * is that same row re-jumped.
+		 */
+		await jumpCase("deep-cold", ids.deep, "anchor");
+		await jumpCase("warm", ids.deep, "anchor");
+		await jumpCase("very-top", ids.first, "anchor");
+		/* The newest completion: within a viewport of the end, so the anchor is
+		 * unreachable by construction - the documented clamp at max scroll. */
+		await jumpCase("near-newest", nearTick, "clamp");
+		/*
+		 * D4's card step: the text is frozen while the card is open. Open a
+		 * completion's card, read it, hold through a settle window and read
+		 * again - equal - then close and reopen. The store-side half (a warm
+		 * landing mid-hover) is pinned by the rail suite's own case; this is the
+		 * DOM-level half on the real app, and its frame carries the card.
+		 */
+		const cardText = () =>
+			evaluate(
+				`(() => { const card = document.querySelector("[data-checkpoint-card]"); return card ? card.textContent : null; })()`,
+			);
+		await washGone();
+		/*
+		 * The last jump already focused this tick; `focus()` on an already-active
+		 * element fires no focus event, so the card's own open path never runs.
+		 * Blur first, then focus, so the step exercises a real focus transition.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardFocus = await evaluate(
+			`(() => { const a = document.activeElement; return a ? (a.getAttribute("data-checkpoint-id") || a.tagName) : null; })()`,
+		);
+		const cardOpened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
+			5_000,
+		);
+		note(
+			"card step",
+			`active=${cardFocus ?? "none"} opened=${String(cardOpened.ok)}`,
+		);
+		const cardBefore = await cardText();
+		await wait(1600);
+		const cardAfter = await cardText();
+		await capture(cdp, "rail-jump-card-open");
+		check(
+			"the open card's text does not swap while it is open (issue #680, D4)",
+			cardOpened.ok && cardBefore !== null && cardBefore === cardAfter,
+			`before=${JSON.stringify(cardBefore)} after=${JSON.stringify(cardAfter)}`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(250);
+		/*
+		 * Same already-focused trap as the first open: Escape closes the card but
+		 * leaves the tick focused, so the refocus must be a real transition for
+		 * the second open to exercise the open path at all.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardAgain = await cardText();
+		check(
+			"the next open still renders a card",
+			cardAgain !== null && cardAgain.length > 0,
+			JSON.stringify(cardAgain),
+		);
+		return;
+	}
 
 	const themes = sceneThemes();
 	for (const theme of themes) {

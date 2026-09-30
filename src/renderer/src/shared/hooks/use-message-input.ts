@@ -276,8 +276,15 @@ export const COMPOSER_PLACEHOLDER = {
 	 * wrong thing. Read before every other reading, because none of them can be
 	 * true at once with a live take the user started: the recording owns the
 	 * press until it ends.
+	 *
+	 * The KEYS are not named here. This sentence shows only while the field is
+	 * EMPTY, and naming them made the empty-field state say them TWICE - once
+	 * here and once in the recording block's own label row, which is the copy
+	 * that survives a draft (agent/design/UX review round 1, F1/D1/U1). The
+	 * label row is the one, stable place for the affordance; this placeholder
+	 * keeps only the state's name.
 	 */
-	recording: "Recording. Enter confirms · Esc cancels",
+	recording: "Recording",
 	waiting: "Steer the agent. Enter sends now · Esc stops",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
