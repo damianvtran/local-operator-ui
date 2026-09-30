@@ -381,6 +381,17 @@ they're inactive in the sidebar".
 - **`subagent-selected-row/`** — the operator's own case: the row they had
   opened, on the `rowSelected` ground, with two running children and an
   unselected twin below it.
+  **THIS CELL'S FIRST PASS PHOTOGRAPHED TWO RESTING ROWS, and the frame was the
+  evidence for it**: the story passed `selected={`session/<id>`} while the row's
+  own definition of current is `selectedConversation === row.session_id` — the
+  BARE id the app's caller passes (`sidebar-navigation.tsx`) — so no row was ever
+  current, and a persisted `activeDraftKey` (the store's `partialize` names it)
+  suppressed it a second time even after the id was fixed. Both are repaired:
+  the story passes the bare id and clears the inherited key, and this cell's own
+  capture entry now refuses the frame unless
+  `[data-chat-row][aria-current="page"]` is on screen. The before/after pair was
+  re-taken so each half carries a genuinely selected row and differs only by the
+  indicator.
 - **`subagent-archived-row/`** — an archived row carrying BOTH conditional marks
   (the leading `Archive` glyph and the post-title indicator). Archived rows are
   filtered out of the at-rest list by `chat-archived.ts`'s `visibleRows`, so this

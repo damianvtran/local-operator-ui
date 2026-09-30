@@ -2986,7 +2986,7 @@ export const SubagentRowsRunningMinimum: Story = {
 		return <Page sidebarWidth={240} readoutRows={8} />;
 	},
 	play: async () => {
-		await catalogueSettled(7);
+		await catalogueSettled(8);
 		await sleep(400);
 	},
 };
@@ -3154,6 +3154,22 @@ const CELL_TWIN = "b20000000002";
 export const SubagentSelectedRow: Story = {
 	render: () => {
 		fixtures();
+		/*
+		 * NO DRAFT IS STAGED, and that has to be SAID rather than assumed. The
+		 * canonical store persists `activeDraftKey` (`partialize` names it), so a
+		 * profile that staged a draft in any earlier story hydrates the key here -
+		 * and the row's own definition of current is
+		 * `selectedConversation === row.session_id && !activeDraftKey`
+		 * (`chat-sidebar.tsx`). An inherited key therefore suppresses the
+		 * `rowSelected` ground this frame exists to photograph, while the frame
+		 * still claims "the operator's own selected row": MEASURED, with a hydrated
+		 * `draft:<uuid>` both rows painted resting and this entry's own guard
+		 * (`[data-chat-row][aria-current="page"]`) refused to write the frame.
+		 * Stated in the story rather than fixed in the rig because the app's own
+		 * rule is the thing under test, and a story that needs "no draft" has to
+		 * establish it the way the app does.
+		 */
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
 		entities = null;
 		roster = [
 			wireRow(
@@ -3177,13 +3193,7 @@ export const SubagentSelectedRow: Story = {
 				{ subagents_running: 2, subagents_queued: 0 },
 			),
 		];
-		return (
-			<Page
-				sidebarWidth={280}
-				readoutRows={2}
-				selected={`session/${CELL_SELECTED}`}
-			/>
-		);
+		return <Page sidebarWidth={280} readoutRows={2} selected={CELL_SELECTED} />;
 	},
 	play: async () => {
 		await catalogueSettled(2);

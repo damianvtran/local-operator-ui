@@ -3106,7 +3106,27 @@ export const STORIES = [
 	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
 	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
 	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
-	["chat-sidebar-status-feed--subagent-selected-row", 720, 660],
+	/*
+	 * THE OTHER STORY THAT CAN SILENTLY NO-OP (review round 2's MINOR). Its
+	 * subject is a SELECTED row, and "selected" is a prop the story passes rather
+	 * than a state the row reaches on its own - so a story that spelled that prop
+	 * wrong would photograph two resting rows and still look like evidence. The
+	 * guard is the row's own hook: `data-chat-row` is the attribute every harness
+	 * addresses a row by, and `aria-current="page"` is what the current row
+	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
+	 *
+	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
+	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
+	 * the frame claimed the operator's own case and drew two resting rows. The
+	 * story passes the bare id now, and this entry is what keeps that true.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-selected-row",
+		720,
+		660,
+		{ expectPresent: '[data-chat-row][aria-current="page"]' },
+	],
 	/*
 	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
 	 * version typed no query at all - the play's label lookup matched two elements
