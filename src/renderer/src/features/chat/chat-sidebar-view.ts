@@ -594,11 +594,20 @@ export function parseSidebarView(value: unknown): SidebarView {
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
 	const pins: string[] = [];
+	/*
+	 * THE DEDUPE IS A SET because this array is unbounded and the loop is reached on
+	 * every render of every mounted reader of the view (agent review round 1, R7):
+	 * `pins.includes` per entry makes the parse quadratic in a persisted list nothing
+	 * here caps. The array is still what is returned - the ORDER of the stored
+	 * entries is the arrangement - so only the membership test moves.
+	 */
+	const ranked = new Set<string>();
 	if (Array.isArray(raw.pins)) {
 		for (const entry of raw.pins) {
 			if (typeof entry !== "string") continue;
 			if (entry.length === 0) continue;
-			if (pins.includes(entry)) continue;
+			if (ranked.has(entry)) continue;
+			ranked.add(entry);
 			pins.push(entry);
 		}
 	}

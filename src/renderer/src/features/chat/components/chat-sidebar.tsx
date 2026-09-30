@@ -116,6 +116,7 @@ import {
 	pinDragSlot,
 	pinMoveBoundaryNote,
 	pinMoveNote,
+	pinMoveUntargetedNote,
 	pinnedOrder,
 } from "../chat-pin-order";
 import {
@@ -524,8 +525,38 @@ export const rowCurrent =
  * acting on". `rowHover` would say "the pointer is over this row", which stops
  * being true the moment the pointer moves to the gap the row is heading for,
  * while the drag it belongs to is still running.
+ *
+ * THE GROUND IS RESTATED AT `hover:` AND THE CONSTANT IS MERGED LAST (design D1 + UX U1,
+ * round 1; both halves measured). A bare `bg-row-selected` LOSES to the box's own
+ * `hover:bg-row-hover`, and the pointer that armed the drag stays inside the captured row
+ * for the whole gesture - Chromium keeps `:hover` on the capture target's ancestors while
+ * the button is held - so the dragged row painted exactly the fill a merely hovered row
+ * paints (measured `#302D2A` dark / `#EDECE8` light, i.e. `--lo-row-hover`, against the
+ * intended `#372F24` / `#EBE7D8`). The restatement is `rowCurrent`'s own idiom, and like
+ * `rowCurrent` it only works because the box merges it LAST: `cn` is tailwind-merge, so
+ * the last class of a group wins, and the box states its plain `hover:bg-row-hover` after
+ * the controls - the drag's ground has to come after THAT. The rig now MEASURES the
+ * computed colour rather than trusting the frame (`pinned-reorder`'s `ground` readings).
  */
-export const rowDragging = "bg-row-selected text-ink";
+export const rowDragging =
+	"bg-row-selected text-ink hover:bg-row-selected hover:text-ink";
+
+/**
+ * The dragged row's ground when the row is ALSO the one the reader is in.
+ *
+ * WHY THIS IS NOT `rowDragging`: the current row's RESTING fill is `rowSelected`, so
+ * `rowDragging` would paint a held current row exactly as it paints when nothing is
+ * happening - the same substitution `rowCurrent` exists to stop, one state over (design
+ * round 1, D5c, which asked for the frame and the reading). The palette has two row
+ * roles, and the selected one is spoken for by "this is the conversation you are in",
+ * so the held state takes the OTHER step while a row is current: a colour step that is
+ * distinct from the row's own resting fill, and distinct from every other row in the
+ * panel, because a current row is the one row that never wears `rowHover` - its box
+ * drops the hover ground for exactly the reason above. Same merge-order rule as
+ * `rowDragging`: it is merged last so the hover variant cannot take it back.
+ */
+export const rowDraggingCurrent =
+	"bg-row-hover text-ink hover:bg-row-hover hover:text-ink";
 
 import {
 	type FocusedSlot,
@@ -1237,11 +1268,29 @@ export function ChatSidebar({
 		anchorTop: number;
 		/** Where the pointer was at the press, for the wobble slop above. */
 		pointer: { x: number; y: number } | null;
+		/**
+		 * Which control takes the caret back: the row's pin MARK after a pin/unpin (it
+		 * keeps the cluster revealed and it is drawn where the row landed), or the row's
+		 * own `[data-chat-row]` BUTTON after a MOVE - see the correction below for the
+		 * two measurements that decide it (QA round 1, Q1).
+		 */
+		caret: "pin" | "row";
+		/**
+		 * Whether the post-commit correction may TOUCH THE SCROLL. False for an
+		 * in-section REORDER, both axes of it: the rows swap places, so the anchor row
+		 * moves too and correcting against it shifts a scrolled list by a whole row
+		 * (agent review round 1, R3), and the moved row is the row the caret is on, so
+		 * the row-follow delta would scroll the list for a move that never left the
+		 * section.
+		 */
+		scroll: boolean;
 	} | null>(null);
 	const rememberMovedRow = (
 		sessionId: string,
 		follow: boolean,
 		pointer: { x: number; y: number } | null,
+		caret: "pin" | "row" = "pin",
+		scroll = true,
 	) => {
 		const rows = Array.from(
 			listPanelRef.current?.querySelectorAll<HTMLElement>(
@@ -1263,6 +1312,8 @@ export function ChatSidebar({
 			top: rows[index].getBoundingClientRect().top,
 			follow,
 			pointer,
+			caret,
+			scroll,
 			anchorId: neighbour?.getAttribute("data-session-row") ?? null,
 			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
 		};
@@ -1287,8 +1338,19 @@ export function ChatSidebar({
 			return;
 		}
 		if (moved.follow) {
-			const delta = row.getBoundingClientRect().top - moved.top;
-			if (delta !== 0) list.scrollTop += delta;
+			/*
+			 * THE ROW-FOLLOW DELTA IS SKIPPED FOR AN IN-SECTION REORDER (agent review round 1,
+			 * R3): it exists for a press that moves the row to another SECTION, where the
+			 * correction's job is to bring the reader back to the row they were watching. A
+			 * reorder moves the row by one row height inside the section it was already in, so
+			 * the same delta scrolls the list by that height for no reason; the ensure-visible
+			 * pair below stays, because it is what keeps a row walked to the section's end on
+			 * screen (measured on 14 successive chord presses).
+			 */
+			if (moved.scroll) {
+				const delta = row.getBoundingClientRect().top - moved.top;
+				if (delta !== 0) list.scrollTop += delta;
+			}
 			const listBox = list.getBoundingClientRect();
 			const rowBox = row.getBoundingClientRect();
 			if (rowBox.top < listBox.top) list.scrollTop -= listBox.top - rowBox.top;
@@ -1323,12 +1385,26 @@ export function ChatSidebar({
 			 * is this effect's; focus only says where the caret is.
 			 */
 			const pin = row.querySelector<HTMLElement>("[data-session-pin]");
+			const rowButton = row.querySelector<HTMLElement>("[data-chat-row]");
+			/*
+			 * AND A MOVE HANDS THE CARET BACK TO THE ROW'S OWN BUTTON, NOT TO THE MARK (QA
+			 * round 1, Q1, reproduced three times; UX round 1, NIT2). Both reasons were
+			 * measured on the live flow, and both are properties of the two controls:
+			 * the mark is NOT a ring stop - the arrow walk's stop list is `[data-chat-row]`,
+			 * so the walk's current-stop lookup missed and the next bare `↓` restarted at the
+			 * panel's FIRST stop, the `Agents` disclosure, taking a keyboard reader out of
+			 * `Pinned chats` altogether; and the mark is a TOGGLE, so the most natural next
+			 * key - Enter or Space, which opens a chat from a row button - unpinned the row
+			 * instead. `moved.caret` is what tells the two corrections apart.
+			 */
 			const target =
-				pin !== null && pin.getBoundingClientRect().width > 0
-					? pin
-					: row.querySelector<HTMLElement>("[data-chat-row]");
+				moved.caret === "row"
+					? rowButton
+					: pin !== null && pin.getBoundingClientRect().width > 0
+						? pin
+						: rowButton;
 			target?.focus({ preventScroll: true });
-		} else if (moved.anchorId !== null) {
+		} else if (moved.anchorId !== null && moved.scroll) {
 			const anchor = list.querySelector<HTMLElement>(
 				`[data-session-row="${moved.anchorId}"]`,
 			);
@@ -2247,12 +2323,42 @@ export function ChatSidebar({
 	 */
 	const [pinMoveAnnouncement, setPinMoveAnnouncement] = useState("");
 	const pinMoveTimerRef = useRef<number | null>(null);
+	/*
+	 * THE SENTENCE THE REGION HOLDS NOW, AND WHY THE REPEAT NEEDS ITS OWN MOVE (agent
+	 * review round 1, R6; QA round 1, Q3; UX round 1, U3 - all three measured the same
+	 * silence). A live region is read from its MUTATIONS, so setting the region to the
+	 * string it already holds is not a state change React, the DOM or the screen reader
+	 * sees: a reader who presses the boundary chord twice inside the dwell heard
+	 * "already the first pinned chat" once, however many times they pressed. Clearing and
+	 * re-setting the SAME sentence is the fix - two mutations, so the platform announces
+	 * it again - and it has to happen across a FRAME, because a clear and a set in one
+	 * tick are one commit and therefore one mutation. The ref is what makes "is this a
+	 * repeat" answerable at all: `pinMoveAnnouncement` is the value from this render,
+	 * which is stale for the second press of the same gesture.
+	 */
+	const pinMoveHeldRef = useRef("");
+	const pinMoveFrameRef = useRef<number | null>(null);
 	const announcePinMove = (sentence: string) => {
-		setPinMoveAnnouncement(sentence);
+		if (pinMoveFrameRef.current !== null) {
+			window.cancelAnimationFrame(pinMoveFrameRef.current);
+			pinMoveFrameRef.current = null;
+		}
+		const repeat = sentence !== "" && sentence === pinMoveHeldRef.current;
+		if (repeat) {
+			setPinMoveAnnouncement("");
+			pinMoveFrameRef.current = window.requestAnimationFrame(() => {
+				pinMoveFrameRef.current = null;
+				setPinMoveAnnouncement(sentence);
+			});
+		} else {
+			setPinMoveAnnouncement(sentence);
+		}
+		pinMoveHeldRef.current = sentence;
 		if (pinMoveTimerRef.current !== null)
 			window.clearTimeout(pinMoveTimerRef.current);
 		pinMoveTimerRef.current = window.setTimeout(() => {
 			pinMoveTimerRef.current = null;
+			pinMoveHeldRef.current = "";
 			setPinMoveAnnouncement("");
 		}, 4000);
 	};
@@ -2521,6 +2627,17 @@ export function ChatSidebar({
 	 * one map rather than an `indexOf` per row per render.
 	 */
 	const pinnedCatalogueIds = pinned.map((row) => row.session_id);
+	/**
+	 * The row's own name, for the three sentences that have to name it.
+	 *
+	 * ONE SPELLING, and it searches the FULL rows rather than the pinned set: the chord's
+	 * no-target answer (UX round 1, U4) names a row that is, by definition, NOT in `pinned` -
+	 * it is the row the reader pressed the chord on and nothing happened. The fallback is the
+	 * row render's own ("Untitled chat").
+	 */
+	const rowLabel = (id: string): string =>
+		[...listed, ...heldRows].find((row) => row.session_id === id)?.title ||
+		"Untitled chat";
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -2551,9 +2668,7 @@ export function ChatSidebar({
 	) => {
 		const at = pinnedIndex.get(sessionId);
 		if (at === undefined) return;
-		const label =
-			pinned.find((row) => row.session_id === sessionId)?.title ||
-			"Untitled chat";
+		const label = rowLabel(sessionId);
 		if (!canMovePinnedRow(pinnedDrawnIds, sessionId, direction)) {
 			announcePinMove(pinMoveBoundaryNote(label, at, pinnedDrawnIds.length));
 			return;
@@ -2585,11 +2700,13 @@ export function ChatSidebar({
 		 * THE CARET AND THE LINE COME BACK THROUGH THE PANEL'S OWN CORRECTION, which is
 		 * `unpin`'s mechanism and not a new one: the rows reorder in place, so the element
 		 * this handler holds is still mounted but no longer where it was - the correction
-		 * finds the row BY ID after the commit and puts the caret on its mark, which is
-		 * inside the row, so `group-focus-within` stays true and the pair stays revealed
-		 * for the next press.
+		 * finds the row BY ID after the commit and puts the caret back inside it, so
+		 * `group-focus-within` stays true and the pair stays revealed for the next press.
+		 *
+		 * THE CARET GOES TO THE ROW'S OWN BUTTON here rather than to the mark, and the scroll
+		 * correction is asked to stand down - a move is not a section change (Q1, R3).
 		 */
-		rememberMovedRow(sessionId, follow, null);
+		rememberMovedRow(sessionId, follow, null, "row", false);
 		const drawn = pinnedOrder(pinnedCatalogueIds, next);
 		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
 	};
@@ -2662,10 +2779,12 @@ export function ChatSidebar({
 	/**
 	 * The indicator's own placement, in the section's own coordinates.
 	 *
-	 * A plain function called from the layout effect below (and from every frame of
-	 * the auto-scroll loop) rather than an effect body, for the board's reason: the
-	 * line is placed AFTER the render that moved the landing, and a scrolling list
-	 * moves the landing without a render.
+	 * A plain function called from the layout effect below rather than an effect body,
+	 * for the board's reason: the line is placed AFTER the render that moved the
+	 * landing. WHAT IT IS NOT, corrected in agent review round 1 (R2): it is NOT called
+	 * from every frame of the auto-scroll loop, and it does not need to be - the line is
+	 * positioned RELATIVE TO THE SECTION, so it scrolls with the rows it sits between
+	 * and stays right without re-measurement while the list scrolls under it.
 	 */
 	const placePinDragIndicator = (id: string, slot: number) => {
 		const section = pinnedSectionRef.current;
@@ -2684,10 +2803,16 @@ export function ChatSidebar({
 	 * bottom, and a drop has to be reachable for them.
 	 *
 	 * One step per FRAME while the pointer is inside the edge zone, rather than on a
-	 * timer, because the frame is what redraws the row boxes the drop is measured
+	 * timer, because the frame is what redraws the row boxes the DROP is measured
 	 * against - a `setInterval` fast enough to feel right would outrun the layout and
-	 * the same step would be re-applied to stale boxes. The board's own loop, one
-	 * axis over, and the landing is re-placed every frame for its reason.
+	 * the same step would be re-applied to stale boxes. The board's own loop, one axis
+	 * over.
+	 *
+	 * WHAT EACH FRAME ACTUALLY REDOES (agent review round 1, R2, which corrected three
+	 * comments here): the SLOT is re-derived from the boxes as they now are, so the
+	 * landing the release will read (the gesture's own `live.slot`) follows the scroll.
+	 * The INDICATOR is not re-placed per frame and does not need to be - it is placed
+	 * relative to the pinned section, so it scrolls with the content it sits between.
 	 */
 	const PIN_DRAG_AUTO_SCROLL_ZONE_PX = 32;
 	const PIN_DRAG_AUTO_SCROLL_STEP_PX = 12;
@@ -2709,7 +2834,11 @@ export function ChatSidebar({
 			direction = 1;
 		if (direction !== 0)
 			scroller.scrollTop += direction * PIN_DRAG_AUTO_SCROLL_STEP_PX;
-		/* The landing follows the content, whether or not this frame scrolled. */
+		/*
+		 * The SLOT is re-derived against the boxes this frame produces; the line itself
+		 * rides the section (R2), so this is the landing following the content rather
+		 * than the indicator being re-measured.
+		 */
 		applyPinDragOver(y);
 		pinDragAutoScrollRef.current = requestAnimationFrame(runPinDragAutoScroll);
 	};
@@ -2782,9 +2911,7 @@ export function ChatSidebar({
 	 * dormant stored ids the reader never touched.
 	 */
 	const dropPinnedRow = (sessionId: string, slot: number) => {
-		const label =
-			pinned.find((row) => row.session_id === sessionId)?.title ||
-			"Untitled chat";
+		const label = rowLabel(sessionId);
 		const next = movePinnedOrderTo(
 			pinnedRows([...listed, ...heldRows], pinsEnabled).map(
 				(row) => row.session_id,
@@ -2794,15 +2921,30 @@ export function ChatSidebar({
 			sessionId,
 			slot,
 		);
-		if (next === null) return;
+		if (next === null) {
+			/*
+			 * A DROP THAT LANDS WHERE IT STARTED CLOSES THE GESTURE'S SENTENCE (UX round 1, U2;
+			 * QA round 1, Q2). The arming announced "Moving “X”.", the drop wrote nothing (the
+			 * correct outcome - `movePinnedOrderTo` refused), and the region was then left holding
+			 * the OPENING sentence for the rest of its dwell, so the last thing a screen reader
+			 * had been told about the gesture was that the row was being moved. The board's rule
+			 * for the same case is that the region ENDS EMPTY - what happened is nothing, and the
+			 * reader is told nothing rather than something untrue - so the sentence is cleared
+			 * here, not replaced with a second one.
+			 */
+			announcePinMove("");
+			return;
+		}
 		setChatSidebarView({ ...view, pins: next });
 		/*
 		 * The post-commit correction, by ID, exactly as `unpin` and the pair use it: the
 		 * rows reorder in place, so the node the pointer was on is no longer where it
-		 * was. `follow` is FALSE here - a pointer reader has no caret to restore - which
-		 * is the one term the two routes differ in.
+		 * was. `follow` is FALSE here - a pointer reader has no caret to restore - and the
+		 * SCROLL correction stands down for the same reason it does on the chord path: an
+		 * in-section swap moves the anchor row too, so correcting against it would shift a
+		 * scrolled list by a whole row after every downward drop (R3).
 		 */
-		rememberMovedRow(sessionId, false, null);
+		rememberMovedRow(sessionId, false, null, "row", false);
 		const drawn = pinnedOrder(pinnedCatalogueIds, next);
 		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
 	};
@@ -2819,28 +2961,61 @@ export function ChatSidebar({
 			return;
 		}
 		/*
-		 * THE SLOT THE READER SAW. The drop lands where the INDICATOR was drawn, and that
-		 * number is the one the last move published into the gesture - not a fresh hit
-		 * test taken in the release's own tick. Measured on this scene's first three runs:
-		 * a re-measure at the release answered 0 for a drag the indicator had drawn at the
-		 * second row's bottom edge, because the boxes it read at that instant were not the
-		 * ones the line had been placed against (the auto-scroll loop re-places the line
-		 * every frame against boxes the release's tick can no longer see). The re-measure
-		 * survives as the fallback for a gesture that never published a slot at all.
+		 * THE SLOT THE READER SAW, AND IT IS READ FROM THE GESTURE (agent review round 1,
+		 * R1). `live.slot` is written SYNCHRONOUSLY by `applyPinDragOver` - it is the number
+		 * the last move published, and the number the line was drawn from - while `pinDrag`
+		 * is React state whose render may not have flushed at the moment a door fires. The
+		 * drop must land where the INDICATOR was drawn rather than at a fresh hit test taken
+		 * in the release's own tick: measured on this scene's first runs, a re-measure at the
+		 * release answered 0 for a drag the indicator had drawn at the second row's bottom
+		 * edge, because the boxes it read at that instant were not the ones the line had been
+		 * placed against.
+		 *
+		 * THE FALLBACK IS GONE WITH IT, and that is R1's own reading rather than a risk taken
+		 * here: arming calls `applyPinDragOver` in the press's own event, so `live.slot` is
+		 * already >= 0 by the time any door can settle a committed gesture - a gesture that
+		 * never armed takes the early return above, and every armed one has published a slot.
 		 */
-		dropPinnedRow(
-			live.id,
-			pinDrag?.slot ??
-				pinDragSlot(pinDragRowBoxes(), live.id, pinDragYRef.current),
-		);
+		dropPinnedRow(live.id, live.slot);
 	};
+	/*
+	 * THE LATEST SETTLE, for the doors that are bound ONCE (agent review round 1, R1).
+	 *
+	 * Both effects below are gated on `pinDrag !== null`, so their listeners are created on
+	 * the first armed render and kept for the rest of the gesture; a listener bound directly
+	 * to `settlePinDrag` would hold THAT render's closure - its `view`, its
+	 * `pinnedDrawnIds`, and the state the slot checks read. A door the grip does not own (a
+	 * `pointerup` that reaches the window because capture was never taken, or the grip
+	 * unmounted under a refresh) then dropped at a stale slot and wrote `{ ...view }` from
+	 * a stale view, which can revert a view preference changed during the gesture. The ref
+	 * is re-pointed on every render, so whichever door arrives calls the current function.
+	 */
+	const settlePinDragRef = useRef(settlePinDrag);
+	settlePinDragRef.current = settlePinDrag;
 	/* Escape cancels, the one drag state with no pointer of its own (the board's rule). */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
 		if (pinDrag === null) return;
 		const onKeyDown = (event: WindowEventMap["keydown"]) => {
 			if (event.key !== "Escape") return;
-			settlePinDrag(false);
+			settlePinDragRef.current(false);
+			/*
+			 * AND THE CLAIM IS STATED RATHER THAN INHERITED (UX round 1, U5; design round 1, D4).
+			 *
+			 * The UX round measured Escape during a drag cancelling the drag and NOT also
+			 * interrupting a running turn, and traced the claim to a layer that happened to be
+			 * under the pointer: the row's Radix catalog card, which the dwell needed to reach
+			 * the grip had opened, and which claims Escape like every dismissable layer. D4 now
+			 * suppresses that card for the whole gesture, so the claim has to come from the
+			 * handler that acts on the press. Without this line the same Escape would reach
+			 * `use-interrupt-on-escape.ts` and stop a running turn the reader was not
+			 * addressing - the press was addressed to the drag.
+			 *
+			 * `preventDefault` after the settle, and the deferral there is what makes it work:
+			 * that hook reads `defaultPrevented` once in a MICROTASK after the whole dispatch,
+			 * so a claim made by a listener bound later than its own is still seen (`dispatchInterruptOnEscape`).
+			 */
+			event.preventDefault();
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
@@ -2860,8 +3035,8 @@ export function ChatSidebar({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
 		if (pinDrag === null) return;
-		const end = () => settlePinDrag(true);
-		const cancel = () => settlePinDrag(false);
+		const end = () => settlePinDragRef.current(true);
+		const cancel = () => settlePinDragRef.current(false);
 		window.addEventListener("pointerup", end);
 		window.addEventListener("pointercancel", cancel);
 		return () => {
@@ -3929,6 +4104,20 @@ export function ChatSidebar({
 				align="start"
 				disableHoverableContent
 				collisionPadding={FLYOUT_COLLISION_PADDING}
+				/*
+				 * NO FLYOUT WHILE A DRAG IS ARMED (design round 1, D4; measured on `drag-mid`).
+				 *
+				 * The card names the row the POINTER is on, and during a drag the pointer is not
+				 * choosing a row - it is choosing a SLOT. Measured, the card for the row the drag
+				 * started on (its title, its status line) stayed standing at the row's right edge
+				 * while the insertion line was drawn under a different row, so one frame carried
+				 * two accounts of where things were, and the stale one competed with the marker
+				 * that matters. `disabled` is the wrapper's own suppression (it renders the child
+				 * unwrapped), which is what the pointer needs: Radix keeps a tooltip open while the
+				 * pointer stays inside its trigger, and the grip's pointer never leaves the row for
+				 * the whole gesture. It comes back by itself when the gesture settles.
+				 */
+				disabled={pinDrag !== null}
 			>
 				{box}
 			</Tooltip>
@@ -4076,30 +4265,86 @@ export function ChatSidebar({
 							 * is a CURSOR, not a transform: nothing lifts, scales or translates on
 							 * hover (`docs/branding.md`), and the dragged row's own state is the
 							 * `data-dragging` colour step below rather than an opacity change.
+							 *
+							 * `aria-hidden` AND NO `aria-label` (agent review round 1, R5, measured): the
+							 * grip has no click handler and no key path, so a screen reader walking the
+							 * row found a NAMED BUTTON whose activation did nothing - while the row's own
+							 * copy says the chords are the keyboard path. It is a pointer-only affordance,
+							 * so it is hidden from the accessibility tree and its `title` serves the
+							 * sighted pointer alone. The REVEAL is untouched: the grip still appears when
+							 * the keyboard is inside the row, because the cluster is one group and hiding
+							 * one member of it under focus would move the others.
+							 *
+							 * TWO TERMS THE PAIR DOES NOT CARRY, both from round 1 (design D2 and D3).
+							 * (a) THE SHED: the grip is drawn above `279px` of PANEL and shed at or below it
+							 * (`@max-[279px]/chatsidebar:hidden`; the container is the panel root). Measured
+							 * at the 240 clamp with all five controls revealed, the title had 40px of the
+							 * row's 208; the pair's own 56px is the part WCAG 2.5.7 asks for - a
+							 * single-pointer path to the reorder - and the grip's 28px is an accelerator
+							 * for a gesture the arrows already perform. At 240 the arrows reorder and the
+							 * reader can widen the panel to drag. (b) THE COUNT: the grip is drawn only
+							 * when at least two pinned rows are SHOWN, because with one there is no second
+							 * slot for a drop to land on - measured, a one-row drag can be started and
+							 * always lands on slot 0, writing nothing - while the pair still reports the
+							 * boundary, which is a sentence the reader wants. A search filter that leaves
+							 * one pinned row takes the same rule.
 							 */}
-							<button
-								type="button"
-								data-session-pin-grip
-								tabIndex={-1}
-								aria-label={`Drag to reorder “${label}”`}
-								title="Drag to reorder"
-								onPointerDown={(event) =>
-									startPinDrag(row.session_id, label, event)
-								}
-								onPointerMove={movePinDrag}
-								onPointerUp={() => settlePinDrag(true)}
-								onPointerCancel={() => settlePinDrag(false)}
-								className={cn(
-									"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
-									"text-ink-dim",
-									"group-hover:flex group-hover:text-ink-muted",
-									"group-focus-within:flex group-focus-within:text-ink-muted",
-									"hover:text-ink!",
-									!current && "hover:bg-row-hover",
-								)}
-							>
-								<GripVertical aria-hidden="true" className="size-4" />
-							</button>
+							{/*
+							 * THE GRIP'S OWN TERM (design D3), and it is the GRIP's alone: with one pinned
+							 * row shown there is no second slot for a drop to land on, so the handle would
+							 * offer a gesture that can only write nothing - measured, a one-row drag always
+							 * lands on slot 0 and writes nothing. The PAIR is not gated with it: it still
+							 * reports the boundary, which is a sentence a reader wants, and it is WCAG
+							 * 2.5.7's single-pointer path. (Gating the shared fragment was the first spelling
+							 * of this, and the single-pin FIXTURE caught it: the pair vanished with the grip.)
+							 */}
+							{pinnedDrawnIds.length >= 2 && (
+								<button
+									type="button"
+									data-session-pin-grip
+									tabIndex={-1}
+									aria-hidden="true"
+									title="Drag to reorder · Esc cancels"
+									onPointerDown={(event) =>
+										startPinDrag(row.session_id, label, event)
+									}
+									onPointerMove={movePinDrag}
+									onPointerUp={() => settlePinDrag(true)}
+									onPointerCancel={() => settlePinDrag(false)}
+									className={cn(
+										"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
+										"text-ink-dim",
+										"group-hover:flex group-hover:text-ink-muted",
+										"group-focus-within:flex group-focus-within:text-ink-muted",
+										/*
+										 * The shed, one class, at the one break design round 1 measured (D2): at
+										 * or below 279px of panel the grip is inside the cluster's width but
+										 * outside its budget, and the pair is the member that stays.
+										 *
+										 * 263 AND NOT 279, and the 16px is the panel's own padding: the container
+										 * is the panel root, whose `p-2` sits INSIDE the width the panel setting
+										 * names, and a container query measures the container's content box -
+										 * measured, a 280px panel reports a 264px container, so a `279` in the
+										 * query shed the grip at 280 as well. The deleted shed's `263` was this
+										 * same arithmetic, which is the other reason to keep the number.
+										 *
+										 * THE `!` IS LOAD-BEARING, and it is the one thing the deleted shed did
+										 * differently: that query hid a WRAPPER, whose own display nothing else
+										 * claimed, while this one hides the control itself - which the reveal
+										 * rules already set (`group-hover:flex`, `group-focus-within:flex`).
+										 * Those compile to TWO-class selectors (`.group:hover .x`) and a
+										 * container query's rule is one class, so the hover rule won the
+										 * cascade and the grip stayed drawn at 240 with the pointer in the row -
+										 * measured on the first re-shoot of these frames, not reasoned about.
+										 */
+										"@max-[263px]/chatsidebar:hidden!",
+										"hover:text-ink!",
+										!current && "hover:bg-row-hover",
+									)}
+								>
+									<GripVertical aria-hidden="true" className="size-4" />
+								</button>
+							)}
 							<button
 								type="button"
 								data-session-move-up
@@ -4583,14 +4828,22 @@ export function ChatSidebar({
 					 * is the substitution `rowCurrent`'s own override exists to stop.
 					 */
 					(pinsEnabled || archiveEnabled) && !current && "hover:bg-row-hover",
-					/*
-					 * The drag's ground step sits BESIDE the hover step rather than replacing it:
-					 * a row the pointer has left mid-drag is still the row being dragged, and the
-					 * two marks are the same rung, so the pair cannot fight over the fill.
-					 */
-					dragging && rowDragging,
 					rowBoxStyle,
 					current && rowCurrent,
+					/*
+					 * THE DRAG'S GROUND IS MERGED LAST, after `rowCurrent`, and that placement is
+					 * the mechanism rather than a style choice (round 1, D1): `cn` is
+					 * tailwind-merge, so the last class of a group wins, and `rowBoxStyle` states
+					 * `hover:bg-row-hover` earlier in this same list - a drag ground written
+					 * before it loses the fill to it exactly as the bare `bg-row-selected` did.
+					 * `rowCurrent` is merged last for the same reason, and the drag ground has to
+					 * outrank that too, because a current row's resting fill IS the selected step.
+					 *
+					 * A row the pointer has left mid-drag is still the row being dragged, and both
+					 * variants restate their ground at `hover:` so the variant cannot take it back
+					 * while the captured pointer sits inside the row.
+					 */
+					dragging && (current ? rowDraggingCurrent : rowDragging),
 				)}
 			>
 				{rowButton}
@@ -5307,8 +5560,21 @@ export function ChatSidebar({
 		 * arrows carry `alt` (`chat-pin-order.ts` names the chords it checked).
 		 *
 		 * A row that offers no pair answers with no control - an unpinned row, or a pinned
-		 * one the grouped arrangement drew - and the press is then left alone rather than
-		 * swallowed, which is the honest answer for a chord with no target on this row.
+		 * one the grouped arrangement drew. THE PRESS IS CONSUMED ON EVERY ROW, and the
+		 * comment here used to claim the opposite ("the press is then left alone rather than
+		 * swallowed") while the `return` below skipped the bare-arrow walk and the search
+		 * field's own branch: agent review round 1 (R4) measured the mismatch, and the
+		 * consumption is the intended half - a modified arrow is this panel's chord
+		 * namespace, and letting `⌘⇧↑` fall through to the walk would move the caret for a
+		 * press the reader addressed to the pinned order.
+		 *
+		 * WHAT WAS WRONG WAS THE SILENCE, NOT THE CONSUMPTION (UX round 1, U4, measured): the
+		 * region kept whatever it held, so a chord on an unpinned row read out a sentence
+		 * about a DIFFERENT row from an earlier press - stale and untrue of the row under the
+		 * caret. A row that is not pinned is now ANSWERED in the pair's own voice, with the
+		 * row's name (`pinMoveUntargetedNote`). A row that IS pinned and simply drawn without
+		 * a pair - the grouped arrangement - stays silent, which is the state QA round 1
+		 * recorded for that arrangement and did not file.
 		 */
 		const move = chatPinMoveChord(event);
 		if (move !== null) {
@@ -5316,6 +5582,19 @@ export function ChatSidebar({
 			if (control !== null) {
 				event.preventDefault();
 				control.click();
+			} else {
+				const element = target as {
+					closest?: (selector: string) => Element | null;
+				} | null;
+				const rowId =
+					typeof element?.closest === "function"
+						? (element
+								.closest("[data-session-row]")
+								?.getAttribute("data-session-row") ?? null)
+						: null;
+				if (rowId !== null && !pinnedCatalogueIds.includes(rowId)) {
+					announcePinMove(pinMoveUntargetedNote(rowLabel(rowId)));
+				}
 			}
 			return;
 		}
@@ -6773,8 +7052,17 @@ export function ChatSidebar({
 			 * `docs/design/sidebar-row-space.md` §10. The container declaration the old per-row shed
 			 * measured against is gone with the shed: this panel no longer changes what it draws by
 			 * width.
+			 *
+			 * THE CONTAINER COMES BACK FOR ONE MEMBER (design round 1, D2, measured at the 240 clamp;
+			 * issue #697). "One rule at every width" is still the rule for the ACTS - the pin, the
+			 * archive and the move pair are drawn at every width - but the GRIP sheds at or below 279px
+			 * of panel, because at the clamp the revealed cluster left the title 40px of the row's 208
+			 * with the grip in it, and the pair's own 56px is the part WCAG 2.5.7 asks for while the
+			 * grip's 28px is an accelerator for a gesture the arrows already perform. The name is the
+			 * one the deleted shed used, so the class on the grip reads the same way it always did and
+			 * the frame that shows the shed absent is committed with this change.
 			 */
-			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			className="@container/chatsidebar relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
 			{/*

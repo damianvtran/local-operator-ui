@@ -987,14 +987,29 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// pair's own shape one control over (revealed by the pointer, guarded
 				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
 				// a pinned row's box like every other control counted here.
-				"hover:bg-row-hover": 17,
+				// EIGHTEEN (PR #697's round-1 remediation, D1/D5c). The dragged row's ground
+				// needs a SECOND spelling: on the row the reader is IN, the selected step is
+				// already that row's resting fill, so `rowDragging` cannot say "held" there
+				// and `rowDraggingCurrent` takes the other row role instead. Both are
+				// constants rather than classes in a JSX expression, so no `CURRENT` entry
+				// can resolve them - the count is the honest place for both.
+				"hover:bg-row-hover": 18,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
 				// "selected" meaning, and the filled pill the operator's reference draws.
 				// It is a BAND control, so it is outside both regions and cannot be a
 				// current row; the `CURRENT` table could never be asked to resolve it.
-				"hover:bg-row-selected": 2,
+				// PLUS ONE (issue #697, agent review round 1, R1's neighbour D1): the
+				// DRAGGED row's ground - `rowDragging`'s expression - restates `row-selected`
+				// at the hover variant, for the reason measured on both the frames and a live
+				// run: a bare `bg-row-selected` LOSES to the row box's own `hover:bg-row-hover`,
+				// and the pointer that armed the drag never leaves the captured row, so the
+				// dragged row painted exactly what a merely hovered row paints. The
+				// restatement is `rowCurrent`'s own idiom one state over, and it is a CONSTANT
+				// rather than a class in a JSX expression, so no `CURRENT` entry can resolve it
+				// - the count is the honest place for it.
+				"hover:bg-row-selected": 3,
 				// ROUND 2's NINTH LITERAL returns this spelling to the file: the drafts
 				// foot's `Clear all` stills its hover GROUND while inapplicable
 				// (`aria-disabled:hover:bg-transparent!`, agent review round 2's R7 and

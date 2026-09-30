@@ -100,10 +100,18 @@ export function pinnedOrder(
 	order: readonly string[],
 ): string[] {
 	const known = new Set(ids);
+	/*
+	 * The stored order is read as a SET as well as an array (agent review round 1, R7).
+	 * This runs on every render of a persisted array with no cap, so the membership
+	 * test it is reached for should be the one that does not rescan it per id; the
+	 * array itself is still what the second loop below walks, because the ORDER of
+	 * the stored entries is the thing being read there.
+	 */
+	const ranked = new Set(order);
 	const placed = new Set<string>();
 	const out: string[] = [];
 	for (const id of ids) {
-		if (order.includes(id) || placed.has(id)) continue;
+		if (ranked.has(id) || placed.has(id)) continue;
 		out.push(id);
 		placed.add(id);
 	}
@@ -193,8 +201,11 @@ export function movePinnedOrder(
 	if (at < 0) return null;
 	const target = shownIds[at + direction];
 	if (target === undefined) return null;
+	// A set for the same reason `pinnedOrder`'s own membership test is one (R7): the
+	// drawn ids are few but the store's are unbounded, and this runs per move.
+	const rankable = new Set(knownIds);
 	const addressable = [
-		...shownIds.filter((entry) => !knownIds.includes(entry)),
+		...shownIds.filter((entry) => !rankable.has(entry)),
 		...knownIds,
 	];
 	const base = pinnedOrder(addressable, order);
@@ -256,8 +267,11 @@ export function movePinnedOrderTo(
 		Math.min(shownIds.length - 1, Math.round(targetShownIndex)),
 	);
 	if (target === at) return null;
+	// A set for the same reason `pinnedOrder`'s own membership test is one (R7): the
+	// drawn ids are few but the store's are unbounded, and this runs per move.
+	const known = new Set(knownIds);
 	const addressable = [
-		...shownIds.filter((entry) => !knownIds.includes(entry)),
+		...shownIds.filter((entry) => !known.has(entry)),
 		...knownIds,
 	];
 	const next = pinnedOrder(addressable, order);
@@ -360,6 +374,21 @@ export function pinMoveBoundaryNote(
 	if (total <= 1) return `“${label}” is the only pinned chat.`;
 	if (position <= 0) return `“${label}” is already the first pinned chat.`;
 	return `“${label}” is already the last pinned chat.`;
+}
+
+/**
+ * What the live region says when the chord had no row to move.
+ *
+ * THE THIRD ANSWER, beside the note above it and the boundary sentence: a chord
+ * pressed on a row that is not pinned at all is neither a move nor a boundary of
+ * the pinned list, and leaving the region as it stood was the failure UX round 1
+ * measured - the reader heard a sentence about a DIFFERENT row, from an earlier
+ * press, which is both stale and untrue of the row under their caret (U4). The
+ * pair's own voice answers with the row's name, the same way the boundary
+ * sentence does.
+ */
+export function pinMoveUntargetedNote(label: string): string {
+	return `“${label}” is not pinned.`;
 }
 
 /**
