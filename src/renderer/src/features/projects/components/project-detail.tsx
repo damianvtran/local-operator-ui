@@ -306,7 +306,15 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							 * at word boundaries (`break-words` keeps an unbroken run from
 							 * overflowing) and the badges beside it flow as the row wraps.
 							 */}
-							<h1 className="min-w-0 break-words text-display text-ink">
+							<h1
+								/* The rig's handle on the header, in the same family as the board
+								   card's title line: `data-project-title` keyed by the project's key,
+								   so a capture claim can name THIS heading rather than the first
+								   `h1` in a document that has several (sheet, shell and the
+								   storybook placeholder). */
+								data-project-title={project.name}
+								className="min-w-0 break-words text-display text-ink"
+							>
 								{displayName}
 							</h1>
 							<ProjectStatusBadge status={project.status} />

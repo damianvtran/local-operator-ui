@@ -18,6 +18,15 @@
  * The panel is the shipped Select panel (elevated, one shadow, the check on
  * the current item), and the keyboard behaviour - arrows, typeahead, Escape -
  * is the Radix combobox's, unchanged; no bespoke overlay styling rides along.
+ *
+ * THE PANEL DOES NOT EXPLAIN THE WINDOW, SO A TOOLTIP DOES (design round 1,
+ * D1). The trigger shows the rung's label and nothing else, and the board is
+ * then free to contradict it - a frame reading "Last 24 hours" above a card
+ * whose own progress line says "reported 12d ago" reads as a broken filter
+ * rather than as a stale report, so the sentence says what the window IS: a
+ * filter on the project's own update, and that older rows are HIDDEN rather
+ * than absent. On the app's one tooltip primitive, which opens on hover and on
+ * FOCUS, so the dimension is reachable without the pointer.
  */
 
 import {
@@ -27,27 +36,48 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
+import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { BOARD_WINDOWS, type BoardWindow } from "../project-model";
+
+/**
+ * What the window control is filtering on. Exported so the story and the rig
+ * read the same sentence the panel paints.
+ */
+export const BOARD_WINDOW_HINT =
+	"Shows projects last updated within this window; older ones are hidden.";
 
 export const BoardWindowSelect: FC<{
 	value: BoardWindow;
 	onChange: (value: BoardWindow) => void;
 }> = ({ value, onChange }) => (
 	<Select value={value} onValueChange={(next) => onChange(next as BoardWindow)}>
-		<SelectTrigger
-			aria-label="Projects updated within"
+		<Tooltip
+			content={BOARD_WINDOW_HINT}
+			side="bottom"
 			/*
-			 * `cn`, not a bare className: the primitive's base carries `w-full`,
-			 * and only tailwind-merge (which `cn` registers the app's scales
-			 * with) can drop it in favour of the fixed width.
+			 * CLOSES ON LEAVE, the same rule the card title's tooltip carries (QA round
+			 * 1, Q1): the primitive's default waits for the pointer to enter the panel
+			 * to close it, and these panels are `pointer-events: none`, so a hint about
+			 * a control the pointer left would stay painted over the board. Escape and
+			 * blur still dismiss it.
 			 */
-			className={cn("w-36 shrink-0")}
-			data-tour-tag="projects-board-window"
+			disableHoverableContent
 		>
-			<SelectValue />
-		</SelectTrigger>
+			<SelectTrigger
+				aria-label="Projects updated within"
+				/*
+				 * `cn`, not a bare className: the primitive's base carries `w-full`,
+				 * and only tailwind-merge (which `cn` registers the app's scales
+				 * with) can drop it in favour of the fixed width.
+				 */
+				className={cn("w-36 shrink-0")}
+				data-tour-tag="projects-board-window"
+			>
+				<SelectValue />
+			</SelectTrigger>
+		</Tooltip>
 		<SelectContent>
 			{BOARD_WINDOWS.map((entry) => (
 				<SelectItem key={entry.value} value={entry.value}>

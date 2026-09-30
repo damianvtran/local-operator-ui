@@ -628,7 +628,7 @@ test("the empty window names the ladder, and its action widens and persists", as
 		);
 		assert.ok(
 			(document.body.textContent ?? "").includes(
-				"Widen the window to see older projects.",
+				"Older projects are hidden by the window.",
 			),
 			"the empty-window body copy",
 		);
