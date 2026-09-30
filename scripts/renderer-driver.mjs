@@ -26134,6 +26134,135 @@ async function scrollbarPerfArm(cdp, { centre, delta }) {
 	);
 }
 
+/**
+ * The hover act: the reveal-on-intent path, driven by a real pointer move.
+ *
+ * WHY IT IS A SEPARATE ACT FROM THE WHEEL ONE. These are two different doors into
+ * the same state — `scroll` and `pointerover` — and the design's second
+ * requirement is about intent: the bar must appear when the reader moves TOWARD
+ * it, before anything has moved. A wheel act cannot show that, because the wheel
+ * reveals on a scroll event; this one moves the pointer onto the bar's own strip
+ * and reads both the state and the paint, then takes the pointer away and reads
+ * the fade after the hold.
+ *
+ * The point is on the strip itself (4 CSS px inside the element's edge, at the
+ * middle of its length), and what is under it is recorded rather than assumed:
+ * the claim is that the element under the pointer RESOLVES to the scroller by the
+ * module's own walk, which is what the delegated `pointerover` handler does.
+ */
+async function scrollbarHoverAct(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the hover act`,
+		target !== null,
+		JSON.stringify(target),
+	);
+	if (target === null) return null;
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = (file) => stripReading(file, strip, targetRgb);
+	const point =
+		axis === "y"
+			? {
+					x: Math.round(target.rect.x + target.rect.width - 4),
+					y: Math.round(target.rect.y + target.rect.height / 2),
+				}
+			: {
+					x: Math.round(target.rect.x + target.rect.width / 2),
+					y: Math.round(target.rect.y + target.rect.height - 4),
+				};
+
+	// A pointer parked away, and the hold waited out: the "before" half of the pair.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const restingState = await cdp.evaluate(SCROLLBAR_STATE);
+	const restingFrame = await capture(cdp, `${label}-hover-idle-dark`);
+	const restingPixels = await sample(restingFrame.path);
+
+	/*
+	 * WHAT THE POINTER IS OVER, asked of the page before the move: `elementFromPoint`
+	 * at the strip's own midpoint, and then the module's own resolution rule run over
+	 * it. On a short thumb the strip under the pointer is still the scroller's (the
+	 * memo's probe 10), and this is the assertion that says so for this surface.
+	 */
+	const resolved = await cdp.evaluate(`(() => {
+		const el = document.elementFromPoint(${point.x}, ${point.y});
+		if (el === null) return { under: null, resolves: false };
+		let node = el;
+		let resolves = false;
+		while (node !== null) {
+			if (node === window.__loScrollbarFade) {
+				resolves = true;
+				break;
+			}
+			node = node.parentElement;
+		}
+		return {
+			under: {
+				tag: el.tagName.toLowerCase(),
+				cls: String(el.className || "").slice(0, 48),
+			},
+			resolves,
+		};
+	})()`);
+	check(
+		`${label}: the pointer on the bar's strip resolves to the scroller`,
+		resolved.resolves === true,
+		`elementFromPoint(${point.x}, ${point.y}) is ${JSON.stringify(resolved.under)}`,
+	);
+
+	await movePointer(cdp, point.x, point.y);
+	// Past the 120ms fade-in, well inside the hold.
+	await wait(350);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-hover-dark`);
+	const awakePixels = await sample(awakeFrame.path);
+	check(
+		`${label}: moving onto the bar wakes it`,
+		awakeState.fade === "active" && Number(awakeState.loSb) === 1,
+		`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb} with the pointer at ${point.x},${point.y}`,
+	);
+	check(
+		`${label}: the thumb is painted while the pointer is on the bar`,
+		awakePixels !== null && awakePixels.near > 0.3 * awakePixels.sampled,
+		`${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour; strip mean ${JSON.stringify(awakePixels?.mean ?? null)}`,
+	);
+
+	// The pointer leaves: nothing else touches the app, and the hold expires.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const afterState = await cdp.evaluate(SCROLLBAR_STATE);
+	const afterFrame = await capture(cdp, `${label}-hover-after-dark`);
+	const afterPixels = await sample(afterFrame.path);
+	check(
+		`${label}: and it fades again once the pointer has left and the hold expires`,
+		afterState.fade === "idle" &&
+			Number(afterState.loSb) === 0 &&
+			afterPixels !== null &&
+			afterPixels.near < 0.02 * afterPixels.sampled,
+		`attribute=${JSON.stringify(afterState.fade)} --lo-sb=${afterState.loSb}; ${afterPixels?.near ?? "?"} of ${afterPixels?.sampled ?? "?"} strip pixels are the thumb's colour`,
+	);
+
+	return {
+		target,
+		point,
+		resolved,
+		restingState,
+		awakeState,
+		afterState,
+		restingPixels,
+		awakePixels,
+		afterPixels,
+		frames: {
+			idle: restingFrame.path,
+			hover: awakeFrame.path,
+			after: afterFrame.path,
+		},
+	};
+}
+
 async function sceneScrollbarFade(cdp) {
 	const facts = await factsOf(cdp);
 	check(
@@ -26220,6 +26349,14 @@ async function sceneScrollbarFade(cdp) {
 	});
 	note("vertical act", JSON.stringify(actOne));
 
+	const hoverOne = await scrollbarHoverAct(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical hover act", JSON.stringify(hoverOne));
+
 	await scrollbarPerfArm(cdp, {
 		centre: actOne === null ? { x: 690, y: 458 } : actOne.target.centre,
 		delta: { x: 0, y: 420 },
@@ -26274,6 +26411,13 @@ async function sceneScrollbarFade(cdp) {
 		targetRgb,
 	});
 	note("horizontal act", JSON.stringify(actTwo));
+
+	const hoverTwo = await scrollbarHoverAct(cdp, {
+		axis: "x",
+		label: "horizontal",
+		targetRgb,
+	});
+	note("horizontal hover act", JSON.stringify(hoverTwo));
 
 	/*
 	 * REDUCED MOTION. `styles/index.css` caps `transition-duration` at 0.01ms for
