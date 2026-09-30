@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -32,7 +33,7 @@ const bundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/shared/api/local-operator/hub-updates";' +
-			' export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
+			' export { desktopEndpoint, desktopRequestDeadlineDetail, desktopRequestDeadlineMs, desktopRequestSchema } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -104,9 +105,11 @@ test("a refused merge goes to review; other failures go to retry", () => {
 	});
 	assert.deepEqual(mod.hubMarkFor(item({ state: "failed" })), {
 		kind: "failed",
+		retryable: true,
 	});
 	assert.deepEqual(mod.hubMarkFor(item({ error_class: "provider-error" })), {
 		kind: "failed",
+		retryable: true,
 	});
 	assert.deepEqual(mod.hubMarkFor(item({ state: "updating" })), {
 		kind: "updating",
@@ -119,8 +122,13 @@ test("the accessible name states the action and names the item", () => {
 		"Update coder from the hub",
 	);
 	assert.equal(
-		mod.hubMarkLabel("coder", { kind: "failed" }),
+		mod.hubMarkLabel("coder", { kind: "failed", retryable: true }),
 		"Retry the hub update for coder",
+	);
+	// A retry cannot change these answers, so the control says it opens details.
+	assert.equal(
+		mod.hubMarkLabel("coder", { kind: "failed", retryable: false }),
+		"See why the hub update for coder failed",
 	);
 });
 
@@ -176,16 +184,15 @@ test("the copy table is B6.4 verbatim, and an unknown class is generic", () => {
 	);
 });
 
-test("the sign-in line needs a credential problem AND something linked", () => {
+test("the sign-in line is drawn only for an item that needs the login", () => {
 	assert.equal(mod.hubSignInLine(undefined), null);
-	assert.equal(mod.hubSignInLine(updates()), null);
-	assert.equal(
-		mod.hubSignInLine(updates({ credential: "none", counts: {}, items: [] })),
-		null,
-	);
+	// UX U1: `credential: none` with items that updated anonymously is NOT a sign-in problem.
+	assert.equal(mod.hubSignInLine(updates({ credential: "none" })), null);
 	assert.equal(
 		mod.hubSignInLine(
-			updates({ credential: "none", counts: { "up-to-date": 2 }, items: [] }),
+			updates({
+				items: [item({ error_class: "no-credential", state: "failed" })],
+			}),
 		),
 		"Sign in to Radient to get hub updates",
 	);
@@ -204,17 +211,149 @@ test("update-all counts only what a click would take, per kind", () => {
 	assert.equal(mod.hubAvailableCount(data, "team"), 1);
 });
 
-test("the roll-up names the outcomes and never says nothing", () => {
+test("an item that needs a decision is a review mark, never an apply (UX U3)", () => {
+	for (const classification of ["both-changed", "baseline-unknown"])
+		assert.deepEqual(mod.hubMarkFor(item({ classification })), {
+			kind: "review",
+		});
+	// ...so Update-all does not count it either.
+	assert.equal(
+		mod.hubAvailableCount(
+			updates({ items: [item({ classification: "both-changed" })] }),
+			"agent",
+		),
+		0,
+	);
+	assert.match(
+		mod.hubMarkDetail(item({ classification: "baseline-unknown" }), {
+			kind: "review",
+		}),
+		/nothing records what you changed/,
+	);
+});
+
+test("a failed mark whose class a retry cannot fix opens details instead", () => {
+	for (const error_class of ["hub-item-missing", "prompt-too-long"])
+		assert.deepEqual(mod.hubMarkFor(item({ state: "failed", error_class })), {
+			kind: "failed",
+			retryable: false,
+		});
+	assert.equal(
+		mod.hubMarkAction({ kind: "failed", retryable: false }),
+		"Click to see details.",
+	);
+	assert.equal(
+		mod.hubMarkAction({ kind: "available", auto: true }),
+		"Click to update.",
+	);
+	assert.equal(mod.hubMarkAction({ kind: "applied" }), null);
+});
+
+test("'Updated just now' decays with the apply time (UX U4)", () => {
+	const now = Date.parse("2026-09-29T13:00:00Z");
+	const applied = (last_applied_at) =>
+		mod.hubMarkDetail(
+			item({ state: "applied", last_applied_at }),
+			{ kind: "applied" },
+			now,
+		);
+	assert.equal(applied("2026-09-29T12:59:40Z"), "Updated just now.");
+	assert.equal(applied("2026-09-29T12:48:00Z"), "Updated 12 min ago.");
+	assert.equal(applied("2026-09-29T10:00:00Z"), "Updated 3 h ago.");
+	assert.equal(applied("2026-09-27T10:00:00Z"), "Updated from the hub.");
+	assert.equal(applied(undefined), "Updated from the hub.");
+});
+
+test("the roll-up counts every outcome and never says nothing over a failed run (R4)", () => {
+	const r = (over) => ({
+		kind: "agent",
+		name: "x",
+		applied: false,
+		outcome: "merged",
+		...over,
+	});
 	assert.equal(
 		mod.hubRollup([
-			{ applied: true, outcome: "merged" },
-			{ applied: true, outcome: "merged" },
-			{ applied: true, outcome: "merged" },
-			{ applied: false, outcome: "needs-review" },
+			r({ applied: true }),
+			r({ applied: true }),
+			r({ applied: true }),
+			r({ name: "foxtrot", outcome: "needs-review" }),
 		]),
-		"3 updated, 1 needs your review",
+		"3 updated, 1 needs your review (foxtrot)",
 	);
 	assert.equal(mod.hubRollup([]), "Nothing needed updating.");
+	// B4.4's systemic stop: first fails, the rest are skipped - said, with the cause.
+	assert.equal(
+		mod.hubRollup([
+			r({ outcome: "failed", error_class: "model-unavailable" }),
+			r({ outcome: "skipped", skipped_reason: "model-unavailable" }),
+			r({ outcome: "skipped", skipped_reason: "model-unavailable" }),
+		]),
+		"1 couldn't be updated, 2 skipped. No model available for merging. Check Settings › Agent Hub.",
+	);
+	// `model-unavailable` arrives as needs-review, but its mark is a retry, not a review.
+	assert.equal(
+		mod.hubRollup([
+			r({ outcome: "needs-review", error_class: "model-unavailable" }),
+		]),
+		"1 couldn't be updated. No model available for merging. Check Settings › Agent Hub.",
+	);
+	assert.equal(
+		mod
+			.hubRollup([
+				r({ outcome: "unavailable", error_class: "hub-item-missing" }),
+			])
+			.startsWith("1 couldn't"),
+		true,
+	);
+	assert.equal(
+		mod.hubRollup([r({ outcome: "would-merge" })]),
+		"1 ready to update",
+	);
+	assert.equal(
+		mod.hubRollup([r({ outcome: "unchanged" })]),
+		"Everything was already up to date.",
+	);
+});
+
+test("every non-success report has a sentence, and a plain success has none (U2)", () => {
+	const note = (over, prefer) =>
+		mod.hubReportNote(
+			{ kind: "agent", name: "x", applied: false, outcome: "merged", ...over },
+			prefer,
+		);
+	assert.equal(note({ applied: true }), null);
+	assert.match(note({ outcome: "unchanged" }).message, /Already up to date/);
+	assert.match(note({ outcome: "would-merge" }).message, /ready to update/);
+	assert.match(
+		note({ outcome: "needs-review", classification: "baseline-unknown" })
+			.message,
+		/Nothing records/,
+	);
+	assert.equal(
+		note({ outcome: "failed", error_class: "hub-item-missing" }).tone,
+		"error",
+	);
+	assert.match(
+		note({ outcome: "skipped", skipped_reason: "provider-error/quota" })
+			.message,
+		/^Skipped\./,
+	);
+	assert.match(note({ applied: true }, "local").message, /yours was kept/);
+	assert.match(note({ applied: true }, "remote").message, /the hub's was used/);
+	// A subclass speaks with its parent's sentence; raw messages are never echoed.
+	assert.equal(
+		mod.hubClassSentence("provider-error/quota"),
+		"Couldn't reach your model to merge this. Will retry; or retry now.",
+	);
+	assert.doesNotMatch(
+		note({
+			outcome: "failed",
+			error_class: "hub-error",
+			message: "Traceback (most",
+		}).message,
+		/Traceback/,
+	);
 });
 
 test("the five ops compose the backend's routes", () => {
@@ -300,4 +439,83 @@ test("the schema is closed: stray fields, bad kinds and bad ids are refused", ()
 		parse({ op: "hub.retry", requestId: REQUEST, kind: "team" }),
 		false,
 	);
+});
+
+test("the unknown-baseline acknowledgement and the preview reach the wire (R3/R5)", () => {
+	const body = mod.desktopEndpoint({
+		op: "hub.apply",
+		requestId: REQUEST,
+		kind: "agent",
+		name: "coder",
+		prefer: "remote",
+		acknowledgeUnknownBaseline: true,
+		dryRun: true,
+	}).body;
+	assert.equal(body.acknowledge_unknown_baseline, true);
+	assert.equal(body.dry_run, true);
+	assert.equal(body.prefer, "remote");
+});
+
+test("the hub's writes wait longer than the backend's 120 s merge (R2/U9)", () => {
+	const ms = (op) => mod.desktopRequestDeadlineMs(op);
+	// One item: the 120 s merge budget plus its network check and margin.
+	for (const op of ["hub.apply", "hub.retry"]) assert.ok(ms(op) > 120_000, op);
+	// Update-all is sequential over N items, so it is above one item's bound.
+	assert.ok(ms("hub.applyAll") > ms("hub.apply"));
+	assert.ok(ms("hub.check") > 20_000);
+	// The store read keeps the control budget: it never touches the hub.
+	assert.equal(ms("hub.updates"), 20_000);
+	// The give-up is a human sentence that says nothing about seconds or "the server".
+	for (const op of ["hub.apply", "hub.applyAll", "hub.check", "hub.retry"]) {
+		const { message } = mod.desktopRequestDeadlineDetail(op, ms(op));
+		assert.match(message, /taking longer than expected/);
+		assert.doesNotMatch(message, /seconds|server/);
+	}
+});
+
+// The hook's configuration and the empty renders are load-bearing claims ("an
+// older backend is never polled", "zero cost without a hub item") that a helper
+// test cannot see, so they are pinned at the source, the way
+// agent-hub-org-sharing.test.mjs pins its wiring.
+const read = (file) =>
+	readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+
+test("the poll is 60 s, foreground-only, and gated on its own capability (R9)", () => {
+	const hooks = read("src/renderer/src/shared/api/local-operator/hub-hooks.ts");
+	assert.match(hooks, /refetchInterval: 60_000/);
+	assert.match(hooks, /refetchIntervalInBackground: false/);
+	assert.match(hooks, /staleTime: 30_000/);
+	assert.match(hooks, /enabled,\n/);
+	for (const file of [
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+	])
+		assert.match(read(file), /"hub_updates"/, file);
+	assert.match(
+		read("src/renderer/src/shared/api/local-operator/desktop-hooks.ts"),
+		/\| "hub_updates"/,
+	);
+});
+
+test("without a hub item nothing renders, and the sidebar has ONE action store (R6/R9)", () => {
+	const mark = read(
+		"src/renderer/src/features/chat/components/hub-update-mark.tsx",
+	);
+	assert.match(mark, /if \(!offerAll && !onCheck\) return null;/);
+	assert.match(mark, /if \(!signIn && !rollup && !note\) return null;/);
+	const panel = read(
+		"src/renderer/src/features/agents/components/hub-update-panel.tsx",
+	);
+	assert.match(panel, /if \(!note\) return null;/);
+	// Shared state lives in the store, never in per-hook `useState`.
+	const hooks = read("src/renderer/src/shared/api/local-operator/hub-hooks.ts");
+	assert.doesNotMatch(hooks, /useState\(/);
+	assert.match(hooks, /useHubActionStore/);
+});
+
+test("the detail editors re-seed when the fetched definition changes (R1)", () => {
+	const page = read(
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+	);
+	assert.match(page, /contentKey\(detail\.data\)/);
 });

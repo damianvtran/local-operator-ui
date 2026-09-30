@@ -32,6 +32,24 @@ const LegacyAgentsPage = lazy(() =>
 const field =
 	"w-full rounded-md border border-control bg-surface px-3 py-2 text-body-sm text-ink";
 
+/**
+ * A key that changes when the FETCHED definition changes, and only then.
+ *
+ * Both editors seed every field once from their prop, so a hub update that rewrote
+ * the definition under a mounted editor left the OLD text on screen, and Edit -
+ * Save wrote it back over the merge (agent review round 1, R1; reproduced in the
+ * UX walk). Keying on the content re-seeds them - the same remedy `install()`
+ * applies by hand - while an unrelated refetch (window focus) returns identical
+ * content, the same key, and no remount, so an edit in progress survives it.
+ */
+const contentKey = (value: unknown) => {
+	const text = JSON.stringify(value) ?? "";
+	let hash = 5381;
+	for (let index = 0; index < text.length; index += 1)
+		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
+	return `${text.length}.${hash.toString(36)}`;
+};
+
 function ProfileEditor({
 	profile,
 	creating,
@@ -683,7 +701,7 @@ export function AgentsPage() {
 						/>
 						{teamMode ? (
 							<TeamEditor
-								key={name}
+								key={`${name}:${contentKey(detail.data)}`}
 								team={detail.data as ReusableTeam}
 								onSaved={saved}
 							/>
@@ -692,7 +710,7 @@ export function AgentsPage() {
 								/* Identity is name AND source: installing does not rename a
 							   profile, so keying on name alone kept the builtin-seeded form
 							   mounted across builtin -> installed. */
-								key={`${name}:${(detail.data as ReusableProfile).source}`}
+								key={`${name}:${(detail.data as ReusableProfile).source}:${contentKey(detail.data)}`}
 								profile={detail.data as ReusableProfile}
 								creating={false}
 								onSaved={saved}

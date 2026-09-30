@@ -16,6 +16,7 @@ import {
 } from "@shared/api/local-operator/hub-hooks";
 import {
 	type HubItemKind,
+	type HubMark,
 	hubAvailableCount,
 	hubItemIndex,
 	hubItemKey,
@@ -166,7 +167,12 @@ import {
 } from "../sidebar-scope-paging";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
-import { HubRowNote, HubSectionStrip, HubUpdateMark } from "./hub-update-mark";
+import {
+	HubHeadingControls,
+	HubRowNote,
+	HubSectionLines,
+	HubUpdateMark,
+} from "./hub-update-mark";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -1021,6 +1027,11 @@ export function ChatSidebar({
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const hub = useHubActions();
+	// Whether the backend tracks any hub-linked item at all: the check control is
+	// drawn only for a user the hub concerns, so everyone else pays nothing.
+	const hubTracked =
+		(hubUpdates.data?.items.length ?? 0) > 0 ||
+		Object.values(hubUpdates.data?.counts ?? {}).some((count) => count > 0);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
@@ -3826,40 +3837,78 @@ export function ChatSidebar({
 	};
 	/*
 	 * WHAT PRESSING A MARK DOES, by the mark's kind. `available` updates the item;
-	 * `failed` retries it (the server clears the backoff and re-runs); `review` is a
-	 * decision only the person can make, so it goes to the detail pane where the
-	 * choice lives. An `available` press whose answer is `needs-review` goes there
-	 * too - the merge ran and refused, and pressing again would only refuse again.
+	 * `failed` retries it (the server clears the backoff and re-runs) unless a retry
+	 * cannot change the answer (`hub-item-missing`, `prompt-too-long`), where the
+	 * detail pane's sentence is the useful thing; `review` is a decision only the
+	 * person can make, so it OPENS the detail pane, where the choice and a preview
+	 * live, and applies NOTHING (UX round 1, U3). An `available` press whose answer
+	 * is `needs-review` goes there too - the merge ran and refused, and pressing
+	 * again would only refuse again.
 	 */
 	const openHubDetail = (kind: HubItemKind, name: string) =>
 		navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`);
 	const pressHubMark = async (
 		kind: HubItemKind,
 		name: string,
-		mark: "available" | "review" | "failed" | "updating" | "applied",
+		mark: HubMark,
 	) => {
-		if (mark === "review") return openHubDetail(kind, name);
+		if (mark.kind === "review") return openHubDetail(kind, name);
+		if (mark.kind === "failed" && !mark.retryable)
+			return openHubDetail(kind, name);
 		const reports =
-			mark === "failed"
+			mark.kind === "failed"
 				? await hub.retryItem(kind, name)
 				: await hub.applyItem(kind, name);
 		if (reports?.some((report) => report.outcome === "needs-review"))
 			openHubDetail(kind, name);
 	};
 	/*
-	 * The section's strip: "Update all" while something is waiting, the sign-in
-	 * line once, and the roll-up sentence after an update-all. It renders nothing
-	 * when it has nothing to say (see `HubSectionStrip`).
+	 * FOCUS AFTER "UPDATE ALL". The control that was pressed leaves the heading the
+	 * moment fewer than two items wait, and Chrome then puts focus on `body`, which
+	 * drops a keyboard reader out of the list (UX round 1, U5). The section's own
+	 * heading is the stable place to hand it to; the roll-up under it names what
+	 * still needs the person.
 	 */
-	const hubStrip = (kind: HubItemKind) => (
-		<HubSectionStrip
+	const updateAllHub = async (kind: HubItemKind) => {
+		await hub.applyAll(kind);
+		requestAnimationFrame(() => {
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
+			document
+				.querySelector<HTMLElement>(
+					`[data-chat-section="${kind === "agent" ? "agents" : "teams"}"]`,
+				)
+				?.focus();
+		});
+	};
+	/*
+	 * The section's controls (in the heading row, so they move nothing) and its
+	 * lines (sign-in, the check answer, the roll-up, a refusal). The sign-in line is
+	 * hosted by ONE section, Agents: it is one fact about the account, and drawing it
+	 * per section read as the same sentence twice (design D5).
+	 */
+	const hubControls = (kind: HubItemKind) => (
+		<HubHeadingControls
 			kind={kind}
 			available={hubAvailableCount(hubUpdates.data, kind)}
 			busy={hub.pending.has(`all:${kind}`)}
-			signIn={hubSignInLine(hubUpdates.data)}
+			onUpdateAll={() => void updateAllHub(kind)}
+			onCheck={
+				kind === "agent" && hubTracked ? () => void hub.checkNow() : undefined
+			}
+			checking={hub.pending.has("check")}
+		/>
+	);
+	const hubLines = (kind: HubItemKind) => (
+		<HubSectionLines
+			kind={kind}
+			signIn={kind === "agent" ? hubSignInLine(hubUpdates.data) : null}
+			signInHref="/settings?section=radient"
 			rollup={hub.rollups[kind]}
-			failure={hub.failures[`all:${kind}`]}
-			onUpdateAll={() => void hub.applyAll(kind)}
+			note={
+				hub.notes[`all:${kind}`] ??
+				(kind === "agent" ? hub.notes.check : undefined)
+			}
 			onDismissRollup={() => hub.clearRollup(kind)}
 		/>
 	);
@@ -4026,7 +4075,7 @@ export function ChatSidebar({
 							mark={hubMark}
 							busy={hub.pending.has(hubKey)}
 							staged={staged}
-							onPress={() => pressHubMark(kind, name, hubMark.kind)}
+							onPress={() => pressHubMark(kind, name, hubMark)}
 						/>
 					)}
 					<button
@@ -4046,7 +4095,7 @@ export function ChatSidebar({
 						<MoreHorizontal className="size-4" />
 					</button>
 				</div>
-				{hub.failures[hubKey] && <HubRowNote message={hub.failures[hubKey]} />}
+				{hub.notes[hubKey] && <HubRowNote note={hub.notes[hubKey]} />}
 				{open && (
 					<div>
 						{rows.map((row) => sessionRow(row, true))}
@@ -4299,6 +4348,9 @@ export function ChatSidebar({
 		glyph?: LucideIcon,
 		action?: ReactNode,
 		toggleRef?: Ref<HTMLButtonElement>,
+		// Ordinary (non-sticky) controls after the toggle: unlike `action`, which
+		// pins the whole row, these cost no height and no pinned chrome.
+		trailing?: ReactNode,
 	) => (
 		<div
 			className={cn(
@@ -4354,6 +4406,7 @@ export function ChatSidebar({
 				{count !== undefined && count !== 0 && countBadge(count)}
 			</button>
 			{action}
+			{trailing}
 		</div>
 	);
 	/*
@@ -4916,7 +4969,16 @@ export function ChatSidebar({
 					 */}
 					{isSectionShown(view, "agents") && (
 						<section>
-							{heading("agents", "Agents", true, undefined, Bot)}
+							{heading(
+								"agents",
+								"Agents",
+								true,
+								undefined,
+								Bot,
+								undefined,
+								undefined,
+								hubControls("agent"),
+							)}
 							{(query || isOpen("agents", true)) && (
 								<>
 									{profiles.isLoading && (
@@ -4924,7 +4986,7 @@ export function ChatSidebar({
 											Loading agents…
 										</p>
 									)}
-									{hubStrip("agent")}
+									{hubLines("agent")}
 									{/*
 									    A user with no agents of their own gets the shortcut as the
 									    next step rather than as a quiet line: on a fresh install this
@@ -5108,7 +5170,16 @@ export function ChatSidebar({
 									(query || isOpen("agents", true) ? "mt-4" : "mt-2"),
 							)}
 						>
-							{heading("teams", "Teams", true, undefined, Users)}
+							{heading(
+								"teams",
+								"Teams",
+								true,
+								undefined,
+								Users,
+								undefined,
+								undefined,
+								hubControls("team"),
+							)}
 							{(query || isOpen("teams", true)) && (
 								<>
 									{teams.isLoading && (
@@ -5116,7 +5187,7 @@ export function ChatSidebar({
 											Loading teams…
 										</p>
 									)}
-									{hubStrip("team")}
+									{hubLines("team")}
 									{teams.data &&
 										cappedRows(
 											"teams",
