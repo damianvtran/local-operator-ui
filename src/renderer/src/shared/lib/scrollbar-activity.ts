@@ -151,7 +151,7 @@ const elementOverflows = (element: Element): boolean => {
  * `overflow-y-auto` wrapper), so it is outside the scope and still fades
  * normally; a scroller nested inside the document body does not fade, which is
  * the accepted cost of never writing inside a document the user's undo stack is
- * watching (design note § 9.4).
+ * watching (design note § 9.8).
  *
  * NO CACHE, DELIBERATELY. Unlike the scroller test this is a walk of attribute
  * reads with no style resolution behind it, and its answer is state-dependent
@@ -258,10 +258,18 @@ export function installScrollbarActivity(
 		if (start === null) return null;
 		const cached = nearestScroller.get(start);
 		if (cached !== undefined) return cached;
+		/*
+		 * THE SCOPE TEST RUNS ONCE, ON THE START (review round 2, R2-1). The
+		 * predicate is ancestry-inherited — a node deeper in the walk is inside a
+		 * watched subtree only if the start was — so testing every node asked the
+		 * same question O(depth) times per walk, and the walks that find nothing
+		 * (most pointerover targets) paid O(depth²) attribute reads for an answer
+		 * the first test already had. Same answer, one walk.
+		 */
+		if (insideEditableRegion(start)) return null;
 		let found: Element | null = null;
 		let node: Element | null = start;
 		while (node !== null) {
-			if (insideEditableRegion(node)) break;
 			if (isScroller(node)) {
 				found = node;
 				break;
