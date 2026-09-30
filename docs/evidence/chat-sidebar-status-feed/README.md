@@ -357,3 +357,51 @@ the store action, the wire shape and main's foreground gate are asserted in
 `scripts/attention-seen.test.mjs`. Together those two answer different questions
 — this set answers "what does the user see, in every theme", and that file
 answers "is the request, the answer and the write what they claim to be".
+
+## The subagent indicator (2026-09-29)
+
+Six rosters added for the operator's report: sessions "not displaying the icon
+where they're done but they still have running subagents, so it just looks like
+they're inactive in the sidebar".
+
+- **`subagent-rows-running/`** and **`subagent-rows-running-minimum/`** (280 and
+  240) — the rungs the catalogue ranks ABOVE `delegating`: a `busy` row with two
+  running children and one queued (the three-glyph worst case), a `busy` row with
+  two, a `wedged` row with one, the three `delegating` cells (queued-and-running,
+  running-only, queued-only), and the `null`-counts compatibility cell.
+- **`subagent-rows-resting/`** and **`subagent-rows-resting-minimum/`** (280 and
+  240) — the resting primaries the indicator has to read beside: an unseen
+  completion, an attached session, a scheduled wake with a queue, an idle ring, an
+  unseen failure, the `0/0` compatibility cell, and a bound (agent-attributed)
+  row.
+- **`subagent-selected-row/`** — the operator's own case: the row they had
+  opened, on the `rowSelected` ground, with two running children and an
+  unselected twin below it.
+- **`subagent-archived-row/`** — an archived row carrying BOTH conditional marks
+  (the leading `Archive` glyph and the post-title indicator). Archived rows are
+  filtered out of the at-rest list by `chat-archived.ts`'s `visibleRows`, so this
+  story reaches the row the only way a reader can: a query plus the search
+  block's own `Include archived` control.
+
+**The before half is a separate declared set**, `docs/evidence/chat-sidebar-subagent-baseline/`
+— the same six rosters, same fixtures, same two viewports and same twelve
+palettes, rendered by unmodified `origin/main` in its own worktree. That set's
+manifest entry carries the provenance. Every cell's before/after pair therefore
+differs by the indicator and by nothing else; on the baseline, a busy row with two
+running children draws one spinner and the sidebar says nothing about them.
+
+**The two widths are the point, not a courtesy.** One mark costs the title
+18-22px (`size-3.5` plus `ml-1`, on top of the row's own `gap-1`), and
+`docs/design/sidebar-row-space.md` §2 states this row's invariant as "the title's
+leading edge never moves; what moves is the title's clip" — which is why the
+indicator sits AFTER the title rather than in the leading cluster. The 240px
+frames are where that clip pays hardest.
+
+**Recorded gap.** The spec's S15 cell (a NESTED row, filed under its agent) is
+not photographed: this fixture's profile catalogue renders the Agents section's
+empty state rather than an entity row (the offered install line names the profile,
+so the read lands — the section lists installed agents and the fixture's catalogue
+has none; the committed `completion-reordered/` frames show the same empty
+section). The bound row in `subagent-rows-resting/` renders FLAT for that reason,
+and the nested under-an-agent frame is owed to whoever can drive an installed
+agent in this set.
