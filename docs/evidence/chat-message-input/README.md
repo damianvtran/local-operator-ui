@@ -777,3 +777,78 @@ shows the live app's old model in one frame: an EMPTY composer, the transport's
 twenty-second sentence in red, a grey paragraph ("A message is still being held,
 so a different message cannot be sent yet...") and `Restore message` /
 `Discard message` under it.
+
+## The shared-composer lift: the same pixels at a new address (2026-09-29)
+
+**This pass re-captures the composer's own frames to prove a pure MOVE changed
+nothing.** The composer assembly left `features/chat/components/message-input.tsx`
+for `shared/components/composer/message-input.tsx` so that documents other than
+the chat shell can mount the real control in later slices; slice 1 migrates only
+the chat, and its acceptance condition is zero visual delta. The chat's own
+committed frames are that condition's gauge, so the whole composer surface was
+re-taken at the head that carries the move (`d227214c13`) and compared against
+the same states captured at the base the move was cut from (`origin/main` =
+`0738fa7eb3`).
+
+### The pair's commands
+
+Both halves ran `scripts/capture-evidence.mjs` against a Storybook dev server
+(`pnpm storybook --port 6061 --no-open`), the same two palettes
+(`--themes=localOperatorDark,localOperatorLight`), and the same narrowed runs:
+one `--dirs=<the 34 directories this pass owns>` invocation, one
+`--only=chat-composer-band` invocation, both append-mode and `--allow-backend`.
+The before half ran from a worktree pinned at `0738fa7eb3` with an untouched
+tree; the after half from this change's worktree. Both halves live in scratch
+(`$LOCAL_OPERATOR_SCRATCHPAD/parity/{before,after}`); the after half is what this
+commit refreshes, and the comparison below is reproducible with
+`magick compare -metric AE` over the two trees, byte-for-byte first.
+
+### The result: 74 of 84 frames byte-identical; the ten that differ are capture phase
+
+84 frames were compared (34 directories x 2 palettes here, plus
+`chat-composer-band`'s 8 x 2 in the sibling set). **74 came back byte-identical.**
+The ten that differ, and why none of them is a tree delta:
+
+- **Three differ between two runs OF THE SAME TREE, which is the class's own
+  proof.** `credential-pill-cleared` (dark and light) differ in the caption's
+  credential NAME, which is minted with a random suffix per mount
+  (`LOCAL_SECRET_MRE5GFXZ` against `LOCAL_SECRET_JE4KHYTP` in the two frames), and
+  `credential-pill-small-view` (dark) in the field's caret. A repeat capture of
+  the same directories on the same tree reproduced every other frame
+  byte-for-byte and these three differently again: there is no stable content to
+  compare, and nothing about the move is claimed from them.
+- **One differs in text the BEFORE run alone could have shown.**
+  `chat-composer-band/column-floor` (light), in the tips row: the before run
+  screenshotted after the ring's first tick (12 s; `composer-tip.tsx`'s
+  `setInterval`) and so shows a random pooled tip ("attach a file with the
+  paperclip, or paste one in"); both after runs - and the frames committed here
+  already - show the ring's documented pinned opening frame, "search chats and
+  agents to reopen an earlier session". The sibling set's section, "Which tip the
+  frames show", is the mechanism this matches.
+- **The remaining six are sub-pixel paint phase, measured rather than argued.**
+  `long-labels` (dark and light), `reduced-motion` (light), `small-view` (light),
+  `empty-chat-credential` (dark) and `credential-masked` (dark) differ by at most
+  17 of 255 in one channel with a mean of about 2, and the differing pixels are
+  the borders', glyphs' and selection fill's own antialiasing (the masked field's
+  caret and selection edge). No element, word, spacing or colour moves by a whole
+  pixel, and two runs of the after tree reproduce these frames byte-for-byte.
+
+**The repeat run is the classification's spine**: an AFTER2 capture of the same
+nine directories on the same tree reproduced the AFTER run byte-for-byte on every
+frame except the three named above. The after tree renders deterministically; each
+of the ten differences is either content the capture mints anew (a random name, a
+blinking caret, the tips ring's phase) or edge-level paint at 7-17 of 255.
+
+### What this pass does not carry
+
+- `credential-pill-hover-small-view` and `credential-pill-focused-small-view`
+  are missing from BOTH halves: the caption-override write fails
+  deterministically on the base tree as well (`the caption override could not be
+  written ([data-frame-label] is missing)`), so the pair is symmetric by
+  exclusion and nothing about the move is claimed from them.
+- `chat-composer-status-row/` is untouched: the status row's own file does not
+  move in this slice.
+- The `--dirs` list also rewrote `chat-notification-feed-states/conversation-gone`
+  (the neighbouring set carries the same directory name); those two frames were
+  reverted rather than committed, so this refresh carries only this surface's
+  directories.

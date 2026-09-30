@@ -2573,7 +2573,7 @@ const BRANCH_RECORDS = [
 	 */
 	"installerPanelRailRoundTwoNote",
 	/*
-	 * And by THIS branch, whose records the merge of `origin/main` = `cef1c9c535` had to keep: its
+	 * And by THIS branch, whose records the merge of `origin/main` = `4703067935` had to keep: its
 	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
 	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
 	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
