@@ -68,7 +68,9 @@
  *    demand has been spent at the hard top only a DELIBERATE act re-arms it —
  *    clicking the affordance, or a keystroke that means "start of
  *    conversation". This is the clause that stops a resting finger from
- *    walking the whole conversation into memory.
+ *    walking the whole conversation into memory. (The affordance is a control
+ *    only while the slot is `idle` or `failed`; while it is `windowed` the row
+ *    is a statement and the keystroke — Home — is the deliberate route.)
  * 5. LOCAL GROWTH BEFORE NETWORK GROWTH. Rows already fetched but not mounted
  *    (the render window) are free to reveal; a durable page is a round trip.
  *    Revealing both for one gesture would show the reader two reveals stacked,
@@ -772,7 +774,7 @@ export const decide = (
 		/*
 		 * Rule 6 is the one door this refusal leaves open, and it is narrow on
 		 * purpose. A durable page that landed with its rows still held back is a
-		 * reveal the reader has been told about (the slot says "N earlier messages
+		 * reveal the reader has been told about (the slot says "Earlier history
 		 * above - scroll up to load") and cannot see: measured, a page landed at
 		 * `rows 200 -> 200, hiddenRows 0 -> 60` and then 62 further clamped notches
 		 * produced nothing at all, because the widen that would show those rows
@@ -894,6 +896,37 @@ export const noteFailed = (state: PagingState): PagingState => ({
 	actFetchSpent: false,
 	// Nothing landed, so nothing is owed. A rule-6 widen here would spend the
 	// reader's trust on rows the failure did not produce.
+	pageWidenOwed: false,
+});
+
+/**
+ * A page was asked for and NOTHING HAPPENED TO THE READER'S HISTORY: the
+ * conversation changed while it was in flight (`stale`), or there was nothing to
+ * ask for (`nothing-to-load`). It is not a failure and not a landing.
+ *
+ * WHY IT IS ITS OWN TRANSITION. The pump used to read every non-applied result
+ * as `false` and call `noteFailed`, so a healthy conversation that lost a race
+ * (the open-time align fetch had a page out, the reader switched sessions
+ * mid-request) counted toward `MAX_AUTO_ATTEMPTS` - three of them switched the
+ * automatic path off - and painted the failed row. `failures` is therefore left
+ * exactly as it was: aborts neither add to the count nor forgive it (only a real
+ * landing or a deliberate ask does that).
+ *
+ * Everything else is what `noteFailed` does, and for the same reasons: the
+ * demand is spent and dropped, nothing is owed because nothing landed, and
+ * nothing re-arms on its own - the next demand has to come from input. The act's
+ * fetch budget is cleared so a reader still pushing at the wall is not told the
+ * act is spent by a request that never delivered anything.
+ */
+export const noteAborted = (state: PagingState): PagingState => ({
+	...state,
+	busy: false,
+	armed: false,
+	deliberate: false,
+	retained: false,
+	turnedAround: false,
+	continuation: false,
+	actFetchSpent: false,
 	pageWidenOwed: false,
 });
 
