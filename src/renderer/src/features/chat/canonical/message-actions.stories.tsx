@@ -89,7 +89,9 @@ const user = (id: string, text: string): TranscriptRecord => ({
  * into its bar (measured: a turn whose only content is the streaming answer gets
  * the bar and no prose).
  */
-const tool = (over: Partial<Extract<TranscriptRecord, { kind: "tool" }>> & { id: string }): TranscriptRecord => ({
+const tool = (
+	over: Partial<Extract<TranscriptRecord, { kind: "tool" }>> & { id: string },
+): TranscriptRecord => ({
 	kind: "tool",
 	ts: TS + 50_000,
 	toolCallId: over.id,
@@ -387,7 +389,9 @@ export const Truncated: Story = {
 
 /** Still streaming: the row is ABSENT, because nothing has settled to copy. */
 export const Streaming: Story = {
-	render: () => <Frame state={transcriptOf(STREAMING_TURN)} waiting height={620} />,
+	render: () => (
+		<Frame state={transcriptOf(STREAMING_TURN)} waiting height={620} />
+	),
 };
 
 /** Two settled answers in one turn: exactly one row, on the closing answer. */
