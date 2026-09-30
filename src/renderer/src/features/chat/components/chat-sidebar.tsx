@@ -2798,6 +2798,14 @@ export function ChatSidebar({
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
 		const marks = subagentMarks(row);
+		/*
+		 * THE SENTENCE, computed once beside the marks because THREE call sites read
+		 * it - the row's `sr-only` name, the question of whether that name needs a
+		 * span at all, and the tooltip's own line - and this is a per-row derivation
+		 * in a list that re-renders on every feed frame. One value, so the three
+		 * cannot disagree about whether a row has anything to say.
+		 */
+		const subagentSentence = subagentClause(row);
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -2929,7 +2937,7 @@ export function ChatSidebar({
 					 * button would shadow the row's own tooltip, which is review round 1's
 					 * MINOR 1 on this exact slot).
 					 */}
-					{subagentClause(row)}
+					{subagentSentence}
 					{/*
 					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
 					 * them: the flags are what the row IS and this is what the app is DOING
@@ -3249,8 +3257,8 @@ export function ChatSidebar({
 				 * `sr-only` renders that label verbatim) - so the presence is announced
 				 * exactly once on every row, whichever channel owns it.
 				 */}
-				{subagentClause(row) !== "" && (
-					<span className="sr-only">{subagentClause(row)}</span>
+				{subagentSentence !== "" && (
+					<span className="sr-only">{subagentSentence}</span>
 				)}
 				{/*
 				 * THE RELATIVE TIME (§C1): right-aligned `text-mono-sm` in `ink-dim`, the
