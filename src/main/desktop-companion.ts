@@ -100,6 +100,9 @@ export class DesktopCompanion {
 				return false;
 			return (await this.chat.send(text)).accepted;
 		});
+		ipcMain.handle("companion:chat-menu", (event, position: unknown) =>
+			this.trusted(event) ? this.showChatMenu(position) : false,
+		);
 		ipcMain.on("companion:action", this.onAction);
 		screen.on("display-added", this.onDisplayChanged);
 		screen.on("display-removed", this.onDisplayChanged);
@@ -647,6 +650,50 @@ export class DesktopCompanion {
 			});
 	}
 
+	private showChatMenu(position: unknown): Promise<boolean> {
+		const window = this.window;
+		if (
+			!window ||
+			!this.chatOpen ||
+			!this.enabled ||
+			!this.chat.canChangeConversation ||
+			this.options.headless
+		)
+			return Promise.resolve(false);
+		if (!position || typeof position !== "object")
+			return Promise.resolve(false);
+		const { x, y } = position as { x?: unknown; y?: unknown };
+		if (
+			typeof x !== "number" ||
+			!Number.isFinite(x) ||
+			typeof y !== "number" ||
+			!Number.isFinite(y)
+		)
+			return Promise.resolve(false);
+		const bounds = window.getBounds();
+		const zoom = window.webContents.getZoomFactor();
+		return new Promise((resolve) => {
+			let changed = false;
+			const choose = (destination: "chief-of-staff" | "new-chat") => {
+				if (this.window === window && this.enabled && this.chatOpen)
+					changed = this.chat.chooseConversation(destination);
+			};
+			Menu.buildFromTemplate([
+				{
+					label: "Chief of staff",
+					enabled: this.chat.snapshot.destination !== "chief-of-staff",
+					click: () => choose("chief-of-staff"),
+				},
+				{ label: "New chat", click: () => choose("new-chat") },
+			]).popup({
+				window,
+				x: Math.max(0, Math.min(bounds.width - 1, Math.round(x * zoom))),
+				y: Math.max(0, Math.min(bounds.height - 1, Math.round(y * zoom))),
+				callback: () => resolve(changed),
+			});
+		});
+	}
+
 	private showMenu(): void {
 		this.cancelDrop();
 		this.finishDrag();
@@ -709,12 +756,6 @@ export class DesktopCompanion {
 			this.options.openChat(this.chat.snapshot.sessionId);
 			this.layoutChat(false);
 		} else if (
-			action === "new-chat" &&
-			this.chat.snapshot.status !== "working" &&
-			this.chat.snapshot.status !== "loading"
-		)
-			this.chat.newChat();
-		else if (
 			action === "interactive" &&
 			typeof value === "boolean" &&
 			!this.dragOrigin
@@ -794,6 +835,7 @@ export class DesktopCompanion {
 		ipcMain.removeHandler("companion:get-appearance");
 		ipcMain.removeHandler("companion:get-chat");
 		ipcMain.removeHandler("companion:send");
+		ipcMain.removeHandler("companion:chat-menu");
 		ipcMain.removeListener("companion:action", this.onAction);
 		screen.removeListener("display-added", this.onDisplayChanged);
 		screen.removeListener("display-removed", this.onDisplayChanged);

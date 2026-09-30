@@ -242,31 +242,24 @@ test("definite refusals allow edits with a new request ID", async () => {
 	}
 });
 
-test("late creation cannot submit or unlock a newer send", async () => {
+test("conversation changes during creation cannot abandon or duplicate the original send", async () => {
 	const f = fixture();
-	const oldCreate = Promise.withResolvers();
-	const newCreate = Promise.withResolvers();
+	const creating = Promise.withResolvers();
 	f.handle((input) =>
-		input.op === "sessions.create"
-			? f.calls.length === 1
-				? oldCreate.promise
-				: newCreate.promise
-			: undefined,
+		input.op === "sessions.create" ? creating.promise : undefined,
 	);
-	const first = f.service.send("Old task");
+	const first = f.service.send("Original task");
+	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
 	assert.equal((await f.service.send("Duplicate task")).accepted, false);
-	f.service.newChat();
-	const second = f.service.send("New task");
-	oldCreate.resolve(receipt({ session_id: ID }));
-	assert.equal((await first).accepted, false);
-	assert.equal((await f.service.send("Third task")).accepted, false);
-	assert.equal(f.messages().length, 0);
-	newCreate.resolve(receipt({ session_id: ID }));
-	assert.equal((await second).accepted, true);
+	creating.resolve(receipt({ session_id: ID }));
+	assert.equal((await first).accepted, true);
+	await f.service.refresh();
 	assert.deepEqual(
 		f.messages().map((call) => call.text),
-		["New task"],
+		["Original task"],
 	);
+	assert.equal(f.service.newChat(), true);
 });
 
 test("fresh gates and silent owners stop an uncertain retry before delivery", async () => {
@@ -392,11 +385,12 @@ test("an old poll failure cannot replace newer chat state", async () => {
 test("session changes and disposal discard late reads", async () => {
 	for (const dispose of [false, true]) {
 		const f = fixture();
+		await f.service.open(ID);
 		const pending = Promise.withResolvers();
 		f.handle((input) =>
 			input.sessionId === ID ? pending.promise : frame({ sessionId: OTHER_ID }),
 		);
-		const first = f.service.open(ID);
+		const first = f.service.refresh();
 		if (dispose) f.service.dispose();
 		else await f.service.open(OTHER_ID);
 		const count = f.changes.length;
@@ -573,20 +567,74 @@ test("the pet rechecks the seat before sending, and keeps an uncertain send on i
 	assert.deepEqual(f.messages()[1], first);
 });
 
-test("late default-seat resolution cannot retarget an explicit session or new chat", async () => {
-	for (const explicitSession of [false, true]) {
-		const f = fixture({ chiefOfStaff: true });
-		const pending = Promise.withResolvers();
-		f.handle((input) =>
-			input.op === "aida.status" ? pending.promise : undefined,
-		);
-		const opened = f.service.open();
-		await new Promise((resolve) => setImmediate(resolve));
-		if (explicitSession) await f.service.open(ID);
-		else f.service.newChat();
-		const snapshot = f.service.snapshot;
-		pending.resolve(receipt(seat({ session_id: OTHER_ID })));
-		await opened;
-		assert.deepEqual(f.service.snapshot, snapshot);
-	}
+test("conversation changes wait for chief-of-staff resolution", async () => {
+	const f = fixture({ chiefOfStaff: true });
+	const pending = Promise.withResolvers();
+	f.handle((input) =>
+		input.op === "aida.status" ? pending.promise : undefined,
+	);
+	const opened = f.service.open();
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(f.service.newChat(), false);
+	await f.service.open(OTHER_ID);
+	assert.equal(f.service.snapshot.sessionId, null);
+	pending.resolve(receipt(seat()));
+	await opened;
+	assert.equal(f.service.snapshot.sessionId, ID);
+	assert.equal(f.service.snapshot.destination, "chief-of-staff");
+});
+
+test("an explicit return to the chief of staff shares the existing conversation without changing its cadence", async () => {
+	const f = fixture();
+	assert.equal(f.service.chooseConversation("chief-of-staff"), true);
+	await f.service.refresh();
+	assert.equal(f.service.snapshot.destination, "chief-of-staff");
+	assert.equal(f.service.snapshot.sessionId, ID);
+	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
+	assert.equal(f.service.newChat(), true);
+	assert.equal(f.service.snapshot.sessionId, null);
+	assert.equal(f.service.chooseConversation("chief-of-staff"), true);
+	await f.service.refresh();
+	assert.deepEqual(
+		f.calls.map((call) => call.op),
+		[
+			"capabilities",
+			"aida.status",
+			"sessions.get",
+			"capabilities",
+			"aida.status",
+			"sessions.get",
+		],
+	);
+});
+
+test("switching cannot lose an uncertain send or its retry identity", async () => {
+	const f = fixture();
+	f.handle((input) => {
+		if (input.op === "sessions.message") throw new Error("receipt lost");
+	});
+	assert.equal((await f.service.send("Only once")).accepted, false);
+	const snapshot = f.service.snapshot;
+	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
+	await f.service.open(OTHER_ID);
+	assert.deepEqual(f.service.snapshot, snapshot);
+	f.handle(() => undefined);
+	assert.equal((await f.service.send("Only once")).accepted, true);
+	assert.deepEqual(f.messages()[1], f.messages()[0]);
+});
+
+test("an admitted turn blocks navigation until it settles", async () => {
+	const f = fixture();
+	f.handle((input) =>
+		input.op === "sessions.message" ? admitted(input) : undefined,
+	);
+	assert.equal((await f.service.send("Still working")).accepted, true);
+	await f.service.refresh();
+	assert.equal(f.service.newChat(), false);
+	assert.equal(f.service.chooseConversation("chief-of-staff"), false);
+	f.setFrame(frame({ generation: 1, last_turn_outcome: "completed" }));
+	await f.service.refresh();
+	assert.equal(f.service.chooseConversation("chief-of-staff"), true);
+	await f.service.refresh();
 });

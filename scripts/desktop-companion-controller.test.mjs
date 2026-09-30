@@ -295,6 +295,8 @@ function fixture(t, { headless = true, preferences = {} } = {}) {
 		trusted,
 		state: () => handlers.get("companion:get-state")(trusted()),
 		chat: () => handlers.get("companion:get-chat")(trusted()),
+		chatMenu: (event = trusted(), position = { x: 120, y: 64 }) =>
+			handlers.get("companion:chat-menu")(event, position),
 		send: (text, event = trusted()) =>
 			handlers.get("companion:send")(event, text),
 		action: (action, value, event = trusted()) =>
@@ -343,6 +345,7 @@ test("headless companion never presents or changes desktop workspaces", async (t
 	assert.deepEqual(window.presentations, []);
 	assert.equal(window.workspaces, undefined);
 	f.action("menu");
+	assert.equal(await f.chatMenu(), false);
 	assert.deepEqual(f.menus, []);
 	f.action("open");
 	assert.equal(f.chat().open, true);
@@ -419,6 +422,7 @@ test("IPC requires this companion's exact top-level document and rejects malform
 		for (const channel of ["get-state", "get-appearance", "get-chat"])
 			assert.equal(f.handlers.get(`companion:${channel}`)(event), null);
 		assert.equal(await f.send("Should not send", event), false);
+		assert.equal(await f.chatMenu(event), false);
 	}
 	window.webContents.mainFrame.url = "https://example.invalid/";
 	f.action("open");
@@ -499,6 +503,70 @@ test("unrelated feed frames skip catalogue and chat reads while session changes 
 	await f.flush();
 	assert.equal(f.requests.length, 0);
 	assert.equal(f.intervals.size, 0);
+});
+
+test("the conversation menu cancels quietly and explicitly returns to the shared chief", async (t) => {
+	const f = fixture(t, { headless: false });
+	assert.equal(await f.chatMenu(), false, "collapsed chat has no menu");
+	f.action("open");
+	await settle();
+	const before = JSON.stringify(f.chat());
+	const requestCount = f.desktopRequests.length;
+	let choice = f.chatMenu();
+	let menu = f.menus.at(-1);
+	assert.deepEqual(
+		Array.from(menu.template, (item) => item.label),
+		["Chief of staff", "New chat"],
+	);
+	assert.equal(menu.template[0].enabled, false);
+	assert.ok(menu.template.every((item) => !item.type));
+	assert.equal(menu.popupOptions.x, 120);
+	assert.equal(menu.popupOptions.y, 64);
+	menu.popupOptions.callback();
+	assert.equal(await choice, false);
+	assert.equal(JSON.stringify(f.chat()), before);
+	assert.equal(f.desktopRequests.length, requestCount);
+	choice = f.chatMenu();
+	menu = f.menus.at(-1);
+	menu.template[1].click();
+	menu.popupOptions.callback();
+	assert.equal(await choice, true);
+	assert.equal(f.chat().snapshot.destination, undefined);
+	assert.equal(f.desktopRequests.length, requestCount, "New chat is lazy");
+	choice = f.chatMenu();
+	menu = f.menus.at(-1);
+	assert.equal(menu.template[0].enabled, true);
+	menu.template[0].click();
+	menu.popupOptions.callback();
+	assert.equal(await choice, true);
+	await settle();
+	assert.equal(f.chat().snapshot.destination, "chief-of-staff");
+	assert.equal(f.chat().snapshot.sessionId, "012345abcdef");
+	assert.equal(
+		f.desktopRequests.some(
+			(call) => call.op === "aida.control" || call.op === "sessions.create",
+		),
+		false,
+	);
+});
+
+test("a conversation menu cannot switch after sending begins or its window closes", async (t) => {
+	for (const block of ["send", "collapse", "hide"]) {
+		const f = fixture(t, { headless: false });
+		f.action("open");
+		await settle();
+		const choice = f.chatMenu();
+		const menu = f.menus.at(-1);
+		if (block === "send") assert.equal(await f.send("Keep my turn"), true);
+		else f.action(block === "hide" ? "hide" : "collapse-chat");
+		menu.template[1].click();
+		menu.popupOptions.callback();
+		assert.equal(await choice, false);
+		if (block !== "hide") {
+			assert.equal(f.chat().snapshot.destination, "chief-of-staff");
+			assert.equal(await f.chatMenu(), false);
+		}
+	}
 });
 
 test("catalogue reads coalesce and serialize, then reject responses from a disabled generation", async (t) => {
@@ -1435,4 +1503,44 @@ test("closed settings renderers cannot roll back persisted choices and movement 
 	assert.equal(f.companion.settings.enabled, false);
 	assert.equal(f.preferences().character, "inky");
 	assert.equal(f.companion.settings.character, "inky");
+});
+
+test("keyboard conversation menus validate and anchor within the zoomed companion window", async (t) => {
+	const f = fixture(t, { headless: false });
+	f.action("open");
+	await settle();
+	for (const position of [
+		null,
+		[],
+		{},
+		{ x: "10", y: 10 },
+		{ x: Number.NaN, y: 10 },
+		{ x: 10, y: Number.POSITIVE_INFINITY },
+	]) {
+		assert.equal(await f.chatMenu(f.trusted(), position), false);
+	}
+	assert.equal(f.menus.length, 0);
+	const window = f.windows[0];
+	f.companion.changeZoom(window, "in");
+	const choice = f.chatMenu(f.trusted(), { x: 120, y: 64 });
+	let menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, Math.round(120 * window.zoomFactor));
+	assert.equal(menu.popupOptions.y, Math.round(64 * window.zoomFactor));
+	menu.popupOptions.callback();
+	assert.equal(await choice, false);
+	f.workArea({ x: 0, y: 0, width: 260, height: 240 });
+	f.companion.changeZoom(window, "in");
+	assert.ok(window.zoomFactor < 1);
+	const compact = f.chatMenu(f.trusted(), { x: 120, y: 64 });
+	menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, Math.round(120 * window.zoomFactor));
+	assert.equal(menu.popupOptions.y, Math.round(64 * window.zoomFactor));
+	menu.popupOptions.callback();
+	assert.equal(await compact, false);
+	const clamped = f.chatMenu(f.trusted(), { x: -10, y: Number.MAX_VALUE });
+	menu = f.menus.at(-1);
+	assert.equal(menu.popupOptions.x, 0);
+	assert.equal(menu.popupOptions.y, window.getBounds().height - 1);
+	menu.popupOptions.callback();
+	assert.equal(await clamped, false);
 });

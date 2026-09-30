@@ -236,7 +236,7 @@ export interface CompanionBridge {
 	getChat(): Promise<CompanionChatView>;
 	onChat(listener: (view: CompanionChatView) => void): () => void;
 	sendMessage(text: string): Promise<boolean>;
-	newChat(): void;
+	showChatMenu(position: { x: number; y: number }): Promise<boolean>;
 	collapseChat(): void;
 	expandChat(): void;
 	openTask(): void;

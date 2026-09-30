@@ -158,16 +158,41 @@ export class CompanionChatService {
 		this.options.onChange(this.snapshot);
 	}
 
-	newChat(): void {
-		if (this.disposed) return;
+	get canChangeConversation(): boolean {
+		return (
+			!this.disposed &&
+			!this.sending &&
+			!this.pending &&
+			!this.waiting &&
+			this.state.status !== "loading" &&
+			this.state.status !== "working"
+		);
+	}
+
+	private reset(chiefOfStaff = false): void {
 		this.generation++;
-		this.chiefOfStaff = false;
+		this.chiefOfStaff = chiefOfStaff;
 		this.sending = false;
 		this.refreshing = null;
 		this.pending = null;
 		this.waiting = null;
 		this.createRequestId = randomUUID();
-		this.update(initial());
+		this.update(initial(chiefOfStaff));
+	}
+
+	newChat(): boolean {
+		return this.chooseConversation("new-chat");
+	}
+
+	chooseConversation(destination: "chief-of-staff" | "new-chat"): boolean {
+		if (
+			!this.canChangeConversation ||
+			(destination === "chief-of-staff" && this.chiefOfStaff)
+		)
+			return false;
+		this.reset(destination === "chief-of-staff");
+		if (this.chiefOfStaff) void this.refresh();
+		return true;
 	}
 
 	async open(sessionId?: string | null): Promise<void> {
@@ -184,7 +209,8 @@ export class CompanionChatService {
 			sessionId &&
 			(sessionId !== this.state.sessionId || this.chiefOfStaff)
 		) {
-			this.newChat();
+			if (!this.canChangeConversation) return;
+			this.reset();
 			this.update({ sessionId, status: "loading", canSend: false });
 		}
 		await this.refresh();
@@ -222,7 +248,7 @@ export class CompanionChatService {
 					canSend: false,
 					error:
 						error instanceof ChiefOfStaffUnavailable
-							? `${error.message} Open the app to continue, or start a new chat.`
+							? `${error.message} Open the app to continue.`
 							: "Could not reach the chief of staff. Open the app to continue.",
 				});
 			return false;

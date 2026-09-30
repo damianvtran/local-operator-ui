@@ -507,7 +507,9 @@ function Companion() {
 				snapshot={chat.snapshot}
 				open={chat.open}
 				onSend={(text) => window.companion.sendMessage(text)}
-				onNewChat={() => window.companion.newChat()}
+				onShowConversations={(position) =>
+					window.companion.showChatMenu(position)
+				}
 				onCollapse={() => window.companion.collapseChat()}
 				onExpand={() => window.companion.expandChat()}
 			/>

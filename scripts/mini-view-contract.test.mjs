@@ -256,7 +256,7 @@ test("a re-resolution preserves a standing retryable refusal (Q1)", () => {
 	);
 	const blockedAgain = miniTransitions.seatBlocked(
 		refused,
-		"This build doesn't have a chief-of-staff seat.",
+		"The chief of staff isn't available here.",
 	);
 	assert.equal(blockedAgain.seat, "blocked");
 	assert.equal(
@@ -279,7 +279,7 @@ test("a re-resolution preserves a standing retryable refusal (Q1)", () => {
 	 */
 	const seatSentence = miniTransitions.seatBlocked(
 		MINI_INITIAL_STATE,
-		"This build doesn't have a chief-of-staff seat.",
+		"The chief of staff isn't available here.",
 	);
 	const replaced = miniTransitions.seatReady(seatSentence);
 	assert.equal(replaced.notice, null);
