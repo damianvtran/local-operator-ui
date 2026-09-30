@@ -88,16 +88,29 @@ export const MESH_POLL_MS = 30_000;
  * ANSWER IS NORMALISED, NOT CAST, for the reason `mesh-types.ts` documents at
  * length - a sparse row used to take the whole window down through the app root's
  * error boundary.
+ *
+ * `poll: false` IS THE SAME OFFER `useMeshNetworks` MAKES, for the same reason and
+ * a second caller. A read of this catalogue reaches a peer through the relay, and an
+ * always-mounted observer on a surface that is not ABOUT the mesh - the chat
+ * header's device chip, which is on screen for every conversation - would turn one
+ * header into a fan-out on every screen (the defect the rail's observer caused,
+ * review round 2, R2-1). A `poll: false` observer reads once when the window starts
+ * and then rides the shared cache entry, because the `queryKey` is the same one the
+ * Mesh tab uses: one fetch serves both.
  */
-export function useMeshPeers(enabled: boolean) {
+export function useMeshPeers(
+	enabled: boolean,
+	{ poll = true }: { poll?: boolean } = {},
+) {
 	return useQuery({
 		queryKey: meshKeys.peers,
 		enabled,
 		queryFn: async () =>
 			peerList(await desktopResult<unknown>({ op: "peers.list" })),
 		retry: false,
-		staleTime: 10_000,
-		refetchInterval: enabled ? MESH_POLL_MS : false,
+		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
+		refetchInterval: enabled && poll ? MESH_POLL_MS : false,
+		refetchOnWindowFocus: poll,
 	});
 }
 
