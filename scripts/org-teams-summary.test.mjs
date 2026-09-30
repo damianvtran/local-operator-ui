@@ -184,6 +184,59 @@ test("recency: updated_at only, honest fallbacks, no lies", () => {
 	}
 });
 
+test("recency is measured against the given clock, never the wall clock", () => {
+	/*
+	 * M1 (agent review round 1). The distance used to come from
+	 * `formatDistanceToNowStrict`, which reads the REAL clock, so the fixture's
+	 * synthetic `now` governed only the label and the branch: the assertion above
+	 * held until wall time crossed the half-day rounding boundary - measured, 13/13
+	 * at 20:47Z and 12/13 at 20:53Z on 2026-09-30 - and the suite then failed for
+	 * every run after that, by the calendar rather than by a change.
+	 *
+	 * The pair below is a decade from any plausible wall clock, so this cannot
+	 * regress into a passing test on some future date: under the old code the
+	 * distance was ~3,650 days.
+	 */
+	const dated = team({ updated_at: "2030-01-01T09:00:00.000Z" });
+	assert.equal(
+		lib.teamRecency(dated, Date.parse("2030-01-04T12:00:00.000Z")).when,
+		"3 days ago",
+		"the given clock decides the distance",
+	);
+	/* Both sides of the half-day boundary the rounding turns on. */
+	const boundary = team({ updated_at: "2026-09-27T09:00:00.000Z" });
+	assert.equal(
+		lib.teamRecency(boundary, Date.parse("2026-09-30T20:00:00.000Z")).when,
+		"3 days ago",
+		"3 days 11 hours rounds down",
+	);
+	assert.equal(
+		lib.teamRecency(boundary, Date.parse("2026-09-30T22:00:00.000Z")).when,
+		"4 days ago",
+		"3 days 13 hours rounds up",
+	);
+});
+
+test("the announcement is bounded at rest and whole once the row is open", () => {
+	const long = "x".repeat(3_000);
+	assert.equal(
+		lib.announcedDescription(long, false).length,
+		lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
+		"a resting row announces the clamped lines, not the whole string",
+	);
+	assert.ok(lib.announcedDescription(long, false).endsWith("…"), "and says so");
+	assert.equal(
+		lib.announcedDescription(long, true),
+		long,
+		"opening a row is the reader asking for the whole text",
+	);
+	assert.equal(
+		lib.announcedDescription("short", false),
+		"short",
+		"a short description is announced as written",
+	);
+});
+
 test("exact dates for the expanded body come from the stored fields", () => {
 	const dates = lib.teamDates(
 		team({
@@ -307,6 +360,14 @@ const click = async (dom, element) => {
 	});
 };
 
+/** A team whose description is far past the expanded ceiling (row (f) of the fixture). */
+const longTeam = () =>
+	team({
+		id: "long",
+		name: "Regulatory watch",
+		description:
+			"This team keeps a running brief of every regulatory change. ".repeat(60),
+	});
 const ROSTER = [
 	team({ id: "a", name: "Alpha", description: "Alpha does the first thing." }),
 	team({
@@ -321,6 +382,16 @@ const ROSTER = [
 		updated_at: "",
 		created_date: "",
 	}),
+	/*
+	 * A manager and no members, with dates: the row where the expanded body must
+	 * NOT repeat L3's `No members` (agent review round 1, U8).
+	 */
+	team({
+		id: "c",
+		name: "Charlie",
+		manager: "desk-lead",
+		members: [],
+	}),
 ];
 
 test("each row is one disclosure, Pull is its sibling, and the name carries the description", async () => {
@@ -329,7 +400,7 @@ test("each row is one disclosure, Pull is its sibling, and the name carries the 
 		const rows = [
 			...document.querySelectorAll('[data-testid="org-teams"] > ul > li'),
 		];
-		assert.equal(rows.length, 2);
+		assert.equal(rows.length, 3);
 		for (const row of rows) {
 			const triggers = row.querySelectorAll("button[aria-expanded]");
 			assert.equal(
@@ -347,7 +418,31 @@ test("each row is one disclosure, Pull is its sibling, and the name carries the 
 			assert.ok(pull, "Pull is present");
 			assert.equal(triggers[0].contains(pull), false, "Pull is a sibling");
 		}
-		const name = rows[0].querySelector("button[aria-expanded]").textContent;
+		/*
+		 * The accessible name, computed the one way jsdom can: the trigger's text
+		 * with `aria-hidden` subtrees removed - which is what a browser does for a
+		 * name built from content. M2 (agent review round 1): the separator commas
+		 * ARE the pause the hidden dots stood for, and deleting them left the suite
+		 * green, so they are asserted here rather than described.
+		 */
+		const accessibleName = (button) => {
+			const clone = button.cloneNode(true);
+			for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
+				hidden.remove();
+			}
+			return clone.textContent;
+		};
+		const name = accessibleName(rows[0].querySelector("button[aria-expanded]"));
+		assert.match(
+			name,
+			/Manager:\s*lead-screener\s*,\s*4 members/,
+			"the composition join is audible",
+		);
+		assert.match(
+			name,
+			/Ana Perez\s*,\s*updated \d+ days ago/,
+			"and so is the provenance join",
+		);
 		assert.match(name, /Alpha/);
 		assert.match(name, /v1\.2\.0/);
 		assert.match(
@@ -439,6 +534,16 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 		assert.match(description.className, /whitespace-pre-line/);
 		assert.doesNotMatch(description.className, /line-clamp-2/);
 
+		/*
+		 * U8/D2 (design + UX round 1): the body is a BLOCK with its own statement,
+		 * not a fifth summary line - a label, and the roster under it.
+		 */
+		assert.match(
+			panel.textContent,
+			/^Members/,
+			"the opened body opens with its label",
+		);
+
 		// A second row opens WITHOUT closing the first.
 		await click(dom, second);
 		assert.equal(first.getAttribute("aria-expanded"), "true");
@@ -446,7 +551,72 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 		assert.match(
 			document.getElementById(second.getAttribute("aria-controls")).textContent,
 			/No members/,
+			"the row with no roster AND no dates keeps the line: the chevron must not open onto nothing",
 		);
+
+		/*
+		 * U8: the row that has a manager and no members does NOT repeat L3's
+		 * `No members` - its body carries the manager and the dates instead.
+		 */
+		const third = rows[2].querySelector("button[aria-expanded]");
+		await click(dom, third);
+		const thirdPanel = document.getElementById(
+			third.getAttribute("aria-controls"),
+		);
+		assert.match(thirdPanel.textContent, /desk-lead\s*Manager/);
+		assert.doesNotMatch(
+			thirdPanel.textContent,
+			/No members/,
+			"L3 already says it; the body does not repeat it",
+		);
+		assert.match(thirdPanel.textContent, /Created \d+ \w+ \d{4}/);
+
+		/*
+		 * D1: a member name is `ink-muted`, so it does not outshout the description
+		 * it belongs to. `text-ink` here was the defect.
+		 */
+		for (const line of thirdPanel.querySelectorAll("li > span:first-child")) {
+			assert.match(
+				line.className,
+				/text-ink-muted/,
+				`a member line is muted ink - ${line.className}`,
+			);
+			assert.doesNotMatch(line.className, /(^|\s|-)text-ink(\s|$)/);
+		}
+
+		/*
+		 * U5: the description is the row's SELECTABLE text, so a drag across it to
+		 * copy does not toggle the row (the primitive's drag guard reads the marker).
+		 */
+		const selectable = first.querySelector(".break-words");
+		assert.ok(selectable.hasAttribute("data-text-surface"));
+		assert.match(selectable.className, /select-text/);
+
+		/*
+		 * U6: the announcement is bounded at rest. The visible element carries the
+		 * whole 3,000-character string; the sr-only copy the name reads is 240.
+		 */
+		const long = longTeam();
+		assert.ok(long.description.length > 3_000);
+		const { document: longDoc, teardown: longTeardown } = await mountRoster([
+			long,
+		]);
+		try {
+			const trigger = longDoc.querySelector(
+				'[data-testid="org-teams"] button[aria-expanded]',
+			);
+			const srOnly = trigger.querySelector(".sr-only");
+			assert.ok(
+				srOnly.textContent.length <= lib.DESCRIPTION_ANNOUNCE_CHARS + 1,
+				`the resting announcement is bounded - ${srOnly.textContent.length}`,
+			);
+			assert.ok(
+				trigger.querySelector(".break-words").textContent.length > 3_000,
+				"while the visible element still carries the whole text",
+			);
+		} finally {
+			await longTeardown();
+		}
 
 		// Escape from the trigger, and from Pull, closes to the trigger.
 		first.focus();

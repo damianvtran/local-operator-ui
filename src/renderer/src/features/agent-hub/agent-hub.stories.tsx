@@ -1108,6 +1108,53 @@ const VARIED_TEAMS = [
 		created_date: ago(300),
 		updated_at: ago(60),
 	},
+	/*
+	 * (g)-(i): the three recency and composition arms that are rules rather than
+	 * data - a manager with no roster (L3 says `No members`, the opened body must
+	 * not repeat it), a stamp in the FUTURE (clock skew: an absolute date, never
+	 * "-2 days ago"), and an unusable `updated_at` with a usable creation date (the
+	 * label changes to `created`). Each is a rendering no other row can show.
+	 */
+	{
+		id: "team-varied-g",
+		name: "Watch lead, no roster",
+		description:
+			"Owns the escalation path and fills the roster in per engagement.",
+		manager: "watch-lead",
+		project: "Operations",
+		version: "0.9.0",
+		members: [],
+		account_metadata: { name: "Dana Whitfield", email: "dana@example.com" },
+		created_date: ago(30),
+		updated_at: ago(6),
+	},
+	{
+		id: "team-varied-h",
+		name: "Ahead of its time",
+		description: "Dated from a machine whose clock runs fast; the row says so.",
+		manager: "timekeeper",
+		project: "Lab",
+		version: "1.0.0",
+		members: [{ role: "analyst", kind: "role", count: 1 }],
+		account_metadata: { name: "Priya Raman", email: "priya@example.com" },
+		created_date: ago(14),
+		// A future stamp: 20 days ahead of now.
+		updated_at: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+	},
+	{
+		id: "team-varied-i",
+		name: "Only a creation date",
+		description:
+			"Published once and never touched since; the row says created, not updated.",
+		manager: "archivist",
+		project: "Records",
+		version: "1.0.0",
+		members: [{ role: "archivist", kind: "specialist", count: 1 }],
+		account_metadata: { name: "Sam Okonkwo", email: "sam@example.com" },
+		created_date: ago(80),
+		// Unusable: the line falls back to `created` and says so.
+		updated_at: "not a date",
+	},
 ];
 
 /**
@@ -1305,7 +1352,7 @@ export const OrgTeamsVaried: Story = {
 		});
 		holdShutter(
 			'[data-testid="agent-hub-status"]',
-			"6 teams shared with Minerva",
+			"9 teams shared with Minerva",
 		);
 		return <AgentHubPage />;
 	},
@@ -1315,7 +1362,7 @@ export const OrgTeamsVaried: Story = {
 		await screen.findByTestId("org-teams");
 		await waitFor(() =>
 			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
-				"6 teams shared with Minerva",
+				"9 teams shared with Minerva",
 			),
 		);
 	},
@@ -1339,8 +1386,13 @@ export const OrgTeamsExpanded: Story = {
 			orgAgents: ORG_AGENT_COUNT,
 			teams: VARIED_TEAMS,
 		});
-		// The LAST row of the three the play opens: by the time it is expanded the
-		// other two are, so the shutter cannot open on a half-played frame.
+		/*
+		 * The LAST row the play opens, by its own position in the fixture
+		 * (`VARIED_TEAMS[5]` is the sixth `<li>`): by the time IT is expanded the
+		 * other two are, so the shutter cannot open on a half-played frame. A
+		 * `querySelector` for any expanded trigger would match row (b) first and the
+		 * latch would never see the third row open.
+		 */
 		holdShutter(
 			'[data-testid="org-teams"] > ul > li:nth-child(6) button[aria-expanded="true"]',
 		);
