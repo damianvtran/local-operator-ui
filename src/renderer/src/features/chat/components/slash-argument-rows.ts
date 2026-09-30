@@ -471,6 +471,15 @@ type ProfileEntity = {
 	description?: unknown;
 	kind?: unknown;
 	members?: unknown;
+	/**
+	 * A team's free-text display name, when the row carries one. Typed here
+	 * though only `team` rows use it: the same `commands.entities` payload
+	 * serves `/agent`, and a row without a label reads exactly as before.
+	 */
+	label?: unknown;
+	/** Extra TUI-safe keys a team resolves under. Not read here - addressing
+	 * stays on `value` - but the type states the wire shape in one place. */
+	aliases?: unknown;
 };
 
 type ValueEntity = { value?: unknown };
@@ -649,9 +658,28 @@ export function argumentRows(
 			return entities.map((raw) => {
 				const row = raw as ProfileEntity;
 				const value = asText(row.value) || asText(row.name);
+				const label = asText(row.label);
+				/*
+				 * THE DISPLAY PREFERS THE LABEL, THE VALUE STAYS THE SLUG.
+				 *
+				 * `label || name` is the app's one rule for a team's readable name
+				 * (`teamDisplayName` states it); `value` - what a pick WRITES and a run
+				 * SENDS through `completionFor` - is untouched, so a row that shows
+				 * "Local Operator Dev" still inserts `lopdev`.
+				 *
+				 * The slug is REPUBLISHED AS AN ALIAS whenever the label takes the
+				 * display slot, because `matchChoices` scores against name AND
+				 * aliases but displays `name`: without the alias, the team's actual
+				 * key would stop finding the row the moment the row started showing
+				 * its label, and a user who learned the key from every other surface
+				 * (`/team lopdev`, bindings, the agents route) would be told nothing
+				 * matches. An alias buys RANK and never rewrites what the row writes.
+				 */
+				const name = label || asText(row.name) || value;
 				return {
 					value,
-					name: asText(row.name) || value,
+					name,
+					aliases: label && name !== value ? [value] : undefined,
 					description: asText(row.description),
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A

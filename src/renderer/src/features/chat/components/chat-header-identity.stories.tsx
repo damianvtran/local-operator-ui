@@ -122,9 +122,16 @@ const SEEDED_RECENTS = {
 
 const SESSION = "2d5ad5da0025";
 
+/**
+ * One LABELLED team and one plain slug, so the frames cover the control's
+ * label-first reading and the fallback a label-less backend produces. Rows the
+ * gate resolves: `teams.list` and the same catalogue over `commands.entities`
+ * (the menu), both carrying `label` where there is one.
+ */
 const TEAMS = [
 	{
 		name: "lopdev",
+		label: "Local Operator Dev",
 		manager: "manager",
 		description: "Builds and ships local-operator itself.",
 	},

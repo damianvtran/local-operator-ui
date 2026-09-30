@@ -16,6 +16,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -1244,6 +1245,24 @@ export function ChatSidebar({
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
+	/*
+	 * THE TEAM LABEL LOOKUP, built from the catalogue this component already
+	 * fetches and read by every surface that carries only a binding's SLUG: the
+	 * session rows' `· <team>` slot, the row flyout's binding clause, and the
+	 * Teams section's own entity rows. A slug the catalogue cannot resolve - the
+	 * gate is off, the list is still landing, the team was deleted - reads as
+	 * the slug itself, which is exactly the pixels those surfaces drew before
+	 * labels existed, so nothing here can blank a name.
+	 */
+	const teamLabels = useMemo(
+		() =>
+			new Map(
+				(teams.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+			),
+		[teams.data],
+	);
+	/** A team slug as a person reads it: its label, or the slug itself. */
+	const teamLabelFor = (name: string) => teamLabels.get(name) ?? name;
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
@@ -3351,6 +3370,20 @@ export function ChatSidebar({
 	 */
 	const teamName = (row: CanonicalSessionRow) => row.binding?.team ?? "";
 	/*
+	 * THE BINDING AS A READER SAYS IT, for the two human channels the binding
+	 * reaches (the row's `· <binding>` slot and the flyout's `(...)` clause): a
+	 * TEAM binding resolves through the label lookup, an agent name passes
+	 * through untouched. Deliberately a SIBLING of `bindingName` rather than a
+	 * change to it - `bindingName` is also what `rowTrailingStatement` and the
+	 * stutter rule read to DECIDE, and decisions stay on the slug; only what the
+	 * pixels and the flyout SAY changes.
+	 */
+	const bindingDisplayName = (row: CanonicalSessionRow) => {
+		const team = row.binding?.team;
+		if (team) return teamLabelFor(team);
+		return row.binding?.agent ?? "";
+	};
+	/*
 	 * Who opened a conversation, when an AGENT did rather than the operator.
 	 *
 	 * Read from the PRESENCE of `opened_by`, never from the members inside it: the
@@ -3430,7 +3463,12 @@ export function ChatSidebar({
 		const name = bindingName(row);
 		if (!name) return "";
 		if (row.opened_by?.agent?.trim() === name) return "";
-		return ` (${name})`;
+		/*
+		 * The drawn value is the READER's: a team binding reads as its label. The
+		 * stutter test above stays on the raw slug, because it asks whether the
+		 * attribution names the same profile - a decision, not a rendering.
+		 */
+		return ` (${bindingDisplayName(row)})`;
 	};
 	/*
 	 * The two states the box can be in while it has no answer, and why they are
@@ -4034,7 +4072,7 @@ export function ChatSidebar({
 					   marker used to speak for still says ", opened by coder" — and a
 					   marked or unstarted one reads exactly as before. */
 					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {teamName(row)}
+						· {teamLabelFor(teamName(row))}
 					</span>
 				)}
 				{trailing === "binding" && (
@@ -4051,7 +4089,7 @@ export function ChatSidebar({
 					   two literals are `shrink-0`: they cannot grow, so they cannot
 					   starve anything. */
 					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingName(row)}
+						· {bindingDisplayName(row)}
 					</span>
 				)}
 				{trailing === "not_sent" && (
@@ -5343,6 +5381,13 @@ export function ChatSidebar({
 	const entity = (kind: ChatTarget["kind"], name: string) => {
 		const rows = scopeRows(kind, name);
 		const key = catalogueScopeKey(kind, name);
+		/*
+		 * THE NAME A PERSON READS, beside the slug every lookup in this function
+		 * addresses. Teams resolve through the catalogue's label lookup; agents
+		 * render unchanged (labels are a team field). The staging press, the
+		 * agents-route URL and every scope key below keep reading `name`.
+		 */
+		const displayName = kind === "team" ? teamLabelFor(name) : name;
 		const open = Boolean(query) || isOpen(key);
 		/*
 		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
@@ -5447,9 +5492,12 @@ export function ChatSidebar({
 				pressShowMore(kind, name, key, held, view.addCount);
 			}
 		};
+		/* The query may name the slug a power user knows or the label a reader
+		   sees; either keeps the group its rows belong to. */
 		if (
 			query &&
 			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
+			!displayName.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
 			!rows.length
 		)
 			return null;
@@ -5478,7 +5526,7 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
-						aria-label={`${open ? "Collapse" : "Expand"} ${name} chats`}
+						aria-label={`${open ? "Collapse" : "Expand"} ${displayName} chats`}
 						aria-expanded={open}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -5538,11 +5586,11 @@ export function ChatSidebar({
 						// not using AT. It duplicates the accessible name for screen
 						// reader users, which is redundant but not announced twice —
 						// `aria-label` wins and `title` is ignored as a naming source.
-						aria-label={`New chat with ${name}`}
-						title={`New chat with ${name}`}
+						aria-label={`New chat with ${displayName}`}
+						title={`New chat with ${displayName}`}
 					>
 						<Icon className="size-4 shrink-0" />
-						<span className="min-w-0 flex-1 truncate">{name}</span>
+						<span className="min-w-0 flex-1 truncate">{displayName}</span>
 						<MessageSquarePlus
 							className={cn(
 								// `ink`, not `ink-muted`: this glyph names what the row
@@ -5599,7 +5647,7 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
 							!staged && "hover:bg-row-hover",
 						)}
-						aria-label={`Manage ${name}`}
+						aria-label={`Manage ${displayName}`}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
 						}
@@ -5787,8 +5835,8 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${name}`}
-									title={`${foot.aria} in ${name}`}
+									aria-label={`${foot.aria} in ${displayName}`}
+									title={`${foot.aria} in ${displayName}`}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>

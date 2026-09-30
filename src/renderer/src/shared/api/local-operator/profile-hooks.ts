@@ -39,7 +39,31 @@ export type TeamMember = {
 };
 export type ReusableTeam = {
 	id: string;
+	/**
+	 * The team's TUI-safe slug: the key EVERY surface addresses it by (`/team`
+	 * arguments, session bindings, catalogue keys, the agents route). Never
+	 * replaced by the label below - aliases may add more keys, but this one is
+	 * the name the wire and the terminal share.
+	 */
 	name: string;
+	/**
+	 * A free-text name a person reads, spaces allowed.
+	 *
+	 * ADDITIVE and optional: a backend that predates the label omits it, and
+	 * every reader falls back to `name` (`teamDisplayName` in
+	 * `team-display.ts` states the rule once). LOCAL display metadata - it does
+	 * not ride the hub publish wire, and nothing a request carries may be the
+	 * label when a name is expected.
+	 */
+	label?: string;
+	/**
+	 * Extra TUI-safe keys that resolve to this team, beside `name`.
+	 *
+	 * Optional for the same compatibility reason as `label`. The renderer keeps
+	 * them typed so a row carrying them round-trips unchanged; addressing in
+	 * this app stays on `name` (the backend is what resolves an alias).
+	 */
+	aliases?: string[];
 	description: string;
 	manager: string;
 	members: TeamMember[];

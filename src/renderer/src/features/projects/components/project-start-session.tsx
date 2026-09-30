@@ -23,6 +23,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -111,7 +112,13 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 		for (const team of teams.data ?? []) {
 			rows.push({
 				id: teamOptionId(team.name),
-				name: team.name,
+				/*
+				 * The READABLE name; the id above stays `teamOptionId(team.name)`,
+				 * so a pick parses back to the slug `sessions.create` is sent.
+				 * `SearchableOption.name` is also what the filter matches against,
+				 * which is why the label belongs here rather than beside it.
+				 */
+				name: teamDisplayName(team),
 				description: `Team · manager: ${team.manager}`,
 				group: "Teams",
 			});
