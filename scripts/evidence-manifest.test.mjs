@@ -2265,15 +2265,17 @@ const BRANCH_RECORDS = [
 	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote`, `sidebarLoadMoreFoldTwoNote`,
 	 * `sidebarLoadMoreFoldThreeNote`, `sidebarLoadMoreFoldFourNote`,
 	 * `sidebarLoadMoreFoldFiveNote`, `sidebarLoadMoreFoldSixNote`,
-	 * `sidebarLoadMoreFoldSevenNote` and `sidebarLoadMoreFoldEightNote` are the
-	 * folds `feat/sidebar-load-more` made while open - the second folded a #557
+	 * `sidebarLoadMoreFoldSevenNote`, `sidebarLoadMoreFoldEightNote` and
+	 * `sidebarLoadMoreFoldNineNote` are the folds `feat/sidebar-load-more` made
+	 * while open - the second folded a #557
 	 * that had already folded itself onto the same base as the first, the third
 	 * folded #655's closed-dispose train, the fourth the 0.31.22 release over
 	 * #554's condensed-group images, the fifth #560's install-provisioning
 	 * resilience over the settings-rail fold train, the sixth the landing
 	 * fold (#699's board time window over the #698/#695/#662/#700 trains, this
 	 * branch's fold to mergeable), the seventh #697's pinned-order drag,
-	 * which landed minutes later, and the eighth #702's loader walk. The notes name each manifest resolution and
+	 * which landed minutes later, the eighth #702's loader walk, and the
+	 * ninth #701's row context menu. The notes name each manifest resolution and
 	 * re-derivation, including the one semantic conflict (both lanes fixing the
 	 * collapsed-section gap in parallel, resolved to one tested mechanism).
 	 * Registered here because a fold resolved by a resolver starting from main's
@@ -2287,6 +2289,7 @@ const BRANCH_RECORDS = [
 	"sidebarLoadMoreFoldSixNote",
 	"sidebarLoadMoreFoldSevenNote",
 	"sidebarLoadMoreFoldEightNote",
+	"sidebarLoadMoreFoldNineNote",
 	/*
 	 * Grown by the monitors CONTROLS pass (2026-09-29, slice 4b-ui B), this
 	 * branch's newest top-level record and the sibling of the entry above: it
