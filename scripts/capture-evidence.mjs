@@ -1176,6 +1176,36 @@ export const STORIES = [
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
 	/*
+	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
+	 * the agent wrote into an answer rendered with its short columns squeezed
+	 * to a few pixels - the reported cells `#684 (1a)` and `MERGED f11952f1d2`
+	 * wrapped mid-token - while the long prose column beside them took the
+	 * width. Five fixture shapes from `markdown-tables.stories.tsx`: the reported
+	 * table over real pull requests, a 400+ character cell, unbreakable tokens
+	 * (a full 40-character sha, a deep link, a long path), seven mixed columns,
+	 * and a two-row control. Three of the five shapes are also captured at 920
+	 * wide - the narrow rung the agent-hub frames use - so the set carries them
+	 * at a comfort window and at a narrow one; both widths resolve the same 810px
+	 * chat measure, so the pair differs in margins rather than in the table's own
+	 * box (MEASUREMENTS.md in the before half carries the reading).
+	 *
+	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
+	 * `../chat-markdown-tables-before/`: captured FIRST from this same tree,
+	 * with the fix not yet written and the story's title temporarily suffixed
+	 * `before` for that run, so the ids land in their own surface directory -
+	 * then the title and the temporary rows were restored. These rows are the
+	 * AFTER half the later fix's own capture writes `docs/evidence/
+	 * chat-markdown-tables/` with.
+	 */
+	["chat-markdown-tables--operator-shape", 1280, 900],
+	["chat-markdown-tables--long-prose", 1280, 900],
+	["chat-markdown-tables--long-tokens", 1280, 900],
+	["chat-markdown-tables--many-columns", 1280, 900],
+	["chat-markdown-tables--few-rows", 1280, 900],
+	["chat-markdown-tables--operator-shape", 920, 900],
+	["chat-markdown-tables--long-tokens", 920, 900],
+	["chat-markdown-tables--many-columns", 920, 900],
+	/*
 	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
 	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
 	 * stay literal with its bold intact, pandoc's own `$20,000 and $30,000`
