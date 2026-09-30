@@ -21,7 +21,7 @@ named in prose there rather than photographed from the dead component (the memo
 rules that out).
 
 **How they were taken.** `scripts/capture-evidence.mjs` against Storybook on
-:6077, with the change reverted in the working tree — `git checkout --
+:6077, with the change reverted in the working tree — `git checkout origin/main --
 src/renderer/src/features/chat/canonical/canonical-transcript.tsx`, and the row's
 own module and component moved out of `src/` entirely. The story file's title was
 suffixed `before` for that one run (with matching temporary `STORIES` rows, both
@@ -38,6 +38,17 @@ node scripts/capture-evidence.mjs http://127.0.0.1:6077 \
 48 frames: eight states in six themes. `--allow-backend` for the same reason the
 after run takes it (the operator's live daemon must not be stopped, and these
 fixtures never contact it).
+
+**Re-taken once, on the fold, and why.** Five of the eight states (`streaming`,
+`multi-answer`, `short-answer`, `refused`, `truncated`) were re-shot on the folded
+tree: the AFTER half had been re-captured when their fixtures were reworked and
+this half had not, so those five pairs were pictures of two different fixtures (the
+old `streaming` frame painted an in-flight bar the after frame no longer has, and
+three tightened states were framed taller here than there). The other three
+(`rest`, `bar-suppressed`, `narrow`, 18 frames) came back **byte-identical** on the
+folded tree — which is also the answer to the fold's own question, since main moved
+`canonical-transcript.tsx`, `transcript-reducer.ts` and the scroll pager between
+this branch's base and the fold: none of it draws anything this set photographs.
 
 ## The measured rail, on the same terms as the after set
 
