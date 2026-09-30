@@ -313,10 +313,13 @@ export const KeptMineAndEditorReseeded: Story = {
 		await screen.findByText(
 			/Where the hub and your copy differed, yours was kept/,
 		);
-		await waitFor(() => {
-			const box = screen.getByLabelText("Instructions") as HTMLTextAreaElement;
-			expect(box.value).toContain("Cite them.");
-		});
+		/*
+		 * THE MERGED TEXT, WHERE A READER SEES IT. The agents-config redesign moved
+		 * the fields behind Edit and renders the definition as prose until then, so
+		 * the re-seeded pane is asserted in read mode - the remount is what R1 is
+		 * about, and the text on screen is what proves it happened.
+		 */
+		await waitFor(() => expect(screen.getByText(/Cite them\./)).toBeTruthy());
 	},
 };
 
@@ -353,12 +356,9 @@ export const UpdateUnderAnOpenEditor: Story = {
 			await screen.findByRole("button", { name: "Update from the hub" }),
 		);
 		await screen.findByText(/Edits you had not saved were replaced/);
-		await waitFor(() => {
-			const merged = screen.getByLabelText(
-				"Instructions",
-			) as HTMLTextAreaElement;
-			expect(merged.value).toContain("Cite them.");
-		});
+		// ...and the pane below now shows the MERGED definition (read mode, because
+		// the remount re-seeds it; see `kept-mine-and-editor-reseeded`).
+		await waitFor(() => expect(screen.getByText(/Cite them\./)).toBeTruthy());
 	},
 };
 

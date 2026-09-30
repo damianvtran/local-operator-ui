@@ -545,11 +545,27 @@ test("without a hub item nothing renders, and the sidebar has ONE action store (
 	assert.match(hooks, /useHubActionStore/);
 });
 
-test("the detail editors re-seed when the fetched definition changes (R1)", () => {
+test("the detail panes re-seed when the fetched definition changes (R1)", () => {
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	assert.match(page, /contentKey\(detail\.data\)/);
+	/*
+	 * The panes are keyed by the record AND its fetched content. Only the two
+	 * detail panes use a template key (the create panes are keyed by the literal
+	 * `agent:create` / `team:create`), so this is exactly the pair.
+	 */
+	const keys = page.match(/key=\{`(agent|team):[^`]*`\}/g) ?? [];
+	assert.equal(
+		keys.length,
+		2,
+		"the two detail panes must be the template-keyed ones",
+	);
+	for (const key of keys)
+		assert.match(
+			key,
+			/contentKey\(/,
+			`a detail pane is not keyed by its content: ${key}`,
+		);
 });
 
 /*
@@ -565,23 +581,23 @@ test("the replaced-edit notice keeps its wiring, its condition and its scope (R2
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	// Both editors expose the report, and every mount site passes it up.
+	/*
+	 * The dirty flag the notice reads must be fed by every pane (the panes report
+	 * through `reportDirty`, which the page scopes by pane identity), and the
+	 * notice itself must stay conditional on it - a merged definition under a CLEAN
+	 * pane is silence, not a notice.
+	 */
 	assert.equal(
-		(page.match(/onDirty: \(dirty: boolean\) => void;/g) ?? []).length,
-		2,
-		"both editors must expose their unsaved state",
-	);
-	assert.equal(
-		(page.match(/onDirty=\{onEditorDirty\}/g) ?? []).length,
+		(page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length,
 		4,
-		"every editor mount site must pass the report up",
+		"every detail pane must report its unsaved state",
 	);
-	// The notice fires only for a hub-driven content change under a dirty editor.
-	assert.match(page, /if \(dirtyRef\.current\) setLostEdits\(true\);/);
-	// ...and a change of IDENTITY re-seeds and clears it instead of comparing.
-	assert.match(page, /if \(seededIdentity\.current !== identity\)/);
+	assert.match(page, /if \(editDirty\) setLostEdits\(true\);/);
+	// ...and a change of IDENTITY adopts the new record and clears the notice
+	// instead of comparing two definitions against each other (N1).
+	assert.match(page, /if \(seededPane\.current\.identity !== openIdentity\)/);
 	assert.match(
 		page,
-		/if \(seededIdentity\.current !== identity\) \{[\s\S]{0,300}?setLostEdits\(false\);/,
+		/if \(seededPane\.current\.identity !== openIdentity\) \{[\s\S]{0,400}?setLostEdits\(false\);/,
 	);
 });

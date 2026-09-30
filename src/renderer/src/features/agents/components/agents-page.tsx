@@ -58,28 +58,13 @@ import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import { cn } from "@shared/lib/utils";
-<<<<<<< HEAD
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Plus, Users } from "lucide-react";
-import {
-	type FormEvent,
-=======
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Users } from "lucide-react";
 import {
->>>>>>> origin/main
 	Suspense,
 	lazy,
 	useCallback,
 	useEffect,
-<<<<<<< HEAD
-	useRef,
-	useState,
-} from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { HubUpdatePanel } from "./hub-update-panel";
-=======
 	useMemo,
 	useRef,
 	useState,
@@ -95,8 +80,8 @@ import {
 	RosterSkeleton,
 	SourceChip,
 } from "./detail-parts";
+import { HubUpdatePanel } from "./hub-update-panel";
 import { TeamDetail } from "./team-detail";
->>>>>>> origin/main
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
 // Loading them explicitly preserves compatibility without contaminating the
@@ -107,584 +92,6 @@ const LegacyAgentsPage = lazy(() =>
 	})),
 );
 
-<<<<<<< HEAD
-/**
- * A key that changes when the FETCHED definition changes, and only then.
- *
- * Both editors seed every field once from their prop, so a hub update that rewrote
- * the definition under a mounted editor left the OLD text on screen, and Edit -
- * Save wrote it back over the merge (agent review round 1, R1; reproduced in the
- * UX walk). Keying on the content re-seeds them - the same remedy `install()`
- * applies by hand - while an unrelated refetch (window focus) returns identical
- * content, the same key, and no remount, so an edit in progress survives it.
- */
-const contentKey = (value: unknown) => {
-	const text = JSON.stringify(value) ?? "";
-	let hash = 5381;
-	for (let index = 0; index < text.length; index += 1)
-		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
-	return `${text.length}.${hash.toString(36)}`;
-};
-
-function ProfileEditor({
-	profile,
-	creating,
-	onSaved,
-	onDirty,
-}: {
-	profile?: ReusableProfile;
-	creating: boolean;
-	onSaved: (name: string) => void;
-	/** Whether this form holds edits the person has not saved (agent review round 2, R2-5). */
-	onDirty: (dirty: boolean) => void;
-}) {
-	const [extending, setExtending] = useState(false);
-	const [editing, setEditing] = useState(creating);
-	const [name, setName] = useState(profile?.name ?? "");
-	const [kind, setKind] = useState<"role" | "specialist">(
-		profile?.kind ?? "role",
-	);
-	const [description, setDescription] = useState(profile?.description ?? "");
-	const [instructions, setInstructions] = useState(profile?.instructions ?? "");
-	const [tools, setTools] = useState(profile?.tools?.join(", ") ?? "");
-	const [effort, setEffort] = useState(profile?.effort ?? "inherit");
-	const [delegate, setDelegate] = useState(profile?.delegate ?? false);
-	const [pending, setPending] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const request = useRef<{ id: string; body: string } | null>(null);
-	const navigate = useNavigate();
-	const fresh = creating || extending;
-	/*
-	 * WHAT IS ON SCREEN VERSUS WHAT WAS SEEDED. The page needs this to say that a
-	 * hub merge which re-seeded the form replaced in-flight edits, rather than
-	 * letting the key change discard them silently (agent review round 2, R2-5).
-	 */
-	const seeded = profile
-		? {
-				name: profile.name,
-				kind: profile.kind,
-				description: profile.description ?? "",
-				instructions: profile.instructions ?? "",
-				tools: profile.tools?.join(", ") ?? "",
-				effort: profile.effort ?? "inherit",
-				delegate: profile.delegate ?? false,
-			}
-		: null;
-	const dirty =
-		editing &&
-		JSON.stringify({
-			name,
-			kind,
-			description,
-			instructions,
-			tools,
-			effort,
-			delegate,
-		}) !==
-			JSON.stringify(
-				seeded ?? {
-					name: "",
-					kind: "role",
-					description: "",
-					instructions: "",
-					tools: "",
-					effort: "inherit",
-					delegate: false,
-				},
-			);
-	useEffect(() => onDirty(dirty), [dirty, onDirty]);
-	const save = async (event: FormEvent) => {
-		event.preventDefault();
-		if (pending) return;
-		const fields = {
-			kind,
-			description,
-			instructions,
-			tools: tools
-				.split(",")
-				.map((value) => value.trim())
-				.filter(Boolean),
-			effort,
-			delegate,
-		};
-		const body = JSON.stringify({ name, fields, fresh });
-		if (request.current && request.current.body !== body) {
-			setError(
-				"The previous save has not been confirmed. Retry it unchanged or reload the profile to reconcile before editing again.",
-			);
-			return;
-		}
-		request.current ??= { id: crypto.randomUUID(), body };
-		setPending(true);
-		setError(null);
-		try {
-			const result = await desktopResult<ReusableProfile>({
-				op: fresh ? "profiles.create" : "profiles.update",
-				requestId: request.current.id,
-				name,
-				fields,
-			});
-			request.current = null;
-			setEditing(false);
-			onSaved(result.name);
-		} catch (error) {
-			setError(
-				error instanceof Error ? error.message : "Profile could not be saved.",
-			);
-		} finally {
-			setPending(false);
-		}
-	};
-	const install = async () => {
-		if (!profile || pending) return;
-		setPending(true);
-		setError(null);
-		try {
-			const result = await desktopResult<ReusableProfile>({
-				op: "profiles.install",
-				name: profile.name,
-				requestId: crypto.randomUUID(),
-			});
-			// Install is idempotent and is NOT a restore of whatever is on screen.
-			// The form was seeded from the BUILTIN, and installing does not change
-			// the name, so without re-seeding from the authoritative result an Edit
-			// would start from stale text and Save would overwrite the installed
-			// role's real instructions.
-			setEditing(false);
-			setExtending(false);
-			request.current = null;
-			setName(result.name);
-			setKind(result.kind);
-			setDescription(result.description ?? "");
-			setInstructions(result.instructions ?? "");
-			setTools(result.tools?.join(", ") ?? "");
-			setEffort(result.effort ?? "inherit");
-			setDelegate(result.delegate ?? false);
-			onSaved(result.name);
-		} catch (error) {
-			setError(
-				error instanceof Error
-					? error.message
-					: "Profile could not be installed.",
-			);
-		} finally {
-			setPending(false);
-		}
-	};
-	return (
-		<div className="max-w-3xl space-y-6">
-			<header>
-				<h1 className="text-title">
-					{fresh
-						? extending
-							? "Extend agent"
-							: "Create agent"
-						: profile?.name}
-				</h1>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					Reusable instructions shared by agent commands, subagents and teams.
-					Chats remain separate.
-				</p>
-			</header>
-			{profile && !fresh && (
-				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-meta text-ink-muted">
-						{profile.source === "builtin"
-							? "Built-in"
-							: profile.source === "installed"
-								? "Installed"
-								: "Custom"}
-						{profile.divergent_fields?.length ? " · Modified" : ""} ·{" "}
-						{profile.kind}
-					</span>
-					{profile.source === "builtin" ? (
-						<Button variant="outline" onClick={install} disabled={pending}>
-							Install
-						</Button>
-					) : (
-						<Button variant="outline" onClick={() => setEditing(true)}>
-							Edit
-						</Button>
-					)}
-					<Button
-						variant="outline"
-						onClick={() => {
-							setExtending(true);
-							setEditing(true);
-							setName("");
-							request.current = null;
-						}}
-					>
-						Extend
-					</Button>
-					<Button
-						onClick={() => {
-							useCanonicalSessionsStore
-								.getState()
-								.stageDraft({ kind: "agent", name: profile.name });
-							navigate("/chat");
-						}}
-					>
-						New chat
-					</Button>
-				</div>
-			)}
-			{error && (
-				<p role="alert" className="text-body-sm text-danger">
-					{error}
-				</p>
-			)}
-			{!editing && profile?.source === "builtin" && (
-				<p id="builtin-readonly" className="text-body-sm text-ink-muted">
-					Built-in agents are read-only. Install this one to edit it, or Extend
-					it to start a separate agent from its instructions.
-				</p>
-			)}
-			<form onSubmit={save} className="space-y-4">
-				<fieldset disabled={!editing || pending} className="space-y-4">
-					<label className="block space-y-1 text-body-sm">
-						<span>Name</span>
-						<input
-							className={field}
-							value={name}
-							disabled={!fresh}
-							required
-							aria-describedby={
-								profile?.source === "builtin" ? "builtin-readonly" : undefined
-							}
-							onChange={(event) => setName(event.target.value)}
-						/>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>Kind</span>
-						<select
-							className={field}
-							value={kind}
-							disabled={!fresh}
-							onChange={(event) =>
-								setKind(event.target.value as "role" | "specialist")
-							}
-						>
-							<option value="role">Role</option>
-							<option value="specialist">Specialist</option>
-						</select>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>When to use this agent</span>
-						<input
-							className={field}
-							value={description}
-							maxLength={8000}
-							onChange={(event) => setDescription(event.target.value)}
-						/>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>Instructions</span>
-						<textarea
-							className={cn(field, "min-h-52")}
-							value={instructions}
-							required
-							maxLength={8000}
-							onChange={(event) => setInstructions(event.target.value)}
-						/>
-					</label>
-					{kind === "role" && (
-						<>
-							<label className="block space-y-1 text-body-sm">
-								<span>Allowed tools</span>
-								<input
-									className={field}
-									value={tools}
-									onChange={(event) => setTools(event.target.value)}
-									placeholder="All tools when empty; otherwise comma-separated names"
-								/>
-							</label>
-							<label className="block space-y-1 text-body-sm">
-								<span>Effort tier</span>
-								<input
-									className={field}
-									value={effort}
-									onChange={(event) => setEffort(event.target.value)}
-									aria-describedby="effort-help"
-								/>
-								<span id="effort-help" className="text-meta text-ink-muted">
-									Use inherit, or a tier configured in backend settings.
-									Unsupported tiers are rejected before saving.
-								</span>
-							</label>
-							{/* The label is the toggle's whole visible target, so it says so: the
-							    base layer's pointer list is controls, and a label is not one. */}
-							<label className="flex cursor-pointer items-center gap-2 text-body-sm">
-								<input
-									type="checkbox"
-									checked={delegate}
-									onChange={(event) => setDelegate(event.target.checked)}
-								/>
-								May delegate to subagents
-							</label>
-						</>
-					)}
-				</fieldset>
-				{editing && (
-					<Button type="submit" disabled={pending}>
-						{pending ? "Saving…" : fresh ? "Create agent" : "Save changes"}
-					</Button>
-				)}
-			</form>
-			{!editing &&
-			profile?.packaged_instructions &&
-			profile.divergent_fields?.length ? (
-				<details className="text-body-sm">
-					<summary>Compare packaged instructions</summary>
-					<pre className="mt-2 whitespace-pre-wrap text-body-sm text-ink-muted">
-						{profile.packaged_instructions}
-					</pre>
-				</details>
-			) : null}
-		</div>
-	);
-}
-
-function TeamEditor({
-	team,
-	onSaved,
-	onDirty,
-}: {
-	team?: ReusableTeam;
-	onSaved: (name: string) => void;
-	/** Whether this form holds edits the person has not saved (agent review round 2, R2-5). */
-	onDirty: (dirty: boolean) => void;
-}) {
-	const [name, setName] = useState(team?.name ?? "");
-	const [description, setDescription] = useState(team?.description ?? "");
-	const [manager, setManager] = useState(team?.manager ?? "manager");
-	const [members, setMembers] = useState<(TeamMember & { key: string })[]>(
-		(team?.members ?? []).map((member) => ({
-			...member,
-			key: crypto.randomUUID(),
-		})),
-	);
-	const [instructions, setInstructions] = useState(team?.instructions ?? "");
-	const [project, setProject] = useState(team?.project ?? "");
-	const [pending, setPending] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const request = useRef<{ id: string; body: string } | null>(null);
-	const navigate = useNavigate();
-	const fields = {
-		name,
-		description,
-		manager,
-		members: members.map(({ key: _key, ...member }) => member),
-		instructions,
-		project,
-	};
-	/* Same report as `ProfileEditor`: see the comment there. */
-	const dirty =
-		JSON.stringify(fields) !==
-		JSON.stringify({
-			name: team?.name ?? "",
-			description: team?.description ?? "",
-			manager: team?.manager ?? "manager",
-			members: team?.members ?? [],
-			instructions: team?.instructions ?? "",
-			project: team?.project ?? "",
-		});
-	useEffect(() => onDirty(dirty), [dirty, onDirty]);
-	const save = async (event: FormEvent) => {
-		event.preventDefault();
-		if (pending) return;
-		const body = JSON.stringify(fields);
-		if (request.current && request.current.body !== body) {
-			setError(
-				"The previous save has not been confirmed. Reload the team before changing that request.",
-			);
-			return;
-		}
-		request.current ??= { id: crypto.randomUUID(), body };
-		setPending(true);
-		setError(null);
-		try {
-			const result = team
-				? await desktopResult<ReusableTeam>({
-						op: "teams.update",
-						name: team.name,
-						requestId: request.current.id,
-						fields,
-					})
-				: await desktopResult<ReusableTeam>({
-						op: "teams.create",
-						requestId: request.current.id,
-						fields,
-					});
-			request.current = null;
-			onSaved(result.name);
-		} catch (error) {
-			setError(
-				error instanceof Error ? error.message : "Team could not be saved.",
-			);
-		} finally {
-			setPending(false);
-		}
-	};
-	const updateMember = (index: number, patch: Partial<TeamMember>) =>
-		setMembers((rows) =>
-			rows.map((row, position) =>
-				position === index ? { ...row, ...patch } : row,
-			),
-		);
-	return (
-		<div className="max-w-3xl space-y-6">
-			<header>
-				<h1 className="text-title">{team ? team.name : "Create team"}</h1>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					The manager leads the chat. Members retain their own instructions and
-					start only when delegated work.
-				</p>
-			</header>
-			{team && (
-				<Button
-					onClick={() => {
-						useCanonicalSessionsStore
-							.getState()
-							.stageDraft({ kind: "team", name: team.name });
-						navigate("/chat");
-					}}
-				>
-					New team chat
-				</Button>
-			)}
-			{error && (
-				<p role="alert" className="text-body-sm text-danger">
-					{error}
-				</p>
-			)}
-			<form onSubmit={save} className="space-y-4">
-				<fieldset disabled={pending} className="space-y-4">
-					<label className="block space-y-1 text-body-sm">
-						<span>Name</span>
-						<input
-							className={field}
-							required
-							maxLength={64}
-							value={name}
-							onChange={(event) => setName(event.target.value)}
-						/>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>Description</span>
-						<input
-							className={field}
-							value={description}
-							onChange={(event) => setDescription(event.target.value)}
-						/>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>Manager agent</span>
-						<input
-							className={field}
-							required
-							value={manager}
-							onChange={(event) => setManager(event.target.value)}
-						/>
-					</label>
-					<section className="space-y-2">
-						<h2 className="text-heading">Members</h2>
-						{members.map((member, index) => (
-							<div
-								key={member.key}
-								className="flex flex-wrap items-center gap-2"
-							>
-								<input
-									className={cn(field, "w-48 flex-1")}
-									aria-label={`Member ${index + 1} name`}
-									required
-									value={member.role}
-									onChange={(event) =>
-										updateMember(index, { role: event.target.value })
-									}
-								/>
-								<select
-									className={cn(field, "w-32")}
-									aria-label={`Member ${index + 1} kind`}
-									value={member.kind}
-									onChange={(event) =>
-										updateMember(index, {
-											kind: event.target.value as "agent" | "team",
-										})
-									}
-								>
-									<option value="agent">Agent</option>
-									<option value="team">Nested team</option>
-								</select>
-								<input
-									className={cn(field, "w-20")}
-									aria-label={`Member ${index + 1} count`}
-									type="number"
-									min={1}
-									max={16}
-									value={member.count}
-									onChange={(event) =>
-										updateMember(index, { count: Number(event.target.value) })
-									}
-								/>
-								<Button
-									type="button"
-									variant="ghost"
-									onClick={() =>
-										setMembers((rows) =>
-											rows.filter((_, position) => position !== index),
-										)
-									}
-								>
-									Remove
-								</Button>
-							</div>
-						))}
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() =>
-								setMembers((rows) => [
-									...rows,
-									{
-										role: "",
-										count: 1,
-										kind: "agent",
-										key: crypto.randomUUID(),
-									},
-								])
-							}
-						>
-							Add member
-						</Button>
-					</section>
-					<label className="block space-y-1 text-body-sm">
-						<span>Collaboration instructions</span>
-						<textarea
-							className={cn(field, "min-h-36")}
-							maxLength={8000}
-							value={instructions}
-							onChange={(event) => setInstructions(event.target.value)}
-						/>
-					</label>
-					<label className="block space-y-1 text-body-sm">
-						<span>Project brief</span>
-						<textarea
-							className={cn(field, "min-h-36")}
-							maxLength={8000}
-							value={project}
-							onChange={(event) => setProject(event.target.value)}
-						/>
-					</label>
-				</fieldset>
-				<Button type="submit" disabled={pending}>
-					{pending ? "Saving…" : team ? "Save team" : "Create team"}
-				</Button>
-			</form>
-		</div>
-	);
-}
-=======
 /** The scope chips, in the hub's `Showing` register: who owns the definition. */
 type Scope = "all" | "custom" | "installed" | "builtin";
 
@@ -707,7 +114,28 @@ const SCOPE_LABEL: Record<Scope, string> = {
 	installed: "Installed",
 	builtin: "Built-in",
 };
->>>>>>> origin/main
+
+/**
+ * A key that changes when the FETCHED definition changes, and only then.
+ *
+ * The detail panes below seed their draft once, on mount, so a hub update that
+ * rewrote a definition under an open editor left the OLD text on screen, and
+ * Edit - Save wrote it back over the merge (agent review round 1, R1). Keying the
+ * pane on the content re-seeds it, while an unrelated refetch (window focus)
+ * returns identical content, the same key and no remount, so an edit in progress
+ * survives it. The page-level consequence of that remount is stated where the
+ * notice lives, inside the component.
+ *
+ * The digest is length + FNV-1a over the serialised record: cheap enough to run
+ * on every render of a pane, and only ever compared, never parsed.
+ */
+const contentKey = (value: unknown) => {
+	const text = JSON.stringify(value) ?? "";
+	let hash = 5381;
+	for (let index = 0; index < text.length; index += 1)
+		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
+	return `${text.length}.${hash.toString(36)}`;
+};
 
 export function AgentsPage() {
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
@@ -817,70 +245,6 @@ export function AgentsPage() {
 			}),
 		staleTime: 60_000,
 	});
-<<<<<<< HEAD
-	/*
-	 * A HUB UPDATE THAT LANDS UNDER AN OPEN EDITOR. The editors below re-seed by
-	 * key (`contentKey`), which is the remedy review round 1 asked for and what
-	 * closes the stale-write path. A re-seed also discards whatever the person had
-	 * typed, and the hub is the one thing that changes a definition with no action
-	 * taken in this pane - so when the key moves while an editor reports unsaved
-	 * edits, the page SAYS so instead of replacing them silently (agent review
-	 * round 2, R2-5).
-	 *
-	 * `dirtyRef` is written during render, not in an effect: the remount clears the
-	 * child's own report in an effect, effects run children-first, and reading the
-	 * state here would therefore already see `false` and lose the fact. (A ref write
-	 * during render is a concurrent-mode smell; it is deliberate here and this
-	 * comment is the reason, so it stays until the flow is restructured - agent
-	 * review round 3, N3.)
-	 *
-	 * THE NOTICE BELONGS TO THE DEFINITION IT DESCRIBES, so it is scoped three ways
-	 * (agent review round 3, N1): the comparison is on the fetched CONTENT alone
-	 * (never the name-prefixed key, which moves on a plain navigation to a
-	 * different agent), a change of IDENTITY re-seeds and clears the notice instead
-	 * of comparing at all, and `saved()` clears it too. Without those, switching
-	 * from a dirty editor to an agent already in the query cache read as a hub
-	 * update and stood over the wrong definition.
-	 */
-	const [lostEdits, setLostEdits] = useState(false);
-	const [editorDirty, setEditorDirty] = useState(false);
-	const dirtyRef = useRef(false);
-	dirtyRef.current = editorDirty;
-	const onEditorDirty = useCallback(
-		(dirty: boolean) => setEditorDirty(dirty),
-		[],
-	);
-	/* Which definition is open, and what its fetched content is (the two halves of N1). */
-	const identity = `${teamMode ? "team" : "agent"}:${name ?? ""}`;
-	const seededContent = useRef<string | null>(null);
-	const seededIdentity = useRef(identity);
-	const content = detail.data ? contentKey(detail.data) : null;
-	useEffect(() => {
-		if (seededIdentity.current !== identity) {
-			// A different definition: adopt it as the seeded one and drop any notice,
-			// rather than comparing against the previous definition's content.
-			seededIdentity.current = identity;
-			seededContent.current = content;
-			setLostEdits(false);
-			return;
-		}
-		if (content === null) {
-			seededContent.current = null;
-			return;
-		}
-		if (seededContent.current === null) {
-			seededContent.current = content;
-			return;
-		}
-		if (seededContent.current === content) return;
-		seededContent.current = content;
-		if (dirtyRef.current) setLostEdits(true);
-	}, [identity, content]);
-	const saved = async (savedName: string) => {
-		setLostEdits(false);
-		await queryClient.invalidateQueries({ queryKey: ["desktop"] });
-		setParams({ kind: teamMode ? "team" : "agent", name: savedName });
-=======
 	const effortTiers = useMemo(
 		() =>
 			(settings.data?.settings ?? [])
@@ -942,6 +306,67 @@ export function AgentsPage() {
 		[paneIdentity],
 	);
 	const editDirty = dirtyIdentity !== null && dirtyIdentity === paneIdentity;
+
+	/*
+	 * A HUB UPDATE THAT LANDS UNDER AN OPEN EDITOR (agent review round 2, R2-5; the
+	 * keying half is R1 above). A remount discards whatever the person had typed,
+	 * and the hub is the one thing that changes a definition with no action taken in
+	 * this pane, so the page SAYS so instead of replacing an in-flight edit
+	 * silently.
+	 *
+	 * `editDirty` is the right flag and needs no ref: it is the value from THIS
+	 * render, and the pane that withdraws its own report on unmount only moves it in
+	 * the next one, so the content change under a dirty editor is never missed and a
+	 * clean editor never raises the notice. The comparison is scoped by identity the
+	 * same way `editDirty` is - a change of record adopts it as seeded and clears the
+	 * notice rather than comparing across two definitions (agent review round 3, N1).
+	 */
+	const [lostEdits, setLostEdits] = useState(false);
+	const openIdentity = `${teamMode ? "team" : "agent"}:${selected ?? ""}`;
+	const openContent = teamMode
+		? teamDetail.data
+			? contentKey(teamDetail.data)
+			: null
+		: profileDetail.data
+			? contentKey(profileDetail.data)
+			: null;
+	const seededPane = useRef<{ identity: string; content: string | null }>({
+		identity: openIdentity,
+		content: openContent,
+	});
+	useEffect(() => {
+		if (seededPane.current.identity !== openIdentity) {
+			seededPane.current = { identity: openIdentity, content: openContent };
+			setLostEdits(false);
+			return;
+		}
+		if (openContent === null || seededPane.current.content === openContent) {
+			seededPane.current.content = openContent;
+			return;
+		}
+		seededPane.current.content = openContent;
+		if (editDirty) setLostEdits(true);
+	}, [openIdentity, openContent, editDirty]);
+
+	/** The panel and the replaced-edit notice, above whichever pane is open. */
+	const hubPane = (kind: "agent" | "team", itemName: string) => (
+		<>
+			{/* Renders nothing unless the hub lists THIS item as not up to date. */}
+			<HubUpdatePanel
+				kind={kind}
+				name={itemName}
+				enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
+			/>
+			{lostEdits && (
+				/* `output` carries the `status` role, which is what this is. */
+				<output className="mb-4 block rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+					The hub updated this definition while you were editing, and the form
+					below now shows the merged version. Edits you had not saved were
+					replaced.
+				</output>
+			)}
+		</>
+	);
 
 	/**
 	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
@@ -1025,7 +450,6 @@ export function AgentsPage() {
 		void teams.refetch();
 		void profileDetail.refetch();
 		void teamDetail.refetch();
->>>>>>> origin/main
 	};
 
 	if (agentId)
@@ -1355,54 +779,60 @@ export function AgentsPage() {
 							onCancel={() => go({ name: null })}
 						/>
 					) : teamMode && teamDetail.data ? (
-						<TeamDetail
-							key={`team:${teamDetail.data.name}`}
-							team={teamDetail.data}
-							agents={profiles.data}
-							teams={teams.data}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onOpenAgent={(agentName) =>
-								requestGo({ kind: "agent", name: agentName })
-							}
-							onAskAgent={(prompt) => {
-								run.setAbout({
-									kind: "team",
-									name: teamDetail.data?.name ?? "",
-								});
-								run.setDraft(prompt);
-							}}
-						/>
+						<>
+							{hubPane("team", teamDetail.data.name)}
+							<TeamDetail
+								key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
+								team={teamDetail.data}
+								agents={profiles.data}
+								teams={teams.data}
+								askEnabled={run.enabled}
+								onDirtyChange={reportDirty}
+								onSaved={(savedName) => {
+									void refreshAll();
+									go({ name: savedName });
+								}}
+								onOpenAgent={(agentName) =>
+									requestGo({ kind: "agent", name: agentName })
+								}
+								onAskAgent={(prompt) => {
+									run.setAbout({
+										kind: "team",
+										name: teamDetail.data?.name ?? "",
+									});
+									run.setDraft(prompt);
+								}}
+							/>
+						</>
 					) : !teamMode && profileDetail.data ? (
-						<AgentDetail
-							key={`agent:${profileDetail.data.name}`}
-							profile={profileDetail.data}
-							teams={teams.data}
-							effortTiers={effortTiers}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onDuplicate={(profile) =>
-								requestGo({ create: "agent", duplicate: profile.name })
-							}
-							onOpenTeam={(teamName) =>
-								requestGo({ kind: "team", name: teamName })
-							}
-							onAskAgent={(prompt) => {
-								run.setAbout({
-									kind: "agent",
-									name: profileDetail.data?.name ?? "",
-								});
-								run.setDraft(prompt);
-							}}
-						/>
+						<>
+							{hubPane("agent", profileDetail.data.name)}
+							<AgentDetail
+								key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
+								profile={profileDetail.data}
+								teams={teams.data}
+								effortTiers={effortTiers}
+								askEnabled={run.enabled}
+								onDirtyChange={reportDirty}
+								onSaved={(savedName) => {
+									void refreshAll();
+									go({ name: savedName });
+								}}
+								onDuplicate={(profile) =>
+									requestGo({ create: "agent", duplicate: profile.name })
+								}
+								onOpenTeam={(teamName) =>
+									requestGo({ kind: "team", name: teamName })
+								}
+								onAskAgent={(prompt) => {
+									run.setAbout({
+										kind: "agent",
+										name: profileDetail.data?.name ?? "",
+									});
+									run.setDraft(prompt);
+								}}
+							/>
+						</>
 					) : selected ? (
 						<Skeleton className="h-6 w-40" />
 					) : (
@@ -1446,70 +876,6 @@ export function AgentsPage() {
 							Keep editing
 						</Button>
 					</div>
-<<<<<<< HEAD
-				) : creating ? (
-					teamMode ? (
-						<TeamEditor
-							key="create-team"
-							onSaved={saved}
-							onDirty={onEditorDirty}
-						/>
-					) : (
-						<ProfileEditor
-							key="create-agent"
-							creating
-							onSaved={saved}
-							onDirty={onEditorDirty}
-						/>
-					)
-				) : name && detail.isLoading ? (
-					<p aria-live="polite">Loading details…</p>
-				) : name && detail.data ? (
-					<>
-						{/* Renders nothing unless the hub lists THIS item as not up to date. */}
-						<HubUpdatePanel
-							kind={teamMode ? "team" : "agent"}
-							name={name}
-							enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
-						/>
-						{lostEdits && (
-							/* `output` carries the `status` role, which is what this is. */
-							<output className="mb-3 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
-								The hub updated this definition while you were editing, and the
-								form below now shows the merged version. Edits you had not saved
-								were replaced.
-							</output>
-						)}
-						{teamMode ? (
-							<TeamEditor
-								key={`${name}:${contentKey(detail.data)}`}
-								team={detail.data as ReusableTeam}
-								onSaved={saved}
-								onDirty={onEditorDirty}
-							/>
-						) : (
-							<ProfileEditor
-								/* Identity is name AND source: installing does not rename a
-							   profile, so keying on name alone kept the builtin-seeded form
-							   mounted across builtin -> installed. */
-								key={`${name}:${(detail.data as ReusableProfile).source}:${contentKey(detail.data)}`}
-								profile={detail.data as ReusableProfile}
-								creating={false}
-								onSaved={saved}
-								onDirty={onEditorDirty}
-							/>
-						)}
-					</>
-				) : (
-					<div>
-						<h2 className="text-title">
-							{teamMode ? "Reusable teams" : "Reusable agents"}
-						</h2>
-						<p className="mt-2 text-body text-ink-muted">
-							Select a definition to view or edit it. A new chat does not change
-							its definition.
-						</p>
-=======
 				) : null}
 				{/*
 				 * THE DOCKED COMPOSER, ONLY WHERE THE HERO IS NOT (D3/U2/Q8). The empty
@@ -1529,7 +895,6 @@ export function AgentsPage() {
 								editDirty ? "Finish or cancel your edit first." : null
 							}
 						/>
->>>>>>> origin/main
 					</div>
 				)}
 			</main>
