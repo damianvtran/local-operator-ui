@@ -159,7 +159,10 @@ test("a send row's delivery state is read from details, and absent or unknown is
 		assert.equal(deliveryStateFromDetails({ delivery: { state } }), state);
 	}
 	// A state this build does not know is treated as absent, never guessed at.
-	assert.equal(deliveryStateFromDetails({ delivery: { state: "queued" } }), null);
+	assert.equal(
+		deliveryStateFromDetails({ delivery: { state: "queued" } }),
+		null,
+	);
 	assert.equal(deliveryStateFromDetails({ delivery: { state: "" } }), null);
 	assert.equal(deliveryStateFromDetails({ delivery: { state: 7 } }), null);
 	// Absent, in every shape a result can be absent in - and ANOTHER tool's
@@ -181,7 +184,10 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	assert.equal(preferDeliveryState(undefined, "mailbox"), "mailbox");
 	assert.equal(preferDeliveryState(null, "unconfirmed"), "unconfirmed");
 	assert.equal(preferDeliveryState(undefined, null), null);
-	assert.equal(preferDeliveryState({ delivery: { state: "failed" } }, "mailbox"), "failed");
+	assert.equal(
+		preferDeliveryState({ delivery: { state: "failed" } }, "mailbox"),
+		"failed",
+	);
 	assert.equal(preferDeliveryState({}, "mailbox"), null);
 
 	/*

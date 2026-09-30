@@ -6634,7 +6634,9 @@ test("a send's delivery state rides the row, from both the durable and the live 
 			tool_call_id: "live-1",
 			tool_name: "send",
 			result: {
-				content: [{ type: "text", text: "→ night-audit: delivered to its mailbox" }],
+				content: [
+					{ type: "text", text: "→ night-audit: delivered to its mailbox" },
+				],
 				details: { delivery: { state: "mailbox", attempts: 3 } },
 			},
 			is_error: false,
@@ -6652,13 +6654,19 @@ test("a send's delivery state rides the row, from both the durable and the live 
 			type: "tool_execution_end",
 			tool_call_id: "live-1",
 			tool_name: "send",
-			result: { content: [{ type: "text", text: "→ night-audit: delivered to its mailbox" }] },
+			result: {
+				content: [
+					{ type: "text", text: "→ night-audit: delivered to its mailbox" },
+				],
+			},
 			is_error: false,
 			duration_s: 5.1,
 		},
 		3,
 	);
-	const [resealed] = stripped.records.filter((record) => record.kind === "tool");
+	const [resealed] = stripped.records.filter(
+		(record) => record.kind === "tool",
+	);
 	assert.equal(
 		resealed.delivery,
 		"mailbox",

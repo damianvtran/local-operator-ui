@@ -3636,12 +3636,44 @@ export const SendDeliveries: Story = {
 };
 
 /**
- * The same four, expanded — the only place the result TEXT is read, and the
- * place the incident's real defect lived: the amber two show their sentence as
- * an ordinary result, where the failed one keeps the Error block.
+ * The two amber states expanded, with the delivered row collapsed above them as
+ * the silence control.
+ *
+ * THE BOX IS SHORTER THAN THE COLUMN ON PURPOSE (500 against ~590 at four
+ * expansions): a story frame taller than the surface around it is clipped, and a
+ * clipped frame cannot be photographed whole by a capture rig. Keeping a
+ * disclosure open is what `keepClosed` is for (the receipt stories use the same
+ * pair), so the two expansions the state model is about are the two that fit.
+ * The refusal's own expansion is the story below.
  */
 export const SendDeliveriesOpen: Story = {
-	render: () => <Frame height={980} openRows records={sendDeliveryRows()} />,
+	render: () => (
+		<Frame
+			height={500}
+			openRows
+			/* The delivered row's expansion is unchanged behaviour and the failed
+			   row's is the story below; these two are what this frame is about. */
+			keepClosed={[0, 3]}
+			records={sendDeliveryRows()}
+		/>
+	),
+};
+
+/**
+ * The refusal expanded: the danger pathway kept, and the only one of the four
+ * whose result renders as an `Error` block. One row out of the shared fixture,
+ * so this frame and the four-row ones cannot drift apart.
+ */
+export const SendDeliveriesFailureOpen: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			openRows
+			records={sendDeliveryRows().filter(
+				(record) => record.id === "send:prose:3" || record.id === "send:failed",
+			)}
+		/>
+	),
 };
 
 /** The same four at 390px, where the word and the summary compete for the row:
