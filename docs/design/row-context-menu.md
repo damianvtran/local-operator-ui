@@ -267,9 +267,10 @@ content redirects that first focus to the first `[role="menuitem"]`. One press
 is again enough, which is the model the repo already chose for the same gesture
 (`use-link-subject.ts:441-448`). On close the paths part again - for the
 ACT-FREE close: the keyboard path returns the caret to the row's button, and
-the pointer path returns whatever held focus before the open; item activation
-instead lands on the acted control's own destination (§ 6; UX round 2's U8,
-scoped in round 3's U10).
+the pointer path returns whatever held focus before the press (read on
+`pointerdown`'s capture phase, before the press's own default can move it -
+QA round 3's Q-1); item activation instead lands on the acted control's own
+destination (§ 6; UX round 2's U8, scoped in round 3's U10).
 
 **Why the container's focus event and not `onOpenAutoFocus`:** that hook is
 real at runtime, but the primitive keeps it out of its public prop types (it
@@ -474,12 +475,19 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
   and the next keystroke reached nothing). When the remembered node is gone the
   row's own button is the deliberate fallback, and with neither the caret is
   left alone. This is still not the row gaining focus by the pointer's doing:
-  it is the focus the pointer path found, given back. The return-to-pre-open
-  applies to closes that commit no act (round 3's U10): item activation has
-  its own destinations rather than returning - `Pin conversation` leaves the
-  caret on the row's pin control (or the row's button where the mark is not
-  drawn), and `Archive conversation` lands the caret on the successor row -
-  each through the pressed control's own focus correction.
+  it is the focus the pointer path found, given back. The target is read on
+  the press itself (`pointerdown`, capture phase): read at open time instead,
+  it remembered the row's button - the press's own `mousedown` default had
+  already moved focus there - so `Escape` returned the button and the next
+  keystroke began the row's type-to-filter (QA round 3's Q-1, measured live).
+  Read at the press, the control the reader was in (the composer) is what
+  comes back, and the next keystroke lands there - U8's intent. The
+  return-to-pre-open applies to closes that commit no act (round 3's U10):
+  item activation has its own destinations rather than returning - `Pin
+  conversation` leaves the caret on the row's pin control (or the row's
+  button where the mark is not drawn), and `Archive conversation` lands the
+  caret on the successor row - each through the pressed control's own focus
+  correction.
 - **`Escape`** closes the menu without committing an act and takes the
   act-free close paths above - the keyboard path's row-button return, the
   pointer path's return to the pre-open focus. Item activation does not take
