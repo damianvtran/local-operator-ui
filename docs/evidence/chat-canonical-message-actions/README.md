@@ -120,6 +120,14 @@ hover, focus and press entries are real input through the input pipeline —
 focus, `press` is a real press — because a class that faked either state would
 photograph the story.
 
+**Re-verified on the fold, not re-shot.** The whole set was re-captured on the
+folded tree (`origin/main` = `9dd18ab318`, which moved `canonical-transcript.tsx`,
+`transcript-reducer.ts` and the scroll pager under this branch) and every frame
+came back byte-identical except the `streaming/` working line's animated mark —
+19 pixels in a 4x12 box, against 16 pixels in the same box between two captures of
+the SAME tree, so the difference is the mark's phase rather than the tree. The
+committed frames are the ones this set shipped and they describe the folded tree.
+
 ## What this set is NOT
 
 Component-level frames from Storybook, not the whole app: no sidebar and no
