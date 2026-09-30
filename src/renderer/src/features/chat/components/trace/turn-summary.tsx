@@ -41,6 +41,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
+import { CircleCheck } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
@@ -60,13 +61,24 @@ export type TurnSummaryProps = {
 	 */
 	recordIds: readonly string[];
 	/**
+	 * The ids THIS bar hides (`data-segment-ids`). A run can carry several bars
+	 * once its hidden span is partitioned, and `recordIds` names the whole run on
+	 * each, so the reveal walk needs the bar's own set to open the right one.
+	 * Optional for the fixtures and stories that draw one bar per run.
+	 */
+	segmentIds?: readonly string[];
+	/**
 	 * The FIRST hidden row's id: the bar occupies that row's slot, and carries
 	 * its identity so a lookup for the row finds the bar that replaced it.
 	 */
 	anchorRecordId: string;
 	/** The bar's margin: the first hidden row's gap tier. */
 	className?: string;
-	/** The run's wall span in seconds (§4.4), or null to omit the clause. */
+	/**
+	 * The span's WORKED seconds (the calls' own reported time, summed - the SAME
+	 * quantity the turn's foot states as `Worked for ...`, so a ladder's bars add up
+	 * to it), or null to omit the clause.
+	 */
 	durationS: number | null;
 	/** Tool rows in the run; zero omits the clause. */
 	actionCount: number;
@@ -80,7 +92,7 @@ export type TurnSummaryProps = {
 	 * reachable whenever the head cannot be fetched (a run taller than the walk's
 	 * allowance, a backend whose earlier pages are gone). The bar is the turn's only
 	 * size statement, so the honest shape is the count followed by `+`, with the
-	 * duration clause absent (there is no wall span to state either) and the same
+	 * duration clause absent (there is no duration to state either) and the same
 	 * claim in words for a pointer or a screen reader.
 	 */
 	partial?: boolean;
@@ -96,6 +108,22 @@ export type TurnSummaryProps = {
 	 * rule the foot's stamp follows).
 	 */
 	stampTs: number | null;
+	/**
+	 * The word ahead of the clauses for a bar that is not the ordinary
+	 * work-before-the-answer one: what opened the section (`Wake`, `Peer message`,
+	 * `Job result`) or that it holds the reader's own message (`Steered`); null or
+	 * absent for the ordinary bar, whose copy is unchanged. The set lives in
+	 * `turn-segments.ts` (`labelOfSegment`).
+	 */
+	label?: string | null;
+	/**
+	 * A section of the turn that ran to a real end: the bar carries a completion
+	 * mark after its label - "that finished", the closed-disposal receipt without a
+	 * card - and `success` ink because the checkpoint rail already paints `complete`
+	 * in the same role. Set on every labelled bar that settled and was not cut off
+	 * by a stop marker, on either side of the answer (`segmentIsCompleted`).
+	 */
+	completed?: boolean;
 	/** Controlled open state — the transcript owns the reader's expansion. */
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -139,6 +167,7 @@ const Dot: FC = () => (
 
 export const TurnSummary: FC<TurnSummaryProps> = ({
 	recordIds,
+	segmentIds,
 	anchorRecordId,
 	className,
 	durationS,
@@ -146,6 +175,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	partial = false,
 	title,
 	stampTs,
+	label = null,
+	completed = false,
 	open,
 	onOpenChange,
 	children,
@@ -200,6 +231,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			className={cn("border-b border-hairline pb-3", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
+			data-segment-ids={segmentIds?.join(" ")}
+			data-segment-complete={completed ? "true" : undefined}
 			data-record-id={anchorRecordId}
 		>
 			<Disclosure
@@ -260,6 +293,40 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						className={cn("flex min-w-0 flex-1 items-center gap-2")}
 						title={title ?? undefined}
 					>
+						{label !== null && (
+							/*
+							 * The bar's KIND, ahead of its facts, in the facts' own ink: no
+							 * new ground, no icon of its own, no second edge. It exists so
+							 * that several bars in one turn read as sections of it (the
+							 * follow-up after a disposal says so) instead of as separate
+							 * turns.
+							 */
+							<span
+								className={cn("shrink-0 text-body-sm text-ink-muted")}
+								data-segment-label=""
+							>
+								{label}
+							</span>
+						)}
+						{completed && (
+							<>
+								{/*
+								 * THE COMPLETION MARK. `success` on `canvas` is asserted by the
+								 * contrast contract's GRAPHICS table (the same pair the checkpoint
+								 * rail paints for `complete`). The glyph itself is decoration, so
+								 * it is hidden from AT - and the FACT it states is carried by the
+								 * word below, because an aria-hidden mark with no name is a state
+								 * a screen-reader user cannot learn at all (QA round 2, QA-1).
+								 */}
+								<CircleCheck
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0 text-success")}
+								/>
+							</>
+						)}
+						{label !== null && (durationS !== null || actionCount > 0) && (
+							<Dot />
+						)}
 						{durationS !== null && (
 							<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
 								Took {formatDuration(durationS)}
@@ -296,6 +363,21 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 									{foldMediaClause(mediaCount)}
 								</span>
 							</>
+						)}
+						{completed && (
+							/*
+							 * The mark's meaning as WORDS, off-screen, and LAST in the row
+							 * (QA round 3, QA-3 + agent review R3-2). The trigger has no
+							 * `aria-label`, so its accessible name is its content read in document
+							 * order with the `aria-hidden` subtrees (the dots, the glyph) dropped,
+							 * which is why the position here is the name: `Wake Took 1s 1 action
+							 * completed` - one clause after the facts, not a word wedged between
+							 * the label and its count. It trails the facts for the unlabelled case
+							 * too, where leading with the word read `completed Took 9s 8 actions`
+							 * off the AX tree. A second live region would say the same fact twice,
+							 * in a surface that already has one voice for the list.
+							 */
+							<span className={cn("sr-only")}>completed</span>
 						)}
 						{stampTs !== null && (
 							/*
