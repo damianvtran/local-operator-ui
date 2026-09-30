@@ -11,14 +11,26 @@
  * region, escape ladder) is `RunPanel`'s, because all of those are facts about
  * where this body is shown rather than about what it says.
  *
- * Its one behaviour is its clock (`useRunDetailsClock`), which is here rather
- * than higher up because this is the surface that draws a running child's
- * elapsed time and the only one that has to repaint when it moves.
+ * Its clock (`useRunDetailsClock`) is here rather than higher up because this is
+ * the surface that draws a running child's elapsed time and the only one that
+ * has to repaint when it moves.
+ *
+ * AND ONE INTERACTION LIVES HERE, not in the section that raises it: the
+ * Monitors section's cancel confirmation and the per-row records it leaves
+ * (`use-monitor-cancel.ts`). The section is gated on `details.monitors.length`,
+ * and the canonical re-read every cancel fires churns that list - measured, a
+ * section-owned dialog unmounted mid-refusal on ~8 of 34 presses and the
+ * keyboard fell to `<body>` (UX review round 1, U2). This body is above the
+ * gate, so the interaction's state is owned here and the section stays
+ * presentational; the dialog renders OUTSIDE the sections gate below for the
+ * same reason, because the churn can empty the section list while a sentence
+ * is on screen.
  */
 
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { MonitorCancelDialog } from "./monitor-cancel-dialog";
 import { RunDetailJobs } from "./run-detail-jobs";
 import { RunDetailMcp } from "./run-detail-mcp";
 import type { McpServerRow, RunDetails } from "./run-detail-model";
@@ -29,6 +41,8 @@ import { RunDetailTodos } from "./run-detail-todos";
 import { RunDetailWakes } from "./run-detail-wakes";
 import { useRunDetailsClock } from "./run-details-clock";
 import type { McpRemedyControls } from "./use-mcp-remedy";
+import { useMonitorCancel } from "./use-monitor-cancel";
+import type { MonitorControls } from "./use-monitor-controls";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
@@ -93,6 +107,23 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * resolves the request through whichever ref that section owns.
 	 */
 	monitorsSectionRef?: Ref<HTMLElement>;
+	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), threaded from
+	 * the page exactly as `mcpRemedy` is: the write belongs to the level that owns
+	 * the session identity, and this body's cancel interaction (below) is what
+	 * confirms it.
+	 */
+	monitorControls: MonitorControls;
+	/**
+	 * The conversation whose canonical session this pane reports, or `null` when
+	 * none exists yet.
+	 *
+	 * Threaded down for ONE reader: the monitors cancel interaction resets when
+	 * the session changes - monitor handles are per-session (`m1`..), so a pending
+	 * row or a row's record from one conversation must not be read against
+	 * another conversation's list.
+	 */
+	sessionId: string | null;
 };
 
 export const RunDetailsPanel = ({
@@ -110,6 +141,8 @@ export const RunDetailsPanel = ({
 	jobsSectionRef,
 	wakesSectionRef,
 	monitorsSectionRef,
+	monitorControls,
+	sessionId,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -128,6 +161,16 @@ export const RunDetailsPanel = ({
 	 * moved, so a memo would not save it either.
 	 */
 	const measured = useRunDetailsClock(details);
+	/*
+	 * The Monitors cancel interaction, owned HERE rather than by the section that
+	 * raises it - see the header for the churn this answers. It takes the write
+	 * controls and the session identity, and hands back the row-facing half
+	 * (`section`) and the dialog's props.
+	 */
+	const monitorCancel = useMonitorCancel({
+		sessionId,
+		controls: monitorControls,
+	});
 	/*
 	 * Presence is judged on the DERIVED lists rather than on the visible slices:
 	 * a section whose rows are all over the cap still has content, and its
@@ -254,7 +297,11 @@ export const RunDetailsPanel = ({
 		sections.push({
 			key: "monitors",
 			body: (
-				<RunDetailMonitors details={details} sectionRef={monitorsSectionRef} />
+				<RunDetailMonitors
+					details={details}
+					sectionRef={monitorsSectionRef}
+					cancel={monitorCancel.section}
+				/>
 			),
 		});
 	}
@@ -272,51 +319,53 @@ export const RunDetailsPanel = ({
 		});
 	}
 
-	if (sections.length === 0) {
-		/*
-		 * The QUIET STATE, and it is a state this surface did not have before.
-		 *
-		 * The old popover could not open empty: its trigger was gated on
-		 * `hasRunDetails`, so a session with nothing outstanding had no button and
-		 * therefore no empty panel to design. The pane's button is always there
-		 * (`§ 3.3`), so a canonical session with no children, no plan and no MCP
-		 * servers opens onto an empty pane — and the honest treatment of that is
-		 * one line saying so rather than a skeleton or a placeholder row.
-		 *
-		 * `hasRunDetails` decides which sentence, and this is the job it kept when
-		 * it lost its visibility gate: "nothing in flight" is a different fact from
-		 * "no run", and the settled case is the one a reader arrives in after work
-		 * they just watched finish. The second branch is DEFENSIVE: every clause of
-		 * `hasRunDetails` implies rows to render, so it is unreachable through the
-		 * panel today. It is written rather than asserted away because the copy
-		 * must never claim "nothing in flight" while something is outstanding, and
-		 * a silent fallthrough is exactly how it would.
-		 *
-		 * **A session whose only content is ARMED WAKES deliberately does NOT widen
-		 * `hasRunDetails`** (`docs/composer-wakes.md` states the decision and its
-		 * alternative). The wake chip points into this pane, so "Nothing to show
-		 * yet." must not be what a reader finds there — and it is not: the Wakes
-		 * section above renders at `wakes.length > 0`, which makes `sections.length`
-		 * non-zero and this whole branch UNREACHABLE for that session. Widening the
-		 * predicate would have been the other way to get there and is rejected on
-		 * the field's own meaning: it answers "is anything asking for something right
-		 * now" (`run-detail-model.ts`), and an armed wake is a FUTURE event that has
-		 * asked for nothing yet. A predicate widened to cover it would be answering
-		 * a different question under the same name at every one of its clauses.
-		 */
-		return (
-			<div className={cn("flex flex-col", className)} {...props}>
+	/*
+	 * The QUIET STATE, and it is a state this surface did not have before.
+	 *
+	 * The old popover could not open empty: its trigger was gated on
+	 * `hasRunDetails`, so a session with nothing outstanding had no button and
+	 * therefore no empty panel to design. The pane's button is always there
+	 * (`§ 3.3`), so a canonical session with no children, no plan and no MCP
+	 * servers opens onto an empty pane — and the honest treatment of that is
+	 * one line saying so rather than a skeleton or a placeholder row.
+	 *
+	 * `hasRunDetails` decides which sentence, and this is the job it kept when
+	 * it lost its visibility gate: "nothing in flight" is a different fact from
+	 * "no run", and the settled case is the one a reader arrives in after work
+	 * they just watched finish. The second branch is DEFENSIVE: every clause of
+	 * `hasRunDetails` implies rows to render, so it is unreachable through the
+	 * panel today. It is written rather than asserted away because the copy
+	 * must never claim "nothing in flight" while something is outstanding, and
+	 * a silent fallthrough is exactly how it would.
+	 *
+	 * **A session whose only content is ARMED WAKES deliberately does NOT widen
+	 * `hasRunDetails`** (`docs/composer-wakes.md` states the decision and its
+	 * alternative). The wake chip points into this pane, so "Nothing to show
+	 * yet." must not be what a reader finds there — and it is not: the Wakes
+	 * section above renders at `wakes.length > 0`, which makes `sections.length`
+	 * non-zero and the quiet block below UNREACHABLE for that session. Widening
+	 * the predicate would have been the other way to get there and is rejected
+	 * on the field's own meaning: it answers "is anything asking for something
+	 * right now" (`run-detail-model.ts`), and an armed wake is a FUTURE event
+	 * that has asked for nothing yet. A predicate widened to cover it would be
+	 * answering a different question under the same name at every one of its
+	 * clauses.
+	 *
+	 * THE QUIET BLOCK IS AN ARM OF ONE RETURN rather than a return of its own,
+	 * because the monitors cancel dialog must render in both states (see the
+	 * note above it): the canonical re-read a cancel fires can empty
+	 * `details.monitors` for a frame, and a session whose only section was
+	 * Monitors lands here - with the dialog open - for that frame.
+	 */
+	return (
+		<div className={cn("flex flex-col", className)} {...props}>
+			{sections.length === 0 && (
 				<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>
 					{hasRunDetails(details)
 						? "Nothing to show yet."
 						: "Nothing in flight."}
 				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div className={cn("flex flex-col", className)} {...props}>
+			)}
 			{sections.map((section, index) => (
 				<Fragment key={section.key}>
 					{/*
@@ -328,6 +377,16 @@ export const RunDetailsPanel = ({
 					{section.body}
 				</Fragment>
 			))}
+			{/*
+			 * The monitors cancel confirmation renders in this body, OUTSIDE the
+			 * sections gate: the canonical re-read a cancel fires churns the list
+			 * the Monitors section is gated on, and a dialog inside that section
+			 * unmounted mid-refusal with it (UX review round 1, U2). This body
+			 * survives the churn - including the churn that lands on the quiet
+			 * block above - so the refusal stays until dismissed. See
+			 * `use-monitor-cancel.ts` for the state that backs it.
+			 */}
+			<MonitorCancelDialog {...monitorCancel.dialog} />
 		</div>
 	);
 };

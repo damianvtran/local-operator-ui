@@ -102,7 +102,17 @@ const bundle = await build({
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
 			export const renderMonitors = (props) =>
-				renderToStaticMarkup(createElement(RunDetailMonitors, props));
+				renderToStaticMarkup(
+					/*
+					 * The pane body's cancel interaction, stubbed: these cases are about
+					 * the list's markup, and the interaction itself is driven against the
+					 * real panel by script/monitor-cancel-dialog.test.mjs.
+					 */
+					createElement(RunDetailMonitors, {
+						cancel: { request: () => undefined, stateFor: () => undefined },
+						...props,
+					}),
+				);
 			export { GoalPicker };
 			export { toasts };
 			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
@@ -4860,8 +4870,14 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	 * default), so the section truncates and its marker is the footer for a payload
 	 * past the declared bound. The marker is a STATEMENT rather than a control —
 	 * nothing in this pane can put a shed monitor back — so it wears the shared
-	 * `Disclosure` primitive's DISABLED branch, and the section names who CAN act on
-	 * the list it just drew.
+	 * `Disclosure` primitive's DISABLED branch, and the list it just drew carries
+	 * the control that acts on it: the revealed `Cancel monitor` on every drawn
+	 * row. That control is what the stopgap's "ask the agent to cancel it" sentence
+	 * retired for (the monitors controls pass) — a sentence pointing at the agent,
+	 * beside a button that cancels, would send a reader around it; the Wakes
+	 * section keeps its own sentence because wakes kept theirs. Both facts are
+	 * pinned below, and the sentence is pinned ABSENT so the pair cannot drift
+	 * back.
 	 */
 	const over = renderMonitors({
 		details: monitorsOf(
@@ -4886,9 +4902,84 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	assert.match(over, /9 monitors armed/, "the tally counts the WHOLE list");
 	assert.match(
 		over,
-		/ask the agent to cancel it/i,
-		"the list names who can act on it",
+		/data-monitor-cancel="n1"/,
+		"the list carries the control that acts on it",
 	);
+	assert.doesNotMatch(
+		over,
+		/ask the agent to cancel it/i,
+		"the stopgap's sentence is retired with the control it stood in for",
+	);
+});
+
+test("the row's cancel control shows at rest and clears the hit floor", () => {
+	/*
+	 * U6 (UX review round 1): with the footer sentence retired, nothing at rest
+	 * said a monitor could be cancelled, and the hover-revealed control measured
+	 * 51.6x20 px - under the 24px hit floor. The control is in the open at rest
+	 * now and its box is `h-6`; both are asserted on the shipped markup, because
+	 * jsdom has no layout engine to measure a hit area with.
+	 */
+	const markup = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	const control = markup.match(
+		/<button[^>]*data-monitor-cancel="m1"[^>]*>/,
+	)?.[0];
+	assert.ok(control, "the row carries the control");
+	assert.doesNotMatch(control, /opacity-0/, "no hover reveal any more");
+	assert.doesNotMatch(
+		control,
+		/group-hover\/monitor/,
+		"and no group-reveal classes",
+	);
+	assert.match(
+		control,
+		/h-6/,
+		"the 24px hit floor, not the reveal's 20px band",
+	);
+	assert.doesNotMatch(control, /disabled=""/, "a live row's control acts");
+});
+
+test("the row's cancel state renders in place: Cancelled on the control, refused beside it", () => {
+	/*
+	 * U4/U8's visible half, pinned at the markup level: the receipt's mark is
+	 * the control ITSELF - disabled, reading `Cancelled` - so the one element
+	 * the dialog restores focus to on close stays alive, while a refused
+	 * attempt's record is a quiet note BESIDE the live control with the whole
+	 * sentence on `title`.
+	 */
+	const cancelled = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "cancelled" }),
+		},
+	});
+	assert.match(cancelled, /data-monitor-cancel-state="cancelled"/);
+	assert.match(cancelled, />Cancelled</, "the control's own label states it");
+	assert.match(
+		cancelled,
+		/<button[^>]*disabled=""[^>]*>/,
+		"and the control does not act any more",
+	);
+
+	const refused = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "refused", detail: "Nothing was written." }),
+		},
+	});
+	assert.match(refused, /data-monitor-cancel-state="refused"/);
+	assert.match(refused, />Cancel refused</);
+	assert.match(
+		refused,
+		/title="Nothing was written\."/,
+		"the whole sentence rides the title",
+	);
+	/* The control stays live for the next attempt - clearing the record is it. */
+	assert.match(refused, /data-monitor-cancel="m1"/);
 });
 
 test("monitors are absent rather than empty: no section without armed monitors", () => {
