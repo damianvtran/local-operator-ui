@@ -921,7 +921,7 @@ test("and the sign-in sentence is owed only to a machine that is not signed in",
 	 */
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -987,7 +987,7 @@ test("a refused credential earns the sign-in sentence", async () => {
 	assert.equal(speechButton(container).hasAttribute("disabled"), true);
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -1199,7 +1199,7 @@ test("the row's sign-in sentence is the shared one, owed only to a machine that 
 	);
 	await openTooltip(
 		answerRowSpeakButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -1432,7 +1432,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 	);
 	assert.equal(
 		speechUnavailableReason("recording", "sign-in"),
-		"Sign in to Radient in the settings page to enable recording",
+		"Sign in to Radient in Settings to enable recording",
 	);
 	assert.equal(
 		speechUnavailableReason("recording", "could-not-check"),
@@ -1448,7 +1448,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 	);
 	assert.equal(
 		speechUnavailableReason("speaking-aloud", "sign-in"),
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 	assert.equal(
 		speechUnavailableReason("speaking-aloud", "could-not-check"),
@@ -1529,7 +1529,7 @@ const FILE_ONLY_GATE =
 const SHARED_COPY_CALL = /speechUnavailableReason\(/;
 const SHARED_SPEAK_CONTROL = /@shared\/components\/common\/speak-control/;
 const INLINED_SENTENCE =
-	/unavailable while Local Operator is offline|in the settings page to enable/;
+	/unavailable while Local Operator is offline|in Settings to enable/;
 const DEPRECATED_CONTROL_NAMES = /Voice input|audio recording|text to speech/i;
 
 test("every speech surface derives its gate from the shared capability", async () => {

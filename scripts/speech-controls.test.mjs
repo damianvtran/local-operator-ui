@@ -117,6 +117,7 @@ const bundle = await build({
 				SPEECH_PLAYBACK_COPY,
 			} from "@shared/lib/speech-errors";
 			export { useSpeechStore, messageSpeechKey } from "@shared/store/speech-store";
+			export { SpeakButton } from "@shared/components/common/speak-control";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -237,6 +238,7 @@ const resetStore = () => {
 	state().stopSpeech();
 	mod.useSpeechStore.setState({
 		audioCache: new Map(),
+		heardKeys: new Set(),
 		loadingKey: null,
 		playingKey: null,
 		error: null,
@@ -260,6 +262,8 @@ const mount = async ({
 	role = "answer",
 	bodyText = "Four were late, and the oldest is 41 days behind.",
 	reveal = null,
+	hoverMatch = null,
+	control = null,
 } = {}) => {
 	resetStore();
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
@@ -319,6 +323,23 @@ const mount = async ({
 
 	globalThis.__speechConfigured = speechConfigured === true;
 	globalThis.__speechBlock = block;
+	/*
+	 * The `:hover` seam for the arrival reveal's silencing arm (design review
+	 * round 2, D6): jsdom's matcher answers `false` for `:hover` no matter what
+	 * is on screen (measured), so a case that needs "the pointer rests HERE"
+	 * hands in a predicate over elements and the patched matcher consults it
+	 * for `:hover` only. The limitation is the instrument's and is named in the
+	 * cases that use it: this exercises the WALK the row performs, not a real
+	 * pointer.
+	 */
+	globalThis.__speechHoverMatch = hoverMatch;
+	const originalMatches = dom.window.Element.prototype.matches;
+	dom.window.Element.prototype.matches = function (selector) {
+		if (selector === ":hover" && globalThis.__speechHoverMatch) {
+			return globalThis.__speechHoverMatch(this) === true;
+		}
+		return originalMatches.call(this, selector);
+	};
 
 	/*
 	 * The relay seam `desktop-api.ts` reads FIRST (`window.api?.desktop?.media`):
@@ -345,6 +366,21 @@ const mount = async ({
 							"Speech generation failed upstream: Upstream responded 503 with no body.",
 					};
 				}
+				if (relay === "gated") {
+					/*
+					 * A fetch that stays on the wire until the case releases it
+					 * (`globalThis.__speechGateRelease()`), the shape a cancel-then-repress
+					 * race needs: everything before the release is the in-flight window.
+					 */
+					return new Promise((resolve) => {
+						globalThis.__speechGateRelease = () =>
+							resolve({
+								kind: "bytes",
+								mimeType: "audio/mpeg",
+								data: new Uint8Array([1]),
+							});
+					});
+				}
 				return {
 					kind: "bytes",
 					mimeType: "audio/mpeg",
@@ -368,14 +404,30 @@ const mount = async ({
 	const root = createRoot(dom.window.document.getElementById("root"));
 	await act(async () => {
 		root.render(
-			React.createElement(mod.AnswerActionRow, {
-				bodyText,
-				kind: role,
-				agentId: role === "user" ? undefined : "c1",
-				speechId: role === "user" ? undefined : "a1",
-				revealId: reveal?.id,
-				revealAt: reveal?.at,
-			}),
+			control
+				? React.createElement(mod.SpeakButton, { control })
+				: /*
+					 * The row mounts inside the two ancestors every REAL row has - the
+					 * record's own container (the reveal's `group`) inside the transcript
+					 * pane - because the silencing rule is a fact about that boundary
+					 * (UX round 2, U-r2-1) and a bare row cannot tell the two apart.
+					 */
+					React.createElement(
+						"div",
+						{ "data-testid": "pane" },
+						React.createElement(
+							"div",
+							{ className: "group", "data-testid": "turn" },
+							React.createElement(mod.AnswerActionRow, {
+								bodyText,
+								kind: role,
+								agentId: role === "user" ? undefined : "c1",
+								speechId: role === "user" ? undefined : "a1",
+								revealId: reveal?.id,
+								revealAt: reveal?.at,
+							}),
+						),
+					),
 		);
 	});
 
@@ -451,9 +503,12 @@ test("loading and playing pin the row visible, and a loading press cancels (U2)"
 	await act(async () => {
 		mod.useSpeechStore.setState({ loadingKey: mod.messageSpeechKey("a1") });
 	});
-	assert.ok(button("Loading speech"), "the loading state names itself");
+	assert.ok(
+		button("Loading speech. Press again to cancel."),
+		"the loading state names itself and its cancel",
+	);
 	assert.equal(
-		button("Loading speech").disabled,
+		button("Loading speech. Press again to cancel.").disabled,
 		false,
 		"and stays pressable: the same control takes the fetch back (UX round 1, U2)",
 	);
@@ -468,7 +523,9 @@ test("loading and playing pin the row visible, and a loading press cancels (U2)"
 	 * trigger - and read from the rendered `role="tooltip"` node, the same
 	 * instrument the disabled-reason case below uses.
 	 */
-	const loadingTrigger = button("Loading speech").parentElement;
+	const loadingTrigger = button(
+		"Loading speech. Press again to cancel.",
+	).parentElement;
 	let loadingTooltip = null;
 	const loadingTooltips = new Set();
 	for (
@@ -486,15 +543,16 @@ test("loading and playing pin the row visible, and a loading press cancels (U2)"
 		)) {
 			const text = (panel.textContent ?? "").trim();
 			loadingTooltips.add(text);
-			if (text === "Loading speech") loadingTooltip = panel;
+			if (text === "Loading speech. Press again to cancel.")
+				loadingTooltip = panel;
 		}
 	}
 	assert.ok(
 		loadingTooltip,
-		`the loading tooltip must read "Loading speech"; saw ${JSON.stringify([...loadingTooltips])}`,
+		`the loading tooltip must read "Loading speech. Press again to cancel."; saw ${JSON.stringify([...loadingTooltips])}`,
 	);
 
-	await press("Loading speech");
+	await press("Loading speech. Press again to cancel.");
 	assert.equal(
 		mod.useSpeechStore.getState().loadingKey,
 		null,
@@ -585,9 +643,9 @@ test("an over-cap answer is clipped at a sentence end, disclosed, and sent as th
 	assert.deepEqual(
 		toasts().infos,
 		[
-			`Reading the first ${expected.length.toLocaleString("en-US")} characters. The rest is too long to read aloud.`,
+			`Reading the first ${expected.length.toLocaleString("en-US")} characters. The rest of this message is not read aloud.`,
 		],
-		"the clip is disclosed once, with the count localised (copy round 1, C2)",
+		"the clip is disclosed once, with the count localised (copy round 1, C2; the remainder clause states the fact, copy round 2, C1)",
 	);
 	const fetchesBeforeReplay = requests().length;
 	await press("Stop");
@@ -655,6 +713,75 @@ test("a playback failure raises the error toast through the same channel (C1)", 
 	await unmount();
 });
 
+test("a cancel then re-press joins the same paid fetch; landed-but-unheard audio still reads Speak aloud (agent MINOR-1, UX U-r2-3)", async () => {
+	const gated = await mount({ relay: "gated" });
+	await gated.press("Speak aloud");
+	assert.equal(requests().length, 1, "the first press is on the wire");
+	await gated.press("Loading speech. Press again to cancel.");
+	assert.equal(
+		state().loadingKey,
+		null,
+		"the cancel returns the control to rest immediately (U2)",
+	);
+	await gated.press("Speak aloud");
+	assert.equal(
+		requests().length,
+		1,
+		"the re-press joined the in-flight fetch: no second billed synthesis (agent MINOR-1)",
+	);
+	await act(async () => {
+		globalThis.__speechGateRelease();
+	});
+	await gated.flush();
+	await gated.flush();
+	assert.equal(
+		requests().length,
+		1,
+		"still one request once the join resolves",
+	);
+	assert.ok(
+		gated.button("Stop"),
+		"and the joined response plays for the newer press",
+	);
+	await gated.press("Stop");
+	assert.ok(
+		gated.button("Replay speech"),
+		"having played, the resting control offers a replay",
+	);
+	await gated.unmount();
+
+	const cancelled = await mount({ relay: "gated" });
+	await cancelled.press("Speak aloud");
+	await cancelled.press("Loading speech. Press again to cancel.");
+	await act(async () => {
+		globalThis.__speechGateRelease();
+	});
+	await cancelled.flush();
+	await cancelled.flush();
+	assert.equal(
+		state().audioCache.has(mod.messageSpeechKey("a1")),
+		true,
+		"the cancelled press's response still lands and caches: it was paid for",
+	);
+	assert.equal(
+		state().heardKeys.has(mod.messageSpeechKey("a1")),
+		false,
+		"and the reader never heard it",
+	);
+	assert.ok(
+		cancelled.button("Speak aloud"),
+		"so the control still offers Speak aloud - never a Replay of audio that never played (U-r2-3)",
+	);
+	await cancelled.press("Speak aloud");
+	assert.equal(
+		requests().length,
+		1,
+		"and pressing it plays the cached response without a new request",
+	);
+	assert.ok(cancelled.button("Stop"));
+	await cancelled.unmount();
+});
+
 /* ------------------------------------------------ 3. the disclosures */
 
 test("a refused relay surfaces the error toast and leaves no press looking live", async () => {
@@ -691,8 +818,7 @@ test("the disabled control explains itself through its tooltip", async () => {
 	 * the poll, and a bounded retry).
 	 */
 	const trigger = button("Speak aloud").parentElement;
-	const expected =
-		"Sign in to Radient in the settings page to enable speaking aloud";
+	const expected = "Sign in to Radient in Settings to enable speaking aloud";
 	let found = null;
 	const seen = new Set();
 	for (let attempt = 0; attempt < 200 && found === null; attempt += 1) {
@@ -714,9 +840,11 @@ test("the disabled control explains itself through its tooltip", async () => {
 		`the tooltip must read "${expected}"; saw ${JSON.stringify([...seen])}`,
 	);
 	/*
-	 * And the same sentence has a NON-POINTER path (design round 1, D2): the
-	 * wrapper names a description node whose text is the tooltip's own sentence,
-	 * so a reader who cannot open a tooltip still gets the reason.
+	 * And the same sentence has a NON-POINTER path (design round 1, D2; design
+	 * round 2, D7): the wrapper names a description node whose text is the
+	 * reason, and - because a description bound to a node nobody can focus
+	 * reaches only a browse-mode reader - the wrapper takes focus with it, so a
+	 * keyboard reader tabbing through meets the sentence too.
 	 */
 	const describedBy = trigger.getAttribute("aria-describedby");
 	assert.ok(describedBy, "the disabled wrapper names a description");
@@ -727,7 +855,67 @@ test("the disabled control explains itself through its tooltip", async () => {
 		expected,
 		"and carries the tooltip's sentence verbatim",
 	);
+	assert.equal(
+		trigger.getAttribute("tabindex"),
+		"0",
+		"and the wrapper is focusable while the description holds a reason (D7)",
+	);
 	await unmount();
+});
+
+test("the description carries a reason only, and no reason means no tab stop (agent NIT-2 / design D7)", async () => {
+	const base = {
+		label: "Speak aloud",
+		tooltip: "Speak aloud",
+		isPlaying: false,
+		isLoading: false,
+		disabled: true,
+		active: false,
+		press: () => {},
+	};
+	/*
+	 * The `available === false` arm: the tooltip is the affordance itself, so
+	 * there is nothing to describe and the wrapper stays out of the tab order.
+	 */
+	const affordanceOnly = await mount({ control: { ...base, reason: null } });
+	assert.equal(
+		affordanceOnly.dom.window.document.querySelector("span[aria-describedby]"),
+		null,
+		"a tooltip that is not a reason binds no description (NIT-2)",
+	);
+	assert.equal(
+		affordanceOnly.dom.window.document
+			.querySelector("span")
+			.getAttribute("tabindex"),
+		null,
+		"and adds no tab stop for furniture",
+	);
+	await affordanceOnly.unmount();
+
+	const withReason = await mount({
+		control: {
+			...base,
+			reason: "Sign in to Radient in Settings to enable speaking aloud",
+		},
+	});
+	const described = withReason.dom.window.document.querySelector(
+		"span[aria-describedby]",
+	);
+	assert.ok(described, "a reason binds a description");
+	const id = described.getAttribute("aria-describedby");
+	assert.equal(
+		(
+			withReason.dom.window.document.getElementById(id).textContent ?? ""
+		).trim(),
+		"Sign in to Radient in Settings to enable speaking aloud",
+		"carrying the reason itself, not the button's name",
+	);
+	assert.equal(
+		described.getAttribute("tabindex"),
+		"0",
+		"on a node the keyboard can reach",
+	);
+	await withReason.unmount();
 });
 
 test("a fresh arrival reveals itself once; an old record never flashes (U4)", async () => {
@@ -779,6 +967,116 @@ test("a fresh arrival reveals itself once; an old record never flashes (U4)", as
 		"a row mounted without a reveal id never arrives",
 	);
 	await bare.unmount();
+
+	/*
+	 * The silencing arm, both directions (design review round 2, D6; UX round
+	 * 2, U-r2-1). THE INSTRUMENT LIMITATION, stated: jsdom answers `false` for
+	 * `:hover` however the page looks (measured), so the pointer's position is
+	 * simulated through the harness's `:hover` seam - a predicate consulted by
+	 * the patched matcher - which exercises the WALK the row performs and the
+	 * boundary it stops at, not a real pointer. The design round re-checks the
+	 * same rule on rendered frames; the CSS half of the yield is pinned as
+	 * source below.
+	 */
+	const paneHover = await mount({
+		reveal: { id: "arrive-pane", at: Date.now() },
+		hoverMatch: (element) => element.getAttribute("data-testid") === "pane",
+	});
+	assert.ok(
+		paneHover.row().hasAttribute("data-lo-arrive"),
+		"a pointer inside the PANE but off the turn must not silence the nudge (U-r2-1: the old walk climbed to the pane and answered 'the reader is here' for any in-pane position, which is the ordinary state of a mouse reader)",
+	);
+	await paneHover.unmount();
+
+	const turnHover = await mount({
+		reveal: { id: "arrive-turn", at: Date.now() },
+		hoverMatch: (element) => element.classList.contains("group"),
+	});
+	assert.equal(
+		turnHover.row().hasAttribute("data-lo-arrive"),
+		false,
+		"the pointer ON the turn silences it, exactly as the row's comment claims",
+	);
+	await turnHover.unmount();
+
+	/*
+	 * The yield and the bubbling-animation guard (agent review round 2,
+	 * MINOR-2 / NIT-1): a descendant's animation ending must not truncate the
+	 * flash, and a reader arriving mid-flash takes the row back - and does not
+	 * hand it back when they leave (leaving is not simulated; dropping the
+	 * attribute is permanent by construction).
+	 */
+	const yielding = await mount({
+		reveal: { id: "arrive-yield", at: Date.now() },
+	});
+	assert.ok(yielding.row().hasAttribute("data-lo-arrive"));
+	await act(async () => {
+		yielding
+			.row()
+			.querySelector("button")
+			.dispatchEvent(
+				new yielding.dom.window.Event("animationend", { bubbles: true }),
+			);
+	});
+	assert.ok(
+		yielding.row().hasAttribute("data-lo-arrive"),
+		"a descendant's animationend must not drop the attribute (NIT-1)",
+	);
+	await act(async () => {
+		yielding.dom.window.document
+			.querySelector('[data-testid="turn"]')
+			.dispatchEvent(new yielding.dom.window.Event("pointerenter"));
+	});
+	assert.equal(
+		yielding.row().hasAttribute("data-lo-arrive"),
+		false,
+		"the reader's own arrival on the turn yields the flash (MINOR-2)",
+	);
+	await yielding.unmount();
+
+	const focusYield = await mount({
+		reveal: { id: "arrive-focus-yield", at: Date.now() },
+	});
+	assert.ok(focusYield.row().hasAttribute("data-lo-arrive"));
+	await act(async () => {
+		focusYield.dom.window.document
+			.querySelector('[data-testid="turn"]')
+			.dispatchEvent(
+				new focusYield.dom.window.Event("focusin", { bubbles: true }),
+			);
+	});
+	assert.equal(
+		focusYield.row().hasAttribute("data-lo-arrive"),
+		false,
+		"the keyboard arm of the same yield is focusin on the turn",
+	);
+	await focusYield.unmount();
+});
+
+test("the reveal's stylesheet carries the yield and the reduced-motion snap (agent MINOR-2, UX U-r2-2)", async () => {
+	const { readFile } = await import("node:fs/promises");
+	const css = await readFile(
+		new URL("../src/renderer/src/styles/index.css", import.meta.url),
+		"utf8",
+	);
+	/*
+	 * The CSS halves cannot be exercised through jsdom (no layout, no media
+	 * queries), so they are pinned as SOURCE - the mechanism the design round
+	 * can re-check on frames. The flash must yield to the reader's own arrival
+	 * while it runs (an animated `opacity` outranks every normal declaration),
+	 * and the reduced-motion arm must SNAP to the held state rather than
+	 * withholding the nudge entirely (U-r2-2 measured exactly that gap).
+	 */
+	assert.match(
+		css,
+		/\.group:hover \[data-lo-arrive\][\s\S]{0,90}\.group:focus-within \[data-lo-arrive\][\s\S]{0,60}animation:\s*none;/,
+		"the flash yields while the turn is hovered or focused (MINOR-2)",
+	);
+	assert.match(
+		css,
+		/@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,90}\[data-lo-arrive\][\s\S]{0,50}opacity: 1;/,
+		"a reduced-motion reader gets a snap, not silence (U-r2-2)",
+	);
 });
 
 /* ---------------------------------- 4. the user row's copy arm */

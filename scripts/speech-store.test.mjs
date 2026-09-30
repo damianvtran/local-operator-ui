@@ -166,6 +166,7 @@ const toasts = () => globalThis.__speechToasts;
 const reset = () => {
 	store.setState({
 		audioCache: new Map(),
+		heardKeys: new Set(),
 		loadingKey: null,
 		playingKey: null,
 		error: null,
@@ -542,6 +543,46 @@ test("dismiss cancels an in-flight fetch: its response is cached, never played (
 		assert.ok(
 			state().audioCache.has("sel:conv-1:deadbeef"),
 			"the paid synthesis is still cached for a later press",
+		);
+		assert.equal(
+			state().heardKeys.has("sel:conv-1:deadbeef"),
+			false,
+			"and the reader never heard it, so the resting label stays Speak aloud (U-r2-3)",
+		);
+	})();
+});
+
+test("a re-press after a cancel joins the same paid fetch instead of buying it twice (agent MINOR-1)", () => {
+	reset();
+	return (async () => {
+		let calls = 0;
+		let release;
+		const fetcher = () => {
+			calls += 1;
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		};
+		const first = state().speak("msg:dedupe", fetcher);
+		state().dismiss("msg:dedupe");
+		const second = state().speak("msg:dedupe", fetcher);
+		assert.equal(
+			calls,
+			1,
+			"the re-press joined the in-flight fetch: no second billed synthesis",
+		);
+		release(new Blob(["once"]));
+		await Promise.all([first, second]);
+		assert.equal(calls, 1, "still one call after the join resolves");
+		assert.equal(
+			state().playingKey,
+			"msg:dedupe",
+			"and the joined response plays for the newer press",
+		);
+		assert.equal(
+			state().heardKeys.has("msg:dedupe"),
+			true,
+			"playback started, so this key is heard and reads as Replay speech from here (U-r2-3)",
 		);
 	})();
 });

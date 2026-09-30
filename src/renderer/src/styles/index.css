@@ -917,15 +917,30 @@
 	}
 	/*
 	 * The action rows' arrival reveal (the keyframe's comment, in the theme).
-	 * Gated on `no-preference` AND `hover: hover` rather than cancelled under
-	 * reduced motion: a reduced-motion reader asked not to be moved, and a touch
-	 * reader's rows are always visible already (the reveal's own `(hover: none)`
-	 * exception), so the flash there would be motion with nothing left to
-	 * discover.
+	 * Gated on `no-preference` AND `hover: hover`: a touch reader's rows are
+	 * always visible already (the reveal's own `(hover: none)` exception), so
+	 * an animated flash there would be motion with nothing left to discover.
+	 * A REDUCED-MOTION reader is not gated out the same way - UX round 2's
+	 * U-r2-2 measured what that gate did to them: the attribute landed and the
+	 * fade was withheld, so the discoverability aid reached exactly the readers
+	 * it excludes. A static visibility step is not motion, so their nudge is a
+	 * SNAP, and its rule lives UNLAYERED at the bottom of this file (see the
+	 * note there - `opacity-0` is a utility and would beat this layer).
+	 *
+	 * THE FLASH YIELDS TO THE READER'S OWN ARRIVAL (agent review round 2,
+	 * MINOR-2): an animated `opacity` outranks every normal declaration for its
+	 * whole run, so while the turn is hovered or holds focus the animation is
+	 * cancelled and the hover/focus/pinned classes own the row. The row's own
+	 * script drops the attribute on the same events, so this is a yield, not a
+	 * pause - leaving the turn does not resume the fade.
 	 */
 	@media (prefers-reduced-motion: no-preference) and (hover: hover) {
 		[data-lo-arrive] {
 			animation: row-arrive 1.8s ease-in-out 1 both;
+		}
+		.group:hover [data-lo-arrive],
+		.group:focus-within [data-lo-arrive] {
+			animation: none;
 		}
 	}
 	/*
@@ -1127,6 +1142,26 @@
 .lo-quantity-header .ag-header-cell-label {
 	flex-direction: row;
 	justify-content: flex-end;
+}
+
+/*
+ * The arrival nudge, for readers who asked for no motion: a SNAP, not a fade.
+ *
+ * UX round 2's U-r2-2 measured the reveal's gate withholding the nudge
+ * entirely under `prefers-reduced-motion: reduce` - the flash never applied,
+ * and those readers were owed the discoverability aid exactly as much. The
+ * reveal only ever animated `opacity`, so the motion contract has nothing to
+ * silence here: the row snaps to the held state when the attribute lands (the
+ * row's own fallback timer clears it at 2.6s) and snaps back when it does.
+ *
+ * UNLAYERED for the same reason as the focus ring below: `opacity-0` is a
+ * Tailwind utility, the utilities layer beats `layer(base)` regardless of
+ * specificity, and this rule must outrank it for the attribute's lifetime.
+ */
+@media (prefers-reduced-motion: reduce) {
+	[data-lo-arrive] {
+		opacity: 1;
+	}
 }
 
 /*

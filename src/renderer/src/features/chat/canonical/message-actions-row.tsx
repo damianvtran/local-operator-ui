@@ -99,22 +99,33 @@ export type AnswerActionRowProps = {
 };
 
 /**
- * Whether the pointer or the keyboard is already on the row's turn.
+ * Whether the pointer or the keyboard is already on the row's TURN - the
+ * record's own container, the element carrying the reveal's `group` class and
+ * the nearest `.group` above the row.
  *
- * Walks the ancestors for `:hover` - a descendant's hover makes its ancestors
- * match - and checks `document.activeElement` containment for focus. NOT
- * `element.closest(":hover, :focus-within")`, which reads the same in a
+ * WHY THE WALK STOPS AT THE TURN (UX review round 2, U-r2-1). It used to climb
+ * every ancestor, and the transcript's scroll pane is an ancestor of every
+ * row - so a pointer parked anywhere inside the pane answered "the reader is
+ * already here" and the nudge never fired, which is the ordinary state of a
+ * mouse reader watching a live turn. The focus arm never walked (it reads
+ * `activeElement` containment), so the two arms disagreed about what "on the
+ * turn" meant; both now read the same boundary, scoped the way the comment
+ * always claimed.
+ *
+ * Not `element.closest(":hover, :focus-within")`, which reads the same in a
  * browser but lies in jsdom: with nothing focused, `activeElement` is the
  * body, and jsdom's matcher then reports `:focus-within` on every ancestor,
  * so the guard would answer "the reader is here" in every mounted test.
  */
-const readerIsOn = (element: Element): boolean => {
+const readerIsOn = (element: Element, turn: Element): boolean => {
 	let node: Element | null = element;
 	while (node !== null) {
 		if (node.matches(":hover")) return true;
+		if (node === turn) break;
 		node = node.parentElement;
 	}
-	return element.contains(element.ownerDocument.activeElement);
+	const active = element.ownerDocument.activeElement;
+	return active !== null && turn.contains(active);
 };
 
 /**
@@ -184,12 +195,43 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		if (ARRIVED.has(revealId)) return;
 		ARRIVED.add(revealId);
 		if (Date.now() - revealAt > ROW_ARRIVAL_RECENT_MS) return;
+		const element = revealRef.current;
+		if (element === null) return;
+		/*
+		 * The turn boundary both arms read: nearest `.group`, the record's own
+		 * container (MessageContainer for an answer, the user column for a
+		 * message). A row mounted bare (tests, stories) falls back to itself.
+		 */
+		const turn = element.closest(".group") ?? element;
 		/*
 		 * Pointer or keyboard already on the turn: the hover/focus reveal is on
 		 * display already, and a flash would fight it.
 		 */
-		if (revealRef.current !== null && readerIsOn(revealRef.current)) return;
+		if (readerIsOn(element, turn)) return;
 		setArriving(true);
+		/*
+		 * And if the reader arrives WHILE the flash runs, the flash YIELDS
+		 * (agent review round 2, MINOR-2): the keyframe animates `opacity`, an
+		 * animated value outranks every normal declaration, so for its 1.8s it
+		 * would override `group-hover:opacity-100`, `group-focus-within:opacity-100`
+		 * and the pinned state alike. Dropping the attribute on the reader's own
+		 * arrival hands the row back to those classes for the rest of its life -
+		 * the flash does not resume when they leave, on purpose: the reader has
+		 * seen the row, and a second fade would be noise. Listener scope matches
+		 * the guard's: the record's own turn, via `pointerenter` (which fires for
+		 * descendants too) and `focusin`.
+		 */
+		const yieldToReader = () => {
+			setArriving(false);
+			turn.removeEventListener("pointerenter", yieldToReader);
+			turn.removeEventListener("focusin", yieldToReader);
+		};
+		turn.addEventListener("pointerenter", yieldToReader);
+		turn.addEventListener("focusin", yieldToReader);
+		return () => {
+			turn.removeEventListener("pointerenter", yieldToReader);
+			turn.removeEventListener("focusin", yieldToReader);
+		};
 	}, [revealId, revealAt]);
 
 	/*
@@ -231,7 +273,17 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			role="toolbar"
 			aria-label={kind === "user" ? USER_ACTIONS_LABEL : ANSWER_ACTIONS_LABEL}
 			ref={revealRef}
-			onAnimationEnd={() => setArriving(false)}
+			onAnimationEnd={(event) => {
+				/*
+				 * `animationend` BUBBLES (agent review round 2, NIT-1): without this
+				 * guard a descendant's animation ending would drop this row's
+				 * attribute and truncate the flash. Latent today - the only animated
+				 * descendant is the infinite spinner, which never ends - but the guard
+				 * is what keeps it latent.
+				 */
+				if (event.target !== event.currentTarget) return;
+				setArriving(false);
+			}}
 			{...(arriving ? { "data-lo-arrive": "" } : {})}
 			/*
 			 * The marker names the ROLE, not the component: the transcript's own
