@@ -28,6 +28,7 @@ const {
 	applyHistoryPage,
 	loadOlderStep,
 	reanchorAfterCursorMiss,
+	reanchorCandidate,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -4410,11 +4411,35 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		false,
 		"the tail read leaves the paging state alone",
 	);
+	/*
+	 * CHANGED BY THE LOADER-CONTINUITY FIX (design spec 1.1 rule 4), and this is
+	 * the one sanctioned change to a caller that passes no option. An ordinary
+	 * (tail-type) read used to adopt the page's `has_more` unconditionally, which
+	 * is how a re-applied newest page flipped a fully loaded conversation back to
+	 * "load earlier". It now believes the page only when the page reaches
+	 * STRICTLY OLDER than the stored cursor - a genuinely wider read.
+	 */
 	const ordinary = applyHistoryPage(loaded, page);
 	assert.equal(
 		ordinary.hasMore,
+		false,
+		"an ordinary read of a NEWER page leaves the paging state alone",
+	);
+	const wider = applyHistoryPage(loaded, {
+		...pageOf([
+			{
+				id: "u-1",
+				ts: at / 1000 - 5,
+				type: "message",
+				payload: { role: "user", content: "oldest" },
+			},
+		]),
+		has_more: true,
+	});
+	assert.equal(
+		wider.hasMore,
 		true,
-		"an ordinary read still believes the page",
+		"an ordinary read that reaches strictly older still believes the page",
 	);
 
 	/*
@@ -5803,6 +5828,151 @@ test("a row a person typed is untouched, marker or no marker", () => {
 	assert.equal(elsewhere.records.length, 1);
 });
 
+/*
+ * THE LEGACY HALF. Rows written before the marker existed carry no stamp to
+ * read, and core's own contract keeps the recogniser for exactly that
+ * (`docs/DESKTOP_API.md`: "An owner on an older build still sends these rows,
+ * which is why the marker (and the recogniser) remain the contract"). The
+ * operator's stored transcript (2026-09-29) held ten unstamped
+ * goal-continuation rows, painted as the user's own words; these pin the
+ * fallback that hides them on both arms - and the near-misses it must NOT
+ * touch.
+ *
+ * THE LITERALS BELOW ARE COPIED FROM THE PYTHON PRODUCERS, deliberately as
+ * literals rather than imported from `harness-chrome.ts`: the module's copy is
+ * a restatement (the renderer cannot import Python), so the day either side's
+ * wording moves, THIS is the alarm - an import would move with it and prove
+ * nothing. Producers: `session/goal_judge.py` (GOAL_CONTINUATION_HEAD/TAIL,
+ * `is_goal_continuation_instruction`) and `session/goal_loop.py`
+ * (LOOP_GOAL_PROMPT, LOOP_PROMPT, `is_loop_goal_instruction`), mirrored by
+ * `harness/rows.py::is_harness_chrome`.
+ */
+const goalContinuation = (goal) =>
+	`Continue working toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.`;
+
+const loopGoalPrompt = (goal) =>
+	`Work toward this goal:\n\n${goal}\n\nMake concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly.`;
+
+const LOOP_SELF_CONTINUATION =
+	"Continue working toward the standing goal. Make concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly and stop.";
+
+test("an unstamped goal-continuation row is chrome, live - no marker needed", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u10", goalContinuation("ship the goal-chrome fix")),
+		},
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"the fixed head and tail are the whole shape; the row predates the stamp",
+	);
+});
+
+test("...and on the durable arm, where stored transcripts read it back", () => {
+	/*
+	 * The row AND the turn it was driving, because the fix's claim is not just
+	 * "the row goes" - the conversation it continued must stay whole.
+	 */
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u11",
+				ts: 10,
+				type: "message",
+				payload: {
+					kind: "message",
+					...user("u11", goalContinuation("ship the goal-chrome fix")),
+				},
+			},
+			{
+				id: "a11",
+				ts: 11,
+				type: "message",
+				payload: {
+					kind: "message",
+					...assistant("a11", "Making concrete progress now."),
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((record) => record.id),
+		["a11"],
+		"the chrome row goes; the answer it drove stays",
+	);
+});
+
+test("the loop's fixed prompt and its goal family are recognised too", () => {
+	for (const text of [
+		LOOP_SELF_CONTINUATION,
+		loopGoalPrompt("keep the loop moving"),
+	]) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u12", text) },
+			1,
+		);
+		assert.deepEqual(
+			state.records,
+			[],
+			`loop chrome must not paint: ${text.slice(0, 32)}...`,
+		);
+	}
+});
+
+test("whitespace around a chrome row does not save it", () => {
+	/*
+	 * Core strips before matching because "the two hosts do not agree on what
+	 * they hand in" - a persisted prompt that gained a trailing newline must
+	 * not flip from hidden to painted on one surface only.
+	 */
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: user("u13", `\n\n  ${goalContinuation("g")} \n`),
+		},
+		1,
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("near-misses are the user's own words and still paint", () => {
+	const nearMisses = [
+		// Opens with the head, never closes with the tail: the user's own words.
+		"Continue working toward this goal:\n\nship it",
+		// Quotes the tail inside a sentence of their own.
+		"I asked it to say \u201cMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop.\u201d - does that read like the harness?",
+		// The whole continuation shape, then the user speaks.
+		`${goalContinuation("ship it")} Also, ping me when it lands.`,
+		// The fixed prompt plus one word of theirs is not the fixed prompt.
+		`${LOOP_SELF_CONTINUATION} Please.`,
+	];
+	for (const text of nearMisses) {
+		const state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: user("u14", text) },
+			1,
+		);
+		assert.equal(
+			state.records.length,
+			1,
+			`must paint (${text.slice(0, 32)}...)`,
+		);
+		assert.equal(
+			state.records[0].text,
+			text,
+			"and it paints as typed, not as a recognised shape",
+		);
+	}
+});
+
 test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {
 	/*
 	 * The operator report (2026-09-28): after a /compact replaced the journal
@@ -5880,4 +6050,162 @@ test("a cursor_missing page re-anchors the load cursor to its own oldest row", (
 		);
 	});
 	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
+});
+
+/*
+ * THE PAGER CURSOR (loader-continuity, design spec sections 1.1 and 6).
+ *
+ * `oldestId`/`oldestTs`/`hasMore` are the reducer's sole statement of "where
+ * history stops". The cursor used to be derived by looking the page's first entry
+ * up among the RECORDS, which fails for every entry that is not one (silent
+ * customs, `tool:`-keyed results); it is now stored, and moved by five rules
+ * keyed on what kind of read the page was.
+ */
+const cursorEntry = (id, ts, type = "custom") => ({
+	id,
+	ts,
+	type,
+	payload:
+		type === "custom"
+			? { custom_type: "session_spend.v1", details: {} }
+			: {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: id }],
+					tool_calls: [],
+				},
+});
+const cursorPage = (entries, hasMore = true) => ({
+	entries,
+	has_more: hasMore,
+	cursor_missing: false,
+});
+
+test("the cursor's instant is stored with it, and an empty transcript has none", () => {
+	assert.equal(EMPTY_TRANSCRIPT.oldestTs, 0);
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("c1", 100), cursorEntry("m1", 101, "message")]),
+	);
+	assert.equal(s.oldestId, "c1", "the first page's first entry, silent or not");
+	assert.equal(
+		s.oldestTs,
+		100_000,
+		"stored in ms, not looked up from a record",
+	);
+	assert.equal(s.index.has("c1"), false, "the cursor entry is not a record");
+});
+
+test("a continuation page moves the cursor even when it adds no record", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")]),
+	);
+	const silent = cursorPage([cursorEntry("c3", 300), cursorEntry("c4", 400)]);
+	const next = applyHistoryPage(s, silent, { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "c3");
+	assert.equal(next.oldestTs, 300_000);
+	assert.equal(next.hasMore, true);
+	assert.notEqual(
+		next,
+		s,
+		"a moved cursor is a change, not the no-op early return",
+	);
+});
+
+test("an empty continuation page ends paging instead of repeating the ask", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const next = applyHistoryPage(s, cursorPage([], true), { pagedBefore: "m5" });
+	assert.equal(next.oldestId, "m5", "nothing to move to");
+	assert.equal(next.hasMore, false, "a page that cannot advance is the end");
+});
+
+test("a tail-type read moves the cursor only to a strictly older instant", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	// A newer, changed tail (a live turn): cursor and hasMore are unchanged.
+	const newer = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m9", 900, "message")], false),
+	);
+	assert.equal(newer.oldestId, "m5");
+	assert.equal(
+		newer.hasMore,
+		true,
+		"a tail read's has_more is not this reader's",
+	);
+	// The same instant is not older: the reader keeps the cursor it has.
+	const same = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m5b", 500, "message")], false),
+	);
+	assert.equal(same.oldestId, "m5");
+	// A strictly older page (a wider read) does move it, and takes its has_more.
+	const older = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+	);
+	assert.equal(older.oldestId, "m1");
+	assert.equal(older.oldestTs, 100_000);
+	assert.equal(older.hasMore, false);
+});
+
+test("keepPaging wins over a continuation assertion, and replace reseeds the cursor", () => {
+	const s = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		cursorPage([cursorEntry("m5", 500, "message")], true),
+	);
+	const kept = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m1", 100, "message")], false),
+		{ keepPaging: true, pagedBefore: "m5" },
+	);
+	assert.equal(kept.oldestId, "m5");
+	assert.equal(kept.hasMore, true);
+	const replaced = applyHistoryPage(
+		s,
+		cursorPage([cursorEntry("m8", 800, "message")], false),
+		{ replace: true },
+	);
+	assert.equal(replaced.oldestId, "m8");
+	assert.equal(replaced.oldestTs, 800_000);
+	assert.equal(replaced.hasMore, false);
+});
+
+test("reanchorCandidate is the oldest held record that is a real journal entry id", () => {
+	const at = (kind, id, ts) => ({ kind, id, ts });
+	const held = {
+		...EMPTY_TRANSCRIPT,
+		records: [
+			at("tool", "tool:call-1", 100),
+			at("notice", "anchor-1", 110),
+			at("user", "u1", 120),
+			at("assistant", "a1", 130),
+		],
+	};
+	assert.equal(
+		reanchorCandidate(held),
+		"u1",
+		"tool:<callId> and notice anchors are not journal entry ids",
+	);
+	for (const kind of ["custom", "peer", "wake", "compaction"])
+		assert.equal(
+			reanchorCandidate({ ...EMPTY_TRANSCRIPT, records: [at(kind, "x1", 1)] }),
+			"x1",
+			`${kind} records carry the entry id`,
+		);
+	assert.equal(reanchorCandidate(EMPTY_TRANSCRIPT), null, "an empty store");
+	assert.equal(
+		reanchorCandidate({
+			...EMPTY_TRANSCRIPT,
+			records: [at("tool", "tool:c", 1), at("notice", "n", 2)],
+		}),
+		null,
+		"nothing usable held",
+	);
 });

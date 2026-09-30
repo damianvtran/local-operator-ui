@@ -29,6 +29,12 @@ after(() => {
 // imitation hook runner. jsdom has no layout engine: rectangles below are the
 // explicit input fixture, NOT browser geometry/Tab/Enter/Space evidence.
 const source = "src/renderer/src/features/chat/components/";
+/*
+ * The composer lives a tree away since the shared-composer lift; its OWN paths
+ * resolve through here so this file keeps one spelling per tree. Everything
+ * else in this suite still reads the chat feature's directory above.
+ */
+const composer = "src/renderer/src/shared/components/composer/";
 // The composer's own setter lives one directory over, in the shared hooks.
 const hooks = "src/renderer/src/shared/hooks/";
 const bundle = await build({
@@ -429,7 +435,7 @@ test("the docked composer's foot is part of the budget, and is observed", async 
 });
 
 test("MessageInput wires node-valued refs and delegates its existing splash predicate", () => {
-	const input = readFileSync(`${source}message-input.tsx`, "utf8");
+	const input = readFileSync(`${composer}message-input.tsx`, "utf8");
 	assert.match(input, /ref=\{setBand\}/);
 	assert.match(input, /ref=\{setSplash\}/);
 	assert.match(input, /ref=\{setFoot\}/);

@@ -36,6 +36,7 @@
  */
 import "./story-electron-shim";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { MessageInput } from "@shared/components/composer/message-input";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
@@ -43,7 +44,6 @@ import type { DesktopCapabilities } from "../../../../../shared/desktop-contract
 import type { Message } from "../types/message";
 import { AT_UNAVAILABLE_REASON } from "./at-contract";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
-import { MessageInput } from "./message-input";
 
 type Entry = { name: string; directory: boolean };
 

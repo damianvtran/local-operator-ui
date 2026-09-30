@@ -5,14 +5,21 @@ import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attenti
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import {
+	type ComposerSendError,
+	MessageInput,
+	type MessageInputHandle,
+} from "@shared/components/composer/message-input";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
@@ -31,6 +38,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	type FC,
 	type ReactNode,
@@ -83,14 +91,10 @@ import {
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
-import {
-	type ComposerSendError,
-	MessageInput,
-	type MessageInputHandle,
-} from "./message-input";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import { QuestionDock } from "./trace/question-dock";
@@ -400,6 +404,13 @@ type ChatContentProps = {
 	 */
 	mcpRemedy: McpRemedyControls;
 	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), the same
+	 * threading as `mcpRemedy`: the Monitors section's confirmation and refusal
+	 * live in the section, and the write belongs to the level that owns the
+	 * session identity.
+	 */
+	monitorControls: MonitorControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -576,6 +587,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpServers = [],
 		mcpGrantRunning = false,
 		mcpRemedy,
+		monitorControls,
 		childrenOpenable = false,
 		/*
 		 * The composer's `@` affordance, folded by the page that owns both halves of
@@ -588,6 +600,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
+		/*
+		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential
+		 * probe and the credentials-cache invalidation used to live INSIDE
+		 * `MessageInput`, as react-query reads - which made a provider a mount
+		 * requirement for every document, and the shared composer must mount in
+		 * the mini view's document, which carries none. The shell is the host for
+		 * both: this component is always inside the app's provider, and the
+		 * composer rendered below takes the answers as props, so a providerless
+		 * consumer supplies its own instead.
+		 */
+		const recordingProbe = useRadientCredentialProbe();
+		const queryClient = useQueryClient();
+		const invalidateStoredCredentials = useCallback(
+			(sessionId: string) =>
+				queryClient.invalidateQueries({
+					queryKey: desktopKeys.credentials(sessionId),
+				}),
+			[queryClient],
+		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -1467,7 +1498,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										startingSince={canonical.startingSince ?? null}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
+										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
+										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
+										/* The chat page is the one mount that owns the measure; the run pane's
+										 * child reader deliberately does not opt in (see the prop's note). */
+										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}
@@ -1620,6 +1656,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * stand-down read, so the hint cannot outlive the line.
 								 */
 								deliveryRemediesReachable={undeliveredOnScreen !== null}
+								/*
+								 * The two host seams, straight from the reads above: the
+								 * credential probe's answer and the callback that invalidates
+								 * the credentials key the picker reads after a store. See
+								 * `MessageInputProps.onCredentialsStored`/`recordingProbe`
+								 * for why they live out here now.
+								 */
+								onCredentialsStored={invalidateStoredCredentials}
+								recordingProbe={recordingProbe}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -1952,9 +1997,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpServers={mcpServers}
 								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
+								monitorControls={monitorControls}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
+								/*
+								 * The session's own transport truth, and the SAME predicate the
+								 * transcript above hands its own slot (`status !== "live"`). The
+								 * child reader's page is a read-only GET with no stream of its
+								 * own, so its older-history row can only know this by being told,
+								 * and one transport must not be read two ways in one window
+								 * (design round 1, D2). A window with no canonical session has
+								 * no stream to be down — no child reader can be open in it —
+								 * and reads as live.
+								 */
+								olderTransportDown={
+									(canonical?.view.status ?? "live") !== "live"
+								}
 								/*
 								 * The pane's own width, in pixels: the box it is actually drawn in
 								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
