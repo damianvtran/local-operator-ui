@@ -28,7 +28,7 @@
  * nothing but the rows in the list, and a bar over a head-cut run states NO
  * duration rather than one fabricated from the first loaded row. The window
  * snap and the bounded align fetch (`snapWindowToRunBoundary`,
- * `alignFetchDecision`) stay as refinements that bring the head in when it is
+ * `alignWalkDecision`) stay as refinements that bring the head in when it is
  * cheap; neither is a precondition any more.
  *
  * EVERYTHING ELSE — counts, failure classification, the hover sentence — is
@@ -143,6 +143,20 @@ export type TurnSummaryFacts = {
 	durationS: number | null;
 	/** Tool rows in the run: the same unit as the fold's summary and the foot. */
 	actions: number;
+	/**
+	 * Whether `actions` is a MINIMUM rather than the run's count — its opening row
+	 * is not in the store, so the rows above the loaded span are still unknown.
+	 *
+	 * WHY A FACT AND NOT A DERIVATION AT THE BAR (design round 1, D1). The bar is
+	 * the turn's only size statement, and a head-cut run's count read exactly like
+	 * a complete one: the operator's own screenshot said `97 actions` for a turn of
+	 * 423 and nothing on the line distinguished it from a settled total. A run can
+	 * stay head-cut for good (one taller than the walk's allowance, or a backend
+	 * with the pages gone), so the honest marker has to be part of the statement
+	 * the model makes — `planRun` is where `opensWithUserRow` is known, and the bar
+	 * renders `N+` and states the same in words.
+	 */
+	partial: boolean;
 	/** Tool rows whose outcome is a genuine error (see `isFailedCall`). */
 	failed: number;
 	/** The first failed row, for the failure control's jump. */
@@ -291,6 +305,36 @@ const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
  */
 
 /**
+ * Rows the window-top snap may extend by to reach a run the store has PROVEN
+ * COMPLETE (loader-continuity 1b, the open frame).
+ *
+ * WHY A SECOND BOUND EXISTS. The bar's facts are computed over the MOUNTED
+ * window, so the snap's ordinary bound (`WINDOW_ALIGN_MAX_EXTRA`, three durable
+ * pages) decides how tall a run can be and still state its own count at open.
+ * Measured on the operator's journal: the run is 642 rows, the ordinary snap
+ * cannot reach it, and the open frame therefore shows 18 actions and no `Took`
+ * for a settled turn the reader cannot complete without a gesture — symptom 1
+ * itself ("the full set of condensed messages don't load"), with 1a's correct
+ * tail guard refusing the widen that could have fixed it.
+ *
+ * WHAT MAKES THE BIGGER REACH SAFE, given that bound was chosen deliberately: a
+ * run this tall is COLLAPSED, and a collapsed run unmounts the rows its bar
+ * hides (`planRun`'s hidden span), so the cost of including the whole run is the
+ * plan computation and the handful of rows the collapse leaves visible — not the
+ * 642 rows. The reader following the tail sees no motion: the extension is
+ * entirely above their place, and the anchor hold is what keeps it there.
+ *
+ * WHY IT REACHES THIS FAR. 720 rows is the widen's own reach
+ * (`WIDEN_MAX_STEPS` x the 60-row `WINDOW_STEP`) and about what
+ * `ALIGN_WALK_MAX_PAGES` pages of history hold, so the snap and the walk that
+ * proves the rows are in the store agree on how tall a run one open may
+ * complete. A run taller than this keeps the ordinary snap and its honest
+ * partial statement — the bar still condenses, it simply cannot state the whole
+ * run's count without the reader's own gesture.
+ */
+export const WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA = 720;
+
+/**
  * The window's top edge, snapped UP to the opening of the run it lands in.
  *
  * Returns the size unchanged when the edge already sits on a boundary, when
@@ -299,28 +343,78 @@ const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
  * `maxExtra` rows (a run taller than the bound keeps the shipped cut
  * behaviour rather than mounting itself unbounded).
  *
+ * `completedRunMaxExtra` is the allowance above, and it is a SEPARATE bound
+ * because it answers a different question: `maxExtra` bounds an ordinary snap
+ * (a window edge a few rows inside a run), while this one covers a run the store
+ * has PROVEN COMPLETE — the run's own opening row is in the list, which for a
+ * tail-first, contiguous page load means every row of the run is in the store.
+ * Reaching that row is what lets a settled turn state its true action count and
+ * its `Took` clause with no reader gesture; the completion walk (this branch) is
+ * what puts the row within reach, and before it only the first two pages were
+ * ever fetched, so a run this tall could not get here at all.
+ *
  * A snapped window top is a run boundary BY CONSTRUCTION, so every run the
  * list hands to `runsOf` opens with its own user row and every completed one
  * collapses on the first paint — the operator's "fill the screen with user
  * messages, final agent responses, and collapsed sections".
+ *
+ * `live` IS PART OF THE ALLOWANCE'S OWN PRECONDITION, not an extra guard (agent
+ * review round 1, found through the live-run fixture): a run still being written
+ * is not a run the store has PROVEN COMPLETE — the answer that would close it
+ * does not exist yet — and it never collapses, so reaching its opening row would
+ * put the whole streaming prefix on screen. That is exactly the cost the
+ * allowance's justification excludes ("a collapsed run unmounts what its bar
+ * hides"), so the reach stays ordinary while the pane says a turn is in flight.
+ * The caller passes the SAME liveness the collapse plan reads.
  */
 export function snapWindowToRunBoundary(
 	rows: Row[],
 	windowSize: number,
 	maxExtra: number,
+	completedRunMaxExtra = 0,
+	live = false,
 ): number {
 	const total = rows.length;
 	if (total <= windowSize) return windowSize;
 	const top = total - windowSize;
-	const runs = runsOf(rows);
-	const enclosing = runs.find(
-		(run) => run.openingIndex <= top && top <= run.endIndex,
-	);
-	if (enclosing === undefined) return windowSize;
-	if (!enclosing.opensWithUserRow) return windowSize;
+	const enclosing = windowTopRun(rows, windowSize);
+	if (enclosing === null) return windowSize;
 	const extra = top - enclosing.openingIndex;
-	if (extra <= 0 || extra > maxExtra) return windowSize;
+	/*
+	 * `opensWithUserRow` is the PROOF, not a formality: pages load tail-first and
+	 * contiguously, so a run whose opening row is in the list is a run whose every
+	 * row is in the store. Only such a run may use the bigger allowance; a
+	 * head-cut run refuses both, because there is no boundary to land on yet.
+	 */
+	const bound =
+		enclosing.opensWithUserRow && !live
+			? Math.max(maxExtra, completedRunMaxExtra)
+			: enclosing.opensWithUserRow
+				? maxExtra
+				: 0;
+	if (extra <= 0 || extra > bound) return windowSize;
 	return windowSize + extra;
+}
+
+/**
+ * The run the window's top edge lands in, or null when the window covers the
+ * whole list (or the edge lands between runs).
+ *
+ * Extracted so the three consumers that need DIFFERENT things from the same
+ * question — the snap (the run's opening index), the head-cut test (whether that
+ * opening row is loaded) and the walk's per-run budget (the run's stable key) —
+ * ask it once. A second copy of `top = total - windowSize` beside this one is
+ * how these three would drift apart.
+ */
+export function windowTopRun(rows: Row[], windowSize: number): TurnRun | null {
+	const total = rows.length;
+	if (total <= windowSize) return null;
+	const top = total - windowSize;
+	return (
+		runsOf(rows).find(
+			(run) => run.openingIndex <= top && top <= run.endIndex,
+		) ?? null
+	);
 }
 
 /**
@@ -335,40 +429,318 @@ export function windowTopRunIsHeadCut(
 	rows: Row[],
 	windowSize: number,
 ): boolean {
-	const total = rows.length;
-	if (total <= windowSize) return false;
-	const top = total - windowSize;
-	const runs = runsOf(rows);
-	const enclosing = runs.find(
-		(run) => run.openingIndex <= top && top <= run.endIndex,
-	);
-	if (enclosing === undefined) return false;
-	return !enclosing.opensWithUserRow;
+	return windowTopRun(rows, windowSize)?.opensWithUserRow === false;
 }
 
 /**
- * The alignment effect's whole decision, as a pure step: spend another page or
- * not, and the counter it leaves behind.
+ * The key of the run a completion walk would be walking — the CONDENSED run whose
+ * head the fetched rows cut off — or null when no run needs one.
  *
- * WHY IT IS A FUNCTION AND NOT FOUR GUARDS IN AN EFFECT (agent review round 1,
- * F2): the bound (`ALIGN_FETCH_MAX` pages per conversation) is the property
- * that keeps an open from walking an unbounded conversation into memory, and
- * inside an effect it could only be observed by re-mounting a component — a
- * harness whose own double-mount made the reading ambiguous (measured: the
- * per-instance cap of two read as three across a strict-mode remount, and the
- * counts stop either way). Here the table is decided by construction.
+ * WHY THE KEY AND NOT A COUNTER (loader-continuity 1b, per-run re-arm). The walk
+ * spends its budget per RUN: a long-lived conversation settles turn after turn,
+ * and each turn's bar must be able to complete itself, so a budget that reset
+ * only on a session change would leave every later turn partial. `TurnRun.key` is
+ * the stable identity the collapse already remembers runs by (its closing
+ * answer's id, else its last row's), so it survives the head arriving and cannot
+ * be confused with a raw row count.
+ *
+ * THE TRIGGER IS A PROPERTY OF THE BAR, NOT OF THE WINDOW EDGE (agent review
+ * round 1, R1-1's sibling; QA round 1, Q-2 — the finding that the walk never
+ * fired on the journal this PR exists for). The first cut asked
+ * `windowTopRunIsHeadCut(rows, windowSize)`, which is `null` in two states that
+ * are not "nothing is cut": a list SHORTER than the window (`total <=
+ * windowSize` mounts everything, so there is no edge to land anywhere), and an
+ * edge sitting exactly on a run's own opening row. Measured on the operator's
+ * real-shape journal at the restored fixture: the first page lands 55 rows, the
+ * window is 60, the edge query is null, and the bar read `30 actions` of 423 for
+ * as long as the reader sat still — the reported symptom, unfixed.
+ *
+ * The honest question is the one the bar itself answers: is there a run whose bar
+ * is PAINTED and whose opening user row is not in the store? Only the OLDEST run
+ * of the list can be cut — pages load tail-first and contiguously, so every later
+ * run opens with its own user row — and `collapsePlan` is the same function the
+ * render paints from, so "condensed" here cannot disagree with what the reader
+ * sees. `options.live`/`openRuns` are passed straight through for the same
+ * reason: the newest run while a turn is being written never collapses, and a
+ * head-cut run the reader has OPEN paints its rows (its bar is a header, not a
+ * partial statement) — neither owes a walk.
  */
-export function alignFetchDecision(
+export function alignWalkRunKey(
+	rows: Row[],
+	options: { live: boolean; openRuns?: ReadonlySet<string> },
+): string | null {
+	const plan = collapsePlan(rows, {
+		live: options.live,
+		openRuns: options.openRuns,
+	});
+	const cut = plan.runs.find(
+		(run) =>
+			!run.run.opensWithUserRow &&
+			run.collapses &&
+			// A bar the reader has OPEN is a header, not a partial statement: its rows
+			// are painted, so there is nothing for a walk to complete (the same
+			// `openRuns` treatment `paintedRows` gives it).
+			!options.openRuns?.has(run.key),
+	);
+	return cut?.key ?? null;
+}
+
+/**
+ * What a window of this size actually PUTS ON SCREEN, in rows.
+ *
+ * THE READER'S CURRENCY (operator report, 2026-09-29: "the full set of condensed
+ * messages don't load"). The render window is a RAW row count, but a completed
+ * run collapses to one bar, so a raw step reveals a fraction of what it claims:
+ * measured against the operator's real-shape journal, one 618-row run painted
+ * 4-7 rows across window 60..300 — ten gestures of nothing while the count in
+ * the slot grew by hundreds. Every rule that reasons about "did the reader see
+ * it" has to reason in PAINTED rows, and this is that number.
+ *
+ * It is DERIVED, not a second copy of the render pass: the snap and the collapse
+ * are the same two functions the component calls, so a change to either moves
+ * this count with it. `hiddenRows` (the slot's raw count) is a different
+ * quantity and is deliberately untouched.
+ *
+ * `snapMaxExtra` is REQUIRED rather than defaulted, and that is on purpose: the
+ * snap's bound belongs to the consumer (`WINDOW_ALIGN_MAX_EXTRA` in the
+ * transcript), and a default here would let a caller's paint count disagree
+ * with the window the component actually mounts. `completedRunMaxExtra` is
+ * required for the same reason and is the one that BIT (agent review round 1,
+ * R1-1): the completed-run allowance was added to the RENDER's snap and not to
+ * this derivation, so a complete run whose opening lay 301-720 rows above the
+ * raw edge was mounted whole (render painted 2 of 501) while this metric said 1
+ * — and the widen then walked its whole bound for a painted delta of zero. The
+ * two bounds travel together or the count is not the reader's currency.
+ */
+export function paintedRows(
+	rows: Row[],
+	windowSize: number,
+	options: {
+		step: number;
+		live?: boolean;
+		openRuns?: ReadonlySet<string>;
+		snapMaxExtra: number;
+		completedRunMaxExtra: number;
+	},
+): number {
+	const total = rows.length;
+	/*
+	 * Below the total the window is a tail slice of the SNAPPED size, exactly as
+	 * the component derives it; at or above it the whole list is mounted either
+	 * way, so the snap is skipped rather than asked to align a list it cannot cut.
+	 */
+	const alignSize = snapWindowToRunBoundary(
+		rows,
+		windowSize,
+		options.snapMaxExtra,
+		options.completedRunMaxExtra,
+		options.live ?? false,
+	);
+	const visible = total > alignSize ? rows.slice(total - alignSize) : rows;
+	const plan = collapsePlan(visible, {
+		live: options.live ?? false,
+		openRuns: options.openRuns,
+	});
+	let hidden = 0;
+	for (const run of plan.runs) {
+		/*
+		 * An OPEN run paints the rows its bar hides - the render mounts the bar's
+		 * children when `open` is set - so it is not hidden for this count, the
+		 * same treatment the component gives it.
+		 */
+		if (run.collapses && !options.openRuns?.has(run.key)) {
+			hidden += run.hidden.length;
+		}
+	}
+	return visible.length - hidden;
+}
+
+/**
+ * How many widen steps one act may search before it settles for what it has.
+ *
+ * The bound `MAX_CHAIN_WIDEN` states for the reveal CHAIN, restated for the
+ * single act that picks a window size: twelve steps of `WINDOW_STEP` rows is
+ * 720 rows, past any viewport, and the point of a bound is that a bug in the
+ * arithmetic cannot walk an unbounded conversation into memory on one gesture.
+ */
+export const WIDEN_MAX_STEPS = 12;
+
+/**
+ * The next window size, chosen by what the reader will SEE rather than by a raw
+ * row count. See `paintedRows` for why the difference matters.
+ *
+ * Start at `mountedSize + step` and keep stepping while the snapped window's
+ * painted rows have not grown by `minVisibleRows` (default 8: about half a
+ * viewport of ordinary rows, and the smallest reveal a reader can be said to
+ * have been shown), stopping at `maxRows` or the transcript. The result is what
+ * `widen()` in the transcript commits, so ONE gesture still reveals at most one
+ * window — the operator's "it keeps loading in chunks" loop stays closed — but
+ * the window it reveals is one with something in it.
+ *
+ * THE BASELINE IS THE MOUNTED WINDOW (`mountedSize`), NOT the raw `windowSize`
+ * the step is committed against (agent review round 1, R1-1). The snap can mount
+ * more than the raw size — up to the completed-run allowance — so measuring from
+ * the raw number compared two sizes the reader was not looking at: with the raw
+ * window at 60 and the mount at 501, every candidate in the search snapped back
+ * to the same 501 rows and the function reported a painted delta of zero for a
+ * search that ended on the size the mount already had. The caller passes the
+ * size it mounts (`alignSize` in the transcript), which is exactly the quantity
+ * `paintedRows` models.
+ *
+ * A MEASURED LIMIT worth stating where the arithmetic lives: for a run that is
+ * COLLAPSED and complete, `paintedRows` legitimately does not move with the
+ * window — the bar hides what the window adds — so a widen over one walks to its
+ * bound and lands on it. That is not the metric failing (the reader is looking at
+ * a bar whose text is already complete, and the completed-run snap mounts that
+ * run at open); it is the case this function is not for. What it must never do is
+ * report a delta for a window the render did not mount, and with both bounds
+ * threaded through it no longer can.
+ */
+export function widenTarget(
+	rows: Row[],
+	mountedSize: number,
+	options: {
+		step: number;
+		minVisibleRows?: number;
+		maxRows?: number;
+		live?: boolean;
+		openRuns?: ReadonlySet<string>;
+		snapMaxExtra: number;
+		completedRunMaxExtra: number;
+	},
+): number {
+	const total = rows.length;
+	const minVisibleRows = options.minVisibleRows ?? 8;
+	const maxRows = Math.min(total, options.maxRows ?? total);
+	const { step } = options;
+	/*
+	 * The snap is idempotent on an already-snapped size, so this is the mounted
+	 * count in the same currency the candidates below are measured in.
+	 */
+	const before = paintedRows(rows, mountedSize, options);
+	/*
+	 * `live` and `openRuns` are passed straight through to `paintedRows`: a run
+	 * the reader has OPEN paints its rows, and a run still being written is never
+	 * collapsed, so a widen must count them as painted or it would overshoot for
+	 * a reader who had expanded the very run in the way.
+	 */
+	let size = Math.min(maxRows, mountedSize + step);
+	/*
+	 * `while`, not a single test: over a transcript of finished turns the first
+	 * several steps are all invisible (the metric above is about a run's own
+	 * head and tail, not about raw rows), so a one-step overshoot would fix
+	 * nothing. Each iteration is bounded by `WIDEN_MAX_STEPS` steps from the
+	 * caller's `maxRows`.
+	 */
+	while (
+		size < maxRows &&
+		paintedRows(rows, size, options) - before < minVisibleRows
+	) {
+		size = Math.min(maxRows, size + step);
+	}
+	return size;
+}
+
+/**
+ * Durable pages ONE open may walk at the alignment (loader-continuity 1b,
+ * design spec section 7).
+ *
+ * WAS `ALIGN_FETCH_MAX = 2`, and two pages was the whole of the operator's
+ * symptom 1: a turn whose head lay further up the journal than two pages could
+ * never state its own size. Measured on the real-shape journal, the bar at open
+ * read "30 actions" against a run of 423 calls, and it only grew as pages
+ * arrived by hand ("97 actions" in the operator's own screenshot is the same
+ * fact, one fetch budget deeper). A settled turn must be able to COMPLETE ITS
+ * OWN CONDENSATION, and the honest quantity that bounds that is one act's worth
+ * of pages -- the same `JUMP_MAX_PAGES` a rail jump walks, whose own test pins
+ * the two equal so the reader's chain and the jump cannot disagree.
+ */
+export const ALIGN_WALK_MAX_PAGES = 12;
+
+/**
+ * Whether the completion walk spends one more page, and the counter it leaves.
+ *
+ * EVERY TERM IS A REASON TO STOP, and they are the design's section 7 clauses:
+ * the window's top run is still head-cut and the backend has more (there is
+ * something to complete), no page is in flight (the walk never queues behind
+ * itself), the reader is following the tail and has been quiet for the settle
+ * window (`mayWalk`, computed by the paging hook from the SAME geometry and
+ * input clock every other spend uses -- the walk must not re-derive them), and
+ * every page so far APPLIED (a non-`applied` outcome halts the walk rather than
+ * counting against it: one failure already owns the failed row, and a walk that
+ * kept asking would be the operator's "keeps loading in chunks" loop).
+ *
+ * WHY A PURE FUNCTION. The bound is the property that keeps an open from
+ * walking an unbounded conversation into memory, and inside an effect it could
+ * only be observed by re-mounting a component -- a harness whose own
+ * double-mount made the reading ambiguous (measured: a per-instance cap of two
+ * read as three across a strict-mode remount). Here the table is decided by
+ * construction.
+ */
+export function alignWalkDecision(
 	spent: number,
-	hasMore: boolean,
-	loadingOlder: boolean,
-	headCut: boolean,
-	max: number,
+	context: {
+		hasMore: boolean;
+		loadingOlder: boolean;
+		headCut: boolean;
+		mayWalk: boolean;
+		halted: boolean;
+	},
 ): { fetch: boolean; spent: number } {
-	if (spent >= max || loadingOlder || !hasMore || !headCut) {
+	if (
+		spent >= ALIGN_WALK_MAX_PAGES ||
+		context.halted ||
+		context.loadingOlder ||
+		!context.hasMore ||
+		!context.headCut ||
+		!context.mayWalk
+	) {
 		return { fetch: false, spent };
 	}
 	return { fetch: true, spent: spent + 1 };
+}
+
+/**
+ * What the walk remembers, and WHOSE walk it was.
+ *
+ * The run is part of the state rather than a side ref because the budget is a
+ * fact about a run: `key` names the head-cut run the count belongs to, and every
+ * consumer reads the pair together. A conversation that outlives its walk is the
+ * reason (`alignWalkRunKey`): a later settled turn must be able to complete
+ * itself, and the walk for ITS run starts from zero.
+ */
+export type AlignWalkState = {
+	/** `TurnRun.key` of the run this budget belongs to, or null when none is cut. */
+	key: string | null;
+	/** Pages spent on that run, bounded by `ALIGN_WALK_MAX_PAGES`. */
+	spent: number;
+	/** That run's walk saw a page that did not apply. */
+	halted: boolean;
+};
+
+export const initialAlignWalkState = (): AlignWalkState => ({
+	key: null,
+	spent: 0,
+	halted: false,
+});
+
+/**
+ * Point the memory at the run that owes a walk, resetting only when the run
+ * CHANGES.
+ *
+ * A null key (no head-cut run under the window edge) leaves the memory
+ * untouched rather than clearing it: a run's budget is spent once, and a window
+ * that momentarily sits elsewhere — the reader scrolls down, a page lands — must
+ * not hand the same run a second walk. A DIFFERENT key is a different run, and it
+ * starts with a full budget (and a clean `halted`, because one run's failure says
+ * nothing about another's).
+ */
+export function alignWalkStateFor(
+	state: AlignWalkState,
+	key: string | null,
+): AlignWalkState {
+	if (key === null || key === state.key) return state;
+	return { key, spent: 0, halted: false };
 }
 
 function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
@@ -455,6 +827,12 @@ function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 			 */
 			durationS: run.opensWithUserRow && span >= 1000 ? span / 1000 : null,
 			actions: actions.length,
+			/*
+			 * The count is a MINIMUM for exactly the reason the duration is absent: the
+			 * rows above the loaded span are unknown, so `actions.length` is what has
+			 * been LOADED of this turn. The bar says so (`N+ actions`).
+			 */
+			partial: !run.opensWithUserRow,
 			failed,
 			firstFailedId,
 			title: actions.length > 0 ? foldSummary(actions) : null,

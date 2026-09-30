@@ -34,6 +34,13 @@ const SENTENCE: Record<string, string> = {
 	ERR_CONNECTION_REFUSED:
 		"The site refused the connection. It may be down, or refusing this app.",
 	ERR_CONNECTION_TIMED_OUT: "The site did not answer in time.",
+	// THE RESTORE BOUNDARY'S OWN MARK (round-1 U3/D2): `host.ts` records this
+	// description when a hydration the app started at relaunch never committed a
+	// page and its bounded wait expired. That IS the quiet timeout, so it shares
+	// the sentence above rather than falling to the generic one; a refusal the
+	// network could name keeps its own code (the restore fallback never overwrites
+	// one), and the parenthetical stays in the machine line for a bug report.
+	"ERR_FAILED (restore)": "The site did not answer in time.",
 	ERR_EMPTY_RESPONSE:
 		"The site closed the connection without sending a response.",
 	ERR_CONNECTION_RESET: "The connection was reset before the page arrived.",

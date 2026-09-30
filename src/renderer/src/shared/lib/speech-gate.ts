@@ -74,19 +74,28 @@ export type RadientSpeechBlock =
  *  1. The local server being down is stated first: it is the only state the
  *     offline sentence is true for, it is what the connectivity banner explains,
  *     and no account read can answer while it holds.
- *  2. An in-flight read is `checking` - and on a backend that cannot serve
- *     Radient at all it will stay in flight forever, which is not something to
- *     wait out, so that case is `could-not-check` instead.
- *  3. Only an ANSWERED "no" (`signed-out`, `refused`) earns the sign-in
+ *  2. A backend that cannot serve Radient is stated next, and BEFORE the account
+ *     read's own class — because on that backend the read never asked. The
+ *     feature gate DISABLES the query (`desktopFeatureEnabled(capabilities.data,
+ *     "radient")` is false), so React Query reports no data and no error and
+ *     `accountRead` lands on `signed-out` without an answer behind it (measured
+ *     by QA round 1: an older backend rendered the sign-in sentence). Reading
+ *     that silence as "no account" is the same defect class as reading it as
+ *     "offline", and consulting the unavailable reading first is what makes the
+ *     `could-not-check` arm reachable in integration rather than only in unit
+ *     assertions.
+ *  3. An in-flight read is `checking`.
+ *  4. Only an ANSWERED "no" (`signed-out`, `refused`) earns the sign-in
  *     sentence; signing in is its remedy and nothing else's.
- *  4. Every other failure is the check itself failing, and the copy says so.
+ *  5. Every other failure is the check itself failing, and the copy says so.
  *
  * @param state.serverOnline - the connectivity gate's reading, `false` once the
  *   local server is known to be down.
  * @param state.accountRead - the account read's class, from the one reading in
  *   `use-radient-user-query`.
  * @param state.accountUnavailable - the backend cannot serve Radient at all
- *   (an older backend), so the read will never leave `checking`.
+ *   (an older backend), so the read never answered and will never leave
+ *   `signed-out`.
  */
 export function radientSpeechBlock(state: {
 	serverOnline: boolean;
@@ -94,9 +103,8 @@ export function radientSpeechBlock(state: {
 	accountUnavailable: boolean;
 }): RadientSpeechBlock {
 	if (!state.serverOnline) return "offline";
-	if (state.accountRead === "checking") {
-		return state.accountUnavailable ? "could-not-check" : "checking";
-	}
+	if (state.accountUnavailable) return "could-not-check";
+	if (state.accountRead === "checking") return "checking";
 	if (state.accountRead === "signed-out" || state.accountRead === "refused") {
 		return "sign-in";
 	}
