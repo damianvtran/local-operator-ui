@@ -577,6 +577,22 @@ export function MiniComposer() {
 	/* -- the frame's own events --------------------------------------------- */
 
 	/**
+	 * THE SHEET'S ONE EXIT (UX round 2, U3's residual).
+	 *
+	 * Every way out of the sheet - Escape through the frame's ladder, the sheet's own
+	 * close control, or a pick - comes through here. The restore used to live on the
+	 * `onClose` prop alone and the LADDER did not reach it: measured after an Escape,
+	 * `document.activeElement` was `<body>` and the next Escape produced no hide at
+	 * all (the event's target sits outside the React root, so the frame never saw
+	 * it). A pick was already correct - which is what a second, unreached copy of
+	 * one rule looks like.
+	 */
+	const closeSheet = useCallback((): void => {
+		setSheet(null);
+		inputRef.current?.focusInput();
+	}, []);
+
+	/**
 	 * The summon: keyboard to the composer, palette re-read, flash reset, seat
 	 * re-read (name + identity, then the readings), and a sheet closed - a
 	 * picker left open from the last summon lists a stale world.
@@ -585,7 +601,7 @@ export function MiniComposer() {
 		return window.api?.miniView?.onSummoned?.(() => {
 			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
 			update((current) => miniFrameTransitions.summoned(current));
-			setSheet(null);
+			closeSheet();
 			/*
 			 * THE HEIGHT RETURNS TO REST WITH THE SUMMON (reviewer M1): a sheet or a
 			 * long draft grown on the last summon is closed here, and the observer
@@ -601,7 +617,14 @@ export function MiniComposer() {
 				void refreshProbe();
 			})();
 		});
-	}, [ensureSeat, refreshIdentity, refreshProbe, refreshSeatReads, update]);
+	}, [
+		closeSheet,
+		ensureSeat,
+		refreshIdentity,
+		refreshProbe,
+		refreshSeatReads,
+		update,
+	]);
 
 	useEffect(() => {
 		/* The registration state feeds the header's keycap. A window whose
@@ -713,6 +736,24 @@ export function MiniComposer() {
 		});
 	}, []);
 
+	/**
+	 * THE FIRST-COMMIT SIGNAL (see `MINI_VIEW_PAINTED`).
+	 *
+	 * Main presents this window only after this fires, because a frameless window
+	 * shown before its document commits is a WHITE CARD on macOS - the shipped
+	 * defect, where every open after a bundle swap was blank until relaunch.
+	 *
+	 * FROM THE COMMIT, NOT FROM A FRAME: `useLayoutEffect` runs synchronously as part
+	 * of the first commit, while a window that has never been shown cannot be relied
+	 * on to run `requestAnimationFrame` at all (the same property that made the
+	 * rAF-coalesced resize invisible in this pass's own rig). One shot: the signal
+	 * describes this document, and a reload is a new document whose own mount
+	 * signals again.
+	 */
+	useLayoutEffect(() => {
+		window.api?.miniView?.painted?.();
+	}, []);
+
 	/*
 	 * THE MEASURED RESIZE (design R2). The frame's content column is measured and
 	 * the height asked of main, which clamps and calls `setContentSize`.
@@ -779,14 +820,14 @@ export function MiniComposer() {
 			if (event.nativeEvent.defaultPrevented) return;
 			if (sheet !== null) {
 				event.preventDefault();
-				setSheet(null);
+				closeSheet();
 				return;
 			}
 			if (dictationActiveRef.current) return;
 			event.preventDefault();
 			dismiss("escape");
 		},
-		[dismiss, sheet],
+		[closeSheet, dismiss, sheet],
 	);
 
 	/* -- the readings strip's dispatcher ------------------------------------ */
@@ -980,12 +1021,9 @@ export function MiniComposer() {
 						 * pick) come through here, so the restore cannot be forgotten on
 						 * one of them.
 						 */
-						onClose={() => {
-							setSheet(null);
-							inputRef.current?.focusInput();
-						}}
+						onClose={closeSheet}
 						onPicked={() => {
-							setSheet(null);
+							closeSheet();
 							inputRef.current?.focusInput();
 							void refreshSeatReads(seatId);
 							scheduleSettleRead(seatId);

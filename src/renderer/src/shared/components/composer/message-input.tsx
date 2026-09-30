@@ -738,8 +738,9 @@ export type MessageInputProps = {
 	 * no transcript has no such edge to match: the mini frame's own padding IS the
 	 * edge, and inheriting the chat's inset put the box 24px in from the header
 	 * and the hint that sit at the frame's edge (measured: 12 / 12 / 36 in a 640
-	 * window). Declared here rather than papered over with a negative margin, and
-	 * defaulted TRUE so every existing host keeps the shared edge it has today.
+	 * window). Declared here rather than papered over with a negative margin. It is
+	 * an OPT-IN, defaulted false, so every existing host keeps the shared edge it
+	 * has today and only a host that is its own gutter says so (reviewer R2-1).
 	 */
 	ownGutter?: boolean;
 	/**
@@ -2289,7 +2290,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				if (draftModelUnresolved) {
 					sessionStatus?.onOpenDraftPicker?.("session.model");
-					return;
+					/*
+					 * And the same `false`: this gate refuses the press too - it hands it to the
+					 * picker instead - so the box must keep its text. It was a bare `return`
+					 * (QA Q4's finding, one gate over), which retired a draft the user still
+					 * had to send once they had chosen a model.
+					 */
+					return false;
 				}
 				/*
 				 * A LIVE TAKE OWNS THE KEY (UX review round 1, U2).
@@ -2313,7 +2320,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * still landing - a send then would race the take's own write for the
 				 * same box.
 				 */
-				if (isRecording || isTranscribing) return;
+				/*
+				 * `return false`, NOT a bare `return` (UX round 2 / QA Q4). `useMessageInput`
+				 * reads only `outcome === false` as a refusal (`use-message-input.ts`) and
+				 * treats `undefined` as an ACCEPTED send: it cleared the box, retired the
+				 * draft and logged the payload with no request ever made - the take's words
+				 * lost and the typed draft gone with them, silently (measured live, 3/3).
+				 * This is the shape the Esc-cancel path already refuses in, so the press now
+				 * leaves the text exactly where the user left it.
+				 */
+				if (isRecording || isTranscribing) return false;
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it

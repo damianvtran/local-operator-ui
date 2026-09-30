@@ -32912,11 +32912,29 @@ async function sceneMiniView(app, cdp) {
 		 * attribute `applyThemeToDocument` writes is set here, on the mini's own
 		 * documentElement, and asserted below: two documents, one palette name.
 		 */
-		if (THEME) {
-			await mini.evaluate(
-				`(() => { document.documentElement.dataset.theme = ${JSON.stringify(THEME)}; return true; })()`,
-			);
-		}
+		/*
+		 * THE PALETTE, AT ATTACH AND AFTER EVERY RELOAD (design N2/D6). The mini
+		 * document publishes its palette from the persisted preference, and a
+		 * `Page.reload` re-publishes the STORE'S value - so the error state, which this
+		 * walk reaches through a reload, was photographed DARK in the light run. One
+		 * helper, called at both points, and the frame check asserts the result.
+		 */
+		const applyMiniTheme = async () => {
+			if (!THEME) return;
+			/*
+			 * NO-OP WHILE THE DOCUMENT IS BETWEEN NAVIGATIONS: a `Page.reload` answer
+			 * arrives before the new document exists, and `documentElement` is null until
+			 * it does - the first light-palette run threw exactly there.
+			 */
+			try {
+				await mini.evaluate(
+					`(() => { const root = document.documentElement; if (!root) return true; root.dataset.theme = ${JSON.stringify(THEME)}; return true; })()`,
+				);
+			} catch {
+				/* A document that is gone: the next call, after it has remounted, sets it. */
+			}
+		};
+		await applyMiniTheme();
 
 		const pageState = await mini.evaluate(
 			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${composerField}?.placeholder ?? null, sendDisabled: ${composerSend}?.disabled ?? null })`,
@@ -33131,22 +33149,38 @@ async function sceneMiniView(app, cdp) {
 		 * state's draft is exactly the string this walk names.
 		 */
 		const type = async (text) => {
-			await mini.evaluate(
-				`(() => { const box = ${composerField}; box.focus(); box.select(); return true; })()`,
-			);
-			await mini.send("Input.dispatchKeyEvent", {
-				type: "keyDown",
-				key: "Backspace",
-				code: "Backspace",
-				windowsVirtualKeyCode: 8,
-			});
-			await mini.send("Input.dispatchKeyEvent", {
-				type: "keyUp",
-				key: "Backspace",
-				code: "Backspace",
-				windowsVirtualKeyCode: 8,
-			});
-			await mini.send("Input.insertText", { text });
+			/*
+			 * TYPE UNTIL THE BOX HOLDS IT (QA round 2, Q8). Every window in this rig is
+			 * unfocused, so the draft store's cross-document sync may absorb the other
+			 * document's copy between the insert and the next read - measured: the box was
+			 * emptied under the walk and a run sent an older draft. Insert, verify, and
+			 * type again if something else won the row.
+			 */
+			for (let attempt = 0; attempt < 3; attempt += 1) {
+				await mini.evaluate(
+					`(() => { const box = ${composerField}; box.focus(); box.select(); return true; })()`,
+				);
+				await mini.send("Input.dispatchKeyEvent", {
+					type: "keyDown",
+					key: "Backspace",
+					code: "Backspace",
+					windowsVirtualKeyCode: 8,
+				});
+				await mini.send("Input.dispatchKeyEvent", {
+					type: "keyUp",
+					key: "Backspace",
+					code: "Backspace",
+					windowsVirtualKeyCode: 8,
+				});
+				await mini.send("Input.insertText", { text });
+				const settled = await pollMini(
+					`${composerField}?.value ?? null`,
+					(value) => value === text,
+					"the box to hold the typed draft",
+					3_000,
+				);
+				if (settled.ok) return text;
+			}
 			return mini.evaluate(`${composerField}.value`);
 		};
 
@@ -33182,6 +33216,19 @@ async function sceneMiniView(app, cdp) {
 			"If the order should be different, say so and I will re-plan the morning.",
 		].join("\n");
 		await type(longDraft);
+		/*
+		 * SETTLED FIRST, THEN READ (QA round 2, Q7). Under load the observer's post lands
+		 * after a single read, so run 1 caught the window mid-growth ({"innerHeight":299,
+		 * "columnScrollHeight":521}). The property the resize exists to hold is polled to,
+		 * and only then are the numbers taken - so a frame is never read while it is still
+		 * arriving.
+		 */
+		await pollMini(
+			`(() => { const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); return Boolean(column) && column.scrollHeight <= window.innerHeight; })()`,
+			(value) => value === true,
+			"the long draft to fit the window",
+			8_000,
+		);
 		const growth = await mini.evaluate(
 			`(() => { const box = ${composerField}; const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); const frame = document.body.getBoundingClientRect(); return { bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height), innerHeight: window.innerHeight, columnScrollHeight: column?.scrollHeight ?? null, columnBoxHeight: column ? Math.round(column.getBoundingClientRect().height) : null }; })()`,
 		);
@@ -33370,6 +33417,9 @@ async function sceneMiniView(app, cdp) {
 				(value) => value === true,
 				"the composer remounted",
 			);
+			/* Now that the new document is up: the reload republishes the STORE's palette
+			   (dark), so this run's is asked for again - D6's light error frame. */
+			await applyMiniTheme();
 			check(
 				"the composer remounted after the reload",
 				remounted.ok,
@@ -33484,6 +33534,10 @@ async function sceneMiniView(app, cdp) {
 			(value) => value === true,
 			"the composer remounted",
 		);
+		/* THE STATE OF THE LIGHT RUN: this reload is what the error state follows, and
+		   it republishes the persisted (dark) palette, so the frame was photographed
+		   dark before this call existed (design D6). */
+		await applyMiniTheme();
 		const message = "Lunch at one tomorrow? Book the room if it is free.";
 		const held = await type(message);
 		check(
@@ -33493,86 +33547,56 @@ async function sceneMiniView(app, cdp) {
 		);
 
 		/*
-		 * THE SEND, walked on the app's OWN window — which is what makes both
-		 * arms honest now that the exerciser exists (M-B1). The window this
-		 * scene drives was created by the app, so the desktop plane's gate
-		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
-		 * request then goes is the run's own backend or, without one, the dead
-		 * port — and the surface shows the outcome the machine can produce.
+		 * THE SEND, walked on the app's OWN window. The window this scene drives
+		 * was created by the app, so the desktop plane's gate (`desktop-ipc.ts`,
+		 * admits by frame) ADMITS its requests; where the request then goes is the
+		 * run's own backend or, without one, the dead port.
 		 *
-		 * WITH `--backend`, the live pair. The `sending` frame needs the
-		 * in-flight state to outlive a loopback round trip, so the harness
-		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
-		 * record the run linked, resumed in a `finally`) for the frame's
-		 * duration and resumes it before the same request completes: the request
-		 * is a real one, the `sent` frame is its admission, and the history
-		 * read-back below is the daemon's own receipt. The 600 ms flash is held
-		 * open long enough to photograph by stretching the composer's OWN timer
-		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
-		 * harness aid, disclosed here and in the README, not a shipped change.
+		 * WITH `--backend`, the live send: the press is a real one, the `sent`
+		 * frame is its real admission, and the history read-back below is the
+		 * daemon's own receipt. The 600 ms flash is held open long enough to
+		 * photograph by stretching the composer's OWN timer (`SENT_FLASH_MS`, read
+		 * from its declaration) in this window's page - a harness aid, disclosed
+		 * here and in the README, not a shipped change.
 		 *
-		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
-		 * the frame the PR's error state has always been.
+		 * NO `sending` FRAME, and no paused daemon (QA round 2, Q5/Q6). The old
+		 * arm SIGSTOPped the run's own daemon to hold the answer open long enough
+		 * to photograph an in-flight state - and that state does not exist on this
+		 * surface: the composer's only send-related refusal term is
+		 * `isBusy = isLoading && currentJobId` (`message-input.tsx`), and a
+		 * quick-send frame has no job id, so `readOnly` never flips (twelve
+		 * seconds of 400 ms samples across a paused send: unchanged, no alert, no
+		 * status change). The captured "sending" still was the resting box. The
+		 * pause technique is also unreliable on its own terms: on v0.64.10 the
+		 * held request never landed at all, and on v0.64.9 its recovery was
+		 * timing-dependent (QA's own runs and probes disagree), so a rig built on
+		 * it would fail a shipped PR for the harness's reason. What is claimed
+		 * here instead is the pair this surface really produces.
+		 *
+		 * WITHOUT a backend, the fail-closed arm: the transport refusal, draft
+		 * kept - the frame the PR's error state has always been.
 		 */
 		if (BACKEND) {
 			await mini.evaluate(
 				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
 			);
-			const daemonPids = runDaemonPids();
-			let paused = 0;
-			try {
-				for (const pid of daemonPids) {
-					try {
-						process.kill(pid, "SIGSTOP");
-						paused += 1;
-					} catch {
-						/* Already gone: nothing to hold, and the send will show it. */
-					}
-				}
-				check(
-					"the run's own daemon was paused for the sending frame",
-					paused > 0,
-					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
-				);
-				await wait(150);
-				/*
-				 * SETTLE AND RE-VERIFY IMMEDIATELY BEFORE THE CLICK (QA Q1-d). Every window in
-				 * this rig is unfocused, so the draft store's cross-document sync (R5) may absorb
-				 * the OTHER document's copy between `type()` and the press - measured: the run
-				 * sent an older draft while the harness watched for the new one. The box is
-				 * pinned here, and a mismatch refuses rather than sending a message this walk is
-				 * not describing.
-				 */
-				const pinned = await mini.evaluate(
-					`(() => { const box = ${composerField}; box.focus(); return box.value === ${JSON.stringify(message)}; })()`,
-				);
-				check(
-					"the box still holds the message at the press",
-					pinned === true,
-					`pinned=${pinned}`,
-				);
-				await mini.evaluate(`${composerSend}.click(); true`);
-				const inFlight = await pollMini(
-					`({ readOnly: ${composerField}.readOnly, sendControl: Boolean(${composerSend}) })`,
-					(value) => value?.readOnly === true,
-					"the in-flight state",
-					6_000,
-				);
-				check(
-					"the send is in flight while the daemon holds the answer",
-					inFlight.ok,
-					JSON.stringify(inFlight.value),
-				);
-				await captureMini("mini-view-sending");
-			} finally {
-				for (const pid of daemonPids) {
-					try {
-						process.kill(pid, "SIGCONT");
-					} catch {
-						/* A pid that died while paused has nothing to resume. */
-					}
-				}
-			}
+			/*
+			 * SETTLE AND RE-VERIFY IMMEDIATELY BEFORE THE CLICK (QA Q1-d). Every window in
+			 * this rig is unfocused, so the draft store's cross-document sync (R5) may absorb
+			 * the OTHER document's copy between `type()` and the press - measured: the run
+			 * sent an older draft while the harness watched for the new one. The box is
+			 * pinned here, and a mismatch refuses rather than sending a message this walk is
+			 * not describing.
+			 */
+			const pinned = await mini.evaluate(
+				`(() => { const box = ${composerField}; box.focus(); return box.value === ${JSON.stringify(message)}; })()`,
+			);
+			check(
+				"the box still holds the message at the press",
+				pinned === true,
+				`pinned=${pinned}`,
+			);
+			await mini.evaluate(`${composerSend}.click(); true`);
 			const admitted = await pollMini(
 				`${select("mini-composer-status")}.textContent`,
 				(text) => text === sentSentence,
@@ -33753,6 +33777,63 @@ async function sceneMiniView(app, cdp) {
 				windows.every((window) => window.visible === false),
 			JSON.stringify(windows),
 		);
+		/*
+		 * THE FAILURE CARD, photographed (round 3's robustness set).
+		 *
+		 * The card is main's own `data:` document, loaded when the document cannot
+		 * be (see `mini-view.ts`), and the honest way to reach it from a rig is to
+		 * make a load FAIL rather than to call the loader: the window is pointed at
+		 * a file that does not exist, `did-fail-load` fires the module's own handler,
+		 * and the frame is captured from the hidden window like every other. The
+		 * real document is then loaded again, so the app is left as the run found
+		 * it and a later scene step (or a person) sees the composer.
+		 */
+		const failed = await main.evaluate(
+			[
+				"(() => {",
+				"\tconst window = globalThis.__lopMiniSceneWindow;",
+				"\tif (!window || window.isDestroyed()) return null;",
+				"\t/* The URL to come back to, remembered before the deliberate failure. */",
+				"\tglobalThis.__lopMiniSceneUrl = window.webContents.getURL();",
+				'\tvoid window.loadURL("file:///nonexistent-local-operator-mini-view.html");',
+				"\treturn true;",
+				"})()",
+			].join("\n"),
+		);
+		check(
+			"the scene can make the mini document fail to load",
+			failed === true,
+			`failed=${failed}`,
+		);
+		const cardShown = await pollMini(
+			'document.body?.innerText ?? ""',
+			(value) => typeof value === "string" && value.includes("could not open"),
+			"the failure card",
+			10_000,
+		);
+		check(
+			"a failed load shows the card rather than a white document",
+			cardShown.ok,
+			JSON.stringify(cardShown.value),
+		);
+		const cardGround = await mini.evaluate(
+			'(() => ({ background: getComputedStyle(document.body).backgroundColor, hasScript: document.querySelectorAll("script").length, text: document.body.innerText }))()',
+		);
+		check(
+			"the card is dark, scriptless, and neither blank nor white",
+			typeof cardGround?.background === "string" &&
+				cardGround.background !== "rgb(255, 255, 255)" &&
+				cardGround.hasScript === 0 &&
+				typeof cardGround.text === "string" &&
+				cardGround.text.trim().length > 0,
+			JSON.stringify(cardGround),
+		);
+		await captureMini("mini-view-error-card");
+		/* Leave the app as the run found it. */
+		await main.evaluate(
+			'(() => { const window = globalThis.__lopMiniSceneWindow; if (!window || window.isDestroyed()) return null; void window.loadURL(globalThis.__lopMiniSceneUrl ?? "about:blank"); return true; })()',
+		);
+
 		const memory = await main.evaluate(
 			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = globalThis.__lopMiniSceneWindow; if (!electron || !window || window.isDestroyed()) return null; const pid = window.webContents.getOSProcessId(); const metric = electron.app.getAppMetrics().find((entry) => entry.pid === pid); return metric ? { pid, type: metric.type, workingSetKb: metric.memory?.workingSetSize, peakWorkingSetKb: metric.memory?.peakWorkingSetSize, privateKb: metric.memory?.privateBytes } : null; })()',
 		);
