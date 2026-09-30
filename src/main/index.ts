@@ -2093,7 +2093,7 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
-				desktopCompanion?.refresh();
+				desktopCompanion?.refresh(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;

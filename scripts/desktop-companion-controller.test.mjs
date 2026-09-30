@@ -368,6 +368,28 @@ test("visible companion presents once without focus and accepts the first click"
 	assert.equal(window.options.type, undefined);
 });
 
+test("re-show restores the selected character when bootstrap finished while hidden", async (t) => {
+	const f = fixture(t, { preferences: { character: "inky" } });
+	const window = f.windows[0];
+	await f.catalogue("answer");
+	f.companion.setEnabled(false);
+	for (const channel of ["get-state", "get-appearance", "get-chat"])
+		assert.equal(f.handlers.get(`companion:${channel}`)(f.trusted()), null);
+	window.emit("ready-to-show");
+	window.messages.length = 0;
+	f.companion.setEnabled(true);
+	assert.deepEqual(
+		window.messages.map(([channel]) => channel),
+		["companion:appearance", "companion:state", "companion:chat"],
+	);
+	assert.equal(window.messages[0][1].id, "inky");
+	assert.equal(window.messages[1][1].notifications[0].kind, "answer");
+	assert.deepEqual(window.messages[2][1], f.chat());
+	assert.equal(window.messages[2][1].open, false);
+	assert.equal(f.windows.length, 1);
+	assert.deepEqual(window.presentations, []);
+});
+
 test("IPC requires this companion's exact top-level document and rejects malformed actions", async (t) => {
 	const f = fixture(t);
 	const window = f.windows[0];
@@ -433,6 +455,50 @@ test("IPC requires this companion's exact top-level document and rejects malform
 	for (const value of [null, {}, 42, ["text"]])
 		assert.equal(await f.send(value), false);
 	assert.deepEqual(f.desktopRequests, reads);
+});
+
+test("unrelated feed frames skip catalogue and chat reads while session changes and the safety poll still refresh", async (t) => {
+	const f = fixture(t);
+	await f.catalogue("idle");
+	f.action("open");
+	await settle();
+	const reads = [...f.desktopRequests];
+	for (const type of ["heartbeat", "authoring"]) {
+		f.companion.refresh({ type });
+		await f.flush();
+		assert.equal(f.requests.length, 0);
+	}
+	assert.deepEqual(f.desktopRequests, reads);
+	for (const type of [
+		"open",
+		"gap",
+		"catalogue",
+		"session_status",
+		"attention",
+		"notification",
+	]) {
+		f.companion.refresh({ type });
+		await f.flush();
+		assert.equal(f.requests.length, 1, type);
+		f.requests.shift().resolve(catalogue("answer"));
+		await settle();
+		assert.equal(f.state().notifications[0].kind, "answer");
+	}
+	assert.equal(f.intervals.size, 1);
+	for (const poll of f.intervals.values()) poll();
+	await f.flush();
+	assert.equal(f.requests.length, 1);
+	f.requests.shift().resolve({ status: 503 });
+	await settle();
+	assert.equal(f.state().mood, "offline");
+	f.companion.refresh();
+	await f.catalogue("idle");
+	assert.equal(f.state().mood, "idle");
+	f.companion.setEnabled(false);
+	f.companion.refresh({ type: "notification" });
+	await f.flush();
+	assert.equal(f.requests.length, 0);
+	assert.equal(f.intervals.size, 0);
 });
 
 test("catalogue reads coalesce and serialize, then reject responses from a disabled generation", async (t) => {

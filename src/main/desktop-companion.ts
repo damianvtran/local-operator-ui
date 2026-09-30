@@ -24,6 +24,7 @@ import {
 	companionPreferences,
 	companionStateFromCatalogue,
 } from "../shared/desktop-companion";
+import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { CompanionChatService } from "./companion-chat";
 import { CompanionSkinLibrary } from "./companion-skins";
 import { presentWindow, raiseWindow } from "./window-raise";
@@ -388,6 +389,9 @@ export class DesktopCompanion {
 
 	private present(): void {
 		if (!this.window) return;
+		this.window.webContents.send("companion:appearance", this.appearance);
+		this.window.webContents.send("companion:state", this.state);
+		this.publishChat();
 		presentWindow(this.window, this.options.headless ? "never" : "inactive", {
 			trigger: "companion-present",
 			report: this.options.report,
@@ -403,7 +407,8 @@ export class DesktopCompanion {
 	}
 
 	/** Coalesce feed events while keeping catalogue reads sequential. */
-	refresh(): void {
+	refresh(frame?: DesktopFeedFrame): void {
+		if (frame?.type === "heartbeat" || frame?.type === "authoring") return;
 		if (!this.enabled || this.disposed || this.debounce) return;
 		if (this.refreshing) {
 			this.dirty = true;
