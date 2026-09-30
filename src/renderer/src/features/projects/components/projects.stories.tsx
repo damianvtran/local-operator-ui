@@ -40,6 +40,7 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
+import { type SortSpec, writeProjectsSort } from "../project-sort";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
@@ -922,6 +923,7 @@ const page = (
 		view?: "list" | "board" | "timeline";
 		columnOrder?: string[];
 		window?: BoardWindow;
+		sort?: SortSpec | null;
 	},
 ) => {
 	stub = {
@@ -970,6 +972,14 @@ const page = (
 		}
 	}
 	/*
+	 * The sort is persisted the same way (U2: an explicit column sort persists
+	 * across a view switch), so every story states one or clears it: a stored
+	 * sort leaking into the next story would order its rows by the previous
+	 * story's column — the same defect the view, the order and the window
+	 * guard against.
+	 */
+	writeProjectsSort(state.sort ?? null);
+	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
 	 * content instead of the panel the app draws.
@@ -982,14 +992,14 @@ const page = (
 };
 
 /** Empty: no project anywhere on this machine. */
-export const Empty: Story = { render: () => page({}) };
+export const Empty: Story = { render: () => page({ view: "list" }) };
 
 /** Loading: the header stays, so nothing jumps when the rows arrive. */
 export const Loading: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="Loading projects" />
-			{page({ hang: true })}
+			{page({ view: "list", hang: true })}
 		</>
 	),
 };
@@ -999,13 +1009,25 @@ export const LoadError: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="The backend did not answer." />
-			{page({ failList: "The backend did not answer." })}
+			{page({ view: "list", failList: "The backend did not answer." })}
 		</>
 	),
 };
 
 /** Three projects: the list's ordinary shape. */
-export const Populated: Story = { render: () => page({ projects: THREE }) };
+export const Populated: Story = {
+	render: () => page({ view: "list", projects: THREE }),
+};
+
+/**
+ * THE DEFAULT VIEW'S FRAME (design item 3, as amended): nothing stored, so the
+ * page derives its default — the Board — and this is the only story that
+ * states NO view on purpose, which is what makes the derivation visible here
+ * and nowhere else. The flip is scoped to a NEVER-CHOSEN value: a reader who
+ * picked List or Timeline keeps it, and the stored key's format is unchanged,
+ * so no migration runs.
+ */
+export const DefaultBoard: Story = { render: () => page({ projects: THREE }) };
 
 /**
  * The same listing at the width the 800x600 window floor leaves the list once
@@ -1017,10 +1039,220 @@ export const Populated: Story = { render: () => page({ projects: THREE }) };
  * and the header run the same COLUMNS plan, so this frame is the alignment
  * proof as well as the width proof.
  */
-export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
+export const NarrowColumns: Story = {
+	render: () => page({ view: "list", projects: THREE }),
+};
 
 /** Twelve projects: the list under a scrollbar. */
-export const Many: Story = { render: () => page({ projects: MANY }) };
+export const Many: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+};
+
+/**
+ * The search row at rest (U1's state 0): field, Filters with no count, no
+ * chips row, no result line — the before half of the no-new-row claim. The
+ * pair with `SearchActive` is the frame evidence that the first keystroke
+ * changes nothing about the row's height.
+ */
+export const SearchIdle: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+};
+
+/**
+ * The same row with a query in it (state 1): the result line appears in the
+ * switcher row's right cluster (`10 of 12 projects`), the rows narrow to the
+ * matches in relevance order, and still no chips row — nothing facet-shaped
+ * is set. Compare with `SearchIdle` for the no-new-row claim.
+ */
+export const SearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("search-active", async () => {
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the result count to appear",
+		);
+	}),
+};
+
+/** The Filters popover complete (the toolbar entry point): all nine facets. */
+export const FiltersOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filters-open", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to open",
+		);
+	}),
+};
+
+/**
+ * The chips row (state 2): a facet is on, so one chip per facet plus Clear all
+ * appears BELOW the switcher row while the result line lives in the row above
+ * — the U1 split, photographed in its on state.
+ */
+export const FilterChips: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filter-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip row to appear",
+		);
+	}),
+};
+
+/**
+ * A stored column sort, at rest: the strip's Status header carries the
+ * direction glyph and `aria-sort`, and the sort chip names it — the U6 door
+ * that stays reachable when the column itself has been shed.
+ */
+export const SortedStatus: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+};
+
+/**
+ * Nulls last, asserted as the rendered order rather than argued: one team's
+ * section with the Estimate sort DESCENDING, so the whole list is a single
+ * sequence — the three rows that carry an estimate lead, in the descending
+ * (unit, value) order, and the two that do not sit after them. The play reads
+ * the DOM's own row order and fails the story on any other sequence; the
+ * ascending half of the same rule is pinned by `scripts/projects-sort.test.mjs`
+ * where it costs nothing to run both directions.
+ */
+export const SortedNullsLast: Story = {
+	render: () => {
+		const team = "platform";
+		const rows = [
+			project("e1", "estimate-three", { team, estimate: 3 }),
+			project("e2", "estimate-eight", { team, estimate: 8 }),
+			project("e3", "estimate-five-days", {
+				team,
+				estimate: 5,
+				estimate_unit: "days",
+			}),
+			project("n1", "no-estimate-one", { team, estimate: null }),
+			project("n2", "no-estimate-two", { team, estimate: null }),
+		];
+		return page({
+			view: "list",
+			projects: rows,
+			sort: { key: "estimate", direction: "desc" },
+		});
+	},
+	play: playOnce("sorted-nulls-last", async () => {
+		const rows = () =>
+			[...document.querySelectorAll("[data-project-name]")].map((node) =>
+				node.getAttribute("data-project-name"),
+			);
+		await poll(() => rows().length === 5, "the five rows");
+		const expected = [
+			"estimate-five-days",
+			"estimate-eight",
+			"estimate-three",
+			"no-estimate-one",
+			"no-estimate-two",
+		];
+		await poll(
+			() => rows().join(",") === expected.join(","),
+			"the descending (unit, value) order with the nulls last",
+		);
+		if (rows().join(",") !== expected.join(",")) {
+			throw new Error(`the sort landed as: ${rows().join(",")}`);
+		}
+	}),
+};
+
+/**
+ * A column's scoped menu, open (the second entry point of the one panel):
+ * `Target`'s sort actions above Target's facet options, with the counts the
+ * panel derives and the `Default (as listed)` way back to the store's order.
+ * The play then takes the sort radio and asserts the LANDING rather than
+ * describing it: a date column's first direction is descending (the ux round's
+ * folded NIT), so `aria-sort` must read `descending` on the Target header and
+ * the sort chip must be present — with the menu still open, which is the
+ * frame.
+ */
+export const ColumnMenuOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("column-menu-open", async () => {
+		await clickWhen('[data-project-column="target"]');
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the column menu to open",
+		);
+		/* The sort item's own label TH states the direction a press applies. */
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.includes("Sort by Target, latest first"),
+				),
+			"the Target sort radio",
+		);
+		const sortItem = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) =>
+			node.textContent?.includes("Sort by Target, latest first"),
+		);
+		sortItem?.click();
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the Target header to report descending",
+		);
+		await poll(
+			() =>
+				[...document.querySelectorAll("[data-project-chip]")].some((node) =>
+					node.textContent?.startsWith("Sort: Target"),
+				),
+			"the sort chip",
+		);
+	}),
+};
+
+/**
+ * The no-match block: with a search on and zero matches it REPLACES the view
+ * (here the List), the field stays above it, and the subline names what a v1
+ * query does and does not read — so a word that lives in an update is not
+ * mistaken for a project that does not exist.
+ */
+export const NoMatch: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match", async () => {
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+	}),
+};
 
 /**
  * The sticky team headers, mid-scroll: the second section's header pinned at
@@ -1034,7 +1266,7 @@ export const Many: Story = { render: () => page({ projects: MANY }) };
  * drift or a theme's metrics differ.
  */
 export const ListTeamsSticky: Story = {
-	render: () => page({ projects: MANY_LONG }),
+	render: () => page({ view: "list", projects: MANY_LONG }),
 	play: playOnce("list-teams-sticky", async () => {
 		const scroller = () =>
 			document.querySelector<HTMLElement>('[data-testid="project-list"] ul');
@@ -1379,7 +1611,7 @@ export const StartSessionDialog: Story = {
 
 /** The create dialog, opened from the page's own button. */
 export const CreateDialog: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-dialog", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1418,7 +1650,7 @@ export const EditDialog: Story = {
  * failure this story exists to catch.
  */
 export const CreateSheetPreview: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-preview", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1461,7 +1693,7 @@ export const CreateSheetPreview: Story = {
  * markdown — the one thing a plain paste could not produce.
  */
 export const CreateSheetPaste: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-paste", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1503,7 +1735,7 @@ export const CreateSheetPaste: Story = {
  * stayed muted until the submit bounced.
  */
 export const CreateSheetOverLimit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-over-limit", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1552,7 +1784,11 @@ export const CreateSheetOverLimit: Story = {
  */
 export const CreateSheetFollowUpRefusal: Story = {
 	render: () =>
-		page({ projects: THREE, failPatch: "The target date must be a real day." }),
+		page({
+			view: "list",
+			projects: THREE,
+			failPatch: "The target date must be a real day.",
+		}),
 	play: playOnce("create-sheet-follow-up-refusal", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1596,7 +1832,7 @@ export const CreateSheetFollowUpRefusal: Story = {
  * dialog. A frame alone cannot prove any of that.
  */
 export const CreateSheetSubmit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-submit", async () => {
 		/*
 		 * Poll for the button before pressing it (the delete confirm's
@@ -1797,6 +2033,7 @@ export const MilestoneToggle: Story = {
 export const StaleProgress: Story = {
 	render: () =>
 		page({
+			view: "list",
 			projects: [
 				project("s1", "stale-rollout", {
 					description: "One weekly line owed",
@@ -1841,6 +2078,34 @@ function HoldUntilPresent({
 }
 
 /* ---------------------------------------------------------- board + timeline */
+
+/**
+ * The board under a search (U5): the result line reports matches WITHIN the
+ * window (`10 of 12 projects` here, at the default week), and the cards that
+ * do not match are gone — the board cannot show a row the search excluded.
+ */
+export const BoardSearchActive: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-active", async () => {
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the board's count line",
+		);
+	}),
+};
 
 /** The board with all three columns populated — the ordinary shape. */
 export const Board: Story = {
@@ -3155,4 +3420,42 @@ export const TimelineOverdue: Story = {
 			</>
 		);
 	},
+};
+
+/**
+ * The no-dates callout, expanded over a dated chart: the collapsed line
+ * (`2 projects without dates`) opens to the two names as buttons that still
+ * open their project. The panel is bounded (`max-h-24`, scrolling) because the
+ * list it replaces was the unbounded one the design retired.
+ */
+export const TimelineCalloutExpanded: Story = {
+	render: () => {
+		const dated = project("d1", "release-prep", {
+			start_date: "2026-08-20",
+			target_date: "2026-09-15",
+		});
+		const undated = project("u1", "papercuts", { description: "Small fixes" });
+		const other = project("u2", "onboarding-notes", { status: "paused" });
+		return (
+			<>
+				<HoldUntilPresent text="without dates" />
+				{page({
+					view: "timeline",
+					projects: [dated, undated, other],
+					details: {
+						d1: detailFor(dated),
+						u1: detailFor(undated),
+						u2: detailFor(other),
+					},
+				})}
+			</>
+		);
+	},
+	play: playOnce("timeline-callout-expanded", async () => {
+		await clickWhen("[data-project-undated-callout] button");
+		await poll(
+			() => (document.body.textContent ?? "").includes("papercuts"),
+			"the undated names to appear",
+		);
+	}),
 };
