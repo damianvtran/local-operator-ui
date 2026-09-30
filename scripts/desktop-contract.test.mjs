@@ -237,6 +237,23 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"POST",
 			{ request_id: requestId, cwd: "/tmp/example" },
 		],
+		/*
+		 * THE DEVICE A PANE PICKED REACHES THE WIRE, and this row is the only place that
+		 * can say so: the header's control records the destination on the draft row,
+		 * `admitChatDraft` passes it to `createSession`, and the REQUEST BODY is composed
+		 * field by field HERE - where `peer` was accepted by the schema above and dropped
+		 * from the body, so a create aimed at another machine posted `{request_id, cwd}`,
+		 * was created on THIS one, and the chip then relabelled itself `On this device`
+		 * (UX round 1, U1 - the operator's headline flow reporting success for the wrong
+		 * machine). The row below pins the mapping; the row above pins the omission that
+		 * keeps an ordinary create byte-for-byte what it was.
+		 */
+		[
+			{ op: "sessions.create", requestId, cwd: "~", peer: "d_bbox1111" },
+			"",
+			"POST",
+			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
+		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
 		[
 			{
