@@ -211,6 +211,10 @@ export function writePaint(
 		// range. Cleared here and repopulated by the snapshot the paint is waiting
 		// for.
 		oldestId: null,
+		// The cursor's stored instant goes with it: an id with a stale instant would
+		// let a tail-type read "move" the cursor by comparing against a position
+		// this cache no longer holds.
+		oldestTs: 0,
 		hasMore: false,
 		argsByCall: new Map(),
 	};

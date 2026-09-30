@@ -72,6 +72,11 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 		compactingSince: 0,
 		viewEpoch: 0,
 		oldestId: null,
+		// The pager cursor's instant travels with the id (`TranscriptState.oldestTs`,
+		// the cursor-moves-by-read-kind fix), and a fixture transcript with no
+		// cursor is the `0` `EMPTY_TRANSCRIPT` carries - not an omission the type
+		// lets through.
+		oldestTs: 0,
 		hasMore: false,
 		argsByCall: new Map(),
 	};
