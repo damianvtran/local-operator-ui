@@ -182,9 +182,11 @@ import {
 } from "./transcript-rows";
 import {
 	type RunCollapsePlan,
+	WIDEN_MAX_STEPS,
 	alignFetchDecision,
 	collapsePlan,
 	snapWindowToRunBoundary,
+	widenTarget,
 	windowTopRunIsHeadCut,
 } from "./turn-collapse-model";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
@@ -2212,6 +2214,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * not one commit later. `openRuns` is the readable copy; every write goes
 	 * through the store so the two cannot drift.
 	 */
+	/*
+	 * The collapse's own liveness and open-run set, for the WIDEN's paint count
+	 * (loader-continuity 1b). `widen()` runs from an input event long after the
+	 * render that computed them, and it must count the same rows the render pass
+	 * paints: a run the reader has opened shows its rows, and the newest run
+	 * while a turn is being written never collapses. Read through a ref rather
+	 * than added to `widen`'s dependency list, because `widen` is consumed by
+	 * the paging hook and a new identity per render would re-create it (and the
+	 * hook's refs) for a value that only an event reads - the same reason
+	 * `rowsRef` exists.
+	 */
+	const widenInputs = useRef<{
+		live: boolean;
+		openRuns: ReadonlySet<string> | undefined;
+	}>({ live: false, openRuns: undefined });
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -2552,8 +2569,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// the top, which meant a single fling widened it by dozens of steps and
 	// mounted hundreds of rows for one gesture. It is the same jitter family as
 	// the missing durable paging and it gets the same discipline.
+	//
+	// THE STEP IS CHOSEN IN THE READER'S CURRENCY (loader-continuity 1b). A raw
+	// `+WINDOW_STEP` over a transcript of finished turns moves the count in the
+	// slot and mounts rows the collapse hides again, so the reader's gesture
+	// reveals nothing: measured on the operator's journal, one 618-row run
+	// painted 4-7 rows across window 60..300, and the bar only gained its real
+	// count and its `Took` clause at window 300. `widenTarget` walks the same
+	// steps until the window PAINTS `minVisibleRows` more rows than the one it
+	// started from, and stops at `WIDEN_MAX_STEPS` steps - the bound the reveal
+	// chain already uses, so one gesture still reveals one window's worth.
 	const widen = useCallback(() => {
-		setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
+		setWindowSize((current) =>
+			Math.min(
+				total,
+				widenTarget(rowsRef.current, current, {
+					step: WINDOW_STEP,
+					live: widenInputs.current.live,
+					openRuns: widenInputs.current.openRuns,
+					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
+					maxRows: Math.min(total, current + WIDEN_MAX_STEPS * WINDOW_STEP),
+				}),
+			),
+		);
 	}, [total]);
 
 	// The session identity the paging state belongs to. `hasMore` is folded in
@@ -2818,6 +2856,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * two values that are already computed, and only `paneWorking` costs anything.
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
+	/* The widen's paint count reads these (see `widenInputs`): the collapse's own
+	 * liveness rule, stated once here and reused by the plan below. */
+	widenInputs.current = {
+		live: working !== null || gate !== null,
+		openRuns,
+	};
 
 	/*
 	 * THE READER'S FOCUS, tracked for the collapse's own guard (the model's

@@ -347,6 +347,129 @@ export function windowTopRunIsHeadCut(
 }
 
 /**
+ * What a window of this size actually PUTS ON SCREEN, in rows.
+ *
+ * THE READER'S CURRENCY (operator report, 2026-09-29: "the full set of condensed
+ * messages don't load"). The render window is a RAW row count, but a completed
+ * run collapses to one bar, so a raw step reveals a fraction of what it claims:
+ * measured against the operator's real-shape journal, one 618-row run painted
+ * 4-7 rows across window 60..300 — ten gestures of nothing while the count in
+ * the slot grew by hundreds. Every rule that reasons about "did the reader see
+ * it" has to reason in PAINTED rows, and this is that number.
+ *
+ * It is DERIVED, not a second copy of the render pass: the snap and the collapse
+ * are the same two functions the component calls, so a change to either moves
+ * this count with it. `hiddenRows` (the slot's raw count) is a different
+ * quantity and is deliberately untouched.
+ *
+ * `snapMaxExtra` is REQUIRED rather than defaulted, and that is on purpose: the
+ * snap's bound belongs to the consumer (`WINDOW_ALIGN_MAX_EXTRA` in the
+ * transcript), and a default here would let a caller's paint count disagree
+ * with the window the component actually mounts.
+ */
+export function paintedRows(
+	rows: Row[],
+	windowSize: number,
+	options: {
+		step: number;
+		live?: boolean;
+		openRuns?: ReadonlySet<string>;
+		snapMaxExtra: number;
+	},
+): number {
+	const total = rows.length;
+	/*
+	 * Below the total the window is a tail slice of the SNAPPED size, exactly as
+	 * the component derives it; at or above it the whole list is mounted either
+	 * way, so the snap is skipped rather than asked to align a list it cannot cut.
+	 */
+	const alignSize = snapWindowToRunBoundary(
+		rows,
+		windowSize,
+		options.snapMaxExtra,
+	);
+	const visible = total > alignSize ? rows.slice(total - alignSize) : rows;
+	const plan = collapsePlan(visible, {
+		live: options.live ?? false,
+		openRuns: options.openRuns,
+	});
+	let hidden = 0;
+	for (const run of plan.runs) {
+		/*
+		 * An OPEN run paints the rows its bar hides - the render mounts the bar's
+		 * children when `open` is set - so it is not hidden for this count, the
+		 * same treatment the component gives it.
+		 */
+		if (run.collapses && !options.openRuns?.has(run.key)) {
+			hidden += run.hidden.length;
+		}
+	}
+	return visible.length - hidden;
+}
+
+/**
+ * How many widen steps one act may search before it settles for what it has.
+ *
+ * The bound `MAX_CHAIN_WIDEN` states for the reveal CHAIN, restated for the
+ * single act that picks a window size: twelve steps of `WINDOW_STEP` rows is
+ * 720 rows, past any viewport, and the point of a bound is that a bug in the
+ * arithmetic cannot walk an unbounded conversation into memory on one gesture.
+ */
+export const WIDEN_MAX_STEPS = 12;
+
+/**
+ * The next window size, chosen by what the reader will SEE rather than by a raw
+ * row count. See `paintedRows` for why the difference matters.
+ *
+ * Start at `windowSize + step` and keep stepping while the snapped window's
+ * painted rows have not grown by `minVisibleRows` (default 8: about half a
+ * viewport of ordinary rows, and the smallest reveal a reader can be said to
+ * have been shown), stopping at `maxRows` or the transcript. The result is what
+ * `widen()` in the transcript commits, so ONE gesture still reveals at most one
+ * window — the operator's "it keeps loading in chunks" loop stays closed — but
+ * the window it reveals is one with something in it.
+ *
+ * The snap's `maxExtra` is the consumer's (see `paintedRows`) and `live`/
+ * `openRuns` are passed straight through: a run the reader has OPEN paints its
+ * rows, and a run still being written is never collapsed, so a widen must count
+ * them as painted or it would overshoot for a reader who had expanded the very
+ * run in the way.
+ */
+export function widenTarget(
+	rows: Row[],
+	windowSize: number,
+	options: {
+		step: number;
+		minVisibleRows?: number;
+		maxRows?: number;
+		live?: boolean;
+		openRuns?: ReadonlySet<string>;
+		snapMaxExtra: number;
+	},
+): number {
+	const total = rows.length;
+	const minVisibleRows = options.minVisibleRows ?? 8;
+	const maxRows = Math.min(total, options.maxRows ?? total);
+	const { step } = options;
+	const before = paintedRows(rows, windowSize, options);
+	let size = Math.min(maxRows, windowSize + step);
+	/*
+	 * `while`, not a single test: over a transcript of finished turns the first
+	 * several steps are all invisible (the metric above is about a run's own
+	 * head and tail, not about raw rows), so a one-step overshoot would fix
+	 * nothing. Each iteration is bounded by `WIDEN_MAX_STEPS` steps from the
+	 * caller's `maxRows`.
+	 */
+	while (
+		size < maxRows &&
+		paintedRows(rows, size, options) - before < minVisibleRows
+	) {
+		size = Math.min(maxRows, size + step);
+	}
+	return size;
+}
+
+/**
  * The alignment effect's whole decision, as a pure step: spend another page or
  * not, and the counter it leaves behind.
  *
