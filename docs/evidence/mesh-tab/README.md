@@ -221,10 +221,11 @@ looked at; each is quoted in the source beside the decision it decides.
   1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
   **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
   above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
-  that triple, and the gate reports **29,417 assertions across 59 themes** with 0
+  that triple, and the gate reports **29,476 assertions across 59 themes** with 0
   consulted exceptions — re-derived at this head (agent review round 1, m1/D5: this
-  sentence has moved with the contract before - round 3's D17 recorded 28,524 - and the
-  number is a reading, not a constant; it last moved when the rebase brought main's
+  sentence has moved with the contract before - round 3's D17 recorded 28,524, and the
+  round-1 remediation measured 29,417 on its own tree - and the number is a reading,
+  not a constant: it last moved when the fold onto `ee5611a2e4` brought main's
   `CONTROLS` rows in).
 - **Selection needs more than a fill.** `rowSelected` against this node's own
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
