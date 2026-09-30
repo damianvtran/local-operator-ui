@@ -2836,6 +2836,11 @@ const BRANCH_RECORDS = [
 	 * reason again: main moved under the reviewed head a second time.
 	 */
 	"foldOntoee0e1f01e8Note",
+	/*
+	 * And the third fold, onto `bbffb9a8a9` (#681's agent-hub revamp) - the
+	 * same reason a third time, which is exactly what this list is for.
+	 */
+	"foldOntobbffb9a8a9Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
