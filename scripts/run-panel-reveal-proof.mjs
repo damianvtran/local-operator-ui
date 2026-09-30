@@ -874,13 +874,13 @@ try {
 			const sep = document.querySelector('[aria-label^="Resize run details"]');
 			const pane = document.querySelector("[data-run-panel-pane]");
 			let pref = null;
-				try {
-					const raw = localStorage.getItem("ui-preferences-storage");
-					// The right slot's width since #677: one shared value, whatever pane is
-					// up, so the persisted field is rightSlotWidth (a proof reading the old
-					// per-surface runPanelWidth would report null on every drag).
-					if (raw) pref = JSON.parse(raw)?.state?.rightSlotWidth ?? null;
-				} catch {
+			try {
+				const raw = localStorage.getItem("ui-preferences-storage");
+				// The right slot's width since #677: one shared value, whatever pane is
+				// up, so the persisted field is rightSlotWidth (a proof reading the old
+				// per-surface runPanelWidth would report null on every drag).
+				if (raw) pref = JSON.parse(raw)?.state?.rightSlotWidth ?? null;
+			} catch {
 				// A store that has not written yet; the reading stays null.
 			}
 			const sepRect = sep?.getBoundingClientRect();
