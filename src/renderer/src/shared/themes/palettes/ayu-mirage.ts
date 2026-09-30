@@ -117,6 +117,12 @@ export const ayuMirage: ThemeDefinition = {
 		inkDisabled: "#707A8C",
 
 		hairline: "#414B60",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 2.08:1 there against `hairline`'s 1.93:1.
+
+		hairlineStrong: "#465065",
 		borderControl: "#7E8BA4",
 
 		// the family's azure.

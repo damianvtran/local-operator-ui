@@ -120,6 +120,12 @@ export const ayuLight: ThemeDefinition = {
 		inkDisabled: "#9AA3AF",
 
 		hairline: "#CBD2D6",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.52:1 there against `hairline`'s 1.19:1.
+
+		hairlineStrong: "#B3BAC1",
 		borderControl: "#758295",
 
 		// the family's azure, deepened for ink on this paper.

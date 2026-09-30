@@ -117,6 +117,9 @@ export const synthwave: ThemeDefinition = {
 		// The TUI `edge` 443F5E, already inside the hairline's 1.15-2.0:1 band and
 		// clear of its ΔE00 4.0 floor on all four grounds.
 		hairline: "#443F5E",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.84:1 there against `hairline`'s 1.70:1.
+		hairlineStrong: "#484464",
 		// The TUI `edge-hi` 544E72 lifted in L* until it clears 3:1 on `elevated`, the
 		// lightest ground it is drawn against.
 		borderControl: "#837CA2",

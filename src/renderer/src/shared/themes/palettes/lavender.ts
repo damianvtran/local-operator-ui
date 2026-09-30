@@ -165,6 +165,9 @@ export const lavender: ThemeDefinition = {
 		 */
 		hairline: "#413B5B",
 
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
+		hairlineStrong: "#464060",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
