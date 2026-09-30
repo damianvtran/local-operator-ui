@@ -316,6 +316,21 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"1 team deletion",
 		"a delete counts under its own noun, never a bare wire name",
 	);
+	// A run of `sessions` calls counts under its own noun, singular and
+	// plural (the trace-sessions lane): without the entry the pluralized
+	// fallback printed `1 sessions`, which is not a sentence either.
+	assert.equal(
+		foldCounts([
+			{ name: "sessions", failed: false },
+			{ name: "sessions", failed: false },
+		]),
+		"2 sessions",
+	);
+	assert.equal(
+		foldCounts([{ name: "sessions", failed: false }]),
+		"1 session",
+		"a session singularizes through its noun",
+	);
 	// `todo view` is a READ; counting it as an update was the false claim
 	// review round 1 closed (R1-6), so the family splits by op.
 	assert.equal(
