@@ -693,10 +693,13 @@ export const STORIES = [
 	 * absent MEANS), the second is the same run carrying it. `images-three` is the
 	 * same height again - one picture and three cost the same row - which is the
 	 * compactness claim this change makes and the one a reader of the diff should
-	 * be able to see. The extra 71px over the header-only states is the strip: 67
-	 * measured (a 64px picture in the frame's 66px box, plus the row's own line
-	 * box) and 4 of the fold's own `mt-1`. Both numbers are the rig's
-	 * (`condensed-group-media-geometry.mjs`), not this comment's arithmetic.
+	 * be able to see. The extra 87px over the header-only states is the strip: 79
+	 * measured (a 76px picture in the frame's 78px box, plus the row's own line
+	 * box) and 8 of the fold's own `mt-2` (RE-DERIVED FOR THE POLISH PASS: the
+	 * tile went 98x66 -> 117x78, so the pre-change reading here was 67 and 4 -
+	 * the 66px box this comment used to quote is the OLD tile). Both numbers are
+	 * the rig's (`condensed-group-media-geometry.mjs`), not this comment's
+	 * arithmetic.
 	 *
 	 * `image-live` is the other window a reader meets the strip in - the picture
 	 * has landed and the run has not finished - and `image-expanded` is the price
@@ -721,7 +724,8 @@ export const STORIES = [
 	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
 	 *   is the only thing that gives it an extent.
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
-	 *   is new (prose would blow the 66px strip).
+	 *   is new (prose would blow the 78px strip - it was 66px before the tile
+	 *   grew).
 	 *
 	 * `images-many` is now ONE row at 91px, because the cap answers it: the first
 	 * cut let eight pictures wrap to 166px and 25-30 reach ~391px, past the price
@@ -769,6 +773,22 @@ export const STORIES = [
 			hoverSettleMs: 400,
 			reducedMotion: true,
 		},
+	],
+	/*
+	 * THE KEYBOARD ARM (design review round 1, D1 - the one MAJOR of that round).
+	 *
+	 * The tile's edge is a hover state AND a keyboard one, and the ring the app
+	 * draws on the focused button is - with the resting edge gone - the ONLY
+	 * control boundary a keyboard reader gets at rest. `tabTo` presses real Tab
+	 * keys until the tile's own button holds focus (and FAILS the run if it never
+	 * does), so these frames show the D4 fix as pixels: the 2px accent ring
+	 * following the frame's 6px radius rather than boxing it square.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{ tabTo: "[data-fold-media] li button", dir: "images-many-focus" },
 	],
 	[
 		"chat-trace-fold--image-expanded",
@@ -882,7 +902,8 @@ export const STORIES = [
 	 * cell (three pictures - one landscape, one portrait, one plot - in one
 	 * capped row of tiles), its `press` row is the expanded state whose price
 	 * the strip replaces, and `images-many` is the overflow count's own frame
-	 * (eight pictures, four tiles and the `+4 more images` control).
+	 * (eight pictures, four tiles and the `+4` count control, whose accessible
+	 * name and title read `4 more images`).
 	 * `images-many-expanded` is that control's press (U8): the bar opens onto
 	 * its sole image-bearing group, whose strip shows the WHOLE set - one
 	 * press reaches the pictures the count stood for. The before half is the
@@ -941,6 +962,25 @@ export const STORIES = [
 	 * be seen rather than only computed.
 	 */
 	["chat-turn-collapse--images-many", 640, 900, { dir: "images-many-narrow" }],
+	/* The bar's own keyboard arm, and the uncapped grid's - both callers of the
+	   same tile, so the ring is checked where the strip is flush and where it is
+	   a four-column grid rather than on the group fold alone. */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{ tabTo: "[data-fold-media] li button", dir: "images-focus" },
+	],
+	[
+		"chat-turn-collapse--images-many",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			tabTo: "[data-fold-media] li button",
+			dir: "images-many-expanded-focus",
+		},
+	],
 	[
 		"chat-turn-collapse--images-many",
 		1280,

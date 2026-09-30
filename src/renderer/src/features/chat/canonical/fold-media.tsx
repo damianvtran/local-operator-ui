@@ -52,14 +52,25 @@
  * the pictures the row did not draw.
  *
  * THE VISIBLE LABEL IS COMPACT AND THE NAME IS NOT: the control reads `+4` and its
- * accessible name is `4 more images`. The short form is what funds the larger tile
- * (`+4 more images` is 111.1px, `+4` is 33.6px, and four 117px tiles plus the long
- * label would need a ~703px window), and it is the precedent the canvas filter
- * already sets (`canvas-file-viewer.tsx`: `Images +1` visible, every selected group
- * in the name). The accessible name is the count's honest carrier - the noun never
- * leaves it - and the same sentence is the `title` for a pointer reader, who would
- * otherwise have a bare `+4` with no statement of what is being counted; the header's
- * own `· 8 images` clause says it in text beside it.
+ * accessible name (and title) is `+4 more images` - the NAME CONTAINS THE VISIBLE
+ * LABEL, which WCAG 2.5.3 requires of a symbol-only label (see the call site's own
+ * comment). The short form is what funds the larger tile (the old full-noun label
+ * was 111.1-118.9px, `+4` is 33.6px, and four 117px tiles plus the long label would
+ * need a ~703px window), and it is the precedent the canvas filter already sets
+ * (`canvas-file-viewer.tsx`: `Images +1` visible, every selected group in the name).
+ * The accessible name is the count's honest carrier - the noun never leaves it - and
+ * the same sentence is the `title` for a pointer reader, who would otherwise have a
+ * bare `+4` with no statement of what is being counted; the header's own `· 8 images`
+ * clause says it in text beside it.
+ *
+ * THE BOUND THE ROW IS SIZED ON IS A COUNT, NOT A GUARANTEE: `+99` is the widest
+ * label a realistic run prints, and the row holds it with 14.6px of the 556px
+ * column to spare. A three-digit remainder (`+999`) still measures inside the
+ * column (549.2px, slack 6.8), but nothing CLAMPS the printed digits: a run of
+ * 1004 pictures prints `+1000` and wraps - the same class of failure the old
+ * full-noun label had, one order of magnitude further out, and not reachable in
+ * the fixtures. Stating it as a bound rather than as a ceiling is the honest
+ * form; clamping the digits would be a copy decision this component does not own.
  *
  * The count is also a clause in the condensed header itself (`· 2 images`), which
  * costs no height at all, and it is what keeps a sighted reader from being offered
@@ -318,7 +329,17 @@ export const FoldMedia = ({
 						variant="outline"
 						size="sm"
 						onClick={onRevealMore}
-						aria-label={`${more} more image${more === 1 ? "" : "s"}`}
+						/*
+						 * THE NAME CONTAINS THE VISIBLE LABEL, and that is a
+						 * requirement rather than a courtesy (WCAG 2.5.3, label in
+						 * name, Level A): a speech user reading `+4` off the screen
+						 * says "plus four", and a name of `4 more images` matches
+						 * nothing they could have said. The `+` is in both, so the
+						 * visible string is a substring of the name, and the noun
+						 * still travels with the count for a reader who cannot see
+						 * the symbol's position in the row.
+						 */
+						aria-label={`+${more} more image${more === 1 ? "" : "s"}`}
 						title={`${more} more image${more === 1 ? "" : "s"}`}
 					>
 						{`+${more}`}

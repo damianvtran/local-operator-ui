@@ -36,11 +36,21 @@
  *    `prefers-reduced-motion: reduce` emulated, where the edge must still be
  *    there and the zoom must NOT (the cue that always reads is a state, not a
  *    movement);
+ *  - THE KEYBOARD ARM (`--arms=focus`), which is the state a still cannot reach
+ *    either: the rig presses REAL Tab keys (`Input.dispatchKeyEvent`) until the
+ *    first tile's button holds `:focus-visible`, then reads the frame's border,
+ *    the ring's colour/width/offset and the button's radius. It exists because
+ *    with the resting edge gone this ring is the ONLY control boundary a
+ *    keyboard reader gets at rest, so "the ring follows the frame's 6px radius"
+ *    is a claim that has to be measured rather than asserted from a class name;
  *  - THE ROW'S ARITHMETIC, which is what the tile's size was derived from: the
  *    tiles, the gutter, the `+N` control's own width and the row's total, against
- *    the strip's available width - and the `+N`'s WORST-CASE width (41.4px at
- *    `+99`, against the 118.9px the old full-noun label reached), because the row
- *    must fit at every digit count, not only the fixture's.
+ *    the strip's available width - and the `+N`'s width at the counts a run can
+ *    print (41.4px at `+99`, 49.2px at `+999`, against the 118.9px the old
+ *    full-noun label reached), because the row must fit at every digit count, not
+ *    only the fixture's. A four-digit remainder is NOT measured and is NOT
+ *    covered by that bound: nothing clamps the printed digits, so a 1004-picture
+ *    run's `+1000` is expected to wrap (reviewer round 1, R1-7).
  *
  * Raw CDP against a private headless Chrome, deliberately the same approach as
  * `capture-evidence.mjs` and `chat-alignment-geometry.mjs` (fresh user-data-dir
@@ -112,10 +122,13 @@ const STORIES = [
 	["chat-trace-fold--image-screenshot", 1280, 200],
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
-	/* The narrow column, where the CAP is the thing that has to hold: six tiles
-	   and their five 8px gutters are 628px (not the 638px the pre-`gap-2`
-	   arithmetic said), past this rig's own 576px narrow column - that is the
-	   sum the limit is derived from. */
+	/* The narrow column, where the CAP is the thing that has to hold, and the sum
+	   has moved with the tile: FIVE 117px tiles and their four 8px gutters are
+	   617px, past this rig's own 556px of strip at a 640px window - which is the
+	   sum the cap is derived from - while the six-tile figure this comment used
+	   to quote (628px) was the 98px tile's own arithmetic. FOUR tiles, their four
+	   gutters and the `+N` control are the row that has to fit: 533.6px measured
+	   with `+4`, 541.4px at `+99`. */
 	["chat-trace-fold--images-many", 640, 200],
 	["chat-trace-fold--images-three", 640, 200],
 	[
@@ -377,8 +390,9 @@ const PROBE = `(() => {
 								(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + worstControl)) *
 								10,
 						) / 10,
-						/* The absolute widest a count control can get: a three-digit count,
-						   which is the reader's own ceiling on one row. */
+						/* The widest count control this rig sizes the row on: three
+						   digits. Four digits are not measured and not covered - nothing
+						   clamps the printed remainder. */
 						widestCaseRow:
 							Math.round(
 								(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + widestControl) * 10,
@@ -447,6 +461,32 @@ const STATE_PROBE = `(() => {
 		scale: picture ? parse(getComputedStyle(picture).transform) : null,
 		transition: picture ? getComputedStyle(picture).transitionProperty : null,
 		transitionMs: picture ? getComputedStyle(picture).transitionDuration : null,
+		/*
+		 * The keyboard arm's own readings: the button that takes focus, the state
+		 * the tile's edge is keyed to, and the ring the app draws on it. The
+		 * outline readings are the global 2px accent ring, and the radii are what
+		 * design round 1's D4 changed - a square ring around a 6px tile was the
+		 * defect, and with the resting edge gone this ring is the only control
+		 * boundary a keyboard reader gets.
+		 */
+		focus: (() => {
+			const button = tile ? tile.querySelector("button") : null;
+			if (!button) return null;
+			const style = getComputedStyle(button);
+			return {
+				tag: button.tagName,
+				label: button.getAttribute("aria-label"),
+				active: document.activeElement === button,
+				focusVisible: button.matches(":focus-visible"),
+				radius: style.borderRadius,
+				outlineWidth: style.outlineWidth,
+				outlineStyle: style.outlineStyle,
+				outlineColor: style.outlineColor,
+				outlineOffset: style.outlineOffset,
+				frameBorder: frame ? getComputedStyle(frame).borderTopColor : null,
+				frameRadius: frame ? getComputedStyle(frame).borderRadius : null,
+			};
+		})(),
 	};
 })()`;
 
@@ -579,7 +619,60 @@ const main = async () => {
 		 * uses for its own hover frames, so a reading here and a frame there describe
 		 * one state.
 		 */
+		/**
+		 * A real Tab press through the input pipeline.
+		 *
+		 * A programmatic `element.focus()` does NOT set `:focus-visible` - the
+		 * modality is part of the state - so the keyboard arm has to press keys
+		 * the way the frame's other keyboard states do, and stop when the tile's
+		 * own button reports the focus it is looking for.
+		 */
+		const pressTab = async () => {
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+					nativeVirtualKeyCode: 9,
+				});
+			}
+		};
+		const tabToTile = async () => {
+			for (let press = 0; press < 15; press += 1) {
+				const reached = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const tile = document.querySelector("[data-fold-media] li");
+						const button = tile && tile.querySelector("button");
+						return Boolean(button && document.activeElement === button && button.matches(":focus-visible"));
+					})()`,
+				});
+				if (reached.result.value === true) return press;
+				await pressTab();
+				await sleep(60);
+			}
+			return -1;
+		};
+
 		const armProbe = async (arm) => {
+			if (arm === "focus") {
+				/* A state with no strip has no tile to focus (`finished`,
+				   `image-hidden`): the arm is skipped there rather than failed, on
+				   the same rule the hover arm uses. A state that HAS a tile and
+				   never focuses it is a failure, not a skip. */
+				const hasTile = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `Boolean(document.querySelector("[data-fold-media] li button"))`,
+				});
+				if (hasTile.result.value !== true) return null;
+				const presses = await tabToTile();
+				if (presses < 0) {
+					throw new Error(
+						`${story} @ ${width}x${height}: the first tile never took :focus-visible within 15 Tab presses`,
+					);
+				}
+			}
 			if (arm === "reduced-motion-hover") {
 				await cdp.send("Emulation.setEmulatedMedia", {
 					features: [{ name: "prefers-reduced-motion", value: "reduce" }],
@@ -668,6 +761,12 @@ const main = async () => {
 		}
 		for (const [arm, read] of Object.entries(r.arms ?? {})) {
 			if (!read) continue;
+			if (arm === "focus" && read.focus) {
+				console.log(
+					`  ${arm.padEnd(20)} active=${read.focus.active} focus-visible=${read.focus.focusVisible} name="${read.focus.label}" button radius=${read.focus.radius} ring=${read.focus.outlineWidth} ${read.focus.outlineStyle} ${read.focus.outlineColor} offset=${read.focus.outlineOffset} frame border=${read.focus.frameBorder} radius=${read.focus.frameRadius}`,
+				);
+				continue;
+			}
 			console.log(
 				`  ${arm.padEnd(20)} hovered=${read.hovered} edge=${read.edge} scale=${read.scaleProperty} ${read.transition} ${read.transitionMs}`,
 			);

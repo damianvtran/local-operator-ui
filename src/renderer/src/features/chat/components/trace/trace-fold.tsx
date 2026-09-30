@@ -142,8 +142,9 @@ export type TraceFoldProps = {
 	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
 	 * rather than this file importing it, because the fold is a trace-tier
 	 * component and the transcript is what knows a record's images; the fold
-	 * hands the node its own toggle, so the strip's `+N more images` slot can
-	 * open this fold instead of being a dead end (UX round 1, U1).
+	 * hands the node its own toggle, so the strip's `+N` slot (named and titled
+	 * `N more images`) can open this fold instead of being a dead end (UX round
+	 * 1, U1).
 	 */
 	condensedMedia?: (expand: () => void) => ReactNode;
 	/**
