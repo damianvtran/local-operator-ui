@@ -28,8 +28,8 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { CHAT_PANE_MIN_PX, canvasDockWidth } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -58,7 +58,11 @@ const {
 	DEFAULT_RUN_PANEL_WIDTH,
 	DEFAULT_BROWSER_PANEL_WIDTH,
 	DEFAULT_CONSOLE_PANEL_WIDTH,
+	RUN_PANEL_MIN_PX,
+	BROWSER_PANEL_MIN_PX,
+	CONSOLE_PANEL_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	CANVAS_PANE_MIN_PX,
 	canvasDockWidth,
 } = mod;
 
@@ -109,6 +113,41 @@ test("unset opens each pane at its own seed, so a fresh profile is unchanged", (
 		resolveRightSlotWidth(ROW, withPane("canvas", 0)),
 		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
 	);
+});
+
+test("no pane resolves below its own floor, whatever it was shared from (#677 round 1, D2)", () => {
+	// The reviewer's repro: a shared 320 is legal from the run pane's own 320
+	// floor, and used to resolve canvas/run/browser/console ALL to 320 — a page
+	// drawn under its own 480 while its separator announced the same 320. The
+	// resolver holds each pane to its floor, and the separators' minWidths are
+	// the same constants, so the range a control reports and the width its pane
+	// draws cannot disagree.
+	const shared = RUN_PANEL_MIN_PX;
+	assert.equal(resolveRightSlotWidth(ROW, withPane("run", shared)), shared);
+	assert.equal(
+		resolveRightSlotWidth(ROW, withPane("browser", shared)),
+		BROWSER_PANEL_MIN_PX,
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, withPane("console", shared)),
+		CONSOLE_PANEL_MIN_PX,
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, withPane("canvas", shared)),
+		Math.min(CANVAS_PANE_MIN_PX, canvasDockWidth(ROW)),
+	);
+});
+
+test("from every floor upwards the one width still holds exactly (#677 round 1, D2)", () => {
+	// A lift, not a rewrite: at and above the highest floor every non-canvas
+	// pane renders the shared value itself — the switch-equality #677 promised
+	// is unchanged there. (The canvas keeps its dock cap on top, as before.)
+	for (const width of [480, 700, 900]) {
+		const values = ["run", "browser", "console"].map((pane) =>
+			resolveRightSlotWidth(ROW, withPane(pane, width)),
+		);
+		assert.deepEqual(values, [width, width, width]);
+	}
 });
 
 test("the conversation's floor still wins over the shared width", () => {

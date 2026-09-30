@@ -1146,6 +1146,27 @@ export async function startBrowserHost(
 			event.preventDefault();
 			log("[browser] refused a webview attachment inside a popup");
 		});
+		/*
+		 * THE NAVIGATION CHORDS, answered for the POPUP's own history (issue
+		 * #675's round-1 review, M2). A popup is where an auth flow actually runs —
+		 * several hops deep — so back/forward there is the same gesture the driven
+		 * view answers with ITS history; the reading is the popup's OWN
+		 * `navigationHistory` rather than `host.historyActive`, which speaks for
+		 * the active TAB and would walk a different surface than the one in front
+		 * of the user.
+		 *
+		 * MOUSE side-buttons stay absent for the reason the view's hook states:
+		 * Electron's only mouse input event carries left/middle/right, so there is
+		 * no event to answer.
+		 */
+		childContents.on("before-input-event", (event, input) => {
+			const direction = paneNavigationDirection(input);
+			if (!direction) return;
+			event.preventDefault();
+			const navigation = childContents.navigationHistory;
+			if (direction === "back") navigation.goBack();
+			else navigation.goForward();
+		});
 		// The post-creation call covers the `about:blank` children whose
 		// `WebPreferences` are copied from the opener rather than taken from our
 		// options: a hidden popup must still render like a shown one, so a capture

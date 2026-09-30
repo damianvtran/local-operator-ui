@@ -730,9 +730,20 @@ const ChatShellFrame: FC<{
 	);
 };
 
-/** The dock in its Files view, at the shell's own default pane width. */
+/**
+ * The dock in its Files view, at the shell's own default pane width.
+ *
+ * `rightSlotWidth` is a story ARG (default 0, the fresh-profile arm this story
+ * has always shown) rather than a literal because the #677 evidence needs the
+ * DRAGGED state photographed from head: `?args=rightSlotWidth:700` is the
+ * shared-width arm, and at the capture geometry (row 1180) the canvas reads its
+ * 560 cap there — a state the committed story could not produce while this
+ * literal said 0.
+ */
 export const ChatDockFiles: Story = {
-	render: () => {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
 		useLayoutEffect(() => {
 			useCanvasStore.setState((state) => ({
 				conversations: {
@@ -757,12 +768,12 @@ export const ChatDockFiles: Story = {
 			 */
 			useUiPreferencesStore.setState({
 				isCanvasOpen: true,
-				rightSlotWidth: 0,
+				rightSlotWidth,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isCanvasOpen: false });
 			};
-		}, []);
+		}, [rightSlotWidth]);
 
 		return (
 			<ChatShellFrame
@@ -786,18 +797,28 @@ export const ChatDockFiles: Story = {
 	},
 };
 
-/** The dock in its run-details sub-view - the other shape the report named. */
+/**
+ * The dock in its run-details sub-view - the other shape the report named.
+ *
+ * The width is an ARG for the same reason `ChatDockFiles`' is: the #677
+ * evidence photographs the shared-width arm (`?args=rightSlotWidth:700` — the
+ * run pane reads the full 700 at row 1180) against this story's 0, where the
+ * run pane reads its 420 seed. That pair is what shows switching surfaces
+ * stops resizing.
+ */
 export const ChatDockRunPanel: Story = {
-	render: () => {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
 		useLayoutEffect(() => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
-				rightSlotWidth: 0,
+				rightSlotWidth,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isRunPanelOpen: false });
 			};
-		}, []);
+		}, [rightSlotWidth]);
 
 		return (
 			<ChatShellFrame

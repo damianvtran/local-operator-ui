@@ -2859,10 +2859,12 @@ export const streamDiagnostics = {
 	 * and it counts BOTH shapes the guard refuses — the empty string and the
 	 * non-string it always refused — because both are the same fact: the frame
 	 * cannot name the record it belongs to. `message_end` is an exception within
-	 * the exception: an id-less end still ends the session's LAST open assistant
-	 * row (the bounded fallback agreed with the condense/continuity lane,
-	 * 2026-09-29), so a counted refusal there means one thing only — no open
-	 * assistant record existed to settle. The durable door's own refusal (a
+	 * the exception: an id-less end still ends the session's open assistant row
+	 * when the state says exactly one thing it can end (the bounded fallback
+	 * agreed with the condense/continuity lane, 2026-09-29), so a counted refusal
+	 * there means there was NOTHING TO SETTLE — the frame named no assistant
+	 * role, or the state held zero or several open assistant records — rather
+	 * than the frame having been dropped against a record. The durable door's own refusal (a
 	 * `history_delta` row with no id, dropped before it can be painted under
 	 * "") is not counted here: it is a row, not a live frame.
 	 */
@@ -3311,8 +3313,9 @@ export function applyEvent(
 			if (messageId === null) {
 				/*
 				 * THE BOUNDED FALLBACK, agreed with the condense/continuity lane
-				 * (2026-09-29): an end that cannot NAME its record still ends the
-				 * turn this viewer is watching.
+				 * (2026-09-29; re-bounded by the #671 round-1 review, U3): an end
+				 * that cannot NAME its record still ends the turn this viewer is
+				 * watching — when the state says exactly one thing it CAN end.
 				 *
 				 * WHY IT EXISTS: refusing every id-less end left a turn whose only end
 				 * is id-less streaming for ever — and a turn that never settles never
@@ -3320,24 +3323,26 @@ export function applyEvent(
 				 * turns merge silently. Settling is the one fact an unnamed end can
 				 * still deliver.
 				 *
-				 * WHICH RECORD IT ENDS IS UNKNOWABLE, so the target is bounded to the
-				 * session's LAST open assistant record in arrival order (this state is
-				 * per-session; nothing on the frame carries a turn id to match on) —
-				 * the record an end arriving now most plausibly ends. NOTHING of the
-				 * frame's text is written: the record settles with its own accumulated
-				 * text, which is what keeps #671's no-fuse/no-double contract — two
-				 * distinct records can still never become one.
+				 * WHICH RECORD IT ENDS IS UNKNOWABLE, so the fallback settles only
+				 * when EXACTLY ONE open assistant record exists. The first bound
+				 * (settle the last-placed open record) guessed between concurrent
+				 * streams and could settle the wrong row while stranding the other
+				 * (review round 1, U3); two or more is a refusal, counted — no
+				 * guessing. Zero is likewise nothing to end. This state is
+				 * per-session and nothing on the frame carries a turn id to match on,
+				 * so "exactly one" is the whole of the evidence an unnamed end can
+				 * be settled against.
 				 *
-				 * The frame's `tool_calls` IS consulted for the completion mark — the
+				 * NOTHING of the frame's text is written: the record settles with its
+				 * own accumulated text, which is what keeps #671's no-fuse/no-double
+				 * contract — two distinct records can still never become one. The
+				 * frame's `tool_calls` IS consulted for the completion mark — the
 				 * same rule the named path states — so a tool-call-only turn stays
 				 * unmarked here too; the record's own `truncated` is kept, since
 				 * settling is not the frame's assembled whole and clearing the caveat
 				 * would claim a wholeness this path did not verify. The frame's outcome
 				 * fields (`stop_reason`/`is_error`) are NOT adopted: an unnamed frame's
 				 * outcome cannot be attributed to a record it cannot name.
-				 *
-				 * With no open assistant record there is nothing to end, and the frame
-				 * stays a counted refusal.
 				 */
 				if (message.role !== "assistant") {
 					streamDiagnostics.idlessFrameRefused += 1;
@@ -3346,12 +3351,18 @@ export function applyEvent(
 				let target:
 					| Extract<TranscriptRecord, { kind: "assistant" }>
 					| undefined;
-				for (let i = state.records.length - 1; i >= 0; i -= 1) {
-					const candidate = state.records[i];
-					if (candidate.kind === "assistant" && candidate.streaming) {
-						target = candidate;
-						break;
+				for (const candidate of state.records) {
+					if (candidate.kind !== "assistant" || !candidate.streaming) continue;
+					/*
+					 * A second open assistant record makes the target a guess; bail
+					 * out so the frame stays a counted refusal. (Checked before the
+					 * settle below runs, so nothing is half-applied.)
+					 */
+					if (target !== undefined) {
+						streamDiagnostics.idlessFrameRefused += 1;
+						return state;
 					}
+					target = candidate;
 				}
 				if (target === undefined) {
 					streamDiagnostics.idlessFrameRefused += 1;

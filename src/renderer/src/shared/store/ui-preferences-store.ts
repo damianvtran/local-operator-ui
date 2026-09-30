@@ -8,6 +8,7 @@
 import { CHAT_MEASURE_OVERRIDE_VAR } from "@features/chat/chat-measure";
 import { clampChatMeasureWidth } from "@features/chat/chat-measure-drag";
 import {
+	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_MAX_WIDTH,
@@ -750,7 +751,10 @@ export type RightSlotPane = "canvas" | "run" | "browser" | "console";
  * resolves to that pane's own SEED first (four panes, four numbers, stated where
  * each `DEFAULT_*_WIDTH` is declared); since #677 a non-zero preference is the
  * ONE shared `rightSlotWidth`, so the four seeds are first-open values rather
- * than four competing memories of one panel.
+ * than four competing memories of one panel. And since the #677 review (D2)
+ * every branch holds the pane's own floor as well: a shared width below it
+ * lifts to it here, where all three writers of the value are covered at once —
+ * see the floor constants below.
  *
  * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
  * one where the mode and the arithmetic are easiest to get out of step: when the
@@ -789,21 +793,34 @@ export function resolveRightSlotWidth(
 					: null;
 	if (pane === null) return 0;
 
-	// THE SHARED WIDTH OR THIS PANE'S SEED: one read, four seeds, which is the
-	// whole of #677 at the resolving end (see `rightSlotWidth`).
+	// THE SHARED WIDTH OR THIS PANE'S SEED, HELD UP TO THIS PANE'S FLOOR: one
+	// read, four seeds + four floors, which is the whole of #677 at the
+	// resolving end (see `rightSlotWidth` and the floor constants).
 	let preferred: number;
 	switch (pane) {
 		case "canvas":
-			preferred = state.rightSlotWidth || DEFAULT_CANVAS_WIDTH;
+			preferred = Math.max(
+				CANVAS_PANE_MIN_PX,
+				state.rightSlotWidth || DEFAULT_CANVAS_WIDTH,
+			);
 			break;
 		case "run":
-			preferred = state.rightSlotWidth || DEFAULT_RUN_PANEL_WIDTH;
+			preferred = Math.max(
+				RUN_PANEL_MIN_PX,
+				state.rightSlotWidth || DEFAULT_RUN_PANEL_WIDTH,
+			);
 			break;
 		case "browser":
-			preferred = state.rightSlotWidth || DEFAULT_BROWSER_PANEL_WIDTH;
+			preferred = Math.max(
+				BROWSER_PANEL_MIN_PX,
+				state.rightSlotWidth || DEFAULT_BROWSER_PANEL_WIDTH,
+			);
 			break;
 		case "console":
-			preferred = state.rightSlotWidth || DEFAULT_CONSOLE_PANEL_WIDTH;
+			preferred = Math.max(
+				CONSOLE_PANEL_MIN_PX,
+				state.rightSlotWidth || DEFAULT_CONSOLE_PANEL_WIDTH,
+			);
 			break;
 	}
 	if (rowWidth <= 0) return preferred;
@@ -950,6 +967,31 @@ const measureConsoleDefaultWidth = (): number =>
  * that has never been dragged and one that has been double-clicked would differ.
  */
 export const DEFAULT_CONSOLE_PANEL_WIDTH = measureConsoleDefaultWidth();
+
+/**
+ * The floor each pane's own control stops a drag at — and, since the #677
+ * round-1 review (D2), the floor the RESOLVER holds the shared width to.
+ *
+ * ONE COLUMN, FOUR MINIMUMS, and they are properties of what each pane holds
+ * rather than of the slot: a page stops being a page under ~480 (the browser
+ * default's own note above), a document under 400 (`CANVAS_PANE_MIN_PX`,
+ * `chat-sidebar-layout.ts`), a terminal grid under its measured 480, and the
+ * run pane's roster is the one that fits at 320. A shared width BELOW a pane's
+ * floor lifts to that floor THERE — the one-width rule holds exactly over
+ * [480, ∞), where every pane can honour it, and below that each pane draws its
+ * own floor, which is the width its own separator announces (`aria-valuemin`).
+ *
+ * WHY THE RESOLVER AND NOT THE WRITE: `rightSlotWidth` arrives from three
+ * directions — a drag on this pane's divider, a drag on ANOTHER pane's, and
+ * the persisted blob of an older build — and only the first is inside any
+ * writer's reach; clamping where the width is READ makes all three hold, and
+ * `chat-content.tsx`'s per-pane `effective*` computations (the values the
+ * dividers and `PaneSlot`s are handed) clamp on the same constants, so a
+ * separator's range and its pane's drawn width cannot disagree.
+ */
+export const RUN_PANEL_MIN_PX = 320;
+export const BROWSER_PANEL_MIN_PX = 480;
+export const CONSOLE_PANEL_MIN_PX = 480;
 
 /**
  * One blip mark: which conversation's console finished something, on which
