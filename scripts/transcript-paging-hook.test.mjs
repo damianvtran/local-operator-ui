@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
+			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,7 +28,7 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, ANCHOR_HOLD_MS, SETTLE_MS } = await import(
+const { useScrollPaging, ANCHOR_HOLD_MS, SETTLE_MS, MAX_ACT_ASKS } = await import(
 	new URL(`file://${bundlePath}`).href
 );
 const { createRoot } = await import("react-dom/client");
@@ -129,6 +129,22 @@ function mountHook(options = {}) {
 	// this one.
 	let hiddenRows = options.hiddenRows ?? 1;
 	const onLoadOlder = options.onLoadOlder ?? (async () => false);
+	/*
+	 * Asks the PUMP dispatched, whichever loader form the case supplied. Counted
+	 * here rather than by the case's own callback so the invisible-reveal cases
+	 * can assert on the chain without knowing which form they exercised.
+	 */
+	let asked = 0;
+	const countedLoadOlder = async () => {
+		asked += 1;
+		return onLoadOlder();
+	};
+	const countedOutcome = options.onLoadOlderOutcome
+		? () => {
+				asked += 1;
+				return options.onLoadOlderOutcome();
+			}
+		: undefined;
 	let handle = null;
 	let olderFailed = options.olderFailed ?? false;
 	let sessionKey = options.sessionKey ?? "synthetic-session";
@@ -141,12 +157,10 @@ function mountHook(options = {}) {
 			onWiden: () => {
 				widenCalls++;
 			},
-			onLoadOlder,
+			onLoadOlder: countedLoadOlder,
 			// Only passed when a case supplies it, so the cases written before the
 			// outcome-aware pump exercise the boolean path unchanged.
-			...(options.onLoadOlderOutcome
-				? { onLoadOlderOutcome: options.onLoadOlderOutcome }
-				: {}),
+			...(countedOutcome ? { onLoadOlderOutcome: countedOutcome } : {}),
 			olderFailed,
 			loadingOlder: false,
 			rowCount,
@@ -222,11 +236,28 @@ function mountHook(options = {}) {
 		get widenCalls() {
 			return widenCalls;
 		},
+		/** Asks the pump dispatched, whichever loader form the case supplied. */
+		get asked() {
+			return asked;
+		},
+		/** The completion walk's authorisation, as the transcript reads it (1b). */
+		mayAutoWalk: () => handle.mayAutoWalk(),
 		setScrollTop: (value) => {
 			scrollTop = value;
 		},
 		setScrollHeight: (value) => {
 			scrollHeight = value;
+		},
+		/**
+		 * Move the anchored row — CONTENT ARRIVING ABOVE THE READER, which is the
+		 * only thing the reveal's growth is measured from now (agent review round
+		 * 1, R1-3: the scroller's whole `scrollHeight` also grows when a live turn
+		 * streams BELOW a tail-following reader, and that was being credited to the
+		 * reveal). `setScrollHeight` alone is therefore "the extent changed, the
+		 * reader's own row did not move" — the invisible case.
+		 */
+		setRowTop: (value) => {
+			anchorTop = value;
 		},
 		get slotState() {
 			return handle?.slotState;
@@ -614,6 +645,188 @@ test("a stale outcome from the conversation the reader left cannot cancel the ne
 			asks.length,
 			2,
 			"the new conversation still auto-continues: the old page's outcome is not its",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * The DOM half's half of the visible reveal (loader-continuity 1b): `growthPx`.
+ *
+ * The policy cannot know whether a landing changed anything on screen - the
+ * extent lives in the scroller - so the hook measures `scrollHeight` at the
+ * dispatch and again at the settle and hands the policy the difference. These
+ * two cases are the wiring: an extent that did NOT move inside a transcript
+ * with more behind it leaves the act unanswered (the pump asks again by
+ * itself), and an extent that moved ends the chain (one ask per act).
+ *
+ * The extent is the real DOM property here, read through the hook's own
+ * `measure()`, so a hook that passed a constant would fail the second case
+ * while the first still passed.
+ */
+const askable = (extra = {}) =>
+	mountHook({
+		hiddenRows: 0,
+		hasMore: true,
+		onLoadOlderOutcome: async () => ({
+			kind: "applied",
+			newRecords: 12,
+			exhausted: false,
+		}),
+		...extra,
+	});
+
+test("an invisible landing is followed by another ask without input", async () => {
+	// Hard top of a scrollable pane: 1400 - 800 - 600 = 0.
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.ok(hook.asked >= 1, "the hard-top push buys its page");
+		/*
+		 * The page lands and the extent does NOT move: the reader saw nothing, so
+		 * the pump asks again on its own. Driven to a standstill rather than one
+		 * round, because the assertion is about the CHAIN and the chain is what
+		 * has to stop: an unbounded one would leave the frames below queued when
+		 * the harness tears its globals down.
+		 */
+		let last = -1;
+		for (let round = 0; round < 30 && hook.asked !== last; round += 1) {
+			last = hook.asked;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.asked > 1,
+			`an invisible reveal must chain (asked ${hook.asked})`,
+		);
+		/*
+		 * THE RENDERER PATH AT ITS BOUND (QA round 1, Q-4 asked for exactly this:
+		 * the policy's own test cannot see the hook's door accounting). `MAX_ACT_ASKS`
+		 * is the sum one act may buy across every door; a hook that spent one ask
+		 * past it would fail here.
+		 */
+		assert.equal(
+			hook.asked,
+			MAX_ACT_ASKS,
+			`the chain spends the act's whole budget and stops (asked ${hook.asked})`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * CONTRACT PIN, NOT A REGRESSION (operator rule: a test that cannot fail is not
+ * evidence - the round-3 reviewer caught exactly this shape). This case passes on
+ * the pristine tree too, because a reveal that DID grow the extent was already
+ * answering the act before 1b. It is here so the refund added above cannot become
+ * unconditional: the discriminating half is the invisible case, which fails
+ * before the change ("an invisible reveal must chain (asked 1)"). Relabelled
+ * rather than deleted because a fix that refunds on EVERY settle would pass the
+ * invisible case and silently break rule 2 for a visible one.
+ */
+/*
+ * AGENT REVIEW ROUND 1, R1-3 — DISCRIMINATING, not a contract pin: before this
+ * round the reveal's growth was the scroller's WHOLE `scrollHeight` delta, so a
+ * live turn streaming BELOW a tail-following reader read as a visible reveal,
+ * ended the chain and left the act's round trip spent. The measurement is now the
+ * held row's own displacement (`sampleAnchor`/`measureHeld`), and this is that
+ * exact state: the extent grows, the reader's row does not move.
+ */
+test("growth BELOW the reader's own row does not answer the act (R1-3)", async () => {
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.asked, 1, "one act, one round trip");
+		// A turn streams in BELOW the reader: the extent grows and the held row
+		// stays exactly where it was.
+		hook.setScrollHeight(2400);
+		let last = -1;
+		for (let round = 0; round < 30 && hook.asked !== last; round += 1) {
+			last = hook.asked;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.asked > 1,
+			`the reader saw nothing of it, so the act is not answered (asked ${hook.asked})`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a visible landing answers the act: the chain stops there (contract pin)", async () => {
+	const hook = askable();
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.asked, 1, "one act, one round trip");
+		// The page lands and DOES move the content above the reader: the held row
+		// is pushed down by the rows that arrived over it, which is what "the reader
+		// saw it" means (and the extent grows with it). The next reveal therefore
+		// needs a gesture of their own (rule 2 for a scrollable pane).
+		hook.setScrollHeight(2400);
+		hook.setRowTop(120 + 400);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.flushFrames(12);
+		assert.equal(
+			hook.asked,
+			1,
+			"a visible reveal answers the act; nothing more is spent",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * The completion walk's authorisation (loader-continuity 1b, spec section 7
+ * clause b), asked of the hook rather than of a copy of its arithmetic: the walk
+ * may ask only while the reader FOLLOWS THE TAIL and has given no input for
+ * `SETTLE_MS`. Both terms are the module's own - `followingTail` comes from the
+ * one geometry `decide` reads, and the quiet window from the policy's own input
+ * clock - so this is the accessor the transcript calls rather than a second
+ * derivation beside it.
+ */
+test("the walk is authorised only at the tail, and only after the input has settled", async () => {
+	const hook = mountHook({ hiddenRows: 0 });
+	try {
+		// scroller: scrollHeight 1400, clientHeight 800. -600 from the tail is the
+		// hard top (distance 0) and NOT the tail; -20 is inside TAIL_EPS_PX (24).
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		assert.equal(
+			hook.mayAutoWalk(),
+			false,
+			"a reader up in the history is not walked on their behalf",
+		);
+		hook.setScrollTop(-20);
+		assert.equal(
+			hook.mayAutoWalk(),
+			true,
+			"at the tail, and quiet: the walk may ask",
+		);
+		hook.readerInput();
+		assert.equal(
+			hook.mayAutoWalk(),
+			false,
+			"input arms a demand; the walk waits out the settle window",
+		);
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 40));
+		assert.equal(
+			hook.mayAutoWalk(),
+			true,
+			"once the input has settled the position is the whole question again",
 		);
 	} finally {
 		hook.close();
