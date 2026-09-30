@@ -12,10 +12,10 @@ Forty frames across **20 states** and two palettes:
 | --- | --- | --- |
 | `order-before-240/260/280/320` | three pins, catalogue order, pointer parked | nothing at rest: no grip, no pair, no indicator is painted; the section is the catalogue's own order passed through (rule 1) |
 | `grip-hover-240/260/280/320` | pointer on the middle pinned row | the reveal. At **280 and 320**: grip + move pair + archive appear on ONE row and no other. At **240 and 260 the grip is SHED** (design round 1 D2; the 260 default is round 2's D8) and the pair stays — see "The numbers" |
-| `drag-mid` | pointer down on the grip, moved one place | the held row wears BOTH halves of the held state — the selected ground step and, new in round 2, its **inset ring** — while the row under the pointer wears the hover fill and no ring; the section draws the insertion line in the gap the row would land in; nothing has been written yet |
-| `current-drag-mid` | the conversation the reader is IN, dragged, with the pointer over the next row | the state round 1 could not photograph and round 2 (D7/U6) fixed: the held row KEEPS its `row-selected` fill, so "you are here" survives the gesture, and it is told apart from the hovered drop target by the ring alone — two rows, two readings, one frame |
+| `drag-mid` | pointer down on the grip, moved one place | the held row wears BOTH halves of the held state — the selected ground step and its **inset outline** (round 2's D7/U6, drawn as an outline since round 3's D10) — while the row under the pointer wears the hover fill and no mark; the section draws the insertion line in the gap the row would land in; nothing has been written yet |
+| `current-drag-mid` | the conversation the reader is IN, dragged, with the pointer over the next row | the state round 1 could not photograph and round 2 (D7/U6) fixed: the held row KEEPS its `row-selected` fill, so "you are here" survives the gesture, and it is told apart from the hovered drop target by the OUTLINE alone — two rows, two readings, one frame, and the outline covers the row's whole box on this state too (D10's measurement, below) |
 | `drag-top` | a drag held ABOVE the first pinned row (round 1, D5b) | slot 0's line: drawn at the first row's own top edge, under the `Pinned chats` heading, with the last row held |
-| `after-drop` | released one place down | the order is `p005, p000, p010`; the mark, the ring and the line are gone; the live region says where the row went |
+| `after-drop` | released one place down | the order is `p005, p000, p010`; the mark, the outline and the line are gone; the live region says where the row went |
 | `order-relaunch` | `Page.reload` on the same profile | the same manual order comes back — the acceptance criterion |
 | `search-filtered` | the panel's own search field, query `Chat 00` | the section draws two of the three pins; the third is hidden, not forgotten |
 | `search-drag-mid`, `search-after-drop` | a drop under that filter | the move crosses the SHOWN neighbour while the hidden id keeps its stored slot (the stored order stays a permutation of the full list) |
@@ -71,19 +71,35 @@ giving the held row its own ground step; **round 2 fixed the case it got wrong**
 that is ALSO the current one was given the `row-hover` role, which is exactly the fill the
 drop target wears, so two rows on screen read alike and the held row lost the selected fill
 that says "this is the conversation you are in" (design round 2 D7, UX round 2 U6). The held
-state is now carried by a **1px inset ring** off `[data-dragging]`:
-`rgb(166, 160, 145) 0px 0px 0px 1px inset` (`--lo-ink-dim`, the same in both palettes) on a
-ground that stays the row's own role. Measured in both palettes and in both row states, and
-the drop target's `box-shadow` is `none` while the held row's is not. The class merge that
-decides it is asserted in `scripts/sidebar-pin-order.test.mjs`.
+state is now carried by a **1px inset outline** off `[data-dragging]` on a ground that stays
+the row's own role — the `ink-dim` ROLE, whose value is per palette: dark
+`rgb(166, 160, 145)`, light `rgb(101, 96, 86)` (round 3's D11/Q-NIT-2: round 2's note quoted
+the dark value as though it were both). Measured in both palettes and in both row states,
+and the drop target's computed outline is `none` while the held row's is `solid 1px offset
+-1px`. The class merge that decides it is asserted in `scripts/sidebar-pin-order.test.mjs`.
+
+**WHY IT IS AN OUTLINE AND NOT AN INSET RING (round 3, design D10).** The first spelling was
+`ring-1 ring-inset` — a box-shadow — and a box-shadow is painted UNDER the element's
+children: on the CURRENT row, the row's own button carries the opaque `bg-row-selected` fill
+and covered the mark everywhere it reached. Measured on the frames by the outline's own
+method (the ink in the row box's 3px border band, over the band's area): the held row's mark
+covers **61.1%** of that band on a row that is not current (`drag-mid`, `drag-top`, both palettes)
+and **4.0%** on the held CURRENT row before this fix (light 4.1%) — while after it, the same
+band on `current-drag-mid` reads **33.1% in both palettes**, which is three of the row's four
+edges: the top edge is the one the drop line sits on, exactly as `search-drag-mid` reads
+(33.1% for the same reason). The method is one script and one box: the row's box is found by
+the held ground colour, grown by the 2 device px the mark occupies, and the ink matching the
+mark's role colour is counted inside the outermost 3 device px of that box. The two grounds the two rows wear are
+1.04:1 apart, so the mark is the half of the held state a reader can actually see; that is
+why the spellings are not interchangeable.
 
 The gesture's own readings, from the same runs:
 
 - `drag-mid`: `dragging: ["p000"]`, the indicator drawn inside the section's coordinates,
   and `stored: []` — **nothing has been written mid-gesture**.
 - `current-drag-mid` (round 2): the held row is `current: true`, its ground equals its own
-  resting ground and its ring is painted; the row under the pointer reads the hover ground
-  with `ring: "none"`. Escape then cancels it with the order untouched.
+  resting ground and its outline is painted; the row under the pointer reads the hover ground
+  with `mark: "none"`. Escape then cancels it with the order untouched.
 - `drag-top`: the indicator's y is **498**, the first pinned row's own top edge, against the
   section box's **474** (the heading sits between them).
 - `after-drop`: order `["p005","p000","p010"]`, and the persisted view holds
@@ -170,8 +186,8 @@ palettes, which are the frames a row-render change would have moved first. The s
 check confirms the same fact from the DOM side: the stand-in's rows carry no subagent count,
 so #691's row mark draws nothing in this fixture.
 
-**This round's intended changes** are the ring on the three drag labels (`drag-mid`,
-`drag-top`, `search-drag-mid` — the held row's inset ring, see above), the new
+**This round's intended changes** are the mark on the three drag labels (`drag-mid`,
+`drag-top`, `search-drag-mid` — the held row's inset outline, see above), the new
 `current-drag-mid` pair, and the new `order-before-260`/`grip-hover-260` pair (the default
 width, where the grip is shed; design round 2, D8). **The remainder of the difference is the
 same non-determinism as round 1's**, and it is the reason several `DIFFERS` verdicts carry
@@ -179,6 +195,25 @@ small bounding boxes: the composer caret strip (66 changed pixels at x 858-939,
 y 1597-1629), the rotating empty-state sentence (the widest of them — the whole tip line
 between x ~880 and x ~1540), a long title's pan phase, and one- to three-pixel scroll
 offsets in the dropped-order and drag frames.
+
+## Round 3's re-shoot, and how it compares to the set before it
+
+Every frame was re-shot on the twice-folded round-3 tree (`origin/main` = `2e866d5d49` folded
+in, plus the round-3 remediation). Against the round-2 set at `754b3f1e73`, a raw-RGBA
+comparison gives **24 of 40 byte-identical** — every `many-pins`, `single-pin`,
+`grip-hover-240/260`, `order-before-260/280` and `order-relaunch` frame among them, i.e. the
+whole overflow, count-rule and rest surfaces, untouched by this round.
+
+The 16 that differ are the four DRAG labels the mark's spelling changed on (`drag-mid`,
+`drag-top`, `current-drag-mid`, `search-drag-mid` — the inset ring became an inset outline,
+D10), plus the same run-to-run strips the set already documents: the rotating empty-state
+sentence (whose bbox reaches x ~1554 in `after-drop` and `drag-mid`), the composer caret strip
+(66 changed pixels at x 858-939, y 1597-1629, in six labels), a title's pan phase, and 1-60px
+scroll/text offsets in `search-filtered` and `search-after-drop`.
+
+The fold itself is covered by the same comparison: main's delta (#699's board time window and
+the trains under it) reaches the board surface and the docs, and 24 frames - including
+`many-pins` and `single-pin` at both palettes - came back byte-identical across it.
 
 ## What these frames cannot show
 

@@ -13736,12 +13736,20 @@ async function scenePinnedReorder(cdp) {
 						   COMMENT: it lives inside a template literal, and one would end the
 						   string early - measured, twice on this file. */
 						ground: getComputedStyle(node).backgroundColor,
-						/* THE HELD ROW'S NON-FILL CUE (round 2, D7 and U6): a 1px INSET ring
-						   drawn as a box-shadow, so the computed shadow is the honest reading
-						   of "is this row marked as held" - and a merely hovered row carries
-						   none, which is the whole discrimination the round-2 fix is about.
-						   NO BACKTICKS IN THIS COMMENT: it lives inside a template literal. */
-						ring: getComputedStyle(node).boxShadow,
+						/* THE HELD ROW'S NON-FILL CUE (round 2, D7 and U6; round 3, D10): a
+						   1px OUTLINE inset by 1px - an outline rather than an inset ring
+						   because the current row's own button paints an opaque fill over its
+						   parent's box-shadow, which left 5.3% of the mark visible on exactly
+						   the row round 2 was about. The computed outline is the honest
+						   reading of "is this row marked as held"; a merely hovered row
+						   carries none. NO BACKTICKS IN THIS COMMENT: it lives inside a
+						   template literal. */
+						mark: (() => {
+							const st = getComputedStyle(node);
+							return st.outlineStyle === "none"
+								? "none"
+								: st.outlineColor + " " + st.outlineStyle + " " + st.outlineWidth + " offset " + st.outlineOffset;
+						})(),
 						current:
 							node.querySelector("[data-chat-row][aria-current='page']") !== null,
 						title: title ? box(title) : null,
@@ -14173,17 +14181,17 @@ async function scenePinnedReorder(cdp) {
 		 * cannot say "held" in the current-row case, so the non-fill cue is what every held
 		 * row has, and the row under the pointer has none of it.
 		 */
-		const midRing =
-			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ring ?? null;
-		const hoveredRing =
-			midDrag.rows.find((row) => row.id === PINNED_IDS[1])?.ring ?? null;
+		const midMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ?? null;
+		const hoveredMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[1])?.mark ?? null;
 		check(
-			"mid-drag: the held row wears an inset ring and an unheld row wears none",
-			typeof midRing === "string" &&
-				midRing.includes("inset") &&
-				hoveredRing !== null &&
-				!String(hoveredRing).includes("inset"),
-			JSON.stringify({ held: midRing, other: hoveredRing }),
+			"mid-drag: the held row wears an inset outline and an unheld row wears none",
+			typeof midMark === "string" &&
+				midMark.includes("solid") &&
+				midMark.includes("offset -1px") &&
+				String(hoveredMark) === "none",
+			JSON.stringify({ held: midMark, other: hoveredMark }),
 		);
 		await releaseAt(grip.x, grip.y);
 		await wait(PINNED_SETTLE_MS);
@@ -14565,17 +14573,18 @@ async function scenePinnedReorder(cdp) {
 				heldRow.ground !== targetRow?.ground &&
 				heldRow.ground === currentRow?.ground,
 			JSON.stringify({
-				held: { ground: heldRow?.ground, ring: heldRow?.ring },
-				target: { ground: targetRow?.ground, ring: targetRow?.ring },
+				held: { ground: heldRow?.ground, mark: heldRow?.mark },
+				target: { ground: targetRow?.ground, mark: targetRow?.mark },
 				restingCurrent: currentRow?.ground,
 			}),
 		);
 		check(
-			"the held row is marked by an inset ring the hovered row does not paint",
-			typeof heldRow?.ring === "string" &&
-				heldRow.ring.includes("inset") &&
-				targetRow?.ring === "none",
-			JSON.stringify({ held: heldRow?.ring, target: targetRow?.ring }),
+			"the held row is marked by an inset outline the hovered row does not paint",
+			typeof heldRow?.mark === "string" &&
+				heldRow.mark.includes("solid") &&
+				heldRow.mark.includes("offset -1px") &&
+				targetRow?.mark === "none",
+			JSON.stringify({ held: heldRow?.mark, target: targetRow?.mark }),
 		);
 		await sendEscape(cdp);
 		await releaseAt(currentGrip.x, currentGrip.y);
@@ -14608,18 +14617,18 @@ async function scenePinnedReorder(cdp) {
 				round2: {
 					heldCurrent: {
 						ground: heldRow?.ground ?? null,
-						ring: heldRow?.ring ?? null,
+						mark: heldRow?.mark ?? null,
 						restingGround: currentRow?.ground ?? null,
 					},
 					heldPlain: {
 						ground: midGround,
-						ring:
-							midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ring ??
+						mark:
+							midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ??
 							null,
 					},
 					hoveredTarget: {
 						ground: targetRow?.ground ?? null,
-						ring: targetRow?.ring ?? null,
+						mark: targetRow?.mark ?? null,
 					},
 				},
 			}),
