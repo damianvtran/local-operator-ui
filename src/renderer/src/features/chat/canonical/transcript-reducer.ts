@@ -43,6 +43,7 @@ import {
 	preferDiff,
 	preferDiffCounts,
 } from "../components/trace/tool-row-model";
+import { isHarnessChromeText } from "./harness-chrome";
 
 /**
  * One image on a transcript row.
@@ -1418,6 +1419,26 @@ function collapseRecords(state: TranscriptState): TranscriptState {
  * names the harness writes (`session/peer.py`, `harness/wake.py`).
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
+/**
+ * The core's neutral closure copy (v2, 2026-09-29). A `closed` completion is a
+ * disposal that caught a run which spent no provider round-trip: a receipt,
+ * not a verdict. Byte-identical to `harness/rows.py::CLOSED_NOTICE_TEXT` in
+ * local-operator — the two repos render the same sentence for the same record,
+ * and drift between them is the divergence this feature exists to remove.
+ */
+const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
+/*
+ * The retire-for-build row's sentence (core kind `retired`, 2026-09-29; seed
+ * 7e797aaaf6e7): a bound-expired build drain cut a live turn, so the row stays
+ * TRUTHFUL — the turn was cut — but reads in WARNING ink, never danger: the
+ * update was routine. The kept-output clause (design round 2, D1) is the one
+ * fact a user who lost work needs, so it rides in both repos' constants.
+ * Byte-identical to the core's
+ * `harness/rows.py::RETIRED_NOTICE_TEXT`, so both repos print the same words
+ * for the same record (the discipline `CLOSED_OUTCOME_TEXT` above states).
+ */
+const RETIRED_OUTCOME_TEXT =
+	"Retired for an update — a turn was in flight and was cut; its earlier output is kept";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
@@ -1959,10 +1980,11 @@ function bounded(headline: string): string {
  * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
  * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
  * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
- * field on the row's own payload — and that is the whole reason this suppression
- * lives here: a text list copied into TypeScript would be a second decision that
- * could disagree with the TUI's, and the harness's continuation prompt embeds the
- * goal text, so it is a FAMILY of strings rather than one that could be matched.
+ * field on the row's own payload — and that is why it is the PRIMARY read: it
+ * cannot drift with a producer's wording, and its strict `=== true` fails safe.
+ * It is not the whole contract on its own: rows written before it existed carry
+ * nothing to read, and `harness-chrome.ts` mirrors core's own recogniser for the
+ * goal families those rows belong to, applied only after this marker says no.
  */
 const HARNESS_INJECTION_KEY = "harness_injected";
 
@@ -2052,21 +2074,49 @@ function durableRecord(
 		payload.custom_type === "completion_attention"
 	) {
 		const details = (payload.details ?? {}) as Record<string, unknown>;
-		if (
-			typeof details.anchor === "string" &&
-			(details.kind === "error" || details.kind === "interrupted")
-		) {
-			// Preserve the marker's durable position. Appending an old failure at
-			// the current retry tail would misrepresent which outcome was viewed.
-			return {
-				kind: "notice",
-				id: details.anchor,
-				ts,
-				complete: true,
-				text:
-					details.kind === "error" ? "Stopped with an error" : "Interrupted",
-				level: details.kind === "error" ? "error" : "warning",
-			};
+		if (typeof details.anchor === "string") {
+			if (details.kind === "closed") {
+				// THE NEUTRAL CLOSURE (v2, 2026-09-29): the disposal caught a run
+				// that spent no provider round-trip, so the record is a receipt —
+				// info ink, never danger. It keeps `complete: true` so the
+				// working-line ladder retires the wait the same way an incident
+				// does: a runtime that has been disposed is not still working.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: CLOSED_OUTCOME_TEXT,
+					level: "info",
+				};
+			}
+			if (details.kind === "retired") {
+				// THE RETIRE-FOR-BUILD ROW (2026-09-29): a cut for an update is
+				// warning, never danger, and it keeps `complete: true` for the
+				// closure's own reason above — the runtime is quitting, so the
+				// working-line wait must retire beside the row.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: RETIRED_OUTCOME_TEXT,
+					level: "warning",
+				};
+			}
+			if (details.kind === "error" || details.kind === "interrupted") {
+				// Preserve the marker's durable position. Appending an old failure at
+				// the current retry tail would misrepresent which outcome was viewed.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text:
+						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					level: details.kind === "error" ? "error" : "warning",
+				};
+			}
 		}
 	}
 	if (entry.type !== "message") return null;
@@ -2140,6 +2190,17 @@ function durableRecord(
 		 */
 		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
+		/*
+		 * THE LEGACY FALLBACK: a row written before the marker existed, or sent by
+		 * an owner on an older build, carries no stamp to read — the operator's own
+		 * stored transcript (2026-09-29) still held ten goal-continuation rows that
+		 * painted as the user's own words. Core keeps its recogniser for exactly
+		 * these rows and names it beside the marker (`docs/DESKTOP_API.md`); the
+		 * check is `harness-chrome.ts`, which mirrors its goal legs. It runs only
+		 * after the marker read above said no, so the structural stamp stays the
+		 * primary one.
+		 */
+		if (isHarnessChromeText(text)) return null;
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
 		if (text.startsWith("Harness recovery notice:")) {
@@ -2797,6 +2858,13 @@ export function applyEvent(
 				 */
 				if (isHarnessInjected(message.provider_payload)) return state;
 				/*
+				 * The legacy fallback — see `durableRecord`'s note on the same check; the
+				 * arms are separate code paths over separate payload shapes, so the
+				 * fallback runs on both.
+				 */
+				const text = messageText(message);
+				if (isHarnessChromeText(text)) return state;
+				/*
 				 * A RESTATING `message_start` FOR A ROW STILL HOLDING ITS PLACE IS NOT
 				 * THE OWNER STATING WHERE IT SITS (agent review round 1, F2).
 				 *
@@ -2817,7 +2885,7 @@ export function applyEvent(
 					// locally-derived time may never lift the row above what is
 					// already painted.
 					ts: keepsHold ? monotonicStamp(state, now) : now,
-					text: messageText(message),
+					text,
 					images: extractImages(
 						message,
 						message.id,
@@ -4914,7 +4982,10 @@ export function withRecoveredOutcome(
 	const kind = attention?.kind;
 	if (
 		!anchor ||
-		(kind !== "error" && kind !== "interrupted") ||
+		(kind !== "error" &&
+			kind !== "interrupted" &&
+			kind !== "closed" &&
+			kind !== "retired") ||
 		// Mirrors the TUI's retry guard: a historical failure must not be
 		// inserted at the tail of a retry that is already running.
 		streaming ||
@@ -4932,7 +5003,21 @@ export function withRecoveredOutcome(
 		// tail where the durable rows it follows already are.
 		ts: state.records.at(-1)?.ts ?? Date.now(),
 		complete: true,
-		text: kind === "error" ? "Stopped with an error" : "Interrupted",
-		level: kind === "error" ? "error" : "warning",
+		text:
+			kind === "closed"
+				? CLOSED_OUTCOME_TEXT
+				: kind === "retired"
+					? RETIRED_OUTCOME_TEXT
+					: kind === "error"
+						? "Stopped with an error"
+						: "Interrupted",
+		level:
+			kind === "closed"
+				? "info"
+				: kind === "retired"
+					? "warning"
+					: kind === "error"
+						? "error"
+						: "warning",
 	});
 }

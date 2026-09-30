@@ -55,6 +55,7 @@ import {
 	expandedRunsOf,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
@@ -65,6 +66,8 @@ import {
 import {
 	type FC,
 	type FocusEvent,
+	type MouseEvent,
+	type PointerEvent,
 	type RefObject,
 	memo,
 	useCallback,
@@ -80,8 +83,13 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
-import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_MEASURE,
+	readShippedChatMeasurePx,
+} from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
+import { ChatMeasureHandle } from "../components/chat-measure-handle";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
@@ -112,6 +120,7 @@ import {
 import { TraceFold } from "../components/trace/trace-fold";
 import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
+import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
@@ -119,6 +128,7 @@ import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
+import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -134,9 +144,17 @@ import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
 	type TurnFoot,
+	foldImages,
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
+import {
+	TRANSCRIPT_DRAG_SLOP_PX,
+	clickTargetIsControl,
+	modalIsOpen,
+	transcriptClickVerdict,
+	wheelWithinGuard,
+} from "./transcript-focus";
 import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
@@ -146,6 +164,7 @@ import {
 } from "./transcript-pane";
 import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
+	type TranscriptImage,
 	type TranscriptRecord,
 	type TranscriptState,
 	isInterruptedFault,
@@ -478,6 +497,18 @@ export type CanonicalTranscriptProps = {
 	 * replaces it.
 	 */
 	labelMarked?: ReadonlySet<string>;
+	/**
+	 * Mount the measure's drag handles on this column.
+	 *
+	 * Opt-in, and only the chat page passes it: the width a handle writes is a
+	 * document-root property shared by every chat surface, so a second mount
+	 * (the run pane's child reader) would let a drag there resize the main
+	 * column (review, finding 2). A transcript without it is indistinguishable
+	 * from the state before the handles existed - they are absolutely
+	 * positioned children of this column, and the `relative` on the column is
+	 * theirs.
+	 */
+	measureHandle?: boolean;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -1320,11 +1351,7 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={
-							record.images.length === 1
-								? "Screenshot"
-								: `Screenshot ${index + 1}`
-						}
+						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				))}
 			</div>
@@ -1768,6 +1795,40 @@ const atTraceTierGroup = (group: SectionGroup): SectionGroup => {
 	return copy;
 };
 
+/*
+ * THE ROW DIRECTLY BELOW A BAR sits at the item tier rather than the trace tier
+ * (operator report, 2026-09-29: the pinned "Context compacted" row "hugs the
+ * summary row's rule too closely ... wants more breathing room between the
+ * horizontal line and the row beneath it"). The trace tier is the LEDGER's
+ * adjacency step; the rule is the bar saying the block below is a new one, so
+ * the first row under it takes the in-turn block step - the same 12px the
+ * closing answer already sits below the rule, so the block reads one way
+ * whichever lands there. RAISE-ONLY: a first-after-bar row whose own gap is
+ * wider (a steer's `turn` boundary, above all) keeps it; this loosens a 2px hug
+ * and moves nothing else. Same `WeakMap` reuse rule as its siblings: an
+ * untouched group keeps its identity so memoised rows are not re-rendered per
+ * streamed token.
+ */
+const itemTierGroups = new WeakMap<SectionGroup, SectionGroup>();
+const atItemTierGroup = (group: SectionGroup): SectionGroup => {
+	if (group.kind === "row") {
+		if (group.row.gap !== "trace") return group;
+		let copy = itemTierGroups.get(group);
+		if (!copy) {
+			copy = { ...group, row: { ...group.row, gap: "item" } };
+			itemTierGroups.set(group, copy);
+		}
+		return copy;
+	}
+	if (group.gap !== "trace") return group;
+	let copy = itemTierGroups.get(group);
+	if (!copy) {
+		copy = { ...group, gap: "item" };
+		itemTierGroups.set(group, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -1941,7 +2002,20 @@ const CHECKPOINT_JUMP_MISS_COPY =
  * fold's open state is the reader's, see `fold-open.ts`), so the decoration
  * is gone with it.
  */
-type SectionGroup = FoldGroup;
+type SectionGroup =
+	| (Extract<FoldGroup, { kind: "run" }> & {
+			/**
+			 * The run's images, computed by the groups memo while the rows are still
+			 * in hand (`foldImages`). The fold's condensed header carries them because
+			 * a collapsed fold UNMOUNTS the rows that draw them: without this, the
+			 * artifact a call produced went with the rows and the reader had to expand
+			 * the group to see it, which is the cost condensing was built to remove.
+			 * Empty for almost every run, which is what keeps the no-image case's DOM
+			 * and its height exactly what they were.
+			 */
+			images: TranscriptImage[];
+	  })
+	| Extract<FoldGroup, { kind: "row" }>;
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	frontend,
@@ -1968,6 +2042,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2252,9 +2327,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
 		 * condense is retired (the fold's open state is the reader's, see
-		 * `fold-open.ts`), so the map that carried it is gone with it.
+		 * `fold-open.ts`), and the map below carries only the run's images - the
+		 * media lane's own decoration, documented at its own site.
 		 */
-		return foldRuns(visible, {
+		const groups = foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
@@ -2290,6 +2366,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
+		return groups.map((group) =>
+			group.kind === "run"
+				? {
+						...group,
+						/*
+						 * The run's pictures, computed HERE rather than at the fold's call
+						 * site: a collapsed fold unmounts the rows that draw them, so the
+						 * condensed group has to carry what they would have shown, and
+						 * this memo is where the rows are still in hand. Empty for almost
+						 * every run (`foldImages` returns nothing when no action produced
+						 * an image), which is what keeps the no-image case's DOM and its
+						 * height exactly what they were.
+						 */
+						images: foldImages(group.rows),
+					}
+				: group,
+		);
 	}, [visible]);
 	const feet = useMemo(() => {
 		/*
@@ -2588,6 +2681,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
 	const [perf, setPerf] = useState("");
+
+	/*
+	 * The conversation column's width, and the two writes that change it.
+	 *
+	 * The READ is the reader's own width when they have one and the shipped
+	 * default otherwise - never the width on screen, which a narrow pane may have
+	 * clamped (`chat-measure-drag.ts` argues that distinction). `useMemo` with no
+	 * dependencies because the shipped value is a property lookup on the document
+	 * and the stylesheet has loaded by the time this component mounts; reading it
+	 * per render would put a `getComputedStyle` on the streaming transcript's hot
+	 * path for a number that cannot change while the app runs.
+	 */
+	const chatMeasureWidth = useUiPreferencesStore(
+		(state) => state.chatMeasureWidth,
+	);
+	const setChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.setChatMeasureWidth,
+	);
+	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.restoreDefaultChatMeasureWidth,
+	);
+	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
+	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
@@ -2749,6 +2865,124 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 
 	/*
+	 * THE BLANK-SPACE CLICK, AND ITS GUARDS (issue #661).
+	 *
+	 * A press on empty transcript space focuses nowhere today, so the next
+	 * keystroke reaches nobody until the reader clicks the box - and the box is
+	 * the only sensible target for a press that landed on no control. The policy
+	 * is `transcript-focus.ts`'s; what lives here is the DOM half: the press's
+	 * origin and the selection state BEFORE the browser collapses it. That
+	 * recording is the whole reason the handlers are on the container rather
+	 * than one `onClick`: by click time a press-time selection is already gone,
+	 * and a click carries no memory of where the pointer came from.
+	 *
+	 * The recording is deliberately silent - no preventDefault, no focus call,
+	 * no state that re-renders - so every existing handler receives the reader's
+	 * gesture exactly as it did.
+	 */
+	const pressRef = useRef<{
+		x: number;
+		y: number;
+		/** Whether a transcript selection existed before the browser collapsed it. */
+		hadSelection: boolean;
+		/** Whether the press began on a control (see `clickTargetIsControl`). */
+		onControl: boolean;
+	} | null>(null);
+	/** When the last wheel notch arrived; the click's own scroll-gesture read. */
+	const wheelAtRef = useRef(Number.NEGATIVE_INFINITY);
+
+	/*
+	 * Whether non-collapsed text is selected INSIDE this transcript. Scoped to
+	 * the container because a selection elsewhere - the sidebar, the composer,
+	 * another pane - is not the gesture this guard exists for, and because a
+	 * selection in the transcript is the one a click here is about to
+	 * collapse.
+	 */
+	const selectionInsideTranscript = useCallback((): boolean => {
+		const selection = window.getSelection();
+		const region = containerRef.current;
+		if (!selection || selection.isCollapsed || !region) return false;
+		const node = selection.anchorNode ?? selection.focusNode;
+		return node !== null && region.contains(node);
+	}, [containerRef]);
+
+	const handleTranscriptPointerDown = useCallback(
+		(event: PointerEvent<HTMLDivElement>) => {
+			/*
+			 * Primary presses only: a right- or middle-click is not the gesture
+			 * this rule answers, and it must not leave a recording behind for a
+			 * click that never comes.
+			 */
+			if (event.button !== 0) {
+				pressRef.current = null;
+				return;
+			}
+			pressRef.current = {
+				x: event.clientX,
+				y: event.clientY,
+				hadSelection: selectionInsideTranscript(),
+				onControl: clickTargetIsControl(event.target),
+			};
+		},
+		[selectionInsideTranscript],
+	);
+
+	const handleTranscriptWheel = useCallback(() => {
+		wheelAtRef.current = performance.now();
+	}, []);
+
+	const handleTranscriptClick = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => {
+			const press = pressRef.current;
+			pressRef.current = null;
+			/*
+			 * A press another handler already answered is left alone:
+			 * `defaultPrevented` is the "someone got here first" tell the
+			 * palette shortcut documents, and the surface that consumed the
+			 * gesture owns it.
+			 */
+			if (event.defaultPrevented) return;
+			const verdict = transcriptClickVerdict({
+				controlPress:
+					clickTargetIsControl(event.target) || press?.onControl === true,
+				modalOpen: modalIsOpen(document),
+				pressHadSelection: press?.hadSelection === true,
+				selectionNotCollapsed: selectionInsideTranscript(),
+				shiftExtends: event.shiftKey,
+				dragged:
+					press !== null &&
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) >
+						TRANSCRIPT_DRAG_SLOP_PX,
+				scrolledRecently: wheelWithinGuard(
+					wheelAtRef.current,
+					performance.now(),
+				),
+			});
+			/*
+			 * The composer's own door (`composer-field.ts`), the hand-off the
+			 * Quote toolkit already uses from this component's tree: it is the
+			 * single place focus is given - the ask gate's "the user took the
+			 * box" flag reset included - and a no-op when no composer is
+			 * mounted (a story, a pane without one).
+			 *
+			 * THE TRADE, named because it is the one a reader hits: focus leaving
+			 * for the composer means the transcript's own KEYBOARD paging (Space,
+			 * PageUp, the arrows - the keys `use-scroll-paging.ts` listens for)
+			 * now lands in the textarea, so a reader who scrolls by keyboard
+			 * after a click types spaces instead. The scroller stays reachable
+			 * with Tab/F6, and the alternative - leaving the caret on the
+			 * scroller - is the "my keystrokes go nowhere" state #661 exists to
+			 * remove (design round 2, U2). The flag reset is the door's own
+			 * contract read literally: a hand-off makes the box ours again, so a
+			 * gate advancing on its own schedule may claim focus for its next
+			 * question, the same as after a press into the empty box.
+			 */
+			if (verdict === "focus") focusComposer();
+		},
+		[selectionInsideTranscript],
+	);
+
+	/*
 	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
@@ -2848,8 +3082,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		visible.forEach((row, index) => indexOf.set(row.record.id, index));
 
 		type ChatEntry =
-			| { kind: "group"; group: SectionGroup; suppressClosingLine: boolean }
-			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+			| {
+					kind: "group";
+					group: SectionGroup;
+					suppressClosingLine: boolean;
+					/**
+					 * Whether this group renders directly under a collapsed run's
+					 * bar. The row beneath the bar's rule re-tiers at the render pass
+					 * (`atItemTierGroup`); this flag is the walk's half of that
+					 * decision, set where the bar is placed.
+					 */
+					afterBar?: boolean;
+			  }
+			| {
+					kind: "bar";
+					plan: RunCollapsePlan;
+					children: SectionGroup[];
+					/**
+					 * The hidden span's pictures, computed HERE because the bar's children
+					 * are unmounted while it is collapsed and these are what they would
+					 * have shown. `plan.hidden` rather than the whole run: the bar shows
+					 * exactly what the collapse hides, and a pinned row that stays on
+					 * screen keeps drawing its own media.
+					 */
+					images: TranscriptImage[];
+			  };
 
 		const entries: ChatEntry[] = [];
 		let next = 0;
@@ -2880,6 +3137,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			}
 			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
 			const children: SectionGroup[] = [];
+			/*
+			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
+			 * statement's gap was BUILT against its original neighbour - often a
+			 * tool row that has collapsed into the bar - so it arrives at the trace
+			 * tier and the collapse leaves it 2px under the rule, which the
+			 * operator read as the row hugging it. The SECOND report extended the
+			 * class: an incident row behind the memory statement hugged THAT row
+			 * by the same 2px, because only the first group was re-tiered. Every
+			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
+			 * so the statements under the rule sit at the block step, not the
+			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
+			 * read as statements of their own. Groups built at a wider tier (prose,
+			 * the closing answer) are handed back unchanged by the memoised
+			 * helper - the re-tier only ever fires on the trace tier.
+			 */
+			let afterBar = false;
 			for (const group of groups) {
 				const hidden =
 					group.kind === "run"
@@ -2889,18 +3162,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					children.push(group);
 					if (children.length === 1) {
 						/* The bar sits where the first hidden group did. */
-						entries.push({ kind: "bar", plan, children });
+						entries.push({
+							kind: "bar",
+							plan,
+							children,
+							images: foldImages(plan.hidden),
+						});
+						afterBar = true;
 					}
 					continue;
 				}
 				/*
 				 * Everything visible in a bar'd run renders with its closing line
 				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
+				 *
+				 * `afterBar` is deliberately NOT reset: see the comment above -
+				 * every visible group of a bar'd run, not only the first, is the
+				 * block below the bar.
 				 */
 				entries.push({
 					kind: "group",
 					group,
 					suppressClosingLine: true,
+					afterBar,
 				});
 			}
 		}
@@ -2913,7 +3197,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * withheld from a run that carries a bar: the bar states both, one per turn
 	 * (`feet.get(...) ?? null` and the caption block share one switch).
 	 */
-	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+	const renderGroup = (
+		group: SectionGroup,
+		suppressClosingLine: boolean,
+		soleImageGroup = false,
+	) =>
 		group.kind === "run" ? (
 			<TraceFold
 				key={group.id}
@@ -2947,6 +3235,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						next,
 					)
 				}
+				/*
+				 * The run's images, while the rows that draw them are unmounted.
+				 * Rendered only while the fold is condensed, and not passed at all
+				 * for a run that produced none - the overwhelmingly common case, and
+				 * the reason a group with no images is byte-for-byte the group it was.
+				 */
+				condensedMedia={
+					group.images.length > 0
+						? (expand: () => void) => (
+								<FoldMedia
+									images={group.images}
+									scope={mediaScope}
+									onRevealMore={expand}
+									uncapped={soleImageGroup}
+								/>
+							)
+						: undefined
+				}
+				/*
+				 * The count travels beside the node: the header prints it as text,
+				 * because a 64px tile cannot carry a label and the count is what the
+				 * strip's own accessible name already says. `soleImageGroup` is the
+				 * bar's own children's case, with two effects, both keyed to the same
+				 * fact - this group IS the span's whole image story:
+				 *
+				 * - the clause drops (D3/U6): when its count would repeat the bar's
+				 *   number one line above, the BAR keeps the aggregate and the group
+				 *   omits the duplicate; two image-bearing groups make the numbers
+				 *   differ, and then each level states its own;
+				 * - the strip uncaps (U8): the press that opened the bar asked for
+				 *   `the rest`, so this group's strip shows its whole set rather than
+				 *   charging a second press for pictures the reader already asked for.
+				 */
+				mediaCount={soleImageGroup ? 0 : group.images.length}
 			>
 				{group.rows.map((row, index) => (
 					<TranscriptRow
@@ -3101,6 +3423,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}}
 					onHover={handleCheckpointHover}
 				/>
+				{/* biome-ignore lint/a11y/useKeyWithClickEvents: the click is a pointer gesture that hands the caret to the composer, which the keyboard already reaches with Tab; the transcript's own keys are its paging keys (Home/PageUp/ArrowUp), and adding a key that moved focus would take them away. */}
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -3192,6 +3515,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 */
 					onFocus={handleTranscriptFocus}
 					onBlur={handleTranscriptBlur}
+					onPointerDown={handleTranscriptPointerDown}
+					onWheel={handleTranscriptWheel}
+					onClick={handleTranscriptClick}
 					className={cn(
 						// `min-h-0`, not `h-full`: this is the flex child that must absorb
 						// the column's leftover height. `h-full` resolves its flex base to
@@ -3266,9 +3592,47 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
+						 *
+						 * `relative` is here for the measure handles and for nothing else: they are
+						 * positioned against the CONTENT column rather than against the scroller,
+						 * which is what makes them track the column's edge for free as the measure
+						 * changes and as the pane resizes. They are absolutely positioned, so they
+						 * are out of flow and the rows cannot move because of them, and they sit in
+						 * the 24px gutter the measure already insets its content by
+						 * (`chat-measure.ts`: `p-4` + the 8px scrollbar gutter), so they never cover
+						 * text and cannot swallow a click meant for it.
 						 */
-						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
 					>
+						{/*
+						 * One handle per edge of the measure, where the mount opts in
+						 * (`measureHandle` - only the chat page does) AND there is a measure to
+						 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
+						 * stylesheet, where the column has no cap at all and a control
+						 * offering to resize it would be inventing one.
+						 *
+						 * `width` is the CAP - the reader's own width, else the shipped
+						 * default - and never the width on screen: see `chat-measure-drag.ts`
+						 * for why that distinction is the difference between a drag and a bug.
+						 */}
+						{measureHandle && measurePx !== null && (
+							<>
+								<ChatMeasureHandle
+									edge="left"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+								<ChatMeasureHandle
+									edge="right"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+							</>
+						)}
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
@@ -3495,6 +3859,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											stampTs={entry.plan.stampTs}
 											open={openRuns.has(entry.plan.key)}
 											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											/*
+											 * The span's pictures, while the rows that draw them are
+											 * unmounted - the same composition and the same rule as
+											 * `renderGroup`'s: rendered only while collapsed, and not
+											 * passed at all for a run that produced none.
+											 */
+											condensedMedia={
+												entry.images.length > 0
+													? (expand: () => void) => (
+															<FoldMedia
+																images={entry.images}
+																scope={mediaScope}
+																onRevealMore={expand}
+																indent="flush"
+															/>
+														)
+													: undefined
+											}
+											mediaCount={entry.images.length}
 										>
 											{entry.children.map((child, index) =>
 												/*
@@ -3503,15 +3886,33 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												 * group's slot, so the group cannot also keep the turn-tier
 												 * margin it earned as the turn's opener (D2). Every other
 												 * group keeps the gap the unfolded list gave it.
+												 *
+												 * The third argument is the span's sole-image-group fact,
+												 * named with both of its effects at the parameter's own
+												 * comment: D3/U6's duplicate rule for the clause, and
+												 * U8's uncapped strip so one press reaches the rest.
 												 */
 												renderGroup(
 													index === 0 ? atTraceTierGroup(child) : child,
 													true,
+													child.kind === "run" &&
+														entry.images.length > 0 &&
+														child.images.length === entry.images.length,
 												),
 											)}
 										</TurnSummary>
 									) : (
-										renderGroup(entry.group, entry.suppressClosingLine)
+										/*
+										 * The first group under a bar re-tiers to the item step;
+										 * every later group and every other run's groups keep the
+										 * gap the unfolded list gave them.
+										 */
+										renderGroup(
+											entry.afterBar
+												? atItemTierGroup(entry.group)
+												: entry.group,
+											entry.suppressClosingLine,
+										)
 									),
 								)}
 							</CanvasPaneProvider>

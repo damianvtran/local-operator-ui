@@ -5,6 +5,8 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import { CHAT_MEASURE_OVERRIDE_VAR } from "@features/chat/chat-measure";
+import { clampChatMeasureWidth } from "@features/chat/chat-measure-drag";
 import {
 	CHAT_PANE_MIN_PX,
 	SIDEBAR_DEFAULT_WIDTH,
@@ -26,6 +28,13 @@ import type { ThemeName } from "@shared/themes";
 import { measureCell } from "@shared/themes/terminal-theme";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
+/**
+ * Which menu a recents ring belongs to. The two rosters are separate lists of
+ * separate things (an agent name is never a team name), so one ring would rank
+ * rows the other menu cannot offer.
+ */
+export type ProfileRecencyKind = "agent" | "team";
 
 /**
  * Type definition for the UI preferences store state
@@ -52,9 +61,15 @@ type UiPreferencesState = {
 	closeCommandPalette: () => void;
 
 	/**
-	 * Toggles the command palette visibility
+	 * Toggles the command palette visibility.
+	 *
+	 * `initialQuery` seeds the query when this call OPENS the palette, which is
+	 * how the Cmd/Ctrl+P door opens it as the conversation switcher (issue
+	 * #659); every other door passes nothing and gets the empty box it always
+	 * did. A call that CLOSES keeps the query as it is, and the close path is
+	 * what clears it.
 	 */
-	toggleCommandPalette: () => void;
+	toggleCommandPalette: (initialQuery?: string) => void;
 
 	/**
 	 * Sets the command palette query
@@ -461,6 +476,42 @@ type UiPreferencesState = {
 	chatSidebarListHeight: number | null;
 
 	/**
+	 * The reader's own width for the conversation column, in px, or `null` for
+	 * the shipped one.
+	 *
+	 * `null` is a first-class state rather than a missing value, exactly as
+	 * `chatSidebarListHeight`'s `null` is: it means "the shipped measure", which
+	 * is what every reader who has never dragged the handle sees, and it is what
+	 * the reset restores. The width itself belongs to the stylesheet
+	 * (`--lo-chat-measure-shipped` in `styles/index.css`) and this field is the
+	 * OVERRIDE of it, so this file never needs to know the shipped number.
+	 *
+	 * Like the list height, a number here is never rewritten by a window resize:
+	 * the RENDER clamps (the column cannot be wider than its pane), so a window
+	 * too small to honour the reader's choice does not destroy it.
+	 */
+	chatMeasureWidth: number | null;
+
+	/**
+	 * Set the conversation column's width, clamped to the draggable range.
+	 *
+	 * The clamp is `clampChatMeasureWidth`'s rather than this store's, and it is
+	 * applied HERE as well as at the drag: `localStorage` is not the setter's
+	 * path out, so a value written by an older build or by hand reaches the
+	 * document through this method, and the bounds have to hold on that path too.
+	 */
+	setChatMeasureWidth: (width: number) => void;
+
+	/**
+	 * Forget the reader's own width and go back to the shipped measure.
+	 *
+	 * Deliberately not "store the shipped width": storing a number would make
+	 * the reader's column stop following the product's when the shipped value
+	 * changes, which is the opposite of what a reset means.
+	 */
+	restoreDefaultChatMeasureWidth: () => void;
+
+	/**
 	 * Which of the sidebar's two regions is drawn first.
 	 *
 	 * The header row and the search field stay put; only the two regions trade
@@ -609,6 +660,31 @@ type UiPreferencesState = {
 	 * recent use rather than by first use.
 	 */
 	rememberMention: (cwd: string, path: string) => void;
+
+	/**
+	 * The chat header's identity-menu recents: the profiles this app has
+	 * SWITCHED TO, most recent first, one ring per menu.
+	 *
+	 * WHY GLOBAL RATHER THAN PER CONVERSATION. A recents band exists to make a
+	 * long roster cheap to reach, and the roster is the same in every
+	 * conversation: what a session's own history would describe is the ONE
+	 * profile it is bound to, which the menu already reports as the current row.
+	 * So the ring is app-wide (`localStorage`, via this store's persistence) and
+	 * a fresh install starts with both rings empty.
+	 *
+	 * NAMES, NOT ROWS. The row a name describes is read from the live catalogue
+	 * every open, so a name that no longer resolves is dropped at render rather
+	 * than resurrecting a profile the app can no longer switch to.
+	 */
+	profileRecents: Record<ProfileRecencyKind, string[]>;
+
+	/**
+	 * Record a profile the owner accepted. Bounded at `PROFILE_RECENTS_LIMIT`,
+	 * dropping the oldest, and moved to the front when re-used so the ring is
+	 * ordered by recent use rather than by first use — the same rule
+	 * `rememberMention` states one list over.
+	 */
+	rememberProfile: (kind: ProfileRecencyKind, name: string) => void;
 };
 
 /**
@@ -848,6 +924,20 @@ export const DEFAULT_RUN_PANEL_WIDTH = 420;
  * been working in, and twenty paths is more than any single session's working set.
  */
 export const MENTION_RECENTS_LIMIT = 20;
+
+/**
+ * How many profiles one identity menu remembers.
+ *
+ * Four, and the number is a bound on the BAND rather than on the list: the band is
+ * a shortcut above a roster that is still complete underneath it. It is also what
+ * fits: four of the app's two-line rows plus a band heading (4 x 48 + 28 = 220px,
+ * against the ~247px of rows the panel's ceiling leaves - see
+ * `IDENTITY_MENU_MAX_HEIGHT`), so opening the menu shows the recent band AND the
+ * heading of the full roster below it. A longer ring would scroll the "all" band
+ * out of sight on open, which is a band hiding a list rather than a shortcut to
+ * one.
+ */
+export const PROFILE_RECENTS_LIMIT = 4;
 /** The browser pane's default, and the design's number rather than a fit: see
  * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
 export const DEFAULT_BROWSER_PANEL_WIDTH = 640;
@@ -967,6 +1057,28 @@ export const consoleUnseenForSession = (
  */
 const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
 
+/**
+ * Publish the reader's own column width to the document, or clear it.
+ *
+ * `null` REMOVES the property rather than writing the shipped number: the
+ * stylesheet's chain already falls back to `--lo-chat-measure-shipped`, and
+ * writing a number here would be a second copy of it in JavaScript, which is the
+ * drift the one-home rule for this value exists to prevent.
+ *
+ * `document` is guarded so this module can be bundled where there is no DOM
+ * (`scripts/*.test.mjs` bundles shipped TypeScript in memory). In that case
+ * there is nothing to publish to and the store is still a correct store.
+ */
+const applyChatMeasureOverride = (width: number | null): void => {
+	if (typeof document === "undefined") return;
+	const root = document.documentElement;
+	if (width === null) {
+		root.style.removeProperty(CHAT_MEASURE_OVERRIDE_VAR);
+		return;
+	}
+	root.style.setProperty(CHAT_MEASURE_OVERRIDE_VAR, `${width}px`);
+};
+
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
@@ -989,6 +1101,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
 			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
+			chatMeasureWidth: null,
 			chatSidebarOrder: "entities-first",
 			dismissedBuiltinOfferSignature: "",
 			isCanvasOpen: false,
@@ -1005,6 +1118,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
 			isCreateAgentDialogOpen: false,
 			mentionRecents: null,
+			/* Empty on a fresh install, and the menu renders NO recents band (and no
+			 * heading) in that state rather than an empty one - see the menu model. */
+			profileRecents: { agent: [], team: [] },
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -1022,12 +1138,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ isCommandPaletteOpen: false, commandPaletteQuery: "" });
 			},
 
-			toggleCommandPalette: () => {
+			toggleCommandPalette: (initialQuery = "") => {
 				set((state) => ({
 					isCommandPaletteOpen: !state.isCommandPaletteOpen,
 					commandPaletteQuery: !state.isCommandPaletteOpen
-						? ""
-						: state.commandPaletteQuery, // Clear query if opening, retain if closing (though it's cleared by closeCommandPalette)
+						? initialQuery
+						: state.commandPaletteQuery, // Retain when closing (though it's cleared by closeCommandPalette)
 				}));
 			},
 
@@ -1225,6 +1341,21 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
+			setChatMeasureWidth: (width: number) => {
+				const clamped = clampChatMeasureWidth(width);
+				applyChatMeasureOverride(clamped);
+				set({
+					chatMeasureWidth: clamped,
+				});
+			},
+
+			restoreDefaultChatMeasureWidth: () => {
+				applyChatMeasureOverride(null);
+				set({
+					chatMeasureWidth: null,
+				});
+			},
+
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
@@ -1268,6 +1399,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					return { mentionRecents: { cwd, paths: next } };
 				});
 			},
+
+			rememberProfile: (kind, name) => {
+				set((state) => ({
+					profileRecents: {
+						...state.profileRecents,
+						[kind]: pushProfileRecent(state.profileRecents[kind] ?? [], name),
+					},
+				}));
+			},
 		}),
 		{
 			name: "ui-preferences-storage",
@@ -1290,9 +1430,46 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * being restored and the user opening it.
 			 */
 			partialize: persistedUiPreferences,
+			/*
+			 * PUBLISH THE STORED WIDTH BEFORE THE FIRST PAINT.
+			 *
+			 * `localStorage` is synchronous, so zustand runs this during store
+			 * creation - which is module evaluation, before React renders anything.
+			 * A component effect instead would paint one frame at the shipped
+			 * width and then jump to the reader's, and the whole point of
+			 * remembering the width is that the column comes back where the reader
+			 * left it. `theme-provider.tsx` makes the same argument for
+			 * `useLayoutEffect` over `useEffect`; this is one step earlier still,
+			 * because there is no component to hook.
+			 */
+			onRehydrateStorage: () => (state) => {
+				applyChatMeasureOverride(state?.chatMeasureWidth ?? null);
+			},
 		},
 	),
 );
+
+/**
+ * One profile's move to the front of a recents ring: most recent first, no
+ * duplicates, bounded at `PROFILE_RECENTS_LIMIT`.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE EXPRESSION IN THE ACTION, for the reason
+ * `persistedUiPreferences` below is one: the rule is what the band's order means
+ * ("the profile you switched to a moment ago is the first row"), and a rule that
+ * lives inside a `set()` callback can only be exercised by mounting the store. As
+ * a value it is pinned by `scripts/header-identity-menu.test.mjs` - including the
+ * two cases an inline version gets wrong quietly: a name re-used moves rather
+ * than duplicates, and the ring DROPS the oldest rather than growing.
+ */
+export function pushProfileRecent(
+	ring: readonly string[],
+	name: string,
+): string[] {
+	return [name, ...ring.filter((entry) => entry !== name)].slice(
+		0,
+		PROFILE_RECENTS_LIMIT,
+	);
+}
 
 /**
  * The part of the preferences that is written to disk: all of it, minus the two

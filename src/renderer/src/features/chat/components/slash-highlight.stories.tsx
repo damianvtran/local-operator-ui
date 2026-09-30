@@ -2,6 +2,7 @@ import {
 	desktopFeatureEnabled,
 	desktopKeys,
 } from "@shared/api/local-operator/desktop-hooks";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 /*
@@ -31,7 +32,6 @@ import { screen, userEvent } from "@storybook/test";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
-import { MessageInput } from "./message-input";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 

@@ -192,6 +192,118 @@ const click = async (mounted) => {
 	});
 };
 
+/*
+ * The media is a stand-in here on purpose: this file bundles the FOLD, and the
+ * real strip pulls this repository's MUI tree in through `CanonicalImage`,
+ * which node's ESM resolver will not take (the same reason
+ * `chat-image-expand.test.mjs` bundles its picture components its own way).
+ * What this file asserts is the FOLD's half: the media is on screen while the
+ * group is condensed, gone when the reader opens it, and the same node across
+ * the live-to-settled transition.
+ *
+ * THE PICTURE'S OWN HALF IS NOT ASSERTED HERE, and that is now stated rather
+ * than implied (agent review round 1, P2: the body claimed node identity on the
+ * `[data-fold-media]` subtree's `<img>` while this file's media was a `<span>`,
+ * so the claim had no assertion behind it in either file). The `<img>`'s survival
+ * across the settle is asserted in `chat-image-expand.test.mjs`, which mounts the
+ * real `TraceFold` + `FoldMedia` + `CanonicalImage` + `ImageAttachment` tree; the
+ * name of that test says which node it holds. Anything this file says about a
+ * picture is about the SLOT the fold reserves for one.
+ */
+const mediaStrip = () =>
+	createElement("span", { "data-testid": "fold-media" }, "picture");
+
+test("a condensed run keeps the pictures its rows would have drawn", async (t) => {
+	/*
+	 * The operator's report, as a behaviour: a group that has produced a picture
+	 * is condensed, and the picture is on screen anyway. Before this, the only
+	 * way to the artifact was the very press condensing exists to make
+	 * unnecessary.
+	 */
+	const mounted = await mount(t, {
+		span: null,
+		live: null,
+		sectionLive: false,
+		condensedMedia: () => mediaStrip(),
+	});
+	assert.equal(rows(mounted), 0, "the group arrives condensed");
+	assert.ok(
+		mounted.container.querySelector('[data-testid="fold-media"]'),
+		"and the picture it produced is on screen anyway",
+	);
+
+	/* Pressing is what puts the strip away - the rows draw the picture then. */
+	await click(mounted);
+	assert.equal(rows(mounted), 1);
+	assert.equal(
+		mounted.container.querySelector('[data-testid="fold-media"]'),
+		null,
+		"open, the rows draw their own media and the strip would double it",
+	);
+});
+
+test("a run with no pictures is the group it was", async (t) => {
+	/*
+	 * The overwhelmingly common case: the fold must not grow a slot, a rule or an
+	 * empty row for an image nobody produced. The wrapper's own child count is
+	 * the claim - the disclosure, and nothing beside it.
+	 */
+	const mounted = await mount(t, {
+		span: null,
+		live: null,
+		sectionLive: false,
+		condensedMedia: undefined,
+	});
+	assert.equal(
+		mounted.container.querySelector('[data-testid="fold-media"]'),
+		null,
+	);
+	assert.equal(
+		mounted.container.firstElementChild.childElementCount,
+		1,
+		"the condensed fold is its header and nothing else",
+	);
+});
+
+test("the picture does not flicker at the settle transition", async (t) => {
+	/*
+	 * The manager's second question, as an assertion a still cannot make. The
+	 * image a call wrote lands WHILE the run is live, and the group is condensed
+	 * in both windows (a fold arrives condensed; only the reader opens it). The
+	 * risk is not that the picture is missing - it is that the settle transition
+	 * re-mounts it, which the eye reads as a flicker and which a fresh `img` pays
+	 * for again in decode time.
+	 */
+	const mounted = await mount(t, {
+		span: { startedAtMs: 1_000, endedAtMs: 11_000, running: true },
+		live: LIVE,
+		sectionLive: true,
+		condensedMedia: () => mediaStrip(),
+	});
+	const liveNode = mounted.container.querySelector(
+		'[data-testid="fold-media"]',
+	);
+	assert.ok(liveNode, "the picture is there while the run is still going");
+
+	// The section ends and its last call settles: the one event that condenses.
+	await mounted.render({
+		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
+		live: null,
+		sectionLive: false,
+		condensedMedia: () => mediaStrip(),
+	});
+	assert.equal(
+		mounted.container.querySelector('[data-testid="fold-media"]'),
+		liveNode,
+		"the same node survives the transition rather than a fresh one",
+	);
+	assert.equal(
+		liveClause(mounted),
+		null,
+		"the header is the part that settles",
+	);
+});
+
 test("a group arrives condensed and names the running call", async (t) => {
 	const mounted = await mount(t, {
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
