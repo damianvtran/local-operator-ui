@@ -1,0 +1,168 @@
+{
+ "viewport": "1280x800, dpr 1, headless Chrome (--headless=new), --use-mock-keychain, private --user-data-dir, killed by pid and process group",
+ "method": "real Tab key events (Input.dispatchKeyEvent); a programmatic .focus() does not match :focus-visible in Blink",
+ "frames": {
+  "band-focus--localOperatorDark": {
+   "story": "common-updatequietindicator--app-update",
+   "theme": "localOperatorDark",
+   "file": "band-focus--localOperatorDark.png",
+   "focusVisible": true,
+   "outline": {
+    "width": "2px",
+    "style": "solid",
+    "offset": "0px",
+    "color": "rgb(56, 201, 106)"
+   },
+   "control": {
+    "x": 288,
+    "y": 150.5,
+    "w": 227.921875,
+    "h": 24,
+    "bottom": 174.5
+   },
+   "row": {
+    "y": 148,
+    "h": 28,
+    "bottom": 176
+   },
+   "viewport": {
+    "w": 1280,
+    "h": 800
+   },
+   "greenProfile": {
+    "firstRow": 149,
+    "lastRow": 176,
+    "widthAtFirstRow": 214,
+    "widthAtLastRow": 215,
+    "strokeRows": [
+     149,
+     150,
+     175,
+     176
+    ],
+    "greenPixels": 1599
+   }
+  },
+  "band-focus--localOperatorLight": {
+   "story": "common-updatequietindicator--app-update",
+   "theme": "localOperatorLight",
+   "file": "band-focus--localOperatorLight.png",
+   "focusVisible": true,
+   "outline": {
+    "width": "2px",
+    "style": "solid",
+    "offset": "0px",
+    "color": "rgb(19, 119, 66)"
+   },
+   "control": {
+    "x": 288,
+    "y": 150.5,
+    "w": 227.921875,
+    "h": 24,
+    "bottom": 174.5
+   },
+   "row": {
+    "y": 148,
+    "h": 28,
+    "bottom": 176
+   },
+   "viewport": {
+    "w": 1280,
+    "h": 800
+   },
+   "greenProfile": {
+    "firstRow": 149,
+    "lastRow": 176,
+    "widthAtFirstRow": 214,
+    "widthAtLastRow": 216,
+    "strokeRows": [
+     149,
+     150,
+     175,
+     176
+    ],
+    "greenPixels": 1651
+   }
+  },
+  "band-focus-at-window-edge--localOperatorDark": {
+   "story": "common-updatequietindicator--at-window-edge",
+   "theme": "localOperatorDark",
+   "file": "band-focus-at-window-edge--localOperatorDark.png",
+   "focusVisible": true,
+   "outline": {
+    "width": "2px",
+    "style": "solid",
+    "offset": "0px",
+    "color": "rgb(56, 201, 106)"
+   },
+   "control": {
+    "x": 8,
+    "y": 774.5,
+    "w": 227.921875,
+    "h": 24,
+    "bottom": 798.5
+   },
+   "row": {
+    "y": 772,
+    "h": 28,
+    "bottom": 800
+   },
+   "viewport": {
+    "w": 1280,
+    "h": 800
+   },
+   "greenProfile": {
+    "firstRow": 773,
+    "lastRow": 799,
+    "widthAtFirstRow": 214,
+    "widthAtLastRow": 220,
+    "strokeRows": [
+     773,
+     774,
+     799
+    ],
+    "greenPixels": 1388
+   }
+  },
+  "band-focus-at-window-edge--localOperatorLight": {
+   "story": "common-updatequietindicator--at-window-edge",
+   "theme": "localOperatorLight",
+   "file": "band-focus-at-window-edge--localOperatorLight.png",
+   "focusVisible": true,
+   "outline": {
+    "width": "2px",
+    "style": "solid",
+    "offset": "0px",
+    "color": "rgb(19, 119, 66)"
+   },
+   "control": {
+    "x": 8,
+    "y": 774.5,
+    "w": 227.921875,
+    "h": 24,
+    "bottom": 798.5
+   },
+   "row": {
+    "y": 772,
+    "h": 28,
+    "bottom": 800
+   },
+   "viewport": {
+    "w": 1280,
+    "h": 800
+   },
+   "greenProfile": {
+    "firstRow": 773,
+    "lastRow": 799,
+    "widthAtFirstRow": 215,
+    "widthAtLastRow": 220,
+    "strokeRows": [
+     773,
+     774,
+     799
+    ],
+    "greenPixels": 1438
+   }
+  }
+ }
+}

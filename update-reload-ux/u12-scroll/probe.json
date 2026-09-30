@@ -1,0 +1,83 @@
+{
+ "story": "settings-app-updates-section--server-update-offered",
+ "viewport": "1000x300",
+ "dpr": 1,
+ "head": "adbd67c793",
+ "method": "headless Chrome over raw CDP; the scroller is set to its own scrollHeight and the close control's rect is read before and after",
+ "beforeTheFix": {
+  "source": "UX round 2, same story, viewport shortened to 300px",
+  "card": {
+   "clientHeight": 268,
+   "scrollHeight": 312,
+   "scrollable": true,
+   "scrollTop": 44
+  },
+  "closeButton": {
+   "label": "Close server update details",
+   "position": "absolute",
+   "beforeY": 24,
+   "afterY": -20,
+   "afterVisible": false
+  }
+ },
+ "after": {
+  "theCard": {
+   "overflowY": "visible",
+   "isTheScroller": false
+  },
+  "probes": [
+   {
+    "theme": "localOperatorDark",
+    "file": "card-scrolled--localOperatorDark.png",
+    "card": {
+     "y": 16,
+     "h": 268,
+     "bottom": 284,
+     "overflowY": "visible"
+    },
+    "scroller": {
+     "clientHeight": 268,
+     "scrollHeight": 312,
+     "scrollable": true,
+     "scrollTop": 44,
+     "overflowY": "auto",
+     "isCard": false
+    },
+    "closeButton": {
+     "label": "Close server update details",
+     "position": "absolute",
+     "beforeY": 24,
+     "afterY": 24,
+     "beforeVisible": true,
+     "afterVisible": true
+    }
+   },
+   {
+    "theme": "localOperatorLight",
+    "file": "card-scrolled--localOperatorLight.png",
+    "card": {
+     "y": 16,
+     "h": 268,
+     "bottom": 284,
+     "overflowY": "visible"
+    },
+    "scroller": {
+     "clientHeight": 268,
+     "scrollHeight": 312,
+     "scrollable": true,
+     "scrollTop": 44,
+     "overflowY": "auto",
+     "isCard": false
+    },
+    "closeButton": {
+     "label": "Close server update details",
+     "position": "absolute",
+     "beforeY": 24,
+     "afterY": 24,
+     "beforeVisible": true,
+     "afterVisible": true
+    }
+   }
+  ]
+ }
+}

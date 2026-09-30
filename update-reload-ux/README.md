@@ -1,7 +1,8 @@
-# Update indicator and reload picker — round 1 frames
+# Update indicator and reload picker — frames (rounds 1–3)
 
 Frames for the drain cluster **#672** (quiet update indicator + per-segment
-following) and **#679** (the reload picker closes on success).
+following) and **#679** (the reload picker closes on success), plus the
+remediation takes of 2026-09-30.
 
 This directory is on its own branch (`pr-evidence-update-reload-ux-0929`) and is
 **not part of `main`**. The branch is an orphan, mirroring
@@ -16,10 +17,13 @@ shared history with the product tree.
 - **`before/`** is the **base tree**, `origin/main` **`89684a3f20`** — main as it
   stood when these frames were shot. Main has moved since (`073164505e`, #572);
   the label is that base, not current main.
-- **`after/`** is the **round-1 remediation head**, **`3d307e2e7a`** (its code
-  commit is `2664aebe9e`) — the tree this PR now ships. Frames whose story did not
-  move in that commit are byte-identical to the earlier take at `300309fd8a`; the
-  states the remediation changed are re-taken, and listed below.
+- **`after/`** is the take re-shot for the round-2 and round-3 remediations — of
+  **`adbd67c793`** (the round-3 commit), whose captured paths the fold that
+  followed (`9a6924d780`) leaves byte-unchanged. Frames whose story did not move are
+  byte-identical to the earlier takes; the states each round changed are re-taken
+  and listed below, and the ONE frame that is deliberately not from the latest rig
+  is called out under round 3 (`server-update-offered`, six pixels away from what
+  the same rig draws at this head).
 
 Both sets come from Storybook driven over raw CDP by a private headless Chromium
 (`--use-mock-keychain`, scratch `--user-data-dir`, reaped on exit) — the same
@@ -73,22 +77,58 @@ NEW: `settings-app-updates-section--followed-control-visible` is design D1's
 frame — the section at rest, no press, so both select triggers are readable
 instead of sitting under the fixed card.
 
+### The round-3 re-take (2026-09-30)
+
+Design round 2 left three frames in the set showing the PRE-remediation copy (its
+D11): `long-version`, `drawing-both-controls` and `updatefollowing--mixed-segments`
+were byte-identical to the round-1 take, because the earlier re-take had been
+bounded to the states that round needed. They are re-shot here at the head, both
+themes:
+
+- `long-version` now reads `Application update 2026.10.1-nightly.20261112
+  available`;
+- `drawing-both-controls` reads `Application update 0.30.1 available` and
+  `Server update 0.55.10 available`;
+- `mixed-segments` carries the re-worded sentence and the current row labels.
+
+NEW: **`settings-updatefollowing--minors-only`** is the MIDDLE option — `Minor and
+major only` / `Skips patch releases.` — which appeared in **no frame of either
+take**, so one of the three strings this control forms had never been looked at as
+rendered. It is a new story in `update-following.stories.tsx`, because there was no
+state to retarget.
+
+Two more folders came out of the same round:
+
+- **`d5-focus/`** — design D5's `:focus-visible` pair, taken with real Tab key
+events and the window's bottom edge in frame, both themes, after the
+`outline-offset-0!` fix. Round 2's framing was "if it shows three sides, a recorded
+cosmetic and a one-liner"; it now shows four, with the bottom stroke painted at the
+window's own last row. The folder carries its own README, the profiles and the
+geometry.
+- **`u12-scroll/`** — review U12's measurement: the card scrolled to its end with
+the close control's y read before and after (`24 -> 24`; it was `24 -> -20`, out of
+view, on the old shape). Same README + `probe.json` convention.
+
+**How the re-take was checked against the rest of the set, because a re-take that
+silently redraws a different story is worse than no re-take.** The same rig was
+pointed at a build of the PRE-remediation commit and at a build of this head: **26
+of the 28 pre-existing frames came back byte-identical between the two builds**, so
+this round's code is inert for them. Comparing the same rig's pre-remediation take
+with the frames already in `after/` gives **20 identical, 8 different**, and the 8
+are exactly the three stories D11 named plus `server-update-offered` twice.
+
+`server-update-offered` is therefore the one frame in `after/` that is NOT from
+this round's rig, deliberately: the two takes differ by **6 pixels**, every one of
+them at the close control's glyph, and by a `:focus-visible` ring the earlier take
+draws around the card that this rig does not draw at the same head — verified as
+the rig's and not the code's on a build of the pre-remediation commit, which behaves
+the same way. The card's box, radius, content and at-rest geometry are unchanged.
+
 ### Frames still owed, and why
 
-- **`:focus-visible` on the band (design D5).** Owed. This set is taken with
-  headless Chromium's own `--screenshot`, which cannot drive a keyboard event, and
-  a programmatic `.focus()` does not produce `:focus-visible` — a frame taken that
-  way would be a picture of a ring the keyboard user never sees. It needs a CDP
-  session with `Input.dispatchKeyEvent` (or the live app). Until then the property
-  is arithmetic rather than pixels: the band's 28 px row leaves the 24 px control
-  ~1.5 px of margin each side and the ring is `outline-2` + `outline-offset-1`, so
-  whether it is clipped remains the shell's question.
-- **`below-followed-segment`, `long-version`, `drawing-both-controls`,
-  `updatefollowing--mixed-segments`.** Owed. Their stories did not move in the
-  remediation, but three of them draw the band's copy (`long-version`,
-  `drawing-both-controls`) or a settings row (`mixed-segments`), so the frames in
-  the set still show the pre-remediation wording. The re-take was bounded to the
-  states this round needed; these are the same two states as the re-taken pair.
+- **The band under a real transcript and a real sidebar, a `:hover` on the band,
+  and the reload picker's own pair (#679)** — see "States that need the LIVE app"
+  below. Unchanged from round 1.
 - **`common-updatenotification--update-available`.** Not re-taken BY
   CONSTRUCTION: that story draws its own copy of the card rather than mounting the
   shipped component (the caveat in the table below), so it cannot show the close
@@ -118,8 +158,11 @@ frame that would be the same one-colour image under another name.
 | `common-updatequietindicator--drawing-both-controls` | — | the band's two controls, gate bypassed |
 | `settings-updatefollowing--default` | — | the new control, shipped default (re-taken: heading step, sentence, `Application updates`, `Every release`) |
 | `settings-app-updates-section--followed-control-visible` | — | NEW (design D1): the section at rest with no press, so both select triggers are readable instead of under the card |
-| `settings-updatefollowing--mixed-segments` | — | app follows majors, server follows every release |
+| `settings-updatefollowing--mixed-segments` | — | app follows majors, server follows every release (re-taken at round 3: the sentence and the row labels) |
 | `settings-updatefollowing--majors-only` | — | the quietest card the control forms |
+| `settings-updatefollowing--minors-only` | — | NEW (design D11): the MIDDLE option's label, which no earlier frame carried |
+| `d5-focus/` | — | NEW (design D5): the band's `:focus-visible` ring, shipped placement and the shell's own box, by real Tab keys |
+| `u12-scroll/` | — | NEW (review U12): the card scrolled to its end, with the close control reachable |
 | `settings-app-updates-section--server-update-offered` | the section with no notification preference, the card over its content | the same section with the preference. The card is up because this story **presses the real Check-for-updates control** — an explicit check opens the detail, which is #672's loud path; it is not the app's own periodic news |
 | `common-updatenotification--downloaded` | ready to install | unchanged — the two frames are byte-identical |
 | `common-updatenotification--install-in-flight` | install running | unchanged — the two frames are byte-identical |
