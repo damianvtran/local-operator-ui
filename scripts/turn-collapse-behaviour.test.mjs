@@ -144,6 +144,8 @@ const bundle = await build({
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
 			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			/* The walk's bound, so the assertion below names the shipped number. */
+			'export { ALIGN_WALK_MAX_PAGES } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			/*
 			 * The two query keys the transcript's own hook reads, so the hide case
 			 * below seeds the SAME entries the app resolves - a second spelling of
@@ -200,6 +202,7 @@ const {
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
 	GAP,
+	ALIGN_WALK_MAX_PAGES,
 	backendSettingsKeys,
 	desktopKeys,
 } = await import(bundlePath.href);
@@ -643,6 +646,11 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		/Worked/,
 		"the bar replaces the foot line, as on any completed run",
 	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\+ actions/,
+		"and a COMPLETE run carries no marker: its count is a total",
+	);
 });
 
 test("the snap's fetch half runs when the head is cut off, and is bounded", async (t) => {
@@ -662,9 +670,20 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		fetches += 1;
 		return true;
 	};
-	const records = Array.from({ length: 420 }, (_, index) =>
-		toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
-	);
+	/*
+	 * LOADER-CONTINUITY 1b, ROUND 1's RETARGET: the walk is armed by the CONDENSED,
+	 * head-cut BAR (see `alignWalkRunKey`), so the fixture has to carry the thing
+	 * that paints one — a closing answer. Without it the run is either the live
+	 * turn or a turn whose answer is prose-free, and neither paints a partial
+	 * statement; the first cut of this fixture omitted the answer and got a fetch
+	 * anyway, because the trigger was the window edge rather than the bar.
+	 */
+	const records = [
+		...Array.from({ length: 420 }, (_, index) =>
+			toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
+	];
 	const mounted = await mount(t, records, {
 		hasMore: true,
 		onLoadOlder: load,
@@ -679,20 +698,18 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	const afterRender2 = fetches;
 	assert.ok(afterMount >= 1, "the cut head is asked for");
 	/*
-	 * AGENT REVIEW ROUND 2, MINOR-2: an "asks stop" equality could not see a
-	 * dropped bound (a mutated run counted 5 -> 7 -> 7 and passed). The DELTA
-	 * is the property a dropped bound breaks — each re-render may add at most
-	 * one align ask — while the bound's exact arithmetic stays in the model
-	 * suite, where a strict-mode remount cannot muddle the reading.
+	 * AGENT REVIEW ROUND 2, MINOR-2 pinned the flat two-page budget with a
+	 * "one re-render adds at most one align ask" delta. LOADER-CONTINUITY 1b
+	 * replaced that budget with the bounded WALK, and the delta is no longer the
+	 * property: the walk's whole point is that ONE open may spend several pages
+	 * (the operator's bar could not state its own action count otherwise), so a
+	 * harness that re-creates the transcript object on every render legitimately
+	 * re-runs the effect once per commit. What must still hold, and is asserted
+	 * here NET of the control's own paging-arm asks, is the BOUND — a dropped
+	 * bound would blow past it — while the bound's exact arithmetic stays in the
+	 * model suite, where a strict-mode remount cannot muddle the reading.
 	 */
-	assert.ok(
-		afterRender1 - afterMount <= 1,
-		`one re-render adds at most one align ask (mount=${afterMount} r1=${afterRender1})`,
-	);
-	assert.ok(
-		afterRender2 - afterRender1 <= 1,
-		`and so does the next (r1=${afterRender1} r2=${afterRender2})`,
-	);
+	assert.ok(afterMount >= 1 && afterRender1 >= 1 && afterRender2 >= 1);
 
 	/* The control: the enclosing run's head IS loaded, so the effect stands down. */
 	let idleFetches = 0;
@@ -701,6 +718,7 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		...Array.from({ length: 419 }, (_, index) =>
 			toolRecord(`headed:${index + 1}`, { ts: TS + 1_000 + index }),
 		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
 	];
 	const idle = await mount(t, headed, {
 		hasMore: true,
@@ -730,6 +748,10 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 		afterRender2 > idleFetches,
 		`the cut asks more than the head-loaded control (cut=${afterRender2} control=${idleFetches})`,
 	);
+	assert.ok(
+		afterRender2 - idleFetches <= ALIGN_WALK_MAX_PAGES,
+		`the walk stays inside its bound (cut=${afterRender2} control=${idleFetches})`,
+	);
 });
 
 test("a run whose head the LOADED rows cut off condenses from the loaded span: counts, no Took", async (t) => {
@@ -755,11 +777,31 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 		"tool:0 tool:1 answer:1",
 		"every loaded row stays addressable through the bar",
 	);
-	assert.match(summary.textContent ?? "", /2 actions/);
+	/*
+	 * THE HONEST MARKER (design round 1, D1). The count is a MINIMUM - two loaded
+	 * calls of a turn whose earlier rows are not in the store - and the bar says so
+	 * in its own vocabulary rather than stating `2 actions`, which reads exactly
+	 * like a settled total. The same claim is in words for assistive tech, and the
+	 * complete-run case below asserts the marker is ABSENT there, so the two
+	 * statements cannot collapse into one.
+	 */
+	assert.match(
+		summary.textContent ?? "",
+		/2\+ actions/,
+		"a partial count is marked: `2+ actions`",
+	);
 	assert.doesNotMatch(
 		summary.textContent ?? "",
 		/Took/,
 		"no duration: it would be fabricated from the first loaded row",
+	);
+	const partialLabel = [...summary.querySelectorAll("*")]
+		.map((node) => node.getAttribute("aria-label"))
+		.find((label) => label?.startsWith("At least"));
+	assert.equal(
+		partialLabel,
+		"At least 2 actions — earlier rows of this turn are not loaded",
+		"and the same claim is stated in words",
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent ?? "",

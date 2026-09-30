@@ -15,6 +15,7 @@ import {
 	type PagingState,
 	SETTLE_MS,
 	TAIL_EPS_PX,
+	anchorDrift,
 	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
@@ -187,6 +188,29 @@ export type ScrollPagingHandle = {
 	 * about where they are.
 	 */
 	requestOlder: () => void;
+	/**
+	 * Whether the automatic COMPLETION WALK may ask for a page right now
+	 * (loader-continuity 1b, design spec section 7 clause b): the reader is
+	 * following the tail AND has given the pointer no reason to be answered —
+	 * no input for `SETTLE_MS` — AND the pane is actually following that tail
+	 * (`followingTail` in this module's own terms).
+	 *
+	 * WHY IT LIVES HERE. The walk is the one ask with no gesture behind it, so
+	 * it has to be authorised by the reader's POSITION rather than by their
+	 * demand, and the position is this module's: `followingTail` and the input
+	 * clock are derived from one number (`scrollTop`) and one ref
+	 * (`state.lastInputAt`), and a second copy of that derivation in the
+	 * transcript is exactly the "two authorities" this change removes. Read at
+	 * the MOMENT OF THE ASK rather than from a render-time snapshot: a
+	 * `followingTail` captured one commit ago would authorise a page the reader
+	 * has since scrolled away from.
+	 *
+	 * A tail-following reader is `scrollable` by construction, so the walk
+	 * cannot fire on the unscrollable pane the reveal chain (clause L) owns:
+	 * that pane has `scrollTop === 0`, which IS the tail, and the two would
+	 * otherwise both be asking.
+	 */
+	mayAutoWalk: () => boolean;
 };
 
 export function useScrollPaging({
@@ -513,6 +537,7 @@ export function useScrollPaging({
 	 * Every path that can change the answer calls this; the rAF is what turns a
 	 * fling's dozens of wheel events into one evaluation per painted frame.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the pre-dispatch extent is read through the ref at the moment of the ask; a dependency on `containerRef.current` would re-create the pump on every render, which is the indirection the ref exists to provide.
 	const schedule = useCallback(() => {
 		if (pump.current) return;
 		pump.current = requestAnimationFrame(() => {
@@ -629,6 +654,28 @@ export function useScrollPaging({
 			 * what lets a lost race (`stale`, `nothing-to-load`) release the pump
 			 * WITHOUT counting a failure or painting the failed row.
 			 */
+			/*
+			 * THE REVEAL'S OWN GROWTH, MEASURED WHERE THE READER IS (loader-continuity
+			 * 1b; agent review round 1, R1-3). The policy's "did the reader see it"
+			 * question is about pixels ON SCREEN, and the quantity that answers it is
+			 * the displacement of the row the reader was looking at — the same
+			 * `sampleAnchor`/`measureHeld`/`anchorDrift` instrument the anchor hold
+			 * already uses, so there is one measurement rather than two.
+			 *
+			 * WHY NOT THE SCROLLER'S `scrollHeight` (the first cut did, and it was
+			 * wrong in the live case this feature exists for): the extent grows for
+			 * ANY reason, including a turn streaming BELOW a tail-following reader,
+			 * and that growth would be credited to the reveal — an invisible reveal
+			 * would read as visible, the chain would end, and the act's round trip
+			 * would stay spent. A row's viewport offset moves only when content is
+			 * added ABOVE it, so the drift's positive part is exactly the reveal's own
+			 * growth; content below the anchor contributes zero.
+			 *
+			 * `null` when there is no anchor to measure (a session switch mid flight,
+			 * an empty transcript) — the policy treats a missing measurement as visible
+			 * rather than inventing an invisible reveal.
+			 */
+			const anchorBefore = sampleAnchor();
 			const ask: () => Promise<LoadOlderOutcome> = live.current
 				.onLoadOlderOutcome
 				? live.current.onLoadOlderOutcome
@@ -681,8 +728,33 @@ export function useScrollPaging({
 					if (sessionEpoch.current !== landedFor) return;
 					const after = live.current.hiddenRows;
 					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
+						/*
+						 * The reveal's growth, read at the settle rather than at a
+						 * fixed frame: the rows a page mounts author their height over
+						 * several layout passes, so a measurement taken on the frame
+						 * the promise resolves would read the pre-landing extent and
+						 * call every page invisible. This is the same "settle on the
+						 * OBSERVED landing" rule the debt above uses, applied to the
+						 * reader's own currency.
+						 */
+						const el = containerRef.current;
+						const anchorAfter =
+							anchorBefore === null ? null : measureHeld(anchorBefore.id);
 						state.current = noteSettled(state.current, {
 							hiddenRowsAfter: after,
+							/*
+							 * The drift's positive part: how far the held row was pushed DOWN, which
+							 * is how much content landed above it. A negative drift (the reader's own
+							 * motion, or a browser re-clamp) reads as no growth rather than as
+							 * negative growth — the invisible test is `growthPx < floor`, and a
+							 * negative number must not buy a chain.
+							 */
+							growthPx:
+								anchorBefore === null
+									? null
+									: Math.max(0, anchorDrift(anchorBefore, anchorAfter)),
+							clientHeight: el?.clientHeight ?? 0,
+							newRecords: outcome.newRecords,
 						});
 						schedule();
 						return;
@@ -693,7 +765,7 @@ export function useScrollPaging({
 				requestAnimationFrame(awaitLanding);
 			});
 		});
-	}, [holdAnchor, measure]);
+	}, [holdAnchor, measure, sampleAnchor, measureHeld]);
 
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
@@ -1045,5 +1117,17 @@ export function useScrollPaging({
 						? "idle"
 						: "exhausted";
 
-	return { slotState, requestOlder };
+	/*
+	 * The completion walk's authorisation, in the module's own terms. See the
+	 * handle's docstring for why it reads the live geometry and the policy's own
+	 * clock instead of taking a snapshot: `state.current` is the same object
+	 * `decide` reduces, so "the reader has been quiet for `SETTLE_MS`" here
+	 * means exactly what it means to a spend.
+	 */
+	const mayAutoWalk = useCallback((): boolean => {
+		if (performance.now() - state.current.lastInputAt < SETTLE_MS) return false;
+		return measure()?.followingTail === true;
+	}, [measure]);
+
+	return { slotState, requestOlder, mayAutoWalk };
 }
