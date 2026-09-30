@@ -269,6 +269,30 @@ export function useConfigRun(): ConfigRunHandle {
 	 * events, and a second reader of the same stream is how two surfaces come to
 	 * disagree about what happened.
 	 */
+	/*
+	 * THE LATEST TRANSCRIPT, HELD SO THE PROBE CAN READ IT WHEN IT FIRES.
+	 *
+	 * WHY A REF RATHER THAN A CLOSURE (perf audit, 2026-09-30): the probe effect
+	 * below used to name `stream.transcript` in its dependency list, and a
+	 * streaming run produces one transcript delta per flush — so every delta tore
+	 * the timers down and re-armed them. That made the 400 ms first probe mean
+	 * "400 ms after the LAST delta" and let `sessions.get` fire once per delta
+	 * burst instead of on its cadence, on a page whose whole job is to leave the
+	 * operator's own conversation alone.
+	 *
+	 * The probe's question is "has this run said something yet", which is a
+	 * question about the LATEST transcript, not about the copy this render
+	 * happened to close over — so the ref carries the latest value and the
+	 * dependency list carries only the run's lifecycle. Semantics are unchanged:
+	 * the probe still settles only when the server says nothing is running AND a
+	 * closing sentence exists, and the latch still guards re-entry.
+	 */
+	const transcriptRecords = stream.transcript?.records;
+	const transcriptRecordsRef = useRef(transcriptRecords);
+	useEffect(() => {
+		transcriptRecordsRef.current = transcriptRecords;
+	}, [transcriptRecords]);
+
 	const activity = useMemo(() => {
 		const records = stream.transcript?.records ?? [];
 		return records
@@ -440,12 +464,16 @@ export function useConfigRun(): ConfigRunHandle {
 				});
 				if (cancelled || settleLatch.current) return;
 				if (sessionStreamingFromSnapshot(snapshot) !== false) return;
-				if (!lastAssistantText(stream.transcript?.records)) return;
+				// Read at fire time, and once: the two conditions below are about the
+				// same snapshot of the transcript, and a delta arriving between them
+				// must not make them disagree.
+				const closing = lastAssistantText(transcriptRecordsRef.current);
+				if (!closing) return;
 				void settleRun(
 					useConfigRunStore.getState().status === "stopping"
 						? "stopped"
 						: "done",
-					lastAssistantText(stream.transcript?.records),
+					closing,
 				);
 			} catch {
 				// The live path still owns this run; a read that failed is not a verdict.
@@ -458,7 +486,7 @@ export function useConfigRun(): ConfigRunHandle {
 			clearTimeout(first);
 			clearInterval(poll);
 		};
-	}, [live, store.sessionId, stream.transcript, settleRun]);
+	}, [live, store.sessionId, settleRun]);
 
 	const start = async (text: string, about: RunTarget | null) => {
 		if (starting || !text.trim()) return;

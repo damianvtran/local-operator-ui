@@ -142,6 +142,9 @@ export const dune: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 9.14.
 		 */
 		hairline: "#49391E",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
+		hairlineStrong: "#4E3E24",
 		// Derived. The old theme bounded inputs with orange at 10 percent alpha,
 		// which measured about 1.1:1 on the page ground.
 		borderControl: "#8A7D6E",
