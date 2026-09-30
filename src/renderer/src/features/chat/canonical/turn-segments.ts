@@ -492,16 +492,20 @@ export function labelOfSegment(
  * and carry no information. The rule is therefore the same on both sides of the
  * answer; only the constant case is exempt.
  *
- * COMPLETION NEEDS A REAL CLOSER. The segment's last row must be a settled
- * assistant message or a finished call. A span whose last row is a bare receipt (a
- * wake, a peer row) has nothing that finished, and the mark on it read `Wake ✓`
- * over a receipt alone (the reviewer's repros). And a segment CUT OFF by a stop
- * marker or an incident (the next row is a terminal boundary) ended in that state,
- * not in success: a green mark over `Stopped with an error` would be a false
- * receipt, so the cut-off bar is the one that carries none.
+ * COMPLETION NEEDS A REAL CLOSER, AND A CYCLE THAT CLOSED. The segment's last
+ * row must be a settled assistant message or a finished call -- and the segment
+ * must end inside a cycle at all. `cyclesOf` builds a cycle only around a close
+ * row, so a span whose last row is a bare trigger or an unfinished stretch of
+ * work belongs to NO cycle: nothing in it ever handed over, and its bar wears no
+ * mark whatever its last row happens to be (review round 2, MINOR-2: a wake that
+ * never closed but ended on a finished tool call wore the check -- `U T A M W T`
+ * -> `Wake ✓` over a section that only ever started). A span the next terminal
+ * marker CUT OFF is in the same class for the same reason: it ended in that
+ * state, not in success, so no green mark sits over `Stopped with an error`.
  */
 export function segmentIsCompleted(
 	records: readonly TranscriptRecord[],
+	cycles: readonly TurnCycle[],
 	span: SegmentSpan,
 	answerCloseIndex: number | null,
 	labelled: boolean,
@@ -509,6 +513,12 @@ export function segmentIsCompleted(
 	if (answerCloseIndex === null) return false;
 	const afterAnswer = span.from > answerCloseIndex;
 	if (!afterAnswer && !labelled) return false;
+	if (
+		!cycles.some(
+			(cycle) => cycle.start <= span.to && span.to <= cycle.closeIndex,
+		)
+	)
+		return false;
 	const last = records[span.to];
 	const settled =
 		last.kind === "assistant"

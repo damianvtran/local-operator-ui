@@ -2346,25 +2346,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[sessionId],
 	);
 	/*
-	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
-	 *
-	 * The disclosure idiom is "the row you press stays and its content appears
-	 * under it". The browser's scroll anchoring gives that everywhere except at
-	 * the bottom of this transcript: the scroller is `flex-col-reverse` and pinned
-	 * at `scrollTop = 0`, so growing content is added ABOVE the pinned tail and
-	 * the pressed bar is pushed off the top (measured: y 272 to -348, the scroller
-	 * unmoved, with 620px of opened span between the reader and the bar's label).
-	 * A reader following live work sits at the bottom, so that is the most likely
-	 * place for the press.
-	 *
-	 * So the press records where the bar is, and the commit that mounts its
-	 * content moves the scroller by exactly how far the bar moved. Where the
-	 * browser already held the bar (top, mid-transcript) the delta is zero and
-	 * this writes nothing, so it cannot fight the anchoring it complements. The
-	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
-	 * tail and more negative moves content DOWN - `scroll-paging` states the
-	 * contract), and it is one assignment in the layout phase, so no frame paints
-	 * the bar off-screen first.
+	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
+	 * press and its layout effect share. The rule these serve - a pressed bar stays
+	 * where it was pressed, and its write goes out acknowledged to the paging hook
+	 * - is stated at the effect that spends them.
 	 */
 	const pressedBar = useRef<{ id: string; top: number } | null>(null);
 	/*
@@ -2399,16 +2384,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		},
 		[barFor, setRunOpen],
 	);
-	useLayoutEffect(() => {
-		const pressed = pressedBar.current;
-		if (pressed === null) return;
-		pressedBar.current = null;
-		const region = containerRef.current;
-		const bar = barFor(pressed.id);
-		if (!region || !bar) return;
-		const moved = bar.getBoundingClientRect().top - pressed.top;
-		if (Math.abs(moved) >= 1) region.scrollTop += moved;
-	});
 	const total = rows.length;
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
@@ -2591,8 +2566,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			durationOf: workedSecondsOf,
 			/*
 			 * The fold's condensed header is fed from the records themselves: the
 			 * running call's own words (`toolRecordSummary`), its own running
@@ -2858,26 +2832,68 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder, mayAutoWalk } = useScrollPaging({
-		containerRef,
-		sessionKey: sessionId,
-		hiddenRows: hidden,
-		hasMore: Boolean(transcript.hasMore),
-		onWiden: widen,
-		onLoadOlder,
-		onLoadOlderOutcome,
-		olderFailed,
-		loadingOlder,
-		// The content node exists only once the transcript is non-empty; this is
-		// what re-runs the observer effect at that moment.
-		contentKey: collapsed ? "empty" : "filled",
-		// The MOUNTED count, not the total: a local widen reveals rows the
-		// transcript already had, so `rows.length` does not change and the
-		// pre-paint correction would skip exactly the reveal that displaces the
-		// reader furthest. `visible.length` changes on both growth paths.
-		rowCount: visible.length,
+	const { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite } =
+		useScrollPaging({
+			containerRef,
+			sessionKey: sessionId,
+			hiddenRows: hidden,
+			hasMore: Boolean(transcript.hasMore),
+			onWiden: widen,
+			onLoadOlder,
+			onLoadOlderOutcome,
+			olderFailed,
+			loadingOlder,
+			// The content node exists only once the transcript is non-empty; this is
+			// what re-runs the observer effect at that moment.
+			contentKey: collapsed ? "empty" : "filled",
+			// The MOUNTED count, not the total: a local widen reveals rows the
+			// transcript already had, so `rows.length` does not change and the
+			// pre-paint correction would skip exactly the reveal that displaces the
+			// reader furthest. `visible.length` changes on both growth paths.
+			rowCount: visible.length,
+		});
+	/*
+	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
+	 *
+	 * The disclosure idiom is "the row you press stays and its content appears
+	 * under it". The browser's scroll anchoring gives that everywhere except at
+	 * the bottom of this transcript: the scroller is `flex-col-reverse` and pinned
+	 * at `scrollTop = 0`, so growing content is added ABOVE the pinned tail and
+	 * the pressed bar is pushed off the top (measured: y 272 to -348, the scroller
+	 * unmoved, with 620px of opened span between the reader and the bar's label).
+	 * A reader following live work sits at the bottom, so that is the most likely
+	 * place for the press.
+	 *
+	 * So the press records where the bar is, and the commit that mounts its
+	 * content moves the scroller by exactly how far the bar moved. Where the
+	 * browser already held the bar (top, mid-transcript) the delta is zero and
+	 * this writes nothing, so it cannot fight the anchoring it complements. The
+	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
+	 * tail and more negative moves content DOWN - `scroll-paging` states the
+	 * contract), and it is one assignment in the layout phase, so no frame paints
+	 * the bar off-screen first.
+	 *
+	 * THE WRITE IS ACKNOWLEDGED TO THE PAGING HOOK, and that is not bookkeeping
+	 * (review round 2, MINOR-3). This scroller's `onPointerDown` opened the hook's
+	 * drag window when the reader pressed the bar, so the `scroll` event this
+	 * write produces would otherwise be read as the reader dragging older-ward:
+	 * a correction recorded as input, which arms a paging demand from a click.
+	 * `acknowledgeOwnWrite` takes the offsets around the assignment, so a write
+	 * the browser clamps to nothing claims nothing either.
+	 */
+	useLayoutEffect(() => {
+		const pressed = pressedBar.current;
+		if (pressed === null) return;
+		pressedBar.current = null;
+		const region = containerRef.current;
+		const bar = barFor(pressed.id);
+		if (!region || !bar) return;
+		const moved = bar.getBoundingClientRect().top - pressed.top;
+		if (Math.abs(moved) < 1) return;
+		const before = region.scrollTop;
+		region.scrollTop += moved;
+		acknowledgeOwnWrite(before, region.scrollTop);
 	});
-
 	/*
 	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
 	 * settled turn finishes its own condensation instead of waiting for the
