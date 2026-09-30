@@ -302,7 +302,7 @@ globalThis.fetch = async (url, init) => {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { MessageInput } from "./src/renderer/src/features/chat/components/message-input.tsx";
+			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { CredentialChipLayer } from "./src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -441,6 +441,15 @@ async function mount({
 	unavailable = false,
 	isLoading = false,
 	currentJobId,
+	/*
+	 * The credential-store seam the lift moved OUT of the composer: the callback
+	 * the host supplies in place of the composer's own `useQueryClient()`
+	 * invalidation (see the Q-5 case below, which uses it to pin that the seam
+	 * fires and that the host's invalidation reaches the picker's key). Forwarded
+	 * verbatim; a case that passes none is a host with no cache, which is a legal
+	 * host.
+	 */
+	onCredentialsStored,
 	/*
 	 * The SECRET-GATE arm, as a prop: the page passes `true` exactly while a
 	 * `secret` ask waits (`chat-content.tsx` reads it off the pending gate), and
@@ -592,6 +601,7 @@ async function mount({
 						notes.push(text);
 						onSlashNote?.(text);
 					},
+					onCredentialsStored,
 					paneHasSession,
 				}),
 			),
@@ -3555,23 +3565,38 @@ test("the words a locked run took come back on the undo key (UX round 1, U3)", a
 	);
 });
 
-test("a store invalidates the list the picker reads (QA round 1, Q-5)", async () => {
+test("a store reaches the host's invalidation seam for the picker's list (QA round 1, Q-5)", async () => {
 	/*
 	 * QA's second note, which the manager folded into this round: the picker's list
 	 * is a CACHED read (`staleTime` five minutes, `shared/api/query-client.ts`) and the
 	 * store path did not invalidate it, so a picker mounted after an inline store
 	 * rendered "No credentials stored yet." while the same route answered with the
 	 * name that had just been stored — the row the user opened the dialog for, off its
-	 * own screen. The key is `desktopKeys.credentials` (one builder, read by the picker
-	 * and invalidated here), so the two cannot drift apart.
+	 * own screen.
+	 *
+	 * THE REPAIR IS THE HOST'S NOW (the shared-composer lift): the composer used to
+	 * call `useQueryClient()` itself here, which made a provider a mount requirement
+	 * for every document, so the store path reports through `onCredentialsStored` and
+	 * the chat page invalidates the same `desktopKeys.credentials(sessionId)` key it
+	 * always did. This case mounts the composer alone, so it supplies the chat's own
+	 * wiring verbatim and asserts BOTH halves: the seam fired with the session the
+	 * store landed on, and that host wiring marked the picker's key stale — a seam
+	 * that passed the wrong id would leave the seeded key fresh and fail here.
 	 *
 	 * The seeded entry is the point of the test: `invalidateQueries` over a key with
 	 * nothing cached marks nothing, so a rig that skipped the seed would pass on the
 	 * broken code.
 	 */
+	const storedFor = [];
 	const frame = await mount({
 		conversationId: "conv-q5",
 		sessionStatus: { frontend: null },
+		onCredentialsStored: async (sessionId) => {
+			storedFor.push(sessionId);
+			await client.invalidateQueries({
+				queryKey: ["desktop", "credentials", sessionId],
+			});
+		},
 	});
 	const listKey = ["desktop", "credentials", "conv-q5"];
 	client.setQueryData(listKey, { data: { ok: true, credentials: [] } });
@@ -3582,7 +3607,7 @@ test("a store invalidates the list the picker reads (QA round 1, Q-5)", async ()
 	);
 
 	await openCapture(frame, { prose: "store this for me " });
-	await type(frame, "sk-live-Q5-4417");
+	await type(frame, "[redacted]");
 	await enter(frame);
 	assert.match(
 		frame.value(),
@@ -3600,10 +3625,15 @@ test("a store invalidates the list the picker reads (QA round 1, Q-5)", async ()
 		),
 		"the send stored the credential",
 	);
+	assert.deepEqual(
+		storedFor,
+		["conv-q5"],
+		"the seam reported the session the store landed on, once",
+	);
 	assert.equal(
 		client.getQueryState(listKey)?.isInvalidated,
 		true,
-		"and the store marked the picker's own list stale",
+		"and the host's wiring marked the picker's own list stale",
 	);
 });
 

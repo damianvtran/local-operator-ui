@@ -41,7 +41,6 @@ import type {
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
 import { ChatHeader } from "@features/chat/components/chat-header";
-import { MessageInput } from "@features/chat/components/message-input";
 import {
 	deriveMcpServers,
 	deriveRunDetails,
@@ -50,6 +49,7 @@ import {
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { Message } from "@features/chat/types/message";
 import { MeshPage } from "@features/mesh/mesh-page";
 import { ProjectsPage } from "@features/projects/components/projects-page";
@@ -63,6 +63,7 @@ import type {
 } from "@shared/api/local-operator/wakes-api";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -577,6 +578,11 @@ const INERT_REMEDY: McpRemedyControls = {
 	clearFailure: () => undefined,
 };
 
+/** No-op monitor controls: no monitors are staged in this world. */
+const INERT_MONITOR_CONTROLS: MonitorControls = {
+	cancel: async () => ({ ok: true }),
+};
+
 /** The chrome state Storybook has no main process for; see `docs-hero`. */
 const useMacChrome = () => {
 	useLayoutEffect(() => {
@@ -720,6 +726,7 @@ const AppShell: FC<{
 										mcpServers={deriveMcpServers([], {}, [])}
 										mcpGrantRunning={mcpGrantInFlight([])}
 										mcpRemedy={INERT_REMEDY}
+										monitorControls={INERT_MONITOR_CONTROLS}
 										sessionId="3f9c1a2b4d5e"
 										pulses={{}}
 										childrenOpenable

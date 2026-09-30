@@ -62,6 +62,7 @@ import {
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
+import type { MonitorControls } from "./use-monitor-controls";
 
 /**
  * What the pane says when the updater refused and said nothing else.
@@ -86,6 +87,8 @@ export type RunPanelProps = {
 	mcpGrantRunning: boolean;
 	/** The pane's MCP remedy controls, threaded to the MCP section (`chat-page`). */
 	mcpRemedy: McpRemedyControls;
+	/** The pane's monitor write controls, threaded to the Monitors section (`chat-page`). */
+	monitorControls: MonitorControls;
 	/** The canonical session id the reader's route is addressed with. */
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
@@ -158,6 +161,7 @@ export const RunPanel = ({
 	mcpServers,
 	mcpGrantRunning,
 	mcpRemedy,
+	monitorControls,
 	sessionId,
 	pulses,
 	childrenOpenable,
@@ -1069,6 +1073,13 @@ export const RunPanel = ({
 						mcpServers={mcpServers}
 						mcpGrantRunning={mcpGrantRunning}
 						mcpRemedy={mcpRemedy}
+						monitorControls={monitorControls}
+						/*
+						 * The monitors cancel interaction resets on a session change - the
+						 * pane threads its own identity down for that one reader
+						 * (`run-details-panel.tsx`'s `sessionId` note).
+						 */
+						sessionId={sessionId}
 						childrenOpenable={childrenOpenable}
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}
