@@ -370,12 +370,18 @@ test("a row behind a collapsed bar: the bar opens, the row anchors, the flash la
 		const outcome = await jumpToEntry(root, region, "u9");
 		assert.equal(outcome, "landed");
 		assert.equal(clicks, 1, "the bar was opened exactly once");
-		// The anchor: -600 + (-800 - 100 - 1) = -1501 puts the row's TOP at the
-		// scrollport's top (the fixed anchor, issue #680), and the settle
+		// The anchor: -600 + (-800 - 100 - 1) - 24 = -1525 puts the row's TOP at
+		// the scrollport's top PLUS the top-fade depth (the fixed anchored
+		// landing, issue #680 design round 1's D1: the inset is the mask's own
+		// depth, so the row sits where the ramp is fully open), and the settle
 		// re-measures against a page that moves with the scroll to confirm it.
 		// The centring era's -1751 (the row's centre met the region's) is gone
 		// by decision.
-		assert.equal(region.scrollTop, -1501, "the row's top met the region's top");
+		assert.equal(
+			region.scrollTop,
+			-1525,
+			"the row's top met the region's top plus the fade depth",
+		);
 		const row = root.querySelector(
 			'[data-record-id="u9"]:not([data-turn-summary])',
 		);

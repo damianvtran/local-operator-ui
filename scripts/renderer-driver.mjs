@@ -518,6 +518,18 @@ if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	process.exit(2);
 }
 
+if (process.argv.some((arg) => arg.startsWith("--window-size="))) {
+	/*
+	 * The space-separated form is the one `argValue` reads; the `=` form is
+	 * silently ignored otherwise - measured on issue #680's first short run,
+	 * which captured 1380x900 frames while claiming 900x650 (review round 1's
+	 * NIT 2). Loud, not fatal: the run is still useful at the default size.
+	 */
+	console.error(
+		"--window-size takes the space-separated form (--window-size 900x650); the = form is ignored",
+	);
+}
+
 /*
  * The app's own output, read as patterns rather than as literals inside the
  * checks that use them: `useTopLevelRegex` asks for that, and two of these are
@@ -10620,36 +10632,137 @@ async function sceneTranscriptRail(cdp) {
 
 	/*
 	 * #680's landing probe: press ticks across the reach and read WHERE THEY
-	 * LAND - the washed row's top relative to the scroller's top (`offset`; the
-	 * fixed anchor is 0), with the scroller's own numbers beside it. Run with
+	 * LAND - the washed row's top relative to the scroller's top (`offset`;
+	 * the fixed anchor is the top-fade depth, design round 1's D1), with the
+	 * scroller's own numbers, the landed row's peak ink against a mid-viewport
+	 * reference row, and the rail's active tick after the jump. Run with
 	 * `--scoped-case rail-jump-probe`; the before/after pair is the same
 	 * command against the pre-anchor and post-anchor builds, and each jump's
-	 * frame is captured under its case name.
+	 * frame is captured under its case name. `--theme localOperatorLight` is
+	 * the light pass (D5).
 	 */
 	if (RAIL_CASE === "rail-jump-probe") {
-		const anchorView = () =>
+		/* The theme is named, not assumed: the light frame is this same probe
+		 * with `--theme localOperatorLight`. */
+		await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+		const anchorView = (id) =>
 			evaluate(`(() => {
 				const sc = document.querySelector('[role="log"]');
-				const row = document.querySelector("[data-jump-highlight]");
+				/*
+				 * The landed row, flash or not: the wash is the app's arrival cue, but
+				 * it is interactive-state (it can be replaced by a late mount commit
+				 * under load - the timeline below records when), while the LANDING is
+				 * the geometry this probe measures. The fallback reads the target's own
+				 * anchor row by id, skipping the collapsed bar that carries it as
+				 * data-turn-summary (the bar is not the row it stands for).
+				 */
+				const flashed = document.querySelector("[data-jump-highlight]");
+				const row =
+					flashed ??
+					document.querySelector(
+						'[data-record-id="${id}"]:not([data-turn-summary])',
+					);
 				if (!sc || !row) return null;
 				const sr = sc.getBoundingClientRect();
 				const rr = row.getBoundingClientRect();
+				/*
+				 * The reference row for the luma check: the loaded checkpoint row
+				 * nearest the scroller's vertical middle, i.e. one the top fade
+				 * cannot touch. Read in the same snapshot as the target's rect, so
+				 * one frame answers both.
+				 */
+				const mid = sr.top + sc.clientHeight / 2;
+				let ref = null;
+				let refDist = Infinity;
+				for (const el of sc.querySelectorAll("[data-record-id]")) {
+					if (el === row || el.hasAttribute("data-turn-summary")) continue;
+					const top = el.getBoundingClientRect().top;
+					const dist = Math.abs(top + 11 - mid);
+					if (dist < refDist) {
+						refDist = dist;
+						ref = el;
+					}
+				}
+				const rr2 = ref ? ref.getBoundingClientRect() : null;
+				const active = document.querySelector('[data-mark-state="active"]');
 				return {
 					landed: row.getAttribute("data-record-id"),
+					flashed: Boolean(flashed),
 					offset: Math.round((rr.top - sr.top) * 10) / 10,
 					scrollTop: Math.round(sc.scrollTop * 10) / 10,
 					maxNeg: Math.round((sc.scrollHeight - sc.clientHeight) * -1),
 					rowH: Math.round(rr.height),
 					viewport: sc.clientHeight,
 					rows: sc.querySelectorAll("[data-record-id]").length,
+					scrollerLeft: Math.round(sr.left),
+					targetBand: {
+						top: Math.round(rr.top),
+						height: Math.round(rr.height),
+					},
+					refBand: rr2
+						? { top: Math.round(rr2.top), height: Math.round(rr2.height) }
+						: null,
+					activeTick: active ? active.getAttribute("data-checkpoint-id") : null,
 				};
 			})()`);
+		/*
+		 * A row band's peak luma, from the captured PNG: the x window is the
+		 * scroller's own left edge plus 520px (the fixture's rows draw their text
+		 * in the left half), the y window the row's own band; the MAX over the
+		 * band is the peak ink - the same reading design round 1 took per 2px
+		 * band (issue #680, D1: 189 inside the fade against 238 clear).
+		 */
+		const rowPeakLuma = async (label, scrollerLeft, band) => {
+			const file = join(FRAMES, `${label}.png`);
+			const meta = await sharp(file).metadata();
+			const inner = await evaluate("window.innerWidth");
+			const scale = (meta.width ?? 0) / inner;
+			const left = Math.max(0, Math.round((scrollerLeft + 8) * scale));
+			const top = Math.max(0, Math.round((band.top + 2) * scale));
+			const width = Math.max(
+				1,
+				Math.min((meta.width ?? 0) - left, Math.round(520 * scale)),
+			);
+			const height = Math.max(1, Math.round((band.height - 4) * scale));
+			const { data } = await sharp(file)
+				.extract({ left, top, width, height })
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+			let peak = 0;
+			for (let i = 0; i + 2 < data.length; i += 3) {
+				const value =
+					0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+				if (value > peak) peak = value;
+			}
+			return Math.round(peak);
+		};
 		const jumpCase = async (name, id, expect) => {
 			await washGone();
 			const rowsBefore = await evaluate(
 				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
 			);
 			const jump = await jumpVia(id);
+			const atWash = await anchorView(id);
+			await capture(cdp, `rail-jump-${name}`);
+			/*
+			 * The flash's own timeline: the landing highlight lives 1400ms from
+			 * paint, and a late mount commit under load can replace the flashed
+			 * node - the very-top and near-newest legs were seen to lose the
+			 * attribute between jumpVia's read and this probe's. Sampling `fate`
+			 * (`lit` -> the marked node still flashed; `alive` -> same node, no
+			 * attribute; `gone` -> node replaced) turns "the highlight is gone"
+			 * into WHAT happened, which is the fact a fix needs.
+			 */
+			await evaluate("(() => { window.__probeRow = null; return true; })()");
+			const timeline = [];
+			for (let sample = 0; sample < 10; sample += 1) {
+				timeline.push(
+					await evaluate(
+						`(() => { const hl = document.querySelector("[data-jump-highlight]"); const sc = document.querySelector('[role="log"]'); if (!window.__probeRow && hl) window.__probeRow = hl; const row = window.__probeRow; const fate = row ? (row.isConnected ? (row.hasAttribute("data-jump-highlight") ? "lit" : "alive") : "gone") : "none"; return [${sample * 40}, hl ? 1 : 0, hl ? hl.getAttribute("data-record-id") : null, sc ? Math.round(sc.scrollTop) : null, fate]; })()`,
+					),
+				);
+				await wait(40);
+			}
 			/*
 			 * The wash is up NOW (jumpVia waits on its attribute), and its 1400ms
 			 * timer clears it - so the frame is captured and the first read taken
@@ -10657,25 +10770,58 @@ async function sceneTranscriptRail(cdp) {
 			 * the settled read after the anchor's window is the landing number.
 			 * A slow cold jump's wash can expire before the settled read, which is
 			 * why the check falls back to the earlier one rather than reading
-			 * null on a landing that happened.
+			 * null on a landing that happened. The frame is taken AT the wash (the
+			 * first read, right after the jump resolves, before the timeline
+			 * sampling), so the before/after pair photographs the same instant of
+			 * the arrival cue the pre-anchor runs photographed.
 			 */
-			const atWash = await anchorView();
-			await capture(cdp, `rail-jump-${name}`);
 			await wait(700);
-			const settled = await anchorView();
+			const settled = await anchorView(id);
 			const view = settled ?? atWash;
+			const targetPeak = atWash?.targetBand
+				? await rowPeakLuma(
+						`rail-jump-${name}`,
+						atWash.scrollerLeft,
+						atWash.targetBand,
+					)
+				: null;
+			const refPeak = atWash?.refBand
+				? await rowPeakLuma(
+						`rail-jump-${name}`,
+						atWash.scrollerLeft,
+						atWash.refBand,
+					)
+				: null;
 			note(
 				`landing ${name}`,
-				`id=${id} ms=${jump.ms} landed=${view?.landed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetPeak ?? "none"}/${refPeak ?? "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
 			);
 			check(
-				`the ${name} jump lands the target's top at the scrollport's top (issue #680)`,
+				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
 				view !== null &&
-					jump.landed === id &&
+					view.landed === id &&
 					(expect === "clamp"
 						? view.scrollTop === 0
-						: Math.abs(view.offset) <= 1.5),
-				JSON.stringify({ jump: jump.landed, view }),
+						: Math.abs(view.offset - 24) <= 1.5),
+				JSON.stringify({
+					jump: jump.landed,
+					focused: jump.focused,
+					hit: jump.hit,
+					view,
+					timeline,
+				}),
+			);
+			check(
+				`the ${name} landing's target reads at full ink, clear of the top fade`,
+				targetPeak !== null &&
+					refPeak !== null &&
+					Math.abs(targetPeak - refPeak) <= 4,
+				`target=${targetPeak} reference=${refPeak}`,
+			);
+			check(
+				`the rail's active tick after the ${name} jump is the target`,
+				view !== null && view.activeTick === id,
+				`active=${view?.activeTick} expected=${id}`,
 			);
 			return view;
 		};
@@ -10702,6 +10848,71 @@ async function sceneTranscriptRail(cdp) {
 		/* The newest completion: within a viewport of the end, so the anchor is
 		 * unreachable by construction - the documented clamp at max scroll. */
 		await jumpCase("near-newest", nearTick, "clamp");
+		/*
+		 * D4's card step: the text is frozen while the card is open. Open a
+		 * completion's card, read it, hold through a settle window and read
+		 * again - equal - then close and reopen. The store-side half (a warm
+		 * landing mid-hover) is pinned by the rail suite's own case; this is the
+		 * DOM-level half on the real app, and its frame carries the card.
+		 */
+		const cardText = () =>
+			evaluate(
+				`(() => { const card = document.querySelector("[data-checkpoint-card]"); return card ? card.textContent : null; })()`,
+			);
+		await washGone();
+		/*
+		 * The last jump already focused this tick; `focus()` on an already-active
+		 * element fires no focus event, so the card's own open path never runs.
+		 * Blur first, then focus, so the step exercises a real focus transition.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardFocus = await evaluate(
+			`(() => { const a = document.activeElement; return a ? (a.getAttribute("data-checkpoint-id") || a.tagName) : null; })()`,
+		);
+		const cardOpened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
+			5_000,
+		);
+		note(
+			"card step",
+			`active=${cardFocus ?? "none"} opened=${String(cardOpened.ok)}`,
+		);
+		const cardBefore = await cardText();
+		await wait(1600);
+		const cardAfter = await cardText();
+		await capture(cdp, "rail-jump-card-open");
+		check(
+			"the open card's text does not swap while it is open (issue #680, D4)",
+			cardOpened.ok && cardBefore !== null && cardBefore === cardAfter,
+			`before=${JSON.stringify(cardBefore)} after=${JSON.stringify(cardAfter)}`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(250);
+		/*
+		 * Same already-focused trap as the first open: Escape closes the card but
+		 * leaves the tick focused, so the refocus must be a real transition for
+		 * the second open to exercise the open path at all.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardAgain = await cardText();
+		check(
+			"the next open still renders a card",
+			cardAgain !== null && cardAgain.length > 0,
+			JSON.stringify(cardAgain),
+		);
 		return;
 	}
 

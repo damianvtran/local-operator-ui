@@ -339,9 +339,9 @@ test("ticks render from the manifest, in order, at the fixed pitch", async () =>
 		assert.deepEqual(
 			ticks.map((tick) => tick.getAttribute("aria-label")),
 			[
-				"Jump to your message, 2:32 PM",
-				"Jump to completion: Fix the build",
-				"Jump to your message",
+				"Jump to your message in turn 1 of 2, 2:32 PM",
+				"Jump to turn 1 of 2, Fix the build",
+				"Jump to your message in turn 2 of 2",
 			],
 		);
 		for (const tick of ticks) {
@@ -468,10 +468,16 @@ test("focus opens the completion card; Escape closes it; Enter's click is the ju
 		await rail.focusTick("c1");
 		const ready = rail.dialog();
 		assert.ok(ready.textContent.includes("Fix the build"));
-		assert.equal(
-			ready.querySelector("p")?.textContent,
-			"Turn 1 of 1",
+		const firstLine = ready.querySelector("p");
+		assert.ok(
+			firstLine?.textContent?.startsWith("Turn 1 of 1"),
 			"the structural identity leads the card, matching the tick's own label (issue #680)",
+		);
+		assert.ok(
+			firstLine
+				?.querySelector(".text-ink-muted")
+				?.textContent?.includes("Fix the build"),
+			"the ready name rides the identity line in muted ink (design round 1, D2)",
 		);
 		assert.ok(ready.textContent.includes("One sentence."));
 		assert.ok(ready.textContent.includes("Error"));

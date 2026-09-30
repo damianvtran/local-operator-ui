@@ -229,10 +229,11 @@ test("a pull that ends on a transient re-reads once the scroll goes idle (N1)", 
 	});
 	try {
 		/*
-		 * The pull's own transient: nothing loaded is above the edge at the
+		 * The pull's own transient: nothing loaded has crossed the reading line
+		 * (top + the fade depth, design round 1's D1 moved it there) at the
 		 * moment the leading read runs - the live repro's null at +103 ms.
 		 */
-		cue.setTops({ u1: 6, u2: 20, u3: 300 });
+		cue.setTops({ u1: 26, u2: 40, u3: 300 });
 		cue.scroll();
 		t.mock.timers.tick(16);
 		await cue.flush();
@@ -256,6 +257,35 @@ test("a pull that ends on a transient re-reads once the scroll goes idle (N1)", 
 			"u2",
 			"the settle re-read lands on the settled state",
 		);
+	} finally {
+		await cue.close();
+	}
+});
+
+test("the reading line sits at the fade depth, so a landed target is the active tick (issue #680, D1)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const cue = await mountCue({
+		rows: [row("u1"), row("u2")],
+		checkpoints: [user("u1"), user("u2")],
+	});
+	try {
+		/*
+		 * A jump lands its target's top at scrollport top + the fade depth
+		 * (`JUMP_ANCHOR_INSET_PX` = `TRANSCRIPT_TOP_FADE_PX`); the line must count
+		 * a row there as crossed, or the rail lights the tick BEFORE the target
+		 * (design round 1's correction to D1).
+		 */
+		cue.setTops({ u1: 24, u2: 300 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, "u1", "a row at the inset has crossed");
+		/* And the boundary really is the inset: two pixels lower is not crossed. */
+		cue.setTops({ u1: 26, u2: 300 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, null, "26px is past the line");
 	} finally {
 		await cue.close();
 	}

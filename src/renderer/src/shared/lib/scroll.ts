@@ -64,6 +64,7 @@ export const scrollRegionToTop = (
 	region: HTMLElement,
 	target: HTMLElement,
 	axis: "normal" | "reversed" = "normal",
+	insetPx = 0,
 ): void => {
 	const offset =
 		region.scrollTop +
@@ -76,9 +77,16 @@ export const scrollRegionToTop = (
 	 * scroller in the renderer (the canonical transcript), its shape is a fact
 	 * of the DOM contract its own hook documents, and the jump's anchored
 	 * landing (issue #680) is the caller that names it.
+	 *
+	 * `insetPx` lands the target's top BELOW the region's top by that much: the
+	 * jump's caller passes the transcript's top-fade depth, because a row
+	 * anchored at 0px sits inside the mask's ramp and reads dimmed (design
+	 * round 1's D1, measured 189 against 238 unmasked ink). Default 0 keeps the
+	 * helper's original place-the-top-at-the-top meaning for its other callers.
 	 */
+	const anchored = offset - insetPx;
 	region.scrollTop =
-		axis === "reversed" ? Math.min(0, offset) : Math.max(0, offset);
+		axis === "reversed" ? Math.min(0, anchored) : Math.max(0, anchored);
 };
 
 /**

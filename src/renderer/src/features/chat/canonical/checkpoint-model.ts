@@ -100,14 +100,24 @@ export function checkpointMarkState(options: {
 /**
  * The rail's structural identity for one checkpoint: "Turn N of M".
  *
- * ONE formatter on purpose (issue #680's vocabulary item): the tick's label
- * and the hover card both lead with this string, and a second spelling in
- * either place is how the two surfaces drift apart. The generated name and
- * summary are secondary content that rides beneath it, never a replacement.
+ * ONE formatter on purpose (issue #680's vocabulary item, design D3): the
+ * card's lead line carries this string and the tick's accessible name is built
+ * from it ("Jump to turn N of M", name appended after a comma) - a second
+ * spelling in either place is how the two surfaces drift apart. A ready name
+ * rides the identity line after a dot (a label on the turn, not a replacement)
+ * and the summary stays the secondary line.
  */
 export function checkpointTurnLabel(turn: number, turnCount: number): string {
 	return `Turn ${turn} of ${turnCount}`;
 }
+
+/**
+ * The same label in sentence position ("turn N of M"). A transform rather than
+ * a second formatter, so the tick's accessible name and the card's lead line
+ * can never disagree about the digits.
+ */
+const inSentence = (label: string): string =>
+	label.charAt(0).toLowerCase() + label.slice(1);
 
 /**
  * The completion checkpoint's fallback title: its name, or `Turn N`.
@@ -188,19 +198,28 @@ export function checkpointClockLabel(ts: number): string {
 }
 
 /**
- * A tick's accessible name (D5's two frozen forms).
+ * A tick's accessible name (D5's two frozen sentence forms, re-routed through
+ * the rail's ONE turn formatter by issue #680's vocabulary item, design D3).
  *
- * The completion form carries the SAME title the card shows, fallback
- * included, so a keyboard reader who never sees the card still hears which
- * turn they are on. A user form with no clock drops the time half rather
- * than printing a phantom one.
+ * The completion form leads with the same "turn N of M" identity the card
+ * leads with (name appended after a comma when it is ready), and the user form
+ * places the message in its turn the same way. A user form with no clock drops
+ * the time half rather than printing a phantom one.
  */
-export function checkpointAriaLabel(checkpoint: Checkpoint): string {
+export function checkpointAriaLabel(
+	checkpoint: Checkpoint,
+	turnCount: number,
+): string {
+	const position = inSentence(checkpointTurnLabel(checkpoint.turn, turnCount));
 	if (checkpoint.kind === "user") {
 		const clock = checkpointClockLabel(checkpoint.ts);
-		return clock ? `Jump to your message, ${clock}` : "Jump to your message";
+		return clock
+			? `Jump to your message in ${position}, ${clock}`
+			: `Jump to your message in ${position}`;
 	}
-	return `Jump to completion: ${checkpointTitle(checkpoint)}`;
+	const name =
+		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
+	return name ? `Jump to ${position}, ${name}` : `Jump to ${position}`;
 }
 
 /**
