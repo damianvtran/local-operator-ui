@@ -98,6 +98,62 @@ export const CHAT_MEASURE =
 	"w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto";
 
 /**
+ * The property the stylesheet declares the SHIPPED default on.
+ *
+ * Two properties rather than one because they answer two different questions
+ * and a drag needs both: what the column should be (the chain below resolves
+ * `--lo-chat-measure`) and what it would be if the reader had never touched it
+ * (this one). Reading the second off the first is impossible once an override
+ * is set, and the reset path has nothing else to reset to.
+ */
+export const CHAT_MEASURE_SHIPPED_VAR = "--lo-chat-measure-shipped";
+
+/**
+ * The property the reader's own width is written to, and the one an override
+ * must set. Nothing in this file sets it; the preferences store does.
+ */
+export const CHAT_MEASURE_OVERRIDE_VAR = "--lo-chat-measure-override";
+
+/**
+ * The shipped default, in px, read from the stylesheet - or `null` when the
+ * property is not there.
+ *
+ * Read rather than imported so the number keeps ONE home: the same reason the
+ * class reads a property instead of carrying a literal.
+ *
+ * `null` rather than a fallback NUMBER, and that is a deliberate refusal: there
+ * is no honest number for this file to substitute. The property is absent in
+ * exactly one situation - a host where the stylesheet was never loaded (a story
+ * that does not import it, or this module bundled for a unit test) - and in that
+ * host the column has no measure at all: `max-width: var(--lo-chat-measure)`
+ * resolves to `none`. A control that offered to resize a measure that does not
+ * exist would be inventing one, so the caller renders no handle. Every product
+ * path takes the other branch.
+ */
+export const readShippedChatMeasurePx = (): number | null => {
+	/*
+	 * A HOST WITH A `document` IS NOT PROVABLY A HOST WITH A STYLESHEET.
+	 *
+	 * The guard here was `typeof document === "undefined"` alone, and a host that
+	 * has a stub `document` and no `getComputedStyle` is exactly the shape that
+	 * breaks it: the read threw inside the pane's own `useMemo`, which took the
+	 * whole transcript down instead of answering `null`. `getComputedStyle` is the
+	 * capability this function actually needs, so the capability is what it asks
+	 * for. Measured, not hypothetical: `scripts/working-line-clock.test.mjs`'s two
+	 * rendered-pane cases failed with `ReferenceError: getComputedStyle is not
+	 * defined` raised at this line, through
+	 * `CanonicalTranscript`'s `useMemo`.
+	 */
+	if (typeof document === "undefined" || typeof getComputedStyle !== "function")
+		return null;
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue(CHAT_MEASURE_SHIPPED_VAR)
+		.trim();
+	const px = Number.parseFloat(raw);
+	return Number.isFinite(px) && px > 0 ? px : null;
+};
+
+/**
  * The column width at which the composer's row stops being one line: above it
  * the session readings sit inline between the working-directory chip and the
  * controls, below it they take the row's own first line.

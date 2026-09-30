@@ -1,7 +1,7 @@
+import { MessageInput } from "@shared/components/composer/message-input";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useMemo, useRef } from "react";
-import { MessageInput } from "../components/message-input";
 import type { Message } from "../types/message";
 import "../components/story-electron-shim";
 import { resetProbeCache } from "../utils/link-actions";

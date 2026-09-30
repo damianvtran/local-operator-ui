@@ -55,6 +55,7 @@ import {
 	expandedRunsOf,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
@@ -82,8 +83,13 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
-import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_MEASURE,
+	readShippedChatMeasurePx,
+} from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
+import { ChatMeasureHandle } from "../components/chat-measure-handle";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
@@ -124,6 +130,8 @@ import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
 import { LinkToolkit } from "./link-toolkit";
+import type { LoadOlderOutcome } from "./load-older";
+import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type ProviderErrorAction,
@@ -372,6 +380,32 @@ export type CanonicalTranscriptProps = {
 	 * loop or no retry at all, and neither is the contract.
 	 */
 	onLoadOlder: () => Promise<boolean>;
+	/**
+	 * The outcome-aware form of `onLoadOlder`, passed straight to the scroll pump
+	 * so a lost race is not read as a failure. Optional: a caller with only the
+	 * boolean keeps the old behaviour.
+	 */
+	onLoadOlderOutcome?: () => Promise<LoadOlderOutcome>;
+	/** The session hook's single statement that the last ask failed. */
+	olderFailed?: boolean;
+	/**
+	 * The older-history row's transport truth, where the caller knows it better
+	 * than `status` does.
+	 *
+	 * The slot drops its retry while the transport is down, because a retry that
+	 * cannot succeed must not be painted beside the transcript's own notice
+	 * (`older-history-slot.tsx`). For a pane whose rows came from the session's
+	 * own stream, `status` is that answer and stays it; this prop exists for a
+	 * caller painting these rows from something else. The child reader's page is
+	 * a read-only GET whose own `status` is a static `"live"` (there is no stream
+	 * of ITS to be connecting or reconnecting on), so without it a child's failed
+	 * page offers a `Try again` that cannot work while the parent's identical
+	 * failure goes quiet — the asymmetry design round 1's D2 measured.
+	 *
+	 * Omitted, nothing changes: the row reads `status !== "live"` exactly as it
+	 * always has.
+	 */
+	olderTransportDown?: boolean;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -490,6 +524,18 @@ export type CanonicalTranscriptProps = {
 	 * replaces it.
 	 */
 	labelMarked?: ReadonlySet<string>;
+	/**
+	 * Mount the measure's drag handles on this column.
+	 *
+	 * Opt-in, and only the chat page passes it: the width a handle writes is a
+	 * document-root property shared by every chat surface, so a second mount
+	 * (the run pane's child reader) would let a drag there resize the main
+	 * column (review, finding 2). A transcript without it is indistinguishable
+	 * from the state before the handles existed - they are absolutely
+	 * positioned children of this column, and the `relative` on the column is
+	 * theirs.
+	 */
+	measureHandle?: boolean;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -1043,12 +1089,17 @@ const AssistantRow = memo(function AssistantRow({
 			 * markdown's own block margins collapse.
 			 */}
 			{/*
-			 * Left-aligned by the container's own `pl-10` gutter, which is the padding
-			 * the answer's prose already starts at - so the caption and the prose share
-			 * one left edge structurally rather than by a second measurement (the frame
-			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
+			 * ALIGNED STRUCTURALLY, NOT BY A GUTTER. This line is a sibling of the answer's
+			 * content box inside `MessageContainer`, which is `relative w-full` for an agent
+			 * row (D11: the 40px gutter and the agent glyph it existed for are both
+			 * deleted), so the two share the container's own left edge with nothing between
+			 * them. The comment this replaces named a `pl-10` gutter that no class in
+			 * `features/chat` supplies any more, and a frame cannot settle an edge claim -
+			 * so the rail is MEASURED from the rendered DOM
+			 * (`scripts/chat-alignment-geometry.mjs`), and the numbers are in
+			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
-			{closesTurn && !closingLineSuppressed && (
+			{closesTurn && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
@@ -1066,9 +1117,35 @@ const AssistantRow = memo(function AssistantRow({
 				 * same record cannot be the one that opens, and it opens that row's
 				 * disclosure BEFORE scrolling - the detail is what the reader came for, and
 				 * landing on a closed row would make the jump a second click.
+				 *
+				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
+				 * not a second band: a band of its own would cost a whole row per turn and
+				 * would leave the turn's LAST line being controls rather than the turn's own
+				 * fact. The actions take the line's left so the reader's eye returns to one
+				 * rail - the prose's - and the caption follows them on the same line.
+				 *
+				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
+				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
+				 * answer (there is prose to copy), so they render whenever the turn closes;
+				 * the NUMBERS and the STAMP are facts about the turn's closing line, and a run
+				 * that carries a turn bar already states both (`closingLineSuppressed`, F5).
+				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{foot && foot.actions > 0 && (
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{isQuotable(record, remainingContent) && (
+						<AnswerActionRow
+							bodyText={remainingContent}
+							agentId={conversationId}
+							speechId={record.id}
+						/>
+					)}
+					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
@@ -1087,9 +1164,11 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
-					<span className={cn("ml-auto")}>
-						<TurnTimestamp timestamp={record.ts} scope="answer" />
-					</span>
+					{!closingLineSuppressed && (
+						<span className={cn("ml-auto")}>
+							<TurnTimestamp timestamp={record.ts} scope="answer" />
+						</span>
+					)}
 				</div>
 			)}
 		</MessageContainer>
@@ -2009,6 +2088,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
+	onLoadOlderOutcome,
+	olderFailed,
+	olderTransportDown,
 	containerRef,
 	isSmallView,
 	status,
@@ -2022,6 +2104,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2211,12 +2294,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
 	 * raw refusal semantics (`onLoadOlder` straight through).
 	 *
-	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
-	 * scroll that is right (no double-apply). But a walk reads `false` as
-	 * "history ends here", so a jump colliding with an align page used to fall
-	 * through to a clamped mount instead of awaiting the page already on its
-	 * way. Sharing the promise here makes that collision a wait for the two
-	 * consumers that walk; the scroll path's semantics are untouched.
+	 * HISTORY OF THE SPLIT: the pager used to answer a concurrent ask with
+	 * `false`, and a walk read that as "history ends here", so a jump colliding
+	 * with an align page fell through to a clamped mount instead of awaiting the
+	 * page already on its way. The session hook is now single-flight and SHARES
+	 * the in-flight page with every caller (`createOlderLoader`), so this wrapper
+	 * is redundant for the hook's own `onLoadOlder`; it is kept because the
+	 * walk's callers may be handed any boolean pager (the child reader's), and
+	 * sharing is idempotent.
 	 */
 	const walkLoadOlder = useMemo(
 		() => shareInFlight(onLoadOlder),
@@ -2516,6 +2601,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		hasMore: Boolean(transcript.hasMore),
 		onWiden: widen,
 		onLoadOlder,
+		onLoadOlderOutcome,
+		olderFailed,
 		loadingOlder,
 		// The content node exists only once the transcript is non-empty; this is
 		// what re-runs the observer effect at that moment.
@@ -2620,6 +2707,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
 	const [perf, setPerf] = useState("");
+
+	/*
+	 * The conversation column's width, and the two writes that change it.
+	 *
+	 * The READ is the reader's own width when they have one and the shipped
+	 * default otherwise - never the width on screen, which a narrow pane may have
+	 * clamped (`chat-measure-drag.ts` argues that distinction). `useMemo` with no
+	 * dependencies because the shipped value is a property lookup on the document
+	 * and the stylesheet has loaded by the time this component mounts; reading it
+	 * per render would put a `getComputedStyle` on the streaming transcript's hot
+	 * path for a number that cannot change while the app runs.
+	 */
+	const chatMeasureWidth = useUiPreferencesStore(
+		(state) => state.chatMeasureWidth,
+	);
+	const setChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.setChatMeasureWidth,
+	);
+	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.restoreDefaultChatMeasureWidth,
+	);
+	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
+	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
@@ -3498,9 +3608,47 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
+						 *
+						 * `relative` is here for the measure handles and for nothing else: they are
+						 * positioned against the CONTENT column rather than against the scroller,
+						 * which is what makes them track the column's edge for free as the measure
+						 * changes and as the pane resizes. They are absolutely positioned, so they
+						 * are out of flow and the rows cannot move because of them, and they sit in
+						 * the 24px gutter the measure already insets its content by
+						 * (`chat-measure.ts`: `p-4` + the 8px scrollbar gutter), so they never cover
+						 * text and cannot swallow a click meant for it.
 						 */
-						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
 					>
+						{/*
+						 * One handle per edge of the measure, where the mount opts in
+						 * (`measureHandle` - only the chat page does) AND there is a measure to
+						 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
+						 * stylesheet, where the column has no cap at all and a control
+						 * offering to resize it would be inventing one.
+						 *
+						 * `width` is the CAP - the reader's own width, else the shipped
+						 * default - and never the width on screen: see `chat-measure-drag.ts`
+						 * for why that distinction is the difference between a drag and a bug.
+						 */}
+						{measureHandle && measurePx !== null && (
+							<>
+								<ChatMeasureHandle
+									edge="left"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+								<ChatMeasureHandle
+									edge="right"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+							</>
+						)}
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
@@ -3533,12 +3681,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						{transcript.records.length > 0 && !stale && !missing && (
 							<OlderHistorySlot
 								state={slotState}
-								hiddenRows={hidden}
 								// A retry cannot succeed while the transport is down, and the
 								// transcript's own notice below already explains why. The slot
 								// drops its gesture hint rather than stacking a second claim on
-								// top of that one.
-								transportDown={status !== "live"}
+								// top of that one. `olderTransportDown` is the same assertion
+								// for a caller whose rows did NOT come from this session's
+								// stream (the child reader's page): it is the caller's own
+								// status, so a pane with no stream of its own is not read as a
+								// live one by default.
+								transportDown={olderTransportDown ?? status !== "live"}
 								onLoadOlder={requestOlder}
 							/>
 						)}

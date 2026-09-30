@@ -62,6 +62,7 @@ import {
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
+import type { MonitorControls } from "./use-monitor-controls";
 
 /**
  * What the pane says when the updater refused and said nothing else.
@@ -86,12 +87,26 @@ export type RunPanelProps = {
 	mcpGrantRunning: boolean;
 	/** The pane's MCP remedy controls, threaded to the MCP section (`chat-page`). */
 	mcpRemedy: McpRemedyControls;
+	/** The pane's monitor write controls, threaded to the Monitors section (`chat-page`). */
+	monitorControls: MonitorControls;
 	/** The canonical session id the reader's route is addressed with. */
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
 	pulses: Readonly<Record<string, number>>;
 	/** Whether `subagent_transcript` negotiated (`§ 10.2`). */
 	childrenOpenable: boolean;
+	/**
+	 * Whether the SESSION's stream is down (`status !== "live"`), for the child
+	 * reader's older-history row.
+	 *
+	 * Threaded from the component that holds the canonical session handle rather
+	 * than read here: this pane paints a child's page, and a child's page is a
+	 * file behind a read-only GET with no stream of its own to be down
+	 * (`run-child-reader.tsx`). The value is the SAME predicate the parent's own
+	 * transcript applies to its slot, so the two rows cannot disagree about the
+	 * transport — which is the asymmetry design round 1's D2 measured.
+	 */
+	olderTransportDown: boolean;
 	/**
 	 * The child whose reader is open, or `null` for the roster view.
 	 *
@@ -146,9 +161,11 @@ export const RunPanel = ({
 	mcpServers,
 	mcpGrantRunning,
 	mcpRemedy,
+	monitorControls,
 	sessionId,
 	pulses,
 	childrenOpenable,
+	olderTransportDown,
 	paneWidth,
 	readerChildId,
 	onReaderChildChange,
@@ -919,6 +936,8 @@ export const RunPanel = ({
 					key={row.id}
 					row={row}
 					sessionId={sessionId}
+					/* The session's own transport truth, threaded to the reader's slot (D2). */
+					olderTransportDown={olderTransportDown}
 					/*
 					 * The child-scoped attachment scope, gated on the SAME capability the
 					 * transcript route negotiated under: this reader's page is read over
@@ -1054,6 +1073,13 @@ export const RunPanel = ({
 						mcpServers={mcpServers}
 						mcpGrantRunning={mcpGrantRunning}
 						mcpRemedy={mcpRemedy}
+						monitorControls={monitorControls}
+						/*
+						 * The monitors cancel interaction resets on a session change - the
+						 * pane threads its own identity down for that one reader
+						 * (`run-details-panel.tsx`'s `sessionId` note).
+						 */
+						sessionId={sessionId}
 						childrenOpenable={childrenOpenable}
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}

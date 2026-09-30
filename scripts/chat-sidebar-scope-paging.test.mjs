@@ -93,6 +93,20 @@ const bundle = await build({
 						path: `${process.cwd()}/src/renderer/src/shared/store/conversation-input-store.ts`,
 					}),
 				);
+				/*
+				 * The composer's optional-client seam, resolved to the REAL module for the
+				 * same reason as the store above: `desktop-hooks` (bundled here for
+				 * `desktopFeatureEnabled`) now imports it, and a harness that cannot
+				 * resolve it cannot build at all. The real file is also the honest
+				 * resolution for this suite's shape - it reads a plain document with no
+				 * provider, exactly the condition the module exists for.
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
+					() => ({
+						path: `${process.cwd()}/src/renderer/src/shared/hooks/use-optional-query-client.ts`,
+					}),
+				);
 				builder.onLoad(
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
 					() => ({

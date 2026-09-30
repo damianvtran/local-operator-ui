@@ -34,9 +34,13 @@ import type {
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
 import {
+	type BoardWindow,
 	PROJECTS_BOARD_ORDER_STORAGE_KEY,
+	PROJECTS_BOARD_WINDOW_STORAGE_KEY,
 	writeBoardColumnOrder,
+	writeBoardWindow,
 } from "../project-model";
+import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
 /** Sunday 20 September 2026, 2:00 PM local — every label derives from this. */
@@ -161,6 +165,10 @@ const MANY_LONG: DesktopProject[] = [
 	...MANY,
 	...Array.from({ length: 12 }, (_, index) =>
 		project(`n${index}`, `hardening-batch-${index + 1}`, {
+			/* The first row carries a title: the list's title display is
+			 * photographed here (title primary, key kept as the addressable
+			 * hook), on a fixture this story owns. */
+			title: index === 0 ? "Hardening sweep" : null,
 			description: `Harden surface ${index + 1} against the new load`,
 			team: (["platform", "atlas", null] as const)[index % 3],
 			owner: "atlas",
@@ -177,12 +185,18 @@ const MANY_LONG: DesktopProject[] = [
 
 /**
  * The board-sticky story's own fixture: twenty active cards over two teams, so
- * the active column is taller than the frame and carries two straps. The
- * shared board fixtures never fill a column past the frame, and a strap that
- * cannot reach its pin offset cannot be measured against it.
+ * the board is two tall bands — taller than the frame, which is what gives
+ * the band headers room to travel and pin. The shared board fixtures never
+ * fill a band past the frame, and a header that cannot reach its pin offset
+ * cannot be measured against it.
+ *
+ * The FIRST card carries a title: this story's frames are where the title
+ * display (title primary, key as the muted subtitle) is photographed and
+ * asserted, on a fixture no other frame shares.
  */
 const BOARD_LONG: DesktopProject[] = Array.from({ length: 20 }, (_, index) =>
 	project(`b${index}`, `load-shed-${index + 1}`, {
+		title: index === 0 ? "Load-shed hardening" : null,
 		description: `Slice ${index + 1} of the load shed`,
 		team: index % 2 === 0 ? "platform" : "atlas",
 		status: "active",
@@ -195,6 +209,122 @@ const BOARD_LONG: DesktopProject[] = Array.from({ length: 20 }, (_, index) =>
 		progress_stale: false,
 		progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 1) * HOUR_S,
 	}),
+);
+
+/**
+ * The board-window fixture (feat/board-time-window): six rows whose ages land
+ * on the ladder's rungs - 2h, 5d, 12d, 45d, 200d - over two teams, plus the
+ * R5 row: updated 1h ago while its PROGRESS line still reads "reported 12d
+ * ago", so a 24h frame carries a card that looks stale by its own printed
+ * age while the filter - which reads `updated_at` - correctly keeps it.
+ *
+ * Four statuses (`active`, `planning`, `qa`, `done`) leave `validation` the
+ * one fixed column empty in every window, and each rung gains exactly the
+ * rows its arithmetic promises: 24h -> 2, 7d -> 3, 30d -> 4, 90d -> 5, all
+ * -> 6.
+ */
+const BOARD_WINDOW_ROWS: DesktopProject[] = [
+	project("w1", "cutover-probe", {
+		description: "First probe against the cutover gate",
+		team: "platform",
+		status: "active",
+		updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+		progress_stale: false,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+		estimate: 5,
+		milestones_completed: 1,
+		milestones_total: 2,
+		sessions: 1,
+		live_sessions: 0,
+	}),
+	project("w2", "queue-tune", {
+		description: "Tune the ingest queue's drain rate",
+		team: "atlas",
+		status: "planning",
+		updated_at: FIXTURE_NOW_MS / 1000 - 5 * DAY_S,
+		progress_stale: false,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 5 * DAY_S,
+		estimate: 3,
+		milestones_completed: 0,
+		milestones_total: 3,
+		sessions: 0,
+		live_sessions: 0,
+	}),
+	project("w3", "schema-deprecation", {
+		description: "Retire the v1 schema behind a reader shim",
+		team: "platform",
+		status: "qa",
+		updated_at: FIXTURE_NOW_MS / 1000 - 12 * DAY_S,
+		progress_stale: true,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 12 * DAY_S,
+		estimate: 8,
+		milestones_completed: 2,
+		milestones_total: 4,
+		sessions: 1,
+		live_sessions: 0,
+	}),
+	project("w4", "fallback-paths", {
+		description: "Enumerate the degraded-mode fallbacks",
+		team: "atlas",
+		status: "done",
+		updated_at: FIXTURE_NOW_MS / 1000 - 45 * DAY_S,
+		progress_stale: true,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 45 * DAY_S,
+		milestones_completed: 1,
+		milestones_total: 1,
+		sessions: 2,
+		live_sessions: 0,
+	}),
+	project("w5", "vendor-renewal", {
+		description: "Renew the data-vendor contract",
+		team: "platform",
+		status: "done",
+		updated_at: FIXTURE_NOW_MS / 1000 - 200 * DAY_S,
+		progress_stale: true,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 200 * DAY_S,
+		sessions: 0,
+		live_sessions: 0,
+	}),
+	project("w6", "hotfix-drill", {
+		/*
+		 * THE MISMATCH ROW (R5): updated an hour ago, but its progress line
+		 * still reports the drill that ran 12 days before - the card prints
+		 * "reported 12d ago" while the 24h window keeps it on screen. A filter
+		 * reading the printed age would hide it; this row is the frame that
+		 * proves which stamp the filter reads.
+		 */
+		description: "Rehearse the auth hotfix rollback",
+		team: "atlas",
+		status: "active",
+		updated_at: FIXTURE_NOW_MS / 1000 - 1 * HOUR_S,
+		progress_stale: true,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - 12 * DAY_S,
+		estimate: 2,
+		milestones_completed: 0,
+		milestones_total: 1,
+		sessions: 1,
+		live_sessions: 1,
+	}),
+];
+
+/**
+ * Only the rows older than the default 7d window: the fixture the empty-window
+ * state and its recovery are photographed on (at 7d all three are excluded;
+ * `Show all time` lands them).
+ */
+const BOARD_WINDOW_AGED: DesktopProject[] = BOARD_WINDOW_ROWS.filter(
+	(row) => FIXTURE_NOW_MS / 1000 - row.updated_at > 7 * DAY_S,
+);
+
+/**
+ * The rows older than NINETY days - the one row `vendor-renewal` at 200d, and
+ * nothing else. The 90d rung's empty state needs every row outside the window,
+ * which is a different fixture from the 7d one (that one still contains a 12d
+ * and a 45d row, inside 90d): the two empty-window frames are the ladder's own
+ * proof that the heading's phrase follows the RUNG rather than the state.
+ */
+const BOARD_WINDOW_ANCIENT: DesktopProject[] = BOARD_WINDOW_ROWS.filter(
+	(row) => FIXTURE_NOW_MS / 1000 - row.updated_at > 90 * DAY_S,
 );
 
 const LINK = (
@@ -711,6 +841,26 @@ const need = <T extends Element>(selector: string): T => {
 };
 
 /**
+ * The board's rendered card keys, sorted — the window filter's own claim,
+ * read off the live board rather than re-deriving the predicate in the play.
+ */
+const boardCardKeys = () =>
+	[...document.querySelectorAll<HTMLElement>("[data-project-name]")].map(
+		(node) => node.dataset.projectName ?? "",
+	);
+
+/** Fail the play when the board shows a different set of cards than `expected`. */
+const expectBoardKeys = (expected: string[], what: string) => {
+	const shown = boardCardKeys().sort();
+	const want = [...expected].sort();
+	if (shown.join(",") !== want.join(",")) {
+		throw new Error(
+			`${what}: the board shows [${shown.join(", ")}], not [${want.join(", ")}]`,
+		);
+	}
+};
+
+/**
  * Wait for the DETAIL screen the route-based stories navigate to.
  *
  * The plays race `RouteTo`'s navigation: the story's first render is the
@@ -771,6 +921,7 @@ const page = (
 	state: Partial<StubState> & {
 		view?: "list" | "board" | "timeline";
 		columnOrder?: string[];
+		window?: BoardWindow;
 	},
 ) => {
 	stub = {
@@ -803,6 +954,21 @@ const page = (
 	 * and the app cannot drift on the key.
 	 */
 	writeBoardColumnOrder(state.columnOrder ?? []);
+	/*
+	 * The board's window is persisted the same way, so every story states it or
+	 * clears it: a 24h story leaking into the next story's default-7d frame is
+	 * the same defect the view and the order above guard against. The clear
+	 * goes through the model's own key, so a rename cannot leave a stowaway.
+	 */
+	if (state.window) {
+		writeBoardWindow(state.window);
+	} else {
+		try {
+			localStorage.removeItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY);
+		} catch {
+			/* storage is not what these stories are about */
+		}
+	}
 	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
@@ -1062,6 +1228,115 @@ export const DetailFeed: Story = {
 		/* Let the scroll and any decode settle before the shutter lands. */
 		await new Promise((resolve) => setTimeout(resolve, 400));
 	}),
+};
+
+/**
+ * THE LONG TITLE, whose old header ellipsised it (operator, 2026-09-30). The
+ * fixture's title outruns the 800px column at the wide viewport and the page
+ * width at the narrow one, and its description plus three milestones push the
+ * scroller past one screen - so the same two frames carry the wrap AND the
+ * scrollbar riding the view's edge rather than the column's.
+ *
+ * NO LONGER "NO PLAY" (review round 1, R1-2): this paragraph used to say the
+ * stories carried none, which stopped being true the same afternoon - the pair
+ * ships `longTitlePlay`. The two claims:
+ *
+ *   the PLAY asserts the header LEADS with the full title (exact
+ *   `textContent`) and that it is NOT clipped (`scrollWidth` inside its box -
+ *   what the retired `truncate` pushed past). It reaches the heading through
+ *   `longTitleHeading`, which finds it by TEXT: this document holds storybook's
+ *   hidden `sb-nopreview_heading` placeholder and the shell's own "Projects"
+ *   header above this screen's, so a bare `querySelector("h1")` reads a
+ *   different element and a poll against it waits out the rig's whole budget
+ *   (measured: the frame was never taken).
+ *
+ *   the CAPTURE ENTRY's `expectSentence` refuses a frame whose rendered text
+ *   does not carry the title at all, scoped by the header's own
+ *   `data-project-title`.
+ */
+const LONG_TITLE =
+	"Payments migration onto the new reconciliation service and the ledger split";
+const LONG_TITLE_ROW = project("p7", "payments-migration-v2", {
+	title: LONG_TITLE,
+	description:
+		"Cut the payments API over to the new service and split the ledger reads.\n\n**Scope**\n\n- the read path (staging first)\n- the dashboard\n- the retry budget\n- the reconciliation worker\n- the ledger split\n- the rollback path\n- the cutover runbook",
+	owner: "atlas",
+	team: "platform",
+	status: "active",
+	tags: ["q4", "payments"],
+	start_date: "2026-09-01",
+	target_date: "2026-10-15",
+	estimate: 13,
+	milestones_completed: 1,
+	milestones_total: 3,
+	progress_stale: false,
+	progress_updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+	updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+});
+const LONG_TITLE_DETAIL = detailFor(LONG_TITLE_ROW, MILESTONES.p1);
+
+/**
+ * The story's OWN header, found by text rather than by `querySelector("h1")`
+ * (a measured trap): storybook keeps a HIDDEN `<h1 class="sb-nopreview_heading">`
+ * first in document order until the story mounts, so a bare `h1` lookup reads
+ * the placeholder - `textContent` is "No Preview", `innerText` is empty - and a
+ * poll against it never settles.
+ */
+const longTitleHeading = () =>
+	[...document.querySelectorAll("h1")].find((node) =>
+		(node.textContent ?? "").startsWith("Payments migration onto"),
+	);
+
+/**
+ * The play both long-title frames share: the header LEADS with the full title
+ * and it is NOT clipped. A wrapping block's `scrollWidth` stays inside its box,
+ * while the retired `truncate` pushed it past - so this pair is the claim's own
+ * falsifier, read off the live header rather than off the source.
+ */
+const longTitlePlay = (label: string) =>
+	playOnce(label, async () => {
+		await waitForDetail();
+		await poll(() => longTitleHeading() !== undefined, "the title header");
+		const heading = longTitleHeading();
+		if (!heading) throw new Error("the title header is missing");
+		if ((heading.textContent ?? "").trim() !== LONG_TITLE) {
+			throw new Error(
+				`the header does not lead with the title: ${JSON.stringify(heading.textContent)}`,
+			);
+		}
+		if (heading.scrollWidth > heading.clientWidth + 1) {
+			throw new Error(
+				`the title overflows its box instead of wrapping (${heading.scrollWidth} > ${heading.clientWidth})`,
+			);
+		}
+	});
+
+/**
+ * The long title at the wide viewport: the heading leads with it, wraps it
+ * whole, and the detail's scroller rides the view's edge (operator,
+ * 2026-09-30).
+ */
+export const DetailLongTitle: Story = {
+	render: () => (
+		<RouteTo path="/projects/p7">
+			{page({ projects: [LONG_TITLE_ROW], detail: LONG_TITLE_DETAIL })}
+		</RouteTo>
+	),
+	play: longTitlePlay("detail-long-title"),
+};
+
+/**
+ * The same frame at the window's narrow floor (800x900, the tab's own
+ * minimum): the wrap needs more lines, and the state the operator's own
+ * screenshot showed clipped sits in one hole.
+ */
+export const DetailLongTitleNarrow: Story = {
+	render: () => (
+		<RouteTo path="/projects/p7">
+			{page({ projects: [LONG_TITLE_ROW], detail: LONG_TITLE_DETAIL })}
+		</RouteTo>
+	),
+	play: longTitlePlay("detail-long-title-narrow"),
 };
 
 /**
@@ -1618,9 +1893,10 @@ export const BoardStatuses: Story = {
 };
 
 /**
- * An EMPTY column: only active and done hold rows, so the board draws its own
- * "No projects here." line — the state no populated story photographs (design
- * round 1, D8).
+ * EMPTY columns on the banded board: only active and done hold rows, so the
+ * other columns render as cells of quiet well ground under a `0` count — the
+ * "No projects here." copy retired with the bands rework (spec §4/§7: the
+ * count is the signal), and this story keeps the state photographed.
  */
 export const BoardEmptyColumns: Story = {
 	render: () =>
@@ -1948,10 +2224,12 @@ export const BoardColumnDropCommits: Story = {
 };
 
 /**
- * The board's sticky frame (design round 1, D2): the column header pins at 44
- * (`h-11`), the team straps pin at `top-11` beneath it, and the incoming strap
- * PUSHES the outgoing one out — the mechanics the round-1 finding (Q1/U1)
- * holds this story to, asserted before the shutter rather than described.
+ * The board's sticky frame, BANDED (the teams rework), held to the mechanics
+ * the sticky rounds measured: the column header row pins at 44 (`h-11`), the
+ * band headers pin at `top-11` beneath it as a constant `h-8`, the incoming
+ * band header PUSHES the outgoing one out (no stacked pair, no dead slot),
+ * and every cell of the pinned band is stretched to that band's tallest —
+ * numbers asserted before the shutter rather than described.
  */
 export const BoardSticky: Story = {
 	render: () =>
@@ -1961,32 +2239,45 @@ export const BoardSticky: Story = {
 			details: detailsFor(BOARD_LONG),
 		}),
 	play: playOnce("board-sticky", async () => {
-		const column = () =>
-			document.querySelector<HTMLElement>('[data-board-column="active"]');
-		await poll(() => column() !== null, "the active column");
-		const element = column();
-		if (!element) throw new Error("the active column never mounted");
-		const header = element.querySelector<HTMLElement>(
-			'[data-board-column-handle="active"]',
+		/*
+		 * Poll for the mounted board first: a play runs on mount, and the old
+		 * per-column play paid this wait for the same reason — a synchronous
+		 * query against a not-yet-painted tree reads an empty board.
+		 */
+		await poll(
+			() =>
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector('[data-board-column-handle="active"]') !==
+					null &&
+				document.querySelectorAll("[data-board-team]").length >= 2,
+			"the banded board (strip, active header, two band headers)",
 		);
 		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
-		const straps = element.querySelectorAll<HTMLElement>("[data-board-team]");
-		if (!header || !strip || straps.length < 2) {
+		const handle = document.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const bands = [
+			...document.querySelectorAll<HTMLElement>("[data-board-team]"),
+		];
+		if (!strip || !handle || bands.length < 2) {
 			throw new Error(
-				`the active column's header, strip or two straps are missing (straps ${straps.length})`,
+				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
-		/* The two offsets the groups are written against: h-11 = 44, top-11 = 44. */
-		const headerHeight = header.getBoundingClientRect().height;
+		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
+		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
 			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
 		}
-		if (getComputedStyle(straps[0]).top !== "44px") {
+		const bandHeaderHeight = bands[0].getBoundingClientRect().height;
+		if (Math.abs(bandHeaderHeight - 32) > 0.6) {
+			throw new Error(`the band header is ${bandHeaderHeight}px tall, not 32`);
+		}
+		if (getComputedStyle(bands[0]).top !== "44px") {
 			throw new Error(
-				`the strap's sticky offset is ${getComputedStyle(straps[0]).top}, not 44px`,
+				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 44px`,
 			);
 		}
-		const [first, second] = [straps[0], straps[1]];
 		const rel = (node: HTMLElement) =>
 			node.getBoundingClientRect().top - strip.getBoundingClientRect().top;
 		/*
@@ -1994,40 +2285,818 @@ export const BoardSticky: Story = {
 		 * where a static element would also happen to sit at the offset (the
 		 * identity the list's round-1 probe called out).
 		 */
-		strip.scrollTop += rel(second) - 44;
+		strip.scrollTop += rel(bands[1]) - 44;
 		strip.scrollTop += 20;
 		await poll(
-			() => Math.abs(rel(second) - 44) <= 2,
-			"the second strap to pin under the header",
+			() => Math.abs(rel(bands[1]) - 44) <= 2,
+			"the second band header to pin under the row",
 		);
 		/*
-		 * THE PUSH-OUT: the outgoing strap is fully displaced — its bottom at or
-		 * above the incoming strap's top — rather than parked on the same
-		 * offset with the incoming one covering it (round 1 measured strap0 at
-		 * 56.00 against strap1 at 56.42 with the labels clipping).
+		 * THE PUSH-OUT: the outgoing band header is fully displaced — its
+		 * bottom at or above the incoming header's top — rather than stacked
+		 * under it, which is what makes the handoff continuous (bands are
+		 * flush, so there is no empty slot between them either).
 		 */
-		const firstBottom = first.getBoundingClientRect().bottom;
-		const secondTop = second.getBoundingClientRect().top;
+		const firstBottom = bands[0].getBoundingClientRect().bottom;
+		const secondTop = bands[1].getBoundingClientRect().top;
 		if (firstBottom > secondTop + 0.5) {
 			throw new Error(
-				`the outgoing strap overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+				`the outgoing band header overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+			);
+		}
+		/*
+		 * THE WELL IS ONE RECTANGLE, CAPPED AT ONE SCREEN (operator refinement):
+		 * every cell of the band is the same height (the well's cross-stretch),
+		 * every cell is at most one screen minus the pinned row and this band's
+		 * header, and a column whose queue does not fit scrolls INSIDE its cell —
+		 * asserted per cell rather than eyeballed. The chain itself (wheel over a
+		 * non-scrollable column reaching the board) is the two scroll-chain
+		 * stories' subject; this is the geometry underneath it.
+		 */
+		const section = bands[1].closest("section");
+		const cells = [
+			...(section?.querySelectorAll<HTMLElement>("[data-board-cell]") ?? []),
+		];
+		if (cells.length === 0) throw new Error("the pinned band has no cells");
+		const heights = cells.map((cell) => cell.getBoundingClientRect().height);
+		const tallest = Math.max(...heights);
+		const shortest = Math.min(...heights);
+		if (tallest < 100 || tallest - shortest > 0.5) {
+			throw new Error(
+				`the band's cells are not equal height: shortest ${shortest.toFixed(2)}, tallest ${tallest.toFixed(2)}`,
+			);
+		}
+		const cap = strip.clientHeight - 92 + 1;
+		if (tallest > cap) {
+			throw new Error(
+				`the band is ${tallest.toFixed(2)} tall, past the one-screen cap ${cap.toFixed(2)}`,
+			);
+		}
+		const scrollable = cells.filter(
+			(cell) => cell.scrollHeight > cell.clientHeight + 1,
+		);
+		const quiet = cells.filter(
+			(cell) => cell.scrollHeight <= cell.clientHeight + 1,
+		);
+		if (scrollable.length === 0 || quiet.length === 0) {
+			throw new Error(
+				`expected both scrollable and quiet cells (scrollable ${scrollable.length}, quiet ${quiet.length})`,
+			);
+		}
+		/*
+		 * THE PIN HOLDS TO THE END OF THE SCROLL (design round 2, D2 = QA round
+		 * 1, Q2): the strip's child must stay content-height (`items-start`), or
+		 * the column row's sticky containing block ends after one screen and the
+		 * row drifts off — measured at −94.3px on the 6289px board. Scroll to
+		 * the very end and read the offset back; the row must still be pinned at
+		 * the scrollport's own top edge.
+		 */
+		strip.scrollTop = strip.scrollHeight;
+		await poll(
+			() => strip.scrollTop >= strip.scrollHeight - strip.clientHeight - 1,
+			"the strip at its scroll end",
+		);
+		const headerTop = document
+			.querySelector<HTMLElement>('[data-board-column="active"]')
+			?.getBoundingClientRect().top;
+		const stripTop = strip.getBoundingClientRect().top;
+		if (headerTop === undefined || Math.abs(headerTop - stripTop) > 0.5) {
+			throw new Error(
+				`the column row lost its pin at the scroll end: offset ${((headerTop ?? 0) - stripTop).toFixed(1)}`,
+			);
+		}
+		/*
+		 * THE TITLE DISPLAY, read off the live card: the fixture's titled row
+		 * shows its title as the primary line and its key as the muted
+		 * subtitle, while `data-project-name` stays the KEY (the addressable
+		 * hook) — the swap the finding asked for, asserted here rather than
+		 * trusted to the fixture.
+		 */
+		const titled = document.querySelector<HTMLElement>(
+			'[data-project-name="load-shed-1"]',
+		);
+		if (
+			!titled ||
+			!titled.textContent.includes("Load-shed hardening") ||
+			!titled.textContent.includes("load-shed-1")
+		) {
+			throw new Error(
+				"the titled card does not render title + key (the title display regressed)",
 			);
 		}
 	}),
 };
 
-/** The timeline: bars, milestone diamonds in all three states, today marker. */
+/**
+ * THE SCROLL CHAIN, case 1: the wheel sits over a column that CANNOT scroll
+ * (its queue fits) and the board must take the gesture — the next team comes
+ * into view instead of the wheel being swallowed by the column. The gesture is
+ * the rig's `wheel` option (trusted CDP input, the only kind that moves a
+ * scroll container); the entry's `expect` asserts the strip advanced before
+ * the shutter, so a trapped wheel fails the capture rather than photographing
+ * the settled board.
+ */
+export const BoardScrollChain: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+};
+
+/**
+ * THE SCROLL CHAIN, case 2: the wheel sits over a column that CAN scroll; the
+ * cell takes the input until its own edge, then the board continues. The
+ * entry's `expect` asserts both readings — the cell at its end AND the strip
+ * advanced — before the shutter.
+ */
+export const BoardScrollEdge: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+};
+
+/* ---------------------------------------------------------- board window -- */
+
+/**
+ * THE BOARD'S TIME WINDOW (feat/board-time-window). The ladder is a model
+ * table; these stories are the frames: one rung each, the default, the empty
+ * window and its recovery, the open panel, the narrow floor, and the
+ * store-empty state the control hides on. Every play asserts the frame's own
+ * mechanics - the visible card set, the control's words, the persisted token
+ * - against the live page, the way #648's board plays do.
+ */
+
+/**
+ * The default: nothing stored, the 7d rung, the three rows inside seven days
+ * (and not the 12d row).
+ */
+export const BoardWindowPopulated: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+		}),
+	play: playOnce("board-window-populated", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="cutover-probe"]') !== null,
+			"the board's default window",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		if (!trigger.textContent?.includes("Last 7 days")) {
+			throw new Error(
+				`the window control does not read "Last 7 days": ${trigger.textContent ?? "(nothing)"}`,
+			);
+		}
+		expectBoardKeys(
+			["cutover-probe", "queue-tune", "hotfix-drill"],
+			"the default 7d window",
+		);
+	}),
+};
+
+/**
+ * The 24h rung - and the R5 frame: the `hotfix-drill` card is kept by an
+ * `updated_at` of one hour while its own PROGRESS line reads "reported 12d
+ * ago", so a filter reading the printed age would drop it and this play
+ * fails on the absence.
+ */
+export const BoardWindow24h: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+			window: "24h",
+		}),
+	play: playOnce("board-window-24h", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="hotfix-drill"]') !== null,
+			"the 24h window",
+		);
+		expectBoardKeys(["cutover-probe", "hotfix-drill"], "the 24h window");
+		/*
+		 * THE STORED RUNG IS WHAT THIS FRAME IS A PICTURE OF (UX round 1): the
+		 * story sets the token and `page()` clears the key for every story that
+		 * does NOT name one, so the two paths are a pair - a stored `24h` reads
+		 * back as `24h` here, and a cleared key reads as the 7d default in
+		 * `board-window-populated`. Without this half, a regression that ignored
+		 * the store would still paint the right board from the story's own prop.
+		 */
+		if (localStorage.getItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY) !== "24h") {
+			throw new Error("the 24h rung was not written to the store");
+		}
+		const hotfix = need<HTMLElement>('[data-project-name="hotfix-drill"]');
+		if (!hotfix.textContent?.includes("reported 12d ago")) {
+			throw new Error(
+				"the R5 card does not print its 12d-old progress line - the fixture no longer discriminates",
+			);
+		}
+	}),
+};
+
+/**
+ * The 30d rung: the 12d row arrives (and the 45d row is still out). The
+ * four statuses across four columns keep `validation` empty at every rung.
+ */
+export const BoardWindow30d: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+			window: "30d",
+		}),
+	play: playOnce("board-window-30d", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="schema-deprecation"]') !==
+				null,
+			"the 30d window",
+		);
+		expectBoardKeys(
+			["cutover-probe", "queue-tune", "schema-deprecation", "hotfix-drill"],
+			"the 30d window",
+		);
+	}),
+};
+
+/** The 90d rung: the 45d row arrives, the 200d row is still out. */
+export const BoardWindow90d: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+			window: "90d",
+		}),
+	play: playOnce("board-window-90d", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="fallback-paths"]') !== null,
+			"the 90d window",
+		);
+		expectBoardKeys(
+			[
+				"cutover-probe",
+				"queue-tune",
+				"schema-deprecation",
+				"fallback-paths",
+				"hotfix-drill",
+			],
+			"the 90d window",
+		);
+	}),
+};
+
+/** The `all` rung: no predicate at all, all six rows, and the control's own words. */
+export const BoardWindowAll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+			window: "all",
+		}),
+	play: playOnce("board-window-all", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="vendor-renewal"]') !== null,
+			"the all-time board",
+		);
+		expectBoardKeys(
+			[
+				"cutover-probe",
+				"queue-tune",
+				"schema-deprecation",
+				"fallback-paths",
+				"vendor-renewal",
+				"hotfix-drill",
+			],
+			"the all-time window",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		if (!trigger.textContent?.includes("All time")) {
+			throw new Error('the control does not read "All time"');
+		}
+	}),
+};
+
+/**
+ * The empty window: every row older than the default 7d, so the board's slot
+ * carries "Nothing changed in the last 7 days." with the control still above
+ * it - the state whose heading names the window through the ladder's own
+ * phrase.
+ */
+export const BoardWindowEmpty: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_AGED,
+			details: detailsFor(BOARD_WINDOW_AGED),
+		}),
+	play: playOnce("board-window-empty", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Nothing changed in the last 7 days.",
+				),
+			"the empty-window heading",
+		);
+		need('[data-tour-tag="projects-board-window"]');
+		if (document.querySelector("[data-project-name]") !== null) {
+			throw new Error("a card is on the board under the empty-window state");
+		}
+		if (
+			!(document.body.textContent ?? "").includes(
+				"Older projects are hidden by the window.",
+			)
+		) {
+			throw new Error("the empty-window body copy is missing");
+		}
+		const action = [...document.querySelectorAll("button")].find((button) =>
+			button.textContent?.includes("Show all time"),
+		);
+		if (!action) throw new Error("the Show all time action is missing");
+	}),
+};
+
+/**
+ * The empty window at 24h: the same state one rung down, where the heading
+ * must read the RUNG's phrase ("Nothing changed in the last 24 hours.") rather
+ * than the default's - the frames are the ladder's own proof that the sentence
+ * follows the window and not the state.
+ */
+export const BoardWindowEmpty24h: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_AGED,
+			details: detailsFor(BOARD_WINDOW_AGED),
+			window: "24h",
+		}),
+	play: playOnce("board-window-empty-24-h", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Nothing changed in the last 24 hours.",
+				),
+			"the 24h empty-window heading",
+		);
+		if (document.querySelector("[data-project-name]") !== null) {
+			throw new Error("a card is on the board under the 24h empty window");
+		}
+	}),
+};
+
+/**
+ * The empty window at 90d: the fixture is the rows older than NINETY days, so
+ * the heading reads "…the last 90 days." while the same board at 24h and 7d
+ * still holds cards. The two frames together are what makes the phrase's
+ * provenance visible.
+ */
+export const BoardWindowEmpty90d: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ANCIENT,
+			details: detailsFor(BOARD_WINDOW_ANCIENT),
+			window: "90d",
+		}),
+	play: playOnce("board-window-empty-90-d", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Nothing changed in the last 90 days.",
+				),
+			"the 90d empty-window heading",
+		);
+		if (document.querySelector("[data-project-name]") !== null) {
+			throw new Error("a card is on the board under the 90d empty window");
+		}
+	}),
+};
+
+/**
+ * THE WINDOW'S OWN DIMENSION, said in words (design round 1, D1). The control
+ * carries a tooltip naming what it filters on and that older rows are hidden,
+ * and the play opens it BOTH ways - hover for the pointer, focus for the
+ * keyboard, which is the state the shutter lands on - and reads the same
+ * sentence the component exports, so the frame cannot drift from the copy.
+ */
+export const BoardWindowHint: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+		}),
+	play: playOnce("board-window-hint", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="projects-board-window"]') !==
+				null,
+			"the window control",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		const panelText = () =>
+			document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? "";
+		/*
+		 * BOTH DOORS, in the order a reader meets them: the pointer opens the
+		 * hint (hover), it LEAVES WITH THE POINTER (the call site passes
+		 * `disableHoverableContent` for the reason QA round 1 recorded - the
+		 * primitive's default waits for the pointer to enter a panel that is
+		 * `pointer-events: none`, so the panel outlived the gesture by tens of
+		 * seconds), and the keyboard opens it again by focusing the control, which
+		 * is the state the shutter lands on.
+		 */
+		await userEvent.hover(trigger);
+		await poll(
+			() => panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip on hover",
+		);
+		await userEvent.unhover(trigger);
+		await poll(
+			() => !panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip to close when the pointer leaves",
+		);
+		trigger.focus();
+		await poll(
+			() => panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip on focus",
+		);
+	}),
+};
+
+/**
+ * The recovery: the same empty window, and "Show all time" widens and
+ * persists `all` - the board fills, the control follows, the store holds the
+ * token.
+ */
+export const BoardWindowWidened: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_AGED,
+			details: detailsFor(BOARD_WINDOW_AGED),
+		}),
+	play: playOnce("board-window-widened", async () => {
+		await poll(
+			() => (document.body.textContent ?? "").includes("Show all time"),
+			"the empty-window action",
+		);
+		const action = [...document.querySelectorAll("button")].find((button) =>
+			button.textContent?.includes("Show all time"),
+		);
+		if (!action) throw new Error("the Show all time action is missing");
+		await userEvent.click(action);
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="vendor-renewal"]') !== null,
+			"the board to fill at all time",
+		);
+		expectBoardKeys(
+			["schema-deprecation", "fallback-paths", "vendor-renewal"],
+			"the widened board",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		if (!trigger.textContent?.includes("All time")) {
+			throw new Error("the control did not follow the recovery");
+		}
+		if (localStorage.getItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY) !== "all") {
+			throw new Error("the recovery did not persist the `all` token");
+		}
+		/*
+		 * AND THE HINT IS GONE AT `all` (design round 2, D6/D7): the sentence says
+		 * older rows are HIDDEN, and at the full ladder nothing is - the panel was
+		 * still claiming a filter the board had stopped applying, on the very
+		 * control "Show all time" had just handed the caret back to. Asserted as
+		 * the ABSENCE, through both doors, after a wait longer than the
+		 * primitive's open delay: an unconditional copy cannot come back unnoticed.
+		 */
+		const control = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		const panel = (): string =>
+			document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? "";
+		await userEvent.hover(control);
+		await new Promise((resolve) => setTimeout(resolve, 1200));
+		if (panel().includes(BOARD_WINDOW_HINT)) {
+			throw new Error("the window hint still claims rows are hidden at `all`");
+		}
+		control.focus();
+		await new Promise((resolve) => setTimeout(resolve, 1200));
+		if (panel().includes(BOARD_WINDOW_HINT)) {
+			throw new Error(
+				"the window hint claims rows are hidden at `all` on focus",
+			);
+		}
+	}),
+};
+
+/**
+ * The open panel: five rungs, the check on the current one, the shipped
+ * Select panel - the frame the design round reads to confirm the ladder's
+ * labels land in the order the model owns.
+ */
+export const BoardWindowMenuOpen: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+		}),
+	play: playOnce("board-window-menu-open", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="projects-board-window"]') !==
+				null,
+			"the window control",
+		);
+		await userEvent.click(need('[data-tour-tag="projects-board-window"]'));
+		await poll(
+			() => document.querySelectorAll('[role="option"]').length === 5,
+			"the open panel's five rungs",
+		);
+		const checked = document.querySelector(
+			'[role="option"][data-state="checked"]',
+		);
+		if (!checked?.textContent?.includes("Last 7 days")) {
+			throw new Error(
+				`the panel does not check the current window: ${checked?.textContent ?? "(none checked)"}`,
+			);
+		}
+		const labels = [...document.querySelectorAll('[role="option"]')].map(
+			(option) => option.textContent?.trim(),
+		);
+		for (const label of [
+			"Last 24 hours",
+			"Last 7 days",
+			"Last 30 days",
+			"Last 90 days",
+			"All time",
+		]) {
+			if (!labels.some((text) => text === label)) {
+				throw new Error(`the panel is missing "${label}"`);
+			}
+		}
+	}),
+};
+
+/**
+ * The narrow floor (800x900): the fixed-width trigger neither shrivels nor
+ * wraps - it holds the 144px the memo pins (the primitive's base is `w-full`,
+ * so this frame is the override's own proof), its label fits untruncated, and
+ * it stays on the switcher's own line.
+ */
+export const BoardWindowNarrow: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+		}),
+	play: playOnce("board-window-narrow", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="projects-board-window"]') !==
+				null,
+			"the window control",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		const width = trigger.getBoundingClientRect().width;
+		if (Math.abs(width - 144) > 1) {
+			throw new Error(
+				`the trigger is ${width}px wide, not the fixed 144 (the w-full override regressed)`,
+			);
+		}
+		const label = trigger.querySelector<HTMLElement>("span");
+		if (!label) throw new Error("the trigger has no label span");
+		if (label.scrollWidth > label.clientWidth + 0.5) {
+			throw new Error("the trigger's label is truncated");
+		}
+		const switcher = need<HTMLElement>(
+			'[data-tour-tag="projects-view-switcher"]',
+		);
+		if (
+			Math.abs(
+				switcher.getBoundingClientRect().top -
+					trigger.getBoundingClientRect().top,
+			) > 2
+		) {
+			throw new Error(
+				"the switcher row wrapped: the control left the switcher's line",
+			);
+		}
+	}),
+};
+
+/**
+ * The store-empty state: "No projects yet." with the window control ABSENT -
+ * the visibility rule's other half (a window over nothing has nothing to
+ * widen).
+ */
+export const BoardWindowNoProjects: Story = {
+	render: () => page({ view: "board" }),
+	play: playOnce("board-window-no-projects", async () => {
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects yet."),
+			"the store-empty state",
+		);
+		if (
+			document.querySelector('[data-tour-tag="projects-board-window"]') !== null
+		) {
+			throw new Error(
+				"the window control is visible over the store-empty state",
+			);
+		}
+	}),
+};
+
+/* --------------------------------------------------------- title tooltip -- */
+
+/**
+ * The tooltip fixture: one title that outruns a board column and one that
+ * fits, so the story can assert BOTH halves of the rule - the clipped title
+ * gets the reveal and the tab stop; the whole one gets neither.
+ */
+const TITLE_LONG_ROW = project("t1", "gateway-migration", {
+	title: "Split the payments gateway onto the new reconciliation service",
+	team: "platform",
+	updated_at: FIXTURE_NOW_MS / 1000 - 3 * HOUR_S,
+	progress_stale: false,
+	progress_updated_at: FIXTURE_NOW_MS / 1000 - 3 * HOUR_S,
+});
+const TITLE_SHORT_ROW = project("t2", "dashboard-qa", {
+	title: "Dashboard QA",
+	team: "platform",
+	updated_at: FIXTURE_NOW_MS / 1000 - 4 * HOUR_S,
+	progress_stale: false,
+	progress_updated_at: FIXTURE_NOW_MS / 1000 - 4 * HOUR_S,
+});
+
+/**
+ * A clipped card title reveals its full text - on hover AND on keyboard focus
+ * (operator, 2026-09-30). The play proves the state first (the long span is
+ * really clipped, the short one is not), then opens the reveal BOTH ways -
+ * `userEvent.hover` for the pointer path, then focus for the keyboard path,
+ * which is the state the shutter lands on - and checks the short-titled card
+ * carries neither the panel nor the extra tab stop.
+ */
+export const BoardTitleTooltip: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [TITLE_LONG_ROW, TITLE_SHORT_ROW],
+			details: detailsFor([TITLE_LONG_ROW, TITLE_SHORT_ROW]),
+		}),
+	play: playOnce("board-title-tooltip", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-project-title="gateway-migration"]') !==
+				null,
+			"the long-titled card",
+		);
+		const long = need<HTMLElement>('[data-project-title="gateway-migration"]');
+		const short = need<HTMLElement>('[data-project-title="dashboard-qa"]');
+		/* The story photographs the state the feature exists for. */
+		if (long.scrollWidth - long.clientWidth <= 0.5) {
+			throw new Error(
+				"the long title is not clipped - this story would prove nothing",
+			);
+		}
+		if (short.scrollWidth - short.clientWidth > 0.5) {
+			throw new Error(
+				"the short title is clipped - the fixture no longer discriminates",
+			);
+		}
+		if (long.tabIndex !== 0) {
+			throw new Error("the clipped title has no tab stop");
+		}
+		if (short.hasAttribute("tabindex")) {
+			throw new Error("the unclipped title grew a tab stop");
+		}
+		/* The pointer path: hover the clipped title, the panel appears. */
+		await userEvent.hover(long);
+		await poll(
+			() =>
+				(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip on hover",
+		);
+		/*
+		 * The keyboard path, which is the state the shutter lands on: focus alone
+		 * must open the panel (Radix opens on focus as well as hover).
+		 */
+		/*
+		 * The pointer path, then THE PANEL MUST LEAVE WITH THE POINTER (QA round 1,
+		 * Q1): the primitive's default keeps the panel painted after the trigger
+		 * is left (measured 12s+, because a close waits for the pointer to enter a
+		 * panel that is `pointer-events: none`), which is why this call site
+		 * passes `disableHoverableContent`. The frame that proves it is the ABSENCE
+		 * of the panel after `unhover`, so it is asserted before the keyboard half
+		 * opens it again.
+		 */
+		await userEvent.hover(long);
+		await poll(
+			() =>
+				(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip on hover",
+		);
+		await userEvent.unhover(long);
+		await poll(
+			() =>
+				!(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip to close when the pointer leaves the title",
+		);
+		/*
+		 * The keyboard path, which is the state the shutter lands on: focus alone
+		 * must open the panel (Radix opens on focus as well as hover), so the
+		 * close-on-leave above did not disable dismissal.
+		 */
+		long.focus();
+		await poll(
+			() =>
+				(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip on focus",
+		);
+	}),
+};
+
+/**
+ * The timeline: bars, milestone diamonds in all three states, today marker.
+ *
+ * ONE ROW CARRIES A TITLE (agent review R1-1): the titled copy is story-local
+ * — no other surface's fixture or frame moves with it — and the play asserts
+ * the row reads the title while `data-project-name` keeps the key, the same
+ * split the board and the list assert on their own titled fixtures.
+ */
 export const Timeline: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="without dates" />
 			{page({
 				view: "timeline",
-				projects: THREE,
+				projects: [
+					{ ...THREE[0], title: "Payments migration" },
+					THREE[1],
+					THREE[2],
+				],
 				details: detailsFor(THREE),
 			})}
 		</>
 	),
+	play: playOnce("timeline", async () => {
+		/*
+		 * ROWS BIND `project.name` (agent review R1-1, QA round 1, Q1): the row
+		 * hook is the project's NAME — `payments-migration` — not its id; the
+		 * first cut of this poll looked for `p1`, which no row ever carries, so
+		 * the assertion never ran. It polls the name now and reads it back.
+		 */
+		await poll(
+			() =>
+				document.querySelector('[data-project-name="payments-migration"]') !==
+				null,
+			"the titled timeline row",
+		);
+		const row = document.querySelector<HTMLElement>(
+			'[data-project-name="payments-migration"]',
+		);
+		if (!row || !row.textContent.includes("Payments migration")) {
+			throw new Error(
+				"the timeline's titled row does not show its title (R1-1's case)",
+			);
+		}
+		if (row.dataset.projectName !== "payments-migration") {
+			throw new Error(
+				"the timeline row's data-project-name is not the key anymore",
+			);
+		}
+	}),
 };
 
 /** No project carries a date: the honest empty axis, not fabricated rows. */

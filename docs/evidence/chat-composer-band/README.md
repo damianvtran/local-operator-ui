@@ -199,3 +199,20 @@ entry, whose `why` states it.
 - **No interaction of any kind.** No chip was clicked and nothing was typed: the
   draft in `draft-held` is written to the composer's own store, the way the app
   writes it, because there is no `draft` prop to pass.
+
+## The shared-composer lift re-captured this set (2026-09-29)
+
+All eight directories here, both palettes, were re-taken at `d227214c13`, the
+head of the shared-composer lift (the composer assembly moved to
+`shared/components/composer/message-input.tsx`), in the same pair as
+`../chat-message-input/README.md`'s section of that name: 10 of the 16 frames
+came back byte-identical against the lift's base, and the six that differ do so
+only in the tips row's phase or by sub-pixel paint at most 17 of 255 in one
+channel. `column-floor` (light) is the tip phase: the before half crossed this
+ring's first 12 s tick and shows a random pooled tip, where both after runs -
+and the frames committed here - show the pinned opening entry this README's
+"Which tip the frames show" documents. `long-labels` (dark and light),
+`reduced-motion` (light), `small-view` (light; a caret) and
+`empty-chat-credential` (dark) differ only at edges. No chip, colour, spacing or
+count moves. The command pair and the full classification are in the sibling
+section.

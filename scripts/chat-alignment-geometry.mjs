@@ -69,6 +69,17 @@ const STORIES = [
 	/* The wide case, where a max-width cap leaves the most room on the table
 	   and the asymmetry the operator saw is largest. */
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
+	/*
+	 * THE ANSWER ACTION ROW'S OWN RAIL (#695), which is the one claim in that
+	 * change a still cannot settle: the row sits at the ANSWER'S left edge, and
+	 * "the same edge" is a number rather than an impression - a 0px and a 4px
+	 * inset look equally plausible in a frame. Both states are measured because
+	 * the line carries different things in each: `rest` has the actions and the
+	 * caption in the same line, and `bar-suppressed` has the actions alone while
+	 * the turn bar owns the numbers and the stamp.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -176,11 +187,62 @@ const PROBE = `(() => {
 
 		const prose = box(proseEl);
 		const toolRow = box(toolEl);
+		/*
+		 * The answer's action row (#695): the toolbar's own box, its first button,
+		 * and the stamp at the line's far end. railDelta is the claim - the row's
+		 * left edge against the prose's, which must be the SAME edge.
+		 */
+		const actionsEl = scope.querySelector("[data-lo-answer-actions]");
+		const actions = box(actionsEl);
+		const firstButton = box(
+			actionsEl ? actionsEl.querySelector("button") : null,
+		);
+		const actionsBox = actions
+			? {
+					toolbar: actions,
+					firstButton,
+					buttons: actionsEl.querySelectorAll("button").length,
+					restInk: (() => {
+						const b = actionsEl.querySelector("button");
+						return b ? getComputedStyle(b).color : null;
+					})(),
+					railDelta: prose ? round(actions.left - prose.left) : null,
+				}
+			: null;
 		out.push({
 			prose,
 			toolRow,
 			glyph: box(glyphEl),
 			content,
+			actions: actionsBox,
+			line: (() => {
+				/* The foot line the row rides: its box and height are what the
+				   accepted ~+20px per finished turn is a claim about. */
+				const el = actionsEl ? actionsEl.parentElement : null;
+				const b = box(el);
+				if (!b || !el) return null;
+				/*
+				 * The caption span beside the actions: a text-meta span in a
+				 * flex items-center line. Its own box is the height this line HAD
+				 * before the actions joined it, since the line box is the tallest
+				 * child's box and that child was the caption.
+				 */
+				const caption = [...el.querySelectorAll("span")].find(
+					(s) => !s.closest("[data-lo-answer-actions]"),
+				);
+				return {
+					...b,
+					height: round(el.getBoundingClientRect().height),
+					captionHeight: caption
+						? round(caption.getBoundingClientRect().height)
+						: null,
+					stampLeft: (() => {
+						const stamp = el.querySelector("time, [data-lo-turn-stamp]");
+						const sb = box(stamp ?? null);
+						return sb ? sb.left : null;
+					})(),
+				};
+			})(),
 			/* The two numbers the report is about. */
 			leftDelta: prose && toolRow ? round(prose.left - toolRow.left) : null,
 			rightDelta: prose && toolRow ? round(toolRow.right - prose.right) : null,
@@ -302,7 +364,8 @@ const main = async () => {
 		/* One settled frame after layout, so the rects are post-reflow. */
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
-			expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+			expression:
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 		});
 		const { result } = await cdp.send("Runtime.evaluate", {
 			returnByValue: true,
