@@ -772,7 +772,7 @@ export const decide = (
 		/*
 		 * Rule 6 is the one door this refusal leaves open, and it is narrow on
 		 * purpose. A durable page that landed with its rows still held back is a
-		 * reveal the reader has been told about (the slot says "N earlier messages
+		 * reveal the reader has been told about (the slot says "Earlier history
 		 * above - scroll up to load") and cannot see: measured, a page landed at
 		 * `rows 200 -> 200, hiddenRows 0 -> 60` and then 62 further clamped notches
 		 * produced nothing at all, because the widen that would show those rows

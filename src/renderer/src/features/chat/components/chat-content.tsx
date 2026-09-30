@@ -1958,6 +1958,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
 								/*
+								 * The session's own transport truth, and the SAME predicate the
+								 * transcript above hands its own slot (`status !== "live"`). The
+								 * child reader's page is a read-only GET with no stream of its
+								 * own, so its older-history row can only know this by being told,
+								 * and one transport must not be read two ways in one window
+								 * (design round 1, D2). A window with no canonical session has
+								 * no stream to be down — no child reader can be open in it —
+								 * and reads as live.
+								 */
+								olderTransportDown={
+									(canonical?.view.status ?? "live") !== "live"
+								}
+								/*
 								 * The pane's own width, in pixels: the box it is actually drawn in
 								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
 								 * preference the wrapper asks for. The two differ whenever the row

@@ -381,6 +381,24 @@ export type CanonicalTranscriptProps = {
 	onLoadOlderOutcome?: () => Promise<LoadOlderOutcome>;
 	/** The session hook's single statement that the last ask failed. */
 	olderFailed?: boolean;
+	/**
+	 * The older-history row's transport truth, where the caller knows it better
+	 * than `status` does.
+	 *
+	 * The slot drops its retry while the transport is down, because a retry that
+	 * cannot succeed must not be painted beside the transcript's own notice
+	 * (`older-history-slot.tsx`). For a pane whose rows came from the session's
+	 * own stream, `status` is that answer and stays it; this prop exists for a
+	 * caller painting these rows from something else. The child reader's page is
+	 * a read-only GET whose own `status` is a static `"live"` (there is no stream
+	 * of ITS to be connecting or reconnecting on), so without it a child's failed
+	 * page offers a `Try again` that cannot work while the parent's identical
+	 * failure goes quiet — the asymmetry design round 1's D2 measured.
+	 *
+	 * Omitted, nothing changes: the row reads `status !== "live"` exactly as it
+	 * always has.
+	 */
+	olderTransportDown?: boolean;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -2020,6 +2038,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	onLoadOlder,
 	onLoadOlderOutcome,
 	olderFailed,
+	olderTransportDown,
 	containerRef,
 	isSmallView,
 	status,
@@ -3548,12 +3567,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						{transcript.records.length > 0 && !stale && !missing && (
 							<OlderHistorySlot
 								state={slotState}
-								hiddenRows={hidden}
 								// A retry cannot succeed while the transport is down, and the
 								// transcript's own notice below already explains why. The slot
 								// drops its gesture hint rather than stacking a second claim on
-								// top of that one.
-								transportDown={status !== "live"}
+								// top of that one. `olderTransportDown` is the same assertion
+								// for a caller whose rows did NOT come from this session's
+								// stream (the child reader's page): it is the caller's own
+								// status, so a pane with no stream of its own is not read as a
+								// live one by default.
+								transportDown={olderTransportDown ?? status !== "live"}
 								onLoadOlder={requestOlder}
 							/>
 						)}

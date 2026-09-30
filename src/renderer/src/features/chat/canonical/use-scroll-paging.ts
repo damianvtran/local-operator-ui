@@ -219,6 +219,10 @@ export function useScrollPaging({
 	 *   -> "Loading earlier messages" -> "100 earlier messages above - scroll up
 	 *   to load" -> "40 earlier messages above - scroll up to load"
 	 *
+	 * (The windowed sentence carries no count any more — design round 1, D1 of the
+	 * loader-continuity remediation — so the two counting strings below are what
+	 * the row then read, not what it reads now.)
+	 *
 	 * The two sentences in the middle of that are the pre-fix instruction this
 	 * whole change exists to remove, painted at a reader who is pinned at the hard
 	 * top mid-push and can act on neither: they say "scroll up to load" while the

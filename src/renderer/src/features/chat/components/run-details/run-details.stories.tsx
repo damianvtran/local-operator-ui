@@ -209,6 +209,13 @@ const RunPane = ({
 				}
 				pulses={pulses}
 				childrenOpenable={childrenOpenable}
+				/*
+				 * A story fixture has no session stream behind it to be down, so the
+				 * board paints the transport-up case: the child's failed row keeps its
+				 * retry. `docs/evidence/child-reader-tail-follow` and the rig that
+				 * writes it drive the down case from the real thing.
+				 */
+				olderTransportDown={false}
 				paneWidth={width}
 				readerChildId={readerChildId}
 				previewPage={previewPage}
