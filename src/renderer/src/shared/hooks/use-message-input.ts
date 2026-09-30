@@ -219,6 +219,39 @@ export const retireDraftApplies = (
 ): boolean => persisted === "" || persisted === submitted;
 
 /**
+ * WHETHER THE HISTORY WALK MAY ENGAGE FROM THIS COMPOSER'S CONTENT (issue #673).
+ *
+ * The Slack/Discord convention this box means to follow: the arrow reaches for
+ * history only from an EMPTY composer. What shipped instead gated the recall on
+ * the CARET's line, so any caret on line 1 mid-edit took the branch - `prevent`
+ * ate the native caret move, the draft was swapped for a recalled message, and
+ * recovering the sentence meant a full walk round trip, which is why the
+ * misfire read as data loss.
+ *
+ * With ANY content the arrow is the textarea's own caret movement, at every
+ * caret position: this predicate reads the CONTENT alone, so there is no caret
+ * argument for a caller to get subtly wrong. The walk, once engaged, is a
+ * different question and is asked elsewhere: the box then HOLDS a recalled
+ * message (non-empty by construction), so a rule reading the content would
+ * block the very walk it exists to protect.
+ *
+ * Pure and exported so the rule is asserted without a DOM, in the shape
+ * `retireDraftApplies` above takes.
+ *
+ * A DELIBERATE DIVERGENCE FROM THE HARNESS, stated here because the harness
+ * still does the other thing: the TUI's composer gates the same key on the
+ * CARET (`editor.py`'s `_caret_at_top_edge()`) and keeps recall-with-draft,
+ * stashing the draft on the way out. The desktop instead requires the EMPTY
+ * box — the convention issue #673 asks for, matching Slack and Discord, where
+ * history is reachable from a blank composer so a half-written prompt is never
+ * swapped or stashed without the user meaning it. Two consequences that follow
+ * from reading the VALUE rather than its trim: a whitespace-only box counts as
+ * content (one character), so a stray space blocks recall until the box is
+ * truly empty; and the walk's stash can now only ever hold `""`.
+ */
+export const historyRecallEngages = (value: string): boolean => value === "";
+
+/**
  * The boundary between a draft and a transcript that lands on it (design round
  * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
  * on the exact landing path this change re-publishes, and the joined word
@@ -276,8 +309,15 @@ export const COMPOSER_PLACEHOLDER = {
 	 * wrong thing. Read before every other reading, because none of them can be
 	 * true at once with a live take the user started: the recording owns the
 	 * press until it ends.
+	 *
+	 * The KEYS are not named here. This sentence shows only while the field is
+	 * EMPTY, and naming them made the empty-field state say them TWICE - once
+	 * here and once in the recording block's own label row, which is the copy
+	 * that survives a draft (agent/design/UX review round 1, F1/D1/U1). The
+	 * label row is the one, stable place for the affordance; this placeholder
+	 * keeps only the state's name.
 	 */
-	recording: "Recording. Enter confirms · Esc cancels",
+	recording: "Recording",
 	waiting: "Steer the agent. Enter sends now · Esc stops",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
@@ -1205,7 +1245,21 @@ export const useMessageInput = ({
 				return;
 			}
 			if (!submittedMessages.length) return;
-			if (e.key === "ArrowUp" && isCursorAtFirstLine()) {
+			if (e.key === "ArrowUp") {
+				/*
+				 * THE ENGAGEMENT RULE IS THE CONTENT'S, NOT THE CARET'S (issue #673).
+				 * A recall INITIATES only from an empty composer; a draft never takes it,
+				 * at any caret position, so `preventDefault` cannot eat a caret move or
+				 * swap the user's sentence out (the rule and its reasoning live on
+				 * `historyRecallEngages`). The first-line test below is the WALK's, not
+				 * the engagement's: once engaged the box holds recalled text, and the
+				 * arrow keeps walking from the first line exactly as it always has.
+				 */
+				if (historyIndex === null) {
+					if (!historyRecallEngages(inputValue)) return;
+				} else if (!isCursorAtFirstLine()) {
+					return;
+				}
 				e.preventDefault();
 				if (historyIndex === null) {
 					draftMessageRef.current = inputValue;

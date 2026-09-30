@@ -54,7 +54,12 @@ import { runsOf } from "./transcript-rows";
  */
 export const LOADER_SETTLE_FRAMES = 6;
 
-const nextFrame = (): Promise<void> =>
+/*
+ * Exported because the jump's anchor settle (`reveal-record.ts`, issue #680)
+ * waits on the same frame boundary: two private copies of "one rAF" would be
+ * two answers to what a settle frame is.
+ */
+export const nextFrame = (): Promise<void> =>
 	new Promise((resolve) => {
 		window.requestAnimationFrame(() => {
 			resolve();

@@ -111,6 +111,7 @@ import {
 	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
 import {
 	SpeechToTextPriority,
@@ -297,6 +298,26 @@ import { RadientSessionIssueCallout } from "@features/chat/components/radient-se
 import { ReplyPreview } from "@features/chat/components/reply-preview";
 import type { RunDetails } from "@features/chat/components/run-details";
 import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom-button";
+/*
+ * The `$` layer, beside the `@` layer above and for the same reasons: the
+ * grammar and the expansion are separate owners (`skill-invocation.ts` is the
+ * port of `invoke.py`, `skill-list` reads the catalogue), and both are bundled
+ * and executed by `scripts/skill-list.test.mjs` / `skill-invocation.test.mjs`,
+ * which component modules cannot be.
+ */
+import { skillCompletionFor } from "@features/chat/components/skill-completion";
+import {
+	parseSkillInvocation,
+	renderSkillInvocation,
+	skillBodyHasContent,
+} from "@features/chat/components/skill-invocation";
+import {
+	type SkillCatalogRow,
+	SkillSuggestionsPopup,
+	handleSkillKeyDown,
+	readSkillBody,
+	useSkillCompletion,
+} from "@features/chat/components/skill-picker";
 import { shouldRunArgumentAction } from "@features/chat/components/slash-argument-rows";
 import {
 	type CompletionRow,
@@ -2214,6 +2235,33 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[],
 		);
 
+		/*
+		 * THE SKILL VOCABULARY, READ AT THE PRESS RATHER THAN AT RENDER (issue #664).
+		 * A ref, not a dep, because the composer's send memo has to be created BEFORE
+		 * `useMessageInput` while the vocabulary hook is created AFTER it — the hook
+		 * reads `newMessage` — so a render-time read would be one vocabulary STALE
+		 * for exactly the send that follows a query landing. The effect below
+		 * refreshes it whenever the answer changes, and the send reads it at call
+		 * time: the vocabulary in force at the press.
+		 */
+		const skillNamesRef = useRef<string[]>([]);
+
+		/*
+		 * THE `$` READ'S CLIENT, ON THE LIFT'S TERMS (issue #664). The composer now
+		 * mounts in documents that carry no `QueryClientProvider` (the mini view's),
+		 * where `useQueryClient()` cannot be called at all — the same reason
+		 * `useDesktopCapabilities` and the pickers read through this hook. The
+		 * expansion's body read is IMPERATIVE (`readSkillBody` -> `fetchQuery`), so
+		 * `enabled: provided` is not expressible there and the gate is explicit:
+		 * with no provider the vocabulary is empty anyway (the list's capabilities
+		 * read is off too), and `skillReadProvided` keeps the read off the inert
+		 * fallback client as well, so nothing can fetch on a document that mounts
+		 * no cache. Fail-closed: an unexpandable `$name` is sent as prose, which is
+		 * what a host with no cache could ever have rendered.
+		 */
+		const { client: skillReadClient, provided: skillReadProvided } =
+			useOptionalQueryClient();
+
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
 				/*
@@ -2329,10 +2377,76 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				if (carried.unconfirmed.length > 0)
 					showWarningToast(unconfirmedNotice(carried.unconfirmed));
+				/*
+				 * THE `$skill` EXPANSION (issue #664), resolved on the SUBMITTED line
+				 * and applied where the message leaves. Only a FIRST-TOKEN `$name`
+				 * matching a DISCOVERED skill fires — `parseSkillInvocation` is the
+				 * harness's own recognition rule, and the vocabulary is the
+				 * `skills.list` answer with no hard-coded names — and the payload it
+				 * injects is `invoke.py`'s expansion character-for-character
+				 * (`skill-invocation.ts` owns that half, escape order included).
+				 *
+				 * WHAT KEEPS A PASTED DOCUMENT FROM FIRING IS THE ANCHOR, not a
+				 * typed-vs-pasted marker: the rule reads the FIRST token of what is
+				 * being submitted, so a document whose later line says `$research …`
+				 * cannot fire — the harness's own stated guarantee
+				 * (`command_picker.py`). A paste whose content IS the first line
+				 * behaves exactly as typing it does, which is also the harness's
+				 * behaviour (`$skill` at offset 0 IS the invocation). Mid-document
+				 * pastes stay prose for the same anchor reason.
+				 *
+				 * A skill whose body cannot be read is NOT silently swallowed: the
+				 * notice says so and the raw text goes through untouched, which is the
+				 * harness's own trade — a message the user can see and resend beats a
+				 * gesture that looked like it fired and did not. The REQUEST comes from
+				 * the substituted text (`carried.text`) when that still parses to the
+				 * SAME skill, because credential citations may have rewritten it inside
+				 * the request; a different or missing parse keeps the typed request.
+				 */
+				let outgoingText = buildSendPayload(carried.text, replies);
+				const skillNames = skillNamesRef.current;
+				const invocation = parseSkillInvocation(message, skillNames);
+				/*
+				 * `credentialSessionId`, not the pane id: the composer's own "a session
+				 * the host can resolve" predicate (a draft pane's id is not one), and
+				 * `skills.list` resolves the vocabulary from that session's cwd. The same
+				 * predicate the skill LIST reads, so the vocabulary the popup shows and
+				 * the vocabulary this parse reads are one answer.
+				 */
+				if (invocation && credentialSessionId && skillReadProvided) {
+					const body = await readSkillBody(
+						skillReadClient,
+						credentialSessionId,
+						invocation.name,
+					);
+					if (body !== null && skillBodyHasContent(body)) {
+						const substituted = parseSkillInvocation(carried.text, skillNames);
+						const request =
+							substituted && substituted.name === invocation.name
+								? substituted.request
+								: invocation.request;
+						outgoingText = buildSendPayload(
+							renderSkillInvocation({ ...invocation, request }, body),
+							replies,
+						);
+					} else if (body !== null) {
+						onSlashNote?.(
+							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
+						);
+					} else {
+						onSlashNote?.(
+							`could not load skill \`${invocation.name}\` — sending your message as written`,
+						);
+					}
+				}
 				const accepted = await onSendMessage(
-					// With the seam the payload travels with its MARKERS: the seam stores
-					// first, substitutes second, and what leaves is the substituted text.
-					buildSendPayload(carried.text, replies),
+					/*
+					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.
+					 * With the seam the payload travels with its MARKERS as before — the
+					 * branch above read the TYPED line, and the payload's request came from
+					 * the substituted text when that still parsed.
+					 */
+					outgoingText,
 					attachments.map((a) => a.path),
 					onEchoPainted,
 					// The typed text, beside the composed payload: the gate answer path
@@ -2436,6 +2550,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// up, which is the defect the gate exists for.
 				isRecording,
 				isTranscribing,
+				// The `$skill` expansion (issue #664): the cache a body is read
+				// through, and the note surface for a skill that cannot be loaded.
+				// The VOCABULARY itself rides `skillNamesRef` (see its declaration)
+				// because the send memo is built before the hook that fetches it.
+				skillReadClient,
+				skillReadProvided,
+				onSlashNote,
 			],
 		);
 
@@ -2581,6 +2702,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				sessionStatus?.frontend?.effective_model ??
 				sessionStatus?.frontend?.selected_model,
 		});
+
+		/*
+		 * THE `$skill` LIST (issue #664), the third member of the popup family and
+		 * gated the same ways the other two are: off while a masked capture owns the
+		 * box (its keys never reach a popup, and a `$` inside a secret must not paint
+		 * a list over the mask), and off on a pane with no resolvable session —
+		 * `skills.list` discovers from a session's cwd, so no session is no
+		 * vocabulary, not a policy (`credentialSessionId`'s predicate is the one that
+		 * says a draft pane's id is not a session the host can resolve). The claim
+		 * that suppresses it while a slash context is live at the caret is the hook's
+		 * own (`skill-token.ts` documents why the desktop keeps that claim total).
+		 */
+		const skills = useSkillCompletion({
+			text: newMessage,
+			caret,
+			sessionId: credentialSessionId,
+			commandNames: slash.commandNames,
+			argumentWords: slash.argumentWords,
+			enabled: !isTyping(capture),
+		});
+		/*
+		 * The vocabulary the SUBMIT seam reads, refreshed whenever the answer changes:
+		 * the send memo is created before this hook (see `skillNamesRef`), so this
+		 * effect is what keeps the ref it reads current at the press.
+		 */
+		useEffect(() => {
+			skillNamesRef.current = skills.vocabulary.map((row) => row.name);
+		}, [skills.vocabulary]);
 
 		/*
 		 * THE `@` MENTION LAYER, beside the slash hook because the two are one popup
@@ -4363,6 +4512,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[newMessage, caret, at, setNewMessage, isInputDisabled],
 		);
 
+		/*
+		 * THE `$skill` ACCEPT (issue #664) — the one gesture whose whole output is a
+		 * STAGED DRAFT. Accepting a row writes `$name ` plus the surviving draft
+		 * (the pure `skillCompletionFor`, the TUI's own `_complete_skill`
+		 * arithmetic) and stops there: neither Tab nor Enter ever submits for a
+		 * skill row, because a completed `$skill ` is the opening of a prompt the
+		 * user is still writing. What the NEXT Enter sends is the expanded payload,
+		 * built in `onSubmit` to match `invoke.py` character-for-character.
+		 *
+		 * The refusal covers this popup's click too — the same MAJOR-2 rule the two
+		 * sibling popups carry. `readOnly` cannot close this path here either,
+		 * because the list is a sibling of the textarea rather than a keystroke in
+		 * it.
+		 */
+		const handleSkillPick = useCallback(
+			(row: SkillCatalogRow) => {
+				if (isInputDisabled) return;
+				if (!skills.token) return;
+				const completion = skillCompletionFor(
+					newMessage,
+					skills.token,
+					row.name,
+				);
+				skills.close();
+				pendingCaret.current = completion.caret;
+				setNewMessage(completion.text);
+				setCaret(completion.caret);
+			},
+			[newMessage, skills, setNewMessage, isInputDisabled],
+		);
+
 		/**
 		 * The undo a LOCKED run owes the user (UX round 1, U3), in front of the platform's.
 		 *
@@ -4507,6 +4687,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (
 					handleSlashKeyDown(event, slash, handleSlashPick, handleSlashExtend)
 				) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * THEN THE `$` LIST. It sits after the slash list because the two stand
+				 * down for each other by construction (a live slash context suppresses
+				 * the `$` token, `skill-token.ts`), so the order between them is not a
+				 * second rule — it is kept beside its siblings for the same reason the
+				 * `@` list is: whichever list a user can SEE is the one whose keys they
+				 * get.
+				 */
+				if (handleSkillKeyDown(event, skills, handleSkillPick)) {
 					event.preventDefault();
 					return;
 				}
@@ -4723,6 +4915,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash,
 				handleSlashPick,
 				handleSlashExtend,
+				skills,
+				handleSkillPick,
 				handleKeyDown,
 				handleCredentialKeyDown,
 				planForDraft,
@@ -6632,25 +6826,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					<AtSuggestionsPopup state={at} onPick={handleAtPick} />
 					{/*
+					 * THE `$` LIST, after the `@` popup for the same sibling-order reason:
+					 * the three anchor to one strip, and the later sibling is the one on
+					 * top. The three cannot all be up at once by construction — each
+					 * suppresses itself where another's grammar claims the caret — so the
+					 * order is what keeps "the visible list owns the keys" true if any two
+					 * are ever live together, which is the identical argument the `@`
+					 * mount records.
+					 */}
+					<SkillSuggestionsPopup state={skills} onPick={handleSkillPick} />
+					{/*
 					 * THE SCROLL-TO-BOTTOM DISC, anchored to this wrapper because this wrapper
 					 * IS the composer's top edge (§G5): the disc is `bottom-full`, so it sits
 					 * 12px ABOVE the panel at whatever height the panel has.
 					 *
 					 * HIDDEN WHILE A COMPOSER MENU IS OPEN, which is the other half of D15:
-					 * the slash list and the `@` picker anchor to this same 4px strip, and a
-					 * disc floating over the menu's own last row is the overlap the round
-					 * photographed. It is also not drawn at all when the reader is already at
-					 * the newest row (`isFarFromBottom`), so the two states that own this
-					 * strip are never drawn together.
+					 * the slash list, the `@` picker and the `$` list anchor to this same 4px
+					 * strip, and a disc floating over the menu's own last row is the overlap
+					 * the round photographed. It is also not drawn at all when the reader is
+					 * already at the newest row (`isFarFromBottom`), so the two states that
+					 * own this strip are never drawn together.
 					 */}
 					{/*
 					 * NOT IN A TRANSCRIPTLESS HOST (design review round 1, N3): a
 					 * document with no transcript has nothing to scroll back to, and the
 					 * control was mounted hidden - 32x32, `tabIndex -1`, inside an
 					 * `aria-hidden` wrapper - which is dead DOM in the mini view and a
-					 * phantom in any rig that counts controls.
+					 * phantom in any rig that counts controls. The `$` list's own guard
+					 * arrived with the skill expansion (#664) and is kept: both are reasons
+					 * not to draw the disc, so the union is the condition.
 					 */}
-					{!transcriptless && !slash.open && !at.open && (
+					{!transcriptless && !slash.open && !at.open && !skills.open && (
 						<ScrollToBottomButton
 							visible={isFarFromBottom}
 							onClick={scrollToBottom}
@@ -7284,15 +7490,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * THE RECORDING STATE, as one line under the field it belongs to.
-						 *
-						 * Minimal on purpose (the operator's report, and the research's
-						 * `minimal indicator`): the waveform is bounded, nothing is washed or
-						 * bordered, nothing is centred across the measure, and the row's own
-						 * height is one line's. The controls stay in the cluster below,
-						 * where `Confirm recording`/`Cancel recording` already hold the
-						 * boxes the interrupt-slot geometry reserves; this strip carries a
-						 * status and no control, so the pointer map does not move.
+						 * THE RECORDING STATE, as a full-width block under the field it belongs
+						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
+						 * field's own content column, its label row sits over it, and nothing
+						 * is washed or bordered - it reads as composer chrome, on the same
+						 * step of ground the box itself uses. The controls stay in the
+						 * cluster below, where `Confirm recording`/`Cancel recording` already
+						 * hold the boxes the interrupt-slot geometry reserves; this block
+						 * carries a status and no control, so the pointer map does not move.
 						 */}
 						{isRecording && (
 							<AudioRecordingIndicator isRecording={isRecording} />

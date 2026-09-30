@@ -14,7 +14,7 @@ import {
 	Button,
 	Skeleton,
 } from "@shared/components/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
@@ -44,7 +44,7 @@ const ROSTER_ACTIONS: readonly PublicationAction[] = [
 ];
 
 /**
- * The org scope's team roster, with the one action v1 gives it (design §8.4:
+ * The org scope's team roster - the hub's Teams view - with the one action v1 gives it (design §8.4:
  * "v1 renders org teams as a list on the hub page (pull action); no new
  * top-level navigation").
  *
@@ -52,8 +52,8 @@ const ROSTER_ACTIONS: readonly PublicationAction[] = [
  *
  * A team hub would need its own navigation, its own empty, its own moderation
  * story — and the desktop owns presentation only (§8.4): every semantic here
- * comes from `org_teams.list` and `org_team.get`. So the roster is a section of
- * the surface the user is already on, and the action is the one the route
+ * comes from `org_teams.list` and `org_team.get`. So the roster is a view of
+ * the surface the user is already on (a tab beside Agents), and the action is the one the route
  * family actually supports: pull the published document into this machine's
  * local registry, which is what `GET /v1/teams/pull/{team_id}` does.
  *
@@ -84,6 +84,20 @@ export const OrgTeamsList: React.FC<{
 	const [failedTeamId, setFailedTeamId] = useState<string | null>(null);
 	/** The row whose pull is in flight, so only that row reports it. */
 	const [pullingTeamId, setPullingTeamId] = useState<string | null>(null);
+	/**
+	 * The row whose Pull must take focus back once its request settles (UX round 1,
+	 * U4). Every Pull is `disabled` while one is in flight, so the pressed button
+	 * loses focus to `<body>` and stays there after the toast; the effect below
+	 * restores it AFTER the re-render that re-enables the button, because focus()
+	 * on a disabled element is a no-op.
+	 */
+	const pullButtons = useRef(new Map<string, HTMLButtonElement>());
+	const refocusTeamId = useRef<string | null>(null);
+	useEffect(() => {
+		if (pull.isPending || refocusTeamId.current === null) return;
+		pullButtons.current.get(refocusTeamId.current)?.focus();
+		refocusTeamId.current = null;
+	}, [pull.isPending]);
 	/** Whether the shared re-sign-in panel is open in place of the action row. */
 	const [reauthenticating, setReauthenticating] = useState(false);
 
@@ -133,6 +147,7 @@ export const OrgTeamsList: React.FC<{
 
 	const handlePull = (team: HubTeam) => {
 		if (pull.isPending) return;
+		refocusTeamId.current = team.id;
 		setFailedTeamId(null);
 		setPullingTeamId(team.id);
 		pull.mutate(
@@ -146,42 +161,40 @@ export const OrgTeamsList: React.FC<{
 
 	return (
 		<section
-			className="mb-6 rounded-md bg-surface"
-			aria-labelledby="org-teams-heading"
+			/*
+			 * `max-w-4xl` (design round 1, D3): the roster used to span the whole
+			 * column, 1232px at 1280, which put "Pull" a thousand pixels from the name
+			 * it acts on - a two-row list read as two cells of a table. 56rem keeps
+			 * the name-to-action distance scannable and is still wider than the public
+			 * notice's 42rem, because a row carries a summary line as well as a name.
+			 */
+			className="mb-6 max-w-4xl rounded-md bg-surface"
+			aria-label={`Teams shared with ${orgName ?? "this organization"}`}
 			data-testid="org-teams"
 		>
-			<div className="flex flex-wrap items-baseline justify-between gap-2 px-4 pt-3 pb-2">
-				<h2
-					id="org-teams-heading"
-					className="font-medium text-heading text-ink"
-				>
-					Teams
-				</h2>
-				{/*
-				 * A count line in the same voice as the agent grid's own ("30 agents"),
-				 * and it says nothing while the read is in flight: the roster below is
-				 * what a reader watches.
-				 */}
-				{!isLoading && !isError && (
-					<p className="text-meta text-ink-dim" data-testid="org-teams-count">
-						{teams.length} {teams.length === 1 ? "team" : "teams"} shared with{" "}
-						{orgName ?? "this organization"}
-					</p>
-				)}
-			</div>
+			{/*
+			 * NO HEADING OR COUNT LINE OF ITS OWN. Both belonged to the roster when it
+			 * sat under the agent grid and had to introduce itself; it is the Teams
+			 * view now, under a tab that says "Teams" and a status sentence that says
+			 * "2 teams shared with Minerva" (`agent-hub-page.tsx`), so a second heading
+			 * and a second count over the same rows would say one thing twice. The
+			 * section keeps its landmark name for assistive tech.
+			 */}
 
 			{isLoading && (
 				/*
-				 * The skeletons are `aria-hidden` with one `sr-only` line beside them, the
-				 * hub's own loading pattern (`Loading agents…`): a pair of bare skeletons is
-				 * a silent state to a screen reader, and this roster is the only section on
-				 * the page without a loading sentence (copy review round 1, C6).
+				 * The skeletons are `aria-hidden`, and there is NO `sr-only` sentence
+				 * beside them (design round 1's N3). The copy review that added one
+				 * (C6) was right that a pair of bare skeletons is silent; it is not right
+				 * any more, because the page's own `aria-live` status line says
+				 * "Loading teams…" one line above - so a screen reader heard the same
+				 * sentence twice from two elements, and only one of them is the region
+				 * that goes on to report the count.
 				 */
 				<div
-					className="flex flex-col gap-2 px-4 pb-4"
+					className="flex flex-col gap-2 p-4"
 					data-testid="org-teams-loading"
 				>
-					<span className="sr-only">Loading teams…</span>
 					<div aria-hidden="true" className="flex flex-col gap-2">
 						<Skeleton className="h-4.5 w-40" />
 						<Skeleton className="h-3.5 w-64" />
@@ -222,7 +235,13 @@ export const OrgTeamsList: React.FC<{
 				 */
 				<Alert
 					variant={refusal ? "warning" : "danger"}
-					className="mx-4 mb-4"
+					/*
+					 * `w-auto`: `Alert` is `w-full`, so a 16px margin on it made the box
+					 * 100% + 32px wide and the panel's `overflow-hidden` clipped its right
+					 * border (design round 1, D1; UX round 1, U5; measured 1272 in a 1256
+					 * panel). Auto width lets the margin be the inset it was meant to be.
+					 */
+					className="m-4 w-auto"
 					data-testid="org-teams-error"
 				>
 					<AlertTitle>
@@ -260,15 +279,15 @@ export const OrgTeamsList: React.FC<{
 
 			{!isLoading && !isError && teams.length === 0 && (
 				<p
-					className="px-4 pb-4 text-body-sm text-ink-muted"
+					className="p-4 text-body-sm text-ink-muted"
 					data-testid="org-teams-empty"
 				>
-					No teams have been shared with this organization yet.
+					{`Teams shared into ${orgName ?? "this organization"} appear here for its members.`}
 				</p>
 			)}
 
 			{!isLoading && !isError && teams.length > 0 && (
-				<ul className="flex flex-col divide-y divide-hairline border-t border-hairline">
+				<ul className="flex flex-col divide-y divide-hairline">
 					{teams.map((team) => (
 						<li
 							key={team.id}
@@ -344,6 +363,10 @@ export const OrgTeamsList: React.FC<{
 								)}
 							</div>
 							<Button
+								ref={(node) => {
+									if (node) pullButtons.current.set(team.id, node);
+									else pullButtons.current.delete(team.id);
+								}}
 								variant="secondary"
 								size="sm"
 								onClick={() => handlePull(team)}

@@ -543,6 +543,139 @@ export const ToolOps: Story = {
 	),
 };
 
+/**
+ * The `sessions` tool's six operations, each naming what the call DID (the
+ * desk half of the sessions lane; sibling `damianvtran/local-operator` #1825).
+ *
+ * One tool, six ops (`docs/design/sessions-tool.md` §3.1 in
+ * `damianvtran/local-operator`), and before this lane a row for any of them
+ * was `Called sessions <first scalar>` under the generic wrench. The rows run
+ * through the shipped pipeline (`toolOp` - `summaryFromArgs` - `toolRowLabel`),
+ * so the frame shows the real composition: the op's verb, the object with the
+ * discriminator first (a spawn's visibility, a peek's window), and the new
+ * second-window glyph. The fold's own header is on the frame too - all eleven
+ * calls condense to `11 sessions`, the noun this lane adds to `KIND_NOUNS`.
+ */
+export const SessionsOps: Story = {
+	render: () => (
+		<Frame
+			height={470}
+			/*
+			 * OPEN, the ToolOps reason: the actions are the subject, and eleven
+			 * consecutive calls condense into one fold whose collapsed header
+			 * alone would be a picture of the container rather than of the ops.
+			 */
+			openRows
+			records={[
+				// list, bare and scoped: the markers ride the object, and the bare
+				// call names nothing.
+				tool({
+					id: "sess:1",
+					toolName: "sessions",
+					args: { op: "list" },
+					durationS: 0.08,
+					output: "6 live · 2 stored",
+				}),
+				tool({
+					id: "sess:2",
+					toolName: "sessions",
+					args: { op: "list", include_stored: true, query: "release" },
+					durationS: 0.12,
+					output: "1 stored match: release-crew",
+				}),
+				// info and stop, addressed by the two spellings the resolver takes:
+				// a substring, and an exact pid.
+				tool({
+					id: "sess:3",
+					toolName: "sessions",
+					args: { op: "info", target: "release-crew" },
+					durationS: 0.05,
+					output: "workstream · opened by manager · listed",
+				}),
+				// The headline fact of this tool: a spawn is a LISTED workstream by
+				// default, and the visibility leads the object because the row sheds
+				// from the right - an omitted flag must not be what a narrow row
+				// drops (the `send` row's discriminator rule).
+				tool({
+					id: "sess:4",
+					toolName: "sessions",
+					args: {
+						op: "spawn",
+						name: "night-audit",
+						prompt: "audit the flaky shard on CI",
+						team: "release",
+					},
+					durationS: 0.4,
+					output: "session 9f2a1c · job 4471 · pid 48213 · workstream",
+				}),
+				// The explicit opt-out, prompt-only: `ephemeral` still leads.
+				tool({
+					id: "sess:5",
+					toolName: "sessions",
+					args: {
+						op: "spawn",
+						visibility: "ephemeral",
+						prompt: "try the shard twice and report",
+					},
+					durationS: 0.36,
+					output: "session b1c2d3 · job 4472 · ephemeral",
+				}),
+				// resume by exact id, the second address spelling.
+				tool({
+					id: "sess:6",
+					toolName: "sessions",
+					args: { op: "resume", session: "5d3f2a9c", prompt: "continue" },
+					durationS: 0.5,
+					output: "session 5d3f2a9c · running",
+				}),
+				// The graceful stop, by pid.
+				tool({
+					id: "sess:7",
+					toolName: "sessions",
+					args: { op: "stop", pid: 48213 },
+					durationS: 1.1,
+					output: "stopped gracefully",
+				}),
+				// peek's three windows in one column: the tail, the search (which
+				// outranks `steps` because steps is the match window's SIZE), and
+				// the digest.
+				tool({
+					id: "sess:8",
+					toolName: "sessions",
+					args: { op: "peek", target: "night-audit", steps: 12 },
+					durationS: 0.09,
+					output: "last 12: running pnpm test:desktop",
+				}),
+				tool({
+					id: "sess:9",
+					toolName: "sessions",
+					args: { op: "peek", target: "night-audit", query: "flaky", steps: 6 },
+					durationS: 0.14,
+					output: "4 matches · 6 around #412",
+				}),
+				tool({
+					id: "sess:10",
+					toolName: "sessions",
+					args: { op: "peek", target: "night-audit", digest: true },
+					durationS: 0.11,
+					output: "18 turns · 2 files · 1 job",
+				}),
+				// A live row, so the present-participle half of the op table is on
+				// the frame too: `Spawning session`, visibility first.
+				tool({
+					id: "sess:11",
+					toolName: "sessions",
+					args: { op: "spawn", name: "queue-watch", prompt: "watch the queue" },
+					phase: "running",
+					durationS: null,
+					startedAt: Date.now() - 23_000,
+					output: null,
+				}),
+			]}
+		/>
+	),
+};
+
 /** Long names, unknown tools and MCP calls — what the name column must absorb. */
 export const NamesAndFallbacks: Story = {
 	render: () => (
