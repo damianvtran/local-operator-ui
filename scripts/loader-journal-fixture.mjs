@@ -27,6 +27,22 @@
  * there, and the regression must FAIL on behaviour rather than on a missing
  * import. `makeOlderLoader` therefore falls back to a small re-statement of the
  * pre-fix hook (`legacyOlderLoader`) when the module is absent.
+ *
+ * A SECOND SHAPE, CARRIED AS A SPEC RATHER THAN A KIND LIST. The operator's
+ * second report was a DIFFERENT session whose backend paging path was healthy
+ * (2228 entries, 23 pages, not one page-boundary cursor deleted by the prune
+ * pass) and whose red failure row therefore came from the other half of
+ * the class - asks that lost a race to an in-flight page counted as failures.
+ * Its structure is worth a fixture because it is the one the classes meet in:
+ * six durable compactions, a tail run of superseded `session_spend.v1` rows and
+ * a page boundary that lands on a `tool` or an `assistant` entry.
+ * `fixtures/loader-journal-shape-prune-heavy.json` carries that structure as a
+ * SPEC (entry count, compaction positions with how far back their
+ * `first_kept_entry_id` points, the prune and spend row positions, the kind at
+ * every page boundary, and one filler turn) and `kindsFor` expands it into the
+ * kind sequence `mintEntries` already consumes. A spec rather than a 2228-token
+ * list because the entries BETWEEN the measured positions are not a fact about
+ * that journal - only the counts, the positions and the boundary kinds are.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -45,6 +61,65 @@ export const shape = JSON.parse(
 		"utf8",
 	),
 );
+
+/**
+ * The second reported instance's structure, as a spec. See the header note: the
+ * measured facts are the counts, the positions and the page-boundary kinds.
+ */
+export const pruneHeavyShape = JSON.parse(
+	readFileSync(
+		resolve(ROOT, "scripts/fixtures/loader-journal-shape-prune-heavy.json"),
+		"utf8",
+	),
+);
+
+/**
+ * Expand a shape SPEC into the kind sequence `mintEntries` takes.
+ *
+ * The filler is laid down first and the measured rows are written over it, so
+ * the journal's SHAPE is the spec's and not the filler's. The boundary write is
+ * what `mintEntries` cannot do for itself: a boundary is a position in the
+ * walk, not a property of any entry, and it is the thing the original defect
+ * turned on - a cursor landing on an entry the reducer has no record for.
+ *
+ * A position claimed twice is a spec that cannot mean what it says (a boundary
+ * that is also a compaction is one of the two facts lost), so it throws here
+ * rather than silently letting the last write win.
+ */
+export function kindsFor(spec) {
+	const kinds = Array.from(
+		{ length: spec.entries },
+		(_, i) => spec.filler[i % spec.filler.length],
+	);
+	const claimed = new Map();
+	const claim = (at, what) => {
+		const prior = claimed.get(at);
+		if (prior)
+			throw new Error(
+				`shape position ${at} is claimed by ${prior} and ${what}`,
+			);
+		claimed.set(at, what);
+	};
+	const { limit, kinds: boundaryKinds } = spec.pageBoundaries;
+	boundaryKinds.forEach((kind, k) => {
+		const at = spec.entries - limit * (k + 1);
+		claim(at, `page boundary ${k}`);
+		kinds[at] = kind;
+	});
+	for (const { at, keptBack } of spec.compactions) {
+		claim(at, "compaction");
+		kinds[at] = `compaction:${keptBack}`;
+	}
+	for (const at of spec.pruneRows) {
+		claim(at, "prune");
+		kinds[at] = "prune";
+	}
+	for (const at of spec.spendRows) {
+		claim(at, "spend");
+		kinds[at] = "custom:session_spend.v1";
+	}
+	return kinds;
+}
 
 /** Deterministic PRNG (mulberry32) so a failing seed reproduces exactly. */
 export function rng(seed) {
@@ -80,11 +155,24 @@ export function mintEntries(kinds, startAt = 0, prefix = "") {
 				payload.details = { anchor: "x", kind: "complete" };
 			out.push({ ...base, type: head, payload });
 		} else if (head === "compaction") {
-			out.push({
-				...base,
-				type: "compaction",
-				payload: { summary: "s", tokens_before: 1000 + n },
-			});
+			/*
+			 * `compaction:<rows_back>` mirrors the durable row's `first_kept_entry_id`:
+			 * the id of the entry that many rows earlier which the pass kept. It has to
+			 * RESOLVE - a compaction naming an id no longer in the journal is a
+			 * different journal, and it is the shape `compact_file` leaves behind that
+			 * these regressions are about - so a spec that points outside the journal
+			 * throws here rather than minting a dangling reference.
+			 */
+			const keptBack = a === undefined ? null : Number(a);
+			const payload = { summary: "s", tokens_before: 1000 + n };
+			if (keptBack !== null) {
+				if (!Number.isInteger(keptBack) || keptBack <= 0 || keptBack > offset)
+					throw new Error(
+						`compaction at ${n} names an entry ${keptBack} rows back, outside the journal`,
+					);
+				payload.first_kept_entry_id = `${prefix}${entryId(n - keptBack)}`;
+			}
+			out.push({ ...base, type: "compaction", payload });
 		} else if (head === "user") {
 			out.push({
 				...base,
@@ -159,6 +247,36 @@ export const kindOf = (entry) =>
 				: entry.payload.role
 			: entry.type;
 
+/**
+ * The GRAMMAR TOKEN of one minted entry - `mintEntries`' inverse.
+ *
+ * `kindOf` answers a coarser question (which role/KIND of row is this: an
+ * assistant message is `assistant` whatever it carries) and that is what the
+ * regressions want when they are selecting rows. A shape SPEC speaks the grammar
+ * (`assistant:<tool_calls>:<has_text>`), so pinning a spec against the journal it
+ * mints needs this: a boundary entry that is the right role but the wrong shape
+ * would otherwise pass the comparison that exists to catch it.
+ */
+export const tokenOf = (entry) => {
+	const payload = entry.payload ?? {};
+	if (entry.type === "custom") return `custom:${payload.custom_type}`;
+	if (entry.type === "message") {
+		if (payload.kind === "custom") return `message:${payload.custom_type}`;
+		if (payload.role === "assistant") {
+			const calls = Array.isArray(payload.tool_calls)
+				? payload.tool_calls.length
+				: 0;
+			const hasText = (payload.content ?? []).some(
+				(part) =>
+					part?.type === "text" && String(part.text ?? "").trim().length > 0,
+			);
+			return `assistant:${calls}:${hasText ? 1 : 0}`;
+		}
+		return String(payload.role);
+	}
+	return entry.type;
+};
+
 /** The backend reader's contract, over an in-memory journal. */
 export class FakeJournal {
 	constructor(entries) {
@@ -167,6 +285,11 @@ export class FakeJournal {
 
 	static fromShape(kinds = shape.kinds) {
 		return new FakeJournal(mintEntries(kinds));
+	}
+
+	/** A journal over a shape SPEC (see `kindsFor`). */
+	static fromSpec(spec = pruneHeavyShape) {
+		return new FakeJournal(mintEntries(kindsFor(spec)));
 	}
 
 	get length() {

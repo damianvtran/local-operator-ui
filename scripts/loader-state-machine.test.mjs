@@ -4,9 +4,12 @@ import {
 	FakeJournal,
 	PAGE_LIMIT,
 	Reader,
+	kindOf,
 	loadModules,
+	pruneHeavyShape,
 	rng,
 	shape,
+	tokenOf,
 } from "./loader-journal-fixture.mjs";
 
 /*
@@ -43,8 +46,14 @@ import {
  */
 
 const { reducer: m, paging } = await loadModules();
-const { decide, initialPagingState, noteFailed, noteInput, noteSettled } =
-	paging;
+const {
+	SETTLE_MS,
+	decide,
+	initialPagingState,
+	noteFailed,
+	noteInput,
+	noteSettled,
+} = paging;
 // The pre-fix tree has no `noteAborted`; falling back to `noteFailed` is exactly
 // what that tree's pump did with a `false`, which is why I4 fails there for the
 // real reason and not for a missing import.
@@ -103,6 +112,35 @@ class Pump {
 		const outcome = await pending;
 		this.settle(outcome);
 		return { asked: true, outcome };
+	}
+
+	/**
+	 * A reader GESTURE rather than a deliberate act: the automatic path's own door,
+	 * and the only door `MAX_AUTO_ATTEMPTS` can close - `decide` spends a
+	 * deliberate demand unconditionally, so a lockout is visible here and nowhere
+	 * else. A gesture has to clear the settle debounce before it may be spent, so
+	 * the notch and the dispatch are two instants rather than one.
+	 */
+	async gesture({ travelledPx = 200, atHardTop = false, during = null } = {}) {
+		this.now += 5_000;
+		const armed = noteInput(this.state, {
+			direction: "up",
+			continuous: true,
+			deliberate: false,
+			atHardTop,
+			travelledPx,
+			at: this.now,
+		});
+		const decision = decide(armed, this.geometry(), this.now + SETTLE_MS);
+		this.state = decision.state;
+		if (decision.action !== "fetch")
+			return { asked: false, action: decision.action };
+		this.asks += 1;
+		const pending = this.reader.loadOlder();
+		during?.();
+		const outcome = await pending;
+		this.settle(outcome);
+		return { asked: true, action: "fetch", outcome };
 	}
 }
 
@@ -364,4 +402,335 @@ test("I4 (contract pin, not a regression): a returning visit is handed its own p
 		"the returning visit is not handed the first visit's promise",
 	);
 	assert.equal((await second).kind, "applied");
+});
+
+test("the second report: three asks that lose a race are not failures and never switch the automatic path off", async () => {
+	/*
+	 * WHAT THIS PINS, AND WHERE IT WAS SEEN. The operator's SECOND instance of this
+	 * class was a session whose BACKEND paging path was healthy - measured off the
+	 * journal: 2228 entries, 6 durable compactions, 23 pages of 100, not one
+	 * page-boundary cursor deleted by the prune pass - and whose transcript
+	 * nevertheless carried a red "Could not load earlier messages" row. The half of
+	 * the class that produced it is the one driven here: an ask that lost a race to
+	 * an in-flight page was folded through `noteFailed`, so `failures` walked up to
+	 * `MAX_AUTO_ATTEMPTS`, `isExhausted` switched the automatic path off, and the
+	 * failed row stayed painted until the reader clicked the affordance.
+	 *
+	 * WHY `stale` AND NOT "busy". A caller that arrives while a page is out for the
+	 * SAME conversation is handed that promise and resolves `applied` (the I4
+	 * sharing case above), so the losing ask is the one whose conversation moved
+	 * under it - `stale`. Both answers were one `false` before the fix and neither
+	 * may count as a failure now.
+	 *
+	 * THE BACKEND IS HEALTHY THROUGHOUT: every read this test makes is served from
+	 * the journal and no request carries `cursor_missing`, which is what makes the
+	 * painted row a lie rather than a report.
+	 */
+	const journal = FakeJournal.fromSpec();
+	const reader = new Reader(m, journal).open();
+	const pump = new Pump(reader);
+	const heldBefore = reader.transcript.records.length;
+
+	const outcomes = [];
+	for (let round = 0; round < 3; round++) {
+		const home = reader.key;
+		/*
+		 * A GESTURE, not a deliberate act, and that is the point: a deliberate ask
+		 * forgives the failure count on the way in (`noteInput`), so only the
+		 * automatic path can be locked out - which is exactly what the operator's red
+		 * row did to them. The ask loses its race to the conversation switch while the
+		 * page is out; the backend itself answers every one of them.
+		 */
+		const lost = await pump.gesture({
+			during: () => {
+				reader.key = "session-b";
+			},
+		});
+		reader.key = home;
+		outcomes.push(lost.outcome.kind);
+	}
+	assert.deepEqual(
+		outcomes,
+		["stale", "stale", "stale"],
+		"the three asks must lose their race, not win it",
+	);
+	assert.equal(
+		reader.requests.filter((request) => request.missing).length,
+		0,
+		"a healthy backend: no ask may come back cursor_missing",
+	);
+	assert.equal(
+		pump.state.failures,
+		0,
+		"three lost races are not three failures",
+	);
+	assert.equal(
+		paging.isExhausted(pump.state),
+		false,
+		"the automatic path must still be on after three lost races",
+	);
+	assert.equal(
+		reader.transcript.records.length,
+		heldBefore,
+		"a foreign page must never reach the transcript",
+	);
+
+	// The reader's own next gesture - the door `MAX_AUTO_ATTEMPTS` closes - still
+	// spends, and the page it buys lands.
+	const fetched = await pump.gesture();
+	assert.equal(
+		fetched.asked,
+		true,
+		"the gesture after three lost races must still spend a fetch",
+	);
+	assert.equal(fetched.outcome.kind, "applied");
+	assert.ok(
+		fetched.outcome.newRecords > 0,
+		"and the fetch must bring rows back, not a no-op page",
+	);
+	assert.equal(
+		pump.state.failures,
+		0,
+		"a landing leaves the count where it was",
+	);
+
+	/*
+	 * THE SAME SEQUENCE UNDER THE PRE-FIX FOLD, DRIVEN RATHER THAN DESCRIBED. On this
+	 * tree `noteAborted` exists, so the old fold cannot be reached through the code
+	 * under test and has to be stated: `noteFailed` is exactly what the pre-fix pump
+	 * called for every non-applied answer (one `false`), and it is present on both
+	 * trees. Three non-deliberate asks folded through it are the operator's lockout -
+	 * the budget is spent, `isExhausted` is true, and the next honest gesture is
+	 * refused. On the tree that had the loader fix WITHOUT the policy fix
+	 * (`1d2a27be33`) this is not a counter-case at all: `paging.noteAborted` is
+	 * undefined there, the mapping at the top of this file falls back to `noteFailed`,
+	 * and the three gestures above reach it - measured, and the failing assertion text
+	 * is recorded in this commit's body.
+	 */
+	let preFix = initialPagingState();
+	for (let round = 0; round < 3; round++) {
+		const at = (round + 1) * 5_000;
+		const armed = noteInput(preFix, {
+			direction: "up",
+			continuous: true,
+			deliberate: false,
+			atHardTop: false,
+			travelledPx: 200,
+			at: round * 5_000,
+		});
+		const decision = decide(armed, pump.geometry(), at + SETTLE_MS);
+		assert.equal(
+			decision.action,
+			"fetch",
+			"the pre-fix policy still owed an ask",
+		);
+		preFix = noteFailed(decision.state);
+	}
+	assert.equal(
+		preFix.failures,
+		3,
+		"the pre-fix fold counted a lost race as a failure",
+	);
+	assert.equal(
+		paging.isExhausted(preFix),
+		true,
+		"and three of them switched the automatic path off",
+	);
+	assert.equal(
+		decide(
+			noteInput(preFix, {
+				direction: "up",
+				continuous: true,
+				deliberate: false,
+				atHardTop: false,
+				travelledPx: 200,
+				at: 20_000,
+			}),
+			pump.geometry(),
+			20_000 + SETTLE_MS,
+		).action,
+		"none",
+		"and the reader's next honest gesture is refused - the lockout the operator saw",
+	);
+});
+
+test("the prune-heavy journal is reachable end to end, on strictly advancing cursors", async () => {
+	/*
+	 * THE "OPERATOR'S SESSION REACHABLE" PIN. This drives the paging policy AND the
+	 * reducer over the second shape from its tail to its first row: the tail page
+	 * as the cold open, then repeated continuation asks, and it asserts the two
+	 * facts the reader's experience is made of - the cursor moves STRICTLY BACKWARDS
+	 * every time (never repeats a page), and the walk terminates at the start rather
+	 * than at a page it cannot get behind.
+	 *
+	 * It also pins WHICH pages the reader stopped on: every `before_id` asked is one
+	 * of the shape's 22 page boundaries, in order. That is the thing the original
+	 * defect destroyed (a boundary landing on an entry the reducer has no record for
+	 * sent the cursor back to the tail), so the boundary sequence is asserted rather
+	 * than only the end state.
+	 */
+	const spec = pruneHeavyShape;
+	const journal = FakeJournal.fromSpec(spec);
+	const reader = new Reader(m, journal).open();
+	const pump = new Pump(reader);
+	const indexOf = (id) => journal.entries.findIndex((entry) => entry.id === id);
+
+	const cursorIndex = [indexOf(reader.transcript.oldestId)];
+	let asks = 0;
+	while (reader.transcript.hasMore && asks < 40) {
+		asks += 1;
+		const asked = await pump.gesture();
+		assert.equal(asked.asked, true, `ask ${asks} must not be refused`);
+		assert.equal(
+			asked.outcome.kind,
+			"applied",
+			`ask ${asks} resolved ${asked.outcome.kind}`,
+		);
+		cursorIndex.push(indexOf(reader.transcript.oldestId));
+	}
+
+	assert.equal(
+		reader.transcript.hasMore,
+		false,
+		"the reader reached the start",
+	);
+	assert.equal(
+		asks,
+		Math.ceil(journal.length / PAGE_LIMIT) - 1,
+		"23 pages need 22 continuation asks",
+	);
+	for (let i = 1; i < cursorIndex.length; i++) {
+		assert.ok(
+			cursorIndex[i] < cursorIndex[i - 1],
+			`cursor ${i} is not strictly older than the one before it (${cursorIndex[i - 1]} -> ${cursorIndex[i]})`,
+		);
+	}
+	assert.equal(
+		new Set(cursorIndex).size,
+		cursorIndex.length,
+		"no page may be asked for twice",
+	);
+	assert.equal(
+		reader.requests.filter((request) => request.missing).length,
+		0,
+		"a healthy backend: no ask may come back cursor_missing",
+	);
+
+	// Every ask started from one of the shape's page boundaries, in walk order.
+	const boundaries = spec.pageBoundaries.kinds.map(
+		(_, k) => spec.entries - spec.pageBoundaries.limit * (k + 1),
+	);
+	assert.deepEqual(
+		reader.requests.map((request) => indexOf(request.before)),
+		boundaries,
+		"the reader must ask from each page boundary once",
+	);
+	assert.equal(
+		cursorIndex.at(-1),
+		0,
+		"and the walk must end on the journal's own first entry",
+	);
+});
+
+test("the prune-heavy fixture IS the measured journal's structure, not a paraphrase of it", async () => {
+	/*
+	 * WHY A FIXTURE PIN. The shape is committed as a SPEC - counts, positions and
+	 * boundary kinds - because the entries between those positions are not a fact
+	 * about the operator's journal and a 2228-token list would pretend they were.
+	 * That trade is only honest while the spec still describes the journal, so every
+	 * measured fact is restated here as an assertion: a later edit that "tidies" the
+	 * spec into a different journal fails here instead of quietly weakening the
+	 * regressions above.
+	 *
+	 * The last assertion is the one that decided the diagnosis: the reader's
+	 * page-boundary cursors SURVIVE the prune pass, which is what makes this
+	 * session's red row the lost-race half of the class rather than a broken cursor.
+	 */
+	const spec = pruneHeavyShape;
+	const journal = FakeJournal.fromSpec(spec);
+	assert.equal(journal.length, 2228, "2228 entries");
+	assert.equal(
+		Math.ceil(journal.length / PAGE_LIMIT),
+		23,
+		"23 pages of 100 entries, so 22 boundaries",
+	);
+
+	// The six durable compactions, at the measured positions, each naming an entry
+	// that is still in the journal (a compaction that points outside it is a
+	// different journal - the one `compact_file` leaves behind).
+	const compactions = journal.entries
+		.map((entry, at) => ({ entry, at }))
+		.filter(({ entry }) => entry.type === "compaction");
+	assert.deepEqual(
+		compactions.map(({ at }) => at),
+		spec.compactions.map(({ at }) => at),
+	);
+	assert.deepEqual(
+		compactions.map(({ at }) => at),
+		[415, 598, 923, 1274, 1715, 1891],
+		"the measured compaction positions",
+	);
+	const ids = new Set(journal.entries.map((entry) => entry.id));
+	const keptAt = compactions.map(({ entry }) =>
+		journal.entries.findIndex(
+			(candidate) => candidate.id === entry.payload.first_kept_entry_id,
+		),
+	);
+	assert.ok(
+		compactions.every(({ entry }) =>
+			ids.has(entry.payload.first_kept_entry_id),
+		),
+		"every first_kept_entry_id must resolve to a live entry",
+	);
+	assert.deepEqual(keptAt, [173, 513, 705, 1219, 1419, 1785]);
+
+	// The prune-heavy half: a tail run of superseded `session_spend.v1` rows and the
+	// one `prune` row.
+	const countKind = (kind) =>
+		journal.entries.filter((entry) => kindOf(entry) === kind).length;
+	assert.equal(countKind("custom:session_spend.v1"), spec.spendRows.length);
+	assert.equal(countKind("custom:session_spend.v1"), 74);
+	assert.equal(countKind("prune"), 1);
+
+	// Every page boundary the reader walks through carries the kind that was
+	// measured at it - a boundary on a silent custom or a `tool` entry is what the
+	// cursor rule had to stop looking up among the records.
+	const limit = spec.pageBoundaries.limit;
+	const boundaryAt = spec.pageBoundaries.kinds.map(
+		(_, k) => spec.entries - limit * (k + 1),
+	);
+	assert.deepEqual(
+		boundaryAt.map((at) => tokenOf(journal.entries[at])),
+		spec.pageBoundaries.kinds,
+		"each boundary must carry its measured kind, shape included",
+	);
+
+	// `compact_file` keeps only the newest spend row, and NOT ONE of those boundary
+	// cursors is among what it drops.
+	const boundaryIds = new Set(boundaryAt.map((at) => journal.entries[at].id));
+	const dropped = journal.compact();
+	assert.equal(
+		dropped.length,
+		74 - 1,
+		"the fold keeps exactly the newest spend row",
+	);
+	assert.equal(
+		dropped.filter((id) => boundaryIds.has(id)).length,
+		0,
+		"0 of the 22 page-boundary cursors may be deleted by the prune pass",
+	);
+	// And the boundary cursors themselves survive it. This is the fact the
+	// diagnosis turned on: the reader's cursors are still servable after the prune
+	// pass, so this session's red row cannot have been a broken cursor.
+	const survivors = new Set(journal.entries.map((entry) => entry.id));
+	assert.equal(
+		[...boundaryIds].filter((id) => survivors.has(id)).length,
+		boundaryIds.size,
+		"all 22 page-boundary cursors must survive the prune pass",
+	);
+	assert.equal(
+		journal.length,
+		spec.entries - dropped.length,
+		"the fold may take spend rows and nothing else",
+	);
 });
