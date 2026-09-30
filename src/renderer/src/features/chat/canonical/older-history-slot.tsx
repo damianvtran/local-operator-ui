@@ -66,8 +66,6 @@ export type OlderHistoryState =
 
 export type OlderHistorySlotProps = {
 	state: OlderHistoryState;
-	/** Rows the render window is holding back, for the `windowed` copy. */
-	hiddenRows: number;
 	/**
 	 * The session is not live, so a retry cannot succeed and the transcript's
 	 * own notice below is already explaining why. The slot goes quiet rather
@@ -99,6 +97,10 @@ const BOX = "@container/olderhistory mb-4 flex h-7 min-w-0 items-center gap-2";
  * the fault line clipped 6px at 252px and 38px at 220px, and the windowed hint
  * clipped 44px of 264px at 220px, losing the gesture it exists to name.
  *
+ * The windowed sentence's own length is now FIXED rather than a function of the
+ * window: it carried a count of hidden rows, and that count is gone (design
+ * round 1, D1 — see the branch comment).
+ *
  * A shorter sentence at a narrower column is the fix that keeps F. The
  * container is this row rather than the chat column because the row is what
  * has to fit: the same 220px column yields a different budget here depending on
@@ -107,6 +109,15 @@ const BOX = "@container/olderhistory mb-4 flex h-7 min-w-0 items-center gap-2";
  *
  * 260px is where the long spellings stop fitting, not a round number: the fault
  * line's own intrinsic width is ~258px.
+ *
+ * The short spelling is deliberately still the OLD one for the windowed row
+ * (`Scroll up for earlier`). It was measured to fit at the widths where it is
+ * the only thing painted and it is already free of both the count and the unit
+ * the windowed sentence lost (design round 1, D1), so it is the one half of
+ * this pair that D1 did not have to move — and lengthening it to name the
+ * subject again (`Scroll up for earlier history`, 30 characters against 22)
+ * would re-open exactly the clipping this pair exists to prevent, at a measure
+ * where nothing else in the row can be dropped instead.
  */
 /** The short spelling: shown only BELOW 260px, hidden at or above it. */
 const SHORT_COPY = "@min-[260px]/olderhistory:hidden";
@@ -118,7 +129,6 @@ export const OLDER_HISTORY_HINT_ID = "lo-older-history-hint";
 
 export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	state,
-	hiddenRows,
 	transportDown = false,
 	onLoadOlder,
 }) => {
@@ -235,25 +245,58 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					Load earlier messages
 				</Button>
 			) : state === "windowed" ? (
-				// A statement plus the gesture that acts on it. The reader has just
-				// been given scrolling as the primary way to reach history, so the
-				// row that reports history exists is the place to name it — the same
-				// argument the terminal UI's head notice makes ("older messages above
-				// — scroll up to load"). "Messages" rather than "rows": a row is a
-				// transcript-internal unit the reader never chose.
+				/*
+				 * A statement plus the gesture that acts on it. The reader has just
+				 * been given scrolling as the primary way to reach history, so the
+				 * row that reports history exists is the place to name it — the same
+				 * argument the terminal UI's head notice makes ("older messages above
+				 * — scroll up to load").
+				 *
+				 * NO COUNT AND NO UNIT, which is what the row used to carry and what
+				 * design round 1's D1 measured away. `hiddenRows` is a count of ROWS
+				 * (`canonical-transcript`'s `total - visible.length`, one unit per
+				 * record `buildRows` produced) and the copy called those units
+				 * "messages" — but rows are not what a reader counts: the render
+				 * folds a run of ≥3 actions into one summary line, so most counted
+				 * rows never paint as themselves. Measured: the row read `14 earlier
+				 * messages above — scroll up to load` over six visible rows, the bar
+				 * beneath it reading `225 actions`, and the gesture that followed it
+				 * added no visible row. A number in a unit the reader cannot see is a
+				 * claim branding § 8 does not allow, and making the two agree is a
+				 * MODEL change (the fold is decided in the render plan, not in the
+				 * window), so the row states what it can stand behind instead: there
+				 * is history above, and scrolling is how you reach it. The subject is
+				 * the transcript's HISTORY, which is what the head comment calls it
+				 * — a word this row can be held to, unlike a tally of rows.
+				 *
+				 * The transport clause is unchanged: a fetch that would follow the
+				 * local widen cannot be promised while the transport is down, so the
+				 * gesture is dropped and the row states only what is true.
+				 *
+				 * The full sentence is in `title` for the same reason the fault line
+				 * carries one (head comment): the row cannot wrap, so at the widths
+				 * where the short spelling takes over the sentence the reader sees
+				 * is the shorter one, and the fuller wording stays reachable.
+				 */
 				<span
 					id={OLDER_HISTORY_HINT_ID}
 					className="min-w-0 truncate text-ink-dim text-meta"
+					title={
+						transportDown
+							? "Earlier history above"
+							: "Earlier history above — scroll up to load"
+					}
 				>
-					{/* The gesture is the payload, so it is the count that goes when the
-					    column cannot hold both. Truncation would have dropped the
-					    gesture instead, which is the half a reader cannot infer. */}
+					{/* The gesture is the payload, so it is the clause that goes when
+					    the column cannot hold it (and, above, when the transport
+					    cannot deliver it). Truncation would have dropped the gesture
+					    instead, which is the half a reader cannot infer. */}
 					<span className={SHORT_COPY}>
-						{transportDown ? "Earlier messages above" : "Scroll up for earlier"}
+						{transportDown ? "Earlier history above" : "Scroll up for earlier"}
 					</span>
 					<span className={FULL_COPY}>
-						{hiddenRows} earlier {hiddenRows === 1 ? "message" : "messages"}{" "}
-						above{transportDown ? "" : " — scroll up to load"}
+						Earlier history above
+						{transportDown ? "" : " — scroll up to load"}
 					</span>
 				</span>
 			) : (

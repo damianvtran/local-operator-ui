@@ -984,7 +984,9 @@ test("a page that lands while the reader is still pushing still owes its widen",
 	// exactly what a reader still pushing at the wall produces — so a page that
 	// landed with rows held back left the reader pinned with those rows one widen
 	// away and nothing coming until their next act. Measured: the reader sat at
-	// the hard top for 869ms with the slot reading "100 earlier messages above".
+	// the hard top for 869ms with the slot reading "100 earlier messages above"
+	// (the windowed sentence then carried a count; it states none since design
+	// round 1's D1).
 	let state = wheelUp(initialPagingState(), 0);
 	const spent = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
 	assert.equal(spent.action, "fetch");
