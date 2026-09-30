@@ -2365,6 +2365,26 @@ const BRANCH_RECORDS = [
 	 */
 	"browserOauthPopupsRestampNote",
 	/*
+	 * And THIS round's own (2026-09-29 recovery): the identity panel's pass
+	 * record, `identityMenuPass`, and this lane's three fold notes. The pass
+	 * record was never listed while the lane lived on its own branch - this
+	 * list's promise was one record short of true for it - and the fold notes
+	 * are the only statements of what each fold resolved; a fold resolved from
+	 * main's copy would drop them without a word, which is this list's whole
+	 * subject. The two notes this lane first wrote under plain fold names are
+	 * re-keyed with the `Identity` suffix because main's copy already ships
+	 * notes under both old names (the settings-rail lane's folds onto the same
+	 * tips - the same collision that lane re-keyed its own `A8ac7f673c` record
+	 * for). All four spell their identity as bare SHAs, so none adds a name to
+	 * the quoting ledger.
+	 */
+	"identityMenuPass",
+	"foldOnto7ba0ddce94IdentityNote",
+	"foldOnto6f284060IdentityNote",
+	"foldOnto65a3e97b8cIdentityNote",
+	"foldOnto29a9aa985cIdentityNote",
+	"foldOnto32c7bc34c9IdentityNote",
+	/*
 	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
 	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
 	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
