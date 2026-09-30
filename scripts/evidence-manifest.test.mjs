@@ -2825,6 +2825,12 @@ const BRANCH_RECORDS = [
 	 * usual reason.
 	 */
 	"traceSessionsGlyphRestampNote",
+	/*
+	 * And the lane's fold onto `742a3a1e94` (#569's sidebar load-more), the
+	 * record a later fold resolved from main's copy would drop first - same
+	 * reason.
+	 */
+	"foldOnto742a3a1e94Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
