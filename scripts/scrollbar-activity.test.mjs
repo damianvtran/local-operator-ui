@@ -763,6 +763,24 @@ test("no shipped scroller carries a transition or animation list of its own", ()
 				walk(path);
 				continue;
 			}
+			/*
+			 * THE CASCADING SHEETS ARE HALF OF THIS CENSUS, and the half that is easy to
+			 * forget: a scroller can be declared in CSS rather than by a class list
+			 * (`features/chat/components/markdown.css`'s `.lo-md-table-scroll` is one, and
+			 * it lands in this branch with main's markdown-table work), and a
+			 * `transition` in the same rule overrides the fade's exactly as a utility
+			 * would. Read per rule block rather than per line, because a sheet has no
+			 * line-shaped equivalent of a `cn(…)` list.
+			 */
+			if (entry.name.endsWith(".css")) {
+				const sheet = readFileSync(path, "utf8");
+				for (const block of sheet.matchAll(/\{([^{}]*)\}/g)) {
+					const body = block[1];
+					if (!/overflow(?:-x|-y)?:\s*(?:auto|scroll)/.test(body)) continue;
+					if (/transition/.test(body)) hits.push(`${path}: a rule block`);
+				}
+				continue;
+			}
 			if (!/\.tsx?$/.test(entry.name) || entry.name.includes(".stories."))
 				continue;
 			const lines = readFileSync(path, "utf8").split("\n");
