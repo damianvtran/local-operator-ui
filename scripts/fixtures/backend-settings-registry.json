@@ -1393,9 +1393,9 @@
 		{
 			"key": "display.turn_answer_rail",
 			"section": "appearance",
-			"label": "Answer rail",
+			"label": "Mark the turn answer",
 			"kind": "bool",
-			"help": "Draw a thin rule beside the answer that closes a turn in the desktop transcript.",
+			"help": "Draw a thin rule beside the answer that closes a turn (desktop app).",
 			"value": false,
 			"default": false,
 			"is_default": true,
@@ -1406,12 +1406,12 @@
 				{
 					"value": true,
 					"label": "on",
-					"description": "draw the rule"
+					"description": "rule beside the closing answer"
 				},
 				{
 					"value": false,
 					"label": "off",
-					"description": "no rule"
+					"description": "no rule beside the answer"
 				}
 			],
 			"empty_unsets": false,
