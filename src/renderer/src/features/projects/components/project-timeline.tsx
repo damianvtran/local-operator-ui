@@ -243,14 +243,26 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 					</div>
 				</div>
 			) : (
-				<p className="px-3 py-6 text-body-sm text-ink-muted">
+				<p
+					/*
+					 * 36px, the AXIS's own left edge: the toolbar above is `px-9` and
+					 * the axis's name column starts at the scroller's `px-6` plus the
+					 * sticky label's `px-3`, so a message at `px-3` sat 13px in against
+					 * a 37px axis - the misalignment design round 1 (D2) measured.
+					 */
+					className="px-9 py-6 text-body-sm text-ink-muted"
+				>
 					No dates on any project yet. Set a start date, a target date or a
 					milestone date and it will appear on the timeline.
 				</p>
 			)}
 
 			{sections.undated.length > 0 && (
-				<div className="shrink-0 px-3 py-2 text-meta text-ink-muted">
+				<div
+					/* The same 36px as the paragraph above and the toolbar (design
+					 * round 1, D2): this list is the axis's other caption. */
+					className="shrink-0 px-9 py-2 text-meta text-ink-muted"
+				>
 					No dates ({sections.undated.length}):{" "}
 					{sections.undated.map((item, index) => (
 						<span key={item.project.id}>

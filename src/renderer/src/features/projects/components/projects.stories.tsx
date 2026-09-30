@@ -40,6 +40,7 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
+import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
 /** Sunday 20 September 2026, 2:00 PM local — every label derives from this. */
@@ -313,6 +314,17 @@ const BOARD_WINDOW_ROWS: DesktopProject[] = [
  */
 const BOARD_WINDOW_AGED: DesktopProject[] = BOARD_WINDOW_ROWS.filter(
 	(row) => FIXTURE_NOW_MS / 1000 - row.updated_at > 7 * DAY_S,
+);
+
+/**
+ * The rows older than NINETY days - the one row `vendor-renewal` at 200d, and
+ * nothing else. The 90d rung's empty state needs every row outside the window,
+ * which is a different fixture from the 7d one (that one still contains a 12d
+ * and a 45d row, inside 90d): the two empty-window frames are the ladder's own
+ * proof that the heading's phrase follows the RUNG rather than the state.
+ */
+const BOARD_WINDOW_ANCIENT: DesktopProject[] = BOARD_WINDOW_ROWS.filter(
+	(row) => FIXTURE_NOW_MS / 1000 - row.updated_at > 90 * DAY_S,
 );
 
 const LINK = (
@@ -1225,16 +1237,22 @@ export const DetailFeed: Story = {
  * scroller past one screen - so the same two frames carry the wrap AND the
  * scrollbar riding the view's edge rather than the column's.
  *
- * NO PLAY, and that is deliberate: the claim (the header LEADS with the full
- * title and it is not clipped) is asserted by the capture entry's own
- * `expectSentence`, which reads the story's rendered text before the shutter.
- * A play here held the shutter open past the rig's 60s budget and the frame was
- * never taken - measured on this branch, and the cause is storybook's own
- * placeholder: a HIDDEN `<h1 class="sb-nopreview_heading">` sits FIRST in
- * document order before the story mounts, so `document.querySelector("h1")`
- * reads the placeholder rather than this header, and a poll against it waits
- * forever. `expectSentence` scopes by text instead, which cannot be taken by
- * the placeholder's empty `innerText`.
+ * NO LONGER "NO PLAY" (review round 1, R1-2): this paragraph used to say the
+ * stories carried none, which stopped being true the same afternoon - the pair
+ * ships `longTitlePlay`. The two claims:
+ *
+ *   the PLAY asserts the header LEADS with the full title (exact
+ *   `textContent`) and that it is NOT clipped (`scrollWidth` inside its box -
+ *   what the retired `truncate` pushed past). It reaches the heading through
+ *   `longTitleHeading`, which finds it by TEXT: this document holds storybook's
+ *   hidden `sb-nopreview_heading` placeholder and the shell's own "Projects"
+ *   header above this screen's, so a bare `querySelector("h1")` reads a
+ *   different element and a poll against it waits out the rig's whole budget
+ *   (measured: the frame was never taken).
+ *
+ *   the CAPTURE ENTRY's `expectSentence` refuses a frame whose rendered text
+ *   does not carry the title at all, scoped by the header's own
+ *   `data-project-title`.
  */
 const LONG_TITLE =
 	"Payments migration onto the new reconciliation service and the ledger split";
@@ -2466,6 +2484,17 @@ export const BoardWindow24h: Story = {
 			"the 24h window",
 		);
 		expectBoardKeys(["cutover-probe", "hotfix-drill"], "the 24h window");
+		/*
+		 * THE STORED RUNG IS WHAT THIS FRAME IS A PICTURE OF (UX round 1): the
+		 * story sets the token and `page()` clears the key for every story that
+		 * does NOT name one, so the two paths are a pair - a stored `24h` reads
+		 * back as `24h` here, and a cleared key reads as the 7d default in
+		 * `board-window-populated`. Without this half, a regression that ignored
+		 * the store would still paint the right board from the story's own prop.
+		 */
+		if (localStorage.getItem(PROJECTS_BOARD_WINDOW_STORAGE_KEY) !== "24h") {
+			throw new Error("the 24h rung was not written to the store");
+		}
 		const hotfix = need<HTMLElement>('[data-project-name="hotfix-drill"]');
 		if (!hotfix.textContent?.includes("reported 12d ago")) {
 			throw new Error(
@@ -2591,7 +2620,7 @@ export const BoardWindowEmpty: Story = {
 		}
 		if (
 			!(document.body.textContent ?? "").includes(
-				"Widen the window to see older projects.",
+				"Older projects are hidden by the window.",
 			)
 		) {
 			throw new Error("the empty-window body copy is missing");
@@ -2600,6 +2629,115 @@ export const BoardWindowEmpty: Story = {
 			button.textContent?.includes("Show all time"),
 		);
 		if (!action) throw new Error("the Show all time action is missing");
+	}),
+};
+
+/**
+ * The empty window at 24h: the same state one rung down, where the heading
+ * must read the RUNG's phrase ("Nothing changed in the last 24 hours.") rather
+ * than the default's - the frames are the ladder's own proof that the sentence
+ * follows the window and not the state.
+ */
+export const BoardWindowEmpty24h: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_AGED,
+			details: detailsFor(BOARD_WINDOW_AGED),
+			window: "24h",
+		}),
+	play: playOnce("board-window-empty-24-h", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Nothing changed in the last 24 hours.",
+				),
+			"the 24h empty-window heading",
+		);
+		if (document.querySelector("[data-project-name]") !== null) {
+			throw new Error("a card is on the board under the 24h empty window");
+		}
+	}),
+};
+
+/**
+ * The empty window at 90d: the fixture is the rows older than NINETY days, so
+ * the heading reads "…the last 90 days." while the same board at 24h and 7d
+ * still holds cards. The two frames together are what makes the phrase's
+ * provenance visible.
+ */
+export const BoardWindowEmpty90d: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ANCIENT,
+			details: detailsFor(BOARD_WINDOW_ANCIENT),
+			window: "90d",
+		}),
+	play: playOnce("board-window-empty-90-d", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Nothing changed in the last 90 days.",
+				),
+			"the 90d empty-window heading",
+		);
+		if (document.querySelector("[data-project-name]") !== null) {
+			throw new Error("a card is on the board under the 90d empty window");
+		}
+	}),
+};
+
+/**
+ * THE WINDOW'S OWN DIMENSION, said in words (design round 1, D1). The control
+ * carries a tooltip naming what it filters on and that older rows are hidden,
+ * and the play opens it BOTH ways - hover for the pointer, focus for the
+ * keyboard, which is the state the shutter lands on - and reads the same
+ * sentence the component exports, so the frame cannot drift from the copy.
+ */
+export const BoardWindowHint: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_WINDOW_ROWS,
+			details: detailsFor(BOARD_WINDOW_ROWS),
+		}),
+	play: playOnce("board-window-hint", async () => {
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="projects-board-window"]') !==
+				null,
+			"the window control",
+		);
+		const trigger = need<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		const panelText = () =>
+			document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? "";
+		/*
+		 * BOTH DOORS, in the order a reader meets them: the pointer opens the
+		 * hint (hover), it LEAVES WITH THE POINTER (the call site passes
+		 * `disableHoverableContent` for the reason QA round 1 recorded - the
+		 * primitive's default waits for the pointer to enter a panel that is
+		 * `pointer-events: none`, so the panel outlived the gesture by tens of
+		 * seconds), and the keyboard opens it again by focusing the control, which
+		 * is the state the shutter lands on.
+		 */
+		await userEvent.hover(trigger);
+		await poll(
+			() => panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip on hover",
+		);
+		await userEvent.unhover(trigger);
+		await poll(
+			() => !panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip to close when the pointer leaves",
+		);
+		trigger.focus();
+		await poll(
+			() => panelText().includes(BOARD_WINDOW_HINT),
+			"the window tooltip on focus",
+		);
 	}),
 };
 
@@ -2843,7 +2981,36 @@ export const BoardTitleTooltip: Story = {
 		 * The keyboard path, which is the state the shutter lands on: focus alone
 		 * must open the panel (Radix opens on focus as well as hover).
 		 */
+		/*
+		 * The pointer path, then THE PANEL MUST LEAVE WITH THE POINTER (QA round 1,
+		 * Q1): the primitive's default keeps the panel painted after the trigger
+		 * is left (measured 12s+, because a close waits for the pointer to enter a
+		 * panel that is `pointer-events: none`), which is why this call site
+		 * passes `disableHoverableContent`. The frame that proves it is the ABSENCE
+		 * of the panel after `unhover`, so it is asserted before the keyboard half
+		 * opens it again.
+		 */
+		await userEvent.hover(long);
+		await poll(
+			() =>
+				(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip on hover",
+		);
 		await userEvent.unhover(long);
+		await poll(
+			() =>
+				!(
+					document.querySelector("[data-lo-tooltip-panel]")?.textContent ?? ""
+				).includes("Split the payments gateway"),
+			"the tooltip to close when the pointer leaves the title",
+		);
+		/*
+		 * The keyboard path, which is the state the shutter lands on: focus alone
+		 * must open the panel (Radix opens on focus as well as hover), so the
+		 * close-on-leave above did not disable dismissal.
+		 */
 		long.focus();
 		await poll(
 			() =>

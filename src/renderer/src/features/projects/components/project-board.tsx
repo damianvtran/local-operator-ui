@@ -963,7 +963,20 @@ const BoardCard: FC<BoardCardProps> = ({
 					 * events whose target is a child, so Enter on this span cannot
 					 * navigate the card.
 					 */}
-					<Tooltip content={titleClipped ? displayName : null} side="top">
+					<Tooltip
+						content={titleClipped ? displayName : null}
+						side="top"
+						/*
+						 * CLOSES WHEN THE POINTER LEAVES THE TRIGGER (QA round 1, Q1 - measured
+						 * still painted 12s+ after the pointer was gone). The primitive's
+						 * default clears its open timer on leave and then waits for the pointer
+						 * to ENTER the panel to close it - and every panel here is
+						 * `pointer-events: none`, so that moment cannot arrive and the panel
+						 * describes a card the pointer left long ago. Escape and blur keep
+						 * working: this closes on leave, it does not disable dismissal.
+						 */
+						disableHoverableContent
+					>
 						<span
 							ref={titleRef}
 							/* The harness's handle on the title line, in the `data-project-name`

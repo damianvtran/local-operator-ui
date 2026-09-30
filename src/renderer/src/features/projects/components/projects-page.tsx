@@ -33,7 +33,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
 	DesktopProject,
@@ -135,6 +135,25 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	);
 	/* The empty-window heading; `null` at `all`, where the state is unreachable. */
 	const boardWindowHeading = boardWindowEmptyHeading(boardWindow);
+	/*
+	 * THE RECOVERY HANDS THE CARET BACK (UX round 1, U3). "Show all time"
+	 * unmounts the button the press came from, so focus falls to the body - a
+	 * keyboard reader is dropped at the top of the document with the state they
+	 * just changed behind them. This is `useMoveFocusHandoff`'s shape in this
+	 * same feature (it waits for the commit that mounts the target rather than
+	 * reaching across renders, and retries on the next render), pointed at the
+	 * window control the press just changed.
+	 */
+	const [handBackToWindow, setHandBackToWindow] = useState(false);
+	useEffect(() => {
+		if (!handBackToWindow) return;
+		const node = document.querySelector<HTMLElement>(
+			'[data-tour-tag="projects-board-window"]',
+		);
+		if (!node) return; // the next render retries
+		node.focus();
+		setHandBackToWindow(false);
+	});
 	const details = useProjectMilestones(
 		view === "timeline" ? projects.map((project) => project.id) : [],
 		enabled,
@@ -423,13 +442,14 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 							<p className="text-heading text-ink">{boardWindowHeading}</p>
 							<p className="max-w-140 text-center text-body-sm text-ink-muted">
-								Widen the window to see older projects.
+								Older projects are hidden by the window.
 							</p>
 							<Button
 								variant="secondary"
 								onClick={() => {
 									setBoardWindow("all");
 									writeBoardWindow("all");
+									setHandBackToWindow(true);
 								}}
 							>
 								Show all time

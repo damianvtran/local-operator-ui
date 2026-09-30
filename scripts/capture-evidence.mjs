@@ -5181,6 +5181,13 @@ export const STORIES = [
 	["projects-tab--board-window-widened", 1280, 900],
 	["projects-tab--board-window-menu-open", 1280, 900],
 	["projects-tab--board-window-narrow", 800, 900],
+	/* The empty window at two more rungs (design round 1, D5): the heading has to
+	 * read the RUNG's phrase, and one frame of the default rung could not show
+	 * that. The hint frame is the control's own dimension said in words (D1),
+	 * opened on focus - the keyboard path - by its play. */
+	["projects-tab--board-window-empty-24-h", 1280, 900],
+	["projects-tab--board-window-empty-90-d", 1280, 900],
+	["projects-tab--board-window-hint", 1280, 900],
 	["projects-tab--board-window-no-projects", 1280, 900],
 	/*
 	 * The operator's title items (2026-09-30): the clipped card title's reveal
@@ -5206,15 +5213,25 @@ export const STORIES = [
 		{
 			expectSentence: {
 				/*
-				 * `:not([class*="sb-"])` is LOAD-BEARING: storybook keeps a HIDDEN
-				 * "No Preview" `<h1 class="sb-nopreview_heading">` in the document
-				 * before the story mounts, and it is the FIRST `h1` in document
-				 * order - so a bare `h1` selector reads the placeholder, whose
-				 * `innerText` is empty (measured on this entry: the claim failed
-				 * with the story's own header plainly on screen).
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
 				 */
-				includes:
-					"Payments migration onto the new reconciliation service and the ledger split",
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
 			},
 		},
 	],
@@ -5225,15 +5242,25 @@ export const STORIES = [
 		{
 			expectSentence: {
 				/*
-				 * `:not([class*="sb-"])` is LOAD-BEARING: storybook keeps a HIDDEN
-				 * "No Preview" `<h1 class="sb-nopreview_heading">` in the document
-				 * before the story mounts, and it is the FIRST `h1` in document
-				 * order - so a bare `h1` selector reads the placeholder, whose
-				 * `innerText` is empty (measured on this entry: the claim failed
-				 * with the story's own header plainly on screen).
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
 				 */
-				includes:
-					"Payments migration onto the new reconciliation service and the ledger split",
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
 			},
 		},
 	],
