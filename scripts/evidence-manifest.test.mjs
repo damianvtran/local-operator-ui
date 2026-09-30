@@ -2414,6 +2414,14 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoefca9e16fcNote",
 	/*
+	 * And the fold onto `e78e4395eb` (the loader-walk lane: `mayAutoWalk`,
+	 * `MAX_ACT_ASKS` and its paging cases): registered for the list's own
+	 * reason - a fold resolved from main's copy would drop how the two
+	 * conflicted paths (this file and the paging test's four-symbol header)
+	 * were resolved and the pair re-derived over the folded tree.
+	 */
+	"foldOntoe78e4395ebNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
