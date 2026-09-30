@@ -10734,13 +10734,19 @@ async function sceneTranscriptRail(cdp) {
 				};
 			})()`);
 		/*
-		 * A row band's peak luma, from the captured PNG: the x window is the
-		 * scroller's own left edge plus 520px (the fixture's rows draw their text
-		 * in the left half), the y window the row's own band; the MAX over the
-		 * band is the peak ink - the same reading design round 1 took per 2px
-		 * band (issue #680, D1: 189 inside the fade against 238 clear).
+		 * A row band's luma stats (min, max) from the captured PNG: the x window
+		 * is the scroller's own left edge plus 520px (the fixture's rows draw
+		 * their text in the left half), the y window the row's own band. The
+		 * INK measurement is the RANGE (max - min), because ink's polarity flips
+		 * with the palette - light-on-dark reads as the max, dark-on-light as
+		 * the min - and a mask that dims the text shrinks the range in either
+		 * (design round 1 measured 238 -> 189 inside the fade in dark). The MAX
+		 * doubles as the band's GROUND, which is what tells reference classes
+		 * apart: light grounds run 237-251 and both are full ink, so a
+		 * peak-vs-peak comparison across rows of different grounds was unsound
+		 * (QA round 5's light-palette false red).
 		 */
-		const rowPeakLuma = async (label, scrollerLeft, band) => {
+		const rowBandStats = async (label, scrollerLeft, band) => {
 			const file = join(FRAMES, `${label}.png`);
 			const meta = await sharp(file).metadata();
 			const inner = await evaluate("window.innerWidth");
@@ -10756,13 +10762,35 @@ async function sceneTranscriptRail(cdp) {
 				.extract({ left, top, width, height })
 				.raw()
 				.toBuffer({ resolveWithObject: true });
-			let peak = 0;
+			let min = 255;
+			let max = 0;
+			const values = [];
 			for (let i = 0; i + 2 < data.length; i += 3) {
 				const value =
 					0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-				if (value > peak) peak = value;
+				values.push(value);
+				if (value > max) max = value;
+				if (value < min) min = value;
 			}
-			return Math.round(peak);
+			/*
+			 * The counts at each extreme tell GROUND from INK without a palette
+			 * table: the band's ground is its majority value, and the ink is the
+			 * minority extreme - bright-on-dark in one palette, dark-on-light in
+			 * another, same numbers either way (QA round 5 measured a light band
+			 * as min 30 / max 251 and a dark one as min 33 / max 238).
+			 */
+			let minCount = 0;
+			let maxCount = 0;
+			for (const value of values) {
+				if (value <= min + 8) minCount += 1;
+				if (value >= max - 8) maxCount += 1;
+			}
+			return {
+				min: Math.round(min),
+				max: Math.round(max),
+				minCount,
+				maxCount,
+			};
 		};
 		const jumpCase = async (name, id, expect) => {
 			await washGone();
@@ -10852,8 +10880,8 @@ async function sceneTranscriptRail(cdp) {
 			const lumaView = settled ?? atWash;
 			const strip = lumaView?.visibleStrip ?? null;
 			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
-			const targetPeak = targetVisible
-				? await rowPeakLuma(
+			const targetStats = targetVisible
+				? await rowBandStats(
 						`rail-jump-${name}-settled`,
 						lumaView.scrollerLeft,
 						{
@@ -10862,29 +10890,46 @@ async function sceneTranscriptRail(cdp) {
 						},
 					)
 				: null;
-			const refPeak = lumaView?.refBand
-				? await rowPeakLuma(
+			const refStats = lumaView?.refBand
+				? await rowBandStats(
 						`rail-jump-${name}-settled`,
 						lumaView.scrollerLeft,
 						lumaView.refBand,
 					)
 				: null;
-			const adjPeak = lumaView?.adjBand
-				? await rowPeakLuma(
+			const adjStats = lumaView?.adjBand
+				? await rowBandStats(
 						`rail-jump-${name}-settled`,
 						lumaView.scrollerLeft,
 						lumaView.adjBand,
 					)
 				: null;
-			/* Full ink is 200+ (unmasked 238, inside the fade 189): the first
-			 * reference that actually carries ink is the comparison; without one
-			 * the absolute bar still carries the check, and the note says so. */
-			const referencePeak =
-				refPeak !== null && refPeak >= 200
-					? refPeak
-					: adjPeak !== null && adjPeak >= 200
-						? adjPeak
-						: null;
+			const bandRange = (stats) => (stats ? stats.max - stats.min : null);
+			/* The ground is the majority extreme; the ink is the other one. */
+			const inkValue = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.min : stats.max;
+			const inkCount = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.minCount : stats.maxCount;
+			/* A band carries ink when it has real contrast AND a real minority
+			 * extreme (text strokes, not antialiasing noise). */
+			const carriesInk = (stats) =>
+				stats !== null && stats.max - stats.min >= 100 && inkCount(stats) >= 30;
+			const targetRange = bandRange(targetStats);
+			/*
+			 * Full ink is a RANGE of 180+ (dark full 206, inside the fade 156;
+			 * light full 207). The reference comparison runs only against a band
+			 * that CARRIES INK (contrast plus a real text minority): a blank
+			 * band's extremes are all ground - comparing against one was the
+			 * light-palette false red (QA round 5) - while a band on another
+			 * ground is another row class whose range still differs only by its
+			 * ground, so the comparison anchors on the INK extreme, not the
+			 * range. With no inked reference the absolute bar carries the check
+			 * and the note shows the candidates.
+			 */
+			const reference =
+				targetStats === null
+					? null
+					: ([refStats, adjStats].find(carriesInk) ?? null);
 			if (name === "very-top") {
 				note(
 					`settle frames ${name}`,
@@ -10893,7 +10938,7 @@ async function sceneTranscriptRail(cdp) {
 			}
 			note(
 				`landing ${name}`,
-				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetPeak ?? "none"}/${referencePeak ?? "none"} mid=${refPeak ?? "none"} adj=${adjPeak ?? "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetRange ?? "none"}/${reference ? bandRange(reference) : "none"} ink=${targetStats ? inkValue(targetStats) : "none"}/${reference ? inkValue(reference) : "none"} mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
 			);
 			check(
 				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
@@ -10913,13 +10958,14 @@ async function sceneTranscriptRail(cdp) {
 			check(
 				`the ${name} landing's target reads at full ink, clear of the top fade`,
 				targetVisible
-					? targetPeak !== null &&
-							targetPeak >= 200 &&
-							(referencePeak === null ||
-								Math.abs(targetPeak - referencePeak) <= 4)
+					? targetRange !== null &&
+							targetRange >= 180 &&
+							carriesInk(targetStats) &&
+							(reference === null ||
+								Math.abs(inkValue(targetStats) - inkValue(reference)) <= 4)
 					: expect === "clamp",
 				targetVisible
-					? `target=${targetPeak} reference=${referencePeak ?? "none"} (mid=${refPeak ?? "none"} adj=${adjPeak ?? "none"})`
+					? `target=${targetRange} (${targetStats?.min}-${targetStats?.max}) reference=${reference ? bandRange(reference) : "none"} (mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"})`
 					: `no visible target strip (the clamp's last row sits past the fold): ${JSON.stringify(strip)}`,
 			);
 			check(
