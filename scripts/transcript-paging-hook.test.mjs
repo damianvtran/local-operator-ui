@@ -211,6 +211,8 @@ function mountHook(options = {}) {
 		get widenCalls() {
 			return widenCalls;
 		},
+		/** The completion walk's authorisation, as the transcript reads it (1b). */
+		mayAutoWalk: () => handle.mayAutoWalk(),
 		setScrollTop: (value) => {
 			scrollTop = value;
 		},
@@ -498,6 +500,50 @@ test("a stale outcome from the conversation the reader left cannot cancel the ne
 			asks.length,
 			2,
 			"the new conversation still auto-continues: the old page's outcome is not its",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * The completion walk's authorisation (loader-continuity 1b, spec section 7
+ * clause b), asked of the hook rather than of a copy of its arithmetic: the walk
+ * may ask only while the reader FOLLOWS THE TAIL and has given no input for
+ * `SETTLE_MS`. Both terms are the module's own - `followingTail` comes from the
+ * one geometry `decide` reads, and the quiet window from the policy's own input
+ * clock - so this is the accessor the transcript calls rather than a second
+ * derivation beside it.
+ */
+test("the walk is authorised only at the tail, and only after the input has settled", async () => {
+	const hook = mountHook({ hiddenRows: 0 });
+	try {
+		// scroller: scrollHeight 1400, clientHeight 800. -600 from the tail is the
+		// hard top (distance 0) and NOT the tail; -20 is inside TAIL_EPS_PX (24).
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		assert.equal(
+			hook.mayAutoWalk(),
+			false,
+			"a reader up in the history is not walked on their behalf",
+		);
+		hook.setScrollTop(-20);
+		assert.equal(
+			hook.mayAutoWalk(),
+			true,
+			"at the tail, and quiet: the walk may ask",
+		);
+		hook.readerInput();
+		assert.equal(
+			hook.mayAutoWalk(),
+			false,
+			"input arms a demand; the walk waits out the settle window",
+		);
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 40));
+		assert.equal(
+			hook.mayAutoWalk(),
+			true,
+			"once the input has settled the position is the whole question again",
 		);
 	} finally {
 		hook.close();
