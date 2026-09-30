@@ -19,8 +19,3 @@ export interface CompanionChatSnapshot {
 	/** The admitted question, available before its transcript echo arrives. */
 	activeQuestion?: { id: string; text: string };
 }
-
-export interface CompanionChatSendResult {
-	accepted: boolean;
-	snapshot: CompanionChatSnapshot;
-}

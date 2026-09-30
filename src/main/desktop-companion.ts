@@ -101,7 +101,7 @@ export class DesktopCompanion {
 		ipcMain.handle("companion:send", async (event, text: unknown) => {
 			if (!this.trusted(event) || !this.chatOpen || typeof text !== "string")
 				return false;
-			return (await this.chat.send(text)).accepted;
+			return this.chat.send(text);
 		});
 		ipcMain.handle("companion:chat-menu", (event, position: unknown) =>
 			this.trusted(event) ? this.showChatMenu(position) : false,
