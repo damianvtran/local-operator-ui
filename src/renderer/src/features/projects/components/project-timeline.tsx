@@ -42,6 +42,7 @@ import {
 	NO_TEAM_LABEL,
 	formatProjectDay,
 	groupByTeam,
+	projectDisplayName,
 	projectTeamName,
 } from "../project-model";
 import {
@@ -145,7 +146,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			className="flex min-h-0 flex-1 flex-col"
 			data-testid="project-timeline"
 		>
-			<div className="flex shrink-0 items-center justify-between gap-3 px-3 py-2">
+			<div className="flex shrink-0 items-center justify-between gap-3 px-9 py-2">
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
 					{failedDetails > 0
 						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
@@ -191,7 +192,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			</div>
 
 			{span && sections.dated.length > 0 ? (
-				<div className="min-h-0 flex-1 overflow-auto">
+				<div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
 					<div className="min-w-max">
 						<Axis
 							startMs={span.startMs}
@@ -242,14 +243,26 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 					</div>
 				</div>
 			) : (
-				<p className="px-3 py-6 text-body-sm text-ink-muted">
+				<p
+					/*
+					 * 36px, the AXIS's own left edge: the toolbar above is `px-9` and
+					 * the axis's name column starts at the scroller's `px-6` plus the
+					 * sticky label's `px-3`, so a message at `px-3` sat 13px in against
+					 * a 37px axis - the misalignment design round 1 (D2) measured.
+					 */
+					className="px-9 py-6 text-body-sm text-ink-muted"
+				>
 					No dates on any project yet. Set a start date, a target date or a
 					milestone date and it will appear on the timeline.
 				</p>
 			)}
 
 			{sections.undated.length > 0 && (
-				<div className="shrink-0 px-3 py-2 text-meta text-ink-muted">
+				<div
+					/* The same 36px as the paragraph above and the toolbar (design
+					 * round 1, D2): this list is the axis's other caption. */
+					className="shrink-0 px-9 py-2 text-meta text-ink-muted"
+				>
 					No dates ({sections.undated.length}):{" "}
 					{sections.undated.map((item, index) => (
 						<span key={item.project.id}>
@@ -259,7 +272,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 								className="text-ink hover:underline"
 								onClick={() => onOpen(item)}
 							>
-								{item.project.name}
+								{projectDisplayName(item.project)}
 							</button>
 						</span>
 					))}
@@ -332,7 +345,9 @@ const TimelineRow: FC<{
 				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-canvas px-3"
 				style={{ width: NAME_COL_PX, height: ROW_PX }}
 			>
-				<span className="truncate text-body-sm text-ink">{project.name}</span>
+				<span className="truncate text-body-sm text-ink">
+					{projectDisplayName(project)}
+				</span>
 			</span>
 			<span
 				className="relative block"

@@ -302,6 +302,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the condensed action group's height and its thumbnail strip from the live DOM, which is the compactness budget the pictures pass states as a number",
 	),
 	guarded(
+		"scripts/chat-measure-drag-evidence.mjs",
+		"spawn",
+		1,
+		"drives the conversation column's drag handle with a real pointer, photographs each state, and asserts what the reader's preference received - including a relaunch, which is why it launches Chrome twice against one profile",
+	),
+	guarded(
 		"scripts/chat-measure-evidence.mjs",
 		"spawn",
 		1,
