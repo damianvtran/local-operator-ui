@@ -1,304 +1,739 @@
 {
  "scene": "pinned-reorder",
  "theme": "localOperatorDark",
- "fold": "re-shot on the folded tree (origin/main 9dd18ab318 folded into the branch); the pre-fold frames were compared against these: 23 of 32 byte-identical, the rest differing only OUTSIDE the sidebar (x >= 858 device px against the sidebar's 560) - see the README",
- "widths": [
-  {
-   "240": {
-    "applied": {
-     "width": 240,
-     "clamped": false
-    },
-    "panel": {
-     "width": 240,
-     "clamped": false
-    },
-    "rowBox": {
-     "x": 12,
-     "y": 636,
-     "w": 208,
-     "h": 32
-    },
-    "restTitles": {
-     "p000": 126,
-     "p005": 126,
-     "p010": 126
-    },
-    "hoverTitles": {
-     "p000": 126,
-     "p005": 40,
-     "p010": 126
-    },
-    "hoveredCluster": {
-     "grip": {
-      "x": 112,
-      "y": 566,
-      "w": 24,
-      "h": 24
-     },
-     "up": true,
-     "down": true,
-     "archive": true,
-     "pin": true
-    }
+ "round": "round 1 remediation (PR #697), re-shot on the round-1 tree: the drag ground, the slot-0 line, the shed at 240, the grip count rule, the scrolled drop and the keyboard walk are this pass's additions",
+ "slices": {
+  "three": {
+   "checks": {
+    "pass": 47,
+    "fail": 0,
+    "failures": []
    },
-   "280": {
-    "applied": {
+   "frames": [
+    {
+     "label": "order-before-240",
+     "bytes": 192733,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "grip-hover-240",
+     "bytes": 206012,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "order-before-280",
+     "bytes": 196954,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "grip-hover-280",
+     "bytes": 206375,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "order-before-320",
+     "bytes": 196925,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "grip-hover-320",
+     "bytes": 206367,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "drag-mid",
+     "bytes": 197580,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "after-drop",
+     "bytes": 198201,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "order-relaunch",
+     "bytes": 193240,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "drag-top",
+     "bytes": 199091,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "search-filtered",
+     "bytes": 195586,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "search-drag-mid",
+     "bytes": 196508,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "search-after-drop",
+     "bytes": 196036,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    }
+   ],
+   "geometry": [
+    {
+     "240": {
+      "applied": {
+       "width": 240,
+       "clamped": false
+      },
+      "panel": {
+       "width": 240,
+       "clamped": false
+      },
+      "rowBox": {
+       "x": 12,
+       "y": 636,
+       "w": 208,
+       "h": 32
+      },
+      "hoverGround": "rgb(48, 45, 41)",
+      "restGround": "rgba(0, 0, 0, 0)",
+      "gripPainted": false,
+      "restTitles": {
+       "p000": 126,
+       "p005": 126,
+       "p010": 126
+      },
+      "hoverTitles": {
+       "p000": 126,
+       "p005": 68,
+       "p010": 126
+      },
+      "hoveredCluster": {
+       "grip": null,
+       "up": true,
+       "down": true,
+       "archive": true,
+       "pin": true
+      }
+     },
+     "280": {
+      "applied": {
+       "width": 280,
+       "clamped": false
+      },
+      "panel": {
+       "width": 280,
+       "clamped": false
+      },
+      "rowBox": {
+       "x": 12,
+       "y": 530,
+       "w": 248,
+       "h": 32
+      },
+      "hoverGround": "rgb(48, 45, 41)",
+      "restGround": "rgba(0, 0, 0, 0)",
+      "gripPainted": true,
+      "restTitles": {
+       "p000": 166,
+       "p005": 166,
+       "p010": 166
+      },
+      "hoverTitles": {
+       "p000": 166,
+       "p005": 80,
+       "p010": 166
+      },
+      "hoveredCluster": {
+       "grip": {
+        "x": 152,
+        "y": 566,
+        "w": 24,
+        "h": 24
+       },
+       "up": true,
+       "down": true,
+       "archive": true,
+       "pin": true
+      }
+     },
+     "320": {
+      "applied": {
+       "width": 320,
+       "clamped": false
+      },
+      "panel": {
+       "width": 320,
+       "clamped": false
+      },
+      "rowBox": {
+       "x": 12,
+       "y": 530,
+       "w": 288,
+       "h": 32
+      },
+      "hoverGround": "rgb(48, 45, 41)",
+      "restGround": "rgba(0, 0, 0, 0)",
+      "gripPainted": true,
+      "restTitles": {
+       "p000": 206,
+       "p005": 206,
+       "p010": 206
+      },
+      "hoverTitles": {
+       "p000": 206,
+       "p005": 120,
+       "p010": 206
+      },
+      "hoveredCluster": {
+       "grip": {
+        "x": 192,
+        "y": 566,
+        "w": 24,
+        "h": 24
+       },
+       "up": true,
+       "down": true,
+       "archive": true,
+       "pin": true
+      }
+     },
+     "round1": {
+      "draggedGround": "rgb(55, 47, 36)",
+      "hoverGround": "rgb(48, 45, 41)",
+      "slot0Line": {
+       "indicatorY": 498,
+       "sectionTop": 474
+      }
+     }
+    }
+   ],
+   "perWidth": [
+    {
+     "width": 240,
+     "row": {
+      "x": 12,
+      "y": 636,
+      "w": 208,
+      "h": 32
+     },
+     "restTitle": {
+      "x": 36,
+      "y": 674,
+      "w": 126,
+      "h": 20
+     },
+     "hoverTitle": {
+      "x": 36,
+      "y": 568,
+      "w": 68,
+      "h": 20
+     },
+     "grip": null
+    },
+    {
      "width": 280,
-     "clamped": false
-    },
-    "panel": {
-     "width": 280,
-     "clamped": false
-    },
-    "rowBox": {
-     "x": 12,
-     "y": 530,
-     "w": 248,
-     "h": 32
-    },
-    "restTitles": {
-     "p000": 166,
-     "p005": 166,
-     "p010": 166
-    },
-    "hoverTitles": {
-     "p000": 166,
-     "p005": 80,
-     "p010": 166
-    },
-    "hoveredCluster": {
+     "row": {
+      "x": 12,
+      "y": 530,
+      "w": 248,
+      "h": 32
+     },
+     "restTitle": {
+      "x": 36,
+      "y": 568,
+      "w": 166,
+      "h": 20
+     },
+     "hoverTitle": {
+      "x": 36,
+      "y": 568,
+      "w": 80,
+      "h": 20
+     },
      "grip": {
       "x": 152,
       "y": 566,
       "w": 24,
       "h": 24
+     }
+    },
+    {
+     "width": 320,
+     "row": {
+      "x": 12,
+      "y": 530,
+      "w": 288,
+      "h": 32
      },
-     "up": true,
-     "down": true,
-     "archive": true,
-     "pin": true
-    }
-   },
-   "320": {
-    "applied": {
-     "width": 320,
-     "clamped": false
-    },
-    "panel": {
-     "width": 320,
-     "clamped": false
-    },
-    "rowBox": {
-     "x": 12,
-     "y": 530,
-     "w": 288,
-     "h": 32
-    },
-    "restTitles": {
-     "p000": 206,
-     "p005": 206,
-     "p010": 206
-    },
-    "hoverTitles": {
-     "p000": 206,
-     "p005": 120,
-     "p010": 206
-    },
-    "hoveredCluster": {
+     "restTitle": {
+      "x": 36,
+      "y": 568,
+      "w": 206,
+      "h": 20
+     },
+     "hoverTitle": {
+      "x": 36,
+      "y": 568,
+      "w": 120,
+      "h": 20
+     },
      "grip": {
       "x": 192,
       "y": 566,
       "w": 24,
       "h": 24
-     },
-     "up": true,
-     "down": true,
-     "archive": true,
-     "pin": true
-    }
-   }
-  }
- ],
- "perWidth": {
-  "240": [
-   {
-    "row": {
-     "x": 12,
-     "y": 636,
-     "w": 208,
-     "h": 32
-    },
-    "restTitle": {
-     "x": 36,
-     "y": 674,
-     "w": 126,
-     "h": 20
-    },
-    "hoverTitle": {
-     "x": 36,
-     "y": 568,
-     "w": 40,
-     "h": 20
-    },
-    "grip": {
-     "x": 112,
-     "y": 566,
-     "w": 24,
-     "h": 24
-    }
-   }
-  ],
-  "280": [
-   {
-    "row": {
-     "x": 12,
-     "y": 530,
-     "w": 248,
-     "h": 32
-    },
-    "restTitle": {
-     "x": 36,
-     "y": 568,
-     "w": 166,
-     "h": 20
-    },
-    "hoverTitle": {
-     "x": 36,
-     "y": 568,
-     "w": 80,
-     "h": 20
-    },
-    "grip": {
-     "x": 152,
-     "y": 566,
-     "w": 24,
-     "h": 24
-    }
-   }
-  ],
-  "320": [
-   {
-    "row": {
-     "x": 12,
-     "y": 530,
-     "w": 288,
-     "h": 32
-    },
-    "restTitle": {
-     "x": 36,
-     "y": 568,
-     "w": 206,
-     "h": 20
-    },
-    "hoverTitle": {
-     "x": 36,
-     "y": 568,
-     "w": 120,
-     "h": 20
-    },
-    "grip": {
-     "x": 192,
-     "y": 566,
-     "w": 24,
-     "h": 24
-    }
-   }
-  ]
- },
- "drop": [
-  {
-   "targetY": 624,
-   "boxes": [
-    {
-     "id": "p005",
-     "y": 562,
-     "h": 32
-    },
-    {
-     "id": "p010",
-     "y": 626,
-     "h": 32
+     }
     }
    ],
-   "indicator": {
-    "y": 626,
-    "h": 2
+   "readings": [
+    {
+     "title": "abandoned scratch trees",
+     "payload": "48 seen, 0 owned by a live pid (kept), 47 younger than 30m (kept), 1 removed: lo-renderer-driver-96688"
+    },
+    {
+     "title": "csp for this run's backend",
+     "payload": "out/renderer/index.html: http://127.0.0.1:18347 added to frame-src and media-src (build output only; src/ untouched)"
+    },
+    {
+     "title": "the app's default backend port (127.0.0.1:1111)",
+     "payload": "a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with"
+    },
+    {
+     "title": "verbs registered by the renderer",
+     "payload": [
+      "hello",
+      "measure",
+      "navigate",
+      "openCanvasDocument",
+      "press",
+      "queries",
+      "queryFetches",
+      "setSidebarWidth",
+      "setTheme",
+      "state"
+     ]
+    },
+    {
+     "title": "renderer's api base URL at hello, against --backend",
+     "payload": {
+      "apiBaseUrl": "http://127.0.0.1:18347",
+      "backend": "http://127.0.0.1:18347"
+     }
+    },
+    {
+     "title": "profile seeded",
+     "payload": "onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one"
+    },
+    {
+     "title": "the drop's own geometry",
+     "payload": {
+      "targetY": 624,
+      "boxes": [
+       {
+        "id": "p005",
+        "y": 562,
+        "h": 32
+       },
+       {
+        "id": "p010",
+        "y": 626,
+        "h": 32
+       }
+      ],
+      "indicator": {
+       "y": 626,
+       "h": 2
+      },
+      "rowBox": {
+       "x": 12,
+       "y": 562,
+       "w": 248,
+       "h": 32
+      },
+      "order": [
+       "p000",
+       "p005",
+       "p010"
+      ]
+     }
+    },
+    {
+     "title": "the persisted app preferences after the drop",
+     "payload": {
+      "stored": [
+       "p005",
+       "p000",
+       "p010"
+      ],
+      "view": {
+       "hidden": [],
+       "order": [
+        "pinned",
+        "running",
+        "today",
+        "week",
+        "older",
+        "agents",
+        "teams"
+       ],
+       "groupBy": "section",
+       "basis": "active",
+       "orderBy": "active-first",
+       "loads": 0,
+       "pins": [
+        "p005",
+        "p000",
+        "p010"
+       ]
+      },
+      "keys": {
+       "all": [
+        "onboarding-storage",
+        "chat-sidebar-disclosures",
+        "canonical-sessions-storage",
+        "ui-preferences-storage"
+       ],
+       "stateKeys": [
+        "isSidebarCollapsed",
+        "chatSidebarWidth",
+        "chatSidebarRegions",
+        "chatSidebarView",
+        "chatSidebarListHeight",
+        "chatSidebarOrder"
+       ],
+       "rawView": "{\"isCommandPaletteOpen\":false,\"commandPaletteQuery\":\"\",\"isSidebarCollapsed\":false,\"showAgentReasoning\":false,\"themeName\":\"localOperatorDark\",\"canvasWidth\":800,\"chatSidebarWidth\":280,\"chatSidebarRegions\":\"both\",\"chatSidebarView\":{\"hidden\":[],\"order\":[\"pinned\",\"running\",\"today\",\"week\",\"older\",\"agents\",\"teams\"],\"groupBy\":\"section\",\"basis\":\"active\",\"orderBy\":\"active-first\",\"loads\":0,\"pins\":[\"p005\",\"p0"
+      }
+     }
+    }
+   ]
+  },
+  "many": {
+   "checks": {
+    "pass": 16,
+    "fail": 0,
+    "failures": []
    },
-   "rowBox": {
-    "x": 12,
-    "y": 562,
-    "w": 248,
-    "h": 32
+   "frames": [
+    {
+     "label": "many-pins",
+     "bytes": 197405,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "many-pins-drag",
+     "bytes": 230657,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    }
+   ],
+   "geometry": [
+    {
+     "state": "many",
+     "pins": 15,
+     "scrollerTop": 320,
+     "scrollerHeight": 515,
+     "scrolledBefore": 0,
+     "scrolledAfter": 722.5
+    }
+   ],
+   "perWidth": [],
+   "readings": [
+    {
+     "title": "abandoned scratch trees",
+     "payload": "42 seen, 0 owned by a live pid (kept), 42 younger than 30m (kept), 0 removed"
+    },
+    {
+     "title": "csp for this run's backend",
+     "payload": "already widened for http://127.0.0.1:18345"
+    },
+    {
+     "title": "the app's default backend port (127.0.0.1:1111)",
+     "payload": "a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with"
+    },
+    {
+     "title": "verbs registered by the renderer",
+     "payload": [
+      "hello",
+      "measure",
+      "navigate",
+      "openCanvasDocument",
+      "press",
+      "queries",
+      "queryFetches",
+      "setSidebarWidth",
+      "setTheme",
+      "state"
+     ]
+    },
+    {
+     "title": "renderer's api base URL at hello, against --backend",
+     "payload": {
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
+     }
+    },
+    {
+     "title": "profile seeded",
+     "payload": "onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one"
+    },
+    {
+     "title": "the scrolled drop",
+     "payload": {
+      "scrollBefore": 722.5,
+      "scrollAfter": 722.5,
+      "orderBefore": [
+       "p000",
+       "p001",
+       "p002",
+       "p003",
+       "p004",
+       "p005",
+       "p006",
+       "p007",
+       "p008",
+       "p009",
+       "p010",
+       "p011",
+       "p012",
+       "p013",
+       "p014"
+      ],
+      "orderAfter": [
+       "p001",
+       "p002",
+       "p003",
+       "p004",
+       "p005",
+       "p006",
+       "p007",
+       "p008",
+       "p009",
+       "p010",
+       "p011",
+       "p012",
+       "p013",
+       "p014",
+       "p000"
+      ]
+     }
+    }
+   ]
+  },
+  "single": {
+   "checks": {
+    "pass": 12,
+    "fail": 0,
+    "failures": []
    },
-   "order": [
-    "p000",
-    "p005",
-    "p010"
+   "frames": [
+    {
+     "label": "single-pin",
+     "bytes": 192445,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    },
+    {
+     "label": "single-pin-hover",
+     "bytes": 204666,
+     "pixels": {
+      "width": 2760,
+      "height": 1800
+     },
+     "stable": true,
+     "toastFree": true
+    }
+   ],
+   "geometry": [
+    {
+     "state": "single",
+     "pins": 1
+    }
+   ],
+   "perWidth": [],
+   "readings": [
+    {
+     "title": "abandoned scratch trees",
+     "payload": "44 seen, 0 owned by a live pid (kept), 44 younger than 30m (kept), 0 removed"
+    },
+    {
+     "title": "csp for this run's backend",
+     "payload": "already widened for http://127.0.0.1:18345"
+    },
+    {
+     "title": "the app's default backend port (127.0.0.1:1111)",
+     "payload": "a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with"
+    },
+    {
+     "title": "verbs registered by the renderer",
+     "payload": [
+      "hello",
+      "measure",
+      "navigate",
+      "openCanvasDocument",
+      "press",
+      "queries",
+      "queryFetches",
+      "setSidebarWidth",
+      "setTheme",
+      "state"
+     ]
+    },
+    {
+     "title": "renderer's api base URL at hello, against --backend",
+     "payload": {
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
+     }
+    },
+    {
+     "title": "profile seeded",
+     "payload": "onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one"
+    }
+   ]
+  },
+  "keys": {
+   "checks": {
+    "pass": 14,
+    "fail": 0,
+    "failures": []
+   },
+   "frames": [],
+   "geometry": [
+    {
+     "state": "keys",
+     "caret": {
+      "tag": "BUTTON",
+      "chatRow": true,
+      "pinMark": false,
+      "rowId": "p005"
+     },
+     "walked": {
+      "tag": "BUTTON",
+      "chatRow": true,
+      "id": "p000"
+     },
+     "mutationsToBoundary": 15,
+     "mutationsOnRepeat": 4
+    }
+   ],
+   "perWidth": [],
+   "readings": [
+    {
+     "title": "abandoned scratch trees",
+     "payload": "46 seen, 0 owned by a live pid (kept), 46 younger than 30m (kept), 0 removed"
+    },
+    {
+     "title": "csp for this run's backend",
+     "payload": "already widened for http://127.0.0.1:18345"
+    },
+    {
+     "title": "the app's default backend port (127.0.0.1:1111)",
+     "payload": "a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with"
+    },
+    {
+     "title": "verbs registered by the renderer",
+     "payload": [
+      "hello",
+      "measure",
+      "navigate",
+      "openCanvasDocument",
+      "press",
+      "queries",
+      "queryFetches",
+      "setSidebarWidth",
+      "setTheme",
+      "state"
+     ]
+    },
+    {
+     "title": "renderer's api base URL at hello, against --backend",
+     "payload": {
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
+     }
+    },
+    {
+     "title": "profile seeded",
+     "payload": "onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one"
+    }
    ]
   }
- ],
- "many": [
-  {
-   "state": "many",
-   "pins": 15,
-   "scrollerTop": 320,
-   "scrollerHeight": 515,
-   "scrolledBefore": 0,
-   "scrolledAfter": 722.5
-  }
- ],
- "single": [
-  {
-   "state": "single",
-   "pins": 1
-  }
- ],
- "persisted": [
-  {
-   "stored": [
-    "p005",
-    "p000",
-    "p010"
-   ],
-   "view": {
-    "hidden": [],
-    "order": [
-     "pinned",
-     "running",
-     "today",
-     "week",
-     "older",
-     "agents",
-     "teams"
-    ],
-    "groupBy": "section",
-    "basis": "active",
-    "orderBy": "active-first",
-    "loads": 0,
-    "pins": [
-     "p005",
-     "p000",
-     "p010"
-    ]
-   },
-   "keys": {
-    "all": [
-     "onboarding-storage",
-     "chat-sidebar-disclosures",
-     "canonical-sessions-storage",
-     "ui-preferences-storage"
-    ],
-    "stateKeys": [
-     "isSidebarCollapsed",
-     "chatSidebarWidth",
-     "chatSidebarRegions",
-     "chatSidebarView",
-     "chatSidebarListHeight",
-     "chatSidebarOrder"
-    ],
-    "rawView": "{\"isCommandPaletteOpen\":false,\"commandPaletteQuery\":\"\",\"isSidebarCollapsed\":false,\"showAgentReasoning\":false,\"themeName\":\"localOperatorDark\",\"canvasWidth\":800,\"chatSidebarWidth\":280,\"chatSidebarRegions\":\"both\",\"chatSidebarView\":{\"hidden\":[],\"order\":[\"pinned\",\"running\",\"today\",\"week\",\"older\",\"agents\",\"teams\"],\"groupBy\":\"section\",\"basis\":\"active\",\"orderBy\":\"active-first\",\"loads\":0,\"pins\":[\"p005\",\"p0"
-   }
-  }
- ]
+ }
 }

@@ -374,7 +374,8 @@ const TUI_PYTHON = argValue("--tui-python", null);
 const THEME = argValue("--theme", null);
 
 /**
- * Which slice of `pinned-reorder`'s frame list a launch takes (`--pinned-state`).
+ * Which slice of `pinned-reorder`'s frame list a launch takes (`--pinned-state`):
+ * `three` | `many` | `single` | `keys`.
  *
  * WHY AN ARGUMENT RATHER THAN ONE LONG SCENE: three of the states are about how many
  * rows the section holds, and the stand-in's fixture is per process - so the pins
@@ -13720,6 +13721,15 @@ async function scenePinnedReorder(cdp) {
 					return {
 						id: node.getAttribute("data-session-row"),
 						box: box(node),
+						/* WHAT THE ROW IS PAINTED (round 1, D1 and D5c). The computed
+						   background is the only honest reading of a ground step: a class list
+						   says what was ASKED for, and round 1 measured a frame where the
+						   asked-for colour lost to a hover variant. NO BACKTICKS IN THIS
+						   COMMENT: it lives inside a template literal, and one would end the
+						   string early - measured, twice on this file. */
+						ground: getComputedStyle(node).backgroundColor,
+						current:
+							node.querySelector("[data-chat-row][aria-current='page']") !== null,
 						title: title ? box(title) : null,
 						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
 						up: painted(node.querySelector("[data-session-move-up]")),
@@ -13731,6 +13741,7 @@ async function scenePinnedReorder(cdp) {
 					};
 				}),
 				rowBox: rowBox ? box(rowBox) : null,
+				sectionBox: box(section),
 				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
 				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
 				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
@@ -13868,6 +13879,22 @@ async function scenePinnedReorder(cdp) {
 			buttons: 1,
 		});
 	};
+	/* Escape, through the input pipeline: the drag's own cancel door, and now a press
+	   that the handler CLAIMS (round 1, U5) rather than one a Radix layer happened to. */
+	const sendEscape = async (target) => {
+		await target.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await target.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	};
 	const releaseAt = (x, y) =>
 		cdp.send("Input.dispatchMouseEvent", {
 			type: "mouseReleased",
@@ -13942,6 +13969,18 @@ async function scenePinnedReorder(cdp) {
 	 * visible in), the many-pins and single-pin states from fixtures of their own.
 	 * The frames are named the same way in every slice, so the directory is one set.
 	 */
+	/*
+	 * A TYPO IN `--pinned-state` IS REFUSED RATHER THAN SILENTLY SHORT: the shared setup
+	 * above runs for every slice, so an unknown state would produce a launch that
+	 * photographed nothing and exited 0 - the failure mode this repo's own evidence rules
+	 * call a dead instrument.
+	 */
+	if (!["three", "many", "single", "keys"].includes(PINNED_STATE)) {
+		throw new Error(
+			`--pinned-state ${PINNED_STATE} is not a slice of this scene (three | many | single | keys)`,
+		);
+	}
+
 	if (PINNED_STATE === "three") {
 		const boot = await readPinnedPanel();
 		check(
@@ -14002,14 +14041,27 @@ async function scenePinnedReorder(cdp) {
 				JSON.stringify({ label: `grip-hover-${width}`, ...hoverFrame }),
 			);
 			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
+			/*
+			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2): the grip is drawn above a
+			 * 279px panel and shed at or below it, because at the 240 clamp the revealed
+			 * cluster left the title 40px of the row's 208. The PAIR STAYS at every width -
+			 * it is WCAG 2.5.7's single-pointer alternative - so the check is two claims,
+			 * one per band, rather than one claim with an exception.
+			 */
+			const gripExpected = width > 279;
 			check(
-				`${width}: the pointer reveals the grip, the pair and the archive on one row`,
-				hoveredRow.grip !== null &&
+				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
+				(hoveredRow.grip !== null) === gripExpected &&
 					hoveredRow.up === true &&
 					hoveredRow.down === true &&
 					hoveredRow.archive === true &&
 					hoveredRow.pin === true,
-				JSON.stringify({ width, row: hoveredRow }),
+				JSON.stringify({ width, gripExpected, row: hoveredRow }),
+			);
+			check(
+				`${width}: the shed leaves the pair in place`,
+				hoveredRow.up === true && hoveredRow.down === true,
+				JSON.stringify({ width, up: hoveredRow.up, down: hoveredRow.down }),
 			);
 			check(
 				`${width}: the grip is out of the Tab ring`,
@@ -14029,6 +14081,12 @@ async function scenePinnedReorder(cdp) {
 				applied,
 				panel: applied,
 				rowBox: rest.rowBox,
+				/* The hovered row's own ground and whether the grip is painted: the two
+				   readings round 1 (D1, D2) is about, kept as numbers because the frames show
+				   the symptom and these say which state painted what. */
+				hoverGround: hoveredRow.ground,
+				restGround: rest.rows.find((row) => row.id === PINNED_IDS[1])?.ground,
+				gripPainted: hoveredRow.grip !== null,
 				restTitles: titleWidths(rest),
 				hoverTitles: titleWidths(hovered),
 				hoveredCluster: {
@@ -14074,6 +14132,23 @@ async function scenePinnedReorder(cdp) {
 			"mid-drag: nothing has been written yet",
 			JSON.stringify(midDrag.order) === JSON.stringify(PINNED_IDS),
 			JSON.stringify(midDrag.order),
+		);
+		/*
+		 * D1'S OWN READING, MEASURED RATHER THAN JUDGED FROM THE FRAME (round 1, D1 and
+		 * U1). The bug was that the dragged row painted the same fill as a merely hovered
+		 * one - `#302D2A` dark against the intended `#372F24` - so the check is a
+		 * COMPARISON between two computed grounds taken in the same run and at the same
+		 * width: the hovered row's from the width loop above, the dragged row's here. The
+		 * numbers go into the geometry note because a still shows the symptom and the
+		 * computed colour says which state painted it.
+		 */
+		const midGround =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ground ?? null;
+		const hoverGround = widths[280]?.hoverGround ?? null;
+		check(
+			"mid-drag: the dragged row's ground is a step the hover does not paint",
+			midGround !== null && hoverGround !== null && midGround !== hoverGround,
+			JSON.stringify({ dragged: midGround, hovered: hoverGround }),
 		);
 		await releaseAt(grip.x, grip.y);
 		await wait(PINNED_SETTLE_MS);
@@ -14168,10 +14243,87 @@ async function scenePinnedReorder(cdp) {
 		);
 
 		/*
+		 * 3b. THE FIRST SLOT'S LINE (round 1, design D5b). A drag held ABOVE the first
+		 * pinned row draws the line at the section's own top edge - the case most likely
+		 * to collide with the `Pinned chats` header, and the one no earlier frame showed.
+		 * Escape cancels it, so the order the drop wrote is still the order the checks
+		 * below read (and the cancel is the round-1 U5 path, exercised in a frame).
+		 */
+		const lastPinned = (await readPinnedPanel()).rows.at(-1);
+		await hoverRow(lastPinned.id);
+		/*
+		 * THE TARGET IS MEASURED AFTER THE HOVER, and that ordering is the same lesson
+		 * `dragGrip` records one screen up: the hover brings the row into view, so the
+		 * boxes read before it are not the boxes the drag measures in (measured on the
+		 * first run of this state: a target computed from the pre-hover geometry was 630,
+		 * inside the section, and the line landed at slot 2). ABOVE THE FIRST ROW and not
+		 * merely above the section: slot 0's line is drawn at that row's own top edge, and
+		 * the panel's heading sits between the section's box and its first row.
+		 */
+		const aboveFirst = (await readPinnedPanel()).rows[0].box.y - 6;
+		const topGrip = await centreOf(
+			`[data-session-row="${lastPinned.id}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed under the pointer at the last pinned row",
+			topGrip !== null && topGrip.w > 0,
+			JSON.stringify(topGrip),
+		);
+		await pressAt(topGrip.x, topGrip.y);
+		for (let step = 1; step <= 8; step += 1) {
+			const y = Math.round(topGrip.y + ((aboveFirst - topGrip.y) * step) / 8);
+			await dragMoveTo(topGrip.x, y);
+			await wait(40);
+		}
+		const topDrag = await readPinnedPanel();
+		const topFrame = await captureSettled(cdp, "drag-top");
+		note("frame", JSON.stringify({ label: "drag-top", ...topFrame }));
+		check(
+			"a drag held above the first pinned row draws its line at that row's top edge",
+			topDrag.indicator !== null &&
+				Math.abs(topDrag.indicator.y - topDrag.rows[0].box.y) <= 2 &&
+				topDrag.dragging.includes(lastPinned.id),
+			JSON.stringify({
+				indicator: topDrag.indicator,
+				firstRow: topDrag.rows[0],
+				rows: topDrag.rows.map((row) => row.box),
+				section: topDrag.sectionBox,
+				dragging: topDrag.dragging,
+				pointerY: aboveFirst,
+			}),
+		);
+		await sendEscape(cdp);
+		await releaseAt(topGrip.x, topGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const topCancelled = await readPinnedPanel();
+		check(
+			"the cancelled slot-0 drag wrote nothing and said so",
+			JSON.stringify(topCancelled.order) === JSON.stringify(expectedOrder) &&
+				topCancelled.indicator === null &&
+				/cancelled/i.test(String(topCancelled.announcement)),
+			JSON.stringify({
+				order: topCancelled.order,
+				announcement: topCancelled.announcement,
+			}),
+		);
+
+		/*
 		 * 4. A DROP UNDER A SEARCH FILTER: the query hides one of the three pins, and the
 		 * moved row steps over the VISIBLE neighbour while the hidden id keeps its stored
 		 * slot (rule 2's second half, which is the one a splice would break).
 		 */
+		/*
+		 * THE LIST IS PUT BACK AT ITS TOP FIRST, so the search states are a function of the
+		 * query rather than of how far the gestures above happened to scroll the list: the
+		 * drags and the slot-0 state bring rows into view with `scrollIntoView`, and a frame
+		 * whose scroll offset depends on the frames before it is a frame that moves when
+		 * anything upstream changes (measured on the first re-shoot of this set: the search
+		 * frames differed from the committed ones by a scroll offset and nothing else).
+		 */
+		await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop = 0",
+		);
+		await wait(PINNED_SETTLE_MS);
 		await typePinnedQuery(PINNED_QUERY);
 		await wait(PINNED_SETTLE_MS);
 		const filtered = await readPinnedPanel();
@@ -14228,7 +14380,20 @@ async function scenePinnedReorder(cdp) {
 		);
 		await typePinnedQuery("");
 		await wait(PINNED_SETTLE_MS);
-		note("pinned-reorder geometry", JSON.stringify(widths));
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				...widths,
+				round1: {
+					draggedGround: midGround,
+					hoverGround,
+					slot0Line: {
+						indicatorY: topDrag.indicator?.y ?? null,
+						sectionTop: topDrag.sectionBox.y,
+					},
+				},
+			}),
+		);
 	}
 
 	if (PINNED_STATE === "many") {
@@ -14240,6 +14405,13 @@ async function scenePinnedReorder(cdp) {
 		 * pressing asked the daemon about rows it does not serve and the section stayed at
 		 * three however many times the mark was pressed (measured, then fixed on both sides).
 		 */
+		/*
+		 * AT 280, NOT AT THE PANEL'S 260 DEFAULT, and it is the shed's arithmetic (round 1,
+		 * D2): the grip is drawn only above a 279px panel, so at the default width this
+		 * slice's drag would have no handle to grab. The width is stated here rather than
+		 * left to the launch because the state is ABOUT the drag handle.
+		 */
+		await setWidth(280);
 		await parkPointer(cdp);
 		const many = await readPinnedPanel();
 		const manyFrame = await captureSettled(cdp, "many-pins");
@@ -14296,6 +14468,53 @@ async function scenePinnedReorder(cdp) {
 				cancelled.indicator === null,
 			JSON.stringify({ before: beforeCancel, after: cancelled.order }),
 		);
+		/*
+		 * AND A DROP, AT A SCROLLED LIST (agent review round 1, R3), taken after the cancel
+		 * above so the frames are unaffected: the post-commit correction anchored on the row
+		 * BELOW the moved one, and a downward drop moves that anchor too, so a plain
+		 * correction shifted the list by a whole row after the drop. A reorder now stands the
+		 * correction down, and the reading is the scroller across the drop: it has to stay
+		 * where the reader left it.
+		 */
+		const secondMany = (await readPinnedPanel()).rows[0];
+		const dropDrag = await dragGrip(
+			secondMany.id,
+			scroller.y + scroller.h - 6,
+			{
+				steps: 12,
+			},
+		);
+		await wait(700);
+		const scrolledBeforeDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const orderBeforeDrop = (await readPinnedPanel()).order;
+		await releaseAt(dropDrag.x, dropDrag.y);
+		await wait(PINNED_SETTLE_MS + 300);
+		const scrolledAfterDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const droppedMany = await readPinnedPanel();
+		check(
+			"a drop in a scrolled list leaves the scroll where the reader left it (R3)",
+			Math.abs(scrolledAfterDrop - scrolledBeforeDrop) <= 40 &&
+				droppedMany.indicator === null,
+			JSON.stringify({
+				before: scrolledBeforeDrop,
+				after: scrolledAfterDrop,
+				order: droppedMany.order,
+			}),
+		);
+		note(
+			"the scrolled drop",
+			JSON.stringify({
+				scrollBefore: scrolledBeforeDrop,
+				scrollAfter: scrolledAfterDrop,
+				orderBefore: orderBeforeDrop,
+				orderAfter: droppedMany.order,
+			}),
+		);
+
 		note(
 			"pinned-reorder geometry",
 			JSON.stringify({
@@ -14309,12 +14528,130 @@ async function scenePinnedReorder(cdp) {
 		);
 	}
 
+	if (PINNED_STATE === "keys") {
+		/*
+		 * THE KEYBOARD'S OWN PATH (round 1: QA's Q1 and UX's U3/R6/Q3), read where it is
+		 * cheap and no frame is needed. Two claims, both about what happens AFTER the
+		 * chord that moves a row:
+		 *
+		 * (a) THE CARET (Q1). After a move the caret has to be on the row's OWN button,
+		 *     because that is the arrow ring's stop list - parked on the pin mark it left
+		 *     the reader outside the ring, and the next bare arrow restarted at the
+		 *     panel's first stop (the `Agents` disclosure, measured by QA).
+		 * (b) THE REPEAT (U3/R6/Q3). A live region is read from its MUTATIONS: a second
+		 *     identical sentence inside the dwell has to be a fresh mutation, which is
+		 *     what the clear-then-set-across-a-frame does.
+		 */
+		await setWidth(280);
+		const keysBefore = await readPinnedPanel();
+		check(
+			"the keyboard slice has three pins to walk",
+			keysBefore.order.length === 3,
+			JSON.stringify(keysBefore.order),
+		);
+		const walker = keysBefore.order[1];
+		await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${walker}"] [data-chat-row]');
+			row.focus();
+			return document.activeElement === row;
+		})()`);
+		/* Count the region's mutations, so "is the same sentence audible twice" is a
+		   number rather than a promise. */
+		await cdp.evaluate(
+			"(() => {\n\t\t\tconst live = document.querySelector('[data-sidebar-pin-order-announcement]');\n\t\t\twindow.__pinMutations = 0;\n\t\t\tif (live === null) return false;\n\t\t\twindow.__pinObserver?.disconnect();\n\t\t\twindow.__pinObserver = new MutationObserver(() => { window.__pinMutations += 1; });\n\t\t\twindow.__pinObserver.observe(live, { childList: true, characterData: true, subtree: true });\n\t\t\treturn true;\n\t\t})()",
+		);
+		const chord = async (key, shift) => {
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key,
+					code: key === "ArrowUp" ? "ArrowUp" : "ArrowDown",
+					modifiers: shift ? 10 : 0,
+					windowsVirtualKeyCode: key === "ArrowUp" ? 38 : 40,
+				});
+			}
+			await wait(120);
+		};
+		await chord("ArrowUp", true);
+		const afterChord = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					pinMark: el?.hasAttribute?.("data-session-pin") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
+		check(
+			"a chord leaves the caret on the moved row's own button (Q1)",
+			afterChord.chatRow === true && afterChord.rowId === walker,
+			JSON.stringify(afterChord),
+		);
+		/* The bare arrow continues the walk from that row: the next stop is a row in the
+		   SAME section, never the panel's first stocdp.evaluate('(() => {\n\t\t\tconst el = document.activeElement;\n\t\t\treturn { tag: el?.tagName ?? null, chatRow: el?.hasAttribute?.("data-chat-row") ?? false, text: el?.getAttribute?.("aria-label") ?? null };\n\t\t})()')"aria-label") ?? null };
+		})()`);
+		await chord("ArrowDown", false);
+		const walked = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				return { tag: el?.tagName ?? null, chatRow: el?.hasAttribute?.("data-chat-row") ?? false, id: el?.closest?.("[data-session-row]")?.getAttribute("data-session-row") ?? null };
+			})()`,
+		);
+		check(
+			"a bare arrow after the chord walks on inside the list (Q1)",
+			walked.chatRow === true && walked.id !== walker,
+			JSON.stringify({ before: afterArrow, after: walked }),
+		);
+		/* The boundary sentence, twice inside the dwell: the SECOND press has to reach the
+		   region as its own mutation (U3/R6/Q3). The row is walked to the section's top
+		   first, so both presses are boundary presses. */
+		for (let i = 0; i < 8; i += 1) await chord("ArrowUp", true);
+		const boundaryMutations = await cdp.evaluate(
+			"(() => { const n = window.__pinMutations; window.__pinMutations = 0; return n; })()",
+		);
+		await chord("ArrowUp", true);
+		await wait(400);
+		await chord("ArrowUp", true);
+		await wait(400);
+		const repeatMutations = await cdp.evaluate("window.__pinMutations");
+		check(
+			"the boundary answer reaches the region on a repeat press (U3/R6/Q3)",
+			boundaryMutations >= 1 && repeatMutations >= 1,
+			JSON.stringify({
+				toBoundary: boundaryMutations,
+				repeatInsideDwell: repeatMutations,
+				announcement: await cdp.evaluate(
+					"document.querySelector('[data-sidebar-pin-order-announcement]').textContent",
+				),
+			}),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "keys",
+				caret: afterChord,
+				walked,
+				mutationsToBoundary: boundaryMutations,
+				mutationsOnRepeat: repeatMutations,
+			}),
+		);
+	}
+
 	if (PINNED_STATE === "single") {
 		/*
 		 * A SINGLE PIN: the state in which both move controls are inapplicable at once, and
 		 * the one the boundary sentence speaks about ("the only pinned chat"). The pin is the
 		 * stand-in's, for the many-pins state's reason.
 		 */
+		/*
+		 * AT 280, DELIBERATELY, so the frame says which rule hid the grip: at the panel's
+		 * 260 default BOTH rules would (the shed and the count), and the state this pair of
+		 * frames is evidence for is the COUNT one (design D3) - one row, so no second slot.
+		 */
+		await setWidth(280);
 		await parkPointer(cdp);
 		const single = await readPinnedPanel();
 		const singleFrame = await captureSettled(cdp, "single-pin");
@@ -14332,9 +14669,17 @@ async function scenePinnedReorder(cdp) {
 			"frame",
 			JSON.stringify({ label: "single-pin-hover", ...singleHoverFrame }),
 		);
+		/*
+		 * THE GRIP IS NOT OFFERED WITH ONE PIN (round 1, design D3; UX NIT1 corrected the
+		 * README's claim about it). With one row there is no second slot a drop could land
+		 * on - measured, a one-row drag can be started, always lands on slot 0 and writes
+		 * nothing - so the handle was an affordance for a gesture that cannot change
+		 * anything. The PAIR stays: it still answers with the boundary sentence, which is
+		 * the sentence this state's frame is about.
+		 */
 		check(
-			"the only pin still offers the grip (a drag can leave the section) and draws its two arrows inapplicable",
-			singleRow.grip !== null &&
+			"the only pin draws its two arrows inapplicable and offers no grip",
+			singleRow.grip === null &&
 				singleRow.up === true &&
 				singleRow.down === true,
 			JSON.stringify(singleRow),
