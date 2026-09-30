@@ -217,6 +217,8 @@ export function EditFooter({
 	saveLabel = "Save changes",
 	pendingLabel = "Saving…",
 	dirtyHint,
+	confirming,
+	onConfirmingChange,
 }: {
 	dirty: boolean;
 	pending: boolean;
@@ -225,21 +227,45 @@ export function EditFooter({
 	saveLabel?: string;
 	pendingLabel?: string;
 	dirtyHint?: string;
+	/**
+	 * The discard confirmation, CONTROLLED when a caller owns another way into it.
+	 *
+	 * WHY IT IS NOT PRIVATE STATE ANY MORE. It was, and the Escape key went
+	 * straight to `cancel` — so the keyboard path discarded a dirty draft with no
+	 * question while the mouse path asked, which is the same defect (U3) arriving
+	 * through the one input a keyboard user is most likely to reach for. The panes
+	 * own the state so both entries ask the same question; a caller with only the
+	 * button (the create pane) leaves it uncontrolled.
+	 */
+	confirming?: boolean;
+	onConfirmingChange?: (next: boolean) => void;
 }) {
-	const [confirming, setConfirming] = useState(false);
+	const [uncontrolledConfirming, setUncontrolledConfirming] = useState(false);
+	const isControlled = confirming !== undefined;
+	const isConfirming = isControlled ? confirming : uncontrolledConfirming;
+	const requestConfirming = (next: boolean) => {
+		if (!isControlled) setUncontrolledConfirming(next);
+		onConfirmingChange?.(next);
+	};
 
 	useEffect(() => {
 		// A footer that is no longer in a confirming state (the edit ended, the
 		// draft became clean) must not come back mid-confirmation.
-		if (!dirty) setConfirming(false);
+		if (!dirty) requestConfirming(false);
 	}, [dirty]);
 
 	return (
-		<div className="sticky bottom-0 -mx-6 mt-6 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas px-6 py-3">
+		// `-mx-6` cancels the scroller's SIDE padding so the bar spans the pane's
+		// full width; the scroller carries no bottom padding (see the page's own
+		// note), which is what keeps content from showing in a band under the bar.
+		<div
+			data-testid="edit-footer"
+			className="sticky bottom-0 z-10 -mx-6 mt-6 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas px-6 py-3"
+		>
 			<Button variant="primary" onClick={onSave} disabled={pending}>
 				{pending ? pendingLabel : saveLabel}
 			</Button>
-			{confirming ? (
+			{isConfirming ? (
 				<>
 					<span className="text-body-sm text-ink-muted">
 						{dirtyHint ?? "Discard your unsaved changes?"}
@@ -247,20 +273,20 @@ export function EditFooter({
 					<Button variant="danger" onClick={onCancel}>
 						Discard changes
 					</Button>
-					<Button variant="ghost" onClick={() => setConfirming(false)}>
+					<Button variant="ghost" onClick={() => requestConfirming(false)}>
 						Keep editing
 					</Button>
 				</>
 			) : (
 				<Button
 					variant="ghost"
-					onClick={() => (dirty ? setConfirming(true) : onCancel())}
+					onClick={() => (dirty ? requestConfirming(true) : onCancel())}
 					disabled={pending}
 				>
 					Cancel
 				</Button>
 			)}
-			{dirty && !confirming ? (
+			{dirty && !isConfirming ? (
 				<span className="text-meta text-ink-muted">Unsaved changes</span>
 			) : null}
 		</div>

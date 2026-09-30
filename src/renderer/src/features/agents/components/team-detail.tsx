@@ -149,6 +149,7 @@ export function TeamDetail({
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
+	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	const navigate = useNavigate();
 
@@ -177,12 +178,18 @@ export function TeamDetail({
 		setEditing(false);
 		setError(null);
 		setErrorField(null);
+		setConfirmDiscard(false);
 		const next = draftOf(team);
 		setBase(next);
 		setDraft(next);
 	};
 
-	useEscapeToCancel(cancel, editing);
+	// Escape asks what Cancel asks - see the agent pane's note (UX U3).
+	const requestCancel = () => {
+		if (dirty) setConfirmDiscard(true);
+		else cancel();
+	};
+	useEscapeToCancel(requestCancel, editing);
 
 	const save = async (event?: FormEvent) => {
 		event?.preventDefault();
@@ -322,6 +329,7 @@ export function TeamDetail({
 								/>
 								<Input
 									id="team-name"
+									data-testid="team-name-input"
 									value={name}
 									required
 									maxLength={64}
@@ -552,6 +560,8 @@ export function TeamDetail({
 							/>
 						</Section>
 						<EditFooter
+							confirming={confirmDiscard}
+							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
 							pending={pending}
 							saveLabel={creating ? "Create team" : "Save changes"}

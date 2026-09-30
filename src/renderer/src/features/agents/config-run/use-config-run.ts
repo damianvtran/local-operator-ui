@@ -267,57 +267,62 @@ export function useConfigRun(): ConfigRunHandle {
 	 * the missing frame is exactly what would have refreshed. Two list reads are
 	 * cheap and they are the ground truth the summary claims to describe.
 	 */
-	const settleRun = useCallback(async (status: "done" | "stopped") => {
-		const before = store.before as CatalogueSnapshot | null;
-		let results: RunResult[] = [];
-		try {
-			const [profiles, teams] = await Promise.all([
-				desktopResult<{ profiles: ReusableProfile[] }>({ op: "profiles.list" }),
-				desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }),
-			]);
-			if (before) {
-				results = diffCatalogue(
-					before,
-					snapshotCatalogue(profiles.profiles, teams.teams),
-					store.touched,
+	const settleRun = useCallback(
+		async (status: "done" | "stopped") => {
+			const before = store.before as CatalogueSnapshot | null;
+			let results: RunResult[] = [];
+			try {
+				const [profiles, teams] = await Promise.all([
+					desktopResult<{ profiles: ReusableProfile[] }>({
+						op: "profiles.list",
+					}),
+					desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }),
+				]);
+				if (before) {
+					results = diffCatalogue(
+						before,
+						snapshotCatalogue(profiles.profiles, teams.teams),
+						store.touched,
+					);
+				}
+			} catch {
+				// A failed read does not change the run's outcome; the strip says the
+				// result could not be read and offers the lists' own retry.
+				useConfigRunStore
+					.getState()
+					.fail(
+						"The run finished, but the agents and teams lists could not be read to describe what changed.",
+					);
+				// The lists may still be stale, so the invalidation still runs.
+				invalidateAuthoring(client);
+				return;
+			}
+			/*
+			 * THE UNCONDITIONAL INVALIDATION, which is half the design (the frame is the
+			 * other half): whatever the feed did or did not publish, a run that has
+			 * settled means these reads are stale now.
+			 */
+			invalidateAuthoring(client);
+			useConfigRunStore.getState().settle(results, status);
+			settleLatch.current = true;
+			if (status === "done" && results.length > 0) {
+				const created = results.filter((result) => result.created).length;
+				showSuccessToast(
+					created > 0
+						? `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} changed.`
+						: `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} updated.`,
 				);
 			}
-		} catch {
-			// A failed read does not change the run's outcome; the strip says the
-			// result could not be read and offers the lists' own retry.
-			useConfigRunStore
-				.getState()
-				.fail(
-					"The run finished, but the agents and teams lists could not be read to describe what changed.",
-				);
-			// The lists may still be stale, so the invalidation still runs.
-			invalidateAuthoring(client);
-			return;
-		}
-		/*
-		 * THE UNCONDITIONAL INVALIDATION, which is half the design (the frame is the
-		 * other half): whatever the feed did or did not publish, a run that has
-		 * settled means these reads are stale now.
-		 */
-		invalidateAuthoring(client);
-		useConfigRunStore.getState().settle(results, status);
-		settleLatch.current = true;
-		if (status === "done" && results.length > 0) {
-			const created = results.filter((result) => result.created).length;
-			showSuccessToast(
-				created > 0
-					? `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} changed.`
-					: `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} updated.`,
-			);
-		}
-		/*
-		 * The callback's identity moves with the two facts it reads OUT of the run's
-		 * own state (the pre-send snapshot and the touched set), which is what makes
-		 * the effect below able to name it as a dependency without settling twice:
-		 * the latch is what guards re-entry, and this list is what keeps the closure
-		 * honest about which snapshot it is diffing against.
-		 */
-	}, [client, store.before, store.touched]);
+			/*
+			 * The callback's identity moves with the two facts it reads OUT of the run's
+			 * own state (the pre-send snapshot and the touched set), which is what makes
+			 * the effect below able to name it as a dependency without settling twice:
+			 * the latch is what guards re-entry, and this list is what keeps the closure
+			 * honest about which snapshot it is diffing against.
+			 */
+		},
+		[client, store.before, store.touched],
+	);
 
 	useEffect(() => {
 		if (!live) return;
