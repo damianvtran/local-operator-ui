@@ -2262,6 +2262,36 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote`, `sidebarLoadMoreFoldTwoNote`,
+	 * `sidebarLoadMoreFoldThreeNote`, `sidebarLoadMoreFoldFourNote`,
+	 * `sidebarLoadMoreFoldFiveNote`, `sidebarLoadMoreFoldSixNote`,
+	 * `sidebarLoadMoreFoldSevenNote`, `sidebarLoadMoreFoldEightNote`,
+	 * `sidebarLoadMoreFoldNineNote` and `sidebarLoadMoreFoldTenNote` are the
+	 * folds `feat/sidebar-load-more` made while open - the second folded a #557
+	 * that had already folded itself onto the same base as the first, the third
+	 * folded #655's closed-dispose train, the fourth the 0.31.22 release over
+	 * #554's condensed-group images, the fifth #560's install-provisioning
+	 * resilience over the settings-rail fold train, the sixth the landing
+	 * fold (#699's board time window over the #698/#695/#662/#700 trains, this
+	 * branch's fold to mergeable), the seventh #697's pinned-order drag,
+	 * which landed minutes later, the eighth #702's loader walk, the ninth
+	 * #701's row context menu, and the tenth #594's scroll anchor. The notes name each manifest resolution and
+	 * re-derivation, including the one semantic conflict (both lanes fixing the
+	 * collapsed-section gap in parallel, resolved to one tested mechanism).
+	 * Registered here because a fold resolved by a resolver starting from main's
+	 * copy is where they would drop uncaught.
+	 */
+	"sidebarLoadMoreFoldNote",
+	"sidebarLoadMoreFoldTwoNote",
+	"sidebarLoadMoreFoldThreeNote",
+	"sidebarLoadMoreFoldFourNote",
+	"sidebarLoadMoreFoldFiveNote",
+	"sidebarLoadMoreFoldSixNote",
+	"sidebarLoadMoreFoldSevenNote",
+	"sidebarLoadMoreFoldEightNote",
+	"sidebarLoadMoreFoldNineNote",
+	"sidebarLoadMoreFoldTenNote",
+	/*
 	 * Grown by the monitors CONTROLS pass (2026-09-29, slice 4b-ui B), this
 	 * branch's newest top-level record and the sibling of the entry above: it
 	 * states what the pass ADDED (four cancel-affordance surfaces, eight
