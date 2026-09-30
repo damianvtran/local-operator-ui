@@ -2261,6 +2261,86 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THE CONDENSED GROUP'S PICTURES PASS'S OWN (`feat/condensed-group-images`,
+	 * the operator report that a collapsed action group must still show what its
+	 * run produced): the two records of the pass that drew the strip under a
+	 * condensed group's header and of its round-1 remediation, and this branch's
+	 * fold record from the fold onto `origin/main` `0ab50df2a8` (the transcript
+	 * rail rework over #645's monitor renders). Their notes spell their identity
+	 * as bare tree SHAs, so none of them adds a name to the quoting ledger, and
+	 * they are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop the only statements of what each pass and fold moved. (The
+	 * retired `STAMP_BINDING_NOTES` registrations that carried the first two on
+	 * this branch's pre-#566 copies are gone with that list; these are what
+	 * `BRANCH_RECORDS` holds instead.)
+	 */
+	"condensedGroupMediaNote",
+	"condensedGroupMediaRoundOneNote",
+	"condensedGroupMediaFoldNote",
+	/*
+	 * And the SAME LANE'S SECOND LEVEL (`condensedTurnMediaNote`): the pass
+	 * that keeps a folded span's pictures under the condensed BAR, with its
+	 * three new `chat-turn-collapse--images*` cells and its declared
+	 * `chat-turn-collapse-images-before` half. Registered for the list's usual
+	 * reason - a fold resolved from main's copy would drop the only statement
+	 * of what the pass moved and of the two trees' difference the pair
+	 * measures - and its note spells its identity as bare SHAs, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"condensedTurnMediaNote",
+	/*
+	 * And the re-stamp that lands the pair over the frames tip, registered with
+	 * it for the same reason: a fold resolved from main's copy would drop the
+	 * statement that the walk at `3723d39830` is this file's own derivation.
+	 */
+	"condensedTurnMediaRestampNote",
+	"condensedGroupMediaFoldTwoNote",
+	"condensedPicturesRoundOneRemediationNote",
+	/*
+	 * The round-2 mini-pass (F1/F2, U8/U9) re-shot the count control's cells and
+	 * added the press cell its own note names. Registered for the list's usual
+	 * reason: a fold resolved from main's copy would drop the only statement of
+	 * what the pass moved and of the uncap's one-press claim the new cell
+	 * photographs.
+	 */
+	"condensedPicturesRoundTwoRemediationNote",
+	/*
+	 * And the pictures lane's fold onto the 0.31.21 release window
+	 * (`condensedPicturesFoldNote`): this file and the list above were the
+	 * fold's only conflicts, both resolved with main's records whole and
+	 * this branch's re-laid. Registered for the list's usual reason - a
+	 * fold resolved from main's copy would drop the only statement of what
+	 * the fold moved and what it did not - and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldNote",
+	/*
+	 * And the lane's SECOND fold (`condensedPicturesFoldNote`'s pair), onto the bundled-CPython runtime
+	 * (#568): this file was its one conflict, resolved with main's records whole and this branch's
+	 * re-laid. Registered for the list's usual reason, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldTwoNote",
+	/*
+	 * And the lane's THIRD fold, onto the rail's end-tick fix (#666): this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldThreeNote",
+	/*
+	 * And the lane's FOURTH fold, onto the settings-rail edge fix (#609): this file was its
+	 * one conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFourNote",
+	/*
+	 * And the lane's FIFTH fold, onto the closed-dispose/ben-trio train: this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFiveNote",
+	/*
+	 * And the lane's CONVERGENCE fold (`condensedPicturesFoldSixNote`), onto the condense-bar
+	 * spacing sibling (#653): three paths conflicted - this record, the transcript's entry union
+	 * and the behaviour suite's helpers - all resolved as unions, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldSixNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
@@ -2298,6 +2378,160 @@ const BRANCH_RECORDS = [
 	"python314RefreshRestampNote",
 	"python314RefreshFoldNote",
 	"python314RefreshSecondFoldNote",
+	/*
+	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
+	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
+	 * onto this file - its ground restamp note and its fold records, one
+	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
+	 * already ships notes under both of its old names - and wrote a note per
+	 * fold. They are listed for the reason this list exists: a fold that
+	 * started from main's copy would drop them first, and with them the only
+	 * statements of which trees each pass moved.
+	 */
+	"settingsRailGroundRestampNote",
+	"foldOnto8320e52366SettingsRailNote",
+	"foldOntoE2394f9ff1Note",
+	"foldOntoA8ac7f673cSettingsRailNote",
+	"foldOnto0738fa7eb3Note",
+	"foldOnto49491865caNote",
+	"foldOnto7ba0ddce94Note",
+	"foldOnto6f284060Note",
+	/*
+	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
+	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
+	 * bar on the item step and the bar's chevron on the rule's end, over the
+	 * re-shot `chat-turn-collapse` cells and the report's own before/after pair;
+	 * `condensedBarFoldNote`, `condensedBarFoldTwoNote`,
+	 * `condensedBarFoldThreeNote` and `condensedBarFoldFourNote` are its folds
+	 * onto the moved `origin/main` (`682f531120`, `9357d37a9f`, `036e501fdf`,
+	 * `f9053eaca5`), and `condensedBarHoverGroundNote` is design round 1's D1 fix
+	 * (the hover ground reaching the rule's end) with its re-shot hover cells.
+	 * They are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop them first, and nothing else would say so. The notes'
+	 * texts are written by the docs-only amendment this registration rides
+	 * beside; they spell their pairs as bare SHAs, per the rule the stamp
+	 * ledger above states.
+	 */
+	"condensedBarRestampNote",
+	"condensedBarFoldNote",
+	"condensedBarFoldTwoNote",
+	"condensedBarFoldThreeNote",
+	"condensedBarFoldFourNote",
+	"condensedBarHoverGroundNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldFiveNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldFiveNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldSixNote`), for the same reason
+	 * one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldSixNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldSevenNote`), for the same reason
+	 * one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldSevenNote",
+	/*
+	 * And the second round's own record (`condensedBarRoundTwoNote`), the note
+	 * the spacing pass wrote for the operator's follow-up report: the rule's two
+	 * sides, the chevron's leading-edge datum and the incident row. Its text is
+	 * written by the docs-only amendment this registration rides beside.
+	 */
+	"condensedBarRoundTwoNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldEightNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldEightNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldNineNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldNineNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldTenNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldTenNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldElevenNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldElevenNote",
+	/*
+	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
+	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
+	 * binding this file once held - the install path is not something the evidence
+	 * sweep renders, so it moved BOTH trees without
+	 * taking a frame, and the reader is owed the reason no still was owed. It is REPAIRED
+	 * in the same commit to name the SHAs its pass read rather than the tree pair, which
+	 * is the shape this file now enforces. `src/` moved for the install decision and the
+	 * scripts' environment build; `scripts/` for the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
+	/*
+	 * And the agent-review remediation's own record rides beside it
+	 * (`installProvisioningRemediationRestampNote`): the round moved both trees with no
+	 * frame - the launcher probe and its verdict cache, the failure-cause split, the three
+	 * scripts' TLS notes, and the suites that pin them - so a fold that started from
+	 * main's copy would drop the only statement of that.
+	 */
+	"installProvisioningRemediationRestampNote",
+	/*
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
+	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
+	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto0738fa7eb3InstallProvisioningNote",
+	/*
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
+	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
+	 * verified, this file conflicted alone, and a conflicting head produces no
+	 * pull-request runs - so the fold is repeated, and its record is registered for the
+	 * list's usual reason.
+	 */
+	"foldOnto49491865caInstallProvisioningNote",
+	/*
+	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
+	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
+	 * bundle - while this branch was being reviewed; the two evidence files conflicted
+	 * alone, resolved as unions the same way, and the test file merged additively.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
+	/*
+	 * And the SIXTH fold's own, beside them (`foldOnto65a3e97b8cNote`): main moved through
+	 * #554's condensed group images and the #653/#655/#668 trains while the session was
+	 * disposed; both evidence files conflicted, no name collided, and the resolution is the
+	 * usual union. Registered for the list's usual reason: a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"foldOnto65a3e97b8cNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
