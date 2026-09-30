@@ -122,11 +122,19 @@ const ids = (rows) => rows.map((item) => item.session_id);
 test("a drop lands as the sequence of swaps the chords would have made", () => {
 	const full = ["a", "b", "c", "d", "e"];
 	const dropped = movePinnedOrderTo(full, full, full, "a", 3);
-	assert.deepEqual(dropped, ["b", "c", "d", "a", "e"], "three places, one array");
+	assert.deepEqual(
+		dropped,
+		["b", "c", "d", "a", "e"],
+		"three places, one array",
+	);
 	let chorded = full;
 	for (let step = 0; step < 3; step += 1)
 		chorded = movePinnedOrder(full, chorded, chorded, "a", 1);
-	assert.deepEqual(dropped, chorded, "identical to three \u2318\u21e7\u2193 presses");
+	assert.deepEqual(
+		dropped,
+		chorded,
+		"identical to three \u2318\u21e7\u2193 presses",
+	);
 	// And the same in the other direction, from the same start.
 	assert.deepEqual(movePinnedOrderTo(full, full, full, "e", 0), [
 		"e",
@@ -141,7 +149,11 @@ test("a drop over a filtered section keeps every hidden id's slot", () => {
 	const full = ["a", "b", "c", "d"];
 	const shown = ["a", "c", "d"]; // `b` is filtered out of the section
 	const dropped = movePinnedOrderTo(full, full, shown, "d", 0);
-	assert.deepEqual(dropped, ["d", "b", "a", "c"], "the hidden id keeps its index");
+	assert.deepEqual(
+		dropped,
+		["d", "b", "a", "c"],
+		"the hidden id keeps its index",
+	);
 	assert.deepEqual(
 		pinnedOrder(full, dropped).filter((id) => shown.includes(id)),
 		["d", "a", "c"],
@@ -152,13 +164,29 @@ test("a drop over a filtered section keeps every hidden id's slot", () => {
 test("a drop that lands where it started writes nothing", () => {
 	const full = ["a", "b", "c"];
 	assert.equal(movePinnedOrderTo(full, full, full, "b", 1), null);
-	assert.equal(movePinnedOrderTo(full, full, full, "b", 1.4), null, "a rounded slot");
-	assert.equal(movePinnedOrderTo(full, full, full, "z", 0), null, "an id not drawn");
+	assert.equal(
+		movePinnedOrderTo(full, full, full, "b", 1.4),
+		null,
+		"a rounded slot",
+	);
+	assert.equal(
+		movePinnedOrderTo(full, full, full, "z", 0),
+		null,
+		"an id not drawn",
+	);
 	/* A pointer past either end means "the end", which is the one reading a clamp
 	   and a refusal agree on - and it is what a drag into the section's padding
 	   produces, so it must not be a null. */
-	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", 99), ["a", "c", "b"]);
-	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", -3), ["b", "a", "c"]);
+	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", 99), [
+		"a",
+		"c",
+		"b",
+	]);
+	assert.deepEqual(movePinnedOrderTo(full, full, full, "b", -3), [
+		"b",
+		"a",
+		"c",
+	]);
 	/* And a row ALREADY at that end has nowhere to go, so the clamp is a null - the
 	   same "no write" a drop on its own slot gives. */
 	assert.equal(movePinnedOrderTo(full, full, full, "c", 99), null);
@@ -178,7 +206,11 @@ test("the drop slot is the rows the pointer has crossed, and never the dragged r
 	assert.equal(pinDragSlot(boxes, "c", 5), 0, "above every midpoint");
 	assert.equal(pinDragSlot(boxes, "c", 25), 1, "past a's midpoint");
 	assert.equal(pinDragSlot(boxes, "c", 45), 2, "past b's midpoint");
-	assert.equal(pinDragSlot(boxes, "c", 200), 2, "the dragged row is not a target");
+	assert.equal(
+		pinDragSlot(boxes, "c", 200),
+		2,
+		"the dragged row is not a target",
+	);
 	// A row dragged one place toward its neighbour reports the slot it would move into.
 	assert.equal(pinDragSlot(boxes, "a", 35), 1, "one place down");
 });
@@ -259,11 +291,10 @@ test("the first move records the arrangement the reader was looking at", () => {
 		"b",
 	]);
 	// And an unknown drawn at the top keeps its place through that first move.
-	assert.deepEqual(movePinnedOrder(["a", "b"], [], ["new", "a", "b"], "a", -1), [
-		"a",
-		"new",
-		"b",
-	]);
+	assert.deepEqual(
+		movePinnedOrder(["a", "b"], [], ["new", "a", "b"], "a", -1),
+		["a", "new", "b"],
+	);
 });
 
 /*
@@ -401,7 +432,10 @@ test("the move chords are the shifted arrows and nothing else", () => {
 		altKey: false,
 		...mods,
 	});
-	assert.equal(chatPinMoveChord(press("ArrowUp", { metaKey: true, shiftKey: true })), -1);
+	assert.equal(
+		chatPinMoveChord(press("ArrowUp", { metaKey: true, shiftKey: true })),
+		-1,
+	);
 	assert.equal(
 		chatPinMoveChord(press("ArrowDown", { metaKey: true, shiftKey: true })),
 		1,
@@ -412,16 +446,31 @@ test("the move chords are the shifted arrows and nothing else", () => {
 		"the Ctrl spelling is the same chord elsewhere",
 	);
 	// Refusals.
-	assert.equal(chatPinMoveChord(press("ArrowUp")), null, "a bare arrow is the list's walk");
-	assert.equal(chatPinMoveChord(press("ArrowUp", { metaKey: true })), null);
-	assert.equal(chatPinMoveChord(press("ArrowUp", { metaKey: true, altKey: true })), null);
 	assert.equal(
-		chatPinMoveChord(press("ArrowUp", { metaKey: true, shiftKey: true, altKey: true })),
+		chatPinMoveChord(press("ArrowUp")),
+		null,
+		"a bare arrow is the list's walk",
+	);
+	assert.equal(chatPinMoveChord(press("ArrowUp", { metaKey: true })), null);
+	assert.equal(
+		chatPinMoveChord(press("ArrowUp", { metaKey: true, altKey: true })),
+		null,
+	);
+	assert.equal(
+		chatPinMoveChord(
+			press("ArrowUp", { metaKey: true, shiftKey: true, altKey: true }),
+		),
 		null,
 		"the region walk's chord is `⌘⌥↓`, and `alt` is what keeps them apart",
 	);
-	assert.equal(chatPinMoveChord(press("p", { metaKey: true, shiftKey: true })), null);
-	assert.equal(chatPinMoveChord(press("a", { metaKey: true, shiftKey: true })), null);
+	assert.equal(
+		chatPinMoveChord(press("p", { metaKey: true, shiftKey: true })),
+		null,
+	);
+	assert.equal(
+		chatPinMoveChord(press("a", { metaKey: true, shiftKey: true })),
+		null,
+	);
 	// The spelling the controls would print.
 	assert.equal(chatPinMoveCap(-1, true), "⌘⇧↑");
 	assert.equal(chatPinMoveCap(1, false), "Ctrl+Shift+↓");
@@ -445,7 +494,9 @@ test("a chord finds the control on the row's own box, or nothing", () => {
 					? down
 					: null,
 	};
-	const inside = { closest: (selector) => (selector === "[data-session-row]" ? rowEl : null) };
+	const inside = {
+		closest: (selector) => (selector === "[data-session-row]" ? rowEl : null),
+	};
 	assert.equal(chatPinMoveControl(inside, -1), up);
 	assert.equal(chatPinMoveControl(inside, 1), down);
 	assert.equal(
@@ -454,7 +505,11 @@ test("a chord finds the control on the row's own box, or nothing", () => {
 		"a row with no pair answers with no control",
 	);
 	assert.equal(chatPinMoveControl(null, 1), null);
-	assert.equal(chatPinMoveControl({}, 1), null, "a target with no `closest` belongs to nobody");
+	assert.equal(
+		chatPinMoveControl({}, 1),
+		null,
+		"a target with no `closest` belongs to nobody",
+	);
 });
 
 /*
@@ -497,12 +552,18 @@ test("the pair is a row control: one stop per row, a chord, and a live region", 
 		/pinned && view\.pins\.includes\(row\.session_id\)[\s\S]{0,120}?forgetPinnedOrder\(view\.pins, row\.session_id\)/,
 	);
 	// The pair is offered only where the section's own order is on screen.
-	assert.match(source, /!nested &&\s*pinsEnabled &&\s*view\.groupBy === "section" &&/);
+	assert.match(
+		source,
+		/!nested &&\s*pinsEnabled &&\s*view\.groupBy === "section" &&/,
+	);
 	// And it is drawn for PINNED rows only.
 	assert.match(source, /\{row\.pinned === true &&/);
 	// The row it renders is the ordered one: the section draws the permutation,
 	// not the catalogue list it was computed from.
-	assert.match(source, /\{orderedPinned\.map\(\(row\) => sessionRow\(row\)\)\}/);
+	assert.match(
+		source,
+		/\{orderedPinned\.map\(\(row\) => sessionRow\(row\)\)\}/,
+	);
 });
 
 /*
@@ -541,13 +602,22 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 	assert.match(grip, /onPointerUp=\{\(\) => settlePinDrag\(true\)\}/);
 	assert.match(grip, /onPointerCancel=\{\(\) => settlePinDrag\(false\)\}/);
 	// The press refuses a non-primary button and stops the row's own plumbing.
-	assert.match(source, /if \(event\.button !== 0\) return;\n\t\tevent\.preventDefault\(\);\n\t\tevent\.stopPropagation\(\);/);
+	assert.match(
+		source,
+		/if \(event\.button !== 0\) return;\n\t\tevent\.preventDefault\(\);\n\t\tevent\.stopPropagation\(\);/,
+	);
 	assert.match(source, /setPointerCapture\(event\.pointerId\)/);
 	// The drop is the model's, once, through the view preference.
 	assert.match(source, /movePinnedOrderTo\(/);
-	assert.match(source, /dropPinnedRow[\s\S]{0,600}?setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/);
+	assert.match(
+		source,
+		/dropPinnedRow[\s\S]{0,600}?setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/,
+	);
 	// A cancel writes nothing and says so; Escape is the cancel with no pointer.
-	assert.match(source, /if \(!commit\) \{[\s\S]{0,200}?announcePinMove\("Move cancelled\."\)/);
+	assert.match(
+		source,
+		/if \(!commit\) \{[\s\S]{0,200}?announcePinMove\("Move cancelled\."\)/,
+	);
 	assert.match(source, /event\.key !== "Escape"/);
 	// The dragged row is marked on its own box, and the mark is a colour step. The
 	// predicate is read ONCE (`dragging`), so the attribute and the ground cannot
@@ -555,13 +625,19 @@ test("the grip is a drag handle: pointer-only, revealed like the pair, and one w
 	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
 	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
 	assert.match(source, /dragging && rowDragging,/);
-	assert.match(source, /export const rowDragging = "bg-row-selected text-ink";/);
+	assert.match(
+		source,
+		/export const rowDragging = "bg-row-selected text-ink";/,
+	);
 	// The indicator exists only during the drag, is inert, and lives in the section
 	// the rows are drawn in (so it scrolls with them).
 	assert.match(source, /pinDrag !== null && \(/);
 	assert.match(source, /data-session-pin-indicator=""/);
 	assert.match(source, /ref=\{pinnedSectionRef\}/);
-	assert.match(source, /className="pointer-events-none absolute right-1 left-1 h-0\.5 rounded-full bg-accent"/);
+	assert.match(
+		source,
+		/className="pointer-events-none absolute right-1 left-1 h-0\.5 rounded-full bg-accent"/,
+	);
 	// The auto-scroll loop is armed with the drag and reaped with it.
 	assert.match(source, /requestAnimationFrame\(/);
 	assert.match(source, /cancelAnimationFrame\(pinDragAutoScrollRef\.current\)/);

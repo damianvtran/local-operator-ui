@@ -13812,7 +13812,11 @@ async function scenePinnedReorder(cdp) {
 			field.focus();
 			return document.activeElement === field;
 		})()`);
-		check("the search field takes the caret", focused === true, String(focused));
+		check(
+			"the search field takes the caret",
+			focused === true,
+			String(focused),
+		);
 		await wait(200);
 		if (query === "") {
 			await cdp.send("Input.dispatchKeyEvent", {
@@ -14094,10 +14098,8 @@ async function scenePinnedReorder(cdp) {
 							{ id: PINNED_IDS[1], y: second.box.y, h: second.box.h },
 							{
 								id: PINNED_IDS[2],
-								y: (midDrag.rows.find((row) => row.id === PINNED_IDS[2]) ?? {})
-									.box?.y,
-								h: (midDrag.rows.find((row) => row.id === PINNED_IDS[2]) ?? {})
-									.box?.h,
+								y: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.y,
+								h: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.h,
 							},
 						]
 					: null,
@@ -14154,7 +14156,10 @@ async function scenePinnedReorder(cdp) {
 		await parkPointer(cdp);
 		const relaunched = await readPinnedPanel();
 		const relaunchFrame = await captureSettled(cdp, "order-relaunch");
-		note("frame", JSON.stringify({ label: "order-relaunch", ...relaunchFrame }));
+		note(
+			"frame",
+			JSON.stringify({ label: "order-relaunch", ...relaunchFrame }),
+		);
 		check(
 			"a relaunch comes back with the reader's order, not the catalogue's",
 			backAgain.ok === true &&
@@ -14178,8 +14183,13 @@ async function scenePinnedReorder(cdp) {
 			JSON.stringify(filtered.order),
 		);
 		const filteredFrame = await captureSettled(cdp, "search-filtered");
-		note("frame", JSON.stringify({ label: "search-filtered", ...filteredFrame }));
-		const filteredSecond = filtered.rows.find((row) => row.id === PINNED_IDS[1]);
+		note(
+			"frame",
+			JSON.stringify({ label: "search-filtered", ...filteredFrame }),
+		);
+		const filteredSecond = filtered.rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
 		const filteredGrip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
 		const filteredMid = await readPinnedPanel();
 		const filteredMidFrame = await captureSettled(cdp, "search-drag-mid");
@@ -14190,7 +14200,8 @@ async function scenePinnedReorder(cdp) {
 		check(
 			"mid-drag the filtered section draws the indicator and marks the row being moved",
 			filteredMid.indicator !== null &&
-				JSON.stringify(filteredMid.dragging) === JSON.stringify([PINNED_IDS[0]]),
+				JSON.stringify(filteredMid.dragging) ===
+					JSON.stringify([PINNED_IDS[0]]),
 			JSON.stringify({
 				indicator: filteredMid.indicator,
 				dragging: filteredMid.dragging,
@@ -14219,8 +14230,6 @@ async function scenePinnedReorder(cdp) {
 		await wait(PINNED_SETTLE_MS);
 		note("pinned-reorder geometry", JSON.stringify(widths));
 	}
-
-
 
 	if (PINNED_STATE === "many") {
 		/*
@@ -14325,7 +14334,9 @@ async function scenePinnedReorder(cdp) {
 		);
 		check(
 			"the only pin still offers the grip (a drag can leave the section) and draws its two arrows inapplicable",
-			singleRow.grip !== null && singleRow.up === true && singleRow.down === true,
+			singleRow.grip !== null &&
+				singleRow.up === true &&
+				singleRow.down === true,
 			JSON.stringify(singleRow),
 		);
 		note(
