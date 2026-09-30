@@ -815,6 +815,8 @@ export const ChatDockRunPanel: Story = {
 							sessionId="a1b2c3d4e5f6"
 							pulses={{}}
 							childrenOpenable
+							/* No session stream behind this board: the transport-up case. */
+							olderTransportDown={false}
 							paneWidth={slotWidth}
 							readerChildId={null}
 							previewPage={null}

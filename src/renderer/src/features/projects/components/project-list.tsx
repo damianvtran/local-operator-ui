@@ -48,6 +48,7 @@ import {
 	milestoneCountLabel,
 	progressAge,
 	progressAgePhrase,
+	projectDisplayName,
 	projectTeamName,
 } from "../project-model";
 import { ProjectStatusBadge } from "./project-status-badge";
@@ -181,7 +182,12 @@ export const ProjectList: FC<ProjectListProps> = ({
 													"truncate text-body-sm text-ink",
 												)}
 											>
-												{project.name}
+												{/*
+												 * THE TITLE IS THE IDENTITY on this surface too (see the
+												 * board's note): same `projectDisplayName` rule, key kept
+												 * as the addressable `data-project-name` hook.
+												 */}
+												{projectDisplayName(project)}
 											</span>
 											<span className={COLUMNS[1].className}>
 												<ProjectStatusBadge status={project.status} />
