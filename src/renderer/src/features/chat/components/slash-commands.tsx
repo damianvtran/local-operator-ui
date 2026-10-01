@@ -1798,7 +1798,14 @@ function argumentRowContent(
 			</span>
 			<span
 				className={cn(
-					"shrink truncate font-mono text-body-sm",
+					"min-w-0 shrink truncate text-body-sm text-ink",
+					/*
+					 * The human face for a label, the machine face for a slug (design
+					 * round 1, D3): monospace is machine voice, and once a team row
+					 * shows its label this span carries prose — the slug it addresses
+					 * by rides the adjacent token below instead.
+					 */
+					!value.slug && "font-mono",
 					/*
 					 * The floor is what makes D2 hold: the name may shrink from its own
 					 * width down to 24ch, and the PATH detail below absorbs the rest, so
@@ -1807,9 +1814,10 @@ function argumentRowContent(
 					 * prefix ("remove "), so 12ch guaranteed ~5 characters of the server
 					 * and near-twin names still collapsed at ordinary composer width;
 					 * 24ch leaves ~17 for the name, which is where the path has already
-					 * begun ellipsising.
+					 * begun ellipsising. The base owns `min-w-0`; this later
+					 * `min-w-[24ch]` wins through twMerge for `/mcp` rows only.
 					 */
-					mcp ? "min-w-[24ch]" : "min-w-0",
+					mcp && "min-w-[24ch]",
 					/*
 					 * THE DANGER CUE LIVES ON THE NAME, not on the detail (round 1, D3/
 					 * D4/U5): a `/logout` row and a destructive `/mcp` row show exactly
@@ -1825,6 +1833,18 @@ function argumentRowContent(
 			>
 				{value.name}
 			</span>
+			{value.slug && (
+				/*
+				 * THE SLUG BESIDE THE LABEL (design round 1, D2): the string every
+				 * surface addresses the team by (`/team <slug>`) and the one a
+				 * pick WRITES, drawn while the choice is being made rather than
+				 * discovered in the composer. Quiet and monospace because it IS
+				 * machine voice — the key, not prose.
+				 */
+				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+					{value.slug}
+				</span>
+			)}
 			{value.description && (
 				<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 					{value.description}
