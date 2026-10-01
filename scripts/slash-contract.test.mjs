@@ -26,7 +26,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
-			'export { argumentRows, modelDefaultActionRow, shouldRunArgumentAction } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export { argumentRows, effectiveInlineArgument, modelDefaultActionRow, shouldRunArgumentAction } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
 			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
 			   `slashRunAllowed`/`slashKeyIntent` come off the contract export above. */
@@ -63,6 +63,7 @@ const {
 	completionFor,
 	clickFooter,
 	commandRowSlot,
+	effectiveInlineArgument,
 	enterFooter,
 	extensionFor,
 	FLAG_LIST_SOURCES,
@@ -143,6 +144,12 @@ const KIND = /kind: "([\w-]+)"/;
 const INLINE_SOURCE = /source: "([\w-]+)"/;
 const NAME_THEN_MESSAGE = /nameThenMessage: (true|false)/;
 const RUNS = /runs: (true|false)/;
+/*
+ * `[\w-]+` for the same reason `INLINE_SOURCE` is hyphen-tolerant: a capability
+ * key is a snake_case word (`provider_catalogue`, `mcp_catalog`), and `\w`
+ * covers it without widening the class to anything a key is not.
+ */
+const REQUIRES = /requires: "([\w-]+)"/;
 
 /**
  * The `DESTINATIONS` entry for `id`, as `pointerPickRuns` consumes it.
@@ -182,14 +189,50 @@ function registryEntry(id) {
 					source,
 					nameThenMessage: NAME_THEN_MESSAGE.exec(block)?.[1] === "true",
 					runs: RUNS.exec(block)?.[1] === "true",
+					requires: REQUIRES.exec(block)?.[1],
 				}
 			: undefined,
 	};
 }
 
-/** Whether a pointer pick of `id` runs, decided from the registry's own entry. */
-function pickRuns(id) {
-	return pointerPickRuns(id, registryEntry(id));
+/**
+ * The capability answers the effective-inline resolution is driven with.
+ *
+ * `CATALOGUE` is a backend that ships both features — the branch's own
+ * contract, where `/login`, `/logout` and `/mcp` complete-and-open. `NO_CATALOGUE`
+ * is the backend this change must keep working against: same composer, same
+ * picks, and every picker still runs exactly as it does today.
+ */
+const CATALOGUE = {
+	desktop_available: true,
+	features: { provider_catalogue: 1, mcp_catalog: 2 },
+};
+const NO_CATALOGUE = { desktop_available: true, features: {} };
+
+/**
+ * The entry a pick routes through, as `useSlashCompletion` resolves it: the
+ * registry's own block with the inline disposition passed through
+ * `effectiveInlineArgument` — the ONE resolver the fetch, both footers and the
+ * pick gate read — so these cases cannot pass against a second opinion.
+ */
+function effectiveEntryFor(id, capabilities = CATALOGUE) {
+	const entry = registryEntry(id);
+	if (!entry || entry.kind !== "picker") return entry;
+	const inline = effectiveInlineArgument(entry.inline, capabilities);
+	return { ...entry, inline };
+}
+
+/** Whether a pointer pick of `id` runs, decided from the resolved entry. */
+function pickRuns(id, capabilities = CATALOGUE) {
+	return pointerPickRuns(id, effectiveEntryFor(id, capabilities));
+}
+
+/** Whether completing `id`'s word opens a list, from the same resolved entry. */
+function opensEffectiveList(id, capabilities = CATALOGUE) {
+	const entry = effectiveEntryFor(id, capabilities);
+	return Boolean(
+		entry && entry.kind === "picker" && entry.inline !== undefined,
+	);
 }
 
 /**
@@ -713,6 +756,11 @@ test("the phase label names the list's subject", () => {
 	// The renderer-local sixth source (DESIGN §5.3, /theme inline) has a name
 	// like the rest, so no source renders under another's subject.
 	assert.equal(phaseLabel("argument", "theme"), "Themes");
+	// `/mcp` is per-SLOT (round 1, D6/U7): the verb list is not headed "Servers"
+	// — that label belongs to the list the NEXT keystroke opens.
+	assert.equal(phaseLabel("argument", "mcp", ""), "Commands");
+	assert.equal(phaseLabel("argument", "mcp", "lo"), "Commands");
+	assert.equal(phaseLabel("argument", "mcp", "login "), "Servers");
 });
 
 test("the footer says what Enter will do, in each state", () => {
@@ -808,6 +856,21 @@ test("the footer says what Enter will do, in each state", () => {
 		enterFooter({ ...base, runs: false }),
 		"Enter completes the value.",
 	);
+	/*
+	 * The FILLED state on a `runs: false` source (round 1, U3): the completion is
+	 * already IN the box, so this Enter writes nothing and only closes the list —
+	 * the line says so rather than repeating a completion over a byte-identical
+	 * draft, which read as a dropped keystroke. The `runs: true` arm is
+	 * untouched: a completed `/login openai` still runs on that Enter.
+	 */
+	assert.equal(
+		enterFooter({ ...base, runs: false, complete: true }),
+		"Enter closes the list; Enter again runs.",
+	);
+	assert.equal(
+		enterFooter({ ...base, complete: true }),
+		"Enter runs /model openai/gpt-5.",
+	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
 });
@@ -829,12 +892,35 @@ test("the footer says what Enter will do, in each state", () => {
  */
 test("the Enter line names what the key actually does, in every state", () => {
 	/* Real command/destination pairs, read off `slash-dispatch.ts`'s own map
-	   (`analytics: "analytics"`, `model: "model"`). */
+	   (`analytics: "analytics"`, `model: "session.model"`, `login: "auth.login"`)
+	   — the destination is the registry table's key, which is what
+	   `pointerPickRuns` and the effective-entry resolver answer from. */
 	const CASES = [
 		{ labels: ["analytics"], query: "", destination: "analytics" },
-		{ labels: ["model"], query: "model", destination: "model" },
-		{ labels: ["login", "logout", "loop"], query: "", destination: "login" },
-		{ labels: ["login", "logout", "loop"], query: "lo", destination: "login" },
+		{ labels: ["model"], query: "model", destination: "session.model" },
+		{
+			labels: ["login", "logout", "loop"],
+			query: "",
+			destination: "auth.login",
+		},
+		{
+			labels: ["login", "logout", "loop"],
+			query: "lo",
+			destination: "auth.login",
+		},
+		/*
+		 * The provider command, unique and exactly typed: on the current backend the
+		 * pick completes and opens the registry list; on one without
+		 * `provider_catalogue` the same pick RUNS the dialog, which is §4.2's
+		 * degrade arm told through the same line.
+		 */
+		{ labels: ["login"], query: "login", destination: "auth.login" },
+		{
+			labels: ["login"],
+			query: "login",
+			destination: "auth.login",
+			capabilities: NO_CATALOGUE,
+		},
 	];
 	/* The bare-`/` case is the one that produced the popup's first-ever sentence,
 	   so the row set is the real 13-command list rather than one row: nothing in
@@ -868,8 +954,8 @@ test("the Enter line names what the key actually does, in every state", () => {
 			commandQuery: c.query,
 			chosenByHand,
 		});
-		const runs = pickRuns(c.destination);
-		const opensList = Boolean(registryEntry(c.destination)?.inline);
+		const runs = pickRuns(c.destination, c.capabilities);
+		const opensList = opensEffectiveList(c.destination, c.capabilities);
 		const line = enterFooter({
 			phase: "command",
 			command: null,
@@ -956,17 +1042,17 @@ const MESSAGE_INPUT = readFileSync(
 test("an unambiguous Enter still asks the destination before it runs", () => {
 	assert.match(
 		MESSAGE_INPUT,
-		/disposition\.run\s*&&\s*\(\s*row\.kind === "command"\s*\?\s*pointerPickRuns\(/,
-		"the pick path no longer gates a command row's run on its destination",
+		/disposition\.run\s*&&\s*\(\s*row\.kind === "command"\s*\?\s*pointerPickRuns\(\s*row\.command\.destination,\s*slash\.effectiveEntry\(row\.command\.destination\),?\s*\)/,
+		"the pick path no longer gates a command row's run on its effective destination",
 	);
 	/*
 	 * What the two rules compose to, for the ids the REAL registry carries: the
 	 * panels and the navigate destinations run on the first Enter, and every
 	 * destination whose pick opens an inline list completes and opens it.
 	 */
-	const enterRuns = (id, label) => {
+	const enterRuns = (id, label, capabilities) => {
 		const intent = route({ matches: commandRows(label), commandQuery: label });
-		return intent.kind === "apply" && intent.run && pickRuns(id);
+		return intent.kind === "apply" && intent.run && pickRuns(id, capabilities);
 	};
 	for (const [id, label] of [
 		["analytics", "analytics"],
@@ -985,6 +1071,24 @@ test("an unambiguous Enter still asks the destination before it runs", () => {
 		["session.agent", "agent"],
 	]) {
 		assert.equal(enterRuns(id, label), false, `${id} opens a list`);
+	}
+	/*
+	 * The sessionless commands, whose flip this change IS: with the capability
+	 * present their picks complete and open the registry lists (so Enter must not
+	 * be promised a run), and without it they run exactly as before — both
+	 * answers read off the same resolved entry the components read.
+	 */
+	for (const [id, label] of [
+		["auth.login", "login"],
+		["auth.logout", "logout"],
+		["mcp", "mcp"],
+	]) {
+		assert.equal(enterRuns(id, label), false, `${id} opens a list`);
+		assert.equal(
+			enterRuns(id, label, NO_CATALOGUE),
+			true,
+			`${id} runs without the capability`,
+		);
 	}
 	/*
 	 * The three ids a POINTER pick must never run keep their TWO-Enter path: the
@@ -1069,9 +1173,16 @@ test("the click footer never claims a run the pick does not perform", () => {
 		// Panel and navigate destinations: the pick IS the gesture.
 		["analytics", "analytics"],
 		["usage", "usage"],
-		// The two REQUIRED-argument commands, a deliberate deviation.
+		/*
+		 * The sessionless commands: with the capability present the pick completes
+		 * and opens the registry list, so the pointer line may not claim a run — and
+		 * `runs: false` on `/logout`'s and `/mcp`'s lists is the whole floor for
+		 * their destructive rows (§4.1). The degrade arm (a click RUNS the picker
+		 * without the capability) is asserted in the Enter-line test above.
+		 */
 		["auth.login", "login"],
 		["auth.logout", "logout"],
+		["mcp", "mcp"],
 		// List-bearing: completing the word opens the list, so the pointer
 		// cannot run. `/theme` is the one whose inline list has no run either.
 		["session.model", "model"],
@@ -1237,6 +1348,23 @@ test("the empty copy names which of the four causes it is", () => {
 		argumentEmptyCopy({ ...list, rows: [{ value: "delivery" }] }),
 		"No matches. Enter runs the command.",
 	);
+	// The source's own sentence, when it has one (round 1, U2/U4): a `/mcp`
+	// server slot empty by design, or a `/logout` query naming a provider with
+	// no stored credential, outranks both generic arms.
+	assert.equal(
+		argumentEmptyCopy({
+			...list,
+			emptyCopy: "No servers to choose. Enter runs the command.",
+		}),
+		"No servers to choose. Enter runs the command.",
+	);
+	assert.equal(
+		argumentEmptyCopy({
+			...list,
+			emptyCopy: "No stored credential to remove.",
+		}),
+		"No stored credential to remove.",
+	);
 });
 
 /*
@@ -1286,7 +1414,13 @@ const PICK_RUNS = [
 	"providers",
 	"accounts",
 	"updates",
-	"mcp",
+	/*
+	 * `mcp` LEFT this list when its inline list landed: with the capability
+	 * present a pick completes and opens the verbs, and WITHOUT it the pick runs
+	 * the picker again — either way it is no longer a runs-always row, which is
+	 * what this list is for. `/logout`'s and `/mcp`'s lists carry destructive
+	 * rows, and their `runs: false` is the pointer's whole floor.
+	 */
 ];
 
 test("a pointer pick runs the command unless completing it opens a list", () => {
@@ -1296,22 +1430,106 @@ test("a pointer pick runs the command unless completing it opens a list", () => 
 	}
 });
 
-test("the two REQUIRED-argument commands run on a pick (a deliberate deviation)", () => {
+test("the provider commands complete-and-open now, and still run without the capability", () => {
 	/*
-	 * The TUI must not run a REQUIRED-argument command on accept, because
-	 * accepting there opens an inline list (`Editor.opens_a_list`). These two have
-	 * no inline list HERE — the picker IS the provider list, and it is a dialog —
-	 * so completing-only would strand the user on `/login ` with nothing to pick.
+	 * The old deviation this test pinned: `/login` and `/logout` had no inline
+	 * list HERE, so a pick had to RUN them — completing-only would have stranded
+	 * the user on `/login ` with nothing to choose from. The provider registry's
+	 * lists close exactly that gap (spec §1.4); what remains to pin is the pair
+	 * of arms: with `provider_catalogue` (and, for `/mcp`, `mcp_catalog` >= 2) a
+	 * pick completes and OPENS the list; on a backend without the keys the pick
+	 * RUNS the dialog exactly as this test used to require.
 	 */
-	for (const id of ["auth.login", "auth.logout"]) {
+	for (const id of ["auth.login", "auth.logout", "mcp"]) {
 		assert.equal(registryEntry(id)?.kind, "picker", id);
-		assert.equal(registryEntry(id)?.inline, undefined, id);
-		assert.equal(pickRuns(id), true, id);
+		assert.ok(registryEntry(id)?.inline, `${id} declares its list`);
+		assert.equal(pickRuns(id), false, `${id} completes on a pick`);
+		assert.equal(opensEffectiveList(id), true, `${id} opens its list`);
+		assert.equal(
+			pickRuns(id, NO_CATALOGUE),
+			true,
+			`${id} still runs the picker without the capability`,
+		);
+		assert.equal(opensEffectiveList(id, NO_CATALOGUE), false, id);
 	}
+});
+
+test("a source whose rows can destroy something never runs on a click", () => {
+	/*
+	 * The pointer has no ambiguity gate (a click bypasses it by design), so for a
+	 * SOURCE that can carry destructive rows the per-list `runs` flag is the
+	 * whole floor — and the row arm of the keyboard gate reads `alert` for the
+	 * rest. Mirrors `tests/unit/tui/test_destructive_argument_gate.py`.
+	 */
+	assert.equal(registryEntry("auth.logout")?.inline?.runs, false);
+	assert.equal(registryEntry("mcp")?.inline?.runs, false);
+	// Every `/logout` row destroys a credential.
+	for (const row of argumentRows(
+		"provider-accounts",
+		[
+			{
+				provider: "openai",
+				type: "oauth",
+				identity_label: "someone@example.com",
+			},
+			{
+				provider: "xai",
+				type: "api_key",
+				identity_label: "Stored credential",
+			},
+		],
+		null,
+	)) {
+		assert.equal(row.alert, true, row.value);
+	}
+	/*
+	 * The MCP rows: the verb rows carry the document's `destructive`, and the
+	 * server rows inherit their verb's flag — `remove`/`logout`/`reauth` alert,
+	 * `login` does not.
+	 */
+	const verbs = [
+		{
+			verb: "list",
+			description: "Show every configured server and its status",
+			destructive: false,
+			offers: null,
+		},
+		{
+			verb: "remove",
+			description: "Delete a server from local-operator's config",
+			destructive: true,
+			offers: "all",
+		},
+		{
+			verb: "logout",
+			description: "Forget a server's stored OAuth credential",
+			destructive: true,
+			offers: "signed_in",
+		},
+	];
+	const verbRows = argumentRows("mcp", [], null, { argument: "", verbs });
+	// The verb row's value carries its terminator (round 1, U1), so the find
+	// keys on the NAME the row is displayed by.
+	assert.equal(verbRows.find((row) => row.name === "remove")?.alert, true);
+	assert.equal(verbRows.find((row) => row.name === "logout")?.alert, true);
+	assert.equal(verbRows.find((row) => row.name === "list")?.alert, false);
+	const servers = [{ name: "gh", actions: ["sign_out"], status: "connected" }];
+	assert.equal(
+		argumentRows("mcp", servers, null, { argument: "logout ", verbs })[0].alert,
+		true,
+	);
+	assert.equal(
+		argumentRows("mcp", servers, null, { argument: "remove ", verbs })[0].alert,
+		true,
+	);
 });
 
 test("a list-bearing command completes and never runs", () => {
 	for (const [id, source] of [
+		// The sessionless lists: same rule, same resolved entry.
+		["auth.login", "providers"],
+		["auth.logout", "provider-accounts"],
+		["mcp", "mcp"],
 		["session.model", "model"],
 		["session.effort", "effort"],
 		["session.approvals", "approvals"],

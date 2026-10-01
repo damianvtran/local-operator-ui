@@ -48,6 +48,8 @@ import { messageBudgetRefusal } from "@features/chat/utils/message-budget";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { radientProxy } from "@shared/api/radient/proxy";
+import type { UserInfoResult } from "@shared/api/radient/types";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
 	type ComposerSendError,
@@ -56,6 +58,14 @@ import {
 	type MessageInputProps,
 } from "@shared/components/composer";
 import { apiConfig } from "@shared/config";
+import {
+	type RadientAccountRead,
+	classifyRadientAccountFailure,
+} from "@shared/hooks/use-radient-user-query";
+import {
+	type RadientSpeechBlock,
+	radientSpeechBlock,
+} from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_FAILURE_COPY,
@@ -77,6 +87,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { isServerReachable } from "../../../shared/backend-status";
 import type { DesktopCapabilities } from "../../../shared/desktop-contract";
 import type {
 	DesktopAidaControlResult,
@@ -164,9 +175,9 @@ export function MiniComposer() {
 		readonly unknown[] | undefined
 	>(undefined);
 	const [recordingProbe, setRecordingProbe] = useState<{
-		hasRadientApiKey: boolean;
-		isUnavailable: boolean;
-	}>({ hasRadientApiKey: false, isUnavailable: false });
+		canUseRadientSpeech: boolean;
+		speechBlock: RadientSpeechBlock;
+	}>({ canUseRadientSpeech: false, speechBlock: "could-not-check" });
 	const [sendError, setSendError] = useState<ComposerSendError | undefined>(
 		undefined,
 	);
@@ -243,25 +254,101 @@ export function MiniComposer() {
 
 	/**
 	 * The recording probe, read the way `useRadientCredentialProbe` reads it
-	 * (the same client, the same `RADIENT_API_KEY` question) without mounting
-	 * react-query. Fail-closed: an unreadable probe is `isUnavailable`, which
-	 * is the "waiting on the server" sentence rather than "unconfigured".
+	 * without mounting react-query: the server's reachability, the capabilities
+	 * negotiation, the Radient session, and the legacy `RADIENT_API_KEY` question,
+	 * composed into the shared capability and the disabled control's block
+	 * (`@shared/lib/speech-gate`).
+	 *
+	 * THE SAME SESSION-FIRST SEMANTICS AS THE CHAT'S PROBE (issue #674): a live
+	 * Radient account read enables speech first, the file key second, and the
+	 * local server gates both. One deliberate difference: these reads are
+	 * ONE-SHOT per summon rather than react-query's cache - the same decision the
+	 * seat's other reads make (see `refreshSeatReads`) and safe for the same
+	 * reason: the popup mounts fresh per summon, so a read on mount is fresh at
+	 * every open, and no window stays open across a sign-in to go stale. It is
+	 * also why there is no refetch-on-session-flip here: a summon re-reads.
+	 * Fail-closed: an unanswered read leaves the capability false, and the class
+	 * it reports is `could-not-check` - the same neutral default the shared
+	 * composer carries for a host with no probe.
 	 */
 	const refreshProbe = useCallback(async () => {
+		/*
+		 * The server's reachability, asked of the MAIN process the way the
+		 * connectivity gate asks it: it is the only process that knows whether the
+		 * daemon it attached to is still there (see `use-connectivity-status`). A
+		 * window whose bridge cannot answer is the offline direction.
+		 */
+		let serverOnline = false;
+		const bridge = window.api?.backend;
+		if (bridge) {
+			try {
+				serverOnline = isServerReachable((await bridge.getStatus()).state);
+			} catch {
+				/* The ask itself failed: no server this surface can use. */
+			}
+		}
+		/*
+		 * The capabilities negotiation's own state, because the account read is
+		 * disabled until it answers (design round 2, D6): its silence must not
+		 * classify as an answer class.
+		 */
+		let capabilitiesState: "pending" | "error" | "answered" = "pending";
+		let accountUnavailable = false;
+		try {
+			const capabilities = await desktopResult<DesktopCapabilities>({
+				op: "capabilities",
+			});
+			capabilitiesState = "answered";
+			accountUnavailable = !desktopFeatureEnabled(capabilities, "radient");
+		} catch {
+			capabilitiesState = "error";
+		}
+		/*
+		 * The session tier: the same proxy call the chat's account read makes, one
+		 * attempt. Skipped when it could not mean anything (no server, a failed
+		 * negotiation, or a backend that cannot serve Radient - on those the read
+		 * never asked in the chat either).
+		 */
+		let accountRead: RadientAccountRead = "checking";
+		if (
+			serverOnline &&
+			capabilitiesState === "answered" &&
+			!accountUnavailable
+		) {
+			try {
+				const account = await radientProxy<UserInfoResult>({
+					operation: "account",
+				});
+				accountRead = account ? "ready" : "signed-out";
+			} catch (error) {
+				accountRead = classifyRadientAccountFailure(error);
+			}
+		}
+		/* The legacy tier: the credentials file lists a Radient key. */
+		let hasRadientApiKey = false;
+		let keyUnreadable = false;
 		try {
 			const client = createLocalOperatorClient(apiConfig.baseUrl);
 			const response = await client.credentials.listCredentials();
 			if (response.status >= 400) throw new Error("credentials read failed");
 			const keys = (response.result as { keys?: string[] } | null)?.keys;
-			setRecordingProbe({
-				hasRadientApiKey: Array.isArray(keys)
-					? keys.includes("RADIENT_API_KEY")
-					: false,
-				isUnavailable: false,
-			});
+			hasRadientApiKey = Array.isArray(keys)
+				? keys.includes("RADIENT_API_KEY")
+				: false;
 		} catch {
-			setRecordingProbe({ hasRadientApiKey: false, isUnavailable: true });
+			keyUnreadable = true;
 		}
+		setRecordingProbe({
+			canUseRadientSpeech:
+				serverOnline &&
+				(accountRead === "ready" || (hasRadientApiKey && !keyUnreadable)),
+			speechBlock: radientSpeechBlock({
+				serverOnline,
+				accountRead,
+				accountUnavailable,
+				capabilitiesState,
+			}),
+		});
 	}, []);
 
 	/**

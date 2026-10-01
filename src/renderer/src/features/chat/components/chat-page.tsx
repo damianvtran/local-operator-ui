@@ -12,7 +12,11 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import {
+	type ChatTarget,
+	useTeams,
+} from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
@@ -29,6 +33,7 @@ import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
+import { useStableCallback } from "@shared/hooks/use-stable-callback";
 import {
 	useDraftWarmSession,
 	useWarmSession,
@@ -122,6 +127,7 @@ import {
 import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { effortQueryModel } from "../session-status/session-model";
+import type { Message } from "../types/message";
 import { encodeImageAttachments } from "../utils/attachment-encode";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
@@ -1203,6 +1209,18 @@ function SessionPanel({
 		clearError();
 	}, [asideBusy, clearError, sendErrorCode]);
 
+	/*
+	 * HOISTED AND MEMOISED for the composer's memo boundary (C1). This closure is a
+	 * dependency of the dispatcher's `note`, which the page hands the composer as
+	 * `onSlashNote`, and a prop rebuilt per render would re-render the whole
+	 * composer once per stream flush. Frozen on `canonical.addNote`, which is
+	 * stable in the stream hook: one `useCallback` over the view's single writer.
+	 */
+	const addMessage = useCallback(
+		(message: Message) => canonical.addNote(message.message ?? ""),
+		[canonical.addNote],
+	);
+
 	const {
 		dispatch,
 		dispatchFromControl,
@@ -1213,7 +1231,7 @@ function SessionPanel({
 		sessionId,
 		canonical,
 		rebind,
-		addMessage: (message) => canonical.addNote(message.message ?? ""),
+		addMessage,
 		focusComposer: () => input.current?.focusInput(),
 		/*
 		 * Where a bare `/move` lands. The destination resolves in the composer's own
@@ -1272,6 +1290,17 @@ function SessionPanel({
 					}
 				: undefined,
 	});
+
+	/*
+	 * A STABLE `dispatchFromControl` for the composer's memo boundary (C1): the
+	 * dispatcher's own identity is rebuilt on every render — its dependency list
+	 * reads the canonical handle, which the stream replaces per flush — and the
+	 * composer takes this callback both as `onSlashCommand` and inside its session
+	 * readings. The wrapper gives the boundary one identity while still running the
+	 * most recently committed render's closure (see `useStableCallback` for the
+	 * exact guarantee, including the same-commit window it does not cover).
+	 */
+	const stableDispatchFromControl = useStableCallback(dispatchFromControl);
 	/*
 	 * Whether a command can address a SESSION on this pane — the dispatcher's own
 	 * question, stated ONCE beside the value it is asked of (`sessionId`, the only
@@ -2045,6 +2074,17 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 	};
+
+	/*
+	 * A STABLE `send` for the composer's memo boundary (C1). `send` is declared per
+	 * render — a plain function over the whole page's state — and the composer takes
+	 * it as `onSendMessage`; rebuilt per render it would re-render the composer once
+	 * per stream flush. The wrapper invokes the latest closure on every call, the
+	 * same semantics the fresh function had, and is the one identity the boundary
+	 * sees; see `useStableCallback`. Internal callers below keep calling `send`
+	 * directly.
+	 */
+	const stableSend = useStableCallback(send);
 	/**
 	 * One answer's report, applied to this panel's state — the shared tail of
 	 * EVERY answer path (`answerWithOption`'s press and `answerWithSecret`'s
@@ -2484,10 +2524,43 @@ function SessionPanel({
 		recording: isDictationActive,
 		onInterrupt: stop,
 	});
-	const loadedTarget =
-		canonical.frontend?.active_team ||
+	/*
+	 * THE READABLE FORM OF THE STARTING IDENTITY, and the lookup behind it.
+	 *
+	 * This is the target the two HUMAN sites on this pane read - the draft
+	 * title (`New chat with …`) and the header's starting line - so a
+	 * TEAM-sourced value resolves through the catalogue's label lookup while an
+	 * agent name passes through untouched. The chain mirrors the raw one's
+	 * precedence exactly (`||`, not `??`, keeps the wire's empty-string
+	 * spelling of "unset" falling through) so the two can never name different
+	 * profiles; only the words differ.
+	 *
+	 * The query is gated to the panes that can need it - a team draft, or a
+	 * live stream that already named a team - and to the catalogue capability;
+	 * everywhere else the slug is the string, which is exactly what these sites
+	 * drew before labels existed.
+	 */
+	const draftTeamName =
+		draft?.target?.kind === "team" ? draft.target.name : null;
+	const liveTeamName = canonical.frontend?.active_team || null;
+	const teamNames = useTeams(
+		Boolean(draftTeamName || liveTeamName) &&
+			desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
+	const teamLabelFor = useMemo(() => {
+		const labels = new Map(
+			(teamNames.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+		);
+		return (name: string) => labels.get(name) ?? name;
+	}, [teamNames.data]);
+	const loadedTargetDisplay =
+		(liveTeamName ? teamLabelFor(liveTeamName) : "") ||
 		canonical.frontend?.active_agent ||
-		draft?.target?.name;
+		(draft?.target
+			? draft.target.kind === "team"
+				? teamLabelFor(draft.target.name)
+				: draft.target.name
+			: undefined);
 	// active_agent/active_team come from the LIVE stream, so a cold session (no
 	// running owner) reports nulls and the header fell back to the cwd, naming
 	// nothing. The catalogue row's binding is the durable answer and is already
@@ -2526,7 +2599,7 @@ function SessionPanel({
 	// See chat-title.ts for the TUI precedent both rules follow.
 	const title = resolveChatTitle({
 		draftKey,
-		draftTarget: loadedTarget,
+		draftTarget: loadedTargetDisplay,
 		liveTitle: canonical.frontend?.conversation_title,
 		// The row's own name, or - for a conversation this window has deleted - the
 		// name that row wore when it went.
@@ -2630,7 +2703,7 @@ function SessionPanel({
 	 * a registry being reachable, which a binding does not evidence.
 	 */
 	//
-	// Keyed on the LIVE binding only, never on `loadedTarget`: that falls back to
+	// Keyed on the LIVE binding only, never on `loadedTargetDisplay`: that falls back to
 	// `draft?.target?.name`, which a draft staged from the agents page or `/agent`
 	// already carries before any send is attempted. Reading it here made an
 	// `unresolved_attachment` failure clear itself on the first render after the
@@ -3045,29 +3118,52 @@ function SessionPanel({
 		canonical.frontend?.pending_gate,
 		sendErrorMuted,
 	]);
-	const notice = composerNoticeFor({
-		error: sendError,
-		code: sendErrorCode,
-		retry: sendErrorRetry,
-		muted: sendErrorMuted,
-		/*
-		 * THE ROW IS THE FAILURE'S HOME, SO THE COMPOSER DOES NOT RESTATE IT (S4).
-		 * `retainsPendingSend` answers whether a ROW exists for this identity -
-		 * MEMBERSHIP, not liveness, and the distinction is load-bearing since round
-		 * 2: a recorded failure settles its claim in the store's own catch (U5),
-		 * so the liveness predicate answers null for exactly the failures whose row
-		 * is on screen, and this notice put the same sentence back over it
-		 * ("Couldn't confirm your message was sent. Sending it again is safe.RetryClear"
-		 * beside a row that already said it) - the contradiction J4 forbids,
-		 * measured on the re-shoot's first run. The inputs go `undefined` rather
-		 * than empty so `composerNoticeFor`'s own arms (the late-delivery note, the
-		 * pre-paint copies) are untouched.
-		 */
-		rowError: retainsPendingSend(identity) ? undefined : draft?.error,
-		rowCode: retainsPendingSend(identity) ? undefined : draft?.errorCode,
-		rowRetry: retainsPendingSend(identity) ? undefined : draft?.errorRetry,
-		lateDelivered,
-	});
+	/*
+	 * MEMOISED FOR THE COMPOSER'S MEMO BOUNDARY (C1), with the registry read kept
+	 * OUTSIDE the memo: `retainsPendingSend` reads a non-reactive registry, and the
+	 * note below promises it is re-read every render — as a value it still is, and
+	 * the memo only caches the notice object until one of those values moves.
+	 * Without this the composer would take a fresh `sendError` object on every
+	 * render of this page, which is once per stream flush.
+	 */
+	const pendingSendRetained = retainsPendingSend(identity);
+	const notice = useMemo(
+		() =>
+			composerNoticeFor({
+				error: sendError,
+				code: sendErrorCode,
+				retry: sendErrorRetry,
+				muted: sendErrorMuted,
+				/*
+				 * THE ROW IS THE FAILURE'S HOME, SO THE COMPOSER DOES NOT RESTATE IT (S4).
+				 * `retainsPendingSend` answers whether a ROW exists for this identity -
+				 * MEMBERSHIP, not liveness, and the distinction is load-bearing since round
+				 * 2: a recorded failure settles its claim in the store's own catch (U5),
+				 * so the liveness predicate answers null for exactly the failures whose row
+				 * is on screen, and this notice put the same sentence back over it
+				 * ("Couldn't confirm your message was sent. Sending it again is safe.RetryClear"
+				 * beside a row that already said it) - the contradiction J4 forbids,
+				 * measured on the re-shoot's first run. The inputs go `undefined` rather
+				 * than empty so `composerNoticeFor`'s own arms (the late-delivery note, the
+				 * pre-paint copies) are untouched.
+				 */
+				rowError: pendingSendRetained ? undefined : draft?.error,
+				rowCode: pendingSendRetained ? undefined : draft?.errorCode,
+				rowRetry: pendingSendRetained ? undefined : draft?.errorRetry,
+				lateDelivered,
+			}),
+		[
+			sendError,
+			sendErrorCode,
+			sendErrorRetry,
+			sendErrorMuted,
+			pendingSendRetained,
+			draft?.error,
+			draft?.errorCode,
+			draft?.errorRetry,
+			lateDelivered,
+		],
+	);
 	/*
 	 * THE COMPOSER STANDS DOWN WHILE THE STRIP SPEAKS, for the one failure the
 	 * strip's own sentence already covers (§F2's "one root cause, one Retry"; the
@@ -3083,62 +3179,169 @@ function SessionPanel({
 	 * that sentence is about the app's attempt rather than the connection's
 	 * absence, and its `Retry` is that state's own remedy.
 	 */
-	const composerSendError =
-		notice &&
-		!(
-			stripSpeaksConnection &&
-			notice.code === DESKTOP_REFUSAL_CODE.transportFailed
-		)
-			? {
-					...notice,
-					actions: undefined,
-					/*
-					 * The composer's Send, which is the whole of Retry: pressing it replays
-					 * an unchanged payload under its own request id, and sends an edited one
-					 * as a new message. See `admitChatDraft`'s replay rule.
-					 *
-					 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
-					 * about to unmount: with the press accepted, the notice goes and the
-					 * button that owned the focus goes with it, and the browser hands the
-					 * caret to the document - measured in review round 1 (U5) as the next
-					 * Enter collapsing a sidebar section, because the caret had landed on the
-					 * sidebar's own toggle. Clear did this and Retry did not.
-					 */
-					onRetry: () => {
-						input.current?.submitNow();
-						input.current?.focusInput();
-					},
-					onClear: () => {
-						if (identity)
-							useConversationInputStore.getState().clearComposer(identity);
-						clearError();
-						if (draftIdentity)
-							useCanonicalSessionsStore.getState().discardDraft(draftIdentity);
-						input.current?.focusInput();
-					},
-					/*
-					 * Editing dismisses the notice, and must clear the STORE's copy too -
-					 * `draft.error` outlives local state, so clearing only `sendError` would
-					 * leave the message hanging over text the user has since fixed, which is
-					 * the exact defect being replaced.
-					 *
-					 * It clears the SENTENCE and nothing else. The claim
-					 * (`admissionAttempted`, the request id, the pinned payload) is a fact
-					 * about a request that may already be executing on the owner, and a
-					 * keystroke is not evidence about that: an edit followed by Send is a
-					 * NEW message under a new id (the replay rule), and if the first one
-					 * landed after all, the reconciliation says so.
-					 */
-					onDismiss: () => {
-						clearError();
-						if (draftIdentity && draft)
-							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
-								error: undefined,
-								errorCode: undefined,
-							});
-					},
-				}
-			: undefined;
+	const composerSendError = useMemo(
+		() =>
+			notice &&
+			!(
+				stripSpeaksConnection &&
+				notice.code === DESKTOP_REFUSAL_CODE.transportFailed
+			)
+				? {
+						...notice,
+						actions: undefined,
+						/*
+						 * The composer's Send, which is the whole of Retry: pressing it replays
+						 * an unchanged payload under its own request id, and sends an edited one
+						 * as a new message. See `admitChatDraft`'s replay rule.
+						 *
+						 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
+						 * about to unmount: with the press accepted, the notice goes and the
+						 * button that owned the focus goes with it, and the browser hands the
+						 * caret to the document - measured in review round 1 (U5) as the next
+						 * Enter collapsing a sidebar section, because the caret had landed on the
+						 * sidebar's own toggle. Clear did this and Retry did not.
+						 */
+						onRetry: () => {
+							input.current?.submitNow();
+							input.current?.focusInput();
+						},
+						onClear: () => {
+							if (identity)
+								useConversationInputStore.getState().clearComposer(identity);
+							clearError();
+							if (draftIdentity)
+								useCanonicalSessionsStore
+									.getState()
+									.discardDraft(draftIdentity);
+							input.current?.focusInput();
+						},
+						/*
+						 * Editing dismisses the notice, and must clear the STORE's copy too -
+						 * `draft.error` outlives local state, so clearing only `sendError` would
+						 * leave the message hanging over text the user has since fixed, which is
+						 * the exact defect being replaced.
+						 *
+						 * It clears the SENTENCE and nothing else. The claim
+						 * (`admissionAttempted`, the request id, the pinned payload) is a fact
+						 * about a request that may already be executing on the owner, and a
+						 * keystroke is not evidence about that: an edit followed by Send is a
+						 * NEW message under a new id (the replay rule), and if the first one
+						 * landed after all, the reconciliation says so.
+						 */
+						onDismiss: () => {
+							clearError();
+							if (draftIdentity && draft)
+								useCanonicalSessionsStore
+									.getState()
+									.updateDraft(draftIdentity, {
+										error: undefined,
+										errorCode: undefined,
+									});
+						},
+					}
+				: undefined,
+		[notice, stripSpeaksConnection, identity, draftIdentity, draft, clearError],
+	);
+
+	/*
+	 * THE SESSION'S READINGS, MEMOISED (C1). The composer subtree is memoised and
+	 * this page re-renders at stream-flush cadence, so the object handed to the
+	 * composer as `sessionStatus` has to keep one identity across flushes that
+	 * change nothing in it. Frozen on the values it is built from; the draft arms
+	 * in the markup below stay inline, because a resolving preview rebuilds them
+	 * and that is not the streaming-answer state this boundary exists for.
+	 */
+	const liveSessionStatus = useMemo(
+		() =>
+			sessionId
+				? {
+						/*
+						 * The live snapshot when there is one, and otherwise the readings
+						 * this pane was last told.
+						 *
+						 * A reconnect is answered with `open{gap}`, which drops the
+						 * authoritative frontend by design, so `canonical.frontend` was
+						 * null for the whole 1.5-4 s the replacement snapshot took to land
+						 * - and a null frontend is exactly what makes the strip render
+						 * nothing at all (its own first line). So all four readings
+						 * blanked and came back at the stream's cadence, which reads as
+						 * the conversation reloading from scratch.
+						 *
+						 * The fallback is honest rather than convenient: `heldFrontend`
+						 * is dropped by every terminal state and by a real session change,
+						 * so it can only be non-null here while a reconnect is genuinely
+						 * in flight - and the pane already says so in its own words,
+						 * because the same state publishes `status: "reconnecting"` and
+						 * the transcript paints its Reconnecting line.
+						 */
+						frontend: canonical.frontend ?? canonical.heldFrontend,
+						/*
+						 * Whether those readings are the HELD ones, which is a
+						 * different question from whether a frontend is present:
+						 * a pane that has never had a snapshot and a pane drawing
+						 * the one it was last told both arrive here with a null
+						 * `canonical.frontend`, and only the second is a state the
+						 * reader needs told about. So it is the fallback actually
+						 * being the source, not the null.
+						 */
+						held:
+							canonical.frontend === null && canonical.heldFrontend !== null,
+						/*
+						 * Whether the readings were DROPPED at a spent budget rather
+						 * than never painted (task-17, U4): the strip leaves one
+						 * sentence where it was, so the values the reader was
+						 * watching do not vanish without one.
+						 */
+						readingsDropped: readingsDroppedFor === sessionId,
+						/*
+						 * The chosen-but-unconfirmed model, so the strip can paint the pick
+						 * the moment it is made instead of waiting out a cold runtime bind
+						 * (latency U1). Straight off the handle, which owns both the paint and
+						 * its reconciliation with the authoritative frames.
+						 */
+						pendingModel: canonical.pendingModel,
+						/*
+						 * `dispatchFromControl`'s STABLE WRAPPER, not `dispatch`: a chip has no
+						 * fallback path to report a failure the way typed text does, so an
+						 * unconsumed outcome has to be surfaced here rather than dropped into a
+						 * `void` (round 1, U2).
+						 */
+						onCommand: (invocation: SlashCommandInvocation) =>
+							void stableDispatchFromControl(invocation),
+						/*
+						 * The SAME query `EffortPicker` renders from, by the
+						 * same key, so React Query serves both from one cache
+						 * entry and the chip cannot offer a rung the picker
+						 * would then refuse (round 1, U3).
+						 */
+						effortEntities: effortEntities.data?.entities,
+					}
+				: undefined,
+		[
+			sessionId,
+			canonical.frontend,
+			canonical.heldFrontend,
+			readingsDroppedFor,
+			canonical.pendingModel,
+			stableDispatchFromControl,
+			effortEntities.data,
+		],
+	);
+
+	/*
+	 * THE DEVICE HOLD ELEMENT, MEMOISED — and it is load-bearing for the same
+	 * reason the freezes above are (C1). This is an ELEMENT, and an inline
+	 * `{<ChatDeviceHold .../>}` in the JSX below rebuilds its object once per
+	 * render of this page — which is once per stream flush — so it would hand
+	 * the composer's memo boundary a fresh prop per flush and re-render the
+	 * whole box again. Frozen on the session it reads, the one thing this
+	 * element's props change with; the child's own store subscriptions still
+	 * repaint it on their own schedule.
+	 */
+	const deviceHold = useMemo(
+		() => <ChatDeviceHold sessionId={sessionId ?? undefined} />,
+		[sessionId],
+	);
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -3209,7 +3412,7 @@ function SessionPanel({
 						/>
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
-					deviceHold={<ChatDeviceHold sessionId={sessionId ?? undefined} />}
+					deviceHold={deviceHold}
 					agentName={title}
 					description={
 						// `loaded` names the agent/team actually answering; without it an
@@ -3249,7 +3452,7 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTarget ?? "Starting the session")
+								? (loadedTargetDisplay ?? "Starting the session")
 								: draft?.sessionId
 									? canonical.frontend?.cwd || cwd || "Canonical chat"
 									: /*
@@ -3378,7 +3581,7 @@ function SessionPanel({
 					messagesContainerRef={container}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
-					onSendMessage={send}
+					onSendMessage={stableSend}
 					/*
 					 * The SAME dispatcher the chips use, handed the planner's own answer (an
 					 * invocation, never the draft) with its outcome handed back: the composer
@@ -3386,7 +3589,7 @@ function SessionPanel({
 					 * afterwards, and a failure must report through this path's own note
 					 * rather than a second copy of its sentence (round 2, Q-7's contract).
 					 */
-					onSlashCommand={dispatchFromControl}
+					onSlashCommand={stableDispatchFromControl}
 					onSlashNote={slashNote}
 					/*
 					 * The pane's answer to the dispatcher's own question, handed to the
@@ -3415,69 +3618,7 @@ function SessionPanel({
 					 */
 					sessionStatus={
 						sessionId
-							? {
-									/*
-									 * The live snapshot when there is one, and otherwise the readings
-									 * this pane was last told.
-									 *
-									 * A reconnect is answered with `open{gap}`, which drops the
-									 * authoritative frontend by design, so `canonical.frontend` was
-									 * null for the whole 1.5-4 s the replacement snapshot took to land
-									 * - and a null frontend is exactly what makes the strip render
-									 * nothing at all (its own first line). So all four readings
-									 * blanked and came back at the stream's cadence, which reads as
-									 * the conversation reloading from scratch.
-									 *
-									 * The fallback is honest rather than convenient: `heldFrontend`
-									 * is dropped by every terminal state and by a real session change,
-									 * so it can only be non-null here while a reconnect is genuinely
-									 * in flight - and the pane already says so in its own words,
-									 * because the same state publishes `status: "reconnecting"` and
-									 * the transcript paints its Reconnecting line.
-									 */
-									frontend: canonical.frontend ?? canonical.heldFrontend,
-									/*
-									 * Whether those readings are the HELD ones, which is a
-									 * different question from whether a frontend is present:
-									 * a pane that has never had a snapshot and a pane drawing
-									 * the one it was last told both arrive here with a null
-									 * `canonical.frontend`, and only the second is a state the
-									 * reader needs told about. So it is the fallback actually
-									 * being the source, not the null.
-									 */
-									held:
-										canonical.frontend === null &&
-										canonical.heldFrontend !== null,
-									/*
-									 * Whether the readings were DROPPED at a spent budget rather
-									 * than never painted (task-17, U4): the strip leaves one
-									 * sentence where it was, so the values the reader was
-									 * watching do not vanish without one.
-									 */
-									readingsDropped: readingsDroppedFor === sessionId,
-									/*
-									 * The chosen-but-unconfirmed model, so the strip can paint the pick
-									 * the moment it is made instead of waiting out a cold runtime bind
-									 * (latency U1). Straight off the handle, which owns both the paint and
-									 * its reconciliation with the authoritative frames.
-									 */
-									pendingModel: canonical.pendingModel,
-									/*
-									 * `dispatchFromControl`, not `dispatch`: a chip has no
-									 * fallback path to report a failure the way typed text
-									 * does, so an unconsumed outcome has to be surfaced here
-									 * rather than dropped into a `void` (round 1, U2).
-									 */
-									onCommand: (invocation: SlashCommandInvocation) =>
-										void dispatchFromControl(invocation),
-									/*
-									 * The SAME query `EffortPicker` renders from, by the
-									 * same key, so React Query serves both from one cache
-									 * entry and the chip cannot offer a rung the picker
-									 * would then refuse (round 1, U3).
-									 */
-									effortEntities: effortEntities.data?.entities,
-								}
+							? liveSessionStatus
 							: preview.data
 								? {
 										/*
