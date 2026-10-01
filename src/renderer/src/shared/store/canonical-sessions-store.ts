@@ -2144,14 +2144,33 @@ export function isSessionUnvalidated(
  * describe the operator's own message as one whose fate cannot be known, which is
  * the one thing this owner has just said it is not.
  *
- * THE TWO CALLERS DO NOT COST THE SAME TIME, which is the one thing to know
- * before changing the count. A send's attempt answers in ~3 s (the fast verdict
- * above), so the loop is ~15 s end to end. The answers route spends its OWN
- * bounded ack budget first - ~17 s on the all-acks-lost arm - so an answer
- * press's worst case is nearer a minute of silence, held on a card whose options
- * are disabled. That is the disclosed cost of doing the repeat for the user
- * rather than handing them an instruction the app has already carried out
- * (design round 1 on the answers route, D2/D5).
+ * THE TWO CALLERS DO NOT COST THE SAME TIME, and an earlier draft of this note
+ * undercounted the press's bound (QA round 1's watch item, 2026-10-01). A send's
+ * attempt answers in ~3 s (the fast verdict above), so its loop is ~15 s end to
+ * end. An answer press's attempts end when the answers route spends its own
+ * bounded ack budget - 16.5 s measured on the backend change for the
+ * all-acks-lost arm - so the press's bound is 4 attempts x ~17.5 s + 3 waits x
+ * min(retry_after_ms, 5 s) = **~76 s of silence with today's 2 s hint, ~85 s if a
+ * backend asked for the cap**, held on a card whose options are disabled. The
+ * waits are the loop's own real 2 s timers (`setTimeout`), not a fixture's zero:
+ * the suite's fast cases zero `retry_after_ms` deliberately, and the wire value
+ * is what production waits on.
+ *
+ * IT CANNOT COMPOUND THE RENDERER'S OWN DEADLINE, which is the one reading that
+ * would make it worse. `withDeadline` (`desktop-api.ts`) races every
+ * `desktopRequest` against a fresh `desktopRequestTimeoutMs` - 25 s for
+ * `sessions.answer` (`DESKTOP_CONTROL_DEADLINE_MS` 20 s + margin 5 s) - so
+ * "4 x 25 s + 6 s = 106 s" looks like the cap. It is not one: an attempt that
+ * reaches that timeout raises `deadline_exceeded`, which this loop does not
+ * catch, so it is thrown on the FIRST attempt and only refusals the ROUTE
+ * authored are ever repeated. The deadline is a ceiling on a single attempt, not
+ * a term in the sum.
+ *
+ * That is the disclosed cost of doing the repeat for the user rather than handing
+ * them an instruction the app has already carried out (design round 1 on the
+ * answers route, D2/D5). The copy and the registers do not change with the bound;
+ * if design wants the press's patience shortened, the parameter to move is
+ * `BUSY_RESENDS`, and the bound moves with it.
  *
  * The cap on one wait is there because the hint comes off the wire: a backend
  * that asked for a minute must not park a request that long with nothing on

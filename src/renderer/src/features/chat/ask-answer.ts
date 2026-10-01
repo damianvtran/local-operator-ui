@@ -539,12 +539,25 @@ export const answerUnconfirmedMessage = (error: unknown): string =>
  *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
  *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
  *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
- *    only its acknowledgement was lost. Nothing was admitted is true of
- *    `runtime_busy` on `/messages`; it is NOT true of an ack timeout on
- *    `/answers`. The answer may have been taken - so this arm takes the
- *    unknowable register, exactly as the deadline and lost-hop arms do, and the
- *    app's own bounded repeat (`withBusyResends`, spent before this sentence can
- *    paint) is what makes that acceptable to say in the first place.
+ *    only its acknowledgement was lost. So the answer may have been taken, and
+ *    this arm takes the unknowable register, exactly as the deadline and lost-hop
+ *    arms do. The app's own bounded repeat (`withBusyResends`, spent before this
+ *    sentence can paint) is what makes that acceptable to say in the first place.
+ *
+ *    THE SEND PATH HOLDS THE SAME EXPOSURE, and its copy is not changed here
+ *    (agent review round 1, MINOR-2, which corrected an earlier draft of this
+ *    note). That draft rested the argument on "nothing was admitted is true of
+ *    `runtime_busy` on `/messages`", and the merged ladder does not support it:
+ *    the busy refusal is raised from the SHARED `errors()` ladder, whose second
+ *    arm is the generic ack timeout on a live owner, and that ladder wraps
+ *    `/v1/desktop/sessions/{id}/messages` too - where admission is itself an
+ *    acked write (`AttachedSession.admit_prompt` ends in
+ *    `request_ack_with_duplicate`). So a send can meet this code over a
+ *    write-then-wait loss, where `SEND_FAILURE_COPY.busy`'s "your message wasn't
+ *    sent" is as unprovable as the sentence this arm replaced. Nothing about the
+ *    ANSWER path changes either way - that arm's classification and copy are right
+ *    on both raise arms - and the send half is deferred rather than fixed
+ *    silently, because it is a copy decision about a different surface.
  *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
  *    the unreachable one - "Reconnect and reconcile before retrying" - which
  *    names a control this screen does not have and tells the user to retry what
@@ -554,6 +567,18 @@ export const answerUnconfirmedMessage = (error: unknown): string =>
  * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
  * "yet" is load-bearing: the owner may still take it, and the app may still be
  * told so.
+ *
+ * ITS LEAD IS DELIBERATELY ITS OWN, not `ANSWER_UNCONFIRMED_LEAD` (agent review
+ * round 1, NIT-1). The sibling arm composes its lead so the two "outcome is not
+ * knowable" sentences cannot drift apart, and composing this one too would put
+ * that longer register - "Whether your answer landed is not knowable." - in front
+ * of a sentence the design round chose short for a measured reason: the band
+ * wraps to two lines at the 172 px column and the shorter candidate is the one
+ * that fits it (`composer-notice-arms`, the busy arm's three widths). The factual
+ * claim is the same one the lead makes ("isn't confirmed YET"), stated in the
+ * first person of a press rather than the passive; the drift risk the sibling's
+ * composition guards against is one of wording between two sentences that say the
+ * same thing, and here the wording is the point.
  */
 export const ANSWER_BUSY_MESSAGE =
 	"Your answer isn't confirmed yet. The agent is busy.";
@@ -799,8 +824,12 @@ export type AnswerReport =
 			 * app's bounded repeat, which has already been spent by the time this
 			 * report exists (design round 1, D5: "the notice's control row is laid out
 			 * for `retry: true` while `onRetry` is absent").
+			 *
+			 * Typed as the LITERAL `false` rather than `boolean` (agent review round 1,
+			 * NIT-2): the invariant is compile-time rather than a runtime value a later
+			 * edit could set to `true` at this one construction site.
 			 */
-			readonly retry: boolean;
+			readonly retry: false;
 	  };
 
 /**

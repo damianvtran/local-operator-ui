@@ -476,6 +476,51 @@ test("Retry is withheld exactly where a press cannot work", () => {
 		true,
 		"a refused SEND hands the text back to the box, so Retry is the remedy there",
 	);
+	/*
+	 * AND THE ONE CALLER THAT RECONCILES THE TWO LISTS IS DRIVEN, not just read
+	 * (agent review round 1, MINOR-1). `RUNTIME_BUSY_CODE` sits in this set - which
+	 * answers "can a press work for this failure", consulted for a SEND - while
+	 * `withholdsRetryHint` withholds for a press, and the difference is only safe
+	 * because `composerNoticeFor` ANDs the pane's own verdict with the set: the
+	 * sentence on screen never comes from the set alone. Both arms are exercised
+	 * here so the pair of answers is a pinned behaviour rather than a coincidence
+	 * two files happen to share.
+	 */
+	const busyCode = RUNTIME_BUSY_CODE;
+	const sendArm = composerNoticeFor({
+		error: SEND_FAILURE_COPY.busy,
+		code: busyCode,
+		// What `sendFailureCopy` classifies for a refused send.
+		retry: sendFailureCopy(
+			new DesktopControlError(503, "busy", undefined, busyCode),
+		).retry,
+		muted: false,
+		rowError: undefined,
+		rowCode: undefined,
+		rowRetry: undefined,
+		lateDelivered: false,
+	});
+	assert.equal(
+		sendArm?.retry,
+		true,
+		"the send's own verdict survives the set that also withholds for a press",
+	);
+	const pressArm = composerNoticeFor({
+		error: "Your answer isn't confirmed yet. The agent is busy.",
+		code: busyCode,
+		// What the press's report carries, typed `false` on the arm itself.
+		retry: false,
+		muted: true,
+		rowError: undefined,
+		rowCode: undefined,
+		rowRetry: undefined,
+		lateDelivered: false,
+	});
+	assert.equal(
+		pressArm?.retry,
+		false,
+		"the same code on a press is withheld, because the AND is what decides",
+	);
 });
 
 /* --------------------------------------------------------------- retry rule */
