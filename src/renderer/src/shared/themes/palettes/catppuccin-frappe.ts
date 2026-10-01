@@ -140,6 +140,9 @@ export const catppuccinFrappe: ThemeDefinition = {
 		// clears it and stays between 1.24:1 and 1.70:1 on the four grounds, so it still
 		// divides rather than bounds.
 		hairline: "#4A5064",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.84:1 there against `hairline`'s 1.70:1.
+		hairlineStrong: "#4F556A",
 		// Upstream overlay2, which clears the 3:1 structural floor with room (3.67:1 on
 		// the binding ground) where overlay0 — the inactive tone — could not.
 		borderControl: "#949CBB",

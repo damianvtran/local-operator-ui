@@ -46,6 +46,7 @@ const {
 	foldImages,
 	foldLive,
 	foldMediaClause,
+	foldMediaRows,
 	foldMediaSlots,
 	foldRuns,
 	foldSpan,
@@ -661,18 +662,24 @@ test("the strip's slots are one row, and past the cap the last of them is the co
 	 * Design review round 1, D3: height grew with the count and had no cap, so
 	 * 25-30 pictures put a CONDENSED group past the height of the expanded one it
 	 * replaces. The cap is the row the strip can hold at the narrowest column it
-	 * renders in - the rig measured that column at 576px in a 640px window, and the
-	 * committed eight-picture frame puts five slots at 472px end to end (four 98px
-	 * tiles, three 8px gutters, the 8px gap before the count and its 48px of ink) -
-	 * and past it the last slot is `+N more`.
+	 * renders in - the rig measured that column at 576px in a 640px window (556px of
+	 * strip after the indent), and on the 117px tile four tiles, four 8px gutters
+	 * and a count of at most 41.4px are 541.4px - and past it the last slot is `+N`.
 	 */
 	assert.deepEqual(foldMediaSlots(0), { shown: 0, more: 0 });
 	assert.deepEqual(foldMediaSlots(1), { shown: 1, more: 0 });
-	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT), {
-		shown: FOLD_MEDIA_LIMIT,
+	// The last count that fits as tiles: FOUR, because the 117px tile makes five
+	// (617px) wider than the 556px column.
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT - 1), {
+		shown: FOLD_MEDIA_LIMIT - 1,
 		more: 0,
 	});
-	// The boundary: the first count that needs the count slot.
+	// The boundary: the first count that needs the count slot is the LIMIT itself
+	// (five pictures draw four tiles and a `+1`).
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT), {
+		shown: FOLD_MEDIA_LIMIT - 1,
+		more: 1,
+	});
 	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT + 1), {
 		shown: FOLD_MEDIA_LIMIT - 1,
 		more: 2,
@@ -704,6 +711,44 @@ test("the strip's slots are one row, and past the cap the last of them is the co
 			`${count} pictures must not draw more than one row of slots`,
 		);
 		assert.equal(shown + more, count, "and no picture is lost from the count");
+	}
+});
+
+test("the uncapped strip never strands a single tile, and every row is at most one capped row wide (D5)", () => {
+	const perRow = FOLD_MEDIA_LIMIT - 1;
+	assert.deepEqual(foldMediaRows(0), []);
+	assert.deepEqual(
+		foldMediaRows(1),
+		[1],
+		"a lone picture is a row of one: nothing to rebalance",
+	);
+	assert.deepEqual(foldMediaRows(4), [4]);
+	assert.deepEqual(
+		foldMediaRows(5),
+		[3, 2],
+		"a plain 4+1 is the orphan this rule exists to prevent",
+	);
+	assert.deepEqual(
+		foldMediaRows(8),
+		[4, 4],
+		"eight: the operator's own case, 4+4 (it was 7+1 at 1280px)",
+	);
+	assert.deepEqual(foldMediaRows(9), [4, 3, 2]);
+	for (let count = 2; count <= 60; count += 1) {
+		const rows = foldMediaRows(count);
+		assert.equal(
+			rows.reduce((a, b) => a + b, 0),
+			count,
+			`${count}: no picture is lost`,
+		);
+		assert.ok(
+			rows.every((n) => n <= perRow),
+			`${count}: no row is wider than the capped row`,
+		);
+		assert.ok(
+			rows.every((n) => n >= 2),
+			`${count}: no row of one (${rows.join("+")})`,
+		);
 	}
 });
 

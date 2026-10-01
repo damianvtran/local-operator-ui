@@ -1446,17 +1446,22 @@ const ROW_STATE_GROUNDS = [
 	},
 	{
 		/*
-		 * THE ROWS' PLANE IS THE LIST, not the rail (2026-09-27). The nav took
-		 * `elevated` so the rail separates from the `surface` app sidebar beside it
-		 * (the operator's report: two panels, one tone), and both row roles are
-		 * steps OF `surface` — so the ground is split rather than relaxed: the rail
-		 * keeps the rung the route painted it on, and each group's LIST carries the
-		 * `surface` its rows were authored against. It is the same shape the canvas
-		 * Files list has (`groundFile` below is still here for that reason), and it
-		 * is why this entry reads a `cn(...)` argument rather than a plain literal:
-		 * the list's class list is one string, but the element is inside the
-		 * groups' map and the read has to land on the list rather than on the nav
-		 * it sits in.
+		 * THE RAIL IS THE ROWS' PLANE AGAIN (2026-09-30). The nav is `surface`
+		 * and the rows sit directly on it. The rail held `elevated` from
+		 * 2026-09-27 to separate itself from the app sidebar, and paid for the
+		 * rung with a SPLIT ground: the nav wore the rung and each group's LIST
+		 * carried the `surface` the rows were authored against. That split is
+		 * what the operator reported as mismatched blocks inside the rail
+		 * ("the buttons/tabs are not the same color as the background on the
+		 * settings left sidebar"), so the rung is given up rather than the
+		 * split kept.
+		 *
+		 * The ground is therefore resolved as a plain literal on the element
+		 * whose class list is one string — the nav — rather than through the
+		 * shipped `cn` over a list's expression, which is what the split
+		 * required. The property is unchanged: a row state has to be painted on
+		 * `surface`, and this entry still reads the element the rows are
+		 * actually painted on.
 		 */
 		what: "the settings rail",
 		rowFile: SETTINGS_RAIL,
@@ -1467,11 +1472,7 @@ const ROW_STATE_GROUNDS = [
 			),
 		stubs: { labelled: true, isActive: true, rowCurrent },
 		ground: () =>
-			merged(
-				SETTINGS_RAIL,
-				expressionBefore(SETTINGS_RAIL, '"flex flex-col gap-0.5 bg-surface"'),
-				{},
-			),
+			literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after"),
 		groundFile: SETTINGS_RAIL,
 	},
 	{
@@ -1622,6 +1623,39 @@ test("every call site that paints a row state is painted on `surface`", () => {
 			`${entry.what}: no ground file named`,
 		);
 	}
+});
+
+/*
+ * THE OTHER HALF OF THE RAIL'S GROUND, and the half the nav pin above cannot see
+ * (review round 1, R1-1). `settings-sidebar.tsx`'s ground note promises that a
+ * future re-grounding - "or a list re-acquiring a ground of its own" - fails by
+ * name. The entry above resolves the NAV, the element the rows are painted on,
+ * so restoring the group lists' old `bg-surface` leaves every assertion in the
+ * grounds table green: the nav is `surface` either way. What regresses is the
+ * rail's appearance - the lists become the mismatched blocks the operator
+ * reported - and that is a fact about a class on an element no entry reads.
+ *
+ * So the list is read directly and the ABSENCE is what is asserted: the rail's
+ * one `<ul>` carries layout classes and no ground role at all. `SECTION_GROUPS.map`
+ * renders one list per group from ONE source literal, and the anchor is the tag
+ * itself, so the read lands on the list's own class literal (the same walk
+ * `literalClassAt` does for every other ground in this file, pointed at an
+ * element that is deliberately NOT one).
+ *
+ * FALSIFIED BEFORE IT WAS TRUSTED: putting the list back on
+ * `cn("flex flex-col gap-0.5 bg-surface")` fails this test and nothing else in
+ * either suite.
+ */
+test("the settings rail's group lists carry no ground of their own", () => {
+	const classes = literalClassAt(SETTINGS_RAIL, "<ul", "after")
+		.split(/\s+/)
+		.filter((c) => c.length > 0);
+	const ground = GROUND_ROLES.find((role) => classes.includes(role));
+	assert.equal(
+		ground,
+		undefined,
+		`the settings rail's group list carries \`${ground}\` again: ${JSON.stringify(classes)}. The rail is a flat \`surface\` and its rows sit directly on the rail's own ground, so a list with a tone of its own is the mismatched-block defect the operator reported on 2026-09-30. A ground belongs on the nav, not on a list inside it - see the ground note in settings-sidebar.tsx.`,
+	);
 });
 
 /*

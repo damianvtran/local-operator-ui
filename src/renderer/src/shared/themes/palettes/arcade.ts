@@ -162,6 +162,9 @@ export const arcade: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 5.20.
 		 */
 		hairline: "#3C3C43",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.72:1 there against `hairline`'s 1.59:1.
+		hairlineStrong: "#414148",
 		// The TUI `edge-hi` 3A3A42 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
