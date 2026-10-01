@@ -48,14 +48,15 @@ import { build } from "esbuild";
  */
 
 /** The backend revision and version this copy was taken from. */
-const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.30.json";
+const FIXTURE = "scripts/fixtures/mcp-catalog-0.64.11.json";
 const BACKEND_SOURCE =
-	"local-operator `main` at `de9f1d014` (tag `v0.62.30`), which carries #1507, #1511 and #1536. THIS IS A RE-VENDOR, not a re-check: the copy is the backend's own `docs/fixtures/mcp-catalog.json` at that ref, through the documented command (`cp <backend>/docs/fixtures/mcp-catalog.json scripts/fixtures/mcp-catalog-<version>.json`) and `biome format --write`, with its name carrying the version it came from. WHAT MOVED IT: #1536 (merged 2026-09-24T20:06Z) added `last_seen_at` to every row of that payload and to `catalog.py`, epoch SECONDS, set iff `tool_count_basis == \"last_seen\"` - the field this page needs to say WHEN a row last worked rather than only that it did (R4-3). The old copy (0.62.17) had no such key, which made this file's re-vendor path a failing test: `ROW_FIELDS` asserts an exact key set per row, so re-copying the payload the backend ships failed `row linear carries a field set the contract does not declare` until the contract and this list learned the field (R4-1). HISTORY, as bare SHAs: the copy was taken at #1511 `aa927158a`, re-checked at `e2ac4b95e`, then at `0d1a1370e` - one file, `de817bc4...`, unchanged across all three - and #1511's branch head stopped being the payload's authority when its content merged to `main` and `main` moved it again. The next reader should re-derive this ref from `main`, not from the merged PR's branch";
+	"local-operator `main` at `d5346e173` (v0.64.11), per the provider-registry spec (§3.1) while the core lane's branch is in flight: the six verbs and their descriptions are the TUI's own table (`app.py:47703-47725`), `destructive` mirrors its `alert` flags, and `offers` is the §3.2 policy the server slot filters by. THIS IS A SPEC-DERIVED RE-VENDOR, not a byte copy: the payload is the previous copy (0.62.30) plus the `verbs` array the core lane adds to the backend's `docs/fixtures/mcp-catalog.json`, through the documented command (`cp <backend>/docs/fixtures/mcp-catalog.json scripts/fixtures/mcp-catalog-<version>.json`) and `biome format --write`. RE-COPY FROM THE BACKEND'S PUBLISHED FIXTURE once that file lands and reconcile any diff here rather than editing either copy by hand.";
 const bundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
-			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";',
+			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
+			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -82,6 +83,7 @@ const CATALOG_FIELDS = [
 	"status_source",
 	"session_id",
 	"servers",
+	"verbs",
 	"operations",
 ];
 
@@ -235,6 +237,97 @@ test("every word in the payload's vocabularies is one this page handles", () => 
 				`row ${row.name}: unknown secret state`,
 			);
 	}
+});
+
+test("the pinned payload's verb table is the composer's whole verb slot", () => {
+	const verbs = document_.verbs;
+	// TUI order, `list` first because the destructive verbs below it should not
+	// own the row a stray Enter lands on (`app.py:47777-47795`).
+	assert.deepEqual(
+		verbs.map((verb) => verb.verb),
+		["list", "add", "remove", "login", "logout", "reauth"],
+	);
+	// `destructive` is load-bearing safety on both hosts (the keyboard gate reads
+	// it), so the set is asserted, not sampled.
+	assert.deepEqual(
+		verbs.filter((verb) => verb.destructive).map((verb) => verb.verb),
+		["remove", "logout", "reauth"],
+	);
+	for (const verb of verbs) {
+		assert.ok(verb.description.trim().length > 0, verb.verb);
+		assert.ok(
+			[null, "all", "oauth", "signed_in"].includes(verb.offers),
+			`${verb.verb}: unknown offers ${JSON.stringify(verb.offers)}`,
+		);
+	}
+	assert.equal(
+		verbs.find((verb) => verb.verb === "remove").offers,
+		"all",
+		"remove acts on the config: every configured row incl. foreign",
+	);
+});
+
+test("the pinned payload drives the /mcp list's two slots", () => {
+	/*
+	 * The re-vendor's other half: the REAL payload runs through the composer's
+	 * shaper — the same `argumentRows` the popup reads — so a field rename in
+	 * the document fails here rather than painting an empty list.
+	 */
+	const verbs = document_.verbs;
+	const verbRows = m.argumentRows("mcp", rows, null, { argument: "", verbs });
+	// The value carries the verb's terminator (round 1, U1); the NAME is the
+	// verb itself, and that is what the alert lookup keys on.
+	assert.deepEqual(
+		verbRows.map((row) => row.value),
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
+	);
+	for (const row of verbRows) {
+		const verb = verbs.find((candidate) => candidate.verb === row.name);
+		assert.equal(row.alert, verb.destructive, row.name);
+	}
+	// `oauth` admits every OAuth-capable row (the TUI's rule, both for login and
+	// for reauth), `signed_in` only what a logout can act on, `remove` every
+	// configured row — and each detail names its own outcome.
+	const login = m.argumentRows("mcp", rows, null, {
+		argument: "login ",
+		verbs,
+	});
+	assert.deepEqual(
+		login.map((row) => row.name),
+		["login linear", "login github", "login borrowed-github"],
+	);
+	assert.equal(login[0].detail, "connecting");
+	assert.equal(login[1].detail, "connected — will re-use");
+	assert.equal(login[2].detail, "not connected");
+	const logout = m.argumentRows("mcp", rows, null, {
+		argument: "logout ",
+		verbs,
+	});
+	assert.deepEqual(
+		logout.map((row) => row.name),
+		["logout github"],
+	);
+	assert.equal(logout[0].detail, "stored credential · connected");
+	assert.equal(logout[0].alert, true);
+	const remove = m.argumentRows("mcp", rows, null, {
+		argument: "remove ",
+		verbs,
+	});
+	assert.equal(remove.length, rows.length, "every configured row is removable");
+	assert.ok(remove.every((row) => row.alert === true));
+	assert.ok(
+		remove.every((row) => row.detail.startsWith("~")),
+		"the source file is the detail, home-relative",
+	);
+	// `list` takes no server argument and an added name is new by definition.
+	assert.deepEqual(
+		m.argumentRows("mcp", rows, null, { argument: "list ", verbs }),
+		[],
+	);
+	assert.deepEqual(
+		m.argumentRows("mcp", rows, null, { argument: "add ", verbs }),
+		[],
+	);
 });
 
 test("each pinned row derives its OWN words, with no wire word surviving", () => {
