@@ -31,9 +31,11 @@
  *
  * WHY THE CLIP DISCLOSES: a press that silently reads a prefix of what the
  * reader pointed at makes the transcript disagree with the audio. The info
- * toast (`Reading the first 10,000 characters. The rest of this message is
- * not read aloud.`) is the one channel the app already speaks through, and it
- * is raised HERE so no surface can forget it.
+ * toast (`Reading the first 10,000 characters. The rest is not read aloud.`)
+ * is the one channel the app already speaks through, and it is raised HERE so
+ * no surface can forget it - and it names no object noun, because this same
+ * press serves the selection toolbars, where the clipped thing is a highlight
+ * rather than a message (copy review round 3, C-r3-1).
  *
  * `active` is the hook's half of the action rows' hover reveal: a row fades
  * at rest, but a press that is loading or playing owes the reader a visible
@@ -203,10 +205,12 @@ export function useSpeakControl({
 			 * a claim about the tail - false whenever the tail is one character long,
 			 * which is exactly the message that trips the cap - while the cap is a
 			 * property of the PRESS, and one sentence has to be true of every
-			 * remainder.
+			 * remainder. The clause names NO object (copy review round 3, C-r3-1):
+			 * this press renders on the selection toolbars too, and "this message"
+			 * was the wrong object on half of them.
 			 */
 			showInfoToast(
-				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest of this message is not read aloud.`,
+				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest is not read aloud.`,
 			);
 		}
 		play({ text });

@@ -377,12 +377,12 @@ test("every designed refusal is kept verbatim (the daemon's set, pinned across r
 	 * must move both - that is the point of pinning the literals here.
 	 */
 	const designed = [
-		"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+		"Your Radient sign-in has stopped working. Sign in again in Settings.",
 		"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
 		"Speech is unavailable right now. Try again in a moment.",
 		"Speech is temporarily unavailable. Try again in a moment.",
 		"Speech is temporarily unavailable.",
-		"Sign in to Radient in the settings page to enable text to speech.",
+		"Sign in to Radient in Settings to enable speaking aloud.",
 		"This conversation's agent is no longer available.",
 	];
 	return (async () => {

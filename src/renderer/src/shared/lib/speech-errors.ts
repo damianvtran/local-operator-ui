@@ -35,8 +35,7 @@ export const SPEECH_FAILURE_DETAIL_PREFIX = "[speech]";
  * with, including a null body ("no audio data received" is the transport
  * describing itself; the reader is owed what happened and what to do).
  */
-export const SPEECH_FAILURE_COPY =
-	"Couldn't speak this message aloud. Try again.";
+export const SPEECH_FAILURE_COPY = "Couldn't speak this aloud. Try again.";
 
 /**
  * The reader's sentence for a playback failure (autoplay refused, a decode
@@ -50,19 +49,29 @@ export const SPEECH_FAILURE_COPY =
  * detail that distinguishes the arms is already on the console under
  * `[speech]`. One sentence keeps one vocabulary and loses nothing a reader
  * could use.
+ *
+ * AND SAYS NO OBJECT NOUN (copy review round 3, C-r3-1): the same press
+ * renders on the selection toolbars, where the thing that failed is the
+ * highlight, not a message - "this message" named an object half the surfaces
+ * do not have. The object-less form is true everywhere the press mounts.
  */
-export const SPEECH_PLAYBACK_COPY =
-	"Couldn't speak this message aloud. Try again.";
+export const SPEECH_PLAYBACK_COPY = "Couldn't speak this aloud. Try again.";
 
 /**
  * The `detail` sentences the speech route answers with, verbatim from
  * `local-operator` PR #1835 (`_SPEECH_REFUSAL_SENTENCES` plus the route's two
  * named constants). A change there is a change here - the strings are the
  * contract between the two repositories, which is why they are pinned
- * character-for-character.
+ * character-for-character. LAST READ AT #1835's `bcca80808` (the C4 alignment:
+ * the daemon's two sign-in sentences now use the app's `Settings` naming -
+ * `Sign in to Radient in Settings to enable speaking aloud.` and `Your Radient
+ * sign-in has stopped working. Sign in again in Settings.`), replacing the
+ * spellings its commit retired; a daemon still on the OLD literal falls to the
+ * designed fallback until it redeploys, which is the same deploy-skew window
+ * the note on agent-server's base 503 below describes.
  */
 const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
-	"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+	"Your Radient sign-in has stopped working. Sign in again in Settings.",
 	"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
 	"Speech is unavailable right now. Try again in a moment.",
 	"Speech is temporarily unavailable. Try again in a moment.",
@@ -74,7 +83,7 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	 * rather than replaced by the fallback.
 	 */
 	"Speech is temporarily unavailable.",
-	"Sign in to Radient in the settings page to enable text to speech.",
+	"Sign in to Radient in Settings to enable speaking aloud.",
 	"This conversation's agent is no longer available.",
 ]);
 
