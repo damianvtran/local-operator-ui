@@ -274,8 +274,8 @@ export type SlashArgumentListState = {
 	 * A more specific empty state than `argumentEmptyCopy`'s generic sentences,
 	 * when the source can name the fact: the `/mcp` server slot with nothing
 	 * eligible (empty BY DESIGN, not unreported — U2), or a `/logout` query
-	 * naming a provider with no stored credential (U4). Wins over both generic
-	 * lines; only ever set while `rows` is empty.
+	 * naming a provider with no stored credential (U4). Set from the query or
+	 * the slot, read only in the empty state; it wins over both generic lines.
 	 */
 	emptyCopy?: string;
 };
@@ -1327,6 +1327,17 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 }) => {
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
+	/*
+	 * THE POINTER'S LAST RECORDED POSITION (round 2, U2.1).
+	 *
+	 * A pick re-lays the popup out under a stationary cursor, and the browser
+	 * fires `mouseenter` on whatever row the new layout puts there — for a
+	 * `/mcp` verb pick that could be the THIRD server row, so the first Enter
+	 * filled a row the user never pointed at. A hover only COUNTS as a move
+	 * when the coordinates actually change: the click records its own point
+	 * here, and an enter at the same point is the re-layout, not the user.
+	 */
+	const lastPointer = useRef<{ x: number; y: number } | null>(null);
 
 	// Keep the active row in view without scrolling the page or transcript.
 	// state.active is a trigger (the ref is read, not the state), so the
@@ -1625,7 +1636,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// the row would drop before the handler could read them.
 									event.preventDefault();
 								}}
-								onClick={() => {
+								onClick={(event) => {
+									/*
+									 * The pick's own coordinates, recorded BEFORE it acts: the re-layout it
+									 * causes must not count as a pointer move onto whatever row lands
+									 * under the cursor (round 2, U2.1).
+									 */
+									lastPointer.current = {
+										x: event.clientX,
+										y: event.clientY,
+									};
 									// A COMPLETED click, not pointer-down: a press the user
 									// aborts by dragging off the row must not act, and the acting
 									// set includes destinations that leave the chat (U11).
@@ -1641,7 +1661,14 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									}
 									onPick(row, { run: true });
 								}}
-								onMouseEnter={() => state.setActiveHover(index)}
+								onMouseEnter={(event) => {
+									const point = { x: event.clientX, y: event.clientY };
+									const last = lastPointer.current;
+									lastPointer.current = point;
+									/* The re-layout under a still pointer — not a move. */
+									if (last && last.x === point.x && last.y === point.y) return;
+									state.setActiveHover(index);
+								}}
 							>
 								{row.kind === "command"
 									? commandRowContent(row)
@@ -1774,10 +1801,15 @@ function argumentRowContent(
 					"shrink truncate font-mono text-body-sm",
 					/*
 					 * The floor is what makes D2 hold: the name may shrink from its own
-					 * width down to 12ch, and the PATH detail below absorbs the rest, so
-					 * the server is identifiable before its path is.
+					 * width down to 24ch, and the PATH detail below absorbs the rest, so
+					 * the server is identifiable before its path is. Twenty-four, not
+					 * twelve (round 2, D2.1): the compound name carries the VERB's own 7ch
+					 * prefix ("remove "), so 12ch guaranteed ~5 characters of the server
+					 * and near-twin names still collapsed at ordinary composer width;
+					 * 24ch leaves ~17 for the name, which is where the path has already
+					 * begun ellipsising.
 					 */
-					mcp ? "min-w-[12ch]" : "min-w-0",
+					mcp ? "min-w-[24ch]" : "min-w-0",
 					/*
 					 * THE DANGER CUE LIVES ON THE NAME, not on the detail (round 1, D3/
 					 * D4/U5): a `/logout` row and a destructive `/mcp` row show exactly
