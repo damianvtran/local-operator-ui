@@ -188,6 +188,17 @@ export type SidebarView = {
 	orderBy: SidebarOrderBy;
 	/** How many times "Load more" has been pressed. 0 is the first page. */
 	loads: number;
+	/**
+	 * The agents the reader pinned, held at the top of the roster.
+	 *
+	 * Keys are the roster ROW's stable id, not a display name - and
+	 * `chat-sidebar-agents.ts` carries the verified finding that on today's
+	 * profile wire the two are one string - because a pin has to outlive a
+	 * rename. Read and written as a SET: the array's own order is not
+	 * load-bearing (the band orders by recency), a key naming no row the roster
+	 * holds is inert rather than invalid, and `PINNED_AGENTS_MAX` bounds it.
+	 */
+	pinnedAgents: string[];
 };
 
 export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
@@ -198,6 +209,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
+	pinnedAgents: [],
 };
 
 /**
@@ -226,6 +238,20 @@ export const CHAT_PAGE_STEP = 50;
  * 500-row page the store's own cap names, and no stored number may exceed it.
  */
 export const CHAT_PAGE_MAX = 500;
+
+/**
+ * The ceiling on `pinnedAgents`, enforced on read AND on press.
+ *
+ * The same discipline `CHAT_PAGE_MAX` above states for the page counter, one
+ * field over: nothing in the app writes more pins than the roster has agents,
+ * and the parser is the tampered-storage edge of a blob a user can edit by
+ * hand, so the count is clamped rather than trusted. It is a COUNT and not a
+ * validation - the roster the pins name is not loaded at parse time - so a pin
+ * naming an agent the reader no longer holds degrades by being inert, never by
+ * taking the view down. `chat-sidebar-agents.ts`'s `togglePinnedAgent` clamps
+ * its own press to this same bound.
+ */
+export const PINNED_AGENTS_MAX = 64;
 
 /** How many rows a list that has been "load more"-ed `loads` times draws. */
 export function pageLimit(loads: number): number {
@@ -531,6 +557,39 @@ export function entitySectionGap(previousDrawsRows: boolean): string {
 	return previousDrawsRows ? ENTITY_SECTION_GAP : ENTITY_SECTION_GAP_COLLAPSED;
 }
 
+/**
+ * Whether an ENTITY row survives the list's query (issue #663, UX round 1's U1).
+ *
+ * The rule has been the entity region's since the redesign: a query narrows the
+ * whole column, and an entity whose NAME does not carry the query is dropped
+ * unless it still has rows to draw (`!name.includes(query) && !rowCount`), so a
+ * query for a conversation inside a group keeps the group, and a query for an
+ * agent's name keeps the agent.
+ *
+ * WHY IT IS A FUNCTION NOW. The roster filter's empty sentence said "No agents
+ * match" off `filteredAgents` alone, so it went quiet in the one state the two
+ * filters make together: the roster filter admits an agent, the LIST query drops
+ * every admitted agent's row (name misses, no rows survive the query), and the
+ * section drew a blank gap under a field that said nothing - the reviewer's
+ * `refresh f10` frame. The sentence is honest only when it counts what actually
+ * DRAWS, and that is this predicate rather than a second, drifting copy of it:
+ * the row itself (`entity`) and the sentence's count both call it.
+ *
+ * SEMANTICS ARE THE GATE'S OWN, deliberately untidied: the query is NOT trimmed
+ * here (the caller's is), and the comparison is `toLocaleLowerCase` on both
+ * sides, which is the same case rule `chat-search.ts` states for the list.
+ */
+export function entityQueryAdmits(
+	name: string,
+	rowCount: number,
+	query: string,
+): boolean {
+	if (!query) return true;
+	return (
+		name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) || rowCount > 0
+	);
+}
+
 /** One group of the agent-grouped list. */
 export type SidebarRowGroup = {
 	key: string;
@@ -748,6 +807,15 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * unknown ids here would be this parser guessing at a fact it does not hold, and
  * the guess would be wrong in the one direction that loses an arrangement: a
  * pinned chat outside the loaded page is still pinned.
+ *
+ * `pinnedAgents` gets the same treatment `pins` states, plus the one thing a
+ * roster-keyed list CAN bound and a conversation-keyed one cannot: a count.
+ * Only non-empty STRINGS survive, the list is deduped (first occurrence
+ * winning), and `PINNED_AGENTS_MAX` clamps it. Its keys are as opaque to this
+ * module as `pins`' ids are - the roster they name is not loaded here - so an
+ * entry naming no row the roster holds is kept and inert rather than treated
+ * as invalid, which is the difference between a preference that has outlived
+ * an agent and a tampered blob.
  */
 export function parseSidebarView(value: unknown): SidebarView {
 	if (typeof value !== "object" || value === null) return DEFAULT_SIDEBAR_VIEW;
@@ -785,6 +853,17 @@ export function parseSidebarView(value: unknown): SidebarView {
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
+	const pinnedAgents: string[] = [];
+	if (Array.isArray(raw.pinnedAgents)) {
+		for (const entry of raw.pinnedAgents) {
+			if (typeof entry !== "string") continue;
+			// An empty key can never name a row and does not count against the cap.
+			if (entry === "") continue;
+			if (pinnedAgents.includes(entry)) continue;
+			if (pinnedAgents.length >= PINNED_AGENTS_MAX) break;
+			pinnedAgents.push(entry);
+		}
+	}
 	const pins: string[] = [];
 	/*
 	 * THE DEDUPE IS A SET because this array is unbounded and the loop is reached on
@@ -803,5 +882,5 @@ export function parseSidebarView(value: unknown): SidebarView {
 			pins.push(entry);
 		}
 	}
-	return { hidden, order, groupBy, basis, orderBy, loads, pins };
+	return { hidden, order, groupBy, basis, orderBy, loads, pins, pinnedAgents };
 }
