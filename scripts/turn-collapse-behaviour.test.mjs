@@ -43,6 +43,33 @@ const bootstrapDOM = new JSDOM("<!doctype html>", {
 });
 const { window } = bootstrapDOM;
 const originals = new Map();
+/*
+ * Patterns the assertions below match against, hoisted to module scope so each
+ * is compiled once (`lint/performance/useTopLevelRegex`). None carries the `g`
+ * or `y` flag, so reusing one across calls has no `lastIndex` state to leak.
+ */
+const BORDER_HAIRLINE_RE = /\bborder-hairline\b/;
+const BORDER_L_RE = /\bborder-l\b/;
+const FAILED_I_RE = /failed/i;
+const IMAGE_COUNT_RE = /\d+ images?/;
+const MORE_IMAGES_RE = /more images?/;
+const NEGATIVE_MARGIN_13PX_RE = /-ml-\[13px\]/;
+const ONE_ACTION_RE = /1 action/;
+const PEER_MESSAGE_RE = /Peer message/;
+const PEER_NOTE_RE = /Peer note/;
+const PLUS_ACTIONS_RE = /\+ actions/;
+const PL_3_RE = /\bpl-3\b/;
+const RETIRED_RULE_CLASSES_RE = /border-l-2|border-ink-dim|pl-1\.5/;
+const THREE_IMAGES_RE = /3 images/;
+const TOOK_3S_RE = /Took 3s/;
+const TOOK_4S_RE = /Took 4s/;
+const TOOK_6S_RE = /Took 6s/;
+const TOOK_RE = /Took/;
+const TURN_CONDENSED_RE = /Turn condensed: took 3s, 1 action\./;
+const TWO_IMAGES_RE = /2 images/;
+const TWO_PLUS_ACTIONS_RE = /2\+ actions/;
+const WORKED_RE = /Worked/;
+
 /** The frames the app queued but the test has not run yet. */
 const rafQueue = [];
 const scrollCalls = [];
@@ -444,10 +471,10 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	);
 	assert.match(
 		summary.textContent,
-		/Took 3s/,
+		TOOK_3S_RE,
 		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
-	assert.match(summary.textContent, /1 action/);
+	assert.match(summary.textContent, ONE_ACTION_RE);
 	assert.equal(
 		rowBox(mounted, "tool:1"),
 		null,
@@ -457,7 +484,7 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	assert.ok(rowBox(mounted, "answer:1"), "and so does the answer");
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"the foot line yields to the bar: one summary per turn",
 	);
 	const stamps = mounted.container.querySelectorAll("time");
@@ -490,7 +517,7 @@ test("the press opens the run in place, and puts it back", async (t) => {
 	assert.ok(bar(mounted), "the bar stays as the toggle");
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"and the foot stays suppressed while open: the bar is still the summary",
 	);
 	await click(barTrigger(mounted));
@@ -571,7 +598,7 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 	assert.ok(summary, "the run collapsed");
 	assert.doesNotMatch(
 		summary.textContent ?? "",
-		/failed/i,
+		FAILED_I_RE,
 		"the tally is gone from the bar",
 	);
 	assert.equal(
@@ -585,7 +612,7 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 	assert.ok(failedRow, "the failed row mounts on the press");
 	assert.match(
 		failedRow.textContent ?? "",
-		/failed/i,
+		FAILED_I_RE,
 		"the row itself still carries the state",
 	);
 });
@@ -647,12 +674,12 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"the bar replaces the foot line, as on any completed run",
 	);
 	assert.doesNotMatch(
 		bar(mounted)?.textContent ?? "",
-		/\+ actions/,
+		PLUS_ACTIONS_RE,
 		"and a COMPLETE run carries no marker: its count is a total",
 	);
 });
@@ -791,12 +818,12 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 	 */
 	assert.match(
 		summary.textContent ?? "",
-		/2\+ actions/,
+		TWO_PLUS_ACTIONS_RE,
 		"a partial count is marked: `2+ actions`",
 	);
 	assert.doesNotMatch(
 		summary.textContent ?? "",
-		/Took/,
+		TOOK_RE,
 		"no duration: it would be fabricated from the first loaded row",
 	);
 	const partialLabel = [...summary.querySelectorAll("*")]
@@ -809,7 +836,7 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent ?? "",
-		/Worked/,
+		WORKED_RE,
 		"the bar replaces the foot line, as on any completed run",
 	);
 });
@@ -952,7 +979,7 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 	);
 	assert.match(
 		region(),
-		/Turn condensed: took 3s, 1 action\./,
+		TURN_CONDENSED_RE,
 		"the settle states the bar's own facts",
 	);
 });
@@ -1167,7 +1194,7 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 	);
 	assert.match(
 		bar(mounted)?.textContent ?? "",
-		/2 images/,
+		TWO_IMAGES_RE,
 		"and the count is a clause on the bar's own line",
 	);
 	assert.equal(
@@ -1208,7 +1235,7 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 	);
 	assert.doesNotMatch(
 		bar(mounted)?.textContent ?? "",
-		/\d+ images?/,
+		IMAGE_COUNT_RE,
 		"and no count clause either",
 	);
 	assert.equal(
@@ -1263,7 +1290,7 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	 * of opening the run.
 	 */
 	const more = [...strip.querySelectorAll("button")].find((control) =>
-		/more images?/.test(control.getAttribute("aria-label") ?? ""),
+		MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the count slot is a button, not inert text");
 	await click(more);
@@ -1349,12 +1376,12 @@ test("the group's clause drops only when it repeats the bar's number (D3/U6)", a
 	assert.ok(group, "the run's own fold mounts under the bar");
 	assert.match(
 		bar(mounted)?.textContent ?? "",
-		/3 images/,
+		THREE_IMAGES_RE,
 		"the bar states the span's count",
 	);
 	assert.doesNotMatch(
 		group.textContent ?? "",
-		/\d+ images?/,
+		IMAGE_COUNT_RE,
 		"and the group does not repeat the same number one line below",
 	);
 });
@@ -1393,7 +1420,7 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 	const groups = [...(bar(mounted)?.querySelectorAll("[data-fold-ids]") ?? [])];
 	assert.equal(groups.length, 2, "two runs sit under the bar");
 	assert.deepEqual(
-		groups.map((node) => (node.textContent ?? "").match(/\d+ images?/)?.[0]),
+		groups.map((node) => (node.textContent ?? "").match(IMAGE_COUNT_RE)?.[0]),
 		["2 images", "2 images"],
 		"each group keeps its own count: neither repeats the bar's 4",
 	);
@@ -1425,7 +1452,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	]);
 	const strip = bar(mounted)?.querySelector("[data-fold-media]");
 	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
-		/more images?/.test(control.getAttribute("aria-label") ?? ""),
+		MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the collapsed bar shows four tiles and the count control");
 	await click(more);
@@ -1438,7 +1465,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	);
 	assert.equal(
 		[...groupStrip.querySelectorAll("button")].filter((control) =>
-			/more images?/.test(control.getAttribute("aria-label") ?? ""),
+			MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 		).length,
 		0,
 		"with no second count control left to press",
@@ -1754,7 +1781,7 @@ test("one stamp per turn with several bars: the answer's foot keeps it", async (
 		rowBox(mounted, "answer:1").querySelector("time"),
 		"the stamp is on the answer's own foot, since no single bar states the turn",
 	);
-	assert.match(rowBox(mounted, "answer:1").textContent, /Worked/);
+	assert.match(rowBox(mounted, "answer:1").textContent, WORKED_RE);
 });
 
 test("a post-terminal reply is a follow-up bar AFTER the answer, with the completion mark", async (t) => {
@@ -1789,8 +1816,8 @@ test("a post-terminal reply is a follow-up bar AFTER the answer, with the comple
 		"true",
 		"only the follow-up is marked complete",
 	);
-	assert.match(bars[1].textContent, /Peer message/);
-	assert.doesNotMatch(bars[1].textContent, /Peer note/, "the retired word");
+	assert.match(bars[1].textContent, PEER_MESSAGE_RE);
+	assert.doesNotMatch(bars[1].textContent, PEER_NOTE_RE, "the retired word");
 	assert.ok(rowBox(mounted, "answer:1"), "the ANSWER stays mounted");
 	assert.ok(
 		rowBox(mounted, "answer:1").hasAttribute("data-turn-answer") ||
@@ -1853,11 +1880,15 @@ test("the answer's rail is an opt-in setting: off by default, on under the key, 
 	};
 	await seed([{ key: "display.turn_answer_rail", value: true }]);
 	const on = answerEl(mounted).className;
-	assert.match(on, /\bborder-hairline\b/);
-	assert.match(on, /\bborder-l\b/);
-	assert.match(on, /\bpl-3\b/);
-	assert.match(on, /-ml-\[13px\]/, "margin nets rule + padding to zero");
-	assert.doesNotMatch(on, /border-l-2|border-ink-dim|pl-1\.5/, "not #708's");
+	assert.match(on, BORDER_HAIRLINE_RE);
+	assert.match(on, BORDER_L_RE);
+	assert.match(on, PL_3_RE);
+	assert.match(
+		on,
+		NEGATIVE_MARGIN_13PX_RE,
+		"margin nets rule + padding to zero",
+	);
+	assert.doesNotMatch(on, RETIRED_RULE_CLASSES_RE, "not #708's");
 	assert.equal(
 		mounted.container.querySelectorAll("[data-turn-answer]").length,
 		1,
@@ -1899,7 +1930,7 @@ test("the answer's rail is an opt-in setting: off by default, on under the key, 
 	await flushFrames();
 	assert.match(
 		answerEl(mounted).className,
-		/\bborder-hairline\b/,
+		BORDER_HAIRLINE_RE,
 		"the rail returns when the plane advertises `settings` again",
 	);
 
@@ -2013,8 +2044,8 @@ test("D5: a turn still running keeps every row while the turns above it wear the
 		bars.map((node) => node.getAttribute("data-segment-ids")),
 		["tool:1", "tool:2"],
 	);
-	assert.match(bars[0].textContent, /Took 4s/);
-	assert.match(bars[1].textContent, /Took 6s/);
+	assert.match(bars[0].textContent, TOOK_4S_RE);
+	assert.match(bars[1].textContent, TOOK_6S_RE);
 	for (const id of ["tool:3", "compaction:2", "tool:4"]) {
 		assert.ok(rowBox(mounted, id), `${id} stays mounted while the turn runs`);
 	}
