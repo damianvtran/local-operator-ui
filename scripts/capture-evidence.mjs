@@ -991,6 +991,29 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--parked", 1280, 900],
+	/*
+	 * THE COMPLETION-VISIBILITY CELL (`CompletionsBothVisible`): the operator's
+	 * shape `U T88 A1(stop) W T3 A2(stop) K` - a fulsome completion, a wake, a
+	 * short reply - with both completions visible and the work between them
+	 * condensed. The before half is the same cell captured from the base tree
+	 * (the story file copied into a base worktree), where the fulsome close is
+	 * inside the bar.
+	 */
+	["chat-turn-collapse--completions-both-visible", 1280, 900],
+
+	/*
+	 * THE FRESH CONVERSATION'S OWN CELL (agent review round 1's frame
+	 * prerequisite): the harness's `session_mcp_unavailable` statement above the
+	 * reader's FIRST message and a short answer - the shape the run-closure
+	 * predicate change is about, and the one the operator's report came from ("my
+	 * initial message ended up condensed"). Before the change these rows are ONE
+	 * bar labelled `Steered` hiding the reader's own sentence; after it the
+	 * statement stands alone and the reader's turn keeps its own bar. NO FRAME IS
+	 * OWED BY THIS ENTRY YET: the sweep is deferred (§ the PR's evidence note -
+	 * the disk floor aborted the capture at 4.4 GiB free against 8 GiB), and this
+	 * registration is what lets the frame exist the moment it runs.
+	 */
+	["chat-turn-collapse--fresh-conversation", 1280, 900],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
@@ -4865,6 +4888,29 @@ export const STORIES = [
 	 */
 	["chat-sidebar-agents--installing-mid-run", 420, 760],
 	["chat-sidebar-agents--install-summary", 420, 760],
+	/*
+	 * THE ROSTER'S NAVIGATION (issue #663): the same 360px column, now with a
+	 * twelve-agent roster. `long-roster` is the state the section filter exists
+	 * for - cap-bound, ordered by use, the field drawn because of the cap;
+	 * `roster-filtered` is that filter with four matches, drawing EVERY match so
+	 * the one row the cap would have hidden (patch-reviewer) appears;
+	 * `roster-no-match` is the empty answer, which says so rather than falling
+	 * back to a list that ignores the query; and `pinned-first` is the pin press
+	 * (a real click in the play, like the batch frames above), which lifts a
+	 * never-used agent above the most recently used one.
+	 */
+	["chat-sidebar-agents--long-roster", 420, 760],
+	["chat-sidebar-agents--roster-filtered", 420, 760],
+	["chat-sidebar-agents--roster-no-match", 420, 760],
+	["chat-sidebar-agents--pinned-first", 420, 760],
+	/*
+	 * The remediation re-shoot adds the two states design round 1's D3 named:
+	 * `pinned-at-rest` is the persistent pin with no pointer or focus on the row,
+	 * and `truncating-name` is the one name long enough to reach the row's edge
+	 * at 360px now that the pin's slot is reserved on every agent row.
+	 */
+	["chat-sidebar-agents--pinned-at-rest", 420, 760],
+	["chat-sidebar-agents--truncating-name", 420, 760],
 
 	/*
 	 * The chat sidebar's sections, MERGED (operator report, 2026-09-26): one
@@ -5121,6 +5167,22 @@ export const STORIES = [
 			hover: "[data-sidebar-create]",
 			hoverSettleMs: 900,
 			dir: "band-create-hover",
+		},
+	],
+	/*
+	 * THE FOURTH BAND CONTROL (issue #663), hovered the way the three above are:
+	 * `Open agent…` opens the command palette seeded to its agents scope, so a
+	 * roster of any length is two keystrokes from the column. The tooltip is the
+	 * control's own open delay, as the siblings' entries state for theirs.
+	 */
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-open-agent]",
+			hoverSettleMs: 900,
+			dir: "band-open-agent-hover",
 		},
 	],
 	["chat-sidebar-view-menu--off-route-voice", 741, 760],
