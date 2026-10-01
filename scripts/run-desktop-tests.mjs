@@ -22,6 +22,14 @@
  *    evidence for what actually ran rather than a claim about what the governor
  *    would have done.
  *
+ * The suite is also MEMORY-BOUNDED: the child runs in its own process group and
+ * a watchdog kills the whole group, with one loud line and exit 137, if the
+ * group's owned memory reaches the budget. The incident behind it (a test run
+ * at ~198 GB while `ps` read 1.4 GB) and every constant are in
+ * `desktop-test-memory-guard.mjs`; `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB`
+ * overrides the budget (a number of MB, or `off`, which is announced). Unlike
+ * the concurrency governor this stays ACTIVE on CI.
+ *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
  * that was killed is worse than no wrapper. For the same reason the child does
@@ -32,11 +40,19 @@
  */
 
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
 	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+import {
+	BREACH_EXIT_CODE,
+	createMemoryWatchdog,
+	formatBreachLine,
+	formatMemoryBudgetLine,
+	resolveMemoryBudget,
+} from "./desktop-test-memory-guard.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -200,21 +216,136 @@ const childEnv = withTelemetryOff(
 		),
 	),
 );
+/*
+ * `detached` makes the child a process-group leader, which is what lets the
+ * watchdog (and the signal forwarding below) address the WHOLE tree with one
+ * `kill(-pgid)` and never a bare pid or this runner's own group. The costs, all
+ * accepted: a terminal's Ctrl-C no longer reaches the child directly (the
+ * forwarding below replaces it, to the group), and if this runner is itself
+ * SIGKILLed the group is not reaped with it - the same exposure the app rigs'
+ * `detached` launches already carry. The child's stdin stays inherited; node's
+ * test runner does not read it.
+ */
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
 	env: childEnv,
+	detached: true,
 });
 
+/*
+ * The death-watch (R1 of the PR #733 review). `detached` takes the test tree out
+ * of THIS process's group, so a SIGKILL of the runner's group - what every
+ * per-command guard and `timeout`-by-pgid wrapper here does - would otherwise
+ * leave the tree running with its watchdog dead. The keeper is a separate-session
+ * process holding the read end of a pipe only this runner writes; when the pipe
+ * closes without `done` it SIGKILLs the test group. See `desktop-test-keeper.mjs`.
+ * It covers a SIGKILLed runner (and any other way the runner vanishes); it does
+ * not cover the keeper itself being killed, and it signals the group only.
+ */
+let keeper = null;
+let keeperReleased = false;
+if (child.pid !== undefined) {
+	try {
+		keeper = spawn(
+			process.execPath,
+			[
+				fileURLToPath(new URL("./desktop-test-keeper.mjs", import.meta.url)),
+				String(child.pid),
+			],
+			{ stdio: ["pipe", "ignore", "ignore"], detached: true },
+		);
+		// `URL.pathname` is percent-encoded, so a checkout under a path with a space
+		// made the keeper exit 1 at once while the runner carried on believing it
+		// was tethered; `fileURLToPath` is the decoded path. And because a keeper
+		// that is gone is the one failure the runner cannot otherwise see, an exit
+		// before the runner's own normal end is announced here.
+		keeper.on("error", () => {
+			keeper = null;
+		});
+		keeper.on("exit", (code) => {
+			if (!keeperReleased && code !== 0) {
+				console.error(
+					`desktop tests: WARNING - the death-watch keeper exited early (status ${code}); if this runner is killed the test group will NOT be reaped`,
+				);
+			}
+		});
+		keeper.stdin.on("error", () => {});
+		keeper.unref();
+	} catch {
+		keeper = null;
+	}
+}
+function releaseKeeper() {
+	keeperReleased = true;
+	// Tell it this is a NORMAL end so it does not signal a finished suite's group.
+	try {
+		keeper?.stdin.end("done\n");
+	} catch {
+		// Already gone.
+	}
+}
+
+const memoryBudget = resolveMemoryBudget();
+console.log(formatMemoryBudgetLine(memoryBudget));
+let breached = false;
+const watchdog =
+	memoryBudget.budgetMb === null || child.pid === undefined
+		? null
+		: createMemoryWatchdog({
+				leaderPid: child.pid,
+				budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+				onTrip: () => {
+					// Set BEFORE the kill: the child's exit can be observed while the
+					// pre-kill re-read is still in flight, and must already read as a
+					// verdict rather than a signal death to re-raise.
+					breached = true;
+				},
+				onBreach: (reading, outcome) => {
+					console.error(
+						formatBreachLine({
+							leaderPid: child.pid,
+							reading,
+							budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+							outcome,
+						}),
+					);
+				},
+				onBlind: (ticks) =>
+					console.error(
+						`desktop tests: WARNING - memory watchdog could not fully read the process group for ${ticks} consecutive ticks (the process table is unreadable or no footprint came back); the run is NOT reliably bounded`,
+					),
+			});
+watchdog?.start();
+
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
-// suite rather than leaving it orphaned behind a killed wrapper.
+// suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
+// the child no longer shares ours, and its own children are what hold memory.
+// KNOWN LIMIT (Q3 of the PR #733 QA pass): this reaches the group only. A
+// descendant that called setsid (an Electron a rig launched `detached`) survives
+// Ctrl-C/SIGTERM, exactly as it did under the base runner; only the memory
+// watchdog's breach path walks out-of-group descendants.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
-		if (child.exitCode === null && child.signalCode === null)
-			child.kill(signal);
+		if (child.exitCode === null && child.signalCode === null) {
+			try {
+				process.kill(-child.pid, signal);
+			} catch {
+				child.kill(signal);
+			}
+		}
 	});
 }
 
 child.on("exit", (code, signal) => {
+	watchdog?.stop();
+	releaseKeeper();
+	if (breached) {
+		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
+		// it as an exit status rather than re-raising, so the loud line above is
+		// the last word and callers see a plain non-zero code.
+		process.exitCode = BREACH_EXIT_CODE;
+		return;
+	}
 	if (signal !== null) {
 		// The child was killed. Report the same death for this process instead
 		// of a fabricated exit code: `exitCode` would flatten "the suite was
