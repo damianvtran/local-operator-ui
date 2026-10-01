@@ -6,15 +6,19 @@
  * get subtly wrong and expensive to get wrong quietly, and all three are
  * properties of the field rather than of any one screen:
  *
- *  1. WHAT AN ABSENT FIELD MEANS. `reactive` is the ABSENT value on the wire —
- *     the backend encodes the class as a `class:proactive` tag and leaves the
- *     tag off for reactive, so a row written before the class existed reads
- *     reactive, and a value this build does not recognise has to read reactive
- *     too (the backend's own `action_class.normalize` answers reactive for
- *     anything unrecognised, deliberately: an unknown class must never be the
- *     reason an agent starts messaging somebody). So absence is not a fallback
- *     this file invents; it is the field's own definition, and it is spelled
- *     once, here, rather than as a `?? "reactive"` at every read site.
+ *  1. WHAT AN ABSENT FIELD MEANS. NOT "reactive" as an encoding, but "never
+ *     classified". The shipped backend writes a `class:<value>` tag for BOTH
+ *     values — `agent_profiles.seed_tags` emits `class:reactive` explicitly,
+ *     because an absent tag has to stay distinguishable from a class the
+ *     operator switched off or a repair (`backfill_seed_action_class`) would
+ *     re-arm a check-in somebody stopped. Absence survives for rows installed
+ *     before the feature existed, and for a value this build does not
+ *     recognise, and both read REACTIVE — the backend's own
+ *     `action_class.normalize` answers reactive for anything unrecognised,
+ *     deliberately: an unknown class must never be the reason an agent starts
+ *     messaging somebody. So the fallback is not invented here; it is the
+ *     field's own reading, and it is spelled once, rather than as a
+ *     `?? "reactive"` at every read site.
  *  2. WHAT THE CLASS DOES. "Proactive" is not a mood: it arms hidden patience
  *     waits — after a sent message the agent waits a few minutes for a reply,
  *     nudges again with growing gaps up to a bounded number of tries, then falls
@@ -64,32 +68,48 @@ export const CLASS_LABEL: Record<ActionClass, string> = {
 /**
  * What the current class means, for a reader who has never met the word.
  *
+ * THE WORD ITSELF IS NOT REPEATED HERE (design review round 2, D4): the
+ * control's own label already says it, the switch's position says it, and a
+ * sentence that opens by saying it a third time spends its first two words on
+ * nothing. These sentences answer the question the word raises instead.
+ *
  * The proactive sentence is deliberately concrete about the behaviour it
  * unlocks, because it is the half a user cannot see: a patience wait is hidden
- * by design, so "it may message you" is the only place the operator can learn
- * that an unanswered message produces a nudge — and that the nudging is bounded
- * and then gives up rather than continuing forever.
+ * by design, so this is the only place the operator can learn that an
+ * unanswered message produces a nudge — that the nudging is bounded and then
+ * gives up — and that a proactive agent also wakes on its own schedule. The
+ * reactive sentence names the two mechanisms it does NOT run rather than
+ * claiming it never writes first (UX round 2, U2: "never messages you on its
+ * own" is more than the platform promises, and a claim the product cannot keep
+ * is worse than a narrower true one).
  */
 export const CLASS_MEANING: Record<ActionClass, string> = {
 	proactive:
-		"Proactive — it may message you on its own. After it sends a message it waits a few minutes for your reply, then nudges again with growing gaps, for a fixed number of tries, and then waits for you.",
+		"It may message you on its own: after sending you something it waits a few minutes for a reply, nudges again with growing gaps for a fixed number of tries, then waits for you — and it may also wake on its own schedule.",
 	reactive:
-		"Reactive — it answers when you ask, and never messages you on its own.",
+		"It replies when you write to it. It does not nudge you, and it does not wake on its own schedule.",
 };
 
 /**
  * What the switch is about to do, said BEFORE it is pressed.
  *
- * Both sentences name the outcome rather than the mechanism, and both name the
- * direction that costs the operator something (a switch on is an agent that may
- * message them; a switch off is messaging that stops), which is the half a label
- * alone cannot carry.
+ * BOTH COSTS ARE NAMED UP FRONT, and that is the fix UX round 2 asked for (U2,
+ * with D1 and the copy audit's n-2): the sentence beside a switch that is OFF
+ * is the last thing a user reads before opting IN, so it has to carry the whole
+ * price — the bounded nudge cycle AND the fact that a proactive agent wakes on
+ * its own schedule — rather than saying "lets it message you first" and leaving
+ * both facts in the sentence that only appears after the switch is already ON.
+ * The off-direction keeps the same shape: what stops, and what does not change.
+ *
+ * A switch that changes the class does not change how ordinary chat behaves in
+ * either direction, and both sentences say so, because "will it still answer me"
+ * is the question a control named for messaging has to pre-empt.
  */
 export const CLASS_SWITCH_EFFECT: Record<ActionClass, string> = {
 	proactive:
-		"Turning this off stops its proactive messaging. Ordinary chat is unchanged.",
+		"Turning this off stops the nudging and the scheduled wakes. It still replies when you write to it.",
 	reactive:
-		"Turning this on lets it message you first. Ordinary chat is unchanged.",
+		"Turning this on lets it write first: it will wait a few minutes for your reply, nudge you again up to a fixed number of tries, and it may wake on its own schedule. It still replies when you write to it.",
 };
 
 /**
@@ -214,9 +234,20 @@ export class ClassSwitchError extends Error {
  *
  * The install-first case is the one that needs a second sentence: a failed CLASS
  * WRITE after a successful install has changed the record (the starter now has a
- * row and is editable) while leaving the class exactly as it was, and a reader
- * who is told only "that did not work" will not know why the agent's source chip
- * moved.
+ * row and is editable), and a reader who is told only "that did not work" will
+ * not know why the agent's source chip moved.
+ *
+ * THE SECOND SENTENCE CLAIMS THE INSTALL AND NOTHING ELSE (UX round 2, U1). It
+ * used to promise "its class is unchanged", which is a fact this layer cannot
+ * observe: a write that fails after the backend committed (a timeout, a dropped
+ * response) has landed, and the only reader of that truth is the re-read the
+ * pane performs on every failure — which is exactly what the switch above this
+ * sentence then shows.
+ *
+ * THE FALLBACK ADDS A FACT RATHER THAN ECHOING THE HEADING (U5/D3): "The class
+ * could not be changed." was a lowercase restatement of the alert's own title.
+ * What a reader needs when the cause carries no sentence is the actionable half
+ * — there is no reason to show, and pressing again is the next step.
  */
 export function classSwitchFailure(
 	cause: unknown,
@@ -225,10 +256,10 @@ export function classSwitchFailure(
 	const raw =
 		cause instanceof Error && cause.message
 			? cause.message
-			: "The class could not be changed.";
+			: "The backend sent no reason for it. Try the switch again.";
 	const sentence = refusalCopy(raw).message;
 	if (completed.some((step) => step.op === "profiles.install")) {
-		return `${sentence} The agent was installed, so its class is unchanged but it is now editable.`;
+		return `${sentence} The install did land, so the agent is editable now.`;
 	}
 	return sentence;
 }
