@@ -2786,9 +2786,11 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rows read against `surface`, which the rail's group lists
-		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
-		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
+		 * ground: the rows read against `surface`, which the rail's own nav carries
+		 * (the rail held `bg-elevated` from 2026-09-27 until it was re-grounded
+		 * flat on 2026-09-30, and the group lists carry no ground of their own any
+		 * more), and it marked its current section with `accent-wash` — ΔE00 1.05
+		 * in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
 		 * because it is one class for one role decision (round 1, design D2).
@@ -2809,7 +2811,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
 		must: "? rowCurrent",
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-row-hover`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
 	},
 	{
 		/*
@@ -4878,6 +4880,34 @@ for (const { id, palette: p } of palettes) {
 		"rowSelected",
 		FLOOR.text,
 		"integration status text on a deep-linked row",
+	);
+
+	/*
+	 * The tool ledger's PARTIAL delivery word (`wake unconfirmed`, `unconfirmed`)
+	 * on the ground the row paints under the pointer.
+	 *
+	 * The word is `warning` text and it is the row's only loud ink, so the pair
+	 * owes the text floor wherever the row draws it. Two of its three grounds were
+	 * already asserted before this row existed: `canvas` and `surface` by `AS_TEXT`
+	 * (the four elevations, `accentWash` and `messageSurface`), and the settled
+	 * row's own ground IS the transcript's canvas. The HOVER states are the ones
+	 * `AS_TEXT` deliberately leaves to the ink loop - it holds `ink`, `inkMuted`
+	 * and `inkDim`, not the tone roles - and `rowHover` is exactly the ground a
+	 * hovered row wears (`hover:bg-row-hover`), so the amber word on it was the
+	 * one pair in this state that nothing measured.
+	 *
+	 * Measured before it was written: worst palette `warning`/`rowHover` is
+	 * 4.696:1 (rose-pine-dawn), clear of the floor in all 59, so no pin is
+	 * recorded here. `rowSelected` is not listed: a transcript row is never
+	 * selected, and the ledger's own row has no selected state.
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowHover",
+		FLOOR.text,
+		"the partial delivery word on the hovered row's ground",
 	);
 
 	/*

@@ -2924,6 +2924,16 @@ const BRANCH_RECORDS = [
 	"meshCanvasRedesignFoldNote",
 	"rebaseOntoA298bfb120Note",
 	"meshCanvasRedesignRemediationNote",
+	/*
+	 * And by THIS lane too - the pass record's lineage gate: this branch's own
+	 * fix, whose note is the branch's newest top-level record. It is listed for
+	 * the reason the list exists: it moves `scripts/` only and takes no frame, so a
+	 * fold resolved from main's copy would drop it first, and the loss would be
+	 * silent - the same class of loss the fix itself is about, one file along. Its
+	 * pair is spelled as bare SHAs rather than backticked tokens, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"partialCaptureContinuityRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

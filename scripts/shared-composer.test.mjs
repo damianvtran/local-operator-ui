@@ -227,7 +227,31 @@ globalThis.fetch = async (url, init) => {
 		return answer({ values: { hosting: "local", model_name: "mock" } });
 	if (request.op === "settings.list") return answer({ settings: [] });
 	if (request.op === "capabilities")
-		return answer({ desktop_available: true, features: {} });
+		return answer({
+			desktop_available: true,
+			/*
+			 * The sessionless `$skill` reads, advertised the way a live daemon
+			 * and the story bridge advertise them - case 1c's mount has a folder,
+			 * so the catalogue read and the send's body read turn on this answer
+			 * alone, and nothing else in this file passes a `cwd`.
+			 */
+			features: { catalogues: 1, skill_catalogue: 1 },
+		});
+	if (request.op === "skills.list") {
+		/*
+		 * The two shapes one op serves (`skill-picker.tsx`): no `name` is the
+		 * vocabulary read, a `name` is the resolved body the send expands.
+		 * The body carries no frontmatter block so `skillBodyHasContent` reads
+		 * it as content, exactly as a real SKILL.md's instruction half would.
+		 */
+		if (typeof request.name === "string")
+			return answer({
+				data: { detail: "# release-notes\n\nWrite the release notes.\n" },
+			});
+		return answer({
+			data: { skills: [{ name: "release-notes" }, { name: "research" }] },
+		});
+	}
 	return answer({});
 };
 
@@ -336,7 +360,13 @@ async function mount({
 				conversationId,
 				messages,
 				isLoading: false,
-				onSendMessage: async () => ({ ok: true }),
+				/*
+				 * `undefined` is the ordinary ACCEPTED outcome (`SendOutcome`). A
+				 * plain object is the off-record-ask shape and the guard reads any
+				 * object as one, so a `{ ok: true }` stub crashes the first case that
+				 * actually submits (`.offRecord.then`).
+				 */
+				onSendMessage: async () => undefined,
 				...composerProps,
 			}),
 		);
@@ -429,33 +459,34 @@ test("the composer mounts in a document with no QueryClient, on the props a stan
 	});
 });
 
-/* ------------------------------------------------------------------ */
-/* 1b. The negative control: the same instrument, gate forced open      */
-/* ------------------------------------------------------------------ */
-
-test("forcing the fallback to report provided:true fires the ops case 1 refuses", async () => {
-	/*
-	 * THE CONTROL THAT MAKES CASE 1's ZEROS READINGS RATHER THAN SILENCE. The
-	 * reviewer's reproduction (review round 1, MINOR 1): with the seam answering
-	 * `provided: true`, this mount fires the capability census and the host-gated
-	 * lists - 28 fetches in that reproduction - while every other assertion
-	 * stayed green. This case builds ONE more bundle whose only difference is
-	 * that stub (the most specific alias wins over `@shared`), mounts it exactly
-	 * the way the rig mounts, and reads the SAME instrument: non-zero here is
-	 * what makes case 1's zeros the gate's rather than a broken recorder.
-	 */
-	const forcedStub = new URL(
-		`./_shared-composer-forced-stub-${process.pid}.mjs`,
+/**
+ * A composer bundle whose ONE difference is the provider gate: the real
+ * `useOptionalQueryClient`, wrapped to report `provided: true`.
+ *
+ * Built rather than imported because the gate itself is the question: the
+ * shared composer mounts WITHOUT a provider by contract (case 1), so every
+ * `provided`-gated read is off in the main bundle — and a mount that must see
+ * those reads answer (the forced-open control, and the send seam behind the
+ * `$skill` body read) needs the gate forced from outside the module graph.
+ * `@shared/hooks/use-optional-query-client` is the ONLY module the alias
+ * replaces: everything else resolves exactly as the main bundle resolves, so
+ * the mounted component is the shipped composer.
+ */
+let providedBundleSeq = 0;
+async function buildProvidedComposerBundle() {
+	const seq = ++providedBundleSeq;
+	const stubPath = new URL(
+		`./_shared-composer-forced-stub-${process.pid}-${seq}.mjs`,
 		import.meta.url,
 	);
 	await writeFile(
-		forcedStub,
+		stubPath,
 		[
 			`import { useOptionalQueryClient as real } from ${JSON.stringify(`${worktree}/src/renderer/src/shared/hooks/use-optional-query-client`)};`,
 			"export const useOptionalQueryClient = () => ({ ...real(), provided: true });",
 		].join("\n"),
 	);
-	const forced = await build({
+	const bundle = await build({
 		stdin: {
 			contents:
 				'export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input";',
@@ -468,12 +499,7 @@ test("forcing the fallback to report provided:true fires the ops case 1 refuses"
 		external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
 		jsx: "automatic",
 		alias: {
-			/*
-			 * Redirect the seam alone; everything else resolves exactly as the main
-			 * bundle resolves. `useOptionalQueryClient` is the ONLY module this stub
-			 * replaces, so the mount under test is the shipped composer.
-			 */
-			"@shared/hooks/use-optional-query-client": forcedStub.pathname,
+			"@shared/hooks/use-optional-query-client": stubPath.pathname,
 			"@shared": `${worktree}/src/renderer/src/shared`,
 			"@features": `${worktree}/src/renderer/src/features`,
 			"@assets": `${worktree}/src/renderer/src/assets`,
@@ -490,16 +516,34 @@ test("forcing the fallback to report provided:true fires the ops case 1 refuses"
 		},
 		write: false,
 	});
-	const forcedBundlePath = new URL(
-		`./_shared-composer-forced-${process.pid}.mjs`,
+	const bundlePath = new URL(
+		`./_shared-composer-forced-${process.pid}-${seq}.mjs`,
 		import.meta.url,
 	);
-	await writeFile(forcedBundlePath, forced.outputFiles[0].text);
-	const { MessageInput: ForcedMessageInput } = await import(
-		forcedBundlePath.href
-	);
-	await unlink(forcedBundlePath);
-	await unlink(forcedStub);
+	await writeFile(bundlePath, bundle.outputFiles[0].text);
+	const module = await import(bundlePath.href);
+	await unlink(bundlePath);
+	await unlink(stubPath);
+	return module;
+}
+
+/* ------------------------------------------------------------------ */
+/* 1b. The negative control: the same instrument, gate forced open      */
+/* ------------------------------------------------------------------ */
+
+test("forcing the fallback to report provided:true fires the ops case 1 refuses", async () => {
+	/*
+	 * THE CONTROL THAT MAKES CASE 1's ZEROS READINGS RATHER THAN SILENCE. The
+	 * reviewer's reproduction (review round 1, MINOR 1): with the seam answering
+	 * `provided: true`, this mount fires the capability census and the host-gated
+	 * lists - 28 fetches in that reproduction - while every other assertion
+	 * stayed green. This case mounts the forced bundle (the most specific alias
+	 * wins over `@shared`) exactly the way the rig mounts, and reads the SAME
+	 * instrument: non-zero here is what makes case 1's zeros the gate's rather
+	 * than a broken recorder.
+	 */
+	const { MessageInput: ForcedMessageInput } =
+		await buildProvidedComposerBundle();
 
 	transportOps.length = 0;
 	const container = window.document.createElement("div");
@@ -511,7 +555,7 @@ test("forcing the fallback to report provided:true fires the ops case 1 refuses"
 				conversationId: `shared-composer-forced-${++mountSeq}`,
 				messages: [],
 				isLoading: false,
-				onSendMessage: async () => ({ ok: true }),
+				onSendMessage: async () => undefined,
 			}),
 		);
 	});
@@ -523,6 +567,212 @@ test("forcing the fallback to report provided:true fires the ops case 1 refuses"
 	await act(async () => {
 		forcedRoot.unmount();
 	});
+});
+
+/* ------------------------------------------------------------------ */
+/* 1c. The draft send seam: the composed `$skill` payload survives it   */
+/* ------------------------------------------------------------------ */
+
+test("a draft's first-message seam answers with the composed `$skill` payload (QA round 1, Q-1)", async () => {
+	/*
+	 * THE BLOCKER'S REGRESSION. On a draft pane the composer hands the store a
+	 * `beforeAdmission` seam, and the store LETS ITS RETURN REPLACE the text the
+	 * press built (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The
+	 * seam used to answer with the substituted raw line, so a first-message
+	 * `$skill` reached the model as prose - QA measured it live (S12: the
+	 * daemon's transcript holds the typed line; the read had succeeded, the
+	 * payload had been built, and the replacement discarded it). This case
+	 * drives the SHIPPED composer's own submit on a draft mount, takes the seam
+	 * the host is handed, invokes it the way the store does (with the session a
+	 * create would return), and reads its answer: the composed payload, byte for
+	 * byte the first argument the host received.
+	 *
+	 * The store's half - "the seam's answer is what is sent" - is pinned in
+	 * `canonical-chat.test.mjs`; together the two cases cover the chain that
+	 * failed end to end. THIS case discriminates the composer's half: restored
+	 * to `return settled.text`, the final assertion fails (mutation-checked).
+	 */
+	transportOps.length = 0;
+	const { MessageInput: ProvidedMessageInput } =
+		await buildProvidedComposerBundle();
+
+	const sent = [];
+	let handle = null;
+	const container = window.document.createElement("div");
+	window.document.body.appendChild(container);
+	const seamRoot = createRoot(container);
+	await act(async () => {
+		seamRoot.render(
+			h(ProvidedMessageInput, {
+				conversationId: `shared-composer-seam-${++mountSeq}`,
+				messages: [],
+				isLoading: false,
+				/*
+				 * A DRAFT PANE, BY CONSTRUCTION: no `sessionStatus` means
+				 * `credentialSessionId` is undefined - the ONE condition that hands
+				 * the host a seam (`message-input.tsx`).
+				 */
+				cwd: "~",
+				ref: (node) => {
+					handle = node;
+				},
+				onSendMessage: async (...args) => {
+					sent.push(args);
+					// The ordinary accepted outcome: `undefined`, never an object
+					// (the off-record-ask shape the guard reads into any object).
+					return undefined;
+				},
+			}),
+		);
+	});
+	await settle();
+	assert.ok(handle?.submitNow, "the composer's handle is mounted");
+
+	/*
+	 * THE VOCABULARY MUST HAVE LANDED BEFORE THE PRESS: the send parses the
+	 * TYPED line against `skillNamesRef` at call time, and a press before the
+	 * sessionless read settles would send prose for a harness reason rather than
+	 * a product one. The wait is BOUNDED and the read is asserted afterwards, so
+	 * a mount that fetched nothing fails loudly instead of sleeping green.
+	 */
+	for (let pass = 0; pass < 40; pass++) {
+		if (transportOps.includes("skills.list")) break;
+		await settle();
+	}
+	assert.ok(
+		transportOps.filter((op) => op === "skills.list").length >= 1,
+		"the sessionless vocabulary read fired (folder + capability + provider)",
+	);
+	await settle();
+
+	const field = container.querySelector("textarea");
+	const valueSetter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		valueSetter.call(field, "$release-notes QA fixture: summarise today.");
+		field.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	await settle();
+	assert.equal(field.value, "$release-notes QA fixture: summarise today.");
+
+	await act(async () => {
+		handle.submitNow();
+	});
+	await settle();
+	assert.equal(sent.length, 1, "one send reached the host");
+	const [content, , , typed, seam] = sent[0];
+	assert.equal(typed, "$release-notes QA fixture: summarise today.");
+	assert.match(
+		content,
+		/<skill name="release-notes" invocation="\$release-notes QA fixture: summarise today\.">/,
+		"the first argument is the composed payload, not the raw line",
+	);
+	assert.equal(typeof seam, "function", "a draft pane hands the host a seam");
+	/*
+	 * AND THE SEAM'S ANSWER IS THE PAYLOAD (the regression proper): the store
+	 * sends this string verbatim - `?? text` is only for a seam that declines.
+	 */
+	const rendered = await seam("1234567890ab");
+	assert.equal(
+		rendered,
+		content,
+		"the seam composes rather than replaces - the payload survives it",
+	);
+	assert.notEqual(rendered, typed, "and it is not the typed line");
+	await act(async () => {
+		seamRoot.unmount();
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/* 1d. Q-3: an unpaired daemon hears NO catalogue read, per mount      */
+/* ------------------------------------------------------------------ */
+
+test("an unpaired daemon gets zero `skills.list` reads across a fresh mount and a forced remount (QA round 2, Q-3)", async () => {
+	/*
+	 * THE Q-3 REGRESSION. The pairing gate removed reads AFTER a refusal was
+	 * known, but a fresh mount starts with no answer YET — and "not refused
+	 * yet" is not "good to ask": QA measured one refused `skills.list` per
+	 * mount, six a run (four at boot, two in a forced-remount window). The
+	 * composer under test is the shipped tree again (the forced-provider bundle
+	 * — the only way `skills.list` can fire at all in a providerless harness),
+	 * with the pairing bridge answering as main does for a daemon that refused
+	 * this app's credential. The instrument is `transportOps`, which case 1c
+	 * shows reporting non-zero on this exact op; the paired control at the end
+	 * re-proves the instrument mid-case rather than borrowing another case's
+	 * reading.
+	 */
+	const { MessageInput: ProvidedMessageInput } =
+		await buildProvidedComposerBundle();
+	const backend = {
+		getStatus: async () => ({
+			pairing: { available: false, cause: "credential-refused" },
+		}),
+		onStatusChange: () => () => {},
+	};
+	window.api = { backend };
+	const skillsReads = () =>
+		transportOps.filter((op) => op === "skills.list").length;
+
+	const mountOnce = async (suffix) => {
+		useConversationInputStore.setState({ inputByConversation: {} });
+		const container = window.document.createElement("div");
+		window.document.body.appendChild(container);
+		const mountRoot = createRoot(container);
+		await act(async () => {
+			mountRoot.render(
+				h(ProvidedMessageInput, {
+					conversationId: `shared-composer-q3-${suffix}-${++mountSeq}`,
+					messages: [],
+					isLoading: false,
+					cwd: "~",
+					onSendMessage: async () => undefined,
+				}),
+			);
+		});
+		await settle();
+		return mountRoot;
+	};
+
+	transportOps.length = 0;
+	const first = await mountOnce("first");
+	assert.equal(
+		skillsReads(),
+		0,
+		"a fresh mount on the refused daemon fires no catalogue read",
+	);
+	await act(async () => {
+		first.unmount();
+	});
+	/* The forced-remount window: a new composer against the same refused daemon. */
+	const second = await mountOnce("second");
+	assert.equal(
+		skillsReads(),
+		0,
+		"and the remount fires none either — the unknown answer fails closed",
+	);
+	await act(async () => {
+		second.unmount();
+	});
+
+	/*
+	 * THE CONTROL, mid-case: the same counter against a PAIRED daemon must read
+	 * non-zero, or the zeros above would be a recorder that cannot count.
+	 */
+	backend.getStatus = async () => ({
+		pairing: { available: true, cause: null },
+	});
+	const paired = await mountOnce("paired");
+	assert.ok(
+		skillsReads() >= 1,
+		"the paired control fires it on the same counter — the zeros are the gate's",
+	);
+	await act(async () => {
+		paired.unmount();
+	});
+	window.api = undefined;
 });
 
 /* ------------------------------------------------------------------ */

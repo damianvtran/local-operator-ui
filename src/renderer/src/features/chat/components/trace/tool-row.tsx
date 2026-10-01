@@ -53,9 +53,19 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
-import { InterruptedGlyph, toolIcon } from "./tool-glyphs";
 import {
+	DeliveryUnconfirmedGlyph,
+	InterruptedGlyph,
+	MailboxGlyph,
+	toolIcon,
+} from "./tool-glyphs";
+import {
+	SEND_DELIVERY_LABEL,
+	SEND_DELIVERY_TITLE,
+	SEND_DELIVERY_WORD,
+	type SendDeliveryState,
 	type ToolCategory,
+	deliverySettledVerb,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
@@ -68,6 +78,26 @@ export type ToolRowOutcome =
 	| "success"
 	| "error"
 	| "interrupted"
+	/**
+	 * A call that SETTLED without failing and without the plain success either:
+	 * a `send` whose message landed but whose wake went unanswered (`mailbox`),
+	 * or whose landing could not be confirmed (`unconfirmed`). Which of the two
+	 * is the row's `deliveryState`, which also picks the word, the mark and the
+	 * hover.
+	 *
+	 * A state of its own rather than `success` or `error`, for the same reason
+	 * `not-run` is: either alternative is a false claim. `success` would paint
+	 * the silent tick the ledger reserves for "it worked", and `error` would
+	 * paint the danger wash, count it in the fold's "N failed" and arm the
+	 * failed-row jump for a message that may well be sitting in the peer's
+	 * mailbox. It wears the WARNING ink - the amber the TUI's partial glyph
+	 * already uses for "answered, not whole" - and never the danger wash.
+	 *
+	 * The amber-versus-red hue step is deliberately NOT the only channel: each
+	 * state has its own WORD and its own MARK (`MailboxGlyph`,
+	 * `DeliveryUnconfirmedGlyph`), so the states read apart with the colour off.
+	 */
+	| "partial"
 	/**
 	 * A RECEIPT: a ledger row that reports an event rather than a call — an
 	 * inbound peer message, a wake delivery.
@@ -205,6 +235,16 @@ export type ToolRowProps = {
 	 */
 	summaryHold?: boolean;
 	outcome: ToolRowOutcome;
+	/**
+	 * How a `send` call's delivery ended, when the result stated it
+	 * (`details.delivery.state`). `null`/absent is "no statement" and leaves the
+	 * row exactly as it was before the field existed.
+	 *
+	 * It refines `outcome` rather than replacing it: `partial` needs it to choose
+	 * between its two words, and `error` uses it to say `not delivered` for a
+	 * send instead of the generic `failed`. On any other outcome it is ignored.
+	 */
+	deliveryState?: SendDeliveryState | null;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
 	 * seconds. `null` on a settled row is a replay whose duration the transcript
@@ -458,6 +498,12 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
 	"not-run": "never ran",
+	// The partial states do not announce through the table: their sentence is
+	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
+	// unconfirmed`), which says more than the drawn word and is rendered where
+	// the drawn one is (`StatusCluster`). Empty here rather than a shorter
+	// duplicate, so the row cannot read its own outcome out twice.
+	partial: "",
 	// Nothing to report: a receipt is not an action, so it has no outcome to
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
@@ -510,10 +556,17 @@ function useRunningElapsed(startedAt: number | null): number | null {
  */
 const StatusCluster = ({
 	outcome,
+	deliveryState = null,
 	durationS,
 	startedAt,
 }: {
 	outcome: ToolRowOutcome;
+	/**
+	 * How a `send` call's delivery ended, when the result stated it. Only the two
+	 * states that draw a WORD need it here: it picks which word (`wake unconfirmed`
+	 * or `unconfirmed`), the mark beside it, and the spoken label.
+	 */
+	deliveryState?: SendDeliveryState | null;
 	durationS: number | null;
 	startedAt?: number | null;
 }) => {
@@ -530,20 +583,123 @@ const StatusCluster = ({
 	 * channel only while both drew a glyph, and a word is unambiguous.
 	 */
 	const failedLike = outcome === "error" || outcome === "not-run";
-	const Glyph = outcome === "interrupted" ? InterruptedGlyph : null;
 	/*
-	 * The outcome MARK is hueless (`ink-dim`), and it is now rendered for
-	 * `interrupted` only: a settled success draws nothing and a settled failure
-	 * draws the WORD in `danger` beside this slot. The three-arm expression that
-	 * used to live here mapped success to `text-success` and failure to
-	 * `text-danger`; those inks are retired HERE, where the word states the
-	 * outcome once at the edge the reader is already looking at - and NOT from
-	 * the row: `DiffCounters` above spends the same two roles on the diff's own
-	 * sides, a different question from this column's (operator report on PR #534,
-	 * 2026-09-26). Do not dim the counters back to restore "consistency" - the
-	 * pair is meant to be scannable at a glance.
+	 * THE AMBER MIDDLE, AND WHY IT IS A THIRD TREATMENT rather than one of the two
+	 * above. A `send` that settled `mailbox` or `unconfirmed` is not a success - a
+	 * silent row would say the wake was answered and it was not - and it is not a
+	 * failure, which is the claim this whole state model exists to stop making. So
+	 * it prints a WORD like a failure does, in the WARNING role (`warning` is
+	 * already this app's "attention, not failure": the parked-approval ink, and
+	 * the TUI's `tool.status.partial_glyph`), and it draws a MARK of its own beside
+	 * that word.
+	 *
+	 * The mark is not decoration: two states share this treatment, and the amber
+	 * step is deliberately not the only thing telling them apart - each draws its
+	 * own SHAPE (`MailboxGlyph`, `DeliveryUnconfirmedGlyph`) beside its own WORD, so
+	 * a reader with no colour still reads `mailbox` from `unconfirmed`.
 	 */
-	const glyphInk = "text-ink-dim";
+	const partial = outcome === "partial";
+	/*
+	 * THE STATE WORD, at `text-meta`/500, on the trailing edge where the eye
+	 * already is for the duration (§E1). For a `send` that stated its delivery this
+	 * is `SEND_DELIVERY_WORD` (`wake unconfirmed`, `delivery unconfirmed`,
+	 * `not delivered`) and the ink is the ROLE - amber for the two partial states,
+	 * danger for `failed`; every other failure keeps its own words (`failed`,
+	 * `never ran`) in the danger role.
+	 */
+	const deliveryWord = deliveryState
+		? SEND_DELIVERY_WORD[deliveryState]
+		: undefined;
+	const word = partial
+		? (deliveryWord ?? null)
+		: failedLike
+			? (deliveryWord ?? OUTCOME_LABEL[outcome])
+			: null;
+	const wordInk = partial ? "text-warning" : "text-danger";
+	/*
+	 * THE DROP BELOW THE WIDTH THAT HOLDS THE WORD (design note §3(b) Narrow; UX
+	 * round 1, U7). The word is ALL-OR-NOTHING: at 320px the mailbox row measured
+	 * 262px of content against a 240px row - a 22px overflow - because the word
+	 * never gives way and the summary, already at `truncate`, cannot go below
+	 * zero. So the word is drawn only while the row can hold it whole, and the row
+	 * already owns the mechanism: `@container/toolrow` on the row box and a
+	 * container variant on the sibling that sheds first (`DiffCounters`,
+	 * `@[34rem]/toolrow:flex`).
+	 *
+	 * `19rem` (304px) is DERIVED, not chosen: the cluster is the word (~134px for
+	 * the longest, `delivery unconfirmed`) + the 6px gap + the 14px mark + the 6px
+	 * gap + the 5ch right-aligned duration slot (~48px) = ~208px, and a summary
+	 * below ~96px is not a summary - eight characters of the mono step. Below
+	 * that the row sheds the word and the MARK plus the sr-only sentence carry the
+	 * state, which is the half that must never be colour-only.
+	 *
+	 * WHY ONLY THE TWO AMBER STATES CARRY THE GATE. The fallback is the mark, and
+	 * only the partial pair has one: a failed row's word IS its whole non-colour
+	 * carrier (`not delivered`), so shedding it at a narrow width would leave the
+	 * danger WASH - colour alone - saying the row had failed. That row keeps
+	 * today's behaviour exactly: the word is always drawn.
+	 *
+	 * WHAT CONTAINS THE FAILURE ROW INSTEAD (QA round 2, Q1). At 320px the refusal
+	 * measured 259px of content in a 240px box - a 19px overflow, and it is THIS
+	 * branch's longer word that caused it (`not delivered` is 75.6px against the
+	 * 31.9px `failed` `origin/main` prints). The word is frozen and the mark is not
+	 * available to it, so the slot that gives way above it is the DURATION: below
+	 * this width the trailing `0.1s` is shed on every row. That is the app's own
+	 * shed order - `DiffCounters` hides on the same container four lines up - and
+	 * the duration is the one thing in the cluster that says nothing about whether
+	 * the call worked. The gate is the same breakpoint as the word's on purpose:
+	 * one number for "the row's trailing edge sheds", rather than a second
+	 * breakpoint a hair away that nothing could derive. The frames the design
+	 * measured (390px) sit above it - measured, the frame's row is 310px =
+	 * 19.375rem against the 304px breakpoint, so the margin is 6px and not the
+	 * 38px the story's 48px inset would suggest (design round 3, D6: the frame's
+	 * row inset is 80px) - so they are unchanged.
+	 */
+	const wordClass = cn(
+		"font-medium text-meta",
+		wordInk,
+		partial && "hidden @[19rem]/toolrow:inline",
+	);
+	/*
+	 * The word the row STATES and the words it SPEAKS are not the same sentence for
+	 * the partial states: the drawn word is short enough to sit at the row's edge
+	 * (`wake unconfirmed`) while the spoken one carries the fact the word abbrevi-
+	 * ates (`delivered, wake unconfirmed`). Where the two differ the drawn word is
+	 * `aria-hidden` and only the spoken label reaches assistive tech; where they are
+	 * the same string (the failure words) the drawn text is already the announce-
+	 * ment and nothing is repeated - the rule the sr-only span below has always had.
+	 */
+	const spoken =
+		partial && deliveryState
+			? (SEND_DELIVERY_LABEL[deliveryState] ?? null)
+			: null;
+	const title =
+		partial && deliveryState ? SEND_DELIVERY_TITLE[deliveryState] : undefined;
+	/*
+	 * The outcome MARK: the interrupted slashed circle, or the partial state's own
+	 * shape. Its ink used to be hueless (`ink-dim`) because the word carried the
+	 * statement alone; the partial pair takes the WARNING ink so the mark and the
+	 * word beside it read as one statement, which is what the TUI's `◐` does
+	 * (`tool.status.partial_glyph`). `interrupted` keeps the hueless mark - that is
+	 * a statement about the mark (the USER stopped the call), not about the row.
+	 */
+	const Glyph = partial
+		? deliveryState === "mailbox"
+			? MailboxGlyph
+			: deliveryState === "unconfirmed"
+				? DeliveryUnconfirmedGlyph
+				: null
+		: outcome === "interrupted"
+			? InterruptedGlyph
+			: null;
+	/*
+	 * The mark's ink follows the MARK, not the outcome (QA round 1, Q3): with a
+	 * `partial` outcome and no state there is no glyph to tint, and the empty span
+	 * kept the warning ink it could not spend. Unreachable from the app - the
+	 * ladder derives `partial` FROM the state - but an empty slot tinted amber is
+	 * the kind of reading a screenshot later cannot tell from a real one.
+	 */
+	const glyphInk = Glyph && partial ? "text-warning" : "text-ink-dim";
 	/*
 	 * The status column of a RUNNING row, which is either its own clock or
 	 * NOTHING AT ALL.
@@ -566,16 +722,49 @@ const StatusCluster = ({
 	return (
 		<span className={cn("flex shrink-0 items-center gap-1.5")}>
 			{/*
-			 * THE STATE WORD, at `text-meta`/500 in `danger`, on the trailing edge
-			 * where the eye already is for the duration (§E1). This is the row's only
-			 * loud ink, and it is only ever printed for a settled FAILURE.
+			 * THE STATE WORD, at `text-meta`/500, on the trailing edge where the eye
+			 * already is for the duration (§E1). This is the row's only loud ink, and
+			 * it is printed for a settled FAILURE (`danger`, its own words) and for a
+			 * `send` whose delivery the result stated (`SEND_DELIVERY_WORD`, in the
+			 * role that state earns: `warning` for the two partial states, `danger` for
+			 * `not delivered`).
 			 */}
-			{failedLike ? (
-				<span className={cn("font-medium text-danger text-meta")}>
-					{OUTCOME_LABEL[outcome]}
+			{word ? (
+				<span
+					className={wordClass}
+					// The hover is the explanation the word cannot fit: it exists for the
+					// two partial states only (`SEND_DELIVERY_TITLE`), and `send` is the one
+					// row whose word is a hedge rather than a verdict.
+					title={title}
+					// Spoken by the sr-only label instead, where the two differ.
+					aria-hidden={spoken ? true : undefined}
+				>
+					{word}
 				</span>
 			) : null}
-			<span className={cn("flex size-3.5 shrink-0 [&_svg]:size-3.5", glyphInk)}>
+			{/*
+			 * THE MARK SLOT ONLY RESERVES A BOX WHEN THERE IS A MARK IN IT (design
+			 * round 3, D5). `size-3.5` used to be unconditional, so a `failed` row -
+			 * which draws no glyph by design, having no non-colour mark of its own -
+			 * paid for an empty box at every width, and at the row's floor (320px) that
+			 * was the difference between a summary and a single character (`Attempted w
+			 * not delivered`). With the box collapsed the summary cell measures 7px ->
+			 * 21px there, i.e. `w` -> `w…` (design round 4, D9: the reclaimed width is
+			 * the slot's own 14px - the cluster's 6px gap is NOT reclaimed, because the
+			 * empty span still sits in the flex row and still draws its gap; an earlier
+			 * version of this comment said 20px, which was a sum nobody measured).
+			 * The sr-only children inside cannot hold the box open themselves -
+			 * `sr-only` is absolutely positioned - so nothing is lost when the slot
+			 * shrinks, and rows that DO draw a mark (`running` draws none either, for
+			 * the same reason) are unchanged.
+			 */}
+			<span
+				className={cn(
+					"flex shrink-0 [&_svg]:size-3.5",
+					Glyph && "size-3.5",
+					glyphInk,
+				)}
+			>
 				{Glyph ? <Glyph aria-hidden={true} /> : null}
 				{/*
 				 * The outcome in words, for a reader who cannot see the glyph.
@@ -593,10 +782,14 @@ const StatusCluster = ({
 				{!failedLike && OUTCOME_LABEL[outcome] ? (
 					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
 				) : null}
+				{/* The partial states' SPOKEN sentence, which is longer than the word the
+				    row draws (`SEND_DELIVERY_LABEL`); the drawn word is `aria-hidden`
+				    above so the two do not both announce. */}
+				{spoken ? <span className={cn("sr-only")}>{spoken}</span> : null}
 			</span>
 			<span
 				className={cn(
-					"w-[5ch] text-right font-mono text-ink-dim text-mono-sm tabular-nums",
+					"hidden w-[5ch] text-right font-mono text-ink-dim text-mono-sm tabular-nums @[19rem]/toolrow:inline",
 				)}
 			>
 				{text}
@@ -612,6 +805,7 @@ export const ToolRow = ({
 	summaryFallback = null,
 	summaryHold = false,
 	outcome,
+	deliveryState = null,
 	durationS,
 	startedAt = null,
 	added = 0,
@@ -648,6 +842,11 @@ export const ToolRow = ({
 		summaryFallback,
 		running,
 		op,
+		/*
+		 * The one row whose settled verb its own result overrides (UX round 1, U8):
+		 * a `send` that provably delivered nothing must not open with `Sent`.
+		 */
+		deliverySettledVerb(deliveryState),
 	);
 
 	const row = (
@@ -784,6 +983,7 @@ export const ToolRow = ({
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
 				outcome={outcome}
+				deliveryState={deliveryState}
 				durationS={durationS}
 				startedAt={startedAt}
 			/>
