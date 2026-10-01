@@ -42,7 +42,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { CircleCheck } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import { type FC, type ReactNode, useRef } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
@@ -139,8 +139,9 @@ export type TurnSummaryProps = {
 	 * same rule one fold down. The caller composes the node
 	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the hidden rows'
 	 * images), because the transcript is what knows a record's images; the fold
-	 * hands it THIS bar's own toggle so the strip's `+N more images` slot can
-	 * open the fold rather than be a dead end (UX round 1, U1).
+	 * hands it THIS bar's own toggle so the strip's `+N` slot (named and titled
+	 * `N more images`) can open the fold rather than be a dead end (UX round 1,
+	 * U1).
 	 *
 	 * Render it ONLY while collapsed: open, every row draws its own media
 	 * (`TranscriptRow`'s `media`) and a strip here as well would put one
@@ -198,8 +199,23 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 		actionCount === 1 ? "1 action" : `${actionCount} actions`
 	} — earlier rows of this turn are not loaded`;
 
+	/*
+	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's
+	 * own trigger (UX round 1, U2) - see `TraceFold`'s `revealFromStrip`, the same
+	 * rule for the same reason: the press unmounts the control that held focus, and
+	 * a removed node leaves it on `<body>`.
+	 */
+	const rootRef = useRef<HTMLDivElement>(null);
+	const revealFromStrip = () => {
+		rootRef.current
+			?.querySelector<HTMLElement>("button[aria-expanded]")
+			?.focus();
+		onOpenChange(true);
+	};
+
 	return (
 		<div
+			ref={rootRef}
 			/*
 			 * The "there is more below" rule (design spec D1, operator feedback
 			 * 2026-09-28, after dsh's bottom rule): a hairline under the bar says the
@@ -426,9 +442,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			 * does not exist for it and the no-picture bar stays byte-identical.
 			 */}
 			{!open && condensedMedia && (
-				<div className={cn("pb-2")}>
-					{condensedMedia(() => onOpenChange(true))}
-				</div>
+				<div className={cn("pb-2")}>{condensedMedia(revealFromStrip)}</div>
 			)}
 		</div>
 	);
