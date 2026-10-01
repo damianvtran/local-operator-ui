@@ -69,6 +69,21 @@ export const HUB_STORIES = [
 		"agent-hub-page--org-teams",
 		"org scope, Teams tab opened: the same reads as the agents tab, no extra teams read",
 	],
+	/*
+	 * The Teams summary rows (2026-09-30). The rows show fields `org_teams.list`
+	 * already returned, and opening one is client-only - the `instructions` brief
+	 * is detail-only and NOT fetched - so neither the nine-row roster nor the same
+	 * roster with three rows pressed open may add a read: ONE `org_teams.list`,
+	 * ZERO `org_team.get`.
+	 */
+	[
+		"agent-hub-page--org-teams-varied",
+		"org scope, nine team rows rendered: ONE org_teams.list and ZERO org_team.get",
+	],
+	[
+		"agent-hub-page--org-teams-expanded",
+		"org scope, three of the nine team rows pressed open: still ONE org_teams.list and ZERO org_team.get (expanding is client-only)",
+	],
 	[
 		"agent-hub-page--teams-public-scope",
 		"public scope, Teams tab opened: no team read at all (ZERO org_teams.list)",
