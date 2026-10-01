@@ -47,7 +47,9 @@ const {
 	ALIGN_WALK_MAX_PAGES,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
+	alignWalkRunFromPlan,
 	alignWalkRunKey,
+	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	initialAlignWalkState,
 	collapsePlan,
@@ -58,6 +60,7 @@ const {
 	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
 	widenTarget,
+	windowTopRun,
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
@@ -1716,6 +1719,101 @@ test("alignWalkRunKey: null for a headed run, a live run, and a bar the reader h
 		"fixture: the live run paints no bar",
 	);
 	assert.equal(alignWalkRunKey(liveRun, { live: true }), null);
+});
+
+/* ------------- the store confirmation (agent review round 1, R1) ------------- */
+
+test("alignWalkRunKeyConfirmed: a window-cut run the STORE holds whole is not a cut (round 1, R1)", () => {
+	const WINDOW = 60;
+	/*
+	 * R1's counterexample: ONE settled run taller than the snap's completed
+	 * allowance, its opening user row LOADED. The ordinary snap (720 here) cannot
+	 * reach that opening row, so the raw edge sits inside the run — and the plan,
+	 * built over `visible`, reads `opensWithUserRow: false` while nothing in the
+	 * store is cut.
+	 */
+	const tall = [
+		user("r1u0", { ts: TS }),
+		...Array.from({ length: 1000 }, (_, i) =>
+			tool(`r1t${i}`, { ts: TS + i, durationS: 2 }, "trace"),
+		),
+		answer("r1a0", { ts: TS + 2_000_000 }),
+	];
+	const alignSize = snapWindowToRunBoundary(
+		tall,
+		WINDOW,
+		SNAP_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		false,
+	);
+	assert.ok(
+		alignSize < tall.length,
+		"fixture: the window really cuts the store",
+	);
+	const visible = tall.slice(tall.length - alignSize);
+	const plan = collapsePlan(visible, { live: false });
+	assert.equal(
+		windowTopRunIsHeadCut(tall, alignSize),
+		false,
+		"the store's run under the same edge IS headed — its opening row is loaded",
+	);
+	assert.equal(
+		alignWalkRunFromPlan(plan),
+		runsOf(tall)[0].key,
+		"the plan alone calls it cut: the R1 defect, on the same rows",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, windowTopRun(tall, alignSize)),
+		null,
+		"the store says otherwise, so the walk stands down without fetching",
+	);
+	/*
+	 * The other direction: a store whose head really IS mid-run still yields the
+	 * run's key, so the confirmation suppresses only the false cut.
+	 */
+	const cut = headCutRows();
+	const cutSize = snapWindowToRunBoundary(
+		cut,
+		WINDOW,
+		SNAP_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		false,
+	);
+	const cutVisible = cut.slice(cut.length - cutSize);
+	const cutKey = runsOf(cut)[0].key;
+	assert.equal(
+		windowTopRunIsHeadCut(cut, cutSize),
+		true,
+		"fixture: the store's head is genuinely missing",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(
+			collapsePlan(cutVisible, { live: false }),
+			windowTopRun(cut, cutSize),
+		),
+		cutKey,
+		"a real cut still yields the key",
+	);
+	/*
+	 * And when the window covers the whole list the plan IS the store's own view —
+	 * the journal's first page (55 rows into a 60-row window) — so no second
+	 * opinion is needed and the cut still fires.
+	 */
+	const short = [
+		...Array.from({ length: 50 }, (_, i) =>
+			tool(`r1sh${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("r1sha", { ts: TS + 900_000 }),
+	];
+	assert.ok(short.length <= WINDOW, "fixture: the window covers the list");
+	assert.equal(
+		alignWalkRunKeyConfirmed(
+			collapsePlan(short, { live: false }),
+			windowTopRun(short, WINDOW),
+		),
+		runsOf(short)[0].key,
+		"a cut the plan can already see the whole of is the store's own answer",
+	);
 });
 
 /* ------------- the metric in the render's currency (agent review R1-1) ------------- */
