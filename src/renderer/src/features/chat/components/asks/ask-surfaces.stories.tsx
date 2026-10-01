@@ -39,7 +39,7 @@ import type {
 	PendingAsk,
 } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
-import { askQueueView } from "../../ask-queue";
+import { EMPTY_DRAFTS, askQueueView } from "../../ask-queue";
 import { AskPanel } from "./ask-panel";
 import { AskSurfaces } from "./ask-surfaces";
 
@@ -142,7 +142,6 @@ const meta = {
 	component: AskSurfaces,
 	parameters: {
 		layout: "padded",
-		backgrounds: { default: "canvas" },
 	},
 	decorators: [
 		(Story) => (
@@ -192,6 +191,10 @@ const Expanded = ({ asks }: { asks: PendingAsk[] }) => (
 	<AskPanel
 		view={panelView(asks)}
 		nowMs={NOW}
+		// The story owns no draft: a frame is a still, and a still with a
+		// half-filled form would photograph a transient rather than a state.
+		drafts={EMPTY_DRAFTS}
+		onDraftChange={noop}
 		onAnswer={noop}
 		onDecline={noop}
 	/>

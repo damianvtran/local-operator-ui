@@ -61,6 +61,7 @@ import type {
 	AskSecrets,
 } from "../../ask-queue";
 import {
+	EMPTY_DRAFT,
 	askAnswerMap,
 	askSettledAnswers,
 	askStatusText,
@@ -97,6 +98,18 @@ export type AskPanelProps = {
 	>;
 	/** The client clock the countdown reading is rendered against. */
 	nowMs: number;
+	/**
+	 * The in-flight answers, keyed by ask id then question id.
+	 *
+	 * OWNED BY THE CALLER, not by this panel, and that is the composer routing's
+	 * requirement rather than a preference (design §5.0): while the ask surface is
+	 * expanded the COMPOSER answers the question, so the text the user typed there
+	 * and the ticks they made here must be the same draft. Two owners would mean a
+	 * composer Enter that silently discarded a ticked option, or a tick that
+	 * discarded what they typed.
+	 */
+	drafts: Record<string, AskDraft>;
+	onDraftChange: (askId: string, next: AskDraft) => void;
 	className?: string;
 };
 
@@ -243,6 +256,8 @@ const AskRow = ({
 	nowMs,
 	answering,
 	outcome,
+	draft,
+	onDraftChange,
 	onAnswer,
 	onDecline,
 }: {
@@ -250,11 +265,17 @@ const AskRow = ({
 	nowMs: number;
 	answering: boolean;
 	outcome: { sending: boolean; refused: string | null } | undefined;
+	draft: AskDraft;
+	onDraftChange: AskPanelProps["onDraftChange"];
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 }) => {
 	const { ask, status, canAnswer, canDecline } = presentation;
-	const [draft, setDraft] = useState<AskDraft>({});
+	const setDraft = useMemo(
+		() => (updater: (current: AskDraft) => AskDraft) =>
+			onDraftChange(ask.ask_id, updater(draft)),
+		[ask.ask_id, draft, onDraftChange],
+	);
 	// The secret values are their own record rather than draft members ON PURPOSE:
 	// the draft is re-rendered on every tick and has to be safe to paint anywhere,
 	// and a credential in it would ride into a story fixture or a log the first
@@ -394,6 +415,8 @@ export const AskPanel = ({
 	answering = false,
 	outcomes,
 	nowMs,
+	drafts,
+	onDraftChange,
 	className,
 }: AskPanelProps) => {
 	if (view.asks === null) return null;
@@ -414,6 +437,8 @@ export const AskPanel = ({
 						nowMs={nowMs}
 						answering={answering}
 						outcome={outcomes?.[presentation.ask.ask_id]}
+						draft={drafts[presentation.ask.ask_id] ?? EMPTY_DRAFT}
+						onDraftChange={onDraftChange}
 						onAnswer={onAnswer}
 						onDecline={onDecline}
 					/>

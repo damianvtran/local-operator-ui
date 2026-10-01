@@ -29,9 +29,15 @@
  * answering" when the user only meant to get their transcript back.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
-import { askQueueView, sessionAsks } from "../../ask-queue";
+import type { AskDraft } from "../../ask-queue";
+import {
+	EMPTY_DRAFTS,
+	askQueueView,
+	noopDraftChange,
+	sessionAsks,
+} from "../../ask-queue";
 import { AskBar } from "./ask-bar";
 import { AskPanel } from "./ask-panel";
 
@@ -53,8 +59,25 @@ export type AskSurfacesProps = {
 		string,
 		{ sending: boolean; refused: string | null } | undefined
 	>;
+	/** The in-flight answers, keyed by ask id then question id. Caller-owned: the composer and this panel are one draft. */
+	drafts?: Record<string, AskDraft>;
+	onDraftChange?: (askId: string, next: AskDraft) => void;
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
+	/**
+	 * Whether the surface is expanded, and the door that flips it.
+	 *
+	 * OPTIONAL, and controlled when supplied. The routing rule this state decides
+	 * is the composer's (design §5.0): while the answer surface is expanded the
+	 * composer answers the ask, and while it is collapsed the composer is an
+	 * ordinary conversation box. That decision lives in the page that owns the
+	 * composer, so when the page wants to state it the state has to come from
+	 * there - a second copy in here would let the bar and the composer disagree
+	 * about which mode the user is in, which is the one thing the rule forbids.
+	 * A story that does not care lets this component own it.
+	 */
+	expanded?: boolean;
+	onToggle?: (next: boolean) => void;
 	className?: string;
 };
 
@@ -79,21 +102,52 @@ export const AskSurfaces = ({
 	onDecline,
 	answering = false,
 	outcomes,
+	drafts,
+	onDraftChange,
 	nowMs,
+	expanded: expandedProp,
+	onToggle,
 	className,
 }: AskSurfacesProps) => {
 	const view = askQueueView(frontend);
-	const [expanded, setExpanded] = useState(false);
+	const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false);
+	/*
+	 * CONTROLLED WHEN THE CALLER SUPPLIES IT. See `AskSurfacesProps.expanded`: the
+	 * page that owns the composer owns this flag, because the composer's routing
+	 * rule is what the flag means. `expanded` is read for truthiness rather than
+	 * against `undefined` so a caller passing `false` is honoured, and a caller
+	 * passing nothing falls back to this component's own state.
+	 */
+	const expanded = expandedProp ?? uncontrolledExpanded;
+	const setExpanded = (next: boolean) => {
+		setUncontrolledExpanded(next);
+		onToggle?.(next);
+	};
 	const now = useAskClock(view.open > 0, nowMs);
 
 	/*
 	 * The panel collapses itself when the queue empties: an expanded panel over
 	 * nothing is a surface the user has to dismiss, and the section's own rule is
 	 * that the affordance disappears at zero asks.
+	 *
+	 * IT FIRES ON THE TRANSITION TO EMPTY, not on every render while empty, and
+	 * that guard is load-bearing rather than an optimisation. The caller's door is
+	 * an unstable closure (the page's own handler is), so an effect keyed on it
+	 * would run on every render for as long as the queue stayed empty - and each
+	 * run would swap the composer's two DRAFTS, silently trading the user's chat
+	 * text for their answer text behind their back. The reference holds the last
+	 * observed state, so exactly one collapse is delivered per emptying.
 	 */
+	const hadRows = useRef(true);
 	useEffect(() => {
-		if (view.rows.length === 0) setExpanded(false);
-	}, [view.rows.length]);
+		if (view.rows.length > 0) {
+			hadRows.current = true;
+			return;
+		}
+		if (!hadRows.current) return;
+		hadRows.current = false;
+		setExpanded(false);
+	});
 
 	// An absent queue is not an empty one: `sessionAsks` returns null when this
 	// backend does not publish queued asks, and nothing mounts at all.
@@ -104,7 +158,7 @@ export const AskSurfaces = ({
 			<AskBar
 				view={view}
 				expanded={expanded}
-				onToggle={() => setExpanded((current) => !current)}
+				onToggle={() => setExpanded(!expanded)}
 			/>
 			{expanded ? (
 				<div
@@ -124,6 +178,8 @@ export const AskSurfaces = ({
 						nowMs={now}
 						answering={answering}
 						outcomes={outcomes}
+						drafts={drafts ?? EMPTY_DRAFTS}
+						onDraftChange={onDraftChange ?? noopDraftChange}
 						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
 						onDecline={(task) => onDecline?.(task.ask_id)}
 					/>

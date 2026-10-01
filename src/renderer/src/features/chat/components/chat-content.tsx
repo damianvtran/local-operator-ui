@@ -59,6 +59,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
+import type { AskDraft } from "../ask-queue";
 import { legacyAskMirrorSuppressed } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
@@ -419,6 +420,18 @@ type ChatContentProps = {
 			string,
 			{ sending: boolean; refused: string | null } | undefined
 		>;
+		/*
+		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
+		 * composer's routing rule reads, and the page owns it rather than the ask
+		 * surfaces so the bar and the composer cannot disagree about which mode the
+		 * user is in. `askComposerPlaceholder` is the page's sentence for the
+		 * expanded state, passed to the composer's own invitation slot.
+		 */
+		askExpanded?: boolean;
+		onAskToggle?: (next: boolean) => void;
+		askDrafts?: Record<string, AskDraft>;
+		onAskDraftChange?: (askId: string, next: AskDraft) => void;
+		askComposerPlaceholder?: string;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -1703,6 +1716,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDecline={canonical?.onDeclineAsk}
 							answering={Boolean(canonical?.admitting)}
 							outcomes={canonical?.askOutcomes}
+							expanded={canonical?.askExpanded}
+							onToggle={canonical?.onAskToggle}
+							drafts={canonical?.askDrafts}
+							onDraftChange={canonical?.onAskDraftChange}
 						/>
 						{/*
 						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
@@ -1821,6 +1838,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								onCredentialsStored={invalidateStoredCredentials}
 								recordingProbe={recordingProbe}
+								/*
+								 * THE ANSWER-MODE INVITATION (design §5.0). The composer's
+								 * own invitation slot, so every state sentence - a refusal,
+								 * the recording line, a gate - still outranks it: those
+								 * describe facts about the box that this copy cannot.
+								 */
+								placeholderOverride={canonical?.askComposerPlaceholder}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
