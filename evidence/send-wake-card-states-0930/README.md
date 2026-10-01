@@ -60,7 +60,7 @@ The suite can only pin the MECHANISM (jsdom has no layout engine, so a container
 query resolves to nothing there — the limit `scripts/stopped-row-measure.test.mjs`
 records for the chat measure). The behaviour was read off the rendered frames:
 
-| Viewport | Row width | `delivery unconfirmed` drawn? | Mark drawn? | Spoken sentence |
+| Viewport | Story rendered | `delivery unconfirmed` drawn? | Mark drawn? | Spoken sentence |
 |---|---|---|---|---|
 | 390px | `SendDeliveriesNarrow` | yes, whole | yes | yes |
 | 320px | `SendDeliveriesTooNarrow` | **no** | yes | yes (`delivery unconfirmed — it may still arrive, so check before resending`) |
@@ -73,7 +73,7 @@ own sentence (now "Fix the cause named below") and the trailing duration, which
 sheds below the container width the state word already sheds at. So
 `after-failure-expanded-dark.png` and `after-too-narrow-dark.png` were re-shot at
 that head; the other six are unchanged in fact as well as in the diff — the
-duration is drawn at every width those frames use (their rows are 21.4rem and
+duration is drawn at every width those frames use (their rows are 19.375rem and
 wider), and no other frame renders a delivery note.
 
 ## What these frames do NOT prove
@@ -86,10 +86,17 @@ wider), and no other frame renders a delivery note.
   `delivery unconfirmed` / `not delivered` in its remediation.
 - They say nothing about the TUI's own frames; the TUI half of the vocabulary is a
   separate surface.
-- The 320px frame contains every row in its box (QA round 2, Q1), but the refusal
-  is at its floor there: its summary truncates to a single character, because the
-  frozen word and the verb are what the row will not give up. Below 320px the
-  refusal's own fixed parts reach the box edge again.
+- The 320px frame contains every row in its box (QA round 2, Q1). The refusal is
+  at its floor there and its summary is the cell that gives way first — but no
+  longer to a single character: the mark slot used to reserve 14px plus a 6px gap
+  for a mark a `failed` row never draws, and that unspent 20px was the difference
+  (design round 3, D5; the slot now sizes itself only when it holds a mark, and
+  the frame was re-shot). Below 320px the refusal's own fixed parts reach the box
+  edge again.
+- **The 390px row is 310px (19.375rem), measured, against the 304px breakpoint**
+  — a 6px margin, not the 38px a 48px frame inset would suggest (the frame's row
+  inset is 80px). The width rule therefore sits much closer to that frame than
+  this README first claimed (design round 3, D6).
 - They are not a contrast measurement. The floors are asserted by
   `scripts/contrast-contract.mjs` (`warning` as text on every ground, plus the
   `warning`/`rowHover` row this PR adds).
