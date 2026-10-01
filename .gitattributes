@@ -1,0 +1,26 @@
+# A fold must not stop on docs/evidence/manifest.json.
+#
+# WHY AN ATTRIBUTE AND NOT A CONVENTION. When `main` and a branch have both
+# rewritten the manifest, git sees two sides of one JSON file and stops - and
+# the resolution it stops for is the one nobody should do by hand: the manifest
+# is a record of WHICH TREE produced WHICH pixels, so "take ours" or "take
+# theirs" silently certifies frames against a tree they did not come from (fold
+# 10 and fold 11 each shipped that to main, and it took the desktop suite's
+# stamp test to catch it). The rule for resolving it is written down in two
+# places (`scripts/capture-evidence.mjs`'s fold block and the manifest's own
+# `citationConvention`) and implemented in `scripts/evidence-fold.mjs`.
+#
+# THE DRIVER IS NOT INSTALLED BY THIS FILE. The attribute only NAMES a driver;
+# the command is `merge.evidence-fold.driver` in the clone's local config,
+# written by `node scripts/evidence-fold.mjs --install` (and by `prepare`, once
+# per clone, the way `.githooks/` is wired). With the attribute and no driver,
+# git falls back to its own three-way text merge, which conflicts on a
+# two-sided change - and `pnpm evidence:fold` then resolves it correctly anyway,
+# because the resolver reads the three sides from GIT OBJECTS rather than from
+# the conflict-marked working file.
+#
+# WHY NOT `merge=ours` / `merge=binary`: both exist to avoid thinking about the
+# file, which is the defect. The merged manifest carries BOTH sides' records
+# and is re-derived against the merged tree; neither side's copy is the answer.
+
+docs/evidence/manifest.json merge=evidence-fold
