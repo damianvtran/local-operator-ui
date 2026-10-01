@@ -5167,7 +5167,7 @@ async function sceneSessionArchive(cdp) {
 	 * measured here precisely to show that. The assertion that the mark is really
 	 * DRAWN is below ("the unread mark is DRAWN on this row"), because two equal widths
 	 * from two unmarked rows would prove nothing. `--width` cannot reach this band: the
-	 * panel's width is the USER's preference (`chatSidebarWidth`, clamped 240..360),
+	 * panel's width is the USER's preference (`chatSidebarWidth`, clamped 220..320),
 	 * not a function of the window, so the scene writes the same preference the divider
 	 * writes.
 	 */
@@ -7280,11 +7280,19 @@ async function sceneRowSpace(cdp) {
 		const title = dialog.querySelector("h2, [data-slot='dialog-title'], [id]");
 		const spans = Array.from(dialog.querySelectorAll("span")).filter((node) => node.closest("h2, [data-slot='dialog-title']") || node.parentElement?.className?.includes("min-w-0 items-center"));
 		const name = spans.find((node) => node.className.includes("truncate"));
-		const verb = spans.find((node) => /^Archive/.test((node.textContent || "").trim()));
-		const mark = spans.find((node) => /^[\u201d"]?\?$/.test((node.textContent || "").trim()));
+		/*
+		 * THE THREE FIXED PIECES ARE THE shrink-0 SPANS: the outer flex wrapper also starts with
+		 * "Archive", so a text match picked it (a 366px "verb"). The verb is the first fixed span and
+		 * the question mark the last. THIS BODY IS A TEMPLATE LITERAL, so a regex escape here is
+		 * consumed before the page sees it - a single backslash-s read as a plain s (every s in the
+		 * text vanished) - which is why the escapes below are doubled.
+		 */
+		const fixed = spans.filter((node) => node.className.includes("shrink-0"));
+		const verb = fixed[0];
+		const mark = fixed[fixed.length - 1];
 		const close = dialog.querySelector('[aria-label="Close"]');
 		return {
-			text: (dialog.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120),
+			text: (dialog.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 120),
 			name: name ? { ...box(name), scrollWidth: name.scrollWidth, clientWidth: name.clientWidth } : null,
 			verb: box(verb),
 			verbText: verb ? (verb.textContent || "") : null,
@@ -7305,7 +7313,9 @@ async function sceneRowSpace(cdp) {
 			longQuestion.close !== null &&
 			longQuestion.mark.right <= longQuestion.close.left + 0.5 &&
 			longQuestion.markText === "\u201d?" &&
-			longQuestion.verbText.endsWith("\u201c"),
+			longQuestion.verbText.endsWith("\u201c") &&
+			longQuestion.verb.right <= longQuestion.name.left + 0.5 &&
+			longQuestion.name.right <= longQuestion.mark.left + 0.5,
 		JSON.stringify(longQuestion),
 	);
 	await clickAt(cdp, "[data-cancel-action]");
@@ -28809,7 +28819,7 @@ async function sceneSidebarLazyChats(cdp) {
 		 * earlier attempt to narrow this surface set a WINDOW size rather than the
 		 * panel's own width, so the panel was boxed at x 438-955 in both frames and
 		 * nothing was narrower. `240` is the floor the preference is clamped to
-		 * (`chatSidebarWidth`, clamped 240..360), set through the driver's own
+		 * (`chatSidebarWidth`, clamped 220..320), set through the driver's own
 		 * preference verb, so the frame is of the app's real floor. It is restored
 		 * before the press: a control whose box the width change has just moved is a
 		 * press that lands on nothing, which is what the first attempt measured.
