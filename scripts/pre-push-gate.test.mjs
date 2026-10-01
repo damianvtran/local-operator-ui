@@ -357,7 +357,10 @@ test("a pushed ref this checkout cannot read is REFUSED, not a false green", () 
 		assert.notEqual(pushed.status, 0);
 		const output = `${pushed.stdout}${pushed.stderr}`;
 		assert.match(output, /REFUSED/);
-		assert.match(output, /the only commit this checkout can be judged from is HEAD/);
+		assert.match(
+			output,
+			/the only commit this checkout can be judged from is HEAD/,
+		);
 	} finally {
 		f.cleanup();
 	}
