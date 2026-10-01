@@ -3380,6 +3380,21 @@ function SessionPanel({
 		],
 	);
 
+	/*
+	 * THE DEVICE HOLD ELEMENT, MEMOISED — and it is load-bearing for the same
+	 * reason the freezes above are (C1). This is an ELEMENT, and an inline
+	 * `{<ChatDeviceHold .../>}` in the JSX below rebuilds its object once per
+	 * render of this page — which is once per stream flush — so it would hand
+	 * the composer's memo boundary a fresh prop per flush and re-render the
+	 * whole box again. Frozen on the session it reads, the one thing this
+	 * element's props change with; the child's own store subscriptions still
+	 * repaint it on their own schedule.
+	 */
+	const deviceHold = useMemo(
+		() => <ChatDeviceHold sessionId={sessionId ?? undefined} />,
+		[sessionId],
+	);
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{/*
@@ -3449,7 +3464,7 @@ function SessionPanel({
 						/>
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
-					deviceHold={<ChatDeviceHold sessionId={sessionId ?? undefined} />}
+					deviceHold={deviceHold}
 					agentName={title}
 					description={
 						// `loaded` names the agent/team actually answering; without it an
