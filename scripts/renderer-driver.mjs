@@ -18914,37 +18914,6 @@ async function daemonGet(path) {
 }
 
 /**
- * The pids of the daemon `--backend` names, read from the serve records the run
- * linked — the same read `--scene connection-drop` does, with the same three
- * guards (the run's port, a loopback host, and never 1111), because this scene
- * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
- * kills it. Signalling the operator's own daemon is the thing both guards
- * exist to make impossible.
- */
-function runDaemonPids() {
-	if (BACKEND === null) return [];
-	const backendPort = Number(new URL(BACKEND).port);
-	if (backendPort === 1111) {
-		throw new Error(
-			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
-		);
-	}
-	const pids = [];
-	for (const { record } of sceneConnectionDropRecords()) {
-		const pid = record?.pid;
-		if (typeof pid !== "number" || pid <= 0) continue;
-		if (Number(record.port) !== backendPort) continue;
-		if (
-			typeof record.host === "string" &&
-			!["127.0.0.1", "localhost", "::1"].includes(record.host)
-		)
-			continue;
-		pids.push(pid);
-	}
-	return pids;
-}
-
-/**
  * The bin promptness, measured live - the operator's report, on the wire and on
  * screen.
  *
@@ -34183,18 +34152,20 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * photographed mid-transition, so their colours were a phase of a 120 ms fade
  * rather than the surface's paint.
  *
- * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
- * Because the window is the app's own, its requests pass the desktop plane's
- * frame gate, and with `--backend` the whole send path is real: the daemon is
- * the run's own, the message it admits is read back from its history route,
- * and the two transient states are photographed with disclosed harness aids —
- * the daemon's process is PAUSED by exact pid for the `sending` frame and
- * resumed in a `finally` (the same request then completes), and the composer's
- * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
- * aids are page/process-level, neither changes shipped code, and the README
- * names them beside the frames. Without `--backend` the send ends in the
- * transport refusal — the error state with the draft kept — and the `sending`
- * / `sent` frames are simply not taken.
+ * THE LIVE SEND, AND THE ONE HARNESS AID THAT MAKES ITS STILL POSSIBLE (M-B1;
+ * QA round 2, Q5/Q6). Because the window is the app's own, its requests pass
+ * the desktop plane's frame gate, and with `--backend` the whole send path is
+ * real: the daemon is the run's own, the message it admits is read back from
+ * its history route, and the `sent` state is photographed by stretching the
+ * composer's own 600 ms flash timer in the page — a page-level aid, disclosed
+ * here and in the README, not a shipped change. A `sending` frame is NOT taken
+ * here, and no daemon is ever paused: the technique that used to hold one
+ * (SIGSTOP by exact pid) photographed the resting box because no in-flight
+ * state exists on this surface, and it was unreliable on its own terms — the
+ * send walk below carries that evidence. The real sending state is QA's
+ * with-backend capture, taken from the app's own signal. Without `--backend`
+ * the send ends in the transport refusal — the error state with the draft kept
+ * — and the `sent` frame is simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
  * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
@@ -35627,7 +35598,7 @@ async function main() {
 	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
-			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
