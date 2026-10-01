@@ -578,15 +578,29 @@ export function entitySectionGap(previousDrawsRows: boolean): string {
  * SEMANTICS ARE THE GATE'S OWN, deliberately untidied: the query is NOT trimmed
  * here (the caller's is), and the comparison is `toLocaleLowerCase` on both
  * sides, which is the same case rule `chat-search.ts` states for the list.
+ *
+ * AND A ROW IS ALSO FOUND BY THE WORDS A READER SEES (the team-labels change,
+ * 2026-09-30). A team carries a slug `name` and an optional display `label`, and
+ * the sidebar draws the label - so after this change a query for `release-crew`
+ * would drop a team drawn as `Release Engineering` unless the gate read the
+ * visible word too, which is the defect the label work exists to remove one
+ * surface over. The arm is OPTIONAL because only teams have a label: an agent
+ * row passes nothing and keeps exactly the gate it had. Both spellings are
+ * matched rather than the label replacing the slug, because the slug is still
+ * the word a power user types and `/team <slug>` is still how the team is
+ * addressed.
  */
 export function entityQueryAdmits(
 	name: string,
 	rowCount: number,
 	query: string,
+	label?: string,
 ): boolean {
 	if (!query) return true;
 	return (
-		name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) || rowCount > 0
+		name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) ||
+		(label ?? "").toLocaleLowerCase().includes(query.toLocaleLowerCase()) ||
+		rowCount > 0
 	);
 }
 

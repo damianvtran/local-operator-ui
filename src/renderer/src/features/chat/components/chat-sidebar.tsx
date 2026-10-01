@@ -29,6 +29,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -1273,6 +1274,35 @@ export function ChatSidebar({
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
 	/*
+	 * THE TEAM LABEL LOOKUP, built from the catalogue this component already
+	 * fetches and read by every surface that carries only a binding's SLUG: the
+	 * session rows' `· <team>` slot, the row flyout's binding clause, and the
+	 * Teams section's own entity rows. A slug the catalogue cannot resolve - the
+	 * gate is off, the list is still landing, the team was deleted - reads as
+	 * the slug itself, which is exactly the pixels those surfaces drew before
+	 * labels existed, so nothing here can blank a name.
+	 *
+	 * Both halves of this file's label work live here rather than beside their
+	 * consumers: the sidebar owns the catalogue read, so the map it builds is the
+	 * ONE resolution every surface in the tree reads - which is what keeps a
+	 * session row, the header and the Projects surfaces from disagreeing about
+	 * the same team (the fold that merged #721's hub marks kept both blocks:
+	 * they are additive, each with its own `useMemo`/hook, and neither depends
+	 * on the other's order).
+	 */
+	const teamLabels = useMemo(
+		() =>
+			new Map(
+				(teams.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+			),
+		[teams.data],
+	);
+	/** A team slug as a person reads it: its label, or the slug itself. */
+	const teamLabelFor = useMemo(
+		() => (name: string) => teamLabels.get(name) ?? name,
+		[teamLabels],
+	);
+	/*
 	 * THE HUB'S UPDATE MARKS (design B6). One store read, polled at 60 s, gated on
 	 * its own capability so a backend that predates it is never asked. The marks
 	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
@@ -2299,8 +2329,24 @@ export function ChatSidebar({
 				pinFactValues,
 				archiveView,
 				bindingOfHit,
+				/*
+				 * The local label arm reads the same resolver the row slots render
+				 * with (round 1, R1-3c): a conversation drawn under a team's label
+				 * is found by that label's words, while the slug keeps matching
+				 * through the binding itself.
+				 */
+				teamLabelFor,
 			),
-		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
+		[
+			listed,
+			heldRows,
+			query,
+			hits,
+			pinFactValues,
+			archiveView,
+			bindingOfHit,
+			teamLabelFor,
+		],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -3513,6 +3559,20 @@ export function ChatSidebar({
 	 */
 	const teamName = (row: CanonicalSessionRow) => row.binding?.team ?? "";
 	/*
+	 * THE BINDING AS A READER SAYS IT, for the two human channels the binding
+	 * reaches (the row's `· <binding>` slot and the flyout's `(...)` clause): a
+	 * TEAM binding resolves through the label lookup, an agent name passes
+	 * through untouched. Deliberately a SIBLING of `bindingName` rather than a
+	 * change to it - `bindingName` is also what `rowTrailingStatement` and the
+	 * stutter rule read to DECIDE, and decisions stay on the slug; only what the
+	 * pixels and the flyout SAY changes.
+	 */
+	const bindingDisplayName = (row: CanonicalSessionRow) => {
+		const team = row.binding?.team;
+		if (team) return teamLabelFor(team);
+		return row.binding?.agent ?? "";
+	};
+	/*
 	 * Who opened a conversation, when an AGENT did rather than the operator.
 	 *
 	 * Read from the PRESENCE of `opened_by`, never from the members inside it: the
@@ -3592,7 +3652,12 @@ export function ChatSidebar({
 		const name = bindingName(row);
 		if (!name) return "";
 		if (row.opened_by?.agent?.trim() === name) return "";
-		return ` (${name})`;
+		/*
+		 * The drawn value is the READER's: a team binding reads as its label. The
+		 * stutter test above stays on the raw slug, because it asks whether the
+		 * attribution names the same profile - a decision, not a rendering.
+		 */
+		return ` (${bindingDisplayName(row)})`;
 	};
 	/*
 	 * The two states the box can be in while it has no answer, and why they are
@@ -3643,6 +3708,11 @@ export function ChatSidebar({
 			pinFactValues,
 			archiveView,
 			bindingOfHit,
+			/* The same label arm as the live join (round 1, R1-3c): the
+			 * comparison has to price the stale answer against the local
+			 * fallback under ONE matching rule, or the line can claim a
+			 * difference that is only the two calls disagreeing. */
+			teamLabelFor,
 		);
 	}, [
 		answered,
@@ -3652,6 +3722,7 @@ export function ChatSidebar({
 		pinFactValues,
 		archiveView,
 		bindingOfHit,
+		teamLabelFor,
 		query,
 	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
@@ -4196,7 +4267,7 @@ export function ChatSidebar({
 					   marker used to speak for still says ", opened by coder" — and a
 					   marked or unstarted one reads exactly as before. */
 					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {teamName(row)}
+						· {teamLabelFor(teamName(row))}
 					</span>
 				)}
 				{trailing === "binding" && (
@@ -4213,7 +4284,7 @@ export function ChatSidebar({
 					   two literals are `shrink-0`: they cannot grow, so they cannot
 					   starve anything. */
 					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingName(row)}
+						· {bindingDisplayName(row)}
 					</span>
 				)}
 				{trailing === "not_sent" && (
@@ -5596,6 +5667,23 @@ export function ChatSidebar({
 	const entity = (kind: ChatTarget["kind"], name: string, pinKey = name) => {
 		const rows = scopeRows(kind, name);
 		const key = catalogueScopeKey(kind, name);
+		/*
+		 * THE NAME A PERSON READS, beside the slug every lookup in this function
+		 * addresses. Teams resolve through the catalogue's label lookup; agents
+		 * render unchanged (labels are a team field). The staging press, the
+		 * agents-route URL and every scope key below keep reading `name`.
+		 */
+		const displayName = kind === "team" ? teamLabelFor(name) : name;
+		/*
+		 * The tooltip the name span carries (design round 1, D2/D4): `Label (slug)`
+		 * when the two differ - the row truncates long labels, the slug is the
+		 * string every other surface addresses the team by, and hovering is how a
+		 * clipped name is read whole or recovered - and the plain name otherwise,
+		 * so even a truncated slug stays readable. The button's own title keeps
+		 * naming the ACTION it runs.
+		 */
+		const nameTitle =
+			displayName !== name ? `${displayName} (${name})` : displayName;
 		const open = Boolean(query) || isOpen(key);
 		/*
 		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
@@ -5705,8 +5793,12 @@ export function ChatSidebar({
 		 * #663, UX round 1's U1): the roster filter's empty sentence has to count
 		 * what actually draws, so the row and the count share ONE spelling of the
 		 * rule - `entityQueryAdmits` carries it and its reasons.
+		 *
+		 * `displayName` rides in as the gate's optional label arm: a team drawn as
+		 * `Release Engineering` stays findable by the words on screen as well as by
+		 * the `release-crew` slug a power user types (the team-labels change).
 		 */
-		if (!entityQueryAdmits(name, rows.length, query)) return null;
+		if (!entityQueryAdmits(name, rows.length, query, displayName)) return null;
 		const Icon = kind === "team" ? Users : Bot;
 		/*
 		 * Whether THIS entity is the row a staged draft belongs to.
@@ -5743,7 +5835,7 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
-						aria-label={`${open ? "Collapse" : "Expand"} ${name} chats`}
+						aria-label={`${open ? "Collapse" : "Expand"} ${displayName} chats`}
 						aria-expanded={open}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -5803,11 +5895,13 @@ export function ChatSidebar({
 						// not using AT. It duplicates the accessible name for screen
 						// reader users, which is redundant but not announced twice —
 						// `aria-label` wins and `title` is ignored as a naming source.
-						aria-label={`New chat with ${name}`}
-						title={`New chat with ${name}`}
+						aria-label={`New chat with ${displayName}`}
+						title={`New chat with ${displayName}`}
 					>
 						<Icon className="size-4 shrink-0" />
-						<span className="min-w-0 flex-1 truncate">{name}</span>
+						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
+							{displayName}
+						</span>
 						<MessageSquarePlus
 							className={cn(
 								// `ink`, not `ink-muted`: this glyph names what the row
@@ -5955,7 +6049,7 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
 							!staged && "hover:bg-row-hover",
 						)}
-						aria-label={`Manage ${name}`}
+						aria-label={`Manage ${displayName}`}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
 						}
@@ -6144,8 +6238,8 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${name}`}
-									title={`${foot.aria} in ${name}`}
+									aria-label={`${foot.aria} in ${displayName}`}
+									title={`${foot.aria} in ${displayName}`}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
