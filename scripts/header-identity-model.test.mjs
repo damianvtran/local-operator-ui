@@ -188,6 +188,34 @@ test("the current marking is the label's own value, including the implicit manag
 	assert.equal(view.teamValue, "lopdev");
 });
 
+test("a team's label is what the control READS; the value stays the slug", () => {
+	/*
+	 * The label split's rule for this control: `teamValue` - what a switch
+	 * sends and what the menu marks current - is the slug, and `teamLabel` -
+	 * what a person sees and what the accessible name contains - is the
+	 * catalogue row's label when it has one. A slug the list cannot resolve
+	 * (still loading, or deleted since it was bound) reads as itself, which is
+	 * the pre-labels string rather than a blank.
+	 */
+	const labelled = [
+		{ name: "lopdev", label: "Local Operator Dev", manager: "manager" },
+	];
+	const view = resolveHeaderIdentity({ boundTeam: "lopdev", teams: labelled });
+	assert.equal(view.teamValue, "lopdev");
+	assert.equal(view.teamLabel, "Local Operator Dev");
+
+	const unknown = resolveHeaderIdentity({ boundTeam: "gone", teams: labelled });
+	assert.equal(unknown.teamValue, "gone");
+	assert.equal(unknown.teamLabel, "gone");
+
+	// A label of nothing but spaces is the absent field, not a blank name.
+	const blank = resolveHeaderIdentity({
+		boundTeam: "lopdev",
+		teams: [{ name: "lopdev", label: "   ", manager: "manager" }],
+	});
+	assert.equal(blank.teamLabel, "lopdev");
+});
+
 test("the gate: shown only for a live session on a capable backend", () => {
 	const shown = (over = {}) =>
 		headerIdentityControlsShown({
