@@ -802,6 +802,111 @@ const receiptsTurn = (): TranscriptState => {
 	});
 };
 
+/**
+ * THE OPERATOR'S EXACT SHAPE FOR THE COMPLETION-VISIBILITY CHANGE
+ * (`U T88 A1(stop) W T3 A2(stop) K`), read durably.
+ *
+ * Why it is its own fixture. No other cell in this file renders a run whose
+ * FULSOME completion answers real work, is continued past by a wake, and is then
+ * followed by a SHORT reply: `Collapsed`/`Restored` end on their one answer, and
+ * `Receipts`/`Pinned` hold their receipts among calls with no completion before
+ * the close. The complaint was this shape - the substance sat in `A1`, the
+ * shipped fold kept only the last close visible, so `A1` was inside the bar and
+ * "I have to click to expand" to read it.
+ *
+ *   U   the question
+ *   T88 eighty-eight calls of real work (one bar: 1 to 88)
+ *   A1  the FULSOME completion, settled `stop_reason: "stop"` (the provider's
+ *       own declaration that the model had finished) - the row the change keeps
+ *       out of the bar
+ *   W   the wake that re-enters the run after A1 (a `wake_prompt` receipt; a
+ *       collapsed span holds it, so it is not a visible row)
+ *   T3  three calls the wake prompted (the second bar)
+ *   A2  the SHORT reply, also `stop` - the run's elected answer, which keeps the
+ *       foot and the one stamp
+ *   K   the closed receipt the disposal leaves after the reply
+ *
+ * What the frame must show: both completions visible, one bar (88 actions) above
+ * A1 and a second (3 actions) between A1 and A2, the stamp on A2 only. On the
+ * pre-change tree A1 is inside the bar. The before half is this same cell
+ * captured from the base tree (copy this story file into a base worktree and
+ * serve that Storybook - it reads only the shipped reducer and transcript, so it
+ * renders there unchanged). The fixture's partition was checked by `partitionRun`
+ * directly: visible rows are A1, A2 and K; hidden spans are T1-T88 and W+T3.
+ *
+ * The text is fiction written for the cell, shaped like the journal's lengths
+ * (a multi-paragraph close, then a one-line reply); no journal prose is quoted.
+ */
+const FULSOME_CLOSE = [
+	"All 88 steps are done, and the invoice export is complete.",
+	"What changed: the late-invoice query now joins the credit ledger, so credits issued after the due date no longer count as paid on time. Four invoices were late in September: 1042, 1088, 1103 and 1177.",
+	"What I verified: the totals match the ledger to the cent, the export has 214 rows, and the card-expiry pattern holds for three of the four.",
+	"Still open: invoice 1177 has no card on file at all, which I left for you to decide.",
+].join("\n\n");
+const SHORT_REPLY = "The collector is staged and the export is attached.";
+
+const completionsBothVisibleTurn = (): TranscriptState => {
+	type Entry = DesktopHistoryPage["entries"][number];
+	const S = TS / 1000;
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	const customEntry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "custom", payload });
+	const call = (n: number, ts: number): Entry =>
+		entry(`t${n}`, ts, {
+			kind: "message",
+			role: "tool",
+			tool_call_id: `c${n}`,
+			tool_name: n % 3 === 0 ? "read" : "bash",
+			content: [{ type: "text", text: `c${n} done\n` }],
+			provider_payload: { duration_s: 1.5, details: {} },
+		});
+	const work = Array.from({ length: 88 }, (_, i) => call(i + 1, S + 2 + i * 2));
+	const followUp = [89, 90, 91].map((n, i) => call(n, S + 215 + i * 3));
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			...work,
+			entry("a1", S + 185, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: FULSOME_CLOSE }],
+				stop_reason: "stop",
+			}),
+			entry("w1", S + 205, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				details: {
+					text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nCollect the staged records.",
+				},
+			}),
+			...followUp,
+			entry("a2", S + 230, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: SHORT_REPLY }],
+				stop_reason: "stop",
+			}),
+			customEntry("k1", S + 231, {
+				custom_type: "completion_attention",
+				details: { anchor: "k1", kind: "closed" },
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
 const Frame = ({
 	transcript,
 	caption,
@@ -878,12 +983,20 @@ export const Expanded: Story = {
 	),
 };
 
-/** §5 case 5: the steer is part of the run it interrupted. */
+/**
+ * §5 case 5: the steer is part of the run it interrupted.
+ *
+ * Changed by the completion-visibility invariant (V3: a `user` row is never
+ * hidden by a collapsed span). Before it, one `Steered` bar hid the reader's
+ * second message; now that message stays visible in place with a bar on each
+ * side and no bar is labelled `Steered`. The committed `steering` before/after
+ * frames under `docs/evidence/chat-turn-collapse*` predate this and are stale.
+ */
 export const Steering: Story = {
 	render: () => (
 		<Frame
 			transcript={steeredTurn()}
-			caption="A turn steered mid-run — the second question arrived while the first answer was being written."
+			caption="A turn steered mid-run — the second question stays visible where it arrived, with a bar of work on each side."
 		/>
 	),
 };
@@ -939,12 +1052,22 @@ export const Running: Story = {
 	),
 };
 
-/** §5 case 3, named by design round 1 (D4a): narration only, no calls. */
+/**
+ * §5 case 3, named by design round 1 (D4a): narration only, no calls.
+ *
+ * Changed by the completion-visibility invariant (V1): the narration (`n1`)
+ * and the answer (`a1`) are both closes of a response cycle, so both stay
+ * visible and this cell now renders NO bar - there is no span left to condense.
+ * The committed `narration` before/after frames under
+ * `docs/evidence/chat-turn-collapse*` show the old one-bar screen and are stale.
+ * The shape that still folds a narration-only span (a commentary close that is
+ * not the run's last) is covered by `scripts/turn-collapse-model.test.mjs`.
+ */
 export const Narration: Story = {
 	render: () => (
 		<Frame
 			transcript={narrationTurn()}
-			caption="Narration between the question and the answer — no calls, so the bar is the span alone."
+			caption="Narration between the question and the answer — no calls, so there is nothing to condense: both stay visible and no bar is drawn."
 		/>
 	),
 };
@@ -1041,7 +1164,7 @@ export const Images: Story = {
 
 /**
  * The overflow case, on a frame: eight pictures cost one capped row of four
- * tiles and the `+4 more images` control, the same strip the group fold draws.
+ * tiles and the `+4` control (named `4 more images`), the same strip the group fold draws.
  * The capture's press row is the control's one-press reveal (U8): the bar opens
  * onto its sole group, whose strip shows the whole set.
  *
@@ -1055,6 +1178,111 @@ export const ImagesMany: Story = {
 		<Frame
 			transcript={finishedTurn(MANY_IMAGE_CALLS)}
 			caption="A span that produced eight pictures — the count control whose press reaches the whole set."
+		/>
+	),
+};
+
+/**
+ * THE COMPLETION-VISIBILITY CELL: a fulsome completion, a wake, a short reply -
+ * both completions on screen, the work between them condensed (see
+ * `completionsBothVisibleTurn` for the row-by-row fixture). The caption is
+ * fixture-level so it reads true on the pre-change tree too, where the fulsome
+ * close is inside the bar.
+ */
+export const CompletionsBothVisible: Story = {
+	render: () => (
+		<Frame
+			transcript={completionsBothVisibleTurn()}
+			caption="A long run that answered, was woken, and replied again — the first completion, the wake, and the short reply."
+		/>
+	),
+};
+
+/**
+ * THE OPERATOR'S FRESH CONVERSATION (the shape the run-closure predicate change
+ * is about, 2026-09-30).
+ *
+ * WHY THIS CELL EXISTS. The defect the predicate change fixes is only visible on
+ * a conversation that has just started: the transcript's FIRST row is a harness
+ * statement, not a `user` row, and `walkTurns` used to open a head-cut run on it
+ * whose `openingUserIndex` was null - so the reader's own first message arrived
+ * with `closed()` false, was absorbed as a STEER, and disappeared inside the very
+ * first bar under the label `Steered`. The operator's report was exactly this:
+ * "my initial message ended up condensed, which is unexpected". A frame is the
+ * evidence for a row that was hidden and a label that was wrong, and no shipped
+ * story rendered this shape (design's own finding, agent review round 1's frame
+ * prerequisite), which is why the capture could not exist until this cell did.
+ *
+ * THE ROW IS THE ONE THE OPERATOR SAW: `session_mcp_unavailable` at level `info`
+ * (`transcript-reducer.ts`'s `customRow`), the harness's MCP verdict - a
+ * statement that paints and is NOT a boundary, which is why the vocabulary clause
+ * alone cannot fix this shape and `nothingHasRunYet` is the clause that has to
+ * (`scripts/turn-partition-predicate.test.mjs`, shape (b)).
+ *
+ * BUILT THROUGH THE LIVE DOOR, because that is the door a fresh conversation's
+ * prefix row comes through: a harness custom has no live event of its own - the
+ * `applyEvent` switch has no `custom` arm - so it arrives as a `history_delta`
+ * row, the same projection `applyHistoryPage` paints (`payload.kind` is derived
+ * from `custom_type` there). The reader's message and the answer then arrive as
+ * ordinary live frames, stamped from the same frozen instant as every other cell
+ * so the frames stay byte-reproducible.
+ *
+ * WHAT THE PAIR DIFFERS BY (the capture is deferred - see the PR's evidence
+ * section: the disk floor aborted the sweep at 4.4 GiB free against 8 GiB). The
+ * before half is this same cell on the pre-change tree, where the statement, the
+ * message and the call fold into ONE bar that says `Steered` and hides the
+ * reader's own sentence; after the change the statement stands on its own (an
+ * empty preamble never condenses) and the reader's turn keeps its own bar over
+ * its own work.
+ */
+const MCP_WARNING =
+	"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone for now.\nReason: /mcp reauth minerva-qa — sign-in expired\nIts tools are not callable until the user restores it, and the agent should not retry them in a loop.";
+
+const FRESH_ANSWER =
+	"It is unavailable until you run the reauth command, so I will work without it.";
+
+const freshConversationTurn = (): TranscriptState => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "history_delta",
+			messages: [
+				{
+					id: "w1",
+					custom_type: "session_mcp_unavailable",
+					details: { text: MCP_WARNING },
+				},
+			],
+		},
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: userMessage("u1", QUESTION) },
+		TS + 1_000,
+	);
+	state = runCalls(state, [CALL_B], TS + 3_000);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 9_000,
+	);
+	return applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", FRESH_ANSWER) },
+		TS + 10_000,
+	);
+};
+
+/**
+ * The cell itself. `caption` names the fixture rather than the claim, per this
+ * file's rule, so it reads true on both halves of the deferred pair.
+ */
+export const FreshConversation: Story = {
+	render: () => (
+		<Frame
+			transcript={freshConversationTurn()}
+			caption="A fresh conversation — the harness's MCP warning above the reader's own first message and a short answer."
 		/>
 	),
 };

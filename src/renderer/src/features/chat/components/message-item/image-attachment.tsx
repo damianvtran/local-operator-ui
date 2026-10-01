@@ -36,12 +36,11 @@ type BaseImageAttachmentProps = {
 	 * produced without every image-bearing group costing the height of a full
 	 * figure, and the click that expands to `full` is the same click either way.
 	 *
-	 * The thumbnail is the attachment frame's own floor (`min-h-16`, 64px) used as
-	 * the height of a fixed 96x64 SLOT rather than as a shrink-wrap ceiling: it is
-	 * the smallest tile this system already draws, so a thumbnail is an existing
-	 * measure used in a new place rather than a fourth one nobody has looked at,
-	 * and the fixed width is what keeps a row of tiles a grid when the pictures in
-	 * it have different aspects.
+	 * The thumbnail is a fixed 115x76 SLOT (a 117x78 tile with its 1px border)
+	 * rather than a shrink-wrap ceiling: 3:2, the fixtures' own aspect, sized so
+	 * four tiles and the `+N` control fit one row at the narrowest column this
+	 * renders in (see `FOLD_MEDIA_LIMIT`), and the fixed width is what keeps a row
+	 * of tiles a grid when the pictures in it have different aspects.
 	 */
 	size?: ImageSize;
 };
@@ -59,9 +58,9 @@ type BaseImageAttachmentProps = {
  * picture's own box is written, or a later change to the box reads the preflight
  * as permission rather than as a guard.
  *
- * `thumbnail` is a SLOT, not a shrink-wrap, and the fixed 96x64 is the point. A
+ * `thumbnail` is a SLOT, not a shrink-wrap, and the fixed 115x76 is the point. A
  * tile sized by its own picture made the strip a ragged grid — a 200x360 portrait
- * drew 36px wide beside 96px landscapes, so the least legible picture got the
+ * drew 36px wide beside 115px landscapes, so the least legible picture got the
  * least room — and it also made the wrap count depend on which aspect happened to
  * be in the row (design review round 1, D4). `object-contain` inside the fixed
  * slot letterboxes the picture on the frame's own ground instead: every tile is
@@ -72,7 +71,27 @@ export type ImageSize = "full" | "thumbnail";
 
 const PICTURE_CLASS: Record<ImageSize, string> = {
 	full: "max-h-[240px] max-w-full object-contain",
-	thumbnail: "h-16 w-24 object-contain",
+	thumbnail: [
+		/*
+		 * 115x76, the picture box inside a 1px reserved border (117x78): 3:2, the
+		 * fixtures' own aspect, so a landscape capture fills it and a different
+		 * aspect letterboxes on the tile's own ground. The same number lives in
+		 * `canonical-image.tsx` (the reserved box) and `attachment-frame.tsx` (the
+		 * failed receipt): all three must move together or the slot changes size
+		 * between states.
+		 *
+		 * THE HOVER ZOOM IS HERE, on the picture, clipped by the frame's
+		 * `overflow-hidden`: the tile's silhouette and its neighbours never move
+		 * (the one form of "lift" that cannot break layout), bounded by the 8px
+		 * gutter (1.068 at this width) and set to 1.04. `motion-safe:` so a reader
+		 * with reduced motion gets NO zoom and the hover cue is the edge alone - a
+		 * state, not a movement. See `fold-media.tsx` for the branding section 4
+		 * exception this is.
+		 */
+		"h-[76px] w-[115px] object-contain",
+		"motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-quart",
+		"motion-safe:group-hover/tile:scale-[1.04]",
+	].join(" "),
 };
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
@@ -321,7 +340,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						// `AttachmentFrame`'s own `min-h-16`/`min-w-16` already floors
 						// the TILE, which is the level where a small picture should be
 						// centred rather than stretched. The thumbnail's own portrait case
-						// is answered at the SLOT instead (a fixed 96x64 box every tile
+						// is answered at the SLOT instead (a fixed 115x76 box every tile
 						// shares), not by a width floor on the image.
 						PICTURE_CLASS[size],
 						// The picture is invisible, not absent, until it decodes:
@@ -342,7 +361,19 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 				<button
 					ref={pictureRef}
 					type="button"
-					className={cn("block max-w-full cursor-pointer")}
+					className={cn(
+						"block max-w-full cursor-pointer",
+						/*
+						 * The tile's own named group (the thumbnail only): the frame's
+						 * returning edge and the picture's zoom answer to THIS button, not
+						 * to the wrapper's unnamed `group` that the file-actions menu keys
+						 * its reveal on. `rounded-sm` so the app's global focus ring follows
+						 * the frame's 6px radius instead of drawing a square around a
+						 * rounded tile (design round, D4): the outline is drawn on this
+						 * button, which had no radius of its own.
+						 */
+						size === "thumbnail" && "group/tile rounded-sm",
+					)}
 					onClick={() => setExpanded(true)}
 					/*
 					 * `aria-label` rather than the picture's own `alt` as the name. The

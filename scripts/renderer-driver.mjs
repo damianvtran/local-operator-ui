@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -16643,6 +16643,13 @@ async function sceneApprovalBadges(cdp) {
 	 * audit. Same function, both slots.
 	 */
 	const reading = (label, ok, text) => check(label, ok, text, text);
+	/*
+	 * The count staged for the three-digit state below. 128 is the smallest three-digit
+	 * number that is not a round one, so a frame that renders it cannot be mistaken for
+	 * a placeholder or a capped "99+", and it is well past the consent queue's own cap
+	 * of 16 - which is what makes the state one only the seam can produce.
+	 */
+	const THREE_DIGIT_COUNT = 128;
 	const hello = await verb(cdp, "hello");
 	reading(
 		"the renderer reports this run's frames directory",
@@ -16677,15 +16684,57 @@ async function sceneApprovalBadges(cdp) {
 		 */
 		let conversation = null;
 		if (BACKEND) {
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-all-chats"]',
-			});
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-session-row"]',
-			});
+			/*
+			 * A CONVERSATION HAS TO BE OPEN for the header half, and the app's own path to
+			 * one is three steps: the run's backend must HAVE one, the list must paint its
+			 * row, and the row must be pressed. This block got it wrong twice - the press
+			 * `[data-tour-tag="chat-all-chats"]` had no home in `src/` at this head, so it
+			 * threw and took the whole `--backend` half down with it (QA round 1, Q4), and
+			 * a row that has not painted yet cannot be pressed, so a merely GUARDED press
+			 * still left `activeSessionId: null` and the header half unreachable while the
+			 * run looked fine (QA round 2, Q5). The shape now is the one the file's newer
+			 * scenes already use (`sceneHitZones`, `sceneComposer` - named rather than cited
+			 * by line, because this file moved under those citations twice in review):
+			 * create the conversation on this run's own backend, press the disclosure only if
+			 * the app rendered it, then WAIT for the row and press it.
+			 */
+			const created = await createBackendSession();
+			note("a conversation on this run's own backend", JSON.stringify(created));
+			if (await drawnSelector(cdp, '[data-tour-tag="chat-all-chats"]')) {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="chat-all-chats"]',
+				});
+			}
+			const rowSelector = '[data-tour-tag="chat-session-row"]';
+			let rowPressed = false;
+			const rowDeadline = Date.now() + 20_000;
+			while (Date.now() < rowDeadline) {
+				if (await drawnSelector(cdp, rowSelector)) {
+					await verb(cdp, "press", { selector: rowSelector });
+					rowPressed = true;
+					break;
+				}
+				await wait(500);
+			}
+			await wait(600);
 			const live = await verb(cdp, "state");
 			conversation = live.activeSessionId ?? null;
 			note("state (chat, conversation open)", JSON.stringify(live));
+			/*
+			 * THE CLAIM IS THE OPEN, NOT THE PRESS (review round 3, F8): a press that lands
+			 * on a row the app has not wired yet still leaves `activeSessionId` null, and the
+			 * conversation-gated header claims are then skipped by their own guards while
+			 * this reading reports success. And the text is the READING rather than the
+			 * failure, because `reading` prints its third argument on PASS as well as on
+			 * FAIL (review round 3, F9).
+			 */
+			reading(
+				"the conversation row opened, so the header half has something to read",
+				rowPressed && conversation !== null,
+				`row ${
+					rowPressed ? "pressed" : "never appeared within 20s"
+				}, activeSessionId ${conversation ?? "null"}`,
+			);
 		} else {
 			note(
 				"no conversation",
@@ -16789,8 +16838,8 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: drawn.railBadge, name: drawn.railName }),
 		);
 		reading(
-			"the badge does not move the rail's label, and the row is still 32px",
-			drawn.railButton.height === 32 &&
+			"the badge does not move the rail's label, and the row is still 30px",
+			drawn.railButton.height === 30 &&
 				(quiet.railButton === null ||
 					quiet.railButton.height === drawn.railButton.height) &&
 				(quiet.railLabel === null || quiet.railLabel.x === drawn.railLabel.x),
@@ -16945,18 +16994,29 @@ async function sceneApprovalBadges(cdp) {
 
 		/*
 		 * 5. COLLAPSED. The rail's own geometry is the risky half: a 16px badge cannot sit
-		 * outside a 48px rail, and the offset has to clear the 16px glyph inside a 32px
+		 * outside a 56px rail, and the offset has to clear the 16px glyph inside a 30px
 		 * button. The numbers are the claim; the frame is the picture of it.
+		 *
+		 * THE GEOMETRY READINGS HERE WERE RE-DERIVED FROM THE TREE (2026-09-30), and the
+		 * reason is the repo's own: the scene outlived the layout it described. It read
+		 * the strip as 48px and the row as 32px when this set's badge work ran, and read
+		 * the rail's container as a `nav`- `closest('nav')` matched nothing on today's
+		 * tree, so `railWidth`/`railEdge` were `null` and every clearance claim below was
+		 * a comparison against nothing. The strip is 56px and the row 30px now (the
+		 * mount the driver reads is `[data-sidebar-shell]` docked and
+		 * `[data-sidebar-strip]` collapsed); the readings are corrected, the claims are
+		 * the same claims.
 		 */
 		await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
 		await wait(400);
 		const collapsed = await readApprovalBadges(cdp);
 		note("badges (three pending, rail collapsed)", JSON.stringify(collapsed));
 		reading(
-			"the collapsed rail is 48px and the badge stays inside it",
-			collapsed.railWidth === 48 &&
+			"the collapsed rail is 56px and the badge stays inside it",
+			collapsed.railWidth === 56 &&
 				collapsed.railBadge !== null &&
-				collapsed.railBadge.right <= 48 &&
+				collapsed.railEdge !== null &&
+				collapsed.railBadge.right <= collapsed.railEdge - 1 &&
 				collapsed.railBadge.x >= 0,
 			JSON.stringify({ rail: collapsed.railWidth, badge: collapsed.railBadge }),
 		);
@@ -16966,10 +17026,11 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify(collapsed.railName),
 		);
 		reading(
-			"the collapsed row is still a 32px square inside the 48px rail",
-			collapsed.railButton.height === 32 &&
+			"the collapsed row is still a 30px row inside the 56px rail",
+			collapsed.railButton.height === 30 &&
 				collapsed.railButton.x >= 0 &&
-				collapsed.railButton.right <= 48,
+				collapsed.railEdge !== null &&
+				collapsed.railButton.right <= collapsed.railEdge - 1,
 			JSON.stringify(collapsed.railButton),
 		);
 		/*
@@ -17038,7 +17099,7 @@ async function sceneApprovalBadges(cdp) {
 		await wait(300);
 		reading(
 			"the rail expands again for the next state",
-			(await readApprovalBadges(cdp)).railWidth === 220,
+			(await readApprovalBadges(cdp)).railWidth === 260,
 			`rail width ${(await readApprovalBadges(cdp)).railWidth}`,
 		);
 
@@ -17080,52 +17141,68 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: crowdedCollapsed.railBadgeText }),
 		);
 		/*
-		 * AND THE MARK DOES NOT REACH BACK OVER THE GLYPH, which is the claim the cap
-		 * used to be asked to make and cannot: `9+` and `13` are the same two
-		 * characters, so the width a cap saves is nil for every count this queue can
-		 * hold. What saves it is the VERTICAL offset: the badge's bottom edge must land
-		 * at or above the glyph's top edge, which at `-top-2` it does.
-		 */
-		/*
 		 * WHAT THE TWO-DIGIT MARK DOES TO THE ICON, stated as measurements rather than
 		 * as a promise it cannot keep. At two characters the pill is ~25px wide and its
 		 * left edge reaches back over the icon's crown, exactly as the chat header's
-		 * badge crosses its own trigger's glyph - so the claim here is the reason the
-		 * collapse is safe there: the badge carries a `ring-2`, and the ring's 2px of
-		 * outward paint must stay inside the rail's own 1px border. The badge's box is
-		 * allowed to kiss the glyph; the rail's edge is not allowed to eat the mark.
+		 * badge crosses its own trigger's glyph. The QUIET register changed what this
+		 * claim is about (operator restyle, 2026-09-30): the mark no longer carries a
+		 * `ring-2`, so its own box is its whole boundary and the rail's edge may not
+		 * eat it — while the numeral's ink, not any edge, is what keeps the count
+		 * legible (contrast-contract's `rail approval badge (quiet)` row).
 		 */
 		reading(
-			"the two-digit mark and its ring stay inside the rail's edge",
+			"the two-digit mark stays inside the rail's edge",
 			crowdedCollapsed.railBadge !== null &&
 				crowdedCollapsed.railEdge !== null &&
-				crowdedCollapsed.railBadge.right + 2 <= crowdedCollapsed.railEdge - 1,
+				crowdedCollapsed.railBadge.right <= crowdedCollapsed.railEdge - 1,
 			JSON.stringify({
 				badge: crowdedCollapsed.railBadge,
 				railEdge: crowdedCollapsed.railEdge,
-				ringClearance:
+				clearance:
 					crowdedCollapsed.railBadge !== null &&
 					crowdedCollapsed.railEdge !== null
-						? crowdedCollapsed.railEdge - (crowdedCollapsed.railBadge.right + 2)
+						? crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right
 						: null,
 			}),
 		);
+		/*
+		 * THE MARK'S PAINT, which is the whole of the restyle, read from the computed
+		 * style rather than from a class: the ring and the border that used to BE the
+		 * boundary are gone (`boxShadow: none`, `border-width: 0px`), and the numeral
+		 * is the quiet register's — `text-meta-sm` (11px) at weight 400 in `ink-dim`,
+		 * where the old mark was a 12px medium `ink`. A background still paints, so
+		 * the shape is a subtle step and not nothing.
+		 */
 		reading(
-			"and the two-digit mark crosses the icon by no more than the ring it carries",
-			crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railIcon !== null &&
-				crowdedCollapsed.railBadge.y + crowdedCollapsed.railBadge.height <=
-					crowdedCollapsed.railIcon.y + 2,
+			"the mark is borderless and ringless: its box is its whole boundary",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.boxShadow === "none" &&
+				Number.parseFloat(crowdedCollapsed.railBadgeStyle.borderTopWidth) === 0,
+			JSON.stringify(crowdedCollapsed.railBadgeStyle),
+		);
+		reading(
+			"the numeral is the count family's: 11px, weight 400, ink-dim on elevated",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.fontSize === "11px" &&
+				crowdedCollapsed.railBadgeStyle.fontWeight === "400" &&
+				crowdedCollapsed.railBadgeStyle.color ===
+					crowdedCollapsed.railInkDimRgb &&
+				crowdedCollapsed.railBadgeStyle.backgroundColor ===
+					crowdedCollapsed.railElevatedRgb,
 			JSON.stringify({
-				badge: crowdedCollapsed.railBadge,
-				glyph: crowdedCollapsed.railIcon,
+				fontSize: crowdedCollapsed.railBadgeStyle?.fontSize ?? null,
+				fontWeight: crowdedCollapsed.railBadgeStyle?.fontWeight ?? null,
+				color: crowdedCollapsed.railBadgeStyle?.color ?? null,
+				inkDim: crowdedCollapsed.railInkDimRgb,
+				background: crowdedCollapsed.railBadgeStyle?.backgroundColor ?? null,
+				elevated: crowdedCollapsed.railElevatedRgb,
 			}),
 		);
 		reading(
-			"and the capped mark still clears the rail's edge",
+			"and the two-digit mark still clears the rail's edge",
 			crowdedCollapsed.railEdge !== null &&
 				crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 2,
+				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 1,
 			JSON.stringify({
 				railEdge: crowdedCollapsed.railEdge,
 				badgeRight: crowdedCollapsed.railBadge?.right ?? null,
@@ -17189,6 +17266,42 @@ async function sceneApprovalBadges(cdp) {
 			);
 			await captureSettled(cdp, `approval-badges-cleared-${suffix}`);
 		}
+
+		/*
+		 * 6. THREE DIGITS, the third state the operator asked to see and the one the
+		 * queue itself cannot reach: the consent queue caps at 16, so no live run draws
+		 * a three-digit count on this mark. It is staged through the armed dev driver's
+		 * `stageLiveConsents` verb - pending REQUESTS published through the store's own
+		 * path, granting and deciding nothing - so the numeral, the mark's geometry and
+		 * the row's accessible name are all the shipped code, on a synthetic input.
+		 * DISCLOSED AS THE SEAM: this is the only state in this scene that a real run
+		 * does not produce, and it is why the verb exists (QA round 1, Q1: the verb had
+		 * no caller, so the README claimed a three-digit frame the instrument could not
+		 * reach).
+		 *
+		 * THE THEME ENDS QUIET AGAIN. The staged snapshot is replaced by a zero-count
+		 * one, because the next theme's first claim is that nothing pending draws
+		 * nothing - made about a quiet rail, not about the leak from this step.
+		 */
+		await verb(cdp, "stageLiveConsents", { count: THREE_DIGIT_COUNT });
+		await waitForBadge(cdp, THREE_DIGIT_COUNT);
+		const threeDigits = await readApprovalBadges(cdp);
+		note("badges (three digits, staged)", JSON.stringify(threeDigits));
+		reading(
+			"a three-digit count renders, uncapped, inside the rail's edge",
+			threeDigits.railBadgeText === String(THREE_DIGIT_COUNT) &&
+				threeDigits.railBadge !== null &&
+				threeDigits.railEdge !== null &&
+				threeDigits.railBadge.right <= threeDigits.railEdge - 1,
+			JSON.stringify({
+				text: threeDigits.railBadgeText,
+				badge: threeDigits.railBadge,
+				railEdge: threeDigits.railEdge,
+			}),
+		);
+		await captureSettled(cdp, `approval-badges-three-digits-${suffix}`);
+		await verb(cdp, "stageLiveConsents", { count: 0 });
+		await waitForBadge(cdp, 0);
 	}
 }
 
@@ -17202,6 +17315,18 @@ async function sceneApprovalBadges(cdp) {
  */
 function readApprovalBadges(cdp) {
 	return cdp.evaluate(`(() => {
+		/*
+		 * The resolved ROLE values, so the paint assertions below compare the mark's
+		 * computed colour against the token it is supposed to wear rather than against
+		 * "some non-empty colour" (review round 1, F3): a regression to text-ink or to a
+		 * transparent background has to FAIL, not pass on a length check.
+		 */
+		const hexToRgb = (hex) => {
+			const c = hex.trim().replace('#', '');
+			if (c.length !== 6) return null;
+			return 'rgb(' + [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(', ') + ')';
+		};
+		const rootStyle = getComputedStyle(document.documentElement);
 		const box = (el) => {
 			if (!el) return null;
 			const r = el.getBoundingClientRect();
@@ -17214,7 +17339,19 @@ function readApprovalBadges(cdp) {
 			};
 		};
 		const railButton = document.querySelector('[data-tour-tag="nav-item-browser"]');
-		const rail = railButton ? railButton.closest('nav') : null;
+		/*
+		 * THE RAIL'S OWN CONTAINER, and it is NOT a nav: the sidebar renders
+		 * [data-sidebar-shell] docked and [data-sidebar-strip] collapsed, and
+		 * this read used closest('nav'), which had matched nothing since the
+		 * element changed - so railWidth/railEdge were null and every clearance
+		 * reading below was a comparison against nothing. The root cause was a
+		 * driver left behind by the tree it photographs; the readings are
+		 * re-derived, not the claims.
+		 */
+		const rail = railButton
+			? (railButton.closest('[data-sidebar-shell]') ??
+				railButton.closest('[data-sidebar-strip]'))
+			: null;
 		const railBadge = railButton
 			? railButton.querySelector('[data-tour-tag="nav-browser-badge"]')
 			: null;
@@ -17247,6 +17384,31 @@ function readApprovalBadges(cdp) {
 			),
 			railBadge: box(railBadge),
 			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
+			railInkDimRgb: hexToRgb(rootStyle.getPropertyValue('--lo-ink-dim')),
+			railElevatedRgb: hexToRgb(rootStyle.getPropertyValue('--lo-elevated')),
+			/*
+			 * THE MARK'S OWN PAINT (operator restyle, 2026-09-30), read from the
+			 * computed style rather than from the class string: a class is a claim
+			 * about intent, the computed value is what the platform draws. The
+			 * quiet register removed the border and the ring, so borderTopWidth and
+			 * boxShadow are the two facts that say the ring is gone, and
+			 * fontSize/fontWeight/color are the subtler numeral.
+			 */
+			railBadgeStyle: railBadge
+				? (() => {
+						const s = getComputedStyle(railBadge);
+						return {
+							borderTopWidth: s.borderTopWidth,
+							borderTopStyle: s.borderTopStyle,
+							boxShadow: s.boxShadow,
+							backgroundColor: s.backgroundColor,
+							color: s.color,
+							fontSize: s.fontSize,
+							fontWeight: s.fontWeight,
+							radius: s.borderTopLeftRadius,
+						};
+					})()
+				: null,
 			railName: railButton ? railButton.getAttribute('aria-label') : null,
 			railCurrent: railButton
 				? railButton.getAttribute('aria-current') !== null
@@ -18749,37 +18911,6 @@ async function daemonGet(path) {
 		/* See daemonPost: the caller reads `status` and `body` then. */
 	}
 	return { path, status: response.status, body: text.slice(0, 400), json };
-}
-
-/**
- * The pids of the daemon `--backend` names, read from the serve records the run
- * linked — the same read `--scene connection-drop` does, with the same three
- * guards (the run's port, a loopback host, and never 1111), because this scene
- * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
- * kills it. Signalling the operator's own daemon is the thing both guards
- * exist to make impossible.
- */
-function runDaemonPids() {
-	if (BACKEND === null) return [];
-	const backendPort = Number(new URL(BACKEND).port);
-	if (backendPort === 1111) {
-		throw new Error(
-			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
-		);
-	}
-	const pids = [];
-	for (const { record } of sceneConnectionDropRecords()) {
-		const pid = record?.pid;
-		if (typeof pid !== "number" || pid <= 0) continue;
-		if (Number(record.port) !== backendPort) continue;
-		if (
-			typeof record.host === "string" &&
-			!["127.0.0.1", "localhost", "::1"].includes(record.host)
-		)
-			continue;
-		pids.push(pid);
-	}
-	return pids;
 }
 
 /**
@@ -25643,6 +25774,1375 @@ async function runSlashCommand(cdp, command) {
  * exercised by hand or not exercised, and this note is so a reader does not read
  * the list of probed surfaces as the list of all surfaces.
  */
+/**
+ * The elements the browser would give a scrollbar, with everything a claim about
+ * them needs: which axes scroll, the box, whether there is anything to scroll,
+ * and what the fade's own state is on each one right now.
+ *
+ * `overflow` is the discriminator and not `scrollHeight > clientHeight`, for the
+ * same reason the module itself uses it: a container with `overflow: auto` and
+ * nothing to scroll IS a scroller (it is what the module marks and what the CSS
+ * styles), and the census has to agree with the mechanism or the two would be
+ * measuring different sets.
+ */
+const SCROLLER_CENSUS = `(() => {
+	const overflowing = (el) => {
+		const style = getComputedStyle(el);
+		return (
+			/^(auto|scroll)$/.test(style.overflowX) ||
+			/^(auto|scroll)$/.test(style.overflowY)
+		);
+	};
+	const out = [];
+	for (const el of document.querySelectorAll("*")) {
+		if (!overflowing(el)) continue;
+		const rect = el.getBoundingClientRect();
+		if (rect.width < 8 || rect.height < 8) continue;
+		const style = getComputedStyle(el);
+		out.push({
+			tag: el.tagName.toLowerCase(),
+			tourTag: el.getAttribute("data-tour-tag"),
+			/*
+			 * The keyboard arm needs to know whether a surface is even reachable by
+			 * Tab: a tabindex of -1 can be focused programmatically but the browser
+			 * will not call that arrival :focus-visible, which is exactly what the
+			 * first version of that arm measured.
+			 */
+			tabIndex: el.tabIndex,
+			cls: String(el.className || "").slice(0, 64),
+			ox: style.overflowX,
+			oy: style.overflowY,
+			x: Math.round(rect.x),
+			y: Math.round(rect.y),
+			w: Math.round(rect.width),
+			h: Math.round(rect.height),
+			xOverflow: el.scrollWidth - el.clientWidth,
+			yOverflow: el.scrollHeight - el.clientHeight,
+			fade: el.getAttribute("data-lo-scrollbar"),
+			loSb: style.getPropertyValue("--lo-sb").trim(),
+		});
+	}
+	return {
+		route: location.hash,
+		viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
+		scrollers: out,
+	};
+})()`;
+
+/**
+ * Read the paint out of one captured frame's scrollbar strip.
+ *
+ * WHY PIXELS AND NOT A COMPUTED STYLE. `--lo-sb` says what the CSS asked for;
+ * the thumb's pixels say what the compositor painted, which is the half a broken
+ * `color-mix(...)` would leave wrong while every computed value still read
+ * perfectly. `docs/design/scrollbars-fade.md` § 1.1 measured the defect this way
+ * (a column of `txt:-` samples through the thumb), and this is that reading
+ * against the frames this scene commits.
+ *
+ * `strip` is in DEVICE pixels and is derived from the element's own box times
+ * the device pixel ratio the page reports, so a frame that is not the size the
+ * page says would be caught by the size assertion rather than silently sampled
+ * at the wrong coordinates.
+ */
+async function stripReading(file, strip, target) {
+	let sharp;
+	try {
+		({ default: sharp } = await import("sharp"));
+	} catch {
+		return null;
+	}
+	const { data, info } = await sharp(file)
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	if (info.width !== strip.frameWidth || info.height !== strip.frameHeight) {
+		return {
+			sizeMismatch: `${info.width}x${info.height} against a page that says ${strip.frameWidth}x${strip.frameHeight}`,
+		};
+	}
+	const channels = info.channels;
+	let sampled = 0;
+	let near = 0;
+	let red = 0;
+	let green = 0;
+	let blue = 0;
+	for (let y = strip.y0; y < strip.y1; y += 1) {
+		for (let x = strip.x0; x < strip.x1; x += 1) {
+			const at = (y * info.width + x) * channels;
+			const r = data[at];
+			const g = data[at + 1];
+			const b = data[at + 2];
+			sampled += 1;
+			red += r;
+			green += g;
+			blue += b;
+			if (
+				Math.abs(r - target[0]) <= 20 &&
+				Math.abs(g - target[1]) <= 20 &&
+				Math.abs(b - target[2]) <= 20
+			) {
+				near += 1;
+			}
+		}
+	}
+	return {
+		sampled,
+		near,
+		mean: [red, green, blue].map((sum) => Math.round(sum / sampled)),
+		size: `${info.width}x${info.height}`,
+	};
+}
+
+/**
+ * The vertical or horizontal scrollbar strip of a box, in device pixels.
+ *
+ * THE BAND IS INSET FROM BOTH WALLS OF THE BAR AND BOTH ENDS OF ITS LENGTH, and
+ * that is a measurement, not tidiness. The browser tab strip carries a 1 CSS px
+ * bottom rule painted in the SAME role the thumb paints (`--lo-border-control`,
+ * rows 151-152 of the active frame, `#837c6d` exactly), so a band flush with the
+ * element's bottom edge reads that rule as thumb pixels in every state — which is
+ * what the first run of this scene did: 4092 of 32736 pixels "near the thumb's
+ * colour" in the frozen state. Inset by one CSS px it reads the thumb's own band
+ * (rows 137-150, `[82,77,68]` while awake and `[29,27,25]` at rest, measured).
+ * The length is inset by 8 CSS px at each end for the thumb's radius.
+ */
+function stripOf(box, axis, dpr, viewport) {
+	const frameWidth = Math.round(viewport.width * dpr);
+	const frameHeight = Math.round(viewport.height * dpr);
+	const frame = { frameWidth, frameHeight };
+	if (axis === "y") {
+		return {
+			...frame,
+			x0: Math.round((box.x + box.width - 7) * dpr),
+			x1: Math.round((box.x + box.width - 3) * dpr),
+			y0: Math.round((box.y + 8) * dpr),
+			y1: Math.round((box.y + box.height - 8) * dpr),
+		};
+	}
+	return {
+		...frame,
+		x0: Math.round((box.x + 8) * dpr),
+		x1: Math.round((box.x + box.width - 8) * dpr),
+		y0: Math.round((box.y + box.height - 7) * dpr),
+		y1: Math.round((box.y + box.height - 3) * dpr),
+	};
+}
+
+/** One wheel notch, through Chromium's own input pipeline. */
+async function wheelAt(cdp, x, y, delta) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseWheel",
+		x,
+		y,
+		deltaX: delta.x,
+		deltaY: delta.y,
+	});
+}
+
+/**
+ * Pick the scroller this run will measure on the axis asked for: the one with the
+ * most overflow, inside the viewport, and keep it as a page reference so every
+ * later read is of the SAME element rather than of a re-selection that could pick
+ * something else.
+ */
+const SCROLLBAR_TARGET = (axis, prefer) => `(() => {
+	const wanted = ${JSON.stringify(axis)};
+	const preferred = ${JSON.stringify(prefer ?? null)};
+	const overflowing = (el) => {
+		const style = getComputedStyle(el);
+		return wanted === "y"
+			? /^(auto|scroll)$/.test(style.overflowY)
+			: /^(auto|scroll)$/.test(style.overflowX);
+	};
+	const overflowOf = (el) =>
+		wanted === "y"
+			? el.scrollHeight - el.clientHeight
+			: el.scrollWidth - el.clientWidth;
+	let best = null;
+	const consider = (el) => {
+		if (!overflowing(el)) return;
+		const over = overflowOf(el);
+		if (over < 40) return;
+		const rect = el.getBoundingClientRect();
+		if (rect.width < 80 || rect.height < 40) return;
+		if (rect.left < 0 || rect.top < 0) return;
+		if (rect.right > innerWidth || rect.bottom > innerHeight) return;
+		if (best === null || over > best.over) best = { over, el, rect };
+	};
+	/*
+	 * A NAMED SURFACE WINS WHEN IT QUALIFIES. The widest scroller on a route can
+	 * be a container whose content the app is still replacing (the first run of
+	 * this scene measured one: 293px of overflow that the route's own failed query
+	 * collapsed to 0 between two reads, which is a frame of a state no reader ever
+	 * sees). A caller that knows which surface it is making a claim about names
+	 * it; the widest-scroller rule is the fallback that keeps the mechanism claim
+	 * honest for surfaces nobody has named.
+	 */
+	let named = null;
+	if (preferred !== null) {
+		const el = document.querySelector(preferred);
+		if (el !== null) {
+			consider(el);
+			named = best === null ? null : el;
+		}
+	}
+	if (named === null) {
+		for (const el of document.querySelectorAll("*")) consider(el);
+	}
+	if (best === null) return null;
+	window.__loScrollbarFade = best.el;
+	const style = getComputedStyle(best.el);
+	return {
+		over: best.over,
+		tag: best.el.tagName.toLowerCase(),
+		tourTag: best.el.getAttribute("data-tour-tag"),
+		cls: String(best.el.className || "").slice(0, 70),
+		rect: {
+			x: Math.round(best.rect.x),
+			y: Math.round(best.rect.y),
+			width: Math.round(best.rect.width),
+			height: Math.round(best.rect.height),
+		},
+		centre: {
+			x: Math.round(best.rect.x + best.rect.width / 2),
+			y: Math.round(best.rect.y + best.rect.height / 2),
+		},
+		fade: best.el.getAttribute("data-lo-scrollbar"),
+		loSb: style.getPropertyValue("--lo-sb").trim(),
+		dpr: devicePixelRatio,
+		viewport: { width: innerWidth, height: innerHeight },
+	};
+})()`;
+
+/** The marked scroller's own state, read fresh for every assertion. */
+const SCROLLBAR_STATE = `(() => {
+	const el = window.__loScrollbarFade;
+	if (!el) return null;
+	const style = getComputedStyle(el);
+	const rect = el.getBoundingClientRect();
+	return {
+		fade: el.getAttribute("data-lo-scrollbar"),
+		loSb: style.getPropertyValue("--lo-sb").trim(),
+		barWidth: el.offsetWidth - el.clientWidth,
+		barHeight: el.offsetHeight - el.clientHeight,
+		xOverflow: el.scrollWidth - el.clientWidth,
+		yOverflow: el.scrollHeight - el.clientHeight,
+		scrollLeft: el.scrollLeft,
+		scrollTop: el.scrollTop,
+		rect: {
+			x: Math.round(rect.x),
+			y: Math.round(rect.y),
+			width: Math.round(rect.width),
+			height: Math.round(rect.height),
+		},
+	};
+})()`;
+
+/**
+ * The hold, read out of the module that owns it.
+ *
+ * NOT WRITTEN DOWN HERE. `SCROLLBAR_HOLD_MS` is the shipped constant, and a wait
+ * built from a second copy of it would keep passing after the first one moved —
+ * the same reason the palette expectation is read from the generated stylesheet
+ * rather than typed in. A rename makes this fail loudly instead of waiting the
+ * wrong length of time and calling the result a product finding.
+ */
+function shippedScrollbarHoldMs() {
+	const source = readFileSync(
+		new URL(
+			"../src/renderer/src/shared/lib/scrollbar-activity.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const match = /export const SCROLLBAR_HOLD_MS = (\d+);/.exec(source);
+	if (match === null) {
+		throw new Error(
+			"SCROLLBAR_HOLD_MS is not where this scene expects it, in src/renderer/src/shared/lib/scrollbar-activity.ts",
+		);
+	}
+	return Number(match[1]);
+}
+
+const SCROLLBAR_HOLD_MS_FOR_SCENE = shippedScrollbarHoldMs();
+
+/*
+ * `--scene scrollbar-fade`: the app-wide scrollbar fade, proved on the app's own
+ * scrollers in the running renderer (design: `docs/design/scrollbars-fade.md`).
+ *
+ * WHAT A UNIT TEST CANNOT ASK. `scripts/scrollbar-activity.test.mjs` pins the
+ * state machine — when the attribute is written, when it is deliberately not,
+ * what the sweep drops. Neither that file nor a static read of the stylesheet can
+ * answer whether the PAINT follows: whether `color-mix(in srgb, var(--color-control)
+ * calc(var(--lo-sb) * 100%), transparent)` puts the thumb's own colour on the
+ * glass at `--lo-sb: 1` and nothing at `0`, in this Chromium, at the geometry the
+ * app ships. So this scene drives a real wheel through Chromium's own input
+ * pipeline and then reads the FRAME's pixels in the scrollbar's own strip — the
+ * reading `docs/design/scrollbars-fade.md` § 1.1 took of the defect.
+ *
+ * THE TWO SURFACES ARE PICKED BY THE DOM, NOT BY A SELECTOR I WROTE DOWN, and
+ * that is deliberate: the claim is about the MECHANISM, which has to hold for
+ * every scroller the app will ever render, not only for the two that happened to
+ * have a stable `data-tour-tag` on the day this ran. Each act takes the scroller
+ * with the most overflow on its axis — inside the viewport, so its strip is
+ * readable — records WHO that was (tag, class, box) in the run's own output, and
+ * holds it as a page reference so every later read is of the same element. The
+ * frame and the identity travel together, so a reader can see which surface the
+ * picture is of.
+ *
+ * THE ACTS, per axis: the resting state; a real wheel; the state and the pixels
+ * while it is awake; a burst of twelve wheels inside the hold (which must write
+ * the attribute zero times, the no-flicker rule); and the state and pixels again
+ * once the hold has expired. Then the two media arms the stylesheet carries:
+ * reduced motion, whose blanket `transition-duration: 0.01ms !important` caps the
+ * fade, and forced colours, where the bar is pinned visible.
+ */
+/**
+ * The perf arm: what the fade costs the renderer on a real surface, and what
+ * listeners it is holding to do it.
+ *
+ * WHY IT IS IN THE SCENE AND NOT ONLY IN THE MEMO. The mechanism's cost was
+ * measured in the architect's hidden probes (memo § F: 300 wheel events cost
+ * 2.5-2.8 ms of `ScriptDuration` against 0.0 without the module, `LayoutCount` 0
+ * in both, ~49 recalcs and 4.5 ms for a fade). Those probes are not this app:
+ * this arm re-reads the same counters off the app's own renderer through
+ * `Performance.getMetrics`, over the surface the act above just drove, so the
+ * number on the PR is a reading of this build rather than a quotation. It is a
+ * DELTA across the burst and it is reported as one: the app is doing other work
+ * in the same window (the transition, React, the queries), and a delta is the
+ * only shape of this number that means anything.
+ *
+ * `LayoutCount` is the one that is a claim rather than a measurement: the fade
+ * changes paint only, so a layout in that window would be the regression this
+ * change is forbidden to cause, and it is asserted at zero.
+ *
+ * THE LISTENER INVENTORY is read from the document's own listener list
+ * (`DOMDebugger.getEventListeners`), not from the module's source: the source
+ * says what was registered, the document says what is attached. Both are worth
+ * having, and the unit suite pins the source half.
+ */
+async function scrollbarPerfArm(cdp, { centre, delta }) {
+	/*
+	 * The reply is the raw CDP message (`{ id, result }`), so the handle is one
+	 * level deeper than a bare `send()` looks: `result.result.objectId`. The first
+	 * run of this arm passed `undefined` and reported the inventory as unavailable
+	 * - which is the failure mode the note below is for.
+	 */
+	const listeners = await cdp
+		.send("Runtime.evaluate", { expression: "document" })
+		.then((handle) =>
+			cdp.send("DOMDebugger.getEventListeners", {
+				objectId: handle?.result?.result?.objectId,
+				depth: 0,
+			}),
+		)
+		.then((reply) => reply?.result ?? { listeners: [] })
+		.catch((error) => ({
+			error: String(error?.message ?? JSON.stringify(error)),
+		}));
+	if (listeners?.error) {
+		note("document listener inventory unavailable", listeners.error);
+	} else {
+		const relevant = (listeners.listeners ?? [])
+			.filter((entry) =>
+				["scroll", "pointerover", "pointerdown", "focusin"].includes(
+					entry.type,
+				),
+			)
+			.map((entry) => ({
+				type: entry.type,
+				capture: entry.useCapture === true,
+				passive: entry.passive === true,
+				line: entry.lineNumber,
+				column: entry.columnNumber,
+			}));
+		note(
+			"document listeners the fade's own event types have on this page",
+			JSON.stringify(relevant),
+		);
+		const ours = (type) =>
+			relevant.filter(
+				(entry) => entry.type === type && entry.capture && entry.passive,
+			).length;
+		check(
+			"the module's four listeners are attached: one each, capture phase, passive",
+			ours("scroll") === 1 &&
+				ours("pointerover") === 1 &&
+				ours("pointerdown") === 1 &&
+				ours("focusin") === 1,
+			`capture+passive counts — scroll ${ours("scroll")}, pointerover ${ours("pointerover")}, pointerdown ${ours("pointerdown")}, focusin ${ours("focusin")}`,
+		);
+		check(
+			"and every scroll listener on the document is capture phase, as the app's own are",
+			relevant
+				.filter((entry) => entry.type === "scroll")
+				.every((entry) => entry.capture === true),
+			JSON.stringify(relevant.filter((entry) => entry.type === "scroll")),
+		);
+		/*
+		 * The inventory is deliberately COMPLETE rather than filtered to the
+		 * module's own four: this page carries a second, non-capture `pointerdown`
+		 * listener that is not this change's (it is registered from another script
+		 * in the bundle), and a check that only counted the shape the module
+		 * registers would have hidden it. A reader gets to see everything the fade
+		 * shares the document with.
+		 */
+		note(
+			"(the inventory above is every document listener of those three types, this change's or not)",
+		);
+	}
+
+	await cdp.send("Performance.enable");
+	const read = async () =>
+		Object.fromEntries(
+			((await cdp.send("Performance.getMetrics"))?.result?.metrics ?? []).map(
+				(metric) => [metric.name, metric.value],
+			),
+		);
+	const before = await read();
+	check(
+		"the renderer's performance counters are readable",
+		Object.keys(before).length > 0,
+		`Performance.getMetrics answered ${Object.keys(before).length} counters`,
+	);
+	/*
+	 * 300 wheels, alternating direction against the palette's own end stop: each
+	 * one moves a list that has room in that direction, which is what fires a real
+	 * `scroll` event for the module to answer. A burst all in one direction would
+	 * measure one scroll and 299 no-ops.
+	 */
+	for (let notch = 0; notch < 300; notch += 1) {
+		await wheelAt(
+			cdp,
+			centre.x,
+			centre.y,
+			notch % 2 === 0 ? delta : { x: -delta.x, y: -delta.y },
+		);
+	}
+	const after = await read();
+	const deltaOf = (name) =>
+		Math.round(((after[name] ?? 0) - (before[name] ?? 0)) * 1000) / 1000;
+	const perf = {
+		events: 300,
+		scriptDurationMs: deltaOf("ScriptDuration") * 1000,
+		taskDurationMs: deltaOf("TaskDuration") * 1000,
+		recalcStyleCount: deltaOf("RecalcStyleCount"),
+		layoutCount: deltaOf("LayoutCount"),
+	};
+	note(
+		"perf across 300 wheel events (deltas from Performance.getMetrics)",
+		JSON.stringify(perf),
+	);
+	/*
+	 * THE READING ABOVE IS NOT ASSERTED AT ZERO, AND THE GEOMETRY IS WHY. A window
+	 * with 300 wheels in it contains the app's own scroll work as well as the fade:
+	 * measured on this head, `LayoutCount` moved 0 in one run, 0 in the next and 2
+	 * in the one after — the palette re-rendering rows as they scroll, which is not
+	 * something a paint change can cause and not something this scene can charge to
+	 * this change. A check that read 0 twice and 2 once would be a flake wearing a
+	 * verdict's clothes. What the fade could break is asserted instead, and exactly:
+	 * the bar's geometry is identical in rest, awake and expired (the act above,
+	 * where the only thing that changed is the thumb's paint), and `LayoutCount`
+	 * over the FADE'S OWN window — the module's timer expiring, with no input at
+	 * all — is asserted at zero below.
+	 */
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 800);
+	await wheelAt(cdp, centre.x, centre.y, delta);
+	// Past the fade-in, so the window below holds the expiry and the fade-out only.
+	await wait(700);
+	const armed = await read();
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 500);
+	const afterSweep = await read();
+	const sweep = {
+		window: `${SCROLLBAR_HOLD_MS_FOR_SCENE + 500}ms with no input in it`,
+		recalcStyleCount:
+			Math.round(
+				(afterSweep.RecalcStyleCount - armed.RecalcStyleCount) * 1000,
+			) / 1000,
+		layoutCount:
+			Math.round((afterSweep.LayoutCount - armed.LayoutCount) * 1000) / 1000,
+		scriptDurationMs:
+			Math.round((afterSweep.ScriptDuration - armed.ScriptDuration) * 1e6) /
+			1000,
+	};
+	note(
+		"perf across the module's own expiry and fade-out, with no input in the window",
+		JSON.stringify(sweep),
+	);
+	check(
+		"the fade's own window — one timer expiry and one fade-out — changes no layout",
+		sweep.layoutCount === 0,
+		`LayoutCount moved ${sweep.layoutCount} over ${sweep.window}`,
+	);
+}
+
+/**
+ * The hover act: the reveal-on-intent path, driven by a real pointer move.
+ *
+ * WHY IT IS A SEPARATE ACT FROM THE WHEEL ONE. These are two different doors into
+ * the same state — `scroll` and `pointerover` — and the design's second
+ * requirement is about intent: the bar must appear when the reader moves TOWARD
+ * it, before anything has moved. A wheel act cannot show that, because the wheel
+ * reveals on a scroll event; this one moves the pointer onto the bar's own strip
+ * and reads both the state and the paint, then takes the pointer away and reads
+ * the fade after the hold.
+ *
+ * The point is on the strip itself (4 CSS px inside the element's edge, at the
+ * middle of its length), and what is under it is recorded rather than assumed:
+ * the claim is that the element under the pointer RESOLVES to the scroller by the
+ * module's own walk, which is what the delegated `pointerover` handler does.
+ */
+async function scrollbarHoverAct(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the hover act`,
+		target !== null,
+		JSON.stringify(target),
+	);
+	if (target === null) return null;
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = (file) => stripReading(file, strip, targetRgb);
+	const point =
+		axis === "y"
+			? {
+					x: Math.round(target.rect.x + target.rect.width - 4),
+					y: Math.round(target.rect.y + target.rect.height / 2),
+				}
+			: {
+					x: Math.round(target.rect.x + target.rect.width / 2),
+					y: Math.round(target.rect.y + target.rect.height - 4),
+				};
+
+	// A pointer parked away, and the hold waited out: the "before" half of the pair.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const restingState = await cdp.evaluate(SCROLLBAR_STATE);
+	const restingFrame = await capture(cdp, `${label}-hover-idle-dark`);
+	const restingPixels = await sample(restingFrame.path);
+
+	/*
+	 * WHAT THE POINTER IS OVER, asked of the page before the move: `elementFromPoint`
+	 * at the strip's own midpoint, and then the module's own resolution rule run over
+	 * it. On a short thumb the strip under the pointer is still the scroller's (the
+	 * memo's probe 10), and this is the assertion that says so for this surface.
+	 */
+	const resolved = await cdp.evaluate(`(() => {
+		const el = document.elementFromPoint(${point.x}, ${point.y});
+		if (el === null) return { under: null, resolves: false };
+		let node = el;
+		let resolves = false;
+		while (node !== null) {
+			if (node === window.__loScrollbarFade) {
+				resolves = true;
+				break;
+			}
+			node = node.parentElement;
+		}
+		return {
+			under: {
+				tag: el.tagName.toLowerCase(),
+				cls: String(el.className || "").slice(0, 48),
+			},
+			resolves,
+		};
+	})()`);
+	check(
+		`${label}: the pointer on the bar's strip resolves to the scroller`,
+		resolved.resolves === true,
+		`elementFromPoint(${point.x}, ${point.y}) is ${JSON.stringify(resolved.under)}`,
+	);
+
+	await movePointer(cdp, point.x, point.y);
+	// Past the 120ms fade-in, well inside the hold.
+	await wait(350);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-hover-dark`);
+	const awakePixels = await sample(awakeFrame.path);
+	check(
+		`${label}: moving onto the bar wakes it`,
+		awakeState.fade === "active" && Number(awakeState.loSb) === 1,
+		`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb} with the pointer at ${point.x},${point.y}`,
+	);
+	check(
+		`${label}: the thumb is painted while the pointer is on the bar`,
+		awakePixels !== null && awakePixels.near > 0.3 * awakePixels.sampled,
+		`${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour; strip mean ${JSON.stringify(awakePixels?.mean ?? null)}`,
+	);
+
+	// The pointer leaves: nothing else touches the app, and the hold expires.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const afterState = await cdp.evaluate(SCROLLBAR_STATE);
+	const afterFrame = await capture(cdp, `${label}-hover-after-dark`);
+	const afterPixels = await sample(afterFrame.path);
+	check(
+		`${label}: and it fades again once the pointer has left and the hold expires`,
+		afterState.fade === "idle" &&
+			Number(afterState.loSb) === 0 &&
+			afterPixels !== null &&
+			afterPixels.near < 0.02 * afterPixels.sampled,
+		`attribute=${JSON.stringify(afterState.fade)} --lo-sb=${afterState.loSb}; ${afterPixels?.near ?? "?"} of ${afterPixels?.sampled ?? "?"} strip pixels are the thumb's colour`,
+	);
+
+	return {
+		target,
+		point,
+		resolved,
+		restingState,
+		awakeState,
+		afterState,
+		restingPixels,
+		awakePixels,
+		afterPixels,
+		frames: {
+			idle: restingFrame.path,
+			hover: awakeFrame.path,
+			after: afterFrame.path,
+		},
+	};
+}
+
+/*
+ * THE KEYBOARD ARM (review round 1: M1 / Q1 / D1 / U1, and U2/U3 for the
+ * animation half). It runs FIRST on this surface, before any pointer or wheel
+ * has touched the palette, because that is the whole claim: a reader who has
+ * arrived at a scroller without moving it must be shown the bar. The previous
+ * mechanism — a `:focus-visible` animation keyed on the attribute — could not
+ * fire there at all, because the attribute is written BY the pointer and scroll
+ * doors.
+ *
+ * The arrival is driven the way the browser is asked the question: the module
+ * reveals only for a focus the platform calls keyboard-driven (`:focus-visible`),
+ * so this arm first tries a programmatic focus with the keyboard hint, and if the
+ * browser declines to call that keyboard-driven it HUNTS with real Tab presses
+ * over CDP's input pipeline, which is how a reader would arrive. Both outcomes
+ * are recorded: what the arm found, and — when a surface is not reachable by Tab
+ * at all — that fact, by name, instead of a green check that measured nothing.
+ *
+ * The two readings a fixture could only approximate are taken here on the app's
+ * own frame: the element's `animation-name` before and after the reveal (the
+ * non-collision rule — the reveal must take nothing away from another animation),
+ * and the bar's state at +2.6 s, where the old focus-visible animation was still
+ * at ~0.8 and the module's ordinary hold has finished.
+ */
+async function scrollbarFocusArm(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the keyboard arm`,
+		target !== null,
+		target === null
+			? "no scroller with more than 40px of overflow on that axis, inside the viewport"
+			: `${target.tag} ${target.over}px of overflow at ${JSON.stringify(target.rect)}`,
+	);
+	if (target === null) return null;
+	const selector = JSON.stringify(prefer);
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = (file) => stripReading(file, strip, targetRgb);
+
+	// Start from rest: a pointer parked where it hovers nothing, hold waited out.
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+
+	const programmatic = await cdp.evaluate(`(() => {
+		const el = ${prefer === null ? "window.__loScrollbarFade" : `document.querySelector(${selector})`};
+		if (el === null || el === undefined) return { found: false };
+		const animationBefore = getComputedStyle(el).animationName;
+		const attributeBefore = el.getAttribute("data-lo-scrollbar");
+		el.focus({ focusVisible: true });
+		return {
+			found: true,
+			tabIndex: el.tabIndex,
+			active: document.activeElement === el,
+			focusVisible: el.matches(":focus-visible"),
+			animationBefore,
+			animationAfter: getComputedStyle(el).animationName,
+			attributeBefore,
+		};
+	})()`);
+
+	/*
+	 * THE REAL KEYBOARD ARRIVAL, when the browser will not call a programmatic
+	 * focus keyboard-driven. `tabindex="-1"` is focusable but not tabbable, and
+	 * Chromium answers `:focus-visible: false` for it - correctly: nobody got
+	 * there by keyboard. So the arm presses Tab, up to a bound, and stops on the
+	 * first element whose nearest scroller is the one under test.
+	 */
+	const HUNT = 30;
+	let hunt = { pressed: 0, reached: null };
+	if (programmatic.found === true && programmatic.focusVisible !== true) {
+		for (let press = 1; press <= HUNT; press++) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "rawKeyDown",
+				key: "Tab",
+				code: "Tab",
+				windowsVirtualKeyCode: 9,
+				nativeVirtualKeyCode: 9,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Tab",
+				code: "Tab",
+				windowsVirtualKeyCode: 9,
+				nativeVirtualKeyCode: 9,
+			});
+			await wait(60);
+			const where = await cdp.evaluate(`(() => {
+				const el = document.activeElement;
+				if (el === null || el === document.body) return { reached: false };
+				let scroller = null;
+				let node = el;
+				while (node !== null) {
+					const style = getComputedStyle(node);
+					if (/^(auto|scroll)$/.test(style.overflowX) || /^(auto|scroll)$/.test(style.overflowY)) {
+						scroller = node;
+						break;
+					}
+					node = node.parentElement;
+				}
+				return {
+					reached: scroller !== null,
+					tag: el.tagName.toLowerCase(),
+					cls: String(el.className || "").slice(0, 40),
+					focusVisible: typeof el.matches === "function" ? el.matches(":focus-visible") : null,
+					scrollerCls: scroller === null ? null : String(scroller.className || "").slice(0, 40),
+					fade: scroller === null ? null : scroller.getAttribute("data-lo-scrollbar"),
+				};
+			})()`);
+			hunt = { pressed: press, reached: where };
+			if (where.reached === true && where.focusVisible === true) break;
+		}
+	}
+	/*
+	 * EITHER ARRIVAL COUNTS, and the arm says which one it was. A programmatic
+	 * focus the browser calls keyboard-driven is the same event the app's own
+	 * focusin door receives; the hunt is simply the honest fallback for a surface
+	 * the browser will not classify that way (a `tabindex="-1"` scroller on a page
+	 * with no tabbable one).
+	 */
+	const keyed =
+		programmatic.focusVisible === true ||
+		(hunt.reached !== null && hunt.reached.reached === true);
+	note(
+		`${label} keyboard arrival`,
+		JSON.stringify({
+			programmatic,
+			hunt: { pressed: hunt.pressed, reached: hunt.reached },
+			keyed,
+		}),
+	);
+	/*
+	 * The modality rule, measured on the app's own frame rather than on a fixture:
+	 * a focus the browser does not call keyboard-driven must not reveal. On this
+	 * route that is the palette's `tabindex="-1"` list, which is the same shape as
+	 * a click into a scroller — and it is why the arm then goes hunting with Tab.
+	 */
+	if (programmatic.focusVisible !== true) {
+		check(
+			`${label}: a focus the browser does not call keyboard-driven reveals nothing`,
+			programmatic.found === true
+				? (await cdp.evaluate(SCROLLBAR_STATE)).fade === null ||
+						(await cdp.evaluate(SCROLLBAR_STATE)).fade === "idle"
+				: true,
+			`programmatic focus landed (tabIndex ${programmatic.tabIndex}) and :focus-visible stayed false; the attribute is ${JSON.stringify(programmatic.attributeBefore)}`,
+		);
+	}
+
+	const subject = keyed ? "keyboard" : "programmatic";
+	const focusAt = Date.now();
+	await wait(400);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-focus-dark`);
+	const awakePixels = await sample(awakeFrame.path);
+	if (keyed) {
+		check(
+			`${label}: tabbing onto a cold scroller reveals it with nothing scrolled`,
+			awakeState.fade === "active" &&
+				Number(awakeState.loSb) === 1 &&
+				awakePixels !== null &&
+				awakePixels.near > 0.3 * awakePixels.sampled,
+			`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb}; scrollTop ${awakeState.scrollTop} scrollLeft ${awakeState.scrollLeft}; ${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour (mean ${JSON.stringify(awakePixels?.mean ?? null)})`,
+		);
+	} else {
+		note(
+			`${label}: the keyboard reveal could not be photographed on this route`,
+			`no element whose nearest scroller is the one under test took focus in ${HUNT} Tab presses (last: ${JSON.stringify(hunt.reached)}) — the backend-less /chat has no tabbable scroller, and the transcript's tab stop needs a session. The behaviour is pinned by the unit suite's cold-focus test; the rendered gap is recorded rather than papered over.`,
+		);
+	}
+	check(
+		`${label}: the reveal animates nothing, so no other animation on the element loses its properties`,
+		programmatic.animationBefore === programmatic.animationAfter,
+		`animation-name ${JSON.stringify(programmatic.animationBefore)} before the focus, ${JSON.stringify(programmatic.animationAfter)} after — the reveal is a transition on --lo-sb, not an animation`,
+	);
+
+	/*
+	 * +2.6 s: past the 2200 ms hold and the 180 ms fade, and well inside the
+	 * ~4050 ms window the focus-visible animation used to hold the bar open.
+	 */
+	await wait(2200);
+	const settledAt = Date.now() - focusAt;
+	const afterState = await cdp.evaluate(SCROLLBAR_STATE);
+	const afterFrame = await capture(cdp, `${label}-focus-after-dark`);
+	const afterPixels = await sample(afterFrame.path);
+	check(
+		`${label}: the bar after a keyboard arrival is at the ordinary hold, with no second fade behind it`,
+		afterState.fade === "idle" &&
+			Number(afterState.loSb) === 0 &&
+			afterPixels !== null &&
+			afterPixels.near < 0.02 * afterPixels.sampled,
+		`at +${settledAt} ms after the ${subject} focus: attribute ${JSON.stringify(afterState.fade)}, --lo-sb ${afterState.loSb}, ${afterPixels?.near ?? "?"} of ${afterPixels?.sampled ?? "?"} strip pixels near the thumb's colour`,
+	);
+
+	// Hand the page back the way the other arms expect to find it.
+	await cdp.evaluate(`(() => {
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+		return true;
+	})()`);
+
+	return {
+		target,
+		programmatic,
+		hunt,
+		keyed,
+		subject,
+		awakeState,
+		afterState,
+		settledAt,
+		awakePixels,
+		afterPixels,
+		frames: { awake: awakeFrame.path, after: afterFrame.path },
+	};
+}
+
+/*
+ * THE THUMB-UNDER-THE-POINTER ARM (review round 1: D3, Q5's second half). The
+ * design's own affordance for a reader who has already found the thumb is the
+ * native `:hover` on the pseudo-element — "solid under the cursor" — and the
+ * question D3 could not answer from a fixture is what happens to that paint once
+ * the hold expires while the pointer is still resting on the thumb: if the thumb
+ * vanishes under the hand, the one state a reader needs while reaching for it is
+ * the one state nobody had photographed.
+ *
+ * The arm hovers the thumb's own band (its geometry is computed from the element:
+ * track length, content, viewport, offset) rather than the strip's midpoint, parks
+ * there for longer than the hold, and reads the same pixels three times: at rest,
+ * on arrival, and past the hold.
+ */
+async function scrollbarThumbPaintArm(
+	cdp,
+	{ axis, label, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`${label}: a scroller is on screen for the thumb arm`,
+		target !== null,
+		target === null
+			? "no scroller with overflow on that axis"
+			: JSON.stringify(target.rect),
+	);
+	if (target === null) return null;
+	const selector = `${prefer === null ? "window.__loScrollbarFade" : `document.querySelector(${JSON.stringify(prefer)})`}`;
+	const geometry = await cdp.evaluate(`(() => {
+		const el = ${selector};
+		const rect = el.getBoundingClientRect();
+		const vertical = ${axis === "y"};
+		const track = vertical ? rect.height : rect.width;
+		const viewport = vertical ? el.clientHeight : el.clientWidth;
+		const content = vertical ? el.scrollHeight : el.scrollWidth;
+		const thumb = Math.max(24, track * (viewport / Math.max(1, content)));
+		const offset = vertical ? el.scrollTop : el.scrollLeft;
+		const travel = Math.max(1, content - viewport);
+		const pos = Math.max(0, Math.min(track - thumb, (offset / travel) * (track - thumb)));
+		return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, track, thumb, pos, offset, dpr: devicePixelRatio };
+	})()`);
+	/*
+	 * A third of the way down the thumb, on the bar's own 8 px strip: the same
+	 * place a reader's cursor lands when they reach for it.
+	 */
+	const point =
+		axis === "y"
+			? {
+					x: Math.round(geometry.rect.x + geometry.rect.width - 4),
+					y: Math.round(geometry.rect.y + geometry.pos + geometry.thumb / 3),
+				}
+			: {
+					x: Math.round(geometry.rect.x + geometry.pos + geometry.thumb / 3),
+					y: Math.round(geometry.rect.y + geometry.rect.height - 4),
+				};
+	const dpr = geometry.dpr;
+	/*
+	 * The band is the strip's own box narrowed to where the thumb is, built FROM
+	 * `stripOf` so the frame size and dpr it carries stay with the reading. The
+	 * first version of this arm hand-rolled the box and every read came back
+	 * `sizeMismatch` - the driver refuses a strip whose page it cannot verify,
+	 * which is the check doing its job.
+	 */
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const band =
+		axis === "y"
+			? {
+					...strip,
+					y0: Math.max(
+						strip.y0,
+						Math.round((geometry.rect.y + geometry.pos) * dpr),
+					),
+					y1: Math.min(
+						strip.y1,
+						Math.round((geometry.rect.y + geometry.pos + geometry.thumb) * dpr),
+					),
+				}
+			: {
+					...strip,
+					x0: Math.max(
+						strip.x0,
+						Math.round((geometry.rect.x + geometry.pos) * dpr),
+					),
+					x1: Math.min(
+						strip.x1,
+						Math.round((geometry.rect.x + geometry.pos + geometry.thumb) * dpr),
+					),
+				};
+
+	await parkPointer(cdp);
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const restingFrame = await capture(cdp, `${label}-thumbrest-dark`);
+	const resting = await stripReading(restingFrame.path, band, targetRgb);
+
+	await movePointer(cdp, point.x, point.y);
+	await wait(400);
+	const hoverFrame = await capture(cdp, `${label}-thumbhover-dark`);
+	const hover = await stripReading(hoverFrame.path, band, targetRgb);
+	check(
+		`${label}: the thumb under the pointer is painted the moment the pointer is on it`,
+		hover !== null && hover.near > 0.3 * hover.sampled,
+		`on the thumb (${JSON.stringify(point)}): ${hover?.near ?? "?"} of ${hover?.sampled ?? "?"} pixels in the thumb's own band are its colour, against ${resting?.near ?? "?"} at rest`,
+	);
+
+	// Past the hold, pointer still parked on the thumb.
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const heldState = await cdp.evaluate(SCROLLBAR_STATE);
+	const heldFrame = await capture(cdp, `${label}-thumbheld-dark`);
+	const held = await stripReading(heldFrame.path, band, targetRgb);
+	note(
+		`${label}: the thumb with the pointer parked on it, past the hold`,
+		JSON.stringify({
+			holdExpired: {
+				fade: heldState.fade,
+				loSb: heldState.loSb,
+			},
+			thumbBand: {
+				onArrival: {
+					near: hover?.near ?? null,
+					sampled: hover?.sampled ?? null,
+				},
+				pastHold: { near: held?.near ?? null, sampled: held?.sampled ?? null },
+				atRest: {
+					near: resting?.near ?? null,
+					sampled: resting?.sampled ?? null,
+				},
+			},
+		}),
+	);
+	await parkPointer(cdp);
+
+	return {
+		target,
+		geometry,
+		point,
+		band,
+		resting,
+		hover,
+		held,
+		heldState,
+		frames: {
+			rest: restingFrame.path,
+			hover: hoverFrame.path,
+			held: heldFrame.path,
+		},
+	};
+}
+
+async function sceneScrollbarFade(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await wait(900);
+
+	/*
+	 * The census is the scene's own record of what it could have measured, and it
+	 * is committed with the frames: it is what tells a later reader whether the
+	 * surface a frame shows was the app's, and whether the route still renders it.
+	 */
+	const census = await cdp.evaluate(SCROLLER_CENSUS);
+	note(
+		"scroller census (/chat)",
+		JSON.stringify(
+			{
+				viewport: census.viewport,
+				scrollers: census.scrollers.map((one) => ({
+					tag: one.tag,
+					tourTag: one.tourTag,
+					tabIndex: one.tabIndex,
+					ox: one.ox,
+					oy: one.oy,
+					box: `${one.x},${one.y} ${one.w}x${one.h}`,
+					overflow: `${one.xOverflow}x${one.yOverflow}`,
+					fade: one.fade,
+					loSb: one.loSb,
+				})),
+			},
+			null,
+			2,
+		),
+	);
+
+	const control = await cdp.evaluate(
+		`(() => getComputedStyle(document.documentElement).getPropertyValue("--lo-border-control").trim())()`,
+	);
+	const targetRgb = (() => {
+		const hex = /^#([0-9a-f]{6})$/i.exec(control);
+		if (hex === null) return null;
+		const value = Number.parseInt(hex[1], 16);
+		return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+	})();
+	check(
+		"the theme resolves the thumb's own role to a colour",
+		targetRgb !== null,
+		`--lo-border-control reads ${JSON.stringify(control)}`,
+	);
+
+	/*
+	 * THE VERTICAL SURFACE IS THE COMMAND PALETTE'S OWN LIST
+	 * (`#command-palette-results`, `max-h-96 overflow-y-auto`). Two reasons, and
+	 * both are about the claim rather than about convenience. It is the surface
+	 * `docs/design/scrollbars-fade.md` § 1.1 measured the defect on — its committed
+	 * before frame is this palette's browse state — so the pair a reader compares is
+	 * one surface. And its rows are the app's own commands, so it is STABLE with no
+	 * backend, where the widest scroller on a backend-gated route is not: the first
+	 * run of this scene picked one of those (293px of overflow on `/agent-hub`) and
+	 * the route's own failed query collapsed it to 0 between the wheel and the read,
+	 * which is a frame of a state no reader ever sees.
+	 */
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	await wait(700);
+	const focusOne = await scrollbarFocusArm(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical keyboard arm", JSON.stringify(focusOne));
+	/*
+	 * The hold is waited out before the resting frame: a press is a real pointer
+	 * event, and a frame taken inside the hold would photograph an awake bar under
+	 * a caption that calls it rest. The assertion below is what makes that a
+	 * measurement rather than a hope.
+	 */
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const actOne = await scrollbarAct(cdp, {
+		axis: "y",
+		label: "vertical",
+		delta: { x: 0, y: 420 },
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical act", JSON.stringify(actOne));
+
+	const thumbOne = await scrollbarThumbPaintArm(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical thumb arm", JSON.stringify(thumbOne));
+
+	const hoverOne = await scrollbarHoverAct(cdp, {
+		axis: "y",
+		label: "vertical",
+		targetRgb,
+		prefer: "#command-palette-results",
+	});
+	note("vertical hover act", JSON.stringify(hoverOne));
+
+	await scrollbarPerfArm(cdp, {
+		centre: actOne === null ? { x: 690, y: 458 } : actOne.target.centre,
+		delta: { x: 0, y: 420 },
+	});
+
+	// Escape, dispatched as a real key event rather than by calling the handler.
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	await wait(400);
+
+	/*
+	 * THE HORIZONTAL ACT IS THE BROWSER TAB STRIP (design note § 6.1), reached
+	 * through the app's own route and its own new-tab control rather than through
+	 * the chat pane's trigger, which needs a conversation and therefore a backend.
+	 * Tabs are opened until the strip genuinely overflows: a horizontal scroller
+	 * with nothing to scroll paints no bar, so the act's own precondition is a
+	 * positive `scrollWidth - clientWidth`.
+	 */
+	await verb(cdp, "navigate", "/browser");
+	await wait(900);
+	for (let opened = 0; opened < 12; opened += 1) {
+		const pressed = await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-new-tab"]',
+		}).catch(() => null);
+		if (pressed === null) break;
+		await wait(250);
+	}
+	const tabs = await cdp.evaluate(
+		"(() => document.querySelectorAll('[data-tour-tag=\"browser-tab\"]').length)()",
+	);
+	note("tabs open in the strip", String(tabs));
+	// Same reason as the palette's: those presses were real pointer events.
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+
+	/*
+	 * TOWARD THE START, not toward the end: opening thirteen tabs leaves the strip
+	 * scrolled to its right-hand end (the app scrolls the new tab into view), so a
+	 * positive wheel there moves nothing and the bar stays asleep — which the first
+	 * run of this act reported as a wake failure that was the harness's own doing.
+	 */
+	const actTwo = await scrollbarAct(cdp, {
+		axis: "x",
+		label: "horizontal",
+		delta: { x: -420, y: 0 },
+		targetRgb,
+	});
+	note("horizontal act", JSON.stringify(actTwo));
+
+	const hoverTwo = await scrollbarHoverAct(cdp, {
+		axis: "x",
+		label: "horizontal",
+		targetRgb,
+	});
+	note("horizontal hover act", JSON.stringify(hoverTwo));
+
+	/*
+	 * REDUCED MOTION. `styles/index.css` caps `transition-duration` at 0.01ms for
+	 * everyone who asks, and the cap is read off the scroller's own computed style
+	 * rather than argued: the duration is the mechanism this change adds, so the
+	 * media query's effect on it is the whole claim.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+	});
+	const capped = await cdp.evaluate(
+		"(() => getComputedStyle(window.__loScrollbarFade).transitionDuration)()",
+	);
+	/*
+	 * Chromium's own serialization of the capped duration is seconds, so `0.01ms`
+	 * comes back as `1e-05s` and a string comparison against the stylesheet's
+	 * spelling would fail on a correct build. The claim is numeric: the fade's
+	 * duration collapses to the blanket cap, so both directions are a step rather
+	 * than a ramp.
+	 */
+	const cappedSeconds = Number.parseFloat(capped);
+	check(
+		"reduced motion caps the fade's duration",
+		Number.isFinite(cappedSeconds) && cappedSeconds <= 0.0001,
+		`the scroller's computed transition-duration reads ${JSON.stringify(capped)}`,
+	);
+
+	/*
+	 * FORCED COLOURS. The design's call is that the fade is suppressed there and
+	 * the bar is simply solid — the platform overrides our colour anyway (the
+	 * mechanism memo's probe read the thumb's red channel at 0 while the layout
+	 * stayed 8px), so a high-contrast reader never has to hunt for it. The state
+	 * that is asserted is the CSS half: the property is pinned at 1 with no
+	 * attribute write in play.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "forced-colors", value: "active" }],
+	});
+	const forced = await cdp.evaluate(SCROLLBAR_STATE);
+	check(
+		"forced colors pins the bar visible, whatever the attribute says",
+		forced !== null && Number(forced.loSb) === 1,
+		JSON.stringify(forced),
+	);
+	await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+}
+
+/**
+ * One axis' worth of the fade: rest, a real wheel, awake, a burst that must write
+ * nothing, and rest again.
+ *
+ * The three frames this writes are the ones a reader looks at, so every claim has
+ * both halves beside it — the state the app reported AND the pixels the frame
+ * holds — and the pixels are read from the strip the element's own box names.
+ */
+async function scrollbarAct(
+	cdp,
+	{ axis, label, delta, targetRgb, prefer = null },
+) {
+	const target = await cdp.evaluate(SCROLLBAR_TARGET(axis, prefer));
+	check(
+		`a ${label} scroller with something to scroll is on screen`,
+		target !== null,
+		target === null
+			? "no scroller with more than 40px of overflow on that axis, inside the viewport"
+			: `${target.tag} ${target.over}px of overflow at ${JSON.stringify(target.rect)}`,
+	);
+	if (target === null) return null;
+	note(`${label} target`, JSON.stringify(target));
+
+	const strip = stripOf(target.rect, axis, target.dpr, target.viewport);
+	const sample = async (label_, file) =>
+		targetRgb === null ? null : await stripReading(file, strip, targetRgb);
+
+	const restingState = await cdp.evaluate(SCROLLBAR_STATE);
+	const restingFrame = await capture(cdp, `${label}-idle-dark`);
+	const restingPixels = await sample("idle", restingFrame.path);
+	check(
+		`${label}: at rest the bar is idle and paints nothing`,
+		(restingState.fade === null || restingState.fade === "idle") &&
+			restingState.loSb === "0" &&
+			restingPixels !== null &&
+			restingPixels.near < 0.02 * restingPixels.sampled,
+		`attribute=${JSON.stringify(restingState.fade)} --lo-sb=${restingState.loSb}; strip ${JSON.stringify(restingPixels?.mean ?? null)} with ${restingPixels?.near ?? "?"} of ${restingPixels?.sampled ?? "?"} px near the thumb's colour`,
+	);
+
+	await wheelAt(cdp, target.centre.x, target.centre.y, delta);
+	// Past the 120ms fade-in, and well inside the 2200ms hold.
+	await wait(400);
+	const awakeState = await cdp.evaluate(SCROLLBAR_STATE);
+	const awakeFrame = await capture(cdp, `${label}-active-dark`);
+	const awakePixels = await sample("active", awakeFrame.path);
+	/*
+	 * The wheel has to have SCROLLED THE APP, not merely been dispatched: a wheel
+	 * over an element that has nothing left to scroll moves nothing, fires no
+	 * `scroll` event, and would leave the bar asleep for a reason that has nothing
+	 * to do with the module. The offset it moved is the proof.
+	 */
+	const moved =
+		axis === "y"
+			? awakeState.scrollTop - restingState.scrollTop
+			: awakeState.scrollLeft - restingState.scrollLeft;
+	const asked = axis === "y" ? delta.y : delta.x;
+	check(
+		`${label}: the wheel scrolls the app`,
+		Math.sign(moved) === Math.sign(asked) &&
+			awakeState.yOverflow === restingState.yOverflow &&
+			awakeState.xOverflow === restingState.xOverflow,
+		`${axis === "y" ? "scrollTop" : "scrollLeft"} moved ${moved}px for a ${asked}px wheel (overflow ${restingState.xOverflow}x${restingState.yOverflow} at rest, ${awakeState.xOverflow}x${awakeState.yOverflow} while awake)`,
+	);
+	check(
+		`${label}: the wheel wakes the bar`,
+		awakeState.fade === "active" && Number(awakeState.loSb) === 1,
+		`attribute=${JSON.stringify(awakeState.fade)} --lo-sb=${awakeState.loSb}`,
+	);
+	check(
+		`${label}: the thumb is painted while awake`,
+		awakePixels !== null &&
+			awakePixels.near > 0.3 * awakePixels.sampled &&
+			awakePixels.near > restingPixels.near,
+		`${awakePixels?.near ?? "?"} of ${awakePixels?.sampled ?? "?"} strip pixels are the thumb's colour, against ${restingPixels?.near ?? "?"} at rest; strip mean ${JSON.stringify(awakePixels?.mean ?? null)}`,
+	);
+
+	/*
+	 * THE NO-FLICKER RULE, measured rather than asserted in prose: a burst of
+	 * twelve real wheels inside the hold must write the attribute ZERO times,
+	 * because a write per event restarts the transition and that restart is the
+	 * flicker. The observer is the app's own DOM API on the scroller the module
+	 * marked — not the module's internals.
+	 */
+	const watched = await cdp.evaluate(`(() => {
+		const el = window.__loScrollbarFade;
+		window.__loScrollbarFadeWrites = [];
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				if (record.attributeName === "data-lo-scrollbar") {
+					window.__loScrollbarFadeWrites.push(el.getAttribute("data-lo-scrollbar"));
+				}
+			}
+		});
+		observer.observe(el, { attributes: true, attributeFilter: ["data-lo-scrollbar"] });
+		window.__loScrollbarFadeObserver = observer;
+		return true;
+	})()`);
+	check(`${label}: the write watcher is on the scroller`, watched === true);
+	for (let notch = 0; notch < 12; notch += 1) {
+		await wheelAt(cdp, target.centre.x, target.centre.y, delta);
+		await wait(60);
+	}
+	const writes = await cdp.evaluate(
+		"(() => { window.__loScrollbarFadeObserver.disconnect(); return window.__loScrollbarFadeWrites.length; })()",
+	);
+	check(
+		`${label}: twelve wheels inside the hold write the attribute zero times`,
+		writes === 0,
+		`${writes} attribute write(s) during the burst`,
+	);
+
+	await wait(SCROLLBAR_HOLD_MS_FOR_SCENE + 600);
+	const idleState = await cdp.evaluate(SCROLLBAR_STATE);
+	const idleFrame = await capture(cdp, `${label}-idle-after-dark`);
+	const idlePixels = await sample("idle again", idleFrame.path);
+	check(
+		`${label}: the hold expires and the bar goes back to rest`,
+		idleState.fade === "idle" && Number(idleState.loSb) === 0,
+		`attribute=${JSON.stringify(idleState.fade)} --lo-sb=${idleState.loSb}`,
+	);
+	check(
+		`${label}: and nothing is painted once it has`,
+		idlePixels !== null && idlePixels.near < 0.1 * idlePixels.sampled,
+		`${idlePixels?.near ?? "?"} of ${idlePixels?.sampled ?? "?"} strip pixels are the thumb's colour; strip mean ${JSON.stringify(idlePixels?.mean ?? null)}`,
+	);
+
+	/*
+	 * THE GUTTER DOES NOT MOVE (memo probe 1 / §E): the classic bar is 8px in
+	 * idle, awake and after, so nothing on screen shifts when the thumb appears.
+	 */
+	const bars = [restingState, awakeState, idleState].map((state) =>
+		axis === "y" ? state.barWidth : state.barHeight,
+	);
+	check(
+		`${label}: the bar's geometry is the same in every state`,
+		bars.every((width) => width === 8),
+		`${axis === "y" ? "offsetWidth-clientWidth" : "offsetHeight-clientHeight"} read ${JSON.stringify(bars)} across rest, awake and expired`,
+	);
+
+	return {
+		target,
+		strip,
+		restingState,
+		awakeState,
+		idleState,
+		frames: {
+			idle: restingFrame.path,
+			active: awakeFrame.path,
+			idleAfter: idleFrame.path,
+		},
+		pixels: {
+			idle: restingPixels,
+			active: awakePixels,
+			idleAfter: idlePixels,
+		},
+		writes,
+	};
+}
+
 async function sceneHitZones(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -31669,7 +33169,11 @@ async function assertBuildIsCurrent() {
  * ("a slightly different background shade to differentiate from the main sidebar"), so
  * the lane must carry that rung across the rail's width from y0 down - the readings
  * below assert the lane's resolved STOP LIST (colour/position pairs, read back off the
- * computed gradient) against each column's painted ground - and every route column's
+ * computed gradient) against each column's painted ground. The rail gave the rung up
+ * again on 2026-09-30 (flat `surface`, after the split it required was reported as
+ * mismatched blocks), so every column standing on today's tree is on `surface`; the
+ * assertion is about the rule rather than the value and is unchanged. And every
+ * route column's
  * RIGHT RULE was removed ("either make it extend all the way up or remove the right
  * border"), because a rule cannot reach y0 from inside the clipped content column, so
  * the scene refuses the hairline role anywhere in the lane.
@@ -31800,7 +33304,10 @@ async function sceneRouteTops(cdp) {
 			 *
 			 * SURFACE AND ELEVATED ARE BOTH RUNG GROUNDS the derivation accepts
 			 * (2026-09-27): the lane is a MIRROR of whatever rung it finds, so it has
-			 * to find both, and the settings rail moved one rung up. A canvas
+			 * to find both. The settings rail's round on elevated (2026-09-27, given
+			 * up again on 2026-09-30) is what widened the set from surface alone,
+			 * and the value it accepts is the rung the column is painted in rather
+			 * than a value any tree is expected to carry. A canvas
 			 * column would be the content ground the lane already paints and is not
 			 * a distinct case. The browser pane's elevated arrived from #590 after
 			 * QA round 1 and is the case the width term exists for: a full-width
@@ -31968,16 +33475,18 @@ async function sceneRouteTops(cdp) {
 		}
 		/*
 		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
-		 * each column's OWN rung rather than an assumed `surface`: the settings rail
-		 * took `elevated` to separate it from the app sidebar, so the lane paints the
-		 * sidebar's width in `surface`, the rail's width in `elevated`, then `canvas` -
-		 * the rail is INSIDE the clipped content column and cannot paint above its own
-		 * top edge, so the lane is the only thing that can carry its rung to y0. The
+		 * each column's OWN rung rather than an assumed `surface`. On the rail that
+		 * rung is `surface` again (it held `elevated` from 2026-09-27 to 2026-09-30,
+		 * and gave it up when the split it required was reported as mismatched
+		 * blocks inside the rail), so on this tree the lane paints the sidebar's
+		 * width in `surface`, the rail's width in `surface` too, then `canvas` - and
+		 * the two agent rosters have always been `surface`. The rule is what is
+		 * asserted rather than today's value: the rail is INSIDE the clipped content
+		 * column and cannot paint above its own top edge, so the lane is the only
+		 * thing that can carry its ground to y0, and the check below fails if the lane
+		 * paints anything but the rung the column is actually standing on. The
 		 * operator reported the band half of this twice (2026-09-26, and again
-		 * 2026-09-27 as still true); the rung half is the same report's second
-		 * sentence - "a slightly different background shade to differentiate from the
-		 * main sidebar" - which fails if the lane paints anything but the rung the
-		 * column is actually standing on.
+		 * 2026-09-27 as still true).
 		 *
 		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
 		 * is refused: no stop in the lane's resolved gradient may paint the hairline
@@ -32643,18 +34152,20 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * photographed mid-transition, so their colours were a phase of a 120 ms fade
  * rather than the surface's paint.
  *
- * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
- * Because the window is the app's own, its requests pass the desktop plane's
- * frame gate, and with `--backend` the whole send path is real: the daemon is
- * the run's own, the message it admits is read back from its history route,
- * and the two transient states are photographed with disclosed harness aids —
- * the daemon's process is PAUSED by exact pid for the `sending` frame and
- * resumed in a `finally` (the same request then completes), and the composer's
- * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
- * aids are page/process-level, neither changes shipped code, and the README
- * names them beside the frames. Without `--backend` the send ends in the
- * transport refusal — the error state with the draft kept — and the `sending`
- * / `sent` frames are simply not taken.
+ * THE LIVE SEND, AND THE ONE HARNESS AID THAT MAKES ITS STILL POSSIBLE (M-B1;
+ * QA round 2, Q5/Q6). Because the window is the app's own, its requests pass
+ * the desktop plane's frame gate, and with `--backend` the whole send path is
+ * real: the daemon is the run's own, the message it admits is read back from
+ * its history route, and the `sent` state is photographed by stretching the
+ * composer's own 600 ms flash timer in the page — a page-level aid, disclosed
+ * here and in the README, not a shipped change. A `sending` frame is NOT taken
+ * here, and no daemon is ever paused: the technique that used to hold one
+ * (SIGSTOP by exact pid) photographed the resting box because no in-flight
+ * state exists on this surface, and it was unreliable on its own terms — the
+ * send walk below carries that evidence. The real sending state is QA's
+ * with-backend capture, taken from the app's own signal. Without `--backend`
+ * the send ends in the transport refusal — the error state with the draft kept
+ * — and the `sent` frame is simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
  * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
@@ -34087,7 +35598,7 @@ async function main() {
 	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
-			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
@@ -34265,6 +35776,7 @@ async function main() {
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
