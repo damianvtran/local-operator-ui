@@ -1324,8 +1324,8 @@ export type EmptyArgumentList = {
 	 * A more specific fact than the four generic sentences below, when the
 	 * source can state one: `/mcp`'s server slot with nothing eligible is empty
 	 * BY DESIGN (`list`/`add`/an unknown verb — U2), and `/logout` can name a
-	 * provider the census knows with nothing stored (U4). Set only while `rows`
-	 * is empty, and read before the generic arms.
+	 * provider the census knows with nothing stored (U4). Set from the query or
+	 * the slot, read only in the empty state (before the generic arms).
 	 */
 	emptyCopy?: string;
 };
