@@ -528,12 +528,32 @@ const installBridge = (rows, { failWrite = null, aidaName = "Aida" } = {}) => {
 						},
 					},
 				};
+			/*
+			 * EVERY READ HANDS OUT A COPY, and that is what makes the ambiguous-failure
+			 * pin able to FAIL (QA round 2, Q-1 — the fixture's own defect, not the
+			 * app's). The bridge mutates these `rows` in place when a write lands,
+			 * because that is what a backend does; a fixture that served the SAME
+			 * objects to `profiles.get` left the client's cached row already carrying
+			 * the new class, so a pane that never re-read still painted "corrected" and
+			 * the regression the pin exists for sailed through it.
+			 *
+			 * MEASURED BOTH WAYS (the mutation pair QA asked for): with the pre-fix
+			 * guard restored, the pin PASSES against shared objects and FAILS against
+			 * these copies; with both the guard and the copies in place it passes. The
+			 * copy is what makes a cached read mean something — without it the cache
+			 * and the world are one object, and there is no stale value to catch.
+			 */
 			case "profiles.list":
-				return { status: 200, body: { result: { profiles: rows } } };
+				return {
+					status: 200,
+					body: {
+						result: { profiles: rows.map((entry) => ({ ...entry })) },
+					},
+				};
 			case "profiles.get": {
 				const hit = rows.find((entry) => entry.name === request.name);
 				if (!hit) return { status: 404, body: { detail: "missing" } };
-				return { status: 200, body: { result: hit } };
+				return { status: 200, body: { result: { ...hit } } };
 			}
 			case "teams.list":
 				return { status: 200, body: { result: { teams: [] } } };
