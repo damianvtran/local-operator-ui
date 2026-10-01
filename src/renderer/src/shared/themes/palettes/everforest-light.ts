@@ -104,6 +104,12 @@ export const everforestLight: ThemeDefinition = {
 		inkDisabled: "#A6B0A0",
 
 		hairline: "#CAC5AC",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.53:1 there against `hairline`'s 1.20:1.
+
+		hairlineStrong: "#B1AF9A",
 		borderControl: "#6E7D6D",
 
 		// upstream's signature green, deepened for ink on this paper.

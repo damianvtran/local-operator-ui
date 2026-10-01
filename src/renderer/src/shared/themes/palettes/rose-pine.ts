@@ -131,6 +131,9 @@ export const rosePine: ThemeDefinition = {
 		 * lands at 1.15:1 against `elevated` at its tightest.
 		 */
 		hairline: "#3e3e4d",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.60:1 there against `hairline`'s 1.48:1.
+		hairlineStrong: "#434353",
 		// highlight-med 403d52 lifted to clear 3:1 on `elevated`.
 		borderControl: "#8b87a3",
 

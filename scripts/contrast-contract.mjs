@@ -1388,12 +1388,16 @@ const CONTROLS = [
 		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
 		 * number that justified it was not, and the frames agree with the corrected one.
 		 *
-		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
-		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
-		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
-		 * ring-accent` - so identity and status are different channels instead of the
-		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
-		 * takes is state too, measured as ink on this fill, already above its floor.
+		 * The stripe carries REACH, not `state` (mesh redesign, design round's D2): `hairline`
+		 * at rest and for the two neutral states (`not-attempted` - the app never dialled -
+		 * and `unknown` - no read named it), `warning` when the device was asked and did not
+		 * answer, `danger` for a suspect identity, which outranks every probe result. The
+		 * stripe used to be keyed on `state`, which painted a device nobody had dialled the
+		 * amber of `unreachable`. THIS DEVICE IS A RING RATHER THAN A STRIPE (design round
+		 * 1, D6) - `ring-2 ring-accent` - so identity and status are different channels
+		 * instead of the accent sharing the stripe the anomalies spend. The ink edge a
+		 * selected node takes is state too, measured as ink on this fill, already above its
+		 * floor.
 		 */
 		name: "mesh device node",
 		on: ["sunken"],
@@ -1429,6 +1433,35 @@ const CONTROLS = [
 		fill: null,
 		border: "borderControl",
 		ink: "ink",
+	},
+	{
+		/*
+		 * The Mesh canvas's scope layer: the SOLID enclosure around a group of devices whose
+		 * published addresses support a claim (`mesh-scope-layer.tsx`).
+		 *
+		 * WHY THE SOLID TIER NEEDS A ROW AND THE DASHED ONE DOES NOT. The two tiers must not
+		 * be told apart by hue, so the difference is the DASH - and that makes the solid
+		 * enclosure the only visual marker of a verified grouping, i.e. its removal loses
+		 * information. It is therefore structural and takes `border-control` rather than the
+		 * decorative `hairline` the dashed tier uses; the dashed tier spends `hairline`
+		 * (no floor, decoration) and its `ink-dim` label is measured by this file's ink
+		 * floors already (`inkDim` on `sunken` is 5.00:1 at worst, `rosePineDawn`).
+		 *
+		 * The enclosure has NO FILL - it is a frame around nodes that keep their own
+		 * `elevated` fill - so `fill: null` makes the ink assertion "this file's label ink on
+		 * the ground it is drawn on", which is what the tier's label is: on `sunken`, beside
+		 * the frame, never on a control's own fill.
+		 *
+		 * MEASURED across the 59 palettes: the edge (`borderControl` on `sunken`) is 4.14:1 on
+		 * `localOperatorDark` and 3.20:1 on `localOperatorLight`, 3.01:1 at worst
+		 * (`rosePineDawn`) - above the 3:1 a boundary owes. The label (`inkMuted` on `sunken`)
+		 * is 9.08 / 7.18, 5.53:1 at worst (`kanagawaLotus`), above its own floor.
+		 */
+		name: "mesh scope boundary (solid)",
+		on: ["sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
 	},
 ];
 
@@ -1830,6 +1863,30 @@ const PERCEPTIBLE = [
 		pairedWith: "sunken",
 		maxWeightChange: 2.0,
 		against: "sunken",
+	},
+	{
+		/*
+		 * THE TURN-ANSWER RAIL (`turn-answer-rail.ts`, opt-in `display.turn_answer_rail`):
+		 * a 1px `border-hairline` rule beside the elected answer, on the transcript's
+		 * `canvas`. It is decorative - the layout already identifies the answer - so
+		 * it owes being SEEN rather than a 3:1 floor, and it is the quieter of the
+		 * two roles that could carry it (#708 used `ink-dim` at 2px, which the
+		 * operator found ugly).
+		 *
+		 * THE FLOOR IS 4.0, NOT THE PRESET THRESHOLD, and that is the design round's
+		 * finding rather than taste: measured across all 59 palettes this pair is
+		 * ΔE00 4.42 at its weakest (`rosePineDawn`, 1.20:1 - a rule a reader could
+		 * take for a rendering artefact) and 9.39 at the median. A 3.0 floor would
+		 * sit 1.4 BELOW the weakest palette that ships today, so it could not catch a
+		 * palette drifting toward invisible - which is the only reason to write the
+		 * row at all. 4.0 pins what ships with 0.42 of headroom and still leaves the
+		 * step to be re-argued if a future palette cannot clear it (design round 1,
+		 * D1).
+		 */
+		name: "turn answer rail",
+		role: "hairline",
+		on: ["canvas"],
+		minDeltaE: 4.0,
 	},
 	{
 		name: "context wheel track, empty state",
@@ -2473,6 +2530,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
+	},
+	{
+		what: "turn answer rail role",
+		file: "src/renderer/src/features/chat/canonical/turn-answer-rail.ts",
+		must: '"-ml-[13px] border-hairline border-l pl-3"',
+		why: "PERCEPTIBLE measures hairline against canvas as `turn answer rail`; nothing otherwise proves the rail renders that role, and a swap to a louder or fainter ink would keep the gate green",
 	},
 	{
 		what: "context wheel empty track role",
