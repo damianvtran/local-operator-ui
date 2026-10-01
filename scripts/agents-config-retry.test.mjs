@@ -240,6 +240,19 @@ const handle = (overrides = {}) => ({
 	...overrides,
 });
 
+/*
+ * EVERY MOUNT IS TRACKED SO IT CAN BE TORN DOWN (see the `after` hook below).
+ * WHY THAT MATTERS ENOUGH TO KEEP A LIST: this file used to end in a module-scope
+ * `process.exit(0)`, which under `node --test` runs BEFORE any registered case —
+ * the file reported green without executing a single one (code review round 1,
+ * B1). Removing it exposed the real problem it was hiding: the mounted composer
+ * leaves handles (the transcription manager's registration, and a react-query
+ * client whose garbage-collection timers outlive the test) that keep the process
+ * alive after the last case, which the runner reports as a file-level timeout.
+ * The cure is to close what the file opened, not to exit.
+ */
+const mounts = [];
+
 const mount = async (run) => {
 	const host = document.createElement("div");
 	document.body.append(host);
@@ -265,6 +278,7 @@ const mount = async (run) => {
 			),
 		);
 	});
+	mounts.push({ root, queryClient });
 	return { host, root };
 };
 
@@ -411,8 +425,14 @@ test("the store keeps a refused stop's run reachable until it settles", () => {
 });
 
 /*
- * The mounted composer leaves handles it owns (its transcription manager, the
- * query client this file creates), so the suite ends here — the same tail
- * `agents-composer-mount.test.mjs` carries for the same reason.
+ * THE TEARDOWN THE FILE OWES. Unmounting every root and unmounting the query
+ * client (v5's own stop for its timers) is what lets the runner exit on its own
+ * — no `process.exit`, which is the defect this hook exists to replace.
  */
-process.exit(0);
+after(async () => {
+	for (const { root, queryClient } of mounts) {
+		await act(async () => root.unmount());
+		queryClient.clear();
+		queryClient.unmount();
+	}
+});
