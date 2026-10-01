@@ -1388,12 +1388,16 @@ const CONTROLS = [
 		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
 		 * number that justified it was not, and the frames agree with the corrected one.
 		 *
-		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
-		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
-		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
-		 * ring-accent` - so identity and status are different channels instead of the
-		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
-		 * takes is state too, measured as ink on this fill, already above its floor.
+		 * The stripe carries REACH, not `state` (mesh redesign, design round's D2): `hairline`
+		 * at rest and for the two neutral states (`not-attempted` - the app never dialled -
+		 * and `unknown` - no read named it), `warning` when the device was asked and did not
+		 * answer, `danger` for a suspect identity, which outranks every probe result. The
+		 * stripe used to be keyed on `state`, which painted a device nobody had dialled the
+		 * amber of `unreachable`. THIS DEVICE IS A RING RATHER THAN A STRIPE (design round
+		 * 1, D6) - `ring-2 ring-accent` - so identity and status are different channels
+		 * instead of the accent sharing the stripe the anomalies spend. The ink edge a
+		 * selected node takes is state too, measured as ink on this fill, already above its
+		 * floor.
 		 */
 		name: "mesh device node",
 		on: ["sunken"],
@@ -1429,6 +1433,35 @@ const CONTROLS = [
 		fill: null,
 		border: "borderControl",
 		ink: "ink",
+	},
+	{
+		/*
+		 * The Mesh canvas's scope layer: the SOLID enclosure around a group of devices whose
+		 * published addresses support a claim (`mesh-scope-layer.tsx`).
+		 *
+		 * WHY THE SOLID TIER NEEDS A ROW AND THE DASHED ONE DOES NOT. The two tiers must not
+		 * be told apart by hue, so the difference is the DASH - and that makes the solid
+		 * enclosure the only visual marker of a verified grouping, i.e. its removal loses
+		 * information. It is therefore structural and takes `border-control` rather than the
+		 * decorative `hairline` the dashed tier uses; the dashed tier spends `hairline`
+		 * (no floor, decoration) and its `ink-dim` label is measured by this file's ink
+		 * floors already (`inkDim` on `sunken` is 5.00:1 at worst, `rosePineDawn`).
+		 *
+		 * The enclosure has NO FILL - it is a frame around nodes that keep their own
+		 * `elevated` fill - so `fill: null` makes the ink assertion "this file's label ink on
+		 * the ground it is drawn on", which is what the tier's label is: on `sunken`, beside
+		 * the frame, never on a control's own fill.
+		 *
+		 * MEASURED across the 59 palettes: the edge (`borderControl` on `sunken`) is 4.14:1 on
+		 * `localOperatorDark` and 3.20:1 on `localOperatorLight`, 3.01:1 at worst
+		 * (`rosePineDawn`) - above the 3:1 a boundary owes. The label (`inkMuted` on `sunken`)
+		 * is 9.08 / 7.18, 5.53:1 at worst (`kanagawaLotus`), above its own floor.
+		 */
+		name: "mesh scope boundary (solid)",
+		on: ["sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
 	},
 ];
 

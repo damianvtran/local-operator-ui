@@ -118,6 +118,12 @@ export const rosePineDawn: ThemeDefinition = {
 		inkDisabled: "#9893a5",
 
 		hairline: "#e1d8d1",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.56:1 there against `hairline`'s 1.15:1.
+
+		hairlineStrong: "#C2BAB9",
 		borderControl: "#8f828a",
 
 		accent: "#9e5350",
