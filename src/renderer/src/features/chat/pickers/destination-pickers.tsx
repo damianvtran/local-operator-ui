@@ -19,6 +19,7 @@ import {
 	desktopKeys,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
@@ -1664,9 +1665,26 @@ type ProfileRow = {
 	name?: string;
 	kind?: string;
 	description?: string;
+	/** A team's free-text display name, when the row carries one. */
+	label?: string;
+	/** Extra TUI-safe keys a team resolves under. Typed for the wire shape;
+	 * addressing in this app stays on `value`. */
+	aliases?: string[];
 	profile?: Record<string, unknown> | null;
 	instructions?: string | null;
 };
+
+/**
+ * The words a profile row is READ by: a team's label when it carries one, the
+ * slug otherwise (`teamDisplayName`), and `fallback` when the row itself is
+ * absent - the still-loading detail, or a value the list no longer holds.
+ *
+ * DISPLAY ONLY, the same rule the option list, the detail card and the
+ * placeholder all read. `value` - what `onPick` selects, what `submit` sends
+ * and what the detail query asks for - never routes through this.
+ */
+const readableProfileName = (row: ProfileRow | undefined, fallback: string) =>
+	teamDisplayName({ name: row?.name ?? fallback, label: row?.label });
 
 export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	sessionId,
@@ -1696,7 +1714,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 		() =>
 			(list.data?.entities ?? []).map((row) => ({
 				value: row.value,
-				label: row.name ?? row.value,
+				label: readableProfileName(row, row.value),
 				description: row.description,
 				meta: row.kind,
 				current: active === row.value,
@@ -1738,6 +1756,15 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 				}
 			: command.result
 		: null;
+	/*
+	 * The ACTIVE team's readable name, resolved from the same list the options
+	 * read (a labelled team reads as its label here too); a row the list does
+	 * not hold - the read still landing - keeps the slug.
+	 */
+	const activeRow = active
+		? (list.data?.entities ?? []).find((row) => row.value === active)
+		: undefined;
+	const activeLabel = active ? readableProfileName(activeRow, active) : "";
 
 	return (
 		<PickerHost
@@ -1749,7 +1776,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			description={
 				chartMode
 					? "Pick a team to see how it resolves."
-					: `${spec.description}. ${active ? `Active: ${active}.` : ""}`
+					: `${spec.description}. ${activeLabel ? `Active: ${activeLabel}.` : ""}`
 			}
 			options={options}
 			loading={list.isLoading}
@@ -1765,7 +1792,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 					<div className="flex flex-col gap-3">
 						<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
 							<p className="text-body-sm text-ink">
-								{selectedRow?.name ?? selected}
+								{readableProfileName(selectedRow, selected)}
 							</p>
 							{selectedRow?.description && (
 								<p className="text-ink-muted text-meta">
@@ -1794,7 +1821,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 								<Textarea
 									value={request}
 									onChange={(event) => setRequest(event.target.value)}
-									placeholder={`What should ${selectedRow?.name ?? selected} do?`}
+									placeholder={`What should ${readableProfileName(selectedRow, selected)} do?`}
 									rows={3}
 								/>
 							</PickerField>
@@ -3022,7 +3049,13 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 	);
 };
 
-type StoredAccount = {
+/*
+ * `/v1/auth/status`'s row shape. Exported because the composer's `/logout`
+ * argument list reads the same route under the same query key
+ * (`slash-commands.tsx`), and a second spelling of this wire shape is how the
+ * two readers drift.
+ */
+export type StoredAccount = {
 	id: number;
 	provider: string;
 	type: string;
