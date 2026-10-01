@@ -998,17 +998,18 @@ than from a green test.
   step stays what it was: a band for the grip ALONE (one control, one more position), not a
   redesign of the reveal.
 
-  **THE 220 TRIGGER IS EXPECTED TO BE MET, AND IT IS NOT MOVED TO AVOID THAT (review round 2).**
-  The row-space scene's own formula (`row - 4 - cluster - 28`, the 28 being the leading status
-  slot) predicts about **76px** of title under the pointer at the 220 floor with two or more
-  pins (`188 - 4 - 80 - 28`), which is under the 80 this section named. The reading has not been
-  taken yet (the frames session is pending on the host's disk), so this is a prediction and not
-  a finding. The threshold stays where it was written, so the reading is judged against the
-  number the design round saw. **When the frame lands, the measured value goes here in one
-  sentence, and the adjudication is the design round's, with the frame in front of it**: keep the
-  deferral (the 220 floor is a width almost nobody sits at, and the band's cost is a second
-  home for the same handle) or take the grip-only band. This section does not decide it for them
-  by editing its own trigger.
+  **THE 220 TRIGGER IS MET, AND IT IS NOT MOVED TO AVOID THAT (review round 2; measured
+  2026-10-01).** The reading is in (`pinned-reorder/grip-hover-220`, both palettes, scene 56 PASS /
+  0 FAIL): at the 220 floor with two or more pinned rows the title under the pointer measures
+  **76px** (a 188px row; 106px at rest), which is under the "about 80px at the 220 floor" this
+  section named, and it equals the prediction `188 - 4 - 80 - 28` to the pixel. At the default
+  (260) the same reading is 116px, over the 100px default-width trigger, so only the 220 trigger
+  fires. **The threshold is left where it was written and the adjudication is the design round's,
+  with the frame in front of it**: keep the deferral (the argument that survives its own trigger is
+  that 220 is the floor of a range the default sits 40px above, the title still reads about 12
+  characters, the grip-only band would give back 28px at the cost of a second home for the same
+  handle, and the operator's complaint was the pop-out at the widths people use) or take the
+  grip-only band for the narrow end. This section does not decide it by editing its own trigger.
 - **T3 and T2 are NOT deferred - they are met, and their readings are pinned in §14.** T3's
   bound (`flyout.left >= row.right + 4`) measures **+6 at every width** on this head, because
   the card is anchored to the row's BOX, which does not shrink when the acts reveal; the
