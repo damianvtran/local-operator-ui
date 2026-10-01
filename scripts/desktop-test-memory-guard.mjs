@@ -162,7 +162,6 @@ const MB = 1024 * 1024;
 // optional so a row without it parses and is simply never signalled by pid.
 const TABLE_LINE =
 	/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4}))?\s*$/;
-const IDENTITY_LINE = /^\s*(\d+)\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4})\s*$/;
 const FOOTPRINT_LINE =
 	/\[(\d+)\]:\s+\d+-bit\s+Footprint:\s+([\d.]+)\s*(B|KB|MB|GB|bytes)?\b/;
 const UNIT_BYTES = { B: 1, bytes: 1, KB: 1024, MB: MB, GB: 1024 * MB };
