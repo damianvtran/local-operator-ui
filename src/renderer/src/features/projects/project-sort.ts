@@ -166,6 +166,28 @@ export function sortAnnouncement(spec: SortSpec | null): string {
 	return `Sorted by ${sortColumnLabel(spec.key)}, ${sortDirectionWords(spec.key, spec.direction)}.`;
 }
 
+/**
+ * The one sentence for the doors that clear MORE than a sort (ux round 2,
+ * U15): `Clear all` used to announce only the sort, so a reader whose query
+ * and facets cleared with it heard nothing about them. The sentence names
+ * exactly what was cleared, in the order the doors name the state.
+ */
+export function clearAllAnnouncement(cleared: {
+	search: boolean;
+	filters: boolean;
+	sort: boolean;
+}): string {
+	const parts = [
+		cleared.search ? "Search" : null,
+		cleared.filters ? "filters" : null,
+		cleared.sort ? "sort" : null,
+	].filter((part): part is string => part !== null);
+	if (parts.length === 0) return "";
+	if (parts.length === 1) return `${parts[0]} cleared.`;
+	const last = parts[parts.length - 1];
+	return `${parts.slice(0, -1).join(", ")} and ${last} cleared.`;
+}
+
 /** Whether the key ranks a row with no value of that kind last (both directions). */
 function nullRank(key: SortKey, project: DesktopProject): 0 | 1 {
 	switch (key) {

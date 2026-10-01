@@ -1438,6 +1438,41 @@ export const ColumnMenuOpen: Story = {
 				),
 			"the sort chip",
 		);
+		/* U11's pin: the flip must be reachable from the KEYS. The checked
+		 * radio's own press is the flip, and Space/Enter on a checked radio
+		 * fire no click - the fix states the key path on the input. The play
+		 * flips twice so the frame's end state (Target, descending, menu
+		 * open) is unchanged, and both intermediate polls fail on the code
+		 * this pin was born against. */
+		const checked = [
+			...document.querySelectorAll<HTMLInputElement>(
+				'[role="dialog"] input[type="radio"]',
+			),
+		].find(
+			(node) =>
+				node.checked &&
+				node.closest("label")?.textContent?.includes("Sort by Target"),
+		);
+		if (!checked) throw new Error("the checked Target sort radio is absent");
+		checked.focus();
+		await userEvent.keyboard(" ");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "ascending",
+			"the keyboard flip to ascending",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the keyboard flip back to descending",
+		);
 	}),
 };
 
@@ -1463,6 +1498,16 @@ export const NoMatch: Story = {
 			() => (document.body.textContent ?? "").includes("No projects match"),
 			"the no-match sentence",
 		);
+		/* U13's pin: the query case keeps the search facts without the
+		 * roadmap word, and the recovery sentence stays (fails on the copy
+		 * this pin was born against, which said \"is not searched yet\"). */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("Update text is not searched.") &&
+				text.includes("Clearing the search and filters restores the list.")
+			);
+		}, "the search disclaimer and the recovery sentence");
 	}),
 };
 
