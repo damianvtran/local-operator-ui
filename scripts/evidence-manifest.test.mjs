@@ -471,16 +471,6 @@ const MOVED_FRAMES = [
 	"docs/evidence/chat-run-panel/mcp-key-saving/dracula.webp",
 	"docs/evidence/chat-run-panel/mcp-key-saving/dune.webp",
 	"docs/evidence/chat-run-panel/mcp-key-error/dune.webp",
-	/*
-	 * And the lane's FOURTH fold record, the same evening: the sync onto
-	 * `origin/main` = `689efa1eb4` (#667 the hub-update indicators, #730 the
-	 * settings-rail colour fix, #713 the scrollbar fade), which moved main twice
-	 * more while the round was in flight. Registered for the same completeness
-	 * reason as its siblings: a fold resolved from main's copy would drop the
-	 * statement of what this sync carried - main's five revised supplementary
-	 * records and its re-stamped notes, resolved per `citationConvention`.
-	 */
-	"foldOnto689efa1eb4Note",
 ];
 
 const HONEST_PASS = {
@@ -2965,6 +2955,36 @@ const BRANCH_RECORDS = [
 	 * sets' records, which this tree now needs because it carries those sets.
 	 */
 	"foldOnto6154018fdcNote",
+	/*
+	 * And the lane's FOURTH fold record, the same evening: the sync onto
+	 * `origin/main` = `689efa1eb4` (#667 the hub-update indicators, #730 the
+	 * settings-rail colour fix, #713 the scrollbar fade), which moved main twice
+	 * more while the round was in flight. Registered for the same completeness
+	 * reason as its siblings: a fold resolved from main's copy would drop the
+	 * statement of what this sync carried - main's five revised supplementary
+	 * records and its re-stamped notes, resolved per `citationConvention`.
+	 */
+	"foldOnto689efa1eb4Note",
+	/*
+	 * And by THIS lane too - the pass record's lineage gate: this branch's own
+	 * fix, whose note is the branch's newest top-level record. It is listed for
+	 * the reason the list exists: it moves `scripts/` only and takes no frame, so a
+	 * fold resolved from main's copy would drop it first, and the loss would be
+	 * silent - the same class of loss the fix itself is about, one file along. Its
+	 * pair is spelled as bare SHAs rather than backticked tokens, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"partialCaptureContinuityRestampNote",
+	/*
+	 * And the lane's FIFTH fold record, the same evening: the sync onto
+	 * `origin/main` = `7b984851a0` (#733 the bounded desktop tests, #725 the
+	 * AGENTS in-place/composer note, #719 the send row's delivery states), which
+	 * moved main again while CI was still queued on the last head. Registered for
+	 * the same completeness reason as its siblings: a fold resolved from main's
+	 * copy would drop the statement of what this sync carried - main's three new
+	 * records and the package.json union - resolved per `citationConvention`.
+	 */
+	"foldOnto7b984851a0Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
