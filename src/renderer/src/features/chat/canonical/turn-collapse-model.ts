@@ -47,6 +47,7 @@
  * session's shared outcome predicate the day it lands.
  */
 
+import { isPartialDelivery } from "../components/trace/tool-row-model";
 import {
 	type FoldableAction,
 	foldSummary,
@@ -144,6 +145,11 @@ export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
 export function isFailedCall(record: TranscriptRecord): boolean {
 	if (record.kind !== "tool") return false;
 	if (record.isError !== true) return false;
+	// The `send` delivery pair: `mailbox` and `unconfirmed` are settled non-failures
+	// that draw the amber partial row, so they never count here whatever a producer
+	// put on `is_error`. Listed beside the never-sent exclusions below for the same
+	// reason they are - this helper's answer is a COUNT's answer.
+	if (isPartialDelivery(record.delivery)) return false;
 	if (record.neverSent === true) return false;
 	if (record.notRunReason !== null && record.notRunReason !== undefined) {
 		return false;
