@@ -133,6 +133,36 @@ export function clearBrowserProjectionReadError(): void {
 }
 
 /**
+ * Publish a snapshot from OUTSIDE the bridge, for the renderer dev driver's
+ * `stageLiveConsents` verb.
+ *
+ * WHY A DOOR HERE AND NOT A BIGGER RPC: main's access queue is capped
+ * (`ACCESS_QUEUE_CAP`, 16 — `access-queue.ts`), and every badge host that
+ * counts approvals reads this snapshot's `pendingConsent`, so a THREE-DIGIT
+ * count is a state no live run can reach. A design pass still has to see what
+ * the mark does at that width (does a numeral survive it), and the honest way
+ * to give it one is the snapshot main would push rather than a second
+ * rendering path: the count, the badge and the accessible name that follow all
+ * run the SHIPPED code on a synthetic input, and the arrangement is disclosed
+ * as the seam.
+ *
+ * THE COMPLETION-ORDER RULE IS KEPT, NOT BYPASSED. A read already in flight
+ * was started before the stage, so the stage takes the highest STARTED
+ * generation as the published floor: that read cannot land over the staged
+ * snapshot, while any read started afterwards is newer and wins — which is
+ * what should happen when the app's real projection moves again.
+ *
+ * NOT A WRITE PATH FOR THE APP: the one caller is the armed dev driver (see
+ * `src/renderer/src/dev-driver/install.ts`); nothing in the product may call
+ * it, and a second caller is the signal to move this behind a test-only
+ * boundary rather than to widen it here.
+ */
+export function publishStagedProjection(state: BrowserChromeState): void {
+	publishedGeneration = readGeneration;
+	publish({ state, readError: null });
+}
+
+/**
  * Read the projection once.
  *
  * Returns the state it read as well as publishing it, because a caller's own

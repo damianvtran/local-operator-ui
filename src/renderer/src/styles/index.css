@@ -670,6 +670,14 @@
 	--text-meta: 0.75rem;
 	--text-meta--line-height: 1.45;
 
+	/* One step below `meta`, for the counted mark: a numeral inside a 16px circle
+	   needs the air this step buys, or the digit fills the ring (the "janky
+	   bubble" the operator reported, 2026-09-30). `ink-dim` is the register it
+	   pairs with (its own doc: captions, metadata, 11-13px), so the pair is the
+	   quiet count family rather than a fourth weight of attention. */
+	--text-meta-sm: 0.6875rem;
+	--text-meta-sm--line-height: 1.45;
+
 	/* Machine voice: paths, code, counts, timestamps, trace labels. The one
 	   place monospace is permitted, and the reason it reads as machine output
 	   without needing a box drawn around it. */
