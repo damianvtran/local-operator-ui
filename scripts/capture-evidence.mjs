@@ -5934,6 +5934,13 @@ export const STORIES = [
 	["projects-tab--sorted-status", 1280, 900],
 	["projects-tab--sorted-nulls-last", 1280, 900],
 	["projects-tab--no-match", 1280, 900],
+	/*
+	 * D10's frame: the FILTER-only no-match variant, which `NoMatch`'s own walk
+	 * passes through and restores away. The story's play holds the filter
+	 * door's output (no query typed) and asserts the variant's heading, its
+	 * recovery sentence and the one Clear all before the shutter.
+	 */
+	["projects-tab--no-match-filter", 1280, 900],
 	["projects-tab--board-search-active", 1280, 900],
 	["projects-tab--default-board", 1280, 900],
 	/* The no-dates callout, expanded over a dated chart: the collapsed line the
