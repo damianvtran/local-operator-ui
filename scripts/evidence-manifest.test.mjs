@@ -2924,6 +2924,12 @@ const BRANCH_RECORDS = [
 	"meshCanvasRedesignFoldNote",
 	"rebaseOntoA298bfb120Note",
 	"meshCanvasRedesignRemediationNote",
+	/*
+	 * Grown by the device-chip pass, whose top-level record is the set it ships
+	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
+	 * name rather than dropping it.
+	 */
+	"chatDevicePersistNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
