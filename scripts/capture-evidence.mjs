@@ -11807,6 +11807,21 @@ const main = async () => {
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
 	 *      main's keys this branch lacks re-introduces it.
+	 *   6. EVERY MERGED JSON/CONFIG FILE IS KEY-CHECKED before the fold is pushed,
+	 *      because the union rule is "no key may be lost and no form may be
+	 *      re-imposed" and a LIST-union read is blind to both halves: `node
+	 *      scripts/check-fold-keys.mjs` (no argument scans every fold on this
+	 *      branch, one argument checks a single merge) compares the merged key set
+	 *      against BOTH parents', nested objects walked and arrays read through
+	 *      their elements' key union. A BRANCH-side vanish is a fault unless the
+	 *      fold's record states the deliberate carry: the fold onto `44249a6796`
+	 *      took main's copy as the base for its list union, main had lost
+	 *      `check-themes` at `53c5cfec6b` (#714) while this branch carried it, and
+	 *      the key vanished without a word while that fold reported a clean union
+	 *      - `pnpm check-themes` stopped resolving until agent review round 8
+	 *      (R11) restored it. A MAIN-side vanish must be either group (5) of
+	 *      `citationConvention` or a stated repair. The check does NOT see form,
+	 *      so a clean run is not the whole rule - re-read the lists too.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:
