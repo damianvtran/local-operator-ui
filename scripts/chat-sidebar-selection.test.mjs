@@ -473,7 +473,7 @@ const CURRENT = [
 		what: "the entity row's manage control",
 		file: SIDEBAR,
 		expression: () =>
-			expressionBefore(SIDEBAR, "aria-label={`Manage ${name}`}"),
+			expressionBefore(SIDEBAR, "aria-label={`Manage ${displayName}`}"),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
 		notCurrent: { revealArmed: true, staged: false },

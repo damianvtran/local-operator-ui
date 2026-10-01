@@ -12,7 +12,14 @@
  *    it used to set;
  * 3. what ENTER does — the resolved active row, where "resolved" means the
  *    stored highlight, an exact name match, or else the first row of a NARROWED
- *    list, and nothing at all for a field at rest or an empty buffer.
+ *    list, and nothing at all for a field at rest or an empty buffer;
+ * 4. the KEYWORDS — the second matchable term a row may carry beside its shown
+ *    name (a team's slug when the row displays a label, an alias): it matches
+ *    in the filter, suppresses the custom row when the typed text IS that term
+ *    (the option's own row is then the typed value), and wins the exact arm of
+ *    the keyboard resolution — so "type the key, press Enter" takes the row the
+ *    key names (round 1, R1-1: the start-session dialog stopped answering a
+ *    team's slug the moment its row started showing the label).
  *
  * Rule 3 is the whole of the keyboard contract, and it is the one this file
  * exists for: "type three characters, press Enter" used to commit the three
@@ -273,4 +280,62 @@ test("an empty buffer is nobody's, even with rows on screen", () => {
 	// row is keyed on non-empty text, so an empty buffer has no row to land on.
 	assert.deepEqual(enterFor(OPTIONS, ""), { kind: "none" });
 	assert.deepEqual(enterFor(OPTIONS, "   "), { kind: "none" });
+});
+
+/*
+ * The KEYWORDS (round 1, R1-1). The rows below are the start-session dialog's
+ * shape after the team-label change: the shown name is a human label and the
+ * team's actual key rides as a keyword, the way that dialog now passes it.
+ */
+const TEAM_OPTIONS = [
+	{
+		id: "team:release-crew",
+		name: "Release Engineering",
+		keywords: ["release-crew"],
+	},
+	{ id: "team:docs-pod", name: "docs-pod" },
+];
+
+test("a keyword keeps a row findable when its name is a human label", () => {
+	// The label matches through the name, as it always did …
+	assert.deepEqual(
+		names(filterSearchableOptions(TEAM_OPTIONS, "release", "")),
+		["Release Engineering"],
+	);
+	// … and the SLUG the row no longer shows matches through its keyword — the
+	// full hyphenated key, and a fragment of it.
+	assert.deepEqual(
+		names(filterSearchableOptions(TEAM_OPTIONS, "release-crew", "")),
+		["Release Engineering"],
+	);
+	assert.deepEqual(names(filterSearchableOptions(TEAM_OPTIONS, "crew", "")), [
+		"Release Engineering",
+	]);
+	// A row without a keyword keeps matching by its name alone: the mechanism is
+	// additive, not a rewrite of the rule.
+	assert.deepEqual(names(filterSearchableOptions(TEAM_OPTIONS, "docs", "")), [
+		"docs-pod",
+	]);
+	assert.deepEqual(filterSearchableOptions(TEAM_OPTIONS, "zzz", ""), []);
+});
+
+test("typing a row's exact keyword commits that row, not a copy of the text", () => {
+	// The custom row is suppressed: the typed text IS the option's own term,
+	// so the option's row is the typed value and offering a second row would
+	// make the same choice twice.
+	assert.equal(
+		rowsFor(TEAM_OPTIONS, "release-crew").some((row) => row.kind === "custom"),
+		false,
+	);
+	// Enter takes it — an exact keyword match wins over "first visible", the
+	// same deliberate-act rule an exact NAME has always had.
+	assert.deepEqual(enterFor(TEAM_OPTIONS, "release-crew"), {
+		kind: "option",
+		option: TEAM_OPTIONS[0],
+	});
+	// Text that matches no term still gets its own row, keyworded or not.
+	assert.deepEqual(enterFor(TEAM_OPTIONS, "release-plz"), {
+		kind: "custom",
+		text: "release-plz",
+	});
 });
