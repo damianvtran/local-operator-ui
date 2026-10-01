@@ -214,6 +214,38 @@ export const showErrorToast = (
 };
 
 /**
+ * Publish an error card that REPLACES whatever sits at its id, with NO
+ * deduplication.
+ *
+ * `showErrorToast`'s dedupe is a policy for unsolicited refusals: one
+ * sentence, one shot per window. A caller whose card is a REPLACEMENT CARD -
+ * the request-update flow's per-project id, raised by a deliberate press and
+ * superseded by each result it produces - must answer every press, and must
+ * supersede the card it replaces IN PLACE: the id-replacement is the very
+ * mechanism that retires a raised loading card, so it cannot be the dedupe's
+ * to drop (UX round 2, U6: routing the failure through the deduping path
+ * suppressed the repeat's answer, and the `dismissToast` that papered over it
+ * was deferred by sonner to the next rAF while the same-id publish ran at
+ * setTimeout(0) - so on the browser's ordering the queued removal landed on
+ * the FRESH error card and deleted it ~20 ms after it appeared).
+ *
+ * Deliberately does NOT touch the dedupe maps: this is not a deduplicated
+ * refusal, it is the answer to a press, and recording it would let this
+ * lane's presses silence another lane's refusals.
+ *
+ * @param message - The error message to display
+ * @param options - Sonner toast options (ExternalToast); `id` is required in
+ * every call site of this app's one user (the request-update flow).
+ * @returns The toast ID
+ */
+export const replaceErrorToast = (
+	message: string,
+	options?: ExternalToast,
+): string | number => {
+	return toast.error(transportFailureText(message), options);
+};
+
+/**
  * Forget every refusal `showErrorToast` has already accounted for.
  *
  * The deduplication above is a user-facing policy - the same refusal must not
