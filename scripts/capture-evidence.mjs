@@ -8150,11 +8150,14 @@ export const STORIES = [
 	["common-updatefooticon--downloading", 560, 360],
 	["common-updatefooticon--strip-variant", 560, 360],
 	/*
-	 * The band's own states, photographed now that it draws a dismiss and only
-	 * appears on demand: one surface, both surfaces (the separator's frame), and
-	 * the view-direct drawing state that bypasses the gate.
+	 * The band's own states, in the design round's own enumeration (round-2
+	 * review, the D2 residual): the LONGEST version string the band can meet - the
+	 * wide case the truncation fix is about - both surfaces (the separator's
+	 * frame), and the view-direct drawing state that bypasses the gate. This
+	 * replaces the round-1 pick of `app-update`, so the declared set and the
+	 * design's list agree; the row count is unchanged.
 	 */
-	["common-updatequietindicator--app-update", 760, 200],
+	["common-updatequietindicator--long-version", 760, 200],
 	["common-updatequietindicator--both-surfaces", 760, 200],
 	["common-updatequietindicator--drawing-both-controls", 760, 200],
 	/*
