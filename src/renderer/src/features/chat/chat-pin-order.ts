@@ -429,11 +429,39 @@ export const chatPinMoveChord = (event: {
 /**
  * The chord's own spelling, so the cap the row menu prints and the handler that
  * answers it cannot drift (`chatRowActCap`'s reason).
+ *
+ * THIS IS THE HANDLER'S SPELLING, not a rendered one - the same split
+ * `chatRowActCap`'s docstring states, and the same failure if it is ignored:
+ * `KeyboardShortcut` splits its prop on `+`, so `⌘⇧↑` fed to it renders as ONE
+ * cap three glyphs wide. The row menu prints through the joined sibling below.
  */
 export const chatPinMoveCap = (step: PinMoveStep, isMac: boolean): string => {
 	const key = step === -1 ? "↑" : "↓";
 	return isMac ? `⌘⇧${key}` : `Ctrl+Shift+${key}`;
 };
+
+/**
+ * The same chord as `+`-joined prop text for `KeyboardShortcut` - the sibling
+ * `chatRowActCapJoined` is for the mirrored pair, and for its reason.
+ *
+ * WHY IT IS A SECOND FUNCTION rather than a splice at the call site: the
+ * separator IS the `+`, so the string a renderer needs is not a transformation
+ * of the string the handler matches - it is the same fact spelled for a
+ * different consumer, and deriving one from the other at the call site would be
+ * a second parsing rule for the next consumer to learn. The non-mac form already
+ * carries its separators, so it is `chatPinMoveCap`'s own string.
+ *
+ * IT WAS MISSING UNTIL THE ROUND-1 DESIGN REVIEW (D1), and the defect is exactly
+ * the one `chatRowActCap`'s docstring predicted: the two Move rows were the only
+ * items in this menu feeding the component the handler's spelling, so they drew
+ * a single 21px cap where the rows above them drew three caps across 52px - one
+ * item's chord disagreeing with its neighbours' in the same panel.
+ */
+export const chatPinMoveCapJoined = (
+	step: PinMoveStep,
+	isMac: boolean,
+): string =>
+	isMac ? `⌘+⇧+${step === -1 ? "↑" : "↓"}` : chatPinMoveCap(step, isMac);
 
 /**
  * The row a chord press is aimed at, or null when the press belongs to nobody.
