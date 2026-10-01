@@ -41,12 +41,18 @@
  * would disagree with the model the moment the two clocks differ.
  */
 
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import {
+	DESKTOP_REFUSAL_PLACEHOLDER,
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
 	PendingDesktopGate,
 } from "../../../../shared/desktop-session-contract";
+import { COMPOSER_TEXTAREA_SELECTOR } from "./composer-field";
+import { pressLandsOnOverlay } from "./keyboard-scopes";
 
 /**
  * The statuses the backend's fold can produce, as the one place they are
@@ -143,6 +149,96 @@ export const askBarLabel = (view: AskQueueView, expanded: boolean): string => {
 	const sentence = askBarText(view);
 	const stop = ENDS_TERMINALLY.test(sentence) ? "" : ".";
 	return `${sentence}${stop} ${expanded ? "Collapse" : "Expand to answer"}.`;
+};
+
+/**
+ * Whether the composer may ANSWER from this view at all.
+ *
+ * ONE PREDICATE FOR THE MODE, THE SWAP AND THE ROUTE (agent review round 3, F1 and
+ * F3). They had come apart: the mode read a derived flag while the swap keyed on the
+ * panel flag alone, so a queue that stopped being answerable under an OPEN panel
+ * flipped the mode without swapping the buffers - the ask-buffer answer stayed in
+ * the box and the next Enter posted it to the conversation.
+ *
+ * The head must be OPEN and answerable, and at least one of its questions must be
+ * one a plaintext box may fill. A SECRET question is not: its value belongs in the
+ * panel's masked field, so a secret-ONLY ask is deliberately NOT this mode - the
+ * `askComposerHoldsSecret` state below refuses the box instead, because the failure
+ * that matters there is the user typing a credential into a chat message.
+ */
+export const askComposerAnswers = (view: AskQueueView): boolean => {
+	const head = view.head;
+	if (head === null || !head.canAnswer) return false;
+	return head.ask.questions.some((question) => question.secret !== true);
+};
+
+/**
+ * Whether the head open ask can ONLY be answered in the panel's masked field.
+ *
+ * The composer refuses input in this state (the same refusal the blocking dock's
+ * secret gate uses), rather than leaving an ordinary box that would carry the
+ * credential into the transcript as a chat message.
+ */
+export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
+	const head = view.head;
+	if (head === null || !head.canAnswer) return false;
+	const questions = head.ask.questions;
+	return questions.length > 0 && questions.every((q) => q.secret === true);
+};
+
+/** The ask lane's own surfaces, marked on the root `AskSurfaces` renders. */
+export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
+
+/*
+ * Re-exported so the claim's own contract is nameable from a rig: the composer box
+ * is half of what this claim covers, and a test that had to guess its selector would
+ * be asserting a string rather than the element.
+ */
+export { COMPOSER_TEXTAREA_SELECTOR };
+
+/**
+ * Whether a press landed somewhere the ask lane speaks for.
+ *
+ * `true` for the ask surfaces themselves, for the composer's own textarea (the box
+ * this lane answers from, via `composer-field.ts` - the same module
+ * `use-interrupt-on-escape.ts` asks), and for a target with no element (the body, a
+ * synthetic event, an already-unmounted source).
+ */
+const pressIsOurs = (target: EventTarget | null): boolean => {
+	const element = target as { closest?: (selector: string) => unknown } | null;
+	if (typeof element?.closest !== "function") return true;
+	return (
+		element.closest(ASK_SURFACE_SELECTOR) !== null ||
+		element.closest(COMPOSER_TEXTAREA_SELECTOR) !== null
+	);
+};
+
+/**
+ * Whether the ask surface should claim an Escape press.
+ *
+ * A PURE FUNCTION because it is the riskiest thing this feature does with the
+ * keyboard and it had only walk-through evidence (agent review round 2 N-2, round 3
+ * NIT-2). Every guard is a defect this feature shipped:
+ *
+ *  - `defaultPrevented` - a surface that already claimed the press keeps it;
+ *  - `pressLandsOnOverlay` - an open dialog/menu/listbox owns its own keys, which is
+ *    the measured `Cmd-K then Escape` case where the ask panel collapsed and the
+ *    palette stayed open;
+ *  - `pressIsOurs` - the claim is for the ask surfaces and the composer box, not the
+ *    whole window. Without it, deeper owners that cancel on Escape without calling
+ *    `preventDefault` (the directory indicator, the sidebar's search, the dictation
+ *    cancel) both acted AND collapsed.
+ */
+export const askClaimsEscape = (event: {
+	key: string;
+	isComposing?: boolean;
+	defaultPrevented?: boolean;
+	target: EventTarget | null;
+}): boolean => {
+	if (event.key !== "Escape" || event.isComposing === true) return false;
+	if (event.defaultPrevented === true) return false;
+	if (pressLandsOnOverlay(event.target)) return false;
+	return pressIsOurs(event.target);
 };
 
 export const legacyAskMirrorSuppressed = (
@@ -667,8 +763,31 @@ export const askRefusalSentence = (error: unknown): string => {
 		typeof error === "object" && error !== null
 			? (error as { detail?: unknown }).detail
 			: undefined;
-	if (detail !== undefined)
-		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
+	/*
+	 * "DID A SENTENCE CROSS THE WIRE?" HAS TWO SHAPES, and the field alone cannot
+	 * answer it (QA round 3, Q-4). `desktopResult` stores `detail` only when the
+	 * body's detail is an OBJECT; a `{detail: "..."}` payload puts that same
+	 * sentence in `message` and leaves the field undefined - so a string-detail
+	 * refusal was read as "nothing crossed" and the owner's words were replaced by
+	 * the app's constant. The one thing that reliably means NOTHING crossed is the
+	 * transport's own placeholder, which is exactly what it substitutes when it has
+	 * no sentence to carry.
+	 */
+	const message = error instanceof Error ? error.message : "";
+	const authored =
+		detail !== undefined ||
+		/*
+		 * A control error whose message is NOT the placeholder carries prose, and the
+		 * only source of prose on this path is the refusal body - so this is the
+		 * string-detail shape. Scoped to `DesktopControlError` deliberately: a plain
+		 * `Error` is a transport failure, and reading its message as the backend's
+		 * own words would attribute this app's diagnosis to the server (QA round 3's
+		 * case 3 keeps that distinction).
+		 */
+		(error instanceof DesktopControlError &&
+			message !== "" &&
+			message !== DESKTOP_REFUSAL_PLACEHOLDER);
+	if (authored) return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
 	const classified = askRefusalFallback(error);
 	if (classified !== null) return classified;
 	/*

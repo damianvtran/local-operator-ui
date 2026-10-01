@@ -97,6 +97,8 @@ import {
 	type AskDraft,
 	EMPTY_DRAFT,
 	askAnswerMap,
+	askClaimsEscape,
+	askComposerAnswers,
 	askQueueView,
 	askRefusalSentence,
 	effectiveGate,
@@ -129,7 +131,6 @@ import {
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
-import { pressLandsOnOverlay } from "../keyboard-scopes";
 import {
 	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
@@ -455,8 +456,11 @@ function SessionPanel({
 	 * answer: with nothing answerable the box keeps the ordinary invitation and
 	 * Enter goes to the conversation, which is the only thing it could mean.
 	 */
-	const askAnswering =
-		askExpanded && Boolean(askQueueView(canonical.frontend).head?.canAnswer);
+	const asksView = useMemo(
+		() => askQueueView(canonical.frontend),
+		[canonical.frontend],
+	);
+	const askAnswering = askExpanded && askComposerAnswers(asksView);
 	/*
 	 * The two DRAFTS, kept apart (design §5.0's invariant).
 	 *
@@ -2584,44 +2588,44 @@ function SessionPanel({
 	 * a fresh closure per render would re-register the window listener on every
 	 * render, and the claim would be a listener churn rather than a claim.
 	 */
+	/*
+	 * THE SWAP FOLLOWS THE MODE, NOT THE TOGGLE (agent review round 3, F1).
+	 *
+	 * `askAnswering` - not `askExpanded` - is what the composer's mode means, and
+	 * the buffers must exchange on THAT transition. Keying the swap on the toggle
+	 * left a hole: when the last open ask settled under an OPEN panel (answered from
+	 * the phone, declined, `late`), the mode silently flipped to chat, no swap ran,
+	 * and the box still held the ask-buffer answer - so one Enter posted it to the
+	 * conversation. That is the toggle's own stated invariant ("a chat draft must
+	 * never become an answer and an answer must never be sent as chat") broken by the
+	 * one path that did not go through the toggle.
+	 *
+	 * Every door - the bar, the panel's Escape, the queue emptying, a settle from
+	 * another surface - now reaches the swap by moving this one flag.
+	 *
+	 * `setComposerText`, not `setCurrentInput`: only the revision-bumping writer
+	 * makes the composer ADOPT store text (round 1's F1/Q-1/U1).
+	 */
+	const answeringRef = useRef(false);
+	useEffect(() => {
+		const was = answeringRef.current;
+		answeringRef.current = askAnswering;
+		if (was === askAnswering) return;
+		const store = useConversationInputStore.getState();
+		if (askAnswering) {
+			chatBuffer.current = store.getCurrentInput(identity);
+			store.setComposerText(identity, askBuffer.current);
+		} else {
+			askBuffer.current = store.getCurrentInput(identity);
+			store.setComposerText(identity, chatBuffer.current);
+		}
+	}, [askAnswering, identity]);
 	const toggleAskExpanded = useCallback(
 		(next: boolean) => {
-			/*
-			 * IDEMPOTENT, AND THAT GUARD IS THE WHOLE SAFETY OF THE SWAP.
-			 *
-			 * A door that says "collapsed" while the page is already collapsed used to
-			 * move the user's chat text into the ask buffer and write the (empty) ask
-			 * buffer into the conversation's composer row - destroying a message the user
-			 * was typing, with no sign on screen (agent review F1). Two ordinary paths
-			 * reach it: the queue empties while the user is collapsed, and every pane
-			 * MOUNT of an ask-free conversation. Both are the default state of a normal
-			 * session, so this is not an edge case.
-			 *
-			 * Guarding on "the mode did not change" makes the swap a function of the
-			 * TRANSITION rather than of the call, which is also what makes the buffers
-			 * meaningful: there is nothing to exchange when the mode is not moving.
-			 */
 			if (next === askExpanded) return;
-			const store = useConversationInputStore.getState();
-			if (next) {
-				chatBuffer.current = store.getCurrentInput(identity);
-				/*
-				 * `setComposerText`, not `setCurrentInput`: the box must MOVE, and only the
-				 * revision-bumping writer makes the composer adopt store text. Writing the
-				 * keystroke path here left the old text standing in the box under the new
-				 * mode's placeholder, so it was sent down the other channel (agent review
-				 * F1 / QA Q-1 / UX U1).
-				 */
-				store.setComposerText(identity, askBuffer.current);
-			} else {
-				askBuffer.current = store.getCurrentInput(identity);
-				store.setComposerText(identity, chatBuffer.current);
-			}
 			setAskExpanded(next);
 		},
-		// `askExpanded` is READ in the guard, so it belongs in the list: the callback
-		// must see the mode it is about to leave, not the one it was created in.
-		[identity, askExpanded],
+		[askExpanded],
 	);
 	/*
 	 * THE COMPOSER'S ASK ROUTING (design §5.0).
@@ -2650,7 +2654,18 @@ function SessionPanel({
 			(question) =>
 				!question.secret && (current[question.id] ?? []).length === 0,
 		);
-		if (!target) return false;
+		if (!target) {
+			/*
+			 * EVERY QUESTION IS ANSWERED, so Enter does what `Send answer` does (UX
+			 * round 3, U8). It used to be inert - the box kept the text and nothing
+			 * was sent - which made the keyboard door quieter than the control beside
+			 * it for the one state where there is nothing left to type.
+			 */
+			const complete = askAnswerMap(head.ask, current);
+			if (complete === null) return false;
+			await answerAsk(head.ask.ask_id, complete);
+			return true;
+		}
 		const next = { ...current, [target.id]: [content] };
 		setAskDrafts((drafts) => ({ ...drafts, [head.ask.ask_id]: next }));
 		/*
@@ -2848,9 +2863,12 @@ function SessionPanel({
 	useEffect(() => {
 		if (!askExpanded) return;
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== "Escape" || event.isComposing) return;
-			if (event.defaultPrevented) return;
-			if (pressLandsOnOverlay(event.target)) return;
+			/*
+			 * The decision lives in `askClaimsEscape` so it can be exercised without a
+			 * walk (agent review round 3, NIT-2): every guard in it is a defect this
+			 * feature shipped, and it had only walk-through evidence.
+			 */
+			if (!askClaimsEscape(event)) return;
 			event.preventDefault();
 			toggleAskExpanded(false);
 		};

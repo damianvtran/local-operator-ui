@@ -60,7 +60,11 @@ import {
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft } from "../ask-queue";
-import { effectiveGate } from "../ask-queue";
+import {
+	askComposerHoldsSecret,
+	askQueueView,
+	effectiveGate,
+} from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -1995,7 +1999,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * value the wire means as secret cannot be masked on one surface
 								 * while this one stays open — the mix that re-opened the exposure.
 								 */
-								secretAnswer={gateIsSecret(gate)}
+								/*
+								 * AND AN OPEN ASK THAT IS SECRET-ONLY REFUSES IT TOO (agent review
+								 * round 3, F3). With `asks` on the wire the mirrored gate is
+								 * suppressed, so this term was false while a secret ask waited -
+								 * and because such an ask is deliberately NOT the composer's ask
+								 * mode, the box would otherwise have been an ordinary conversation
+								 * field, which is where a typed credential becomes a chat message.
+								 * The panel's masked field is the only door for it.
+								 */
+								secretAnswer={
+									gateIsSecret(gate) ||
+									askComposerHoldsSecret(askQueueView(canonical?.view.frontend))
+								}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

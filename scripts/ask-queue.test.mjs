@@ -482,3 +482,170 @@ test("the bar's announced name does not double a full stop", () => {
 	assert.ok(headless.endsWith(". Expand to answer."), headless);
 	assert.ok(!headless.includes(".."), headless);
 });
+
+/* --------------------------------------------------- the composer's mode ---- */
+
+test("an ask with a fillable question is the composer's mode; a SECRET-ONLY one is not", () => {
+	// Agent review round 3, F3: `askAnswering` asked only `canAnswer`, so a
+	// secret-only open ask promised an answer the Enter key cannot send - and,
+	// because such an ask is deliberately not the composer's mode, an ordinary box
+	// would have been the place a typed credential became a chat message.
+	const fillable = queue.askQueueView({
+		asks: [
+			single({
+				questions: [{ id: "t", question: "Which?", options: [{ label: "a" }] }],
+			}),
+		],
+	});
+	assert.equal(queue.askComposerAnswers(fillable), true);
+	assert.equal(queue.askComposerHoldsSecret(fillable), false);
+
+	const secretOnly = queue.askQueueView({
+		asks: [
+			single({
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
+			}),
+		],
+	});
+	assert.equal(
+		queue.askComposerAnswers(secretOnly),
+		false,
+		"a plaintext box cannot fill it",
+	);
+	assert.equal(
+		queue.askComposerHoldsSecret(secretOnly),
+		true,
+		"so the box must refuse instead",
+	);
+
+	// Mixed: the fillable question is what the composer is for; the secret one is
+	// the panel's.
+	const mixed = queue.askQueueView({
+		asks: [
+			single({
+				questions: [
+					{ id: "t", question: "Which?", options: [{ label: "a" }] },
+					{ id: "k", question: "Paste the key", secret: true },
+				],
+			}),
+		],
+	});
+	assert.equal(queue.askComposerAnswers(mixed), true);
+	assert.equal(queue.askComposerHoldsSecret(mixed), false);
+});
+
+test("the mode STOPS answering when the last open ask settles (the F1 delta)", () => {
+	// The defect: the swap keyed on the panel flag while the mode keyed on
+	// answerability, so a queue that settled under an OPEN panel flipped the mode
+	// without swapping - and the ask-buffer answer went out as a chat message.
+	// Both now read THIS predicate, so the transition is one event.
+	const open = queue.askQueueView({ asks: [single({ status: "open" })] });
+	assert.equal(queue.askComposerAnswers(open), true);
+	// Settled from the phone while the panel is open: `late` is terminal.
+	const settled = queue.askQueueView({
+		asks: [single({ status: "late", answers: { target: ["staging"] } })],
+	});
+	assert.equal(
+		queue.askComposerAnswers(settled),
+		false,
+		"the mode's transition",
+	);
+	// An emptied queue reaches the same state.
+	assert.equal(
+		queue.askComposerAnswers(queue.askQueueView({ asks: [] })),
+		false,
+	);
+	assert.equal(queue.askComposerAnswers(queue.askQueueView(null)), false);
+});
+
+/* ------------------------------------------------------------- the claim ---- */
+
+const targetInside = (selector) => ({
+	closest: (asked) => (asked === selector ? {} : null),
+});
+const targetInsideNothing = { closest: () => null };
+
+test("the Escape claim is ours only over the ask surfaces and the composer box", () => {
+	const base = { key: "Escape", target: null };
+	// A press with no element target is delivered that way when the panel was the
+	// only focus stop.
+	assert.equal(queue.askClaimsEscape(base), true, "the body is ours");
+	assert.equal(
+		queue.askClaimsEscape({
+			...base,
+			target: targetInside(queue.ASK_SURFACE_SELECTOR),
+		}),
+		true,
+		"the ask surfaces are ours",
+	);
+	assert.equal(
+		queue.askClaimsEscape({
+			...base,
+			target: targetInside(queue.COMPOSER_TEXTAREA_SELECTOR),
+		}),
+		true,
+		"the composer box is ours - it is the box this lane answers from",
+	);
+	// A deeper owner that cancels on Escape without calling `preventDefault` - the
+	// sidebar's search, the directory indicator, the dictation cancel - must not
+	// ALSO collapse the ask panel.
+	assert.equal(
+		queue.askClaimsEscape({ ...base, target: targetInsideNothing }),
+		false,
+		"another surface's own press is not ours",
+	);
+});
+
+test("the Escape claim stands down on every signal that says someone else owns it", () => {
+	const base = { key: "Escape", target: null };
+	assert.equal(queue.askClaimsEscape({ ...base, key: "a" }), false);
+	assert.equal(
+		queue.askClaimsEscape({ ...base, isComposing: true }),
+		false,
+		"an IME cancel",
+	);
+	assert.equal(
+		queue.askClaimsEscape({ ...base, defaultPrevented: true }),
+		false,
+		"already claimed",
+	);
+	// An open dialog/menu/listbox owns its keys: this is the measured
+	// `Cmd-K then Escape` case, where the ask panel collapsed and the palette stayed.
+	assert.equal(
+		queue.askClaimsEscape({ ...base, target: targetInside('[role="dialog"]') }),
+		false,
+		"an overlay owns the press",
+	);
+});
+
+/* ------------------------------------------------- Q-4: the string detail ---- */
+
+test("an owner's sentence survives when the wire sends it as a STRING detail", () => {
+	// QA round 3, Q-4: `desktopResult` stores `detail` only for an OBJECT body, so
+	// the string shape left the field undefined and the owner's words were replaced
+	// by the app's constant.
+	const stringDetail = new queue.DesktopControlError(
+		409,
+		"That ask was already answered by the phone.",
+	);
+	assert.equal(
+		queue.askRefusalSentence(stringDetail),
+		"That ask was already answered by the phone.",
+		"the string-detail shape keeps the owner's sentence",
+	);
+	// And the shapes that mean NOTHING crossed still get the app's sentence.
+	const placeholder = new queue.DesktopControlError(
+		409,
+		"This server did not answer the request for its desktop controls.",
+	);
+	assert.equal(
+		queue.askRefusalSentence(placeholder),
+		queue.ASK_ALREADY_SETTLED_MESSAGE,
+	);
+	// A plain Error is a transport failure, not the backend's prose: its own message
+	// is kept, never attributed to the server.
+	assert.equal(
+		queue.askRefusalSentence(new Error("socket closed")),
+		"socket closed",
+	);
+});
