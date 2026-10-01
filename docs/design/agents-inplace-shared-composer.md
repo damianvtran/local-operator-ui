@@ -14,6 +14,12 @@ Written against UI head `961887cf7c` (this worktree, cut from `origin/main`;
 the shared backend checkout is on a feature branch. Line numbers drift, so each
 claim also names the symbol it is about.
 
+Round 1 (2026-09-30): amended for the agent review (B1, M1-M4, m1-m5, n1-n3) and
+for the UX consult, which settled the former Q1 and Q8 (folded into § 2.2 and
+§ 2.6, recorded as resolved in § 4). The wire reading and Scope A's write path are
+unchanged; the amendment turns the run's *surface*, the mount's store reads and
+the `shared/` cut line from open items into stated decisions.
+
 Read with: `docs/branding.md` (the design contract), `AGENTS.md` (headless-run
 and frame-capture recipes, change scope), and the note this one follows —
 `docs/design/agents-conversational-config.md` (§ 5 is the page this note edits,
@@ -51,17 +57,24 @@ wholesale — ~40 `@features/chat/*` modules including `SessionStatusStrip` and
 it outside `/chat` today would drag the chat feature in with it. The ask is that
 the run composer be *the same component*, with its capability set (STT,
 attachments, model picker, effort, context, cost, duration), not a second
-composer that looks alike.
+composer that looks alike. Two facts about the run belong here once, because they
+set up § 3.1: its **send is a session create + message on a hidden run id**
+(`use-config-run.ts:490-508`, `:590-598`), never a message into a thread; and its
+**box is not its whole surface** — the run's own activity/state strip
+(`RunStrip`/`RunActivity`/`RunSummary`, `config-composer.tsx:96-326`, `:494-517`)
+is a second, run-owned surface that stays.
 
 ### 0.1 What "done" means for each
 
 - **A.** Drop the Edit gate. A field edits in place; blur accepts; Enter accepts
-  (multiline per § 2.2); Escape reverts; idle → editing → dirty → saving → saved →
+  (multiline per § 2.2, settled with the UX consult); Escape reverts; idle → editing → dirty → saving → saved →
   error, each a designed, framed state; a dirty field is **never** silently
   clobbered by an out-of-band write; keyboard-first; a11y intact.
 - **B.** One composer component, mounted by both `/chat` and the Agents page, that
   is single-source and carries the full capability set, with the run's
-  background-aside behaviour rendered *inside* that component's chrome.
+  background-aside behaviour rendered *inside* that component's chrome. Its box
+  replaces the run's `<Textarea>` only — the run's own activity/state strip and
+  its settled summary stay, run-owned (§ 3.1).
 
 ---
 
@@ -77,7 +90,7 @@ the ground the rest stands on.
 | `PATCH /v1/desktop/profiles/{name}` | `ProfileEdit` | `kind`, `description`, `instructions`, `tools`, `effort`, `delegate`, `action_class` | `routes/desktop_profiles.py:64-78`, `:306-310` |
 | `PATCH /v1/desktop/teams/{name}` | `TeamEdit` | `name`, `description`, `manager`, `members`, `instructions`, `project` | `:94-102`, `:363-365` |
 
-Three facts follow, and each corrects something a reader might assume:
+Four facts follow, and each corrects something a reader might assume:
 
 1. **Omission means "leave alone", never "clear".** `save_profile` sends
    `body.model_dump(exclude={"request_id","name"}, exclude_unset=True)`
@@ -101,7 +114,17 @@ Three facts follow, and each corrects something a reader might assume:
    contract to state is "refused on write", not "not a field" — a distinction the
    error copy depends on.
 
-3. **Team rename is expressible, and nothing validates a roster on write.**
+3. **An ordinary conversational agent cannot be edited here at all (m1).** The
+   read-only list in § 2.1 is about *fields*; this is about the *row*. For a row
+   that is neither a role nor an authored specialist, `write_profile`'s
+   else-branch **refuses the update outright** (`agent_tool.py:1192-1199`:
+   "Converting it is the fail-open hijack the role tag exists to stop") — so an
+   in-place edit of such a row fails on the first commit, whatever field it is.
+   Only a role or a specialist (or one of the shipped agents the pane can
+   install) is editable in place; everything else keeps the read view and the
+   "New chat" / "Duplicate" actions.
+
+4. **Team rename is expressible, and nothing validates a roster on write.**
    `TeamEditFields.name` reaches `update_team`, which calls `validate_team_name`
    and refuses a collision with another team's name (`teams.py:1533-1541`), so a
    rename *works* even though `save_team` addresses the row by its old name
@@ -111,8 +134,10 @@ Three facts follow, and each corrects something a reader might assume:
    `MAX_ORG_DEPTH`/cycle guard — has **no write-path caller**: its callers are the
    session *binding* and *move* paths only (`utils/desktop_profiles.py:110`;
    callers in `routes/desktop_sessions.py:2346-2558`, `utils/desktop_sessions.py:990`,
-   `:6063`, `:6213`, `tui/app.py:30626`). A dangling `manager: no-such-agent`
-   persists. **This corrects a live code comment**: `team-detail.tsx:104-107`
+   `:6063`, `:6213`, `tui/app.py:30626`). The line that most
+   plausibly seeded the wrong comment is `network/definitions.py:690`, which
+   *asserts* the desktop path validates the graph — it does, at **bind**, not at
+   **write**. A dangling `manager: no-such-agent` persists. **This corrects a live code comment**: `team-detail.tsx:104-107`
    claims "The backend refuses unresolved member names on WRITE
    (`validate_target`)", which the caller list refutes and which the merged note's
    R1-2 already corrected for the *note* (`agents-conversational-config.md:437-452`).
@@ -127,9 +152,12 @@ exist and are named here so the plan reuses rather than re-adds:
 - `Section` / `ReadBlock` / `FieldLabel` / `SourceChip` (`detail-parts.tsx:33`,
   `:83`, `:162`, `:453`) — the section grammar and the chip vocabulary;
 - `EditFooter` (`:224-290`) — sticky, one primary, dirty-confirm;
-- `useEscapeToCancel` (`:196-210`) — a window-level Escape that marks the key
-  handled, so the page's own Escape (leaving a definition at narrow widths,
-  `agents-page.tsx:307-310`) still works;
+- `useEscapeToCancel` (`:196-210`) — **the PAGE-level Escape, and it must not be
+  reused for a field (m2)**: it is a `window` listener that marks the key handled
+  for the whole pane, which cannot express "revert *this field*, not the record"
+  (§ 2.2). It stays for leaving a definition at narrow widths
+  (`agents-page.tsx:307-310`); per-field Escape needs its own handler, guarded on
+  `defaultPrevented` so an open picker closes first;
 - the page's dirty report and composer gate: each pane reports through
   `onDirtyChange` (`agent-detail.tsx:322-334`), the page resolves it against the
   pane *identity* so a stale report cannot outlive its record
@@ -178,6 +206,32 @@ the run has a **session id on the wire** but **no row in the canonical session
 store** — which is exactly the identity the composer's attachments, drafts and
 status strip are keyed by today.
 
+That is not a *write* risk on its own — the composer's canonical read is
+`sendUnsettledForSession(state.drafts, conversationId)`
+(`message-input.tsx:2532-2534`), a lookup that cannot create a row — but it is
+not a "verify at implementation" item either (M1). § 3.3.1 states the decision,
+because `use-config-run.ts:10-14` is the file whose whole existence is that the
+run never becomes a conversation.
+
+### 1.5 Two frozen briefs this note supersedes
+
+Both are live comments that will otherwise be argued from, and each is
+**superseded by this design, not contradicted by it**:
+
+1. **`config-composer.tsx:5-11` freezes the opposite brief.** "It is not the app's
+   chat composer and must never read as one (UX brief, must-nots): no slash
+   dispatch, no attachments, no `@` references, no draft store, no route change."
+   That was written for the shipped scope; Scope B supersedes the *control
+   surface*, while the parts it protects — the run's send path, the aside's
+   meaning, no route change — are exactly what § 3.3 keeps. The mount PR rewrites
+   that comment to name which half survives (the send path and the aside) and
+   which half is retired (the control-surface prohibition). Left standing, review
+   argues from whichever file it reads second.
+2. **The aside sentence is not a placeholder.** The composer has both a
+   `placeholderOverride` (`message-input.tsx:934`, `:937-951`) and a notice band;
+   U4 requires the sentence to stay a **persistent node that is still the box's
+   `aria-describedby` target**, verbatim. § 3.3.2 and Q5 follow from this.
+
 ---
 
 ## 2. Scope A — the per-field editing contract
@@ -196,6 +250,11 @@ briefs), `manager`, `members`. Read-only: `name` (today's deliberate choice,
 `team-detail.tsx:14-17`; the wire would allow a rename — Q4 asks whether to
 offer one), and the member *count* is a property of the row, not a free field.
 
+The *row-level* gate is separate from the field-level one: an ordinary
+conversational agent (neither a role nor an authored specialist) cannot be edited
+by this pane at all, because `write_profile` refuses its update outright (§ 1.1
+item 3). § 2.5 carries that as a validation rule rather than a silent failure.
+
 A **built-in** agent stays read-only as a whole (`agent-detail.tsx:537`,
 `:578-594`): it has no install until "Install to edit", and the read view already
 carries that sentence (`:616-624`). In-place editing does not change that gate.
@@ -204,23 +263,28 @@ carries that sentence (`:616-624`). In-place editing does not change that gate.
 
 - **Click away (blur) accepts.** A field with a changed, valid value commits on
   blur. A field blurred with no change leaves edit state with no request.
-- **Enter accepts, per field type.** Single-line fields (`description` is the one
-  on both records; effort/delegate are controls, not text) commit on Enter and
-  keep focus in the field. **Multiline fields (`instructions`, `project`) do
-  not commit on a bare Enter** — Enter is a newline, and **Cmd/Ctrl+Enter**
-  accepts. This is the one place the two-line rule has to be stated in the copy,
-  and it is what Q1 asks the designer to confirm over the alternative (Enter =
-  accept, Shift+Enter = newline), which is the same choice every code editor and
-  every chat box makes differently.
+- **Enter accepts, per field type — SETTLED (UX consult, was Q1).** Single-line
+  fields (`description`; `manager`/`name` on a team; effort and delegate are
+  controls, not text) commit on Enter, and focus **stays in the field** (or moves
+  to the next field where that is the walk's flow). **Multiline fields
+  (`instructions`, `project`, the team briefs) do not commit on a bare Enter** —
+  Enter is a newline and **Cmd/Ctrl+Enter** accepts, because Enter-to-accept on a
+  12-row prose field makes writing impossible and the chat box's Enter-sends
+  contract is a different box with a different job. This is the one two-line rule
+  the copy has to state.
 - **Escape reverts** the *field*, not the record: it restores the value the field
-  held when it entered edit state and leaves edit state. With a dirty field and a
-  pointer-nav away, the existing "discard?" question is the model
-  (`agent-detail.tsx:398-405`); with autosave the window is short, but the rule
-  must still be one rule.
-- **Affordances.** A subtle inline check (commit) and x (revert) appear only while
-  a field is dirty (`dirty` = value differs from base, per-field now rather than
-  whole-record), using the app's existing roles — colour and glyph, never a
-  shape change `docs/branding.md` forbids.
+  held when it entered edit state and leaves edit state — **with no prompt**
+  (SETTLED, UX consult), because with per-field autosave there is nothing to lose
+  that a re-type cannot restore. `defaultPrevented` is checked first so an open
+  picker (effort, member search) closes before the field does, reusing the guard
+  `useEscapeToCancel` already carries (`detail-parts.tsx:196-210`).
+- **Affordances — SETTLED (UX consult, was Q8).** A check (accept) and x (revert)
+  appear in the field's own row **only while the field is dirty** (`dirty` =
+  value differs from base, per-field now rather than whole-record), at a **32x32**
+  hit area matching the composer's icon buttons — glyph and colour only, no shape
+  change `docs/branding.md` forbids and no hover lift. They are **never the only
+  route to commit** (blur and the Enter rule are), so a pointer-less or
+  keyboard-only user is never dependent on them.
 
 ### 2.3 The state machine
 
@@ -283,6 +347,11 @@ recommended for v1**: it needs no backend change and the comparison is the same
   answers 200 and ignores it; that guard moves into the field's commit and is the
   reason a field can enter `error` without a round trip.
 - `description` on an agent: free (the DTO caps at 8000, `:66`).
+- **The row itself may be un-editable.** An ordinary conversational agent is
+  refused by `write_profile`'s else-branch (§ 1.1 item 3), so the pane must know
+  this *before* a commit and render the read view with its reason rather than
+  accepting a field and failing the write. "Editable" is a property of the record
+  (role / specialist / installed), not only of the field.
 - `effort`: constrained to the live tiers plus `inherit` (`agent-detail.tsx:730-737`).
 - team `manager` non-empty; `members` resolve against the loaded agents/teams,
   flagged inline when they do not (`team-detail.tsx:100-121`) — the check is the
@@ -292,16 +361,35 @@ recommended for v1**: it needs no backend change and the comparison is the same
 
 ### 2.6 Keyboard and accessibility
 
-- Tab reaches each field; Enter/⌘-/Ctrl+Enter accepts; Escape reverts; the
-  check/x are real buttons with labels, in the tab order, not hover-only.
+- **One tab stop per field, in reading order** — agent: `description` →
+  `instructions` → tools → delegate → effort; team: `description` → the two
+  briefs → `manager` → `members` (SETTLED, UX consult). Nothing else in the pane
+  gains a stop.
+- The check/x are real buttons with labels — "Accept the new <field>" / "Revert
+  the <field>" — **immediately after their field in the tab order** (SETTLED).
+  **A field in `error` or in conflict stays one stop, and the choice control is
+  the NEXT stop** — the field must not fragment into several stops or drop the
+  value's stop when it matters most.
+- Keys: Enter / ⌘-/Ctrl+Enter accepts; Escape reverts the field (§ 2.2).
 - Each field's control keeps its `FieldLabel`/`aria-invalid`/`aria-describedby`
   wiring (`detail-parts.tsx:453`), and a commit that starts a request sets
   `aria-busy` on the field's group.
+- **A refusal renders BESIDE the field with `Retry`, re-issuing the SAME write**
+  (SETTLED), and the field stays in `error` until retried or reverted — #704's own
+  finding (`agent-detail.tsx:866-872`: the message must not be a banner 700px
+  away). **A conflict reuses the shipped wording "This changed while you were
+  editing" at field scale** with "keep mine / use theirs", and **holds the
+  commit** — the hold is not silent (§ 2.4 case 3).
 - The transient `saved` acknowledgement is a single `aria-live="polite"` region
   per pane, not one per field, so a fast editor is not narrated into noise.
-- Focus never falls to `body` on commit: it stays in the field (the pane's
-  existing rule, `agent-detail.tsx:449-451`, is about a *mode* ending; under
-  in-place there is no mode to end, so the caret simply stays put).
+- Focus never falls to `body` on commit: it stays in the field, or advances on a
+  single-line Enter-accept (the pane's old rule, `agent-detail.tsx:449-451`, was
+  about a *mode* ending; under in-place there is no mode to end).
+- **Read-only fields stay read-only with a reason, and are never rendered as
+  fields that refuse** (SETTLED, executed against #704's U4/D1): `name`, `kind`,
+  provenance and `action_class` (unless Q3 says otherwise) render as prose and
+  chips — the read view's model — never as a disabled input, which is the exact
+  regression per-field editing could reintroduce.
 
 ### 2.7 What happens to read-first and the Edit gate
 
@@ -332,7 +420,10 @@ exists on the pane (`agents-page.tsx:280-285`, `:804-805`). Under autosave the
 dirty window is a keystroke-to-blur, so the block becomes almost always false —
 but the race it guards (a run writing the record while a human is typing it) is
 still real, just shorter and per-field. Recommended: keep the gate, scope it to
-"a field on *this* record is dirty or saving", and let it name the field. The
+"a field on *this* record is **dirty or saving**" — **not `editing`** (m3): in
+§ 2.3's machine a field is `editing` on a bare focus and only `dirty` after a
+change, so a gate keyed on `editing` would fire when the operator has merely
+clicked into a field and is racing nobody — and let it name the field. The
 pane's `onDirtyChange` contract (`agent-detail.tsx:314-334`) survives; what
 changes is that it reports on field state rather than a mode.
 
@@ -340,62 +431,126 @@ changes is that it reports on field state rather than a mode.
 
 ## 3. Scope B — one composer for the run and the conversation
 
-### 3.1 The requirement, read exactly
+### 3.1 The requirement, read exactly — and the surface it leaves alone
 
 The run composer must **be** `MessageInput` — not a restyle of it — with the full
 capability set, and the background-aside sentence
 ("Runs in the background. This does not appear in your conversation.",
 `config-composer.tsx:594-598`) must render *within that component's chrome*.
 
+**The run has two surfaces, and only one of them is the composer (B1).** The
+Agents page's configuration card is `ConfigComposer`, and above the box it renders
+a **run-owned activity and state strip**: `RunStrip` (`config-composer.tsx:96-326`)
+with `RunActivity`'s tool rows (`:66-94`), the `Watch` disclosure (`:186-200`), the
+Stop control (`Square`, `:203-212`), the `runDetails` row and the settled summary
+`RunSummary` (`:327-383`). `MessageInput` is a composer only — the
+transcript it sits under in chat is `features/chat/components/chat-content.tsx`,
+which mounts it, and chat's own tool rows are chat's. So mounting `MessageInput`
+in place of `:531-585` replaces **the box**, and the run's strip stays exactly
+where it is.
+
+Which half of chat's pane comes along: **none**. There is no chat transcript on
+this page to bring, and the run's strip is not one — it is the run's own progress
+vocabulary (`config-composer.tsx:18-22`: a state dot, a one-line step and elapsed
+time; no percentage). The note therefore says, once, what "one composer" means
+here: **the box is shared; the surface above it is the run's.**
+
+The parity evidence in § 3.2 and the step plan in § 3.6 are written against this
+two-surface reading.
+
 ### 3.2 Capability audit against the current component
 
-| Capability | In `MessageInput` today? | How a non-chat host supplies it |
+Capability, where it lives today, and what the run must supply. "In the
+component" is about the **control**; delivery and enablement are separate rows,
+because two of them are not free (M2, M3).
+
+| Capability | In `MessageInput` today? | What the run supplies / must decide |
 |---|---|---|
-| STT / dictation | **Yes** — the button, the manager, the indicator (`:23`, `:371`, `:898-935`) | `recordingProbe` + `onDictationStateChange`; fails closed to "no key" (`:898-923`) |
-| Attachments incl. pasted images | **Yes** — paste branch (`:5918-5940`), `AttachmentsPreview` (`:22`) | **needs `conversationId`**; attachments live on `useConversationInputStore` keyed by it (`:1513-1526`) |
-| Model picker | **Yes** — `SessionStatusStrip` → `/model` dispatch (`session-status-strip.tsx:50-60`, `:71-75`) | needs the canonical frontend snapshot (`frontend` prop) |
+| STT / dictation | **Yes** — the button, the manager, the indicator (`:23`, `:371`, `:898-935`) | `recordingProbe` + `onDictationStateChange`; fails closed to "no key" (`:898-923`). A transcription lands in the box's text, which rides `text`. |
+| Attachments incl. pasted images | **Yes** — the control (paste branch `:5918-5940`, `AttachmentsPreview` `:22`) | **needs `conversationId`** for the input store (`:1513-1526`), **and a delivery path the run does not have yet (M2, § 3.3.4)** |
+| Model picker | **Yes** — `SessionStatusStrip` → `/model` dispatch (`session-status-strip.tsx:50-60`, `:71-75`) | the `frontend` snapshot (present, `use-config-run.ts:37`) **and a dispatcher it will not have** — M3, § 3.3.3 |
 | Effort | **Yes** — same strip, `/effort` (`:52`) | same |
 | Context readout | **Yes** — same strip (`ContextWheel`, `:16-18`) | same |
 | Cost | **Yes** — same strip (`session-cost.ts`) | same |
 | Duration | **Yes** — same strip (`session-duration.ts`) | same |
-| Run state row | `ComposerStatusRow` (`:6403`) | `runDetails` prop (`:432`) |
+| `@` references | **Yes** — `mentionsEnabled` (`:748`), fails closed | **not enabled for the run** (§ 3.3.1) |
+| Slash commands | **Yes** — `slash.available && Boolean(onSlashCommand)` (`:3427`) | **not passed for the run** — the gate that reaches the picker registry (§ 3.3.1) |
+| **Run activity/state strip** | **No — and it is not the composer's (B1)** | the run keeps its own `RunStrip`/`RunActivity`/`RunSummary` above the shared box (§ 3.1) |
 
-**The audit's conclusion: the capabilities are already in the component; what the
-run lacks is the identity and the snapshot the strip reads them from, not the
-controls.** That is the whole of Scope B's difficulty, and it is deliberately
-narrower than "port a composer".
+**The audit's conclusion: the capabilities are already in the component as
+*controls*; what the run lacks is the identity, the snapshot's dispatcher, and the
+attachment *delivery* — not the controls.** That is the whole of Scope B's
+difficulty, and it is deliberately narrower than "port a composer". But "the
+control exists" is not "the capability arrives": M2 and M3 are the two rows where
+it would not, and § 3.3 settles both.
 
 ### 3.3 The run's four differences, and how each is reconciled
 
-1. **No canonical session store row.** The run's id is in `config-run-store`
-   (§ 1.4). *Reconcile by prop, not by store*: `MessageInput` already takes
-   `conversationId` as an **optional** prop (`:583`) and degrades to no
-   drafts/attachments when absent. The run passes its own id as `conversationId`
-   for the composer's *internal* keys, while the store row stays absent — the two
-   are already separate (the composer reads `useConversationInputStore`, which is
-   not the canonical session store). **Verify at implementation that nothing on
-   the mount path `upsertSession`s** — that is the leak the whole feature exists
-   to prevent (`use-config-run.ts:1-30`), and mounting the chat composer is a new
-   chance to cause it.
-2. **Background aside, no conversation entry.** Render the aside sentence through
-   `placeholderOverride`-style chrome — the component already has a host-owned
-   invitation slot (`placeholderOverride`, `:937-951`) and a notice band. The
-   aside line is *not* a placeholder (it is a permanent footnote) so it wants a
-   small host slot, recommended as a new optional `hostNotice?: ReactNode`
-   rendered above the box, rather than overloading the placeholder. Q5 confirms
-   the slot's shape with the designer.
-3. **The strip's readings.** The run is a real session, so `useCanonicalSessionStream`
-   already produces a frontend snapshot (`use-config-run.ts:37`). Whether the
-   strip *should* show model/effort/context/cost/duration for a configuration run
-   is a product question (Q6): the run's model is resolved by the backend
-   (§ `use-config-run.ts:22-30`), so a model *picker* may be inert. Recommended:
-   mount the strip, keep the readings live, and gate the pickers off where the
-   run's model is backend-resolved.
-4. **Send shape.** The run's send is `run.start(text, about)` (`config-composer.tsx:465-469`)
-   with an "About <agent>" chip — not a message into a transcript. *Reconcile by
-   the `onSendMessage` seam* (`:453`): the run's handler takes `(content)`,
-   ignores attachments it did not receive, and keeps `about` as host chrome beside
-   the box (the chip already exists, `:518-527`).
+1. **No canonical session store row — and the mount's store reads are a stated
+   decision, not a "verify later" (M1).** The component reads canonical state on
+   its mount path: `useCanonicalSessionsStore((state) =>
+   sendUnsettledForSession(state.drafts, conversationId))`
+   (`message-input.tsx:2532-2534`), `useAsideStore` (`:123`, `:1478`), and it can
+   reach a write through slash dispatch, whose destination path calls the router
+   and `upsertSession` (`features/chat/components/slash-dispatch.ts:534-...`, the
+   `/new` branch). **The decision:** the run is allowed the composer's two
+   *reads* — the canonical **drafts lookup** (a pure read keyed by the id; it
+   cannot create a row, and `conversationId` is the run's own id) and the aside
+   read (inert: the run passes no `asideSessionId`) — and is **denied every write
+   path the component owns**:
+   - `onSlashCommand` **is not passed**, so `slash.available && Boolean(onSlashCommand)`
+     (`:3427`) is `false` and the whole slash surface — the one that reaches
+     `upsertSession` — is off;
+   - `mentionsEnabled` is **not enabled** (`:748`);
+   - the run's `onSendMessage` calls `run.start` directly and **never**
+     `admitChatDraft`.
+   The acceptance test this owes, as the constraint demands
+   (`use-config-run.ts:10-14`): after a send from this box, the run id is absent
+   from `lop sessions`, from the sidebar and from search, and never appears in the
+   chat route. That is the *design-level* statement; the note no longer leaves it
+   to implementation to discover.
+2. **Background aside, no conversation entry — reuse the existing notice band,
+   add no prop (Q5, U4).** The aside sentence is a **permanent footnote, not a
+   placeholder**, and U4 requires it to stay the box's `aria-describedby` target,
+   verbatim. So the recommendation is now explicit: put it in the composer's
+   **existing notice band** (`message-input.tsx:934`, `:937-951` is the
+   placeholder slot; the notice band is the sibling) and point the box's
+   `aria-describedby` at that node. A new `hostNotice?: ReactNode` slot is the
+   alternative, not the recommendation — one sentence does not justify a third
+   slot. Q5 keeps both options and rules out `placeholderOverride` on U4's terms.
+3. **The strip's readings — a three-way choice, and (b) is the pick (M3).** The
+   run *does* have a non-null snapshot (`use-config-run.ts:37`), so the question
+   is not "is there a snapshot" but **which strip**: (a) no strip (a `null`
+   `frontend` renders nothing — `session-status-strip.tsx:758-784`); (b) **the
+   readings render, the pickers do not**; or (c) the pickers render visibly inert.
+   The recommendation is **(b): pass `frontend`, withhold `onCommand`** — with no
+   dispatcher each reading renders as a label carrying the shipped `COMMANDS_OFF`
+   sentence (`session-status-strip.tsx:628-630`, "Slash commands are off on this
+   server…"), which is the honest state for a run whose model the backend
+   resolves (`use-config-run.ts:22-30`). **This is a new *use* of an existing
+   strip mode, not a prop the run already has** — the same control in a
+   configuration the chat pane never puts it in — and it is what Q6b asks the
+   consult to confirm. Whether the readings should appear *at all* is Q6a.
+4. **Send shape, and the attachment delivery gap (M2, m5).** The run's send is
+   `run.start(text, about)` (`config-composer.tsx:465-469`), which is a
+   `sessions.create{purpose}` + `sessions.message{text}` on a hidden id
+   (`use-config-run.ts:490-508`, `:590-598`) — not a message into a transcript,
+   and `about` is **folded into the text** (`About the ${kind} "${name}": …`,
+   `use-config-run.ts:504-508`), so m5 is right that it becomes part of
+   `content`, not chrome that "stays beside the box". The About *chip* stays host
+   chrome (`:518-527`), but its content is inside the text. On attachments:
+   `MessageInput`'s seam is `onSendMessage(content, attachments: string[])`
+   (`:453-472`, called with `attachments.map((a) => a.path)` at `:2388-2396`),
+   while `sessions.message` carries only `text` today — and the wire's `Prompt`
+   accepts `images` (max 8), `audio` (max 1) and `input_path`
+   (`routes/desktop_sessions.py:1061-1080`). **Decision: carry attachments
+   end-to-end.** The ask names pasted images/screenshots as required, so the
+   run's send is extended — `run.start(text, about, images)` forwarding to
+   `sessions.message{text, images}` — rather than mounting an attach control that
+   drops its payload. (If the consult prefers not to extend the run's write path,
+   the honest alternative is to **not mount the attach control at all**: the note
+   forbids the middle state, a control that appears to collect what the send
+   discards.)
 
 ### 3.4 The layering problem, and the smallest fix
 
@@ -406,19 +561,28 @@ is not free. Two options:
   depends on a feature forever, and the next consumer inherits the coupling. It
   also makes the component's own doc comment false.
 - **(ii) Move the chat-owned satellites the composer genuinely needs into
-  `shared/`** — at minimum `SessionStatusStrip` (+ its three reading modules),
-  `ComposerStatusRow`, `AttachmentsPreview`, the credential-capture cluster, and
-  the slash/at pickers it renders. Largest, but it is the only version where the
-  component is *shared* rather than relocated.
+  `shared/`**, chosen by a rule rather than by appearance. **The rule is state
+  reach (M4): a satellite may move to `shared/` only if it neither reads the
+  canonical store nor issues a command.** Drawn that way it excludes
+  `ComposerStatusRow`, which is *not* chat-only furniture — it reaches owner
+  commands through `useSessionCommand`/`sessions.command`
+  (`composer-status-row.tsx:146`, `:1186-1197`), a write outside the run's remit —
+  and excludes the pickers, whose click path reaches the registry and
+  `upsertSession`. It *includes* the class that genuinely qualifies:
+  `AttachmentsPreview`, which imports only `@shared/*`
+  (`attachments-preview.tsx:1-4`), and `SessionStatusStrip`, which imports only
+  `@shared/*` plus three sibling arithmetic modules and two **type-only**
+  `features/chat` modules (`session-status-strip.tsx:1-36`).
 
-**Recommended: (ii), scoped to what the run actually renders.** The run does not
-need the credential capture, slash commands or at-mentions — those are chat
-surface. So the honest split is: **lift the composer's *own* furniture
-(status strip and readings, run row, attachments preview, dictation indicator)
-into `shared/`, leave the chat-only pickers imported behind props the run does
-not pass.** That is a smaller move than (ii) wholesale and it removes the part of
-the coupling the run would otherwise carry. Q7 asks the consult to confirm the
-cut line.
+**Recommended: (ii), scoped by the state-reach rule.** Under it the lift is:
+`SessionStatusStrip` + its reading modules (`session-cost`/`session-context`/
+`session-duration`/`session-model`), `AttachmentsPreview`, and the dictation
+indicator. `ComposerStatusRow` **stays in the feature** (it commands) — which
+also removes the temptation to hand the run a control that writes. What remains
+behind host props is exactly the chat-only surface, and the props are nameable (n1): slash availability is `slash.available && Boolean(onSlashCommand)`
+(`message-input.tsx:3427`) and `@` is `mentionsEnabled` (`:748`) — the run passes
+neither, so the cut line is checkable rather than a promise. Q7 asks the consult
+to confirm the rule before answering.
 
 ### 3.5 Single source, and what the manager must coordinate
 
@@ -439,12 +603,23 @@ both are the manager's to run, not this note's to message:
 1. **Lift the coupled satellites into `shared/`** (§ 3.4), one PR, no behaviour
    change, parity frames. This is the enabling step and it is reviewable on its
    own.
-2. **Add the host seams the run needs** — `hostNotice` (§ 3.3.2) and whatever the
-   strip needs to render for a session with no draft — again no consumer yet.
-3. **Mount `MessageInput` on the Agents page**, replacing `config-composer`'s
-   textarea, with `conversationId` = the run id, `onSendMessage` = `run.start`,
-   the About chip and the aside notice as host chrome.
-4. **Delete `config-composer`'s bespoke box** once the mount has parity frames.
+2. **Add only the seams the run genuinely needs** — with Q5 answered as the
+   recommendation there is **no new prop** (the aside rides the existing notice
+   band, § 3.3.2); the enabling work is the strip's readings-only use (§ 3.3.3),
+   which is a *call-site* choice, not a new prop. Again, no consumer yet.
+3. **Mount `MessageInput` on the Agents page**, replacing **only**
+   `config-composer`'s `<Textarea>` (`:531-546`) — the run's `RunStrip`,
+   `RunActivity`, `Watch`/Stop and `RunSummary` **stay exactly as they are**
+   (§ 3.1, B1) — with `conversationId` = the run id (reads allowed, writes denied
+   per § 3.3.1), `onSendMessage` = `run.start` extended to carry attachments
+   (§ 3.3.4), `frontend` = the run's snapshot with **no** `onCommand`, and the
+   About chip and the aside band as host chrome. Parity evidence for this step is
+   a frame of the **box plus the strip**, not the box alone.
+4. **Retire `config-composer`'s bespoke *box*, not the file** (n3). What remains
+   in `config-composer.tsx` after the mount is the run's own surface: `RunStrip`,
+   `RunActivity`, `RunSummary` (`:66-326`), the `EXAMPLES` row, the About chip,
+   the aside band and the strip-height measurement (`:421-439`). The header
+   comment is rewritten per § 1.5 at the same time.
 
 A single PR is possible but not advised: step 1 is a pure move that a reviewer
 can check mechanically, while step 3 is a behaviour change. Keeping them apart
@@ -452,9 +627,10 @@ also keeps the chat unaffected if step 3 slips.
 
 ### 3.7 Risks to watch during rollout
 
-- **The leak.** Mounting the chat composer must not `upsertSession` the run
-  (§ 3.3.1). Watch: the run is absent from `lop sessions`, the sidebar and search
-  after a send from the new box.
+- **The leak, restated as a test of § 3.3.1's decision.** The mount denies the
+  write paths (no `onSlashCommand`, no `mentionsEnabled`, no `admitChatDraft`).
+  Watch: the run id is absent from `lop sessions`, the sidebar and search after a
+  send from the new box, and the route never becomes `#/chat`.
 - **The strip's reads returning nothing** for a no-draft session, leaving a strip
   that claims a model the run is not on — the exact drift `session-status-strip.tsx:60-75`
   says the slash-dispatch path exists to prevent.
@@ -471,9 +647,12 @@ also keeps the chat unaffected if step 3 slips.
 
 ## 4. Open questions for the consult
 
-- **Q1 (design).** Multiline accept: Enter = newline + ⌘/Ctrl+Enter = accept
-  (recommended), or Enter = accept + Shift+Enter = newline? The copy changes with
-  the answer.
+The UX consult settled the former Q1 and Q8; they are recorded as **resolved**
+rather than open.
+
+- **Q1 — RESOLVED (UX consult).** Single-line fields accept on Enter; multiline
+  fields (instructions, project, team briefs) take Enter as a newline and
+  ⌘/Ctrl+Enter to accept. See § 2.2.
 - **Q2 (arch/backend).** Field-level conflict (case 3, § 2.4): compare the fresh
   record field-by-field in the UI (recommended, no backend change), or have the
   backend name changed fields — which would also fix U6 for the conversational
@@ -483,16 +662,28 @@ also keeps the chat unaffected if step 3 slips.
   (`desktop_profiles.py:72`).
 - **Q4 (product).** Offer a team rename, now that § 1.1 shows the wire allows it?
   Today the name is read-only and a chat/schedule addresses a team by name.
-- **Q5 (design).** The aside notice's slot: a host-owned `hostNotice` above the
-  box (recommended), or fold it into the existing placeholder/notice band?
-- **Q6 (product).** Should a configuration run's strip show model/effort/context/
-  cost/duration at all, and should the pickers be live when the backend resolves
-  the run's model?
-- **Q7 (arch).** Confirm the `shared/` cut line (§ 3.4): move the
-  status-strip/readings, run row, attachments preview and dictation indicator;
-  leave the chat-only pickers behind host props.
-- **Q8 (design).** The dirty check/x affordances: where they sit in the field's
-  own box versus its label row, and their disabled/saving states.
+- **Q5 (design) — two options, not three.** The aside sentence's slot: **(b)
+  reuse the composer's existing notice band and add no prop**, keeping the box's
+  `aria-describedby` on it (recommended), or **(a) a new `hostNotice` slot** above
+  the box. **(c) `placeholderOverride` is ruled out** on U4's terms — the sentence
+  is a permanent footnote, not an invitation.
+- **Q6 (split — product vs impl).** **Q6a (product):** should a configuration
+  run's strip show model/effort/context/cost/duration *at all*? **Q6b (impl):** if
+  yes, confirm the readings-only strip (b) of § 3.3.3, and that it is a new *use*
+  of an existing mode rather than a prop the run already has — so M3 is not
+  settled by accident.
+- **Q7 (arch) — restate the cut line on STATE first.** § 3.4's rule: a satellite
+  may move to `shared/` **only if it neither reads the canonical store nor issues
+  a command**. Confirm which pass it (`SessionStatusStrip` + readings,
+  `AttachmentsPreview`, the dictation indicator) and which are excluded
+  (`ComposerStatusRow`, the slash/`@` pickers).
+- **Q8 — RESOLVED (UX consult).** The check/x: 32x32 hit area, visible only while
+  dirty, immediately after its field in the tab order, labelled, never the only
+  route to commit. See § 2.2 and § 2.6.
+- **Q9 (arch/product) — the question B1 is.** Is the run's **activity/state
+  strip** (and its settled summary) in scope for "one composer", or does it stay a
+  run-owned surface above the shared box? **Recommended: it stays** (B1, § 3.1) —
+  asked so the consult can veto that boundary explicitly rather than by omission.
 
 ---
 
@@ -505,6 +696,9 @@ also keeps the chat unaffected if step 3 slips.
 - It does not decide the `shared/` refactor's namespace beyond the cut line in
   § 3.4; if the consult prefers the minimal mount (option (i)), the note's § 3.4
   and Q7 are the only parts that change.
+- It **supersedes** the `config-composer.tsx` header brief (§ 1.5) and the
+  placeholder treatment of the aside sentence; rewriting that comment is part of
+  the mount PR, not a change to the run's send path.
 - It carries no implementation; the second writer (the configuration run) and the
   manual editor keep sharing one `write_profile`/`update_team`, so no second way
   to edit a record is introduced by either scope.
