@@ -2945,6 +2945,16 @@ const BRANCH_RECORDS = [
 	 * of what this branch's second sync did and which tree its counts describe.
 	 */
 	"foldOntoF95910d7bcNote",
+	/*
+	 * And the lane's THIRD fold record, written the same evening: the sync onto
+	 * `origin/main` = `6154018fdc` (#723 the evidence-record clearing, #721 the
+	 * sidebar-badge restyle), which moved main twice more while the remediation
+	 * round was in flight. Registered for the same completeness reason as its two
+	 * siblings: a fold resolved from main's copy would drop the statement of what
+	 * this sync carried - including the clearing pass's revisions of its own
+	 * sets' records, which this tree now needs because it carries those sets.
+	 */
+	"foldOnto6154018fdcNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
