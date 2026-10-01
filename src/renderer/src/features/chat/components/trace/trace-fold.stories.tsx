@@ -845,9 +845,12 @@ const TONE_ROWS: RowSpec[] = [
  * D2's defect case, in BOTH palettes at once: each tile holds a picture whose own
  * canvas is the page's own ground. In the light frame the first tile is the case
  * that failed (a light-canvas picture on a light page, with only the tile's edge
- * to give it an extent); in the dark frame the second one is. The tile answers it
- * with `border-control`, which the contrast contract measures at 3:1 on every
- * ground and `STRUCTURAL_CALL_SITES` pins at this call site.
+ * to give it an extent); in the dark frame the second one is. THIS IS THE FRAME THAT
+ * SHOWS THE TRADE the borderless tile makes: at rest the tile has no edge, so a
+ * picture whose canvas is the page's own tone has ~1.0:1 against the page and only
+ * the well (~1.07:1) behind it. The edge (`border-control`, >=3:1 on every ground)
+ * returns on hover and focus; the resting extent is a tracked follow-up (a fill
+ * role authored to branding section 2's findability floor).
  */
 export const ImageTones: Story = {
 	args: {
@@ -867,8 +870,9 @@ export const ImageTones: Story = {
  * The tile that has no bytes: a digest with no scope to ask for them, which is the
  * store's own "nothing to show" state and reaches the compact receipt without a
  * request. It is in the set because a receipt is the one tile state whose SHAPE is
- * new - prose would blow the strip's 66px - and because it is the state a broken
- * picture would need a visible extent in, which is why it carries the same edge.
+ * new - prose would blow the strip's 78px - and because it is the state a broken
+ * picture would need a visible extent in, which is why it keeps its edge at rest
+ * while a working tile does not (the state is the information).
  */
 export const ImageUnavailable: Story = {
 	args: {
@@ -893,10 +897,10 @@ export const ImageUnavailable: Story = {
  * THE COUNT THAT USED TO BE PATHOLOGICAL, framed rather than argued: eight
  * pictures in one run, and the CAP answering it (design review round 1, D3).
  *
- * The first cut let the strip wrap, so eight pictures cost a second row (166px)
+ * The first cut let the strip wrap, so eight pictures cost a second row (166px at the old tile)
  * and 25-30 cost ~391px - past the ~338.7px an EXPANDED group costs, which is the
  * one case where condensing is the taller choice. The strip is now one row for any
- * count: four tiles and `+4 more`, 91px, flat. What the reader gives up is the
+ * count: four tiles and `+4`, 106px, flat. What the reader gives up is the
  * fifth slot - the fifth picture's tile, since the count takes it - not the
  * information: the count is in this header (`· 8 images`) and
  * in the strip's own name, and the rows behind the disclosure still hold all eight.
