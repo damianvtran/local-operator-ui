@@ -342,6 +342,38 @@ spec then decided to reserve the gutter anyway (§ 11).
 | **280** (default) | 256 | 228 | **228** | 200 | **172** | `0x0` | 52 | 24, painted |
 | **320** | 296 | 268 | **268** | 240 | **212** | `0x0` | 52 | 24, painted |
 
+**RE-READ ON 2026-09-30 (the archive-confirm and pinned-strip change), and the table above is
+the record of the earlier head rather than of this one.** The `after/` frames and
+`measurements/row-space-geometry-<theme>-after.json` were re-taken on this change's tree - the
+arrow pair is gone from the pinned strip, the grip's width shed is deleted, and the scene's own
+stale expectations are refreshed (it reported 8 FAILs on the base it started from, and reads
+**58 PASS, 0 FAIL in both palettes** now). The numbers below are the scene's readings, on a row
+box of **208 / 248 / 288** at the 240 / 280 / 320 settings:
+
+| Panel | Row box | Title under the pointer, unpinned long row | Title under the pointer, pinned row | Button, pinned row hovered | Cluster |
+| --- | --- | --- | --- | --- | --- |
+| **240** | 208 | **124** | **124** | 152 | archive + mark = **52** |
+| **280** | 248 | **164** | **164** | 192 | **52** |
+| **320** | 288 | **204** | **204** | 232 | **52** |
+
+Those three are the design's own AFTER column (`docs/design/sidebar-row-space.md` §3), and the
+scene ASSERTS them rather than leaving them to a reader's subtraction. A pinned row hovered in
+this fixture is the only pin in its section, so no grip is drawn on it - the 80px cluster with the
+grip is photographed in `docs/evidence/pinned-reorder/` (96 / 116 / 136 / 176 at 240 / 260 / 280 /
+320), where the section has three pins. **At rest the fixture's rows read 146.4 / 186.4 / 226.4
+unpinned and 118.4 / 158.4 / 198.4 pinned** - each 33.6px below the arithmetic, which is the
+trailing statement the fixture's rows carry (`56y, last active 56 years ago`) and a hovered row
+does not; the scene reads the acts' cost on the BUTTON (56 unpinned, 28 pinned) for that reason.
+
+**Two checks the scene gained are about what did NOT need changing.** The flyout opens
+**6px clear of the row's right edge at every width** (the card is anchored to the row's box, which
+does not shrink when the acts reveal), and the scene asserts the consult spec's bound
+(`flyout.left >= row.right + 4`) so a later move of that anchor fails a check rather than ships.
+And the pan is serialised behind the reveal because the reveal is a display switch with no
+transition: a pointer that crosses the row inside the dwell leaves no transform and no mask.
+The keyboard walk was re-pointed with the strip: a Tab from the row's button now LEAVES the row
+(both acts are out of the Tab ring), and the chord path is `⌘⇧P` on the row.
+
 What that buys at 280, on the row the operator was looking at: at rest the title
 goes **180 -> 228** (+48 on this machine: +56 before the gutter, -8 for it), and
 the acts cost 56 of it under the pointer rather than always. On a pinned row the
