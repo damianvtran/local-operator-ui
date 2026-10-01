@@ -22,6 +22,14 @@
  *    evidence for what actually ran rather than a claim about what the governor
  *    would have done.
  *
+ * The suite is also MEMORY-BOUNDED: the child runs in its own process group and
+ * a watchdog kills the whole group, with one loud line and exit 137, if the
+ * group's owned memory reaches the budget. The incident behind it (a test run
+ * at ~198 GB while `ps` read 1.4 GB) and every constant are in
+ * `desktop-test-memory-guard.mjs`; `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB`
+ * overrides the budget (a number of MB, or `off`, which is announced). Unlike
+ * the concurrency governor this stays ACTIVE on CI.
+ *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
  * that was killed is worse than no wrapper. For the same reason the child does
@@ -37,6 +45,13 @@ import {
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+import {
+	BREACH_EXIT_CODE,
+	createMemoryWatchdog,
+	formatBreachLine,
+	formatMemoryBudgetLine,
+	resolveMemoryBudget,
+} from "./desktop-test-memory-guard.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -200,21 +215,72 @@ const childEnv = withTelemetryOff(
 		),
 	),
 );
+/*
+ * `detached` makes the child a process-group leader, which is what lets the
+ * watchdog (and the signal forwarding below) address the WHOLE tree with one
+ * `kill(-pgid)` and never a bare pid or this runner's own group. The costs, all
+ * accepted: a terminal's Ctrl-C no longer reaches the child directly (the
+ * forwarding below replaces it, to the group), and if this runner is itself
+ * SIGKILLed the group is not reaped with it - the same exposure the app rigs'
+ * `detached` launches already carry. The child's stdin stays inherited; node's
+ * test runner does not read it.
+ */
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
 	env: childEnv,
+	detached: true,
 });
 
+const memoryBudget = resolveMemoryBudget();
+console.log(formatMemoryBudgetLine(memoryBudget));
+let breached = false;
+const watchdog =
+	memoryBudget.budgetMb === null || child.pid === undefined
+		? null
+		: createMemoryWatchdog({
+				leaderPid: child.pid,
+				budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+				onBreach: (reading) => {
+					breached = true;
+					console.error(
+						formatBreachLine({
+							leaderPid: child.pid,
+							reading,
+							budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+						}),
+					);
+				},
+				onBlind: (ticks) =>
+					console.error(
+						`desktop tests: WARNING - memory watchdog could not read the process group for ${ticks} consecutive ticks; the run is NOT currently bounded`,
+					),
+			});
+watchdog?.start();
+
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
-// suite rather than leaving it orphaned behind a killed wrapper.
+// suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
+// the child no longer shares ours, and its own children are what hold memory.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
-		if (child.exitCode === null && child.signalCode === null)
-			child.kill(signal);
+		if (child.exitCode === null && child.signalCode === null) {
+			try {
+				process.kill(-child.pid, signal);
+			} catch {
+				child.kill(signal);
+			}
+		}
 	});
 }
 
 child.on("exit", (code, signal) => {
+	watchdog?.stop();
+	if (breached) {
+		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
+		// it as an exit status rather than re-raising, so the loud line above is
+		// the last word and callers see a plain non-zero code.
+		process.exitCode = BREACH_EXIT_CODE;
+		return;
+	}
 	if (signal !== null) {
 		// The child was killed. Report the same death for this process instead
 		// of a fabricated exit code: `exitCode` would flatten "the suite was
