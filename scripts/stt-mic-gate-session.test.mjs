@@ -1529,7 +1529,7 @@ const FILE_ONLY_GATE =
 const SHARED_COPY_CALL = /speechUnavailableReason\(/;
 const SHARED_SPEAK_CONTROL = /@shared\/components\/common\/speak-control/;
 const INLINED_SENTENCE =
-	/unavailable while Local Operator is offline|in Settings to enable/;
+	/unavailable while Local Operator is offline|in (?:the settings page|Settings) to enable/;
 const DEPRECATED_CONTROL_NAMES = /Voice input|audio recording|text to speech/i;
 
 test("every speech surface derives its gate from the shared capability", async () => {

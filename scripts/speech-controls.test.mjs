@@ -263,6 +263,7 @@ const mount = async ({
 	bodyText = "Four were late, and the oldest is 41 days behind.",
 	reveal = null,
 	hoverMatch = null,
+	activeElementProbe = null,
 	control = null,
 } = {}) => {
 	resetStore();
@@ -340,6 +341,21 @@ const mount = async ({
 		}
 		return originalMatches.call(this, selector);
 	};
+	/*
+	 * The focus seam for the same guard's other arm (agent review round 3,
+	 * NIT-2): the row reads `ownerDocument.activeElement`, and jsdom only ever
+	 * reports a really-focused node - so a case that needs "focus rests HERE"
+	 * answers through this probe. Like the hover seam, it exercises the READ
+	 * the row performs, not a real tab.
+	 */
+	if (activeElementProbe) {
+		Object.defineProperty(dom.window.document, "activeElement", {
+			configurable: true,
+			get() {
+				return activeElementProbe(dom.window.document) ?? null;
+			},
+		});
+	}
 
 	/*
 	 * The relay seam `desktop-api.ts` reads FIRST (`window.api?.desktop?.media`):
@@ -643,7 +659,7 @@ test("an over-cap answer is clipped at a sentence end, disclosed, and sent as th
 	assert.deepEqual(
 		toasts().infos,
 		[
-			`Reading the first ${expected.length.toLocaleString("en-US")} characters. The rest of this message is not read aloud.`,
+			`Reading the first ${expected.length.toLocaleString("en-US")} characters. The rest is not read aloud.`,
 		],
 		"the clip is disclosed once, with the count localised (copy round 1, C2; the remainder clause states the fact, copy round 2, C1)",
 	);
@@ -1051,6 +1067,37 @@ test("a fresh arrival reveals itself once; an old record never flashes (U4)", as
 		"the keyboard arm of the same yield is focusin on the turn",
 	);
 	await focusYield.unmount();
+
+	/*
+	 * The focus arm's own boundary, both directions (agent review round 3,
+	 * NIT-2): focus INSIDE the pane but OFF the turn must not silence the
+	 * nudge, and focus on the turn must - that second case is what the widened
+	 * arm changed (it used to test the row alone, `element.contains`), so it
+	 * fails if the boundary reverts to the narrow one that let a reader
+	 * elsewhere in the pane keep the flash. jsdom only reports truly-focused
+	 * nodes, so the read is answered through the same kind of seam as the
+	 * pointer (the limitation stated above holds here too).
+	 */
+	const paneFocus = await mount({
+		reveal: { id: "arrive-pane-focus", at: Date.now() },
+		activeElementProbe: (doc) => doc.querySelector('[data-testid="pane"]'),
+	});
+	assert.ok(
+		paneFocus.row().hasAttribute("data-lo-arrive"),
+		"focus in the PANE but off the turn must not silence the nudge",
+	);
+	await paneFocus.unmount();
+
+	const turnFocus = await mount({
+		reveal: { id: "arrive-turn-focus", at: Date.now() },
+		activeElementProbe: (doc) => doc.querySelector('[data-testid="turn"]'),
+	});
+	assert.equal(
+		turnFocus.row().hasAttribute("data-lo-arrive"),
+		false,
+		"focus on the TURN silences it - the arm the r2 fix widened from row-only containment",
+	);
+	await turnFocus.unmount();
 });
 
 test("the reveal's stylesheet carries the yield and the reduced-motion snap (agent MINOR-2, UX U-r2-2)", async () => {
