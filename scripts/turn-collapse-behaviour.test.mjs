@@ -1221,7 +1221,7 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 test("the strip caps at four tiles and counts the rest", async (t) => {
 	/*
 	 * The pathological span: eight pictures cost one capped row - four tiles
-	 * and a `+4 more images` - which is the height bound `FOLD_MEDIA_LIMIT`
+	 * and a `+4` (named `+4 more images`) - which is the height bound `FOLD_MEDIA_LIMIT`
 	 * exists for, and the count is what keeps the row from pretending
 	 * otherwise. The count slot is also the ONLY route to the pictures past
 	 * the cap, so it is a control (U1), and that is asserted here against the
@@ -1243,10 +1243,16 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 		5,
 		"four tiles and the count's own slot",
 	);
-	assert.match(
-		strip.textContent ?? "",
-		/\+4 more images/,
-		"and the count says how many are left, and of what",
+	const count = strip.querySelector("li:last-child button");
+	assert.equal(
+		count?.textContent,
+		"+4",
+		"the count is COMPACT on screen: the row it funds is the larger tile",
+	);
+	assert.equal(
+		count?.getAttribute("aria-label"),
+		"+4 more images",
+		"and its accessible name carries the count and the noun in full",
 	);
 	/*
 	 * U1: it OPENS the bar rather than standing as text - the same toggle the
@@ -1257,7 +1263,7 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	 * of opening the run.
 	 */
 	const more = [...strip.querySelectorAll("button")].find((control) =>
-		/more images?/.test(control.textContent ?? ""),
+		/more images?/.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the count slot is a button, not inert text");
 	await click(more);
@@ -1269,6 +1275,53 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 		strip.getAttribute("aria-label"),
 		"8 images from this run",
 		"the set's size is still stated in full",
+	);
+});
+
+test("pressing the bar's count hands focus to the bar's trigger, not to <body> (U2)", async (t) => {
+	/*
+	 * UX round 1, U2's SECOND CALLER (agent review round 1, R1-3): the press
+	 * unmounts the strip and the control with it, so a keyboard reader's focus
+	 * would land on `<body>` and the next Tab would restart at the document's
+	 * first stop. `TurnSummary.revealFromStrip` hands it to the bar's own trigger,
+	 * which stays mounted and closes the block again - and this drives that
+	 * through the REAL transcript, not through a host that plays the caller.
+	 *
+	 * The pre-fix WIRING is exercised in `chat-image-expand.test.mjs`'s own
+	 * CONTROL ARM (the same mechanism, mounted with the old `() => open(true)`
+	 * shape): this file's bundle entry pulls a module that MEASURES a console
+	 * width at import time, and jsdom has no canvas - so a hand-mounted bar here
+	 * fails to load rather than failing to hand over focus, which is a worse
+	 * instrument than the one that already exists there.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 8 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "the strip renders on the collapsed bar");
+	const count = strip.querySelector("li:last-child button");
+	await act(async () => {
+		count.focus();
+	});
+	assert.equal(document.activeElement, count, "the reader is on the count");
+	await click(count);
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"the press opened the block and the strip - with the control - unmounted",
+	);
+	const trigger = barTrigger(mounted);
+	assert.equal(trigger.getAttribute("aria-expanded"), "true");
+	assert.equal(
+		document.activeElement,
+		trigger,
+		"focus continues from where the reader pressed: the bar's trigger, not <body>",
 	);
 });
 
@@ -1348,7 +1401,7 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 
 test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	/*
-	 * The round-2 UX finding: pressing `+N more images` on the bar opened the
+	 * The round-2 UX finding: pressing the bar's `+N` on the bar opened the
 	 * bar, but the sole run inside drew the SAME capped strip, so pictures 5-8
 	 * cost a second press. The group that IS the span's whole image story now
 	 * renders `uncapped`, so the one press the reader made reaches every
@@ -1372,7 +1425,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	]);
 	const strip = bar(mounted)?.querySelector("[data-fold-media]");
 	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
-		/more images?/.test(control.textContent ?? ""),
+		/more images?/.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the collapsed bar shows four tiles and the count control");
 	await click(more);
@@ -1385,7 +1438,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	);
 	assert.equal(
 		[...groupStrip.querySelectorAll("button")].filter((control) =>
-			/more images?/.test(control.textContent ?? ""),
+			/more images?/.test(control.getAttribute("aria-label") ?? ""),
 		).length,
 		0,
 		"with no second count control left to press",
@@ -1755,6 +1808,112 @@ test("a post-terminal reply is a follow-up bar AFTER the answer, with the comple
 			order.indexOf("marker:1") < order.indexOf("bar:peer:1"),
 		`answer, marker, then the follow-up bar: ${order.join(" ")}`,
 	);
+});
+
+test("the answer's rail is an opt-in setting: off by default, on under the key, always marked for rigs", async (t) => {
+	/*
+	 * `display.turn_answer_rail` through the component's own seam, the way the
+	 * cross-session toggle above is driven: the query client is seeded with the
+	 * two cache entries the app resolves, and one `setQueryData` per direction
+	 * under the same mount is the operator flipping the setting in Settings.
+	 * `data-turn-answer` is set from the election alone, so it must be present
+	 * in every state (rigs read it instead of a class name); only the CLASSES
+	 * follow the setting. Operator report 2026-09-30: the always-on 2px rule of
+	 * #708 "looks ugly" and "cramped".
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const records = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		peerRecord("peer:1", { ts: TS + 2_000 }),
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	const answerEl = (mounted) =>
+		mounted.container.querySelector("[data-turn-answer]");
+	// No answer to the capabilities query at all: the fail-closed default.
+	const mounted = await mount(t, records, { client });
+	assert.ok(answerEl(mounted), "the election hook is set with no setting");
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.equal(answerEl(mounted).className.includes("-ml-"), false);
+	assert.ok(answerEl(mounted).className.includes("w-full"));
+
+	const seed = async (settings) => {
+		await act(async () => {
+			client.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { settings: 1 },
+			});
+			client.setQueryData(backendSettingsKeys.all, { sections: [], settings });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		await flushFrames();
+	};
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	const on = answerEl(mounted).className;
+	assert.match(on, /\bborder-hairline\b/);
+	assert.match(on, /\bborder-l\b/);
+	assert.match(on, /\bpl-3\b/);
+	assert.match(on, /-ml-\[13px\]/, "margin nets rule + padding to zero");
+	assert.doesNotMatch(on, /border-l-2|border-ink-dim|pl-1\.5/, "not #708's");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-answer]").length,
+		1,
+		"one elected answer",
+	);
+
+	/*
+	 * THE CAPABILITY PLANE IS THE OTHER HALF OF FAIL-CLOSED (agent review round 1,
+	 * R3; QA round 1, Q-1). A cached `true` plus a plane that stops advertising
+	 * `settings` used to keep the rail on: `enabled: false` stops the query
+	 * refetching but leaves the cache in place, and the hook read that cache. The
+	 * rail must drop the moment the capability does, without waiting for a reload.
+	 */
+	await act(async () => {
+		client.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a plane that stops advertising `settings` draws no rail, cached true or not",
+	);
+	assert.ok(answerEl(mounted), "the election hook is still set for rigs");
+
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	/*
+	 * TWO ticks, for the reason the cross-session toggle above gives: the query's
+	 * notification is applied on a TASK and the row's repaint then queues a FRAME,
+	 * and a capability flip re-enables the query, so the settle is one step later
+	 * than the seeded-write path.
+	 */
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.match(
+		answerEl(mounted).className,
+		/\bborder-hairline\b/,
+		"the rail returns when the plane advertises `settings` again",
+	);
+
+	await seed([{ key: "display.turn_answer_rail", value: "true" }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.ok(answerEl(mounted), "still marked for rigs with the rail off");
+	await seed([{ key: "display.shimmer", value: true }]);
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a backend without the key draws none",
+	);
+	await seed([{ key: "display.turn_answer_rail", value: false }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
 });
 
 test("a reveal names the bar that holds the row: data-segment-ids decides among several", async (t) => {

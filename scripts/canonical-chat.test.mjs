@@ -3149,7 +3149,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting\s*\?\s*\(loadedTargetDisplay \?\? "Starting the session"\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,

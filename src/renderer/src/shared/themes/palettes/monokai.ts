@@ -106,6 +106,12 @@ export const monokai: ThemeDefinition = {
 		inkDisabled: "#75715E",
 
 		hairline: "#464740",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.91:1 there against `hairline`'s 1.77:1.
+
+		hairlineStrong: "#4B4C45",
 		// The comment colour lightened further, so a structural boundary is legally
 		// distinct from the decorative hairline above it.
 		borderControl: "#8E8A73",

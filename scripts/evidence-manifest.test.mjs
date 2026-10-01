@@ -2893,6 +2893,75 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldFiveNote",
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
+	/*
+	 * And by the TEAM LABELS lane (2026-09-30): its re-stamp is the branch's
+	 * newest top-level record, holding the two stamps this branch's delta moved
+	 * (the whole label read path under `src/` - the new `team-display.ts` and
+	 * its readers - and the three source-anchor tests plus three new cases
+	 * under `scripts/`). Listed for the reason this list exists: a fold that
+	 * started from main's copy would drop it first, and with it the only
+	 * statement of what the re-stamp read. The note spells its pair as bare
+	 * SHAs, so it adds no name to the quoting ledger.
+	 */
+	"teamLabelsRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
+	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
+	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
+	 * pair's derivation and the reason both halves moved) and
+	 * `meshCanvasRedesignFoldNote` (the branch's earlier fold onto `b897ebeb93`) -
+	 * plus `rebaseOntoA298bfb120Note` (this sync's own record: a rebase rather than
+	 * a fold, its two conflicted paths resolved, and the way the manifest's spine
+	 * was re-laid). All three spell their identity as bare SHAs, so they add no
+	 * name to the quoting ledger.
+	 *
+	 * GROWN BY THE ROUND-1 REMEDIATION, which re-captured the set WHOLE (50 frames,
+	 * 25 states, four added) and wrote this branch's newest top-level record:
+	 * `meshCanvasRedesignRemediationNote` names what moved in the pixels, the four
+	 * states the findings asked for by name, and why the pair is not restated in
+	 * prose. It is listed for the list's usual reason: a fold resolved from main's
+	 * copy of the manifest would drop it, and with it the only statement of which
+	 * fixes these frames carry. It spells its identity as bare SHAs too, so it adds
+	 * no name to the quoting ledger.
+	 *
+	 * AND EXTENDED BY THE ROUND-2 REMEDIATION, which re-captured the set whole again
+	 * (58 frames, 29 states, four added - the shared-opener pair and the three-level
+	 * stack), narrowed once to re-take the replaced `scopes-nested` fixture, and
+	 * corrected this note's own 34-finding breakdown (24 + 3 + 7, not 29 + 5). Same
+	 * key, same list entry: the record grows where it stands rather than growing a
+	 * second key a later fold would have to be told about.
+	 */
+	"meshCanvasRedesignRestampNote",
+	"meshCanvasRedesignFoldNote",
+	"rebaseOntoA298bfb120Note",
+	"meshCanvasRedesignRemediationNote",
+	/*
+	 * Grown by the device-chip pass, whose top-level record is the set it ships
+	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
+	 * name rather than dropping it.
+	 */
+	"chatDevicePersistNote",
+	/*
+	 * And by THIS lane too - the pass record's lineage gate: this branch's own
+	 * fix, whose note is the branch's newest top-level record. It is listed for
+	 * the reason the list exists: it moves `scripts/` only and takes no frame, so a
+	 * fold resolved from main's copy would drop it first, and the loss would be
+	 * silent - the same class of loss the fix itself is about, one file along. Its
+	 * pair is spelled as bare SHAs rather than backticked tokens, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"partialCaptureContinuityRestampNote",
+	/*
+	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
+	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
+	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
+	 * the entry above predicts: the note was gone from the tree and nothing else
+	 * noticed. Re-adding it is not enough on its own - the point of naming it here
+	 * is that the NEXT fold cannot drop it in silence - so the registration lands
+	 * as its own `scripts/` commit, and the docs-only re-stamp that follows derives
+	 * the pair from the tree that includes it.
+	 */
+	"runClosureVocabularyRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

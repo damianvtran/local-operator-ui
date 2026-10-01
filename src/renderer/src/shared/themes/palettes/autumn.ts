@@ -162,6 +162,9 @@ export const autumn: ThemeDefinition = {
 		 */
 		hairline: "#4B3B32",
 
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.67:1 there against `hairline`'s 1.55:1.
+		hairlineStrong: "#504037",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
