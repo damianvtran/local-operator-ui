@@ -207,13 +207,23 @@ export function requestUpdateResultToast(
 	}
 	if (unconfirmed === 0) {
 		const neverStarted = result.sessions.every(isNeverStarted);
-		return {
-			variant: "error",
-			title: neverStarted
-				? `The ${total} linked sessions have not started yet — they become recipients after their first message.`
-				: `Could not reach any of the ${total} linked sessions on ${display}.`,
-			duration: Infinity,
-		};
+		/*
+		 * FROZEN COPY (backend QA round, 2026-10-01): the never-started sentence
+		 * has a SINGULAR branch for the one-link batch so both lanes read the
+		 * same on N=1; the plural stays for N>1. A batch where any session
+		 * refused for another reason is not "not started" and keeps the generic
+		 * sentence.
+		 */
+		let title: string;
+		if (neverStarted) {
+			title =
+				total === 1
+					? "The linked session has not started yet — it becomes a recipient after its first message."
+					: `The ${total} linked sessions have not started yet — they become recipients after their first message.`;
+		} else {
+			title = `Could not reach any of the ${total} linked sessions on ${display}.`;
+		}
+		return { variant: "error", title, duration: Infinity };
 	}
 	/* Nothing delivered and nothing confirmed: some refused, some uncertain.
 	 * The mixed sentence is composed here (the frozen set names the two pure

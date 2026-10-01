@@ -262,6 +262,16 @@ test("an unengaged-only batch gets the never-started sentence, matched on the ba
 		card.title,
 		"The 2 linked sessions have not started yet — they become recipients after their first message.",
 	);
+	/* The ONE-link batch reads singular (frozen copy, backend QA round). */
+	const single = model.requestUpdateResultToast(
+		sentAnswer([
+			session("a", "One", "failed", model.REQUEST_UPDATE_NEVER_STARTED_DETAIL),
+		]),
+	);
+	assert.equal(
+		single.title,
+		"The linked session has not started yet — it becomes a recipient after its first message.",
+	);
 	/* ONE non-never-started failure collapses the variant back to the generic
 	 * sentence - a batch where any session refused for another reason is not
 	 * "not started". */
@@ -652,6 +662,8 @@ const componentBundle = await build({
 				return { root, client };
 			}
 
+			export { toastCalls } from "@shared/utils/toast-manager";
+
 			export function mountBoard(container) {
 				const client = new QueryClient({
 					defaultOptions: { queries: { retry: false, gcTime: 0 } },
@@ -741,7 +753,13 @@ test("the button is mounted only when the capability is advertised", async () =>
 
 test("the button's three states: idle, sending (aria-busy), cooling (Requested + aria-disabled, never disabled)", async () => {
 	flow.resetRequestUpdateState();
-	flow.toastCalls.length = 0;
+	/*
+	 * The BUTTON drives the components bundle's own inlined copies of the
+	 * flow and the recording stub (esbuild inlines an aliased module per
+	 * bundle), so this test reads `components.toastCalls` - the flow bundle's
+	 * array would stay empty for a button-driven press.
+	 */
+	components.toastCalls.length = 0;
 	let resolveAnswer;
 	const calls = installBridge({ projects: 1, projects_request_update: 1 }, () =>
 		new Promise((resolve) => {
@@ -770,7 +788,16 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 		"the one-width floor keeps all three labels in one box",
 	);
 
-	/* Focus, then press: the press must not cost the caret. */
+	/*
+	 * Focus, then press: the press must not cost the caret.
+	 *
+	 * THE FIRST ACT AFTER FOCUS IS SLOW ONCE (~10-18 s measured). Focusing the
+	 * trigger opens the app's Tooltip, and the open-and-position settle of
+	 * Radix/Floating runs through that one act; the second act is milliseconds,
+	 * so it is a one-time jsdom cost, not an unresolved loop - a real browser
+	 * settles it in a frame. Nothing here waits on it, and the assertion below
+	 * runs after it, on the settled tree.
+	 */
 	await act(() => button().focus());
 	assert.equal(document.activeElement, button(), "the harness focused the button");
 	await act(() => button().click());
@@ -802,7 +829,7 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 	/* A press while cooling explains itself and sends nothing new. */
 	await act(() => button().click());
 	assert.equal(calls.requestUpdate, 1, "no second dial from the button");
-	const info = flow.toastCalls.filter((call) => call.kind === "info");
+	const info = components.toastCalls.filter((call) => call.kind === "info");
 	assert.equal(info.length, 1, "the press answered with the cooldown sentence");
 
 	await act(() => handle.root.unmount());
