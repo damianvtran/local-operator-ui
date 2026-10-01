@@ -1,10 +1,13 @@
-# The chat sidebar's Agents section — the built-ins shortcut
+# The chat sidebar's Agents section — the roster's navigation, and the built-ins shortcut
 
-`profiles.list` includes the packaged profiles beside the user's own, so a fresh
-install listed six built-ins under a heading that reads "Agents": the section
-said "agents you have" while showing agents the user had never installed, and
-nothing told the two apart. The change is a grouping, an empty state and an
-action, and all three are renderings — which is what these frames are for.
+Two features share this section and this directory. The AGENTS-OFFER DISMISS
+pass built the grouping, the empty state and the install action for packaged
+profiles (`profiles.list` includes them beside the user's own, so a fresh
+install listed six built-ins under a heading that read "Agents"). The ROSTER
+NAVIGATION pass (issue #663) then gave the section its own filter, per-agent
+pins and use-ordered rows, and the band its `Open agent…` jump. Every frame in
+this directory was re-taken whole by the later pass, so the set shows both
+features in every state it carries.
 
 ## What produced these frames
 
@@ -25,29 +28,40 @@ of the app's empty right-hand side).
 | `installing` | the batch in flight, determinate — the moment the action is pressed |
 | `installing-mid-run` | the same batch four installs in: three answered and the fourth held open, so the bar has a FILL and reports the step the sentence reports |
 | `install-summary` | the end of a mixed batch: one already present, one name the user already holds; the skip is one count-led sentence and `Done` is a 28px control that takes focus |
+| `long-roster` | twelve agents past the eight-row cap: the section's own filter field (drawn because the section is cap-bound), rows ordered by use — builder, release-captain, bug-intake, docs-writer, scout, then the never-used in roster order — and a `Show 4 more` foot |
+| `roster-filtered` | the roster filter with four matches (`er`): ALL of them drawn — including `patch-reviewer`, a row the cap would have hidden — and no foot, because the cap is bypassed while filtering |
+| `roster-no-match` | the same field answering nothing: `No agents match`, with `Create agent` still reachable below |
+| `pinned-first` | the pin pressed on `ledger-auditor` (never used, drawn mid-list): the row lifts above the most recently used agent, pin filled and the focus ring the press left — the gesture itself |
+| `pinned-at-rest` | the same pin after the play blurs the control: the mark a reader lives with, nothing pointing at the row |
+| `truncating-name` | one agent named long enough to reach the row's edge at 360px, made the most recent so its row leads the cap — the case the pin's reserved 24px slot narrows the name column for |
 
 The play-driven frames — `installing`, `installing-mid-run`, `install-summary` and
 `offer-dismissed` — are driven by their stories' own `play` functions: a real click
 on the action (`offer-dismissed` presses the dismiss control instead), then a wait
 for the state under test, so they are pictures of the component reacting rather
-than of a prop that fakes a state.
+than of a prop that fakes a state. The navigation frames join that shape:
+`pinned-first` and `pinned-at-rest` CLICK the pin (the second then blurs it),
+`roster-filtered` and `roster-no-match` TYPE into the field, and `long-roster` and
+`truncating-name` wait for the roster their fixtures seed.
 
-**Every frame in this directory is from the AGENTS-OFFER DISMISS PASS on head
-`aa216acd8e`** — the fold onto `origin/main` = `160faa5f9f` (#614, Aida's
-missed-messages badge) — all eight stories, twelve themes each, taken in one
-narrowed run (`--only=chat-sidebar-agents --allow-backend
---theme-settle-ms=180000`, the raised theme budget this host's load required; the
-10 s default failed on the first story's cold compile) at that head. The set
-gained `offer-dismissed` and the other seven stories were re-taken whole, because
-the surface had moved twice since the frames it carried: this change puts the
-dismiss control on the empty state, and main's own sidebar redesign (the view
-band, `e2f97f8c53`'s lane) had replaced the chrome every story renders inside.
-**The 84 carried frames all moved, and the chrome is the reason they moved**:
-`installing`'s before/after pairs carry the same box content — same line, same
-sentence, same meter, same rows — and differ only in the sidebar around them, so
-the redesign, not this change, is credited for the frames this change does not
-touch. These frames replace the re-take on head `742448248` (the fold onto
-`c69f78b92`), which the paragraphs below this one describe.
+**Every frame in this directory is from the ROSTER-NAVIGATION REMEDIATION PASS
+on head `9216759e7d`** — issue #663's round-1 remediation, the raised theme
+budget the host's load requires (`--theme-settle-ms=180000`), all fourteen
+stories, twelve themes each, taken in one narrowed run
+(`--only=chat-sidebar-agents --allow-backend`) at that head. The set gained six
+stories — the roster's four navigation states from the feature's first push,
+plus `pinned-at-rest` and `truncating-name` from the design lane's request (D3:
+the mark without focus or pointer, and a name that can actually reach the row's
+edge now that the pin's slot is reserved on every agent row) — and the eight
+carried stories were re-taken whole, because the section itself changed: every
+agent row now reserves the pin's 24px slot, the section draws its filter field
+at the cap, the band carries its fourth control, and the empty sentence counts
+what draws. **All 168 frames were rewritten by this run** (`git diff` names each
+one; the 96 carried agents frames plus the manifest are the modified set), and
+the twelve frames under `../chat-sidebar-view-menu/band-open-agent-hover/` are
+the same pass's capture of the band's `Open agent…` hover and tooltip — the one
+state the first round registered but could not take. The pass this replaced, and
+the passes before it, are the paragraphs below.
 
 **The byte diff is a measurement in three parts**: all 84 carried frames were
 rewritten by this run and `git diff` names each one (no frame is a leftover
@@ -138,6 +152,14 @@ moving.
   each transition, and that the region is a persistent one written into, was read
   off the rendered page (above); the frames show the states those readings were
   taken in.
+- **Not the roster's rules.** The frames show the filter, the ordering and the
+  pin's states as pixels; the rules themselves — the case-insensitive match, the
+  recency join over session bindings, the pinned/never-used partition, the pin's
+  round trip and its parse — are held by
+  `scripts/chat-sidebar-agents.test.mjs` and the view suite, which drive the
+  shipped pure modules rather than a rendering of them. And not the pin's
+  persistence across a restart: the stories state the view before mount
+  (`ViewFixture`), so a frame is a state, not a stored preference.
 
 ## The two meters, and why the frames decide
 
