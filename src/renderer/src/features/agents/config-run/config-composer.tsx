@@ -421,20 +421,24 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 }
 
 /**
- * THE BOX'S KEY, MINTED ONCE FOR THE APP.
+ * THE BOX'S KEY: ONE CONSTANT, FOR THE APP'S WHOLE LIFE.
  *
- * It was minted per page MOUNT, which is what the composer needs (it refuses to
- * submit without a key) but not what the operator needs: the draft lives in the
- * composer's persisted input store under this key, so a key that dies with the
- * mount takes the draft with it — leaving /agents and coming back startled a
- * half-typed request away (UX exploration, U2; the module-scope
- * `config-run-store` this mount replaced held the draft across route changes).
+ * It began as a key minted per page MOUNT, which took the draft with it when the
+ * operator left /agents (UX exploration, U2 — the module-scope `config-run-store`
+ * this mount replaced held the draft across route changes). A uuid minted once
+ * per app LAUNCH is not the fix either: `useConversationInputStore` keeps every
+ * row (`partialize`, conversation-input-store.ts, and nothing sweeps them), so
+ * one uuid per launch orphans a persisted row per launch that ever held typing,
+ * and an unsent request still dies at relaunch while chat's drafts survive.
  *
- * It is still NOT a session id and still never a conversation: it names the
- * page's one box, for the whole life of the app. See the note § 3.3.1 for the
- * decision it satisfies (key (a)) and § 3.7 for the leak row it appears in.
+ * A CONSTANT makes relaunch behave like leaving and returning, which is what the
+ * operator expects of a draft, and it cannot collide: conversation ids are uuids
+ * or `session/…` — no bare word can be one.
+ *
+ * It is still NOT a session id and still never a conversation. See the note
+ * § 3.3.1 for the decision it satisfies (key (a)) and § 3.7 for the leak row.
  */
-const CONFIG_BOX_KEY = `agents-config:${crypto.randomUUID()}`;
+const CONFIG_BOX_KEY = "agents-config";
 
 export function ConfigComposer({
 	run,

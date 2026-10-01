@@ -538,3 +538,63 @@ test("the box's key outlives the page, so a draft survives leaving and returning
 		await act(async () => second.root.unmount());
 	}
 });
+
+test("while a run is live the box refuses input, in the run's words", async () => {
+	/*
+	 * m-b: the `|| live` term in `blocksInput` and the run's own placeholder were
+	 * asserted nowhere — the existing cases all mount an idle run, where the box
+	 * is supposed to accept input. This mounts the live state and reads BOTH
+	 * halves off the box: the refusal and the sentence.
+	 */
+	const { run } = handle({ status: "running", sessionId: "session-live" });
+	const { host, root } = await mount(run);
+	try {
+		const box = host.querySelector("textarea");
+		assert.ok(box, "the box is mounted");
+		assert.equal(
+			box.disabled || box.readOnly,
+			true,
+			"a live run's box refuses input",
+		);
+		const placeholder = box.getAttribute("placeholder") ?? "";
+		assert.match(
+			placeholder,
+			/Working on your request/,
+			`the run's own sentence (got ${placeholder})`,
+		);
+		assert.doesNotMatch(placeholder, /busy/i, "and never chat's");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("a live run cannot be sent a second request from the box", async () => {
+	/*
+	 * m-b: the earlier "second Enter" case passed on the empty box alone. This one
+	 * puts text in the box WHILE the run is live and presses Enter, so it fails if
+	 * the live term is not in the refusal — the door U1 was really about, since a
+	 * second request here is a second registry write.
+	 */
+	const { run, sent } = handle({
+		status: "running",
+		sessionId: "session-live",
+	});
+	const { host, root } = await mount(run);
+	try {
+		const box = host.querySelector("textarea");
+		await act(async () => {
+			await type(host, "Add a reviewer that only reads tests");
+		});
+		await act(async () => {
+			box.dispatchEvent(
+				new DOM.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(sent.length, 0, "a live run takes no second request");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
