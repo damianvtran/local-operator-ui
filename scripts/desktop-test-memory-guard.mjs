@@ -103,11 +103,18 @@ export const MEMORY_BUDGET_OVERRIDE_ENV =
  */
 export const _TOTAL_SHARE = 0.25;
 
-/** Floor, MB. The current suite peaks around 1.2 GB across its tree (see
- * `desktop-test-concurrency.mjs`); 6 GB is five times that, so a legitimately
- * heavy new file has room and a runaway — the incident's was 198 GB — trips with
- * orders of magnitude to spare. */
-export const _BUDGET_FLOOR_MB = 6144;
+/** Floor, MB. MEASURED, 2026-09-30, one real `pnpm test:desktop` over the 330-file
+ * list at the governor's concurrency of 7, sampled every 2 s with this file's own
+ * `sampleGroup`: peak `max(footprint, rss)` tree total **3,041 MB** (footprint
+ * 2,850 MB, RSS 2,077 MB at that sample, 19 processes there; summed-RSS peak 2,077
+ * MB across up to 32). The first revision argued 6 GB from the older ~1.2 GB
+ * summed-RSS figure, which is a different quantity from what the trip compares,
+ * and 6 GB is only 2x the real one. 8 GB is 2.7x it: a legitimately heavy new
+ * file has room, a false kill (which teaches people to switch the bound off)
+ * stays implausible, and the incident's 198 GB trips with orders of magnitude to
+ * spare. (That run had 28 failures coinciding with ENOSPC on this host's disk, so
+ * its peak is a floor on a healthy run's, not a ceiling; the margin is why.) */
+export const _BUDGET_FLOOR_MB = 8192;
 
 /** Ceiling as a fraction of physical RAM, so a small host's floor cannot exceed
  * what the machine can actually give (the floor alone would be 75% of an 8 GB
@@ -126,6 +133,20 @@ export const _PROBE_TIMEOUT_MS = 8000;
 /** Consecutive skipped ticks before the one "blind" warning. */
 export const _BLIND_TICKS_WARN = 5;
 
+/** `pgrep -P` discovery used when the `ps` table cannot be read: levels of the
+ * tree to walk, per-call timeout, and a cap on discovered pids. Short on purpose
+ * — this path exists for the starved-host case, where a long probe is the thing
+ * that would wedge the tick. */
+export const _PGREP_DEPTH = 6;
+export const _PGREP_TIMEOUT_MS = 2500;
+export const _PGREP_MAX_PIDS = 256;
+
+/** Budget for the single pre-kill re-read of the process table. Shorter than a
+ * sampling probe: a kill must not wait on a starved host. If it cannot be read,
+ * the by-pid kills are skipped (and reported) rather than made from a stale
+ * snapshot. */
+export const _RECHECK_TIMEOUT_MS = 4000;
+
 /** Most pids handed to one `footprint` exec. Members beyond it (by RSS, largest
  * first are probed) keep their RSS charge. A suite tree is 5-28 processes; this
  * only bounds argv for a pathological one. */
@@ -136,11 +157,17 @@ export const _MAX_FOOTPRINT_PIDS = 128;
 export const BREACH_EXIT_CODE = 137;
 
 const MB = 1024 * 1024;
-const TABLE_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$/;
+// `lstart` (process start time, fixed 5 tokens: "Tue Sep 30 21:56:12 2026") is the
+// identity a pid is re-checked against before it is signalled by pid; it is
+// optional so a row without it parses and is simply never signalled by pid.
+const TABLE_LINE =
+	/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4}))?\s*$/;
+const IDENTITY_LINE = /^\s*(\d+)\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4})\s*$/;
 const FOOTPRINT_LINE =
 	/\[(\d+)\]:\s+\d+-bit\s+Footprint:\s+([\d.]+)\s*(B|KB|MB|GB|bytes)?\b/;
 const UNIT_BYTES = { B: 1, bytes: 1, KB: 1024, MB: MB, GB: 1024 * MB };
 const WHITESPACE = /\s+/;
+const PS_TABLE_ARGS = ["-axo", "pid=,ppid=,pgid=,rss=,lstart="];
 
 /** `NNN MB` / `N.N GB`, for the one line a human reads. */
 function human(bytes) {
@@ -157,9 +184,9 @@ function human(bytes) {
  * on CI at the same budget. A hosted runner is dedicated, so a runaway there
  * costs the job's 35-minute timeout plus an OOM-killer death with no message;
  * the watchdog turns it into a named failure in seconds. The false-positive
- * cost is what the governor stood down for, and it is nil here — 6 GB is five
- * times the suite's measured peak and the floor is the budget on a 16 GB runner
- * (max(6,144, 4,096) capped at 8,192).
+ * cost is what the governor stood down for, and it is nil here — 8 GB is 2.7x the
+ * suite's measured peak and the floor is the budget on a 16 GB runner
+ * (max(8,192, 4,096), capped at 8,192).
  */
 export function computeMemoryBudget({ totalMb = null, override = null }) {
 	const text =
@@ -218,7 +245,7 @@ export function formatMemoryBudgetLine(decision) {
 	return `desktop tests: memory bound ${human(decision.budgetMb * MB)} for the test process group (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s on max(footprint, rss)`;
 }
 
-/** PURE. `ps -axo pid=,ppid=,pgid=,rss=` text -> rows (rss in BYTES). Lines that
+/** PURE. `ps -axo pid=,ppid=,pgid=,rss=,lstart=` text -> rows (rss in BYTES). Lines that
  * do not parse are dropped: a half-read table must not invent a member. */
 export function parseProcessTable(text) {
 	const rows = [];
@@ -230,6 +257,7 @@ export function parseProcessTable(text) {
 			ppid: Number(match[2]),
 			pgid: Number(match[3]),
 			rssBytes: Number(match[4]) * 1024,
+			lstart: match[5] ?? null,
 		});
 	}
 	return rows;
@@ -309,7 +337,12 @@ export function totalMemory(members, footprints) {
 
 /** Run a command to completion with a hard timeout; resolve its stdout, or
  * `null` on any failure. Never rejects, never blocks the event loop. */
-export function runProbe(command, args, timeoutMs = _PROBE_TIMEOUT_MS) {
+export function runProbe(
+	command,
+	args,
+	timeoutMs = _PROBE_TIMEOUT_MS,
+	okExitCodes = [],
+) {
 	return new Promise((resolve) => {
 		try {
 			execFile(
@@ -324,7 +357,14 @@ export function runProbe(command, args, timeoutMs = _PROBE_TIMEOUT_MS) {
 				(error, stdout) => {
 					// `footprint` exits non-zero when ANY listed pid has vanished
 					// but still prints the rest; keep whatever it produced.
-					resolve(error && !stdout ? null : String(stdout ?? ""));
+					// `okExitCodes` names exits that are an ANSWER, not a failure
+					// (`pgrep` exits 1 for "no children"); without it an empty tree
+					// would read as a failed probe.
+					if (error && !stdout && !okExitCodes.includes(error.code)) {
+						resolve(null);
+						return;
+					}
+					resolve(String(stdout ?? ""));
 				},
 			);
 		} catch {
@@ -334,7 +374,63 @@ export function runProbe(command, args, timeoutMs = _PROBE_TIMEOUT_MS) {
 }
 
 /**
+ * Descendants of the leader through `pgrep -P`, for when the `ps` table cannot be
+ * read. Walks breadth-first to `_PGREP_DEPTH` levels, one short-timeout call per
+ * level, and keeps whatever levels succeeded: a partial tree is still more of the
+ * truth than the leader alone, and nothing here ever KILLS on its own — it only
+ * widens what the footprint read can see. Members carry no pgid/rss/lstart (the
+ * table is exactly what we do not have), so they are signalled by pid only after
+ * `killTree`'s own fresh re-check.
+ */
+async function walkDescendants(leaderPid, run) {
+	const members = [
+		{ pid: leaderPid, ppid: 0, pgid: leaderPid, rssBytes: 0, lstart: null },
+	];
+	const seen = new Set([leaderPid]);
+	let frontier = [leaderPid];
+	for (
+		let depth = 0;
+		depth < _PGREP_DEPTH &&
+		frontier.length > 0 &&
+		members.length < _PGREP_MAX_PIDS;
+		depth++
+	) {
+		const text = await run(
+			"pgrep",
+			["-P", frontier.join(",")],
+			_PGREP_TIMEOUT_MS,
+			[1],
+		);
+		if (text === null) break;
+		frontier = [];
+		for (const line of text.split("\n")) {
+			const pid = Number.parseInt(line, 10);
+			if (!Number.isInteger(pid) || seen.has(pid)) continue;
+			seen.add(pid);
+			frontier.push(pid);
+			members.push({ pid, ppid: 0, pgid: null, rssBytes: 0, lstart: null });
+		}
+	}
+	return members;
+}
+
+/**
  * One reading of the group, or `null` when nothing could be read.
+ *
+ * The reading says how complete it is, because an incomplete one is NOT a bounded
+ * run and must not reset the watchdog's blind counter (that was the first
+ * revision's hole: with `ps` failing, only the ~17 MB `node --test` coordinator
+ * was probed, the reading came back non-null, and the run — whose memory lives in
+ * the test-file processes the coordinator forks — was reported as bounded while
+ * being unwatched):
+ *
+ *   coverage "table"   `ps` rows gave the whole tree.
+ *   coverage "walk"    `ps` failed; `pgrep -P` found the descendants. Kills still
+ *                      come from real footprint readings only.
+ *   coverage "leader"  nothing but the leader could be found.
+ *   blind              true for "leader", and on macOS when no footprint came back
+ *                      (RSS alone is the blind instrument, see the module header).
+ *                      The budget is still enforced on whatever WAS read.
  *
  * `run` and `platform` are injectable so the failure shapes (starved `ps`,
  * vanished pid, no footprint tool) are tested against canned output instead of
@@ -344,17 +440,19 @@ export async function sampleGroup(
 	leaderPid,
 	{ run = runProbe, platform = process.platform } = {},
 ) {
-	const tableText = await run("ps", ["-axo", "pid=,ppid=,pgid=,rss="]);
+	const tableText = await run("ps", PS_TABLE_ARGS);
 	let members =
 		tableText === null
 			? []
 			: selectMembers(parseProcessTable(tableText), leaderPid);
-	if (members.length === 0) {
-		// The membership read failed or did not contain the leader. The pid we
-		// spawned is ours, so on a platform with a footprint tool it can still be
-		// read without any table; elsewhere the tick is skipped.
+	let coverage = "table";
+	if (!members.some((member) => member.pid === leaderPid)) {
+		// The membership read failed, was degenerate (no rows, or no leader in
+		// them) or the leader is gone. The pid we spawned is ours, so it can still
+		// be read without any table; elsewhere the tick is skipped.
 		if (platform !== "darwin") return null;
-		members = [{ pid: leaderPid, ppid: 0, pgid: leaderPid, rssBytes: 0 }];
+		members = await walkDescendants(leaderPid, run);
+		coverage = members.length > 1 ? "walk" : "leader";
 	}
 	let footprints = new Map();
 	if (platform === "darwin") {
@@ -369,20 +467,52 @@ export async function sampleGroup(
 		]);
 		if (text !== null) footprints = parseFootprintBytes(text);
 	}
-	// A footprint-less reading of a table-less tick has nothing at all to judge.
-	if (tableText === null && footprints.size === 0) return null;
-	return { members, ...totalMemory(members, footprints) };
+	// Without a table there is no RSS floor either: no footprint means nothing at
+	// all to judge.
+	if (coverage !== "table" && footprints.size === 0) return null;
+	const blind =
+		coverage === "leader" || (platform === "darwin" && footprints.size === 0);
+	return { members, coverage, blind, ...totalMemory(members, footprints) };
 }
 
 /**
- * SIGKILL the group and any out-of-group descendants. ESRCH (already gone) is
- * the expected race and is not an error. Refuses pids that are not a plausible
- * spawned leader so a bug upstream can never become `kill(-1)` / `kill(0)`.
+ * SIGKILL the test group, then every out-of-group descendant that is verifiably
+ * still the process we sampled. Returns `{ signalled, skipped, errors }`; it
+ * throws only for a pid that is not a plausible spawned leader, so a bug upstream
+ * can never become `kill(-1)` / `kill(0)`.
+ *
+ * ORDER, and why. The GROUP goes first and unconditionally: at the 4.9 GB/s this
+ * host was measured touching memory, waiting on a re-read before the kill that
+ * stops the growth is the wrong trade, and the group send never needs a check (a
+ * live group's id cannot be recycled). Only then are the by-pid kills prepared —
+ * they exist for processes that left the group (Electron launched `detached`) and
+ * they are the one place the "only signal what we spawned" invariant is
+ * probabilistic: the sample they come from can be seconds old (probes are allowed
+ * 8 s each, and `ps` has been measured at 13.6 s here), long enough for a pid to
+ * be recycled to a stranger. So each is signalled only if a FRESH, narrow
+ * `ps -p <pids>` read (bounded by `_RECHECK_TIMEOUT_MS`) shows the same start
+ * time (`lstart`) the sample recorded for that pid. A recycled pid has a different
+ * one. Anything unverifiable — no recorded start time, or the re-read itself
+ * failing — is skipped and COUNTED, so the loud line can say so, rather than
+ * guessed at. A pid that is simply gone (it died with the group) is the common case
+ * and is not counted.
+ *
+ * ERRORS. ESRCH (gone) and EPERM are not failures of the kill: macOS answers
+ * `kill(-pgid)` with EPERM once a group holds only zombies, which is "nothing left
+ * to signal". Each send is independent, so one refusal cannot skip the others;
+ * anything else is collected into `errors` instead of escaping, because a thrown
+ * kill inside the watchdog tick turned an exit-137 trip into an unhandled
+ * rejection and exit 1.
  */
-export function killGroup(
+export async function killTree(
 	leaderPid,
 	members,
-	{ signal = "SIGKILL", kill = process.kill } = {},
+	{
+		signal = "SIGKILL",
+		kill = process.kill,
+		run = runProbe,
+		recheckTimeoutMs = _RECHECK_TIMEOUT_MS,
+	} = {},
 ) {
 	if (
 		!Number.isInteger(leaderPid) ||
@@ -391,23 +521,60 @@ export function killGroup(
 	) {
 		throw new Error(`refusing to signal group of pid ${leaderPid}`);
 	}
+	const errors = [];
 	const send = (target) => {
 		try {
 			kill(target, signal);
+			return true;
 		} catch (error) {
-			if (error?.code !== "ESRCH") throw error;
+			if (error?.code !== "ESRCH" && error?.code !== "EPERM")
+				errors.push(error);
+			return false;
 		}
 	};
 	send(-leaderPid);
-	for (const member of members) {
-		if (
-			member.pgid !== leaderPid &&
-			member.pid > 1 &&
-			member.pid !== process.pid
-		) {
-			send(member.pid);
+
+	const outOfGroup = members.filter(
+		(member) =>
+			member.pgid !== leaderPid && member.pid > 1 && member.pid !== process.pid,
+	);
+	if (outOfGroup.length === 0) return { signalled: 0, skipped: 0, errors };
+
+	const text = await run(
+		"ps",
+		[
+			"-o",
+			"pid=,ppid=,pgid=,rss=,lstart=",
+			"-p",
+			outOfGroup.map((member) => member.pid).join(","),
+		],
+		recheckTimeoutMs,
+		[1],
+	);
+	if (text === null)
+		return { signalled: 0, skipped: outOfGroup.length, errors };
+	const fresh = new Map(parseProcessTable(text).map((row) => [row.pid, row]));
+	const known = new Set([leaderPid, ...members.map((member) => member.pid)]);
+	let signalled = 0;
+	let skipped = 0;
+	for (const member of outOfGroup) {
+		const row = fresh.get(member.pid);
+		if (row === undefined) continue; // gone with the group
+		if (row.pgid === leaderPid) continue; // the group send already took it
+		// Identity: the start time the sample recorded. A `pgrep` walk has none, so
+		// there the fallback is that the pid's parent is still a process of THIS
+		// tree - a recycled pid is a stranger with an unrelated parent.
+		const sameProcess =
+			member.lstart !== null && member.lstart !== undefined
+				? row.lstart === member.lstart
+				: known.has(row.ppid);
+		if (!sameProcess) {
+			skipped += 1;
+			continue;
 		}
+		if (send(member.pid)) signalled += 1;
 	}
+	return { signalled, skipped, errors };
 }
 
 /**
@@ -420,8 +587,9 @@ export function createMemoryWatchdog({
 	leaderPid,
 	budgetBytes,
 	sample = () => sampleGroup(leaderPid),
-	kill = (members) => killGroup(leaderPid, members),
+	kill = (members) => killTree(leaderPid, members),
 	onBreach,
+	onTrip = () => {},
 	onBlind = () => {},
 	intervalMs = _TICK_INTERVAL_MS,
 	setTimer = setTimeout,
@@ -441,7 +609,22 @@ export function createMemoryWatchdog({
 			reading = null;
 		}
 		if (stopped) return "stopped";
-		if (reading === null) {
+		// ENFORCE FIRST, then account for blindness: a partial reading that is
+		// already over the budget is a real kill signal, and only a reading that
+		// cannot be trusted to cover the tree counts toward the warning.
+		if (reading !== null && reading.totalBytes >= budgetBytes) {
+			stopped = true;
+			onTrip(reading);
+			let outcome = { signalled: 0, skipped: 0, errors: [] };
+			try {
+				outcome = (await kill(reading.members)) ?? outcome;
+			} catch (error) {
+				outcome.errors.push(error);
+			}
+			onBreach(reading, outcome);
+			return "breach";
+		}
+		if (reading === null || reading.blind === true) {
 			blind += 1;
 			if (blind >= _BLIND_TICKS_WARN && !warned) {
 				warned = true;
@@ -450,14 +633,7 @@ export function createMemoryWatchdog({
 			return "blind";
 		}
 		blind = 0;
-		if (reading.totalBytes < budgetBytes) return "ok";
-		stopped = true;
-		try {
-			kill(reading.members);
-		} finally {
-			onBreach(reading);
-		}
-		return "breach";
+		return "ok";
 	}
 
 	function schedule() {
@@ -482,12 +658,34 @@ export function createMemoryWatchdog({
 /** The ONE loud line printed on a breach. Names the leader, the measured
  * figure and the budget, because that is what the person who owned the run needs
  * to decide whether their test leaks or the budget is wrong. */
-export function formatBreachLine({ leaderPid, reading, budgetBytes }) {
+export function formatBreachLine({
+	leaderPid,
+	reading,
+	budgetBytes,
+	outcome = null,
+}) {
 	const fp =
 		reading.footprintBytes > 0
 			? `footprint ${human(reading.footprintBytes)}, rss ${human(reading.rssBytes)}`
 			: `rss ${human(reading.rssBytes)}`;
-	return `desktop tests: MEMORY LIMIT EXCEEDED — killed process group ${leaderPid} (${reading.members.length} processes): ${human(reading.totalBytes)} owned (${fp}) >= budget ${human(budgetBytes)}; raise it with ${MEMORY_BUDGET_OVERRIDE_ENV}=<MB> if the suite legitimately needs more`;
+	// Said only when something was NOT done, so the common line stays one clause
+	// shorter and an unkilled straggler is never silent.
+	const notes = [];
+	if (outcome?.skipped > 0) {
+		notes.push(
+			`${outcome.skipped} out-of-group process(es) NOT signalled (identity could not be re-verified; check for strays)`,
+		);
+	}
+	if (outcome?.errors?.length > 0) {
+		notes.push(`kill errors: ${outcome.errors.map(String).join("; ")}`);
+	}
+	if (reading.coverage && reading.coverage !== "table") {
+		notes.push(
+			`process table was unreadable (${reading.coverage} coverage); the figure may undercount`,
+		);
+	}
+	const note = notes.length > 0 ? `; ${notes.join("; ")}` : "";
+	return `desktop tests: MEMORY LIMIT EXCEEDED — killed process group ${leaderPid} (${reading.members.length} processes): ${human(reading.totalBytes)} owned (${fp}) >= budget ${human(budgetBytes)}; raise it with ${MEMORY_BUDGET_OVERRIDE_ENV}=<MB> if the suite legitimately needs more${note}`;
 }
 
 // Kept for tests that want to assert the table shape without importing regexes.
