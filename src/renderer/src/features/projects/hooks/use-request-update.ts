@@ -42,7 +42,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	dismissToast,
-	showErrorToast,
+	replaceErrorToast,
 	showInfoToast,
 	showLoadingToast,
 	showSuccessToast,
@@ -174,7 +174,11 @@ export async function sendRequestUpdate(
 					showWarningToast(toast.title, options);
 					break;
 				case "error":
-					showErrorToast(toast.title, options);
+					/* An ANSWERED refusal is a press's answer too: replacement by
+					 * id, no dedupe, same as the catch below (UX round 2, U6's
+					 * class - the card at this id is the loading card when the
+					 * request was slow, and the replacement is what retires it). */
+					replaceErrorToast(toast.title, options);
 					break;
 				default:
 					showInfoToast(toast.title, options);
@@ -183,7 +187,9 @@ export async function sendRequestUpdate(
 			/* No sentence arrived for a card already on screen: retire it rather
 			 * than strand a spinner with no close button. Unreachable against
 			 * the frozen vocabulary; the branch is what makes a future state
-			 * unable to strand it. */
+			 * unable to strand it. Safe where the catch's dismiss was not - no
+			 * same-id show follows it, so there is nothing for the deferred
+			 * removal to land on (UX round 2, U6/U7). */
 			dismissToast(toastId);
 		}
 	} catch (error) {
@@ -193,16 +199,17 @@ export async function sendRequestUpdate(
 				: null;
 		/* (5) Name the route's sentence, keep the uncertainty, no window.
 		 *
-		 * THE CARD RETIRES FIRST, UNCONDITIONALLY (agent review round 1 R1-1 ==
-		 * UX U1): showErrorToast dedupes - a repeat of the same sentence inside
-		 * its cooldown window returns the EXISTING id without calling sonner -
-		 * so on that path the id-replacement never runs and the loading card
-		 * (which renders no close button) would outlive the request it
-		 * describes, permanently. Dismissing the id first leaves nothing to
-		 * strand whether or not the error reaches the screen; when it does, the
-		 * same-id show lands it in the card's place. */
-		dismissToast(toastId);
-		showErrorToast(
+		 * PUBLISHED BY REPLACEMENT, NEVER BY A PRIOR DISMISS (agent review R1-1
+		 * == UX U1, corrected by UX round 2 U6): the card this failure
+		 * supersedes is the loading card at the same id, so the id-replacement
+		 * itself retires the spinner. A dismiss here was doubly wrong - sonner
+		 * defers a dismiss to the next rAF while the same-id publish runs at
+		 * setTimeout(0), so the queued removal landed on the FRESH error card
+		 * and deleted it ~20 ms after it appeared; and on the dedupe path it
+		 * left the loading card stranded. `replaceErrorToast` skips the dedupe
+		 * (a press always gets its answer) and replaces by id (the spinner
+		 * never survives). */
+		replaceErrorToast(
 			message
 				? `Could not request updates: ${endedSentence(message)}`
 				: "The request could not be confirmed.",

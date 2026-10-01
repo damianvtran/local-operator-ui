@@ -407,6 +407,7 @@ const record = (kind) => (message, options) => {
 export const showSuccessToast = record("success");
 export const showWarningToast = record("warning");
 export const showErrorToast = record("error");
+export const replaceErrorToast = record("error");
 export const showInfoToast = record("info");
 export const showLoadingToast = record("loading");
 export const dismissToast = () => {};
@@ -1244,18 +1245,30 @@ test("a repeated route failure never strands the loading card (R1-1)", async () 
 		title: "Payments migration",
 	};
 	/*
-	 * "RETIRED" IN JSDOM IS `data-removed`, NOT ABSENCE. A dismissed sonner
-	 * card keeps its node (and its text) for the exit animation; jsdom fires
-	 * no animationend, and the node survives with `data-removed="true"` - the
-	 * undo-toasts suite's own reading. A STRANDED card is the one still live:
-	 * no `data-removed`, text intact.
+	 * "LIVE" IS `data-removed !== "true"`, NEVER textContent ALONE. A sonner
+	 * card that was dismissed keeps its node (and its text) for the exit
+	 * animation; jsdom fires no animationend, so the node survives marked.
+	 * Reading textContent alone is exactly how the first version of this test
+	 * missed the U6 race (an error card removed ~20 ms after it appeared still
+	 * carried its sentence in the DOM), so every presence assertion below
+	 * reads LIVE nodes and polls, rather than a single post-settle read.
 	 */
-	const strandedSpinner = () =>
-		Array.from(document.querySelectorAll("[data-sonner-toast]")).some(
-			(node) =>
-				node.getAttribute("data-removed") !== "true" &&
-				(node.textContent ?? "").includes("Requesting updates…"),
+	const liveCards = () =>
+		Array.from(document.querySelectorAll("[data-sonner-toast]")).filter(
+			(node) => node.getAttribute("data-removed") !== "true",
 		);
+	const strandedSpinner = () =>
+		liveCards().some((node) =>
+			(node.textContent ?? "").includes("Requesting updates…"),
+		);
+	const liveCardWith = (text) =>
+		liveCards().find((node) => (node.textContent ?? "").includes(text));
+	const pollLiveCard = async (text) => {
+		for (let i = 0; i < 20; i += 1) {
+			if (liveCardWith(text)) return;
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		}
+	};
 
 	/* Failure 1, slow enough that the 400 ms loading card is on screen. */
 	const first = real.sendRequestUpdate(target);
@@ -1268,9 +1281,19 @@ test("a repeated route failure never strands the loading card (R1-1)", async () 
 		false,
 		"the first failure retired the loading card",
 	);
-	assert.match(
-		document.body.textContent ?? "",
-		/Could not request updates: the server could not be reached\./,
+	/* The error card must be LIVE and must STAY live: the raced dismissal
+	 * removed it ~20 ms after it appeared, so a single read is not enough -
+	 * poll for a second with it present. */
+	assert.ok(
+		liveCardWith("Could not request updates: the server could not be reached."),
+		"the first failure left a LIVE error card",
+	);
+	await pollLiveCard(
+		"Could not request updates: the server could not be reached.",
+	);
+	assert.ok(
+		liveCardWith("Could not request updates: the server could not be reached."),
+		"the error card survives past the raced-dismiss window",
 	);
 
 	/* Failure 2, same sentence, well inside the manager's 5 s window: the
@@ -1283,12 +1306,20 @@ test("a repeated route failure never strands the loading card (R1-1)", async () 
 	/* The dismissal lands on sonner's own queue: give it its frame and its
 	 * no-animationend fallback before reading the card's state in jsdom (the
 	 * undo-toasts suite documents the same rAF + 200 ms exit). */
-	await new Promise((resolve) => setTimeout(resolve, 350));
 	await settleFrames();
 	assert.equal(
 		strandedSpinner(),
 		false,
-		"a deduped repeat leaves no stranded Requesting updates… card",
+		"a repeat failure leaves no stranded Requesting updates… card",
+	);
+	/* And the repeat must have ANSWERED: the failure replaces the loading
+	 * card in place, so a LIVE error card stands again. */
+	await pollLiveCard(
+		"Could not request updates: the server could not be reached.",
+	);
+	assert.ok(
+		liveCardWith("Could not request updates: the server could not be reached."),
+		"the repeat failure's answer card is LIVE",
 	);
 
 	/* Retire cards and unmount so no sonner timer outlives the file. */
