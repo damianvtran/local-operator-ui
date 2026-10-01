@@ -109,10 +109,14 @@ import {
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
+	SEND_DELIVERY_NOTE,
+	type SendDeliveryState,
+	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
 	isBareToolName,
 	isDiffBodyRow,
+	isFailedResult,
 	outputFallbackLine,
 	summaryFromArgs,
 	toolOp,
@@ -1226,6 +1230,31 @@ function toolRecordSummary(
 }
 
 /**
+ * The delivery sentence a `send` expansion opens its result section with.
+ *
+ * WHY THE EXPANSION NEEDS A SECOND VOICE (UX round 1, U1/U4). The result body is
+ * the core's own line, written for a model: it prints the pid, the message id, an
+ * attempt count, and - for the fourth state - the agent API call that would check
+ * the peer (`sessions(op="peek", …)`). A human who expanded the row to find out
+ * what to do got one `whitespace-pre` line clipped by the box's right edge, with
+ * the actionable half behind a horizontal scroll and no scrollbar drawn at rest
+ * (measured: 811px of the mailbox sentence, 1423px of the `unconfirmed` one).
+ *
+ * So the instruction is said again, in the reader's own terms and in a box that
+ * wraps (`SEND_DELIVERY_NOTE`), above the machine line rather than instead of it:
+ * the raw text keeps the ids and the cause, and this keeps the reader from
+ * re-sending a message that is already sitting in a peer's mailbox.
+ *
+ * `null` for `delivered` and for every row with no stated delivery, so a
+ * successful send's expansion is exactly the one it always was.
+ */
+function DeliveryNote({ state }: { state: SendDeliveryState }) {
+	const note = SEND_DELIVERY_NOTE[state];
+	if (!note) return null;
+	return <span data-delivery-note={state}>{note}</span>;
+}
+
+/**
  * One tool call as a ledger row.
  *
  * The row itself is `ToolRow`; this decides what goes in each of its columns
@@ -1292,6 +1321,17 @@ const ToolRow = memo(function ToolRow({
 	 * planning fault earns.
 	 */
 	const interruptedNotRun = notRun && isInterruptedFault(record.notRunKind);
+	/*
+	 * THE AMBER MIDDLE, read from the result's own state - `details.delivery.state`
+	 * - and never from its text. A `send` that settled `mailbox` or `unconfirmed`
+	 * is neither a success nor a failure: the core leaves `is_error` false for it,
+	 * so without this arm the row would print the SILENT SUCCESS over a wake that
+	 * was never answered, which is the incident this state model exists to stop
+	 * restating. `delivered` and every other tool answer `null` here and keep the
+	 * ladder exactly as it was; an unknown or absent state is already `null` by the
+	 * time it reaches the record.
+	 */
+	const partial = deliveryRowOutcome(record.delivery) === "partial";
 	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
@@ -1391,7 +1431,16 @@ const ToolRow = memo(function ToolRow({
 		<ToolDetail
 			args={record.args}
 			output={record.output}
-			isError={record.isError}
+			/*
+			 * THE SAME PREDICATE THE COUNTS USE (QA round 1, Q2). `record.isError`
+			 * alone let a producer that set `is_error` on a partial paint an amber row
+			 * over an `Error` block - the one place in the row the contradiction the
+			 * rest of this change is armoured against would still show.
+			 * `isFailedResult` is the expression the fold's failed count, the turn
+			 * foot and the failed-row jump already read, so the heading and the counts
+			 * cannot disagree about whether a call failed.
+			 */
+			isError={isFailedResult(record.isError, record.delivery)}
 			/*
 			 * The durable interrupted row reaches `ToolDetail` (its verdict lives in
 			 * `output`, not `notRunReason`, so `notRun` is false for it) and must not
@@ -1399,6 +1448,13 @@ const ToolRow = memo(function ToolRow({
 			 * live arm reads (design round 1, D1).
 			 */
 			interrupted={record.stopped === true}
+			/*
+			 * The reader's own sentence for a send that did not plainly succeed; the
+			 * machine result stays below it (see `DeliveryNote`).
+			 */
+			note={
+				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+			}
 		/>
 	) : undefined;
 	/*
@@ -1467,12 +1523,15 @@ const ToolRow = memo(function ToolRow({
 							: "not-run"
 						: running
 							? "running"
-							: record.isError
-								? "error"
-								: record.stopped
-									? "interrupted"
-									: "success"
+							: partial
+								? "partial"
+								: record.isError
+									? "error"
+									: record.stopped
+										? "interrupted"
+										: "success"
 				}
+				deliveryState={record.delivery}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}
@@ -2587,8 +2646,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 */
 		const groups = foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
+			/*
+			 * `isFailedResult`, not `isError` alone: a `send` that settled `mailbox` or
+			 * `unconfirmed` is a non-failure the core leaves `is_error` false for, and the
+			 * shared predicate says so here rather than assuming it of the producer. This
+			 * one expression feeds the fold's failed count, the turn foot's `· N failed`
+			 * AND the failed-row jump's target, so counting a partial result as a failure
+			 * would jump the reader to a message sitting in the peer's inbox.
+			 */
 			failedOf: (row) =>
-				row.record.kind === "tool" && row.record.isError === true,
+				row.record.kind === "tool" &&
+				isFailedResult(row.record.isError, row.record.delivery),
 			durationOf: workedSecondsOf,
 			/*
 			 * The fold's condensed header is fed from the records themselves: the
@@ -2651,8 +2719,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			runsOf(visible).map((run) => visible[run.openingIndex].record.id),
 		);
 		return turnFeet(visible, {
+			/*
+			 * `isFailedResult`, not `isError` alone: a `send` that settled `mailbox` or
+			 * `unconfirmed` is a non-failure the core leaves `is_error` false for, and the
+			 * shared predicate says so here rather than assuming it of the producer. This
+			 * one expression feeds the fold's failed count, the turn foot's `· N failed`
+			 * AND the failed-row jump's target, so counting a partial result as a failure
+			 * would jump the reader to a message sitting in the peer's inbox.
+			 */
 			failedOf: (row) =>
-				row.record.kind === "tool" && row.record.isError === true,
+				row.record.kind === "tool" &&
+				isFailedResult(row.record.isError, row.record.delivery),
 			/*
 			 * The SAME quantity every condensed bar states (`workedSecondsOf`): one
 			 * definition, so the bars of a ladder add up to this figure (#708 D1).

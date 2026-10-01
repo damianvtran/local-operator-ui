@@ -4883,6 +4883,34 @@ for (const { id, palette: p } of palettes) {
 	);
 
 	/*
+	 * The tool ledger's PARTIAL delivery word (`wake unconfirmed`, `unconfirmed`)
+	 * on the ground the row paints under the pointer.
+	 *
+	 * The word is `warning` text and it is the row's only loud ink, so the pair
+	 * owes the text floor wherever the row draws it. Two of its three grounds were
+	 * already asserted before this row existed: `canvas` and `surface` by `AS_TEXT`
+	 * (the four elevations, `accentWash` and `messageSurface`), and the settled
+	 * row's own ground IS the transcript's canvas. The HOVER states are the ones
+	 * `AS_TEXT` deliberately leaves to the ink loop - it holds `ink`, `inkMuted`
+	 * and `inkDim`, not the tone roles - and `rowHover` is exactly the ground a
+	 * hovered row wears (`hover:bg-row-hover`), so the amber word on it was the
+	 * one pair in this state that nothing measured.
+	 *
+	 * Measured before it was written: worst palette `warning`/`rowHover` is
+	 * 4.696:1 (rose-pine-dawn), clear of the floor in all 59, so no pin is
+	 * recorded here. `rowSelected` is not listed: a transcript row is never
+	 * selected, and the ledger's own row has no selected state.
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowHover",
+		FLOOR.text,
+		"the partial delivery word on the hovered row's ground",
+	);
+
+	/*
 	 * And the border that goes with it, because it is the whole boundary of the
 	 * control: the danger-variant button draws `border-danger-border` with no
 	 * fill until hover (`button.tsx`), so on a dialog the edge IS the control.
