@@ -45,9 +45,10 @@
  * finished (V4) - plus the pinned rows, as before. NOT COVERED, stated plainly
  * because a review round found it: a COMMENTARY close that is neither the run's
  * last close nor `stop`-declared, with nothing but more assistant text after it,
- * still hides. That is one row in 15,125 runs on this machine's journals - rare
- * but real, and it is the original complaint in miniature (the close shown after
- * it is shorter than the one hidden). Several closes can therefore be visible at
+ * still hides. That is one row in the frozen 15,130-run corpus (agent review round 1
+ * found the same single row in its own 15,125-run reading) - rare but real, and it
+ * is the original complaint in miniature (the close shown after it is shorter than
+ * the one hidden). Several closes can therefore be visible at
  * once while the turn still has exactly one elected answer - the answer is what
  * the foot, the stamp and the caption key on, and nothing here changes that.
  */
@@ -431,7 +432,8 @@ export type RunPartition = {
  * last close (V2) nor `stop`-declared (V4), with no call after it, still hides -
  * e.g. `[N0][W][K][N3][N4]`, where `n3` is commentary and the row after it is
  * another assistant row, not a call. Incidence on this machine's journals: exactly
- * 1 row in 15,125 runs. It is kept as a known residual rather than closed, because
+ * 1 row in the frozen 15,130-run corpus. It is kept as a known residual rather than
+ * closed, because
  * the clause that would cover it - "any commentary close, visible" - would un-hide
  * the ambient chatter V1/V2 were already shaped to fold.
  *
