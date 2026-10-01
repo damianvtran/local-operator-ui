@@ -15,8 +15,8 @@
  * removing it clears that facet), and the SORT chip (U6) exists whenever an
  * explicit column sort is set — including when the sorted column has been shed
  * by a narrow window, which is the case U6 exists for. `Clear all` clears the
- * query and every facet; the sort is deliberately NOT a facet and stays until
- * its own chip (or a column menu) clears it.
+ * query, every facet and the sort (→ Default; design round 2, D7 — it used to
+ * leave the sort standing, which read as a no-op on a sort-only chips row).
  *
  * THE HANDOFFS ARE THE FEATURE'S OWN PATTERN (U4, and
  * `projects-page.tsx`'s "Show all time" comment): the control that is pressed
@@ -70,7 +70,7 @@ export type ProjectsSearchControlsProps = {
 	onQueryChange: (query: string) => void;
 	filters: FilterState;
 	onFiltersChange: (next: FilterState) => void;
-	/** The popover header's Clear all: the query and every facet. */
+	/** The popover header's Clear all: the query, every facet and the sort (D7). */
 	onClearAll: () => void;
 	todayMs: number;
 	/** `12 of 74 projects` (or the Board's windowed count); `null` hides the line. */

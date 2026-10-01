@@ -338,10 +338,16 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const toggleFilter = (facet: FilterFacetKey, value: FilterOptionValue) => {
 		setFilters((current) => toggleFilterValue(current, facet, value));
 	};
-	/* `Clear all`'s action wherever it sits: the query and every facet. */
+	/* `Clear all`'s action wherever it sits: the query, every facet AND the sort
+	 * (→ Default). The sort is not a facet, but leaving it out made Clear all a
+	 * no-op on a chips row built from a sort alone and left the sort standing
+	 * beside a facet chip (design round 2, D7); it takes the sort chip's own
+	 * removal path (U6), so the live-region sentence and the persisted write
+	 * match the chip exactly. */
 	const clearSearchAndFilters = () => {
 		setQuery("");
 		setFilters(NO_FILTERS);
+		if (sort !== null) changeSort(null);
 	};
 	/*
 	 * THE WINDOW'S OWN RECOVERY, one implementation for its two homes (the

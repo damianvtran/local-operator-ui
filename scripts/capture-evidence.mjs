@@ -5784,6 +5784,9 @@ export const STORIES = [
 	["projects-tab--filter-and-sort-chips", 1280, 900],
 	["projects-tab--sorted-shed-column", 560, 600],
 	["projects-tab--narrow-search-active", 560, 600],
+	/* D7's pin: the frame is the state AFTER Clear all - no chips, the strip at
+	 * rest - which is the fact the state exists to show. */
+	["projects-tab--clear-all-clears-sort", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
