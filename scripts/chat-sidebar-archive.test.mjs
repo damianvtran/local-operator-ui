@@ -1295,8 +1295,26 @@ test("every one of the five doors STAGES and none of them writes (G1)", () => {
 		sidebar,
 		/onSelect=\{\(\) => pressRowAct\(row\.session_id, "archive"\)\}/,
 	);
-	// 3. ...and so does the chord, which only dispatches the same act.
-	assert.match(sidebar, /pressRowAct\(/);
+	/*
+	 * 3. THE CHORD (`⌘⇧A`) is its own path and is asserted AT its own path (review round 2). It does
+	 * not call `pressRowAct` - that is door 2's helper - it resolves the row's control and CLICKS it,
+	 * so it shares door 1's one staging site and cannot write by itself. The first spelling of this
+	 * assertion matched `pressRowAct(` anywhere, which door 2's two menu items satisfy alone, so a
+	 * chord that wrote directly would have passed. The slice below is the chord's own block: from
+	 * the act's resolution to the `return` that ends it.
+	 */
+	const chord = between(
+		SIDEBAR,
+		"const act = chatRowAct(event);",
+		"return;\n\t\t}",
+	);
+	assert.match(chord, /chatRowActControl\(target, act\)/);
+	assert.match(chord, /control\.click\(\)/);
+	assert.equal(
+		/setSessionArchived|requestArchiveConfirm/.test(chord),
+		false,
+		"the chord must reach the write through the control's own press, not beside it",
+	);
 	// 4. a typed /archive stages, and ends before any write.
 	const typed = between(
 		DISPATCH,

@@ -181,9 +181,16 @@ The clamp's real floor is 220 (`SIDEBAR_MIN_WIDTH`), and the scene now photograp
 (`PINNED_WIDTHS` gained 220: `order-before-220` and `grip-hover-220`, with the same grip-drawn,
 out-of-the-Tab-ring and cluster checks as the other widths). The frames and the title reading are
 **not committed yet**: the host's free disk stayed under the rig's start line when the run was due.
-The arithmetic that the reading will be compared to is `row - 4 - 80`: about 76px of title under the
-pointer with two or more pins (about 104px with one), which `sidebar-row-space.md` §15 states as its
-revisit trigger (a reading under about 80px at 220).
+The arithmetic the reading will be compared to, from the row at the 220 floor (188px: the panel less
+its 32px of inset, the same relation as the 240 row's 208 in the table above) is the row-space
+scene's own formula, `row - 4 - cluster - 28`, where the 4 is the row's gap and the **28 is the
+leading status slot** (not the grip: the grip is already inside the cluster's 80, which is
+3 x 24 + 2 x 4). So with TWO or more pinned rows the title under the pointer should read
+`188 - 4 - 80 - 28 = 76`, and with ONE (no grip, a 52px cluster) `188 - 4 - 52 - 28 = 104`. The
+first draft of this note wrote the two-pin formula without the 28 and so computed 104 for it
+(review round 2 caught it); the same formula reproduces the table's 96 at 240 (`208 - 4 - 80 - 28`).
+These are predictions: the reading is the scene's, and `sidebar-row-space.md` §15 says how it will
+be judged.
 
 ### After the fold onto `origin/main` (2026-10-01)
 

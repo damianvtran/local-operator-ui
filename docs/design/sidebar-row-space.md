@@ -997,6 +997,18 @@ than from a green test.
   a report that the grip is still hit by accident in the trailing band. Until then the next
   step stays what it was: a band for the grip ALONE (one control, one more position), not a
   redesign of the reveal.
+
+  **THE 220 TRIGGER IS EXPECTED TO BE MET, AND IT IS NOT MOVED TO AVOID THAT (review round 2).**
+  The row-space scene's own formula (`row - 4 - cluster - 28`, the 28 being the leading status
+  slot) predicts about **76px** of title under the pointer at the 220 floor with two or more
+  pins (`188 - 4 - 80 - 28`), which is under the 80 this section named. The reading has not been
+  taken yet (the frames session is pending on the host's disk), so this is a prediction and not
+  a finding. The threshold stays where it was written, so the reading is judged against the
+  number the design round saw. **When the frame lands, the measured value goes here in one
+  sentence, and the adjudication is the design round's, with the frame in front of it**: keep the
+  deferral (the 220 floor is a width almost nobody sits at, and the band's cost is a second
+  home for the same handle) or take the grip-only band. This section does not decide it for them
+  by editing its own trigger.
 - **T3 and T2 are NOT deferred - they are met, and their readings are pinned in §14.** T3's
   bound (`flyout.left >= row.right + 4`) measures **+6 at every width** on this head, because
   the card is anchored to the row's BOX, which does not shrink when the acts reveal; the
