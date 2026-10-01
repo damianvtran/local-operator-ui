@@ -379,6 +379,29 @@ export function runProbe(
 	});
 }
 
+/** PURE. Two member lists as one, by pid, keeping the row that carries an identity
+ * stamp. The Linux fallback asks BOTH arms when the table read failed - the
+ * `/proc` listing and the `pgrep -P` walk - because the two answer slightly
+ * different questions (a listing cannot reach a descendant whose parent's own row
+ * was unreadable that tick, and a walk cannot reach a process that left the tree
+ * before the walk started) and a member seen by either is a member this run owns.
+ */
+function unionMembers(...lists) {
+	const byPid = new Map();
+	for (const list of lists) {
+		for (const member of list) {
+			const seen = byPid.get(member.pid);
+			if (seen === undefined) {
+				byPid.set(member.pid, member);
+				continue;
+			}
+			const bare = (row) => row.lstart === null || row.lstart === undefined;
+			if (bare(seen) && !bare(member)) byPid.set(member.pid, member);
+		}
+	}
+	return [...byPid.values()];
+}
+
 /** Where Linux keeps its process table. A parameter everywhere it is used so a
  * test can point it at a fake tree and exercise the Linux arm on any host. */
 export const DEFAULT_PROC_ROOT = "/proc";
@@ -411,6 +434,9 @@ export function parseProcStatusRss(text) {
 	const match = VM_RSS_LINE.exec(String(text ?? ""));
 	return match === null ? 0 : Number(match[1]) * 1024;
 }
+
+/** Milliseconds to wait before the single unverified-member retry. */
+export const _RETRY_DELAY_MS = 250;
 
 /** One pid's `{ pid, ppid, pgid, lstart }` from `/proc`, or `null` (gone, or not
  * ours to read). Never throws. */
@@ -626,9 +652,18 @@ export async function sampleGroup(
 		if (platform === "darwin") {
 			members = await walkDescendants(leaderPid, run, { platform, procRoot });
 		} else if (platform === "linux") {
-			members =
-				(await walkProc(leaderPid, procRoot)) ??
-				(await walkDescendants(leaderPid, run, { platform, procRoot }));
+			// BOTH ARMS, UNIONED (CI round 2). Each has a shape the other misses - a
+			// `/proc` listing cannot reach a descendant whose parent's own row went
+			// unreadable that tick, and the walk cannot see a process that left the
+			// tree before it started - and on the path this watchdog exists for (a
+			// starved host) either read may be the one that fails. The cost is bounded
+			// and paid only when the table read already failed: at most `_PGREP_DEPTH`
+			// `pgrep` calls at `_PGREP_TIMEOUT_MS`, on a tick that cannot overlap the
+			// next one.
+			members = unionMembers(
+				(await walkProc(leaderPid, procRoot)) ?? [],
+				await walkDescendants(leaderPid, run, { platform, procRoot }),
+			);
 		} else {
 			return null;
 		}
@@ -716,7 +751,12 @@ export async function killTree(
 	{
 		signal = "SIGKILL",
 		kill = process.kill,
+		// Existence only, and separate from `kill` on purpose: the tests inject a
+		// RECORDING `kill`, and a `kill(pid, 0)` liveness probe routed through it
+		// would read as a signal in their transcripts.
+		alive = process.kill,
 		run = runProbe,
+		delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 		recheckTimeoutMs = _RECHECK_TIMEOUT_MS,
 		platform = process.platform,
 		procRoot = DEFAULT_PROC_ROOT,
@@ -730,17 +770,35 @@ export async function killTree(
 		throw new Error(`refusing to signal group of pid ${leaderPid}`);
 	}
 	const errors = [];
-	const send = (target) => {
+	/*
+	 * ESRCH is the expected race (already gone) and EPERM on the GROUP send is
+	 * macOS's answer once a group holds only zombies - both mean "nothing left to
+	 * signal". EPERM on a single pid is different: it means the signal did NOT
+	 * reach that process, which is exactly the case a silent swallow would hide
+	 * (the CI run whose survivor was reported as alive with no explanation), so it
+	 * is recorded and printed on the loud line.
+	 */
+	const send = (target, { tolerateEperm = false } = {}) => {
 		try {
 			kill(target, signal);
 			return true;
 		} catch (error) {
-			if (error?.code !== "ESRCH" && error?.code !== "EPERM")
-				errors.push(error);
+			const code = error?.code;
+			if (code === "ESRCH") return false;
+			if (code === "EPERM" && tolerateEperm) return false;
+			errors.push(error);
 			return false;
 		}
 	};
-	send(-leaderPid);
+	const exists = (pid) => {
+		try {
+			alive(pid);
+			return true;
+		} catch {
+			return false;
+		}
+	};
+	send(-leaderPid, { tolerateEperm: true });
 
 	const outOfGroup = members.filter(
 		(member) =>
@@ -752,36 +810,50 @@ export async function killTree(
 	// or fail under the memory pressure that triggered the kill); elsewhere the
 	// narrow `ps -p` read. Both yield rows with the same shape and the stamp kind
 	// the sample recorded on that platform.
-	let fresh = null;
-	if (platform === "linux") {
-		fresh = new Map();
-		for (const member of outOfGroup) {
-			const row = await readProcStat(member.pid, procRoot);
-			if (row !== null) fresh.set(member.pid, row);
-		}
-	} else {
+	/** The narrow `ps -p` re-read, as a Map(pid -> row), or `null` when it fails. */
+	const psRows = async (pids) => {
 		const text = await run(
 			"ps",
-			[
-				"-o",
-				"pid=,ppid=,pgid=,rss=,lstart=",
-				"-p",
-				outOfGroup.map((member) => member.pid).join(","),
-			],
+			["-o", "pid=,ppid=,pgid=,rss=,lstart=", "-p", pids.join(",")],
 			recheckTimeoutMs,
 			[1],
 		);
-		if (text === null) {
-			return { signalled: 0, skipped: outOfGroup.length, errors };
+		return text === null
+			? null
+			: new Map(parseProcessTable(text).map((row) => [row.pid, row]));
+	};
+	const freshRows = async (pids) =>
+		platform === "linux" ? await linuxRows(pids) : await psRows(pids);
+	const linuxRows = async (pids) => {
+		const rows = new Map();
+		for (const pid of pids) {
+			const row = await readProcStat(pid, procRoot);
+			if (row !== null) rows.set(pid, row);
 		}
-		fresh = new Map(parseProcessTable(text).map((row) => [row.pid, row]));
-	}
+		return rows;
+	};
+
+	const fresh = await freshRows(outOfGroup.map((member) => member.pid));
 	const known = new Set([leaderPid, ...members.map((member) => member.pid)]);
+	const sent = new Set();
 	let signalled = 0;
 	let skipped = 0;
 	for (const member of outOfGroup) {
-		const row = fresh.get(member.pid);
-		if (row === undefined) continue; // gone with the group
+		const row = fresh?.get(member.pid);
+		if (fresh === null) {
+			// The re-read failed for the whole set: which of these are gone and which
+			// are merely unreadable cannot be told, so every one is counted (the
+			// retry below gets a second chance to clear them).
+			skipped += 1;
+			continue;
+		}
+		if (row === undefined) {
+			// Absent from a readable table: gone with the group is the common case and
+			// is not worth a line. A pid that is STILL there but was not in the read is
+			// the one that must not pass silently, so it is counted and named.
+			if (exists(member.pid)) skipped += 1;
+			continue;
+		}
 		if (row.pgid === leaderPid) continue; // the group send already took it
 		// Identity: the start time the sample recorded. A `pgrep` walk has none, so
 		// there the fallback is that the pid's parent is still a process of THIS
@@ -794,7 +866,49 @@ export async function killTree(
 			skipped += 1;
 			continue;
 		}
-		if (send(member.pid)) signalled += 1;
+		if (send(member.pid)) {
+			signalled += 1;
+			sent.add(member.pid);
+		} else {
+			// The signal did not reach it (EPERM, or a race). A member that was not
+			// signalled is not a success, so it is counted and named, and the retry
+			// below gets one more attempt at it.
+			skipped += 1;
+		}
+	}
+	/*
+	 * ONE BOUNDED RETRY. A single unreadable read is a transient, not an identity:
+	 * on the starved host this watchdog exists for, one `/proc` (or `ps`) read of
+	 * one pid can fail between the sample and the kill, and the member would then
+	 * leave the tree unwatched for the rest of the run - which is what a survivor
+	 * cell reports, with rc 137 and no explanation. So the members not yet signalled
+	 * get ONE re-read after `_RETRY_DELAY_MS` and are signalled only if that read
+	 * VERIFIES them by the same rule (the identity stamp, or membership of this
+	 * tree). `unknown never kills` still holds: nothing is signalled that a
+	 * successful read did not confirm; what is retried is the READ, not the
+	 * decision.
+	 */
+	if (skipped > 0) {
+		await delay(_RETRY_DELAY_MS);
+		for (const member of outOfGroup) {
+			if (sent.has(member.pid)) continue;
+			// A pid that is gone has nothing left to save. When the whole table read
+			// failed, even that probe is unreliable, so the re-read is simply tried.
+			if (fresh !== null && !exists(member.pid)) continue;
+			const rows = await freshRows([member.pid]);
+			const row = rows?.get(member.pid) ?? null;
+			if (row === null) continue;
+			const sameProcess =
+				member.lstart !== null && member.lstart !== undefined
+					? row.lstart === member.lstart
+					: known.has(row.ppid);
+			if (!sameProcess) continue;
+			if (send(member.pid)) {
+				signalled += 1;
+				skipped -= 1;
+				sent.add(member.pid);
+			}
+		}
 	}
 	return { signalled, skipped, errors };
 }

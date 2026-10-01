@@ -283,13 +283,21 @@ test("the group is signalled first; EPERM/ESRCH never escape or skip the rest", 
 	};
 	const stamp = "Tue Sep 30 21:56:12 2026";
 	const fresh = `  102   100   102  512 ${stamp}\n`;
+	/*
+	 * PINNED TO DARWIN, and the pin is a fix rather than a convenience: `killTree`
+	 * picks its identity re-read from the PLATFORM (macOS `ps -p`, Linux `/proc`),
+	 * so a stub that injects `run` to fake `ps` exercises the ps path and has to say
+	 * so. Left unpinned it read the CI runner's real `/proc`, found no pid 102, and
+	 * skipped the by-pid kill - the assertion that failed there. The Linux path has
+	 * its own cells below, driven by a fake `procRoot`.
+	 */
 	const outcome = await killTree(
 		100,
 		[
 			{ pid: 101, pgid: 100, lstart: stamp },
 			{ pid: 102, pgid: 102, lstart: stamp },
 		],
-		{ kill, run: async () => fresh },
+		{ platform: "darwin", kill, run: async () => fresh },
 	);
 	assert.deepEqual(sent, [
 		[-100, "SIGKILL"],
@@ -302,6 +310,7 @@ test("the group is signalled first; EPERM/ESRCH never escape or skip the rest", 
 		100,
 		[{ pid: 102, pgid: 102, lstart: stamp }],
 		{
+			platform: "darwin",
 			kill: (target) => {
 				throw Object.assign(new Error("odd"), { code: "EIO", target });
 			},
@@ -319,6 +328,7 @@ test("a recycled pid is not signalled: identity is re-read before a by-pid kill"
 	const members = [{ pid: 102, pgid: 102, lstart: sampled }];
 	// The pid now belongs to a process started later, with an unrelated parent.
 	let outcome = await killTree(100, members, {
+		platform: "darwin",
 		kill,
 		run: async () => "  102     1   102  512 Tue Sep 30 22:10:00 2026\n",
 	});
@@ -326,12 +336,20 @@ test("a recycled pid is not signalled: identity is re-read before a by-pid kill"
 	assert.equal(outcome.skipped, 1);
 	// An unreadable re-check skips every by-pid kill and says so.
 	sent.length = 0;
-	outcome = await killTree(100, members, { kill, run: async () => null });
+	outcome = await killTree(100, members, {
+		platform: "darwin",
+		kill,
+		run: async () => null,
+	});
 	assert.deepEqual(sent, [-100]);
 	assert.equal(outcome.skipped, 1);
 	// A pid that is simply gone is fine and not counted.
 	sent.length = 0;
-	outcome = await killTree(100, members, { kill, run: async () => "" });
+	outcome = await killTree(100, members, {
+		platform: "darwin",
+		kill,
+		run: async () => "",
+	});
 	assert.deepEqual(sent, [-100]);
 	assert.equal(outcome.skipped, 0);
 	// A walked member (no start time on record) is trusted only while its parent is
@@ -339,12 +357,14 @@ test("a recycled pid is not signalled: identity is re-read before a by-pid kill"
 	sent.length = 0;
 	const walked = [{ pid: 103, pgid: null, lstart: null }];
 	outcome = await killTree(100, walked, {
+		platform: "darwin",
 		kill,
 		run: async () => "  103   100   103  8 Tue Sep 30 21:56:12 2026\n",
 	});
 	assert.deepEqual(sent, [-100, 103]);
 	sent.length = 0;
 	outcome = await killTree(100, walked, {
+		platform: "darwin",
 		kill,
 		run: async () => "  103     1   103  8 Tue Sep 30 21:56:12 2026\n",
 	});
@@ -406,6 +426,19 @@ test("holds memory", async () => {
 });
 `,
 );
+
+/** Whether a pid is gone OR a zombie with no live owner. `kill(pid, 0)` answers
+ * true for a zombie, which is why one sample is not a verdict. */
+function settled(pid) {
+	try {
+		const st = spawnSync("ps", ["-o", "stat=", "-p", String(pid)], {
+			encoding: "utf8",
+		}).stdout.trim();
+		return st === "" || st.startsWith("Z");
+	} catch {
+		return true;
+	}
+}
 
 function alive(pid) {
 	try {
@@ -553,6 +586,7 @@ test("a walked member's identity is recorded at walk time, so a re-parented one 
 	// After the group kill the grandchild's parent is pid 1; same start time.
 	const sent = [];
 	const outcome = await killTree(100, reading.members, {
+		platform: "darwin",
 		kill: (target) => sent.push(target),
 		run: async () => `  102     1   102  512 ${stamp}\n`,
 	});
@@ -599,8 +633,22 @@ test("holds", async () => {
 		},
 	);
 	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
+	// The kill decision itself is asserted, not only the survivor: a cell that
+	// watched the pid alone could pass on a runner where the child exited for an
+	// unrelated reason with the descendant untouched, which is the shape CI
+	// reported. The loud line must not say anything was left unverified.
+	assert.doesNotMatch(result.stderr, /NOT signalled/);
 	const grandchild = Number(readFileSync(pidFile, "utf8"));
-	const survived = alive(grandchild);
+	// `alive` is checked and re-checked, and the loop exists because of what the CI
+	// run showed here: the breach fires, the group dies, and a check made a moment
+	// too early can still see a pid that the kernel has not reaped yet. That is
+	// `alive(grandchild)`'s ZOMBIE pitfall (a zombie answers `kill(pid, 0)`), so the
+	// pid is watched for a short settle rather than sampled once.
+	let survived = true;
+	for (let i = 0; i < 50 && survived; i++) {
+		survived = alive(grandchild) && !settled(grandchild);
+		if (survived) spawnSync("sleep", ["0.1"]);
+	}
 	if (survived) process.kill(grandchild, "SIGKILL");
 	assert.equal(survived, false, `setsid grandchild ${grandchild} survived`);
 });
@@ -845,6 +893,163 @@ test("linux: a table member that left the group is stamped from /proc when ps wo
 	});
 	assert.equal(reading.coverage, "table");
 	assert.equal(reading.members.find((m) => m.pid === 102).lstart, "proc:77");
+});
+
+/*
+ * LINUX-PATH VARIANTS of the three identity cells. They exist because the CI
+ * runner is Linux and the ps-stub cells above are pinned to darwin: a fake
+ * `procRoot` drives the /proc re-read on ANY host, so the three decisions the CI
+ * run exercised - the group send with EPERM tolerated, the by-pid kill of a
+ * re-parented descendant, and a recycled pid refused - are pinned here too.
+ */
+test("linux: the group is signalled first, EPERM on it is tolerated, and the by-pid kill still happens", async () => {
+	const root = fakeProc({ 102: { ppid: 1, pgid: 102, start: 1002, rssKb: 1 } });
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[{ pid: 102, pgid: 102, lstart: "proc:1002" }],
+		{
+			platform: "linux",
+			procRoot: root,
+			delay: async () => {},
+			kill: (target) => {
+				sent.push(target);
+				if (target === -100)
+					throw Object.assign(new Error("zombies"), { code: "EPERM" });
+			},
+		},
+	);
+	assert.deepEqual(sent, [-100, 102]);
+	assert.deepEqual(outcome, { signalled: 1, skipped: 0, errors: [] });
+});
+
+test("linux: a recycled pid is refused and a member the group already took is not signalled twice", async () => {
+	const root = fakeProc({ 103: { ppid: 1, pgid: 103, start: 9999, rssKb: 1 } });
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[
+			{ pid: 102, pgid: 102, lstart: "proc:1002" }, // gone
+			{ pid: 103, pgid: 103, lstart: "proc:1003" }, // recycled: later starttime
+			{ pid: 104, pgid: 100, lstart: "proc:1004" }, // the group send covers it
+		],
+		{
+			platform: "linux",
+			procRoot: root,
+			delay: async () => {},
+			kill: (target) => sent.push(target),
+		},
+	);
+	assert.deepEqual(sent, [-100]);
+	assert.deepEqual(outcome, { signalled: 0, skipped: 1, errors: [] });
+});
+
+test("a member that is still alive is retried once before it is given up on", async () => {
+	const stamp = "Tue Sep 30 21:56:12 2026";
+	// First re-read fails (the transient a starved host produces), the retry
+	// succeeds: the cell discriminates on the retry existing, not on the wording.
+	let calls = 0;
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[{ pid: 102, pgid: 102, lstart: stamp }],
+		{
+			platform: "darwin",
+			delay: async () => {},
+			alive: (pid) => pid === 102,
+			kill: (target) => sent.push(target),
+			run: async () => {
+				calls += 1;
+				return calls === 1 ? null : `  102     1   102  512 ${stamp}\n`; // same start time: still ours
+			},
+		},
+	);
+	assert.deepEqual(sent, [-100, 102]);
+	assert.deepEqual(outcome, { signalled: 1, skipped: 0, errors: [] });
+	// And a member that stays unverifiable is given up on, counted, and named on
+	// the loud line rather than leaving a survivor unexplained.
+	calls = 0;
+	sent.length = 0;
+	const stuck = await killTree(100, [{ pid: 102, pgid: 102, lstart: stamp }], {
+		platform: "darwin",
+		delay: async () => {},
+		alive: (pid) => pid === 102,
+		kill: (target) => sent.push(target),
+		run: async () => null,
+	});
+	assert.deepEqual(sent, [-100]);
+	assert.equal(stuck.skipped, 1);
+	assert.match(
+		formatBreachLine({
+			leaderPid: 100,
+			budgetBytes: 1000,
+			reading: {
+				totalBytes: 2000,
+				rssBytes: 2000,
+				members: [],
+			},
+			outcome: stuck,
+		}),
+		/1 out-of-group process\(es\) NOT signalled/,
+	);
+});
+
+test("linux: the /proc listing and the pgrep walk are UNIONED when the table is unreadable", async () => {
+	// The /proc listing succeeds but cannot see the setsid'd grandchild (its row is
+	// unreadable this tick - the transient a starved host produces); the `pgrep -P`
+	// walk CAN. Neither arm alone is complete, which is why both are asked.
+	const root = fakeProc({
+		100: { ppid: 1, pgid: 100, start: 1000, rssKb: 17000 },
+	});
+	const kids = { 100: "101", 101: "" };
+	const reading = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: root,
+		run: async (cmd, args) => {
+			if (cmd === "ps") return null;
+			if (cmd === "pgrep") return kids[args[1]] ?? "";
+			return null;
+		},
+	});
+	assert.equal(reading.coverage, "walk");
+	assert.deepEqual(
+		reading.members.map((m) => m.pid).sort((a, b) => a - b),
+		[100, 101],
+		"the walk's member must survive the union with a partial /proc listing",
+	);
+});
+
+test("linux: EPERM on a by-pid send is REPORTED, never silently dropped", async () => {
+	const root = fakeProc({ 102: { ppid: 1, pgid: 102, start: 1002, rssKb: 1 } });
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[{ pid: 102, pgid: 102, lstart: "proc:1002" }],
+		{
+			platform: "linux",
+			procRoot: root,
+			delay: async () => {},
+			alive: (pid) => pid === 102, // it is still there; only the signal is refused
+			kill: (target) => {
+				sent.push(target);
+				if (target === 102)
+					throw Object.assign(new Error("not ours"), { code: "EPERM" });
+			},
+		},
+	);
+	assert.deepEqual(sent, [-100, 102, 102]); // the retry re-reads, then re-attempts once
+	assert.equal(outcome.signalled, 0);
+	assert.equal(outcome.skipped, 1, "a pid that was not signalled is counted");
+	assert.equal(outcome.errors.length, 2, "each EPERM on a pid is recorded");
+	assert.match(
+		formatBreachLine({
+			leaderPid: 100,
+			budgetBytes: 1000,
+			reading: { totalBytes: 2000, rssBytes: 2000, members: [] },
+			outcome,
+		}),
+		/kill errors:/,
+	);
 });
 
 test("the override `off` runs the suite unbounded and says so", () => {
