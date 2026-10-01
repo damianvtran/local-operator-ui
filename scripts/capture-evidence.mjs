@@ -693,10 +693,13 @@ export const STORIES = [
 	 * absent MEANS), the second is the same run carrying it. `images-three` is the
 	 * same height again - one picture and three cost the same row - which is the
 	 * compactness claim this change makes and the one a reader of the diff should
-	 * be able to see. The extra 71px over the header-only states is the strip: 67
-	 * measured (a 64px picture in the frame's 66px box, plus the row's own line
-	 * box) and 4 of the fold's own `mt-1`. Both numbers are the rig's
-	 * (`condensed-group-media-geometry.mjs`), not this comment's arithmetic.
+	 * be able to see. The extra 87px over the header-only states is the strip: 79
+	 * measured (a 76px picture in the frame's 78px box, plus the row's own line
+	 * box) and 8 of the fold's own `mt-2` (RE-DERIVED FOR THE POLISH PASS: the
+	 * tile went 98x66 -> 117x78, so the pre-change reading here was 67 and 4 -
+	 * the 66px box this comment used to quote is the OLD tile). Both numbers are
+	 * the rig's (`condensed-group-media-geometry.mjs`), not this comment's
+	 * arithmetic.
 	 *
 	 * `image-live` is the other window a reader meets the strip in - the picture
 	 * has landed and the run has not finished - and `image-expanded` is the price
@@ -721,7 +724,8 @@ export const STORIES = [
 	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
 	 *   is the only thing that gives it an extent.
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
-	 *   is new (prose would blow the 66px strip).
+	 *   is new (prose would blow the 78px strip - it was 66px before the tile
+	 *   grew).
 	 *
 	 * `images-many` is now ONE row at 91px, because the cap answers it: the first
 	 * cut let eight pictures wrap to 166px and 25-30 reach ~391px, past the price
@@ -736,6 +740,56 @@ export const STORIES = [
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
+	/*
+	 * THE POLISH PASS'S OWN STATES (operator, 2026-09-30). Two frames answer the
+	 * question a still cannot: the tile is BORDERLESS AT REST and its edge returns
+	 * only while the pointer is on it, with the picture zoomed inside the frame
+	 * that clips it. `images-many-hover` is that state - its RESTING partner is
+	 * the `images-many` frame beside it, byte-identical to the before-hover frame
+	 * because the pre-change tile had no hover treatment at all (measured by the
+	 * design round: with `:hover` matched, every computed property was byte-equal
+	 * to rest). `images-many-hover-reduced-motion` is the same state with
+	 * `prefers-reduced-motion: reduce` emulated, where the ZOOM IS ABSENT (it is
+	 * `motion-safe:` only) and the EDGE IS STILL THERE - the cue that always reads
+	 * is a state, not a movement.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	/*
+	 * THE KEYBOARD ARM (design review round 1, D1 - the one MAJOR of that round).
+	 *
+	 * The tile's edge is a hover state AND a keyboard one, and the ring the app
+	 * draws on the focused button is - with the resting edge gone - the ONLY
+	 * control boundary a keyboard reader gets at rest. `tabTo` presses real Tab
+	 * keys until the tile's own button holds focus (and FAILS the run if it never
+	 * does), so these frames show the D4 fix as pixels: the 2px accent ring
+	 * following the frame's 6px radius rather than boxing it square.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{ tabTo: "[data-fold-media] li button", dir: "images-many-focus" },
+	],
 	[
 		"chat-trace-fold--image-expanded",
 		1280,
@@ -848,7 +902,8 @@ export const STORIES = [
 	 * cell (three pictures - one landscape, one portrait, one plot - in one
 	 * capped row of tiles), its `press` row is the expanded state whose price
 	 * the strip replaces, and `images-many` is the overflow count's own frame
-	 * (eight pictures, four tiles and the `+4 more images` control).
+	 * (eight pictures, four tiles and the `+4` count control, whose accessible
+	 * name and title read `4 more images`).
 	 * `images-many-expanded` is that control's press (U8): the bar opens onto
 	 * its sole image-bearing group, whose strip shows the WHOLE set - one
 	 * press reaches the pictures the count stood for. The before half is the
@@ -867,6 +922,65 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--images-many", 1280, 900],
+	/*
+	 * The bar's three proof states for the same pass: the hover (the tile's edge
+	 * and zoom, which a resting still cannot show), the same under
+	 * `prefers-reduced-motion: reduce` (edge only - the pin the design round can
+	 * check against a frame rather than against code), and the NARROW column, where
+	 * the one-row invariant is the claim: at a 640px window the strip is 556px and
+	 * four 117px tiles plus their gutters and the `+N` are 533.6px, 22.4px inside
+	 * it (measured by `condensed-group-media-geometry.mjs`).
+	 */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	["chat-turn-collapse--images", 640, 900, { dir: "images-narrow" }],
+	/*
+	 * The COUNT at the narrowest column, which is the row the whole size decision
+	 * rests on: four 117px tiles, their four 8px gutters and the `+4` control are
+	 * 533.6px of the 556px the strip has at a 640px window (slack 22.4px, and
+	 * 541.4px worst case at `+99`) - measured by
+	 * `condensed-group-media-geometry.mjs`, and framed here so the wrap claim can
+	 * be seen rather than only computed.
+	 */
+	["chat-turn-collapse--images-many", 640, 900, { dir: "images-many-narrow" }],
+	/* The bar's own keyboard arm, and the uncapped grid's - both callers of the
+	   same tile, so the ring is checked where the strip is flush and where it is
+	   a four-column grid rather than on the group fold alone. */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{ tabTo: "[data-fold-media] li button", dir: "images-focus" },
+	],
+	[
+		"chat-turn-collapse--images-many",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			tabTo: "[data-fold-media] li button",
+			dir: "images-many-expanded-focus",
+		},
+	],
 	[
 		"chat-turn-collapse--images-many",
 		1280,
@@ -7523,6 +7637,59 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
+	 */
+	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7664,6 +7831,12 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
@@ -8533,6 +8706,185 @@ export function partialAddedFields(
 				addedAtHead: head,
 			}
 		: {};
+}
+
+/**
+ * Every head the previous record names, as candidates for "is this run
+ * continuing that pass?".
+ *
+ * A manifest names three of them and they are not interchangeable: `head` is
+ * the commit its frames were captured at, `refreshedAtHead` the last run of the
+ * pass it records, and `refreshedFromHead` where that pass started. A FOLD
+ * re-spells them (see `partialPassContinues`), which is why the question below
+ * has to be asked of all three rather than of the one the totals live beside.
+ *
+ * `head` is read from the record's top level rather than from `partialCapture`,
+ * because that is where the writer puts it - and because a manifest that has
+ * one but no `partialCapture` at all (a swept set) is still a record this
+ * history may continue.
+ */
+export const partialPassHeads = (previous) =>
+	[
+		previous?.partialCapture?.refreshedAtHead,
+		previous?.partialCapture?.refreshedFromHead,
+		previous?.head,
+	].filter((sha) => typeof sha === "string" && sha.length > 0);
+
+/**
+ * Whether a sha is `head` or an ancestor of it - the reachability test the pass
+ * record is gated on.
+ *
+ * `git merge-base --is-ancestor` answers equality and ancestry in one call
+ * (every commit is its own ancestor), and every failure mode - a non-zero exit,
+ * an unresolvable sha, no repository to ask - is "not reachable", which is the
+ * safe direction: a record this run cannot place in its own history is not one
+ * it may continue.
+ */
+const reachableFrom = (sha, head) => {
+	try {
+		execFileSync("git", ["merge-base", "--is-ancestor", sha, head], {
+			cwd: ROOT,
+			stdio: "ignore",
+		});
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * Whether this run CONTINUES the pass the previous record describes, or starts
+ * a new one - the decision every `partialCapture` total is spent behind.
+ *
+ * It used to be one question about one field: is the recorded
+ * `refreshedAtHead` this head, or an ancestor of it? A FOLD breaks that
+ * question, and a fold is every lane's daily cadence. Measured on the installer
+ * lane (PR #555, whose manifest is the reproducer): the pass accumulated
+ * honestly across its own commits - 8891 frames over 835 directories, then 8987
+ * over 837 as the installer set was re-shot - and then `d9e9cd8f44` folded
+ * `origin/main` in. The fold's manifest resolution took main's copy of the
+ * block, so `refreshedAtHead` came to name `6173e6bcb6`, the tip of a `fix(chat)`
+ * branch that is not on origin/main and NOT an ancestor of the fold. The pass's
+ * next subset run read "not an ancestor", started fresh, and wrote 144 frames
+ * over 17 directories where the pass's own record had 8987 over 837. Nothing
+ * failed, and both `check-evidence.mjs` terms derive their denominators from the
+ * fields the reset had just re-anchored: term 1 counts the committed frames
+ * standing in the directories the NEW list names, which is 120 against the 144
+ * claimed - it passes with 24 frames of margin - and term 2 measures the pass
+ * against `refreshedFromHead`, which the same reset had moved to the run's own
+ * head, so it compares 144 with 144 and sits exactly on its boundary. Both are
+ * re-derived, live, from the manifest the fold already corrupted. A gate that
+ * measures a record against itself cannot see the record replaced.
+ *
+ * `refreshedFromHead` is what survives that fold, and by construction: it is the
+ * pass's START, carried across commits for the multi-commit case by the same
+ * branch of this decision, and a fold does not rewrite it when it belongs to the
+ * merged-in side. So the record is this lineage's when ANY head it names is
+ * reachable from `head` - the manifest's own capture head included, since a
+ * manifest whose frames were taken in this history is one this run may
+ * continue. Only a record with NO reachable head is another branch's, and only
+ * that one starts fresh.
+ *
+ * The trade, stated because it is real: a record from an unrelated branch now
+ * inherits the earlier totals instead of discarding them, which makes the claim
+ * LARGER than this run. That is the direction the gate is one-sided in on
+ * purpose ("the claim may legitimately EXCEED it", `check-evidence.mjs`), and it
+ * is bounded - the citation check still refuses a `head`/`refreshedAtHead` that
+ * is not an ancestor of HEAD - whereas the loss it replaces is unbounded and
+ * silent. A rewrite that leaves NOTHING reachable (a rebase of the whole pass)
+ * still resets, and that remains the honest answer: no sha in the record is one
+ * this tree carries.
+ *
+ * Exported like `partialFrameCount` and `partialAddedFields`, for the same
+ * reason: the decision lives in a test-bound function rather than inline in
+ * `main()`, which no CI workflow runs.
+ */
+export function partialPassContinues(
+	previous,
+	head,
+	reachable = reachableFrom,
+) {
+	return partialPassHeads(previous).some(
+		(sha) => sha === head || reachable(sha, head),
+	);
+}
+
+/**
+ * The `partialCapture` half of the manifest: the record already on disk, merged
+ * with this run.
+ *
+ * The counts are the PASS's; the citation is this pass's only if it added
+ * something. `partialAddedFields` is the rule for the second (round 4, R4-1): it
+ * returns `{}` on a zero-add pass, so the earlier citation survives the
+ * `...previous.partialCapture` spread untouched instead of being repointed at a
+ * commit that had added nothing. Only its two citation fields are taken here -
+ * the counts are `totals` below, which accumulate across this pass's commits.
+ * The verdict keys on `addedFrameCount`, THIS run's additions: keying it on the
+ * accumulated total would let a later commit of the same pass re-stamp the
+ * citation for an earlier commit's frames.
+ *
+ * A pass that added nothing leaves the WHOLE added-pass record alone, counts
+ * included. `addedFrames`/`addedSurfaces` describe the last pass that ADDED
+ * frames, so a zero-add run that reset them to 0/[] would contradict the
+ * citation written beside them - the incoherence round 4 R4-1 named, one field
+ * along from the one it fixed. `continues` decides whether this pass's own
+ * additions accumulate onto the previous ones.
+ *
+ * `refreshedFromHead` is where the pass STARTED, so the gate can measure the
+ * whole round rather than its last commit. It is held across runs while the
+ * total accumulates and re-anchored to the current head when a fresh pass
+ * begins.
+ */
+export function partialCaptureRecord({
+	previous,
+	head,
+	captured,
+	storyDirs,
+	themes,
+	addedFrameCount,
+	addedSurfaces,
+	reachable = reachableFrom,
+}) {
+	const continues = partialPassContinues(previous, head, reachable);
+	const priorStories = continues
+		? (previous.partialCapture?.refreshedStories ?? [])
+		: [];
+	const priorThemes = continues
+		? (previous.partialCapture?.refreshedThemes ?? [])
+		: [];
+	const priorSurfaces = continues
+		? (previous.partialCapture?.addedSurfaces ?? [])
+		: [];
+	const added = partialAddedFields(addedFrameCount, addedSurfaces, head);
+	const totals =
+		added.addedFrames === undefined
+			? {}
+			: {
+					addedFrames:
+						(continues ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
+						addedFrameCount,
+					addedSurfaces: [
+						...new Set([...(continues ? priorSurfaces : []), ...addedSurfaces]),
+					],
+				};
+	const citationFields =
+		added.addedFrames === undefined
+			? {}
+			: { addedAt: added.addedAt, addedAtHead: added.addedAtHead };
+	return {
+		refreshedFromHead: continues
+			? (previous.partialCapture?.refreshedFromHead ??
+				previous.partialCapture?.refreshedAtHead ??
+				head)
+			: head,
+		refreshedFrames:
+			(continues ? Number(previous.partialCapture?.refreshedFrames ?? 0) : 0) +
+			captured,
+		refreshedStories: [...new Set([...priorStories, ...storyDirs])],
+		refreshedThemes: [...new Set([...priorThemes, ...themes])],
+		...totals,
+		...citationFields,
+	};
 }
 
 const main = async () => {
@@ -11328,6 +11680,30 @@ const main = async () => {
 	}
 	const addedFrames = writtenFrames.filter((frame) => !frame.existedBefore);
 	const addedSurfaces = [...new Set(addedFrames.map((frame) => frame.surface))];
+	/*
+	 * The directories THIS run rewrote, as `<surface>--<leaf>`.
+	 *
+	 * THE DIRECTORY, not the story id, and the difference is not cosmetic. A
+	 * story captured in a SECOND state names its own `dir` (see the STORIES
+	 * header), so one story can write several directories - and
+	 * `check-evidence.mjs` reads this list as DIRECTORIES (`<surface>--<leaf>`),
+	 * asking of each frame a pass rewrote whether some entry names the directory
+	 * it sits in. One bare story id can only name one of them, which is measured:
+	 * the quote set's six `dir` states left five directories unclaimed and failed
+	 * `pnpm test:desktop`'s stamp test.
+	 *
+	 * The `@<width>` suffix is deliberately NOT carried: a story swept at several
+	 * widths writes `leaf@800`, `leaf@1024`, ... and the gate normalises the
+	 * suffix away when it reads a frame's directory, so the entry has to be the
+	 * un-suffixed form for the same reason - one entry then names every width's
+	 * directory.
+	 */
+	const refreshedStoryDirs = stories.map(([id, , , entryOptions]) => {
+		const cut = id.indexOf("--");
+		const surface = cut === -1 ? id : id.slice(0, cut);
+		const leaf = entryOptions?.dir ?? id.slice(cut + 2);
+		return `${surface}--${leaf}`;
+	});
 	const manifest = PARTIAL
 		? {
 				...previous,
@@ -11363,158 +11739,15 @@ const main = async () => {
 					...(previous.partialCapture ?? {}),
 					refreshedAt: new Date().toISOString(),
 					refreshedAtHead: head,
-					/*
-					 * ACCUMULATED while the head does not move, not overwritten.
-					 *
-					 * A reader consults this field to find which frames moved under
-					 * them, and it is the only place a narrowed set is told apart
-					 * from a swept one (see the comment above). Writing the CURRENT
-					 * run's totals made it describe the last command instead of the
-					 * pass: a review round refreshed 26 frames over twelve surfaces
-					 * as twelve per-story runs - which is the sanctioned way to
-					 * narrow, because a `--only=` prefix broad enough to cover them
-					 * in one run also matches stories whose frames the manifest
-					 * declares elsewhere - and the field recorded the last of the
-					 * twelve, `2 frames, 1 story`. `check-evidence.mjs` asserts
-					 * nothing here, so the understatement passed the gate green.
-					 *
-					 * Keyed on the head, but by ANCESTRY rather than by equality.
-					 *
-					 * Equality alone closed only half the hole: a pass whose runs
-					 * land either side of a commit - capture some surfaces, commit,
-					 * capture the rest - reset the claim at the second commit, so
-					 * the field described the last commit's runs while the round had
-					 * moved more. Worse, `check-evidence.mjs` derives its denominator
-					 * from the same recorded head, so the two agreed with each other
-					 * and the understatement was invisible again, one level up.
-					 *
-					 * Carrying the total forward while the previously recorded head
-					 * is an ANCESTOR of the current one keeps a multi-commit pass
-					 * summing, and a head on another branch - or a rewritten history
-					 * where the old commit is unreachable - is not an ancestor, so it
-					 * still starts fresh instead of inheriting a stranger's totals.
-					 */
-					...(() => {
-						const priorHead = previous.partialCapture?.refreshedAtHead;
-						const sameHead =
-							priorHead === head ||
-							(Boolean(priorHead) &&
-								(() => {
-									try {
-										execFileSync(
-											"git",
-											["merge-base", "--is-ancestor", priorHead, head],
-											{ cwd: ROOT, stdio: "ignore" },
-										);
-										return true;
-									} catch {
-										// Non-zero (not an ancestor) or git cannot answer at all:
-										// both mean "do not inherit", which is the safe direction.
-										return false;
-									}
-								})());
-						const priorStories = sameHead
-							? (previous.partialCapture?.refreshedStories ?? [])
-							: [];
-						const priorThemes = sameHead
-							? (previous.partialCapture?.refreshedThemes ?? [])
-							: [];
-						const priorSurfaces = sameHead
-							? (previous.partialCapture?.addedSurfaces ?? [])
-							: [];
-						/*
-						 * The counts are the ROUND's; the citation is this pass's only if it
-						 * added something. `partialAddedFields` is the rule for the second (round
-						 * 4, R4-1): it returns `{}` on a zero-add pass, so the earlier citation
-						 * survives the `...previous.partialCapture` spread untouched instead of
-						 * being repointed at a commit that had added nothing. Only its two citation
-						 * fields are taken - the counts are `totals` below, which accumulate across
-						 * this pass's commits. The verdict keys on `addedFrames.length`, THIS run's
-						 * additions: keying it on the accumulated total would let a later commit of
-						 * the same pass re-stamp the citation for an earlier commit's frames.
-						 */
-						const added = partialAddedFields(
-							addedFrames.length,
-							addedSurfaces,
-							head,
-						);
-						/*
-						 * A pass that added nothing leaves the WHOLE added-pass record
-						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
-						 * the last pass that ADDED frames, so a zero-add run that reset
-						 * them to 0/[] would contradict the citation written beside them -
-						 * the incoherence round 4 R4-1 named, one field along from the one
-						 * it fixed. `sameHead` decides whether this pass's own additions
-						 * accumulate onto the previous ones.
-						 */
-						const totals =
-							added.addedFrames === undefined
-								? {}
-								: {
-										addedFrames:
-											(sameHead
-												? (previous.partialCapture?.addedFrames ?? 0)
-												: 0) + addedFrames.length,
-										addedSurfaces: [
-											...new Set([
-												...(sameHead ? priorSurfaces : []),
-												...addedSurfaces,
-											]),
-										],
-									};
-						const citationFields =
-							added.addedFrames === undefined
-								? {}
-								: { addedAt: added.addedAt, addedAtHead: added.addedAtHead };
-						return {
-							/*
-							 * Where the pass STARTED, so the gate can measure the whole
-							 * round rather than its last commit. Held across runs while
-							 * the total accumulates, and re-anchored to the current head
-							 * when a fresh pass begins.
-							 */
-							refreshedFromHead: sameHead
-								? (previous.partialCapture?.refreshedFromHead ??
-									previous.partialCapture?.refreshedAtHead ??
-									head)
-								: head,
-							refreshedFrames:
-								(sameHead
-									? Number(previous.partialCapture?.refreshedFrames ?? 0)
-									: 0) + captured,
-							refreshedStories: [
-								...new Set([
-									...priorStories,
-									/*
-									 * THE DIRECTORY, not the story id, and the difference is not
-									 * cosmetic. A story captured in a SECOND state names its own `dir`
-									 * (see the STORIES header), so one story can write several
-									 * directories - and `check-evidence.mjs` reads this list as
-									 * DIRECTORIES (`<surface>--<leaf>`), asking of each frame a pass
-									 * rewrote whether some entry names the directory it sits in. One
-									 * bare story id can only name one of them, which is measured:
-									 * the quote set's six `dir` states left five directories
-									 * unclaimed and failed `pnpm test:desktop`'s stamp test.
-									 *
-									 * The `@<width>` suffix is deliberately NOT carried: a story swept
-									 * at several widths writes `leaf@800`, `leaf@1024`, ... and the
-									 * gate normalises the suffix away when it reads a frame's
-									 * directory, so the entry has to be the un-suffixed form for the
-									 * same reason - one entry then names every width's directory.
-									 */
-									...stories.map(([id, , , entryOptions]) => {
-										const cut = id.indexOf("--");
-										const surface = cut === -1 ? id : id.slice(0, cut);
-										const leaf = entryOptions?.dir ?? id.slice(cut + 2);
-										return `${surface}--${leaf}`;
-									}),
-								]),
-							],
-							refreshedThemes: [...new Set([...priorThemes, ...themes])],
-							...totals,
-							...citationFields,
-						};
-					})(),
+					...partialCaptureRecord({
+						previous,
+						head,
+						captured,
+						storyDirs: refreshedStoryDirs,
+						themes,
+						addedFrameCount: addedFrames.length,
+						addedSurfaces,
+					}),
 				},
 			}
 		: {

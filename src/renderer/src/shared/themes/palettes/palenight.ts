@@ -97,6 +97,12 @@ export const palenight: ThemeDefinition = {
 		inkDisabled: "#676E95",
 
 		hairline: "#43475B",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.75:1 there against `hairline`'s 1.62:1.
+
+		hairlineStrong: "#484C60",
 		borderControl: "#8287A8",
 
 		accent: "#C792EA",

@@ -125,6 +125,9 @@ export const oneDark: ThemeDefinition = {
 		// Derived: the scheme has no rule colour. Holds ΔE00 4.1 from every ground and
 		// 1.21-1.79:1 against them, so it divides rather than bounds.
 		hairline: "#464C58",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.93:1 there against `hairline`'s 1.79:1.
+		hairlineStrong: "#4B515D",
 		// Upstream gutter 4B5263 is 1.36:1 against the grounds — a decorative value in
 		// a structural role. Lifted along the same neutral to 3.1:1 on the lightest
 		// ground.

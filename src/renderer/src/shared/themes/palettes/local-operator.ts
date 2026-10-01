@@ -100,6 +100,12 @@ export const localOperatorDark: ThemeDefinition = {
 		inkDisabled: "#5f5a4e",
 
 		hairline: "#403b2c",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
+
+		hairlineStrong: "#454031",
 		borderControl: "#837c6d",
 
 		accent: "#38c96a",
@@ -271,6 +277,9 @@ export const localOperatorLight: ThemeDefinition = {
 		// to ΔE00 3.50 against the new `canvas` and 2.31 against `sunken`,
 		// undoing on the dividers exactly what the ramp bought on the panels.
 		hairline: "#dad5cb",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.59:1 there against `hairline`'s 1.18:1.
+		hairlineStrong: "#BDB8AE",
 		// #857f70 measures 3.29:1 on `sunken` and 3.95:1 on `elevated`. The
 		// binding ground is the darkest one, not the lightest — a mid grey has
 		// its easiest time against white — so `sunken` is the case that has to
