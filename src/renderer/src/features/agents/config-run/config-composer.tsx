@@ -604,7 +604,6 @@ export function ConfigComposer({
 				 */
 				isLoading={false}
 				transcriptless
-				unavailable={!run.enabled}
 				placeholderOverride={placeholder}
 				/*
 				 * READINGS WITHOUT PICKERS (§3.3.3(b)): the snapshot renders the model,
@@ -616,6 +615,19 @@ export function ConfigComposer({
 				recordingProbe={recordingProbe}
 				hostNotice={{
 					id: ASIDE_NOTICE_ID,
+					/*
+					 * THE PAGE'S OWN GATE REACHES THE BOX (code review round 1, M1): a
+					 * dirty edit elsewhere on the page (`blockedReason`) and a backend
+					 * without the capability both refuse input here, through the same
+					 * `isInputDisabled` term every writer and submitter reads. It used
+					 * to gate only the example chips, so the operator could type a
+					 * request the page would then refuse to send.
+					 *
+					 * NOT `unavailable`: that prop is chat's "this conversation is not
+					 * on this machine" state, and it would put chat's copy and a
+					 * transcript-only notice id on this page (m1).
+					 */
+					blocksInput: !run.enabled || Boolean(blockedReason),
 					node: (
 						/*
 						 * THE STANDING SENTENCE, verbatim and permanent — not a

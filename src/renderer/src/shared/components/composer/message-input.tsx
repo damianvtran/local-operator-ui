@@ -561,7 +561,29 @@ export type MessageInputProps = {
 	 * ONE PROP FOR BOTH HALVES because they are one fact: an id this component
 	 * cannot invent and a node the host cannot place are useless apart.
 	 */
-	hostNotice?: { id: string; node: React.ReactNode };
+	hostNotice?: {
+		id: string;
+		node: React.ReactNode;
+		/**
+		 * Whether this host chrome REFUSES the box's input, the way `unavailable`
+		 * and `secretAnswer` do.
+		 *
+		 * WHY IT IS PART OF THE SAME PROP. The Agents page has a state of exactly
+		 * this shape — a dirty edit elsewhere on the page blocks a new request, and
+		 * the reason is a host sentence — and the host already has to supply the
+		 * node; a second boolean prop would be the same fact split in two. It joins
+		 * `isInputDisabled`, which is the ONE term every writer and submitter on
+		 * this composer reads, so typing, paste, dictation, the popups and the
+		 * form's own submit are refused together rather than one door at a time.
+		 *
+		 * THE HOST OWNS THE SENTENCE, deliberately: this component knows nothing
+		 * about a page's edit state, and the alternative — borrowing
+		 * `unavailable` — renders CHAT's "this conversation is gone" copy and names
+		 * a transcript notice that is not on the host's page at all (code review
+		 * round 1, m1).
+		 */
+		blocksInput?: boolean;
+	};
 	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
 	 * goes.
@@ -4168,7 +4190,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * card above.
 		 */
 		const secretAnswerPending = Boolean(secretAnswer);
-		const isInputDisabled = unavailable || isBusy || secretAnswerPending;
+		const isInputDisabled =
+			unavailable ||
+			isBusy ||
+			secretAnswerPending ||
+			Boolean(hostNotice?.blocksInput);
 		/*
 		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
 		 * round 7, U27).

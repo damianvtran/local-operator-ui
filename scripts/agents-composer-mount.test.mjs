@@ -244,6 +244,41 @@ const handle = (overrides = {}) => {
 	return { run, sent };
 };
 
+/*
+ * EVERY MOUNT IS TRACKED SO IT CAN BE TORN DOWN (see the `after` hook below).
+ * The file used to end in a module-scope `process.exit(0)`, which under
+ * `node --test` runs before any registered case — this file reported green
+ * without executing one (code review round 1, B1). Closing what it opened is the
+ * cure; exiting was the symptom's hiding place.
+ */
+const mounts = [];
+
+/** The same mount with the page's own gate set — see the M1 case below. */
+const mountBlocked = async (run, blockedReason) => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				React.createElement(ConfigComposer, {
+					run,
+					about: null,
+					onClearAbout: () => undefined,
+					blockedReason,
+				}),
+			),
+		);
+	});
+	mounts.push({ root, queryClient });
+	return { host, root };
+};
+
 const mount = async (run) => {
 	const host = document.createElement("div");
 	document.body.append(host);
@@ -269,6 +304,7 @@ const mount = async (run) => {
 			),
 		);
 	});
+	mounts.push({ root, queryClient });
 	return { host, root };
 };
 
@@ -361,9 +397,50 @@ test("a send the run refuses leaves the text in the box", async () => {
 	await act(async () => root.unmount());
 });
 
-/*
- * The mount leaves handles the composer itself owns (its transcription manager,
- * the query client this file creates). The suite ends here; `agents-config-retry`
- * exits the same way for the same reason.
- */
-process.exit(0);
+/** See the note above `mounts`: close what this file opened. */
+after(async () => {
+	for (const { root, queryClient } of mounts) {
+		await act(async () => root.unmount());
+		queryClient.clear();
+		queryClient.unmount();
+	}
+});
+
+test("a blocked page refuses the box, and the send never fires", async () => {
+	/*
+	 * M1 (code review round 1): the page's dirty-edit gate used to reach only the
+	 * example chips, so the operator could type a request the page would then
+	 * refuse to send. The gate is `hostNotice.blocksInput`, which joins the one
+	 * `isInputDisabled` term every writer and submitter reads — so this types into
+	 * a blocked page, presses Enter, and asserts nothing reached the run.
+	 */
+	const { run, sent } = handle();
+	const { host, root } = await mountBlocked(
+		run,
+		"Finish or cancel your edit first.",
+	);
+	try {
+		const box = await type(host, "Add a reviewer that only reads tests");
+		assert.equal(
+			box.disabled || box.readOnly,
+			true,
+			"the box refuses input while the page is blocked",
+		);
+		await act(async () => {
+			box.dispatchEvent(
+				new DOM.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(sent.length, 0, "a blocked page sends nothing");
+		assert.match(
+			host.textContent ?? "",
+			/Finish or cancel your edit first\./,
+			"and the reason is on screen",
+		);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
