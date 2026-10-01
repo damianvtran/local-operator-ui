@@ -42,6 +42,7 @@
 import { Badge } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { useId } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	PROGRESS_STALE_LABEL,
@@ -124,6 +125,16 @@ export const ProjectList: FC<ProjectListProps> = ({
 	onOpen,
 }) => {
 	const groups = groupByTeam(projects, projectTeamName);
+	/* The prefix every section heading's id is built from (U2). */
+	const listId = useId();
+	/*
+	 * Each section's heading id, and the name its own list points at (UX review
+	 * round 1, U2). `useId` rather than the team name: a name is user data (it can
+	 * be blank, repeat, or hold spaces and quotes) while an id has to be unique in
+	 * the document, and the index is stable because the sections render in one
+	 * pass from `groups`.
+	 */
+	const sectionHeadingId = (index: number) => `${listId}-team-${index}`;
 	return (
 		<div
 			className="@container flex min-h-0 flex-1 flex-col"
@@ -147,15 +158,19 @@ export const ProjectList: FC<ProjectListProps> = ({
 				))}
 			</div>
 			<ul className="min-h-0 flex-1 overflow-y-auto px-6">
-				{groups.map((group) => (
+				{groups.map((group, index) => (
 					<li key={group.team ?? ""}>
 						<TeamSectionHeader
 							team={group.team}
 							count={group.items.length}
+							headingId={sectionHeadingId(index)}
 							className="sticky top-0 z-10"
 							data-project-team={group.team ?? ""}
 						/>
-						<ul className="divide-y divide-hairline">
+						<ul
+							aria-labelledby={sectionHeadingId(index)}
+							className="divide-y divide-hairline"
+						>
 							{group.items.map((project) => {
 								const meta = new Map(
 									listRowMeta(

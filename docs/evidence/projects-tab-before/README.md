@@ -26,8 +26,8 @@ after half is the same band one rung up the ladder, `bg-surface`, borderless.
 
 | comparison | measurement |
 | --- | --- |
-| `team-header-hover` vs `populated`, **before** tree, both themes | **0 differing pixels** - the band has no hover on `main`, which is where the reporter's asymmetry came from |
-| `team-header-hover` vs `populated`, **after** tree, both themes | **0 differing pixels** - and it still has none: the band is a label, not an action |
+| `team-header-hover` vs `populated`, **before** tree, both themes | **0 differing pixels** - the band has no hover on `main`, which is where the reporter's asymmetry came from. THE INSTRUMENT IS LIVE IN THE SAME RUN: `project-row-hover` vs `populated` differs by **56,249** dark / **58,346** light pixels, so the 0 is the band's non-reaction rather than a pointer that never landed |
+| `team-header-hover` vs `populated`, **after** tree, both themes | **0 differing pixels** - and it still has none: the band is a label, not an action. The same positive control holds on the changed tree - the row pair moves **67,250** dark / **69,998** light pixels - so the 0 is measured, not assumed |
 | `populated` before vs after | **187,370** dark / **182,807** light pixels differ |
 | `many` before vs after | **352,035** dark / **301,271** light |
 | `list-teams-sticky` before vs after | **223,265** dark / **196,096** light |

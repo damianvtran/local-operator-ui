@@ -17,11 +17,11 @@
  * THE BAND IS A LIGHTNESS STEP, NOT A RULE. `bg-surface` is the ladder's own
  * canvas -> surface rung (docs/branding.md §2, "+2.5 to +5.0 L*"), measured by
  * the design consult across all 59 palettes: dL* min 2.53 / median 3.54 / max
- * 4.98, dE00 min 2.05 (iceberg) with no palette under the contract's 2.0 field
- * floor, and ink floors on the new fill of 8.15:1 (`ink`, catppuccinFrappe) and
- * 6.56:1 (`ink-muted`) - so the label and its count clear 4.5:1 everywhere and
- * no palette role is added. That is the whole change: "slight brightness
- * contrast", one role.
+ * 4.98, dE00 min 2.05 (`sage`, the fleet's lowest; `iceberg` 2.11) with no palette
+ * under the contract's 2.0 field floor, and ink floors on the new fill of 8.15:1
+ * (`ink`, catppuccinFrappe) and 6.56:1 (`ink-muted`) - so the label and its count
+ * clear 4.5:1 everywhere and no palette role is added. That is the whole change:
+ * "slight brightness contrast", one role.
  *
  * WHY THIS RUNG AND NOT ANOTHER. `elevated` is REJECTED because it is the rung a
  * ROW's own hover already uses (`hover:bg-elevated`), so a band on it would be
@@ -45,6 +45,16 @@
  * "Aida" as "AIDA" is a defect rather than a style. The count stays in the
  * quieter `text-ink-muted` beside it.
  *
+ * THE SECTION IS NAMED FOR ASSISTIVE TECHNOLOGY TOO, in the two places the
+ * visual grouping does not reach (review round 1, U1 and U2): the count carries
+ * an accessible name (`projectsCountLabel`, so the tally says what it counts
+ * rather than announcing a bare "8" beside the team name), and the List passes
+ * this heading's id down so the section's own `<ul>` can point at it with
+ * `aria-labelledby` - which is what makes list navigation announce the section
+ * it is in instead of an unnamed list of items. `headingId` is therefore
+ * required, not optional: the association is the contract, and a caller that
+ * omitted it would ship a heading no list can name.
+ *
  * A BAND IS A LABEL, NOT AN ACTION. No hover fill, no pointer cursor
  * (`cursor-default` states it rather than leaving the I-beam over a heading the
  * rows beside it make look clickable), nothing focusable and nothing animating -
@@ -63,7 +73,7 @@
 
 import { cn } from "@shared/lib/utils";
 import type { FC, HTMLAttributes } from "react";
-import { NO_TEAM_LABEL } from "../project-model";
+import { NO_TEAM_LABEL, projectsCountLabel } from "../project-model";
 
 export type TeamSectionHeaderProps = Omit<
 	HTMLAttributes<HTMLDivElement>,
@@ -73,11 +83,17 @@ export type TeamSectionHeaderProps = Omit<
 	team: string | null;
 	/** How many projects the section holds. */
 	count: number;
+	/**
+	 * The id the label's `<h3>` carries, so the section's own list can name
+	 * itself with `aria-labelledby={headingId}`.
+	 */
+	headingId: string;
 };
 
 export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 	team,
 	count,
+	headingId,
 	className,
 	...rest
 }) => (
@@ -88,7 +104,14 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 			className,
 		)}
 	>
-		<h3 className="truncate text-ink">{team ?? NO_TEAM_LABEL}</h3>
-		<span className="shrink-0 text-ink-muted">{count}</span>
+		<h3 id={headingId} className="truncate text-ink">
+			{team ?? NO_TEAM_LABEL}
+		</h3>
+		<span
+			className="shrink-0 text-ink-muted"
+			aria-label={projectsCountLabel(count)}
+		>
+			{count}
+		</span>
 	</div>
 );
