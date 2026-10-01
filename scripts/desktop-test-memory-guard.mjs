@@ -836,22 +836,34 @@ export async function killTree(
 	const fresh = await freshRows(outOfGroup.map((member) => member.pid));
 	const known = new Set([leaderPid, ...members.map((member) => member.pid)]);
 	const sent = new Set();
+	/*
+	 * The members this run could NOT signal, as a SET rather than a counter (R9 of
+	 * the PR #733 review). A counter had to be decremented by the retry below, and
+	 * the decrement was not tied to a pid: retrying one member erased ANOTHER
+	 * member's count, so a run that left a process alive printed no "NOT signalled"
+	 * note at all - the one promise this line makes. Membership in this set is what
+	 * the loud line reports, and only a member's own successful signal removes it.
+	 */
+	const unsignalled = new Set();
+	/** Whether a member's fresh row puts it in the leader's own group. Such a member
+	 * is covered by the group send and is neither counted nor retried - retrying one
+	 * was what deleted another member's count. */
+	const inGroup = (pid) => fresh?.get(pid)?.pgid === leaderPid;
 	let signalled = 0;
-	let skipped = 0;
 	for (const member of outOfGroup) {
 		const row = fresh?.get(member.pid);
 		if (fresh === null) {
 			// The re-read failed for the whole set: which of these are gone and which
-			// are merely unreadable cannot be told, so every one is counted (the
-			// retry below gets a second chance to clear them).
-			skipped += 1;
+			// are merely unreadable cannot be told, so every one is counted (the retry
+			// below gets a second chance to clear them).
+			unsignalled.add(member.pid);
 			continue;
 		}
 		if (row === undefined) {
 			// Absent from a readable table: gone with the group is the common case and
 			// is not worth a line. A pid that is STILL there but was not in the read is
 			// the one that must not pass silently, so it is counted and named.
-			if (exists(member.pid)) skipped += 1;
+			if (exists(member.pid)) unsignalled.add(member.pid);
 			continue;
 		}
 		if (row.pgid === leaderPid) continue; // the group send already took it
@@ -863,7 +875,7 @@ export async function killTree(
 				? row.lstart === member.lstart
 				: known.has(row.ppid);
 		if (!sameProcess) {
-			skipped += 1;
+			unsignalled.add(member.pid);
 			continue;
 		}
 		if (send(member.pid)) {
@@ -873,7 +885,7 @@ export async function killTree(
 			// The signal did not reach it (EPERM, or a race). A member that was not
 			// signalled is not a success, so it is counted and named, and the retry
 			// below gets one more attempt at it.
-			skipped += 1;
+			unsignalled.add(member.pid);
 		}
 	}
 	/*
@@ -886,12 +898,14 @@ export async function killTree(
 	 * VERIFIES them by the same rule (the identity stamp, or membership of this
 	 * tree). `unknown never kills` still holds: nothing is signalled that a
 	 * successful read did not confirm; what is retried is the READ, not the
-	 * decision.
+	 * decision. A member the group send already covered is left alone: it is not a
+	 * failure and signalling it again would be this loop's only way to touch a
+	 * member it does not need to.
 	 */
-	if (skipped > 0) {
+	if (unsignalled.size > 0) {
 		await delay(_RETRY_DELAY_MS);
 		for (const member of outOfGroup) {
-			if (sent.has(member.pid)) continue;
+			if (sent.has(member.pid) || inGroup(member.pid)) continue;
 			// A pid that is gone has nothing left to save. When the whole table read
 			// failed, even that probe is unreliable, so the re-read is simply tried.
 			if (fresh !== null && !exists(member.pid)) continue;
@@ -905,11 +919,12 @@ export async function killTree(
 			if (!sameProcess) continue;
 			if (send(member.pid)) {
 				signalled += 1;
-				skipped -= 1;
 				sent.add(member.pid);
+				unsignalled.delete(member.pid);
 			}
 		}
 	}
+	const skipped = unsignalled.size;
 	return { signalled, skipped, errors };
 }
 
