@@ -436,6 +436,28 @@ const pressFootIcon = async () => {
 	});
 };
 
+/**
+ * The icon's own flyout, opened the way a keyboard user opens it: focus the
+ * trigger and let the primitive commit, then read the portal panel BY NAME so a
+ * previous tooltip cannot be mistaken for this one (the `mark-all-read-control`
+ * helper's shape, adopted rather than invented). Null when it never opens.
+ */
+const footIconTooltip = async () => {
+	const icon = footIcon();
+	if (!icon) return null;
+	icon.dispatchEvent(new DOM.window.FocusEvent("focusout", { bubbles: true }));
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		icon.dispatchEvent(new DOM.window.FocusEvent("focusin", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+			(element) => element.textContent?.includes("Show the update notice."),
+		);
+		if (tip) return tip;
+	}
+	return null;
+};
+
 const cardHeadings = () =>
 	[...document.querySelectorAll("h2")].map((node) => node.textContent ?? "");
 
@@ -817,6 +839,11 @@ test("the foot icon draws nothing at rest, and one control per state otherwise",
 	// controls four pixels apart read as one system.
 	assert.match(available, /text-accent/);
 	assert.match(available, /hover:bg-row-hover/);
+	/*
+	 * (The tooltip's own lines are not in a static render - Radix mounts the panel
+	 * in a portal only while it is open - so the U4 truncation witness lives in the
+	 * DOM case below, which opens the flyout the way a keyboard user does.)
+	 */
 
 	const inflight = renderToStaticMarkup(
 		UpdateFootIconView({
@@ -833,10 +860,10 @@ test("the foot icon draws nothing at rest, and one control per state otherwise",
 		"in flight there is nothing to press - no cancel, so no control",
 	);
 	assert.match(inflight, /motion-safe:animate-spin/);
-	assert.match(inflight, /aria-label="Updating the server\."/);
+	assert.match(inflight, /aria-label="Server update in progress\."/);
 	assert.equal(
 		footIconInFlightName({ type: UpdateType.UI, percent: 42 }),
-		"Updating the application, 42%.",
+		"Application update in progress, 42%.",
 	);
 	assert.equal(
 		footIconAvailableName([]),
@@ -908,6 +935,105 @@ test("an unsolicited release raises the quiet ICON; its press raises the band, w
 	);
 });
 
+test("the available tooltip ellipsises its version lines inside the panel", async () => {
+	/*
+	 * REVIEW ROUND 1'S U4: the version lines were `whitespace-nowrap` with no
+	 * truncate, and a long release line measured 327px of scrollWidth in the
+	 * panel's 238px content box - it ran out of the panel while the summary line
+	 * below it ellipsised correctly. One rule for every line is the fix; this case
+	 * is the witness, read from the open flyout because Radix mounts the panel in
+	 * a portal only while it is open.
+	 */
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+
+	const tip = await footIconTooltip();
+	assert.ok(tip, "focusing the icon opens its flyout");
+	const versionLines = [...tip.querySelectorAll("span")].filter((span) =>
+		(span.textContent ?? "").includes("available"),
+	);
+	assert.ok(versionLines.length >= 1, "the flyout carries the version line");
+	for (const line of versionLines) {
+		assert.match(
+			line.className,
+			/truncate/,
+			"a version line must clip with an ellipsis, not run out of the panel",
+		);
+		assert.doesNotMatch(
+			line.className,
+			/whitespace-nowrap/,
+			"`truncate` replaces the nowrap - both set it, only one clips",
+		);
+	}
+});
+
+test("Escape lowers the raised band from anywhere in it, and focus moves in on open and back on close", async () => {
+	/*
+	 * REVIEW ROUND 1'S U1/U2, the keyboard path out of the raised band. Before
+	 * this: Escape did nothing with focus on the icon or on the band's own ✕,
+	 * focus never entered the band on open, and closing dropped it to `<body>` -
+	 * the exit was 21 Tabs or nothing.
+	 */
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "the press raises the band");
+	/*
+	 * FOCUS MOVES INTO THE BAND ON OPEN: the press may have been Enter on the
+	 * icon, and a region that opens without taking focus leaves the reader
+	 * outside it with no announcement. The first control is the first item.
+	 */
+	assert.equal(
+		document.activeElement,
+		indicatorButtons()[0],
+		"the raised band takes focus",
+	);
+
+	await act(async () => {
+		document.activeElement?.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+			}),
+		);
+	});
+	assert.equal(bandIsQuiet(), true, "Escape lowers the band");
+	assert.equal(
+		document.activeElement,
+		footIcon(),
+		"and focus is handed back to the icon, not dropped to <body>",
+	);
+
+	/*
+	 * AND THE SAME KEY ON THE ICON, for a reader who tabbed back out: the band is
+	 * up, focus is on the icon, and Escape lowers it there too without moving
+	 * focus off the icon.
+	 */
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "raised again");
+	/*
+	 * The reader tabs back out to the icon and presses Escape there: focus is
+	 * PLACED on the icon first, because raising the band moved it into the item
+	 * above - this is the second of the two places the key has to work.
+	 */
+	await act(async () => {
+		footIcon()?.focus();
+	});
+	await act(async () => {
+		footIcon()?.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+			}),
+		);
+	});
+	assert.equal(bandIsQuiet(), true, "Escape on the icon lowers the band");
+	assert.equal(document.activeElement, footIcon(), "and it stays on the icon");
+});
+
 test("the band's dismiss lowers it and keeps the offer, and the icon raises it again", async () => {
 	await reset();
 	await mount();
@@ -923,6 +1049,16 @@ test("the band's dismiss lowers it and keeps the offer, and the icon raises it a
 		);
 	});
 	assert.equal(bandIsQuiet(), true, "the dismiss lowers the band");
+	/*
+	 * AND FOCUS GOES BACK TO THE ICON (review round 1's U2, measured by the mouse
+	 * path here and by Escape below): a close that drops focus to `<body>` strands
+	 * a keyboard reader at the top of the document.
+	 */
+	assert.equal(
+		document.activeElement,
+		footIcon(),
+		"the dismiss hands focus back to the icon that raised the band",
+	);
 	assert.equal(
 		footIconState(),
 		"available",
@@ -975,7 +1111,10 @@ test("the icon's in-flight arc mirrors the server update and cannot be pressed",
 		"inflight",
 		"the arc mirrors the attempt the card just started",
 	);
-	assert.equal(footIcon()?.getAttribute("aria-label"), "Updating the server.");
+	assert.equal(
+		footIcon()?.getAttribute("aria-label"),
+		"Server update in progress.",
+	);
 	assert.equal(
 		footIcon()?.tagName.toLowerCase(),
 		"output",
@@ -985,6 +1124,17 @@ test("the icon's in-flight arc mirrors the server update and cannot be pressed",
 		(footIcon()?.outerHTML ?? "").includes("<button"),
 		false,
 		"and nothing inside it is pressable",
+	);
+	/*
+	 * THE ARC ANSWERS A HOVER (review round 1's U3): it rides the app's Tooltip
+	 * primitive now, which stamps its trigger's `data-state` onto the child if one
+	 * is open. Before this, the state a pointer user most wants to interrogate -
+	 * "what is happening?" - answered nothing on hover.
+	 */
+	assert.equal(
+		footIcon()?.hasAttribute("data-state"),
+		true,
+		"the in-flight element is a tooltip trigger - the arc answers a hover now",
 	);
 	/*
 	 * A press DURING the attempt reaches the icon's slot and finds no control - the

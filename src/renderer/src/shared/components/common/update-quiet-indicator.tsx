@@ -72,7 +72,13 @@ import {
 	useUpdateNoticeStore,
 } from "@shared/store/update-notice-store";
 import { CircleArrowDown, X } from "lucide-react";
-import { type FC, useCallback, useMemo } from "react";
+import {
+	type FC,
+	Fragment,
+	useCallback,
+	useLayoutEffect,
+	useMemo,
+} from "react";
 
 /** One surface's waiting release, as the indicator draws it. */
 export type QuietIndicatorOffer = {
@@ -112,6 +118,17 @@ export const quietOfferSubject = (offer: QuietIndicatorOffer): string =>
 	`${SURFACE_COPY[offer.type]} ${offer.version}`;
 
 /**
+ * One surface's noun, without a version: "Application update" / "Server update".
+ *
+ * Exported for the foot icon's in-flight name (review round 1's U3/NIT: the
+ * arc's name is built from THIS family's own nouns rather than a second
+ * spelling of the same two words, so the band and the icon cannot drift about
+ * what is updating).
+ */
+export const quietSurfaceLabel = (type: UpdateType): string =>
+	SURFACE_COPY[type];
+
+/**
  * The visible string for one control, and the head of its accessible name.
  *
  * One function for both, so the two cannot drift: the label is this string plus a
@@ -128,6 +145,10 @@ export const UpdateQuietIndicatorView: FC<{
 	 * on-demand surface and the foot icon the standing one. It lowers the band
 	 * and keeps the offer - the icon stays, and its next press raises the band
 	 * again.
+	 *
+	 * It is also the band's ESCAPE EXIT (review round 1's U1): the region handles
+	 * Escape and calls this, so every control inside the band has a one-key way
+	 * out, and the connected half hands focus back to the icon as it lowers.
 	 */
 	onDismiss: () => void;
 	/** The rig's hook for a frame; also lets a test scope its query. */
@@ -153,6 +174,19 @@ export const UpdateQuietIndicatorView: FC<{
 		<output
 			data-update-indicator=""
 			data-update-indicator-count={offers.length}
+			/*
+			 * ESCAPE LOWERS THE BAND (review round 1's U1). The handler sits on the
+			 * region so the dismissal and every item reach it by bubbling - the
+			 * shortest keyboard exit from a control that opened a surface. The
+			 * event stops here: the shell behind this row has Escape bindings of
+			 * its own, and a key this band consumed must not go on to close
+			 * something else.
+			 */
+			onKeyDown={(event) => {
+				if (event.key !== "Escape") return;
+				event.stopPropagation();
+				onDismiss();
+			}}
 			className={
 				quiet
 					? undefined
@@ -162,42 +196,53 @@ export const UpdateQuietIndicatorView: FC<{
 						)
 			}
 		>
-			{offers.map((offer) => (
-				<button
-					key={offer.type}
-					type="button"
-					data-update-indicator-open={offer.type}
-					aria-label={`${quietOfferText(offer)}. Open release details.`}
-					className={cn(
-						"flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta text-accent",
-						"hover:bg-row-hover",
-						/*
-						 * `outline`, never a box-shadow ring: this sits inside a scroll-free
-						 * band, but the rule is the branding contract's and not a property of
-						 * this row - a ring drawn as a shadow is clipped by the first
-						 * `overflow: hidden` ancestor a caller adds.
-						 *
-						 * OFFSET 0, AND THE `!` THAT MAKES IT TRUE (design D5, review U12's
-						 * sibling). The app's focus rule is UNLAYERED
-						 * (`html :focus-visible { outline-offset: 2px }`, `styles/index.css`),
-						 * so it outranks every utility and a bare `outline-offset-0` here
-						 * would be silently ignored - which is what the plain
-						 * `outline-offset-1` used to be. `!` is the same escape the Button
-						 * sizes already use. It is not cosmetic: the band is `h-7` (28px) with
-						 * a 24px control centred in it, so only ~2px of slack sits below the
-						 * control and the band's bottom edge IS the window's bottom edge
-						 * (`chat-layout.tsx`, the shell's `overflow: hidden` column). At
-						 * offset 2 the 2px stroke hangs 4px below the control and the bottom
-						 * stroke was clipped off-window; at 0 the stroke lands inside the
-						 * row's own slack.
-						 */
-						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-0!",
-					)}
-					onClick={() => onOpen(offer.type)}
-				>
-					<CircleArrowDown className="size-3.5 shrink-0" aria-hidden="true" />
-					<span className="whitespace-nowrap">{quietOfferText(offer)}</span>
-				</button>
+			{offers.map((offer, index) => (
+				<Fragment key={offer.type}>
+					{/*
+					 * A SEPARATOR THE FLAT TEXT NEEDS (review round 1's NIT): two items
+					 * rendered as siblings ran together in `textContent`
+					 * ("...availableApplication update..."), which is what a reader that
+					 * walks the region's text hands to assistive tech. `sr-only` so the
+					 * pause is read and never painted - the band's own `gap-1` is the
+					 * visual separation.
+					 */}
+					{index > 0 && <span className="sr-only">, </span>}
+					<button
+						key={offer.type}
+						type="button"
+						data-update-indicator-open={offer.type}
+						aria-label={`${quietOfferText(offer)}. Open release details.`}
+						className={cn(
+							"flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta text-accent",
+							"hover:bg-row-hover",
+							/*
+							 * `outline`, never a box-shadow ring: this sits inside a scroll-free
+							 * band, but the rule is the branding contract's and not a property of
+							 * this row - a ring drawn as a shadow is clipped by the first
+							 * `overflow: hidden` ancestor a caller adds.
+							 *
+							 * OFFSET 0, AND THE `!` THAT MAKES IT TRUE (design D5, review U12's
+							 * sibling). The app's focus rule is UNLAYERED
+							 * (`html :focus-visible { outline-offset: 2px }`, `styles/index.css`),
+							 * so it outranks every utility and a bare `outline-offset-0` here
+							 * would be silently ignored - which is what the plain
+							 * `outline-offset-1` used to be. `!` is the same escape the Button
+							 * sizes already use. It is not cosmetic: the band is `h-7` (28px) with
+							 * a 24px control centred in it, so only ~2px of slack sits below the
+							 * control and the band's bottom edge IS the window's bottom edge
+							 * (`chat-layout.tsx`, the shell's `overflow: hidden` column). At
+							 * offset 2 the 2px stroke hangs 4px below the control and the bottom
+							 * stroke was clipped off-window; at 0 the stroke lands inside the
+							 * row's own slack.
+							 */
+							"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-0!",
+						)}
+						onClick={() => onOpen(offer.type)}
+					>
+						<CircleArrowDown className="size-3.5 shrink-0" aria-hidden="true" />
+						<span className="whitespace-nowrap">{quietOfferText(offer)}</span>
+					</button>
+				</Fragment>
 			))}
 			{/*
 			 * THE DISMISS, AS THE LEADING CLUSTER'S LAST CONTROL (design consult).
@@ -234,6 +279,20 @@ export const UpdateQuietIndicatorView: FC<{
 };
 
 /**
+ * Put focus back on the standing notice's own control.
+ *
+ * A module-level function over a DOM query rather than a ref passed between
+ * components, because the band and the icon mount in DIFFERENT trees (the
+ * shell's column and the sidebar's foot) and neither may reach into the
+ * other's internals: both draw a stable data handle for exactly this kind of
+ * use (`[data-update-foot-icon]`, `[data-update-indicator]`). A missing icon
+ * - the offer cleared as the band lowered - is a no-op, not an error.
+ */
+const focusFootIcon = (): void => {
+	document.querySelector<HTMLElement>("[data-update-foot-icon]")?.focus();
+};
+
+/**
  * The connected indicator: what the shell mounts.
  *
  * Reads the store and asks `quietOfferShown` per surface - the same function the
@@ -259,6 +318,33 @@ export const UpdateQuietIndicator: FC = () => {
 	const noticeOpen = useUpdateNoticeStore((s) => s.noticeOpen);
 	const dismissNotice = useUpdateNoticeStore((s) => s.dismissNotice);
 
+	/*
+	 * THE BAND'S DISMISS, WHICH ALSO HANDS FOCUS BACK (review round 1's U1/U2).
+	 * Both the Escape key and the dismiss press land here; without this, focus
+	 * fell to `<body>` when the band lowered and the keyboard path out was 21
+	 * Tabs or nothing. The icon is up whenever the band is (an offer is what
+	 * raises both), so there is a control to return to.
+	 */
+	const dismiss = useCallback(() => {
+		dismissNotice();
+		focusFootIcon();
+	}, [dismissNotice]);
+
+	/*
+	 * AND FOCUS MOVES INTO THE BAND WHEN IT IS RAISED (U1): the press that opens
+	 * it may have been Enter on the icon, and a band that opens without taking
+	 * focus leaves the reader where they were with no announcement of the new
+	 * region. The first control is the band's first item; a layout effect runs
+	 * after the commit that mounts it, so the region's children are already in
+	 * the DOM - no timer, and nothing to make the tests nondeterministic.
+	 */
+	useLayoutEffect(() => {
+		if (!noticeOpen) return;
+		document
+			.querySelector<HTMLElement>("[data-update-indicator] button")
+			?.focus();
+	}, [noticeOpen]);
+
 	const shown = useMemo(() => {
 		const state = { followed, running, offers, detailOpen };
 		return NOTICE_SURFACES.filter((type) => quietOfferShown(state, type)).map(
@@ -283,7 +369,7 @@ export const UpdateQuietIndicator: FC = () => {
 		<UpdateQuietIndicatorView
 			offers={noticeOpen ? shown : []}
 			onOpen={pressSurface}
-			onDismiss={dismissNotice}
+			onDismiss={dismiss}
 		/>
 	);
 };

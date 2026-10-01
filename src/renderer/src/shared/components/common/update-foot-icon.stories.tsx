@@ -21,21 +21,70 @@ import { UpdateType } from "@shared/store/deferred-updates-store";
 import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import { DEFAULT_FOLLOWED_SEGMENT } from "@shared/utils/update-segment";
 import type { Meta, StoryObj } from "@storybook/react";
+import { Settings } from "lucide-react";
 import { type FC, type ReactNode, useLayoutEffect } from "react";
 import { UpdateFootIcon } from "./update-foot-icon";
 
 /**
- * The foot row the icon lives in, at the measured geometry: the sidebar's own
- * `min-h-10 px-2 pb-2` row with the cluster's `gap-1`, right-anchored the way
- * the expanded foot is. The gear is NOT drawn (the story is about the icon's
- * slot, and a stand-in glyph would be a second drawing of the gear to keep in
- * sync); the row's trailing edge is where the cluster ends.
+ * The foot row the icon lives in, at the shipping shape (review round 1's D3).
+ *
+ * It mirrors `sidebar-navigation.tsx`'s expanded foot: the `min-h-10 px-2 pb-2`
+ * row, the account row at its leading edge, and the trailing cluster
+ * (`flex items-center gap-1`) holding the icon immediately left of the gear -
+ * so a frame made here can verify the two claims the story exists for (the
+ * icon's slot, and the gear still being the row's last stop), which the old
+ * `justify-end gap-1` shape with no gear could not. The gear is a locally
+ * drawn stand-in with the shipping classes rather than an import: the real one
+ * lives inside the sidebar's router-bound component, and a story that pulls
+ * the whole sidebar in to draw one 16px glyph is how evidence rigs grow roots.
+ * Only the gear's geometry and ink matter to these frames.
  */
+const GearStandIn: FC = () => (
+	<button
+		type="button"
+		className="flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted"
+		aria-hidden="true"
+		tabIndex={-1}
+	>
+		<Settings size={16} aria-hidden="true" />
+	</button>
+);
+
+/** The account row's stand-in, sized like the real avatar block. */
+const AccountStandIn: FC = () => (
+	<div className="flex items-center gap-2" aria-hidden="true">
+		<div className="size-7 shrink-0 rounded-full bg-row-hover" />
+		<div className="flex flex-col gap-1">
+			<div className="h-2 w-16 rounded-sm bg-row-hover" />
+			<div className="h-2 w-10 rounded-sm bg-row-hover" />
+		</div>
+	</div>
+);
+
 const FootRow: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className="flex h-24 w-70 flex-col justify-end bg-canvas">
-		<div className="flex min-h-10 items-center justify-end gap-1 border-t border-hairline bg-surface px-2 py-1.5">
-			{children}
+		<div className="flex min-h-10 items-center justify-between gap-1 border-t border-hairline bg-surface px-2 pb-2">
+			<AccountStandIn />
+			<div className="flex items-center gap-1">
+				{children}
+				<GearStandIn />
+			</div>
 		</div>
+	</div>
+);
+
+/**
+ * The 56px strip's foot (review round 1's D4), where the icon is a THIRD CHILD
+ * of the vertical column (icon, gear, avatar) rather than half of a horizontal
+ * cluster. Same draw, different geometry - and the one arrangement where the
+ * tooltip's `collisionPadding` matters, because the column sits at the
+ * window's left edge.
+ */
+const StripFrame: FC<{ children: ReactNode }> = ({ children }) => (
+	<div className="flex h-40 w-14 flex-col items-center justify-end gap-1 border-r border-hairline bg-surface pb-2">
+		{children}
+		<GearStandIn />
+		<div className="size-7 rounded-full bg-row-hover" aria-hidden="true" />
 	</div>
 );
 
@@ -47,6 +96,7 @@ const Stage: FC<{
 	inflightUi?: boolean;
 	inflightBackend?: boolean;
 	downloadPercent?: number;
+	strip?: boolean;
 }> = ({
 	ui,
 	backend,
@@ -55,6 +105,7 @@ const Stage: FC<{
 	inflightUi,
 	inflightBackend,
 	downloadPercent,
+	strip,
 }) => {
 	useLayoutEffect(() => {
 		const store = useUpdateNoticeStore.getState();
@@ -91,9 +142,17 @@ const Stage: FC<{
 		downloadPercent,
 	]);
 	return (
-		<FootRow>
-			<UpdateFootIcon />
-		</FootRow>
+		<>
+			{strip ? (
+				<StripFrame>
+					<UpdateFootIcon />
+				</StripFrame>
+			) : (
+				<FootRow>
+					<UpdateFootIcon />
+				</FootRow>
+			)}
+		</>
 	);
 };
 
@@ -132,4 +191,13 @@ export const ServerInFlight: Story = {
 /** The app download's arm, with the one measured percent this app has. */
 export const Downloading: Story = {
 	args: { ui: "0.30.1", inflightUi: true, downloadPercent: 42 },
+};
+
+/**
+ * The 56px strip's arrangement (review round 1's D4): the same icon as the
+ * column's third child - icon, gear, avatar - so a frame covers the geometry
+ * where the tooltip's edge padding matters.
+ */
+export const StripVariant: Story = {
+	args: { backend: "0.55.10", strip: true },
 };

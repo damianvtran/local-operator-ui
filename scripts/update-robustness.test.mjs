@@ -9802,6 +9802,27 @@ const driveGlobalUpdate = async ({
 	 */
 	workState = "idle",
 	fleet = [],
+	/*
+	 * THE ROSTER AFTER THE BOUNCE (review round 1's A4). Every read answers `fleet`
+	 * until the fixture's own restart recorder has a restart in it, and
+	 * `fleetAfter` (default null = nothing moved) from then on - so a case can
+	 * model a machine where the move left a session without a runtime, which is
+	 * the before/after pair the generation tail's displaced set is computed from.
+	 */
+	fleetAfter = null,
+	/*
+	 * A WORKING ENGAGE STUB (review round 1's A4), off by default: the cases that
+	 * came before never drove the engage, and switching it on everywhere would put
+	 * the rebuild route's long-standing cases onto a path they were not written
+	 * for. On, it gives the backend the two surfaces
+	 * `engageSessionThroughStream` needs - a stream that announces a subscription
+	 * id, and desktop watch/warm answering 200 - and marks a session resident the
+	 * moment it is warmed, so a displaced session comes back on the first poll
+	 * rather than paying the real hold. The LEASE protocol itself is under test in
+	 * the app-owned cases against a real daemon (R2-M1); this stub exists so the
+	 * generation tail's SELECTION - which sessions, how many reads - is drivable.
+	 */
+	engageStub = false,
 	drainBudgetMs = 5,
 	drainPollMs = 1,
 	/*
@@ -9832,11 +9853,17 @@ const driveGlobalUpdate = async ({
 	 * which is what the refusal case pins the window with.
 	 */
 	let autoUpdating = false;
+	/** The sessions the engage stub has warmed, resident from the next read. */
+	const engagedIds = new Set();
 	const calls = {
 		installers: [],
 		/** The budget each reach for an installer was given, in the order taken. */
 		budgets: [],
 		restarts: 0,
+		/** The `stopGraceMs` each restart was given, in order (A4). */
+		restartStopGraceMs: [],
+		/** Every desktop request the engage stub answered, in order (A4). */
+		desktop: [],
 		starts: 0,
 		autoUpdating: [],
 		holdAtFleetRead: [],
@@ -9865,8 +9892,14 @@ const driveGlobalUpdate = async ({
 			autoUpdating = value;
 			calls.autoUpdating.push(value);
 		},
-		restart: async () => {
+		restart: async (options = {}) => {
 			calls.restarts += 1;
+			/*
+			 * THE BOUND IS RECORDED, NOT ASSUMED (review round 1's A4): the fallback's
+			 * stop drain is the ONE restart in the app that passes a shorter grace, and
+			 * a fixture that dropped the argument could not tell it from the default.
+			 */
+			calls.restartStopGraceMs.push(options?.stopGraceMs ?? null);
 			return restartOk;
 		},
 		start: async () => {
@@ -9903,25 +9936,87 @@ const driveGlobalUpdate = async ({
 		 * The roster, in the WIRE's own field names, converted by the shipped parse -
 		 * the same read and the same shape the gate sees in the app.
 		 */
-		servingSessionFleet: async () =>
-			fleetUnreadable
-				? null
-				: service.fleetRosterFromSessions({ result: { sessions: fleet } }),
+		servingSessionFleet: async () => {
+			if (fleetUnreadable) return null;
+			const wire =
+				fleetAfter === null ? fleet : calls.restarts > 0 ? fleetAfter : fleet;
+			/*
+			 * A WARMED SESSION IS RESIDENT FROM THE NEXT READ (the engage stub's half
+			 * of "the runtime came up"): without this the poll would wait out the real
+			 * hold to learn what the stub already decided.
+			 */
+			const rows = engageStub
+				? [
+						...wire,
+						...[...engagedIds].map((id) => ({
+							id,
+							name: `engaged ${id}`,
+							kind: "daemon",
+							live_state: "idle",
+						})),
+					]
+				: wire;
+			return service.fleetRosterFromSessions({ result: { sessions: rows } });
+		},
 		/*
 		 * The roster read, present only when a case gives one: with `runtimeRoster`
 		 * null this stays off the mock entirely and the census falls back the way it
 		 * must on a backend that cannot answer (the catch in
 		 * `UpdateService.readRuntimeCensus` covers the absence).
 		 */
-		...(runtimeRoster
+		...(runtimeRoster || engageStub
 			? {
 					requestDesktop: async (request) => {
 						calls.runtimeReads.push(request?.op ?? "?");
+						/*
+						 * THE ENGAGE'S TWO OPS, answered 200 by the stub (A4): the warm is what
+						 * marks the session resident for the poll above.
+						 */
+						if (
+							engageStub &&
+							(request?.op === "sessions.watch" ||
+								request?.op === "sessions.warm")
+						) {
+							calls.desktop.push(request);
+							if (
+								request.op === "sessions.warm" &&
+								typeof request.sessionId === "string"
+							) {
+								engagedIds.add(request.sessionId);
+							}
+							return { status: 200, body: { status: 200, message: "" } };
+						}
 						return {
 							status: 200,
 							body: { status: 200, message: "", result: runtimeRoster },
 						};
 					},
+				}
+			: {}),
+		/*
+		 * THE STUB STREAM (A4): `engageSessionThroughStream` waits for the open frame
+		 * that carries the subscription id, so this announces one - synchronously, so
+		 * the engage skips its own open-wait sleep. The id is shared across sessions
+		 * ON PURPOSE: the lease protocol's realism belongs to the app-owned cases,
+		 * not here.
+		 */
+		...(engageStub
+			? {
+					getStreamRelay: () => ({
+						subscribe: (_options, emit) => {
+							emit({
+								kind: "data",
+								data: JSON.stringify({
+									type: "open",
+									payload: {
+										subscription_id: "0123456789abcdef0123456789abcdef",
+									},
+								}),
+							});
+							return { streamId: "stub-engage-stream" };
+						},
+						unsubscribe: () => {},
+					}),
 				}
 			: {}),
 		hasOpenSessionStreams: () => false,
@@ -16968,6 +17063,11 @@ test("a generation install whose serve did not move is restarted onto the new bu
 			1,
 			"an unproven move on the app-owned daemon is the restart fallback",
 		);
+		assert.deepEqual(
+			run.calls.restartStopGraceMs,
+			[5_000],
+			"the fallback's stop drain is BOUNDED to the 5s grace (review round 1's A4): the process is being replaced anyway, and the default grace is what the other restart callers keep",
+		);
 		assert.deepEqual(backendPhases(run.sent), ["installing", "restarting"]);
 		const completed = backendCompletion(run.sent);
 		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
@@ -16979,6 +17079,59 @@ test("a generation install whose serve did not move is restarted onto the new bu
 			"0.56.0",
 			"the restarted daemon reports the target, and the payload names it",
 		);
+		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a generation fallback restart re-engages only the sessions its one read shows displaced", async () => {
+	/*
+	 * REVIEW ROUND 1'S A4: every generation case passed `fleet: []`, so the
+	 * fallback tail's engage-displaced path was never driven - the code that
+	 * decides WHICH sessions come back ran only in the app-owned cases, against a
+	 * different tail. This case gives the fallback a fleet: a working session and
+	 * an unwatched `daemon`-kind one before the bounce, the daemon one without a
+	 * runtime after it - exactly the session nothing else revives - and asserts
+	 * that only it is engaged, once, off the ONE read the tail takes.
+	 */
+	const install = syntheticGenerationInstall();
+	const run = await driveGlobalUpdate({
+		before: "0.55.10",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.56.0",
+		servingPrefix: install.prefix,
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "ccccccccccc3",
+				name: "Delegated run",
+				kind: "daemon",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
+		],
+		engageStub: true,
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(
+			run.calls.restarts,
+			1,
+			"the unproven move takes the restart fallback",
+		);
+		assert.deepEqual(
+			run.calls.desktop.map((request) => `${request.op}:${request.sessionId}`),
+			["sessions.watch:ccccccccccc3", "sessions.warm:ccccccccccc3"],
+			"one lease and one warm, for the displaced daemon session only - a1 stayed resident and is never re-engaged",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.restarted, true);
+		assert.equal(completed.payload.moved, true);
 		assert.deepEqual(backendErrors(run.sent), []);
 	} finally {
 		run.dispose();

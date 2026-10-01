@@ -69,7 +69,7 @@ import {
 } from "@shared/store/update-notice-store";
 import { CircleArrowDown, LoaderCircle } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
-import { quietOfferSubject } from "./update-quiet-indicator";
+import { quietOfferSubject, quietSurfaceLabel } from "./update-quiet-indicator";
 
 /** One waiting surface as the icon draws it. */
 export type FootIconSurface = { type: UpdateType; offer: QuietOffer };
@@ -78,25 +78,25 @@ export type FootIconSurface = { type: UpdateType; offer: QuietOffer };
 export type FootIconInFlight = { type: UpdateType; percent: number | null };
 
 /**
- * The in-flight element's accessible name.
+ * The in-flight element's accessible name AND its tooltip line.
  *
- * Per surface, because the two channels say different true things: the server
- * channel is this lane's rollover ("Updating the server"), the app channel is
- * the application bundle ("Updating the application"). The percent rides only
- * where one is measured - the app download reports `download-progress`; the
- * server update reports phases, not percentages - and "0%" is never invented
- * for an unmeasured arm.
+ * Per surface, and built from the BAND'S OWN NOUNS (`quietSurfaceLabel` -
+ * "Application update" / "Server update") so the two surfaces cannot drift
+ * about what is updating (review round 1's NIT: the previous spelling,
+ * "Updating the server", was copy that existed nowhere else). `in progress`
+ * states the transient fact; the percent rides only where one is measured -
+ * the app download reports `download-progress`, the server update reports
+ * phases, not percentages - and "0%" is never invented for an unmeasured arm.
+ * The name is also what the pointer user reads (review round 1's U3: the arc
+ * used to answer nothing on hover).
  */
 export const footIconInFlightName = (inflight: FootIconInFlight): string => {
-	const subject =
-		inflight.type === UpdateType.BACKEND
-			? "Updating the server"
-			: "Updating the application";
+	const subject = quietSurfaceLabel(inflight.type);
 	const percent =
 		typeof inflight.percent === "number"
 			? `, ${Math.round(inflight.percent)}%`
 			: "";
-	return `${subject}${percent}.`;
+	return `${subject} in progress${percent}.`;
 };
 
 /** The band's words for one waiting surface, minus the trailing "available". */
@@ -136,7 +136,15 @@ export const UpdateFootIconView: FC<{
 	surfaces: FootIconSurface[];
 	inflight: FootIconInFlight | null;
 	onShow: () => void;
-}> = ({ surfaces, inflight, onShow }) => {
+	/**
+	 * Escape while the icon has focus lowers a RAISED band (review round 1's U1):
+	 * the icon is where the keyboard reader is when the band it opened is up, and
+	 * the same key every overlay in the app answers may not be dead here. Absent
+	 * (stories, the view-direct frames) means no Escape handling, because there
+	 * is no band for this view to lower.
+	 */
+	onDismiss?: () => void;
+}> = ({ surfaces, inflight, onShow, onDismiss }) => {
 	/*
 	 * HIDDEN IS RETURNING NOTHING - not a spaced-out empty box. The row's own
 	 * `gap-1` between the account row and the gear collapses to one gap, which is
@@ -151,18 +159,31 @@ export const UpdateFootIconView: FC<{
 			 * band made for the same reason (the consult names the role; this is the
 			 * element that has it structurally, and the a11y linter refuses the
 			 * spellable-role version).
+			 *
+			 * AND IT ANSWERS A HOVER (review round 1's U3): the arc is the state a
+			 * pointer user most wants to interrogate, and a bare status element told
+			 * them nothing - the same `Tooltip` primitive every other control in the
+			 * row carries, with the name it already has for assistive tech. The panel
+			 * is not focusable and not clickable (`pointer-events-none`), so this adds
+			 * a reading, not a control.
 			 */
-			<output
-				data-update-foot-icon=""
-				data-update-foot-icon-state="inflight"
-				aria-label={footIconInFlightName(inflight)}
-				className="flex size-8 shrink-0 items-center justify-center text-accent"
+			<Tooltip
+				side="top"
+				collisionPadding={8}
+				content={footIconInFlightName(inflight)}
 			>
-				<LoaderCircle
-					className="size-4 shrink-0 motion-safe:animate-spin"
-					aria-hidden="true"
-				/>
-			</output>
+				<output
+					data-update-foot-icon=""
+					data-update-foot-icon-state="inflight"
+					aria-label={footIconInFlightName(inflight)}
+					className="flex size-8 shrink-0 items-center justify-center text-accent"
+				>
+					<LoaderCircle
+						className="size-4 shrink-0 motion-safe:animate-spin"
+						aria-hidden="true"
+					/>
+				</output>
+			</Tooltip>
 		);
 	}
 	/*
@@ -178,10 +199,25 @@ export const UpdateFootIconView: FC<{
 	return (
 		<Tooltip
 			side="top"
+			/*
+			 * 8px OF EDGE PADDING (review round 1's NIT): in the 56px strip the panel
+			 * centres over a control at the window's left edge, and with no collision
+			 * padding Radix clamped it flush to x=0 - a panel sitting against the
+			 * window border reads as cut off. The primitive documents this exact
+			 * number for the same reason (the conversation row's flyout, design round
+			 * 1's D4).
+			 */
+			collisionPadding={8}
 			content={
 				<div className="flex max-w-64 flex-col gap-0.5">
 					{surfaces.map((surface) => (
-						<span key={surface.type} className="whitespace-nowrap text-ink">
+						/*
+						 * `truncate`, NOT `whitespace-nowrap` (review round 1's U4): a long
+						 * release line measured 327px of scrollWidth in the panel's 238px
+						 * content box and ran out of the panel, while the summary line below
+						 * ellipsised correctly - one rule for every line now.
+						 */
+						<span key={surface.type} className="truncate text-ink">
 							{surfaceSubject(surface)} available
 						</span>
 					))}
@@ -202,14 +238,28 @@ export const UpdateFootIconView: FC<{
 				data-update-foot-icon-state="available"
 				aria-label={footIconAvailableName(surfaces)}
 				onClick={onShow}
+				/*
+				 * ESCAPE LOWERS A RAISED BAND (review round 1's U1). The icon keeps the
+				 * focus after its own press, so this is the second of the two places a
+				 * keyboard reader can be with the band up; `onDismiss` is absent in
+				 * stories and view-direct frames, where nothing is raisable.
+				 */
+				onKeyDown={(event) => {
+					if (event.key !== "Escape" || !onDismiss) return;
+					event.stopPropagation();
+					onDismiss();
+				}}
 				className={cn(
 					"flex size-8 shrink-0 items-center justify-center rounded-sm text-accent",
 					"transition-colors duration-fast ease-out-quart",
 					// The foot's hover wash, not `Button`'s ghost `accent-wash`: the gear
 					// beside it already hovers with this one, and two washes 4px apart in
-					// one row read as two systems (design consult §3.2). The ink stays
-					// accent on hover - the accent IS the "something is here" reading.
-					"hover:bg-row-hover",
+					// one row read as two systems (design consult §3.2). The ink ALSO
+					// flips like the gear's on hover (review round 1's NIT): the consult
+					// asked for alignment or disclosure, and alignment is the better
+					// read - at rest the accent IS the "something is here" signal, and
+					// under the pointer both controls take the active ink together.
+					"hover:bg-row-hover hover:text-ink",
 				)}
 			>
 				<CircleArrowDown className="size-4 shrink-0" aria-hidden="true" />
@@ -237,6 +287,8 @@ export const UpdateFootIcon: FC = () => {
 	const inflight = useUpdateNoticeStore((s) => s.inflight);
 	const downloadPercent = useUpdateNoticeStore((s) => s.downloadPercent);
 	const openNotice = useUpdateNoticeStore((s) => s.openNotice);
+	const noticeOpen = useUpdateNoticeStore((s) => s.noticeOpen);
+	const dismissNotice = useUpdateNoticeStore((s) => s.dismissNotice);
 
 	const surfaces = useMemo(() => {
 		const state = { followed, running, offers, detailOpen };
@@ -266,12 +318,20 @@ export const UpdateFootIcon: FC = () => {
 	}, [inflight, downloadPercent]);
 
 	const show = useCallback(() => openNotice(), [openNotice]);
+	/*
+	 * ESCAPE ON THE ICON ITSELF (review round 1's U1): the band is lowered from
+	 * the icon's own key event when it is up, and focus is already on the icon,
+	 * so it stays there. Passed only while the band is open, so the key is not
+	 * consumed when there is nothing to lower.
+	 */
+	const dismissRaised = useCallback(() => dismissNotice(), [dismissNotice]);
 
 	return (
 		<UpdateFootIconView
 			surfaces={surfaces}
 			inflight={inflightReading}
 			onShow={show}
+			onDismiss={noticeOpen ? dismissRaised : undefined}
 		/>
 	);
 };
