@@ -1,0 +1,301 @@
+/**
+ * The approvals tray: the whole pending queue, in one block on the Mesh tab.
+ *
+ * Modelled on the browser-approval tray (`features/browser/components/browser-approvals-tray.tsx`),
+ * with the two differences the host forces rather than choose:
+ *
+ *   - THERE IS NO NATIVE VIEW HERE, so there is no band/dock split. The tray
+ *     lives in the page's own flow, above whatever state the canvas is in — a
+ *     pending approval is the most important fact on the tab, so it renders
+ *     first and in full. The browser pattern's one-card-plus-chips selection
+ *     exists because its band has a 1280px row and a dock has 384px; this block
+ *     has the tab's whole width, so every waiting record draws as its own card
+ *     and nothing needs selecting.
+ *   - THE RESOLVED LINES ARE MEMORY, NOT A READ. The list route keeps terminal
+ *     records for thirty days (§2.4), and a tray that rendered them would be an
+ *     archive dump over a page whose job is "what is happening now". What a
+ *     reader needs instead is the answer to "why did the count change", and that
+ *     is the browser tray's own solved problem: remember what was live, and when
+ *     a record leaves the live set for a terminal state, say so in one quiet
+ *     line until the tab is left. A record that was ALREADY terminal when the
+ *     tab opened (a denial from three days ago) is not news and draws nothing.
+ *
+ * WHO DECIDES WHAT: the card renders what the record carries and offers only the
+ * moves the store's own transition matrix allows (`mesh-approvals.ts` owns the
+ * predicates — `approve` on `requested` alone, `deny` on every open state, which
+ * is the matrix's own shape and not a simplification). The approval's signing
+ * gesture is presence-gated on the backend, so the pending state says a prompt
+ * is expected rather than pretending the click completed anything.
+ */
+
+import { Badge, Button } from "@shared/components/ui";
+import { ShieldCheck } from "lucide-react";
+import type { FC } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ApprovalDecision,
+	type MeshApprovalRow,
+	approvalHostKeyLabel,
+	approvalRemainingLabel,
+	approvalRequesterLabel,
+	approvalScopeLabels,
+	approvalStateLabel,
+	approvalSubject,
+	approvalTitle,
+	approvalWhereLabel,
+	canApproveApproval,
+	canDenyApproval,
+	isOpenApproval,
+} from "./mesh-approvals";
+
+/** The chip's semantic register per state; each is the Badge primitive's own triple. */
+function chipVariant(
+	state: string,
+): "attention" | "danger" | "success" | "neutral" {
+	if (state === "requested") return "attention";
+	if (state === "failed") return "danger";
+	if (state === "connected") return "success";
+	return "neutral";
+}
+
+/**
+ * One state's hint line, or `null` where there is nothing to add to the chip.
+ *
+ * These exist because two of the states are not self-explanatory from a word:
+ * `approved` is a record the OPERATOR already answered and is waiting on a
+ * runner that lives elsewhere, and a deny while `connecting` is a mid-run stop
+ * rather than an ordinary refusal (the write lands, the runner observes it at
+ * its next step check). Stating them here is cheaper than a user learning them
+ * by pressing.
+ */
+function stateHint(state: string): string | null {
+	switch (state) {
+		case "requested":
+			return "Approving signs with this machine's operator key; the system may ask for it.";
+		case "approved":
+			return "The requesting side runs it from here.";
+		case "connecting":
+			return "Denying now stops it at its next step.";
+		case "failed":
+			return "The runner stopped. Denying abandons it; the requesting side can retry.";
+		default:
+			return null;
+	}
+}
+
+/** The one word a resolved line uses for a terminal state. */
+function resolvedWord(state: string): string {
+	if (state === "connected") return "connected";
+	if (state === "denied") return "denied";
+	return "expired";
+}
+
+/** One remembered departure: a record the reader watched leave the live set. */
+type ResolvedEntry = { key: string; text: string };
+
+export interface MeshApprovalsTrayProps {
+	/** Every row the badge read returned — live and terminal alike; the tray splits them. */
+	rows: readonly MeshApprovalRow[];
+	/** The read's own failure sentence, when it has one; the list stays painted beside it. */
+	error: string | null;
+	/** The decision in flight, from the mutation's own variables. */
+	pending: { approvalId: string; decision: ApprovalDecision } | null;
+	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
+	onRetry: () => void;
+	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
+	nowSeconds: number;
+}
+
+export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
+	rows,
+	error,
+	pending,
+	onDecide,
+	onRetry,
+	nowSeconds,
+}) => {
+	/*
+	 * LIVE IS THE STORE'S NON-TERMINAL SET, in the store's own order (oldest
+	 * first): the oldest record is the first to expire, and a surface that
+	 * re-sorted would disagree with the CLI's listing about which comes first.
+	 */
+	const live = useMemo(
+		() => rows.filter((row) => isOpenApproval(row.state)),
+		[rows],
+	);
+
+	const [resolved, setResolved] = useState<ResolvedEntry[]>([]);
+	const previousLive = useRef<Map<string, string>>(new Map());
+	useEffect(() => {
+		const liveNow = new Map<string, string>();
+		for (const row of live) liveNow.set(row.approvalId, approvalSubject(row));
+		const additions: ResolvedEntry[] = [];
+		for (const [id, subject] of previousLive.current) {
+			if (liveNow.has(id)) continue;
+			const row = rows.find((candidate) => candidate.approvalId === id);
+			const state = row?.state ?? "";
+			// Only a TERMINAL reading is a reason: a row that vanished from the
+			// answer without one (pruned mid-view) says nothing, because inventing a
+			// reason would be a claim this read did not make.
+			if (state === "connected" || state === "denied" || state === "expired") {
+				additions.push({
+					key: `${id}:${state}`,
+					text: `${subject} — ${resolvedWord(state)}`,
+				});
+			}
+		}
+		if (additions.length) {
+			setResolved((held) => [...held, ...additions].slice(-3));
+		}
+		previousLive.current = liveNow;
+	}, [live, rows]);
+
+	// Nothing to say, say nothing: no records, no memory, no failure.
+	if (live.length === 0 && resolved.length === 0 && !error) return null;
+
+	return (
+		<section
+			aria-label="Approvals"
+			data-tour-tag="mesh-approvals-tray"
+			className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-3"
+		>
+			<div className="flex flex-wrap items-center gap-2">
+				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
+				<h2 className="text-body-sm text-ink">Approvals</h2>
+				{live.length > 0 && (
+					<span className="text-meta text-ink-dim">
+						{live.length === 1 ? "1 waiting" : `${live.length} waiting`}
+					</span>
+				)}
+			</div>
+
+			{error && (
+				<div className="flex flex-wrap items-center gap-2">
+					<p className="min-w-0 flex-1 text-meta text-ink-muted">{error}</p>
+					<Button variant="secondary" size="sm" onClick={onRetry}>
+						Ask again
+					</Button>
+				</div>
+			)}
+
+			{live.length > 0 && (
+				<ul className="flex flex-col divide-y divide-hairline">
+					{live.map((row) => (
+						<MeshApprovalCard
+							key={row.approvalId}
+							row={row}
+							pending={pending?.approvalId === row.approvalId ? pending : null}
+							onDecide={onDecide}
+							nowSeconds={nowSeconds}
+						/>
+					))}
+				</ul>
+			)}
+
+			{resolved.length > 0 && (
+				<ul
+					className="flex flex-col gap-0.5 text-meta text-ink-dim"
+					data-tour-tag="mesh-approvals-resolved"
+				>
+					{resolved.map((entry) => (
+						<li key={entry.key}>{entry.text}</li>
+					))}
+				</ul>
+			)}
+		</section>
+	);
+};
+
+/** One open record, as the card that asks or reports. */
+const MeshApprovalCard: FC<{
+	row: MeshApprovalRow;
+	pending: { approvalId: string; decision: ApprovalDecision } | null;
+	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
+	nowSeconds: number;
+}> = ({ row, pending, onDecide, nowSeconds }) => {
+	const where = approvalWhereLabel(row);
+	const hostKey = approvalHostKeyLabel(row);
+	const requester = approvalRequesterLabel(row);
+	const scopes = approvalScopeLabels(row);
+	const remaining = approvalRemainingLabel(row.expiresAt, nowSeconds);
+	const hint = stateHint(row.state);
+	const canApprove = canApproveApproval(row.state);
+	const canDeny = canDenyApproval(row.state);
+	return (
+		<li
+			className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
+			data-tour-tag="mesh-approval-card"
+		>
+			<div className="flex flex-wrap items-center gap-2">
+				<Badge variant={chipVariant(row.state)}>
+					{approvalStateLabel(row.state)}
+				</Badge>
+				<span className="text-body-sm text-ink">{approvalTitle(row)}</span>
+				<div className="grow" />
+				{remaining && (
+					<span className="text-meta text-ink-dim">{remaining}</span>
+				)}
+			</div>
+
+			{(where || hostKey) && (
+				<p className="text-meta text-ink-muted">
+					{where && <span>{where}</span>}
+					{where && hostKey && <span> · </span>}
+					{hostKey && <span className="font-mono">{hostKey}</span>}
+				</p>
+			)}
+
+			{scopes.length > 0 && (
+				<ul className="flex flex-wrap gap-1">
+					{scopes.map((scope) => (
+						<li key={scope}>
+							<Badge variant="neutral">{scope}</Badge>
+						</li>
+					))}
+				</ul>
+			)}
+
+			{(requester || hint) && (
+				<p className="text-meta text-ink-dim">
+					{requester}
+					{requester && hint && <span> · </span>}
+					{hint}
+				</p>
+			)}
+
+			{(canApprove || canDeny) && (
+				<div className="flex flex-wrap items-center gap-2">
+					{canApprove && (
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={pending !== null}
+							onClick={() => onDecide(row.approvalId, "approve")}
+							data-tour-tag="mesh-approval-approve"
+						>
+							Approve
+						</Button>
+					)}
+					{canDeny && (
+						<Button
+							variant={canApprove ? "ghost" : "secondary"}
+							size="sm"
+							disabled={pending !== null}
+							onClick={() => onDecide(row.approvalId, "deny")}
+							data-tour-tag="mesh-approval-deny"
+						>
+							Deny
+						</Button>
+					)}
+					{pending && (
+						<span className="text-meta text-ink-dim">
+							{pending.decision === "approve"
+								? "Waiting for the signing prompt…"
+								: "Writing the decision…"}
+						</span>
+					)}
+				</div>
+			)}
+		</li>
+	);
+};
