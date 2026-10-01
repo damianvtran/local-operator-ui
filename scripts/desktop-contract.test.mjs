@@ -237,6 +237,23 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"POST",
 			{ request_id: requestId, cwd: "/tmp/example" },
 		],
+		/*
+		 * THE DEVICE A PANE PICKED REACHES THE WIRE, and this row is the only place that
+		 * can say so: the header's control records the destination on the draft row,
+		 * `admitChatDraft` passes it to `createSession`, and the REQUEST BODY is composed
+		 * field by field HERE - where `peer` was accepted by the schema above and dropped
+		 * from the body, so a create aimed at another machine posted `{request_id, cwd}`,
+		 * was created on THIS one, and the chip then relabelled itself `On this device`
+		 * (UX round 1, U1 - the operator's headline flow reporting success for the wrong
+		 * machine). The row below pins the mapping; the row above pins the omission that
+		 * keeps an ordinary create byte-for-byte what it was.
+		 */
+		[
+			{ op: "sessions.create", requestId, cwd: "~", peer: "d_bbox1111" },
+			"",
+			"POST",
+			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
+		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
 		[
 			{
@@ -771,6 +788,19 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			`/v1/desktop/skills?session_id=${sessionId}&name=fixture`,
 			"GET",
 		],
+		/*
+		 * The SESSIONLESS arm: `cwd` travels as the folder to discover from (the
+		 * URLSearchParams encoding is the contract's, not a caller's), the literal
+		 * `~` the staged draft default carries is accepted whole, and NEITHER
+		 * parameter is the home-roots read — never a malformed request.
+		 */
+		[
+			{ op: "skills.list", cwd: "/tmp/skill-folder", name: "fixture" },
+			"/v1/desktop/skills?cwd=%2Ftmp%2Fskill-folder&name=fixture",
+			"GET",
+		],
+		[{ op: "skills.list", cwd: "~" }, "/v1/desktop/skills?cwd=%7E", "GET"],
+		[{ op: "skills.list" }, "/v1/desktop/skills", "GET"],
 		[
 			{ op: "sessions.failovers", sessionId },
 			`/v1/desktop/sessions/${sessionId}/failovers`,

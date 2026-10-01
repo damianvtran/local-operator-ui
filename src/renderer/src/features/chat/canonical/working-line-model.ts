@@ -61,6 +61,7 @@ import type { ChatDraft } from "../../../shared/store/canonical-sessions-store";
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
+import { isCompletionMarker } from "./turn-segments";
 
 export type WorkingLineState = {
 	activity: string;
@@ -342,9 +343,7 @@ export function turnStopped(
 	records: TranscriptRecord[],
 	afterId: string | null | undefined,
 ): boolean {
-	return recordsAfter(records, afterId).some(
-		(record) => record.kind === "notice" && record.complete === true,
-	);
+	return recordsAfter(records, afterId).some(isCompletionMarker);
 }
 
 /**
