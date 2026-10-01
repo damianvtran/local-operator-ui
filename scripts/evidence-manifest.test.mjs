@@ -2935,6 +2935,17 @@ const BRANCH_RECORDS = [
 	 */
 	"partialCaptureContinuityRestampNote",
 	/*
+	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
+	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
+	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
+	 * the entry above predicts: the note was gone from the tree and nothing else
+	 * noticed. Re-adding it is not enough on its own - the point of naming it here
+	 * is that the NEXT fold cannot drop it in silence - so the registration lands
+	 * as its own `scripts/` commit, and the docs-only re-stamp that follows derives
+	 * the pair from the tree that includes it.
+	 */
+	"runClosureVocabularyRestampNote",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
