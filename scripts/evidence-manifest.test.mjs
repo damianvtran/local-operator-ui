@@ -3136,6 +3136,17 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto6f2e9b7838Note",
 	/*
+	 * And the lane's TWENTIETH fold record: the sync onto `origin/main` =
+	 * `af6fffa899` (#752 the delta-scoped pre-push gate). Its `package.json`
+	 * resolution closes the same class from both directions - main lacks this
+	 * branch's `check-themes` (the R11 repair) and `check-fold-keys`, and this
+	 * branch lacks main's five new `prepare`/`hooks:*` keys - so a fold laid
+	 * from either side's copy alone drops keys the merged tree must carry.
+	 * Registered so the statement of the union survives any fold resolved
+	 * from main.
+	 */
+	"foldOntoaf6fffa899Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
