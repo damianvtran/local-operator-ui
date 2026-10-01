@@ -80,10 +80,29 @@ export type InlineEditKeyAction = "accept" | "revert" | null;
  *   would fire the machine AND the button.
  */
 export function inlineEditKeyAction(
-	event: { key: string; metaKey?: boolean; ctrlKey?: boolean },
+	event: {
+		key: string;
+		metaKey?: boolean;
+		ctrlKey?: boolean;
+		defaultPrevented?: boolean;
+	},
 	options: { multiline: boolean; keyboardCommit: boolean; onEditor: boolean },
 ): InlineEditKeyAction {
-	if (event.key === "Escape") return "revert";
+	/*
+	 * AN ESCAPE SOMETHING ELSE ALREADY CONSUMED IS NOT OURS (note § 2.2: the
+	 * guard `useEscapeToCancel` carries on main - "`defaultPrevented` is
+	 * checked first so an open picker closes before the field does"). A Radix
+	 * `Select` dismisses at the NATIVE level: `DismissableLayer` listens on
+	 * `document` in the capture phase and calls `preventDefault()` when it
+	 * closes, and react-dom copies `nativeEvent.defaultPrevented` into the
+	 * synthetic event - so without this check ONE press closed the menu (which
+	 * stops propagation of nothing) and this handler, one level up in the
+	 * bubble phase, reverted the whole field and discarded the draft. The
+	 * second Escape has nothing left to consume and reverts, exactly as
+	 * "Escape reverts the field" promises (Scope A contract check, G1).
+	 */
+	if (event.key === "Escape")
+		return event.defaultPrevented === true ? null : "revert";
 	if (event.key !== "Enter") return null;
 	if (!options.keyboardCommit) return null;
 	const chord = event.metaKey === true || event.ctrlKey === true;
