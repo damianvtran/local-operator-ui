@@ -1,5 +1,6 @@
 import { CheckForUpdatesButton } from "@shared/components/common/check-for-updates-button";
 import type { FC } from "react"; // Import FC type
+import { UpdateFollowing } from "./update-following";
 
 /**
  * Renders the button to check for application updates.
@@ -9,10 +10,21 @@ import type { FC } from "react"; // Import FC type
  * reads it for its own "Application version" row, and the sentence below the button
  * has to name the same reading that row prints (design D1) - a second read here
  * could answer differently for a frame and put two versions on one card.
+ *
+ * The block also carries the notification preference (#672), above the check
+ * button rather than beside it: the two answer the same question in the two
+ * directions a reader arrives with - "stop telling me about every release" and
+ * "tell me now" - and the preference is the one that governs what the app says
+ * on its own.
  */
 export const AppUpdates: FC<{ appVersion: string | null }> = ({
 	appVersion,
 }) => {
 	// Simply render the button component
-	return <CheckForUpdatesButton appVersion={appVersion} />;
+	return (
+		<div className="flex flex-col gap-6">
+			<UpdateFollowing />
+			<CheckForUpdatesButton appVersion={appVersion} />
+		</div>
+	);
 };

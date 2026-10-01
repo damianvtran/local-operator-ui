@@ -37,7 +37,12 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useEffect } from "react";
+import {
+	type ComponentProps,
+	type ReactNode,
+	useEffect,
+	useState,
+} from "react";
 import "../../../../styles/index.css";
 import { CanonicalImage } from "../../canonical/canonical-image";
 import { FoldMedia } from "../../canonical/fold-media";
@@ -240,13 +245,38 @@ const PicturesLatch = ({ whenOpen = false }: { whenOpen?: boolean }) => {
 	return null;
 };
 
+/*
+ * THE CALLER'S HALF OF THE CONTRACT, for every story (fold rounds,
+ * 2026-09-27): the transcript owns the fold's open state (`fold-open.ts`, so an
+ * explicit open survives the remounts a windowed run causes) and hands it back
+ * as `open`. A story that rendered the fold bare would be imaging a caller that
+ * does not exist - and the press, which several sweeps rely on, is this host's
+ * `setOpen` exactly as it is the registry's. Hoisted to module scope, not
+ * defined inside `render`: a component constructed per render is a new TYPE,
+ * and React would remount the fold (and drop the state this exists to hold).
+ */
+const FoldHost = (props: ComponentProps<typeof TraceFold>) => {
+	const [open, setOpen] = useState(false);
+	// The spread's `open`/`onOpenChange` (the inert story defaults) are
+	// deliberately overridden: the host plays the registry, and the press must
+	// land in its state for the sweeps that click the trigger.
+	return <TraceFold {...props} open={open} onOpenChange={setOpen} />;
+};
+
 const meta = {
 	title: "chat/trace-fold",
 	component: TraceFold,
 	parameters: { layout: "fullscreen" },
+	/*
+	 * Completeness aid, not behaviour: `open`/`onOpenChange` are required props
+	 * (the transcript's registry owns them), so every story declares them - but
+	 * the HOST below is what actually drives them, exactly as the registry does.
+	 * These defaults are inert.
+	 */
+	args: { open: false, onOpenChange: () => {} },
 	render: (args, context) => (
 		<Sheet>
-			<TraceFold {...args} />
+			<FoldHost {...args} />
 			<PicturesLatch whenOpen={context?.parameters?.picturesLatch === "open"} />
 		</Sheet>
 	),
@@ -272,7 +302,6 @@ export const Live: Story = {
 	args: {
 		...foldProps(LIVE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 11_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={LIVE_ROWS} />,
 	},
@@ -298,7 +327,6 @@ export const LongName: Story = {
 			return { ...foldProps(specs), children: <FoldRows specs={specs} /> };
 		})(),
 		span: { startedAtMs: 1_000, endedAtMs: 13_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 	},
 };
@@ -315,7 +343,6 @@ export const MidRun: Story = {
 	args: {
 		...foldProps(MID_RUN_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 34_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={MID_RUN_ROWS} />,
 	},
@@ -335,7 +362,6 @@ export const Finished: Story = {
 		...foldProps(FINISHED_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4", "s5"],
 		children: <FoldRows specs={FINISHED_ROWS} />,
 	},
@@ -362,7 +388,6 @@ export const Expanded: Story = {
 		...foldProps(KINDS_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={KINDS_ROWS} />,
 	},
@@ -380,7 +405,6 @@ export const Restored: Story = {
 		...foldProps(RESTORED_ROWS),
 		span: null,
 		live: null,
-		sectionLive: false,
 		recordIds: ["h1"],
 		children: <FoldRows specs={RESTORED_ROWS} />,
 	},
@@ -598,7 +622,6 @@ export const ImageHidden: Story = {
 		...foldProps(IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		children: <FoldRows specs={IMAGE_ROWS} />,
 	},
@@ -610,7 +633,6 @@ export const ImageShown: Story = {
 		...foldProps(IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(IMAGE_ACTIONS),
 		mediaCount: IMAGE_ACTIONS.length,
@@ -639,7 +661,6 @@ export const ImagesThree: Story = {
 		...foldProps(THREE_IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 7_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(THREE_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
@@ -680,7 +701,6 @@ export const ImageLive: Story = {
 	args: {
 		...foldProps(LIVE_IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 9_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(LIVE_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
@@ -703,7 +723,6 @@ export const ImageExpanded: Story = {
 		...foldProps(IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(IMAGE_ACTIONS),
 		mediaCount: IMAGE_ACTIONS.length,
@@ -763,7 +782,6 @@ export const ImageSimilar: Story = {
 		...foldProps(SIMILAR_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 4_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(SIMILAR_ROWS[1].images ?? []) as TranscriptImage[],
@@ -799,7 +817,6 @@ export const ImageScreenshot: Story = {
 		...foldProps(SCREENSHOT_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(SCREENSHOT_ROWS[1].images ?? []) as TranscriptImage[],
@@ -828,16 +845,18 @@ const TONE_ROWS: RowSpec[] = [
  * D2's defect case, in BOTH palettes at once: each tile holds a picture whose own
  * canvas is the page's own ground. In the light frame the first tile is the case
  * that failed (a light-canvas picture on a light page, with only the tile's edge
- * to give it an extent); in the dark frame the second one is. The tile answers it
- * with `border-control`, which the contrast contract measures at 3:1 on every
- * ground and `STRUCTURAL_CALL_SITES` pins at this call site.
+ * to give it an extent); in the dark frame the second one is. THIS IS THE FRAME THAT
+ * SHOWS THE TRADE the borderless tile makes: at rest the tile has no edge, so a
+ * picture whose canvas is the page's own tone has ~1.0:1 against the page and only
+ * the well (~1.07:1) behind it. The edge (`border-control`, >=3:1 on every ground)
+ * returns on hover and focus; the resting extent is a tracked follow-up (a fill
+ * role authored to branding section 2's findability floor).
  */
 export const ImageTones: Story = {
 	args: {
 		...foldProps(TONE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(TONE_ROWS[1].images ?? []) as TranscriptImage[],
@@ -851,15 +870,15 @@ export const ImageTones: Story = {
  * The tile that has no bytes: a digest with no scope to ask for them, which is the
  * store's own "nothing to show" state and reaches the compact receipt without a
  * request. It is in the set because a receipt is the one tile state whose SHAPE is
- * new - prose would blow the strip's 66px - and because it is the state a broken
- * picture would need a visible extent in, which is why it carries the same edge.
+ * new - prose would blow the strip's 78px - and because it is the state a broken
+ * picture would need a visible extent in, which is why it keeps its edge at rest
+ * while a working tile does not (the state is the information).
  */
 export const ImageUnavailable: Story = {
 	args: {
 		...foldProps(IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures([
 			{
@@ -878,10 +897,10 @@ export const ImageUnavailable: Story = {
  * THE COUNT THAT USED TO BE PATHOLOGICAL, framed rather than argued: eight
  * pictures in one run, and the CAP answering it (design review round 1, D3).
  *
- * The first cut let the strip wrap, so eight pictures cost a second row (166px)
+ * The first cut let the strip wrap, so eight pictures cost a second row (166px at the old tile)
  * and 25-30 cost ~391px - past the ~338.7px an EXPANDED group costs, which is the
  * one case where condensing is the taller choice. The strip is now one row for any
- * count: four tiles and `+4 more`, 91px, flat. What the reader gives up is the
+ * count: four tiles and `+4`, 106px, flat. What the reader gives up is the
  * fifth slot - the fifth picture's tile, since the count takes it - not the
  * information: the count is in this header (`· 8 images`) and
  * in the strip's own name, and the rows behind the disclosure still hold all eight.
@@ -892,7 +911,6 @@ export const ImagesMany: Story = {
 		...foldProps(MANY_IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 43_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3"],
 		condensedMedia: foldPictures(
 			(MANY_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
@@ -940,7 +958,6 @@ export const AgentOps: Story = {
 		...foldProps(AGENT_OPS_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 6_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7"],
 		children: <FoldRows specs={AGENT_OPS_ROWS} />,
 	},

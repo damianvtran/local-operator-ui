@@ -364,6 +364,17 @@ const wakeMessage = z.string().min(1).max(WAKE_MESSAGE_MAX_CHARS);
  */
 const wakeId = z.string().min(1).max(64);
 
+/**
+ * A monitor's per-session handle, `m1`..`m8` on the wire (`^m\d{1,4}$`).
+ *
+ * Lenient for the wakeId's own reason, and it matters more here: the run pane
+ * renders the handle the SESSION minted (`frontend.monitors[].id`), so a pattern
+ * a drawn row could fail would be a control that is drawn and cannot be pressed.
+ * The route declares `^m\d{1,4}$` as its path pattern and refuses a malformed
+ * handle with a 422 before any handler runs, which is where the shape belongs.
+ */
+const monitorId = z.string().min(1).max(64);
+
 const scheduleWrite = z
 	.object({
 		is_active: z.boolean().nullish(),
@@ -1069,8 +1080,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.create"),
 			requestId,
-			cwd: z.string().min(1).max(4096),
+			/*
+			 * OPTIONAL ONLY FOR A `purpose` CREATE, and the pair is enforced below by
+			 * the union's own `superRefine` rather than by two union members: a
+			 * `discriminatedUnion` accepts one member per `op` value, and a `.refine`
+			 * on a member would make it a `ZodEffects` the union refuses (the same
+			 * constraint `agent.publish`'s pairing rule states).
+			 *
+			 * WHY A CONFIGURATION RUN OMITS IT AT ALL. `cwd` exists so a conversation
+			 * has a folder to work in, and this app has always refused an empty one
+			 * precisely because it would resolve to "a directory the user never named".
+			 * A configuration run edits this device's registries and holds no file
+			 * tools at all, so its cwd is not authority — and the renderer cannot name
+			 * one honestly: it would have to invent a path it cannot verify exists.
+			 * The backend resolves it (to the config directory) when `purpose` is set.
+			 */
+			cwd: z.string().min(1).max(4096).optional(),
 			target: target.optional(),
+			/*
+			 * WHAT KIND OF SESSION THIS IS, when it is not a conversation the operator
+			 * asked for: `agents-config` starts a supervised configuration run (the
+			 * Agents page's composer), which the backend stamps as a hidden origin and
+			 * admits through the desktop door for watch/events/messages/interrupt
+			 * without ever listing it as one of the operator's conversations.
+			 *
+			 * A LITERAL, so a typo is a compile error on this side and a 422 on a
+			 * backend that does not know the value. It is capability-gated before it is
+			 * ever sent (`agents_config`), because a backend older than this field
+			 * validates the create body with `extra="forbid"` and would report a
+			 * malformed request for a request the app deliberately made.
+			 */
+			purpose: z.literal("agents-config").optional(),
 			/*
 			 * OMITTED when the user never picked anything, so the body is the one
 			 * this op sent before the draft's chips could open: making them
@@ -1089,6 +1129,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * that cannot resolve the id mints fresh rather than failing the send.
 			 */
 			draftId: sessionId.optional(),
+			/*
+			 * The DEVICE to create the conversation on (`features.peers`): the mesh route's
+			 * own field, sent only when the user actually picked one, so the body of an
+			 * ordinary create is unchanged. Omitted means this device.
+			 *
+			 * THE DIRECTORY RULE THAT COMES WITH IT, which is why the app must not offer this
+			 * choice without saying so: a remote create carries an explicit `cwd` and an EMPTY
+			 * one resolves to that device's home rather than to this project, so a pane with a
+			 * peer destination names the directory it will use.
+			 *
+			 * `--yolo` and friends are NOT here because the peer's own route refuses them: a
+			 * remote create that let this machine run tools unattended on another one is the
+			 * thing the route declines to express.
+			 */
+			peer: meshId.optional(),
 		})
 		.strict(),
 	/*
@@ -2050,6 +2105,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
+	/*
+	 * The monitor surface's one write that has a UI: cancelling a standing watch
+	 * (`DELETE /v1/desktop/monitors/{session_id}/{monitor_id}`). The sibling
+	 * routes - the machine-wide listing and the arm - are deliberately not
+	 * mirrored yet: the pane and the composer's chip read the SESSION's own
+	 * `frontend.monitors` field (the design's §12 row states the desktop contract
+	 * as "the `monitors` field + command routes"), so a listing op would have no
+	 * reader, and the arm op waits for the form that will use it.
+	 */
+	z
+		.object({
+			op: z.literal("monitors.cancel"),
+			sessionId,
+			monitorId,
+		})
+		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
@@ -2547,6 +2618,55 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * A CONVERSATION NEEDS A FOLDER; A CONFIGURATION RUN DOES NOT.
+		 *
+		 * The rule lives here rather than on the member because the two fields are
+		 * one decision (`cwd` is required UNLESS `purpose` names a run), and this is
+		 * the same place the publication pair is checked for the same reason: a
+		 * request that could reach the wire half-specified would be answered with a
+		 * 422 the app composed itself. `cwd` is checked by presence rather than by
+		 * truthiness because an empty string is already refused by the field's own
+		 * `min(1)`.
+		 */
+		if (request.op === "sessions.create" && request.purpose === undefined) {
+			if (request.cwd === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"A conversation needs a working directory: only a configuration run (`purpose`) may omit `cwd`.",
+					path: ["cwd"],
+				});
+			}
+			return;
+		}
+		if (request.op === "sessions.create" && request.purpose !== undefined) {
+			/*
+			 * A RUN EDITS THIS DEVICE'S REGISTRIES, and this op has no `peer` field to
+			 * refuse: the create schema cannot express a peer session at all, so
+			 * "local only" is a property of the wire rather than a rule to check here.
+			 * Stated so the next reader does not add a check that can never fire.
+			 */
+			/*
+			 * AND IT CARRIES NONE OF A CONVERSATION'S OWN FIELDS (agent review round
+			 * 1, n3). The backend resolves a run's cwd, model and target itself and
+			 * refuses a body that also states them
+			 * (`agents_config_client_fields`), so a caller that sent both would be
+			 * refused on the wire for a request this schema had let through — the
+			 * refusal the app composed itself, one layer later than it could have
+			 * been. `draftId` is in the list for the same reason: it names a pane's
+			 * conversation draft, and a run has no pane.
+			 */
+			for (const field of ["cwd", "target", "model", "draftId"] as const) {
+				if (request[field] === undefined) continue;
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `A configuration run resolves its own \`${field}\`: send \`purpose\` alone.`,
+					path: [field],
+				});
+			}
+			return;
+		}
 		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
 			return;
 		}
@@ -2938,6 +3058,29 @@ export type DesktopWakeCreateResponse = {
 	 * not made.
 	 */
 	receipt: unknown;
+	index_written: boolean;
+};
+
+/**
+ * The outcome of cancelling (or arming) one monitor, as the route's
+ * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
+ *
+ * Shared by both writes on the wire; this client only sends the cancel today,
+ * so the fields a cancel answers are the load-bearing ones - `monitor_id` names
+ * the row that changed, `remaining` is what the conversation holds after it
+ * (0 removes the index entry, which is also what releases the cleanup reap
+ * guard), and `next_due_at` is always null after a cancel. A refusal is not a
+ * value here: it travels as the error's `detail.message`.
+ */
+export type DesktopMonitorWriteReceipt = {
+	session_id: string;
+	monitor_id: string;
+	name: string;
+	next_due_at: number | null;
+	remaining: number;
+	already_armed: boolean;
+	reactivated: boolean;
+	receipt: string;
 	index_written: boolean;
 };
 
@@ -4405,12 +4548,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					cwd: request.cwd,
+					/*
+					 * OMITTED, not nulled, for a configuration run: the backend resolves the
+					 * folder itself (see the field's own note), and sending an empty string
+					 * would be a different request from the one this feature means to make —
+					 * it would trip the `min(1)` on the backend's own `cwd` validator and
+					 * report a mistake nobody made.
+					 */
+					...(request.cwd !== undefined ? { cwd: request.cwd } : {}),
+					/*
+					 * THE DEVICE THE PANE PICKED (`features.peers`), and it is omitted for every
+					 * draft nobody aimed at a peer - the same additive rule `target`, `model` and
+					 * `draft_id` follow, so an ordinary create is byte-for-byte what it was.
+					 *
+					 * THIS LINE IS THE WHOLE OF THE HEADER CONTROL'S CREATE PATH. The schema above
+					 * accepted `peer` and the store passed it down, but the body is composed HERE,
+					 * field by field, and this file never mapped it - so "start a new chat and send
+					 * it to another device" posted `{request_id, cwd}` while the chip said
+					 * `New on build-box`, and the conversation was created locally with the chip
+					 * then relabelled `On this device` (UX round 1, U1 - a silent success that
+					 * reports the wrong machine).
+					 */
+					...(request.peer ? { peer: request.peer } : {}),
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
 					// Omitted, not nulled, when the pane has no minted id: see the field's
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
+					...(request.purpose ? { purpose: request.purpose } : {}),
 				},
 			};
 		case "sessions.preview":
@@ -4830,6 +4995,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "wakes.remove":
 			return {
 				path: `/v1/desktop/wakes/${request.sessionId}/${request.wakeId}`,
+				method: "DELETE",
+			};
+		/*
+		 * The monitor cancel, mapped like its wake sibling. Both segments are
+		 * `encodeURIComponent`ed even though both their schemas already refuse
+		 * separators: the schema is this client's own check, and a redirect or a
+		 * hand-built request must not be able to turn a handle into a path
+		 * fragment (the mesh writes' own rule).
+		 */
+		case "monitors.cancel":
+			return {
+				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
 				method: "DELETE",
 			};
 		case "legacy.jobs.list": {

@@ -81,6 +81,12 @@ export const duskfox: ThemeDefinition = {
 		inkDisabled: "#6E6A86",
 
 		hairline: "#463F5C",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.93:1 there against `hairline`'s 1.78:1.
+
+		hairlineStrong: "#4B4462",
 		borderControl: "#887BA3",
 
 		// the scheme's teal-blue accent, shared with Nightfox.

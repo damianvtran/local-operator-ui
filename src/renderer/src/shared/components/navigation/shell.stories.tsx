@@ -10,6 +10,7 @@ import {
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ChatLayout } from "@shared/components/common/chat-layout";
@@ -20,8 +21,6 @@ import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
-	DEFAULT_CANVAS_WIDTH,
-	DEFAULT_RUN_PANEL_WIDTH,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -586,6 +585,15 @@ const INERT_REMEDY: McpRemedyControls = {
 };
 
 /**
+ * No-op monitor controls. The Monitors section is not this frame's subject and
+ * the fixtures carry no monitors, so the control is the inert shape the panel
+ * requires rather than a behaviour this story claims.
+ */
+const INERT_MONITOR_CONTROLS: MonitorControls = {
+	cancel: async () => ({ ok: true }),
+};
+
+/**
  * The conversation column: the production `ChatHeader` over a transcript at the
  * app's own ground and inset.
  *
@@ -722,9 +730,20 @@ const ChatShellFrame: FC<{
 	);
 };
 
-/** The dock in its Files view, at the shell's own default pane width. */
+/**
+ * The dock in its Files view, at the shell's own default pane width.
+ *
+ * `rightSlotWidth` is a story ARG (default 0, the fresh-profile arm this story
+ * has always shown) rather than a literal because the #677 evidence needs the
+ * DRAGGED state photographed from head: `?args=rightSlotWidth:700` is the
+ * shared-width arm, and at the capture geometry (row 1180) the canvas reads its
+ * 560 cap there — a state the committed story could not produce while this
+ * literal said 0.
+ */
 export const ChatDockFiles: Story = {
-	render: () => {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
 		useLayoutEffect(() => {
 			useCanvasStore.setState((state) => ({
 				conversations: {
@@ -749,12 +768,12 @@ export const ChatDockFiles: Story = {
 			 */
 			useUiPreferencesStore.setState({
 				isCanvasOpen: true,
-				canvasWidth: DEFAULT_CANVAS_WIDTH,
+				rightSlotWidth,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isCanvasOpen: false });
 			};
-		}, []);
+		}, [rightSlotWidth]);
 
 		return (
 			<ChatShellFrame
@@ -778,18 +797,28 @@ export const ChatDockFiles: Story = {
 	},
 };
 
-/** The dock in its run-details sub-view - the other shape the report named. */
+/**
+ * The dock in its run-details sub-view - the other shape the report named.
+ *
+ * The width is an ARG for the same reason `ChatDockFiles`' is: the #677
+ * evidence photographs the shared-width arm (`?args=rightSlotWidth:700` — the
+ * run pane reads the full 700 at row 1180) against this story's 0, where the
+ * run pane reads its 420 seed. That pair is what shows switching surfaces
+ * stops resizing.
+ */
 export const ChatDockRunPanel: Story = {
-	render: () => {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
 		useLayoutEffect(() => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
-				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+				rightSlotWidth,
 			});
 			return () => {
 				useUiPreferencesStore.setState({ isRunPanelOpen: false });
 			};
-		}, []);
+		}, [rightSlotWidth]);
 
 		return (
 			<ChatShellFrame
@@ -801,9 +830,12 @@ export const ChatDockRunPanel: Story = {
 							mcpServers={deriveMcpServers([], {}, [])}
 							mcpGrantRunning={mcpGrantInFlight([])}
 							mcpRemedy={INERT_REMEDY}
+							monitorControls={INERT_MONITOR_CONTROLS}
 							sessionId="a1b2c3d4e5f6"
 							pulses={{}}
 							childrenOpenable
+							/* No session stream behind this board: the transport-up case. */
+							olderTransportDown={false}
 							paneWidth={slotWidth}
 							readerChildId={null}
 							previewPage={null}

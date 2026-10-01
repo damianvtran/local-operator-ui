@@ -102,7 +102,17 @@ const bundle = await build({
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
 			export const renderMonitors = (props) =>
-				renderToStaticMarkup(createElement(RunDetailMonitors, props));
+				renderToStaticMarkup(
+					/*
+					 * The pane body's cancel interaction, stubbed: these cases are about
+					 * the list's markup, and the interaction itself is driven against the
+					 * real panel by script/monitor-cancel-dialog.test.mjs.
+					 */
+					createElement(RunDetailMonitors, {
+						cancel: { request: () => undefined, stateFor: () => undefined },
+						...props,
+					}),
+				);
 			export { GoalPicker };
 			export { toasts };
 			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
@@ -121,6 +131,16 @@ const bundle = await build({
 	// React stays external so the bundle shares ONE copy with this file's own
 	// imports. Two copies give the component a different React than the server
 	// renderer uses, and every render throws on an invalid hook call.
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
 	external: [
 		"react",
 		"react-dom",
@@ -358,7 +378,8 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 const ROW = "src/renderer/src/features/chat/components/composer-status-row.tsx";
-const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const COMPOSER =
+	"src/renderer/src/shared/components/composer/message-input.tsx";
 // Named for the band's own file in the round-1 findings; `COMPOSER` is the
 // historical name for the same file in this suite's earlier assertions.
 const MESSAGE_INPUT = COMPOSER;
@@ -368,6 +389,10 @@ const SCROLL_BUTTON =
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
+// The store, where the run pane's floor is DECLARED since the #677 review
+// (D2): the slot's resolver holds the shared width to it, and the resolver
+// cannot import the component.
+const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
 /*
  * The right-pane SLOT, which is where the pane's box - and so its floor - is
  * declared since the `PaneSlot` refactor (design round 1, D1). Read
@@ -2076,6 +2101,7 @@ test("the escape ladder accepts the chip, which is a third way in", () => {
 
 test("the pane's floor is its contract minimum, not the user's preference", () => {
 	const content = code(CONTENT);
+	const prefs = code(PREFS);
 	/*
 	 * A preference pinned as a floor is not a floor: the pane asked for 420 and
 	 * refused to render narrower, so at any window the row could not host 420 the
@@ -2109,7 +2135,15 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * for an omission is exactly the shape the D1 defect came back in, and the
 	 * measurement behind the default is in `pane-slot.tsx`'s class note.
 	 */
-	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
+	/*
+	 * THE DECLARATION MOVED, THE USES DID NOT: the #677 review (D2) gave the
+	 * number a second reader - the slot's resolver, which holds the shared
+	 * width up to this pane's floor - and the resolver cannot import the
+	 * component, so the store is the declaration's home. Everything asserted
+	 * against `chat-content.tsx` below stays: the divider's range and
+	 * `runPanelResizable` still consume the imported constant.
+	 */
+	assert.match(prefs, /export const RUN_PANEL_MIN_PX = 320;/);
 	assert.match(
 		content,
 		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
@@ -4859,8 +4893,14 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	 * default), so the section truncates and its marker is the footer for a payload
 	 * past the declared bound. The marker is a STATEMENT rather than a control —
 	 * nothing in this pane can put a shed monitor back — so it wears the shared
-	 * `Disclosure` primitive's DISABLED branch, and the section names who CAN act on
-	 * the list it just drew.
+	 * `Disclosure` primitive's DISABLED branch, and the list it just drew carries
+	 * the control that acts on it: the revealed `Cancel monitor` on every drawn
+	 * row. That control is what the stopgap's "ask the agent to cancel it" sentence
+	 * retired for (the monitors controls pass) — a sentence pointing at the agent,
+	 * beside a button that cancels, would send a reader around it; the Wakes
+	 * section keeps its own sentence because wakes kept theirs. Both facts are
+	 * pinned below, and the sentence is pinned ABSENT so the pair cannot drift
+	 * back.
 	 */
 	const over = renderMonitors({
 		details: monitorsOf(
@@ -4885,9 +4925,84 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	assert.match(over, /9 monitors armed/, "the tally counts the WHOLE list");
 	assert.match(
 		over,
-		/ask the agent to cancel it/i,
-		"the list names who can act on it",
+		/data-monitor-cancel="n1"/,
+		"the list carries the control that acts on it",
 	);
+	assert.doesNotMatch(
+		over,
+		/ask the agent to cancel it/i,
+		"the stopgap's sentence is retired with the control it stood in for",
+	);
+});
+
+test("the row's cancel control shows at rest and clears the hit floor", () => {
+	/*
+	 * U6 (UX review round 1): with the footer sentence retired, nothing at rest
+	 * said a monitor could be cancelled, and the hover-revealed control measured
+	 * 51.6x20 px - under the 24px hit floor. The control is in the open at rest
+	 * now and its box is `h-6`; both are asserted on the shipped markup, because
+	 * jsdom has no layout engine to measure a hit area with.
+	 */
+	const markup = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+	});
+	const control = markup.match(
+		/<button[^>]*data-monitor-cancel="m1"[^>]*>/,
+	)?.[0];
+	assert.ok(control, "the row carries the control");
+	assert.doesNotMatch(control, /opacity-0/, "no hover reveal any more");
+	assert.doesNotMatch(
+		control,
+		/group-hover\/monitor/,
+		"and no group-reveal classes",
+	);
+	assert.match(
+		control,
+		/h-6/,
+		"the 24px hit floor, not the reveal's 20px band",
+	);
+	assert.doesNotMatch(control, /disabled=""/, "a live row's control acts");
+});
+
+test("the row's cancel state renders in place: Cancelled on the control, refused beside it", () => {
+	/*
+	 * U4/U8's visible half, pinned at the markup level: the receipt's mark is
+	 * the control ITSELF - disabled, reading `Cancelled` - so the one element
+	 * the dialog restores focus to on close stays alive, while a refused
+	 * attempt's record is a quiet note BESIDE the live control with the whole
+	 * sentence on `title`.
+	 */
+	const cancelled = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "cancelled" }),
+		},
+	});
+	assert.match(cancelled, /data-monitor-cancel-state="cancelled"/);
+	assert.match(cancelled, />Cancelled</, "the control's own label states it");
+	assert.match(
+		cancelled,
+		/<button[^>]*disabled=""[^>]*>/,
+		"and the control does not act any more",
+	);
+
+	const refused = renderMonitors({
+		details: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
+		cancel: {
+			request: () => undefined,
+			stateFor: () => ({ kind: "refused", detail: "Nothing was written." }),
+		},
+	});
+	assert.match(refused, /data-monitor-cancel-state="refused"/);
+	assert.match(refused, />Cancel refused</);
+	assert.match(
+		refused,
+		/title="Nothing was written\."/,
+		"the whole sentence rides the title",
+	);
+	/* The control stays live for the next attempt - clearing the record is it. */
+	assert.match(refused, /data-monitor-cancel="m1"/);
 });
 
 test("monitors are absent rather than empty: no section without armed monitors", () => {

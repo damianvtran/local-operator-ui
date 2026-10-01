@@ -172,7 +172,7 @@ function abandonFetch(digest: string) {
  * `null` for "still resolving" and "failed" alike, on the reasoning that a
  * loading state would have nothing to render that "unavailable" does not - true
  * while the receipt was the only thing a caller could paint for either, and false
- * the moment a caller has a BOX to reserve. The condensed group's tile is 96x64 by
+ * the moment a caller has a BOX to reserve. The condensed group's tile is 115x76 (117x78 with its border) by
  * construction, so a durable picture's first paint was a sentence-shaped receipt
  * that swapped to a tile a frame later, in the one surface whose whole point is
  * that the artifact is on screen (agent review round 1, P3). The cold path is the

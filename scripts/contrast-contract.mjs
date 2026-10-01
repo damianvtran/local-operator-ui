@@ -1109,6 +1109,63 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
+		 * register of the approval mark, worn by the sidebar's Browser row and by
+		 * Aida's, i.e. on the same four grounds the row above lists. It is a
+		 * separate row rather than a `fill`/`border` change to the row above,
+		 * because the two marks differ in what carries them: the bordered mark's
+		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so
+		 * this one draws no edge at all and the NUMERAL is the whole mark.
+		 *
+		 * THE INK IS THE MARK, so the ink is what this row asserts: `inkDim` on
+		 * `elevated`, 5.01:1 at worst over the fifty-nine palettes (measured from
+		 * `scripts/palette-source.mjs` with this file's own ratio, the same way the
+		 * row above's figures were) — clear of the 4.5:1 text floor the `CONTROLS`
+		 * loop applies to a control's label, which is the floor that matters here
+		 * because the numeral is READ rather than merely seen. It is the role the
+		 * count lines the operator compared against already wear (11-13px
+		 * metadata), and it is deliberately quieter than the bordered mark's `ink`.
+		 *
+		 * THE EDGE IS DECLARED AWAY, and the declaration is honest rather than a
+		 * convenience: the mark provably cannot carry one across every palette.
+		 * Its `elevated` fill steps ΔE00 3.29 off `surface` in the dark brand
+		 * palette and 2.50 in the light — the ground the user actually sees — and 2.02
+		 * at worst over the fifty-nine (arcade), but it falls to 0.47 off `rowSelected`
+		 * (duskfox) and 0.00 off `rowHover` (arcade): on a hovered or current row it can
+		 * merge into the ground entirely, and no single role fixes that at both ends
+		 * (over the four grounds `elevated` spans 0.00-11.64, `sunken` 0.44-14.88). The
+		 * old mark's own `warningWash` was not exempt either: its per-ground minima span
+		 * 0.87-2.27 across the fifty-nine, and the wash family — all six roles
+		 * (`warningWash`, `successWash`, `dangerWash`, `infoWash`, `accentWash`,
+		 * `accentAltWash`) over the four grounds — runs 0.53-30.71, so a wash does not
+		 * fix the deep rows either. (Scope note, review round 1 F1 and round 2 F7: the
+		 * narrower 0.87-2.27 belongs to `warningWash` alone, per ground; the family's
+		 * per-(wash, ground) minima span 0.53-2.69 and its whole span is 0.53-30.71 —
+		 * 25.83 is the five-role reading, which drops `accentAltWash`, and that is why
+		 * the membership is named here rather than left to the reader.) What keeps the count legible is the numeral's own floor above;
+		 * what keeps it a MARK rather than plain label text is that a quiet row
+		 * draws nothing at all. The step is therefore a cue on the plain grounds and
+		 * absent on the deep ones, which is the same deal the sidebar's count lines
+		 * strike, and `edge: false` moves the claim to the instrument that can state
+		 * it (the ink floor here) rather than inventing a border the design removed
+		 * on purpose.
+		 *
+		 * NOT AS CONTRASTED AS WHAT IT REPLACES, stated as the two steps the
+		 * operator compared — in the brand palettes, which is where that comparison was
+		 * made: the old bordered mark's `warningWash` stepped ΔE00 5.22 off `surface` in
+		 * the dark palette and 5.44 in the light; this one steps 3.29 and 2.50 (2.02 at
+		 * worst over the fifty-nine). Same ground, roughly half the separation — the
+		 * "slightly contrasted but not as contrasted" the report asked for.
+		 */
+		name: "rail approval badge (quiet)",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -1388,12 +1445,16 @@ const CONTROLS = [
 		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
 		 * number that justified it was not, and the frames agree with the corrected one.
 		 *
-		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
-		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
-		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
-		 * ring-accent` - so identity and status are different channels instead of the
-		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
-		 * takes is state too, measured as ink on this fill, already above its floor.
+		 * The stripe carries REACH, not `state` (mesh redesign, design round's D2): `hairline`
+		 * at rest and for the two neutral states (`not-attempted` - the app never dialled -
+		 * and `unknown` - no read named it), `warning` when the device was asked and did not
+		 * answer, `danger` for a suspect identity, which outranks every probe result. The
+		 * stripe used to be keyed on `state`, which painted a device nobody had dialled the
+		 * amber of `unreachable`. THIS DEVICE IS A RING RATHER THAN A STRIPE (design round
+		 * 1, D6) - `ring-2 ring-accent` - so identity and status are different channels
+		 * instead of the accent sharing the stripe the anomalies spend. The ink edge a
+		 * selected node takes is state too, measured as ink on this fill, already above its
+		 * floor.
 		 */
 		name: "mesh device node",
 		on: ["sunken"],
@@ -1429,6 +1490,35 @@ const CONTROLS = [
 		fill: null,
 		border: "borderControl",
 		ink: "ink",
+	},
+	{
+		/*
+		 * The Mesh canvas's scope layer: the SOLID enclosure around a group of devices whose
+		 * published addresses support a claim (`mesh-scope-layer.tsx`).
+		 *
+		 * WHY THE SOLID TIER NEEDS A ROW AND THE DASHED ONE DOES NOT. The two tiers must not
+		 * be told apart by hue, so the difference is the DASH - and that makes the solid
+		 * enclosure the only visual marker of a verified grouping, i.e. its removal loses
+		 * information. It is therefore structural and takes `border-control` rather than the
+		 * decorative `hairline` the dashed tier uses; the dashed tier spends `hairline`
+		 * (no floor, decoration) and its `ink-dim` label is measured by this file's ink
+		 * floors already (`inkDim` on `sunken` is 5.00:1 at worst, `rosePineDawn`).
+		 *
+		 * The enclosure has NO FILL - it is a frame around nodes that keep their own
+		 * `elevated` fill - so `fill: null` makes the ink assertion "this file's label ink on
+		 * the ground it is drawn on", which is what the tier's label is: on `sunken`, beside
+		 * the frame, never on a control's own fill.
+		 *
+		 * MEASURED across the 59 palettes: the edge (`borderControl` on `sunken`) is 4.14:1 on
+		 * `localOperatorDark` and 3.20:1 on `localOperatorLight`, 3.01:1 at worst
+		 * (`rosePineDawn`) - above the 3:1 a boundary owes. The label (`inkMuted` on `sunken`)
+		 * is 9.08 / 7.18, 5.53:1 at worst (`kanagawaLotus`), above its own floor.
+		 */
+		name: "mesh scope boundary (solid)",
+		on: ["sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
 	},
 ];
 
@@ -1483,6 +1573,16 @@ const ADJACENT = [
  * set of semantics that passes on average is not a set of semantics.
  */
 const GRAPHICS = [
+	{
+		/*
+		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
+		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
+		 * the pair the checkpoint rail already paints for `complete`.
+		 */
+		name: "turn bar complete mark",
+		on: ["canvas"],
+		fg: "success",
+	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
 		/* Drawn inside the track, which is `sunken`. */
@@ -1820,6 +1920,30 @@ const PERCEPTIBLE = [
 		pairedWith: "sunken",
 		maxWeightChange: 2.0,
 		against: "sunken",
+	},
+	{
+		/*
+		 * THE TURN-ANSWER RAIL (`turn-answer-rail.ts`, opt-in `display.turn_answer_rail`):
+		 * a 1px `border-hairline` rule beside the elected answer, on the transcript's
+		 * `canvas`. It is decorative - the layout already identifies the answer - so
+		 * it owes being SEEN rather than a 3:1 floor, and it is the quieter of the
+		 * two roles that could carry it (#708 used `ink-dim` at 2px, which the
+		 * operator found ugly).
+		 *
+		 * THE FLOOR IS 4.0, NOT THE PRESET THRESHOLD, and that is the design round's
+		 * finding rather than taste: measured across all 59 palettes this pair is
+		 * ΔE00 4.42 at its weakest (`rosePineDawn`, 1.20:1 - a rule a reader could
+		 * take for a rendering artefact) and 9.39 at the median. A 3.0 floor would
+		 * sit 1.4 BELOW the weakest palette that ships today, so it could not catch a
+		 * palette drifting toward invisible - which is the only reason to write the
+		 * row at all. 4.0 pins what ships with 0.42 of headroom and still leaves the
+		 * step to be re-argued if a future palette cannot clear it (design round 1,
+		 * D1).
+		 */
+		name: "turn answer rail",
+		role: "hairline",
+		on: ["canvas"],
+		minDeltaE: 4.0,
 	},
 	{
 		name: "context wheel track, empty state",
@@ -2246,7 +2370,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the mention chip's fill is now measured against `elevated`.
 		 */
 		what: "composer box ground",
-		file: "src/renderer/src/features/chat/components/message-input.tsx",
+		file: "src/renderer/src/shared/components/composer/message-input.tsx",
 		must: '"mx-auto flex w-full flex-col bg-elevated"',
 		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
 	},
@@ -2463,6 +2587,12 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
+	},
+	{
+		what: "turn answer rail role",
+		file: "src/renderer/src/features/chat/canonical/turn-answer-rail.ts",
+		must: '"-ml-[13px] border-hairline border-l pl-3"',
+		why: "PERCEPTIBLE measures hairline against canvas as `turn answer rail`; nothing otherwise proves the rail renders that role, and a swap to a louder or fainter ink would keep the gate green",
 	},
 	{
 		what: "context wheel empty track role",
@@ -2773,22 +2903,34 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
-		 * The condensed action group's media tile (design review round 1, D2).
+		 * The condensed action group's media tile: THE EDGE RETURNS WHERE THE TILE IS
+		 * A CONTROL (design review round 1, D2; re-decided by the operator's "drop the
+		 * ring" change, where the design round's D1 recorded the trade).
 		 *
-		 * The tile IS a focusable `<button>`, so its frame's edge is a control
+		 * The tile IS a focusable `<button>`, so when its edge is drawn it is a control
 		 * boundary and answers to 3:1 (SC 1.4.11) rather than to taste. The palette
 		 * rows above already prove the COLOUR clears the floor - "outline control"
 		 * measures `borderControl` on all four grounds - and what only this pin can
-		 * see is the edit that puts the tile back on the decorative `hairline`: that
-		 * role has no floor at all, measured at 1.25:1 against the light transcript,
-		 * which is invisible chrome for exactly the picture that needs it most (a
-		 * light-canvas screenshot on a light page, where the tile would otherwise have
-		 * no visible extent).
+		 * see is the edit that puts the returning edge on the decorative `hairline`
+		 * (1.25:1 against the light transcript, no floor) or drops the focus half: a
+		 * keyboard reader has NO other resting boundary on a borderless tile, so the
+		 * `focus-visible` arm is the one that must not be deleted unseen.
 		 */
-		what: "condensed group media tile edge",
+		what: "condensed group media tile edge (hover and keyboard focus)",
 		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
-		must: '"border border-control"',
-		why: "a media tile is a button whose frame is its whole visible boundary; dropping it to `hairline` leaves the pair green in every palette row while a light-canvas picture stops having a visible extent, which no ratio in this file can see",
+		must: '"group-hover/tile:border-control group-focus-visible/tile:border-control"',
+		why: "a media tile is a button whose edge now appears only on hover and keyboard focus; dropping either arm, or moving it to `hairline`, leaves the pair green in every palette row while the tile loses the boundary of the state in which it is a control, which no ratio in this file can see",
+	},
+	{
+		/*
+		 * The failed receipt keeps the edge AT REST: a card in a state keeps its edge
+		 * because the state is the information, and with no picture the receipt has no
+		 * other extent (branding section 2).
+		 */
+		what: "condensed group failed-tile receipt edge",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: "rounded-sm border border-control bg-sunken",
+		why: "the compact receipt has no picture to give it an extent, so its `border-control` is its only boundary; removing it with the working tile's edge (which the operator asked to drop) would leave a bare glyph in a well",
 	},
 	{
 		/*

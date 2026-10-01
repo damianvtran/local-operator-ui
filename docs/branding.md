@@ -841,20 +841,51 @@ equally important**, and the interface must not present them as though they are.
   opens on the reader's own press and on nothing else, so a collapsed run still
   answers "what is it doing right now?" by naming the call in flight (`Running
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
-  itself once and only when its section ends — finished sections condense; the
-  live section and anything the reader opened obey the reader, and nothing
-  condenses while a call in it is still running, nor while the turn waits on
-  the reader's own gate (an approval or question parks the turn; a parked turn
-  is unsettled, so nothing condenses). A finished turn also carries
-  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`) — EXCEPT a
-  turn that has condensed to its own summary bar: there the foot stands down
-  and the bar IS the line (its own stamp replaces the foot's, one stamp per
-  turn), so the agent-output tier reads as two levels — the turn's single bar,
-  then the runs' folds inside it once opened. The fold is a
+  the same way — the reader's press is the only close; no state update closes
+  a fold — and nothing condenses while a call in it is still running, nor
+  while the turn waits on the reader's own gate (an approval or question parks
+  the turn; a parked turn is unsettled, so nothing condenses). A finished turn
+  also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
+  turn that has condensed to ONE summary bar: there the foot stands down and the
+  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
+  in place, around the rows that stay on screen (a compaction, a stop or incident
+  marker, the turn's answer). When a pinned row splits the work into several
+  bars, no single bar states the turn, so the foot keeps the totals and the
+  stamp and the bars state their parts. **Bars and foot state ONE quantity**:
+  the seconds the calls themselves reported, summed (`Took` on a bar, `Worked
+  for` on the foot), so a ladder's bars add up to the foot's figure the way
+  their action counts do; a span with no reported work states no duration. A bar
+  that is not the ordinary work-under-the-answer one is named by what it holds,
+  in the app's own nouns and one word per concept — `Wake`, `Peer message`,
+  `Job result`, or `Steered` when the reader's own message is inside — and
+  carries a `success` check when that section ran to a real end (never on a bar
+  a stop marker cut off, never on the ordinary bar the answer already vouches
+  for). The agent-output tier therefore reads as two levels — the turn's bars,
+  then the runs' folds inside them once opened. The fold is a
   VIEW: it hides rows and never reorders them, so the placement rule a few lines
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
   tier a 40-step turn is 40 lines, which is the "every internal step at equal
   weight" failure of § 0.
+- **The answer's own mark is an opt-in setting, default off (#665; revised after
+  #708).** The turn's elected answer (`closesTurn`: the last response cycle's
+  close, never a post-dispose status reply) can hang a vertical rule in the
+  gutter, controlled by the backend key `display.turn_answer_rail` (bool, default
+  false; read fail-closed, so only an explicit `true` draws it and an older backend
+  that does not carry the key draws none). It shipped always-on as a 2px `ink-dim`
+  rule with 6px of padding, and the operator's report (2026-09-30) was that it
+  looked ugly and cramped; the answer is already identified by the turn foot and
+  the bars condensed above it, so the mark is a preference and not chrome. When
+  on, it is a 1px `hairline` (the decorative-rule role: it owes being seen, which
+  the `turn answer rail` PERCEPTIBLE row asserts on `canvas`, and no 3:1 floor)
+  with 12px of inner padding. The negative margin is exactly rule plus padding, so
+  the prose box is where it is with the rail off: no layout shift and no second
+  MEASURE, which is what this section's "one left rail" rule governs. Stated
+  precisely, the rule itself is ink 13px left of the column edge, hanging in the
+  scroller's gutter - a hung mark, not a second edge for the text to resolve
+  against - and it is the one mark on the row that neither the ledger nor the bars
+  share. No card and no ground, as this section forbids. `data-turn-answer` is set
+  from the election alone, in both states.
 - **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
 text in the transcript — code, stdout and diffs share the treatment — opens
   behind the row's own disclosure, and an open block that fills the scroller

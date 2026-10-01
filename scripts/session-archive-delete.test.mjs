@@ -722,6 +722,83 @@ test("a search answer settles only the ids it speaks about", async () => {
 	);
 });
 
+test("the archive round trip survives its own settlement: the row takes the answer, and the way back is offered (QA round 1, Q-1)", async () => {
+	await seed([
+		{ session_id: SESSION, title: "Invoice reconciliation", archived: false },
+	]);
+	/*
+	 * 1. ARCHIVE FROM THE MENU. The menu item presses the row's own control
+	 * (`pressRowAct`), and this store write is exactly where that lands - there is
+	 * no second path to fake.
+	 */
+	serve({ session_id: SESSION, archived: true });
+	await store
+		.getState()
+		.setSessionArchived(SESSION, true, "Invoice reconciliation");
+	/*
+	 * 2. THE ROW LEAVES THE DEFAULT LISTS, which the answered view carries (D27).
+	 */
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows(
+				store.getState().sessions,
+				store.getState().archiveFacts,
+			),
+			true,
+		).map((row) => row.session_id),
+		[],
+		"the archived row is out of every default list while its fact stands",
+	);
+	/*
+	 * 3. SEARCH + INCLUDE ARCHIVED. The answer names the row and carries the
+	 * daemon's own `archived: true` - the value `SessionSearchHit` says is always
+	 * present, and the reason the hit is read beside `pinned` at all.
+	 */
+	const seq = store.getState().beginAnswer();
+	store.getState().applySearchAnswer(seq, [{ id: SESSION, archived: true }]);
+	/*
+	 * The fact is settled AND the row takes the answer's value. Without the second
+	 * half the rejoined row fell back to the catalogue page written before the
+	 * press - drawn live, its menu offering `Archive conversation` again - and the
+	 * press that followed wrote `archived: true` a second time (QA round 1, Q-1).
+	 */
+	assert.equal(
+		store.getState().archiveFacts[SESSION],
+		undefined,
+		"the answer settles the fact",
+	);
+	const rejoined = store
+		.getState()
+		.sessions.find((row) => row.session_id === SESSION);
+	assert.equal(
+		rejoined?.archived,
+		true,
+		"the rejoined row reads the answer - so the control and the menu item compose `Unarchive conversation`",
+	);
+	/*
+	 * 4. THE WAY BACK. Pressing Unarchive writes the OTHER direction onto the wire
+	 * - the value the whole round trip exists to send - and the fact settles once,
+	 * carrying that direction.
+	 */
+	serve({ session_id: SESSION, archived: false });
+	await store
+		.getState()
+		.setSessionArchived(SESSION, false, "Invoice reconciliation");
+	assert.deepEqual(
+		requests.at(-1),
+		{ op: "sessions.archive", sessionId: SESSION, archived: false },
+		"the undo press carries archived:false, not a second archive",
+	);
+	assert.deepEqual(
+		{
+			archived: store.getState().archiveFacts[SESSION]?.archived,
+			answered: store.getState().archiveFacts[SESSION]?.answered,
+		},
+		{ archived: false, answered: true },
+		"one settle: the fact records the direction pressed, answered",
+	);
+});
+
 test("a delete is sent confirmed, and drops the row only once the backend answers", async () => {
 	await seed([
 		{ session_id: SESSION, title: "Kept", archived: false },

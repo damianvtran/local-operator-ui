@@ -93,6 +93,20 @@ const bundle = await build({
 						path: `${process.cwd()}/src/renderer/src/shared/store/conversation-input-store.ts`,
 					}),
 				);
+				/*
+				 * The composer's optional-client seam, resolved to the REAL module for the
+				 * same reason as the store above: `desktop-hooks` (bundled here for
+				 * `desktopFeatureEnabled`) now imports it, and a harness that cannot
+				 * resolve it cannot build at all. The real file is also the honest
+				 * resolution for this suite's shape - it reads a plain document with no
+				 * provider, exactly the condition the module exists for.
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
+					() => ({
+						path: `${process.cwd()}/src/renderer/src/shared/hooks/use-optional-query-client.ts`,
+					}),
+				);
 				builder.onLoad(
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
 					() => ({
@@ -1512,11 +1526,17 @@ const FEED_HOOK_SRC = readFileSync(
 );
 
 test("the Show-more control names its group, joins the arrow-key idiom, and is focus-safe (U2, U6)", () => {
+	/*
+	 * THE LABEL NOW CARRIES THREE FACTS RATHER THAN TWO (operator, 2026-09-27):
+	 * what the press does, how far into the group the reader is (`foot.aria`, whose
+	 * own position clause is what makes the count and the disclosure agree), and
+	 * WHICH group - `in ${name}`, the clause that stops a group of one team being
+	 * announced as another's. The assertion moved with the copy; the intent it
+	 * states is the same three clauses it stated before.
+	 */
 	assert.ok(
-		SIDEBAR_SRC.includes(
-			"aria-label={`Show ${view.addCount} more chats in ${name}`}",
-		),
-		"the press must say what it does AND which group it belongs to",
+		SIDEBAR_SRC.includes("aria-label={`${foot.aria} in ${name}`}"),
+		"the press must say what it does, where in the group the reader is, AND which group it belongs to",
 	);
 	assert.ok(
 		SIDEBAR_SRC.includes(

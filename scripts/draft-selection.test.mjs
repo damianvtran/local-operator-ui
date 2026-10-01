@@ -358,11 +358,80 @@ test("a changed create body gets a fresh at-most-once key, and only before a ses
 	);
 });
 
+test("a changed DESTINATION gets a fresh at-most-once key too, and a same-value pick does not", () => {
+	/*
+	 * Agent review round 2, R2-2, and it is the rule directly above one field over:
+	 * `peer` rides the create body (`desktop-contract.ts`), and the server keys its
+	 * receipt on a hash of that WHOLE body. Two mesh refusals KEEP the claim rather
+	 * than releasing it (`relay_unavailable`, `peer_unreachable`), so a destination
+	 * change after one of them used to re-send the same `createRequestId` with a
+	 * different body - a `ReceiptConflict` for the life of that pane, against the
+	 * app's own advice to retry with the same draft. This is the action's test; the
+	 * call site is pinned in `chat-device-model.test.mjs`.
+	 */
+	const store = useCanonicalSessionsStore.getState();
+	const key = store.stageDraft();
+	const unpicked = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(unpicked.peer, undefined);
+	store.setDraftPeer(key, "d_build");
+	const aimed = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(aimed.peer, "d_build");
+	assert.notEqual(aimed.createRequestId, unpicked.createRequestId);
+	// The admission id addresses the message, not the destination: it must not move.
+	assert.equal(aimed.admissionRequestId, unpicked.admissionRequestId);
+
+	/*
+	 * THE WARM INTENT GOES WITH THE KEY: the mint engaged a runtime on THIS device
+	 * (`sessions.draft`) and v1 does not re-aim one at a peer, so a stale `warmId`
+	 * would have the next send adopt a draft for the destination the row just left.
+	 */
+	store.updateDraft(key, { warmId: "w_1", draftRequestId: "d_req" });
+	store.setDraftPeer(key, "d_pixel");
+	const reaimed = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(reaimed.peer, "d_pixel");
+	assert.equal(reaimed.warmId, undefined);
+	assert.notEqual(reaimed.draftRequestId, "d_req");
+
+	/*
+	 * THE SAME DESTINATION IS NOT A CHANGE. The self row is a real press that means
+	 * "this device", so a guard is what keeps a press that picked nothing new from
+	 * re-minting the id and dropping a warm intent for a request that has not changed.
+	 */
+	const settled = reaimed.createRequestId;
+	store.setDraftPeer(key, "d_pixel");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId,
+		settled,
+	);
+
+	// Clearing it IS a change: this device is a different body.
+	store.setDraftPeer(key, null);
+	const home = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(home.peer, undefined);
+	assert.notEqual(home.createRequestId, settled);
+
+	// And once a session exists the create is behind us: its id stays pinned.
+	store.updateDraft(key, { sessionId: "abcdef123456" });
+	const pinned =
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId;
+	store.setDraftPeer(key, "d_build");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].peer,
+		"d_build",
+	);
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId,
+		pinned,
+	);
+});
+
 test("a pick on a discarded pane records nothing, and never resurrects the row", () => {
 	const store = useCanonicalSessionsStore.getState();
 	const gone = "draft:00000000-0000-4000-8000-000000000000";
 	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
 	store.setDraftModel(gone, PICKED);
+	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
+	store.setDraftPeer(gone, "d_build");
 	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
 });
 
@@ -1397,11 +1466,19 @@ test("U1: the picker's running model is the value the strip paints, held or live
 	 * picker's dial (UX round 1, U2) — are pinned here so a later edit cannot
 	 * quietly go back to the authoritative field at one of them — which is
 	 * exactly how the two phases came apart.
+	 *
+	 * SEVEN CALLS, because the pin counts CALLS and not call sites: the three
+	 * pickers above are two each (`effective_model` then `selected_model`) and the
+	 * seventh is the reload receipt's title read (`ReloadPicker`'s `subject`, review
+	 * R8) — same helper, same held-`frontend` pair, a different FIELD off the same
+	 * reading. That read is what keeps the receipt naming the session the way the
+	 * pane names it rather than falling back to the id on every live session, so it
+	 * belongs in this set rather than beside it.
 	 */
 	assert.equal(
 		(source.match(/runningFrontend\(canonical\)/g) ?? []).length,
-		6,
-		"every read uses the helper, on both of the fields each one names",
+		7,
+		"every read uses the helper, on both of the fields each one names, plus the receipt's title",
 	);
 	assert.doesNotMatch(
 		source,
