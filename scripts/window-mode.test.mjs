@@ -2384,6 +2384,28 @@ test("a non-headless launch asserts the Dock tile, and a headless one hides it",
 		/app\.dock\.show\(\)/,
 		"a headless run must not assert a Dock tile",
 	);
+	/*
+	 * AND THE MID-LIFE RE-ASSERT KEEPS THE SAME GUARD. A detach that happens after
+	 * launch is healed by `reassertDockParticipation` on the activate handler, and
+	 * the one thing that must stay impossible is a headless run gaining a tile from
+	 * it — so the helper is pinned to read the SAME `windowLaunch.hideDock` fact the
+	 * startup branch does, and the activate handler is pinned to call it.
+	 */
+	const helperAt = flat.indexOf("function reassertDockParticipation");
+	assert.ok(
+		helperAt !== -1,
+		"the mid-life dock re-assert helper was not found",
+	);
+	assert.match(
+		flat.slice(helperAt, helperAt + 260),
+		/if \(windowLaunch\.hideDock\) return;/,
+		"the mid-life re-assert must keep the hideDock guard",
+	);
+	assert.match(
+		flat,
+		/app\.on\("activate", \(\) => \{ reassertDockParticipation\(\);/,
+		"the activate handler must re-assert the dock policy",
+	);
 });
 
 test("the popup windows' module raises nothing on its own", () => {

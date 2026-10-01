@@ -341,6 +341,40 @@ if (process.platform === "darwin" && app.dock) {
 	}
 }
 
+/**
+ * Re-assert this process's Dock participation when the user touches the app.
+ *
+ * WHY IT EXISTS BESIDE THE STARTUP ASSERT: the startup assert guarantees a tile
+ * at launch and CANNOT heal a detach that happens later — measured on the
+ * operator's machine (2026-09-30) instance A lost its tile (record
+ * `ApplicationType=UIElement`, no Dock tile, the tile's menu reading "app not
+ * running") HOURS after a regular launch, with its window on screen, and kept it
+ * until the process was replaced. A Dock click is the one moment macOS is already
+ * asking this app to present, so it is where the policy is re-asserted.
+ *
+ * THE GUARD IS THE POINT: a `headless` run must never gain a tile from a stray
+ * activate, so the re-assert is impossible when `windowLaunch.hideDock` is set —
+ * the SAME fact the startup branch above reads, so the two cannot disagree. The
+ * mini-view/popup surfaces exist only in `normal` launches, which is why one
+ * guard covers them.
+ *
+ * The dock-policy show call is idempotent for an app that is already regular and
+ * is NOT
+ * a window raise (see the startup block above for the same argument; the
+ * raise-family scan's one-line allow covers this call too).
+ *
+ * WHAT THE PROBE SHOWED ABOUT THE ALTERNATIVE: a PLAIN activation does not clear
+ * the detach — measured, `open -a` and `osascript … activate` both left a
+ * forced-accessory instance accessory, while an explicit dock-policy show call
+ * restored it. So the healing has to be this call, not a hope that macOS
+ * restores the tile on its own.
+ */
+function reassertDockParticipation(): void {
+	if (process.platform !== "darwin" || !app.dock) return;
+	if (windowLaunch.hideDock) return;
+	app.dock.show();
+}
+
 /*
  * PostHog, or nothing at all.
  *
@@ -3718,6 +3752,13 @@ app
 		setupMainWindowWithUpdateService(launchSession, launchCatalogue);
 
 		app.on("activate", () => {
+			/*
+			 * A USER TOUCH RE-ASSERTS THE DOCK TILE: a Dock click is the reported mid-life
+			 * detach's own repair path (see `reassertDockParticipation`). It runs before
+			 * the window logic so a click that finds a window already open — the broken
+			 * state, where the tile leads nowhere — still heals the tile.
+			 */
+			reassertDockParticipation();
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open. The browser
 			// host comes with the window (see `setupMainWindowWithUpdateService`),
