@@ -524,8 +524,10 @@ it would not, and § 3.3 settles both.
    **The box's text — the fourth write, and M5's decision: (a), keep
    `conversationId`.** The composer owns the box's text, so the run's text and its
    attachments live in `useConversationInputStore` **keyed by the run composer's own
-   id** — a client-minted `agents-config:<uuid>` created at the page's first paint and
-   never re-minted (code review round 1, m2: this note said "the run id", but the
+   id** — a client-minted `agents-config:<uuid>` minted ONCE for the app — module scope,
+   not per page mount — and never re-minted (UX exploration, U2: the draft lives
+   under this key in the composer's persisted store, so a key that died with the
+   mount took the draft with it and leaving `/agents` lost a half-typed request) (code review round 1, m2: this note said "the run id", but the
    composer refuses to submit without a key and must not MOVE when the create answers,
    so the key is the BOX's identity rather than the wire's session id) — and that is
    deliberate rather than an oversight. What this bends is named: the second of

@@ -2682,6 +2682,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom,
 			// §6: no persisted draft write while a masked capture is open.
 			draftHeld: isTyping(capture),
+			// U1: a host with no transcript retires its own box on an accepted send.
+			transcriptless,
 			/*
 			 * §5/§6's disclosure travels WITH the draft it describes, on every write
 			 * this hook makes — including the keystrokes that follow the cancel, which

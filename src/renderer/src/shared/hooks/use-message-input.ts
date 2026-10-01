@@ -550,6 +550,11 @@ type UseMessageInputOptions = {
 	 */
 	draftUnredacted?: (value: string) => number;
 	/**
+	 * See `useMessageInput`'s own note: a host that paints no transcript relies on
+	 * its accepted send to retire its box, because it has no echo to do it.
+	 */
+	transcriptless?: boolean;
+	/**
 	 * Submits the message.
 	 *
 	 * `onEchoPainted` is the seam that lets the composer clear itself at the
@@ -574,6 +579,16 @@ export const useMessageInput = ({
 	scrollToBottom,
 	draftHeld = false,
 	draftUnredacted = noDisclosure,
+	/*
+	 * Whether the host paints NO transcript for this box (UX exploration, U1).
+	 *
+	 * The box's text is normally retired by the ECHO: the row appears in the
+	 * transcript and `clearOnce` empties the box in the same commit. A host with
+	 * no transcript has no echo, so its accepted send must retire the box itself —
+	 * see the gate on `clearOnce` — and only such a host passes this. Absent means
+	 * the echo path, i.e. every chat composer, byte-identical.
+	 */
+	transcriptless = false,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -1069,7 +1084,23 @@ export const useMessageInput = ({
 			const pendingTranscript = pendingTranscriptRef.current;
 			if (pendingTranscript) pendingTranscriptRef.current = "";
 			sendClearPendingRef.current = false;
-			if (initializedRef.current !== conversationId) {
+			/*
+			 * A TRANSCRIPTLESS HOST'S BOX IS THE ONLY COPY OF WHAT IT SENT (UX
+			 * exploration, U1 — a BLOCKER, because this page's sends WRITE the agent
+			 * and team registries: a box that keeps its text makes the next Enter a
+			 * second run, and a second run is a second write).
+			 *
+			 * WHY THE EARLY RETURN CANNOT APPLY THERE. It exists because a composer
+			 * that never took charge of the row has nothing to clear — the row is
+			 * another mount's, and the echo it paints is the transcript's. A host
+			 * that paints NO transcript has no echo to clear the box on: the
+			 * post-await clear is its ONLY clear, so returning here leaves the sent
+			 * text in the box and the next Enter re-sends it.
+			 *
+			 * GATED ON `transcriptless`, so chat is byte-identical: every chat
+			 * composer still retires its text on the echo, through this same branch.
+			 */
+			if (!transcriptless && initializedRef.current !== conversationId) {
 				// This composer never took charge of the row, so it has nothing to
 				// clear - but the row is still the transcript's home and the next
 				// mount paints from it.
@@ -1228,6 +1259,12 @@ export const useMessageInput = ({
 		 */
 		appendToDraft,
 		getCurrentInput,
+		/*
+		 * U1: `clearOnce` reads it to decide whether an accepted send retires the
+		 * box itself (a transcriptless host has no echo to do it), so the lint gate
+		 * is right that it belongs here.
+		 */
+		transcriptless,
 	]);
 
 	// Cursor position helpers

@@ -479,3 +479,62 @@ test("a blocked box says the page's reason, never chat's 'Agent is busy'", async
 		await act(async () => root.unmount());
 	}
 });
+
+test("an accepted send empties the box, so a second Enter cannot send twice", async () => {
+	/*
+	 * U1 (a BLOCKER on this page, because a run WRITES the registries). This host
+	 * paints no transcript, so the echo that normally retires the box never fires;
+	 * the accepted send has to retire it. Before the fix the text stayed, and the
+	 * next Enter posted the same request a second time — a second run, a second
+	 * write.
+	 */
+	const { run, sent } = handle();
+	const { host, root } = await mount(run);
+	try {
+		const box = await type(host, "Add a reviewer that only reads tests");
+		await act(async () => {
+			box.dispatchEvent(
+				new DOM.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(sent.length, 1, "the first send went once");
+		assert.equal(box.value ?? "", "", "and the box is empty afterwards");
+		await act(async () => {
+			box.dispatchEvent(
+				new DOM.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.equal(sent.length, 1, "a second Enter sends nothing more");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("the box's key outlives the page, so a draft survives leaving and returning", async () => {
+	/*
+	 * U2: the key was minted per mount, which took the persisted draft with it.
+	 * Same key, two mounts, one draft.
+	 */
+	const first = await mount(handle().run);
+	await act(async () => {
+		await type(first.host, "half a request");
+	});
+	await act(async () => first.root.unmount());
+	const second = await mount(handle().run);
+	try {
+		const box = second.host.querySelector("textarea");
+		assert.equal(
+			box?.value ?? "",
+			"half a request",
+			"the draft came back with the page",
+		);
+	} finally {
+		await act(async () => second.root.unmount());
+	}
+});
