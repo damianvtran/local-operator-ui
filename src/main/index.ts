@@ -3980,23 +3980,26 @@ app.on("will-quit", (event) => {
 			 * reproduced independently by review round 1's minimal probe: the second
 			 * quit emits its own `before-quit` and reaches `will-quit` again.
 			 *
-			 * WHAT WEDGES IS THAT SECOND `will-quit`, not the restart (review round 1,
-			 * M1; QA round 1, Q-1 — the operator's windowed first quit). When
-			 * `isOwnedCleanupComplete()` is STILL false on the re-entered pass — which is
-			 * the windowed state, where a mini-view or quick-send start can hold a
-			 * `startPromise` — the pass prevents the quit again, and the
-			 * `backendQuitPending` guard (already true) returns without arming anything.
-			 * The failsafe above was cleared when this continuation ran, so nothing is
-			 * left to finish the quit: the process sits windowless and silent until the
-			 * user quits a SECOND time, which is the operator's report verbatim: "click
-			 * to quit, it just closes the window, and you have to click to quit again in
-			 * the dock to actually close the app".
+			 * WHY THE TERMINAL IS UNCONDITIONAL (review round 1, M1; QA round 1, Q-1).
+			 * The pass that cancelled this quit runs AGAIN after the re-quit an
+			 * `app.quit()` here would provoke, and that re-entered pass can still see
+			 * `isOwnedCleanupComplete()` false — a mini-view or quick-send start holding
+			 * a `startPromise` is the windowed state — so it prevents again, and the
+			 * `backendQuitPending` guard (already true) returns WITHOUT arming anything
+			 * while the failsafe above was cleared when this continuation ran: nothing
+			 * is left to finish the quit, and the process sits windowless until a second
+			 * one. `app.exit` cannot be cancelled by that re-entry, which is what makes
+			 * this a terminal rather than another round trip through the quit sequence.
 			 *
-			 * `app.exit` terminates unconditionally, so this continuation cannot be
-			 * cancelled by the re-entry calling `app.quit()` provokes. The cleanup it
-			 * waited on HAS run (the owned serve is stopped, `stop` resolved), the window
-			 * is already gone, and `before-quit`'s session-cookie hold had its pass in the
-			 * first quit. `app.exit` still fires the process-level `exit` handler
+			 * THE OPERATOR'S FIRST QUIT WEDGED EARLIER THAN THIS, and its fix is in
+			 * `before-quit`'s SYNCHRONOUS part rather than here: the mini view's close
+			 * refusal (a `preventDefault()` that turns a close into a hide) cancelled the
+			 * whole quit before `will-quit` was reached at all, so this handler never
+			 * ran on the first quit (QA round 1's Q-1 trace: `will-quit entry` appears
+			 * only on the SECOND quit). This comment describes the terminal's own
+			 * escape hatch, not that defect.
+			 *
+			 * `app.exit` still fires the process-level `exit` handler
 			 * (`emergencyStopOwned`, telemetry shutdown), and the failsafe above keeps its
 			 * own `app.exit(1)`, so the bound is the only difference between a clean and a
 			 * failed exit.
