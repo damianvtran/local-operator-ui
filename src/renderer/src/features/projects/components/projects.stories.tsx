@@ -697,6 +697,7 @@ const TEAMS: ReusableTeam[] = [
 	{
 		id: "t1",
 		name: "atlas",
+		label: "Atlas Payments",
 		description: "The payments platform team",
 		manager: "manager",
 		members: [{ role: "coder", count: 2, kind: "agent" }],
@@ -707,6 +708,20 @@ const TEAMS: ReusableTeam[] = [
 		description: "Infrastructure and releases",
 		manager: "manager",
 		members: [],
+	},
+	/*
+	 * The team the project fixtures actually name (`team: "platform"`): without
+	 * it in the catalogue the D5 frames would show the fallback, not the fix —
+	 * the list group heading and the detail's `Managed by` line resolve through
+	 * this roster, and a third row here is what makes them resolve at all.
+	 */
+	{
+		id: "t3",
+		name: "platform",
+		label: "Platform Delivery",
+		description: "Ships the platform releases",
+		manager: "manager",
+		members: [{ role: "reviewer", count: 1, kind: "agent" }],
 	},
 ];
 
