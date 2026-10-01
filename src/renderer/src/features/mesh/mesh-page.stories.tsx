@@ -194,6 +194,13 @@ type Fixture = {
 	approvals?: unknown[];
 	/** The approvals read refuses, with the transport's own sentence. */
 	failApprovals?: boolean;
+	/**
+	 * What a DECISION answers instead of deciding (agent review round 1, finding
+	 * 1): a refusal body (`{code, message}`), the store's own shape. The world is
+	 * left exactly as it was - a refused decision changes nothing - so the
+	 * sentence is the whole answer, which is the state the card must carry.
+	 */
+	decisionRefusal?: { code: string; message: string } | null;
 };
 
 /**
@@ -235,6 +242,12 @@ function installBridge(fixture: Fixture) {
 			return answer({ approvals: fixture.approvals ?? [] });
 		}
 		if (request.op === "approvals.approve" || request.op === "approvals.deny") {
+			if (fixture.decisionRefusal) {
+				return {
+					status: 409,
+					body: { detail: fixture.decisionRefusal },
+				};
+			}
 			/*
 			 * A DECISION CHANGES THE WORLD, and the fixture has to say so before it answers
 			 * (the transfer handler's own rule): the settle invalidates the approvals read, so
@@ -1626,5 +1639,32 @@ export const ApprovalsWaiting: Story = {
 		const user = userEvent.setup();
 		await user.click(await screen.findByRole("button", { name: "Approve" }));
 		await screen.findByText("Approved");
+	},
+};
+
+/**
+ * A decision the store REFUSED, and the sentence it answered with (agent review
+ * round 1, finding 1): without this render path the operator sees the button
+ * re-enable and cannot tell a refusal from a dead click. The sentence here is
+ * the shape core answers a host with no signing surface with; the code rides
+ * beside it, the way the move refusals carry theirs.
+ */
+export const ApprovalRefused: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+			decisionRefusal: {
+				code: "approval_signing_unavailable",
+				message:
+					"This machine has no operator key to sign with; ask Local Operator to set up operator authority here first.",
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await screen.findByRole("button", { name: "Approve" }));
+		await screen.findByText(/no operator key to sign with/);
 	},
 };
