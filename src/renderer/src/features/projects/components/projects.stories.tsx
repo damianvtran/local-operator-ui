@@ -840,7 +840,9 @@ const roleGround = (role: string): string => {
  * `main` draws a `canvas` span with a `py-1.5` box and no heading, so the height
  * clause and the heading clause fail there; the register the first pass shipped
  * was small caps, which the `text-transform` clause fails; and the ground clause
- * is the change itself.
+ * is the change itself. The last two clauses are review round 1's U1/U2: the
+ * count's accessible name, and the association between the section's heading and
+ * the list it labels - the two places the visual grouping does not reach.
  */
 const assertTeamBand = (selector: string, expectedLabel: string) => {
 	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
@@ -885,6 +887,47 @@ const assertTeamBand = (selector: string, expectedLabel: string) => {
 		if (band.querySelector("button, a, [tabindex]") || band.tabIndex >= 0) {
 			throw new Error(`${selector}: a team band became operable`);
 		}
+		/*
+		 * The count is NAMED (UX review round 1, U1). The span sits outside the
+		 * `<h3>`, so without an accessible name the reading order says "platform,
+		 * 8" and the digit carries no noun; the visible text stays the terse number.
+		 */
+		const countEl = band.querySelector<HTMLElement>("span[aria-label]");
+		if (!countEl) {
+			throw new Error(`${selector}: the count carries no accessible name`);
+		}
+		const said = countEl.getAttribute("aria-label") ?? "";
+		const visible = (countEl.textContent ?? "").trim();
+		const noun = visible === "1" ? "project" : "projects";
+		if (said !== `${visible} ${noun}`) {
+			throw new Error(
+				`${selector}: the count's accessible name is "${said}" where "${visible} ${noun}" is what it counts`,
+			);
+		}
+		/*
+		 * And the section's own list names itself with the heading it belongs to
+		 * (UX review round 1, U2) - the association the visual grouping only implied.
+		 */
+		const headingId = label.id;
+		if (!headingId) {
+			throw new Error(
+				`${selector}: the section heading carries no id for its list to name`,
+			);
+		}
+		if (document.querySelectorAll(`#${CSS.escape(headingId)}`).length !== 1) {
+			throw new Error(
+				`${selector}: the heading's id "${headingId}" is not unique in the document`,
+			);
+		}
+		const rows = band.parentElement?.querySelector("ul");
+		if (!rows) {
+			throw new Error(`${selector}: the section draws no list under its band`);
+		}
+		if (rows.getAttribute("aria-labelledby") !== headingId) {
+			throw new Error(
+				`${selector}: the section's list names "${rows.getAttribute("aria-labelledby")}" rather than its heading "${headingId}"`,
+			);
+		}
 	}
 	const exact = bands.some(
 		(band) => (band.querySelector("h3")?.textContent ?? "") === expectedLabel,
@@ -895,6 +938,22 @@ const assertTeamBand = (selector: string, expectedLabel: string) => {
 		);
 	}
 };
+
+/**
+ * The bands, once the story's own boot has drawn them.
+ *
+ * The plays race the story's boot - the route swap and the stubbed query - so an
+ * assertion taken on the first tick reads a List that has not rendered yet and
+ * reports it as a missing band (measured: the first version of these plays threw
+ * `no team band matches [data-project-team]` at `populated @ localOperatorDark`,
+ * and the rig correctly refused the frame). `poll`'s own 60 s ceiling is what
+ * makes waiting the cheap option.
+ */
+const bandsReady = () =>
+	poll(
+		() => document.querySelectorAll("[data-project-team]").length > 0,
+		"the List's team bands",
+	);
 
 /** A story's play: hold the shutter, run the gesture, wait, release. */
 const playOnce = (key: string, gesture: () => Promise<void>) => async () => {
@@ -1090,7 +1149,13 @@ export const LoadError: Story = {
 };
 
 /** Three projects: the list's ordinary shape. */
-export const Populated: Story = { render: () => page({ projects: THREE }) };
+export const Populated: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("populated-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "platform");
+	}),
+};
 
 /**
  * The same listing at the width the 800x600 window floor leaves the list once
@@ -1102,10 +1167,22 @@ export const Populated: Story = { render: () => page({ projects: THREE }) };
  * and the header run the same COLUMNS plan, so this frame is the alignment
  * proof as well as the width proof.
  */
-export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
+export const NarrowColumns: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("narrow-columns-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "platform");
+	}),
+};
 
 /** Twelve projects: the list under a scrollbar. */
-export const Many: Story = { render: () => page({ projects: MANY }) };
+export const Many: Story = {
+	render: () => page({ projects: MANY }),
+	play: playOnce("many-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "platform");
+	}),
+};
 
 /**
  * The sticky team headers, mid-scroll: the second section's header pinned at
