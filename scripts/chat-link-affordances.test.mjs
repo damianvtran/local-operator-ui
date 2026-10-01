@@ -819,7 +819,11 @@ test("with no probe bridge the ambiguous tokens stay prose and nothing throws", 
 test("a streaming row scans and asks nothing at all", async () => {
 	/*
 	 * `linkify` false is the streaming path, and its contract is the strongest of
-	 * the three: NO pre-scan, NO ask, NO anchor. A row re-renders per delta, so a
+	 * the three: NO pre-scan, NO ask, NO anchor. Review round 1 (R2): the
+	 * transcript's streaming ROW no longer uses this prop path - it renders
+	 * `StreamingMarkdown`, whose ask contract is pinned in
+	 * `scripts/streaming-markdown-parity.test.mjs` - but the path is still live
+	 * for the aside panel (`linkify: stream.settled`), so this assertion stays. A row re-renders per delta, so a
 	 * probe per render would be a stat storm on main's own event loop - the shape
 	 * `use-mentioned-files` documents for the same reason - and this is the one
 	 * assertion that fails loudly if the evidence effect stops reading its own
@@ -1559,8 +1563,8 @@ test("above the read ceiling the strip loses the canvas and says why", async () 
 	);
 	assert.deepEqual(
 		labels,
-		["Copy path", "Open", "Open folder", "Quote"],
-		"the canvas action must be gone when the press would refuse it",
+		["Copy path", "Open", "Open folder", "Quote", "Speak aloud"],
+		"the canvas action must be gone when the press would refuse it, and the strip's Speak (the speak-aloud round) keeps its place after Quote",
 	);
 	assert.match(
 		strip.textContent,
@@ -1807,6 +1811,8 @@ test("the strip offers both opens, and each press does its own thing", async () 
 		"Open in default app",
 		"Open folder",
 		"Quote",
+		/* The speak-aloud round's control rides after Quote, where the model put it. */
+		"Speak aloud",
 	]);
 	const button = (label) =>
 		frame.document.querySelector(

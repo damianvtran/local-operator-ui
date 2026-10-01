@@ -1,12 +1,31 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+	Profiler,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { flushSync } from "react-dom";
 // The tokens the component reads (--duration-slow, --ease-out-quart, the
 // --lo-* colours). The app entry imports this stylesheet; Storybook stories
 // do not, so stories rendering real components bring it in themselves.
 import "../../../styles/index.css";
+import {
+	MessageInput,
+	messageInputRenderCount,
+} from "@shared/components/composer/message-input";
 import { Button } from "@shared/components/ui/button";
+import {
+	credentialsQueryKey,
+	useRadientCredentialProbe,
+} from "@shared/hooks/use-credentials";
+import type { Message } from "../types/message";
 import { MarkdownRenderer, StreamingMarkdown } from "./markdown-renderer";
+import type { SlashCommandInvocation } from "./slash-submit";
+import "./story-electron-shim";
 
 /**
  * Streaming performance harness — not a demo, a measuring instrument.
@@ -369,4 +388,288 @@ export const BlockSplit: Story = {
 /** A faster stream, closer to what a quick model actually delivers. */
 export const BlockSplitFast: Story = {
 	args: { mode: "block-split", charsPerChunk: 80 },
+};
+
+/* ------------------------------------------------------------------------
+ * The composer's flush boundary (C1), measured
+ * ------------------------------------------------------------------------
+ */
+
+type ComposerFlushReport = {
+	/** Which arm produced these numbers; also names the falsifier. */
+	arm: "held" | "fresh-probe";
+	flushes: number;
+	composerRenders: number;
+	renderedFlushes: number;
+	profilerCommits: number;
+	composerCommitMs: number;
+	/** The worst single commit in the run (ms). */
+	composerWorstCommitMs: number;
+	composerRenderedCommitMs: number;
+	wallMs: number;
+};
+
+/** A stable empty suggestion list: a fresh `[]` here would defeat the boundary. */
+const NO_SUGGESTIONS: readonly string[] = [];
+
+/**
+ * A parent that re-renders at stream-flush cadence — one `flushSync` commit per
+ * flush — with the real composer mounted the way `chat-content.tsx` mounts it.
+ * The props are the call-site shapes after the C1 freezes (every object and
+ * function a stable identity), and `recordingProbe` comes from the real
+ * `use-credentials.ts` hook, so the probe's own identity is measured rather
+ * than simulated.
+ *
+ * HOW THE NUMBERS ARE READ. `composerRenders` is the delta of
+ * `messageInputRenderCount`, the dev counter inside the component: a commit
+ * where the memo boundary bails out does not increment it, so it counts render
+ * EXECUTIONS, not commits of the tree around it. `profilerCommits` comes from
+ * the `Profiler` around the composer — React fires `onRender` for every commit
+ * of the surrounding tree (bail-outs included), so it counts commits, while
+ * `composerRenderedCommitMs` sums only the flushes in which the composer
+ * actually executed.
+ *
+ * `freshProbe` rebuilds the probe object on every render — the pre-fix
+ * identity — and is the falsifier: it defeats the boundary on any tree, so a
+ * "held" reading on the fixed tree cannot be an artefact of a bench that can
+ * only ever report "held".
+ */
+const ComposerFlushBench = ({
+	flushes = 200,
+	runs = 1,
+	freshProbe = false,
+	autoRun = false,
+}: {
+	flushes?: number;
+	/** How many measured passes to run and report, so one page load gives repeats. */
+	runs?: number;
+	freshProbe?: boolean;
+	/**
+	 * Run the loop once on mount, so an automated driver reads the report from
+	 * the DOM without a click. Measurement-only; the interactive stories leave it
+	 * false.
+	 */
+	autoRun?: boolean;
+}) => {
+	const queryClient = useQueryClient();
+	/*
+	 * Seed the probe's query before the run so its two answers cannot flip
+	 * mid-measurement (no backend runs here): with data present the probe reads
+	 * "no Radient key" and "available", and the default 5-minute staleTime
+	 * keeps the query from fetching during the run.
+	 */
+	useEffect(() => {
+		if (!queryClient.getQueryData(credentialsQueryKey)) {
+			queryClient.setQueryData(credentialsQueryKey, { keys: [] });
+		}
+	}, [queryClient]);
+
+	const recordingProbeRead = useRadientCredentialProbe();
+	const recordingProbe = freshProbe
+		? { ...recordingProbeRead }
+		: recordingProbeRead;
+
+	const [flushIndex, setFlushIndex] = useState(0);
+	const [running, setRunning] = useState(false);
+	const [reports, setReports] = useState<ComposerFlushReport[]>([]);
+	const collecting = useRef<{
+		commits: number;
+		ms: number;
+		worst: number;
+	} | null>(null);
+	const runRef = useRef<() => void>(() => {});
+
+	/*
+	 * The frozen call-site shapes. `useCallback`/`useMemo` stand in for the
+	 * page's and the pane's own freezes: this bench cannot import the page, so
+	 * it mirrors what those call sites hand the composer after C1.
+	 */
+	const onSendMessage = useCallback(async () => true, []);
+	const onComposerInput = useCallback(() => {}, []);
+	const scrollToBottom = useCallback(() => {}, []);
+	const onCancelJob = useCallback(() => {}, []);
+	const onCredentialsStored = useCallback(() => {}, []);
+	const onSlashCommand = useCallback(async () => "consumed" as const, []);
+	const onSlashNote = useCallback(() => {}, []);
+	const messages = useMemo<Message[]>(() => [], []);
+	const canonicalStop = useMemo(() => ({ active: true, onStop: () => {} }), []);
+	const sessionStatus = useMemo(
+		() => ({
+			frontend: null,
+			onCommand: (_invocation: SlashCommandInvocation) => {},
+			pendingModel: null,
+			held: false,
+			readingsDropped: false,
+		}),
+		[],
+	);
+
+	const run = () => {
+		if (running) return;
+		setRunning(true);
+		setReports([]);
+		/*
+		 * One frame to paint the running state, then the measured loop: one
+		 * `flushSync` commit per flush, the same cadence the pane's batch commit
+		 * drives.
+		 */
+		window.requestAnimationFrame(() => {
+			const results: ComposerFlushReport[] = [];
+			for (let pass = 0; pass < runs; pass += 1) {
+				const rendersBefore = messageInputRenderCount.current;
+				const collector = { commits: 0, ms: 0, worst: 0 };
+				collecting.current = collector;
+				let renderedFlushes = 0;
+				let composerRenderedCommitMs = 0;
+				const startedAt = performance.now();
+				for (let index = 0; index < flushes; index += 1) {
+					const rendersBeforeFlush = messageInputRenderCount.current;
+					const msBeforeFlush = collector.ms;
+					flushSync(() => setFlushIndex((n) => n + 1));
+					if (messageInputRenderCount.current !== rendersBeforeFlush) {
+						renderedFlushes += 1;
+						composerRenderedCommitMs += collector.ms - msBeforeFlush;
+					}
+				}
+				const wallMs = performance.now() - startedAt;
+				collecting.current = null;
+				results.push({
+					arm: freshProbe ? "fresh-probe" : "held",
+					flushes,
+					composerRenders: messageInputRenderCount.current - rendersBefore,
+					renderedFlushes,
+					profilerCommits: collector.commits,
+					composerCommitMs: Number(collector.ms.toFixed(3)),
+					composerWorstCommitMs: Number(collector.worst.toFixed(3)),
+					composerRenderedCommitMs: Number(composerRenderedCommitMs.toFixed(3)),
+					wallMs: Number(wallMs.toFixed(1)),
+				});
+			}
+			setReports(results);
+			setRunning(false);
+			/*
+			 * Written to `window` too, so an automated driver can read the numbers
+			 * without scraping the DOM — the same shape the app rigs read
+			 * elsewhere.
+			 */
+			(
+				window as unknown as { __composerFlushBench?: unknown }
+			).__composerFlushBench = { freshProbe, results };
+		});
+	};
+
+	/*
+	 * The auto-run arm: fire the measured loop once after the first paint, so an
+	 * automated driver only has to load the story and read the report out of the
+	 * DOM (the driver has no script-eval step). `run` is read through a ref so the
+	 * effect depends on nothing that changes per render — a dependency on it would
+	 * re-fire the loop on every flush commit.
+	 */
+	useEffect(() => {
+		runRef.current = run;
+	});
+	useEffect(() => {
+		if (!autoRun) return undefined;
+		const id = window.setTimeout(() => runRef.current(), 60);
+		return () => window.clearTimeout(id);
+	}, [autoRun]);
+
+	return (
+		<div className="p-4">
+			<div className="mb-4 flex items-center gap-3 text-body-sm">
+				<Button
+					type="button"
+					onClick={run}
+					disabled={running}
+					variant="primary"
+				>
+					{running ? "Flushing..." : `Run ${flushes} flushes`}
+				</Button>
+				<span className="text-ink-muted">
+					flush index {flushIndex} · probe{" "}
+					{freshProbe ? "rebuilt per render (falsifier)" : "frozen"}
+				</span>
+			</div>
+			<Profiler
+				id="composer-flush-bench"
+				onRender={(_id, phase, actualDuration) => {
+					const collector = collecting.current;
+					if (!collector || phase !== "update") return;
+					collector.commits += 1;
+					collector.ms += actualDuration;
+					if (actualDuration > collector.worst) {
+						collector.worst = actualDuration;
+					}
+				}}
+			>
+				<MessageInput
+					conversationId="composer-flush-bench"
+					messages={messages}
+					onSendMessage={onSendMessage}
+					onComposerInput={onComposerInput}
+					isLoading={false}
+					awaitingReply={false}
+					recordingProbe={recordingProbe}
+					onCredentialsStored={onCredentialsStored}
+					canonicalStop={canonicalStop}
+					canonicalStopAvailable={true}
+					asideStreaming={true}
+					isFarFromBottom={false}
+					hasNewActivity={false}
+					scrollToBottom={scrollToBottom}
+					currentJobId={null}
+					onCancelJob={onCancelJob}
+					interruptNotice={null}
+					noProvider={false}
+					noModel={false}
+					agentData={null}
+					cwd="/bench/worktree"
+					cwdPending={false}
+					cwdPendingAccepted={false}
+					isSmallView={false}
+					isHydrating={false}
+					mentionsEnabled={false}
+					mentionsUnsupported={false}
+					unavailable={false}
+					paneHasSession={true}
+					sessionStatus={sessionStatus}
+					onSlashCommand={onSlashCommand}
+					onSlashNote={onSlashNote}
+					runDetails={null}
+					deliveryRemediesReachable={false}
+					awaitingAnswer={false}
+					secretAnswer={false}
+					initialSuggestions={NO_SUGGESTIONS}
+				/>
+			</Profiler>
+			{reports.length > 0 && (
+				<pre
+					data-composer-flush-bench=""
+					className="mt-4 rounded-md border border-hairline bg-surface p-3 text-body-sm"
+				>
+					{JSON.stringify(reports, null, 2)}
+				</pre>
+			)}
+		</div>
+	);
+};
+
+/**
+ * The C1 measurement on the tree under test: N flush commits of the parent,
+ * with the real composer mounted on the call site's frozen prop shapes.
+ * Before the fix the composer re-executes on every flush; after it, the run
+ * should report it executed ~once (the boundary holds) while the parent still
+ * committed every flush.
+ */
+export const ComposerFlushBoundary: Story = {
+	render: () => <ComposerFlushBench autoRun runs={2} />,
+};
+
+/**
+ * The falsifier: the same run with the probe's identity rebuilt per render, the
+ * pre-fix shape. It defeats the boundary on any tree, which is how a "held"
+ * reading is shown to be a reading at all rather than a bench that cannot fail.
+ */
+export const ComposerFlushBoundaryFreshProbe: Story = {
+	render: () => <ComposerFlushBench freshProbe autoRun runs={2} />,
 };

@@ -249,6 +249,22 @@ export type RunChildReaderProps = {
  * without a companion flag on the wire.
  */
 const WIRE_CLIP_MARKER = "…";
+
+/**
+ * The preview's own loaders, at MODULE scope (agent review round 1, R4).
+ *
+ * `usingPreview` used to hand these as fresh arrows built during render, so the
+ * transcript saw a new `onLoadOlder` on every commit of a previewing pane — and
+ * that identity is the whole contract downstream: it feeds `walkLoadOlder`,
+ * which the completion-walk effect depends on and `jumpToCheckpoint` closes
+ * over, so a fresh arrow re-ran the walk and re-rendered the checkpoint rail
+ * (`memo`) on every render. A preview never loads anything, so the answer is a
+ * constant and belongs here, not in the component.
+ */
+const PREVIEW_LOAD_OLDER = async (): Promise<boolean> => false;
+const PREVIEW_LOAD_OLDER_OUTCOME = async (): Promise<LoadOlderOutcome> => ({
+	kind: "nothing-to-load",
+});
 /** Whether the WIRE shortened this value — see `WIRE_CLIP_MARKER`. */
 const clippedByWire = (text: string): boolean =>
 	text.endsWith(WIRE_CLIP_MARKER);
@@ -507,7 +523,7 @@ export const RunChildReader = ({
 		? (previewTranscript ?? EMPTY_TRANSCRIPT)
 		: fetched.transcript;
 	const loadingOlder = usingPreview ? false : fetched.loadingOlder;
-	const loadOlder = usingPreview ? async () => false : fetched.loadOlder;
+	const loadOlder = usingPreview ? PREVIEW_LOAD_OLDER : fetched.loadOlder;
 	/*
 	 * The outcome-aware ask and the failed-row flag, passed exactly as the parent
 	 * pane passes its own (`chat-content.tsx`). Without them the transcript's slot
@@ -516,7 +532,7 @@ export const RunChildReader = ({
 	 * A preview has nothing to load, so it reports `nothing-to-load` and never fails.
 	 */
 	const loadOlderDetailed = usingPreview
-		? async (): Promise<LoadOlderOutcome> => ({ kind: "nothing-to-load" })
+		? PREVIEW_LOAD_OLDER_OUTCOME
 		: fetched.loadOlderDetailed;
 	const olderFailed = usingPreview ? false : fetched.olderFailed;
 

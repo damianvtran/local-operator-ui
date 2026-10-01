@@ -90,7 +90,10 @@ import {
 } from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
 import { ChatMeasureHandle } from "../components/chat-measure-handle";
-import { MarkdownRenderer } from "../components/markdown-renderer";
+import {
+	MarkdownRenderer,
+	StreamingMarkdown,
+} from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -145,6 +148,7 @@ import {
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { SETTLE_MS } from "./scroll-paging";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
@@ -189,17 +193,19 @@ import {
 } from "./transcript-rows";
 import { turnAnswerMarkClass } from "./turn-answer-rail";
 import {
+	ALIGN_WALK_MAX_PAGES,
 	type RunCollapsePlan,
 	type SegmentPlan,
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
-	alignWalkRunKey,
+	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	collapsePlan,
 	initialAlignWalkState,
 	snapWindowToRunBoundary,
 	widenTarget,
+	windowTopRun,
 } from "./turn-collapse-model";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -685,7 +691,7 @@ const UserRow = memo(function UserRow({
 			 * on the bubble because the toolkit's own trigger has to sit inside it
 			 * too; this column keeps the stamp out of it either way.
 			 */}
-			<div className={cn("flex w-full flex-col items-end gap-1")}>
+			<div className={cn("group flex w-full flex-col items-end gap-1")}>
 				<div ref={turnRef} className="group relative flex w-full justify-end">
 					<div
 						className={cn(
@@ -835,6 +841,30 @@ const UserRow = memo(function UserRow({
 						/>
 					)}
 				</div>
+				{/*
+				 * THE USER TURN'S ACTION ROW (the operator's ask on the speak-aloud
+				 * round), mounted from the column and NOT from inside `turnRef`: that
+				 * element is a single flex ROW holding the bubble, and a second flow
+				 * child would sit beside the bubble rather than under it. The row is
+				 * the same component the answer's foot carries, in its `user` role
+				 * (Copy alone - see `message-actions.ts` for why a user turn offers no
+				 * Speak), so the copy press, the reveal and the toolbar semantics are
+				 * one implementation rather than a second one beside it.
+				 *
+				 * Its `group` is the column above, so hovering anywhere on the turn
+				 * reveals it; the row keeps its place at rest (opacity only), which is
+				 * why nothing moves when it appears. `isQuotable` is the same "this
+				 * turn has words to offer" gate the quote control reads - a turn with
+				 * no words has nothing to copy.
+				 */}
+				{isQuotable(record, remainingContent) && (
+					<AnswerActionRow
+						kind="user"
+						bodyText={remainingContent}
+						revealId={record.id}
+						revealAt={record.ts}
+					/>
+				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1043,23 +1073,67 @@ const AssistantRow = memo(function AssistantRow({
 							: "Part of this answer may be missing"}
 					</p>
 				)}
-				<MarkdownRenderer
-					content={remainingContent}
-					className={cn(refused && "[--md-ink:var(--lo-danger)]")}
-					styleProps={{
-						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
-						lineHeight: 1.6,
-					}}
-					/*
-					 * A STREAMING ROW IS NOT LINKIFIED, for the reason `isQuotable`
-					 * refuses a streaming record: the row is a prefix the next token
-					 * falsifies, so `/Users/x/opoint-renewal-2026-09-1` would become a link
-					 * to a path that does not exist and then silently re-link as the rest
-					 * of it arrived. The links appear when the row settles - which is also
-					 * when its Quote control appears.
-					 */
-					linkify={!record.streaming}
-				/>
+				{/*
+				 * A STREAMING ROW RENDERS INCREMENTALLY; A SETTLED ROW RENDERS WHOLE.
+				 *
+				 * WHY THE SPLIT, MEASURED. The whole-message renderer re-parses the
+				 * entire document on every flush — react-markdown 10.1.0 builds a fresh
+				 * processor per render and `MarkdownRenderer`'s own comment records that
+				 * there is no memo to miss — so a streaming row pays O(message) per
+				 * frame. Measured in this repo's jsdom harness (one flush per 4-char
+				 * delta, `scripts/streaming-markdown-parity.test.mjs`'s sibling): summed
+				 * commit time over a 3KB/753-flush stream 3.2-4.2s, mean 4.3-5.6ms per
+				 * flush; a 6KB/1506-flush stream 10.7-12.2s, mean 7.1-8.1ms per flush,
+				 * worst 45-184ms — against a 16.7ms frame budget. The incremental
+				 * renderer holds closed blocks memoised and paints the open tail as
+				 * text: the same streams cost 0.26-0.47s total, mean 0.2-0.6ms per
+				 * flush, and cost does NOT grow with the message.
+				 *
+				 * THE HANDOVER IS THE CORRECTNESS RULE, not a detail: the moment the row
+				 * settles, the WHOLE message goes through `MarkdownRenderer` — the same
+				 * renderer every settled row has always used — so the final paint is the
+				 * authoritative full parse and the streaming path's per-block rendering
+				 * can never be what a reader is left with. What the incremental path
+				 * shows mid-flight is the parsed closed blocks plus the open block as
+				 * text (its documented trade: `**bold**` reads literally until its
+				 * paragraph closes); what settles is exactly what the full parse makes
+				 * of the same string.
+				 */}
+				{record.streaming ? (
+					<StreamingMarkdown
+						content={remainingContent}
+						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
+						styleProps={{
+							fontSize: isSmallView
+								? "var(--text-body-sm)"
+								: "var(--text-body)",
+							lineHeight: 1.6,
+						}}
+					/>
+				) : (
+					<MarkdownRenderer
+						content={remainingContent}
+						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
+						styleProps={{
+							fontSize: isSmallView
+								? "var(--text-body-sm)"
+								: "var(--text-body)",
+							lineHeight: 1.6,
+						}}
+						/*
+						 * Linkification is the settled row's, and the streaming half is
+						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
+						 * block the moment it CLOSES (`StableBlock`'s own note: a closed
+						 * block's source can never change again, so a path inside it is a
+						 * finished path), while the open tail is painted as text and is never
+						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
+						 * link to a path that does not exist. That is the same hazard the
+						 * old `linkify={!record.streaming}` line refused, now enforced per
+						 * block instead of per row.
+						 */
+						linkify
+					/>
+				)}
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
 						Stopped before finishing
@@ -1160,6 +1234,8 @@ const AssistantRow = memo(function AssistantRow({
 							bodyText={remainingContent}
 							agentId={conversationId}
 							speechId={record.id}
+							revealId={record.id}
+							revealAt={record.ts}
 						/>
 					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (
@@ -2576,6 +2652,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * snaps again, and the snapshot's own arrival snaps the first non-empty
 	 * window without an effect.
 	 */
+	/*
+	 * The run under the RAW window edge, computed ONCE (agent review round 2,
+	 * R2-2): `windowTopRun` is a whole-store partition, and both the snap below and
+	 * the walk's store confirmation read the same run — this is the one partition
+	 * per render they share, rather than one each.
+	 */
+	const storeTopRun = useMemo(
+		() => windowTopRun(rows, windowSize),
+		[rows, windowSize],
+	);
 	const alignSize = useMemo(
 		() =>
 			snapWindowToRunBoundary(
@@ -2592,8 +2678,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				// collapse reads, so a turn still being written keeps the ordinary reach and
 				// cannot mount its whole streaming prefix (see the snap's own note).
 				paneIsLive,
+				storeTopRun,
 			),
-		[rows, windowSize, paneIsLive],
+		[rows, windowSize, paneIsLive, storeTopRun],
 	);
 	const visible = useMemo(
 		() => (total > alignSize ? rows.slice(total - alignSize) : rows),
@@ -2932,26 +3019,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite } =
-		useScrollPaging({
-			containerRef,
-			sessionKey: sessionId,
-			hiddenRows: hidden,
-			hasMore: Boolean(transcript.hasMore),
-			onWiden: widen,
-			onLoadOlder,
-			onLoadOlderOutcome,
-			olderFailed,
-			loadingOlder,
-			// The content node exists only once the transcript is non-empty; this is
-			// what re-runs the observer effect at that moment.
-			contentKey: collapsed ? "empty" : "filled",
-			// The MOUNTED count, not the total: a local widen reveals rows the
-			// transcript already had, so `rows.length` does not change and the
-			// pre-paint correction would skip exactly the reveal that displaces the
-			// reader furthest. `visible.length` changes on both growth paths.
-			rowCount: visible.length,
-		});
+	const {
+		slotState,
+		requestOlder,
+		mayAutoWalk,
+		followingTail,
+		acknowledgeOwnWrite,
+	} = useScrollPaging({
+		containerRef,
+		sessionKey: sessionId,
+		hiddenRows: hidden,
+		hasMore: Boolean(transcript.hasMore),
+		onWiden: widen,
+		onLoadOlder,
+		onLoadOlderOutcome,
+		olderFailed,
+		loadingOlder,
+		// The content node exists only once the transcript is non-empty; this is
+		// what re-runs the observer effect at that moment.
+		contentKey: collapsed ? "empty" : "filled",
+		// The MOUNTED count, not the total: a local widen reveals rows the
+		// transcript already had, so `rows.length` does not change and the
+		// pre-paint correction would skip exactly the reveal that displaces the
+		// reader furthest. `visible.length` changes on both growth paths.
+		rowCount: visible.length,
+	});
 	/*
 	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
 	 *
@@ -2997,105 +3089,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		region.scrollTop += moved;
 		acknowledgeOwnWrite(before, region.scrollTop);
 	});
-	/*
-	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
-	 * settled turn finishes its own condensation instead of waiting for the
-	 * reader to scroll the head in page by page.
-	 *
-	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
-	 * snap has no boundary to land on and the bar can only describe the loaded
-	 * span — no real action count, no `Took` clause. The walk fetches that head,
-	 * one page per invocation, for as long as the decision's clauses hold: the
-	 * run is still cut AND the backend has more, no page is in flight, every
-	 * page so far applied, and the reader is following the tail with no recent
-	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
-	 * re-derivation here).
-	 *
-	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
-	 * dependency list is the walk's clock: a landing changes `rows` and flips
-	 * `loadingOlder`, so the effect re-runs by itself exactly once per page —
-	 * the same shape the flat two-page budget had, with the pages counted
-	 * instead of capped at two. A loop inside the effect would walk the whole
-	 * bound in one commit and hand the reader twelve pages of history as one
-	 * uninterruptible act.
-	 *
-	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
-	 * already owns the failed row and the automatic retry budget (rule G), and a
-	 * walk that kept asking through a failure is the operator's "keeps loading in
-	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
-	 * rest of it on a session change — the reader's next act re-arms everything.
-	 *
-	 * THE SUPPRESSION BELOW IS ONE LINE AND SITS ON THE HOOK, not on the dependency,
-	 * because biome attaches an ignore to the NEXT line — the file states the same
-	 * convention at the clamp effect. `alignSize` is a RE-RUN TRIGGER, not a value
-	 * this body reads: a landing prepends older rows and the snap that follows it is
-	 * what mounts the completed run, so an effect that did not re-run on the new
-	 * mount would decide once per page against a window that no longer exists.
-	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `alignSize` is a re-run trigger (the completion's own mount), not a value this body reads; see the note above
-	useEffect(() => {
-		/*
-		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
-		 * budget, and moving to a different such run starts a fresh one — that is what
-		 * lets a later settled turn complete its own bar in a long-lived conversation.
-		 * The same run keeps its spent budget, so no run is walked twice for the same
-		 * content. `widenInputs` is the render's own collapse inputs (the same ones
-		 * the widen and the plan read), so "condensed" here means the bar the reader
-		 * is looking at.
-		 */
-		const key = alignWalkRunKey(rows, {
-			live: paneIsLive,
-			openRuns,
-		});
-		const state = alignWalkStateFor(alignWalk.current, key);
-		const decision = alignWalkDecision(state.spent, {
-			hasMore: Boolean(transcript.hasMore),
-			loadingOlder,
-			headCut: state.key !== null,
-			mayWalk: mayAutoWalk(),
-			halted: state.halted,
-		});
-		alignWalk.current = { ...state, spent: decision.spent };
-		if (!decision.fetch) return;
-		const dispatchedFor = state.key;
-		void walkLoadOlder().then((applied) => {
-			/*
-			 * A walk page that did not apply halts the walk. `applied` is the boolean
-			 * form of the SAME single-flight ask the reader's own pump uses
-			 * (`createOlderLoader`), so the walk and a gesture can never be waiting on
-			 * two pages at once.
-			 *
-			 * THE KEY IS RE-CHECKED FIRST (agent review round 1, R1-2). A page can
-			 * resolve after the window has moved to a DIFFERENT cut run, and halting
-			 * whichever run is current then refuses that run's walk for its whole life
-			 * although none of its own pages failed — its bar would stay partial with
-			 * no reader-visible reason. Only the run that spent the ask may be halted
-			 * by its outcome.
-			 */
-			if (!applied && alignWalk.current.key === dispatchedFor) {
-				alignWalk.current = { ...alignWalk.current, halted: true };
-			}
-		});
-	}, [
-		rows,
-		/*
-		 * THE WALK'S OWN COMPLETION RE-ARMS THE ALIGN THROUGH `alignSize`, and that is
-		 * why it is a dependency even though the key no longer reads it. A landing
-		 * prepends OLDER rows: `rows` changes, the snap re-derives, and once the run's
-		 * own opening row is in the store the completed-run allowance mounts the whole
-		 * run — which is the transition that puts the true count and the `Took` clause
-		 * on the bar. A version of this effect that only watched the tail would decide
-		 * once per page and never re-read the mount the completion produced.
-		 */
-		alignSize,
-		loadingOlder,
-		transcript.hasMore,
-		walkLoadOlder,
-		mayAutoWalk,
-		paneIsLive,
-		openRuns,
-	]);
-
 	/*
 	 * §D7's near path, wired to the rail's ticks: ensure the row is reachable
 	 * (load pages, mount the render window), reveal it through the collapse
@@ -3429,6 +3422,174 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			}),
 		[visible, working, gate, focusedRecordId, openRuns],
 	);
+	/*
+	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
+	 * The completion walk below asks "is there a run whose bar is PAINTED and
+	 * whose opening user row is not in the STORE?" — and the `collapsePlan` right
+	 * above already answers the PAINTED half. That is the plan the list paints
+	 * from, so the walk reads its answer instead of building a second plan over
+	 * the whole store on every transcript update.
+	 *
+	 * THE PLAN IS OVER `visible`, THOUGH, SO IT CANNOT ANSWER THE STORE HALF.
+	 * R1's counterexample: a settled run taller than the snap's 720-row allowance
+	 * keeps the ordinary snap, so the raw edge sits inside it and the plan reads
+	 * `opensWithUserRow: false` while the store holds the run whole — a "cut" the
+	 * walk can never resolve, because a prepend shifts the edge and the run's head
+	 * equally. `alignWalkRunKeyConfirmed` closes that: the plan's key stands only
+	 * when the store's own run under the same edge is head-cut and is the same run.
+	 *
+	 * KEYING THE EFFECT ON THIS STRING, NOT ON `rows`, IS THE PERF FIX: a streaming
+	 * flush moves `rows` on every frame, so the effect used to re-run — and pay a
+	 * whole-store `collapsePlan` — on each one even when no run it can act on had
+	 * changed. The store confirmation costs one `windowTopRun` per render, and only
+	 * while a cut bar is actually painted (the plan key short-circuits to null
+	 * otherwise), which is exactly when the walk has something to decide.
+	 */
+	const alignWalkKey = useMemo(
+		() => alignWalkRunKeyConfirmed(collapse, storeTopRun, openRuns),
+		[collapse, storeTopRun, openRuns],
+	);
+	/*
+	 * The walk's clock wake (agent review round 1, R2): `mayAutoWalk` is a stable
+	 * callback whose VALUE moves with time alone, so a walk waiting only on the
+	 * input debounce has nothing to re-run it. Bumping this tick from a one-shot
+	 * timer re-runs the effect exactly once when the debounce has had time to
+	 * expire; see the arm in the effect below.
+	 */
+	const [walkClockTick, setWalkClockTick] = useState(0);
+
+	/*
+	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
+	 * settled turn finishes its own condensation instead of waiting for the
+	 * reader to scroll the head in page by page.
+	 *
+	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
+	 * snap has no boundary to land on and the bar can only describe the loaded
+	 * span — no real action count, no `Took` clause. The walk fetches that head,
+	 * one page per invocation, for as long as the decision's clauses hold: the
+	 * run is still cut AND the backend has more, no page is in flight, every
+	 * page so far applied, and the reader is following the tail with no recent
+	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
+	 * re-derivation here).
+	 *
+	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
+	 * dependency list is the walk's clock: a landing flips `loadingOlder` and, when
+	 * it completes the run, moves `alignWalkKey` to null, so the effect re-runs by
+	 * itself once per page — the same shape the flat two-page budget had, with the
+	 * pages counted instead of capped at two. A loop inside the effect would walk
+	 * the whole bound in one commit and hand the reader twelve pages of history as
+	 * one uninterruptible act.
+	 *
+	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
+	 * already owns the failed row and the automatic retry budget (rule G), and a
+	 * walk that kept asking through a failure is the operator's "keeps loading in
+	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
+	 * rest of it on a session change — the reader's next act re-arms everything.
+	 *
+	 * THE DEPENDENCIES ARE THE KEY AND THE DECISION'S OWN INPUTS (UI perf audit
+	 * A3). `rows` and `alignSize` used to sit here as re-run triggers; the key now
+	 * carries everything either of them stood for — it is rebuilt from the plan,
+	 * which is built over `visible` (so a window move is already in it) — and
+	 * `loadingOlder` is the once-per-page clock the walk actually advances on.
+	 * Listing `paneIsLive`/`openRuns` separately would be redundant for the same
+	 * reason: the plan folds both.
+	 *
+	 * `walkClockTick` is the same CLASS of dependency the old `alignSize` was: a
+	 * RE-RUN TRIGGER, not a value this body reads. `mayAutoWalk` moves with time
+	 * while its identity does not, so without a dependency that changes there is
+	 * nothing to re-decide a walk that is only waiting on the input debounce (the
+	 * arm below explains why that cannot wait for an unrelated transition).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `walkClockTick` is a re-run trigger (the settle wake), not a value this body reads; see the note above
+	useEffect(() => {
+		/*
+		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
+		 * budget, and moving to a different such run starts a fresh one — that is what
+		 * lets a later settled turn complete its own bar in a long-lived conversation.
+		 * The same run keeps its spent budget, so no run is walked twice for the same
+		 * content. `widenInputs` is the render's own collapse inputs (the same ones
+		 * the widen and the plan read), so "condensed" here means the bar the reader
+		 * is looking at.
+		 */
+		const state = alignWalkStateFor(alignWalk.current, alignWalkKey);
+		const mayWalk = mayAutoWalk();
+		const decision = alignWalkDecision(state.spent, {
+			hasMore: Boolean(transcript.hasMore),
+			loadingOlder,
+			headCut: state.key !== null,
+			mayWalk,
+			halted: state.halted,
+		});
+		alignWalk.current = { ...state, spent: decision.spent };
+		if (!decision.fetch) {
+			/*
+			 * THE CLOCK IS NOT A DEPENDENCY (agent review round 1, R2). `mayAutoWalk`
+			 * reports `performance.now() - lastInputAt >= SETTLE_MS`, so its VALUE
+			 * moves with time alone while its identity (the dependency) does not. A
+			 * walk that is complete but for the settle would therefore never be
+			 * re-decided: the old dependency list re-ran on every streaming commit
+			 * (`rows` was fresh per flush), and this one keys on the run instead. So
+			 * the walk wakes ITSELF: one one-shot timer, armed only while a cut run is
+			 * painted, more is available, no page is in flight, the budget is unspent
+			 * and the debounce is the only missing clause — exactly the state that
+			 * would otherwise wait for an unrelated transition. The tick re-runs this
+			 * effect; a real transition re-runs it first and the cleanup drops the
+			 * timer.
+			 */
+			const clockOnlyRefusal =
+				state.key !== null &&
+				Boolean(transcript.hasMore) &&
+				!loadingOlder &&
+				!state.halted &&
+				!mayWalk &&
+				/*
+				 * …AND THE TAIL, not just the clock (agent review round 2, R2-1).
+				 * `mayWalk` is false for TWO reasons — the debounce is still running OR the
+				 * reader is off the tail — and only the first is a clock this wake can
+				 * change. Arming on `!mayWalk` alone re-armed the timer forever for an
+				 * off-tail reader while a cut bar was painted: nothing would ever satisfy
+				 * it, and `spent` never grew (no fetch), so the loop could not even bound
+				 * itself. Off the tail the walk waits for a real transition, as it did
+				 * before this wake existed.
+				 */
+				followingTail() &&
+				alignWalk.current.spent < ALIGN_WALK_MAX_PAGES;
+			if (!clockOnlyRefusal) return;
+			const wake = window.setTimeout(
+				() => setWalkClockTick((tick) => tick + 1),
+				SETTLE_MS,
+			);
+			return () => window.clearTimeout(wake);
+		}
+		const dispatchedFor = state.key;
+		void walkLoadOlder().then((applied) => {
+			/*
+			 * A walk page that did not apply halts the walk. `applied` is the boolean
+			 * form of the SAME single-flight ask the reader's own pump uses
+			 * (`createOlderLoader`), so the walk and a gesture can never be waiting on
+			 * two pages at once.
+			 *
+			 * THE KEY IS RE-CHECKED FIRST (agent review round 1, R1-2). A page can
+			 * resolve after the window has moved to a DIFFERENT cut run, and halting
+			 * whichever run is current then refuses that run's walk for its whole life
+			 * although none of its own pages failed — its bar would stay partial with
+			 * no reader-visible reason. Only the run that spent the ask may be halted
+			 * by its outcome.
+			 */
+			if (!applied && alignWalk.current.key === dispatchedFor) {
+				alignWalk.current = { ...alignWalk.current, halted: true };
+			}
+		});
+	}, [
+		alignWalkKey,
+		loadingOlder,
+		transcript.hasMore,
+		walkLoadOlder,
+		mayAutoWalk,
+		followingTail,
+		walkClockTick,
+	]);
+
 	/*
 	 * THE SETTLE ANNOUNCEMENT (polite). A bar appearing is a transition the
 	 * reader did not initiate — rows readable a moment ago are unmounted — and
@@ -3871,9 +4032,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					building={checkpoints.building}
 					loadedIds={loadedCheckpointIds}
 					activeId={activeCheckpointId}
-					onJump={(id) => {
-						void jumpToCheckpoint(id);
-					}}
+					/*
+					 * The callback itself, not an inline arrow (UI perf audit A6): the rail
+					 * is `memo`ised, and a fresh arrow each render would break the prop
+					 * comparison on its own. `jumpToCheckpoint` is already a `useCallback`
+					 * that returns void, so the wrapper bought nothing.
+					 */
+					onJump={jumpToCheckpoint}
 					onHover={handleCheckpointHover}
 				/>
 				{/* biome-ignore lint/a11y/useKeyWithClickEvents: the click is a pointer gesture that hands the caret to the composer, which the keyboard already reaches with Tab; the transcript's own keys are its paging keys (Home/PageUp/ArrowUp), and adding a key that moved focus would take them away. */}
