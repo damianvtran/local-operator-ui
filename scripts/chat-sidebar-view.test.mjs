@@ -1075,7 +1075,14 @@ test("an entity section is hidden by the same field as a chat section", () => {
 test("the AGENTS/TEAMS region draws each entity row behind the view's own gate", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	for (const key of ENTITY_SECTIONS) {
-		const at = source.indexOf(`{heading("${key}", `);
+		/*
+		 * A WINDOW AROUND THE CALL, MATCHED TOLERANTLY (agent review round 2, R2-2).
+		 * The literal `{heading("agents", ` was a stale pin the moment the call had to
+		 * carry the hub heading controls and was broken across lines; the gate it
+		 * guards is the `isSectionShown` call beside it, so the anchor is the CALL
+		 * (whitespace-tolerant) rather than one spelling of its arguments.
+		 */
+		const at = source.search(new RegExp(`heading\\(\\s*"${key}"`));
 		assert.ok(at > 0, `the ${key} section's heading call is gone`);
 		const window = source.slice(Math.max(0, at - 600), at);
 		assert.ok(
