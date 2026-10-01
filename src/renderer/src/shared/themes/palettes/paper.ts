@@ -114,6 +114,9 @@ export const paper: ThemeDefinition = {
 		// border (2:1 at most). Here it is 1.21:1 at its quietest.
 		hairline: "#CDC4AE",
 
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.54:1 there against `hairline`'s 1.21:1.
+		hairlineStrong: "#B7AE99",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground

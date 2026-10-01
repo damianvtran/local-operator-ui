@@ -1069,7 +1069,11 @@ test("both refusal sections agree on severity, and both retries are filled contr
 	 * the region that then reports the count.
 	 */
 	assert.doesNotMatch(roster, /sr-only">Loading teams…/);
-	assert.match(roster, /aria-hidden="true" className="flex flex-col gap-2"/);
+	// The skeleton is three rows of the settled row's own box (`org-teams-summary.test.mjs`).
+	assert.match(
+		roster,
+		/aria-hidden="true"\s+className="flex flex-col divide-y divide-hairline"\s+data-testid="org-teams-loading"/,
+	);
 	assert.match(page, /statusSentence = "Loading teams…"/);
 });
 
@@ -1281,7 +1285,21 @@ const mountPull = async (body) => {
 	const { QueryClient, QueryClientProvider } = await import(hookPath.href);
 	const { createRoot } = await import("react-dom/client");
 	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+		defaultOptions: {
+			queries: { retry: false },
+			/*
+			 * `gcTime: 0`, and it is load-bearing: a mutation's cache entry schedules
+			 * its own five-minute GC timer when its observer unsubscribes at unmount,
+			 * and `clear()` does not reach that timer the way it reaches a query's -
+			 * `QueryCache.remove` destroys the query, `MutationCache.clear` only
+			 * empties the map. Left at the default, this file's process sat past its
+			 * last assertion until killed, and CI stalled Desktop Tests to its
+			 * SIGTERM (4m32s-5m18s; no test-failure annotation). Zero keeps the
+			 * mounted mutation's data while an observer is attached and drops it the
+			 * moment the tree unmounts, which is all a test wants.
+			 */
+			mutations: { retry: false, gcTime: 0 },
+		},
 	});
 	let mutation;
 	const Probe = () => {

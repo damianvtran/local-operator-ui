@@ -48,6 +48,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { useLayoutEffect } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
+import { DEFAULT_SIDEBAR_VIEW } from "../chat-sidebar-view";
 import { ChatSidebar } from "./chat-sidebar";
 
 /* Hoisted out of the play callback: a regex literal inside a callback is what
@@ -106,6 +107,48 @@ const BUILTINS = [
 	profile("manager", "role", "builtin"),
 ];
 
+/** One row in `sessions.list`'s own wire field names, as the backend sends it. */
+type WireRow = {
+	id: string;
+	name: string;
+	mtime: number;
+	preview: string;
+	live_state: string;
+	pending: string | null;
+	active: boolean;
+	pinned?: boolean;
+	binding: { agent: string | null; team: string | null };
+	status: { code: string; label: string };
+	status_revision: number;
+	status_epoch: string;
+};
+
+const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
+
+/**
+ * One session, shaped as the sections stories shape theirs - the same wire, so
+ * the two fixtures cannot disagree about what a catalogue row is.
+ */
+const row = (
+	id: string,
+	name: string,
+	mtime: number,
+	over: Partial<WireRow> = {},
+): WireRow => ({
+	id,
+	name,
+	mtime,
+	preview: "",
+	live_state: "attached",
+	pending: null,
+	active: true,
+	binding: { agent: null, team: null },
+	status: { code: "idle", label: "Recent" },
+	status_revision: 1,
+	status_epoch: EPOCH,
+	...over,
+});
+
 type InstallBehaviour = {
 	/** How each name answers. Anything unnamed succeeds. */
 	answers?: Record<string, "ok" | "already" | "collision">;
@@ -124,9 +167,17 @@ type InstallBehaviour = {
 const installBridge = ({
 	profiles,
 	install,
+	sessions = [],
 }: {
 	profiles: WireProfile[];
 	install?: InstallBehaviour;
+	/**
+	 * The catalogue the sidebar reads, for the roster states: recency ordering is
+	 * a fact about the SESSIONS (an agent's newest conversation), so the frames
+	 * that claim it have to seed them. Empty is the right default for every story
+	 * above, which is about the profiles catalogue alone.
+	 */
+	sessions?: WireRow[];
 }) => {
 	const { answers = {}, hold = false, holdAfter } = install ?? {};
 	let installed = 0;
@@ -149,7 +200,7 @@ const installBridge = ({
 					},
 				});
 			case "sessions.list":
-				return ok({ sessions: [], truncated: false });
+				return ok({ sessions, truncated: false });
 			case "teams.list":
 				return ok({ teams: [] });
 			case "profiles.list":
@@ -226,9 +277,37 @@ const OfferDismissalFixture = ({ signature }: { signature: string }) => {
 	return null;
 };
 
+/**
+ * The sidebar's VIEW, stated for every story in this file.
+ *
+ * The same shared-origin discipline as the dismissal above, for the same reason
+ * and one more: `ui-preferences-storage` carries the `pinnedAgents` a press
+ * writes, so `pinned-first`'s own gesture would photograph the NEXT story's
+ * roster with an agent already pinned - and with the reset ONLY in the stories
+ * that need it, the set's frames would depend on the order the sweep happens to
+ * visit them in. Stating the default before mount is what makes the set
+ * order-independent by construction, exactly as the dismissal fixture does for
+ * the offer.
+ *
+ * `togglePinnedAgent` (the press `pinned-first` drives) runs AFTER this layout
+ * effect, so the reset is not a race it could clobber: the effect states the
+ * default before the first paint, and nothing later writes the view except the
+ * story's own gesture.
+ */
+const ViewFixture = () => {
+	const setChatSidebarView = useUiPreferencesStore(
+		(state) => state.setChatSidebarView,
+	);
+	useLayoutEffect(() => {
+		setChatSidebarView(DEFAULT_SIDEBAR_VIEW);
+	}, [setChatSidebarView]);
+	return null;
+};
+
 const Page = () => (
 	<>
 		<OfferDismissalFixture signature="" />
+		<ViewFixture />
 		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
 			<div className="w-[360px] shrink-0 border-r border-hairline">
 				<ChatSidebar
@@ -399,5 +478,242 @@ export const InstallSummary: Story = {
 			}),
 		);
 		await screen.findByTestId("install-builtins-summary");
+	},
+};
+
+/* ---------------------------------------------- the roster's navigation */
+
+/**
+ * A roster of twelve agents, past the section's eight-row cap, with six
+ * conversations spread across five of them (`builder` holds two).
+ *
+ * `source: "installed"` on every row, deliberately, for the reason
+ * `chat-sidebar-sections.stories.tsx` states at its own fixture: a `builtin`
+ * profile is not drawn as a row at all - it is grouped behind the built-ins
+ * shortcut - so a fixture built out of builtins would photograph an empty
+ * entity region. The six sessions are what makes the RECENCY half of the
+ * ordering a fact a reader can check in the frame: builder is newest, then
+ * release-captain, bug-intake, docs-writer, scout, and the seven agents nobody
+ * has used have their roster order kept at the tail.
+ */
+const ROSTER = [
+	profile("release-captain", "role", "installed"),
+	profile("ledger-auditor", "specialist", "installed"),
+	profile("bug-intake", "role", "installed"),
+	profile("docs-writer", "role", "installed"),
+	profile("scout", "role", "installed"),
+	profile("builder", "role", "installed"),
+	profile("incident-scribe", "role", "installed"),
+	profile("metrics-analyst", "specialist", "installed"),
+	profile("translator", "role", "custom"),
+	profile("patch-reviewer", "role", "installed"),
+	profile("night-shift", "role", "custom"),
+	profile("archivist", "role", "installed"),
+];
+
+const ROSTER_SESSIONS = [
+	row("ro-1", "Release checklist", 1_760_003_500, {
+		binding: { agent: "release-captain", team: null },
+	}),
+	row("ro-2", "Intake triage notes", 1_760_003_000, {
+		binding: { agent: "bug-intake", team: null },
+	}),
+	row("ro-3", "Writer's brief", 1_760_002_000, {
+		binding: { agent: "docs-writer", team: null },
+	}),
+	row("ro-4", "Scouting pass", 1_760_001_000, {
+		binding: { agent: "scout", team: null },
+	}),
+	row("ro-5", "Build the deploy script", 1_760_003_900, {
+		binding: { agent: "builder", team: null },
+	}),
+	row("ro-6", "Retry the build matrix", 1_760_003_800, {
+		binding: { agent: "builder", team: null },
+	}),
+];
+
+/**
+ * The roster's first drawn name, read from the row's own name SPAN rather than
+ * the button's whole `textContent` (QA round 1, Q-1): the button also carries
+ * the group-count badge, so the button's text is the name PLUS a trailing
+ * count, and the exact comparisons below only held in the race window before
+ * the badge painted - which could refuse a capture on a slower machine.
+ * `span.truncate` is the label alone.
+ */
+const firstEntityName = () =>
+	document
+		.querySelector("[data-entity-name] span.truncate")
+		?.textContent?.trim() ?? "";
+
+const drawnEntityNames = () =>
+	[...document.querySelectorAll("[data-entity-name] span.truncate")].map(
+		(node) => node.textContent?.trim() ?? "",
+	);
+
+/**
+ * THE LONG ROSTER (issue #663), the state the section is now for: twelve agents,
+ * the filter field drawn because the section is cap-bound, and the order by use -
+ * builder (twice), release-captain, bug-intake, docs-writer, scout first; the
+ * seven never-used ones after them in roster order; eight drawn and a
+ * `Show 4 more` foot for the rest.
+ *
+ * A frame is not a rule, so the RULES are pinned in
+ * `scripts/chat-sidebar-agents.test.mjs`; this story's job is the rendering - the
+ * field sits where the reader looks for it, the pins are the row's own marks,
+ * and the section still reads as the list's sibling rather than a second panel.
+ */
+export const LongRoster: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		await screen.findByLabelText("Filter agents");
+		await waitFor(() => {
+			if (document.querySelectorAll("[data-agent-pin]").length !== 8)
+				return false;
+			return firstEntityName() === "builder";
+		});
+	},
+};
+
+/**
+ * THE FILTER WITH MATCHES: `er` narrows the twelve to the four names carrying it
+ * (builder and docs-writer by use, ledger-auditor and patch-reviewer never used),
+ * the section cap is bypassed so EVERY match draws - which is how
+ * patch-reviewer's row appears at all - and the show-more foot goes with the cap,
+ * so the frame cannot offer a page the section is not on.
+ */
+export const RosterFiltered: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		await userEvent.type(await screen.findByLabelText("Filter agents"), "er");
+		await waitFor(() => {
+			const names = drawnEntityNames();
+			return (
+				names.length === 4 &&
+				names[0] === "builder" &&
+				names.includes("patch-reviewer") &&
+				document.querySelector("[data-sidebar-section-more]") === null
+			);
+		});
+	},
+};
+
+/**
+ * THE FILTER WITH NO MATCH: the sentence says so rather than the full roster
+ * falling back in - a filter that appeared to do nothing would leave the reader
+ * re-checking their spelling against a list that is not answering them.
+ */
+export const RosterNoMatch: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		await userEvent.type(await screen.findByLabelText("Filter agents"), "zzz");
+		await screen.findByText("No agents match");
+	},
+};
+
+/**
+ * THE PINNED-FIRST ORDER, driven by the press the feature is: ledger-auditor is
+ * drawn mid-list (never used, so it sorts into the tail band), its pin control is
+ * pressed, and the row moves to the top of the roster - above builder, whose
+ * conversations made it the most recently used - with the pin drawn filled at
+ * rest (`aria-pressed`, not only the pointer reveal the row's glyphs wear).
+ */
+export const PinnedFirst: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		/*
+		 * The rows arrive with the profiles query; the filter field is drawn in
+		 * the same commit (both are gated on the catalogue), so waiting for the
+		 * field IS waiting for the roster - the first version of this play queried
+		 * the pin control immediately and photographed nothing but its own race
+		 * (the sweep refused the frame rather than filing a lie).
+		 */
+		await screen.findByLabelText("Filter agents");
+		const pin = await waitFor(() => {
+			const control = document.querySelector(
+				'[data-agent-pin="ledger-auditor"]',
+			);
+			if (!(control instanceof HTMLButtonElement))
+				throw new Error("the ledger-auditor pin control is not drawn yet");
+			return control;
+		});
+		await userEvent.click(pin);
+		await waitFor(() => firstEntityName() === "ledger-auditor");
+		expect(pin.getAttribute("aria-pressed")).toBe("true");
+	},
+};
+
+/**
+ * THE PIN AT REST (design round 1's D3a): `pinned-first` photographs the press
+ * with its focus ring and the row's reveal glyphs showing, so the state a
+ * reader actually lives with - the mark filled, nothing pointing at the row -
+ * was never a frame. The play presses the same control and then takes focus off
+ * it (`blur`, not a second click: the state under test must not be unmade by
+ * the gesture that lights it), so the shutter catches the pin alone.
+ */
+export const PinnedAtRest: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		await screen.findByLabelText("Filter agents");
+		const pin = await waitFor(() => {
+			const control = document.querySelector(
+				'[data-agent-pin="ledger-auditor"]',
+			);
+			if (!(control instanceof HTMLButtonElement))
+				throw new Error("the ledger-auditor pin control is not drawn yet");
+			return control;
+		});
+		await userEvent.click(pin);
+		await waitFor(() => firstEntityName() === "ledger-auditor");
+		pin.blur();
+		expect(pin.getAttribute("aria-pressed")).toBe("true");
+		expect(document.activeElement).not.toBe(pin);
+	},
+};
+
+/**
+ * THE TRUNCATING NAME (design round 1's D3b): every agent row now reserves the
+ * pin's 24px slot plus its gap at rest, so the name column is narrower than the
+ * frames taken before this change - and the longest name in `ROSTER`
+ * (`metrics-analyst`) never reaches the edge. This roster carries one name long
+ * enough to truncate at the panel's own 360px, made the MOST RECENT so the row
+ * is drawn at the top of the cap where the truncation is unmissable.
+ */
+const LONG_NAME = "release-captain-and-incident-commander";
+
+const LONG_NAME_ROSTER = [...ROSTER, profile(LONG_NAME, "role", "installed")];
+
+const LONG_NAME_SESSIONS = [
+	...ROSTER_SESSIONS,
+	row("ro-7", "Command the release train", 1_760_004_100, {
+		binding: { agent: LONG_NAME, team: null },
+	}),
+];
+
+export const TruncatingName: Story = {
+	render: () => {
+		installBridge({
+			profiles: LONG_NAME_ROSTER,
+			sessions: LONG_NAME_SESSIONS,
+		});
+		return <Page />;
+	},
+	play: async () => {
+		await screen.findByLabelText("Filter agents");
+		await waitFor(() => firstEntityName() === LONG_NAME);
 	},
 };

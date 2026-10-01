@@ -82,11 +82,11 @@ export const CanonicalImage = ({
 			 * swap to the picture - is what this state exists to end: in the condensed
 			 * group's strip the cold path is the normal path (a collapsed fold unmounts
 			 * the rows that would have warmed the cache), so every durable screenshot
-			 * opened its life as a sentence-shaped block that reflowed into a 66px tile
+			 * opened its life as a sentence-shaped block that reflowed into a 78px tile
 			 * a frame later (agent review round 1, P3).
 			 *
 			 * The tile reserves its EXACT box, because the tile's box is fixed by
-			 * construction (96x64) and that is what makes the first paint free. The
+			 * construction (115x76 inside a 1px border: 117x78) and that is what makes the first paint free. The
 			 * `full` size reserves only the frame's own floor - its ceiling depends on
 			 * an aspect the transcript row does not carry, so a full picture still
 			 * settles to its own height, exactly as every other durable picture has.
@@ -102,7 +102,7 @@ export const CanonicalImage = ({
 					/* The tile's own measured box, for the same reason the receipt spells
 					   it in pixels: a reserved slot has to be the size of the picture that
 					   is coming, or the strip reflows when it lands. */
-					className={size === "thumbnail" ? "h-[66px] w-[98px]" : undefined}
+					className={size === "thumbnail" ? "h-[78px] w-[117px]" : undefined}
 					/*
 					 * Named for the rigs the way `data-fold-media` is: the reserved box has no
 					 * picture and no text, so `scripts/chat-image-expand.test.mjs` can only
