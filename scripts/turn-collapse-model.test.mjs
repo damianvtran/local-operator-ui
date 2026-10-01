@@ -60,6 +60,7 @@ const {
 	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
 	widenTarget,
+	windowTopRun,
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
@@ -1745,7 +1746,7 @@ test("alignWalkRunKeyConfirmed: a window-cut run the STORE holds whole is not a 
 		"the plan alone calls it cut: the R1 defect, on the same rows",
 	);
 	assert.equal(
-		alignWalkRunKeyConfirmed(plan, tall, alignSize),
+		alignWalkRunKeyConfirmed(plan, windowTopRun(tall, alignSize)),
 		null,
 		"the store says otherwise, so the walk stands down without fetching",
 	);
@@ -1771,8 +1772,7 @@ test("alignWalkRunKeyConfirmed: a window-cut run the STORE holds whole is not a 
 	assert.equal(
 		alignWalkRunKeyConfirmed(
 			collapsePlan(cutVisible, { live: false }),
-			cut,
-			cutSize,
+			windowTopRun(cut, cutSize),
 		),
 		cutKey,
 		"a real cut still yields the key",
@@ -1792,8 +1792,7 @@ test("alignWalkRunKeyConfirmed: a window-cut run the STORE holds whole is not a 
 	assert.equal(
 		alignWalkRunKeyConfirmed(
 			collapsePlan(short, { live: false }),
-			short,
-			WINDOW,
+			windowTopRun(short, WINDOW),
 		),
 		runsOf(short)[0].key,
 		"a cut the plan can already see the whole of is the store's own answer",
