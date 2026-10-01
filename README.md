@@ -34,13 +34,39 @@ node scripts/renderer-driver.mjs --scene route-tops \
 touched) with the pristine build; `after-*` is the branch head rebuilt against
 the same URL. Eight runs, one Electron boot each, sequential.
 
+## The fold, and what these frames do and do not span
+
+This branch folded `origin/main` at `99acc92f93` after the frames were shot
+(#721, the app sidebar's badge restyle; #722, the fold-media train). The fold's
+own commits are `e57ee3e358` (the merge) and `a9e44baee1` (the re-derived
+stamps).
+
+The `after-*` frames above were taken at the pre-fold head `40db48225a`, so the
+before/after pair spans the fold as well as the change. What the fold moves
+inside these frames is the app sidebar's counted mark (`attention` ->
+`attentionQuiet`, a variant swap inside the sidebar's own column) and the type
+token it uses; no ground moves anywhere in `src/` between `4ea1635904` and
+`99acc92f93`, which is what the comparison below rests on. The region this change
+is about - the rail, its rows, and the rail|sidebar join - is untouched by the
+fold, and the sampled tones below are read frame-to-frame.
+
+The `after-*` set was not re-shot over the fold, and this is the disclosure
+rather than a claim that it was: the fold's only visible delta in these frames is
+the sidebar's badge variant, and re-shooting the four after runs needs the single
+CSP-allowed rig port (`8080`), which another lane's active `local-operator serve`
+held for the whole of this pass's remaining window (its own isolated rig, so not
+one to reap). The `before-*` frames are unaffected either way: they are the
+pristine base tree.
+
 ## The reading that discriminates, and the one that does not
 
 **The scene does not discriminate this change, and the logs say so rather than
 the README.** `route-tops` asserts the lane's stop list against each column's
 *own* handed rung, so it passes on both trees: the rail is a leading column on
-both, and the lane mirrors whichever rung the marker names (85 PASS / 0 FAIL at
-1380x900, 58 / 0 at 800x600, on EVERY run of both trees). What it contributes
+both, and the lane mirrors whichever rung the marker names (84 checks passed / 0
+FAIL at 1380x900, 57 / 0 at 800x600, on EVERY run of both trees; the scene closes
+with its own `ALL CHECKS PASSED` line, which is why a bare `grep -c PASS` reads
+one more - corrected here as review round 1's R1-3). What it contributes
 here is the geometry instrument.
 
 **Geometry is identical, route for route, at both sizes** - 9 of 9 readings
