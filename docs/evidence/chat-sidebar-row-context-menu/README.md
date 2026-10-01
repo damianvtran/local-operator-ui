@@ -8,14 +8,23 @@ suppression pair, the archived row behind `Include archived` (its item reads
 `Unarchive conversation`), and the row under the pointer with no menu open —
 the before/after partner of `pointer-open`.
 
+**#739 added Fork as the menu's third row**, so every menu-open frame below was
+re-taken with it drawn (the `menu-closed`/`flyout-alone` pair, which draws no
+menu, differs from the #694 set only in the capture clock and the base's own
+toolbar - see the Notes), and two states were
+added: `fork-withheld` and `fork-pressed`. The set is now 24 frames (twelve
+states x two themes). The before is the #694 set at `26a814c2c2` (`git show
+26a814c2c2:docs/evidence/chat-sidebar-row-context-menu/<state>/<theme>.webp`);
+the after is this directory.
+
 ## What produced these frames
 
 Storybook, from this branch, with the story
 `src/renderer/src/features/chat/components/chat-row-context-menu.stories.tsx`:
 
 ```
-npx storybook dev -p 6747 --ci --quiet --no-open
-node scripts/capture-evidence.mjs http://localhost:6747 --allow-backend \
+npx storybook dev -p 6751 --ci --quiet --no-open
+node scripts/capture-evidence.mjs http://localhost:6751 --allow-backend \
   --only=chat-sidebar-row-context-menu-- \
   --themes=localOperatorDark,localOperatorLight
 ```
@@ -67,6 +76,8 @@ numbers below are what the final frames read.
 | `flyout-dwelled` | the flyout given 1800ms to dwell, then the menu: flyout `absent` |
 | `flyout-alone` | the control: the same row (s2), same hover, same dwell, no menu |
 | `menu-closed` | `pointer-open`'s before/after partner: same scene, same settle, no open — and the open state drops the flyout band itself (see `flyout-dwelled`) |
+| `fork-withheld` | #739: s2 is a never-sent draft's conversation (`drafts` holds its id), so the row reads `Not sent yet` and the menu draws Archive and Pin only — Fork absent, not greyed |
+| `fork-pressed` | #739: the menu opened on s2 and Fork pressed. There is no chat pane in the story, so no picker can open and this frame does not show one; it shows the sidebar's half — the readout prints the request in the panel-presentation store (`session.fork for s2`, the ROW's conversation), its invoker (`button[data-chat-row] in s2`) and `route: /chat`. The pane's half (presenting the NAMED conversation rather than its own, and `rebind` navigating to the fork) is `slash-dispatch.ts`'s consume effect, asserted in `scripts/panel-presentation.test.mjs` |
 
 ## The numbers, and what they settle
 
@@ -103,7 +114,8 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   the modal portal is what removes it, and the pair reads as the measurement.
 - **The pointer's own highlight.** `pointer-hover` reads
   `focus: menuitem “Archive conversation⌘⇧A”` and
-  `first item: data-highlighted`, in a panel measured 273 × 81 at `142,369` —
+  `first item: data-highlighted`, in a panel measured 273 × 113 at `142,369`
+  (273 × 81 when #694 shipped, before Fork) —
   the state a pointer user meets the moment they move into the menu. The item
   carries the same `:focus-visible` ring `keyboard-open` draws, and that is
   measured rather than assumed: the primitive focuses the hovered item, and
@@ -111,16 +123,30 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   (probed: the ring draws even after a real click elsewhere and a real pointer
   re-entry), so the two paths share the ring and differ in what is focused.
 - **The archived row, and the widest panel.** `archived-row` reads
-  `panel: 288x81 at 142,362` — 15px wider than the 273 every other two-item
-  state measures, because `Unarchive conversation` is two characters longer —
-  with `items: 2 — Unarchive conversation⌘⇧A | Pin conversation⌘⇧P` and the row
+  `panel: 288x113 at 142,362` — 15px wider than the 273 every other state
+  measures, because `Unarchive conversation` is two characters longer —
+  with `items: 3 — Unarchive conversation⌘⇧A | Pin conversation⌘⇧P | Fork
+  conversation` and the row
   drawn at `255x32 at 12,333` with its archived mark. A widened search (`the
   field, then Include archived`) is what puts it on screen at all.
-- **The withheld rows** measure `273 × 46` (`pin-state-unknown`) and
-  `246 × 46` (`archive-withheld`) — one row each, no item disabled; on the
-  archive-withheld row the pair wrapper is not rendered at all (single
-  capability), which is why its `pair` lines read `not mounted` while the pin
-  control stands alone in the frame.
+- **The withheld rows** measure `273 × 77` (`pin-state-unknown`: Archive and
+  Fork) and `246 × 77` (`archive-withheld`: Pin and Fork) — two rows each, no
+  item disabled (#694 shipped them as `273 × 46` / `246 × 46`, one row each,
+  before Fork was the second row of both); on the archive-withheld row the pair
+  wrapper is not rendered at all (single capability), which is why its `pair`
+  lines read `not mounted` while the pin control stands alone in the frame.
+- **Fork's three rows, and the one state without it (#739).** Every menu-open
+  frame on an ordinary row now reads `items: 3 — Archive conversation⌘⇧A | Pin
+  conversation⌘⇧P | Fork conversation` in a panel of `273 × 113` (`288 × 113`
+  on the archived row, whose `Unarchive conversation` is the widest label), up
+  from `273 × 81` / `288 × 81`. `fork-withheld` reads `items: 2` in
+  `273 × 81` — the pre-#739 panel's own numbers — and is the only state where
+  the third row is withheld. Fork carries no chord, so its row has no cap and
+  the panel gains 32px, not a chord row's 36.
+- **The anchor and the row are unchanged by the third row.** `pointer-open`'s
+  anchor (`140,369`), panel origin (`142,369`) and row box (`255x32 at 12,340`)
+  read the same as before; only the panel's height moved, and the keyboard
+  state's origin (`14,370`) is likewise unchanged.
 
 ## What these frames do NOT prove
 
@@ -146,13 +172,22 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 ## Notes
 
 - **Two pairs are byte-identical files, by construction.** `pointer-open` and
-  `flyout-dwelled` are the same file in both themes (dark `md5 163f6d28…`,
-  light `6003ec80…`, 22,294 bytes) — a complete suppression. `menu-closed` and
-  `flyout-alone` are the same file (dark `md5 4f3dba74…`, light `1d79cc13…`,
-  18,352 bytes) — both are “hover settled, no menu, flyout drawn”. Sixteen
-  distinct pictures under twenty names, and the coincidences are the
-  measurement rather than two takes of one shot.
-- **Two capture clocks — three since the #697 fold (design round 2, D6).** The
+  `flyout-dwelled` are the same file in both themes (dark `md5 5e6da1cb…`,
+  23,696 bytes; light `a9173ec9…`, 24,714 bytes) — a complete suppression.
+  `menu-closed` and `flyout-alone` are the same file (dark `md5 069a1133…`,
+  18,324 bytes; light `025cf64a…`, 18,972 bytes) — both are “hover settled, no
+  menu, flyout drawn”. The coincidences are the measurement rather than two takes
+  of one shot, and they held across the #739 re-take. (Twenty distinct
+  pictures under twenty-four names.)
+- **The re-take also carries what `main` moved, and says so.** The #739 frames
+  were taken at `26a814c2c2`, and the sidebar's toolbar draws a fourth icon (the
+  `@` mention control) that the #694 frames, taken earlier, do not. That is the
+  base moving, not this change; the frames that differ for Fork alone are the
+  menu panels themselves.
+- **Capture clocks — the whole set is one now (#739).** Every frame was
+  re-taken for #739 over rows dated minutes before, so all of them read `TODAY`;
+  what follows is why the #694 half once read otherwise, kept because the
+  manifest's older notes cite it (design round 2, D6). The
   round-1 half was written at 00:00:17–00:00:59 on 2026-09-30 over rows dated
   the previous local day, so its list header reads `THIS WEEK` (ink 66px); the
   two remediation states were written at 02:51 over rows dated minutes before,

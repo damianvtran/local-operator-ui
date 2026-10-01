@@ -1,6 +1,8 @@
 # The chat row's context menu — composition, states and copy
 
-**Issue:** #694. **Design round:** 2026-09-30, `design/row-context-menu-694`.
+**Issue:** #694 (the menu); #739 (its third row, Fork - § 1, § 5, § 7, and the
+rows marked #739 in § 4 and § 9). **Design round:** 2026-09-30,
+`design/row-context-menu-694`.
 **Status:** design of record for the implementation, ported onto it with the
 design round's follow-ups (U-D1…U-D8) folded in and every frame reference
 re-pointed at the shipped set, `docs/evidence/chat-sidebar-row-context-menu/`.
@@ -25,7 +27,7 @@ context menu holding the row's own acts, at most **three rows**:
 |---|---|---|---|
 | 1 | `Archive conversation` / `Unarchive conversation` | `⌘⇧A` · `Ctrl+Shift+A` | `archiveEnabled` is false |
 | 2 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` · `Ctrl+Shift+P` | `row.pinned === undefined` |
-| 3 | — reserved — | — | — |
+| 3 | `Fork conversation` (#739) | none - fork has no chord | the row is a never-sent draft's conversation (`unstarted`): the backend has no transcript to copy |
 
 **For the acts this menu carries, the order is the strip's order, left to
 right, and that is measured rather than argued.** In the row, the archive
@@ -43,8 +45,30 @@ ranking** — rename (an editing surface on a 280px row; its write path is the
 open conversation's, `chat-header.tsx:500`), delete (`session-archive-delete.md`,
 "Delete asks, and never on the row"), move controls (#693, §6 below), and the
 four acts with no product ask anywhere in #694/#693 (duplicate, copy link, open
-in new window, mark unread). The reserved row is reserved so that the next act
-that earns a place has somewhere to go without a redesign.
+in new window, mark unread). The third row was reserved so that the next act
+that earned a place had somewhere to go without a redesign; **#739 spent it on
+Fork** (§ 7), which the reporter's own cap - "two at most, pushing it three" -
+admits.
+
+**Fork differs from the other two in mechanism, and the difference is the
+design.** Archive and Pin press the row's own control, so their writes, guards
+and focus corrections arrive unchanged. Fork has no row control to press: it
+opens the register's own `session.fork` picker (`ForkPicker`, the same one `/fork`
+and the palette open) for THIS row's conversation, by writing a request to the
+panel-presentation store that **names the row's conversation** - the chat pane
+mounts the picker and its own conversation is generally not the row's, so the
+presenter reads the request's `sessionId` before its own
+(`slash-dispatch.ts`). It carries **no chord**: fork has none, so the item has
+no `KeyboardShortcut` and no accessible-name suffix beyond its label.
+
+**Completing a fork from the menu navigates to the new fork**, and that is
+decided rather than inherited. The picker's `rebind` is the pane's
+`openConversation`, the shipped `/fork` semantics, reused deliberately: Archive
+and Pin do not navigate because they press a control that acts on the row in
+place, but a fork's whole product is a child conversation, and the picker's own
+receipt names it - handing the user the child is the act finishing, not a side
+effect. The original is untouched. Escape (or any dismissal) returns focus to
+the row's own button, the node the menu's own close returns to.
 
 ### The menu repeats the hover pair, and the reason has to be on the record
 
@@ -71,9 +95,10 @@ kind, not only in place:
   row's strip is now four controls and takes **108px** (§ 7's shipped
   measurements; `pinned-row`). The menu's own
   rows are the panel's content rows, not the strip's 24 × 24 controls: the shipped
-  panels measure **273 × 81** (two rows) and **273 × 46** (one row) -
-  `pointer-open` and `pin-state-unknown` - and the pointer opens the menu over
-  the whole row.
+  panels measured **273 × 81** (two rows) and **273 × 46** (one row) when this
+  was written, and measure **273 × 113** (three rows) and **273 × 77** (two:
+  Archive and Fork) with Fork spending the third row (§ 2's table) - and the
+  pointer opens the menu over the whole row.
 
 So the rule is amended in one sentence, and the sentence belongs in the code
 comment beside the menu: **a second door is a duplicate when it does not lower
@@ -144,16 +169,23 @@ bind in any of the measured states.
 
 | state | measured panel | items |
 |---|---|---|
-| archive + pin | **273 × 81** | 2 |
-| unarchive + pin (the archived row's widest label) | **288 × 81** | 2 |
-| archive alone (unknown pin state) | **273 × 46** | 1 |
-| pin alone (archive capability withheld) | **246 × 46** | 1 |
+| archive + pin + fork | **273 × 113** | 3 |
+| unarchive + pin + fork (the archived row's widest label) | **288 × 113** | 3 |
+| archive + fork (unknown pin state) | **273 × 77** | 2 |
+| pin + fork (archive capability withheld) | **246 × 77** | 2 |
+| archive + pin (fork withheld: a never-sent row) | **273 × 81** | 2 |
 
+Fork's row adds **31-32px** to a panel (113 - 81 and 77 - 46; the difference is
+sub-pixel rounding). A row with no `KeyboardShortcut` is a plain text row, so it
+draws shorter than the two chord rows beside it, which is why the panel grows by
+less than a chord row's height. The one-row panels #694 shipped (273 × 46,
+246 × 46) are the two-row 77s above once Fork is drawn.
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
 label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
 widest label the menu draws, and its state measures the widest panel:
-**288 × 81** (`archived-row`), the two extra characters showing up exactly
-there. The floor exists so that a
+**288 × 113** (`archived-row`), the two extra characters showing up exactly
+there; Fork's label (`Fork conversation`) is shorter than either chord row, so
+it widens nothing. The floor exists so that a
 one-short-item menu is not cramped; the width above it is the content's. A menu
 padded to a width it does not use would be the chrome §5 deletes — and the two
 measured widths differ by 27px, which is the amount of text that is actually
@@ -296,20 +328,36 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 |---|---|---|---|
 | closed | not mounted | unchanged; the pair is `display: none` at rest | `flyout-alone` |
 | the row under the pointer, no menu | not mounted | reveal and hover ground as shipped | `menu-closed` |
-| open at the pointer, normal row | 2 rows, archive then pin, chords drawn | reveal held, hover ground held | `pointer-open` |
-| the same, the pointer moved onto the first item | 2 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
-| the same, hold rule **not** applied (the design round's control) | 2 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
-| open at the pointer, pinned row | 2 rows, item 2 reads `Unpin conversation` | the pair is drawn at rest (the mark is the state), and #697's move pair reveals with it — four children, all held under the menu | `pinned-row` |
-| open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
-| `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
-| `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
+| open at the pointer, normal row | 3 rows, archive, pin, then fork; chords on the first two, none on fork (#739) | reveal held, hover ground held | `pointer-open` |
+| the same, the pointer moved onto the first item | 3 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
+| the same, hold rule **not** applied (the design round's control) | (2 rows when captured, before #739) | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
+| open at the pointer, pinned row | 3 rows, item 2 reads `Unpin conversation` | the pair is drawn at rest (the mark is the state), and #697's move pair reveals with it — four children, all held under the menu | `pinned-row` |
+| open via keyboard | same 3 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
+| `row.pinned === undefined` | **two rows** (archive, fork); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
+| `archiveEnabled` false | **two rows** (pin, fork); the archive row is withheld | archive control absent | `archive-withheld` |
 | neither capability | **no menu** — no trigger element at all | panel byte-identical to the pre-feature one | — (assertion, not a frame) |
+| the row is a never-sent draft's conversation (#739) | **two rows** (archive, pin); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` |
+| Fork pressed (#739) | closes; the request is in the store naming the row's conversation, and the route is `/chat` when no pane was mounted | unchanged; the picker (the pane's) opens for the row's conversation, not the pane's | `fork-pressed` (the sidebar's half - see § 9) |
 | archived row | item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` |
 | current row | unchanged | **selected** ground kept, no hover ground added | — |
 
 ### Withheld, never disabled
 
-Both withholdings are already written promises rather than new calls:
+Fork's withholding (#739) is the sidebar's own statement rather than one invented
+for the menu: `unstarted` - a draft that holds the row's id and has never
+carried a message - is the real-but-empty session a first send that failed after
+allocation leaves behind, which is exactly the session the backend refuses to
+fork ("has no transcript to fork", `fork.py::fork_session`). **`row.pending` is
+deliberately not the gate:** it is the live record's "waiting for a person" word
+(`approval`/`ask`, a parked gate), which only a session that has already run a
+turn can carry - a session with a transcript - and the route does not refuse
+it (a session mid-turn takes the fork at its next safe boundary; an idle or
+cold one is cloned at once, read-only against the parent). No other state of a
+catalogue row makes the route refuse, so this is the menu's only withheld
+condition for Fork; it is read once as `forkable` in `chat-sidebar.tsx` and
+pinned by `scripts/chat-sidebar-row-menu.test.mjs`.
+
+The two before it are already written promises rather than new calls:
 `chat-sidebar.tsx:3400-3406` ("An affordance that cannot act on the row it is
 drawn on is withheld rather than offered broken") and
 `session-archive-delete.md` § "Fail-closed, stated as a measurement" ("no menu
@@ -408,6 +456,13 @@ truncate it and push the chord off the row's trailing edge.
 |---|---|---|
 | `Archive conversation` / `Unarchive conversation` | `⌘⇧A` | `Ctrl+Shift+A` |
 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` | `Ctrl+Shift+P` |
+| `Fork conversation` (#739) | - | - |
+
+`Fork conversation` is verb + object, the pair's register, and matches the
+picker it opens (`Fork this conversation`). It has no chord because fork has
+none (`/fork` and the palette are its other doors), and the item deliberately
+prints no `KeyboardShortcut`: a hint for a gesture that does nothing is the
+dead control § 1 refuses.
 
 **`Unarchive`, not `Restore`.** The wire destination (`sessions.unarchive`), the
 palette rows (`/archive`, `/unarchive`) and the row's own control
@@ -456,6 +511,14 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
 ---
 
 ## 6. Accessibility
+
+Fork (#739) adds one item to the menu's roles and roving focus and changes none
+of the rest: `role="menuitem"` and the arrow walk come from the primitive. Its
+activation lands differently from Archive's and Pin's - it presses no control, so
+the caret goes to the picker the pane opens, and **dismissing the picker returns
+focus to the row's own button** (the request carries it as the invoker, because
+the item unmounts with the menu; the composer is the pane's fallback when the
+node is gone).
 
 - **Roles come from the primitive**: `role="menu"` on the panel, `role="menuitem"`
   on each row, and Radix's own roving focus inside it.
@@ -537,7 +600,8 @@ chords and live-region announcements", and recorded that "#694's context menu
 stays the future home for further actions". So the two lanes do not collide, and
 the arithmetic is worth stating so #693 does not have to rediscover it:
 
-- **The menu stays two rows** and the third row stays reserved. The menu costs
+- **The menu stayed two rows** when this was decided and the third row stayed
+  reserved - and #739 has since spent it on Fork (§ 1). The menu costs
   **zero rest width**.
 - **The strip went from 2 controls to 4 — the shipped measurements, not the
   forecast** (`docs/evidence/pinned-reorder/README.md:34-38`): the revealed
@@ -555,13 +619,20 @@ the arithmetic is worth stating so #693 does not have to rediscover it:
 **The menu is declared as the row's shared act surface with a budget of three
 rows.** Any act that lands here spends the reserved row; when all three are
 spent, the next act either replaces one or finds another surface. The reserved
-row is not a licence to grow the menu to whatever fits.
+row is not a licence to grow the menu to whatever fits. **All three are now
+spent** (Archive, Pin, Fork - #739): `scripts/chat-sidebar-row-menu.test.mjs`
+counts the items, so a fourth is a failing assertion, not a quiet addition.
 
 ---
 
 ## 8. In scope, out of scope
 
-**In:** the menu itself (≤3 rows, withheld when there is nothing to draw); chord
+**In:** Fork as the third row (#739) - the item, its `unstarted` withholding, the
+conversation-naming request and the pane's precedence; the menu's trigger
+(`menuEnabled`) is **unchanged**: Fork rides an existing menu, so a panel with
+neither the archive nor the pin capability still has no menu and no Fork, and
+widening the trigger is out of scope here. The menu itself (≤3 rows, withheld
+when there is nothing to draw); chord
 hints through the shared `KeyboardShortcut`, which finally spends
 `chatRowActCap`; the explicit keyboard opener with focus return; the state
 matrix in §4 including the withdrawn-panel byte-identity guard; the two rules
@@ -594,8 +665,8 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 | | `pointer-open` | `pointer-hover` | `keyboard-open` | `archived-row` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
 |---|---|---|---|---|---|---|---|
 | anchor point | 140,369 | 140,369 | 12,371 | 140,362 | 140,297 | 140,401 | 140,369 |
-| panel | 273 × 81 at 142,369 | 273 × 81 at 142,369 | 273 × 81 at 14,370 | 288 × 81 at 142,362 | 273 × 81 at 142,297 | 273 × 46 at 142,401 | 246 × 46 at 142,369 |
-| items | 2 | 2 | 2 | 2 (`Unarchive conversation`) | 2 (`Unpin conversation`) | 1 | 1 (`Pin conversation`) |
+| panel | 273 × 113 at 142,369 | 273 × 113 at 142,369 | 273 × 113 at 14,370 | 288 × 113 at 142,362 | 273 × 113 at 142,297 | 273 × 77 at 142,401 | 246 × 77 at 142,369 |
+| items | 3 | 3 | 3 | 3 (`Unarchive conversation`) | 3 (`Unpin conversation`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
 | row | 255 × 32 at 12,340 | same (s2) | same (s2) | 255 × 32 at 12,333 (s4) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
@@ -603,6 +674,16 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 | pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | archive `flex:159w24`, up `flex:187w24`, down `flex:215w24`, mark `flex:243w24` | archive `flex:243w24` | — |
 | flyout | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` |
 | focus | menu; first item not highlighted | **first item, `data-highlighted`** | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
+
+**The #739 states, same scene and widths** (`localOperatorDark`): `fork-withheld`
+reads `items: 2 — Archive conversation⌘⇧A | Pin conversation⌘⇧P`, panel
+**273 × 81 at 142,369** - the pre-#739 two-row panel, byte for byte in its
+numbers - with the row reading `Migrate …· Not sent yet`; `fork-pressed` reads
+`fork request: session.fork for s2`, `invoker: button[data-chat-row] in s2`
+and `route: /chat`, the request naming **s2 - the row's conversation** (this
+story has no pane, so no picker can open and the frame does not pretend to
+show one: the pane's half is the consume effect in `slash-dispatch.ts`,
+asserted in `scripts/panel-presentation.test.mjs`).
 
 `rgb(48, 45, 41)` is `--lo-row-hover` (`#302D29`) in `localOperatorDark` exactly,
 and `rgb(237, 236, 231)` = `#EDECE7` in `localOperatorLight` — the frame's
@@ -632,7 +713,9 @@ from the built feature: the story drives the real trigger (a dispatched
 keydown on the row's button for the keyboard one, the search block's own field
 and `Include archived` control for the archived row), the real `openMenuRowId`
 hold, and the row's real predicates. 20 frames, `localOperatorDark` and
-`localOperatorLight`, from:
+`localOperatorLight`, from the set #694 shipped (20 frames; #739 re-took all of
+them with the third row drawn and added `fork-withheld` and `fork-pressed`, 24
+in total), from:
 
 ```
 npx storybook dev -p 6747 --ci --quiet --no-open
@@ -656,6 +739,8 @@ by `--dirs=pointer-hover,archived-row`, so no existing frame was re-taken.)
 | `flyout-dwelled` | the flyout given 1800ms to dwell, then the menu: flyout `absent` |
 | `flyout-alone` | the control: the flyout drawn, no menu — and `data-state delayed-open` |
 | `menu-closed` | the before/after partner of `pointer-open`: the same scene, no open |
+| `fork-withheld` | #739: the row is a never-sent draft's conversation; two rows, Fork absent rather than greyed (273 × 81) |
+| `fork-pressed` | #739: Fork pressed - the readout shows the request naming the row's conversation, the row's own button as the invoker, and the route; the picker itself is the pane's and is not in this story |
 
 The design round's **proposal set**
 (`docs/evidence/chat-sidebar-row-context-menu-proposal/`, 16 frames including
