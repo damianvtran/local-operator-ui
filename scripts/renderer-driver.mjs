@@ -3093,6 +3093,18 @@ async function scrolledArrival(
 		control.click();
 		return { clicked: true, reading, selector, rowId };
 	})()`);
+	/*
+	 * THE PRESS ASKS NOW (2026-09-30), so the DOM click above opened the confirmation and the
+	 * write this walk samples is the CONFIRM's. Answering it is part of the press, not a new
+	 * leg: the reader's scroll, the row offsets and the box are all still read from the moment
+	 * of the click, and the focus the dialog took is handed back to the row that held it (the
+	 * opener restore), which is the state every clause below was written against.
+	 *
+	 * THE ANSWER IS A REAL POINTER PRESS ON THE DIALOG'S OWN BUTTON, and that is safe where the
+	 * row's was not: the dialog is outside the list, so it cannot move the focus-hold's cursor
+	 * the way a real press on a row's control does (the reason the click above is synthetic).
+	 */
+	if (atPress.clicked === true) await confirmArchiveDialog(cdp);
 	const settled = await awaitCardSettled(cdp);
 	await wait(500);
 	const after = await readState("after");
@@ -3815,6 +3827,16 @@ async function sceneSessionArchive(cdp) {
 	 * the arrival walk further down this scene (`framesHeld`), and the writer trap lives there.
 	 */
 	await clickAt(cdp, claimedRow);
+	/*
+	 * ARCHIVING ASKS FIRST (2026-09-30), so the press above opened the confirmation and the
+	 * message this step is about arrives ONE ANSWER LATER. The QUESTION gets its own press and
+	 * its own frame further down (7b), deliberately rather than here: the refusal this step is
+	 * about lives ten seconds (`ARCHIVE_FAILURE_TOAST_MS`) and the walk's own steps already
+	 * spend most of them, so a capture taken at the raising press pushes the RETRY below past
+	 * the ceiling - measured on this scene's first run of the frame, which failed on a message
+	 * that had simply expired. A frame costs no clock where no clock is running.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", ARCHIVE_TOAST);
 	/*
@@ -4400,8 +4422,16 @@ async function sceneSessionArchive(cdp) {
 	})()`);
 	/* THE PRESS GOES AT LAST, AT THE CONTROL'S OWN CENTRE - the aim above was sampled before it,
 	   which is the reading this step exists to report when the two palettes disagree. */
-	if (supersedingCentre !== null)
+	if (supersedingCentre !== null) {
 		await pressPointerStationary(cdp, supersedingCentre.x, supersedingCentre.y);
+		/*
+		 * ARCHIVING ASKS FIRST (2026-09-30): the press raised the pane's confirmation, and the
+		 * write - the one this step is about - happens when it is answered. The step's subject
+		 * (which row the aim superseded) is unchanged; what moved is that the answer is one
+		 * press further on.
+		 */
+		await confirmArchiveDialog(cdp);
+	}
 	await wait(700);
 	const superseded = await verb(cdp, "state");
 	note(
@@ -4480,9 +4510,22 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 	await hoverOver(cdp, refusedControl);
 	await wait(200);
+	const refusedAttemptsBefore =
+		(await verb(cdp, "state"))?.archiveAttempts ?? null;
 	await clickAt(cdp, refusedControl);
+	/* The press ASKS now (D1's first door): the refusal this check reads is the write's, and
+	   the write is one answer further on. */
+	await confirmArchiveDialog(cdp);
 	await wait(700);
 	const refusalBack = await verb(cdp, "state");
+	note(
+		"U10 the re-raised refusal's press, seen by the store",
+		JSON.stringify({
+			attemptsBefore: refusedAttemptsBefore,
+			attemptsAfter: refusalBack.archiveAttempts ?? null,
+			dialogLeft: await drawnSelector(cdp, '[role="dialog"]'),
+		}),
+	);
 	check(
 		"U10: the refusal this walk is about is standing again, so the steps after it read the state they were written against",
 		refusalBack.archiveFailure?.sessionId === REFUSED_ID &&
@@ -4533,6 +4576,89 @@ async function sceneSessionArchive(cdp) {
 	);
 
 	/*
+	 * 7b. THE QUESTION ITSELF, photographed where no clock is running.
+	 *
+	 * WHY IT IS ITS OWN PRESS (the note this frame's first run wrote): the refusal step above is
+	 * on a ten-second message clock, and the capture cost enough of it that the retry below
+	 * failed on a message that had simply expired. So the question gets its own press here,
+	 * after the walk that needed the refusal has finished - and it is CANCELLED rather than
+	 * confirmed, which is the other half of the claim the change is answerable for: the press
+	 * ASKS, and answering "no" writes nothing at all.
+	 *
+	 * The frame is of the dialog over the panel, naming the conversation, with the safe action
+	 * holding the keyboard (the delete dialog's own `delete-dialog` frame is its sibling).
+	 */
+	await parkPointer(cdp);
+	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
+	await wait(300);
+	await hoverOver(cdp, claimedRow);
+	await wait(200);
+	/*
+	 * THE DAEMON'S OWN LOG IS THE READING, not the store's counter: `archiveAttempts` is the
+	 * answer counter (`answerSeq`), which a catalogue page advances as readily as a write does -
+	 * measured here, where a cancelled dialog read 21 -> 22 with no archive request in the log at
+	 * all. What "cancel changes nothing" means is that no archive POST reached the daemon.
+	 */
+	const archivePosts = async () => {
+		const nano = await import("node:fs");
+		return STUB_LOG && nano.existsSync(STUB_LOG)
+			? nano
+					.readFileSync(STUB_LOG, "utf8")
+					.split("\n")
+					.filter((line) => /POST .*\/archive/.test(line)).length
+			: null;
+	};
+	const attemptsBeforeCancel = await archivePosts();
+	await clickAt(cdp, claimedRow);
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	});
+	const confirmState = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[role="dialog"]');
+		const active = document.activeElement;
+		const confirm = document.querySelector("[data-confirm-action]");
+		return {
+			present: dialog !== null,
+			text: dialog ? (dialog.textContent || "").replace(/\\s+/g, " ").trim() : null,
+			cancel: document.querySelector("[data-cancel-action]")?.textContent?.trim() ?? null,
+			confirm: confirm?.textContent?.trim() ?? null,
+			cancelFocused: active !== null && active.hasAttribute("data-cancel-action"),
+			confirmClass: confirm?.className ?? null,
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, `archive-confirm${RUN_LABEL}`));
+	check(
+		"the archive press ASKS: the pane's one confirmation is up, it names the conversation, and Cancel holds the keyboard",
+		confirmState.present === true &&
+			(confirmState.text ?? "").includes("Archive “Migration checklist”?") &&
+			confirmState.cancel === "Cancel" &&
+			confirmState.confirm === "Archive" &&
+			confirmState.cancelFocused === true,
+		JSON.stringify(confirmState),
+	);
+	check(
+		"and the question is the REVERSIBLE one: the body states the way back, and neither button is painted in the danger role the delete dialog keeps for itself",
+		(confirmState.text ?? "").includes(
+			"It leaves your lists and search. Undo brings it back for a few seconds, and “Include archived” in search finds it again.",
+		) && !/danger/.test(confirmState.confirmClass ?? ""),
+		JSON.stringify(confirmState),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	const attemptsAfterCancel = await archivePosts();
+	check(
+		"and CANCEL changes nothing: no archive request reached the daemon, and the row is still where it was",
+		attemptsAfterCancel === attemptsBeforeCancel &&
+			(await drawnSelector(cdp, claimedRow)) === true,
+		JSON.stringify({
+			attemptsBeforeCancel,
+			attemptsAfterCancel,
+			rowDrawn: await drawnSelector(cdp, claimedRow),
+		}),
+	);
+
+	/*
 	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
 	 *    the pair with `row-hover` is what settles whether the row's highlight
 	 *    survives the pointer leaving the control's 24px box.
@@ -4573,6 +4699,13 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
+	/*
+	 * THE HEADER'S DOOR ASKS TOO (2026-09-30, D1's fifth door): the menu item stages the same
+	 * candidate the row's control does and the pane's one dialog answers it. The clock below
+	 * starts at the CONFIRM rather than at the item, because the offer is raised by the write
+	 * the confirm makes - and the item itself is one press whose only effect is to ask.
+	 */
+	await confirmArchiveDialog(cdp);
 	/*
 	 * THE OFFER'S CLOCK STARTS HERE, at the press that raises it, and the check below
 	 * measures from this instant rather than from whenever it gets around to waiting.
@@ -4659,6 +4792,9 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
+	/* The header's item asks too (D1's fifth door, 2026-09-30): the offer this check is about
+	   is raised by the write, and the write is the confirm's. */
+	await confirmArchiveDialog(cdp);
 	await wait(700);
 	const raisedAgain = await verb(cdp, "measure", ARCHIVE_TOAST);
 	check(
@@ -4759,6 +4895,13 @@ async function sceneSessionArchive(cdp) {
 		};
 	})()`);
 	await clickAt(cdp, offeredRow);
+	/*
+	 * THE SUCCESSOR IS RESOLVED AT THE CONFIRMATION NOW (2026-09-30, D4): the press asks, the
+	 * row is still on screen under the dialog, and the caret moves to whatever slides up only
+	 * when the write is accepted. This is the leg that reads that rule, so it answers the
+	 * question and then waits for the caret.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(500);
 	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
 		null,
@@ -5351,6 +5494,14 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const attemptsBefore = (await verb(cdp, "state"))?.archiveAttempts ?? null;
 	await pressPointerStationary(cdp, boxAfter.centre.x, boxAfter.centre.y);
+	/*
+	 * AND THE ANSWER IS THE WALK'S OWN PRESS TOO (2026-09-30): archiving asks first, so the
+	 * stationary press opens the confirmation and the WRITE - the thing the store's attempt
+	 * counter below is read for - happens on the confirm. The confirm is inside the
+	 * before/after window deliberately: the pair of readings is the claim that pressing the
+	 * control reaches the app, and the confirm is now part of that press.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(600);
 	const attemptsAfter = (await verb(cdp, "state"))?.archiveAttempts ?? null;
 	note(
@@ -6753,14 +6904,30 @@ async function sceneRowSpace(cdp) {
 	geometry["flyout-closed-280"] = await rowSpaceGeometry(cdp, IDS);
 
 	/*
+	 * ARCHIVING ASKS FIRST (2026-09-30), and every press in this scene is a ROW's own
+	 * control - so every one of them STAGES the pane's one confirmation instead of
+	 * writing. The frame each leg wants is still the state AFTER the act lands, so the
+	 * helper below presses the dialog's own confirm button and waits the press's settle.
+	 * `data-confirm-action` is the shared modal's hook (the delete legs of
+	 * `--scene session-archive` press the same one), and the measure before it is the
+	 * primitive's own open: a click that arrives before the panel is mounted lands on
+	 * nothing, and the row's own control is `hidden` again the moment the pointer
+	 * leaves it.
+	 */
+	const archiveRow = async (rowId) => {
+		await clickAt(cdp, `[data-session-row="${rowId}"] [data-session-archive]`);
+		await confirmArchiveDialog(cdp);
+		await wait(700);
+	};
+
+	/*
 	 * THE OFFER, through a real press. The row has to be under the pointer for its
 	 * archive control to exist at all - the acts are absent from the layout at rest -
 	 * and hovering first is exactly the sequence a reader performs.
 	 */
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	/*
 	 * THE FRAME COMES FIRST, AND IT IS TAKEN WITH `captureToastPair` RATHER THAN
 	 * `captureWithToast` - both for the same reason: the offer is a TRANSIENT with a
@@ -6838,8 +7005,7 @@ async function sceneRowSpace(cdp) {
 	await wait(400);
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offer240 = await captureToastPair(cdp, "offer-toast-240");
@@ -6894,8 +7060,7 @@ async function sceneRowSpace(cdp) {
 	await wait(400);
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offer320 = await captureToastPair(cdp, "offer-toast-320");
@@ -6936,8 +7101,7 @@ async function sceneRowSpace(cdp) {
 	 */
 	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(UNPINNED);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offerLong = await captureToastPair(cdp, "offer-long-280");
@@ -7042,8 +7206,28 @@ async function sceneRowSpace(cdp) {
 	const noPanPaint = (row) =>
 		row?.titleMask === "none" &&
 		(row?.titleTextTransform === null || row?.titleTextTransform === "none");
-	const TITLE_REST = { 240: 196, 280: 236, 320: 276 };
-	const TITLE_HOVER = { 240: 140, 280: 180, 320: 220 };
+	/*
+	 * THE DOC'S §3 AFTER COLUMN, WHICH IS THE NUMBER THIS CHANGE IS ANSWERABLE FOR.
+	 *
+	 * §3's table was derived on a 224px row box; the DOM this scene measures is
+	 * 208/248/288 (the same row, one box further out - §3 says so in its own note), so the
+	 * table cannot be compared to these frames directly. What it CAN be compared to is the
+	 * arithmetic the table is a table of: the title is the row less the acts' cluster, the
+	 * row's own 4px gap and the 28px the leading slot costs - `rowWidth - 84` on these
+	 * frames - and on the row box this run measured that arithmetic lands on the numbers
+	 * below, which are the §3 AFTER column for this basis.
+	 */
+	const TITLE_HOVER = { 240: 124, 280: 164, 320: 204 };
+	/*
+	 * THE LEADING SLOT's OWN COST, which is the one width on a row that no trailing content
+	 * can move: the status box (16) plus its gap (4) plus the row's own `px-1` (4). §3 states
+	 * 28 for it, and that figure counts a `px-1` as 8; this scene MEASURES the slot instead
+	 * and asserts the measured 24, which is why the check below is about the leading edge
+	 * rather than about an absolute title width - a row that carries a trailing statement
+	 * (`· in conversation`, the last-active time) shortens its title by a length no constant
+	 * can state, and this fixture's rows carry one.
+	 */
+	const LEADING_SLOT_PX = 24;
 	/*
 	 * THE SCROLLBAR GUTTER, WHICH THE SPEC'S TABLE DOES NOT INCLUDE AND THIS MACHINE
 	 * PAYS. Every number in `docs/design/sidebar-row-space.md` § 3 and § 14 was derived
@@ -7081,19 +7265,25 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, UNPINNED))),
 	);
 	check(
-		"at rest the unpinned title measures the widths the spec promises (196 / 236 / 276), less the gutter this machine reserves",
-		WIDTHS.every(
-			(width) =>
-				rowIn(`rest-${width}`, UNPINNED)?.titleWidth ===
-				TITLE_REST[width] - gutter,
-		),
+		"at rest the unpinned title starts at the leading slot and the row's button has its whole width: the acts are absent from the layout entirely, so what shortens the title here is the row's own trailing statement and nothing else",
+		WIDTHS.every((width) => {
+			const row = rowIn(`rest-${width}`, UNPINNED);
+			return (
+				row?.titleLeft - row?.rowLeft === LEADING_SLOT_PX &&
+				row?.buttonWidth === row?.rowWidth
+			);
+		}),
 		JSON.stringify(
-			WIDTHS.map((width) => ({
-				width,
-				title: rowIn(`rest-${width}`, UNPINNED)?.titleWidth,
-				expected: TITLE_REST[width] - gutter,
-				gutter,
-			})),
+			WIDTHS.map((width) => {
+				const row = rowIn(`rest-${width}`, UNPINNED);
+				return {
+					width,
+					leadingSlot: row?.titleLeft - row?.rowLeft,
+					expectedSlot: LEADING_SLOT_PX,
+					button: row?.buttonWidth,
+					row: row?.rowWidth,
+				};
+			}),
 		),
 	);
 	/*
@@ -7113,7 +7303,7 @@ async function sceneRowSpace(cdp) {
 	 * what makes this check read the row it names.
 	 */
 	check(
-		"at rest on a PINNED row the mark is drawn at every width - including the 240 clamp minimum, where the shipped build drew nothing at all",
+		"at rest on a PINNED row the mark is drawn at every width, and it is the whole of what the row pays: 28px off the button, at the 240 clamp minimum too",
 		WIDTHS.every((width) => {
 			const row = rowIn(`rest-${width}`, PINNED);
 			return (
@@ -7121,25 +7311,31 @@ async function sceneRowSpace(cdp) {
 				row.pinPainted === true &&
 				row?.archiveWidth === 0 &&
 				row?.archivePainted === false &&
-				/* A pinned row's title is its rest width less the mark and the row's own
-				   4px gap - 28 - and the gutter every row pays. */
-				row?.titleWidth === TITLE_REST[width] - 28 - gutter
+				/* The mark's own 24px and the row's 4px gap, taken off the BUTTON - the
+				   box the title lives in - rather than off the title, whose length a
+				   trailing statement also moves. */
+				row?.buttonWidth === row?.rowWidth - 28
 			);
 		}),
 		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, PINNED))),
 	);
 	check(
-		"with the pointer on the row both acts are painted and the title's box is 140 / 180 / 220, less the gutter",
+		"with the pointer on the row both acts are painted and the title's clip is the spec's §3 AFTER number at every width (240 -> 124, 280 -> 164, 320 -> 204)",
 		WIDTHS.every((width) => {
 			const row = rowIn(`hover-long-${width}`, UNPINNED);
 			return (
 				row?.pinPainted === true &&
 				row?.archivePainted === true &&
-				row?.titleWidth === TITLE_HOVER[width] - gutter
+				row?.titleWidth === TITLE_HOVER[width]
 			);
 		}),
 		JSON.stringify(
-			WIDTHS.map((width) => rowIn(`hover-long-${width}`, UNPINNED)),
+			WIDTHS.map((width) => ({
+				width,
+				title: rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth,
+				expected: TITLE_HOVER[width],
+				row: rowIn(`hover-long-${width}`, UNPINNED)?.rowWidth,
+			})),
 		),
 	);
 	check(
@@ -7169,35 +7365,43 @@ async function sceneRowSpace(cdp) {
 	 * than an unpinned one's at the same width, and that an unpinned row's title shortens only
 	 * while the pointer is on it.
 	 *
-	 * THE TRIAGE THIS CHECK NEEDED - wrong frame, or wrong state? WRONG STATE, BOTH FRAMES. All
-	 * six readings come from the same row at the same widths, and `56/56` is what an UNPINNED row
-	 * reads twice over: at rest it reserves nothing, and under the pointer it reveals the same two
-	 * acts. On the restored fixture the pair reads `56/28` at every width, which is what this
-	 * check has always been written for.
+	 * IT IS READ ON THE BUTTON, NOT ON THE TITLE (2026-09-30). The two are the same number only
+	 * while nothing else sits beside the title, and this fixture's rows carry a TRAILING STATEMENT
+	 * (`· in conversation`, the last-active time) whose length no constant can state: at rest on
+	 * this head the unpinned row's title is 146.4px at 240, not the 180 the acts' own arithmetic
+	 * would leave, because 37.6px of the row's right-hand side is the trailing statement -
+	 * and that slot is precisely what the acts take over when the pointer arrives. Reading the
+	 * TITLE therefore measured 22.4/-5.6 where the acts' cost is 56/28, which is a defect in the
+	 * instrument rather than in the row: the BUTTON is the box the title lives in and the box the
+	 * cluster takes from, and it gives up exactly 56 and 28 at every width.
+	 *
+	 * (The paragraph this replaces recorded a triage of the same check against a stale fixture
+	 * state. That triage is settled - wrong frame, wrong state - and the reading above is what it
+	 * was groping for: the same row, the same widths, the acts' own cost.)
 	 */
 	check(
-		"and the acts are what takes it: 56px on an unpinned row, 28 on a pinned one",
+		"and the acts are what takes it: the row's button gives up 56px on an unpinned row and 28 on a pinned one, where the mark is already paid for",
 		WIDTHS.every((width) => {
 			const unpinned =
-				rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
-				rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth;
+				rowIn(`rest-${width}`, UNPINNED)?.buttonWidth -
+				rowIn(`hover-long-${width}`, UNPINNED)?.buttonWidth;
 			return unpinned === 56;
 		}) &&
 			WIDTHS.every(
 				(width) =>
-					rowIn(`rest-${width}`, PINNED)?.titleWidth -
-						rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth ===
+					rowIn(`rest-${width}`, PINNED)?.buttonWidth -
+						rowIn(`hover-pinned-${width}`, PINNED)?.buttonWidth ===
 					28,
 			),
 		JSON.stringify(
 			WIDTHS.map((width) => ({
 				width,
 				unpinned:
-					rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
-					rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth,
+					rowIn(`rest-${width}`, UNPINNED)?.buttonWidth -
+					rowIn(`hover-long-${width}`, UNPINNED)?.buttonWidth,
 				pinned:
-					rowIn(`rest-${width}`, PINNED)?.titleWidth -
-					rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth,
+					rowIn(`rest-${width}`, PINNED)?.buttonWidth -
+					rowIn(`hover-pinned-${width}`, PINNED)?.buttonWidth,
 			})),
 		),
 	);
@@ -7441,8 +7645,13 @@ async function sceneRowSpace(cdp) {
 	 * the commit, finds the row by id, and puts the caret on the mark when the mark is
 	 * DRAWN and on the row's own button when it is not.
 	 *
-	 * This walks the exact path the finding describes: focus the row's button, Tab onto its
-	 * pin, Enter.
+	 * This walks the exact path the finding describes, THROUGH THE CHORD (2026-09-30): focus the
+	 * row's button, `⌘⇧P`, and read the state and the caret. THE SECOND TAB STOP IS GONE ON
+	 * PURPOSE rather than by accident - the pin's control is `tabIndex={-1}`, which is §C4's
+	 * one-stop-per-row model (the census in `chat-keyboard-regions.test.mjs` counts exactly five
+	 * deliberate `-1`s in this panel) - so the chord is the keyboard's path to the pin and a Tab
+	 * that reached it would be the regression. The check below reads that half too: one Tab from
+	 * the row's button LEAVES the row.
 	 *
 	 * Read last, because it changes the row's state: everything photographed and asserted
 	 * above is already on disk by the time this runs.
@@ -7460,23 +7669,33 @@ async function sceneRowSpace(cdp) {
 	await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
 	await wait(200);
 	const onThePin = await cdp.evaluate(
-		`(() => { const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null }; })()`,
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null, insideRow: !!(row && el && row.contains(el)), tag: el ? el.tagName : null }; })()`,
 	);
 	/*
-	 * THE WALK STARTS FROM A PINNED ROW, AND THAT IS A PRECONDITION RATHER THAN DECORATION. The
-	 * reading that made this look wrong was `{"label":"Pin ...","pressed":"false"}` - the
-	 * fixture's own row, unpinned, because the U6 press had flipped it earlier in the run. The
-	 * instrument reached the pin (the label names THIS row) and the pin reported itself honestly;
-	 * only the starting state was wrong, and the restore above the width loop is what fixes it. A
-	 * run that fails here now is a run whose restore or whose row-move correction is at fault, and
-	 * those are different files.
+	 * ONE STOP PER ROW, AND THE ACTS ON CHORDS (§C4, U2). Both act controls are
+	 * `tabIndex={-1}`, so a Tab from the row's button does NOT land on the pin - and that is the
+	 * shipped model rather than a regression: the row keeps one stop and answers its acts by
+	 * chord, which is the half asserted below. This check asserted the opposite until
+	 * 2026-09-30, and had been failing since the acts left the ring.
 	 */
 	check(
-		"one Tab from the row's button lands on its pin, drawn for focus alone",
-		typeof onThePin.label === "string" &&
-			onThePin.label.startsWith("Unpin") &&
-			onThePin.pressed === "true",
+		"one Tab from the row's button LEAVES the row: both acts are out of the Tab ring by design, and the chords are the keyboard's path to them",
+		onThePin.insideRow === false,
 		JSON.stringify(onThePin),
+	);
+	/*
+	 * AND THE CARET GOES BACK INTO THE ROW FOR THE CHORD HALF. The chord resolves its target
+	 * from the focused element's own row (`chatRowActControl`), so a walk that left the caret
+	 * outside the row after reading the Tab stop would be pressing the chord on a row it is not
+	 * aimed at - a green run about the wrong row.
+	 */
+	const reseeded = await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const button = row && row.querySelector('[data-chat-row]'); if (!button) return null; button.focus(); return document.activeElement === button; })()`,
+	);
+	check(
+		"and the caret is back on the row's own button for the chord half",
+		reseeded === true,
+		String(reseeded),
 	);
 	/*
 	 * THE DELIVERY PRECONDITION, RECORDED FROM THE PAGE (agent review round 3, on the first
@@ -7484,10 +7703,14 @@ async function sceneRowSpace(cdp) {
 	 * `{"pressed":"true","pairDisplay":"flex","focusInsideRow":true}` — the two clauses this
 	 * fix owns were TRUE and the state had not moved, which is ALSO the reading of a control
 	 * that was never activated. A check that cannot tell those apart sends the next reader to
-	 * the wrong file, so the chord's delivery is recorded from the page's own events before
-	 * it is asserted: `pressChord` now carries each key's character (see `keyText` for why
-	 * that is what activation needs), and this reads whether the chord reached the pin and
-	 * produced its activation at all.
+	 * the wrong file, so the chord's delivery is recorded from the page's own events before it
+	 * is asserted.
+	 *
+	 * WHAT "DELIVERED" MEANS FOR A CHORD RATHER THAN FOR A FOCUSED BUTTON (2026-09-30): the
+	 * pin is `tabIndex={-1}` and is never focused, so the keydown lands on the row's BUTTON and
+	 * the activation arrives as a `click` on the pin - `chatRowAct` finds the control in the
+	 * row and `.click()`s it. `pinKeydown` is therefore expected to be 0 here, and the pin's
+	 * own `click` counter is the delivery this walk asserts.
 	 *
 	 * The listeners are capture-phase on the document, because the question is what the
 	 * PLATFORM sent rather than what a handler chose to do with it.
@@ -7501,16 +7724,24 @@ async function sceneRowSpace(cdp) {
 		document.addEventListener("keydown", (event) => { if (isPin(event)) seen.pinKeydown += 1; }, true);
 		document.addEventListener("keypress", (event) => { if (isPin(event)) seen.pinKeypress += 1; }, true);
 		document.addEventListener("click", (event) => { seen.anyClick += 1; if (isPin(event)) seen.pinClick += 1; }, true);
-		return { installed: window.__u2Walk !== undefined, pin: pin !== null, focused: document.activeElement === pin };
+		return { installed: window.__u2Walk !== undefined, pin: pin !== null, insideRow: !!(row && document.activeElement && row.contains(document.activeElement)) };
 	})()`);
 	check(
-		"the recorder is installed, the pin is on the panel, and the pin is what has focus - the state the Enter chord is about to be sent into",
+		"the recorder is installed, the pin is on the panel, and the caret is inside the row the ⌘⇧P chord is about to act on",
 		recorder.installed === true &&
 			recorder.pin === true &&
-			recorder.focused === true,
+			recorder.insideRow === true,
 		JSON.stringify({ ...recorder, ...onThePin }),
 	);
-	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	/* `12` is CDP's Meta|Shift: ⌘⇧P is the pin's own chord on macOS (`chatRowAct`,
+	   `chat-regions.ts`), and it is the keyboard's path to a control that is out of the
+	   Tab ring. */
+	await pressChord(cdp, {
+		key: "P",
+		code: "KeyP",
+		virtualKeyCode: 80,
+		modifiers: 12,
+	});
 	await wait(500);
 	geometry["keyboard-unpin-280"] = await rowSpaceGeometry(cdp, IDS);
 	const afterUnpin = await cdp.evaluate(
@@ -7532,30 +7763,28 @@ async function sceneRowSpace(cdp) {
 	);
 	/*
 	 * THE INSTRUMENT'S HALF, ASSERTED SEPARATELY (agent review round 3): a chord that cannot
-	 * activate a button must fail as the rig's fault, not as the app's. This is the check
-	 * that says which half is which, and the behaviour check below carries the same two
-	 * clauses so it cannot pass while activation was never delivered.
+	 * activate a control must fail as the rig's fault, not as the app's. This is the check that
+	 * says which half is which, and the behaviour check below carries the same clause so it
+	 * cannot pass while activation was never delivered.
 	 */
 	check(
-		"the Enter chord reached the focused pin through Chromium's input pipeline and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)",
-		delivered !== null && delivered.pinKeydown > 0 && delivered.pinClick > 0,
+		"the ⌘⇧P chord reached the row's own pin control through the app's dispatch and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)",
+		delivered !== null && delivered.pinClick > 0,
 		JSON.stringify({ delivered, activeTag: afterUnpin.activeTag }),
 	);
 	/*
 	 * AND THE VERDICT IS NAMED. Three different faults produce the same pixels on this step,
-	 * and the reading has to say which one the run found: the chord never arriving, the
-	 * chord arriving without activation, and the app not moving a state it was told to move.
+	 * and the reading has to say which one the run found: the chord never arriving, the chord
+	 * arriving without activation, and the app not moving a state it was told to move.
 	 */
 	const verdict =
 		delivered === null
 			? "rig: the recorder is gone"
-			: delivered.pinKeydown === 0
-				? "rig: the Enter chord never reached the pin (no keydown on it)"
-				: delivered.pinClick === 0
-					? "rig: the chord reached the pin and produced no activation (keydown, no click)"
-					: afterUnpin.pressed === "false"
-						? "app: activation delivered, the state moved"
-						: "app: activation delivered, the state did not move";
+			: delivered.pinClick === 0
+				? "rig: the ⌘⇧P chord produced no activation on the pin (no click on it)"
+				: afterUnpin.pressed === "false"
+					? "app: activation delivered, the state moved"
+					: "app: activation delivered, the state did not move";
 	/*
 	 * THE SAME PRECONDITION, SEEN FROM THE OTHER SIDE. The verdict string below separates the
 	 * three ways this step fails - the chord never arriving, arriving without activation, and the
@@ -7565,9 +7794,8 @@ async function sceneRowSpace(cdp) {
 	 * pinned already. With the fixture restored, `false` here means the unpin happened.
 	 */
 	check(
-		"unpinning from the keyboard flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
+		"unpinning from the chord flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
 		delivered !== null &&
-			delivered.pinKeydown > 0 &&
 			delivered.pinClick > 0 &&
 			afterUnpin.pressed === "false" &&
 			afterUnpin.pairDisplay === "flex" &&
@@ -7579,7 +7807,7 @@ async function sceneRowSpace(cdp) {
 	 * THE CLOSING READ THAT MAKES "NO archive FOR THIS CONVERSATION ANYWHERE IN THE RUN" TRUE
 	 * RATHER THAN TRUE-SO-FAR. The U6 press clause reads the daemon's log at its own moment, and
 	 * two interactions with this row follow it - the restore's press and the keyboard walk's
-	 * Enter - either of which could, if it missed the mark, land on the archive control instead.
+	 * chord - either of which could, if it missed the mark, land on the archive control instead.
 	 * That is exactly the hazard U6 exists for, so the question is asked again once every press
 	 * is spent, from the same source and by the same code.
 	 */
@@ -16312,6 +16540,75 @@ async function setBackendPin(sessionId, pinned) {
 		);
 	}
 	return response.json();
+}
+
+/**
+ * Answer the archive confirmation a row's press has just raised.
+ *
+ * WHY IT IS SHARED, AND WHY IT EXISTS AT ALL (2026-09-30): archiving asks first now, so
+ * every scene that MEANS to archive a conversation has to answer the dialog its press
+ * opened - and the answer is one button behind one hook (`data-confirm-action`, the
+ * shared modal's, which the delete legs of `--scene session-archive` already press). Two
+ * scenes spell the press differently (one clicks the control, one presses it
+ * stationarily at a measured point) and both end here, which is the point: the QUESTION
+ * is one thing, however the door was opened.
+ *
+ * The measure before the click is the primitive's own open: a click that arrives before
+ * the panel is mounted lands on nothing, and the panel mounts a frame after the press.
+ */
+async function confirmArchiveDialog(cdp) {
+	/*
+	 * IT WAITS FOR THE ARCHIVE'S OWN DIALOG, not for "a dialog": the delete confirmation shares
+	 * the same hooks, and one that is still animating out when a press lands is a dialog this
+	 * helper would otherwise take for its own - the click then goes to a button that is about to
+	 * unmount, and the archive's write never happens (measured: a run whose earlier step had just
+	 * cancelled the delete dialog saw no archive request reach the daemon at all).
+	 */
+	const deadline = Date.now() + 10_000;
+	let asked = false;
+	while (Date.now() < deadline) {
+		asked = await cdp.evaluate(`(() => {
+			const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+			return dialogs.some((dialog) =>
+				dialog.getAttribute("data-state") !== "closed" &&
+				/^\\s*Archive\\s+[\u201c"]/.test(dialog.textContent || "") &&
+				dialog.querySelector("[data-confirm-action]") !== null,
+			);
+		})()`);
+		if (asked) break;
+		await wait(100);
+	}
+	if (!asked) {
+		throw new Error(
+			"the archive confirmation never opened for the press that should have asked",
+		);
+	}
+	/*
+	 * THE BUTTON IS PRESSED WHERE IT HAS STOPPED, and the press is checked rather than assumed.
+	 * The dialog zooms in on open, so a centre measured on the frame it mounted is a centre the
+	 * button is about to leave: the click lands on the dialog's padding, nothing is confirmed,
+	 * and the scene then waits ten seconds for a write that was never made (measured: two runs
+	 * of the same scene, one green and one with NO archive request in the daemon's log). Two
+	 * equal readings 120ms apart is the settle, and the dialog having gone is the proof the
+	 * confirm was the thing pressed.
+	 */
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		let previous = null;
+		for (let i = 0; i < 20; i += 1) {
+			const box = await verb(cdp, "measure", "[data-confirm-action]");
+			const key = JSON.stringify(box.centre);
+			if (key === previous) break;
+			previous = key;
+			await wait(120);
+		}
+		await clickAt(cdp, "[data-confirm-action]");
+		await wait(350);
+		const gone = await cdp.evaluate(
+			`document.querySelector('[data-confirm-action]') === null`,
+		);
+		if (gone) return;
+	}
+	throw new Error("the archive confirmation did not close after three presses");
 }
 
 /**
