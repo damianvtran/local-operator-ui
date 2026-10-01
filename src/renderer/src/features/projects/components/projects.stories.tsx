@@ -30,6 +30,7 @@ import type {
 	DesktopProject,
 	DesktopProjectDetail,
 	DesktopProjectMilestone,
+	DesktopProjectRequestUpdateResult,
 	DesktopProjectUpdate,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
@@ -40,6 +41,7 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
+import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
@@ -540,6 +542,21 @@ const detailsFor = (projects: DesktopProject[]) =>
 		]),
 	);
 
+/**
+ * How the bridge answers `projects.request_update` in one story: the route's
+ * own vocabulary, scripted. `hang` holds the promise open forever - the
+ * sending/loading state's only honest shape, because a pending mutation cannot
+ * be faked into existence from outside.
+ */
+type RequestUpdateFixture = {
+	state: DesktopProjectRequestUpdateResult["state"];
+	/** One row per linked session the batch dialled; counts derive from these. */
+	sessions?: DesktopProjectRequestUpdateResult["sessions"];
+	cooldown_remaining_s?: number;
+	requested_at?: string | null;
+	hang?: boolean;
+};
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
@@ -556,6 +573,12 @@ type StubState = {
 	hang: boolean;
 	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
 	failPatch: string | null;
+	/**
+	 * `projects.request_update`'s scripted answer (the check-in states). `null`
+	 * means no story configured it: a press without a fixture says so loudly
+	 * rather than faking a result.
+	 */
+	requestUpdate: RequestUpdateFixture | null;
 };
 
 let stub: StubState = {
@@ -565,6 +588,7 @@ let stub: StubState = {
 	failList: null,
 	hang: false,
 	failPatch: null,
+	requestUpdate: null,
 };
 
 /**
@@ -592,8 +616,15 @@ const answer = (request: {
 					//
 					// The two registries are ADVERTISED here so the start-session picker
 					// draws its real options; the plain-only degradation is a different
-					// state and has its own story.
-					features: { projects: 1, team_catalogue: 1, profile_catalogue: 1 },
+					// state and has its own story. `projects_request_update` is what
+					// MOUNTS the check-in item and button (PR-B) - a backend without it
+					// draws neither, which is the fail-closed state tests pin.
+					features: {
+						projects: 1,
+						projects_request_update: 1,
+						team_catalogue: 1,
+						profile_catalogue: 1,
+					},
 				},
 			},
 		};
@@ -682,6 +713,43 @@ const answer = (request: {
 				return { status: 200, body: { result: projectView } };
 			}
 			return { status: 404, body: { detail: "no such project" } };
+		/*
+		 * The check-in batch (PR-B), answered in the route's own vocabulary. The
+		 * counts are derived from the scripted session rows here rather than
+		 * written twice, so a fixture cannot contradict itself; `hang` is a
+		 * promise that never settles - the only way the sending state exists for
+		 * a frame.
+		 */
+		case "projects.request_update": {
+			const fixture = stub.requestUpdate;
+			if (!fixture) {
+				throw new Error(
+					"projects.request_update was pressed without a story fixture",
+				);
+			}
+			bridgeOps.push({ op: request.op, request });
+			if (fixture.hang) return new Promise(() => {});
+			const sessions = fixture.sessions ?? [];
+			const result: DesktopProjectRequestUpdateResult = {
+				project: {
+					id: String(request.key ?? "p1"),
+					key: "payments-migration",
+					title: "Payments migration",
+				},
+				state: fixture.state,
+				requested_at: fixture.requested_at ?? null,
+				cooldown_remaining_s: fixture.cooldown_remaining_s ?? null,
+				counts: {
+					total: sessions.length,
+					delivered: sessions.filter((s) => s.outcome === "delivered").length,
+					unconfirmed: sessions.filter((s) => s.outcome === "unconfirmed")
+						.length,
+					failed: sessions.filter((s) => s.outcome === "failed").length,
+				},
+				sessions,
+			};
+			return { status: 200, body: { result } };
+		}
 		default:
 			throw new Error(`unexpected desktop op in this story: ${request.op}`);
 	}
@@ -3155,4 +3223,320 @@ export const TimelineOverdue: Story = {
 			</>
 		);
 	},
+};
+
+/* ------------------------------------------------- request update (PR-B) */
+
+/*
+ * The check-in states: the board card's new menu item and the detail header's
+ * button run ONE flow (one window, one set of sentences), so these frames are
+ * raised from the same `projects.request_update` fixture answered in the
+ * route's own vocabulary. `hang` is the sending state's honest shape (the
+ * promise is held open, exactly as a slow route holds it); every other state
+ * resolves with its per-session rows and lets the REAL flow compose the card.
+ */
+
+const REQUEST_SESSION = (
+	session_id: string,
+	title: string | null,
+	outcome: DesktopProjectRequestUpdateResult["sessions"][number]["outcome"],
+	detail = "",
+): DesktopProjectRequestUpdateResult["sessions"][number] => ({
+	session_id,
+	title,
+	outcome,
+	detail,
+});
+
+/** The three engaged links of `DETAIL`'s fixture, all delivered. */
+const REQUEST_DELIVERED: DesktopProjectRequestUpdateResult["sessions"] = [
+	REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+	REQUEST_SESSION("a1a1a1a1a1a1", "API parity checks", "delivered"),
+	REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "delivered"),
+];
+
+/** The detail screen at `/projects/p1` with one scripted check-in answer. */
+const detailWithRequestUpdate = (
+	requestUpdate: RequestUpdateFixture,
+	detail: DesktopProjectDetail = DETAIL,
+) => (
+	<RouteTo path="/projects/p1">
+		{page({ projects: THREE, detail, requestUpdate })}
+	</RouteTo>
+);
+
+const requestUpdateButton = () =>
+	document.querySelector<HTMLElement>('[data-tour-tag="project-request-update"]');
+
+/**
+ * The press that never answers: the button holds `Requesting…` and the
+ * >400 ms loading card appears (and stays, because nothing supersedes it).
+ */
+export const DetailRequestUpdateSending: Story = {
+	render: () => detailWithRequestUpdate({ state: "sent", hang: true }),
+	play: playOnce("detail-request-update-sending", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (document.body.textContent ?? "").includes("Requesting updates…"),
+			"the loading card",
+		);
+		await poll(
+			() => requestUpdateButton()?.getAttribute("aria-busy") === "true",
+			"the button to report busy",
+		);
+	}),
+};
+
+/**
+ * The window after a delivered batch, the success card already retired: the
+ * DURABLE half of the state - the label says the request went out.
+ */
+export const DetailRequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("detail-request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (requestUpdateButton()?.textContent ?? "").trim() === "Requested",
+			"the button to hold its Requested label",
+		);
+		await poll(
+			() => document.querySelector("[data-sonner-toast]") === null,
+			"the success card to auto-close",
+		);
+	}),
+};
+
+/** The success card, while the batch's window is armed. */
+export const RequestUpdateSuccess: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("request-update-success", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the success card",
+		);
+	}),
+};
+
+/**
+ * A partial batch, both clauses in one card: one refusal ("could not be
+ * reached") and one unconfirmed delivery ("could not be confirmed") - the
+ * uncertainty the peer layer's own warning keeps, never collapsed into the
+ * failure wording (UX freeze condition U1).
+ */
+export const RequestUpdatePartial: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-partial", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Old cutover notes could not be reached.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the partial card's failure and uncertainty clauses",
+		);
+	}),
+};
+
+/** Every dial refused: the generic sentence, and no window is armed. */
+export const RequestUpdateAllFailed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					"no longer exists",
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					"not started yet",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-failed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach any of the 3 linked sessions on Payments migration.",
+				),
+			"the all-failed card",
+		);
+	}),
+};
+
+/**
+ * A project whose links were never engaged: the batch cannot be delivered to
+ * any of them, and the copy names the fix instead of sending the user to a
+ * control they already used (UX freeze condition U2).
+ */
+export const RequestUpdateNeverStarted: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"4e92693767fa",
+					"Payments cutover",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+			],
+		}),
+	play: playOnce("request-update-never-started", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"The 3 linked sessions have not started yet",
+				),
+			"the never-started card",
+		);
+	}),
+};
+
+/** No links at all: the card names the next action, and nothing is dialled. */
+export const RequestUpdateEmpty: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "empty" }, { ...DETAIL, links: [] }),
+	play: playOnce("request-update-empty", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"No linked sessions to ask. Link a session to Payments migration first.",
+				),
+			"the empty card",
+		);
+	}),
+};
+
+/**
+ * The route's own window: this press dialled nothing (another client asked
+ * first), the card says how long is left, and the button arms from the
+ * server's numbers so the two doors still agree.
+ */
+export const RequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "cooldown",
+			cooldown_remaining_s: 40,
+			requested_at: new Date(FIXTURE_NOW_MS - 20_000).toISOString(),
+		}),
+	play: playOnce("request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update already requested 20 s ago on Payments migration. Try again in 40 s.",
+				),
+			"the cooldown card",
+		);
+	}),
+};
+
+/**
+ * The card menu's KEYBOARD path, end to end: open with Enter, walk to the item
+ * by its own highlight, commit it - and assert the focus RETURN while the
+ * request is still in flight (U5): the caret must land back on the trigger the
+ * moment the menu closes, because a caret on `body` restarts the next Tab at
+ * the top of the page. The frame is the select's settled state (menu closed,
+ * card focused, the batch's card up).
+ */
+export const BoardRequestUpdateKeyboard: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+			requestUpdate: { state: "sent", sessions: REQUEST_DELIVERED },
+		}),
+	play: playOnce("board-request-update-keyboard", async () => {
+		const selector = '[data-project-menu="p1"]';
+		await poll(() => document.querySelector(selector) !== null, selector);
+		const trigger = need<HTMLElement>(selector);
+		trigger.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() => document.querySelectorAll('[role="menuitem"]').length >= 4,
+			"the card menu",
+		);
+		/* Walk to the item by its own highlight rather than by a press count,
+		 * so a reordered menu cannot silently retarget the gesture. */
+		for (let attempt = 0; attempt < 6; attempt += 1) {
+			const highlighted = document.querySelector(
+				'[role="menuitem"][data-highlighted]',
+			);
+			if (highlighted?.textContent?.includes("Request update")) break;
+			await userEvent.keyboard("{ArrowDown}");
+		}
+		await poll(
+			() =>
+				document
+					.querySelector('[role="menuitem"][data-highlighted]')
+					?.textContent?.includes("Request update") === true,
+			"the Request update item to highlight",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.activeElement === trigger &&
+				document.querySelectorAll('[role="menuitem"]').length === 0,
+			"focus back on the trigger after the select",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the batch to land",
+		);
+	}),
 };

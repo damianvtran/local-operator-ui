@@ -477,6 +477,59 @@ export type DesktopProjectDetail = {
 };
 
 /**
+ * `projects.request_update`'s per-session outcome (the route's three-way
+ * vocabulary, frozen):
+ *
+ * - `delivered` - the mailbox drop landed;
+ * - `unconfirmed` - the dial could not be confirmed either way (an
+ *   OSError/TimeoutError after the request was written); the message MAY still
+ *   have arrived, so no copy about it may assert failure;
+ * - `failed` - a refusal with a reason in `detail` ("not started yet",
+ *   "stale", "no longer exists", the never-started sentence, or the error's
+ *   own words).
+ */
+export type DesktopProjectRequestUpdateOutcome =
+	| "delivered"
+	| "unconfirmed"
+	| "failed";
+
+/** One linked session's answer to a check-in request. */
+export type DesktopProjectRequestUpdateSession = {
+	session_id: string;
+	title: string | null;
+	outcome: DesktopProjectRequestUpdateOutcome;
+	detail: string;
+};
+
+/**
+ * The route's answer (`POST /v1/desktop/projects/{project}/request-update`).
+ *
+ * `state` is the batch's verdict: `sent` (the per-session list carries the
+ * outcomes), `cooldown` (the route's own 60 s window refused the batch - no
+ * dials, `cooldown_remaining_s` says how long), or `empty` (no linked
+ * sessions to ask). The counts are the server's, not a client-side tally:
+ * the client must not recompute them from a list it might truncate.
+ *
+ * `project.key` is the row's addressing key (its `name`), `title` its display
+ * title - the toast composes the display name exactly as the page does
+ * (`title`, else key), because the toast appears far from the card that was
+ * pressed.
+ */
+export type DesktopProjectRequestUpdateResult = {
+	project: { id: string; key: string; title: string | null };
+	state: "sent" | "cooldown" | "empty";
+	requested_at: string | null;
+	cooldown_remaining_s: number | null;
+	counts: {
+		total: number;
+		delivered: number;
+		unconfirmed: number;
+		failed: number;
+	};
+	sessions: DesktopProjectRequestUpdateSession[];
+};
+
+/**
  * Aida's control state, as `GET /v1/desktop/aida` answers it (`design.md` § 4).
  *
  * WHY `enabled` IS ON THE READ AND IS NOT READ FROM THE POST. `features.aida`

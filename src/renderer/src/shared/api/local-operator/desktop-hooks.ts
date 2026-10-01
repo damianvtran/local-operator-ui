@@ -596,6 +596,23 @@ export type DesktopFeature =
 	 */
 	| "projects"
 	/**
+	 * `projects.request_update`: the check-in fan-out
+	 * (`POST /v1/desktop/projects/{project}/request-update`).
+	 *
+	 * ITS OWN KEY rather than a bump of `projects`, on the rule this union
+	 * states in several places: the Projects surface itself - the tab, its
+	 * CRUD, the milestones, the `@` picker's section - renders perfectly well
+	 * against a backend that cannot ASK its sessions for anything, so a bump
+	 * would hide a whole working surface behind an update it does not need.
+	 *
+	 * Absent means the two entry points are NOT MOUNTED (never
+	 * mounted-and-disabled): the card menu's item and the detail header's
+	 * button - see `ProjectRequestUpdateButton` and the board's menu. A control
+	 * whose only press would 404 is exactly the dead affordance the fail-closed
+	 * rule exists to omit.
+	 */
+	| "projects_request_update"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
