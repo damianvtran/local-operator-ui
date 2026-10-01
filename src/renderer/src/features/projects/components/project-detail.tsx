@@ -45,6 +45,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button } from "@shared/components/ui";
 import {
@@ -112,6 +113,16 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * The team the `Managed by` line names, read the way every other human-read
+	 * surface reads it (round 1, R1-3/D5): the same catalogue and gate as
+	 * `teamDisplayName`, so this page cannot name a team differently from the
+	 * start-session picker on top of it. A slug with no resolvable row renders
+	 * as itself.
+	 */
+	const teamLabelFor = useTeamLabelFor(
+		desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
 	const detail = useProjectDetail(projectKey, true);
 	const update = useUpdateProject();
 	const remove = useDeleteProject();
@@ -189,7 +200,10 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 
 	const { project, links } = detail.data;
 	const displayName = projectDisplayName(project);
-	const managedBy = managedByLine(project.owner, project.team);
+	const managedBy = managedByLine(
+		project.owner,
+		project.team ? teamLabelFor(project.team) : project.team,
+	);
 	const milestoneSummary = milestoneSummaryLabel(
 		project.milestones.filter((item) => item.completed_at !== null).length,
 		project.milestones.length,

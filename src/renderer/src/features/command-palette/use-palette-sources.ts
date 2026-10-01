@@ -42,10 +42,12 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useTeams } from "@shared/api/local-operator/profile-hooks";
 import {
 	CHAT_SEARCH_DEBOUNCE_MS,
 	useChatSearch,
 } from "@shared/api/local-operator/session-search";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
@@ -250,6 +252,23 @@ export function usePaletteItems({
 		2,
 	);
 	/*
+	 * The team label lookup for the CHAT ROWS' hint, fetched only when this
+	 * palette can draw chats and the backend advertises the team catalogue - the
+	 * same gate the sidebar's own list carries, so the two surfaces agree about
+	 * how a bound team reads. Absent (gate off, list still landing), the map is
+	 * empty and the slug remains the string, which is the pre-labels pixel.
+	 */
+	const teamNames = useTeams(
+		wantsChats && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
+	const teamLabels = useMemo(
+		() =>
+			new Map(
+				(teamNames.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+			),
+		[teamNames.data],
+	);
+	/*
 	/*
 	 * The rail's Mesh row, by the SAME rule the rail uses - membership, not the
 	 * capability - so the palette's destination SET stays the rail's set (R1-3). The row
@@ -419,7 +438,7 @@ export function usePaletteItems({
 		return rows.map((row, index) => {
 			const hit = byId.get(row.session_id);
 			const labelMatch = matchesLabel(row, terms);
-			const item = buildChatItem(row);
+			const item = buildChatItem(row, teamLabels);
 			/*
 			 * The marker says why the row is on screen. A row whose own title
 			 * contains the query is already explained by what is on screen, so it
@@ -466,7 +485,7 @@ export function usePaletteItems({
 				featured: terms.length === 0,
 			} satisfies PaletteItem;
 		});
-	}, [sessions, terms, hits, wantsChats, archiveView]);
+	}, [sessions, terms, hits, wantsChats, archiveView, teamLabels]);
 
 	/* -------------------------------- agents -------------------------------- */
 
