@@ -2,18 +2,26 @@
 
 Ten frames, five states, the two brand themes: the SAME stories the
 `../projects-tab/` after set carries, photographed against the files `origin/main`
-(`20ccfd4512`) ships for the LIST - `project-list.tsx`, whose band is `bg-canvas`,
+(`69d088ec52`) ships for the LIST - `project-list.tsx`, whose band is `bg-canvas`,
 and `projects.stories.tsx`. `team-section-header.tsx` does not exist on `main`,
 and the Timeline's and the Board's own bands are not part of this set at all: the
 division is LIST-ONLY by operator direction, and both of those views ship exactly
 what `main` ships on both sides of this change.
 
+BOTH HALVES NOW PRINT MAIN'S RESOLVED TEAM NAMES. Main's #716 resolves the
+band's text through the roster (`platform` -> `Platform Delivery`, `atlas` -> `Atlas
+Payments`), and the after half takes that same resolver through `teamLabelFor`, so
+the pair isolates the ONE thing this branch changes about the band - its ground -
+rather than mixing it with main's rename. Read the two `populated` frames side by
+side and the labels are identical and the ground is what moves.
+
 ```
 populated/           the List at rest - three sections, three rows
 many/                the List under a scrollbar - twelve rows over three sections
 list-teams-sticky/   the List mid-scroll - the second header pinned under its rows
-team-header-hover/   the pointer ON the "platform" section band
-project-row-hover/   the pointer ON the "payments-migration" row beside it
+team-header-hover/   the pointer ON the section band (`platform`'s, printed as its
+                     catalogue label `Platform Delivery`)
+project-row-hover/   the pointer ON the `payments-migration` row beside it
 ```
 
 ## Why this set exists
@@ -26,11 +34,11 @@ after half is the same band one rung up the ladder, `bg-surface`, borderless.
 
 | comparison | measurement |
 | --- | --- |
-| `team-header-hover` vs `populated`, **before** tree, both themes | **0 differing pixels** - the band has no hover on `main`, which is where the reporter's asymmetry came from. THE INSTRUMENT IS LIVE IN THE SAME RUN: `project-row-hover` vs `populated` differs by **56,249** dark / **58,346** light pixels, so the 0 is the band's non-reaction rather than a pointer that never landed |
-| `team-header-hover` vs `populated`, **after** tree, both themes | **0 differing pixels** - and it still has none: the band is a label, not an action. The same positive control holds on the changed tree - the row pair moves **67,250** dark / **69,998** light pixels - so the 0 is measured, not assumed |
-| `populated` before vs after | **187,370** dark / **182,807** light pixels differ |
-| `many` before vs after | **352,035** dark / **301,271** light |
-| `list-teams-sticky` before vs after | **223,265** dark / **196,096** light |
+| `team-header-hover` vs `populated`, **before** tree, both themes | **0 differing pixels** - the band has no hover on `main`, which is where the reporter's asymmetry came from. THE INSTRUMENT IS LIVE IN THE SAME RUN: `project-row-hover` vs `populated` differs by **59,374** dark / **59,512** light pixels, so the 0 is the band's non-reaction rather than a pointer that never landed |
+| `team-header-hover` vs `populated`, **after** tree, both themes | **0 differing pixels** - and it still has none: the band is a label, not an action. The same positive control holds on the changed tree - the row pair moves **66,673** dark / **60,016** light pixels - so the 0 is measured, not assumed |
+| `populated` before vs after | **187,484** dark / **183,094** light pixels differ |
+| `many` before vs after | **351,354** dark / **299,457** light |
+| `list-teams-sticky` before vs after | **222,308** dark / **195,076** light |
 
 The counts are exact-RGB differences over the whole frame (`sharp`, no tolerance),
 so any sub-pixel reflow of a row counts; they say how much moved, and the frames
@@ -42,8 +50,11 @@ band itself is one role's fill across the rows' own inset (x=24..1256 at the
 
 1. The change was committed first, so the rig, the stories and the harness are
    the tree under review; only the two files above differ between the two runs.
+   RE-TAKEN after the fold onto `origin/main` = `69d088ec52`, which is the tree the
+   before half now photographs: the band's TEXT moved on both sides with main's
+   #716 (the labels above), so the older frames no longer described either half.
 2. In that checkout those files were replaced with
-   `git checkout 20ccfd4512 -- src/renderer/src/features/projects/components/project-list.tsx
+   `git checkout origin/main -- src/renderer/src/features/projects/components/project-list.tsx
    src/renderer/src/features/projects/components/projects.stories.tsx` - a
    working-tree edit that was never committed and was restored
    (`git checkout HEAD -- <paths>`) before the commit that carries these frames.
@@ -51,8 +62,8 @@ band itself is one role's fill across the rows' own inset (x=24..1256 at the
 3. Storybook from this worktree, on a port no other tree held, then narrowed runs:
 
    ```sh
-   node_modules/.bin/storybook dev --port 6751 --ci --no-open
-   node scripts/capture-evidence.mjs http://127.0.0.1:6751 \
+   node_modules/.bin/storybook dev --port 6757 --ci --no-open
+   node scripts/capture-evidence.mjs http://127.0.0.1:6757 \
      --only=projects-tab--<story> --themes=localOperatorDark,localOperatorLight \
      --allow-backend --theme-settle-ms=180000
    ```
