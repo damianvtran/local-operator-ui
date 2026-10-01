@@ -139,11 +139,13 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * `settings-page`, for the stacked layout below `md` — and that is the line the
  * operator reported as stopping partway up the window (2026-09-27). The
  * stacked layout is gone (the rail has no `max-*` utilities any more) and the
- * boundary is now the tone step the rail's own ground makes: `elevated`
- * against the `surface` sidebar on its left and the `canvas` content on its
- * right. A drawn line over a tone step is the second mark this app's doctrine
- * removes (`chat-layout.tsx`, and the pass that took the dock's `border-l`),
- * and the one the wrapper drew was the one that stopped short.
+ * boundary that remains is the tone step the rail's own ground makes against
+ * the `canvas` content on its right (`surface` against `canvas`). On its left
+ * there is no boundary at all: the rail and the app sidebar are both `surface`
+ * (see the ground note below), the same flat join the agents roster makes
+ * beside the sidebar. A drawn line over a tone step is the second mark this
+ * app's doctrine removes (`chat-layout.tsx`, and the pass that took the dock's
+ * `border-l`), and the one the wrapper drew was the one that stopped short.
  *
  * ## Why it drops its labels below 1040px
  *
@@ -287,29 +289,38 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 		);
 	};
 
-	/* The rail's ground is a rung of the ladder; its row planes are not.
+	/* The rail's ground is `surface`, and its rows sit directly on it.
 	 *
-	 * The rail was `surface`, the same ground as the app sidebar beside it, and
-	 * the two combined into one 480px slab with no boundary between them — the
-	 * operator's report of 2026-09-27 ("a slightly different background shade to
-	 * differentiate from the main sidebar"). It takes `elevated`, one rung up
-	 * (`docs/branding.md` § 2): ΔE00 2.02-6.62 against the sidebar's `surface`
-	 * over all 59 palettes (min `arcade`, median 2.58), and 4.17-11.64 against
-	 * the `canvas` content on its other side.
+	 * A surface that paints `rowCurrent` or `hover:bg-row-hover` has to BE
+	 * `surface` (`docs/design/row-states-refinement.md` § 4). Both roles are
+	 * authored as steps OF the panel's own colour, so on a rung the fill lands
+	 * inside the ladder instead of out of the panel — resolved off `elevated`
+	 * the current fill falls under the 2.0 field floor on 16 of 59 palettes
+	 * (minimum ΔE00 0.47, `duskfox`). This rail paints both roles, so it wears
+	 * `surface`, the same ground as the app sidebar beside it.
 	 *
-	 * The ROW STATES do not move with it. Both roles (`row-hover`,
-	 * `row-selected`) are authored as steps OF `surface`, and a surface that
-	 * paints them has to BE `surface` — resolved off `elevated` the current
-	 * fill falls under the 2.0 field floor on 16 of 59 palettes (minimum ΔE00
-	 * 0.47, `duskfox`) — so the ground is SPLIT rather than either direction
-	 * relaxed: the nav takes the rung, and each group's LIST carries the
-	 * `surface` its rows were authored against (the same split the canvas Files
-	 * list made, #564). `scripts/chat-sidebar-selection.test.mjs` resolves each
-	 * list as the rows' ground, so a future re-grounding fails by name. */
+	 * That is where it started, and where it comes back after a round on
+	 * `elevated`. The rail took the rung on 2026-09-27 to separate itself from
+	 * the sidebar (ΔE00 2.02-6.62 over all 59 palettes) and paid for it with a
+	 * SPLIT ground: the nav wore the rung and each group's LIST carried the
+	 * `surface` its rows were authored against (the canvas Files list's shape,
+	 * #564). The split is what the operator then reported on 2026-09-30 — the
+	 * list blocks read as panels of a different tone inside the rail ("the
+	 * buttons/tabs are not the same color as the background on the settings left
+	 * sidebar") — so the rung is given up rather than the split kept: one flat
+	 * `surface` rail, the rows on the rail's own ground, and no list ground left
+	 * to disagree with it. Against the `canvas` content the leading boundary is
+	 * still a tone step; against the sidebar the two panels are one tone, which
+	 * is how the agents roster already sits beside it (`agents-sidebar.tsx`).
+	 *
+	 * `scripts/chat-sidebar-selection.test.mjs` pins both halves by name: the nav
+	 * is resolved as the rows' ground, so a re-grounding fails; and the rail's own
+	 * `<ul>` is read and required to carry no ground role at all, so a list
+	 * re-acquiring a ground of its own fails - which is the defect above. */
 	return (
 		<nav
 			aria-label="Settings sections"
-			className="flex h-full w-full flex-col overflow-hidden bg-elevated"
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of
@@ -333,10 +344,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 									{group.label}
 								</div>
 							)}
-							{/* The rows' own plane: both row roles are steps OF `surface`,
-							    so the list — and only the list — wears it (see the ground
-							    note at the top). */}
-							<ul className={cn("flex flex-col gap-0.5 bg-surface")}>
+							{/* No ground of its own: the rows sit on the rail's `surface`
+							    (see the ground note at the top). A list that carried one was
+							    the split the operator reported as mismatched blocks. */}
+							<ul className="flex flex-col gap-0.5">
 								{groupSections.map(renderSection)}
 							</ul>
 						</div>

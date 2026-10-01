@@ -80,6 +80,7 @@ import {
 	RosterSkeleton,
 	SourceChip,
 } from "./detail-parts";
+import { HubUpdatePanel } from "./hub-update-panel";
 import { TeamDetail } from "./team-detail";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
@@ -112,6 +113,28 @@ const SCOPE_LABEL: Record<Scope, string> = {
 	custom: "Custom",
 	installed: "Installed",
 	builtin: "Built-in",
+};
+
+/**
+ * A key that changes when the FETCHED definition changes, and only then.
+ *
+ * The detail panes below seed their draft once, on mount, so a hub update that
+ * rewrote a definition under an open editor left the OLD text on screen, and
+ * Edit - Save wrote it back over the merge (agent review round 1, R1). Keying the
+ * pane on the content re-seeds it, while an unrelated refetch (window focus)
+ * returns identical content, the same key and no remount, so an edit in progress
+ * survives it. The page-level consequence of that remount is stated where the
+ * notice lives, inside the component.
+ *
+ * The digest is length + FNV-1a over the serialised record: cheap enough to run
+ * on every render of a pane, and only ever compared, never parsed.
+ */
+const contentKey = (value: unknown) => {
+	const text = JSON.stringify(value) ?? "";
+	let hash = 5381;
+	for (let index = 0; index < text.length; index += 1)
+		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
+	return `${text.length}.${hash.toString(36)}`;
 };
 
 export function AgentsPage() {
@@ -283,6 +306,82 @@ export function AgentsPage() {
 		[paneIdentity],
 	);
 	const editDirty = dirtyIdentity !== null && dirtyIdentity === paneIdentity;
+
+	/*
+	 * A HUB UPDATE THAT LANDS UNDER AN OPEN EDITOR (agent review round 2, R2-5; the
+	 * keying half is R1 above). A remount discards whatever the person had typed,
+	 * and the hub is the one thing that changes a definition with no action taken in
+	 * this pane, so the page SAYS so instead of replacing an in-flight edit
+	 * silently.
+	 *
+	 * `editDirty` is the right flag and needs no ref: it is the value from THIS
+	 * render, and the pane that withdraws its own report on unmount only moves it in
+	 * the next one, so the content change under a dirty editor is never missed and a
+	 * clean editor never raises the notice. The comparison is scoped by identity the
+	 * same way `editDirty` is - a change of record adopts it as seeded and clears the
+	 * notice rather than comparing across two definitions (agent review round 3, N1).
+	 */
+	const [lostEdits, setLostEdits] = useState(false);
+	const openIdentity = `${teamMode ? "team" : "agent"}:${selected ?? ""}`;
+	const openContent = teamMode
+		? teamDetail.data
+			? contentKey(teamDetail.data)
+			: null
+		: profileDetail.data
+			? contentKey(profileDetail.data)
+			: null;
+	const seededPane = useRef<{ identity: string; content: string | null }>({
+		identity: openIdentity,
+		content: openContent,
+	});
+	useEffect(() => {
+		if (seededPane.current.identity !== openIdentity) {
+			seededPane.current = { identity: openIdentity, content: openContent };
+			setLostEdits(false);
+			return;
+		}
+		if (openContent === null || seededPane.current.content === null) {
+			/*
+			 * NOTHING TO COMPARE AGAINST: the pane is unmounted, or its read has not
+			 * landed yet. Seed silently - announcing the first real content as a
+			 * change would put the notice over a pane that was merely empty a moment
+			 * ago (agent review round 4, R4-N2).
+			 */
+			seededPane.current = { identity: openIdentity, content: openContent };
+			return;
+		}
+		if (seededPane.current.content === openContent) return;
+		seededPane.current.content = openContent;
+		if (editDirty) setLostEdits(true);
+	}, [openIdentity, openContent, editDirty]);
+
+	/** The panel and the replaced-edit notice, above whichever pane is open. */
+	const hubPane = (kind: "agent" | "team", itemName: string) => (
+		<>
+			{/* Renders nothing unless the hub lists THIS item as not up to date. */}
+			<HubUpdatePanel
+				kind={kind}
+				name={itemName}
+				enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
+			/>
+			{lostEdits && (
+				/*
+				 * `output` carries the `status` role, which is what this is.
+				 *
+				 * IT WEARS ITS NEIGHBOURS' MEASUREMENTS. The panel above it and the pane
+				 * below it are both `max-w-3xl`, so on a page wider than 48rem an
+				 * uncapped notice stretches past both of them and reads as a third,
+				 * unrelated block; its bottom margin is the panel's own `mb-6` for the
+				 * same reason (design review round 4, R4-M1).
+				 */
+				<output className="mb-6 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+					The hub updated this definition while you were editing, and the form
+					below now shows the merged version. Edits you had not saved were
+					replaced.
+				</output>
+			)}
+		</>
+	);
 
 	/**
 	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
@@ -695,54 +794,60 @@ export function AgentsPage() {
 							onCancel={() => go({ name: null })}
 						/>
 					) : teamMode && teamDetail.data ? (
-						<TeamDetail
-							key={`team:${teamDetail.data.name}`}
-							team={teamDetail.data}
-							agents={profiles.data}
-							teams={teams.data}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onOpenAgent={(agentName) =>
-								requestGo({ kind: "agent", name: agentName })
-							}
-							onAskAgent={(prompt) => {
-								run.setAbout({
-									kind: "team",
-									name: teamDetail.data?.name ?? "",
-								});
-								run.setDraft(prompt);
-							}}
-						/>
+						<>
+							{hubPane("team", teamDetail.data.name)}
+							<TeamDetail
+								key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
+								team={teamDetail.data}
+								agents={profiles.data}
+								teams={teams.data}
+								askEnabled={run.enabled}
+								onDirtyChange={reportDirty}
+								onSaved={(savedName) => {
+									void refreshAll();
+									go({ name: savedName });
+								}}
+								onOpenAgent={(agentName) =>
+									requestGo({ kind: "agent", name: agentName })
+								}
+								onAskAgent={(prompt) => {
+									run.setAbout({
+										kind: "team",
+										name: teamDetail.data?.name ?? "",
+									});
+									run.setDraft(prompt);
+								}}
+							/>
+						</>
 					) : !teamMode && profileDetail.data ? (
-						<AgentDetail
-							key={`agent:${profileDetail.data.name}`}
-							profile={profileDetail.data}
-							teams={teams.data}
-							effortTiers={effortTiers}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onDuplicate={(profile) =>
-								requestGo({ create: "agent", duplicate: profile.name })
-							}
-							onOpenTeam={(teamName) =>
-								requestGo({ kind: "team", name: teamName })
-							}
-							onAskAgent={(prompt) => {
-								run.setAbout({
-									kind: "agent",
-									name: profileDetail.data?.name ?? "",
-								});
-								run.setDraft(prompt);
-							}}
-						/>
+						<>
+							{hubPane("agent", profileDetail.data.name)}
+							<AgentDetail
+								key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
+								profile={profileDetail.data}
+								teams={teams.data}
+								effortTiers={effortTiers}
+								askEnabled={run.enabled}
+								onDirtyChange={reportDirty}
+								onSaved={(savedName) => {
+									void refreshAll();
+									go({ name: savedName });
+								}}
+								onDuplicate={(profile) =>
+									requestGo({ create: "agent", duplicate: profile.name })
+								}
+								onOpenTeam={(teamName) =>
+									requestGo({ kind: "team", name: teamName })
+								}
+								onAskAgent={(prompt) => {
+									run.setAbout({
+										kind: "agent",
+										name: profileDetail.data?.name ?? "",
+									});
+									run.setDraft(prompt);
+								}}
+							/>
+						</>
 					) : selected ? (
 						<Skeleton className="h-6 w-40" />
 					) : (
