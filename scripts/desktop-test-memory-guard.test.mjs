@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	copyFileSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -523,6 +524,147 @@ test("with the process table unreadable the runaway is still found and killed", 
 	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
 	assert.match(result.stderr, KILLED_GROUP_LINE);
 	assert.match(result.stderr, TABLE_UNREADABLE);
+});
+
+/*
+ * Q5: with the table unreadable AND a descendant that left the group (`setsid`),
+ * the breach must still reach that descendant. Once the group is dead it is
+ * re-parented to pid 1, so a "parent still in this tree" identity can never match
+ * it; the walk therefore has to record its start time while the tree is still
+ * intact. Pure shape first, then the real runner.
+ */
+test("a walked member's identity is recorded at walk time, so a re-parented one is still killed", async () => {
+	const stamp = "Tue Sep 30 21:56:12 2026";
+	const darwin = { platform: "darwin" };
+	const reading = await sampleGroup(100, {
+		...darwin,
+		run: async (cmd, args) => {
+			if (cmd === "pgrep") return args[1] === "100" ? "102\n" : "";
+			if (cmd === "ps" && args[0] === "-axo") return null;
+			if (cmd === "ps") return `  102   100   102  512 ${stamp}\n`;
+			return "n [100]: 64-bit    Footprint: 10 MB (16384 bytes per page)\n";
+		},
+	});
+	const walked = reading.members.find((member) => member.pid === 102);
+	assert.equal(walked.lstart, stamp);
+	assert.equal(walked.pgid, 102);
+	// After the group kill the grandchild's parent is pid 1; same start time.
+	const sent = [];
+	const outcome = await killTree(100, reading.members, {
+		kill: (target) => sent.push(target),
+		run: async () => `  102     1   102  512 ${stamp}\n`,
+	});
+	assert.deepEqual(sent, [-100, 102]);
+	assert.equal(outcome.skipped, 0);
+});
+
+test("with the table unreadable, a setsid'd grandchild does not survive the breach", () => {
+	const bin = join(scratch, "bin-q5");
+	mkdirSync(bin, { recursive: true });
+	writeFileSync(
+		join(bin, "ps"),
+		'#!/bin/sh\nif [ "$1" = "-axo" ]; then exit 1; fi\nexec /bin/ps "$@"\n',
+	);
+	chmodSync(join(bin, "ps"), 0o755);
+	const pidFile = join(scratch, "grandchild-q5.pid");
+	const holder = join(scratch, "q5-holder.test.mjs");
+	writeFileSync(
+		holder,
+		`import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { test } from "node:test";
+test("holds", async () => {
+	const g = spawn("sleep", ["60"], { stdio: "ignore", detached: true });
+	g.unref();
+	writeFileSync(${JSON.stringify(pidFile)}, String(g.pid));
+	const held = [];
+	for (let i = 0; i < 20; i++) held.push(Buffer.alloc(64 * 1024 * 1024, 1));
+	await new Promise((resolve) => setTimeout(resolve, 60000));
+});
+`,
+	);
+	const result = spawnSync(
+		process.execPath,
+		[RUNNER, "--test-concurrency=1", holder],
+		{
+			encoding: "utf8",
+			env: {
+				...process.env,
+				PATH: `${bin}:${process.env.PATH}`,
+				[MEMORY_BUDGET_OVERRIDE_ENV]: "300",
+			},
+			timeout: 45000,
+		},
+	);
+	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
+	const grandchild = Number(readFileSync(pidFile, "utf8"));
+	const survived = alive(grandchild);
+	if (survived) process.kill(grandchild, "SIGKILL");
+	assert.equal(survived, false, `setsid grandchild ${grandchild} survived`);
+});
+
+/*
+ * Keeper path with a space in it: `new URL(...).pathname` is percent-encoded, so
+ * the keeper exited 1 under such a checkout and the runner never noticed. The
+ * runner and what it imports are copied into a directory with a space and the
+ * runner-SIGKILL case is repeated from there.
+ */
+test("the keeper still reaps the group when the checkout path contains a space", async () => {
+	const dir = join(scratch, "dir with space", "scripts");
+	mkdirSync(dir, { recursive: true });
+	for (const name of [
+		"run-desktop-tests.mjs",
+		"desktop-test-keeper.mjs",
+		"desktop-test-memory-guard.mjs",
+		"desktop-test-concurrency.mjs",
+		"notifications-off.mjs",
+		"telemetry-off.mjs",
+		"no-hardlink-write-preload.mjs",
+		"no-hardlink-write.mjs",
+	]) {
+		copyFileSync(join(process.cwd(), "scripts", name), join(dir, name));
+	}
+	const pidFile = join(scratch, "grandchild-space.pid");
+	const holder = join(scratch, "space-holder.test.mjs");
+	writeFileSync(
+		holder,
+		`import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { test } from "node:test";
+test("holds", async () => {
+	const g = spawn("sleep", ["60"], { stdio: "ignore" });
+	writeFileSync(${JSON.stringify(pidFile)}, String(g.pid));
+	await new Promise((resolve) => setTimeout(resolve, 60000));
+});
+`,
+	);
+	const runner = spawn(
+		process.execPath,
+		[join(dir, "run-desktop-tests.mjs"), "--test-concurrency=1", holder],
+		{
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, [MEMORY_BUDGET_OVERRIDE_ENV]: "off" },
+		},
+	);
+	let grandchild = null;
+	for (let i = 0; i < 100 && grandchild === null; i++) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		try {
+			grandchild = Number(readFileSync(pidFile, "utf8"));
+		} catch {
+			grandchild = null;
+		}
+	}
+	assert.ok(grandchild, "the grandchild never started");
+	process.kill(-runner.pid, "SIGKILL");
+	let reaped = false;
+	for (let i = 0; i < 80 && !reaped; i++) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		reaped = !alive(grandchild);
+	}
+	if (!reaped) process.kill(grandchild, "SIGKILL");
+	assert.ok(reaped, `grandchild ${grandchild} survived under a spaced path`);
 });
 
 test("the override `off` runs the suite unbounded and says so", () => {

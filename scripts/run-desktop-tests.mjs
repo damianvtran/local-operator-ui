@@ -40,6 +40,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
 	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
@@ -242,18 +243,31 @@ const child = spawn(process.execPath, nodeArgs, {
  * not cover the keeper itself being killed, and it signals the group only.
  */
 let keeper = null;
+let keeperReleased = false;
 if (child.pid !== undefined) {
 	try {
 		keeper = spawn(
 			process.execPath,
 			[
-				new URL("./desktop-test-keeper.mjs", import.meta.url).pathname,
+				fileURLToPath(new URL("./desktop-test-keeper.mjs", import.meta.url)),
 				String(child.pid),
 			],
 			{ stdio: ["pipe", "ignore", "ignore"], detached: true },
 		);
+		// `URL.pathname` is percent-encoded, so a checkout under a path with a space
+		// made the keeper exit 1 at once while the runner carried on believing it
+		// was tethered; `fileURLToPath` is the decoded path. And because a keeper
+		// that is gone is the one failure the runner cannot otherwise see, an exit
+		// before the runner's own normal end is announced here.
 		keeper.on("error", () => {
 			keeper = null;
+		});
+		keeper.on("exit", (code) => {
+			if (!keeperReleased && code !== 0) {
+				console.error(
+					`desktop tests: WARNING - the death-watch keeper exited early (status ${code}); if this runner is killed the test group will NOT be reaped`,
+				);
+			}
 		});
 		keeper.stdin.on("error", () => {});
 		keeper.unref();
@@ -262,6 +276,7 @@ if (child.pid !== undefined) {
 	}
 }
 function releaseKeeper() {
+	keeperReleased = true;
 	// Tell it this is a NORMAL end so it does not signal a finished suite's group.
 	try {
 		keeper?.stdin.end("done\n");
