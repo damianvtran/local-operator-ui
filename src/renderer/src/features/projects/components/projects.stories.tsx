@@ -3261,9 +3261,14 @@ export const BoardTitleTooltip: Story = {
 				"the short title is clipped - the fixture no longer discriminates",
 			);
 		}
-		if (long.tabIndex !== 0) {
-			throw new Error("the clipped title has no tab stop");
-		}
+		/* The tab stop is REACT state behind the measurement effect, so it can
+		 * trail the DOM truth by a frame or two under capture load - measured
+		 * 2026-10-01: two sweeps of this family died here, one at `dune` and
+		 * one at `localOperatorDark`, while the DOM itself reported the title
+		 * clipped both times. Wait for the state instead of failing the story:
+		 * the assertion stands (a title that never becomes focusable still
+		 * fails), only the race goes. */
+		await poll(() => long.tabIndex === 0, "the clipped title's tab stop");
 		if (short.hasAttribute("tabindex")) {
 			throw new Error("the unclipped title grew a tab stop");
 		}
@@ -3601,6 +3606,79 @@ export const RequestUpdateAllFailed: Story = {
 					"Could not reach any of the 3 linked sessions on Payments migration.",
 				),
 			"the all-failed card",
+		);
+	}),
+};
+
+/**
+ * Zero-delivery uncertainty (design round 2, D1): nobody refused and nobody
+ * confirmed, so the card asserts nothing about arrival - the longest pure
+ * sentence the vocabulary can produce, and one a string assertion cannot
+ * settle the wrap of.
+ */
+export const RequestUpdateAllUnconfirmed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+				REQUEST_SESSION(
+					"b2b2b2b2b2b2",
+					"Cutover notes",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-unconfirmed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not confirm delivery on Payments migration — the requests may still reach its sessions.",
+				),
+			"the all-unconfirmed card",
+		);
+	}),
+};
+
+/**
+ * The mixed zero-delivery end (design round 2, D1): one refusal and one
+ * uncertainty, nothing delivered - the other longest title, whose wrap the
+ * design asked to settle with a still.
+ */
+export const RequestUpdateMixedZeroDelivery: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-mixed-zero-delivery", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach 1 of the 2 linked sessions on Payments migration.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the mixed zero-delivery card",
 		);
 	}),
 };

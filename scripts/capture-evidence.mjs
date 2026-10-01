@@ -5748,6 +5748,19 @@ export const STORIES = [
 	["projects-tab--request-update-empty", 1280, 900],
 	["projects-tab--request-update-cooldown", 1280, 900],
 	["projects-tab--board-request-update-keyboard", 1280, 900],
+	/* Design round 2's D1: the two zero-delivery warning ends the suite had no
+	 * still for - all-unconfirmed, and the mixed refusal+uncertain sentence
+	 * (the longest titles the fixture can produce) - plus the narrow-window
+	 * persistent card (partial, four lines, `duration: Infinity`) at the
+	 * 560 px width the round-1 header geometry was checked at. */
+	["projects-tab--request-update-all-unconfirmed", 1280, 900],
+	["projects-tab--request-update-mixed-zero-delivery", 1280, 900],
+	[
+		"projects-tab--request-update-partial",
+		560,
+		900,
+		{ dir: "request-update-partial-narrow" },
+	],
 	/*
 	 * The board's time window (feat/board-time-window): one frame per rung plus
 	 * the states around it. Each play asserts the visible card set - and the R5
