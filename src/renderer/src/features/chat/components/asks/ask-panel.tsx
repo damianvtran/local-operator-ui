@@ -1,0 +1,413 @@
+/**
+ * The EXPANDED ask surface: the queue, and the form that answers one entry.
+ *
+ * ## Two states, one component (design §5.0, R7)
+ *
+ * This is the EXPANDED half of the shared interaction model. The bar
+ * (`ask-bar.tsx`) is the minimized one, and the rule that binds them is the
+ * composer's routing invariant: while this panel is open the composer answers
+ * the ask, and while it is collapsed the composer is an ordinary conversation
+ * box. The panel is entered ONLY by the user - a click on the bar, or an explicit
+ * action - and never by an ask arriving, which is the no-focus-steal promise the
+ * whole redesign is built on.
+ *
+ * ## Why the whole ask is one form
+ *
+ * The wire answers an ask ATOMICALLY: one body carrying every question's answer,
+ * keyed by question id (design §4). A client that posted one question at a time
+ * could die half-settled, and the ask would be neither open nor answered with
+ * nothing able to settle it - so the submit control is gated on the whole draft
+ * being complete (`askDraftIsComplete`) rather than on the question in view.
+ *
+ * ## Why a SECRET question keeps its value out of the draft
+ *
+ * A secret answer is typed into a masked field, and it must not be re-rendered:
+ * it therefore lives in its own record (`AskSecrets`) rather than in the draft
+ * that drives ticks and enablement, so no render path can paint it into a story
+ * fixture or a log. It still travels ON THE ANSWER BODY, because the backend is
+ * what turns the value into a key name — it writes the value to the session's
+ * memory-only store first and puts `[<key>]` in the durable row, in that order.
+ * The field is still the only place the value may live on this side, and the
+ * submit stays gated on it being non-empty.
+ *
+ * ## What the states are allowed to say
+ *
+ * Every status sentence comes from `ask-queue.ts`'s shared copy contract. The
+ * honest states the design note calls out are the reason this panel is not a
+ * plain list: QUEUED and TIMED-OUT must not read alike (a timed-out ask is still
+ * answerable, and "timed out" alone reads as finished), a LATE answer must name
+ * itself as late, and a delivered response must be distinguishable from an
+ * answer the model never received.
+ */
+
+import { cn } from "@shared/lib/utils";
+import {
+	AlertTriangle,
+	Check,
+	Clock,
+	HelpCircle,
+	type LucideIcon,
+	X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import type {
+	PendingAsk,
+	PendingAskQuestion,
+} from "../../../../../../shared/desktop-session-contract";
+import type {
+	AskDraft,
+	AskPresentation,
+	AskQueueView,
+	AskSecrets,
+} from "../../ask-queue";
+import {
+	askAnswerMap,
+	askSettledAnswers,
+	askStatusText,
+	draftFor,
+} from "../../ask-queue";
+
+export type AskPanelProps = {
+	view: AskQueueView;
+	/** Answer one ask from a completed draft. */
+	onAnswer: (ask: PendingAsk, answers: Record<string, string[]>) => void;
+	/** "No answer — decide yourself" for one ask. */
+	onDecline: (ask: PendingAsk) => void;
+	/*
+	 * There is deliberately NO dismiss door. Design §5.0/§5.2 puts one in scope
+	 * ("view-only removal of a timed-out ask"), but the desktop plane has no route
+	 * for it: the bridge exposes `ask_respond` (with `decline`) and nothing that
+	 * maps to the runtime's `ask_dismiss`, so a Dismiss button here would be a
+	 * control that can never work - the dead-affordance defect this codebase
+	 * refuses elsewhere (`ask-options.tsx`'s own note on the inert `<ul>`). A
+	 * timed-out ask therefore stays visible and answerable (the `late` path), and
+	 * dismissal lands when the route does.
+	 */
+	/** An answer is in flight from any surface: every control is disabled. */
+	answering?: boolean;
+	/**
+	 * This panel's own record of the ask it settled, keyed by id: the sentence the
+	 * owner refused with, or `null` while it is still live. Keyed because a
+	 * refusal belongs to ONE ask, and a single slot would put the previous ask's
+	 * sentence on the next one.
+	 */
+	outcomes?: Record<
+		string,
+		{ sending: boolean; refused: string | null } | undefined
+	>;
+	/** The client clock the countdown reading is rendered against. */
+	nowMs: number;
+	className?: string;
+};
+
+/** Status glyph and ink, in one place so every row reads the same way. */
+const askStatusMark = (
+	status: AskPresentation["status"],
+): { Icon: LucideIcon; className: string } => {
+	switch (status) {
+		case "answered":
+		case "late":
+			return { Icon: Check, className: "text-success" };
+		case "timed_out":
+			return { Icon: Clock, className: "text-warning" };
+		case "declined":
+		case "dismissed":
+		case "expired":
+			return { Icon: X, className: "text-ink-muted" };
+		default:
+			return { Icon: HelpCircle, className: "text-accent" };
+	}
+};
+
+/**
+ * One question's control.
+ *
+ * Three shapes, decided by the question itself rather than by the ask:
+ * an option list (single- or multi-select), a free-text field (an option list is
+ * never guaranteed exhaustive - the terminal picker's own rule is that its free
+ * row can return a string that was never in `options`), and a masked field for a
+ * secret. The secret case is a different DOOR rather than a variant of the text
+ * field: its value must never be drafted, echoed, or sent as an answer.
+ */
+const AskQuestionField = ({
+	question,
+	selected,
+	secret,
+	disabled,
+	onSelect,
+	onToggle,
+	onSecret,
+}: {
+	question: PendingAskQuestion;
+	selected: string[];
+	secret: string;
+	disabled: boolean;
+	onSelect: (label: string) => void;
+	onToggle: (label: string) => void;
+	onSecret: (value: string) => void;
+}) => {
+	const options = question.options ?? [];
+	const multi = question.multi === true;
+	return (
+		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
+			<p className="text-ink text-sm">{question.question}</p>
+			{question.secret ? (
+				<input
+					data-ask-secret={question.id}
+					type="password"
+					autoComplete="off"
+					autoCorrect="off"
+					spellCheck={false}
+					disabled={disabled}
+					value={secret}
+					onChange={(event) => onSecret(event.target.value)}
+					placeholder="Your answer (never shown again)"
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
+				/>
+			) : options.length > 0 ? (
+				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
+					{options.map((option) => {
+						const chosen = selected.includes(option.label);
+						return (
+							<button
+								key={option.label}
+								type="button"
+								data-ask-option={option.label}
+								disabled={disabled}
+								aria-pressed={multi ? chosen : undefined}
+								aria-checked={multi ? undefined : chosen}
+								role={multi ? "checkbox" : "radio"}
+								onClick={() =>
+									multi ? onToggle(option.label) : onSelect(option.label)
+								}
+								className={cn(
+									"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+									// Rows, not controls with edges of their own: this list sits
+									// inside the panel's card, so its boundary is its selection
+									// ground and its focus outline (the same idiom as `AskOptions`).
+									chosen ? "bg-sunken" : "hover:bg-sunken",
+									disabled ? "text-ink-dim" : "text-ink",
+								)}
+							>
+								{/* A drawn box rather than a tick glyph: the tick and the dot this
+								 * pair used to be read as emoji-adjacent decoration, and a filled box
+								 * is the same mark in a colour role the contrast gate already
+								 * covers. */}
+								<span
+									aria-hidden="true"
+									className={cn(
+										"mt-1 h-3 w-3 shrink-0 rounded-sm border",
+										chosen ? "border-accent bg-accent" : "border-control",
+									)}
+								/>
+								<span className="min-w-0 flex-1">
+									{option.label}
+									{option.description ? (
+										<span className="block text-ink-muted text-xs">
+											{option.description}
+										</span>
+									) : null}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+			) : (
+				<input
+					type="text"
+					disabled={disabled}
+					value={selected[0] ?? ""}
+					onChange={(event) => onSelect(event.target.value)}
+					placeholder="Type your answer"
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
+				/>
+			)}
+		</div>
+	);
+};
+
+/** One ask: its status line, its questions, and the controls that settle it. */
+const AskRow = ({
+	presentation,
+	nowMs,
+	answering,
+	outcome,
+	onAnswer,
+	onDecline,
+}: {
+	presentation: AskPresentation;
+	nowMs: number;
+	answering: boolean;
+	outcome: { sending: boolean; refused: string | null } | undefined;
+	onAnswer: AskPanelProps["onAnswer"];
+	onDecline: AskPanelProps["onDecline"];
+}) => {
+	const { ask, status, canAnswer, canDecline } = presentation;
+	const [draft, setDraft] = useState<AskDraft>({});
+	// The secret values are their own record rather than draft members ON PURPOSE:
+	// the draft is re-rendered on every tick and has to be safe to paint anywhere,
+	// and a credential in it would ride into a story fixture or a log the first
+	// time someone rendered this row from a captured state. The value reaches the
+	// answer body (the backend substitutes the key name) without ever being
+	// renderable state.
+	const [secrets, setSecrets] = useState<AskSecrets>({});
+	const busy = answering || Boolean(outcome?.sending);
+	const disabled = busy || !canAnswer;
+	const ready = useMemo(
+		() => askAnswerMap(ask, draft, secrets) !== null,
+		[ask, draft, secrets],
+	);
+	const mark = askStatusMark(status);
+	const StatusIcon = mark.Icon;
+
+	return (
+		<div
+			data-lo-ask-row={ask.ask_id}
+			data-lo-ask-status={status}
+			className="flex flex-col gap-2 rounded-md border border-control bg-surface p-3"
+		>
+			<div className="flex items-center gap-2">
+				<StatusIcon
+					aria-hidden="true"
+					className={cn("shrink-0", mark.className)}
+					size={16}
+				/>
+				<span className="min-w-0 flex-1 text-ink-muted text-xs">
+					{askStatusText(ask, nowMs)}
+				</span>
+				{/* Machine voice, monospace: the id is what a user quotes in a bug
+				 * report, and it is not prose. */}
+				<span className="shrink-0 text-ink-dim text-xs">{ask.ask_id}</span>
+			</div>
+			{/*
+			 * A SETTLED ask draws the ANSWER FRAME, not a disabled form: what the
+			 * reader needs from a closed question is what was answered, and a form
+			 * with every control greyed out answers that with silence. `late` lands
+			 * here too - it is settled, and the copy says so.
+			 */}
+			{!canAnswer ? (
+				<div className="flex flex-col gap-1.5">
+					{askSettledAnswers(ask).map((entry) => (
+						<div key={entry.question} className="flex flex-col gap-0.5">
+							<span className="text-ink-muted text-xs">{entry.question}</span>
+							<span className="text-ink text-sm">
+								{entry.answers.length > 0
+									? entry.answers.join(", ")
+									: "No answer given"}
+							</span>
+						</div>
+					))}
+				</div>
+			) : null}
+			{canAnswer
+				? ask.questions.map((question) => (
+						<AskQuestionField
+							key={question.id}
+							question={question}
+							selected={draftFor(draft, question.id)}
+							secret={secrets[question.id] ?? ""}
+							disabled={disabled}
+							onSelect={(label) =>
+								setDraft((current) => ({ ...current, [question.id]: [label] }))
+							}
+							onToggle={(label) =>
+								setDraft((current) => {
+									const chosen = draftFor(current, question.id);
+									const next = chosen.includes(label)
+										? chosen.filter((value) => value !== label)
+										: [...chosen, label];
+									return { ...current, [question.id]: next };
+								})
+							}
+							onSecret={(value) =>
+								setSecrets((current) => ({ ...current, [question.id]: value }))
+							}
+						/>
+					))
+				: null}
+			{outcome?.refused ? (
+				/*
+				 * The refusal is the panel's own line rather than a toast: it belongs to
+				 * the ask on screen, and every refusal in this feature's copy contract is
+				 * a sentence about what did NOT happen, which is a state a toast loses the
+				 * moment it fades.
+				 */
+				<p className="flex items-start gap-1.5 text-warning text-xs">
+					<AlertTriangle
+						aria-hidden="true"
+						size={14}
+						className="mt-0.5 shrink-0"
+					/>
+					<span>{outcome.refused}</span>
+				</p>
+			) : null}
+			{canAnswer || canDecline ? (
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						disabled={disabled || !ready}
+						onClick={() => {
+							const answers = askAnswerMap(ask, draft, secrets);
+							if (answers !== null) onAnswer(ask, answers);
+						}}
+						className={cn(
+							"rounded-md px-3 py-1.5 text-sm",
+							// Disabled changes COLOUR, never opacity (branding § 2).
+							disabled || !ready
+								? "bg-surface text-ink-dim"
+								: "bg-accent text-on-accent hover:bg-accent-hover",
+						)}
+					>
+						Send answer
+					</button>
+					{canDecline ? (
+						<button
+							type="button"
+							disabled={busy}
+							onClick={() => onDecline(ask)}
+							className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+						>
+							Decline
+						</button>
+					) : null}
+				</div>
+			) : null}
+		</div>
+	);
+};
+
+export const AskPanel = ({
+	view,
+	onAnswer,
+	onDecline,
+	answering = false,
+	outcomes,
+	nowMs,
+	className,
+}: AskPanelProps) => {
+	if (view.asks === null) return null;
+	return (
+		<div
+			data-lo-ask-panel="open"
+			className={cn("flex w-full flex-col gap-2", className)}
+		>
+			{view.rows.length === 0 ? (
+				<p className="px-3 py-2 text-ink-muted text-sm">
+					No asks outstanding. The agent is not waiting on anything.
+				</p>
+			) : (
+				view.rows.map((presentation) => (
+					<AskRow
+						key={presentation.ask.ask_id}
+						presentation={presentation}
+						nowMs={nowMs}
+						answering={answering}
+						outcome={outcomes?.[presentation.ask.ask_id]}
+						onAnswer={onAnswer}
+						onDecline={onDecline}
+					/>
+				))
+			)}
+		</div>
+	);
+};

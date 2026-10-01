@@ -59,6 +59,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
+import { legacyAskMirrorSuppressed } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -83,6 +84,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import type { Message } from "../types/message";
+import { AskSurfaces } from "./asks/ask-surfaces";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
@@ -391,6 +393,32 @@ type ChatContentProps = {
 		 * request and its failure are, not re-derived here.
 		 */
 		answer?: { sending: boolean; refused: string | null } | null;
+		/**
+		 * Answer a QUEUED ask from a completed whole-ask draft (design §4/§5.2).
+		 *
+		 * The sibling of `onAnswer`, raised to `SessionPanel` for the same reason:
+		 * the lock and the error surface live there, so the answer has to reach it
+		 * rather than be posted from the panel that was clicked. It is a SEPARATE
+		 * prop from `onAnswer` because the two bodies are different shapes on the
+		 * wire - a gate answers one question by index + label, a queued ask answers
+		 * the whole ask by id - and folding them would leave this pane deciding which
+		 * machinery a payload belongs to from the ask it happens to render.
+		 */
+		onAnswerAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/** "No answer — decide yourself" for a queued ask. */
+		onDeclineAsk?: (taskId: string) => void;
+		/**
+		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
+		 * ask id: the sentence the owner refused with, or `null` while it is live.
+		 *
+		 * Keyed rather than a single slot because a refusal belongs to ONE ask - a
+		 * single slot would put the previous ask's sentence on the next one, which is
+		 * the same defect the gate's per-question hold exists to avoid.
+		 */
+		askOutcomes?: Record<
+			string,
+			{ sending: boolean; refused: string | null } | undefined
+		>;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -1656,35 +1684,63 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * agent is blocked on. It sits on the composer band's own inset and
 						 * measure, so its edges are the composer's edges.
 						 */}
-						{canonical?.view.frontend?.pending_gate && (
-							<div
-								className={cn(
-									CHAT_COLUMN_CONTAINER,
-									CHAT_COLUMN_INSET,
-									"w-full shrink-0 pt-2",
-								)}
-							>
-								<QuestionDock
-									key={canonical.view.frontend.pending_gate.request_id}
-									className={CHAT_MEASURE}
-									gate={canonical.view.frontend.pending_gate}
-									onAnswer={canonical.onAnswer}
-									/*
-									 * The secret field's own door, forwarded untouched like `onAnswer`:
-									 * the dock decides WHEN a secret is answered from its field, and the
-									 * panel owns the lock, the request and the report behind it.
-									 */
-									onAnswerSecret={canonical.onAnswerSecret}
-									// The composer's own in-flight flag, reused: one answer per
-									// question, whichever surface starts it.
-									answering={Boolean(canonical.admitting)}
-									// This panel's own record of the gate it pressed, so the card
-									// holds itself disabled after an answer instead of coming back
-									// live against a gate the owner already took.
-									answer={canonical.answer ?? null}
-								/>
-							</div>
-						)}
+						{/*
+						 * THE QUEUED ASKS (design §5.0/§5.2). Mounted on the same band as the
+						 * blocking dock and gated on the WIRE rather than on a local flag: the
+						 * backend publishes `asks` only while its non-blocking feature is on, so
+						 * "the field is present" IS the capability, and `AskSurfaces` draws
+						 * nothing at all when it is absent. That is what keeps an old backend on
+						 * exactly today's path.
+						 */}
+						<AskSurfaces
+							className={cn(
+								CHAT_COLUMN_CONTAINER,
+								CHAT_COLUMN_INSET,
+								"w-full shrink-0 pt-2",
+							)}
+							frontend={canonical?.view.frontend ?? null}
+							onAnswer={canonical?.onAnswerAsk}
+							onDecline={canonical?.onDeclineAsk}
+							answering={Boolean(canonical?.admitting)}
+							outcomes={canonical?.askOutcomes}
+						/>
+						{/*
+						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
+						 * queue is on the wire, an ask-shaped `pending_gate` is the backend's
+						 * LEGACY MIRROR of an ask already in `asks[]`, so drawing it would show the
+						 * same question twice (design §4, client rule N3). Approvals keep the
+						 * single slot untouched - they have no queue to appear in.
+						 */}
+						{canonical?.view.frontend?.pending_gate &&
+							!legacyAskMirrorSuppressed(canonical.view.frontend) && (
+								<div
+									className={cn(
+										CHAT_COLUMN_CONTAINER,
+										CHAT_COLUMN_INSET,
+										"w-full shrink-0 pt-2",
+									)}
+								>
+									<QuestionDock
+										key={canonical.view.frontend.pending_gate.request_id}
+										className={CHAT_MEASURE}
+										gate={canonical.view.frontend.pending_gate}
+										onAnswer={canonical.onAnswer}
+										/*
+										 * The secret field's own door, forwarded untouched like `onAnswer`:
+										 * the dock decides WHEN a secret is answered from its field, and the
+										 * panel owns the lock, the request and the report behind it.
+										 */
+										onAnswerSecret={canonical.onAnswerSecret}
+										// The composer's own in-flight flag, reused: one answer per
+										// question, whichever surface starts it.
+										answering={Boolean(canonical.admitting)}
+										// This panel's own record of the gate it pressed, so the card
+										// holds itself disabled after an answer instead of coming back
+										// live against a gate the owner already took.
+										answer={canonical.answer ?? null}
+									/>
+								</div>
+							)}
 						{/*
 						 * THE STOPPED TURN'S OWN LINE (§G3). Above the composer and below the transcript's
 						 * own dock, which is where a turn that has ENDED can say so without being part of
