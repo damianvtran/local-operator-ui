@@ -1109,6 +1109,63 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
+		 * register of the approval mark, worn by the sidebar's Browser row and by
+		 * Aida's, i.e. on the same four grounds the row above lists. It is a
+		 * separate row rather than a `fill`/`border` change to the row above,
+		 * because the two marks differ in what carries them: the bordered mark's
+		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so
+		 * this one draws no edge at all and the NUMERAL is the whole mark.
+		 *
+		 * THE INK IS THE MARK, so the ink is what this row asserts: `inkDim` on
+		 * `elevated`, 5.01:1 at worst over the fifty-nine palettes (measured from
+		 * `scripts/palette-source.mjs` with this file's own ratio, the same way the
+		 * row above's figures were) — clear of the 4.5:1 text floor the `CONTROLS`
+		 * loop applies to a control's label, which is the floor that matters here
+		 * because the numeral is READ rather than merely seen. It is the role the
+		 * count lines the operator compared against already wear (11-13px
+		 * metadata), and it is deliberately quieter than the bordered mark's `ink`.
+		 *
+		 * THE EDGE IS DECLARED AWAY, and the declaration is honest rather than a
+		 * convenience: the mark provably cannot carry one across every palette.
+		 * Its `elevated` fill steps ΔE00 3.29 off `surface` in the dark brand
+		 * palette and 2.50 in the light — the ground the user actually sees — and 2.02
+		 * at worst over the fifty-nine (arcade), but it falls to 0.47 off `rowSelected`
+		 * (duskfox) and 0.00 off `rowHover` (arcade): on a hovered or current row it can
+		 * merge into the ground entirely, and no single role fixes that at both ends
+		 * (over the four grounds `elevated` spans 0.00-11.64, `sunken` 0.44-14.88). The
+		 * old mark's own `warningWash` was not exempt either: its per-ground minima span
+		 * 0.87-2.27 across the fifty-nine, and the wash family — all six roles
+		 * (`warningWash`, `successWash`, `dangerWash`, `infoWash`, `accentWash`,
+		 * `accentAltWash`) over the four grounds — runs 0.53-30.71, so a wash does not
+		 * fix the deep rows either. (Scope note, review round 1 F1 and round 2 F7: the
+		 * narrower 0.87-2.27 belongs to `warningWash` alone, per ground; the family's
+		 * per-(wash, ground) minima span 0.53-2.69 and its whole span is 0.53-30.71 —
+		 * 25.83 is the five-role reading, which drops `accentAltWash`, and that is why
+		 * the membership is named here rather than left to the reader.) What keeps the count legible is the numeral's own floor above;
+		 * what keeps it a MARK rather than plain label text is that a quiet row
+		 * draws nothing at all. The step is therefore a cue on the plain grounds and
+		 * absent on the deep ones, which is the same deal the sidebar's count lines
+		 * strike, and `edge: false` moves the claim to the instrument that can state
+		 * it (the ink floor here) rather than inventing a border the design removed
+		 * on purpose.
+		 *
+		 * NOT AS CONTRASTED AS WHAT IT REPLACES, stated as the two steps the
+		 * operator compared — in the brand palettes, which is where that comparison was
+		 * made: the old bordered mark's `warningWash` stepped ΔE00 5.22 off `surface` in
+		 * the dark palette and 5.44 in the light; this one steps 3.29 and 2.50 (2.02 at
+		 * worst over the fifty-nine). Same ground, roughly half the separation — the
+		 * "slightly contrasted but not as contrasted" the report asked for.
+		 */
+		name: "rail approval badge (quiet)",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -2729,9 +2786,11 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rows read against `surface`, which the rail's group lists
-		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
-		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
+		 * ground: the rows read against `surface`, which the rail's own nav carries
+		 * (the rail held `bg-elevated` from 2026-09-27 until it was re-grounded
+		 * flat on 2026-09-30, and the group lists carry no ground of their own any
+		 * more), and it marked its current section with `accent-wash` — ΔE00 1.05
+		 * in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
 		 * because it is one class for one role decision (round 1, design D2).
@@ -2752,7 +2811,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
 		must: "? rowCurrent",
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-row-hover`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
 	},
 	{
 		/*
@@ -4821,6 +4880,34 @@ for (const { id, palette: p } of palettes) {
 		"rowSelected",
 		FLOOR.text,
 		"integration status text on a deep-linked row",
+	);
+
+	/*
+	 * The tool ledger's PARTIAL delivery word (`wake unconfirmed`, `unconfirmed`)
+	 * on the ground the row paints under the pointer.
+	 *
+	 * The word is `warning` text and it is the row's only loud ink, so the pair
+	 * owes the text floor wherever the row draws it. Two of its three grounds were
+	 * already asserted before this row existed: `canvas` and `surface` by `AS_TEXT`
+	 * (the four elevations, `accentWash` and `messageSurface`), and the settled
+	 * row's own ground IS the transcript's canvas. The HOVER states are the ones
+	 * `AS_TEXT` deliberately leaves to the ink loop - it holds `ink`, `inkMuted`
+	 * and `inkDim`, not the tone roles - and `rowHover` is exactly the ground a
+	 * hovered row wears (`hover:bg-row-hover`), so the amber word on it was the
+	 * one pair in this state that nothing measured.
+	 *
+	 * Measured before it was written: worst palette `warning`/`rowHover` is
+	 * 4.696:1 (rose-pine-dawn), clear of the floor in all 59, so no pin is
+	 * recorded here. `rowSelected` is not listed: a transcript row is never
+	 * selected, and the ledger's own row has no selected state.
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowHover",
+		FLOOR.text,
+		"the partial delivery word on the hovered row's ground",
 	);
 
 	/*
