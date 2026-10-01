@@ -1477,6 +1477,33 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 	);
 });
 
+test("a refused decision carries the authored sentence and its machine code, or says so plainly", () => {
+	const { approvalRefusal } = mesh;
+	// The desktop plane's refusal (`{code, message}`): both facts travel, the
+	// sentence trimmed, so the card can render exactly what the store said.
+	assert.deepEqual(
+		approvalRefusal({
+			code: "approval_signing_unavailable",
+			message: " no operator key here ",
+		}),
+		{
+			code: "approval_signing_unavailable",
+			sentence: "no operator key here",
+		},
+	);
+	// The transport's own synthesised deadline sentence is a message without a code.
+	assert.deepEqual(approvalRefusal({ message: "may or may not have landed" }), {
+		code: "approval_refused",
+		sentence: "may or may not have landed",
+	});
+	// A failure that carried neither states what the surface knows rather than
+	// inventing a cause (the `approvalErrorMessage` fallback's own rule).
+	assert.deepEqual(approvalRefusal(null), {
+		code: "approval_refused",
+		sentence: "The decision could not be answered.",
+	});
+});
+
 /* ------------------------------------------------------------------ wiring */
 
 const source = (path) => readFileSync(path, "utf8");
@@ -1969,6 +1996,43 @@ test("the Mesh page renders the tray above every state block, off its own read",
 			`the tray renders above ${arm} - an approval stays visible in every state`,
 		);
 	}
+});
+
+test("a refused decision renders its sentence, and the busy gate is the surface's", () => {
+	/*
+	 * Agent review round 1, findings 1 and 3. The page must read the mutation's
+	 * own error (a refusal rendered nowhere is a dead click), and the tray must
+	 * gate every card while one decision is in flight, as the browser tray it
+	 * models does - a per-row gate lets a second decision race the cue.
+	 */
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/const decisionRefusal = decideApproval\.isError/,
+		"the decision's own error is read - the refusal must have a render path",
+	);
+	assert.match(page, /approvalRefusal\(decideApproval\.error\)/);
+	assert.match(
+		page,
+		/refusal=\{approvals\.decisionRefusal\}/,
+		"and the tray receives it through the approvals bundle",
+	);
+	const tray = source("src/renderer/src/features/mesh/mesh-approvals-tray.tsx");
+	assert.match(
+		tray,
+		/const busy = pending !== null;/,
+		"the gate is computed once, for the whole tray",
+	);
+	assert.match(
+		tray,
+		/disabled=\{busy\}/,
+		"every decision control rides the surface-wide gate",
+	);
+	assert.match(
+		tray,
+		/refusal && !refusalAttached && \(/,
+		"a refusal whose record left the live set still renders under the list",
+	);
 });
 
 test("the page keeps the last good read painted and never zeroes a fact", () => {

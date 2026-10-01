@@ -58,6 +58,7 @@ import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
 	approvalErrorMessage,
+	approvalRefusal,
 	useMeshApprovalDecision,
 	useMeshApprovals,
 } from "./mesh-approvals";
@@ -164,6 +165,17 @@ export const MeshSurface: FC<{
 		onRetry: () => void;
 		/** The approvals read's own stamp, so the expiry lines share one clock. */
 		nowSeconds: number;
+		/**
+		 * The last decision's refusal, when it had one (agent review round 1,
+		 * finding 1): the code and the authored sentence, attached to the record
+		 * it was about. The tray renders it beside that record's card; this
+		 * bundle is the only path a refused decision has to the screen.
+		 */
+		decisionRefusal: {
+			approvalId: string | null;
+			code: string;
+			sentence: string;
+		} | null;
 	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
@@ -455,6 +467,7 @@ export const MeshSurface: FC<{
 				rows={approvals.rows}
 				error={approvals.error}
 				pending={approvals.pending}
+				refusal={approvals.decisionRefusal}
 				onDecide={approvals.onDecide}
 				onRetry={approvals.onRetry}
 				nowSeconds={approvals.nowSeconds}
@@ -748,6 +761,23 @@ export const MeshPage: FC = () => {
 		poll: false,
 	});
 	const decideApproval = useMeshApprovalDecision();
+	/*
+	 * A REFUSED DECISION RENDERS ITS AUTHORED SENTENCE (agent review round 1,
+	 * finding 1): the store's refusals are the ones a waiting surface MUST carry
+	 * - a host with no signing surface ("ask Local Operator to set up operator
+	 * authority here first"), a declined prompt, the transport's deadline
+	 * sentence ("may or may not have landed … read the approvals again"), and
+	 * the conflict/expired refusals. Read from the mutation's own error, the
+	 * same shape as `removeRefusal` below and the same rule
+	 * (`approvalRefusal` prefers the authored sentence); the next `mutate` call
+	 * clears the error, so the sentence lives exactly as long as it is current.
+	 */
+	const decisionRefusal = decideApproval.isError
+		? {
+				approvalId: decideApproval.variables?.approvalId ?? null,
+				...approvalRefusal(decideApproval.error),
+			}
+		: null;
 	const approvalsNowSeconds = useMemo(
 		() => Math.floor((approvals.dataUpdatedAt || Date.now()) / 1000),
 		[approvals.dataUpdatedAt],
@@ -938,6 +968,7 @@ export const MeshPage: FC = () => {
 				pending: decideApproval.isPending
 					? (decideApproval.variables ?? null)
 					: null,
+				decisionRefusal,
 				onDecide: (approvalId, decision) =>
 					decideApproval.mutate({ approvalId, decision }),
 				onRetry: () => void approvals.refetch(),

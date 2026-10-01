@@ -423,3 +423,33 @@ export function approvalErrorMessage(error: unknown): string {
 	if (typeof authored === "string" && authored.trim()) return authored.trim();
 	return "The approvals could not be read.";
 }
+
+/**
+ * The refusal a FAILED DECISION carries, as the two facts the card renders
+ * (agent review round 1, finding 1).
+ *
+ * The same preference `approvalErrorMessage` states - the authored sentence
+ * (the backend's or the transport's) over a composed one - read structurally so
+ * both of a decision's failure classes land here: the desktop plane's refusals
+ * (`{code, message}` under `detail`: no signing surface, a declined prompt, a
+ * conflict or expiry) and the transport's own synthesised deadline ("may or may
+ * not have landed … answering it again is safe").
+ *
+ * THE CODE TRAVELS WITH THE SENTENCE because it is the machine category a
+ * support conversation and a log agree on - the mesh's move refusals already
+ * render theirs, and this is the same kind of surface.
+ *
+ * The fallback is only reachable for a failure that carried neither (an IPC
+ * rejection with no message): it states what this surface knows rather than
+ * inventing a cause, and the next `mutate` call clears the whole refusal.
+ */
+export function approvalRefusal(error: unknown): {
+	code: string;
+	sentence: string;
+} {
+	const held = error as { code?: unknown; message?: unknown } | null;
+	return {
+		code: text(held?.code) || "approval_refused",
+		sentence: text(held?.message) || "The decision could not be answered.",
+	};
+}

@@ -28,7 +28,7 @@
  * is expected rather than pretending the click completed anything.
  */
 
-import { Badge, Button } from "@shared/components/ui";
+import { Alert, Badge, Button } from "@shared/components/ui";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -73,11 +73,11 @@ function stateHint(state: string): string | null {
 		case "requested":
 			return "Approving signs with this machine's operator key; the system may ask for it.";
 		case "approved":
-			return "The requesting side runs it from here.";
+			return "An agent runs the install and connect (lop network approvals run).";
 		case "connecting":
 			return "Denying now stops it at its next step.";
 		case "failed":
-			return "The runner stopped. Denying abandons it; the requesting side can retry.";
+			return "The runner stopped. Denying abandons it; an agent can retry it.";
 		default:
 			return null;
 	}
@@ -100,6 +100,19 @@ export interface MeshApprovalsTrayProps {
 	error: string | null;
 	/** The decision in flight, from the mutation's own variables. */
 	pending: { approvalId: string; decision: ApprovalDecision } | null;
+	/**
+	 * The last decision's refusal, when it had one (agent review round 1,
+	 * finding 1): the code and the authored sentence, attached to the record it
+	 * was about when the request named one. Rendered beside that record's card,
+	 * or under the list when the refusal's own refetch settled the record out of
+	 * the live set - the sentence may not go missing either way, because it is
+	 * the only thing that tells a refusal from a dead click.
+	 */
+	refusal: {
+		approvalId: string | null;
+		code: string;
+		sentence: string;
+	} | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	onRetry: () => void;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
@@ -110,10 +123,21 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	rows,
 	error,
 	pending,
+	refusal,
 	onDecide,
 	onRetry,
 	nowSeconds,
 }) => {
+	/*
+	 * THE BUSY GATE IS THE SURFACE'S, not the row's (agent review round 1,
+	 * finding 3): the browser tray this surface models disables every control
+	 * while one decision is in flight, because the mutation is a single
+	 * observer - with a second decision in flight the cue moves and the older
+	 * card's buttons re-enable, so a per-row gate can lie about which card is
+	 * busy and lets a duplicate answer race the store's own refusal. One human
+	 * gesture at a time, on the whole tray.
+	 */
+	const busy = pending !== null;
 	/*
 	 * LIVE IS THE STORE'S NON-TERMINAL SET, in the store's own order (oldest
 	 * first): the oldest record is the first to expire, and a surface that
@@ -150,8 +174,19 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		previousLive.current = liveNow;
 	}, [live, rows]);
 
-	// Nothing to say, say nothing: no records, no memory, no failure.
-	if (live.length === 0 && resolved.length === 0 && !error) return null;
+	/*
+	 * A REFUSAL ATTACHES TO ITS RECORD when the record is still live; otherwise
+	 * it renders under the list, because the refusal's own settle refetch is
+	 * exactly what can carry a record out of the live set (a conflict or an
+	 * expiry), and the sentence is then the only trace of the attempted answer.
+	 */
+	const refusalAttached =
+		refusal !== null &&
+		live.some((row) => row.approvalId === refusal.approvalId);
+
+	// Nothing to say, say nothing: no records, no memory, no failure, no refusal.
+	if (live.length === 0 && resolved.length === 0 && !error && !refusal)
+		return null;
 
 	return (
 		<section
@@ -185,12 +220,16 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							key={row.approvalId}
 							row={row}
 							pending={pending?.approvalId === row.approvalId ? pending : null}
+							busy={busy}
+							refusal={refusal?.approvalId === row.approvalId ? refusal : null}
 							onDecide={onDecide}
 							nowSeconds={nowSeconds}
 						/>
 					))}
 				</ul>
 			)}
+
+			{refusal && !refusalAttached && <MeshDecisionRefusal refusal={refusal} />}
 
 			{resolved.length > 0 && (
 				<ul
@@ -209,10 +248,15 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 /** One open record, as the card that asks or reports. */
 const MeshApprovalCard: FC<{
 	row: MeshApprovalRow;
+	/** The in-flight decision when it is THIS record's, for the waiting cue. */
 	pending: { approvalId: string; decision: ApprovalDecision } | null;
+	/** Whether ANY decision is in flight: the gate the surface owns (see the tray). */
+	busy: boolean;
+	/** This record's refusal, or `null` when the last one was about another record. */
+	refusal: { code: string; sentence: string } | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	nowSeconds: number;
-}> = ({ row, pending, onDecide, nowSeconds }) => {
+}> = ({ row, pending, busy, refusal, onDecide, nowSeconds }) => {
 	const where = approvalWhereLabel(row);
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
@@ -269,7 +313,7 @@ const MeshApprovalCard: FC<{
 						<Button
 							variant="primary"
 							size="sm"
-							disabled={pending !== null}
+							disabled={busy}
 							onClick={() => onDecide(row.approvalId, "approve")}
 							data-tour-tag="mesh-approval-approve"
 						>
@@ -280,7 +324,7 @@ const MeshApprovalCard: FC<{
 						<Button
 							variant={canApprove ? "ghost" : "secondary"}
 							size="sm"
-							disabled={pending !== null}
+							disabled={busy}
 							onClick={() => onDecide(row.approvalId, "deny")}
 							data-tour-tag="mesh-approval-deny"
 						>
@@ -296,6 +340,27 @@ const MeshApprovalCard: FC<{
 					)}
 				</div>
 			)}
+
+			{refusal && <MeshDecisionRefusal refusal={refusal} />}
 		</li>
 	);
 };
+
+/**
+ * One refused decision, rendered where the record it was about stands (or, for a
+ * refusal whose record left the live set, under the list).
+ *
+ * The warning register is the house's for a write refusal (`RemoveMemberDialog`'s
+ * own), and the code is carried the way the move refusals carry theirs: the
+ * sentence is for the reader, the code for the support conversation. No
+ * `role="alert"` - the tray is already in the reader's flow; this is a state,
+ * not an interruption.
+ */
+const MeshDecisionRefusal: FC<{
+	refusal: { code: string; sentence: string };
+}> = ({ refusal }) => (
+	<Alert variant="warning" className="text-meta">
+		<span className="min-w-0 flex-1">{refusal.sentence}</span>
+		<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
+	</Alert>
+);
